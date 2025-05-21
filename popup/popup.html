@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Disney+ Dual Subtitles</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Disney+ Dual Subtitles</h1>
+        
+        <div class="setting">
+            <label for="enableSubtitles">Enable Subtitles:</label>
+            <label class="switch">
+                <input type="checkbox" id="enableSubtitles">
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+
+        <div class="setting">
+            <label for="targetLanguage">Translate to:</label>
+            <select id="targetLanguage">
+                <option value="en">English</option>
+                <option value="es">Español (Spanish)</option>
+                <option value="fr">Français (French)</option>
+                <option value="de">Deutsch (German)</option>
+                <option value="it">Italiano (Italian)</option>
+                <option value="pt">Português (Portuguese)</option>
+                <option value="ja">日本語 (Japanese)</option>
+                <option value="ko">한국어 (Korean)</option>
+                <option value="zh-CN">中文 (简体) (Chinese Simplified)</option>
+                <option value="zh-TW">中文 (繁體) (Chinese Traditional)</option>
+                <option value="ru">Русский (Russian)</option>
+                <option value="ar">العربية (Arabic)</option>
+                <option value="hi">हिन्दी (Hindi)</option>
+                </select>
+        </div>
+
+        <div class="setting">
+            <label for="subtitleTimeOffset" title="Adjust subtitle timing. Negative values make subtitles appear earlier, positive values later. E.g., -0.5 or 1.2">Time Offset (sec):</label>
+            <input type="number" id="subtitleTimeOffset" step="0.1" value="0.3">
+        </div>
+
+        <div class="setting">
+            <label for="subtitleLayoutOrder" title="Choose which subtitle appears first or on top.">Display Order:</label>
+            <select id="subtitleLayoutOrder">
+                <option value="original_top">Original First / Top</option>
+                <option value="translation_top">Translation First / Top</option>
+            </select>
+        </div>
+
+        <div class="setting">
+            <label for="subtitleLayoutOrientation" title="Display subtitles stacked vertically (Top/Bottom) or side-by-side (Left/Right).">Layout Orientation:</label>
+            <select id="subtitleLayoutOrientation">
+                <option value="column">Top / Bottom</option>
+                <option value="row">Left / Right</option>
+            </select>
+        </div>
+
+        <div class="setting">
+            <label for="subtitleFontSize" title="Adjust the size of subtitle text.">Subtitle Size:</label>
+            <div class="slider-container">
+                <input type="range" id="subtitleFontSize" min="1.0" max="3.0" step="0.1" value="1.1">
+                <span id="subtitleFontSizeValue" class="value-display">1.1vw</span>
+            </div>
+        </div>
+
+        <div class="setting">
+            <label for="subtitleGap" title="Gap between the original and translated subtitles (when using Top/Bottom layout).">Subtitle Gap:</label>
+            <div class="slider-container">
+                <input type="range" id="subtitleGap" min="0" max="1" step="0.1" value="0.3">
+                <span id="subtitleGapValue" class="value-display">0.3em</span>
+            </div>
+        </div>
+
+        <div class="setting">
+            <label for="translationBatchSize" title="Number of subtitle segments to translate in each batch. Lower is faster but may cause rate limiting.">Translation Batch Size:</label>
+            <div class="slider-container">
+                <input type="range" id="translationBatchSize" min="1" max="10" step="1" value="3">
+                <span id="translationBatchSizeValue" class="value-display">3</span>
+            </div>
+        </div>
+
+        <div class="setting">
+            <label for="translationDelay" title="Delay between translation requests in milliseconds. Higher values reduce chances of being rate-limited.">Translation Delay (ms):</label>
+            <div class="slider-container">
+                <input type="range" id="translationDelay" min="0" max="500" step="50" value="150">
+                <span id="translationDelayValue" class="value-display">150ms</span>
+            </div>
+        </div>
+
+        <p id="statusMessage"></p>
+    </div>
+    <script src="popup.js"></script>
+</body>
+</html>

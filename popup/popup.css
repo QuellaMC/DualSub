@@ -1,0 +1,271 @@
+/* disneyplus-dualsub-chrome-extension/popup/popup.css */
+body {
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; /* More explicit modern font stack */
+    font-size: 14px;
+    background-color: #f8f9fa; /* Slightly softer background */
+    color: #343a40; /* Darker base text color for better contrast */
+    margin: 0;
+    min-width: 330px; /* Adjusted min-width slightly */
+    padding: 15px; /* Increased padding */
+    box-sizing: border-box;
+}
+
+.container {
+    background-color: #ffffff;
+    border-radius: 10px; /* Slightly larger border-radius */
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08); /* Softer, slightly larger shadow */
+    padding: 25px; /* Increased internal padding */
+    margin: 0 auto;
+}
+
+h1 {
+    font-size: 20px; /* Adjusted size */
+    font-weight: 600;
+    color: #212529; /* Darker heading color */
+    text-align: center;
+    margin-top: 0;
+    margin-bottom: 30px; /* More space below title */
+}
+
+.setting {
+    margin-bottom: 20px; /* Adjusted spacing */
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center; /* Better default alignment */
+}
+
+.setting label:not(.switch) { /* Exclude switch label from this specific flex styling */
+    font-weight: 500;
+    color: #495057; /* Slightly softer label color */
+    flex-basis: auto; /* CHANGED: Let label take its natural content width */
+    margin-right: 15px; /* More space between label and control */
+    margin-bottom: 5px; /* For wrapped labels */
+    line-height: 1.4; /* Ensure consistent line height for labels */
+    flex-shrink: 0; /* Prevent label from shrinking if space is tight */
+}
+
+.setting input[type="number"],
+.setting select {
+    flex-grow: 1;
+    padding: 9px 12px; /* Adjusted padding for height consistency */
+    border: 1px solid #ced4da; /* Standard border color */
+    border-radius: 6px; /* Consistent border-radius */
+    font-size: 14px;
+    box-sizing: border-box;
+    min-width: 100px; /* Adjusted minimum width */
+    height: 38px; /* Attempt to unify height */
+    color: #495057;
+}
+
+.setting select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 12px 12px; /* Adjusted arrow size */
+    padding-right: 35px; /* Space for custom arrow */
+}
+
+
+.setting input[type="number"]:focus,
+.setting select:focus {
+    outline: none;
+    border-color: #007bff; /* Brighter focus color */
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25); /* Standard Bootstrap focus shadow */
+}
+
+/* Slider specific styling */
+.setting .slider-container { /* Wrapper for slider and value for better layout */
+    display: flex;
+    align-items: center;
+    flex-grow: 1;
+    height: 38px; /* Match height of other inputs */
+}
+
+.setting input[type="range"] {
+    flex-grow: 1;
+    margin-right: 15px; /* Increased space */
+    height: 8px; /* Adjusted height */
+    -webkit-appearance: none;
+    appearance: none;
+    background: #dee2e6; /* Lighter track */
+    border-radius: 5px;
+    cursor: pointer;
+    outline: none;
+}
+
+.setting input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px; /* Adjusted thumb size */
+    height: 18px; /* Adjusted thumb size */
+    background: #007bff; /* Primary color thumb */
+    border-radius: 50%;
+    border: none;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    margin-top: -5px; /* Vertically center thumb on track */
+}
+
+.setting input[type="range"]::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    background: #007bff;
+    border-radius: 50%;
+    border: none;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    cursor: pointer;
+}
+
+.setting .value-display {
+    font-weight: 500;
+    color: #495057;
+    min-width: 55px; /* Ensure enough space */
+    text-align: right;
+    font-size: 0.9em; /* Slightly smaller value display */
+    white-space: nowrap;
+}
+
+/* Toggle Switch */
+.switch {
+    --switch-width: 50px;
+    --switch-height: 28px;
+    --thumb-size: 22px;
+    --thumb-padding: 3px; /* Padding on one side of the thumb */
+
+    position: relative;
+    display: inline-block;
+    width: var(--switch-width);
+    height: var(--switch-height);
+    flex-shrink: 0;
+    flex-grow: 0;
+    margin-left: auto;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ced4da;
+    transition: .3s ease;
+    border-radius: 34px; /* Can also be calc(var(--switch-height) / 2) or similar for dynamic rounding */
+    overflow: hidden; /* Ensure the thumb doesn't overflow */
+}
+
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: var(--thumb-size);
+    width: var(--thumb-size);
+    left: var(--thumb-padding);
+    bottom: var(--thumb-padding); /* Or calc((var(--switch-height) - var(--thumb-size)) / 2) for vertical centering */
+    background-color: white;
+    transition: .3s ease;
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+input:checked + .toggle-slider {
+    background-color: #28a745;
+}
+
+input:focus + .toggle-slider {
+    box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+}
+
+input:checked + .toggle-slider:before {
+    /* Smarter way: Calculate translation based on variables */
+    /* This calculation should logically work. If 250px is still needed, */
+    /* it strongly suggests an external factor is at play (e.g., parent transform). */
+    /* transform: translateX(calc(var(--switch-width) - var(--thumb-size) - (var(--thumb-padding) * 2))); */
+    /* If you absolutely need to use 250px, you can still set it here, */
+    /* but it would be disconnected from the dimensional variables: */
+    transform: translateX(250px);
+}
+
+/* Hide the default checkbox */
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+#statusMessage {
+    text-align: center;
+    margin-top: 20px; /* Adjusted margin */
+    font-weight: 500;
+    min-height: 1.5em;
+    padding: 10px; /* Increased padding */
+    border-radius: 6px; /* Consistent border-radius */
+    font-size: 0.95em;
+    line-height: 1.4;
+}
+
+/* Styles for success/error messages in #statusMessage (JS will set class) */
+#statusMessage.success {
+    background-color: #d1e7dd; /* Softer green */
+    color: #0f5132;    /* Darker text for contrast */
+    border: 1px solid #badbcc;
+}
+
+#statusMessage.error {
+    background-color: #f8d7da;
+    color: #842029;    /* Darker text for contrast */
+    border: 1px solid #f5c2c7;
+}
+
+
+/* Responsive adjustments */
+@media (max-width: 380px) { /* Slightly increased breakpoint */
+    body {
+        padding: 10px;
+    }
+    .container {
+        padding: 15px; /* Reduced padding for smaller screens */
+    }
+    h1 {
+        font-size: 18px;
+        margin-bottom: 20px;
+    }
+    .setting {
+        flex-direction: column;
+        align-items: stretch; /* Stretch items to full width */
+        margin-bottom: 15px;
+    }
+    .setting label:not(.switch) {
+        flex-basis: auto; /* Label takes full width (already set above, but good to confirm) */
+        width: 100%;
+        margin-bottom: 6px; /* Space between label and control */
+        margin-right: 0;
+        text-align: left;
+    }
+    .setting input[type="number"],
+    .setting select,
+    .setting .slider-container, /* Ensure wrapper also takes full width */
+    .switch { /* Apply to switch as well */
+        width: 100%; /* Make switch full width in column layout */
+        margin-left: 0; /* Ensure it aligns left */
+    }
+    /* Specific adjustment for the switch label in column layout if it's not the first element */
+    .setting > .switch {
+         margin-top: 5px; /* Add some space if label was above */
+    }
+
+
+    .setting .value-display {
+        text-align: right; /* Keep value display to the right of slider */
+        margin-top: 0;
+        margin-left: 10px; /* Space between slider and value */
+    }
+    .setting .slider-container input[type="range"] {
+        margin-right: 0; /* Remove margin if value is next to it */
+    }
+    #statusMessage {
+        margin-top: 15px;
+        padding: 8px;
+    }
+}

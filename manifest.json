@@ -1,0 +1,45 @@
+{
+  "manifest_version": 3,
+  "name": "Disney+ Dual Subtitles",
+  "version": "0.7.4",
+  "description": "Displays dual subtitles on Disney+.",
+  "permissions": [
+    "storage",
+    "scripting",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "*://*.disneyplus.com/*",
+    "https://translate.googleapis.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://*.disneyplus.com/*"],
+      "js": ["content_scripts/content.js"],
+      "css": ["content_scripts/content.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["content_scripts/inject.js"],
+      "matches": ["*://*.disneyplus.com/*"]
+    }
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
