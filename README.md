@@ -87,3 +87,18 @@ This work is licensed under a
 
 *Disclaimer: This extension is not officially affiliated with Disney+.*
 
+## Adding New Translation Providers
+
+This extension is designed to support multiple translation service providers. If you want to add a new translation provider, please follow these steps:
+
+1.  **Understand the Interface**: Familiarize yourself with the required structure for a translation provider module by reading the interface definition located in `translation_providers/README.md`.
+2.  **Implement Your Provider**:
+    *   Create a new JavaScript file for your provider within the `translation_providers/` directory (e.g., `myNewProvider.js`).
+    *   You can use `translation_providers/deeplTranslate_example.js` as a starting template for your implementation.
+    *   Ensure your module exports an `async function translate(text, sourceLang, targetLang)` that adheres to the defined interface.
+3.  **Register Your Provider**:
+    *   In `background.js`, import your new provider module and add it to the `translationProviders` object. This object maps a unique provider ID (e.g., 'myNewProvider') to its display name and `translate` function.
+    *   In `popup/popup.js`, add your new provider's ID and display name to the `availableProviders` object. This will make it visible in the extension's settings popup.
+4.  **Test Thoroughly**: Ensure your new provider works correctly and handles errors gracefully.
+
+By following these guidelines, you can extend the translation capabilities of this extension.

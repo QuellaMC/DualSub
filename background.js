@@ -1,5 +1,29 @@
 // disneyplus-dualsub-chrome-extension/background.js
+import { translate as googleTranslate } from './translation_providers/googleTranslate.js';
 console.log("Disney+ Dual Subtitles background script loaded (v2.4 - Enhanced Translation Error Handling & VTT Fetch).");
+
+// Translation Provider Registry
+const translationProviders = {
+    'google': {
+        name: 'Google Translate',
+        translate: googleTranslate // The function imported from ./translation_providers/googleTranslate.js
+    }
+    // Future providers will be added here, e.g.:
+    // 'deepl': { name: 'DeepL', translate: deeplTranslateFunction }
+};
+
+let currentTranslationProviderId = 'google'; // Default provider
+
+chrome.storage.sync.get('selectedProvider', (data) => {
+    if (data.selectedProvider && translationProviders[data.selectedProvider]) {
+        currentTranslationProviderId = data.selectedProvider;
+        console.log(`Background: Loaded translation provider from storage: ${translationProviders[currentTranslationProviderId].name}`);
+    } else {
+        // If not found or invalid, stick to default and potentially save the default
+        chrome.storage.sync.set({ selectedProvider: currentTranslationProviderId });
+        console.log(`Background: Using default translation provider: ${translationProviders[currentTranslationProviderId].name}`);
+    }
+});
 
 // Initialize default settings on installation
 chrome.runtime.onInstalled.addListener(() => {
@@ -255,41 +279,26 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === "translate") {
         const sourceText = message.text;
         const targetLang = message.targetLang;
-        const sourceLang = 'auto';
+        const sourceLang = 'auto'; // Or from message if available
         const cueStart = message.cueStart;
         const cueVideoId = message.cueVideoId;
 
-        const G_TRANSLATE_URL = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceLang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(sourceText)}`;
-        // console.log("Background: Translation request URL:", G_TRANSLATE_URL); // Less verbose logging
+        const selectedProvider = translationProviders[currentTranslationProviderId];
 
-        fetch(G_TRANSLATE_URL)
-            .then(response => {
-                if (!response.ok) {
-                    console.error(`Background: Translation API HTTP error! Status: ${response.status}`, response);
-                    return response.text().then(text => { 
-                        throw new Error(`Translation API HTTP error ${response.status}. Response: ${text.substring(0,100)}`);
-                    });
-                }
-                const contentType = response.headers.get("content-type");
-                if (contentType && contentType.includes("application/json")) {
-                    return response.json();
-                } else {
-                    return response.text().then(text => {
-                        console.error(`Background: Translation API did not return JSON. Content-Type: ${contentType}. Response text (first 500 chars):`, text.substring(0, 500));
-                        if (text.includes("<title>Google</title>") && text.includes("unusual traffic")) {
-                            throw new Error("Translation API blocked: CAPTCHA or unusual traffic detected.");
-                        }
-                        throw new Error(`Translation API returned non-JSON (Content-Type: ${contentType}).`);
-                    });
-                }
-            })
-            .then(data => {
-                let translatedText = "[Translation Error: Malformed JSON response]";
-                if (data && data[0] && Array.isArray(data[0]) && data[0][0] && typeof data[0][0][0] === 'string') {
-                    translatedText = data[0].map(sentence => sentence[0]).join('');
-                } else {
-                    console.error("Background: Translation JSON parsing failed or unexpected structure. Response data:", data);
-                }
+        if (!selectedProvider || typeof selectedProvider.translate !== 'function') {
+            console.error(`Background: Invalid or missing translation provider: ${currentTranslationProviderId}`);
+            sendResponse({
+                error: "Translation failed",
+                details: `Selected translation provider "${currentTranslationProviderId}" is not configured correctly.`,
+                originalText: sourceText,
+                cueStart: cueStart,
+                cueVideoId: cueVideoId
+            });
+            return true;
+        }
+
+        selectedProvider.translate(sourceText, sourceLang, targetLang)
+            .then(translatedText => {
                 sendResponse({
                     translatedText: translatedText,
                     originalText: sourceText,
@@ -298,16 +307,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 });
             })
             .catch(error => {
-                console.error("Background: Translation API request/processing error:", error);
+                console.error(`Background: Translation failed using provider '${selectedProvider.name}':`, error);
                 sendResponse({
                     error: "Translation failed",
-                    details: error.message,
+                    details: error.message || `Error from ${selectedProvider.name}`,
                     originalText: sourceText,
                     cueStart: cueStart,
                     cueVideoId: cueVideoId
                 });
             });
-        return true; 
+        return true; // Indicates an asynchronous response.
     } else if (message.action === "fetchVTT") {
         const vttMasterUrl = message.url;
         console.log("Background: Received fetchVTT request for Master URL:", vttMasterUrl);
@@ -321,6 +330,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 sendResponse({ success: false, error: `VTT Processing Error: ${error.message}`, videoId: message.videoId, url: vttMasterUrl });
             });
         return true;
+    } else if (message.action === "changeProvider") {
+        const newProviderId = message.providerId;
+        if (translationProviders[newProviderId]) {
+            currentTranslationProviderId = newProviderId;
+            chrome.storage.sync.set({ selectedProvider: newProviderId }, () => {
+                console.log(`Background: Translation provider changed to: ${translationProviders[currentTranslationProviderId].name}`);
+                sendResponse({ success: true, message: `Provider changed to ${translationProviders[currentTranslationProviderId].name}` });
+            });
+        } else {
+            console.error(`Background: Attempted to switch to unknown provider: ${newProviderId}`);
+            sendResponse({ success: false, message: `Unknown provider: ${newProviderId}` });
+        }
+        return true; // For async response
     }
 });
 
