@@ -14,12 +14,20 @@ document.addEventListener('DOMContentLoaded', function () {
     const translationBatchSizeValue = document.getElementById('translationBatchSizeValue');
     const translationDelayInput = document.getElementById('translationDelay');
     const translationDelayValue = document.getElementById('translationDelayValue');
+    const translationProviderSelect = document.getElementById('translationProvider'); // Added
     const statusMessage = document.getElementById('statusMessage');
+
+    // Available Translation Providers (simplified for now)
+    const availableProviders = {
+        'google': 'Google Translate'
+        // 'deepl': 'DeepL', // Example for future
+    };
 
     // Default settings
     const defaultSettings = {
         subtitlesEnabled: true,
         targetLanguage: 'zh-CN',
+        selectedProvider: 'google', // Added
         subtitleTimeOffset: 0.3,
         subtitleLayoutOrder: 'original_top',
         subtitleLayoutOrientation: 'column',
@@ -29,11 +37,29 @@ document.addEventListener('DOMContentLoaded', function () {
         translationDelay: 150  // Default in ms
     };
 
+    // Function to populate the provider dropdown
+    function populateProviderDropdown() {
+        for (const providerId in availableProviders) {
+            const option = document.createElement('option');
+            option.value = providerId;
+            option.textContent = availableProviders[providerId];
+            translationProviderSelect.appendChild(option);
+        }
+    }
+
     // Function to load settings from chrome.storage.sync
     function loadSettings() {
         chrome.storage.sync.get(Object.keys(defaultSettings), function (items) {
             enableSubtitlesToggle.checked = items.subtitlesEnabled !== undefined ? items.subtitlesEnabled : defaultSettings.subtitlesEnabled;
             targetLanguageSelect.value = items.targetLanguage || defaultSettings.targetLanguage;
+            
+            const selectedProvider = items.selectedProvider || defaultSettings.selectedProvider;
+            if (availableProviders[selectedProvider]) {
+                translationProviderSelect.value = selectedProvider;
+            } else {
+                translationProviderSelect.value = defaultSettings.selectedProvider; // Fallback
+            }
+            
             subtitleTimeOffsetInput.value = items.subtitleTimeOffset !== undefined ? items.subtitleTimeOffset : defaultSettings.subtitleTimeOffset;
             subtitleLayoutOrderSelect.value = items.subtitleLayoutOrder || defaultSettings.subtitleLayoutOrder;
             subtitleLayoutOrientationSelect.value = items.subtitleLayoutOrientation || defaultSettings.subtitleLayoutOrientation;
@@ -198,5 +224,28 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Initial load of settings
+    populateProviderDropdown(); // Call before loadSettings
     loadSettings();
+
+    // Event Listener for Translation Provider Change
+    translationProviderSelect.addEventListener('change', function() {
+        const providerId = this.value;
+        chrome.storage.sync.set({ selectedProvider: providerId }, () => {
+            const providerName = translationProviderSelect.options[translationProviderSelect.selectedIndex].text;
+            showStatus(`Provider: ${providerName}.`);
+            
+            // Send message to background script (service worker)
+            chrome.runtime.sendMessage({ action: "changeProvider", providerId: providerId }, function(response) {
+                if (chrome.runtime.lastError) {
+                    console.warn(`Popup: Error sending changeProvider message to background:`, chrome.runtime.lastError.message);
+                    showStatus(`Error switching provider.`, true);
+                } else if (response && response.success) {
+                    console.log(`Popup: changeProvider message sent to background. Response: ${response.message}`);
+                } else {
+                    console.warn(`Popup: Background script did not respond successfully to changeProvider. Response:`, response);
+                    showStatus(`Provider change not confirmed by background.`, true);
+                }
+            });
+        });
+    });
 });
