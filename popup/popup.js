@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', function () {
         subtitlesEnabled: true,
         targetLanguage: 'zh-CN',
         selectedProvider: 'google', // Added
-        subtitleTimeOffset: 0.3,
+        subtitleTimeOffset: 0,
         subtitleLayoutOrder: 'original_top',
         subtitleLayoutOrientation: 'column',
         subtitleFontSize: 1.1, // Default in vw
