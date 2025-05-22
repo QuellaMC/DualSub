@@ -14,31 +14,40 @@ document.addEventListener('DOMContentLoaded', function () {
     const translationBatchSizeValue = document.getElementById('translationBatchSizeValue');
     const translationDelayInput = document.getElementById('translationDelay');
     const translationDelayValue = document.getElementById('translationDelayValue');
-    const translationProviderSelect = document.getElementById('translationProvider'); // Added
+    const translationProviderSelect = document.getElementById('translationProvider');
     const statusMessage = document.getElementById('statusMessage');
 
-    // Available Translation Providers (simplified for now)
+    // Collapsible sections
+    const collapsibleLegends = document.querySelectorAll('.settings-group > .collapsible-legend');
+
+    // State for collapsible sections (e.g., which ones are open)
+    const initialCollapsibleState = {
+        translationSettings: false, // 默认折叠
+        subtitleAppearanceTiming: false // 默认折叠
+    };
+    let collapsibleStates = { ...initialCollapsibleState };
+
+    // Available Translation Providers
     const availableProviders = {
         'google': 'Google Translate (Free)',
         'microsoft_edge_auth': 'Microsoft Translate (Free)'
-        // 'deepl': 'DeepL', // Example for future
     };
 
     // Default settings
     const defaultSettings = {
         subtitlesEnabled: true,
         targetLanguage: 'zh-CN',
-        selectedProvider: 'google', // Added
+        selectedProvider: 'google',
         subtitleTimeOffset: 0,
         subtitleLayoutOrder: 'original_top',
         subtitleLayoutOrientation: 'column',
-        subtitleFontSize: 1.1, // Default in vw
-        subtitleGap: 0.3,      // Default in em
+        subtitleFontSize: 1.1,
+        subtitleGap: 0.3,
         translationBatchSize: 3,
-        translationDelay: 150  // Default in ms
+        translationDelay: 150,
+        collapsibleStates: initialCollapsibleState
     };
 
-    // Function to populate the provider dropdown
     function populateProviderDropdown() {
         for (const providerId in availableProviders) {
             const option = document.createElement('option');
@@ -48,67 +57,79 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Function to load settings from chrome.storage.sync
+    function applyCollapsibleStates() {
+        collapsibleLegends.forEach((legend, index) => {
+            const fieldset = legend.parentElement;
+            // Use a more robust way to link state to section if needed (e.g., data-attribute)
+            const stateKey = index === 0 ? 'translationSettings' : 'subtitleAppearanceTiming';
+            if (collapsibleStates[stateKey]) {
+                fieldset.classList.remove('collapsed');
+            } else {
+                fieldset.classList.add('collapsed');
+            }
+        });
+    }
+
     function loadSettings() {
         chrome.storage.sync.get(Object.keys(defaultSettings), function (items) {
             enableSubtitlesToggle.checked = items.subtitlesEnabled !== undefined ? items.subtitlesEnabled : defaultSettings.subtitlesEnabled;
             targetLanguageSelect.value = items.targetLanguage || defaultSettings.targetLanguage;
-            
+
             const selectedProvider = items.selectedProvider || defaultSettings.selectedProvider;
             if (availableProviders[selectedProvider]) {
                 translationProviderSelect.value = selectedProvider;
             } else {
-                translationProviderSelect.value = defaultSettings.selectedProvider; // Fallback
+                translationProviderSelect.value = defaultSettings.selectedProvider;
             }
-            
+
             subtitleTimeOffsetInput.value = items.subtitleTimeOffset !== undefined ? items.subtitleTimeOffset : defaultSettings.subtitleTimeOffset;
             subtitleLayoutOrderSelect.value = items.subtitleLayoutOrder || defaultSettings.subtitleLayoutOrder;
             subtitleLayoutOrientationSelect.value = items.subtitleLayoutOrientation || defaultSettings.subtitleLayoutOrientation;
-            
+
             const fontSize = items.subtitleFontSize !== undefined ? items.subtitleFontSize : defaultSettings.subtitleFontSize;
             subtitleFontSizeInput.value = fontSize;
             subtitleFontSizeValue.textContent = `${parseFloat(fontSize).toFixed(1)}vw`;
-            
+
             const gap = items.subtitleGap !== undefined ? items.subtitleGap : defaultSettings.subtitleGap;
             subtitleGapInput.value = gap;
             subtitleGapValue.textContent = `${parseFloat(gap).toFixed(1)}em`;
-            
+
             const batchSize = items.translationBatchSize !== undefined ? items.translationBatchSize : defaultSettings.translationBatchSize;
             translationBatchSizeInput.value = batchSize;
             translationBatchSizeValue.textContent = batchSize;
-            
+
             const delay = items.translationDelay !== undefined ? items.translationDelay : defaultSettings.translationDelay;
             translationDelayInput.value = delay;
             translationDelayValue.textContent = `${delay}ms`;
+
+            // Load collapsible states
+            collapsibleStates = items.collapsibleStates || { ...initialCollapsibleState };
+            applyCollapsibleStates();
         });
     }
 
-    // Function to display status messages
     function showStatus(message, isError = false) {
         statusMessage.textContent = message;
-        statusMessage.className = isError ? 'error' : 'success'; // Use classes for styling
+        statusMessage.className = isError ? 'error' : 'success';
         setTimeout(() => {
             statusMessage.textContent = '';
-            statusMessage.className = ''; // Clear class
+            statusMessage.className = '';
         }, 3000);
     }
-    
-    // Function to send messages to the content script
+
     function sendMessageToContentScript(action, value, settingKey) {
         chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
             if (tabs[0] && tabs[0].id) {
                 const messagePayload = { action: action };
-                if (settingKey) { // Only add if settingKey is provided
-                  messagePayload[settingKey] = value; 
-                } else { // For actions like toggleSubtitles where the value might be the primary part
-                  messagePayload.enabled = value; // Assuming 'enabled' for toggle, adjust if needed
+                if (settingKey) {
+                  messagePayload[settingKey] = value;
+                } else {
+                  messagePayload.enabled = value;
                 }
-
 
                 chrome.tabs.sendMessage(tabs[0].id, messagePayload, function(response) {
                     if (chrome.runtime.lastError) {
                         console.warn(`Popup: Error sending ${action} message for ${settingKey || 'toggle'}:`, chrome.runtime.lastError.message);
-                        // Avoid showing error to user if tab is not Disney+ or not ready
                         if (!chrome.runtime.lastError.message.includes("Receiving end does not exist")) {
                              showStatus(`Setting not applied. Refresh Disney+ tab.`, true);
                         }
@@ -125,12 +146,11 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Event Listeners for UI elements
-
     enableSubtitlesToggle.addEventListener('change', function () {
         const enabled = enableSubtitlesToggle.checked;
         chrome.storage.sync.set({ subtitlesEnabled: enabled }, () => {
             showStatus(`Dual subtitles ${enabled ? 'enabled' : 'disabled'}.`);
-            sendMessageToContentScript("toggleSubtitles", enabled, "enabled"); // 'enabled' is the key content.js expects
+            sendMessageToContentScript("toggleSubtitles", enabled, "enabled");
         });
     });
 
@@ -146,14 +166,13 @@ document.addEventListener('DOMContentLoaded', function () {
         let offset = parseFloat(subtitleTimeOffsetInput.value);
         if (isNaN(offset)) {
             showStatus('Invalid time offset. Reverting.', true);
-            // Revert to stored or default value
             chrome.storage.sync.get('subtitleTimeOffset', (items) => {
                 subtitleTimeOffsetInput.value = items.subtitleTimeOffset !== undefined ? items.subtitleTimeOffset : defaultSettings.subtitleTimeOffset;
             });
             return;
         }
-        offset = parseFloat(offset.toFixed(2)); // Ensure two decimal places for consistency
-        subtitleTimeOffsetInput.value = offset; // Update input field with potentially corrected value
+        offset = parseFloat(offset.toFixed(2));
+        subtitleTimeOffsetInput.value = offset;
 
         chrome.storage.sync.set({ subtitleTimeOffset: offset }, () => {
             showStatus(`Time offset: ${offset}s.`);
@@ -177,7 +196,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // Slider 'input' event listeners for live value display
     subtitleFontSizeInput.addEventListener('input', function() {
         subtitleFontSizeValue.textContent = `${parseFloat(this.value).toFixed(1)}vw`;
     });
@@ -191,7 +209,6 @@ document.addEventListener('DOMContentLoaded', function () {
         translationDelayValue.textContent = `${this.value}ms`;
     });
 
-    // Slider 'change' event listeners to save and send data
     subtitleFontSizeInput.addEventListener('change', function() {
         const fontSize = parseFloat(this.value);
         chrome.storage.sync.set({ subtitleFontSize: fontSize }, () => {
@@ -224,18 +241,11 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // Initial load of settings
-    populateProviderDropdown(); // Call before loadSettings
-    loadSettings();
-
-    // Event Listener for Translation Provider Change
     translationProviderSelect.addEventListener('change', function() {
         const providerId = this.value;
         chrome.storage.sync.set({ selectedProvider: providerId }, () => {
             const providerName = translationProviderSelect.options[translationProviderSelect.selectedIndex].text;
             showStatus(`Provider: ${providerName}.`);
-            
-            // Send message to background script (service worker)
             chrome.runtime.sendMessage({ action: "changeProvider", providerId: providerId }, function(response) {
                 if (chrome.runtime.lastError) {
                     console.warn(`Popup: Error sending changeProvider message to background:`, chrome.runtime.lastError.message);
@@ -249,4 +259,20 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
     });
+
+    // Setup for collapsible sections
+    collapsibleLegends.forEach((legend, index) => {
+        legend.addEventListener('click', function () {
+            const fieldset = this.parentElement;
+            fieldset.classList.toggle('collapsed');
+            // Update and save state
+            const stateKey = index === 0 ? 'translationSettings' : 'subtitleAppearanceTiming';
+            collapsibleStates[stateKey] = !fieldset.classList.contains('collapsed');
+            chrome.storage.sync.set({ collapsibleStates: collapsibleStates });
+        });
+    });
+
+    // Initial load
+    populateProviderDropdown();
+    loadSettings(); // This will also apply initial collapsible states
 });

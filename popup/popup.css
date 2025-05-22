@@ -1,59 +1,136 @@
 /* disneyplus-dualsub-chrome-extension/popup/popup.css */
 body {
-    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; /* More explicit modern font stack */
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     font-size: 14px;
-    background-color: #f8f9fa; /* Slightly softer background */
-    color: #343a40; /* Darker base text color for better contrast */
+    background-color: #f8f9fa;
+    color: #343a40;
     margin: 0;
-    min-width: 330px; /* Adjusted min-width slightly */
-    padding: 15px; /* Increased padding */
+    min-width: 340px;
+    padding: 15px;
     box-sizing: border-box;
 }
 
 .container {
     background-color: #ffffff;
-    border-radius: 10px; /* Slightly larger border-radius */
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08); /* Softer, slightly larger shadow */
-    padding: 25px; /* Increased internal padding */
+    border-radius: 10px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+    padding: 20px 25px 25px 25px;
     margin: 0 auto;
 }
 
 h1 {
-    font-size: 20px; /* Adjusted size */
+    font-size: 20px;
     font-weight: 600;
-    color: #212529; /* Darker heading color */
+    color: #212529;
     text-align: center;
     margin-top: 0;
-    margin-bottom: 30px; /* More space below title */
+    margin-bottom: 25px;
 }
+
+.setting.main-toggle {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 5px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.main-toggle-label {
+    font-weight: 600 !important;
+    font-size: 1.05em;
+    color: #343a40 !important;
+    margin-right: 10px;
+}
+
+/* Settings Group Styling */
+.settings-group {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    margin-bottom: 20px; /* Slightly reduced margin */
+    background-color: #fff;
+    overflow: hidden; /* Important for collapsing animation if added */
+}
+
+.settings-group legend.collapsible-legend {
+    font-size: 1.05em; /* Adjusted size */
+    font-weight: 600;
+    color: #007bff;
+    padding: 12px 15px; /* Adjusted padding */
+    margin: 0; /* Reset margin for legend */
+    cursor: pointer;
+    display: flex; /* For aligning text and icon */
+    justify-content: space-between; /* Pushes icon to the right */
+    align-items: center;
+    width: 100%; /* Make legend take full width of fieldset */
+    box-sizing: border-box;
+    background-color: #f8f9fa; /* Light background for the legend */
+    border-bottom: 1px solid #dee2e6; /* Separator when expanded */
+}
+
+.settings-group.collapsed legend.collapsible-legend {
+    border-bottom-color: transparent; /* No border when collapsed */
+}
+
+
+.settings-group .toggle-icon {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-right: 2px solid #007bff;
+    border-bottom: 2px solid #007bff;
+    transform: rotate(45deg); /* Down arrow */
+    transition: transform 0.2s ease-in-out;
+    margin-left: 10px;
+}
+
+.settings-group.collapsed .toggle-icon {
+    transform: rotate(-45deg); /* Up arrow */
+}
+
+.collapsible-content {
+    padding: 15px 20px 5px 20px;
+    max-height: 1000px; /* Large enough for content */
+    overflow: hidden;
+    transition: max-height 0.3s ease-in-out, padding 0.3s ease-in-out, opacity 0.2s ease-in-out;
+    opacity: 1;
+}
+
+.settings-group.collapsed .collapsible-content {
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    opacity: 0;
+    /* border-top: none; Remove if legend has bottom border */
+}
+
 
 .setting {
-    margin-bottom: 20px; /* Adjusted spacing */
+    margin-bottom: 18px;
     display: flex;
     flex-wrap: wrap;
-    align-items: center; /* Better default alignment */
+    align-items: center;
 }
 
-.setting label:not(.switch) { /* Exclude switch label from this specific flex styling */
+.setting label:not(.switch):not(.main-toggle-label) {
     font-weight: 500;
-    color: #495057; /* Slightly softer label color */
-    flex-basis: auto; /* CHANGED: Let label take its natural content width */
-    margin-right: 15px; /* More space between label and control */
-    margin-bottom: 5px; /* For wrapped labels */
-    line-height: 1.4; /* Ensure consistent line height for labels */
-    flex-shrink: 0; /* Prevent label from shrinking if space is tight */
+    color: #495057;
+    flex-basis: 130px;
+    margin-right: 10px;
+    line-height: 1.4;
+    flex-shrink: 0;
 }
 
 .setting input[type="number"],
 .setting select {
     flex-grow: 1;
-    padding: 9px 12px; /* Adjusted padding for height consistency */
-    border: 1px solid #ced4da; /* Standard border color */
-    border-radius: 6px; /* Consistent border-radius */
+    padding: 9px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
     font-size: 14px;
     box-sizing: border-box;
-    min-width: 100px; /* Adjusted minimum width */
-    height: 38px; /* Attempt to unify height */
+    min-width: 80px;
+    height: 38px;
     color: #495057;
 }
 
@@ -64,33 +141,32 @@ h1 {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 10px center;
-    background-size: 12px 12px; /* Adjusted arrow size */
-    padding-right: 35px; /* Space for custom arrow */
+    background-size: 12px 12px;
+    padding-right: 35px;
 }
 
 
 .setting input[type="number"]:focus,
 .setting select:focus {
     outline: none;
-    border-color: #007bff; /* Brighter focus color */
-    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25); /* Standard Bootstrap focus shadow */
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
 }
 
-/* Slider specific styling */
-.setting .slider-container { /* Wrapper for slider and value for better layout */
+.setting .slider-container {
     display: flex;
     align-items: center;
     flex-grow: 1;
-    height: 38px; /* Match height of other inputs */
+    height: 38px;
 }
 
 .setting input[type="range"] {
     flex-grow: 1;
-    margin-right: 15px; /* Increased space */
-    height: 8px; /* Adjusted height */
+    margin-right: 15px;
+    height: 8px;
     -webkit-appearance: none;
     appearance: none;
-    background: #dee2e6; /* Lighter track */
+    background: #dee2e6;
     border-radius: 5px;
     cursor: pointer;
     outline: none;
@@ -99,13 +175,13 @@ h1 {
 .setting input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    width: 18px; /* Adjusted thumb size */
-    height: 18px; /* Adjusted thumb size */
-    background: #007bff; /* Primary color thumb */
+    width: 18px;
+    height: 18px;
+    background: #007bff;
     border-radius: 50%;
     border: none;
     box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-    margin-top: -5px; /* Vertically center thumb on track */
+    margin-top: -5px;
 }
 
 .setting input[type="range"]::-moz-range-thumb {
@@ -121,27 +197,29 @@ h1 {
 .setting .value-display {
     font-weight: 500;
     color: #495057;
-    min-width: 55px; /* Ensure enough space */
+    min-width: 50px;
     text-align: right;
-    font-size: 0.9em; /* Slightly smaller value display */
+    font-size: 0.9em;
     white-space: nowrap;
 }
 
-/* Toggle Switch */
 .switch {
     --switch-width: 50px;
     --switch-height: 28px;
     --thumb-size: 22px;
-    --thumb-padding: 3px; /* Padding on one side of the thumb */
+    --thumb-padding: 3px;
 
     position: relative;
     display: inline-block;
     width: var(--switch-width);
     height: var(--switch-height);
     flex-shrink: 0;
-    flex-grow: 0;
+}
+
+.setting > .switch {
     margin-left: auto;
 }
+
 
 .toggle-slider {
     position: absolute;
@@ -152,8 +230,8 @@ h1 {
     bottom: 0;
     background-color: #ced4da;
     transition: .3s ease;
-    border-radius: 34px; /* Can also be calc(var(--switch-height) / 2) or similar for dynamic rounding */
-    overflow: hidden; /* Ensure the thumb doesn't overflow */
+    border-radius: calc(var(--switch-height) / 2);
+    overflow: hidden;
 }
 
 .toggle-slider:before {
@@ -162,7 +240,7 @@ h1 {
     height: var(--thumb-size);
     width: var(--thumb-size);
     left: var(--thumb-padding);
-    bottom: var(--thumb-padding); /* Or calc((var(--switch-height) - var(--thumb-size)) / 2) for vertical centering */
+    bottom: var(--thumb-padding);
     background-color: white;
     transition: .3s ease;
     border-radius: 50%;
@@ -184,10 +262,9 @@ input:checked + .toggle-slider:before {
     /* transform: translateX(calc(var(--switch-width) - var(--thumb-size) - (var(--thumb-padding) * 2))); */
     /* If you absolutely need to use 250px, you can still set it here, */
     /* but it would be disconnected from the dimensional variables: */
-    transform: translateX(250px);
+    transform: translateX(225px);
 }
 
-/* Hide the default checkbox */
 .switch input {
     opacity: 0;
     width: 0;
@@ -196,73 +273,90 @@ input:checked + .toggle-slider:before {
 
 #statusMessage {
     text-align: center;
-    margin-top: 20px; /* Adjusted margin */
+    margin-top: 20px;
     font-weight: 500;
     min-height: 1.5em;
-    padding: 10px; /* Increased padding */
-    border-radius: 6px; /* Consistent border-radius */
+    padding: 10px;
+    border-radius: 6px;
     font-size: 0.95em;
     line-height: 1.4;
 }
 
-/* Styles for success/error messages in #statusMessage (JS will set class) */
 #statusMessage.success {
-    background-color: #d1e7dd; /* Softer green */
-    color: #0f5132;    /* Darker text for contrast */
+    background-color: #d1e7dd;
+    color: #0f5132;
     border: 1px solid #badbcc;
 }
 
 #statusMessage.error {
     background-color: #f8d7da;
-    color: #842029;    /* Darker text for contrast */
+    color: #842029;
     border: 1px solid #f5c2c7;
 }
 
 
-/* Responsive adjustments */
-@media (max-width: 380px) { /* Slightly increased breakpoint */
+@media (max-width: 400px) {
     body {
         padding: 10px;
+        min-width: 0;
     }
     .container {
-        padding: 15px; /* Reduced padding for smaller screens */
+        padding: 15px;
     }
     h1 {
         font-size: 18px;
         margin-bottom: 20px;
     }
+
+    .settings-group legend.collapsible-legend {
+        padding: 10px 12px;
+        font-size: 1em;
+    }
+    .collapsible-content {
+       padding: 10px 15px 0px 15px;
+    }
+
+
+    .setting.main-toggle {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 5px 0px;
+    }
+    .main-toggle-label {
+        margin-bottom: 8px;
+    }
+    .setting.main-toggle > .switch {
+        margin-left: 0;
+    }
+
+
     .setting {
         flex-direction: column;
-        align-items: stretch; /* Stretch items to full width */
+        align-items: stretch;
         margin-bottom: 15px;
     }
-    .setting label:not(.switch) {
-        flex-basis: auto; /* Label takes full width (already set above, but good to confirm) */
+    .setting label:not(.switch):not(.main-toggle-label) {
+        flex-basis: auto;
         width: 100%;
-        margin-bottom: 6px; /* Space between label and control */
+        margin-bottom: 6px;
         margin-right: 0;
         text-align: left;
     }
     .setting input[type="number"],
     .setting select,
-    .setting .slider-container, /* Ensure wrapper also takes full width */
-    .switch { /* Apply to switch as well */
-        width: 100%; /* Make switch full width in column layout */
-        margin-left: 0; /* Ensure it aligns left */
-    }
-    /* Specific adjustment for the switch label in column layout if it's not the first element */
+    .setting .slider-container,
     .setting > .switch {
-         margin-top: 5px; /* Add some space if label was above */
+        width: 100%;
+        margin-left: 0;
     }
-
 
     .setting .value-display {
-        text-align: right; /* Keep value display to the right of slider */
+        text-align: right;
         margin-top: 0;
-        margin-left: 10px; /* Space between slider and value */
+        margin-left: 10px;
     }
     .setting .slider-container input[type="range"] {
-        margin-right: 0; /* Remove margin if value is next to it */
+        margin-right: 5px;
     }
     #statusMessage {
         margin-top: 15px;
