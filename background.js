@@ -1,12 +1,17 @@
 // disneyplus-dualsub-chrome-extension/background.js
 import { translate as googleTranslate } from './translation_providers/googleTranslate.js';
+import { translate as microsoftTranslateEdgeAuth } from './translation_providers/microsoftTranslateEdgeAuth.js';
 console.log("Disney+ Dual Subtitles background script loaded (v2.4 - Enhanced Translation Error Handling & VTT Fetch).");
 
 // Translation Provider Registry
 const translationProviders = {
     'google': {
-        name: 'Google Translate',
+        name: 'Google Translate (Free)',
         translate: googleTranslate // The function imported from ./translation_providers/googleTranslate.js
+    },
+    'microsoft_edge_auth': {
+        name: 'Microsoft Translate (Free)',
+        translate: microsoftTranslateEdgeAuth // The function imported from ./translation_providers/microsoftTranslateEdgeAuth.js
     }
     // Future providers will be added here, e.g.:
     // 'deepl': { name: 'DeepL', translate: deeplTranslateFunction }

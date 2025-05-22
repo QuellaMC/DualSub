@@ -19,7 +19,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Available Translation Providers (simplified for now)
     const availableProviders = {
-        'google': 'Google Translate'
+        'google': 'Google Translate (Free)',
+        'microsoft_edge_auth': 'Microsoft Translate (Free)'
         // 'deepl': 'DeepL', // Example for future
     };
 

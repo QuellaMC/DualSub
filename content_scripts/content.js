@@ -589,7 +589,7 @@ function updateSubtitles(rawCurrentTime) {
             translatedSubtitleElement.style.display = 'inline-block';
             if (translatedSubtitleElement.innerHTML === translatedTextFormatted && 
                 translatedTextFormatted !== "" && contentChanged) { 
-                console.log(`%cContent UpdateSubs: DISPLAYING TRANSLATED for VideoID '${currentVideoId}' at Time ${currentTime.toFixed(3)} (Offset: ${userSubtitleTimeOffset}s): "${translatedText.substring(0, 50)}..."`, "color: green; font-weight: bold;");
+                // console.log(`%cContent UpdateSubs: DISPLAYING TRANSLATED for VideoID '${currentVideoId}' at Time ${currentTime.toFixed(3)} (Offset: ${userSubtitleTimeOffset}s): "${translatedText.substring(0, 50)}..."`, "color: green; font-weight: bold;");
             }
         } else {
             translatedSubtitleElement.innerHTML = '';
@@ -680,7 +680,7 @@ async function processSubtitleQueue() {
     if (cuesToProcess.length === 0) return;
     
     processingQueue = true;
-    console.log(`Content ProcessQ: Processing ${cuesToProcess.length} untranslated cues starting around current time ${currentTime.toFixed(2)}s`);
+    // console.log(`Content ProcessQ: Processing ${cuesToProcess.length} untranslated cues starting around current time ${currentTime.toFixed(2)}s`);
 
     try {
         for (let i = 0; i < cuesToProcess.length; i++) {

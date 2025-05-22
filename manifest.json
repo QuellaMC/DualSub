@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Disney+ Dual Subtitles",
-  "version": "0.7.4",
+  "version": "0.7.5",
   "description": "Displays dual subtitles on Disney+.",
   "permissions": [
     "storage",
@@ -10,7 +10,9 @@
   ],
   "host_permissions": [
     "*://*.disneyplus.com/*",
-    "https://translate.googleapis.com/*"
+    "https://translate.googleapis.com/*",
+    "https://api.cognitive.microsofttranslator.com/*",
+    "https://edge.microsoft.com/*"
   ],
   "background": {
     "service_worker": "background.js",
