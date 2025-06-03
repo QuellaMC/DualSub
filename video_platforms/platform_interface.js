@@ -21,6 +21,7 @@
 export class VideoPlatform {
     /**
      * Checks if the current page is relevant to this platform.
+     * @abstract
      * @returns {boolean} True if the platform is active, false otherwise.
      */
     isPlatformActive() {
@@ -29,6 +30,7 @@ export class VideoPlatform {
 
     /**
      * Initializes the platform-specific logic, sets up observers, etc.
+     * @abstract
      * @param {function(SubtitleData): void} onSubtitleUrlFound - Callback to be invoked when a subtitle URL/data is found.
      *                                                            The callback expects an object { vttText, videoId, url }.
      * @param {function(string): void} onVideoIdChange - Callback for when the video ID changes.
@@ -40,6 +42,7 @@ export class VideoPlatform {
 
     /**
      * Gets the main video HTML element.
+     * @abstract
      * @returns {HTMLVideoElement | null} The video element or null if not found.
      */
     getVideoElement() {
@@ -49,6 +52,7 @@ export class VideoPlatform {
     /**
      * Gets a unique identifier for the current video.
      * This ID is used to associate subtitles with a specific video.
+     * @abstract
      * @returns {string | null} The video ID or null if not determinable.
      */
     getCurrentVideoId() {
@@ -58,6 +62,7 @@ export class VideoPlatform {
     /**
      * Gets the element that serves as the container for the video player,
      * to which the subtitle display elements will be appended.
+     * @abstract
      * @returns {HTMLElement | null} The player container element or null.
      */
     getPlayerContainerElement() {
@@ -67,6 +72,7 @@ export class VideoPlatform {
     /**
      * Optional: Checks if the current page is the main video player page for this platform.
      * This helps differentiate from pages with previews or other non-primary video content.
+     * @abstract
      * @returns {boolean} True if the current page is the main player page, false otherwise.
      */
     isPlayerPageActive() {
@@ -79,6 +85,7 @@ export class VideoPlatform {
     /**
      * Optional: Gets the progress bar element if the platform uses a specific
      * element for tracking progress that is more reliable than video.currentTime.
+     * @abstract
      * @returns {HTMLElement | null} The progress bar element or null.
      */
     getProgressBarElement() {
@@ -90,6 +97,7 @@ export class VideoPlatform {
     /**
      * Optional: Defines how the platform's native subtitles should be handled.
      * For example, they might need to be hidden or observed.
+     * @abstract
      */
     handleNativeSubtitles() {
         // Optional: Implement if native subtitles need special handling.
@@ -102,6 +110,7 @@ export class VideoPlatform {
      * Cleans up any event listeners, observers, or other resources
      * used by the platform implementation. Called when the platform is no longer active
      * or the extension is disabled.
+     * @abstract
      */
     cleanup() {
         throw new Error("Method 'cleanup()' must be implemented.");
