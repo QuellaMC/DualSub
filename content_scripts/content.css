@@ -3,24 +3,17 @@
 /* Styles for the subtitle container and individual subtitle elements */
 
 #disneyplus-dual-subtitle-container {
-    /* Position is set by JS, but ensure it's above video controls if possible */
-    /* z-index is also set by JS to a very high value */
-    /* pointer-events: none; is set by JS */
-    /* text-align: center; is set by JS */
-    /* width and transform for centering are set by JS */
+    /* Styles like position, z-index, pointer-events, text-align, width, and transform are primarily managed by content.js */
 }
 
 #disneyplus-original-subtitle,
 #disneyplus-translated-subtitle {
-    /* Common styles, specific colors/fonts set by JS for now or can be defined here */
-    /* padding, margin-bottom, background-color, text-shadow, border-radius set by JS */
-    /* font-size is set by JS using vw for responsiveness */
+    /* Common base styles. Specifics like colors, padding, font-size, etc., are largely set by content.js */
     line-height: 1.4; /* Improves readability of multi-line subtitles */
     display: inline-block; /* Allows background to fit text width */
     max-width: 100%; /* Ensure it doesn't overflow the container */
     box-sizing: border-box; /* Padding included in width/height */
     word-wrap: break-word; /* Break long words if necessary */
-    /* Add any other consistent styling you want here */
 }
 
 /* Example of how you could override specific styles here if preferred over JS */

@@ -1,83 +1,196 @@
 // disneyplus-dualsub-chrome-extension/content_scripts/content.js
-console.log("Disney+ Dual Subtitles content script loaded (v7.4.9 - Full Layout & Offset Settings).");
+// import { DisneyPlusPlatform } from '../video_platforms/disneyPlusPlatform.js'; // REMOVED Static import
 
-// --- BEGIN INJECTION LOGIC ---
-function injectTheInjectorScript() {
-    try {
-        const s = document.createElement('script');
-        s.src = chrome.runtime.getURL('content_scripts/inject.js'); // Path from manifest
-        s.id = 'disneyplus-dualsub-injector-script-tag';
-        (document.head || document.documentElement).appendChild(s);
-        s.onload = function() {
-            console.log('Content: Inject.js script tag loaded into page.');
-        };
-        s.onerror = function() {
-            console.error('Content: CRITICAL - Failed to load inject.js into page! Check manifest.json web_accessible_resources and file path.');
-        };
-        console.log("Content: Attempting to inject inject.js into page from:", s.src);
-    } catch (e) {
-        console.error("Content: CRITICAL - Error during inject.js injection attempt:", e);
+console.log("Disney+ Dual Subtitles content script loaded (v8.0.1 - Dynamic Import).");
+
+// --- BEGIN PLATFORM MANAGEMENT ---
+/** @type {import('../video_platforms/platform_interface.js').VideoPlatform | null} */
+let activePlatform = null;
+/** @type {typeof import('../video_platforms/disneyPlusPlatform.js').DisneyPlusPlatform | null} */
+let DisneyPlusPlatformModule = null; // To hold the imported class
+const availablePlatforms = [];
+
+async function initializeActivePlatform() {
+    if (activePlatform) {
+        // If platform exists, check if we are on a player page before re-initializing unnecessarily
+        if (activePlatform.isPlayerPageActive()) {
+            console.log("Content: Active platform already initialized and on a player page.");
+            // Potentially re-ensure subtitle container if it was lost due to SPA navigation
+            if (subtitlesActive) {
+                ensureSubtitleContainer();
+                showSubtitleContainer();
+                 const videoElement = activePlatform.getVideoElement();
+                 if (videoElement && videoElement.currentTime > 0) {
+                    updateSubtitles(videoElement.currentTime);
+                 }
+            }
+        } else {
+            console.log("Content: Active platform exists, but not on a player page. UI setup deferred.");
+            // If we navigated away from a player page, cleanup might be needed.
+            // However, clearSubtitleDOM() might be too aggressive here if platform still active.
+            // Platform's internal cleanup or a more specific cleanup might be better.
+            hideSubtitleContainer(); // At least hide our UI
+        }
+        return;
+    }
+
+    if (!DisneyPlusPlatformModule) {
+        console.error("Content: DisneyPlusPlatformModule not loaded. Cannot initialize.");
+        return;
+    }
+    if (availablePlatforms.length === 0 && DisneyPlusPlatformModule) {
+         availablePlatforms.push(DisneyPlusPlatformModule);
+    }
+
+    for (const PlatformClass of availablePlatforms) {
+        const platformInstance = new PlatformClass();
+        if (platformInstance.isPlatformActive()) {
+            // Now, also check if it's a player page before fully setting activePlatform
+            if (platformInstance.isPlayerPageActive()) {
+                activePlatform = platformInstance;
+                console.log(`Content: Active platform set to: ${platformInstance.constructor.name} on a player page.`);
+                try {
+                    await activePlatform.initialize(
+                        handleSubtitleDataFound,
+                        handleVideoIdChange
+                    );
+                    console.log("Content: Active platform initialized successfully.");
+                    activePlatform.handleNativeSubtitles();
+
+                    if (subtitlesActive) {
+                        ensureSubtitleContainer(); // This will now also check isPlayerPageActive
+                        showSubtitleContainer();
+                        const videoElement = activePlatform.getVideoElement();
+                        if (videoElement && videoElement.currentTime > 0) {
+                            updateSubtitles(videoElement.currentTime);
+                        }
+                    }
+                } catch (error) {
+                    console.error("Content: Error initializing active platform:", error);
+                    activePlatform = null; // Reset on error
+                }
+            } else {
+                console.log(`Content: Platform ${platformInstance.constructor.name} is active, but not on a player page. Full initialization deferred.`);
+                // Do not set activePlatform globally yet, so other functions don't try to use it on non-player pages.
+                // We might still want to keep platformInstance if we need to check it again later without full re-scan.
+            }
+            break; // Assuming only one platform can be active at a time
+        }
+    }
+
+    if (!activePlatform) {
+        console.log("Content: No suitable and active video player page detected.");
     }
 }
-injectTheInjectorScript(); // Call this early to ensure inject.js runs as soon as possible
-// --- END INJECTION LOGIC ---
 
-const INJECT_SCRIPT_ID = 'disneyplus-dualsub-injector-event'; // Must match inject.js
-let currentVideoId = null; 
-let activeVideoElement = null; 
+function handleSubtitleDataFound(subtitleData) {
+    // This function is called by the activePlatform when VTT text is ready
+    console.log(`Content: Subtitle data found for videoId '${subtitleData.videoId}'. Current context videoId: '${currentVideoId}'`);
+
+    // Ensure currentVideoId is up-to-date from the platform
+    if (!currentVideoId && activePlatform) {
+        currentVideoId = activePlatform.getCurrentVideoId();
+    }
+
+    if (subtitleData.videoId !== currentVideoId || !subtitlesActive) {
+        console.warn(`Content: Subtitle data mismatch or inactive. Data VideoID: ${subtitleData.videoId}, CurrentID: ${currentVideoId}, Active: ${subtitlesActive}`);
+        return;
+    }
+
+    ensureSubtitleContainer();
+    const parsedCues = parseVTT(subtitleData.vttText);
+
+    if (parsedCues.length > 0) {
+        // Clear queue for the current video ID and add new cues
+        subtitleQueue = subtitleQueue.filter(cue => cue.videoId !== currentVideoId);
+        parsedCues.forEach(parsedCue => {
+            subtitleQueue.push({
+                original: parsedCue.text,
+                translated: null,
+                start: parsedCue.start,
+                end: parsedCue.end,
+                videoId: currentVideoId
+            });
+        });
+        console.log(`Content: ${parsedCues.length} new cues added for videoId '${currentVideoId}'.`);
+        // lastKnownVttUrlForVideoId is managed by the platform
+        if (parsedCues.length > 0) processSubtitleQueue();
+    } else {
+        console.warn(`Content: VTT parsing yielded no cues for videoId '${currentVideoId}'. VTT URL from platform: ${subtitleData.url}`);
+    }
+}
+
+function handleVideoIdChange(newVideoId) {
+    // This function is called by the activePlatform when the video ID changes
+    console.log(`Content: Video context changing from '${currentVideoId || "null"}' to '${newVideoId}'.`);
+    if (originalSubtitleElement) originalSubtitleElement.innerHTML = '';
+    if (translatedSubtitleElement) translatedSubtitleElement.innerHTML = '';
+
+    if (currentVideoId && currentVideoId !== newVideoId) {
+        subtitleQueue = subtitleQueue.filter(cue => cue.videoId !== currentVideoId);
+    }
+    currentVideoId = newVideoId;
+    // Any other necessary resets when video ID changes
+}
+
+
+// --- END PLATFORM MANAGEMENT ---
+
+// REMOVED: INJECT_SCRIPT_ID, injectTheInjectorScript() as platform handles injection
+
+let currentVideoId = null; // Set by activePlatform via handleVideoIdChange
 
 let subtitleContainer = null;
 let originalSubtitleElement = null;
 let translatedSubtitleElement = null;
 
 let subtitlesActive = true;
-let subtitleQueue = []; 
-let processingQueue = false; 
-let userTargetLanguage = 'es'; 
-let userSubtitleTimeOffset = 0; 
-let userSubtitleLayoutOrder = 'original_top'; 
-let userSubtitleOrientation = 'column'; // 'column' (top/bottom) or 'row' (left/right)
-let userSubtitleFontSize = 1.7; // Default font size in vw units
-let userSubtitleGap = 0; // Gap between subtitles in em units
-let userTranslationBatchSize = 1; // Number of translations to process at once
-let userTranslationDelay = 100; // Delay between translation requests in ms
+let subtitleQueue = [];
+let processingQueue = false;
+let userTargetLanguage = 'es';
+let userSubtitleTimeOffset = 0;
+let userSubtitleLayoutOrder = 'original_top';
+let userSubtitleOrientation = 'column';
+let userSubtitleFontSize = 1.7;
+let userSubtitleGap = 0;
+let userTranslationBatchSize = 1;
+let userTranslationDelay = 100;
 
 let timeUpdateListener = null;
-let progressBarObserver = null; 
-let lastProgressBarTime = -1; 
-let findProgressBarIntervalId = null; 
+let progressBarObserver = null;
+let lastProgressBarTime = -1;
+let findProgressBarIntervalId = null;
 let findProgressBarRetries = 0;
-const MAX_FIND_PROGRESS_BAR_RETRIES = 20; 
+const MAX_FIND_PROGRESS_BAR_RETRIES = 20;
 
-let lastLoggedTimeSec = -1; 
-let lastKnownVttUrlForVideoId = {}; 
+let lastLoggedTimeSec = -1;
 
 let timeUpdateLogCounter = 0;
-const TIME_UPDATE_LOG_INTERVAL = 30; 
+const TIME_UPDATE_LOG_INTERVAL = 30;
 
 function formatSubtitleTextForDisplay(text) {
     if (!text) return '';
     return text.replace(/&/g, '&amp;')
                .replace(/</g, '&lt;')
-               .replace(/>/g, '&gt;')
-               // .replace(/\n/g, ' ')  // REMOVED: 将换行符替换为空格
-               // .replace(/\s+/g, ' ') // REMOVED: 将多个连续空格替换为单个空格
-               // .trim(); // REMOVED: 去除首尾空格
+               .replace(/>/g, '&gt;');
 }
 
 function parseVTT(vttString) {
     if (!vttString || !vttString.trim().toUpperCase().startsWith("WEBVTT")) {
-        console.warn("Content ParseVTT: Invalid or empty VTT string. Not WEBVTT. Starts with:", vttString ? vttString.substring(0,30) : "null");
+        console.warn("Content: Invalid or empty VTT string. Not WEBVTT. Starts with:", vttString ? vttString.substring(0,30) : "null");
         return [];
     }
     const cues = [];
-    const lines = vttString.split(/\r?\n/); 
+    const lines = vttString.split(/\r?\n/);
     let i = 0;
+    // Skip WEBVTT header and initial blank lines
     while (i < lines.length && (lines[i].trim().toUpperCase() === "WEBVTT" || lines[i].trim() === "")) {
         i++;
     }
+    // Skip metadata headers until a timestamp line or end of file
     while (i < lines.length && lines[i].trim() !== "" && !lines[i].includes("-->")) {
         i++;
+        // Skip blank lines between metadata headers
         while (i < lines.length && lines[i].trim() === "") {
             i++;
         }
@@ -85,42 +198,47 @@ function parseVTT(vttString) {
 
     for (; i < lines.length; i++) {
         const line = lines[i].trim();
-        if (line === "") continue; 
+        if (line === "") continue;
         let cueId = null;
+        // Check for cue identifier line
         if (!line.includes("-->")) {
             if (i + 1 < lines.length && lines[i+1].trim().includes("-->")) {
                 cueId = line;
-                i++; 
+                i++; // Move to the timestamp line
             } else {
+                // Not a cue identifier and not a timestamp, skip
                 continue;
             }
         }
         const timestampLine = lines[i] ? lines[i].trim() : "";
         if (!timestampLine.includes("-->")) {
-            continue; 
+            // Should be a timestamp line here, if not, skip this potential cue
+            continue;
         }
         const timeParts = timestampLine.split(" --> ");
         if (timeParts.length < 2) {
+            // Malformed timestamp line
             continue;
         }
         const startTimeStr = timeParts[0].trim();
-        const endTimeAndStyle = timeParts[1].split(/ (.*)/s); 
+        const endTimeAndStyle = timeParts[1].split(/ (.*)/s); // Split to separate end time from style info
         const endTimeStr = endTimeAndStyle[0].trim();
         let textLines = [];
-        i++; 
+        i++; // Move to the first line of cue text
         while (i < lines.length && lines[i].trim() !== "" && !lines[i].includes("-->")) {
             textLines.push(lines[i].trim());
             i++;
         }
+        // If we read past the text into the next cue's timestamp or a blank line, step back.
         if (i < lines.length && (lines[i].trim() === "" || lines[i].includes("-->"))) {
-            i--; 
+            i--; // Adjust index to correctly start the next cue iteration
         }
         if (textLines.length > 0) {
             cues.push({
-                id: cueId, 
+                id: cueId,
                 start: parseTimestampToSeconds(startTimeStr),
                 end: parseTimestampToSeconds(endTimeStr),
-                text: textLines.join(" ").replace(/<[^>]*>/g, "").replace(/\s+/g, ' ').trim()
+                text: textLines.join(" ").replace(/<[^>]*>/g, "").replace(/\s+/g, ' ').trim() // Remove HTML tags and extra spaces
             });
         }
     }
@@ -131,21 +249,22 @@ function parseTimestampToSeconds(timestamp) {
     const parts = timestamp.split(':');
     let seconds = 0;
     try {
-        if (parts.length === 3) { 
+        if (parts.length === 3) { // HH:MM:SS.ms
             seconds += parseInt(parts[0], 10) * 3600;
             seconds += parseInt(parts[1], 10) * 60;
             seconds += parseFloat(parts[2].replace(',', '.'));
-        } else if (parts.length === 2) { 
+        } else if (parts.length === 2) { // MM:SS.ms
             seconds += parseInt(parts[0], 10) * 60;
             seconds += parseFloat(parts[1].replace(',', '.'));
-        } else if (parts.length === 1) { 
+        } else if (parts.length === 1) { // SS.ms
              seconds += parseFloat(parts[0].replace(',', '.'));
         } else {
+            // Invalid format
             return 0;
         }
-        if (isNaN(seconds)) return 0;
+        if (isNaN(seconds)) return 0; // Handle parsing errors leading to NaN
     } catch (e) {
-        console.error("Content ParseTS: Error parsing timestamp '" + timestamp + "':", e);
+        console.error("Content: Error parsing timestamp '" + timestamp + "':", e);
         return 0;
     }
     return seconds;
@@ -155,16 +274,13 @@ function showSubtitleContainer() {
     if (subtitleContainer) {
         subtitleContainer.style.visibility = 'visible';
         subtitleContainer.style.opacity = '1';
-        
-        // Make sure both subtitle elements are properly initialized
+
         if (originalSubtitleElement) {
             originalSubtitleElement.style.display = 'inline-block';
         }
         if (translatedSubtitleElement) {
             translatedSubtitleElement.style.display = 'inline-block';
         }
-        
-        // Reapply styling to ensure proper layout
         applySubtitleStyling();
     }
 }
@@ -175,11 +291,11 @@ function hideSubtitleContainer() {
         subtitleContainer.style.opacity = '0';
         if (originalSubtitleElement) {
             originalSubtitleElement.innerHTML = '';
-            originalSubtitleElement.style.display = 'none'; 
+            originalSubtitleElement.style.display = 'none';
         }
         if (translatedSubtitleElement) {
             translatedSubtitleElement.innerHTML = '';
-            translatedSubtitleElement.style.display = 'none'; 
+            translatedSubtitleElement.style.display = 'none';
         }
     }
 }
@@ -189,12 +305,12 @@ function applySubtitleStyling() {
         return;
     }
 
-    // 应用相同的基础样式，确保字幕背景贴合文本
+    // Base styles for text fitting and line height
     originalSubtitleElement.style.padding = '0.2em 0.5em';
     translatedSubtitleElement.style.padding = '0.2em 0.5em';
     originalSubtitleElement.style.lineHeight = '1.3';
     translatedSubtitleElement.style.lineHeight = '1.3';
-    
+
     originalSubtitleElement.style.whiteSpace = 'normal';
     translatedSubtitleElement.style.whiteSpace = 'normal';
     originalSubtitleElement.style.overflow = 'visible';
@@ -202,19 +318,23 @@ function applySubtitleStyling() {
     originalSubtitleElement.style.textOverflow = 'clip';
     translatedSubtitleElement.style.textOverflow = 'clip';
 
+    // Container layout
     subtitleContainer.style.flexDirection = userSubtitleOrientation;
-    subtitleContainer.style.width = '94%'; // 父容器固定宽度
+    subtitleContainer.style.width = '94%';
     subtitleContainer.style.justifyContent = 'center';
     subtitleContainer.style.alignItems = 'center';
 
+    // Reset margins
     originalSubtitleElement.style.marginBottom = '0';
     originalSubtitleElement.style.marginRight = '0';
     translatedSubtitleElement.style.marginBottom = '0';
     translatedSubtitleElement.style.marginRight = '0';
 
+    // Font size
     originalSubtitleElement.style.fontSize = `${userSubtitleFontSize}vw`;
     translatedSubtitleElement.style.fontSize = `${userSubtitleFontSize}vw`;
 
+    // Clear and re-add elements in correct order
     while (subtitleContainer.firstChild) {
         subtitleContainer.removeChild(subtitleContainer.firstChild);
     }
@@ -222,30 +342,31 @@ function applySubtitleStyling() {
     const firstElement = (userSubtitleLayoutOrder === 'translation_top') ? translatedSubtitleElement : originalSubtitleElement;
     const secondElement = (userSubtitleLayoutOrder === 'translation_top') ? originalSubtitleElement : translatedSubtitleElement;
 
-    // Common styles for subtitle elements for tight background and controlled wrapping
+    // Common styles for subtitle elements
     [firstElement, secondElement].forEach(el => {
         el.style.display = 'inline-block';
-        el.style.width = 'auto';
+        el.style.width = 'auto'; // Fit content
         el.style.textAlign = 'center';
-        el.style.boxSizing = 'border-box'; // Ensure padding doesn't expand beyond maxWidth
+        el.style.boxSizing = 'border-box';
     });
 
     subtitleContainer.appendChild(firstElement);
     subtitleContainer.appendChild(secondElement);
 
+    // Orientation-specific styles
     if (userSubtitleOrientation === 'column') { // Top/Bottom
-        firstElement.style.maxWidth = '100%'; 
+        firstElement.style.maxWidth = '100%';
         secondElement.style.maxWidth = '100%';
         firstElement.style.marginBottom = `${userSubtitleGap}em`;
-        secondElement.style.marginBottom = '0';
+        // secondElement marginBottom is already 0
     } else { // 'row' (Left/Right)
-        firstElement.style.maxWidth = 'calc(50% - 1%)'; // 50% minus half of the desired gap
+        firstElement.style.maxWidth = 'calc(50% - 1%)'; // Account for gap
         secondElement.style.maxWidth = 'calc(50% - 1%)';
         firstElement.style.verticalAlign = 'top';
         secondElement.style.verticalAlign = 'top';
-        
-        if (userSubtitleLayoutOrder === 'translation_top') {
-            translatedSubtitleElement.style.marginRight = '2%'; 
+
+        if (userSubtitleLayoutOrder === 'translation_top') { // Element on left gets right margin for gap
+            translatedSubtitleElement.style.marginRight = '2%';
         } else {
             originalSubtitleElement.style.marginRight = '2%';
         }
@@ -254,30 +375,26 @@ function applySubtitleStyling() {
 
 
 function ensureSubtitleContainer() {
-    const videoElement = document.querySelector('video'); 
-    if (!videoElement) {
-        if (activeVideoElement && timeUpdateListener) {
-            activeVideoElement.removeEventListener('timeupdate', timeUpdateListener);
-            activeVideoElement.removeAttribute('data-listener-attached'); 
-        }
-        if (progressBarObserver) {
-            progressBarObserver.disconnect();
-            progressBarObserver = null;
-        }
-        if (findProgressBarIntervalId) {
-            clearInterval(findProgressBarIntervalId);
-            findProgressBarIntervalId = null;
-        }
-        activeVideoElement = null;
-        clearSubtitleDOM(); 
+    if (!activePlatform) {
+        console.log("Content ensureSubtitleContainer: No active platform. Aborting.");
         return;
     }
 
-    if (activeVideoElement !== videoElement) {
-        console.log("Content EnsureContainer: Video element changed or newly detected.");
-        if (activeVideoElement && timeUpdateListener) {
-            activeVideoElement.removeEventListener('timeupdate', timeUpdateListener);
-            activeVideoElement.removeAttribute('data-listener-attached');
+    // Added check for player page activity
+    if (!activePlatform.isPlayerPageActive()) {
+        console.log("Content ensureSubtitleContainer: Platform active, but not on a player page. Aborting UI setup.");
+        clearSubtitleDOM(); // Clear any existing DOM if we're not on a player page
+        return;
+    }
+
+    const videoElement = activePlatform.getVideoElement();
+
+    if (!videoElement) {
+        // Clean up if platform reports no video
+        const previousVideoElement = document.querySelector('video[data-listener-attached="true"]');
+        if (previousVideoElement && timeUpdateListener) {
+            previousVideoElement.removeEventListener('timeupdate', timeUpdateListener);
+            previousVideoElement.removeAttribute('data-listener-attached');
         }
         if (progressBarObserver) {
             progressBarObserver.disconnect();
@@ -287,39 +404,62 @@ function ensureSubtitleContainer() {
             clearInterval(findProgressBarIntervalId);
             findProgressBarIntervalId = null;
         }
-        activeVideoElement = videoElement;
-        attachTimeUpdateListener(); 
-        setupProgressBarObserver(); 
+        clearSubtitleDOM();
+        return;
     }
 
+    // Check if video element instance has changed
+    const attachedVideoElement = document.querySelector('video[data-listener-attached="true"]');
+    if (attachedVideoElement !== videoElement) {
+        console.log("Content: Video element instance changed or newly detected.");
+        if (attachedVideoElement && timeUpdateListener) {
+            attachedVideoElement.removeEventListener('timeupdate', timeUpdateListener);
+            attachedVideoElement.removeAttribute('data-listener-attached');
+        }
+        if (progressBarObserver) {
+            progressBarObserver.disconnect();
+            progressBarObserver = null;
+        }
+        if (findProgressBarIntervalId) {
+            clearInterval(findProgressBarIntervalId);
+            findProgressBarIntervalId = null;
+        }
+        // Setup for the new video element
+        attachTimeUpdateListener(videoElement);
+        setupProgressBarObserver(videoElement);
+    }
+
+
     if (subtitleContainer && document.body.contains(subtitleContainer)) {
-        const videoPlayerParent = activeVideoElement ? activeVideoElement.parentElement : null;
+        const videoPlayerParent = activePlatform.getPlayerContainerElement();
         if (videoPlayerParent && subtitleContainer.parentElement !== videoPlayerParent) {
+            // Ensure parent has relative positioning for absolute children
             if (getComputedStyle(videoPlayerParent).position === 'static') {
                 videoPlayerParent.style.position = 'relative';
             }
             videoPlayerParent.appendChild(subtitleContainer);
+            console.log("Content: Subtitle container moved to new video player parent.");
         }
-        applySubtitleStyling(); // Apply layout when ensuring container
+        applySubtitleStyling();
         if (subtitlesActive) showSubtitleContainer(); else hideSubtitleContainer();
-        return; 
+        return;
     }
 
-    console.log("Content EnsureContainer: Creating subtitle container.");
+    console.log("Content: Creating subtitle container.");
     subtitleContainer = document.createElement('div');
     subtitleContainer.id = 'disneyplus-dual-subtitle-container';
     subtitleContainer.className = 'disneyplus-subtitle-viewer-container';
     Object.assign(subtitleContainer.style, {
-        position: 'absolute', 
-        bottom: '12%', 
-        left: '50%', 
+        position: 'absolute',
+        bottom: '12%', // May need platform-specific overrides
+        left: '50%',
         transform: 'translateX(-50%)',
-        zIndex: '2147483647', 
+        zIndex: '2147483647',
         pointerEvents: 'none',
-        width: '94%', 
-        maxWidth: 'none',
+        width: '94%',
+        maxWidth: 'none', // Override any external max-width
         display: 'flex',
-        flexDirection: 'column',
+        flexDirection: 'column', // Default, updated by applySubtitleStyling
         alignItems: 'center',
         justifyContent: 'center'
     });
@@ -327,12 +467,12 @@ function ensureSubtitleContainer() {
     originalSubtitleElement = document.createElement('div');
     originalSubtitleElement.id = 'disneyplus-original-subtitle';
     Object.assign(originalSubtitleElement.style, {
-        color: 'white', 
-        backgroundColor: 'rgba(0, 0, 0, 0.6)', 
+        color: 'white',
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
         padding: '0.2em 0.5em',
-        fontSize: `${userSubtitleFontSize}vw`, 
+        fontSize: `${userSubtitleFontSize}vw`,
         textShadow: '1px 1px 2px black, 0 0 3px black',
-        borderRadius: '4px', 
+        borderRadius: '4px',
         lineHeight: '1.3',
         display: 'inline-block',
         width: 'auto',
@@ -347,12 +487,12 @@ function ensureSubtitleContainer() {
     translatedSubtitleElement = document.createElement('div');
     translatedSubtitleElement.id = 'disneyplus-translated-subtitle';
     Object.assign(translatedSubtitleElement.style, {
-        color: '#00FFFF', 
-        backgroundColor: 'rgba(0, 0, 0, 0.6)', 
+        color: '#00FFFF', // Cyan
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
         padding: '0.2em 0.5em',
-        fontSize: `${userSubtitleFontSize}vw`, 
+        fontSize: `${userSubtitleFontSize}vw`,
         textShadow: '1px 1px 2px black, 0 0 3px black',
-        borderRadius: '4px', 
+        borderRadius: '4px',
         lineHeight: '1.3',
         display: 'inline-block',
         width: 'auto',
@@ -363,40 +503,40 @@ function ensureSubtitleContainer() {
         textOverflow: 'clip',
         textAlign: 'center'
     });
-    
-    // Initial append, order will be corrected by applySubtitleStyling
+
     subtitleContainer.appendChild(originalSubtitleElement);
     subtitleContainer.appendChild(translatedSubtitleElement);
 
-    const videoPlayerParent = activeVideoElement ? activeVideoElement.parentElement : null; 
+    const videoPlayerParent = activePlatform.getPlayerContainerElement();
     if (videoPlayerParent) {
         if (getComputedStyle(videoPlayerParent).position === 'static') {
             videoPlayerParent.style.position = 'relative';
         }
         videoPlayerParent.appendChild(subtitleContainer);
     } else {
-        document.body.appendChild(subtitleContainer); 
-        console.warn("Content EnsureContainer: Subtitle container appended to body (video parent not found).");
+        document.body.appendChild(subtitleContainer);
+        console.warn("Content: Subtitle container appended to body (platform video parent not found).");
     }
-    
-    applySubtitleStyling(); // Apply initial layout and styling
 
-    if (activeVideoElement && !timeUpdateListener) attachTimeUpdateListener();
-    if (activeVideoElement && !progressBarObserver) setupProgressBarObserver();
+    applySubtitleStyling();
+
+    if (videoElement && !videoElement.getAttribute('data-listener-attached')) attachTimeUpdateListener(videoElement);
+    if (videoElement && !progressBarObserver) setupProgressBarObserver(videoElement);
 
     if (subtitlesActive) showSubtitleContainer(); else hideSubtitleContainer();
 }
 
-function attemptToSetupProgressBarObserver() {
-    if (!activeVideoElement) {
-        console.warn("ProgressBarObserver: No active video element for attempt.");
+
+function attemptToSetupProgressBarObserver(videoElement) {
+    if (!activePlatform || !videoElement) {
+        console.warn("Content: No active platform or video element for progress bar observer attempt.");
         if (findProgressBarIntervalId) {
             clearInterval(findProgressBarIntervalId);
             findProgressBarIntervalId = null;
         }
-        return false; 
+        return false;
     }
-     if (progressBarObserver) { 
+    if (progressBarObserver) { // Already set up
         if (findProgressBarIntervalId) {
             clearInterval(findProgressBarIntervalId);
             findProgressBarIntervalId = null;
@@ -404,19 +544,15 @@ function attemptToSetupProgressBarObserver() {
         return true;
     }
 
-    const playerParent = activeVideoElement.closest('div[data-testid="webAppRootView"], body'); 
-    const sliderSelector = 'div.slider-container[role="slider"]';
-    const sliderElement = playerParent 
-        ? playerParent.querySelector(sliderSelector) 
-        : document.querySelector(`div.progress-bar ${sliderSelector}`); 
+    const sliderElement = activePlatform.getProgressBarElement();
 
     if (sliderElement) {
-        console.log("ProgressBarObserver: Found slider element on attempt. Setting up observer:", sliderElement);
+        console.log("Content: Found progress bar slider via platform. Setting up observer:", sliderElement);
         if (findProgressBarIntervalId) {
             clearInterval(findProgressBarIntervalId);
             findProgressBarIntervalId = null;
         }
-        findProgressBarRetries = 0; 
+        findProgressBarRetries = 0;
 
         progressBarObserver = new MutationObserver(mutations => {
             for (let mutation of mutations) {
@@ -424,21 +560,23 @@ function attemptToSetupProgressBarObserver() {
                     const targetElement = mutation.target;
                     const nowStr = targetElement.getAttribute('aria-valuenow');
                     const maxStr = targetElement.getAttribute('aria-valuemax');
-                    
-                    if (nowStr && maxStr && activeVideoElement) {
+
+                    const currentVideoElem = activePlatform.getVideoElement();
+                    if (nowStr && maxStr && currentVideoElem) {
                         const valuenow = parseFloat(nowStr);
                         const valuemax = parseFloat(maxStr);
-                        const videoDuration = activeVideoElement.duration;
+                        const videoDuration = currentVideoElem.duration;
 
                         if (!isNaN(valuenow) && !isNaN(valuemax) && valuemax > 0) {
                             let calculatedTime = -1;
                             if (!isNaN(videoDuration) && videoDuration > 0) {
                                 calculatedTime = (valuenow / valuemax) * videoDuration;
                             } else {
-                                calculatedTime = valuenow; 
+                                // Fallback if duration is not available, use valuenow if it represents seconds
+                                calculatedTime = valuenow;
                             }
-                            
-                            if (calculatedTime >= 0 && Math.abs(calculatedTime - lastProgressBarTime) > 0.1) {
+
+                            if (calculatedTime >= 0 && Math.abs(calculatedTime - lastProgressBarTime) > 0.1) { // Threshold to avoid rapid updates
                                 if (subtitlesActive) {
                                     updateSubtitles(calculatedTime);
                                 }
@@ -451,120 +589,129 @@ function attemptToSetupProgressBarObserver() {
         });
 
         progressBarObserver.observe(sliderElement, {
-            attributes: true, 
-            attributeFilter: ['aria-valuenow'] 
+            attributes: true,
+            attributeFilter: ['aria-valuenow']
         });
-        console.log("ProgressBarObserver: Observer started for aria-valuenow on slider.");
-        return true; 
+        console.log("Content: Progress bar observer started for aria-valuenow.");
+        return true;
     }
-    return false; 
+    return false;
 }
 
-function setupProgressBarObserver() {
-    if (findProgressBarIntervalId) { 
+function setupProgressBarObserver(videoElement) {
+    if (findProgressBarIntervalId) {
         clearInterval(findProgressBarIntervalId);
         findProgressBarIntervalId = null;
     }
-    findProgressBarRetries = 0; 
+    findProgressBarRetries = 0;
 
-    if (attemptToSetupProgressBarObserver()) {
-        return; 
+    if (attemptToSetupProgressBarObserver(videoElement)) {
+        return;
     }
 
-    console.log("ProgressBarObserver: Could not find slider element immediately. Will retry...");
+    console.log("Content: Could not find progress bar slider immediately. Retrying...");
     findProgressBarIntervalId = setInterval(() => {
         findProgressBarRetries++;
-        if (attemptToSetupProgressBarObserver()) {
-            console.log(`ProgressBarObserver: Found and set up after ${findProgressBarRetries} retries.`);
+        const currentVideoElem = activePlatform ? activePlatform.getVideoElement() : null;
+        if (attemptToSetupProgressBarObserver(currentVideoElem)) {
+            console.log(`Content: Progress bar observer found and set up after ${findProgressBarRetries} retries.`);
         } else if (findProgressBarRetries >= MAX_FIND_PROGRESS_BAR_RETRIES) {
             clearInterval(findProgressBarIntervalId);
             findProgressBarIntervalId = null;
-            console.warn(`ProgressBarObserver: Could not find the progress bar slider element after ${MAX_FIND_PROGRESS_BAR_RETRIES} retries. Subtitle sync might rely on timeupdate only.`);
+            console.warn(`Content: Could not find the progress bar slider after ${MAX_FIND_PROGRESS_BAR_RETRIES} retries. Subtitle sync will rely on timeupdate only.`);
         }
-    }, 500); 
+    }, 500);
 }
 
 
-function attachTimeUpdateListener() {
-     if (!activeVideoElement) {
-        console.warn("Content AttachListener: No active video element to attach listener.");
+function attachTimeUpdateListener(videoElement) {
+     if (!activePlatform || !videoElement) {
+        console.warn("Content: No active platform or video element to attach timeupdate listener.");
         return;
     }
-    if (activeVideoElement.getAttribute('data-listener-attached') === 'true') {
+    // Prevent multiple listeners on the same element
+    if (videoElement.getAttribute('data-listener-attached') === 'true') {
         return;
     }
-    
+
     if (!timeUpdateListener) {
-        timeUpdateListener = () => { 
+        timeUpdateListener = () => {
             timeUpdateLogCounter++;
-            if (activeVideoElement) { 
-                const currentTime = activeVideoElement.currentTime;
-                const readyState = activeVideoElement.readyState;
+            const currentVideoElem = activePlatform ? activePlatform.getVideoElement() : null;
+            if (currentVideoElem) {
+                const currentTime = currentVideoElem.currentTime;
+                const readyState = currentVideoElem.readyState;
+                // Log periodically if progress bar observer is not active
                 if (!progressBarObserver && (timeUpdateLogCounter % TIME_UPDATE_LOG_INTERVAL === 0)) {
-                    console.log(`[TimeUpdateDebug #${timeUpdateLogCounter}] HTML5 currentTime: ${currentTime}, readyState: ${readyState}, subtitlesActive: ${subtitlesActive}`);
+                    console.log(`Content: [TimeUpdateDebug] HTML5 currentTime: ${currentTime.toFixed(2)}, readyState: ${readyState}, subtitlesActive: ${subtitlesActive}`);
                 }
-                if (!progressBarObserver && subtitlesActive && typeof currentTime === 'number' && readyState >= activeVideoElement.HAVE_CURRENT_DATA) {
+                // Update subtitles if progress bar observer isn't working and video is ready
+                if (!progressBarObserver && subtitlesActive && typeof currentTime === 'number' && readyState >= currentVideoElem.HAVE_CURRENT_DATA) {
                     updateSubtitles(currentTime);
                 }
             }
         };
     }
 
-    activeVideoElement.addEventListener('timeupdate', timeUpdateListener);
-    activeVideoElement.setAttribute('data-listener-attached', 'true'); 
-    console.log("Content AttachListener: Attached HTML5 timeupdate listener.");
+    videoElement.addEventListener('timeupdate', timeUpdateListener);
+    videoElement.setAttribute('data-listener-attached', 'true');
+    console.log("Content: Attached HTML5 timeupdate listener.");
 }
 
 function updateSubtitles(rawCurrentTime) {
     if (typeof rawCurrentTime !== 'number' || isNaN(rawCurrentTime)) {
         return;
     }
-    
-    const currentTime = rawCurrentTime + userSubtitleTimeOffset; // Apply time offset
+
+    const currentTime = rawCurrentTime + userSubtitleTimeOffset;
 
     if (!originalSubtitleElement || !translatedSubtitleElement || !subtitleContainer || !document.body.contains(subtitleContainer)) {
         if (subtitlesActive) {
-            ensureSubtitleContainer(); 
+            ensureSubtitleContainer();
             if (!originalSubtitleElement || !translatedSubtitleElement || !subtitleContainer) {
-                 hideSubtitleContainer(); 
+                 hideSubtitleContainer(); // Hide if ensure couldn't create them
                  return;
             }
         } else {
-            hideSubtitleContainer(); 
+            hideSubtitleContainer();
             return;
         }
     }
-    
+
     if (!subtitlesActive) {
-        hideSubtitleContainer(); 
+        hideSubtitleContainer();
         return;
     }
-    
-    showSubtitleContainer(); 
+
+    showSubtitleContainer(); // Ensure visibility if active
 
     const currentWholeSecond = Math.floor(currentTime);
-    if (currentWholeSecond !== lastLoggedTimeSec) { 
+    if (currentWholeSecond !== lastLoggedTimeSec) {
+        // console.log(`Content: Updating subtitles for time: ${currentTime.toFixed(2)}s`); // Potentially noisy
         lastLoggedTimeSec = currentWholeSecond;
     }
 
     let foundCue = false;
     let activeCueToDisplay = null;
 
+    const platformVideoId = activePlatform ? activePlatform.getCurrentVideoId() : null;
+
     for (const cue of subtitleQueue) {
         if (typeof cue.start !== 'number' || typeof cue.end !== 'number' || isNaN(cue.start) || isNaN(cue.end)) {
-            continue;
+            continue; // Skip malformed cues
         }
-        if (cue.videoId === currentVideoId && currentTime >= cue.start && currentTime <= cue.end) {
+        // Match against the platform's current video ID
+        if (cue.videoId === platformVideoId && currentTime >= cue.start && currentTime <= cue.end) {
             activeCueToDisplay = cue;
             foundCue = true;
-            break; 
+            break;
         }
     }
 
     if (foundCue && activeCueToDisplay) {
-        const originalText = activeCueToDisplay.original || ""; 
-        const translatedText = activeCueToDisplay.translated || ""; 
-        
+        const originalText = activeCueToDisplay.original || "";
+        const translatedText = activeCueToDisplay.translated || "";
+
         const originalTextFormatted = formatSubtitleTextForDisplay(originalText);
         const translatedTextFormatted = formatSubtitleTextForDisplay(translatedText);
 
@@ -577,33 +724,30 @@ function updateSubtitles(rawCurrentTime) {
             }
             originalSubtitleElement.style.display = 'inline-block';
         } else {
-            originalSubtitleElement.innerHTML = '';
+            if (originalSubtitleElement.innerHTML !== '') originalSubtitleElement.innerHTML = '';
             originalSubtitleElement.style.display = 'none';
         }
 
+        // Display translated text if available and not a placeholder/error
         if (translatedText.trim() !== "" && !translatedText.startsWith("[Translation")) {
             if (translatedSubtitleElement.innerHTML !== translatedTextFormatted) {
                 translatedSubtitleElement.innerHTML = translatedTextFormatted;
                 contentChanged = true;
             }
             translatedSubtitleElement.style.display = 'inline-block';
-            if (translatedSubtitleElement.innerHTML === translatedTextFormatted && 
-                translatedTextFormatted !== "" && contentChanged) { 
-                // console.log(`%cContent UpdateSubs: DISPLAYING TRANSLATED for VideoID '${currentVideoId}' at Time ${currentTime.toFixed(3)} (Offset: ${userSubtitleTimeOffset}s): "${translatedText.substring(0, 50)}..."`, "color: green; font-weight: bold;");
-            }
         } else {
-            translatedSubtitleElement.innerHTML = '';
+            if (translatedSubtitleElement.innerHTML !== '') translatedSubtitleElement.innerHTML = '';
             translatedSubtitleElement.style.display = 'none';
         }
 
-        // 如果内容变化了，重新应用样式以确保背景贴合文本
         if (contentChanged) {
-            applySubtitleStyling();
+            applySubtitleStyling(); // Re-apply styles if content changed, e.g., for text wrapping
         }
-    } else { 
+    } else {
+        // No active cue, clear both subtitle elements
         if (originalSubtitleElement.innerHTML !== '') originalSubtitleElement.innerHTML = '';
         originalSubtitleElement.style.display = 'none';
-        
+
         if (translatedSubtitleElement.innerHTML !== '') translatedSubtitleElement.innerHTML = '';
         translatedSubtitleElement.style.display = 'none';
     }
@@ -611,89 +755,76 @@ function updateSubtitles(rawCurrentTime) {
 
 
 async function processSubtitleQueue() {
-    if (processingQueue) return; 
-    if (!currentVideoId || !subtitlesActive || !activeVideoElement) return;
+    if (processingQueue) return;
+    if (!activePlatform || !subtitlesActive) return;
 
-    // If progress bar observer setup is still running, defer this execution
-    if (!progressBarObserver && findProgressBarIntervalId) {
-        console.log("Content ProcessQ: Progress bar observer setup is still in progress. Deferring queue processing for 200ms.");
-        setTimeout(processSubtitleQueue, 200); // Defer and let a future call handle it
-        return; 
+    const videoElement = activePlatform.getVideoElement();
+    if (!videoElement) return;
+
+    const platformVideoId = activePlatform.getCurrentVideoId();
+    if (!platformVideoId) return;
+
+
+    if (!progressBarObserver && findProgressBarIntervalId) { // If progress bar setup is ongoing
+        console.log("Content: Progress bar observer setup in progress. Deferring queue processing slightly.");
+        setTimeout(processSubtitleQueue, 200); // Defer and retry
+        return;
     }
 
-    let timeSource = activeVideoElement.currentTime; // Default to video element's time
+    let timeSource = videoElement.currentTime;
     let usingProgressBarTime = false;
 
-    const sliderElement = document.querySelector('div.progress-bar div.slider-container[role="slider"]');
-    // Updated Pre-check log - REMOVED
-    // console.log(`Content ProcessQ - Pre-check: sliderElement: ${!!sliderElement}, progressBarObserver: ${!!progressBarObserver}, duration: ${activeVideoElement ? activeVideoElement.duration : 'N/A'}, setupIntervalActive: ${!!findProgressBarIntervalId}`);
+    const sliderElement = activePlatform.getProgressBarElement();
 
-    if (sliderElement && progressBarObserver) {
+    if (sliderElement && progressBarObserver) { // Use progress bar if available and observer is set
         const nowStr = sliderElement.getAttribute('aria-valuenow');
         const maxStr = sliderElement.getAttribute('aria-valuemax');
 
         if (nowStr && maxStr) {
             const valuenow = parseFloat(nowStr);
             const valuemax = parseFloat(maxStr);
-            const videoDuration = activeVideoElement.duration; // Will be NaN based on logs
+            const videoDuration = videoElement.duration;
 
             if (!isNaN(valuenow) && !isNaN(valuemax) && valuemax > 0) {
                 if (!isNaN(videoDuration) && videoDuration > 0) {
-                    // Ideal case: video duration is known and positive
                     timeSource = (valuenow / valuemax) * videoDuration;
                     usingProgressBarTime = true;
-                    // REMOVED: console.log(`Content ProcessQ: Using progress bar time (ratio). VDuration=${videoDuration.toFixed(2)}, VNow=${valuenow}, VMax=${valuemax}. Calculated time: ${timeSource.toFixed(3)}s`);
                 } else {
-                    // Fallback: video duration is not available (e.g., NaN, 0, or negative)
-                    // Assume aria-valuenow might be current time in seconds.
-                    timeSource = valuenow;
+                    timeSource = valuenow; // Fallback if duration is not available
                     usingProgressBarTime = true;
-                    // REMOVED: console.log(`Content ProcessQ: Using progress bar time (aria-valuenow fallback as video.duration is ${videoDuration}). VNow=${valuenow}, VMax=${valuemax}. Assumed time: ${timeSource.toFixed(3)}s`);
                 }
-            } else {
-                console.warn(`Content ProcessQ: Progress bar aria values (now: '${nowStr}', max: '${maxStr}') are invalid or valuemax is not positive. Not using progress bar.`);
             }
-        } else {
-            console.warn("Content ProcessQ: Progress bar found, but aria-valuenow or aria-valuemax attributes are missing. Not using progress bar.");
         }
-    }
-
-    if (!usingProgressBarTime) {
-        console.log(`Content ProcessQ: Not using progress bar time for queue. Defaulting to video.currentTime (${activeVideoElement.currentTime.toFixed(3)}s).`);
     }
 
     const currentTime = timeSource + userSubtitleTimeOffset;
 
-    // Find untranslated cues for the current video that are currently relevant or upcoming
-    const relevantCues = subtitleQueue.filter(cue => 
-        cue.videoId === currentVideoId && 
-        cue.original && 
-        !cue.translated &&
-        cue.end >= currentTime // Only consider cues that haven't ended yet
+    const relevantCues = subtitleQueue.filter(cue =>
+        cue.videoId === platformVideoId &&
+        cue.original && // Has original text
+        !cue.translated && // Not yet translated
+        cue.end >= currentTime // Cue is still relevant or upcoming
     );
 
-    // Sort relevant cues by their start time to process them in order
-    relevantCues.sort((a, b) => a.start - b.start);
-
-    const cuesToProcess = relevantCues.slice(0, userTranslationBatchSize); // Limit to batch size
+    relevantCues.sort((a, b) => a.start - b.start); // Process earlier cues first
+    const cuesToProcess = relevantCues.slice(0, userTranslationBatchSize);
 
     if (cuesToProcess.length === 0) return;
-    
+
     processingQueue = true;
-    // console.log(`Content ProcessQ: Processing ${cuesToProcess.length} untranslated cues starting around current time ${currentTime.toFixed(2)}s`);
 
     try {
         for (let i = 0; i < cuesToProcess.length; i++) {
             const cueToProcess = cuesToProcess[i];
-            
+
             try {
                 const response = await new Promise((resolve, reject) => {
                     chrome.runtime.sendMessage({
-                        action: "translate", 
-                        text: cueToProcess.original, 
+                        action: "translate",
+                        text: cueToProcess.original,
                         targetLang: userTargetLanguage,
-                        cueStart: cueToProcess.start, 
-                        cueVideoId: cueToProcess.videoId 
+                        cueStart: cueToProcess.start,
+                        cueVideoId: cueToProcess.videoId
                     }, res => {
                         if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
                         else if (res && res.error) reject(new Error(res.details || res.error));
@@ -701,30 +832,31 @@ async function processSubtitleQueue() {
                         else reject(new Error("Malformed response from background for translation. Response: " + JSON.stringify(res)));
                     });
                 });
-                
-                // Find the specific cue in the main subtitleQueue to update its translated property
-                const cueInMainQueue = subtitleQueue.find(c => 
-                    c.videoId === response.cueVideoId && 
-                    c.start === response.cueStart && 
-                    c.original === response.originalText // Assuming originalText is sent back by background for matching
+
+                // Find the cue in the main queue again to ensure context hasn't changed dramatically
+                const cueInMainQueue = subtitleQueue.find(c =>
+                    c.videoId === response.cueVideoId &&
+                    c.start === response.cueStart &&
+                    c.original === response.originalText // Ensure it's the exact same original cue
                 );
-                
-                if (cueInMainQueue && cueInMainQueue.videoId === currentVideoId) {
+
+                const currentContextVideoId = activePlatform ? activePlatform.getCurrentVideoId() : null;
+                if (cueInMainQueue && cueInMainQueue.videoId === currentContextVideoId) { // Double check context
                     cueInMainQueue.translated = response.translatedText;
                 } else {
-                    // This could happen if the video context changed rapidly or if the cue was somehow altered.
-                    console.warn("Content ProcessQ: Could not find or match cue in main queue after translation. VideoID:", response.cueVideoId, "Start:", response.cueStart);
+                    console.warn(`Content: Could not find/match cue post-translation or context changed. VideoID: ${response.cueVideoId}, Start: ${response.cueStart}, Current Context ID: ${currentContextVideoId}`);
                 }
-                
+
                 if (i < cuesToProcess.length - 1 && userTranslationDelay > 0) {
                     await new Promise(resolve => setTimeout(resolve, userTranslationDelay));
                 }
-                
+
             } catch (error) {
-                console.error(`Content ProcessQ: Translation failed for (VideoID '${cueToProcess.videoId}', Start ${cueToProcess.start.toFixed(2)}): "${cueToProcess.original.substring(0,30)}..."`, error.message);
-                const cueInQueueOnError = subtitleQueue.find(c => 
-                    c.start === cueToProcess.start && 
-                    c.original === cueToProcess.original && 
+                console.error(`Content: Translation failed for (VideoID '${cueToProcess.videoId}', Start ${cueToProcess.start.toFixed(2)}): "${cueToProcess.original.substring(0,30)}..."`, error.message);
+                // Mark error in queue if translation fails
+                const cueInQueueOnError = subtitleQueue.find(c =>
+                    c.start === cueToProcess.start &&
+                    c.original === cueToProcess.original &&
                     c.videoId === cueToProcess.videoId
                 );
                 if (cueInQueueOnError) cueInQueueOnError.translated = "[Translation Request Error]";
@@ -734,115 +866,38 @@ async function processSubtitleQueue() {
         processingQueue = false;
     }
 
-    // Check if there are more cues to process that are relevant to the current time
-    const moreRelevantCuesExist = subtitleQueue.some(cue => 
-        cue.videoId === currentVideoId && 
-        cue.original && 
+    // Check if more cues need processing for the current video context
+    const currentContextVideoIdForNextCheck = activePlatform ? activePlatform.getCurrentVideoId() : null;
+    const moreRelevantCuesExist = subtitleQueue.some(cue =>
+        cue.videoId === currentContextVideoIdForNextCheck &&
+        cue.original &&
         !cue.translated &&
-        cue.end >= currentTime
+        cue.end >= currentTime // Use the same `currentTime` as this processing cycle
     );
 
-    if (subtitlesActive && currentVideoId && moreRelevantCuesExist) {
-        setTimeout(processSubtitleQueue, 50); // Schedule next batch if more relevant cues exist
+    if (subtitlesActive && currentContextVideoIdForNextCheck && moreRelevantCuesExist) {
+        setTimeout(processSubtitleQueue, 50); // Schedule next batch quickly if needed
     }
 }
 
-function processFetchedVttText(vttText, videoIdFromFetch, vttUrl) {
-    console.log(`Content VTTProcess: Processing fetched VTT for videoId '${videoIdFromFetch}'. Current active context videoId: '${currentVideoId}'`);
-    if (videoIdFromFetch !== currentVideoId || !subtitlesActive) return;
-    ensureSubtitleContainer(); 
-    const parsedCues = parseVTT(vttText);
-    if (parsedCues.length > 0) {
-        subtitleQueue = subtitleQueue.filter(cue => cue.videoId !== currentVideoId);
-        parsedCues.forEach(parsedCue => {
-            subtitleQueue.push({
-                original: parsedCue.text, translated: null, 
-                start: parsedCue.start, end: parsedCue.end, videoId: currentVideoId 
-            });
-        });
-        console.log(`Content VTTProcess: ${parsedCues.length} new cues added for videoId '${currentVideoId}'.`);
-        lastKnownVttUrlForVideoId[currentVideoId] = vttUrl; 
-        if (parsedCues.length > 0) processSubtitleQueue(); 
-    } else {
-        console.warn("Content VTTProcess: VTT parsing yielded no cues for videoId '", currentVideoId, "'. VTT URL:", vttUrl);
-    }
-}
-
-document.addEventListener(INJECT_SCRIPT_ID, function(e) {
-    const data = e.detail;
-    if (!data || !data.type) return;
-
-    if (data.type === 'INJECT_SCRIPT_READY') {
-        console.log("Content EventListener: Inject script is ready. (v7.4.9)");
-    } else if (data.type === 'SUBTITLE_URL_FOUND') {
-        if (!subtitlesActive) return;
-        const injectedVideoId = data.videoId;
-        const vttMasterUrl = data.url;
-        if (!injectedVideoId) {
-            console.error("Content EventListener: SUBTITLE_URL_FOUND event without a videoId. URL:", vttMasterUrl);
-            return;
-        }
-        console.log(`Content EventListener: SUBTITLE_URL_FOUND for injectedVideoId: '${injectedVideoId}'. Current context: '${currentVideoId}'. URL: ${vttMasterUrl}`);
-        if (currentVideoId !== injectedVideoId) {
-            console.log(`Content EventListener: Video context changing from '${currentVideoId || "null"}' to '${injectedVideoId}'.`);
-            if (originalSubtitleElement) originalSubtitleElement.innerHTML = '';
-            if (translatedSubtitleElement) translatedSubtitleElement.innerHTML = '';
-            if (currentVideoId) {
-                subtitleQueue = subtitleQueue.filter(cue => cue.videoId !== currentVideoId);
-                delete lastKnownVttUrlForVideoId[currentVideoId]; 
-            }
-            currentVideoId = injectedVideoId; 
-        } else if (lastKnownVttUrlForVideoId[currentVideoId] === vttMasterUrl) {
-            console.log(`Content EventListener: VTT URL ${vttMasterUrl} for videoId ${currentVideoId} already fetched. Skipping.`);
-            if (activeVideoElement && subtitlesActive) { 
-                 let timeToUpdate = activeVideoElement.currentTime;
-                 const sliderElement = document.querySelector('div.progress-bar div.slider-container[role="slider"]');
-                 if (sliderElement && progressBarObserver && activeVideoElement.duration > 0) {
-                     const nowStr = sliderElement.getAttribute('aria-valuenow');
-                     const maxStr = sliderElement.getAttribute('aria-valuemax');
-                     if (nowStr && maxStr) {
-                         const valuenow = parseFloat(nowStr);
-                         const valuemax = parseFloat(maxStr);
-                         if (!isNaN(valuenow) && !isNaN(valuemax) && valuemax > 0) {
-                             timeToUpdate = (valuenow / valuemax) * activeVideoElement.duration;
-                         }
-                     }
-                 }
-                 updateSubtitles(timeToUpdate); 
-            }
-            return;
-        }
-        ensureSubtitleContainer(); 
-        console.log("Content EventListener: Requesting VTT from background. URL:", vttMasterUrl, "Video ID:", currentVideoId);
-        chrome.runtime.sendMessage({ action: "fetchVTT", url: vttMasterUrl, videoId: currentVideoId }, (response) => {
-            if (chrome.runtime.lastError) {
-                console.error("Content EventListener: Error for VTT fetch:", chrome.runtime.lastError.message, "URL:", vttMasterUrl);
-                return;
-            }
-            if (response && response.success && response.videoId === currentVideoId) { 
-                processFetchedVttText(response.vttText, response.videoId, response.url);
-            } else if (response && !response.success) {
-                console.error("Content EventListener: Background failed to fetch VTT:", response.error || "Unknown", "URL:", response.url);
-            } else if (response && response.videoId !== currentVideoId) {
-                console.warn(`Content EventListener: Received VTT for '${response.videoId}', but current context is '${currentVideoId}'. Discarding.`);
-            } else {
-                 console.error("Content EventListener: No/invalid response from background for fetchVTT. URL:", vttMasterUrl);
-            }
-        });
-    }
-});
+// REMOVED: processFetchedVttText, logic merged into handleSubtitleDataFound
+// REMOVED: document.addEventListener(INJECT_SCRIPT_ID, ...), handled by platform
 
 function clearSubtitlesDisplayAndQueue(clearAllQueue = true) {
+    const platformVideoId = activePlatform ? activePlatform.getCurrentVideoId() : null;
+
     if (clearAllQueue) {
         subtitleQueue = [];
-        lastKnownVttUrlForVideoId = {}; 
-        console.log("Content Clear: Full subtitleQueue and URL cache cleared.");
-    } else if (currentVideoId) {
-        subtitleQueue = subtitleQueue.filter(cue => cue.videoId !== currentVideoId);
-        delete lastKnownVttUrlForVideoId[currentVideoId];
-        console.log(`Content Clear: Subtitle queue and URL cache cleared for videoId ${currentVideoId}.`);
+        console.log("Content: Full subtitleQueue cleared.");
+    } else if (platformVideoId) {
+        subtitleQueue = subtitleQueue.filter(cue => cue.videoId !== platformVideoId);
+        console.log(`Content: Subtitle queue cleared for videoId ${platformVideoId}.`);
     }
+
+    if (originalSubtitleElement) originalSubtitleElement.innerHTML = '';
+    if (translatedSubtitleElement) translatedSubtitleElement.innerHTML = '';
 }
+
 
 function clearSubtitleDOM() {
      if (subtitleContainer && subtitleContainer.parentElement) {
@@ -851,10 +906,14 @@ function clearSubtitleDOM() {
     subtitleContainer = null;
     originalSubtitleElement = null;
     translatedSubtitleElement = null;
-    if (activeVideoElement && timeUpdateListener) {
-        activeVideoElement.removeEventListener('timeupdate', timeUpdateListener);
-        if (activeVideoElement) activeVideoElement.removeAttribute('data-listener-attached');
+
+    const videoElement = document.querySelector('video[data-listener-attached="true"]');
+    if (videoElement && timeUpdateListener) {
+        videoElement.removeEventListener('timeupdate', timeUpdateListener);
+        videoElement.removeAttribute('data-listener-attached');
     }
+    // timeUpdateListener itself is not nulled, so it can be reattached
+
     if (progressBarObserver) {
         progressBarObserver.disconnect();
         progressBarObserver = null;
@@ -867,116 +926,144 @@ function clearSubtitleDOM() {
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     let needsDisplayUpdate = false;
-    let actionHandled = false;
+    let actionHandled = true;
 
-    if (request.action === "toggleSubtitles") {
-        actionHandled = true;
-        subtitlesActive = request.enabled;
-        console.log(`Content Settings: Subtitle active state changed to ${subtitlesActive}`);
-        if (!subtitlesActive) {
-            hideSubtitleContainer(); 
-            clearSubtitlesDisplayAndQueue(true); 
-        } else {
-            ensureSubtitleContainer(); 
-            showSubtitleContainer();
+    switch (request.action) {
+        case "toggleSubtitles":
+            subtitlesActive = request.enabled;
+            console.log(`Content: Subtitle active state changed to ${subtitlesActive}`);
+            if (!subtitlesActive) {
+                hideSubtitleContainer();
+                clearSubtitlesDisplayAndQueue(true);
+                if (activePlatform) activePlatform.cleanup();
+                activePlatform = null;
+            } else {
+                if (!activePlatform) {
+                    initializeActivePlatform().then(() => {
+                        if (activePlatform && activePlatform.isPlayerPageActive()) { // Double check after async init
+                            ensureSubtitleContainer();
+                            showSubtitleContainer();
+                            needsDisplayUpdate = true;
+                        } else if (activePlatform) {
+                            console.log("Content toggleSubtitles: Platform initialized, but not on player page. UI setup deferred.");
+                        } else {
+                             console.log("Content toggleSubtitles: Platform could not be initialized.");
+                        }
+                    });
+                } else if (activePlatform.isPlayerPageActive()) { // If platform already exists, check if on player page
+                     ensureSubtitleContainer();
+                     showSubtitleContainer();
+                     needsDisplayUpdate = true;
+                } else {
+                    console.log("Content toggleSubtitles: Platform active, but not on player page. UI setup deferred.");
+                }
+            }
+            sendResponse({ success: true, subtitlesEnabled: subtitlesActive });
+            break;
+        case "changeLanguage":
+            userTargetLanguage = request.targetLanguage;
+            console.log("Content: Target language changed to:", userTargetLanguage);
+            const currentContextVideoIdLang = activePlatform ? activePlatform.getCurrentVideoId() : null;
+            // Clear existing translations for the current video
+            subtitleQueue.forEach(cue => {
+                if(cue.videoId === currentContextVideoIdLang) cue.translated = null;
+            });
+            if (subtitlesActive && currentContextVideoIdLang && subtitleQueue.some(c => c.videoId === currentContextVideoIdLang && c.original)) {
+                if (subtitleContainer) showSubtitleContainer(); // Ensure visible
+                processSubtitleQueue(); // Start translating with new language
+            }
+            sendResponse({ success: true, newLanguage: userTargetLanguage });
+            break;
+        case "changeTimeOffset":
+            userSubtitleTimeOffset = request.timeOffset;
+            console.log("Content: Time offset changed to:", userSubtitleTimeOffset, "s");
             needsDisplayUpdate = true;
-        }
-        sendResponse({ success: true, subtitlesEnabled: subtitlesActive });
-    } else if (request.action === "changeLanguage") {
-        actionHandled = true;
-        userTargetLanguage = request.targetLanguage;
-        console.log("Content Settings: Target language changed to:", userTargetLanguage);
-        subtitleQueue.forEach(cue => { 
-            if(cue.videoId === currentVideoId) cue.translated = null; 
-        });
-        if (subtitlesActive && currentVideoId && subtitleQueue.some(c => c.videoId === currentVideoId && c.original)) {
-            if (subtitleContainer) showSubtitleContainer(); 
-            processSubtitleQueue(); 
-        }
-        sendResponse({ success: true, newLanguage: userTargetLanguage });
-    } else if (request.action === "changeTimeOffset") {
-        actionHandled = true;
-        userSubtitleTimeOffset = request.timeOffset;
-        console.log("Content Settings: Time offset changed to:", userSubtitleTimeOffset, "s");
-        needsDisplayUpdate = true;
-        sendResponse({ success: true, newTimeOffset: userSubtitleTimeOffset });
-    } else if (request.action === "changeLayoutOrder") {
-        actionHandled = true;
-        userSubtitleLayoutOrder = request.layoutOrder;
-        console.log("Content Settings: Layout order changed to:", userSubtitleLayoutOrder);
-        if (subtitleContainer) { 
-            applySubtitleStyling();
-        }
-        needsDisplayUpdate = true; 
-        sendResponse({ success: true, newLayoutOrder: userSubtitleLayoutOrder });
-    } else if (request.action === "changeLayoutOrientation") {
-        actionHandled = true;
-        userSubtitleOrientation = request.layoutOrientation;
-        console.log("Content Settings: Layout orientation changed to:", userSubtitleOrientation);
-        if (subtitleContainer) {
-            applySubtitleStyling();
-        }
-        needsDisplayUpdate = true;
-        sendResponse({ success: true, newLayoutOrientation: userSubtitleOrientation });
-    } else if (request.action === "changeFontSize") {
-        actionHandled = true;
-        userSubtitleFontSize = request.fontSize;
-        console.log("Content Settings: Font size changed to:", userSubtitleFontSize, "vw");
-        if (subtitleContainer) {
-            originalSubtitleElement.style.fontSize = `${userSubtitleFontSize}vw`;
-            translatedSubtitleElement.style.fontSize = `${userSubtitleFontSize}vw`;
-        }
-        needsDisplayUpdate = true;
-        sendResponse({ success: true, newFontSize: userSubtitleFontSize });
-    } else if (request.action === "changeGap") {
-        actionHandled = true;
-        userSubtitleGap = request.gap;
-        console.log("Content Settings: Subtitle gap changed to:", userSubtitleGap, "em");
-        if (subtitleContainer) {
-            applySubtitleStyling(); // Reapply styling to update the gap
-        }
-        needsDisplayUpdate = true;
-        sendResponse({ success: true, newGap: userSubtitleGap });
-    } else if (request.action === "changeBatchSize") {
-        actionHandled = true;
-        userTranslationBatchSize = request.batchSize;
-        console.log("Content Settings: Translation batch size changed to:", userTranslationBatchSize);
-        sendResponse({ success: true, newBatchSize: userTranslationBatchSize });
-    } else if (request.action === "changeDelay") {
-        actionHandled = true;
-        userTranslationDelay = request.delay;
-        console.log("Content Settings: Translation delay changed to:", userTranslationDelay, "ms");
-        sendResponse({ success: true, newDelay: userTranslationDelay });
+            sendResponse({ success: true, newTimeOffset: userSubtitleTimeOffset });
+            break;
+        case "changeLayoutOrder":
+            userSubtitleLayoutOrder = request.layoutOrder;
+            console.log("Content: Layout order changed to:", userSubtitleLayoutOrder);
+            if (subtitleContainer) applySubtitleStyling();
+            needsDisplayUpdate = true; // Update display with new order
+            sendResponse({ success: true, newLayoutOrder: userSubtitleLayoutOrder });
+            break;
+        case "changeLayoutOrientation":
+            userSubtitleOrientation = request.layoutOrientation;
+            console.log("Content: Layout orientation changed to:", userSubtitleOrientation);
+            if (subtitleContainer) applySubtitleStyling();
+            needsDisplayUpdate = true; // Update display with new orientation
+            sendResponse({ success: true, newLayoutOrientation: userSubtitleOrientation });
+            break;
+        case "changeFontSize":
+            userSubtitleFontSize = request.fontSize;
+            console.log("Content: Font size changed to:", userSubtitleFontSize, "vw");
+            // Apply directly, applySubtitleStyling will also pick it up if needed
+            if (originalSubtitleElement) originalSubtitleElement.style.fontSize = `${userSubtitleFontSize}vw`;
+            if (translatedSubtitleElement) translatedSubtitleElement.style.fontSize = `${userSubtitleFontSize}vw`;
+            // No need for full applySubtitleStyling here unless other layout aspects depend on font size in a complex way
+            needsDisplayUpdate = true;
+            sendResponse({ success: true, newFontSize: userSubtitleFontSize });
+            break;
+        case "changeGap":
+            userSubtitleGap = request.gap;
+            console.log("Content: Subtitle gap changed to:", userSubtitleGap, "em");
+            if (subtitleContainer) applySubtitleStyling(); // Gap change requires full style reapplication
+            needsDisplayUpdate = true;
+            sendResponse({ success: true, newGap: userSubtitleGap });
+            break;
+        case "changeBatchSize":
+            userTranslationBatchSize = request.batchSize;
+            console.log("Content: Translation batch size changed to:", userTranslationBatchSize);
+            sendResponse({ success: true, newBatchSize: userTranslationBatchSize });
+            break;
+        case "changeDelay":
+            userTranslationDelay = request.delay;
+            console.log("Content: Translation delay changed to:", userTranslationDelay, "ms");
+            sendResponse({ success: true, newDelay: userTranslationDelay });
+            break;
+        default:
+            actionHandled = false; // Not for us
+            break;
     }
 
-    if (needsDisplayUpdate && subtitlesActive && currentVideoId && activeVideoElement) {
-        const sliderElement = document.querySelector('div.progress-bar div.slider-container[role="slider"]');
-        let timeToUpdate = activeVideoElement.currentTime; 
-        if (sliderElement && progressBarObserver) { 
+    // If a display update is needed and subtitles are active
+    // Also ensure activePlatform exists and we are on a player page
+    if (needsDisplayUpdate && subtitlesActive && activePlatform && activePlatform.isPlayerPageActive() && activePlatform.getVideoElement()) {
+        const videoElement = activePlatform.getVideoElement();
+        const sliderElement = activePlatform.getProgressBarElement();
+        let timeToUpdate = videoElement.currentTime; // Default to video's currentTime
+
+        // Try to get a more accurate time from progress bar if available
+        if (sliderElement && progressBarObserver) {
             const nowStr = sliderElement.getAttribute('aria-valuenow');
             const maxStr = sliderElement.getAttribute('aria-valuemax');
             if (nowStr && maxStr) {
                 const valuenow = parseFloat(nowStr);
                 const valuemax = parseFloat(maxStr);
-                const videoDuration = activeVideoElement.duration;
+                const videoDuration = videoElement.duration;
                 if (!isNaN(valuenow) && !isNaN(valuemax) && valuemax > 0 && !isNaN(videoDuration) && videoDuration > 0) {
                     timeToUpdate = (valuenow / valuemax) * videoDuration;
                 }
             }
         }
-        updateSubtitles(timeToUpdate); 
+        updateSubtitles(timeToUpdate);
     }
-    
-    return actionHandled; // Return true if the message was handled (async or not)
+
+    return actionHandled; // Return true if the message was handled (sync or async via sendResponse)
 });
 
 (async () => {
     try {
+        // Dynamically import the platform module
+        const platformModulePath = 'video_platforms/disneyPlusPlatform.js';
+        const platformModule = await import(chrome.runtime.getURL(platformModulePath));
+        DisneyPlusPlatformModule = platformModule.DisneyPlusPlatform;
+
         const settingsToGet = {
-            subtitlesEnabled: true, 
-            targetLanguage: 'zh-CN',   
-            subtitleTimeOffset: 0.3,  
-            subtitleLayoutOrder: 'original_top', 
+            subtitlesEnabled: true,
+            targetLanguage: 'zh-CN', // Default target language
+            subtitleTimeOffset: 0.3,
+            subtitleLayoutOrder: 'original_top',
             subtitleOrientation: 'column',
             subtitleFontSize: 1.1,
             subtitleGap: 0.3,
@@ -984,33 +1071,36 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             translationDelay: 150
         };
         const items = await chrome.storage.sync.get(settingsToGet);
-        
-        subtitlesActive = items.subtitlesEnabled;
-        userTargetLanguage = items.targetLanguage;
-        userSubtitleTimeOffset = items.subtitleTimeOffset;
-        userSubtitleLayoutOrder = items.subtitleLayoutOrder;
-        userSubtitleOrientation = items.subtitleOrientation;
+
+        // Assign settings, using defaults if not found in storage
+        subtitlesActive = items.subtitlesEnabled !== undefined ? items.subtitlesEnabled : settingsToGet.subtitlesEnabled;
+        userTargetLanguage = items.targetLanguage || settingsToGet.targetLanguage;
+        userSubtitleTimeOffset = items.subtitleTimeOffset !== undefined ? items.subtitleTimeOffset : settingsToGet.subtitleTimeOffset;
+        userSubtitleLayoutOrder = items.subtitleLayoutOrder || settingsToGet.subtitleLayoutOrder;
+        userSubtitleOrientation = items.subtitleOrientation || settingsToGet.subtitleOrientation;
         userSubtitleFontSize = items.subtitleFontSize || settingsToGet.subtitleFontSize;
         userSubtitleGap = items.subtitleGap || settingsToGet.subtitleGap;
         userTranslationBatchSize = items.translationBatchSize || settingsToGet.translationBatchSize;
         userTranslationDelay = items.translationDelay || settingsToGet.translationDelay;
 
-        console.log("Content Init: Initial settings loaded:", {
-            active: subtitlesActive, 
-            lang: userTargetLanguage,
-            offset: userSubtitleTimeOffset,
-            order: userSubtitleLayoutOrder,
-            orientation: userSubtitleOrientation,
-            fontSize: userSubtitleFontSize,
-            gap: userSubtitleGap,
-            batchSize: userTranslationBatchSize,
-            delay: userTranslationDelay
+        console.log("Content: Initial settings loaded:", {
+            active: subtitlesActive, lang: userTargetLanguage, offset: userSubtitleTimeOffset,
+            order: userSubtitleLayoutOrder, orientation: userSubtitleOrientation,
+            fontSize: userSubtitleFontSize, gap: userSubtitleGap,
+            batchSize: userTranslationBatchSize, delay: userTranslationDelay
         });
-        ensureSubtitleContainer(); 
+
+        if (subtitlesActive) {
+            await initializeActivePlatform();
+        } else {
+            console.log("Content: Subtitles are disabled by default. Platform not initialized.");
+        }
+
     } catch (e) {
-        console.error("Content Init: Error loading initial settings:", e);
-         subtitlesActive = true; 
-         userTargetLanguage = 'zh-CN'; 
+        console.error("Content: Error loading initial settings or platform module:", e);
+         // Fallback defaults if storage/import fails
+         subtitlesActive = true;
+         userTargetLanguage = 'zh-CN';
          userSubtitleTimeOffset = 0.3;
          userSubtitleLayoutOrder = 'original_top';
          userSubtitleOrientation = 'column';
@@ -1018,36 +1108,58 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
          userSubtitleGap = 0.3;
          userTranslationBatchSize = 3;
          userTranslationDelay = 150;
-         ensureSubtitleContainer();
+
+         if (subtitlesActive && DisneyPlusPlatformModule) { // Only init if module loaded
+            await initializeActivePlatform();
+         } else if (!DisneyPlusPlatformModule) {
+            console.error("Content: Fallback settings applied, but platform module failed. Cannot initialize platform.");
+         }
     }
 })();
 
 const pageObserver = new MutationObserver((mutationsList, observerInstance) => {
+    // Attempt to initialize if platform not active, subtitles enabled, and module is loaded
+    if (!activePlatform && subtitlesActive && DisneyPlusPlatformModule) {
+        console.log("Content: PageObserver detected DOM changes. Attempting to initialize platform.");
+        initializeActivePlatform();
+        return; // Initialization will handle further checks
+    }
+
+    if (!activePlatform) return; // Do nothing if platform is not active
+
     for (let mutation of mutationsList) {
         if (mutation.type === 'childList') {
-            const videoElementNow = document.querySelector('video');
-            if (videoElementNow && (!activeVideoElement || activeVideoElement !== videoElementNow)) {
-                 if (subtitlesActive) ensureSubtitleContainer(); 
-            } else if (activeVideoElement && !videoElementNow) {
-                 console.log("Content PageObs: Active video element REMOVED.");
-                 hideSubtitleContainer();
-                 if (timeUpdateListener && activeVideoElement) {
-                    activeVideoElement.removeEventListener('timeupdate', timeUpdateListener);
-                    activeVideoElement.removeAttribute('data-listener-attached');
+            const videoElementNow = activePlatform.getVideoElement();
+            const currentDOMVideoElement = document.querySelector('video[data-listener-attached="true"]');
+
+            // If a video element is now present (or changed) and wasn't what we were tracking
+            if (videoElementNow && (!currentDOMVideoElement || currentDOMVideoElement !== videoElementNow)) {
+                console.log("Content: PageObserver detected video element appearance or change. Re-ensuring container/listeners.");
+                if (subtitlesActive) {
+                    ensureSubtitleContainer(); // This will handle attaching listeners to the new video element
+                }
+            } else if (currentDOMVideoElement && !videoElementNow) {
+                 // Video element was present but is now gone according to the platform
+                 console.log("Content: PageObserver detected video element removal (platform reports null).");
+                 hideSubtitleContainer(); // Hide our subtitles
+
+                 // Cleanup listeners from the old video element
+                 if (timeUpdateListener && currentDOMVideoElement) {
+                    currentDOMVideoElement.removeEventListener('timeupdate', timeUpdateListener);
+                    currentDOMVideoElement.removeAttribute('data-listener-attached');
                  }
                  if (progressBarObserver) {
                     progressBarObserver.disconnect();
                     progressBarObserver = null;
                  }
-                 if (findProgressBarIntervalId) { 
+                 if (findProgressBarIntervalId) {
                     clearInterval(findProgressBarIntervalId);
                     findProgressBarIntervalId = null;
                  }
-                 activeVideoElement = null; 
             }
         }
     }
 });
 pageObserver.observe(document.body, { childList: true, subtree: true });
 
-console.log("Disney+ Dual Subtitles content script fully initialized (v7.4.9).");
+console.log("Disney+ Dual Subtitles content script fully initialized (v8.0.1 - Dynamic Import).");

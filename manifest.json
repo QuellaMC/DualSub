@@ -28,7 +28,11 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["content_scripts/inject.js"],
+      "resources": [
+        "content_scripts/inject.js",
+        "video_platforms/disneyPlusPlatform.js",
+        "video_platforms/platform_interface.js"
+      ],
       "matches": ["*://*.disneyplus.com/*"]
     }
   ],
