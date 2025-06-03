@@ -156,7 +156,15 @@ document.addEventListener('DOMContentLoaded', function () {
     enableSubtitlesToggle.addEventListener('change', function () {
         const enabled = enableSubtitlesToggle.checked;
         chrome.storage.sync.set({ subtitlesEnabled: enabled }, () => {
-            showStatus(`Dual subtitles ${enabled ? 'enabled' : 'disabled'}.`);
+            let statusMessageKey = enabled ? "statusDualEnabled" : "statusDualDisabled";
+            let statusMessageText = loadedTranslations[statusMessageKey]?.message;
+            
+            if (!statusMessageText) {
+                // Fallback if the key is missing
+                console.warn(`${statusMessageKey} key missing from loaded translations. Using hardcoded fallback.`);
+                statusMessageText = enabled ? "Dual subtitles enabled." : "Dual subtitles disabled.";
+            }
+            showStatus(statusMessageText);
             sendMessageToContentScript("toggleSubtitles", enabled, "enabled");
         });
     });
@@ -312,7 +320,15 @@ document.addEventListener('DOMContentLoaded', function () {
             updateUILanguage(newLang); 
 
             const langName = uiLanguageSelect.options[uiLanguageSelect.selectedIndex].text;
-            showStatus(`language set to ${langName}.`);
+            // Get the translated status message template
+            let statusMessageTemplate = loadedTranslations.statusLanguageSetTo?.message;
+            if (!statusMessageTemplate) {
+                // Fallback if the key is somehow missing from loadedTranslations
+                console.warn("statusLanguageSetTo key missing from loaded translations. Using hardcoded fallback.");
+                statusMessageTemplate = (newLang === 'zh-CN' || newLang === 'zh_CN') ? "语言切换成：$langName$." : "Language set to $langName$.";
+            }
+            const formattedStatusMessage = statusMessageTemplate.replace('$langName$', langName);
+            showStatus(formattedStatusMessage);
 
         } catch (error) {
             console.error("Failed to load translations or update UI on language change:", error);
