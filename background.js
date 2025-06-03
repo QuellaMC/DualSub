@@ -285,6 +285,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 console.error(`Background: Translation failed using provider '${selectedProvider.name}':`, error);
                 sendResponse({
                     error: "Translation failed",
+                    errorType: "TRANSLATION_API_ERROR",
                     details: error.message || `Error from ${selectedProvider.name}`,
                     originalText: sourceText,
                     cueStart: cueStart,
