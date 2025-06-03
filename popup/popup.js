@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const translationDelayValue = document.getElementById('translationDelayValue');
     const translationProviderSelect = document.getElementById('translationProvider');
     const statusMessage = document.getElementById('statusMessage');
+    const uiLanguageSelect = document.getElementById('uiLanguage');
 
     // Collapsible sections
     const collapsibleLegends = document.querySelectorAll('.settings-group > .collapsible-legend');
@@ -45,7 +46,8 @@ document.addEventListener('DOMContentLoaded', function () {
         subtitleGap: 0.3,
         translationBatchSize: 3,
         translationDelay: 150,
-        collapsibleStates: initialCollapsibleState
+        collapsibleStates: initialCollapsibleState,
+        uiLanguage: 'en'
     };
 
     function populateProviderDropdown() {
@@ -103,6 +105,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
             collapsibleStates = items.collapsibleStates || { ...initialCollapsibleState };
             applyCollapsibleStates();
+
+            // Load and apply UI language
+            const currentUILanguage = items.uiLanguage || defaultSettings.uiLanguage;
+            uiLanguageSelect.value = currentUILanguage;
+            updateUILanguage(currentUILanguage);
         });
     }
 
@@ -269,6 +276,74 @@ document.addEventListener('DOMContentLoaded', function () {
             chrome.storage.sync.set({ collapsibleStates: collapsibleStates });
         });
     });
+
+    // Add this new event listener for UI language changes
+    uiLanguageSelect.addEventListener('change', function () {
+        const newLang = uiLanguageSelect.value;
+        chrome.storage.sync.set({ uiLanguage: newLang }, () => {
+            updateUILanguage(newLang);
+            const langName = uiLanguageSelect.options[uiLanguageSelect.selectedIndex].text;
+            showStatus(`Interface language set to ${langName}.`);
+        });
+    });
+
+    // Function to update UI text based on language
+    function updateUILanguage(lang) {
+        const translations = {
+            en: {
+                pageTitle: "Disney+ Dual Subtitles",
+                h1Title: "Disney+ Dual Subtitles",
+                enableSubtitlesLabel: "Enable Dual Subtitles:",
+                translationSettingsLegend: "Translation Settings",
+                providerLabel: "Provider:",
+                targetLanguageLabel: "Translate to:",
+                batchSizeLabel: "Batch Size:",
+                requestDelayLabel: "Request Delay (ms):",
+                subtitleAppearanceTimingLegend: "Subtitle Appearance & Timing",
+                displayOrderLabel: "Display Order:",
+                layoutLabel: "Layout:",
+                fontSizeLabel: "Font Size:",
+                verticalGapLabel: "Vertical Gap:",
+                timeOffsetLabel: "Time Offset (sec):",
+                uiLanguageLabel: "Interface Language:"
+            },
+            'zh-CN': {
+                pageTitle: "Disney+ 双字幕",
+                h1Title: "Disney+ 双字幕",
+                enableSubtitlesLabel: "启用双字幕：",
+                translationSettingsLegend: "翻译设置",
+                providerLabel: "翻译服务提供商：",
+                targetLanguageLabel: "翻译成：",
+                batchSizeLabel: "批处理大小：",
+                requestDelayLabel: "请求延迟 (毫秒)：",
+                subtitleAppearanceTimingLegend: "字幕外观和时间",
+                displayOrderLabel: "显示顺序：",
+                layoutLabel: "布局：",
+                fontSizeLabel: "字体大小：",
+                verticalGapLabel: "垂直间距：",
+                timeOffsetLabel: "时间偏移 (秒)：",
+                uiLanguageLabel: "界面语言："
+            }
+        };
+
+        const currentTranslation = translations[lang] || translations.en;
+
+        document.title = currentTranslation.pageTitle;
+        document.querySelector('.container > h1').textContent = currentTranslation.h1Title;
+        document.querySelector('label[for="enableSubtitles"]').textContent = currentTranslation.enableSubtitlesLabel;
+        document.querySelectorAll('.collapsible-legend')[0].childNodes[0].nodeValue = currentTranslation.translationSettingsLegend + ' ';
+        document.querySelector('label[for="translationProvider"]').textContent = currentTranslation.providerLabel;
+        document.querySelector('label[for="targetLanguage"]').textContent = currentTranslation.targetLanguageLabel;
+        document.querySelector('label[for="translationBatchSize"]').textContent = currentTranslation.batchSizeLabel;
+        document.querySelector('label[for="translationDelay"]').textContent = currentTranslation.requestDelayLabel;
+        document.querySelectorAll('.collapsible-legend')[1].childNodes[0].nodeValue = currentTranslation.subtitleAppearanceTimingLegend + ' ';
+        document.querySelector('label[for="subtitleLayoutOrder"]').textContent = currentTranslation.displayOrderLabel;
+        document.querySelector('label[for="subtitleLayoutOrientation"]').textContent = currentTranslation.layoutLabel;
+        document.querySelector('label[for="subtitleFontSize"]').textContent = currentTranslation.fontSizeLabel;
+        document.querySelector('label[for="subtitleGap"]').textContent = currentTranslation.verticalGapLabel;
+        document.querySelector('label[for="subtitleTimeOffset"]').textContent = currentTranslation.timeOffsetLabel;
+        document.querySelector('label[for="uiLanguage"]').textContent = currentTranslation.uiLanguageLabel;
+    }
 
     // Initial load
     populateProviderDropdown();
