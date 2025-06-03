@@ -18,6 +18,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const statusMessage = document.getElementById('statusMessage');
     const uiLanguageSelect = document.getElementById('uiLanguage');
 
+    let loadedTranslations = {}; // To store translations from JSON
+
     // Collapsible sections
     const collapsibleLegends = document.querySelectorAll('.settings-group > .collapsible-legend');
 
@@ -109,7 +111,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // Load and apply UI language
             const currentUILanguage = items.uiLanguage || defaultSettings.uiLanguage;
             uiLanguageSelect.value = currentUILanguage;
-            updateUILanguage(currentUILanguage);
+            // updateUILanguage is now called after translations are loaded in init()
         });
     }
 
@@ -278,74 +280,119 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Add this new event listener for UI language changes
-    uiLanguageSelect.addEventListener('change', function () {
+    uiLanguageSelect.addEventListener('change', async function () {
         const newLang = uiLanguageSelect.value;
-        chrome.storage.sync.set({ uiLanguage: newLang }, () => {
-            updateUILanguage(newLang);
+
+        // 1. Save the new language preference. Wrap set in a Promise to await it.
+        await new Promise(resolve => {
+            chrome.storage.sync.set({ uiLanguage: newLang }, () => {
+                // console.log(`UI language preference saved: ${newLang}`); // Optional: for debugging
+                resolve();
+            });
+        });
+
+        // 2. Fetch translations for the new language.
+        try {
+            let translationsPath = `/_locales/${newLang.replace('-', '_')}/messages.json`;
+            let response = await fetch(translationsPath);
+
+            if (!response.ok) {
+                console.warn(`Translation file for ${newLang} not found (status: ${response.status}). Falling back to English.`);
+                translationsPath = '/_locales/en/messages.json';
+                response = await fetch(translationsPath);
+                if (!response.ok) {
+                    throw new Error(`Failed to load English fallback translations (status: ${response.status})`);
+                }
+            }
+            
+            loadedTranslations = await response.json(); // Update the global translations
+            // console.log(`Translations loaded for ${newLang} (or fallback):`, loadedTranslations); // Optional: for debugging
+
+            // 3. Update the UI with the newly loaded translations.
+            updateUILanguage(newLang); 
+
             const langName = uiLanguageSelect.options[uiLanguageSelect.selectedIndex].text;
             showStatus(`Interface language set to ${langName}.`);
-        });
+
+        } catch (error) {
+            console.error("Failed to load translations or update UI on language change:", error);
+            showStatus("Error changing language.", true);
+            // Attempt to revert to English UI as a safe fallback if changing language fails
+            try {
+                const enResponse = await fetch('/_locales/en/messages.json');
+                if (enResponse.ok) {
+                    loadedTranslations = await enResponse.json();
+                    updateUILanguage('en'); 
+                }
+            } catch (fallbackError) {
+                console.error("Failed to load fallback English translations after error:", fallbackError);
+            }
+        }
     });
 
     // Function to update UI text based on language
     function updateUILanguage(lang) {
-        const translations = {
-            en: {
-                pageTitle: "Disney+ Dual Subtitles",
-                h1Title: "Disney+ Dual Subtitles",
-                enableSubtitlesLabel: "Enable Dual Subtitles:",
-                translationSettingsLegend: "Translation Settings",
-                providerLabel: "Provider:",
-                targetLanguageLabel: "Translate to:",
-                batchSizeLabel: "Batch Size:",
-                requestDelayLabel: "Request Delay (ms):",
-                subtitleAppearanceTimingLegend: "Subtitle Appearance & Timing",
-                displayOrderLabel: "Display Order:",
-                layoutLabel: "Layout:",
-                fontSizeLabel: "Font Size:",
-                verticalGapLabel: "Vertical Gap:",
-                timeOffsetLabel: "Time Offset (sec):",
-                uiLanguageLabel: "Interface Language:"
-            },
-            'zh-CN': {
-                pageTitle: "Disney+ 双字幕",
-                h1Title: "Disney+ 双字幕",
-                enableSubtitlesLabel: "启用双字幕：",
-                translationSettingsLegend: "翻译设置",
-                providerLabel: "翻译服务提供商：",
-                targetLanguageLabel: "翻译成：",
-                batchSizeLabel: "批处理大小：",
-                requestDelayLabel: "请求延迟 (毫秒)：",
-                subtitleAppearanceTimingLegend: "字幕外观和时间",
-                displayOrderLabel: "显示顺序：",
-                layoutLabel: "布局：",
-                fontSizeLabel: "字体大小：",
-                verticalGapLabel: "垂直间距：",
-                timeOffsetLabel: "时间偏移 (秒)：",
-                uiLanguageLabel: "界面语言："
-            }
-        };
+        if (Object.keys(loadedTranslations).length === 0) {
+            console.warn("Translations not loaded yet, cannot update UI language.");
+            return;
+        }
+        // We no longer need loadedTranslations[lang] as the correct language file is loaded directly.
+        // Defaulting to English is handled by loading 'en' if the specific lang file fails.
+        const currentTranslation = loadedTranslations;
 
-        const currentTranslation = translations[lang] || translations.en;
+        if (Object.keys(currentTranslation).length === 0) {
+            console.error("No translations available (currentTranslation object is empty). UI will not be updated.");
+            return;
+        }
 
-        document.title = currentTranslation.pageTitle;
-        document.querySelector('.container > h1').textContent = currentTranslation.h1Title;
-        document.querySelector('label[for="enableSubtitles"]').textContent = currentTranslation.enableSubtitlesLabel;
-        document.querySelectorAll('.collapsible-legend')[0].childNodes[0].nodeValue = currentTranslation.translationSettingsLegend + ' ';
-        document.querySelector('label[for="translationProvider"]').textContent = currentTranslation.providerLabel;
-        document.querySelector('label[for="targetLanguage"]').textContent = currentTranslation.targetLanguageLabel;
-        document.querySelector('label[for="translationBatchSize"]').textContent = currentTranslation.batchSizeLabel;
-        document.querySelector('label[for="translationDelay"]').textContent = currentTranslation.requestDelayLabel;
-        document.querySelectorAll('.collapsible-legend')[1].childNodes[0].nodeValue = currentTranslation.subtitleAppearanceTimingLegend + ' ';
-        document.querySelector('label[for="subtitleLayoutOrder"]').textContent = currentTranslation.displayOrderLabel;
-        document.querySelector('label[for="subtitleLayoutOrientation"]').textContent = currentTranslation.layoutLabel;
-        document.querySelector('label[for="subtitleFontSize"]').textContent = currentTranslation.fontSizeLabel;
-        document.querySelector('label[for="subtitleGap"]').textContent = currentTranslation.verticalGapLabel;
-        document.querySelector('label[for="subtitleTimeOffset"]').textContent = currentTranslation.timeOffsetLabel;
-        document.querySelector('label[for="uiLanguage"]').textContent = currentTranslation.uiLanguageLabel;
+        document.title = currentTranslation.pageTitle?.message || "Disney+ Dual Subtitles";
+        document.querySelector('.container > h1').textContent = currentTranslation.h1Title?.message || "Disney+ Dual Subtitles";
+        document.querySelector('label[for="enableSubtitles"]').textContent = currentTranslation.enableSubtitlesLabel?.message || "Enable Dual Subtitles:";
+        document.querySelectorAll('.collapsible-legend')[0].childNodes[0].nodeValue = (currentTranslation.translationSettingsLegend?.message || "Translation Settings") + ' ';
+        document.querySelector('label[for="translationProvider"]').textContent = currentTranslation.providerLabel?.message || "Provider:";
+        document.querySelector('label[for="targetLanguage"]').textContent = currentTranslation.targetLanguageLabel?.message || "Translate to:";
+        document.querySelector('label[for="translationBatchSize"]').textContent = currentTranslation.batchSizeLabel?.message || "Batch Size:";
+        document.querySelector('label[for="translationDelay"]').textContent = currentTranslation.requestDelayLabel?.message || "Request Delay (ms):" ;
+        document.querySelectorAll('.collapsible-legend')[1].childNodes[0].nodeValue = (currentTranslation.subtitleAppearanceTimingLegend?.message || "Subtitle Appearance & Timing") + ' ';
+        document.querySelector('label[for="subtitleLayoutOrder"]').textContent = currentTranslation.displayOrderLabel?.message || "Display Order:";
+        document.querySelector('label[for="subtitleLayoutOrientation"]').textContent = currentTranslation.layoutLabel?.message || "Layout:";
+        document.querySelector('label[for="subtitleFontSize"]').textContent = currentTranslation.fontSizeLabel?.message || "Font Size:";
+        document.querySelector('label[for="subtitleGap"]').textContent = currentTranslation.verticalGapLabel?.message || "Vertical Gap:";
+        document.querySelector('label[for="subtitleTimeOffset"]').textContent = currentTranslation.timeOffsetLabel?.message || "Time Offset (sec):";
+        document.querySelector('label[for="uiLanguage"]').textContent = currentTranslation.uiLanguageLabel?.message || "Interface Language:";
     }
 
-    // Initial load
-    populateProviderDropdown();
-    loadSettings();
+    // Initial load function
+    async function init() {
+        let langToLoad = defaultSettings.uiLanguage; // Default to 'en'
+        try {
+            const items = await new Promise(resolve => chrome.storage.sync.get('uiLanguage', resolve));
+            if (items.uiLanguage) {
+                langToLoad = items.uiLanguage;
+            }
+            uiLanguageSelect.value = langToLoad;
+
+            let translationsPath = `/_locales/${langToLoad.replace('-', '_')}/messages.json`;
+            let response = await fetch(translationsPath);
+            if (!response.ok) {
+                console.warn(`Initial translation file for ${langToLoad} not found. Falling back to English.`);
+                translationsPath = '/_locales/en/messages.json';
+                response = await fetch(translationsPath);
+                if (!response.ok) throw new Error(`Failed to load initial English fallback translations`);
+            }
+            loadedTranslations = await response.json();
+            // console.log(`Initial translations for '${langToLoad}' (or fallback 'en') loaded.`); // Optional: for debugging
+
+        } catch (error) {
+            console.error("Failed to load initial translations:", error);
+            // If all fails, loadedTranslations might be empty, updateUILanguage handles this
+        }
+        
+        populateProviderDropdown();
+        loadSettings();
+        
+        updateUILanguage(langToLoad);
+    }
+
+    init();
 });

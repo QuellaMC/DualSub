@@ -1,0 +1,19 @@
+{
+  "appName": { "message": "Disney+ Dual Subtitles" },
+  "appDesc": { "message": "Displays dual subtitles on Disney+." },
+  "pageTitle": { "message": "Disney+ Dual Subtitles" },
+  "h1Title": { "message": "Disney+ Dual Subtitles" },
+  "enableSubtitlesLabel": { "message": "Enable Dual Subtitles:" },
+  "translationSettingsLegend": { "message": "Translation Settings" },
+  "providerLabel": { "message": "Provider:" },
+  "targetLanguageLabel": { "message": "Translate to:" },
+  "batchSizeLabel": { "message": "Batch Size:" },
+  "requestDelayLabel": { "message": "Request Delay (ms):" },
+  "subtitleAppearanceTimingLegend": { "message": "Subtitle Appearance & Timing" },
+  "displayOrderLabel": { "message": "Display Order:" },
+  "layoutLabel": { "message": "Layout:" },
+  "fontSizeLabel": { "message": "Font Size:" },
+  "verticalGapLabel": { "message": "Vertical Gap:" },
+  "timeOffsetLabel": { "message": "Time Offset (sec):" },
+  "uiLanguageLabel": { "message": "Interface Language:" }
+} 

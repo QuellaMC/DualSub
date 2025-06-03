@@ -1,8 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "Disney+ Dual Subtitles",
+  "name": "__MSG_appName__",
   "version": "0.7.5",
-  "description": "Displays dual subtitles on Disney+.",
+  "description": "__MSG_appDesc__",
+  "default_locale": "en",
   "permissions": [
     "storage",
     "scripting",
