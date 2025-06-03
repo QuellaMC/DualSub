@@ -1,5 +1,4 @@
 // disneyplus-dualsub-chrome-extension/content_scripts/content.js
-// import { DisneyPlusPlatform } from '../video_platforms/disneyPlusPlatform.js'; // REMOVED Static import
 
 console.log("Disney+ Dual Subtitles content script loaded (v8.0.1 - Dynamic Import).");
 
@@ -27,7 +26,7 @@ const localizedErrorMessages = {
 function getUILanguage() {
     const lang = (navigator.language || navigator.userLanguage || 'en').toLowerCase();
     if (lang.startsWith('zh-cn')) return 'zh-CN';
-    if (lang.startsWith('zh')) return 'zh-CN'; // Broader Chinese match
+    if (lang.startsWith('zh')) return 'zh-CN';
     if (lang.startsWith('es')) return 'es';
     // Add more specific language checks here if needed by collaborators
     // e.g., if (lang.startsWith('fr')) return 'fr';
@@ -46,8 +45,6 @@ function getLocalizedErrorMessage(errorTypeKey, details = "") {
         const fallbackMessages = localizedErrorMessages['TRANSLATION_GENERIC_ERROR'];
         message = fallbackMessages[uiLang] || fallbackMessages['en'];
     }
-    // Details are not currently appended in this version to keep messages clean from popup.
-    // If details were to be shown, it might look like: if (details) message += ` (${details})`;
     return message || "[Translation Error]"; // Absolute fallback
 }
 // --- END LOCALIZED ERROR MESSAGES ---
@@ -75,9 +72,6 @@ async function initializeActivePlatform() {
             }
         } else {
             console.log("Content: Active platform exists, but not on a player page. UI setup deferred.");
-            // If we navigated away from a player page, cleanup might be needed.
-            // However, clearSubtitleDOM() might be too aggressive here if platform still active.
-            // Platform's internal cleanup or a more specific cleanup might be better.
             hideSubtitleContainer(); // At least hide our UI
         }
         return;
@@ -120,8 +114,6 @@ async function initializeActivePlatform() {
                 }
             } else {
                 console.log(`Content: Platform ${platformInstance.constructor.name} is active, but not on a player page. Full initialization deferred.`);
-                // Do not set activePlatform globally yet, so other functions don't try to use it on non-player pages.
-                // We might still want to keep platformInstance if we need to check it again later without full re-scan.
             }
             break; // Assuming only one platform can be active at a time
         }
