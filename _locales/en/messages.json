@@ -15,5 +15,5 @@
   "fontSizeLabel": { "message": "Font Size:" },
   "verticalGapLabel": { "message": "Vertical Gap:" },
   "timeOffsetLabel": { "message": "Time Offset (sec):" },
-  "uiLanguageLabel": { "message": "Interface Language:" }
+  "uiLanguageLabel": { "message": "Language:" }
 } 

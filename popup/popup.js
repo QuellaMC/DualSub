@@ -312,7 +312,7 @@ document.addEventListener('DOMContentLoaded', function () {
             updateUILanguage(newLang); 
 
             const langName = uiLanguageSelect.options[uiLanguageSelect.selectedIndex].text;
-            showStatus(`Interface language set to ${langName}.`);
+            showStatus(`language set to ${langName}.`);
 
         } catch (error) {
             console.error("Failed to load translations or update UI on language change:", error);
@@ -359,7 +359,7 @@ document.addEventListener('DOMContentLoaded', function () {
         document.querySelector('label[for="subtitleFontSize"]').textContent = currentTranslation.fontSizeLabel?.message || "Font Size:";
         document.querySelector('label[for="subtitleGap"]').textContent = currentTranslation.verticalGapLabel?.message || "Vertical Gap:";
         document.querySelector('label[for="subtitleTimeOffset"]').textContent = currentTranslation.timeOffsetLabel?.message || "Time Offset (sec):";
-        document.querySelector('label[for="uiLanguage"]').textContent = currentTranslation.uiLanguageLabel?.message || "Interface Language:";
+        document.querySelector('label[for="uiLanguage"]').textContent = currentTranslation.uiLanguageLabel?.message || "Language:";
     }
 
     // Initial load function
