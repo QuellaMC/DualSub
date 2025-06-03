@@ -22,8 +22,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // State for collapsible sections (e.g., which ones are open)
     const initialCollapsibleState = {
-        translationSettings: false, // 默认折叠
-        subtitleAppearanceTiming: false // 默认折叠
+        translationSettings: false, // Default to collapsed
+        subtitleAppearanceTiming: false // Default to collapsed
     };
     let collapsibleStates = { ...initialCollapsibleState };
 
@@ -60,7 +60,6 @@ document.addEventListener('DOMContentLoaded', function () {
     function applyCollapsibleStates() {
         collapsibleLegends.forEach((legend, index) => {
             const fieldset = legend.parentElement;
-            // Use a more robust way to link state to section if needed (e.g., data-attribute)
             const stateKey = index === 0 ? 'translationSettings' : 'subtitleAppearanceTiming';
             if (collapsibleStates[stateKey]) {
                 fieldset.classList.remove('collapsed');
@@ -102,7 +101,6 @@ document.addEventListener('DOMContentLoaded', function () {
             translationDelayInput.value = delay;
             translationDelayValue.textContent = `${delay}ms`;
 
-            // Load collapsible states
             collapsibleStates = items.collapsibleStates || { ...initialCollapsibleState };
             applyCollapsibleStates();
         });
@@ -124,7 +122,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (settingKey) {
                   messagePayload[settingKey] = value;
                 } else {
-                  messagePayload.enabled = value;
+                  messagePayload.enabled = value; // Specific for toggleSubtitles
                 }
 
                 chrome.tabs.sendMessage(tabs[0].id, messagePayload, function(response) {
@@ -171,7 +169,7 @@ document.addEventListener('DOMContentLoaded', function () {
             });
             return;
         }
-        offset = parseFloat(offset.toFixed(2));
+        offset = parseFloat(offset.toFixed(2)); // Ensure two decimal places for consistency
         subtitleTimeOffsetInput.value = offset;
 
         chrome.storage.sync.set({ subtitleTimeOffset: offset }, () => {
@@ -246,6 +244,7 @@ document.addEventListener('DOMContentLoaded', function () {
         chrome.storage.sync.set({ selectedProvider: providerId }, () => {
             const providerName = translationProviderSelect.options[translationProviderSelect.selectedIndex].text;
             showStatus(`Provider: ${providerName}.`);
+            // Send message to background script to update its internal state
             chrome.runtime.sendMessage({ action: "changeProvider", providerId: providerId }, function(response) {
                 if (chrome.runtime.lastError) {
                     console.warn(`Popup: Error sending changeProvider message to background:`, chrome.runtime.lastError.message);
@@ -265,7 +264,6 @@ document.addEventListener('DOMContentLoaded', function () {
         legend.addEventListener('click', function () {
             const fieldset = this.parentElement;
             fieldset.classList.toggle('collapsed');
-            // Update and save state
             const stateKey = index === 0 ? 'translationSettings' : 'subtitleAppearanceTiming';
             collapsibleStates[stateKey] = !fieldset.classList.contains('collapsed');
             chrome.storage.sync.set({ collapsibleStates: collapsibleStates });
@@ -274,5 +272,5 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Initial load
     populateProviderDropdown();
-    loadSettings(); // This will also apply initial collapsible states
+    loadSettings();
 });

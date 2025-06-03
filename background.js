@@ -7,14 +7,13 @@ console.log("Disney+ Dual Subtitles background script loaded (v2.4 - Enhanced Tr
 const translationProviders = {
     'google': {
         name: 'Google Translate (Free)',
-        translate: googleTranslate // The function imported from ./translation_providers/googleTranslate.js
+        translate: googleTranslate
     },
     'microsoft_edge_auth': {
         name: 'Microsoft Translate (Free)',
-        translate: microsoftTranslateEdgeAuth // The function imported from ./translation_providers/microsoftTranslateEdgeAuth.js
+        translate: microsoftTranslateEdgeAuth
     }
-    // Future providers will be added here, e.g.:
-    // 'deepl': { name: 'DeepL', translate: deeplTranslateFunction }
+    // Future providers can be added here
 };
 
 let currentTranslationProviderId = 'google'; // Default provider
@@ -24,7 +23,6 @@ chrome.storage.sync.get('selectedProvider', (data) => {
         currentTranslationProviderId = data.selectedProvider;
         console.log(`Background: Loaded translation provider from storage: ${translationProviders[currentTranslationProviderId].name}`);
     } else {
-        // If not found or invalid, stick to default and potentially save the default
         chrome.storage.sync.set({ selectedProvider: currentTranslationProviderId });
         console.log(`Background: Using default translation provider: ${translationProviders[currentTranslationProviderId].name}`);
     }
@@ -32,43 +30,24 @@ chrome.storage.sync.get('selectedProvider', (data) => {
 
 // Initialize default settings on installation
 chrome.runtime.onInstalled.addListener(() => {
-    // Define all keys we manage to ensure they are all considered.
     const allSettingKeys = [
-        'subtitlesEnabled', 'targetLanguage', 'subtitleTimeOffset', 
+        'subtitlesEnabled', 'targetLanguage', 'subtitleTimeOffset',
         'subtitleLayoutOrder', 'subtitleLayoutOrientation', 'subtitleFontSize',
         'subtitleGap', 'translationBatchSize', 'translationDelay'
     ];
 
     chrome.storage.sync.get(allSettingKeys, (items) => {
         const defaultsToSet = {};
-        
-        if (items.subtitlesEnabled === undefined) {
-            defaultsToSet.subtitlesEnabled = true;
-        }
-        if (items.targetLanguage === undefined) {
-            defaultsToSet.targetLanguage = 'zh-CN'; 
-        }
-        if (items.subtitleTimeOffset === undefined) {
-            defaultsToSet.subtitleTimeOffset = 0.3;
-        }
-        if (items.subtitleLayoutOrder === undefined) {
-            defaultsToSet.subtitleLayoutOrder = 'original_top';
-        }
-        if (items.subtitleLayoutOrientation === undefined) {
-            defaultsToSet.subtitleLayoutOrientation = 'column';
-        }
-        if (items.subtitleFontSize === undefined) {
-            defaultsToSet.subtitleFontSize = 1.1;
-        }
-        if (items.subtitleGap === undefined) {
-            defaultsToSet.subtitleGap = 0.3;
-        }
-        if (items.translationBatchSize === undefined) {
-            defaultsToSet.translationBatchSize = 3;
-        }
-        if (items.translationDelay === undefined) {
-            defaultsToSet.translationDelay = 150;
-        }
+
+        if (items.subtitlesEnabled === undefined) defaultsToSet.subtitlesEnabled = true;
+        if (items.targetLanguage === undefined) defaultsToSet.targetLanguage = 'zh-CN';
+        if (items.subtitleTimeOffset === undefined) defaultsToSet.subtitleTimeOffset = 0.3;
+        if (items.subtitleLayoutOrder === undefined) defaultsToSet.subtitleLayoutOrder = 'original_top';
+        if (items.subtitleLayoutOrientation === undefined) defaultsToSet.subtitleLayoutOrientation = 'column';
+        if (items.subtitleFontSize === undefined) defaultsToSet.subtitleFontSize = 1.1;
+        if (items.subtitleGap === undefined) defaultsToSet.subtitleGap = 0.3;
+        if (items.translationBatchSize === undefined) defaultsToSet.translationBatchSize = 3;
+        if (items.translationDelay === undefined) defaultsToSet.translationDelay = 150;
 
         if (Object.keys(defaultsToSet).length > 0) {
             chrome.storage.sync.set(defaultsToSet, () => {
@@ -80,7 +59,6 @@ chrome.runtime.onInstalled.addListener(() => {
     });
 });
 
-// Function to parse URI from #EXT-X-MEDIA tag
 function getUriFromExtXMedia(line) {
     const uriMatch = line.match(/URI="([^"]+)"/);
     return uriMatch ? uriMatch[1] : null;
@@ -97,15 +75,13 @@ async function fetchAndProcessSubtitleUrl(masterPlaylistUrl) {
         masterPlaylistText = await response.text();
     } catch (e) {
         console.error(`Background: Initial fetch failed for ${masterPlaylistUrl}:`, e);
-        // It's possible the masterPlaylistUrl itself is a direct VTT URL
         if (e.message.includes("Failed to fetch") || e.message.includes("HTTP error")) {
-             // Let's try to see if it's a VTT directly
             if (masterPlaylistText && masterPlaylistText.trim().toUpperCase().startsWith("WEBVTT")) {
                 console.log("Background: Master URL content looks like direct VTT after fetch failure analysis.");
                 return masterPlaylistText;
             }
         }
-        throw e; // Re-throw to be caught by the caller
+        throw e;
     }
 
     if (masterPlaylistText.trim().toUpperCase().startsWith("WEBVTT")) {
@@ -121,7 +97,7 @@ async function fetchAndProcessSubtitleUrl(masterPlaylistUrl) {
     console.log("Background: Master M3U8 playlist fetched. Searching for subtitle playlist URI...");
     const lines = masterPlaylistText.split('\n');
     let subtitlePlaylistUri = null;
-    const masterBaseUrl = new URL(masterPlaylistUrl); // For resolving relative URIs
+    const masterBaseUrl = new URL(masterPlaylistUrl);
 
     for (const line of lines) {
         const trimmedLine = line.trim();
@@ -165,7 +141,6 @@ async function fetchAndProcessSubtitleUrl(masterPlaylistUrl) {
         const vttSegmentUrlsFromMaster = [];
         for (const line of lines) {
             const trimmedLine = line.trim();
-            // Look for lines that are not comments and seem like relative/absolute paths to .vtt files
             if (trimmedLine && !trimmedLine.startsWith("#") && trimmedLine.toLowerCase().includes(".vtt")) {
                  try {
                     const segmentUrl = new URL(trimmedLine, masterBaseUrl.href).href;
@@ -216,7 +191,6 @@ async function fetchAndProcessSubtitleUrl(masterPlaylistUrl) {
     for (const line of subtitleLines) {
         const trimmedLine = line.trim();
         if (trimmedLine && !trimmedLine.startsWith("#")) {
-            // Check if the line looks like a segment URI (e.g., ends with .vtt or is just a filename)
             if (trimmedLine.toLowerCase().includes(".vtt") || trimmedLine.toLowerCase().includes(".webvtt") || !trimmedLine.includes("/")) {
                  try {
                     const segmentUrl = new URL(trimmedLine, subtitlePlaylistBaseUrl.href).href;
@@ -251,14 +225,10 @@ async function fetchAndCombineVttSegments(segmentUrls, playlistUrlForLogging = "
             let segmentText = await segmentResponse.text();
             segmentsFetchedCount++;
 
-            // Remove WEBVTT header from individual segments if present, but only after the first one.
             if (combinedVttText !== "WEBVTT\n\n" || !segmentText.trim().toUpperCase().startsWith("WEBVTT")) {
                 segmentText = segmentText.replace(/^WEBVTT\s*/i, "").trim();
             } else if (segmentText.trim().toUpperCase().startsWith("WEBVTT")) {
-                 // For the very first actual segment, if it has WEBVTT, we keep it, then strip for subsequent ones.
-                 // This logic ensures the combinedVTT starts with WEBVTT.
-                 if (combinedVttText === "WEBVTT\n\n") { // This is the first segment with content
-                    // Do nothing, keep its WEBVTT header if it's the first actual content
+                 if (combinedVttText === "WEBVTT\n\n") {
                  } else {
                     segmentText = segmentText.replace(/^WEBVTT\s*/i, "").trim();
                  }
@@ -284,7 +254,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === "translate") {
         const sourceText = message.text;
         const targetLang = message.targetLang;
-        const sourceLang = 'auto'; // Or from message if available
+        const sourceLang = 'auto';
         const cueStart = message.cueStart;
         const cueVideoId = message.cueVideoId;
 
@@ -347,7 +317,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             console.error(`Background: Attempted to switch to unknown provider: ${newProviderId}`);
             sendResponse({ success: false, message: `Unknown provider: ${newProviderId}` });
         }
-        return true; // For async response
+        return true;
     }
 });
 
@@ -355,8 +325,7 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
     if (namespace === 'sync') {
         for (let [key, { oldValue, newValue }] of Object.entries(changes)) {
             console.log(
-                `Background: Storage key "${key}" changed.`,
-                `Old value:`, oldValue, `, New value:`, newValue
+                `Background: Storage key "${key}" changed. Old value:`, oldValue, `, New value:`, newValue
             );
         }
     }
