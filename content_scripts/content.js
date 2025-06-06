@@ -1,7 +1,53 @@
 // disneyplus-dualsub-chrome-extension/content_scripts/content.js
-// import { DisneyPlusPlatform } from '../video_platforms/disneyPlusPlatform.js'; // REMOVED Static import
 
 console.log("Disney+ Dual Subtitles content script loaded (v8.0.1 - Dynamic Import).");
+
+// --- BEGIN LOCALIZED ERROR MESSAGES ---
+const localizedErrorMessages = {
+    TRANSLATION_API_ERROR: {
+        en: "[Translation API Error. Check settings or try another provider.]",
+        es: "[Error de API de Traducción. Revisa la configuración o prueba otro proveedor.]",
+        'zh-CN': "[翻译API错误。请检查设置或尝试其他翻译源。]"
+        // Collaborators can add more languages here, e.g.:
+        // fr: "[Erreur API de traduction. Vérifiez les paramètres ou essayez un autre fournisseur.]"
+    },
+    TRANSLATION_REQUEST_ERROR: {
+        en: "[Translation Request Error. Please try again.]",
+        es: "[Error en la Solicitud de Traducción. Por favor, inténtalo de nuevo.]",
+        'zh-CN': "[翻译请求错误。请重试。]"
+    },
+    TRANSLATION_GENERIC_ERROR: { // Fallback
+        en: "[Translation Failed. Please try again or check settings.]",
+        es: "[Traducción Fallida. Por favor, inténtalo de nuevo o revisa la configuración.]",
+        'zh-CN': "[翻译失败。请重试或检查设置。]"
+    }
+};
+
+function getUILanguage() {
+    const lang = (navigator.language || navigator.userLanguage || 'en').toLowerCase();
+    if (lang.startsWith('zh-cn')) return 'zh-CN';
+    if (lang.startsWith('zh')) return 'zh-CN';
+    if (lang.startsWith('es')) return 'es';
+    // Add more specific language checks here if needed by collaborators
+    // e.g., if (lang.startsWith('fr')) return 'fr';
+    return 'en'; // Default to English
+}
+
+function getLocalizedErrorMessage(errorTypeKey, details = "") {
+    const uiLang = getUILanguage();
+    const messagesForType = localizedErrorMessages[errorTypeKey];
+    let message = "";
+
+    if (messagesForType) {
+        message = messagesForType[uiLang] || messagesForType['en']; // Fallback to English if specific lang not found
+    } else {
+        // Fallback for an unknown errorTypeKey itself
+        const fallbackMessages = localizedErrorMessages['TRANSLATION_GENERIC_ERROR'];
+        message = fallbackMessages[uiLang] || fallbackMessages['en'];
+    }
+    return message || "[Translation Error]"; // Absolute fallback
+}
+// --- END LOCALIZED ERROR MESSAGES ---
 
 // --- BEGIN PLATFORM MANAGEMENT ---
 /** @type {import('../video_platforms/platform_interface.js').VideoPlatform | null} */
@@ -26,9 +72,6 @@ async function initializeActivePlatform() {
             }
         } else {
             console.log("Content: Active platform exists, but not on a player page. UI setup deferred.");
-            // If we navigated away from a player page, cleanup might be needed.
-            // However, clearSubtitleDOM() might be too aggressive here if platform still active.
-            // Platform's internal cleanup or a more specific cleanup might be better.
             hideSubtitleContainer(); // At least hide our UI
         }
         return;
@@ -71,8 +114,6 @@ async function initializeActivePlatform() {
                 }
             } else {
                 console.log(`Content: Platform ${platformInstance.constructor.name} is active, but not on a player page. Full initialization deferred.`);
-                // Do not set activePlatform globally yet, so other functions don't try to use it on non-player pages.
-                // We might still want to keep platformInstance if we need to check it again later without full re-scan.
             }
             break; // Assuming only one platform can be active at a time
         }
@@ -728,14 +769,14 @@ function updateSubtitles(rawCurrentTime) {
             originalSubtitleElement.style.display = 'none';
         }
 
-        // Display translated text if available and not a placeholder/error
-        if (translatedText.trim() !== "" && !translatedText.startsWith("[Translation")) {
+        // Display translated text or error message
+        if (translatedText.trim() !== "") { // If there's any translated text (or error message)
             if (translatedSubtitleElement.innerHTML !== translatedTextFormatted) {
                 translatedSubtitleElement.innerHTML = translatedTextFormatted;
                 contentChanged = true;
             }
             translatedSubtitleElement.style.display = 'inline-block';
-        } else {
+        } else { // If translatedText is empty or only whitespace
             if (translatedSubtitleElement.innerHTML !== '') translatedSubtitleElement.innerHTML = '';
             translatedSubtitleElement.style.display = 'none';
         }
@@ -826,10 +867,21 @@ async function processSubtitleQueue() {
                         cueStart: cueToProcess.start,
                         cueVideoId: cueToProcess.videoId
                     }, res => {
-                        if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
-                        else if (res && res.error) reject(new Error(res.details || res.error));
-                        else if (res && res.translatedText !== undefined && res.cueStart !== undefined && res.cueVideoId !== undefined) resolve(res);
-                        else reject(new Error("Malformed response from background for translation. Response: " + JSON.stringify(res)));
+                        if (chrome.runtime.lastError) {
+                            const err = new Error(chrome.runtime.lastError.message);
+                            err.errorType = "TRANSLATION_REQUEST_ERROR"; // Assign type for runtime errors
+                            reject(err);
+                        } else if (res && res.error) { // Error response from background
+                            const err = new Error(res.details || res.error);
+                            err.errorType = res.errorType || "TRANSLATION_API_ERROR"; // Use errorType from background, fallback
+                            reject(err);
+                        } else if (res && res.translatedText !== undefined && res.cueStart !== undefined && res.cueVideoId !== undefined) {
+                            resolve(res);
+                        } else {
+                            const err = new Error("Malformed response from background for translation. Response: " + JSON.stringify(res));
+                            err.errorType = "TRANSLATION_REQUEST_ERROR";
+                            reject(err);
+                        }
                     });
                 });
 
@@ -852,14 +904,17 @@ async function processSubtitleQueue() {
                 }
 
             } catch (error) {
-                console.error(`Content: Translation failed for (VideoID '${cueToProcess.videoId}', Start ${cueToProcess.start.toFixed(2)}): "${cueToProcess.original.substring(0,30)}..."`, error.message);
+                console.error(`Content: Translation failed for (VideoID '${cueToProcess.videoId}', Start ${cueToProcess.start.toFixed(2)}): "${cueToProcess.original.substring(0,30)}..."`, error.message, error.errorType);
                 // Mark error in queue if translation fails
                 const cueInQueueOnError = subtitleQueue.find(c =>
                     c.start === cueToProcess.start &&
                     c.original === cueToProcess.original &&
                     c.videoId === cueToProcess.videoId
                 );
-                if (cueInQueueOnError) cueInQueueOnError.translated = "[Translation Request Error]";
+                if (cueInQueueOnError) {
+                    const errorType = error.errorType || "TRANSLATION_GENERIC_ERROR";
+                    cueInQueueOnError.translated = getLocalizedErrorMessage(errorType, error.message);
+                }
             }
         }
     } finally {
