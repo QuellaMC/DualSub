@@ -290,39 +290,35 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Helper function to load translation files
     async function loadTranslations(langCode) {
-        // 1. Check if the requested language is already in the cache.
-        if (translationsCache[langCode]) {
-            console.log(`Using cached translations for: ${langCode}`);
-            return translationsCache[langCode];
+        const normalizedLangCode = langCode.replace('-', '_');
+
+        if (translationsCache[normalizedLangCode]) {
+            console.log(`Using cached translations for: ${normalizedLangCode}`);
+            return translationsCache[normalizedLangCode];
         }
 
-        // 2. If not cached, try to fetch the requested language file.
-        const normalizedLangCode = langCode.replace('-', '_');
         const translationsPath = chrome.runtime.getURL(`_locales/${normalizedLangCode}/messages.json`);
         
         try {
             const response = await fetch(translationsPath);
             if (response.ok) {
                 const translations = await response.json();
-                translationsCache[langCode] = translations; // Cache the newly fetched translations
-                console.log(`Translations fetched and cached for: ${langCode}`);
+                translationsCache[normalizedLangCode] = translations;
+                console.log(`Translations fetched and cached for: ${normalizedLangCode}`);
                 return translations;
             }
         } catch (error) {
-            console.error(`Error fetching primary language ${langCode}:`, error);
+            console.error(`Error fetching primary language ${normalizedLangCode}:`, error);
         }
 
-        // 3. If the fetch fails, fall back to English.
-        console.warn(`Translation file for ${langCode} not found. Falling back to English.`);
+        console.warn(`Translation file for ${normalizedLangCode} not found. Falling back to English.`);
         const fallbackLangCode = 'en';
 
-        // Check cache for English fallback first.
         if (translationsCache[fallbackLangCode]) {
             console.log(`Using cached translations for fallback: ${fallbackLangCode}`);
             return translationsCache[fallbackLangCode];
         }
         
-        // If English is not cached, fetch it.
         try {
             const fallbackPath = chrome.runtime.getURL(`_locales/${fallbackLangCode}/messages.json`);
             const fallbackResponse = await fetch(fallbackPath);
@@ -330,12 +326,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 throw new Error(`Failed to load English fallback translations (status: ${fallbackResponse.status})`);
             }
             const fallbackTranslations = await fallbackResponse.json();
-            translationsCache[fallbackLangCode] = fallbackTranslations; // Cache the English translations
+            translationsCache[fallbackLangCode] = fallbackTranslations;
             console.log(`Translations fetched and cached for fallback: ${fallbackLangCode}`);
             return fallbackTranslations;
         } catch (error) {
             console.error(`Fatal: Failed to load any translations, including English fallback:`, error);
-            return {}; // Return empty object if everything fails.
+            return {};
         }
     }
 
