@@ -18,7 +18,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const statusMessage = document.getElementById('statusMessage');
     const uiLanguageSelect = document.getElementById('uiLanguage');
 
-    let loadedTranslations = {}; // To store translations from JSON
+    let loadedTranslations = {}; // To store the currently active translations
+    const translationsCache = {}; // Cache for all loaded language files
 
     // Collapsible sections
     const collapsibleLegends = document.querySelectorAll('.settings-group > .collapsible-legend');
@@ -289,28 +290,53 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Helper function to load translation files
     async function loadTranslations(langCode) {
-        let translations = {};
-        let actualLangLoaded = langCode;
-        try {
-            let normalizedLangCode = langCode.replace('-', '_');
-            let translationsPath = chrome.runtime.getURL(`_locales/${normalizedLangCode}/messages.json`);
-            let response = await fetch(translationsPath);
-            
-            if (!response.ok) {
-                console.warn(`Translation file for ${langCode} (as ${normalizedLangCode}) not found (status: ${response.status}). Falling back to English.`);
-                actualLangLoaded = 'en'; // Record that we are falling back to English
-                translationsPath = chrome.runtime.getURL('_locales/en/messages.json');
-                response = await fetch(translationsPath);
-                if (!response.ok) {
-                    throw new Error(`Failed to load English fallback translations (status: ${response.status})`);
-                }
-            }
-            translations = await response.json();
-            console.log(`Translations loaded for: ${actualLangLoaded}`);
-        } catch (error) {
-            console.error(`Failed to load translations for ${langCode} (attempted ${actualLangLoaded}):`, error);
+        // 1. Check if the requested language is already in the cache.
+        if (translationsCache[langCode]) {
+            console.log(`Using cached translations for: ${langCode}`);
+            return translationsCache[langCode];
         }
-        return translations;
+
+        // 2. If not cached, try to fetch the requested language file.
+        const normalizedLangCode = langCode.replace('-', '_');
+        const translationsPath = chrome.runtime.getURL(`_locales/${normalizedLangCode}/messages.json`);
+        
+        try {
+            const response = await fetch(translationsPath);
+            if (response.ok) {
+                const translations = await response.json();
+                translationsCache[langCode] = translations; // Cache the newly fetched translations
+                console.log(`Translations fetched and cached for: ${langCode}`);
+                return translations;
+            }
+        } catch (error) {
+            console.error(`Error fetching primary language ${langCode}:`, error);
+        }
+
+        // 3. If the fetch fails, fall back to English.
+        console.warn(`Translation file for ${langCode} not found. Falling back to English.`);
+        const fallbackLangCode = 'en';
+
+        // Check cache for English fallback first.
+        if (translationsCache[fallbackLangCode]) {
+            console.log(`Using cached translations for fallback: ${fallbackLangCode}`);
+            return translationsCache[fallbackLangCode];
+        }
+        
+        // If English is not cached, fetch it.
+        try {
+            const fallbackPath = chrome.runtime.getURL(`_locales/${fallbackLangCode}/messages.json`);
+            const fallbackResponse = await fetch(fallbackPath);
+            if (!fallbackResponse.ok) {
+                throw new Error(`Failed to load English fallback translations (status: ${fallbackResponse.status})`);
+            }
+            const fallbackTranslations = await fallbackResponse.json();
+            translationsCache[fallbackLangCode] = fallbackTranslations; // Cache the English translations
+            console.log(`Translations fetched and cached for fallback: ${fallbackLangCode}`);
+            return fallbackTranslations;
+        } catch (error) {
+            console.error(`Fatal: Failed to load any translations, including English fallback:`, error);
+            return {}; // Return empty object if everything fails.
+        }
     }
 
     // Add this new event listener for UI language changes
@@ -342,30 +368,42 @@ document.addEventListener('DOMContentLoaded', function () {
             console.warn("Translations not loaded yet, cannot update UI language.");
             return;
         }
-        // We no longer need loadedTranslations[lang] as the correct language file is loaded directly.
-        // Defaulting to English is handled by loading 'en' if the specific lang file fails.
         const currentTranslation = loadedTranslations;
-
         if (Object.keys(currentTranslation).length === 0) {
             console.error("No translations available (currentTranslation object is empty). UI will not be updated.");
             return;
         }
 
-        document.title = currentTranslation.pageTitle?.message || "Disney+ Dual Subtitles";
-        document.querySelector('.container > h1').textContent = currentTranslation.h1Title?.message || "Disney+ Dual Subtitles";
-        document.querySelector('label[for="enableSubtitles"]').textContent = currentTranslation.enableSubtitlesLabel?.message || "Enable Dual Subtitles:";
-        document.querySelectorAll('.collapsible-legend')[0].childNodes[0].nodeValue = (currentTranslation.translationSettingsLegend?.message || "Translation Settings") + ' ';
-        document.querySelector('label[for="translationProvider"]').textContent = currentTranslation.providerLabel?.message || "Provider:";
-        document.querySelector('label[for="targetLanguage"]').textContent = currentTranslation.targetLanguageLabel?.message || "Translate to:";
-        document.querySelector('label[for="translationBatchSize"]').textContent = currentTranslation.batchSizeLabel?.message || "Batch Size:";
-        document.querySelector('label[for="translationDelay"]').textContent = currentTranslation.requestDelayLabel?.message || "Request Delay (ms):" ;
-        document.querySelectorAll('.collapsible-legend')[1].childNodes[0].nodeValue = (currentTranslation.subtitleAppearanceTimingLegend?.message || "Subtitle Appearance & Timing") + ' ';
-        document.querySelector('label[for="subtitleLayoutOrder"]').textContent = currentTranslation.displayOrderLabel?.message || "Display Order:";
-        document.querySelector('label[for="subtitleLayoutOrientation"]').textContent = currentTranslation.layoutLabel?.message || "Layout:";
-        document.querySelector('label[for="subtitleFontSize"]').textContent = currentTranslation.fontSizeLabel?.message || "Font Size:";
-        document.querySelector('label[for="subtitleGap"]').textContent = currentTranslation.verticalGapLabel?.message || "Vertical Gap:";
-        document.querySelector('label[for="subtitleTimeOffset"]').textContent = currentTranslation.timeOffsetLabel?.message || "Time Offset (sec):";
-        document.querySelector('label[for="uiLanguage"]').textContent = currentTranslation.uiLanguageLabel?.message || "Language:";
+        const i18nMap = {
+            h1Title: { selector: '.container > h1', fallback: 'Disney+ Dual Subtitles' },
+            enableSubtitlesLabel: { selector: 'label[for="enableSubtitles"]', fallback: 'Enable Dual Subtitles:' },
+            translationSettingsLegend: { selector: '#translation-settings .legend-text', fallback: 'Translation Settings' },
+            providerLabel: { selector: 'label[for="translationProvider"]', fallback: 'Provider:' },
+            targetLanguageLabel: { selector: 'label[for="targetLanguage"]', fallback: 'Translate to:' },
+            batchSizeLabel: { selector: 'label[for="translationBatchSize"]', fallback: 'Batch Size:' },
+            requestDelayLabel: { selector: 'label[for="translationDelay"]', fallback: 'Request Delay (ms):' },
+            subtitleAppearanceTimingLegend: { selector: '#appearance-settings .legend-text', fallback: 'Subtitle Appearance & Timing' },
+            displayOrderLabel: { selector: 'label[for="subtitleLayoutOrder"]', fallback: 'Display Order:' },
+            layoutLabel: { selector: 'label[for="subtitleLayoutOrientation"]', fallback: 'Layout:' },
+            fontSizeLabel: { selector: 'label[for="subtitleFontSize"]', fallback: 'Font Size:' },
+            verticalGapLabel: { selector: 'label[for="subtitleGap"]', fallback: 'Vertical Gap:' },
+            timeOffsetLabel: { selector: 'label[for="subtitleTimeOffset"]', fallback: 'Time Offset (sec):' },
+            uiLanguageLabel: { selector: 'label[for="uiLanguage"]', fallback: 'Language:' },
+        };
+
+        for (const key in i18nMap) {
+            const { selector, fallback } = i18nMap[key];
+            const element = document.querySelector(selector);
+            if (element) {
+                element.textContent = currentTranslation[key]?.message || fallback;
+            } else {
+                console.warn(`i18n mapping: Could not find element with selector '${selector}' for key '${key}'.`);
+            }
+        }
+
+        // Handle special cases that don't fit the simple selector/textContent pattern
+        document.title = currentTranslation.pageTitle?.message || 'Disney+ Dual Subtitles';
+        
     }
 
     // Initial load function
@@ -381,17 +419,13 @@ document.addEventListener('DOMContentLoaded', function () {
             loadedTranslations = await loadTranslations(langToLoad);
 
         } catch (error) {
-            // This catch is now less likely to be hit if loadTranslations handles its own errors,
-            // but kept for safety for promise errors from chrome.storage.sync or unexpected issues.
             console.error("Error during initialization sequence:", error);
         }
         
         populateProviderDropdown();
         loadSettings();
         
-        // updateUILanguage is called with langToLoad. If loadTranslations fell back to English,
         // loadedTranslations will be English, but newLang (in updateUILanguage) will still be the originally requested lang.
-        // This is fine as updateUILanguage uses the content of loadedTranslations primarily.
         updateUILanguage(langToLoad); 
     }
 
