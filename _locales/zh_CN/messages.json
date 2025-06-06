@@ -16,7 +16,7 @@
   "verticalGapLabel": { "message": "垂直间距：" },
   "timeOffsetLabel": { "message": "时间偏移 (秒)：" },
   "uiLanguageLabel": { "message": "语言：" },
-  "statusLanguageSetTo": { "message": "语言切换成：$langName$." },
+  "statusLanguageSetTo": { "message": "语言切换成： " },
   "statusDualEnabled": { "message": "双字幕已启用。" },
   "statusDualDisabled": { "message": "双字幕已禁用。" }
 } 

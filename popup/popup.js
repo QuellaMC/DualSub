@@ -287,63 +287,53 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // Add this new event listener for UI language changes
-    uiLanguageSelect.addEventListener('change', async function () {
-        const newLang = uiLanguageSelect.value;
-
-        // 1. Save the new language preference. Wrap set in a Promise to await it.
-        await new Promise(resolve => {
-            chrome.storage.sync.set({ uiLanguage: newLang }, () => {
-                // console.log(`UI language preference saved: ${newLang}`); // Optional: for debugging
-                resolve();
-            });
-        });
-
-        // 2. Fetch translations for the new language.
+    // Helper function to load translation files
+    async function loadTranslations(langCode) {
+        let translations = {};
+        let actualLangLoaded = langCode;
         try {
-            let translationsPath = `/_locales/${newLang.replace('-', '_')}/messages.json`;
+            let normalizedLangCode = langCode.replace('-', '_');
+            let translationsPath = chrome.runtime.getURL(`_locales/${normalizedLangCode}/messages.json`);
             let response = await fetch(translationsPath);
-
+            
             if (!response.ok) {
-                console.warn(`Translation file for ${newLang} not found (status: ${response.status}). Falling back to English.`);
-                translationsPath = '/_locales/en/messages.json';
+                console.warn(`Translation file for ${langCode} (as ${normalizedLangCode}) not found (status: ${response.status}). Falling back to English.`);
+                actualLangLoaded = 'en'; // Record that we are falling back to English
+                translationsPath = chrome.runtime.getURL('_locales/en/messages.json');
                 response = await fetch(translationsPath);
                 if (!response.ok) {
                     throw new Error(`Failed to load English fallback translations (status: ${response.status})`);
                 }
             }
-            
-            loadedTranslations = await response.json(); // Update the global translations
-            // console.log(`Translations loaded for ${newLang} (or fallback):`, loadedTranslations); // Optional: for debugging
-
-            // 3. Update the UI with the newly loaded translations.
-            updateUILanguage(newLang); 
-
-            const langName = uiLanguageSelect.options[uiLanguageSelect.selectedIndex].text;
-            // Get the translated status message template
-            let statusMessageTemplate = loadedTranslations.statusLanguageSetTo?.message;
-            if (!statusMessageTemplate) {
-                // Fallback if the key is somehow missing from loadedTranslations
-                console.warn("statusLanguageSetTo key missing from loaded translations. Using hardcoded fallback.");
-                statusMessageTemplate = (newLang === 'zh-CN' || newLang === 'zh_CN') ? "语言切换成：$langName$." : "Language set to $langName$.";
-            }
-            const formattedStatusMessage = statusMessageTemplate.replace('$langName$', langName);
-            showStatus(formattedStatusMessage);
-
+            translations = await response.json();
+            console.log(`Translations loaded for: ${actualLangLoaded}`);
         } catch (error) {
-            console.error("Failed to load translations or update UI on language change:", error);
-            showStatus("Error changing language.", true);
-            // Attempt to revert to English UI as a safe fallback if changing language fails
-            try {
-                const enResponse = await fetch('/_locales/en/messages.json');
-                if (enResponse.ok) {
-                    loadedTranslations = await enResponse.json();
-                    updateUILanguage('en'); 
-                }
-            } catch (fallbackError) {
-                console.error("Failed to load fallback English translations after error:", fallbackError);
-            }
+            console.error(`Failed to load translations for ${langCode} (attempted ${actualLangLoaded}):`, error);
         }
+        return translations;
+    }
+
+    // Add this new event listener for UI language changes
+    uiLanguageSelect.addEventListener('change', async function () {
+        const newLang = uiLanguageSelect.value;
+
+        await new Promise(resolve => {
+            chrome.storage.sync.set({ uiLanguage: newLang }, resolve);
+        });
+
+        loadedTranslations = await loadTranslations(newLang);
+
+        updateUILanguage(newLang); 
+
+        const langName = uiLanguageSelect.options[uiLanguageSelect.selectedIndex].text;
+        // Get the translated status message template
+        let statusMessagePrefix = loadedTranslations.statusLanguageSetTo?.message;
+        if (!statusMessagePrefix) {
+            // Fallback if the key is somehow missing
+            console.warn("statusLanguageSetTo key missing from loaded translations. Using hardcoded fallback.");
+            statusMessagePrefix = (newLang === 'zh-CN' || newLang === 'zh_CN') ? "语言切换成： " : "Language set to: ";
+        }
+        showStatus(statusMessagePrefix + langName);
     });
 
     // Function to update UI text based on language
@@ -380,7 +370,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Initial load function
     async function init() {
-        let langToLoad = defaultSettings.uiLanguage; // Default to 'en'
+        let langToLoad = defaultSettings.uiLanguage;
         try {
             const items = await new Promise(resolve => chrome.storage.sync.get('uiLanguage', resolve));
             if (items.uiLanguage) {
@@ -388,26 +378,21 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             uiLanguageSelect.value = langToLoad;
 
-            let translationsPath = `/_locales/${langToLoad.replace('-', '_')}/messages.json`;
-            let response = await fetch(translationsPath);
-            if (!response.ok) {
-                console.warn(`Initial translation file for ${langToLoad} not found. Falling back to English.`);
-                translationsPath = '/_locales/en/messages.json';
-                response = await fetch(translationsPath);
-                if (!response.ok) throw new Error(`Failed to load initial English fallback translations`);
-            }
-            loadedTranslations = await response.json();
-            // console.log(`Initial translations for '${langToLoad}' (or fallback 'en') loaded.`); // Optional: for debugging
+            loadedTranslations = await loadTranslations(langToLoad);
 
         } catch (error) {
-            console.error("Failed to load initial translations:", error);
-            // If all fails, loadedTranslations might be empty, updateUILanguage handles this
+            // This catch is now less likely to be hit if loadTranslations handles its own errors,
+            // but kept for safety for promise errors from chrome.storage.sync or unexpected issues.
+            console.error("Error during initialization sequence:", error);
         }
         
         populateProviderDropdown();
         loadSettings();
         
-        updateUILanguage(langToLoad);
+        // updateUILanguage is called with langToLoad. If loadTranslations fell back to English,
+        // loadedTranslations will be English, but newLang (in updateUILanguage) will still be the originally requested lang.
+        // This is fine as updateUILanguage uses the content of loadedTranslations primarily.
+        updateUILanguage(langToLoad); 
     }
 
     init();

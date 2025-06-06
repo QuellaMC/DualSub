@@ -16,7 +16,7 @@
   "verticalGapLabel": { "message": "Vertical Gap:" },
   "timeOffsetLabel": { "message": "Time Offset (sec):" },
   "uiLanguageLabel": { "message": "Language:" },
-  "statusLanguageSetTo": { "message": "Language set to $langName$." },
+  "statusLanguageSetTo": { "message": "Language set to: " },
   "statusDualEnabled": { "message": "Dual subtitles enabled." },
   "statusDualDisabled": { "message": "Dual subtitles disabled." }
 } 
