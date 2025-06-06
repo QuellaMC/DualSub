@@ -1,0 +1,22 @@
+{
+  "appName": { "message": "Disney+ 双字幕" },
+  "appDesc": { "message": "在 Disney+ 上显示双字幕。" },
+  "pageTitle": { "message": "Disney+ 双字幕" },
+  "h1Title": { "message": "Disney+ 双字幕" },
+  "enableSubtitlesLabel": { "message": "启用双字幕：" },
+  "translationSettingsLegend": { "message": "翻译设置" },
+  "providerLabel": { "message": "翻译服务提供商：" },
+  "targetLanguageLabel": { "message": "翻译成：" },
+  "batchSizeLabel": { "message": "批处理大小：" },
+  "requestDelayLabel": { "message": "请求延迟 (毫秒)：" },
+  "subtitleAppearanceTimingLegend": { "message": "字幕外观和时间" },
+  "displayOrderLabel": { "message": "显示顺序：" },
+  "layoutLabel": { "message": "布局：" },
+  "fontSizeLabel": { "message": "字体大小：" },
+  "verticalGapLabel": { "message": "垂直间距：" },
+  "timeOffsetLabel": { "message": "时间偏移 (秒)：" },
+  "uiLanguageLabel": { "message": "语言：" },
+  "statusLanguageSetTo": { "message": "语言切换成： " },
+  "statusDualEnabled": { "message": "双字幕已启用。" },
+  "statusDualDisabled": { "message": "双字幕已禁用。" }
+} 
