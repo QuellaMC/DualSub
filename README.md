@@ -1,10 +1,6 @@
 # Disney+ Dual Subtitles Chrome Extension
 
-**Version:** 0.7.5
-
-**Status:** Working
-
-**Update Time:** 2025/05/21
+![](https://img.shields.io/github/v/release/QuellaMC/DualSub.svg) ![](https://img.shields.io/github/last-commit/QuellaMC/DualSub.svg)
 
 ## Description
 
