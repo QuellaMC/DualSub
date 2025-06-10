@@ -3,124 +3,86 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Disney+ Dual Subtitles</title>
+    <title>DualSub</title>
     <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-    <div class="container">
-        <h1>Disney+ Dual Subtitles</h1>
-
-        <div class="setting">
-            <label for="uiLanguage">Language:</label>
-            <select id="uiLanguage">
-                <option value="en">English</option>
-                <option value="zh-CN">中文 (简体)</option>
-            </select>
+    <div class="header">
+        <div class="header-left">
+            <img src="../icons/icon48.png" alt="DualSub icon" class="header-icon">
+            <h1 data-i18n="h1Title">DualSub</h1>
         </div>
+        <div class="header-right">
+            <button id="openGithubLink" class="header-button" title="View on GitHub">
+                <svg xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="100" height="100" viewBox="0 0 30 30">
+                    <path d="M15,3C8.373,3,3,8.373,3,15c0,5.623,3.872,10.328,9.092,11.63C12.036,26.468,12,26.28,12,26.047v-2.051 c-0.487,0-1.303,0-1.508,0c-0.821,0-1.551-0.353-1.905-1.009c-0.393-0.729-0.461-1.844-1.435-2.526 c-0.289-0.227-0.069-0.486,0.264-0.451c0.615,0.174,1.125,0.596,1.605,1.222c0.478,0.627,0.703,0.769,1.596,0.769 c0.433,0,1.081-0.025,1.691-0.121c0.328-0.833,0.895-1.6,1.588-1.962c-3.996-0.411-5.903-2.399-5.903-5.098 c0-1.162,0.495-2.286,1.336-3.233C9.053,10.647,8.706,8.73,9.435,8c1.798,0,2.885,1.166,3.146,1.481C13.477,9.174,14.461,9,15.495,9 c1.036,0,2.024,0.174,2.922,0.483C18.675,9.17,19.763,8,21.565,8c0.732,0.731,0.381,2.656,0.102,3.594 c0.836,0.945,1.328,2.066,1.328,3.226c0,2.697-1.904,4.684-5.894,5.097C18.199,20.49,19,22.1,19,23.313v2.734 c0,0.104-0.023,0.179-0.035,0.268C23.641,24.676,27,20.236,27,15C27,8.373,21.627,3,15,3z"></path>
+                </svg>
+            </button>
+            <button id="openOptionsPage" class="header-button" title="Open Advanced Settings">
+                <svg xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="100" height="100" viewBox="0 0 50 50">
+                    <path d="M47.16,21.221l-5.91-0.966c-0.346-1.186-0.819-2.326-1.411-3.405l3.45-4.917c0.279-0.397,0.231-0.938-0.112-1.282 l-3.889-3.887c-0.347-0.346-0.893-0.391-1.291-0.104l-4.843,3.481c-1.089-0.602-2.239-1.08-3.432-1.427l-1.031-5.886 C28.607,2.35,28.192,2,27.706,2h-5.5c-0.49,0-0.908,0.355-0.987,0.839l-0.956,5.854c-1.2,0.345-2.352,0.818-3.437,1.412l-4.83-3.45 c-0.399-0.285-0.942-0.239-1.289,0.106L6.82,10.648c-0.343,0.343-0.391,0.883-0.112,1.28l3.399,4.863 c-0.605,1.095-1.087,2.254-1.438,3.46l-5.831,0.971c-0.482,0.08-0.836,0.498-0.836,0.986v5.5c0,0.485,0.348,0.9,0.825,0.985 l5.831,1.034c0.349,1.203,0.831,2.362,1.438,3.46l-3.441,4.813c-0.284,0.397-0.239,0.942,0.106,1.289l3.888,3.891 c0.343,0.343,0.884,0.391,1.281,0.112l4.87-3.411c1.093,0.601,2.248,1.078,3.445,1.424l0.976,5.861C21.3,47.647,21.717,48,22.206,48 h5.5c0.485,0,0.9-0.348,0.984-0.825l1.045-5.89c1.199-0.353,2.348-0.833,3.43-1.435l4.905,3.441 c0.398,0.281,0.938,0.232,1.282-0.111l3.888-3.891c0.346-0.347,0.391-0.894,0.104-1.292l-3.498-4.857 c0.593-1.08,1.064-2.222,1.407-3.408l5.918-1.039c0.479-0.084,0.827-0.5,0.827-0.985v-5.5C47.999,21.718,47.644,21.3,47.16,21.221z M25,32c-3.866,0-7-3.134-7-7c0-3.866,3.134-7,7-7s7,3.134,7,7C32,28.866,28.866,32,25,32z"></path>
+                </svg>
+            </button>
+        </div>
+    </div>
 
-        <div class="setting main-toggle">
-            <label for="enableSubtitles" class="main-toggle-label">Enable Dual Subtitles:</label>
+    <div class="card">
+        <div class="setting-item">
+            <label for="enableSubtitles" data-i18n="enableSubtitlesLabel">Enable Dual Subtitles</label>
             <label class="switch">
                 <input type="checkbox" id="enableSubtitles">
-                <span class="toggle-slider"></span>
+                <span class="slider"></span>
             </label>
         </div>
-
-        <fieldset id="translation-settings" class="settings-group collapsible collapsed">
-            <legend class="collapsible-legend">
-                <span class="legend-text">Translation Settings</span>
-                <span class="toggle-icon"></span>
-            </legend>
-            <div class="collapsible-content">
-                <div class="setting">
-                    <label for="translationProvider">Provider:</label>
-                    <select id="translationProvider">
-                        </select>
-                </div>
-
-                <div class="setting">
-                    <label for="targetLanguage">Translate to:</label>
-                    <select id="targetLanguage">
-                        <option value="en">English</option>
-                        <option value="es">Español (Spanish)</option>
-                        <option value="fr">Français (French)</option>
-                        <option value="de">Deutsch (German)</option>
-                        <option value="it">Italiano (Italian)</option>
-                        <option value="pt">Português (Portuguese)</option>
-                        <option value="ja">日本語 (Japanese)</option>
-                        <option value="ko">한국어 (Korean)</option>
-                        <option value="zh-CN">中文 (简体) (Chinese Simplified)</option>
-                        <option value="zh-TW">中文 (繁體) (Chinese Traditional)</option>
-                        <option value="ru">Русский (Russian)</option>
-                        <option value="ar">العربية (Arabic)</option>
-                        <option value="hi">हिन्दी (Hindi)</option>
-                    </select>
-                </div>
-
-                <div class="setting">
-                    <label for="translationBatchSize" title="Number of subtitle segments to translate in each batch. Lower is faster but may cause rate limiting.">Batch Size:</label>
-                    <div class="slider-container">
-                        <input type="range" id="translationBatchSize" min="1" max="10" step="1" value="3">
-                        <span id="translationBatchSizeValue" class="value-display">3</span>
-                    </div>
-                </div>
-
-                <div class="setting">
-                    <label for="translationDelay" title="Delay between translation requests in milliseconds. Higher values reduce chances of being rate-limited.">Request Delay (ms):</label>
-                    <div class="slider-container">
-                        <input type="range" id="translationDelay" min="0" max="500" step="50" value="150">
-                        <span id="translationDelayValue" class="value-display">150ms</span>
-                    </div>
-                </div>
-            </div>
-        </fieldset>
-
-        <fieldset id="appearance-settings" class="settings-group collapsible collapsed">
-            <legend class="collapsible-legend">
-                <span class="legend-text">Subtitle Appearance & Timing</span>
-                <span class="toggle-icon"></span>
-            </legend>
-            <div class="collapsible-content">
-                <div class="setting">
-                    <label for="subtitleLayoutOrder" title="Choose which subtitle appears first or on top.">Display Order:</label>
-                    <select id="subtitleLayoutOrder">
-                        <option value="original_top">Original First / Top</option>
-                        <option value="translation_top">Translation First / Top</option>
-                    </select>
-                </div>
-
-                <div class="setting">
-                    <label for="subtitleLayoutOrientation" title="Display subtitles stacked vertically (Top/Bottom) or side-by-side (Left/Right).">Layout:</label>
-                    <select id="subtitleLayoutOrientation">
-                        <option value="column">Top / Bottom</option>
-                        <option value="row">Left / Right</option>
-                    </select>
-                </div>
-
-                <div class="setting">
-                    <label for="subtitleFontSize" title="Adjust the size of subtitle text.">Font Size:</label>
-                    <div class="slider-container">
-                        <input type="range" id="subtitleFontSize" min="1.0" max="3.0" step="0.1" value="1.1">
-                        <span id="subtitleFontSizeValue" class="value-display">1.1vw</span>
-                    </div>
-                </div>
-
-                <div class="setting">
-                    <label for="subtitleGap" title="Gap between the original and translated subtitles (when using Top/Bottom layout).">Vertical Gap:</label>
-                    <div class="slider-container">
-                        <input type="range" id="subtitleGap" min="0" max="1" step="0.1" value="0.3">
-                        <span id="subtitleGapValue" class="value-display">0.3em</span>
-                    </div>
-                </div>
-                <div class="setting">
-                    <label for="subtitleTimeOffset" title="Adjust subtitle timing. Negative values make subtitles appear earlier, positive values later. E.g., -0.5 or 1.2">Time Offset (sec):</label>
-                    <input type="number" id="subtitleTimeOffset" step="0.1" value="0">
-                </div>
-            </div>
-        </fieldset>
-
-        <p id="statusMessage"></p>
     </div>
+
+    <div class="card">
+        <div class="setting-item">
+            <label for="targetLanguage" data-i18n="targetLanguageLabel">Translate to</label>
+            <select id="targetLanguage">
+                <!-- Options are now populated by popup.js -->
+            </select>
+        </div>
+    </div>
+
+    <details class="accordion-card">
+        <summary class="accordion-header" data-i18n="subtitleAppearanceTimingLegend">
+            Subtitle Appearance & Timing
+        </summary>
+        <div class="accordion-body">
+            <div class="setting-item">
+                <label for="subtitleLayoutOrder" data-i18n="displayOrderLabel">Display Order</label>
+                <select id="subtitleLayoutOrder">
+                </select>
+            </div>
+            <div class="setting-item">
+                <label for="subtitleLayoutOrientation" data-i18n="layoutLabel">Layout</label>
+                <select id="subtitleLayoutOrientation">
+                </select>
+            </div>
+             <div class="setting-item-slider">
+                <label for="subtitleFontSize" data-i18n="fontSizeLabel">Font Size</label>
+                <div class="slider-control">
+                    <input type="range" id="subtitleFontSize" min="1.0" max="3.0" step="0.1" value="1.1">
+                    <span id="subtitleFontSizeValue" class="slider-value">1.1vw</span>
+                </div>
+            </div>
+            <div class="setting-item-slider">
+                <label for="subtitleGap" data-i18n="verticalGapLabel">Vertical Gap</label>
+                <div class="slider-control">
+                    <input type="range" id="subtitleGap" min="0" max="1" step="0.1" value="0.3">
+                    <span id="subtitleGapValue" class="slider-value">0.3em</span>
+                </div>
+            </div>
+            <div class="setting-item">
+                <label for="subtitleTimeOffset" data-i18n="timeOffsetLabel">Time Offset (sec)</label>
+                <input type="number" id="subtitleTimeOffset" step="0.1" value="0.3">
+            </div>
+        </div>
+    </details>
+
+    <p id="statusMessage"></p>
+
     <script src="popup.js"></script>
 </body>
 </html>

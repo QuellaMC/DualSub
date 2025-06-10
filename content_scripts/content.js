@@ -1,6 +1,6 @@
 // disneyplus-dualsub-chrome-extension/content_scripts/content.js
 
-console.log("Disney+ Dual Subtitles content script loaded (v8.0.1 - Dynamic Import).");
+console.log("Disney+ Dual Subtitles content script loaded.");
 
 // --- BEGIN LOCALIZED ERROR MESSAGES ---
 const localizedErrorMessages = {
@@ -218,69 +218,50 @@ function formatSubtitleTextForDisplay(text) {
 
 function parseVTT(vttString) {
     if (!vttString || !vttString.trim().toUpperCase().startsWith("WEBVTT")) {
-        console.warn("Content: Invalid or empty VTT string. Not WEBVTT. Starts with:", vttString ? vttString.substring(0,30) : "null");
+        console.warn("Content: Invalid or empty VTT string provided for parsing.");
         return [];
     }
     const cues = [];
-    const lines = vttString.split(/\r?\n/);
-    let i = 0;
-    // Skip WEBVTT header and initial blank lines
-    while (i < lines.length && (lines[i].trim().toUpperCase() === "WEBVTT" || lines[i].trim() === "")) {
-        i++;
-    }
-    // Skip metadata headers until a timestamp line or end of file
-    while (i < lines.length && lines[i].trim() !== "" && !lines[i].includes("-->")) {
-        i++;
-        // Skip blank lines between metadata headers
-        while (i < lines.length && lines[i].trim() === "") {
-            i++;
-        }
-    }
+    // Split by double newlines to separate cues, then filter out empty parts.
+    const cueBlocks = vttString.split(/\r?\n\r?\n/).filter(block => block.trim() !== '');
 
-    for (; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (line === "") continue;
-        let cueId = null;
-        // Check for cue identifier line
-        if (!line.includes("-->")) {
-            if (i + 1 < lines.length && lines[i+1].trim().includes("-->")) {
-                cueId = line;
-                i++; // Move to the timestamp line
-            } else {
-                // Not a cue identifier and not a timestamp, skip
-                continue;
-            }
+    // A valid cue block must contain '-->'.
+    for (const block of cueBlocks) {
+        if (!block.includes('-->')) {
+            continue; // Skip WEBVTT header or other metadata blocks
         }
-        const timestampLine = lines[i] ? lines[i].trim() : "";
-        if (!timestampLine.includes("-->")) {
-            // Should be a timestamp line here, if not, skip this potential cue
-            continue;
-        }
-        const timeParts = timestampLine.split(" --> ");
-        if (timeParts.length < 2) {
-            // Malformed timestamp line
-            continue;
-        }
-        const startTimeStr = timeParts[0].trim();
-        const endTimeAndStyle = timeParts[1].split(/ (.*)/s); // Split to separate end time from style info
-        const endTimeStr = endTimeAndStyle[0].trim();
+
+        const lines = block.split(/\r?\n/);
+        let timestampLine = '';
         let textLines = [];
-        i++; // Move to the first line of cue text
-        while (i < lines.length && lines[i].trim() !== "" && !lines[i].includes("-->")) {
-            textLines.push(lines[i].trim());
-            i++;
+
+        // The first line could be a cue ID or the timestamp itself.
+        if (lines[0].includes('-->')) {
+            timestampLine = lines[0];
+            textLines = lines.slice(1);
+        } else if (lines.length > 1 && lines[1].includes('-->')) {
+            // The first line is a cue ID (which we don't use).
+            timestampLine = lines[1];
+            textLines = lines.slice(2);
+        } else {
+            continue; // Malformed block.
         }
-        // If we read past the text into the next cue's timestamp or a blank line, step back.
-        if (i < lines.length && (lines[i].trim() === "" || lines[i].includes("-->"))) {
-            i--; // Adjust index to correctly start the next cue iteration
-        }
-        if (textLines.length > 0) {
-            cues.push({
-                id: cueId,
-                start: parseTimestampToSeconds(startTimeStr),
-                end: parseTimestampToSeconds(endTimeStr),
-                text: textLines.join(" ").replace(/<[^>]*>/g, "").replace(/\s+/g, ' ').trim() // Remove HTML tags and extra spaces
-            });
+        
+        const timeParts = timestampLine.split(" --> ");
+        if (timeParts.length < 2) continue; // Malformed timestamp line.
+        
+        const startTimeStr = timeParts[0].trim();
+        // The end time might have styling info after it, which we strip.
+        const endTimeStr = timeParts[1].split(' ')[0].trim();
+
+        const start = parseTimestampToSeconds(startTimeStr);
+        const end = parseTimestampToSeconds(endTimeStr);
+
+        // Join text lines, remove VTT tags, and normalize whitespace.
+        const text = textLines.join(" ").replace(/<[^>]*>/g, "").replace(/\s+/g, ' ').trim();
+
+        if (text && !isNaN(start) && !isNaN(end)) {
+            cues.push({ start, end, text });
         }
     }
     return cues;
@@ -1081,30 +1062,30 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             break;
     }
 
-    // If a display update is needed and subtitles are active
-    // Also ensure activePlatform exists and we are on a player page
-    if (needsDisplayUpdate && subtitlesActive && activePlatform && activePlatform.isPlayerPageActive() && activePlatform.getVideoElement()) {
+    // If a display update is needed, subtitles are active, and the platform is ready.
+    if (needsDisplayUpdate && subtitlesActive && activePlatform?.isPlayerPageActive()) {
         const videoElement = activePlatform.getVideoElement();
-        const sliderElement = activePlatform.getProgressBarElement();
-        let timeToUpdate = videoElement.currentTime; // Default to video's currentTime
-
-        // Try to get a more accurate time from progress bar if available
-        if (sliderElement && progressBarObserver) {
-            const nowStr = sliderElement.getAttribute('aria-valuenow');
-            const maxStr = sliderElement.getAttribute('aria-valuemax');
-            if (nowStr && maxStr) {
-                const valuenow = parseFloat(nowStr);
-                const valuemax = parseFloat(maxStr);
-                const videoDuration = videoElement.duration;
-                if (!isNaN(valuenow) && !isNaN(valuemax) && valuemax > 0 && !isNaN(videoDuration) && videoDuration > 0) {
-                    timeToUpdate = (valuenow / valuemax) * videoDuration;
+        if (videoElement) {
+            let timeToUpdate = videoElement.currentTime;
+            // Try to get a more accurate time from progress bar if available and reliable.
+            const sliderElement = progressBarObserver ? activePlatform.getProgressBarElement() : null;
+            if (sliderElement) {
+                const nowStr = sliderElement.getAttribute('aria-valuenow');
+                const maxStr = sliderElement.getAttribute('aria-valuemax');
+                if (nowStr && maxStr) {
+                    const valuenow = parseFloat(nowStr);
+                    const valuemax = parseFloat(maxStr);
+                    const videoDuration = videoElement.duration;
+                    if (!isNaN(valuenow) && !isNaN(valuemax) && valuemax > 0 && !isNaN(videoDuration) && videoDuration > 0) {
+                        timeToUpdate = (valuenow / valuemax) * videoDuration;
+                    }
                 }
             }
+            updateSubtitles(timeToUpdate);
         }
-        updateSubtitles(timeToUpdate);
     }
 
-    return actionHandled; // Return true if the message was handled (sync or async via sendResponse)
+    return actionHandled;
 });
 
 (async () => {
@@ -1167,7 +1148,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
          if (subtitlesActive && DisneyPlusPlatformModule) { // Only init if module loaded
             await initializeActivePlatform();
          } else if (!DisneyPlusPlatformModule) {
-            console.error("Content: Fallback settings applied, but platform module failed. Cannot initialize platform.");
+            console.error("Content: Fallback settings applied, but platform module failed to load. Cannot initialize.");
          }
     }
 })();
@@ -1217,4 +1198,4 @@ const pageObserver = new MutationObserver((mutationsList, observerInstance) => {
 });
 pageObserver.observe(document.body, { childList: true, subtree: true });
 
-console.log("Disney+ Dual Subtitles content script fully initialized (v8.0.1 - Dynamic Import).");
+console.log("Disney+ Dual Subtitles content script fully initialized.");
