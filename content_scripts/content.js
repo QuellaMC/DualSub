@@ -188,19 +188,14 @@ let translatedSubtitleElement = null;
 let subtitlesActive = true;
 let subtitleQueue = [];
 let processingQueue = false;
-
-// Settings object to hold all user-configurable values
-let settings = {
-    subtitlesEnabled: true,
-    targetLanguage: 'zh-CN',
-    subtitleTimeOffset: 0,
-    subtitleLayoutOrder: 'original_top',
-    subtitleLayoutOrientation: 'column',
-    subtitleFontSize: 1.1,
-    subtitleGap: 0.3,
-    translationBatchSize: 3,
-    translationDelay: 150,
-};
+let userTargetLanguage = 'es';
+let userSubtitleTimeOffset = 0;
+let userSubtitleLayoutOrder = 'original_top';
+let userSubtitleOrientation = 'column';
+let userSubtitleFontSize = 1.7;
+let userSubtitleGap = 0;
+let userTranslationBatchSize = 1;
+let userTranslationDelay = 100;
 
 let timeUpdateListener = null;
 let progressBarObserver = null;
@@ -365,7 +360,7 @@ function applySubtitleStyling() {
     translatedSubtitleElement.style.textOverflow = 'clip';
 
     // Container layout
-    subtitleContainer.style.flexDirection = settings.subtitleLayoutOrientation;
+    subtitleContainer.style.flexDirection = userSubtitleOrientation;
     subtitleContainer.style.width = '94%';
     subtitleContainer.style.justifyContent = 'center';
     subtitleContainer.style.alignItems = 'center';
@@ -377,16 +372,16 @@ function applySubtitleStyling() {
     translatedSubtitleElement.style.marginRight = '0';
 
     // Font size
-    originalSubtitleElement.style.fontSize = `${settings.subtitleFontSize}vw`;
-    translatedSubtitleElement.style.fontSize = `${settings.subtitleFontSize}vw`;
+    originalSubtitleElement.style.fontSize = `${userSubtitleFontSize}vw`;
+    translatedSubtitleElement.style.fontSize = `${userSubtitleFontSize}vw`;
 
     // Clear and re-add elements in correct order
     while (subtitleContainer.firstChild) {
         subtitleContainer.removeChild(subtitleContainer.firstChild);
     }
 
-    const firstElement = (settings.subtitleLayoutOrder === 'translation_top') ? translatedSubtitleElement : originalSubtitleElement;
-    const secondElement = (settings.subtitleLayoutOrder === 'translation_top') ? originalSubtitleElement : translatedSubtitleElement;
+    const firstElement = (userSubtitleLayoutOrder === 'translation_top') ? translatedSubtitleElement : originalSubtitleElement;
+    const secondElement = (userSubtitleLayoutOrder === 'translation_top') ? originalSubtitleElement : translatedSubtitleElement;
 
     // Common styles for subtitle elements
     [firstElement, secondElement].forEach(el => {
@@ -400,10 +395,10 @@ function applySubtitleStyling() {
     subtitleContainer.appendChild(secondElement);
 
     // Orientation-specific styles
-    if (settings.subtitleLayoutOrientation === 'column') { // Top/Bottom
+    if (userSubtitleOrientation === 'column') { // Top/Bottom
         firstElement.style.maxWidth = '100%';
         secondElement.style.maxWidth = '100%';
-        firstElement.style.marginBottom = `${settings.subtitleGap}em`;
+        firstElement.style.marginBottom = `${userSubtitleGap}em`;
         // secondElement marginBottom is already 0
     } else { // 'row' (Left/Right)
         firstElement.style.maxWidth = 'calc(50% - 1%)'; // Account for gap
@@ -411,7 +406,7 @@ function applySubtitleStyling() {
         firstElement.style.verticalAlign = 'top';
         secondElement.style.verticalAlign = 'top';
 
-        if (settings.subtitleLayoutOrder === 'translation_top') { // Element on left gets right margin for gap
+        if (userSubtitleLayoutOrder === 'translation_top') { // Element on left gets right margin for gap
             translatedSubtitleElement.style.marginRight = '2%';
         } else {
             originalSubtitleElement.style.marginRight = '2%';
@@ -516,7 +511,7 @@ function ensureSubtitleContainer() {
         color: 'white',
         backgroundColor: 'rgba(0, 0, 0, 0.6)',
         padding: '0.2em 0.5em',
-        fontSize: `${settings.subtitleFontSize}vw`,
+        fontSize: `${userSubtitleFontSize}vw`,
         textShadow: '1px 1px 2px black, 0 0 3px black',
         borderRadius: '4px',
         lineHeight: '1.3',
@@ -536,7 +531,7 @@ function ensureSubtitleContainer() {
         color: '#00FFFF', // Cyan
         backgroundColor: 'rgba(0, 0, 0, 0.6)',
         padding: '0.2em 0.5em',
-        fontSize: `${settings.subtitleFontSize}vw`,
+        fontSize: `${userSubtitleFontSize}vw`,
         textShadow: '1px 1px 2px black, 0 0 3px black',
         borderRadius: '4px',
         lineHeight: '1.3',
@@ -984,134 +979,133 @@ function clearSubtitleDOM() {
     }
 }
 
-function handleSettingChange(key, value) {
-    console.log(`Content: Applying setting change for ${key}:`, value);
-    const oldValue = settings[key];
-    settings[key] = value;
-    let needsRetranslation = false;
-    let needsStylingUpdate = false;
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    let needsDisplayUpdate = false;
+    let actionHandled = true;
 
-    switch (key) {
-        case 'subtitlesEnabled':
-            if (value) {
-                showSubtitleContainer();
-                initializeActivePlatform();
-            } else {
+    switch (request.action) {
+        case "toggleSubtitles":
+            subtitlesActive = request.enabled;
+            console.log(`Content: Subtitle active state changed to ${subtitlesActive}`);
+            if (!subtitlesActive) {
                 hideSubtitleContainer();
+                clearSubtitlesDisplayAndQueue(true);
+                if (activePlatform) activePlatform.cleanup();
+                activePlatform = null;
+            } else {
+                if (!activePlatform) {
+                    initializeActivePlatform().then(() => {
+                        if (activePlatform && activePlatform.isPlayerPageActive()) { // Double check after async init
+                            ensureSubtitleContainer();
+                            showSubtitleContainer();
+                            needsDisplayUpdate = true;
+                        } else if (activePlatform) {
+                            console.log("Content toggleSubtitles: Platform initialized, but not on player page. UI setup deferred.");
+                        } else {
+                             console.log("Content toggleSubtitles: Platform could not be initialized.");
+                        }
+                    });
+                } else if (activePlatform.isPlayerPageActive()) { // If platform already exists, check if on player page
+                     ensureSubtitleContainer();
+                     showSubtitleContainer();
+                     needsDisplayUpdate = true;
+                } else {
+                    console.log("Content toggleSubtitles: Platform active, but not on player page. UI setup deferred.");
+                }
             }
+            sendResponse({ success: true, subtitlesEnabled: subtitlesActive });
             break;
-        case 'targetLanguage':
-            if (oldValue !== value) {
-                needsRetranslation = true;
+        case "changeLanguage":
+            userTargetLanguage = request.targetLanguage;
+            console.log("Content: Target language changed to:", userTargetLanguage);
+            const currentContextVideoIdLang = activePlatform ? activePlatform.getCurrentVideoId() : null;
+            // Clear existing translations for the current video
+            subtitleQueue.forEach(cue => {
+                if(cue.videoId === currentContextVideoIdLang) cue.translated = null;
+            });
+            if (subtitlesActive && currentContextVideoIdLang && subtitleQueue.some(c => c.videoId === currentContextVideoIdLang && c.original)) {
+                if (subtitleContainer) showSubtitleContainer(); // Ensure visible
+                processSubtitleQueue(); // Start translating with new language
             }
+            sendResponse({ success: true, newLanguage: userTargetLanguage });
             break;
-        case 'translationBatchSize':
-        case 'translationDelay':
+        case "changeTimeOffset":
+            userSubtitleTimeOffset = request.timeOffset;
+            console.log("Content: Time offset changed to:", userSubtitleTimeOffset, "s");
+            needsDisplayUpdate = true;
+            sendResponse({ success: true, newTimeOffset: userSubtitleTimeOffset });
             break;
-        case 'subtitleTimeOffset':
+        case "changeLayoutOrder":
+            userSubtitleLayoutOrder = request.layoutOrder;
+            console.log("Content: Layout order changed to:", userSubtitleLayoutOrder);
+            if (subtitleContainer) applySubtitleStyling();
+            needsDisplayUpdate = true; // Update display with new order
+            sendResponse({ success: true, newLayoutOrder: userSubtitleLayoutOrder });
             break;
-        case 'subtitleLayoutOrder':
-        case 'subtitleLayoutOrientation':
-        case 'subtitleFontSize':
-        case 'subtitleGap':
-            needsStylingUpdate = true;
+        case "changeLayoutOrientation":
+            userSubtitleOrientation = request.layoutOrientation;
+            console.log("Content: Layout orientation changed to:", userSubtitleOrientation);
+            if (subtitleContainer) applySubtitleStyling();
+            needsDisplayUpdate = true; // Update display with new orientation
+            sendResponse({ success: true, newLayoutOrientation: userSubtitleOrientation });
+            break;
+        case "changeFontSize":
+            userSubtitleFontSize = request.fontSize;
+            console.log("Content: Font size changed to:", userSubtitleFontSize, "vw");
+            // Apply directly, applySubtitleStyling will also pick it up if needed
+            if (originalSubtitleElement) originalSubtitleElement.style.fontSize = `${userSubtitleFontSize}vw`;
+            if (translatedSubtitleElement) translatedSubtitleElement.style.fontSize = `${userSubtitleFontSize}vw`;
+            // No need for full applySubtitleStyling here unless other layout aspects depend on font size in a complex way
+            needsDisplayUpdate = true;
+            sendResponse({ success: true, newFontSize: userSubtitleFontSize });
+            break;
+        case "changeGap":
+            userSubtitleGap = request.gap;
+            console.log("Content: Subtitle gap changed to:", userSubtitleGap, "em");
+            if (subtitleContainer) applySubtitleStyling(); // Gap change requires full style reapplication
+            needsDisplayUpdate = true;
+            sendResponse({ success: true, newGap: userSubtitleGap });
+            break;
+        case "changeBatchSize":
+            userTranslationBatchSize = request.batchSize;
+            console.log("Content: Translation batch size changed to:", userTranslationBatchSize);
+            sendResponse({ success: true, newBatchSize: userTranslationBatchSize });
+            break;
+        case "changeDelay":
+            userTranslationDelay = request.delay;
+            console.log("Content: Translation delay changed to:", userTranslationDelay, "ms");
+            sendResponse({ success: true, newDelay: userTranslationDelay });
+            break;
+        default:
+            actionHandled = false; // Not for us
             break;
     }
 
-    if (needsRetranslation) {
-        console.log("Content: Target language changed, re-translating subtitles.");
-        subtitleQueue.forEach(cue => cue.translated = null);
-        processSubtitleQueue();
-    }
-
-    if (needsStylingUpdate) {
-        console.log("Content: Style setting changed, applying new styles.");
-        applySubtitleStyling();
-    }
-
-    if (settings.subtitlesEnabled && activePlatform && activePlatform.isPlayerPageActive()) {
+    // If a display update is needed and subtitles are active
+    // Also ensure activePlatform exists and we are on a player page
+    if (needsDisplayUpdate && subtitlesActive && activePlatform && activePlatform.isPlayerPageActive() && activePlatform.getVideoElement()) {
         const videoElement = activePlatform.getVideoElement();
-        if (videoElement) {
-            updateSubtitles(videoElement.currentTime);
+        const sliderElement = activePlatform.getProgressBarElement();
+        let timeToUpdate = videoElement.currentTime; // Default to video's currentTime
+
+        // Try to get a more accurate time from progress bar if available
+        if (sliderElement && progressBarObserver) {
+            const nowStr = sliderElement.getAttribute('aria-valuenow');
+            const maxStr = sliderElement.getAttribute('aria-valuemax');
+            if (nowStr && maxStr) {
+                const valuenow = parseFloat(nowStr);
+                const valuemax = parseFloat(maxStr);
+                const videoDuration = videoElement.duration;
+                if (!isNaN(valuenow) && !isNaN(valuemax) && valuemax > 0 && !isNaN(videoDuration) && videoDuration > 0) {
+                    timeToUpdate = (valuenow / valuemax) * videoDuration;
+                }
+            }
         }
-    }
-}
-
-// Listen for messages from the popup or background script
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    console.log("Content: Message received", message);
-
-    const action = message.action;
-    let key, value;
-
-    const actionToSettingMap = {
-        toggleSubtitles: 'subtitlesEnabled',
-        changeLanguage: 'targetLanguage',
-        changeTimeOffset: 'subtitleTimeOffset',
-        changeLayoutOrder: 'subtitleLayoutOrder',
-        changeLayoutOrientation: 'subtitleLayoutOrientation',
-        changeFontSize: 'subtitleFontSize',
-        changeGap: 'subtitleGap',
-        changeBatchSize: 'translationBatchSize',
-        changeDelay: 'translationDelay',
-    };
-    
-    const valueKeyMap = {
-        toggleSubtitles: 'enabled',
-        changeLanguage: 'targetLanguage',
-        changeTimeOffset: 'timeOffset',
-        changeLayoutOrder: 'layoutOrder',
-        changeLayoutOrientation: 'layoutOrientation',
-        changeFontSize: 'fontSize',
-        changeGap: 'gap',
-        changeBatchSize: 'batchSize',
-        changeDelay: 'delay',
-    };
-
-    if (action === 'settingChanged') {
-        key = message.key;
-        value = message.value;
-    } else if (actionToSettingMap[action]) {
-        key = actionToSettingMap[action];
-        const valueKey = valueKeyMap[action];
-        value = message[valueKey];
-    } else if (action === 'requestSubtitleData') {
-        if (activePlatform) {
-            activePlatform.rescanForSubtitles();
-            sendResponse({success: true});
-        } else {
-            sendResponse({success: false, error: "No active platform"});
-        }
-        return true;
+        updateSubtitles(timeToUpdate);
     }
 
-    if (key !== undefined) {
-        handleSettingChange(key, value);
-        sendResponse({success: true, message: `Setting ${key} applied.`});
-    }
-
-    return true; 
+    return actionHandled; // Return true if the message was handled (sync or async via sendResponse)
 });
-
-
-function loadInitialSettings() {
-    const settingKeys = Object.keys(settings);
-    chrome.storage.sync.get(settingKeys, (loadedSettings) => {
-        // Filter out undefined values from storage
-        const validSettings = Object.entries(loadedSettings)
-            .filter(([key, value]) => value !== undefined)
-            .reduce((obj, [key, value]) => ({ ...obj, [key]: value }), {});
-
-        settings = { ...settings, ...validSettings };
-        console.log("Content: Initial settings loaded:", settings);
-
-        if (settings.subtitlesEnabled) {
-            initializeActivePlatform();
-        } else {
-            console.log("Content: Subtitles are disabled on load.");
-        }
-    });
-}
 
 (async () => {
     try {

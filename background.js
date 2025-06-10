@@ -28,54 +28,6 @@ chrome.storage.sync.get('selectedProvider', (data) => {
     }
 });
 
-// Listen for changes in settings
-chrome.storage.onChanged.addListener((changes, namespace) => {
-    if (namespace === 'sync') {
-        for (let [key, { oldValue, newValue }] of Object.entries(changes)) {
-            console.log(
-                `Background: Storage key "${key}" in namespace "${namespace}" changed.`,
-                `Old value was "${oldValue}", new value is "${newValue}".`
-            );
-
-            // Update local state for the background script
-            if (key === 'selectedProvider') {
-                if (translationProviders[newValue]) {
-                    currentTranslationProviderId = newValue;
-                    console.log(`Background: Translation provider changed to ${translationProviders[currentTranslationProviderId].name}`);
-                }
-            }
-
-            // Forward relevant setting changes to content scripts
-            // Note: The key sent to the content script from popup.js was different from the storage key.
-            // e.g., popup.js sent `changeLanguage` with `targetLanguage` as the key in the payload.
-            // Here we send a generic 'settingChanged' action. The content script will need to handle this.
-            const settingsToForward = [
-                'subtitlesEnabled', 'targetLanguage', 'subtitleTimeOffset',
-                'subtitleLayoutOrder', 'subtitleLayoutOrientation', 'subtitleFontSize',
-                'subtitleGap', 'translationBatchSize', 'translationDelay'
-            ];
-
-            if (settingsToForward.includes(key)) {
-                chrome.tabs.query({ url: "*://*.disneyplus.com/*" }, (tabs) => {
-                    tabs.forEach(tab => {
-                        chrome.tabs.sendMessage(tab.id, {
-                            action: 'settingChanged',
-                            key: key,
-                            value: newValue
-                        }, (response) => {
-                            if (chrome.runtime.lastError) {
-                                // This is expected if the content script is not on the page, so we don't need to log it as a warning.
-                            } else {
-                                console.log(`Background: Sent setting update ${key}=${newValue} to tab ${tab.id}. Response:`, response);
-                            }
-                        });
-                    });
-                });
-            }
-        }
-    }
-});
-
 // Initialize default settings on installation
 chrome.runtime.onInstalled.addListener(() => {
     const allSettingKeys = [
@@ -367,5 +319,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             sendResponse({ success: false, message: `Unknown provider: ${newProviderId}` });
         }
         return true;
+    }
+});
+
+chrome.storage.onChanged.addListener((changes, namespace) => {
+    if (namespace === 'sync') {
+        for (let [key, { oldValue, newValue }] of Object.entries(changes)) {
+            console.log(
+                `Background: Storage key "${key}" changed. Old value:`, oldValue, `, New value:`, newValue
+            );
+        }
     }
 });
