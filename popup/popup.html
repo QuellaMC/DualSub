@@ -8,14 +8,13 @@
 </head>
 <body>
     <div class="container">
-        <h1>Disney+ Dual Subtitles</h1>
-
-        <div class="setting">
-            <label for="uiLanguage">Language:</label>
-            <select id="uiLanguage">
-                <option value="en">English</option>
-                <option value="zh-CN">中文 (简体)</option>
-            </select>
+        <div class="header">
+            <h1>Disney+ Dual Subtitles</h1>
+            <button id="openOptionsPage" class="settings-btn" title="Open full settings page">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+                    <path d="M19.14,12.94a2,2,0,0,0-1.26-1.58,1,1,0,0,1-.59-1.61,7.35,7.35,0,0,0-1-1.54,1,1,0,0,1,.12-1.4,5.4,5.4,0,0,0-1-1.25,1,1,0,0,1-1.41.12,7.35,7.35,0,0,0-1.54-1,1,1,0,0,1-1.61-.59,2,2,0,0,0-1.58-1.26,1,1,0,0,1-1.12-1,4,4,0,0,0-1.88,0,1,1,0,0,1-1.12,1,2,2,0,0,0-1.58,1.26,1,1,0,0,1-1.61.59,7.35,7.35,0,0,0-1.54,1,1,1,0,0,1-1.4-.12,5.4,5.4,0,0,0-1.25,1,1,1,0,0,1,.12,1.4,7.35,7.35,0,0,0,1,1.54,1,1,0,0,1,.59,1.61,2,2,0,0,0,1.26,1.58,1,1,0,0,1,1.12,1,4,4,0,0,0,0,1.88,1,1,0,0,1-1.12,1,2,2,0,0,0-1.26,1.58,1,1,0,0,1-.59,1.61,7.35,7.35,0,0,0-1,1.54,1,1,0,0,1-.12,1.4,5.4,5.4,0,0,0,1,1.25,1,1,0,0,1,1.41-.12,7.35,7.35,0,0,0,1.54,1,1,1,0,0,1,1.61.59,2,2,0,0,0,1.58,1.26,1,1,0,0,1,1.12,1,4,4,0,0,0,1.88,0,1,1,0,0,1,1.12-1,2,2,0,0,0,1.58-1.26,1,1,0,0,1,1.61-.59,7.35,7.35,0,0,0,1.54-1,1,1,0,0,1,1.4.12,5.4,5.4,0,0,0,1.25-1,1,1,0,0,1-.12-1.4,7.35,7.35,0,0,0-1-1.54,1,1,0,0,1-.59-1.61,2,2,0,0,0,1.26-1.58,1,1,0,0,1,1-1.12,4,4,0,0,0,0-1.88A1,1,0,0,1,19.14,12.94ZM12,15.5A3.5,3.5,0,1,1,15.5,12,3.5,3.5,0,0,1,12,15.5Z"/>
+                </svg>
+            </button>
         </div>
 
         <div class="setting main-toggle">
@@ -26,59 +25,9 @@
             </label>
         </div>
 
-        <fieldset id="translation-settings" class="settings-group collapsible collapsed">
-            <legend class="collapsible-legend">
-                <span class="legend-text">Translation Settings</span>
-                <span class="toggle-icon"></span>
-            </legend>
-            <div class="collapsible-content">
-                <div class="setting">
-                    <label for="translationProvider">Provider:</label>
-                    <select id="translationProvider">
-                        </select>
-                </div>
-
-                <div class="setting">
-                    <label for="targetLanguage">Translate to:</label>
-                    <select id="targetLanguage">
-                        <option value="en">English</option>
-                        <option value="es">Español (Spanish)</option>
-                        <option value="fr">Français (French)</option>
-                        <option value="de">Deutsch (German)</option>
-                        <option value="it">Italiano (Italian)</option>
-                        <option value="pt">Português (Portuguese)</option>
-                        <option value="ja">日本語 (Japanese)</option>
-                        <option value="ko">한국어 (Korean)</option>
-                        <option value="zh-CN">中文 (简体) (Chinese Simplified)</option>
-                        <option value="zh-TW">中文 (繁體) (Chinese Traditional)</option>
-                        <option value="ru">Русский (Russian)</option>
-                        <option value="ar">العربية (Arabic)</option>
-                        <option value="hi">हिन्दी (Hindi)</option>
-                    </select>
-                </div>
-
-                <div class="setting">
-                    <label for="translationBatchSize" title="Number of subtitle segments to translate in each batch. Lower is faster but may cause rate limiting.">Batch Size:</label>
-                    <div class="slider-container">
-                        <input type="range" id="translationBatchSize" min="1" max="10" step="1" value="3">
-                        <span id="translationBatchSizeValue" class="value-display">3</span>
-                    </div>
-                </div>
-
-                <div class="setting">
-                    <label for="translationDelay" title="Delay between translation requests in milliseconds. Higher values reduce chances of being rate-limited.">Request Delay (ms):</label>
-                    <div class="slider-container">
-                        <input type="range" id="translationDelay" min="0" max="500" step="50" value="150">
-                        <span id="translationDelayValue" class="value-display">150ms</span>
-                    </div>
-                </div>
-            </div>
-        </fieldset>
-
-        <fieldset id="appearance-settings" class="settings-group collapsible collapsed">
+        <fieldset id="appearance-settings" class="settings-group collapsible">
             <legend class="collapsible-legend">
                 <span class="legend-text">Subtitle Appearance & Timing</span>
-                <span class="toggle-icon"></span>
             </legend>
             <div class="collapsible-content">
                 <div class="setting">

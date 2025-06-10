@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DualSub Settings</title>
+    <link rel="stylesheet" href="options.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>DualSub Settings</h1>
+            <p>Fine-tune your dual language subtitle experience.</p>
+        </header>
+
+        <main class="main-content">
+            <nav class="sidebar">
+                <ul>
+                    <li><a href="#general" class="active">General</a></li>
+                    <li><a href="#translation" class="active">Translation</a></li>
+                    <li><a href="#appearance">Appearance</a></li>
+                    <li><a href="#timing">Timing & Sync</a></li>
+                    <li><a href="#advanced">Advanced</a></li>
+                    <li><a href="#about">About</a></li>
+                </ul>
+            </nav>
+
+            <div class="settings-sections">
+                <section id="general" class="settings-section">
+                    <h2>General</h2>
+                    <div class="setting-card">
+                        <h3>UI Language</h3>
+                        <p>Select the display language for the extension's interface.</p>
+                        <div class="setting-input">
+                            <select id="uiLanguage">
+                                <option value="en">English</option>
+                                <option value="zh-CN">中文 (简体)</option>
+                            </select>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="translation" class="settings-section">
+                    <h2>Translation</h2>
+                    <div class="setting-card">
+                        <h3>Translation Provider</h3>
+                        <p>Choose your preferred translation service.</p>
+                        <div class="setting-input">
+                            <select id="translationProvider">
+                                <!-- Options will be populated by JS -->
+                            </select>
+                        </div>
+                    </div>
+                    <div class="setting-card" id="provider-specific-settings">
+                        <!-- Provider-specific settings will be injected here -->
+                    </div>
+                     <div class="setting-card">
+                        <h3>Target Language</h3>
+                        <p>Choose the language to translate the subtitles into.</p>
+                        <div class="setting-input">
+                            <select id="targetLanguage">
+                                <option value="en">English</option>
+                                <option value="es">Español (Spanish)</option>
+                                <option value="fr">Français (French)</option>
+                                <option value="de">Deutsch (German)</option>
+                                <option value="it">Italiano (Italian)</option>
+                                <option value="pt">Português (Portuguese)</option>
+                                <option value="ja">日本語 (Japanese)</option>
+                                <option value="ko">한국어 (Korean)</option>
+                                <option value="zh-CN">中文 (简体) (Chinese Simplified)</option>
+                                <option value="zh-TW">中文 (繁體) (Chinese Traditional)</option>
+                                <option value="ru">Русский (Russian)</option>
+                                <option value="ar">العربية (Arabic)</option>
+                                <option value="hi">हिन्दी (Hindi)</option>
+                            </select>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="appearance" class="settings-section">
+                    <h2>Appearance</h2>
+                    <p>Customize the look of your subtitles.</p>
+                    <!-- Appearance settings from popup will be moved here -->
+                </section>
+
+                <section id="timing" class="settings-section">
+                    <h2>Timing & Sync</h2>
+                     <p>Adjust subtitle timing and sync.</p>
+                    <!-- Timing settings from popup will be moved here -->
+                </section>
+
+                 <section id="advanced" class="settings-section">
+                    <h2>Advanced</h2>
+                    <p>Advanced settings for power users.</p>
+                    <div class="setting-card">
+                        <h3>Translation Batch Size</h3>
+                        <p title="Number of subtitle segments to translate in each batch. Lower is faster but may cause rate limiting.">Control how many subtitle lines are sent for translation at once.</p>
+                        <div class="setting-input slider-container">
+                            <input type="range" id="translationBatchSize" min="1" max="10" step="1">
+                            <span id="translationBatchSizeValue" class="value-display"></span>
+                        </div>
+                    </div>
+                     <div class="setting-card">
+                        <h3>Request Delay</h3>
+                        <p title="Delay between translation requests in milliseconds. Higher values reduce chances of being rate-limited.">Set a delay between translation requests to avoid issues with rate limiting.</p>
+                        <div class="setting-input slider-container">
+                             <input type="range" id="translationDelay" min="0" max="500" step="50">
+                             <span id="translationDelayValue" class="value-display"></span>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="about" class="settings-section">
+                    <h2>About</h2>
+                    <div class="setting-card">
+                        <h3>DualSub</h3>
+                        <p>Version <span id="extension-version"></span></p>
+                        <p>This extension is open source. Contributions are welcome!</p>
+                        <a href="https://github.com/your-repo-link" target="_blank" class="button">GitHub Repository</a>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+    <script src="options.js"></script>
+</body>
+</html> 
