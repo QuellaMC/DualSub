@@ -1,299 +1,249 @@
 /* disneyplus-dualsub-chrome-extension/popup/popup.css */
+:root {
+    --bg-color: #f0f2f5;
+    --card-bg: #ffffff;
+    --text-color: #000000;
+    --label-color: #000000;
+    --secondary-text: #6d6d72;
+    --border-color: #c6c6c8;
+    --switch-bg-off: #e9e9eb;
+    --switch-bg-on: #34c759;
+    --slider-track-bg: #e9e9eb;
+    --slider-thumb-bg: #ffffff;
+    --slider-progress-bg: #007aff;
+    --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+html {
+    background: transparent;
+}
+
 body {
-    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    font-size: 14px;
-    background-color: #f8f9fa;
-    color: #343a40;
+    font-family: var(--font-family);
+    background-color: var(--bg-color);
+    color: var(--text-color);
     margin: 0;
-    min-width: 340px;
-    padding: 15px;
-    box-sizing: border-box;
+    width: 300px;
+    padding: 12px;
+    border-radius: 16px;
+    overflow: hidden;
 }
 
-.container {
-    background-color: #ffffff;
-    border-radius: 10px;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
-    padding: 20px 25px 25px 25px;
-    margin: 0 auto;
-}
-
-h1 {
-    font-size: 20px;
-    font-weight: 600;
-    color: #212529;
-    text-align: center;
-    margin-top: 0;
-    margin-bottom: 25px;
-}
-
-.setting.main-toggle {
+.header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 5px;
-    margin-bottom: 20px;
-    border-bottom: 1px solid #e9ecef;
+    padding: 4px 8px 12px 8px;
 }
-
-.main-toggle-label {
-    font-weight: 600 !important;
-    font-size: 1.05em;
-    color: #343a40 !important;
-    margin-right: 10px;
-}
-
-/* Settings Group Styling */
-.settings-group {
-    border: 1px solid #dee2e6;
-    border-radius: 8px;
-    margin-bottom: 20px; /* Slightly reduced margin */
-    background-color: #fff;
-    overflow: hidden; /* Important for collapsing animation if added */
-}
-
-.settings-group legend.collapsible-legend {
-    font-size: 1.05em; /* Adjusted size */
-    font-weight: 600;
-    color: #007bff;
-    padding: 12px 15px; /* Adjusted padding */
-    margin: 0; /* Reset margin for legend */
-    cursor: pointer;
-    display: flex; /* For aligning text and icon */
-    justify-content: space-between; /* Pushes icon to the right */
-    align-items: center;
-    width: 100%; /* Make legend take full width of fieldset */
-    box-sizing: border-box;
-    background-color: #f8f9fa; /* Light background for the legend */
-    border-bottom: 1px solid #dee2e6; /* Separator when expanded */
-}
-
-.settings-group.collapsed legend.collapsible-legend {
-    border-bottom-color: transparent; /* No border when collapsed */
-}
-
-
-.settings-group .toggle-icon {
-    display: inline-block;
-    width: 10px;
-    height: 10px;
-    border-right: 2px solid #007bff;
-    border-bottom: 2px solid #007bff;
-    transform: rotate(45deg); /* Down arrow */
-    transition: transform 0.2s ease-in-out;
-    margin-left: 10px;
-}
-
-.settings-group.collapsed .toggle-icon {
-    transform: rotate(-45deg); /* Up arrow */
-}
-
-.collapsible-content {
-    padding: 15px 20px 5px 20px;
-    max-height: 1000px; /* Large enough for content */
-    overflow: hidden;
-    transition: max-height 0.3s ease-in-out, padding 0.3s ease-in-out, opacity 0.2s ease-in-out;
-    opacity: 1;
-}
-
-.settings-group.collapsed .collapsible-content {
-    max-height: 0;
-    padding-top: 0;
-    padding-bottom: 0;
-    opacity: 0;
-    /* border-top: none; Remove if legend has bottom border */
-}
-
-
-.setting {
-    margin-bottom: 18px;
+.header-left, .header-right {
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
+    gap: 8px;
 }
-
-.setting label:not(.switch):not(.main-toggle-label) {
-    font-weight: 500;
-    color: #495057;
-    flex-basis: 130px;
-    margin-right: 10px;
-    line-height: 1.4;
-    flex-shrink: 0;
-}
-
-.setting input[type="number"],
-.setting select {
-    flex-grow: 1;
-    padding: 9px 12px;
-    border: 1px solid #ced4da;
+.header-icon {
+    width: 28px;
+    height: 28px;
     border-radius: 6px;
-    font-size: 14px;
-    box-sizing: border-box;
-    min-width: 80px;
-    height: 38px;
-    color: #495057;
 }
 
-.setting select {
-    appearance: none;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 10px center;
-    background-size: 12px 12px;
-    padding-right: 35px;
+h1 {
+    font-size: 17px;
+    font-weight: 600;
+    margin: 0;
 }
 
-
-.setting input[type="number"]:focus,
-.setting select:focus {
-    outline: none;
-    border-color: #007bff;
-    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
-}
-
-.setting .slider-container {
+.header-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    width: 28px;
+    height: 28px;
+    color: var(--secondary-text);
     display: flex;
     align-items: center;
-    flex-grow: 1;
-    height: 38px;
+    justify-content: center;
+}
+.header-button:hover {
+    color: var(--text-color);
+}
+.header-button svg {
+    width: 22px;
+    height: 22px;
 }
 
-.setting input[type="range"] {
-    flex-grow: 1;
-    margin-right: 15px;
-    height: 8px;
-    -webkit-appearance: none;
-    appearance: none;
-    background: #dee2e6;
-    border-radius: 5px;
-    cursor: pointer;
+.card, .accordion-card {
+    background-color: var(--card-bg);
+    border-radius: 12px;
+    margin-bottom: 15px;
+    overflow: hidden;
+}
+
+.setting-item, .accordion-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    font-size: 16px;
+}
+
+.setting-item ~ .setting-item {
+    border-top: 1px solid var(--bg-color);
+}
+
+.setting-item label, .accordion-header {
+    color: var(--label-color);
+}
+
+select, input[type="number"] {
+    background: none;
+    border: none;
+    font-family: inherit;
+    font-size: 16px;
+    text-align: right;
+    color: var(--secondary-text);
+}
+
+select {
+    max-width: 150px;
+}
+input[type="number"] {
+    max-width: 90px;
+}
+
+select:focus, input[type="number"]:focus {
     outline: none;
 }
 
-.setting input[type="range"]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 18px;
-    height: 18px;
-    background: #007bff;
-    border-radius: 50%;
-    border: none;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-    margin-top: -5px;
-}
-
-.setting input[type="range"]::-moz-range-thumb {
-    width: 18px;
-    height: 18px;
-    background: #007bff;
-    border-radius: 50%;
-    border: none;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-    cursor: pointer;
-}
-
-.setting .value-display {
-    font-weight: 500;
-    color: #495057;
-    min-width: 50px;
-    text-align: right;
-    font-size: 0.9em;
-    white-space: nowrap;
-}
-
+/* Custom Switch */
 .switch {
-    --switch-width: 50px;
-    --switch-height: 28px;
-    --thumb-size: 22px;
-    --thumb-padding: 3px;
-
     position: relative;
     display: inline-block;
-    width: var(--switch-width);
-    height: var(--switch-height);
-    flex-shrink: 0;
+    width: 51px;
+    height: 31px;
 }
+.switch input { display: none; }
 
-.setting > .switch {
-    margin-left: auto;
-}
-
-
-.toggle-slider {
+.slider {
     position: absolute;
     cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: #ced4da;
-    transition: .3s ease;
-    border-radius: calc(var(--switch-height) / 2);
-    overflow: hidden;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: var(--switch-bg-off);
+    transition: .4s;
+    border-radius: 34px;
 }
-
-.toggle-slider:before {
+.slider:before {
     position: absolute;
     content: "";
-    height: var(--thumb-size);
-    width: var(--thumb-size);
-    left: var(--thumb-padding);
-    bottom: var(--thumb-padding);
+    height: 27px;
+    width: 27px;
+    left: 2px;
+    bottom: 2px;
     background-color: white;
-    transition: .3s ease;
+    transition: .4s;
     border-radius: 50%;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
 }
 
-input:checked + .toggle-slider {
-    background-color: #28a745;
+input:checked + .slider {
+    background-color: var(--switch-bg-on);
+}
+input:checked + .slider:before {
+    transform: translateX(20px);
 }
 
-input:focus + .toggle-slider {
-    box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+
+/* Accordion */
+.accordion-card {
+    border-radius: 12px;
+}
+.accordion-header {
+    cursor: pointer;
+    font-weight: 400;
+}
+.accordion-header::-webkit-details-marker {
+    display: none;
+}
+.accordion-header::after {
+    content: '›';
+    font-size: 24px;
+    color: var(--border-color);
+    transform: rotate(90deg);
+    transition: transform 0.2s ease;
+}
+.accordion-card[open] > .accordion-header::after {
+    transform: rotate(-90deg);
 }
 
-input:checked + .toggle-slider:before {
-    /* Smarter way: Calculate translation based on variables */
-    /* This calculation should logically work. If 250px is still needed, */
-    /* it strongly suggests an external factor is at play (e.g., parent transform). */
-    /* transform: translateX(calc(var(--switch-width) - var(--thumb-size) - (var(--thumb-padding) * 2))); */
-    /* If you absolutely need to use 250px, you can still set it here, */
-    /* but it would be disconnected from the dimensional variables: */
-    transform: translateX(225px);
+.accordion-body {
+    padding: 0 16px;
+    border-top: 1px solid var(--bg-color);
+}
+.accordion-body .setting-item, .accordion-body .setting-item-slider {
+    border: none;
+    padding: 12px 0;
+}
+.accordion-body .setting-item ~ .setting-item,
+.accordion-body .setting-item-slider ~ .setting-item,
+.accordion-body .setting-item ~ .setting-item-slider,
+.accordion-body .setting-item-slider ~ .setting-item-slider {
+    border-top: 1px solid var(--bg-color);
 }
 
-.switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
+.accordion-body .setting-item > label,
+.accordion-body .setting-item-slider > label {
+    flex-basis: 110px;
+}
+
+
+/* Sliders */
+.setting-item-slider {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    font-size: 16px;
+}
+
+.slider-control {
+    display: flex;
+    align-items: center;
+}
+input[type=range] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 8px;
+  background: var(--slider-track-bg);
+  border-radius: 8px;
+  outline: none;
+  background-image: linear-gradient(var(--slider-progress-bg), var(--slider-progress-bg));
+  background-repeat: no-repeat;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--slider-thumb-bg);
+  cursor: pointer;
+  border: 0.5px solid rgba(0,0,0,0.04);
+  box-shadow: 0 0.5px 4px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.1);
+}
+.slider-value {
+    color: var(--secondary-text);
+    font-size: 14px;
+    margin-left: 12px;
 }
 
 #statusMessage {
     text-align: center;
-    margin-top: 20px;
-    font-weight: 500;
-    min-height: 1.5em;
-    padding: 10px;
-    border-radius: 6px;
-    font-size: 0.95em;
-    line-height: 1.4;
+    font-size: 13px;
+    height: 15px;
+    margin-top: 10px;
+    color: var(--secondary-text);
 }
-
-#statusMessage.success {
-    background-color: #d1e7dd;
-    color: #0f5132;
-    border: 1px solid #badbcc;
-}
-
-#statusMessage.error {
-    background-color: #f8d7da;
-    color: #842029;
-    border: 1px solid #f5c2c7;
-}
-
 
 @media (max-width: 400px) {
     body {
@@ -305,7 +255,7 @@ input:checked + .toggle-slider:before {
     }
     h1 {
         font-size: 18px;
-        margin-bottom: 20px;
+        margin-bottom: 0;
     }
 
     .settings-group legend.collapsible-legend {

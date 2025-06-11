@@ -1,7 +1,7 @@
 // disneyplus-dualsub-chrome-extension/background.js
 import { translate as googleTranslate } from './translation_providers/googleTranslate.js';
 import { translate as microsoftTranslateEdgeAuth } from './translation_providers/microsoftTranslateEdgeAuth.js';
-console.log("Disney+ Dual Subtitles background script loaded (v2.4 - Enhanced Translation Error Handling & VTT Fetch).");
+console.log("Disney+ Dual Subtitles background script loaded.");
 
 // Translation Provider Registry
 const translationProviders = {
@@ -18,22 +18,26 @@ const translationProviders = {
 
 let currentTranslationProviderId = 'google'; // Default provider
 
+// Load the selected provider from storage on startup.
 chrome.storage.sync.get('selectedProvider', (data) => {
     if (data.selectedProvider && translationProviders[data.selectedProvider]) {
         currentTranslationProviderId = data.selectedProvider;
-        console.log(`Background: Loaded translation provider from storage: ${translationProviders[currentTranslationProviderId].name}`);
+        console.log(`Background: Loaded provider from storage: ${translationProviders[currentTranslationProviderId].name}`);
     } else {
+        // If no provider is in storage, set the default.
         chrome.storage.sync.set({ selectedProvider: currentTranslationProviderId });
-        console.log(`Background: Using default translation provider: ${translationProviders[currentTranslationProviderId].name}`);
+        console.log(`Background: Using default provider: ${translationProviders[currentTranslationProviderId].name}`);
     }
 });
 
 // Initialize default settings on installation
 chrome.runtime.onInstalled.addListener(() => {
+    // A list of all settings to ensure they have a default value.
     const allSettingKeys = [
         'subtitlesEnabled', 'targetLanguage', 'subtitleTimeOffset',
         'subtitleLayoutOrder', 'subtitleLayoutOrientation', 'subtitleFontSize',
-        'subtitleGap', 'translationBatchSize', 'translationDelay'
+        'subtitleGap', 'translationBatchSize', 'translationDelay',
+        'selectedProvider'
     ];
 
     chrome.storage.sync.get(allSettingKeys, (items) => {
@@ -48,286 +52,252 @@ chrome.runtime.onInstalled.addListener(() => {
         if (items.subtitleGap === undefined) defaultsToSet.subtitleGap = 0.3;
         if (items.translationBatchSize === undefined) defaultsToSet.translationBatchSize = 3;
         if (items.translationDelay === undefined) defaultsToSet.translationDelay = 150;
+        if (items.selectedProvider === undefined) defaultsToSet.selectedProvider = 'google';
 
         if (Object.keys(defaultsToSet).length > 0) {
             chrome.storage.sync.set(defaultsToSet, () => {
-                console.log("Background: Default settings initialized/ensured:", defaultsToSet);
+                console.log("Background: Default settings initialized.", defaultsToSet);
             });
-        } else {
-            console.log("Background: Existing settings found, defaults not overwritten.");
         }
     });
 });
+
+async function fetchText(url) {
+    const response = await fetch(url);
+    if (!response.ok) {
+        throw new Error(`HTTP error ${response.status} for ${url}`);
+    }
+    return await response.text();
+}
 
 function getUriFromExtXMedia(line) {
     const uriMatch = line.match(/URI="([^"]+)"/);
     return uriMatch ? uriMatch[1] : null;
 }
 
-async function fetchAndProcessSubtitleUrl(masterPlaylistUrl) {
-    let masterPlaylistText;
-    try {
-        console.log("Background: Fetching master playlist:", masterPlaylistUrl);
-        const response = await fetch(masterPlaylistUrl);
-        if (!response.ok) {
-            throw new Error(`HTTP error ${response.status} for master playlist ${masterPlaylistUrl}`);
-        }
-        masterPlaylistText = await response.text();
-    } catch (e) {
-        console.error(`Background: Initial fetch failed for ${masterPlaylistUrl}:`, e);
-        if (e.message.includes("Failed to fetch") || e.message.includes("HTTP error")) {
-            if (masterPlaylistText && masterPlaylistText.trim().toUpperCase().startsWith("WEBVTT")) {
-                console.log("Background: Master URL content looks like direct VTT after fetch failure analysis.");
-                return masterPlaylistText;
-            }
-        }
-        throw e;
-    }
-
-    if (masterPlaylistText.trim().toUpperCase().startsWith("WEBVTT")) {
-         console.log("Background: Content from master URL is direct VTT.");
-         return masterPlaylistText;
-    }
-
-    if (!masterPlaylistText.trim().startsWith("#EXTM3U")) {
-        console.warn("Background: Fetched content is not an M3U8 playlist. Assuming direct VTT or unsupported format.", masterPlaylistUrl);
-        throw new Error("Content fetched was not a recognized M3U8 master playlist nor direct VTT.");
-    }
-
-    console.log("Background: Master M3U8 playlist fetched. Searching for subtitle playlist URI...");
+function findSubtitlePlaylistUri(masterPlaylistText) {
     const lines = masterPlaylistText.split('\n');
     let subtitlePlaylistUri = null;
-    const masterBaseUrl = new URL(masterPlaylistUrl);
 
     for (const line of lines) {
         const trimmedLine = line.trim();
         if (trimmedLine.startsWith("#EXT-X-MEDIA") && trimmedLine.includes("TYPE=SUBTITLES")) {
             subtitlePlaylistUri = getUriFromExtXMedia(trimmedLine);
             if (subtitlePlaylistUri) {
-                console.log("Background: Found subtitle playlist URI (TYPE=SUBTITLES) in master:", subtitlePlaylistUri);
-                break;
+                console.log("Background: Found subtitle playlist URI (TYPE=SUBTITLES):", subtitlePlaylistUri);
+                return subtitlePlaylistUri;
             }
         }
     }
 
-    if (!subtitlePlaylistUri) {
-        console.log("Background: No TYPE=SUBTITLES found. Checking for EXT-X-STREAM-INF with SUBTITLES attribute...");
-        for (let i = 0; i < lines.length; i++) {
-            const trimmedLine = lines[i].trim();
-            if (trimmedLine.startsWith("#EXT-X-STREAM-INF") && trimmedLine.includes("SUBTITLES=")) {
-                const subtitlesGroupIdMatch = trimmedLine.match(/SUBTITLES="([^"]+)"/);
-                if (subtitlesGroupIdMatch) {
-                    const groupId = subtitlesGroupIdMatch[1];
-                    for (const mediaLine of lines) {
-                        if (mediaLine.startsWith("#EXT-X-MEDIA") &&
-                            mediaLine.includes(`GROUP-ID="${groupId}"`) &&
-                            mediaLine.includes("TYPE=SUBTITLES")) {
-                            subtitlePlaylistUri = getUriFromExtXMedia(mediaLine);
-                            if (subtitlePlaylistUri) {
-                                console.log(`Background: Found subtitle playlist URI (GROUP-ID="${groupId}", TYPE=SUBTITLES):`, subtitlePlaylistUri);
-                                break;
-                            }
+    console.log("Background: No direct TYPE=SUBTITLES URI. Checking for streams with SUBTITLES attribute...");
+    for (let i = 0; i < lines.length; i++) {
+        const trimmedLine = lines[i].trim();
+        if (trimmedLine.startsWith("#EXT-X-STREAM-INF") && trimmedLine.includes("SUBTITLES=")) {
+            const subtitlesGroupIdMatch = trimmedLine.match(/SUBTITLES="([^"]+)"/);
+            if (subtitlesGroupIdMatch) {
+                const groupId = subtitlesGroupIdMatch[1];
+                for (const mediaLine of lines) {
+                    if (mediaLine.startsWith("#EXT-X-MEDIA") && mediaLine.includes(`GROUP-ID="${groupId}"`) && mediaLine.includes("TYPE=SUBTITLES")) {
+                        subtitlePlaylistUri = getUriFromExtXMedia(mediaLine);
+                        if (subtitlePlaylistUri) {
+                            console.log(`Background: Found subtitle playlist URI (GROUP-ID="${groupId}"):`, subtitlePlaylistUri);
+                            return subtitlePlaylistUri;
                         }
                     }
                 }
-                if (subtitlePlaylistUri) break;
             }
         }
     }
+    return null; // Not found
+}
 
+function parsePlaylistForVttSegments(playlistText, playlistUrl) {
+    const lines = playlistText.split('\n');
+    const segmentUrls = [];
+    const baseUrl = new URL(playlistUrl);
 
-    if (!subtitlePlaylistUri) {
-        console.warn("Background: No explicit subtitle playlist URI found. Attempting to parse current M3U8 for direct VTT segments (fallback)...", masterPlaylistUrl);
-        const vttSegmentUrlsFromMaster = [];
-        for (const line of lines) {
-            const trimmedLine = line.trim();
-            if (trimmedLine && !trimmedLine.startsWith("#") && trimmedLine.toLowerCase().includes(".vtt")) {
-                 try {
-                    const segmentUrl = new URL(trimmedLine, masterBaseUrl.href).href;
-                    vttSegmentUrlsFromMaster.push(segmentUrl);
-                } catch (e) {
-                    console.warn(`Background: Could not form valid URL from M3U8 (fallback) line: ${trimmedLine} relative to ${masterBaseUrl.href}`);
-                }
-            }
-        }
-        if (vttSegmentUrlsFromMaster.length > 0) {
-            console.log("Background (fallback): Found direct VTT segments in the provided M3U8:", vttSegmentUrlsFromMaster);
-            return fetchAndCombineVttSegments(vttSegmentUrlsFromMaster, masterPlaylistUrl);
-        }
-        console.error("Background: Could not find subtitle playlist URI in master playlist, and no direct VTTs found with fallback.");
-        throw new Error("No subtitle playlist URI found in master M3U8 and no direct VTTs in fallback.");
-    }
-
-    const fullSubtitlePlaylistUrl = new URL(subtitlePlaylistUri, masterBaseUrl.href).href;
-    console.log("Background: Fetching subtitle-specific M3U8 playlist:", fullSubtitlePlaylistUrl);
-
-    let subtitlePlaylistText;
-    try {
-        const subPlaylistResponse = await fetch(fullSubtitlePlaylistUrl);
-        if (!subPlaylistResponse.ok) {
-            throw new Error(`HTTP error ${subPlaylistResponse.status} for subtitle playlist ${fullSubtitlePlaylistUrl}`);
-        }
-        subtitlePlaylistText = await subPlaylistResponse.text();
-    } catch (e) {
-        console.error(`Background: Fetch failed for subtitle M3U8 ${fullSubtitlePlaylistUrl}:`, e);
-        throw e;
-    }
-
-    if (subtitlePlaylistText.trim().toUpperCase().startsWith("WEBVTT")) {
-         console.log("Background: Subtitle playlist URI pointed directly to VTT content.");
-         return subtitlePlaylistText;
-    }
-
-    if (!subtitlePlaylistText.trim().startsWith("#EXTM3U")) {
-        console.warn("Background: Fetched subtitle playlist content is not an M3U8 playlist.", fullSubtitlePlaylistUrl);
-        throw new Error("Content from subtitle playlist URI was not a recognized M3U8 playlist nor direct VTT.");
-    }
-
-    console.log("Background: Subtitle-specific M3U8 playlist fetched. Parsing for VTT segments...");
-    const subtitleLines = subtitlePlaylistText.split('\n');
-    const vttSegmentUrls = [];
-    const subtitlePlaylistBaseUrl = new URL(fullSubtitlePlaylistUrl);
-
-    for (const line of subtitleLines) {
+    for (const line of lines) {
         const trimmedLine = line.trim();
         if (trimmedLine && !trimmedLine.startsWith("#")) {
+            // Basic check for VTT extension or segment-like names.
             if (trimmedLine.toLowerCase().includes(".vtt") || trimmedLine.toLowerCase().includes(".webvtt") || !trimmedLine.includes("/")) {
-                 try {
-                    const segmentUrl = new URL(trimmedLine, subtitlePlaylistBaseUrl.href).href;
-                    vttSegmentUrls.push(segmentUrl);
+                try {
+                    const segmentUrl = new URL(trimmedLine, baseUrl.href).href;
+                    segmentUrls.push(segmentUrl);
                 } catch (e) {
-                    console.warn(`Background: Could not form valid URL from subtitle M3U8 line: ${trimmedLine} relative to ${subtitlePlaylistBaseUrl.href}`);
+                    console.warn(`Background: Could not form valid URL from M3U8 line: "${trimmedLine}" relative to ${baseUrl.href}`);
                 }
             }
         }
     }
-
-    if (vttSegmentUrls.length === 0) {
-        console.error("Background: Subtitle M3U8 parsed, but no VTT segment URLs found within it.", fullSubtitlePlaylistUrl);
-        throw new Error("No VTT segments found in the subtitle-specific M3U8 playlist.");
-    }
-
-    return fetchAndCombineVttSegments(vttSegmentUrls, fullSubtitlePlaylistUrl);
+    return segmentUrls;
 }
 
 async function fetchAndCombineVttSegments(segmentUrls, playlistUrlForLogging = "N/A") {
-    console.log(`Background: Found ${segmentUrls.length} VTT segment URLs from playlist: ${playlistUrlForLogging}. Fetching and combining...`);
+    console.log(`Background: Found ${segmentUrls.length} VTT segments from playlist: ${playlistUrlForLogging}. Fetching...`);
+
+    const fetchPromises = segmentUrls.map(async (url) => {
+        try {
+            return await fetchText(url);
+        } catch (e) {
+            console.warn(`Background: Error fetching VTT segment ${url}:`, e);
+            return null;
+        }
+    });
+
+    const segmentTexts = await Promise.all(fetchPromises);
     let combinedVttText = "WEBVTT\n\n";
     let segmentsFetchedCount = 0;
 
-    for (const segmentUrl of segmentUrls) {
-        try {
-            const segmentResponse = await fetch(segmentUrl);
-            if (!segmentResponse.ok) {
-                console.warn(`Background: Failed to fetch VTT segment ${segmentUrl}: ${segmentResponse.status}`);
-                continue;
-            }
-            let segmentText = await segmentResponse.text();
+    for (const segmentText of segmentTexts) {
+        if (segmentText) {
             segmentsFetchedCount++;
-
-            if (combinedVttText !== "WEBVTT\n\n" || !segmentText.trim().toUpperCase().startsWith("WEBVTT")) {
-                segmentText = segmentText.replace(/^WEBVTT\s*/i, "").trim();
-            } else if (segmentText.trim().toUpperCase().startsWith("WEBVTT")) {
-                 if (combinedVttText === "WEBVTT\n\n") {
-                 } else {
-                    segmentText = segmentText.replace(/^WEBVTT\s*/i, "").trim();
-                 }
+            const cleanedSegment = segmentText.replace(/^WEBVTT\s*/i, "").trim();
+            if (cleanedSegment) {
+                combinedVttText += cleanedSegment + "\n\n";
             }
-
-
-            if (segmentText) {
-                 combinedVttText += segmentText + "\n\n";
-            }
-        } catch (e) {
-            console.warn(`Background: Error fetching or processing VTT segment ${segmentUrl}:`, e);
         }
     }
+
     if (segmentsFetchedCount === 0 && segmentUrls.length > 0) {
         throw new Error(`Failed to fetch any of the ${segmentUrls.length} VTT segments.`);
     }
-    console.log(`Background: ${segmentsFetchedCount}/${segmentUrls.length} VTT segments processed. Total combined VTT length:`, combinedVttText.length);
+
+    console.log(`Background: ${segmentsFetchedCount}/${segmentUrls.length} VTT segments combined.`);
     return combinedVttText;
 }
 
+async function fetchAndProcessSubtitleUrl(masterPlaylistUrl) {
+    console.log("Background: Fetching master URL:", masterPlaylistUrl);
+    const masterPlaylistText = await fetchText(masterPlaylistUrl);
+
+    if (masterPlaylistText.trim().toUpperCase().startsWith("WEBVTT")) {
+        console.log("Background: Master URL points directly to a VTT file.");
+        return masterPlaylistText;
+    }
+
+    if (!masterPlaylistText.trim().startsWith("#EXTM3U")) {
+        throw new Error("Content is not a recognized M3U8 playlist or VTT file.");
+    }
+    
+    console.log("Background: Master content is an M3U8 playlist. Parsing...");
+    const subtitlePlaylistUri = findSubtitlePlaylistUri(masterPlaylistText);
+
+    if (subtitlePlaylistUri) {
+        const fullSubtitlePlaylistUrl = new URL(subtitlePlaylistUri, masterPlaylistUrl).href;
+        console.log("Background: Fetching subtitle-specific playlist:", fullSubtitlePlaylistUrl);
+        const subtitlePlaylistText = await fetchText(fullSubtitlePlaylistUrl);
+
+        if (subtitlePlaylistText.trim().toUpperCase().startsWith("WEBVTT")) {
+            console.log("Background: Subtitle playlist URI pointed directly to VTT content.");
+            return subtitlePlaylistText;
+        }
+
+        if (!subtitlePlaylistText.trim().startsWith("#EXTM3U")) {
+            throw new Error("Content from subtitle playlist URI was not a recognized M3U8 or VTT.");
+        }
+
+        console.log("Background: Subtitle-specific playlist is an M3U8. Parsing for VTT segments...");
+        const vttSegmentUrls = parsePlaylistForVttSegments(subtitlePlaylistText, fullSubtitlePlaylistUrl);
+        if (vttSegmentUrls.length === 0) {
+            throw new Error("No VTT segments found in the subtitle-specific M3U8 playlist.");
+        }
+        return fetchAndCombineVttSegments(vttSegmentUrls, fullSubtitlePlaylistUrl);
+    } else {
+        console.warn("Background: No explicit subtitle playlist URI found. Attempting fallback...");
+        const vttSegmentUrls = parsePlaylistForVttSegments(masterPlaylistText, masterPlaylistUrl);
+
+        if (vttSegmentUrls.length > 0) {
+            console.log("Background (fallback): Found direct VTT segments in master playlist.");
+            return fetchAndCombineVttSegments(vttSegmentUrls, masterPlaylistUrl);
+        }
+
+        throw new Error("Could not find subtitle URI or any VTT segments in master playlist.");
+    }
+}
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.action === "translate") {
-        const sourceText = message.text;
-        const targetLang = message.targetLang;
-        const sourceLang = 'auto';
-        const cueStart = message.cueStart;
-        const cueVideoId = message.cueVideoId;
+    switch (message.action) {
+        case "translate": {
+            const { text, targetLang, cueStart, cueVideoId } = message;
+            const sourceLang = 'auto';
+            const selectedProvider = translationProviders[currentTranslationProviderId];
 
-        const selectedProvider = translationProviders[currentTranslationProviderId];
+            if (!selectedProvider?.translate) {
+                console.error(`Background: Invalid translation provider: ${currentTranslationProviderId}`);
+                sendResponse({
+                    error: "Translation failed",
+                    details: `Provider "${currentTranslationProviderId}" is not configured.`,
+                    originalText: text, cueStart, cueVideoId
+                });
+                return true;
+            }
 
-        if (!selectedProvider || typeof selectedProvider.translate !== 'function') {
-            console.error(`Background: Invalid or missing translation provider: ${currentTranslationProviderId}`);
-            sendResponse({
-                error: "Translation failed",
-                details: `Selected translation provider "${currentTranslationProviderId}" is not configured correctly.`,
-                originalText: sourceText,
-                cueStart: cueStart,
-                cueVideoId: cueVideoId
-            });
+            selectedProvider.translate(text, sourceLang, targetLang)
+                .then(translatedText => {
+                    sendResponse({ translatedText, originalText: text, cueStart, cueVideoId });
+                })
+                .catch(error => {
+                    console.error(`Background: Translation failed for provider '${selectedProvider.name}':`, error);
+                    sendResponse({
+                        error: "Translation failed",
+                        errorType: "TRANSLATION_API_ERROR",
+                        details: error.message || `Error from ${selectedProvider.name}`,
+                        originalText: text, cueStart, cueVideoId
+                    });
+                });
+            return true; // Indicates an asynchronous response.
+        }
+
+        case "fetchVTT": {
+            const { url, videoId } = message;
+            console.log("Background: Received fetchVTT request for URL:", url);
+            fetchAndProcessSubtitleUrl(url)
+                .then(vttText => {
+                    console.log("Background: Successfully fetched and processed VTT. Length:", vttText?.length);
+                    sendResponse({ success: true, vttText, videoId, url });
+                })
+                .catch(error => {
+                    console.error("Background: Failed to fetch/process VTT for URL:", url, error);
+                    sendResponse({ success: false, error: `VTT Processing Error: ${error.message}`, videoId, url });
+                });
             return true;
         }
 
-        selectedProvider.translate(sourceText, sourceLang, targetLang)
-            .then(translatedText => {
-                sendResponse({
-                    translatedText: translatedText,
-                    originalText: sourceText,
-                    cueStart: cueStart,
-                    cueVideoId: cueVideoId
+        case "changeProvider": {
+            const newProviderId = message.providerId;
+            if (translationProviders[newProviderId]) {
+                currentTranslationProviderId = newProviderId;
+                chrome.storage.sync.set({ selectedProvider: newProviderId }, () => {
+                    const providerName = translationProviders[currentTranslationProviderId].name;
+                    console.log(`Background: Translation provider changed to: ${providerName}`);
+                    sendResponse({ success: true, message: `Provider changed to ${providerName}` });
                 });
-            })
-            .catch(error => {
-                console.error(`Background: Translation failed using provider '${selectedProvider.name}':`, error);
-                sendResponse({
-                    error: "Translation failed",
-                    errorType: "TRANSLATION_API_ERROR",
-                    details: error.message || `Error from ${selectedProvider.name}`,
-                    originalText: sourceText,
-                    cueStart: cueStart,
-                    cueVideoId: cueVideoId
-                });
-            });
-        return true; // Indicates an asynchronous response.
-    } else if (message.action === "fetchVTT") {
-        const vttMasterUrl = message.url;
-        console.log("Background: Received fetchVTT request for Master URL:", vttMasterUrl);
-        fetchAndProcessSubtitleUrl(vttMasterUrl)
-            .then(vttText => {
-                console.log("Background: Successfully fetched and processed VTT content. Final length:", vttText?.length);
-                sendResponse({ success: true, vttText: vttText, videoId: message.videoId, url: vttMasterUrl });
-            })
-            .catch(error => {
-                console.error("Background: Failed to fetch/process VTT content for URL:", vttMasterUrl, error);
-                sendResponse({ success: false, error: `VTT Processing Error: ${error.message}`, videoId: message.videoId, url: vttMasterUrl });
-            });
-        return true;
-    } else if (message.action === "changeProvider") {
-        const newProviderId = message.providerId;
-        if (translationProviders[newProviderId]) {
-            currentTranslationProviderId = newProviderId;
-            chrome.storage.sync.set({ selectedProvider: newProviderId }, () => {
-                console.log(`Background: Translation provider changed to: ${translationProviders[currentTranslationProviderId].name}`);
-                sendResponse({ success: true, message: `Provider changed to ${translationProviders[currentTranslationProviderId].name}` });
-            });
-        } else {
-            console.error(`Background: Attempted to switch to unknown provider: ${newProviderId}`);
-            sendResponse({ success: false, message: `Unknown provider: ${newProviderId}` });
+            } else {
+                console.error(`Background: Attempted to switch to unknown provider: ${newProviderId}`);
+                sendResponse({ success: false, message: `Unknown provider: ${newProviderId}` });
+            }
+            return true;
         }
-        return true;
     }
+    // Return false for unhandled actions.
+    return false;
 });
 
 chrome.storage.onChanged.addListener((changes, namespace) => {
     if (namespace === 'sync') {
         for (let [key, { oldValue, newValue }] of Object.entries(changes)) {
+            // Log setting changes for easier debugging from the background script.
             console.log(
-                `Background: Storage key "${key}" changed. Old value:`, oldValue, `, New value:`, newValue
+                `Background: Storage key "${key}" in "sync" changed.`,
+                { from: oldValue, to: newValue }
             );
+            // Specifically handle provider change if it happens in another context (e.g., options page)
+            if (key === 'selectedProvider' && translationProviders[newValue]) {
+                currentTranslationProviderId = newValue;
+                console.log(`Background: Translation provider updated to: ${translationProviders[currentTranslationProviderId].name}`);
+            }
         }
     }
 });
