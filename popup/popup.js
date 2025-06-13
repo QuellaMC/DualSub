@@ -2,6 +2,8 @@
 document.addEventListener('DOMContentLoaded', function () {
     // UI Element References
     const enableSubtitlesToggle = document.getElementById('enableSubtitles');
+    const useNativeSubtitlesToggle = document.getElementById('useNativeSubtitles');
+    const originalLanguageSelect = document.getElementById('originalLanguage');
     const targetLanguageSelect = document.getElementById('targetLanguage');
     const subtitleTimeOffsetInput = document.getElementById('subtitleTimeOffset');
     const subtitleLayoutOrderSelect = document.getElementById('subtitleLayoutOrder');
@@ -38,6 +40,8 @@ document.addEventListener('DOMContentLoaded', function () {
     // Default settings for the extension
     const defaultSettings = {
         subtitlesEnabled: true,
+        useNativeSubtitles: true,
+        originalLanguage: 'en',
         targetLanguage: 'zh-CN',
         subtitleTimeOffset: 0.3,
         subtitleLayoutOrder: 'original_top',
@@ -79,6 +83,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Populate UI with loaded or default settings
         enableSubtitlesToggle.checked = items.subtitlesEnabled !== undefined ? items.subtitlesEnabled : defaultSettings.subtitlesEnabled;
+        useNativeSubtitlesToggle.checked = items.useNativeSubtitles !== undefined ? items.useNativeSubtitles : defaultSettings.useNativeSubtitles;
         subtitleTimeOffsetInput.value = items.subtitleTimeOffset !== undefined ? items.subtitleTimeOffset : defaultSettings.subtitleTimeOffset;
         
         const fontSize = items.subtitleFontSize !== undefined ? items.subtitleFontSize : defaultSettings.subtitleFontSize;
@@ -95,6 +100,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Populate dropdowns now that translations are loaded
         updateUILanguage();
+        originalLanguageSelect.value = items.originalLanguage || defaultSettings.originalLanguage;
         targetLanguageSelect.value = items.targetLanguage || defaultSettings.targetLanguage;
         subtitleLayoutOrderSelect.value = items.subtitleLayoutOrder || defaultSettings.subtitleLayoutOrder;
         subtitleLayoutOrientationSelect.value = items.subtitleLayoutOrientation || defaultSettings.subtitleLayoutOrientation;
@@ -135,6 +141,22 @@ document.addEventListener('DOMContentLoaded', function () {
         const statusText = loadedTranslations[statusKey]?.message || (enabled ? "Dual subtitles enabled." : "Dual subtitles disabled.");
         showStatus(statusText);
         sendMessageToContentScript("toggleSubtitles", { enabled });
+    });
+
+    useNativeSubtitlesToggle.addEventListener('change', function () {
+        const useNative = this.checked;
+        chrome.storage.sync.set({ useNativeSubtitles: useNative });
+        const statusText = useNative ? "Smart translation enabled." : "Smart translation disabled.";
+        showStatus(statusText);
+        sendMessageToContentScript("changeUseNativeSubtitles", { useNativeSubtitles: useNative });
+    });
+
+    originalLanguageSelect.addEventListener('change', function () {
+        const lang = this.value;
+        chrome.storage.sync.set({ originalLanguage: lang });
+        const statusText = `Original language: ${this.options[this.selectedIndex].text}`;
+        showStatus(statusText);
+        sendMessageToContentScript("changeOriginalLanguage", { originalLanguage: lang });
     });
 
     targetLanguageSelect.addEventListener('change', function () {
@@ -246,6 +268,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
         // Repopulate dropdowns with translated text
+        populateDropdown(originalLanguageSelect, supportedLanguages, originalLanguageSelect.value);
         populateDropdown(targetLanguageSelect, supportedLanguages, targetLanguageSelect.value);
         populateDropdown(subtitleLayoutOrderSelect, layoutOrderOptions, subtitleLayoutOrderSelect.value);
         populateDropdown(subtitleLayoutOrientationSelect, layoutOrientationOptions, subtitleLayoutOrientationSelect.value);
