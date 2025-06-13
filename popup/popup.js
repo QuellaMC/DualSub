@@ -20,6 +20,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Caches for performance
     let loadedTranslations = {};
     const translationsCache = {};
+    let statusTimeoutId = null; // Track status message timeout
 
     // Language and layout options mapping
     const supportedLanguages = {
@@ -107,9 +108,15 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function showStatus(message, duration = 3000) {
+        // Clear any existing timeout to prevent interference
+        if (statusTimeoutId) {
+            clearTimeout(statusTimeoutId);
+        }
+        
         statusMessage.textContent = message;
-        setTimeout(() => {
+        statusTimeoutId = setTimeout(() => {
             statusMessage.textContent = '';
+            statusTimeoutId = null;
         }, duration);
     }
 
@@ -121,7 +128,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         // Don't show an error if the content script just isn't on the page.
                         if (!chrome.runtime.lastError.message.includes("Receiving end does not exist")) {
                             console.warn(`Popup: Error sending '${action}' message:`, chrome.runtime.lastError.message);
-                            showStatus(`Setting not applied. Refresh page.`);
+                            const errorMsg = loadedTranslations["statusSettingNotApplied"]?.message || `Setting not applied. Refresh page.`;
+                            showStatus(errorMsg);
                         }
                     } else if (response?.success) {
                         console.log(`Popup: Action '${action}' sent successfully.`);
@@ -146,7 +154,8 @@ document.addEventListener('DOMContentLoaded', function () {
     useNativeSubtitlesToggle.addEventListener('change', function () {
         const useNative = this.checked;
         chrome.storage.sync.set({ useNativeSubtitles: useNative });
-        const statusText = useNative ? "Smart translation enabled." : "Smart translation disabled.";
+        const statusKey = useNative ? "statusSmartTranslationEnabled" : "statusSmartTranslationDisabled";
+        const statusText = loadedTranslations[statusKey]?.message || (useNative ? "Smart translation enabled." : "Smart translation disabled.");
         showStatus(statusText);
         sendMessageToContentScript("changeUseNativeSubtitles", { useNativeSubtitles: useNative });
     });
@@ -154,7 +163,8 @@ document.addEventListener('DOMContentLoaded', function () {
     originalLanguageSelect.addEventListener('change', function () {
         const lang = this.value;
         chrome.storage.sync.set({ originalLanguage: lang });
-        const statusText = `Original language: ${this.options[this.selectedIndex].text}`;
+        const statusPrefix = loadedTranslations["statusOriginalLanguage"]?.message || "Original language: ";
+        const statusText = `${statusPrefix}${this.options[this.selectedIndex].text}`;
         showStatus(statusText);
         sendMessageToContentScript("changeOriginalLanguage", { originalLanguage: lang });
     });
@@ -170,7 +180,8 @@ document.addEventListener('DOMContentLoaded', function () {
     subtitleTimeOffsetInput.addEventListener('change', function() {
         let offset = parseFloat(this.value);
         if (isNaN(offset)) {
-            showStatus('Invalid offset, reverting.');
+            const invalidMsg = loadedTranslations["statusInvalidOffset"]?.message || 'Invalid offset, reverting.';
+            showStatus(invalidMsg);
             chrome.storage.sync.get('subtitleTimeOffset', (items) => {
                 this.value = items.subtitleTimeOffset ?? defaultSettings.subtitleTimeOffset;
             });
@@ -179,21 +190,24 @@ document.addEventListener('DOMContentLoaded', function () {
         offset = parseFloat(offset.toFixed(2));
         this.value = offset;
         chrome.storage.sync.set({ subtitleTimeOffset: offset });
-        showStatus(`Time offset: ${offset}s.`);
+        const statusPrefix = loadedTranslations["statusTimeOffset"]?.message || "Time offset: ";
+        showStatus(`${statusPrefix}${offset}s.`);
         sendMessageToContentScript("changeTimeOffset", { timeOffset: offset });
     });
 
     subtitleLayoutOrderSelect.addEventListener('change', function() {
         const layoutOrder = this.value;
         chrome.storage.sync.set({ subtitleLayoutOrder: layoutOrder });
-        showStatus(`Display order updated.`);
+        const statusText = loadedTranslations["statusDisplayOrderUpdated"]?.message || `Display order updated.`;
+        showStatus(statusText);
         sendMessageToContentScript("changeLayoutOrder", { layoutOrder });
     });
 
     subtitleLayoutOrientationSelect.addEventListener('change', function() {
         const layoutOrientation = this.value;
         chrome.storage.sync.set({ subtitleLayoutOrientation: layoutOrientation });
-        showStatus(`Layout orientation updated.`);
+        const statusText = loadedTranslations["statusLayoutOrientationUpdated"]?.message || `Layout orientation updated.`;
+        showStatus(statusText);
         sendMessageToContentScript("changeLayoutOrientation", { layoutOrientation });
     });
 
@@ -204,7 +218,8 @@ document.addEventListener('DOMContentLoaded', function () {
     subtitleFontSizeInput.addEventListener('change', function() {
         const fontSize = parseFloat(this.value);
         chrome.storage.sync.set({ subtitleFontSize: fontSize });
-        showStatus(`Font size: ${fontSize.toFixed(1)}vw.`);
+        const statusPrefix = loadedTranslations["statusFontSize"]?.message || "Font size: ";
+        showStatus(`${statusPrefix}${fontSize.toFixed(1)}vw.`);
         sendMessageToContentScript("changeFontSize", { fontSize });
     });
 
@@ -215,7 +230,8 @@ document.addEventListener('DOMContentLoaded', function () {
     subtitleGapInput.addEventListener('change', function() {
         const gap = parseFloat(this.value);
         chrome.storage.sync.set({ subtitleGap: gap });
-        showStatus(`Vertical gap: ${gap.toFixed(1)}em.`);
+        const statusPrefix = loadedTranslations["statusVerticalGap"]?.message || "Vertical gap: ";
+        showStatus(`${statusPrefix}${gap.toFixed(1)}em.`);
         sendMessageToContentScript("changeGap", { gap });
     });
 
@@ -228,6 +244,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- Language and Initialization ---
     async function loadTranslations(langCode) {
+        // Convert hyphens to underscores for folder structure (zh-CN -> zh_CN)
         const normalizedLangCode = langCode.replace('-', '_');
         if (translationsCache[normalizedLangCode]) return translationsCache[normalizedLangCode];
         
@@ -283,6 +300,8 @@ document.addEventListener('DOMContentLoaded', function () {
             updateUILanguage();
         }
     });
+
+
 
     // Initial setup
     loadSettings();
