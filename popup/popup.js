@@ -1,6 +1,6 @@
 // disneyplus-dualsub-chrome-extension/popup/popup.js
 document.addEventListener('DOMContentLoaded', function () {
-    // Element references
+    // UI Element References
     const enableSubtitlesToggle = document.getElementById('enableSubtitles');
     const targetLanguageSelect = document.getElementById('targetLanguage');
     const subtitleTimeOffsetInput = document.getElementById('subtitleTimeOffset');
@@ -10,420 +10,257 @@ document.addEventListener('DOMContentLoaded', function () {
     const subtitleFontSizeValue = document.getElementById('subtitleFontSizeValue');
     const subtitleGapInput = document.getElementById('subtitleGap');
     const subtitleGapValue = document.getElementById('subtitleGapValue');
-    const translationBatchSizeInput = document.getElementById('translationBatchSize');
-    const translationBatchSizeValue = document.getElementById('translationBatchSizeValue');
-    const translationDelayInput = document.getElementById('translationDelay');
-    const translationDelayValue = document.getElementById('translationDelayValue');
-    const translationProviderSelect = document.getElementById('translationProvider');
     const statusMessage = document.getElementById('statusMessage');
-    const uiLanguageSelect = document.getElementById('uiLanguage');
+    const openOptionsPageButton = document.getElementById('openOptionsPage');
+    const openGithubLinkButton = document.getElementById('openGithubLink');
+    const appearanceAccordion = document.querySelector('.accordion-card');
 
-    let loadedTranslations = {}; // To store the currently active translations
-    const translationsCache = {}; // Cache for all loaded language files
+    // Caches for performance
+    let loadedTranslations = {};
+    const translationsCache = {};
 
-    // Collapsible sections
-    const collapsibleLegends = document.querySelectorAll('.settings-group > .collapsible-legend');
-
-    // State for collapsible sections (e.g., which ones are open)
-    const initialCollapsibleState = {
-        translationSettings: false, // Default to collapsed
-        subtitleAppearanceTiming: false // Default to collapsed
+    // Language and layout options mapping
+    const supportedLanguages = {
+        'en': 'lang_en', 'es': 'lang_es', 'fr': 'lang_fr', 'de': 'lang_de',
+        'it': 'lang_it', 'pt': 'lang_pt', 'ja': 'lang_ja', 'ko': 'lang_ko',
+        'zh-CN': 'lang_zh_CN', 'zh-TW': 'lang_zh_TW', 'ru': 'lang_ru',
+        'ar': 'lang_ar', 'hi': 'lang_hi'
     };
-    let collapsibleStates = { ...initialCollapsibleState };
-
-    // Available Translation Providers
-    const availableProviders = {
-        'google': 'Google Translate (Free)',
-        'microsoft_edge_auth': 'Microsoft Translate (Free)'
+    const layoutOrderOptions = {
+        'original_top': 'displayOrderOriginalFirst',
+        'translation_top': 'displayOrderTranslationFirst'
+    };
+    const layoutOrientationOptions = {
+        'column': 'layoutTopBottom',
+        'row': 'layoutLeftRight'
     };
 
-    // Default settings
+    // Default settings for the extension
     const defaultSettings = {
         subtitlesEnabled: true,
         targetLanguage: 'zh-CN',
-        selectedProvider: 'google',
-        subtitleTimeOffset: 0,
+        subtitleTimeOffset: 0.3,
         subtitleLayoutOrder: 'original_top',
         subtitleLayoutOrientation: 'column',
         subtitleFontSize: 1.1,
         subtitleGap: 0.3,
-        translationBatchSize: 3,
-        translationDelay: 150,
-        collapsibleStates: initialCollapsibleState,
+        appearanceAccordionOpen: false,
         uiLanguage: 'en'
     };
 
-    function populateProviderDropdown() {
-        for (const providerId in availableProviders) {
+    function updateSliderProgress(sliderElement) {
+        const value = sliderElement.value;
+        const min = sliderElement.min || 0;
+        const max = sliderElement.max || 100;
+        const percentage = ((value - min) / (max - min)) * 100;
+        sliderElement.style.backgroundSize = `${percentage}% 100%`;
+    }
+
+    function populateDropdown(selectElement, options, currentValue) {
+        selectElement.innerHTML = ''; // Clear existing options
+        for (const value in options) {
+            const i18nKey = options[value];
+            const localizedName = (loadedTranslations[i18nKey] && loadedTranslations[i18nKey].message) || value;
             const option = document.createElement('option');
-            option.value = providerId;
-            option.textContent = availableProviders[providerId];
-            translationProviderSelect.appendChild(option);
+            option.value = value;
+            option.textContent = localizedName;
+            selectElement.appendChild(option);
         }
+        if (currentValue) selectElement.value = currentValue;
     }
 
-    function applyCollapsibleStates() {
-        collapsibleLegends.forEach((legend, index) => {
-            const fieldset = legend.parentElement;
-            const stateKey = index === 0 ? 'translationSettings' : 'subtitleAppearanceTiming';
-            if (collapsibleStates[stateKey]) {
-                fieldset.classList.remove('collapsed');
-            } else {
-                fieldset.classList.add('collapsed');
-            }
-        });
+    async function loadSettings() {
+        const settingsToLoad = Object.keys(defaultSettings);
+        const items = await chrome.storage.sync.get(settingsToLoad);
+
+        // Load translations first to populate dropdowns correctly
+        const uiLang = items.uiLanguage || defaultSettings.uiLanguage;
+        loadedTranslations = await loadTranslations(uiLang);
+
+        // Populate UI with loaded or default settings
+        enableSubtitlesToggle.checked = items.subtitlesEnabled !== undefined ? items.subtitlesEnabled : defaultSettings.subtitlesEnabled;
+        subtitleTimeOffsetInput.value = items.subtitleTimeOffset !== undefined ? items.subtitleTimeOffset : defaultSettings.subtitleTimeOffset;
+        
+        const fontSize = items.subtitleFontSize !== undefined ? items.subtitleFontSize : defaultSettings.subtitleFontSize;
+        subtitleFontSizeInput.value = fontSize;
+        subtitleFontSizeValue.textContent = `${parseFloat(fontSize).toFixed(1)}vw`;
+        updateSliderProgress(subtitleFontSizeInput);
+
+        const gap = items.subtitleGap !== undefined ? items.subtitleGap : defaultSettings.subtitleGap;
+        subtitleGapInput.value = gap;
+        subtitleGapValue.textContent = `${parseFloat(gap).toFixed(1)}em`;
+        updateSliderProgress(subtitleGapInput);
+
+        appearanceAccordion.open = items.appearanceAccordionOpen || defaultSettings.appearanceAccordionOpen;
+
+        // Populate dropdowns now that translations are loaded
+        updateUILanguage();
+        targetLanguageSelect.value = items.targetLanguage || defaultSettings.targetLanguage;
+        subtitleLayoutOrderSelect.value = items.subtitleLayoutOrder || defaultSettings.subtitleLayoutOrder;
+        subtitleLayoutOrientationSelect.value = items.subtitleLayoutOrientation || defaultSettings.subtitleLayoutOrientation;
     }
 
-    function loadSettings() {
-        chrome.storage.sync.get(Object.keys(defaultSettings), function (items) {
-            enableSubtitlesToggle.checked = items.subtitlesEnabled !== undefined ? items.subtitlesEnabled : defaultSettings.subtitlesEnabled;
-            targetLanguageSelect.value = items.targetLanguage || defaultSettings.targetLanguage;
-
-            const selectedProvider = items.selectedProvider || defaultSettings.selectedProvider;
-            if (availableProviders[selectedProvider]) {
-                translationProviderSelect.value = selectedProvider;
-            } else {
-                translationProviderSelect.value = defaultSettings.selectedProvider;
-            }
-
-            subtitleTimeOffsetInput.value = items.subtitleTimeOffset !== undefined ? items.subtitleTimeOffset : defaultSettings.subtitleTimeOffset;
-            subtitleLayoutOrderSelect.value = items.subtitleLayoutOrder || defaultSettings.subtitleLayoutOrder;
-            subtitleLayoutOrientationSelect.value = items.subtitleLayoutOrientation || defaultSettings.subtitleLayoutOrientation;
-
-            const fontSize = items.subtitleFontSize !== undefined ? items.subtitleFontSize : defaultSettings.subtitleFontSize;
-            subtitleFontSizeInput.value = fontSize;
-            subtitleFontSizeValue.textContent = `${parseFloat(fontSize).toFixed(1)}vw`;
-
-            const gap = items.subtitleGap !== undefined ? items.subtitleGap : defaultSettings.subtitleGap;
-            subtitleGapInput.value = gap;
-            subtitleGapValue.textContent = `${parseFloat(gap).toFixed(1)}em`;
-
-            const batchSize = items.translationBatchSize !== undefined ? items.translationBatchSize : defaultSettings.translationBatchSize;
-            translationBatchSizeInput.value = batchSize;
-            translationBatchSizeValue.textContent = batchSize;
-
-            const delay = items.translationDelay !== undefined ? items.translationDelay : defaultSettings.translationDelay;
-            translationDelayInput.value = delay;
-            translationDelayValue.textContent = `${delay}ms`;
-
-            collapsibleStates = items.collapsibleStates || { ...initialCollapsibleState };
-            applyCollapsibleStates();
-
-            // Load and apply UI language
-            const currentUILanguage = items.uiLanguage || defaultSettings.uiLanguage;
-            uiLanguageSelect.value = currentUILanguage;
-            // updateUILanguage is now called after translations are loaded in init()
-        });
-    }
-
-    function showStatus(message, isError = false) {
+    function showStatus(message, duration = 3000) {
         statusMessage.textContent = message;
-        statusMessage.className = isError ? 'error' : 'success';
         setTimeout(() => {
             statusMessage.textContent = '';
-            statusMessage.className = '';
-        }, 3000);
+        }, duration);
     }
 
-    function sendMessageToContentScript(action, value, settingKey) {
+    function sendMessageToContentScript(action, payload) {
         chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
             if (tabs[0] && tabs[0].id) {
-                const messagePayload = { action: action };
-                if (settingKey) {
-                  messagePayload[settingKey] = value;
-                } else {
-                  messagePayload.enabled = value; // Specific for toggleSubtitles
-                }
-
-                chrome.tabs.sendMessage(tabs[0].id, messagePayload, function(response) {
+                chrome.tabs.sendMessage(tabs[0].id, { action, ...payload }, (response) => {
                     if (chrome.runtime.lastError) {
-                        console.warn(`Popup: Error sending ${action} message for ${settingKey || 'toggle'}:`, chrome.runtime.lastError.message);
+                        // Don't show an error if the content script just isn't on the page.
                         if (!chrome.runtime.lastError.message.includes("Receiving end does not exist")) {
-                             showStatus(`Setting not applied. Refresh Disney+ tab.`, true);
+                            console.warn(`Popup: Error sending '${action}' message:`, chrome.runtime.lastError.message);
+                            showStatus(`Setting not applied. Refresh page.`);
                         }
-                    } else if (response && response.success) {
-                        console.log(`Popup: ${action} for ${settingKey || 'toggle'} sent. New value:`, value);
-                    } else {
-                         console.warn(`Popup: Content script did not respond successfully to ${action} for ${settingKey || 'toggle'}. Response:`, response);
+                    } else if (response?.success) {
+                        console.log(`Popup: Action '${action}' sent successfully.`);
                     }
                 });
             } else {
-                console.warn(`Popup: No active tab found to send ${action} message.`);
+                console.warn(`Popup: No active tab found to send '${action}' message.`);
             }
         });
     }
 
-    // Event Listeners for UI elements
+    // --- Event Listeners ---
     enableSubtitlesToggle.addEventListener('change', function () {
-        const enabled = enableSubtitlesToggle.checked;
-        chrome.storage.sync.set({ subtitlesEnabled: enabled }, () => {
-            let statusMessageKey = enabled ? "statusDualEnabled" : "statusDualDisabled";
-            let statusMessageText = loadedTranslations[statusMessageKey]?.message;
-            
-            if (!statusMessageText) {
-                // Fallback if the key is missing
-                console.warn(`${statusMessageKey} key missing from loaded translations. Using hardcoded fallback.`);
-                statusMessageText = enabled ? "Dual subtitles enabled." : "Dual subtitles disabled.";
-            }
-            showStatus(statusMessageText);
-            sendMessageToContentScript("toggleSubtitles", enabled, "enabled");
-        });
+        const enabled = this.checked;
+        chrome.storage.sync.set({ subtitlesEnabled: enabled });
+        const statusKey = enabled ? "statusDualEnabled" : "statusDualDisabled";
+        const statusText = loadedTranslations[statusKey]?.message || (enabled ? "Dual subtitles enabled." : "Dual subtitles disabled.");
+        showStatus(statusText);
+        sendMessageToContentScript("toggleSubtitles", { enabled });
     });
 
     targetLanguageSelect.addEventListener('change', function () {
-        const lang = targetLanguageSelect.value;
-        chrome.storage.sync.set({ targetLanguage: lang }, () => {
-            showStatus(`Target language: ${targetLanguageSelect.options[targetLanguageSelect.selectedIndex].text}.`);
-            sendMessageToContentScript("changeLanguage", lang, "targetLanguage");
-        });
+        const lang = this.value;
+        chrome.storage.sync.set({ targetLanguage: lang });
+        const statusPrefix = loadedTranslations["statusLanguageSetTo"]?.message || "Language set to: ";
+        showStatus(`${statusPrefix}${this.options[this.selectedIndex].text}`);
+        sendMessageToContentScript("changeLanguage", { targetLanguage: lang });
     });
 
     subtitleTimeOffsetInput.addEventListener('change', function() {
-        let offset = parseFloat(subtitleTimeOffsetInput.value);
+        let offset = parseFloat(this.value);
         if (isNaN(offset)) {
-            showStatus('Invalid time offset. Reverting.', true);
+            showStatus('Invalid offset, reverting.');
             chrome.storage.sync.get('subtitleTimeOffset', (items) => {
-                subtitleTimeOffsetInput.value = items.subtitleTimeOffset !== undefined ? items.subtitleTimeOffset : defaultSettings.subtitleTimeOffset;
+                this.value = items.subtitleTimeOffset ?? defaultSettings.subtitleTimeOffset;
             });
             return;
         }
-        offset = parseFloat(offset.toFixed(2)); // Ensure two decimal places for consistency
-        subtitleTimeOffsetInput.value = offset;
-
-        chrome.storage.sync.set({ subtitleTimeOffset: offset }, () => {
-            showStatus(`Time offset: ${offset}s.`);
-            sendMessageToContentScript("changeTimeOffset", offset, "timeOffset");
-        });
+        offset = parseFloat(offset.toFixed(2));
+        this.value = offset;
+        chrome.storage.sync.set({ subtitleTimeOffset: offset });
+        showStatus(`Time offset: ${offset}s.`);
+        sendMessageToContentScript("changeTimeOffset", { timeOffset: offset });
     });
 
     subtitleLayoutOrderSelect.addEventListener('change', function() {
-        const layoutOrder = subtitleLayoutOrderSelect.value;
-        chrome.storage.sync.set({ subtitleLayoutOrder: layoutOrder }, () => {
-            showStatus(`Display order updated.`);
-            sendMessageToContentScript("changeLayoutOrder", layoutOrder, "layoutOrder");
-        });
+        const layoutOrder = this.value;
+        chrome.storage.sync.set({ subtitleLayoutOrder: layoutOrder });
+        showStatus(`Display order updated.`);
+        sendMessageToContentScript("changeLayoutOrder", { layoutOrder });
     });
 
     subtitleLayoutOrientationSelect.addEventListener('change', function() {
-        const layoutOrientation = subtitleLayoutOrientationSelect.value;
-        chrome.storage.sync.set({ subtitleLayoutOrientation: layoutOrientation }, () => {
-            showStatus(`Layout orientation updated.`);
-            sendMessageToContentScript("changeLayoutOrientation", layoutOrientation, "layoutOrientation");
-        });
+        const layoutOrientation = this.value;
+        chrome.storage.sync.set({ subtitleLayoutOrientation: layoutOrientation });
+        showStatus(`Layout orientation updated.`);
+        sendMessageToContentScript("changeLayoutOrientation", { layoutOrientation });
     });
 
     subtitleFontSizeInput.addEventListener('input', function() {
         subtitleFontSizeValue.textContent = `${parseFloat(this.value).toFixed(1)}vw`;
+        updateSliderProgress(this);
     });
-    subtitleGapInput.addEventListener('input', function() {
-        subtitleGapValue.textContent = `${parseFloat(this.value).toFixed(1)}em`;
-    });
-    translationBatchSizeInput.addEventListener('input', function() {
-        translationBatchSizeValue.textContent = this.value;
-    });
-    translationDelayInput.addEventListener('input', function() {
-        translationDelayValue.textContent = `${this.value}ms`;
-    });
-
     subtitleFontSizeInput.addEventListener('change', function() {
         const fontSize = parseFloat(this.value);
-        chrome.storage.sync.set({ subtitleFontSize: fontSize }, () => {
-            showStatus(`Subtitle size: ${fontSize.toFixed(1)}vw.`);
-            sendMessageToContentScript("changeFontSize", fontSize, "fontSize");
-        });
+        chrome.storage.sync.set({ subtitleFontSize: fontSize });
+        showStatus(`Font size: ${fontSize.toFixed(1)}vw.`);
+        sendMessageToContentScript("changeFontSize", { fontSize });
     });
 
+    subtitleGapInput.addEventListener('input', function() {
+        subtitleGapValue.textContent = `${parseFloat(this.value).toFixed(1)}em`;
+        updateSliderProgress(this);
+    });
     subtitleGapInput.addEventListener('change', function() {
         const gap = parseFloat(this.value);
-        chrome.storage.sync.set({ subtitleGap: gap }, () => {
-            showStatus(`Subtitle gap: ${gap.toFixed(1)}em.`);
-            sendMessageToContentScript("changeGap", gap, "gap");
-        });
+        chrome.storage.sync.set({ subtitleGap: gap });
+        showStatus(`Vertical gap: ${gap.toFixed(1)}em.`);
+        sendMessageToContentScript("changeGap", { gap });
     });
 
-    translationBatchSizeInput.addEventListener('change', function() {
-        const batchSize = parseInt(this.value);
-        chrome.storage.sync.set({ translationBatchSize: batchSize }, () => {
-            showStatus(`Translation batch size: ${batchSize}.`);
-            sendMessageToContentScript("changeBatchSize", batchSize, "batchSize");
-        });
+    appearanceAccordion.addEventListener('toggle', function() {
+        chrome.storage.sync.set({ appearanceAccordionOpen: this.open });
     });
 
-    translationDelayInput.addEventListener('change', function() {
-        const delay = parseInt(this.value);
-        chrome.storage.sync.set({ translationDelay: delay }, () => {
-            showStatus(`Translation delay: ${delay}ms.`);
-            sendMessageToContentScript("changeDelay", delay, "delay");
-        });
-    });
+    openOptionsPageButton.addEventListener('click', () => chrome.runtime.openOptionsPage());
+    openGithubLinkButton.addEventListener('click', () => chrome.tabs.create({ url: 'https://github.com/QuellaMC/DualSub' }));
 
-    translationProviderSelect.addEventListener('change', function() {
-        const providerId = this.value;
-        chrome.storage.sync.set({ selectedProvider: providerId }, () => {
-            const providerName = translationProviderSelect.options[translationProviderSelect.selectedIndex].text;
-            showStatus(`Provider: ${providerName}.`);
-            // Send message to background script to update its internal state
-            chrome.runtime.sendMessage({ action: "changeProvider", providerId: providerId }, function(response) {
-                if (chrome.runtime.lastError) {
-                    console.warn(`Popup: Error sending changeProvider message to background:`, chrome.runtime.lastError.message);
-                    showStatus(`Error switching provider.`, true);
-                } else if (response && response.success) {
-                    console.log(`Popup: changeProvider message sent to background. Response: ${response.message}`);
-                } else {
-                    console.warn(`Popup: Background script did not respond successfully to changeProvider. Response:`, response);
-                    showStatus(`Provider change not confirmed by background.`, true);
-                }
-            });
-        });
-    });
-
-    // Setup for collapsible sections
-    collapsibleLegends.forEach((legend, index) => {
-        legend.addEventListener('click', function () {
-            const fieldset = this.parentElement;
-            fieldset.classList.toggle('collapsed');
-            const stateKey = index === 0 ? 'translationSettings' : 'subtitleAppearanceTiming';
-            collapsibleStates[stateKey] = !fieldset.classList.contains('collapsed');
-            chrome.storage.sync.set({ collapsibleStates: collapsibleStates });
-        });
-    });
-
-    // Helper function to load translation files
+    // --- Language and Initialization ---
     async function loadTranslations(langCode) {
         const normalizedLangCode = langCode.replace('-', '_');
-
-        if (translationsCache[normalizedLangCode]) {
-            console.log(`Using cached translations for: ${normalizedLangCode}`);
-            return translationsCache[normalizedLangCode];
-        }
-
-        const translationsPath = chrome.runtime.getURL(`_locales/${normalizedLangCode}/messages.json`);
+        if (translationsCache[normalizedLangCode]) return translationsCache[normalizedLangCode];
         
+        const translationsPath = chrome.runtime.getURL(`_locales/${normalizedLangCode}/messages.json`);
         try {
             const response = await fetch(translationsPath);
-            if (response.ok) {
-                const translations = await response.json();
-                translationsCache[normalizedLangCode] = translations;
-                console.log(`Translations fetched and cached for: ${normalizedLangCode}`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const translations = await response.json();
+            translationsCache[normalizedLangCode] = translations;
+            return translations;
+        } catch (error) {
+            console.warn(`Could not load '${normalizedLangCode}' translations, falling back to English. Error:`, error);
+            // Fallback to English
+            const fallbackPath = chrome.runtime.getURL(`_locales/en/messages.json`);
+            try {
+                const fallbackResponse = await fetch(fallbackPath);
+                const translations = await fallbackResponse.json();
+                translationsCache['en'] = translations;
                 return translations;
+            } catch (fatalError) {
+                console.error(`Fatal: Failed to load any translations, including English.`, fatalError);
+                return {};
             }
-        } catch (error) {
-            console.error(`Error fetching primary language ${normalizedLangCode}:`, error);
-        }
-
-        console.warn(`Translation file for ${normalizedLangCode} not found. Falling back to English.`);
-        const fallbackLangCode = 'en';
-
-        if (translationsCache[fallbackLangCode]) {
-            console.log(`Using cached translations for fallback: ${fallbackLangCode}`);
-            return translationsCache[fallbackLangCode];
-        }
-        
-        try {
-            const fallbackPath = chrome.runtime.getURL(`_locales/${fallbackLangCode}/messages.json`);
-            const fallbackResponse = await fetch(fallbackPath);
-            if (!fallbackResponse.ok) {
-                throw new Error(`Failed to load English fallback translations (status: ${fallbackResponse.status})`);
-            }
-            const fallbackTranslations = await fallbackResponse.json();
-            translationsCache[fallbackLangCode] = fallbackTranslations;
-            console.log(`Translations fetched and cached for fallback: ${fallbackLangCode}`);
-            return fallbackTranslations;
-        } catch (error) {
-            console.error(`Fatal: Failed to load any translations, including English fallback:`, error);
-            return {};
         }
     }
 
-    // Add this new event listener for UI language changes
-    uiLanguageSelect.addEventListener('change', async function () {
-        const newLang = uiLanguageSelect.value;
-
-        await new Promise(resolve => {
-            chrome.storage.sync.set({ uiLanguage: newLang }, resolve);
+    function updateUILanguage() {
+        // Apply translations to all elements with data-i18n attribute
+        document.querySelectorAll('[data-i18n]').forEach(elem => {
+            const key = elem.getAttribute('data-i18n');
+            if (loadedTranslations[key]?.message) {
+                 if (elem.tagName === 'SUMMARY') {
+                    // Preserve the dropdown arrow
+                    elem.childNodes[0].nodeValue = loadedTranslations[key].message + ' ';
+                } else {
+                    elem.textContent = loadedTranslations[key].message;
+                }
+            }
         });
-
-        loadedTranslations = await loadTranslations(newLang);
-
-        updateUILanguage(newLang); 
-
-        const langName = uiLanguageSelect.options[uiLanguageSelect.selectedIndex].text;
-        // Get the translated status message template
-        let statusMessagePrefix = loadedTranslations.statusLanguageSetTo?.message;
-        if (!statusMessagePrefix) {
-            // Fallback if the key is somehow missing
-            console.warn("statusLanguageSetTo key missing from loaded translations. Using hardcoded fallback.");
-            statusMessagePrefix = (newLang === 'zh-CN' || newLang === 'zh_CN') ? "语言切换成： " : "Language set to: ";
+        // Repopulate dropdowns with translated text
+        populateDropdown(targetLanguageSelect, supportedLanguages, targetLanguageSelect.value);
+        populateDropdown(subtitleLayoutOrderSelect, layoutOrderOptions, subtitleLayoutOrderSelect.value);
+        populateDropdown(subtitleLayoutOrientationSelect, layoutOrientationOptions, subtitleLayoutOrientationSelect.value);
+    }
+    
+    // Listen for language changes from other parts of the extension (e.g., options page)
+    chrome.storage.onChanged.addListener(async (changes, namespace) => {
+        if (namespace === 'sync' && changes.uiLanguage) {
+            const newLang = changes.uiLanguage.newValue || defaultSettings.uiLanguage;
+            console.log(`Popup: Detected UI language change to '${newLang}'. Reloading UI.`);
+            loadedTranslations = await loadTranslations(newLang);
+            updateUILanguage();
         }
-        showStatus(statusMessagePrefix + langName);
     });
 
-    // Function to update UI text based on language
-    function updateUILanguage(lang) {
-        if (Object.keys(loadedTranslations).length === 0) {
-            console.warn("Translations not loaded yet, cannot update UI language.");
-            return;
-        }
-        const currentTranslation = loadedTranslations;
-        if (Object.keys(currentTranslation).length === 0) {
-            console.error("No translations available (currentTranslation object is empty). UI will not be updated.");
-            return;
-        }
-
-        const i18nMap = {
-            h1Title: { selector: '.container > h1', fallback: 'Disney+ Dual Subtitles' },
-            enableSubtitlesLabel: { selector: 'label[for="enableSubtitles"]', fallback: 'Enable Dual Subtitles:' },
-            translationSettingsLegend: { selector: '#translation-settings .legend-text', fallback: 'Translation Settings' },
-            providerLabel: { selector: 'label[for="translationProvider"]', fallback: 'Provider:' },
-            targetLanguageLabel: { selector: 'label[for="targetLanguage"]', fallback: 'Translate to:' },
-            batchSizeLabel: { selector: 'label[for="translationBatchSize"]', fallback: 'Batch Size:' },
-            requestDelayLabel: { selector: 'label[for="translationDelay"]', fallback: 'Request Delay (ms):' },
-            subtitleAppearanceTimingLegend: { selector: '#appearance-settings .legend-text', fallback: 'Subtitle Appearance & Timing' },
-            displayOrderLabel: { selector: 'label[for="subtitleLayoutOrder"]', fallback: 'Display Order:' },
-            layoutLabel: { selector: 'label[for="subtitleLayoutOrientation"]', fallback: 'Layout:' },
-            fontSizeLabel: { selector: 'label[for="subtitleFontSize"]', fallback: 'Font Size:' },
-            verticalGapLabel: { selector: 'label[for="subtitleGap"]', fallback: 'Vertical Gap:' },
-            timeOffsetLabel: { selector: 'label[for="subtitleTimeOffset"]', fallback: 'Time Offset (sec):' },
-            uiLanguageLabel: { selector: 'label[for="uiLanguage"]', fallback: 'Language:' },
-        };
-
-        for (const key in i18nMap) {
-            const { selector, fallback } = i18nMap[key];
-            const element = document.querySelector(selector);
-            if (element) {
-                element.textContent = currentTranslation[key]?.message || fallback;
-            } else {
-                console.warn(`i18n mapping: Could not find element with selector '${selector}' for key '${key}'.`);
-            }
-        }
-
-        // Handle special cases that don't fit the simple selector/textContent pattern
-        document.title = currentTranslation.pageTitle?.message || 'Disney+ Dual Subtitles';
-        
-    }
-
-    // Initial load function
-    async function init() {
-        let langToLoad = defaultSettings.uiLanguage;
-        try {
-            const items = await new Promise(resolve => chrome.storage.sync.get('uiLanguage', resolve));
-            if (items.uiLanguage) {
-                langToLoad = items.uiLanguage;
-            }
-            uiLanguageSelect.value = langToLoad;
-
-            loadedTranslations = await loadTranslations(langToLoad);
-
-        } catch (error) {
-            console.error("Error during initialization sequence:", error);
-        }
-        
-        populateProviderDropdown();
-        loadSettings();
-        
-        // loadedTranslations will be English, but newLang (in updateUILanguage) will still be the originally requested lang.
-        updateUILanguage(langToLoad); 
-    }
-
-    init();
+    // Initial setup
+    loadSettings();
 });
