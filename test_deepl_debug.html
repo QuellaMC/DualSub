@@ -20,6 +20,7 @@
     </div>
     <div id="result" style="margin-top: 20px; padding: 10px; border: 1px solid #ccc; display: none;"></div>
 
+    <script src="utils/deepl-api.js"></script>
     <script>
         async function testDeepL() {
             const apiKey = document.getElementById('apiKey').value.trim();
@@ -43,53 +44,39 @@
             resultDiv.innerHTML = '⏳ Testing...';
 
             try {
-                const apiUrl = apiPlan === 'pro'
-                    ? 'https://api.deepl.com/v2/translate'
-                    : 'https://api-free.deepl.com/v2/translate';
+                // Use the shared DeepL API utility
+                console.log('Testing with:', { apiKey: '***', apiPlan, text });
+                const result = await window.DeepLAPI.testDeepLConnection(apiKey, apiPlan, text);
+                
+                console.log('API result:', result);
 
-                const params = new URLSearchParams();
-                params.append('text', text);
-                params.append('target_lang', 'ZH-HANS');
-
-                console.log('Request URL:', apiUrl);
-                console.log('Request body:', params.toString());
-
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `DeepL-Auth-Key ${apiKey}`,
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                        'User-Agent': 'Dualsub/1.0.0'
-                    },
-                    body: params.toString()
-                });
-
-                console.log('Response status:', response.status);
-                console.log('Response headers:', response.headers);
-
-                if (response.ok) {
-                    const data = await response.json();
-                    console.log('Response data:', data);
-                    
-                    if (data && data.translations && data.translations.length > 0) {
-                        resultDiv.innerHTML = `✅ Success! Translation: "${data.translations[0].text}"`;
-                    } else {
-                        resultDiv.innerHTML = '⚠️ API responded but with unexpected format';
-                    }
+                if (result.success) {
+                    resultDiv.innerHTML = `✅ Success! Translation: "${result.translatedText}"`;
                 } else {
-                    const errorText = await response.text();
-                    console.log('Error response:', errorText);
-                    
-                    try {
-                        const errorData = JSON.parse(errorText);
-                        resultDiv.innerHTML = `❌ API Error (${response.status}): ${errorData.message || errorText}`;
-                    } catch (e) {
-                        resultDiv.innerHTML = `❌ API Error (${response.status}): ${errorText}`;
+                    let errorMessage;
+                    switch (result.error) {
+                        case 'API_KEY_MISSING':
+                            errorMessage = '❌ API key is required';
+                            break;
+                        case 'UNEXPECTED_FORMAT':
+                            errorMessage = '⚠️ API responded but with unexpected format';
+                            break;
+                        case 'NETWORK_ERROR':
+                            errorMessage = `❌ Network Error: ${result.message}`;
+                            break;
+                        default:
+                            if (result.error.startsWith('HTTP_')) {
+                                errorMessage = `❌ API Error (${result.status}): ${result.message}`;
+                            } else {
+                                errorMessage = `❌ Error: ${result.message}`;
+                            }
+                            break;
                     }
+                    resultDiv.innerHTML = errorMessage;
                 }
             } catch (error) {
                 console.error('Request failed:', error);
-                resultDiv.innerHTML = `❌ Network Error: ${error.message}`;
+                resultDiv.innerHTML = `❌ Unexpected Error: ${error.message}`;
             }
         }
     </script>

@@ -189,6 +189,18 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // Helper function to get localized text with fallback
+    function getLocalizedText(key, fallback, ...substitutions) {
+        let message = loadedTranslations[key]?.message || fallback;
+        // Replace %s and %d placeholders with substitutions
+        if (substitutions.length > 0) {
+            substitutions.forEach((sub, index) => {
+                message = message.replace(/%[sd]/, sub);
+            });
+        }
+        return message;
+    }
+
     function setVersion() {
         const manifest = chrome.runtime.getManifest();
         extensionVersionSpan.textContent = manifest.version;
@@ -200,60 +212,64 @@ document.addEventListener('DOMContentLoaded', function () {
         const apiPlan = deeplApiPlanSelect.value;
 
         if (!apiKey) {
-            showTestResult('Please enter your DeepL API key first.', 'error');
+            showTestResult(getLocalizedText('deeplApiKeyError', 'Please enter your DeepL API key first.'), 'error');
             return;
         }
 
         testDeepLButton.disabled = true;
-        testDeepLButton.textContent = 'Testing...';
-        showTestResult('Testing DeepL connection...', 'info');
+        testDeepLButton.textContent = getLocalizedText('testingButton', 'Testing...');
+        showTestResult(getLocalizedText('testingConnection', 'Testing DeepL connection...'), 'info');
 
         try {
-            const apiUrl = apiPlan === 'pro'
-                ? 'https://api.deepl.com/v2/translate'
-                : 'https://api-free.deepl.com/v2/translate';
+            // Use the shared DeepL API utility
+            const result = await window.DeepLAPI.testDeepLConnection(apiKey, apiPlan);
 
-            const params = new URLSearchParams();
-            params.append('text', 'Hello');
-            params.append('target_lang', 'ZH-HANS');
-
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `DeepL-Auth-Key ${apiKey}`,
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'User-Agent': 'Dualsub/1.0.0'
-                },
-                body: params.toString()
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                if (data && data.translations && data.translations.length > 0) {
-                    showTestResult(`✅ DeepL API test successful! Translated "Hello" to "${data.translations[0].text}"`, 'success');
-                } else {
-                    showTestResult('⚠️ DeepL API responded but with unexpected format', 'warning');
-                }
+            if (result.success) {
+                showTestResult(getLocalizedText('deeplTestSuccess', '✅ DeepL API test successful! Translated "Hello" to "%s"', result.translatedText), 'success');
             } else {
-                if (response.status === 403) {
-                    showTestResult('❌ DeepL API key is invalid or has been rejected.', 'error');
-                } else if (response.status === 456) {
-                    showTestResult('❌ DeepL API quota exceeded. Please check your usage limits.', 'error');
-                } else {
-                    const errorData = await response.json().catch(() => ({ message: response.statusText }));
-                    showTestResult(`❌ DeepL API error (${response.status}): ${errorData.message || 'Unknown error'}`, 'error');
+                let messageKey, fallbackMessage;
+                
+                switch (result.error) {
+                    case 'API_KEY_MISSING':
+                        messageKey = 'deeplApiKeyError';
+                        fallbackMessage = 'Please enter your DeepL API key first.';
+                        break;
+                    case 'UNEXPECTED_FORMAT':
+                        messageKey = 'deeplTestUnexpectedFormat';
+                        fallbackMessage = '⚠️ DeepL API responded but with unexpected format';
+                        break;
+                    case 'HTTP_403':
+                        messageKey = 'deeplTestInvalidKey';
+                        fallbackMessage = '❌ DeepL API key is invalid or has been rejected.';
+                        break;
+                    case 'HTTP_456':
+                        messageKey = 'deeplTestQuotaExceeded';
+                        fallbackMessage = '❌ DeepL API quota exceeded. Please check your usage limits.';
+                        break;
+                    case 'NETWORK_ERROR':
+                        messageKey = 'deeplTestNetworkError';
+                        fallbackMessage = '❌ Network error: Could not connect to DeepL API. Check your internet connection.';
+                        break;
+                    default:
+                        if (result.error.startsWith('HTTP_')) {
+                            messageKey = 'deeplTestApiError';
+                            fallbackMessage = getLocalizedText('deeplTestApiError', '❌ DeepL API error (%d): %s', result.status, result.message || 'Unknown error');
+                        } else {
+                            messageKey = 'deeplTestGenericError';
+                            fallbackMessage = getLocalizedText('deeplTestGenericError', '❌ Test failed: %s', result.message);
+                        }
+                        break;
                 }
+
+                const errorType = result.error === 'UNEXPECTED_FORMAT' ? 'warning' : 'error';
+                showTestResult(getLocalizedText(messageKey, fallbackMessage), errorType);
             }
         } catch (error) {
             console.error('DeepL test error:', error);
-            if (error.message.includes('Failed to fetch')) {
-                showTestResult('❌ Network error: Could not connect to DeepL API. Check your internet connection.', 'error');
-            } else {
-                showTestResult(`❌ Test failed: ${error.message}`, 'error');
-            }
+            showTestResult(getLocalizedText('deeplTestGenericError', '❌ Test failed: %s', error.message), 'error');
         } finally {
             testDeepLButton.disabled = false;
-            testDeepLButton.textContent = 'Test DeepL Connection';
+            testDeepLButton.textContent = getLocalizedText('testDeepLButton', 'Test DeepL Connection');
         }
     }
 

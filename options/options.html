@@ -84,7 +84,7 @@
                     </div>
                     <div class="setting">
                         <button id="testDeepLButton" type="button" data-i18n="testDeepLButton" style="margin-top: 10px; padding: 8px 16px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">Test DeepL Connection</button>
-                        <div id="deeplTestResult" class="test-result"></div>
+                        <div id="deeplTestResult" class="test-result" aria-live="polite"></div>
                     </div>
                 </div>
             </section>
@@ -99,6 +99,7 @@
             </section>
         </main>
     </div>
+    <script src="../utils/deepl-api.js"></script>
     <script src="options.js"></script>
 </body>
 </html> 

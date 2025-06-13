@@ -64,5 +64,17 @@
   "lang_zh_TW": { "message": "Chinese (Trad)" },
   "lang_ru": { "message": "Russian" },
   "lang_ar": { "message": "Arabic" },
-  "lang_hi": { "message": "Hindi" }
+  "lang_hi": { "message": "Hindi" },
+
+  "testDeepLButton": { "message": "Test DeepL Connection" },
+  "deeplApiKeyError": { "message": "Please enter your DeepL API key first." },
+  "testingButton": { "message": "Testing..." },
+  "testingConnection": { "message": "Testing DeepL connection..." },
+  "deeplTestSuccess": { "message": "✅ DeepL API test successful! Translated \"Hello\" to \"%s\"" },
+  "deeplTestUnexpectedFormat": { "message": "⚠️ DeepL API responded but with unexpected format" },
+  "deeplTestInvalidKey": { "message": "❌ DeepL API key is invalid or has been rejected." },
+  "deeplTestQuotaExceeded": { "message": "❌ DeepL API quota exceeded. Please check your usage limits." },
+  "deeplTestApiError": { "message": "❌ DeepL API error (%d): %s" },
+  "deeplTestNetworkError": { "message": "❌ Network error: Could not connect to DeepL API. Check your internet connection." },
+  "deeplTestGenericError": { "message": "❌ Test failed: %s" }
 } 

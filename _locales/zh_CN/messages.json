@@ -64,5 +64,17 @@
   "lang_zh_TW": { "message": "繁体中文" },
   "lang_ru": { "message": "俄语" },
   "lang_ar": { "message": "阿拉伯语" },
-  "lang_hi": { "message": "印地语" }
+  "lang_hi": { "message": "印地语" },
+
+  "testDeepLButton": { "message": "测试 DeepL 连接" },
+  "deeplApiKeyError": { "message": "请先输入您的 DeepL API 密钥。" },
+  "testingButton": { "message": "测试中..." },
+  "testingConnection": { "message": "正在测试 DeepL 连接..." },
+  "deeplTestSuccess": { "message": "✅ DeepL API 测试成功！将 \"Hello\" 翻译为 \"%s\"" },
+  "deeplTestUnexpectedFormat": { "message": "⚠️ DeepL API 响应但格式异常" },
+  "deeplTestInvalidKey": { "message": "❌ DeepL API 密钥无效或被拒绝。" },
+  "deeplTestQuotaExceeded": { "message": "❌ DeepL API 配额已超限。请检查您的使用限制。" },
+  "deeplTestApiError": { "message": "❌ DeepL API 错误 (%d): %s" },
+  "deeplTestNetworkError": { "message": "❌ 网络错误：无法连接到 DeepL API。请检查您的网络连接。" },
+  "deeplTestGenericError": { "message": "❌ 测试失败：%s" }
 } 
