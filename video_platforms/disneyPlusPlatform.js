@@ -89,28 +89,48 @@ export class DisneyPlusPlatform extends VideoPlatform {
             }
 
             console.log("DisneyPlusPlatform: Requesting VTT from background. URL:", vttMasterUrl, "Video ID:", this.currentVideoId);
-            chrome.runtime.sendMessage({ action: "fetchVTT", url: vttMasterUrl, videoId: this.currentVideoId }, (response) => {
-                if (chrome.runtime.lastError) {
-                    console.error("DisneyPlusPlatform: Error for VTT fetch:", chrome.runtime.lastError.message, "URL:", vttMasterUrl);
-                    return;
-                }
-                if (response && response.success && response.videoId === this.currentVideoId) {
-                    console.log(`DisneyPlusPlatform: VTT fetched successfully for ${this.currentVideoId}.`);
-                    this.lastKnownVttUrlForVideoId[this.currentVideoId] = response.url; 
-                    if (this.onSubtitleUrlFoundCallback) {
-                        this.onSubtitleUrlFoundCallback({ 
-                            vttText: response.vttText, 
-                            videoId: response.videoId, 
-                            url: response.url 
-                        });
+            
+            // Get user settings for language preferences
+            chrome.storage.sync.get(['targetLanguage', 'originalLanguage'], (settings) => {
+                const targetLanguage = settings.targetLanguage || 'zh-CN';
+                const originalLanguage = settings.originalLanguage || 'en';
+                
+                chrome.runtime.sendMessage({ 
+                    action: "fetchVTT", 
+                    url: vttMasterUrl, 
+                    videoId: this.currentVideoId,
+                    targetLanguage: targetLanguage,
+                    originalLanguage: originalLanguage
+                }, (response) => {
+                    if (chrome.runtime.lastError) {
+                        console.error("DisneyPlusPlatform: Error for VTT fetch:", chrome.runtime.lastError.message, "URL:", vttMasterUrl);
+                        return;
                     }
-                } else if (response && !response.success) {
-                    console.error("DisneyPlusPlatform: Background failed to fetch VTT:", response.error || "Unknown", "URL:", response.url);
-                } else if (response && response.videoId !== this.currentVideoId) {
-                    console.warn(`DisneyPlusPlatform: Received VTT for '${response.videoId}', but current context is '${this.currentVideoId}'. Discarding.`);
-                } else {
-                    console.error("DisneyPlusPlatform: No/invalid response from background for fetchVTT. URL:", vttMasterUrl);
-                }
+                    if (response && response.success && response.videoId === this.currentVideoId) {
+                        console.log(`DisneyPlusPlatform: VTT fetched successfully for ${this.currentVideoId}.`);
+                        this.lastKnownVttUrlForVideoId[this.currentVideoId] = response.url; 
+                        if (this.onSubtitleUrlFoundCallback) {
+                            this.onSubtitleUrlFoundCallback({ 
+                                vttText: response.vttText, 
+                                targetVttText: response.targetVttText,
+                                videoId: response.videoId, 
+                                url: response.url,
+                                sourceLanguage: response.sourceLanguage,
+                                targetLanguage: response.targetLanguage,
+                                useNativeTarget: response.useNativeTarget,
+                                availableLanguages: response.availableLanguages,
+                                selectedLanguage: response.selectedLanguage,
+                                targetLanguageInfo: response.targetLanguageInfo
+                            });
+                        }
+                    } else if (response && !response.success) {
+                        console.error("DisneyPlusPlatform: Background failed to fetch VTT:", response.error || "Unknown", "URL:", response.url);
+                    } else if (response && response.videoId !== this.currentVideoId) {
+                        console.warn(`DisneyPlusPlatform: Received VTT for '${response.videoId}', but current context is '${this.currentVideoId}'. Discarding.`);
+                    } else {
+                        console.error("DisneyPlusPlatform: No/invalid response from background for fetchVTT. URL:", vttMasterUrl);
+                    }
+                });
             });
         }
     }
@@ -150,11 +170,6 @@ export class DisneyPlusPlatform extends VideoPlatform {
             document.removeEventListener(INJECT_EVENT_ID, this.eventListener);
             this.eventListener = null;
             console.log("DisneyPlusPlatform: Event listener removed.");
-        }
-        const scriptTag = document.getElementById(INJECT_SCRIPT_TAG_ID);
-        if (scriptTag) {
-            // scriptTag.remove(); // Removing the script tag might be too aggressive or unnecessary
-            // console.log("DisneyPlusPlatform: Inject script tag removed."); 
         }
         this.currentVideoId = null;
         this.onSubtitleUrlFoundCallback = null;
