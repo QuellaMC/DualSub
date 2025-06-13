@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="optionsPageTitle">DualSub Options</title>
+    <link rel="stylesheet" href="options.css">
+</head>
+<body>
+    <div class="container">
+        <aside class="sidebar">
+            <header>
+                <h1 data-i18n="optionsH1Title">DualSub</h1>
+            </header>
+            <nav>
+                <ul>
+                    <li><a href="#general" class="active" data-i18n="navGeneral">General</a></li>
+                    <li><a href="#translation" data-i18n="navTranslation">Translation</a></li>
+                    <li><a href="#providers" data-i18n="navProviders">Providers</a></li>
+                    <li><a href="#about" data-i18n="navAbout">About</a></li>
+                </ul>
+            </nav>
+        </aside>
+        <main class="content">
+            <section id="general">
+                <h2 data-i18n="sectionGeneral">General</h2>
+                <div class="setting-card">
+                    <h3 data-i18n="cardUILanguageTitle">UI Language</h3>
+                    <p data-i18n="cardUILanguageDesc">Choose the display language for the extension's interface.</p>
+                    <div class="setting">
+                        <label for="uiLanguage" data-i18n="uiLanguageLabel">Language:</label>
+                        <select id="uiLanguage">
+                            <option value="en">English</option>
+                            <option value="zh-CN">中文 (简体)</option>
+                        </select>
+                    </div>
+                </div>
+            </section>
+            <section id="translation" class="hidden">
+                <h2 data-i18n="sectionTranslation">Translation</h2>
+                <div class="setting-card">
+                    <h3 data-i18n="cardTranslationEngineTitle">Translation Engine</h3>
+                     <p data-i18n="cardTranslationEngineDesc">Select your preferred translation service.</p>
+                    <div class="setting">
+                        <label for="translationProvider" data-i18n="providerLabel">Provider:</label>
+                        <select id="translationProvider">
+                        </select>
+                    </div>
+                </div>
+                <div class="setting-card">
+                    <h3 data-i18n="cardPerformanceTitle">Performance</h3>
+                    <p data-i18n="cardPerformanceDesc">Adjust how the extension handles translation requests to balance speed and stability.</p>
+                    <div class="setting">
+                        <label for="translationBatchSize" title="Number of subtitle segments to translate in each batch. Lower is faster but may cause rate limiting." data-i18n="batchSizeLabel">Batch Size:</label>
+                        <div class="slider-container">
+                            <input type="range" id="translationBatchSize" min="1" max="10" step="1" value="3">
+                            <span id="translationBatchSizeValue" class="value-display">3</span>
+                        </div>
+                    </div>
+                    <div class="setting">
+                        <label for="translationDelay" title="Delay between translation requests in milliseconds. Higher values reduce chances of being rate-limited." data-i18n="requestDelayLabel">Request Delay (ms):</label>
+                        <div class="slider-container">
+                            <input type="range" id="translationDelay" min="0" max="500" step="50" value="150">
+                            <span id="translationDelayValue" class="value-display">150ms</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <section id="providers" class="hidden">
+                <h2 data-i18n="sectionProviders">Provider Settings</h2>
+                <div class="setting-card">
+                    <h3 data-i18n="cardDeepLTitle">DeepL</h3>
+                    <p data-i18n="cardDeepLDesc">Enter your API key for DeepL Translate. Choose between Free and Pro plans.</p>
+                    <div class="setting">
+                        <label for="deeplApiKey" data-i18n="apiKeyLabel">API Key:</label>
+                        <input type="password" id="deeplApiKey" placeholder="Enter your DeepL API key">
+                    </div>
+                     <div class="setting">
+                        <label for="deeplApiPlan" data-i18n="apiPlanLabel">API Plan:</label>
+                        <select id="deeplApiPlan">
+                            <option value="free" data-i18n="apiPlanFree">DeepL API Free</option>
+                            <option value="pro" data-i18n="apiPlanPro">DeepL API Pro</option>
+                        </select>
+                    </div>
+                </div>
+            </section>
+             <section id="about" class="hidden">
+                <h2 data-i18n="sectionAbout">About</h2>
+                <div class="setting-card">
+                    <h3 data-i18n="cardAboutTitle">DualSub</h3>
+                    <p><span data-i18n="aboutVersion">Version</span> <span id="extensionVersion"></span></p>
+                    <p data-i18n="aboutDescription">This extension helps you watch videos with dual language subtitles on various platforms.</p>
+                    <p data-i18n="aboutDevelopment">Developed by <a href="https://github.com/DualSub" target="_blank">DualSub</a></p>
+                </div>
+            </section>
+        </main>
+    </div>
+    <script src="options.js"></script>
+</body>
+</html> 
