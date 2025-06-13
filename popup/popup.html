@@ -38,9 +38,25 @@
 
     <div class="card">
         <div class="setting-item">
+            <label for="useNativeSubtitles" data-i18n="useNativeSubtitlesLabel">Use Official Subtitles When Available</label>
+            <label class="switch">
+                <input type="checkbox" id="useNativeSubtitles">
+                <span class="slider"></span>
+            </label>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="setting-item">
+            <label for="originalLanguage" data-i18n="originalLanguageLabel">Original Language</label>
+            <select id="originalLanguage">
+                <!-- Options are populated by popup.js -->
+            </select>
+        </div>
+        <div class="setting-item">
             <label for="targetLanguage" data-i18n="targetLanguageLabel">Translate to</label>
             <select id="targetLanguage">
-                <!-- Options are now populated by popup.js -->
+                <!-- Options are populated by popup.js -->
             </select>
         </div>
     </div>

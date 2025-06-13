@@ -4,6 +4,8 @@
   "pageTitle": { "message": "DualSub Settings" },
   "h1Title": { "message": "DualSub" },
   "enableSubtitlesLabel": { "message": "Enable Dual Subtitles:" },
+  "useNativeSubtitlesLabel": { "message": "Use Official Subtitles:" },
+  "originalLanguageLabel": { "message": "Original Language:" },
   "translationSettingsLegend": { "message": "Translation Settings" },
   "providerLabel": { "message": "Provider:" },
   "targetLanguageLabel": { "message": "Translate to:" },
