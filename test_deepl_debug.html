@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>DeepL API Debug Test</title>
+    <meta charset="UTF-8">
+</head>
+<body>
+    <h1>DeepL API Debug Test</h1>
+    <div>
+        <label>API Key: <input type="password" id="apiKey" placeholder="Enter your DeepL API key"></label><br><br>
+        <label>API Plan: 
+            <select id="apiPlan">
+                <option value="free">Free</option>
+                <option value="pro">Pro</option>
+            </select>
+        </label><br><br>
+        <label>Text to translate: <input type="text" id="textInput" value="Hello, world!" placeholder="Enter text"></label><br><br>
+        <button onclick="testDeepL()">Test DeepL API</button>
+    </div>
+    <div id="result" style="margin-top: 20px; padding: 10px; border: 1px solid #ccc; display: none;"></div>
+
+    <script>
+        async function testDeepL() {
+            const apiKey = document.getElementById('apiKey').value.trim();
+            const apiPlan = document.getElementById('apiPlan').value;
+            const text = document.getElementById('textInput').value.trim();
+            const resultDiv = document.getElementById('result');
+
+            if (!apiKey) {
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = '❌ Please enter your API key';
+                return;
+            }
+
+            if (!text) {
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = '❌ Please enter text to translate';
+                return;
+            }
+
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '⏳ Testing...';
+
+            try {
+                const apiUrl = apiPlan === 'pro'
+                    ? 'https://api.deepl.com/v2/translate'
+                    : 'https://api-free.deepl.com/v2/translate';
+
+                const params = new URLSearchParams();
+                params.append('text', text);
+                params.append('target_lang', 'ZH-HANS');
+
+                console.log('Request URL:', apiUrl);
+                console.log('Request body:', params.toString());
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `DeepL-Auth-Key ${apiKey}`,
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'User-Agent': 'Dualsub/1.0.0'
+                    },
+                    body: params.toString()
+                });
+
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Response data:', data);
+                    
+                    if (data && data.translations && data.translations.length > 0) {
+                        resultDiv.innerHTML = `✅ Success! Translation: "${data.translations[0].text}"`;
+                    } else {
+                        resultDiv.innerHTML = '⚠️ API responded but with unexpected format';
+                    }
+                } else {
+                    const errorText = await response.text();
+                    console.log('Error response:', errorText);
+                    
+                    try {
+                        const errorData = JSON.parse(errorText);
+                        resultDiv.innerHTML = `❌ API Error (${response.status}): ${errorData.message || errorText}`;
+                    } catch (e) {
+                        resultDiv.innerHTML = `❌ API Error (${response.status}): ${errorText}`;
+                    }
+                }
+            } catch (error) {
+                console.error('Request failed:', error);
+                resultDiv.innerHTML = `❌ Network Error: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html> 

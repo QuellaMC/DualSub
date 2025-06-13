@@ -1,3 +1,45 @@
+// Language code mapping for DeepL API compatibility
+function mapLanguageCodeForDeepL(langCode) {
+    const languageMap = {
+        // Chinese mappings
+        'zh-CN': 'ZH-HANS',  // Chinese Simplified
+        'zh-cn': 'ZH-HANS',
+        'zh_CN': 'ZH-HANS',
+        'zh': 'ZH-HANS',     // Default Chinese to Simplified
+        'zh-TW': 'ZH-HANT',  // Chinese Traditional
+        'zh-tw': 'ZH-HANT',
+        'zh_TW': 'ZH-HANT',
+        'zh-HK': 'ZH-HANT',  // Hong Kong Chinese to Traditional
+        'zh-hk': 'ZH-HANT',
+        
+        // English mappings
+        'en': 'EN',
+        'en-US': 'EN-US',
+        'en-us': 'EN-US',
+        'en-GB': 'EN-GB',
+        'en-gb': 'EN-GB',
+        
+        // Portuguese mappings
+        'pt': 'PT-PT',
+        'pt-BR': 'PT-BR',
+        'pt-br': 'PT-BR',
+        'pt-PT': 'PT-PT',
+        'pt-pt': 'PT-PT',
+        
+        // Other common mappings
+        'ja': 'JA',
+        'ko': 'KO',
+        'de': 'DE',
+        'fr': 'FR',
+        'es': 'ES',
+        'it': 'IT',
+        'ru': 'RU',
+        'ar': 'AR'
+    };
+
+    return languageMap[langCode] || langCode.toUpperCase();
+}
+
 /**
  * Translates text using the DeepL API.
  *
@@ -8,35 +50,60 @@
  * @throws {Error} If the translation API request or processing fails.
  */
 export async function translate(text, sourceLang, targetLang) {
-    const { deeplApiKey: API_KEY } = await new Promise(resolve => {
-        chrome.storage.sync.get('deeplApiKey', resolve);
+    const { deeplApiKey: apiKey, deeplApiPlan: apiPlan } = await new Promise(resolve => {
+        chrome.storage.sync.get(['deeplApiKey', 'deeplApiPlan'], resolve);
     });
 
-    if (!API_KEY) {
-        throw new Error("DeepL API key is not set. Please add your key in the extension popup.");
+    if (!apiKey) {
+        throw new Error("DeepL API key is not set. Please add your key in the extension options.");
     }
 
-    const DEEPL_API_URL = 'https://api-free.deepl.com/v2/translate';
+    // Add input validation
+    if (!text || typeof text !== 'string' || text.trim() === '') {
+        console.warn("DeepL: Empty or invalid text provided");
+        return text || '';
+    }
 
-    const params = {
-        text: [text],
-        source_lang: sourceLang === 'auto' ? undefined : sourceLang,
-        target_lang: targetLang,
-    };
+    const apiUrl = apiPlan === 'pro'
+        ? 'https://api.deepl.com/v2/translate'
+        : 'https://api-free.deepl.com/v2/translate';
+
+    // Map language codes to DeepL format
+    const mappedTargetLang = mapLanguageCodeForDeepL(targetLang);
+    const mappedSourceLang = sourceLang !== 'auto' ? mapLanguageCodeForDeepL(sourceLang) : sourceLang;
+
+    // Use URLSearchParams for proper DeepL API format (application/x-www-form-urlencoded)
+    const params = new URLSearchParams();
+    params.append('text', text);
+    if (mappedSourceLang !== 'auto') {
+        params.append('source_lang', mappedSourceLang);
+    }
+    params.append('target_lang', mappedTargetLang);
+
+    console.log(`DeepL API request: text="${text.substring(0, 50)}...", source=${mappedSourceLang}, target=${mappedTargetLang}`);
 
     try {
-        const response = await fetch(DEEPL_API_URL, {
+        const response = await fetch(apiUrl, {
             method: 'POST',
             headers: {
-                'Authorization': `DeepL-Auth-Key ${API_KEY}`,
-                'Content-Type': 'application/json',
+                'Authorization': `DeepL-Auth-Key ${apiKey}`,
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'User-Agent': 'Dualsub/1.0.0'
             },
-            body: JSON.stringify(params)
+            body: params.toString()
         });
 
         if (!response.ok) {
             if (response.status === 403) {
-                 throw new Error("DeepL API key is invalid or has been rejected.");
+                throw new Error("DeepL API key is invalid or has been rejected.");
+            }
+            if (response.status === 456) {
+                throw new Error("DeepL API quota exceeded. Please check your usage limits.");
+            }
+            if (response.status === 400) {
+                const errorData = await response.json().catch(() => ({ message: response.statusText }));
+                console.error("DeepL 400 error details:", errorData);
+                throw new Error(`DeepL API request invalid: ${errorData.message || 'Bad request parameters'}`);
             }
             const errorData = await response.json().catch(() => ({ message: response.statusText }));
             console.error(`DeepL API Error: ${response.status}`, errorData);
