@@ -7,14 +7,15 @@
 <body>
     <h1>DeepL API Debug Test</h1>
     <div>
-        <label>API Key: <input type="password" id="apiKey" placeholder="Enter your DeepL API key"></label><br><br>
-        <label>API Plan: 
-            <select id="apiPlan">
-                <option value="free">Free</option>
-                <option value="pro">Pro</option>
-            </select>
-        </label><br><br>
-        <label>Text to translate: <input type="text" id="textInput" value="Hello, world!" placeholder="Enter text"></label><br><br>
+        <label for="apiKey">API Key:</label>
+        <input type="password" id="apiKey" placeholder="Enter your DeepL API key"><br><br>
+        <label for="apiPlan">API Plan:</label>
+        <select id="apiPlan">
+            <option value="free">Free</option>
+            <option value="pro">Pro</option>
+        </select><br><br>
+        <label for="textInput">Text to translate:</label>
+        <input type="text" id="textInput" value="Hello, world!" placeholder="Enter text"><br><br>
         <button onclick="testDeepL()">Test DeepL API</button>
     </div>
     <div id="result" style="margin-top: 20px; padding: 10px; border: 1px solid #ccc; display: none;"></div>

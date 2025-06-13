@@ -1,29 +1,23 @@
 // Language code mapping for DeepL API compatibility
 function mapLanguageCodeForDeepL(langCode) {
+    // Normalize the language code to lowercase for consistent lookup
+    const normalizedLangCode = langCode.toLowerCase().replace('_', '-');
+    
     const languageMap = {
         // Chinese mappings
-        'zh-CN': 'ZH-HANS',  // Chinese Simplified
-        'zh-cn': 'ZH-HANS',
-        'zh_CN': 'ZH-HANS',
+        'zh-cn': 'ZH-HANS',  // Chinese Simplified
         'zh': 'ZH-HANS',     // Default Chinese to Simplified
-        'zh-TW': 'ZH-HANT',  // Chinese Traditional
-        'zh-tw': 'ZH-HANT',
-        'zh_TW': 'ZH-HANT',
-        'zh-HK': 'ZH-HANT',  // Hong Kong Chinese to Traditional
-        'zh-hk': 'ZH-HANT',
+        'zh-tw': 'ZH-HANT',  // Chinese Traditional
+        'zh-hk': 'ZH-HANT',  // Hong Kong Chinese to Traditional
         
         // English mappings
         'en': 'EN',
-        'en-US': 'EN-US',
         'en-us': 'EN-US',
-        'en-GB': 'EN-GB',
         'en-gb': 'EN-GB',
         
         // Portuguese mappings
         'pt': 'PT-PT',
-        'pt-BR': 'PT-BR',
         'pt-br': 'PT-BR',
-        'pt-PT': 'PT-PT',
         'pt-pt': 'PT-PT',
         
         // Other common mappings
@@ -37,7 +31,7 @@ function mapLanguageCodeForDeepL(langCode) {
         'ar': 'AR'
     };
 
-    return languageMap[langCode] || langCode.toUpperCase();
+    return languageMap[normalizedLangCode] || langCode.toUpperCase();
 }
 
 /**
@@ -80,7 +74,7 @@ export async function translate(text, sourceLang, targetLang) {
     }
     params.append('target_lang', mappedTargetLang);
 
-    console.log(`DeepL API request: text="${text.substring(0, 50)}...", source=${mappedSourceLang}, target=${mappedTargetLang}`);
+    console.log(`DeepL API request: source=${mappedSourceLang}, target=${mappedTargetLang}`);
 
     try {
         const response = await fetch(apiUrl, {

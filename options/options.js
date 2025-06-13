@@ -266,30 +266,6 @@ document.addEventListener('DOMContentLoaded', function () {
         
         // Add current type class
         deeplTestResult.classList.add(type);
-        
-        // Set background colors based on type
-        switch (type) {
-            case 'success':
-                deeplTestResult.style.backgroundColor = '#d4edda';
-                deeplTestResult.style.color = '#155724';
-                deeplTestResult.style.border = '1px solid #c3e6cb';
-                break;
-            case 'error':
-                deeplTestResult.style.backgroundColor = '#f8d7da';
-                deeplTestResult.style.color = '#721c24';
-                deeplTestResult.style.border = '1px solid #f5c6cb';
-                break;
-            case 'warning':
-                deeplTestResult.style.backgroundColor = '#fff3cd';
-                deeplTestResult.style.color = '#856404';
-                deeplTestResult.style.border = '1px solid #ffeaa7';
-                break;
-            case 'info':
-                deeplTestResult.style.backgroundColor = '#d1ecf1';
-                deeplTestResult.style.color = '#0c5460';
-                deeplTestResult.style.border = '1px solid #bee5eb';
-                break;
-        }
     }
 
     // Initialize
