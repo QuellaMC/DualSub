@@ -1,4 +1,4 @@
-// Language code mapping for DeepL API compatibility
+
 function mapLanguageCodeForDeepL(langCode) {
     // Normalize the language code to lowercase for consistent lookup
     const normalizedLangCode = langCode.toLowerCase().replace('_', '-');
@@ -6,7 +6,7 @@ function mapLanguageCodeForDeepL(langCode) {
     const languageMap = {
         // Chinese mappings
         'zh-cn': 'ZH-HANS',  // Chinese Simplified
-        'zh': 'ZH-HANS',     // Default Chinese to Simplified
+        'zh': 'ZH-HANS',   
         'zh-tw': 'ZH-HANT',  // Chinese Traditional
         'zh-hk': 'ZH-HANT',  // Hong Kong Chinese to Traditional
         
