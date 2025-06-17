@@ -1,6 +1,6 @@
 {
-  "appName": { "message": "DualSub for Disney+" },
-  "appDesc": { "message": "在 Disney+ 上显示双语字幕。" },
+  "appName": { "message": "DualSub" },
+  "appDesc": { "message": "在流媒体平台上显示双语字幕。" },
   "pageTitle": { "message": "DualSub 设置" },
   "h1Title": { "message": "DualSub" },
   "enableSubtitlesLabel": { "message": "启用双语字幕：" },

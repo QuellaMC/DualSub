@@ -1,6 +1,6 @@
 {
-  "appName": { "message": "DualSub for Disney+" },
-  "appDesc": { "message": "Displays dual language subtitles on Disney+." },
+  "appName": { "message": "DualSub" },
+  "appDesc": { "message": "Displays dual language subtitles on streaming platforms." },
   "pageTitle": { "message": "DualSub Settings" },
   "h1Title": { "message": "DualSub" },
   "enableSubtitlesLabel": { "message": "Enable Dual Subtitles:" },
