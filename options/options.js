@@ -31,7 +31,8 @@ document.addEventListener('DOMContentLoaded', function () {
     // Available Translation Providers - can be extended
      const availableProviders = {
         'google': 'Google Translate (Free)',
-        'microsoft_edge_auth': 'Microsoft Translate (Free)'
+        'microsoft_edge_auth': 'Microsoft Translate (Free)',
+        'deepl': 'DeepL (API Key Required)'
     };
 
     // Default settings
@@ -50,6 +51,17 @@ document.addEventListener('DOMContentLoaded', function () {
             option.value = providerId;
             option.textContent = availableProviders[providerId];
             translationProviderSelect.appendChild(option);
+        }
+    }
+
+    function updateProviderSettings() {
+        const selectedProvider = translationProviderSelect.value;
+        const deeplCard = document.querySelector('#deeplApiKey').closest('.setting-card');
+        
+        if (selectedProvider === 'deepl') {
+            deeplCard.style.display = 'block';
+        } else {
+            deeplCard.style.display = 'none';
         }
     }
 
@@ -90,6 +102,9 @@ document.addEventListener('DOMContentLoaded', function () {
             // Providers
             deeplApiKeyInput.value = items.deeplApiKey || defaultSettings.deeplApiKey;
             deeplApiPlanSelect.value = items.deeplApiPlan || defaultSettings.deeplApiPlan;
+            
+            // Update provider settings visibility after DOM elements are ready
+            setTimeout(() => updateProviderSettings(), 0);
         });
     }
 
@@ -131,6 +146,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Translation provider settings  
     document.getElementById('translationProvider').addEventListener('change', function() {
         saveSetting('selectedProvider', this.value);
+        updateProviderSettings();
         console.log(`Translation provider changed to: ${this.value}`);
     });
     
@@ -142,10 +158,12 @@ document.addEventListener('DOMContentLoaded', function () {
     // Performance settings
     document.getElementById('translationBatchSize').addEventListener('change', function() {
         saveSetting('translationBatchSize', parseInt(this.value));
+        translationBatchSizeValue.textContent = this.value;
     });
 
     document.getElementById('translationDelay').addEventListener('change', function() {
         saveSetting('translationDelay', parseInt(this.value));
+        translationDelayValue.textContent = `${this.value}ms`;
     });
 
     // Translation Functions (similar to popup.js)
@@ -240,42 +258,35 @@ document.addEventListener('DOMContentLoaded', function () {
             if (result.success) {
                 showTestResult(getLocalizedText('deeplTestSuccess', '✅ DeepL API test successful! Translated "Hello" to "%s"', result.translatedText), 'success');
             } else {
-                let messageKey, fallbackMessage;
+                let fallbackMessage;
                 
                 switch (result.error) {
                     case 'API_KEY_MISSING':
-                        messageKey = 'deeplApiKeyError';
-                        fallbackMessage = 'Please enter your DeepL API key first.';
+                        fallbackMessage = getLocalizedText('deeplApiKeyError', 'Please enter your DeepL API key first.');
                         break;
                     case 'UNEXPECTED_FORMAT':
-                        messageKey = 'deeplTestUnexpectedFormat';
-                        fallbackMessage = '⚠️ DeepL API responded but with unexpected format';
+                        fallbackMessage = getLocalizedText('deeplTestUnexpectedFormat', '⚠️ DeepL API responded but with unexpected format');
                         break;
                     case 'HTTP_403':
-                        messageKey = 'deeplTestInvalidKey';
-                        fallbackMessage = '❌ DeepL API key is invalid or has been rejected.';
+                        fallbackMessage = getLocalizedText('deeplTestInvalidKey', '❌ DeepL API key is invalid or has been rejected.');
                         break;
                     case 'HTTP_456':
-                        messageKey = 'deeplTestQuotaExceeded';
-                        fallbackMessage = '❌ DeepL API quota exceeded. Please check your usage limits.';
+                        fallbackMessage = getLocalizedText('deeplTestQuotaExceeded', '❌ DeepL API quota exceeded. Please check your usage limits.');
                         break;
                     case 'NETWORK_ERROR':
-                        messageKey = 'deeplTestNetworkError';
-                        fallbackMessage = '❌ Network error: Could not connect to DeepL API. Check your internet connection.';
+                        fallbackMessage = getLocalizedText('deeplTestNetworkError', '❌ Network error: Could not connect to DeepL API. Check your internet connection.');
                         break;
                     default:
                         if (result.error.startsWith('HTTP_')) {
-                            messageKey = 'deeplTestApiError';
                             fallbackMessage = getLocalizedText('deeplTestApiError', '❌ DeepL API error (%d): %s', result.status, result.message || 'Unknown error');
                         } else {
-                            messageKey = 'deeplTestGenericError';
                             fallbackMessage = getLocalizedText('deeplTestGenericError', '❌ Test failed: %s', result.message);
                         }
                         break;
                 }
 
                 const errorType = result.error === 'UNEXPECTED_FORMAT' ? 'warning' : 'error';
-                showTestResult(getLocalizedText(messageKey, fallbackMessage), errorType);
+                showTestResult(fallbackMessage, errorType);
             }
         } catch (error) {
             console.error('DeepL test error:', error);
