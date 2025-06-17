@@ -1,5 +1,8 @@
 // DeepL Translation Provider - Self-contained version for service worker compatibility
 
+const DEEPL_API_URL_PRO = 'https://api.deepl.com/v2/translate';
+const DEEPL_API_URL_FREE = 'https://api-free.deepl.com/v2/translate';
+
 function mapLanguageCodeForDeepL(langCode) {
     // Normalize the language code to lowercase for consistent lookup
     const normalizedLangCode = langCode.toLowerCase().replace('_', '-');
@@ -161,8 +164,8 @@ export async function translate(text, sourceLang, targetLang) {
 
         // Determine API URL
         const apiUrl = apiPlan === 'pro'
-            ? 'https://api.deepl.com/v2/translate'
-            : 'https://api-free.deepl.com/v2/translate';
+            ? DEEPL_API_URL_PRO
+            : DEEPL_API_URL_FREE;
 
         // Map language codes to DeepL format
         const mappedTargetLang = mapLanguageCodeForDeepL(targetLang);
