@@ -96,7 +96,8 @@ async function testDeepLConnection(apiKey, apiPlan, text = 'Hello', targetLang =
 if (typeof module !== 'undefined' && module.exports) {
     // Node.js environment
     module.exports = { fetchDeepL, testDeepLConnection };
-} else {
+} else if (typeof window !== 'undefined') {
     // Browser environment - attach to window
     window.DeepLAPI = { fetchDeepL, testDeepLConnection };
-} 
+}
+// In service worker environment, functions are just available in scope 
