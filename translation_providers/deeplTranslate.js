@@ -60,6 +60,53 @@ function detectEnvironment() {
 }
 
 /**
+ * Centralized error handling for DeepL translation operations
+ * @param {Error} error - The original error object
+ * @param {Object} envInfo - Environment information from detectEnvironment()
+ * @throws {Error} Processed error with appropriate message
+ */
+function handleDeepLError(error, envInfo) {
+    console.error("DeepLProvider: Translation error -", error);
+    
+    // Network connectivity errors
+    if (error.message.includes("Failed to fetch")) {
+        throw new Error("Network error: Could not connect to DeepL API.");
+    }
+    
+    // Service worker environment compatibility issues
+    if (envInfo.isServiceWorker && error.message.includes("window")) {
+        console.error("DeepL: Service worker environment compatibility issue detected");
+        throw new Error("DeepL Error: Service worker environment compatibility issue");
+    }
+    
+    // Chrome storage access errors
+    if (error.message.includes("Chrome storage")) {
+        throw new Error("DeepL Error: Cannot access extension storage");
+    }
+    
+    // API key validation errors
+    if (error.message.includes("API key is not set")) {
+        throw new Error("DeepL Error: API key is not configured");
+    }
+    
+    // API quota and authentication errors
+    if (error.message.includes("quota exceeded")) {
+        throw new Error("DeepL Error: API quota exceeded");
+    }
+    
+    if (error.message.includes("API key is invalid")) {
+        throw new Error("DeepL Error: Invalid API key");
+    }
+    
+    // Generic error with DeepL prefix for consistency
+    const errorMessage = error.message.startsWith("DeepL Error:") 
+        ? error.message 
+        : `DeepL Error: ${error.message}`;
+    
+    throw new Error(errorMessage);
+}
+
+/**
  * Translates text using the DeepL API.
  *
  * @param {string} text The text to translate.
@@ -182,24 +229,7 @@ export async function translate(text, sourceLang, targetLang) {
         }
 
     } catch (error) {
-        console.error("DeepLProvider: Translation error -", error);
-        
-        // Enhanced error handling using environment detection instead of string matching
-        if (error.message.includes("Failed to fetch")) {
-            throw new Error("Network error: Could not connect to DeepL API.");
-        }
-        
-        // Use explicit environment detection instead of error message inspection
-        if (envInfo.isServiceWorker && error.message.includes("window")) {
-            console.error("DeepL: Service worker environment compatibility issue detected");
-            throw new Error("DeepL Error: Service worker environment compatibility issue");
-        }
-        
-        if (error.message.includes("Chrome storage")) {
-            throw new Error("DeepL Error: Cannot access extension storage");
-        }
-        
-        // Re-throw with DeepL prefix for consistency
-        throw new Error(`DeepL Error: ${error.message}`);
+        // Use centralized error handling
+        handleDeepLError(error, envInfo);
     }
 }
