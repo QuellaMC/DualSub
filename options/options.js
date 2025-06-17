@@ -203,8 +203,12 @@ document.addEventListener('DOMContentLoaded', function () {
         let message = loadedTranslations[key]?.message || fallback;
         // Replace %s and %d placeholders with substitutions
         if (substitutions.length > 0) {
-            substitutions.forEach((sub, index) => {
-                message = message.replace(/%[sd]/, sub);
+            let substitutionIndex = 0;
+            message = message.replace(/%[sd]/g, (match) => {
+                if (substitutionIndex < substitutions.length) {
+                    return substitutions[substitutionIndex++];
+                }
+                return match; // Keep original placeholder if no more substitutions
             });
         }
         return message;
