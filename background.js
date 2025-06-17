@@ -1,9 +1,7 @@
-// disneyplus-dualsub-chrome-extension/background.js
 import { translate as googleTranslate } from './translation_providers/googleTranslate.js';
 import { translate as microsoftTranslateEdgeAuth } from './translation_providers/microsoftTranslateEdgeAuth.js';
 console.log("Disney+ Dual Subtitles background script loaded.");
 
-// Translation Provider Registry
 const translationProviders = {
     'google': {
         name: 'Google Translate (Free)',
@@ -13,26 +11,21 @@ const translationProviders = {
         name: 'Microsoft Translate (Free)',
         translate: microsoftTranslateEdgeAuth
     }
-    // Future providers can be added here
 };
 
-let currentTranslationProviderId = 'google'; // Default provider
+let currentTranslationProviderId = 'google';
 
-// Load the selected provider from storage on startup.
 chrome.storage.sync.get('selectedProvider', (data) => {
     if (data.selectedProvider && translationProviders[data.selectedProvider]) {
         currentTranslationProviderId = data.selectedProvider;
         console.log(`Background: Loaded provider from storage: ${translationProviders[currentTranslationProviderId].name}`);
     } else {
-        // If no provider is in storage, set the default.
         chrome.storage.sync.set({ selectedProvider: currentTranslationProviderId });
         console.log(`Background: Using default provider: ${translationProviders[currentTranslationProviderId].name}`);
     }
 });
 
-// Initialize default settings on installation
 chrome.runtime.onInstalled.addListener(() => {
-    // A list of all settings to ensure they have a default value.
     const allSettingKeys = [
         'subtitlesEnabled', 'targetLanguage', 'subtitleTimeOffset',
         'subtitleLayoutOrder', 'subtitleLayoutOrientation', 'subtitleFontSize',
@@ -63,8 +56,18 @@ chrome.runtime.onInstalled.addListener(() => {
     });
 });
 
-// Language normalization function for Disney+
+const languageNormalizationCache = new Map();
+
 function normalizeLanguageCode(platformLangCode) {
+    if (!platformLangCode || typeof platformLangCode !== 'string') {
+        console.warn('Background: Invalid language code provided to normalizeLanguageCode:', platformLangCode);
+        return 'en';
+    }
+
+    if (languageNormalizationCache.has(platformLangCode)) {
+        return languageNormalizationCache.get(platformLangCode);
+    }
+
     const normalizedMap = {
         'en': 'en',
         'en-US': 'en',
@@ -97,36 +100,45 @@ function normalizeLanguageCode(platformLangCode) {
         'hi-IN': 'hi'
     };
     
-    return normalizedMap[platformLangCode] || platformLangCode;
+    const normalized = normalizedMap[platformLangCode] || platformLangCode;
+    languageNormalizationCache.set(platformLangCode, normalized);
+    return normalized;
 }
 
-// Parse M3U8 playlist to extract all available subtitle languages
 function parseAvailableSubtitleLanguages(masterPlaylistText) {
+    if (!masterPlaylistText || typeof masterPlaylistText !== 'string') {
+        console.warn('Background: Invalid playlist text provided to parseAvailableSubtitleLanguages');
+        return [];
+    }
+
     const lines = masterPlaylistText.split('\n');
     const availableLanguages = [];
 
     for (const line of lines) {
         const trimmedLine = line.trim();
         if (trimmedLine.startsWith("#EXT-X-MEDIA") && trimmedLine.includes("TYPE=SUBTITLES")) {
-            // Extract language code
-            const languageMatch = trimmedLine.match(/LANGUAGE="([^"]+)"/);
-            const uriMatch = trimmedLine.match(/URI="([^"]+)"/);
-            const nameMatch = trimmedLine.match(/NAME="([^"]+)"/);
-            
-            if (languageMatch && uriMatch) {
-                const rawLangCode = languageMatch[1];
-                const normalizedLangCode = normalizeLanguageCode(rawLangCode);
-                const displayName = nameMatch ? nameMatch[1] : rawLangCode;
-                const uri = uriMatch[1];
+            try {
+                const languageMatch = trimmedLine.match(/LANGUAGE="([^"]+)"/);
+                const uriMatch = trimmedLine.match(/URI="([^"]+)"/);
+                const nameMatch = trimmedLine.match(/NAME="([^"]+)"/);
                 
-                availableLanguages.push({
-                    rawCode: rawLangCode,
-                    normalizedCode: normalizedLangCode,
-                    displayName: displayName,
-                    uri: uri
-                });
-                
-                console.log(`Background: Found subtitle language: ${rawLangCode} -> ${normalizedLangCode} (${displayName})`);
+                if (languageMatch && uriMatch) {
+                    const rawLangCode = languageMatch[1];
+                    const normalizedLangCode = normalizeLanguageCode(rawLangCode);
+                    const displayName = nameMatch ? nameMatch[1] : rawLangCode;
+                    const uri = uriMatch[1];
+                    
+                    availableLanguages.push({
+                        rawCode: rawLangCode,
+                        normalizedCode: normalizedLangCode,
+                        displayName: displayName,
+                        uri: uri
+                    });
+                    
+                    console.log(`Background: Found subtitle language: ${rawLangCode} -> ${normalizedLangCode} (${displayName})`);
+                }
+            } catch (error) {
+                console.warn('Background: Error parsing subtitle language line:', trimmedLine, error);
             }
         }
     }
@@ -134,22 +146,38 @@ function parseAvailableSubtitleLanguages(masterPlaylistText) {
     return availableLanguages;
 }
 
-// Find the best subtitle URI for a given target language
 function findSubtitleUriForLanguage(availableLanguages, targetLangCode) {
-    // First try exact match on normalized code
+    if (!targetLangCode || availableLanguages.length === 0) {
+        return null;
+    }
+    
+    // Exact match on normalized code
     let match = availableLanguages.find(lang => lang.normalizedCode === targetLangCode);
     if (match) return match;
     
-    // If not found, try partial matching for language families
-    if (targetLangCode.startsWith('zh')) {
-        match = availableLanguages.find(lang => lang.normalizedCode.startsWith('zh'));
+    // Exact match on raw code
+    match = availableLanguages.find(lang => lang.rawCode === targetLangCode);
+    if (match) return match;
+    
+    // Language family matching
+    const languageFamilies = ['zh', 'es', 'en', 'fr', 'de', 'pt', 'it', 'ja', 'ko'];
+    const targetFamily = languageFamilies.find(family => targetLangCode.startsWith(family));
+    
+    if (targetFamily) {
+        match = availableLanguages.find(lang => 
+            lang.normalizedCode.startsWith(targetFamily) || lang.rawCode.startsWith(targetFamily)
+        );
         if (match) return match;
     }
     
-    if (targetLangCode.startsWith('es')) {
-        match = availableLanguages.find(lang => lang.normalizedCode.startsWith('es'));
-        if (match) return match;
-    }
+    // Case-insensitive partial matching
+    const targetLower = targetLangCode.toLowerCase();
+    match = availableLanguages.find(lang => 
+        lang.normalizedCode.toLowerCase().includes(targetLower) ||
+        lang.rawCode.toLowerCase().includes(targetLower) ||
+        lang.displayName.toLowerCase().includes(targetLower)
+    );
+    if (match) return match;
     
     return null;
 }
@@ -322,21 +350,23 @@ async function fetchAndProcessSubtitleUrl(masterPlaylistUrl, targetLanguage = nu
         }
     }
     
-    // Step 3: If not using native target, find source language for translation
-    if (!useNativeTarget) {
-        console.log("Background: Finding source language for translation...");
+    // Step 3: Universal fallback to first available language if no suitable original found
+    if (!originalLanguageInfo) {
+        console.log("Background: No suitable original language found. Attempting universal fallback...");
         
-        if (!originalLanguageInfo) {
-            // Use the first available language if no original language found
-            if (availableLanguages.length > 0) {
-                originalLanguageInfo = availableLanguages[0];
-                console.log(`Background: ✅ Using first available language for translation: ${originalLanguageInfo.displayName}`);
-            }
+        // Use the first available language if no original language found
+        if (availableLanguages.length > 0) {
+            originalLanguageInfo = availableLanguages[0];
+            console.log(`Background: ✅ Using first available language as fallback: ${originalLanguageInfo.displayName} (${originalLanguageInfo.normalizedCode})`);
         }
     }
     
     if (!originalLanguageInfo) {
-        throw new Error("No suitable subtitle language found.");
+        if (availableLanguages.length === 0) {
+            throw new Error("No subtitle languages are available for this content.");
+        } else {
+            throw new Error("No suitable subtitle language found despite available languages.");
+        }
     }
     
     console.log(`Background: Final decision - Original: ${originalLanguageInfo.normalizedCode} (${originalLanguageInfo.displayName}), Native target: ${useNativeTarget}`);

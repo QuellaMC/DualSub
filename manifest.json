@@ -22,7 +22,7 @@
   "content_scripts": [
     {
       "matches": ["*://*.disneyplus.com/*"],
-      "js": ["content_scripts/content.js"],
+      "js": ["content_scripts/disneyPlusContent.js"],
       "css": ["content_scripts/content.css"],
       "run_at": "document_idle"
     }
@@ -30,9 +30,10 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "content_scripts/inject.js",
+        "injected_scripts/disneyPlusInject.js",
         "video_platforms/disneyPlusPlatform.js",
-        "video_platforms/platform_interface.js"
+        "video_platforms/platform_interface.js",
+        "content_scripts/subtitleUtilities.js"
       ],
       "matches": ["*://*.disneyplus.com/*"]
     }
