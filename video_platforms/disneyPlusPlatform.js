@@ -1,6 +1,6 @@
 import { VideoPlatform } from './platform_interface.js';
 
-const INJECT_SCRIPT_FILENAME = 'content_scripts/inject.js';
+const INJECT_SCRIPT_FILENAME = 'injected_scripts/disneyPlusInject.js';
 const INJECT_SCRIPT_TAG_ID = 'disneyplus-dualsub-injector-script-tag';
 const INJECT_EVENT_ID = 'disneyplus-dualsub-injector-event'; // Must match inject.js
 
