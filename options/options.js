@@ -123,36 +123,39 @@ document.addEventListener('DOMContentLoaded', function () {
         updateProviderSettings(); // Update provider settings visibility
     }
 
-    function loadSettings() {
+    async function loadSettings() {
         // Get all keys from defaultSettings
         const settingKeys = Object.keys(defaultSettings);
 
-        chrome.storage.sync.get(settingKeys, function (items) {
-            // General
-            uiLanguageSelect.value = items.uiLanguage || defaultSettings.uiLanguage;
+        return new Promise((resolve) => {
+            chrome.storage.sync.get(settingKeys, function (items) {
+                // General
+                uiLanguageSelect.value = items.uiLanguage || defaultSettings.uiLanguage;
 
-            // Translation
-            const selectedProvider = items.selectedProvider || defaultSettings.selectedProvider;
-             if (availableProviders[selectedProvider]) {
-                translationProviderSelect.value = selectedProvider;
-            } else {
-                translationProviderSelect.value = defaultSettings.selectedProvider;
-            }
+                // Translation
+                const selectedProvider = items.selectedProvider || defaultSettings.selectedProvider;
+                 if (availableProviders[selectedProvider]) {
+                    translationProviderSelect.value = selectedProvider;
+                } else {
+                    translationProviderSelect.value = defaultSettings.selectedProvider;
+                }
 
-            const batchSize = items.translationBatchSize !== undefined ? items.translationBatchSize : defaultSettings.translationBatchSize;
-            translationBatchSizeInput.value = batchSize;
-            translationBatchSizeValue.textContent = batchSize;
+                const batchSize = items.translationBatchSize !== undefined ? items.translationBatchSize : defaultSettings.translationBatchSize;
+                translationBatchSizeInput.value = batchSize;
+                translationBatchSizeValue.textContent = batchSize;
 
-            const delay = items.translationDelay !== undefined ? items.translationDelay : defaultSettings.translationDelay;
-            translationDelayInput.value = delay;
-            translationDelayValue.textContent = `${delay}ms`;
+                const delay = items.translationDelay !== undefined ? items.translationDelay : defaultSettings.translationDelay;
+                translationDelayInput.value = delay;
+                translationDelayValue.textContent = `${delay}ms`;
 
-            // Providers
-            deeplApiKeyInput.value = items.deeplApiKey || defaultSettings.deeplApiKey;
-            deeplApiPlanSelect.value = items.deeplApiPlan || defaultSettings.deeplApiPlan;
-            
-            // Update provider settings visibility after DOM elements are ready
-            setTimeout(() => updateProviderSettings(), 0);
+                // Providers
+                deeplApiKeyInput.value = items.deeplApiKey || defaultSettings.deeplApiKey;
+                deeplApiPlanSelect.value = items.deeplApiPlan || defaultSettings.deeplApiPlan;
+                
+                // Update provider settings visibility - now we're sure all DOM elements are set
+                updateProviderSettings();
+                resolve();
+            });
         });
     }
 
@@ -360,7 +363,7 @@ document.addEventListener('DOMContentLoaded', function () {
     async function init() {
         setVersion();
         await loadAndApplyLanguage(); // Load language first
-        loadSettings(); // Then load settings which will restore the selected provider
+        await loadSettings(); // Then load settings which will restore the selected provider
     }
 
     init();
