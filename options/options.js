@@ -204,7 +204,22 @@ document.addEventListener('DOMContentLoaded', function () {
     // DeepL specific settings
     deeplApiKeyInput.addEventListener('change', () => saveSetting('deeplApiKey', deeplApiKeyInput.value));
     deeplApiPlanSelect.addEventListener('change', () => saveSetting('deeplApiPlan', deeplApiPlanSelect.value));
-    testDeepLButton.addEventListener('click', testDeepLConnection);
+    
+    // 安全地添加 DeepL 测试按钮的事件监听器
+    // 检查 DeepLAPI 是否可用，如果不可用则禁用按钮并显示错误
+    if (typeof window.DeepLAPI !== 'undefined' && window.DeepLAPI && typeof window.DeepLAPI.testDeepLConnection === 'function') {
+        testDeepLButton.addEventListener('click', testDeepLConnection);
+    } else {
+        console.error('DeepLAPI is not available. Disabling testDeepLButton.');
+        testDeepLButton.disabled = true;
+        testDeepLButton.textContent = getLocalizedText('deepLApiUnavailable', 'DeepL API Unavailable');
+        testDeepLButton.title = getLocalizedText('deepLApiUnavailableTooltip', 'DeepL API script failed to load');
+        
+        // 为按钮添加点击处理，显示错误信息
+        testDeepLButton.addEventListener('click', () => {
+            showTestResult(getLocalizedText('deeplApiNotLoadedError', '❌ DeepL API script is not available. Please refresh the page.'), 'error');
+        });
+    }
 
     // Performance settings
     document.getElementById('translationBatchSize').addEventListener('change', function() {
@@ -290,6 +305,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Test DeepL Connection
     async function testDeepLConnection() {
+        // 运行时再次检查 DeepLAPI 是否可用
+        if (typeof window.DeepLAPI === 'undefined' || !window.DeepLAPI || typeof window.DeepLAPI.testDeepLConnection !== 'function') {
+            showTestResult(getLocalizedText('deeplApiNotLoadedError', '❌ DeepL API script is not available. Please refresh the page.'), 'error');
+            return;
+        }
+
         const apiKey = deeplApiKeyInput.value.trim();
         const apiPlan = deeplApiPlanSelect.value;
 

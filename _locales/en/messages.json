@@ -89,6 +89,9 @@
   "deeplTestApiError": { "message": "❌ DeepL API error (%d): %s" },
   "deeplTestNetworkError": { "message": "❌ Network error: Could not connect to DeepL API. Check your internet connection." },
   "deeplTestGenericError": { "message": "❌ Test failed: %s" },
+  "deepLApiUnavailable": { "message": "DeepL API Unavailable" },
+  "deepLApiUnavailableTooltip": { "message": "DeepL API script failed to load" },
+  "deeplApiNotLoadedError": { "message": "❌ DeepL API script is not available. Please refresh the page." },
 
   "cardGoogleTitle": { "message": "Google Translate" },
   "cardGoogleDesc": { "message": "Free translation service provided by Google. No additional configuration required." },

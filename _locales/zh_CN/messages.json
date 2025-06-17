@@ -89,6 +89,9 @@
   "deeplTestApiError": { "message": "❌ DeepL API 错误 (%d)：%s" },
   "deeplTestNetworkError": { "message": "❌ 网络错误：无法连接到 DeepL API。请检查您的网络连接。" },
   "deeplTestGenericError": { "message": "❌ 测试失败：%s" },
+  "deepLApiUnavailable": { "message": "DeepL API 不可用" },
+  "deepLApiUnavailableTooltip": { "message": "DeepL API 脚本加载失败" },
+  "deeplApiNotLoadedError": { "message": "❌ DeepL API 脚本不可用。请刷新页面。" },
 
   "cardGoogleTitle": { "message": "谷歌翻译" },
   "cardGoogleDesc": { "message": "由谷歌提供的免费翻译服务。无需额外配置。" },
