@@ -30,9 +30,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Available Translation Providers - can be extended
      const availableProviders = {
-        'google': 'Google Translate (Free)',
-        'microsoft_edge_auth': 'Microsoft Translate (Free)',
-        'deepl': 'DeepL (API Key Required)'
+        'google': 'providerGoogleName',
+        'microsoft_edge_auth': 'providerMicrosoftName',
+        'deepl': 'providerDeepLName'
     };
 
     // Default settings
@@ -46,33 +46,81 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     function populateProviderDropdown() {
+        // Clear existing options first
+        translationProviderSelect.innerHTML = '';
+        
+        // Fallback provider names in case translations are not loaded yet
+        const fallbackNames = {
+            'google': 'Google Translate (Free)',
+            'microsoft_edge_auth': 'Microsoft Translate (Free)',
+            'deepl': 'DeepL (API Key Required)'
+        };
+        
         for (const providerId in availableProviders) {
             const option = document.createElement('option');
             option.value = providerId;
-            option.textContent = availableProviders[providerId];
+            const translationKey = availableProviders[providerId];
+            
+            // Use translated text if available, otherwise use fallback
+            if (loadedTranslations && loadedTranslations[translationKey]) {
+                option.textContent = loadedTranslations[translationKey].message;
+            } else {
+                option.textContent = fallbackNames[providerId] || translationKey;
+            }
+            
             translationProviderSelect.appendChild(option);
         }
     }
 
     function updateProviderSettings() {
         const selectedProvider = translationProviderSelect.value;
-        const deeplCard = document.querySelector('#deeplApiKey').closest('.setting-card');
         
-        if (selectedProvider === 'deepl') {
-            deeplCard.style.display = 'block';
-        } else {
-            deeplCard.style.display = 'none';
+        // Hide all provider cards first
+        const googleCard = document.getElementById('googleProviderCard');
+        const microsoftCard = document.getElementById('microsoftProviderCard');
+        const deeplCard = document.getElementById('deeplProviderCard');
+        
+        googleCard.style.display = 'none';
+        microsoftCard.style.display = 'none';
+        deeplCard.style.display = 'none';
+        
+        // Show the selected provider card
+        switch (selectedProvider) {
+            case 'google':
+                googleCard.style.display = 'block';
+                break;
+            case 'microsoft_edge_auth':
+                microsoftCard.style.display = 'block';
+                break;
+            case 'deepl':
+                deeplCard.style.display = 'block';
+                break;
+            default:
+                // Show Google as default
+                googleCard.style.display = 'block';
+                break;
         }
     }
 
 
 
     async function loadAndApplyLanguage() {
-        const items = await chrome.storage.sync.get('uiLanguage');
+        const items = await chrome.storage.sync.get(['uiLanguage', 'selectedProvider']);
         const lang = items.uiLanguage || defaultSettings.uiLanguage;
+        const savedProvider = items.selectedProvider || defaultSettings.selectedProvider;
+        
         uiLanguageSelect.value = lang;
         loadedTranslations = await loadTranslations(lang);
         updateUILanguage();
+        populateProviderDropdown(); // Re-populate provider dropdown with new language
+        
+        // Restore the saved provider selection after re-populating
+        if (availableProviders[savedProvider]) {
+            translationProviderSelect.value = savedProvider;
+        } else {
+            translationProviderSelect.value = defaultSettings.selectedProvider;
+        }
+        updateProviderSettings(); // Update provider settings visibility
     }
 
     function loadSettings() {
@@ -310,10 +358,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Initialize
     async function init() {
-        populateProviderDropdown();
-        loadSettings();
         setVersion();
-        await loadAndApplyLanguage();
+        await loadAndApplyLanguage(); // Load language first
+        loadSettings(); // Then load settings which will restore the selected provider
     }
 
     init();

@@ -86,7 +86,29 @@
   "deeplTestUnexpectedFormat": { "message": "⚠️ DeepL API 响应但格式异常" },
   "deeplTestInvalidKey": { "message": "❌ DeepL API 密钥无效或被拒绝。" },
   "deeplTestQuotaExceeded": { "message": "❌ DeepL API 配额已超限。请检查您的使用限制。" },
-  "deeplTestApiError": { "message": "❌ DeepL API 错误 (%d): %s" },
+  "deeplTestApiError": { "message": "❌ DeepL API 错误 (%d)：%s" },
   "deeplTestNetworkError": { "message": "❌ 网络错误：无法连接到 DeepL API。请检查您的网络连接。" },
-  "deeplTestGenericError": { "message": "❌ 测试失败：%s" }
+  "deeplTestGenericError": { "message": "❌ 测试失败：%s" },
+
+  "cardGoogleTitle": { "message": "谷歌翻译" },
+  "cardGoogleDesc": { "message": "由谷歌提供的免费翻译服务。无需额外配置。" },
+  "cardMicrosoftTitle": { "message": "微软翻译" },
+  "cardMicrosoftDesc": { "message": "由微软 Edge 提供的免费翻译服务。无需额外配置。" },
+  "providerStatus": { "message": "状态：" },
+  "statusReady": { "message": "可以使用" },
+  "providerFeatures": { "message": "特性：" },
+  "featureFree": { "message": "免费使用" },
+  "featureNoApiKey": { "message": "无需 API 密钥" },
+  "featureWideLanguageSupport": { "message": "广泛的语言支持" },
+  "featureFastTranslation": { "message": "快速翻译" },
+  "featureHighQuality": { "message": "高质量翻译" },
+  "featureGoodPerformance": { "message": "良好的性能" },
+  "featureHighestQuality": { "message": "最高质量翻译" },
+  "featureApiKeyRequired": { "message": "需要 API 密钥" },
+  "featureLimitedLanguages": { "message": "有限的语言支持" },
+  "featureUsageLimits": { "message": "使用限制适用" },
+
+  "providerGoogleName": { "message": "谷歌翻译（免费）" },
+  "providerMicrosoftName": { "message": "微软翻译（免费）" },
+  "providerDeepLName": { "message": "DeepL（需要 API 密钥）" }
 } 

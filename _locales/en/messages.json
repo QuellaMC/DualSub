@@ -88,5 +88,27 @@
   "deeplTestQuotaExceeded": { "message": "❌ DeepL API quota exceeded. Please check your usage limits." },
   "deeplTestApiError": { "message": "❌ DeepL API error (%d): %s" },
   "deeplTestNetworkError": { "message": "❌ Network error: Could not connect to DeepL API. Check your internet connection." },
-  "deeplTestGenericError": { "message": "❌ Test failed: %s" }
+  "deeplTestGenericError": { "message": "❌ Test failed: %s" },
+
+  "cardGoogleTitle": { "message": "Google Translate" },
+  "cardGoogleDesc": { "message": "Free translation service provided by Google. No additional configuration required." },
+  "cardMicrosoftTitle": { "message": "Microsoft Translate" },
+  "cardMicrosoftDesc": { "message": "Free translation service provided by Microsoft Edge. No additional configuration required." },
+  "providerStatus": { "message": "Status:" },
+  "statusReady": { "message": "Ready to use" },
+  "providerFeatures": { "message": "Features:" },
+  "featureFree": { "message": "Free to use" },
+  "featureNoApiKey": { "message": "No API key required" },
+  "featureWideLanguageSupport": { "message": "Wide language support" },
+  "featureFastTranslation": { "message": "Fast translation" },
+  "featureHighQuality": { "message": "High quality translation" },
+  "featureGoodPerformance": { "message": "Good performance" },
+  "featureHighestQuality": { "message": "Highest quality translation" },
+  "featureApiKeyRequired": { "message": "API key required" },
+  "featureLimitedLanguages": { "message": "Limited language support" },
+  "featureUsageLimits": { "message": "Usage limits apply" },
+
+  "providerGoogleName": { "message": "Google Translate (Free)" },
+  "providerMicrosoftName": { "message": "Microsoft Translate (Free)" },
+  "providerDeepLName": { "message": "DeepL (API Key Required)" }
 } 
