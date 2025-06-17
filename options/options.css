@@ -213,6 +213,8 @@ input[type="range"]::-moz-range-thumb {
     text-align: right;
 }
 
+
+
 @media (max-width: 768px) {
     .container {
         flex-direction: column;

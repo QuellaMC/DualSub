@@ -13,6 +13,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const translationDelayInput = document.getElementById('translationDelay');
     const translationDelayValue = document.getElementById('translationDelayValue');
 
+
+
     // Provider Settings
     const deeplApiKeyInput = document.getElementById('deeplApiKey');
     const deeplApiPlanSelect = document.getElementById('deeplApiPlan');
@@ -25,11 +27,11 @@ document.addEventListener('DOMContentLoaded', function () {
     let loadedTranslations = {};
     const translationsCache = {};
 
+
     // Available Translation Providers - can be extended
      const availableProviders = {
         'google': 'Google Translate (Free)',
-        'microsoft_edge_auth': 'Microsoft Translate (Free)',
-        'deepl': 'DeepL Translate'
+        'microsoft_edge_auth': 'Microsoft Translate (Free)'
     };
 
     // Default settings
@@ -50,6 +52,8 @@ document.addEventListener('DOMContentLoaded', function () {
             translationProviderSelect.appendChild(option);
         }
     }
+
+
 
     async function loadAndApplyLanguage() {
         const items = await chrome.storage.sync.get('uiLanguage');
@@ -117,27 +121,32 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // Event Listeners for settings
-    uiLanguageSelect.addEventListener('change', async () => {
-        const newLang = uiLanguageSelect.value;
-        saveSetting('uiLanguage', newLang);
-        loadedTranslations = await loadTranslations(newLang);
-        updateUILanguage();
+    // Event listeners
+    document.getElementById('uiLanguage').addEventListener('change', async function() {
+        const selectedLang = this.value;
+        saveSetting('uiLanguage', selectedLang);
+        await loadAndApplyLanguage();
+        console.log(`UI language changed to: ${selectedLang}`);
     });
-    translationProviderSelect.addEventListener('change', () => saveSetting('selectedProvider', translationProviderSelect.value));
+    // Translation provider settings  
+    document.getElementById('translationProvider').addEventListener('change', function() {
+        saveSetting('selectedProvider', this.value);
+        console.log(`Translation provider changed to: ${this.value}`);
+    });
+    
+    // DeepL specific settings
     deeplApiKeyInput.addEventListener('change', () => saveSetting('deeplApiKey', deeplApiKeyInput.value));
     deeplApiPlanSelect.addEventListener('change', () => saveSetting('deeplApiPlan', deeplApiPlanSelect.value));
     testDeepLButton.addEventListener('click', testDeepLConnection);
 
-    translationBatchSizeInput.addEventListener('input', () => {
-        translationBatchSizeValue.textContent = translationBatchSizeInput.value;
+    // Performance settings
+    document.getElementById('translationBatchSize').addEventListener('change', function() {
+        saveSetting('translationBatchSize', parseInt(this.value));
     });
-    translationBatchSizeInput.addEventListener('change', () => saveSetting('translationBatchSize', parseInt(translationBatchSizeInput.value)));
 
-    translationDelayInput.addEventListener('input', () => {
-        translationDelayValue.textContent = `${translationDelayInput.value}ms`;
+    document.getElementById('translationDelay').addEventListener('change', function() {
+        saveSetting('translationDelay', parseInt(this.value));
     });
-    translationDelayInput.addEventListener('change', () => saveSetting('translationDelay', parseInt(translationDelayInput.value)));
 
     // Translation Functions (similar to popup.js)
     async function loadTranslations(langCode) {

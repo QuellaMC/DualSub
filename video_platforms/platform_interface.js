@@ -101,9 +101,6 @@ export class VideoPlatform {
      */
     handleNativeSubtitles() {
         // Optional: Implement if native subtitles need special handling.
-        // e.g., hide them:
-        // const nativeSubtitles = document.querySelector('.native-subtitle-selector');
-        // if (nativeSubtitles) nativeSubtitles.style.display = 'none';
     }
 
     /**
