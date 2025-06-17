@@ -58,50 +58,53 @@ chrome.runtime.onInstalled.addListener(() => {
 
 const languageNormalizationCache = new Map();
 
+const normalizedMap = {
+    'en': 'en',
+    'en-us': 'en',
+    'es': 'es',
+    'es-419': 'es', // Latin American Spanish
+    'es-es': 'es', // European Spanish
+    'fr': 'fr',
+    'fr-ca': 'fr', // Canadian French
+    'fr-fr': 'fr', // European French
+    'de': 'de',
+    'de-de': 'de',
+    'it': 'it',
+    'it-it': 'it',
+    'pt': 'pt',
+    'pt-br': 'pt', // Brazilian Portuguese
+    'pt-pt': 'pt', // European Portuguese
+    'ja': 'ja',
+    'ja-jp': 'ja',
+    'ko': 'ko',
+    'ko-kr': 'ko',
+    'zh': 'zh-CN',
+    'zh-cn': 'zh-CN',
+    'zh-hans': 'zh-CN', // Simplified Chinese
+    'zh-tw': 'zh-TW',
+    'zh-hant': 'zh-TW', // Traditional Chinese
+    'ru': 'ru',
+    'ru-ru': 'ru',
+    'ar': 'ar',
+    'hi': 'hi',
+    'hi-in': 'hi'
+};
+
 function normalizeLanguageCode(platformLangCode) {
     if (!platformLangCode || typeof platformLangCode !== 'string') {
         console.warn('Background: Invalid language code provided to normalizeLanguageCode:', platformLangCode);
         return 'en';
     }
 
-    if (languageNormalizationCache.has(platformLangCode)) {
-        return languageNormalizationCache.get(platformLangCode);
+    // Normalize to lowercase for case-insensitive caching and lookup
+    const lowerCaseCode = platformLangCode.toLowerCase();
+
+    if (languageNormalizationCache.has(lowerCaseCode)) {
+        return languageNormalizationCache.get(lowerCaseCode);
     }
 
-    const normalizedMap = {
-        'en': 'en',
-        'en-US': 'en',
-        'es': 'es',
-        'es-419': 'es', // Latin American Spanish
-        'es-ES': 'es', // European Spanish
-        'fr': 'fr',
-        'fr-CA': 'fr', // Canadian French
-        'fr-FR': 'fr', // European French
-        'de': 'de',
-        'de-DE': 'de',
-        'it': 'it',
-        'it-IT': 'it',
-        'pt': 'pt',
-        'pt-BR': 'pt', // Brazilian Portuguese
-        'pt-PT': 'pt', // European Portuguese
-        'ja': 'ja',
-        'ja-JP': 'ja',
-        'ko': 'ko',
-        'ko-KR': 'ko',
-        'zh': 'zh-CN',
-        'zh-CN': 'zh-CN',
-        'zh-Hans': 'zh-CN', // Simplified Chinese
-        'zh-TW': 'zh-TW',
-        'zh-Hant': 'zh-TW', // Traditional Chinese
-        'ru': 'ru',
-        'ru-RU': 'ru',
-        'ar': 'ar',
-        'hi': 'hi',
-        'hi-IN': 'hi'
-    };
-    
-    const normalized = normalizedMap[platformLangCode] || platformLangCode;
-    languageNormalizationCache.set(platformLangCode, normalized);
+    const normalized = normalizedMap[lowerCaseCode] || platformLangCode;
+    languageNormalizationCache.set(lowerCaseCode, normalized);
     return normalized;
 }
 
@@ -151,33 +154,73 @@ function findSubtitleUriForLanguage(availableLanguages, targetLangCode) {
         return null;
     }
     
+    // Helper function to check if a subtitle track is forced
+    const isForcedTrack = (lang) => {
+        return lang.displayName?.toLowerCase().includes('forced') || 
+               lang.displayName?.toLowerCase().includes('--forced--') ||
+               lang.rawCode?.toLowerCase().includes('forced') ||
+               lang.uri?.toLowerCase().includes('forced') ||
+               lang.uri?.toLowerCase().includes('_forced_');
+    };
+    
+    // Helper function to prefer normal tracks over forced tracks
+    const selectBestMatch = (matches) => {
+        if (matches.length === 0) return null;
+        if (matches.length === 1) return matches[0];
+        
+        // Prefer non-forced tracks
+        const normalTracks = matches.filter(match => !isForcedTrack(match));
+        if (normalTracks.length > 0) {
+            // Within normal tracks, prefer those with "NORMAL" in URI or display name
+            const explicitNormalTracks = normalTracks.filter(track => 
+                track.uri?.includes('_NORMAL_') || 
+                track.displayName?.toLowerCase().includes('normal')
+            );
+            
+            if (explicitNormalTracks.length > 0) {
+                return explicitNormalTracks[0];
+            }
+            
+            return normalTracks[0];
+        }
+        return matches[0];
+    };
+    
     // Exact match on normalized code
-    let match = availableLanguages.find(lang => lang.normalizedCode === targetLangCode);
-    if (match) return match;
+    let matches = availableLanguages.filter(lang => lang.normalizedCode === targetLangCode);
+    if (matches.length > 0) {
+        return selectBestMatch(matches);
+    }
     
     // Exact match on raw code
-    match = availableLanguages.find(lang => lang.rawCode === targetLangCode);
-    if (match) return match;
+    matches = availableLanguages.filter(lang => lang.rawCode === targetLangCode);
+    if (matches.length > 0) {
+        return selectBestMatch(matches);
+    }
     
     // Language family matching
     const languageFamilies = ['zh', 'es', 'en', 'fr', 'de', 'pt', 'it', 'ja', 'ko'];
     const targetFamily = languageFamilies.find(family => targetLangCode.startsWith(family));
     
     if (targetFamily) {
-        match = availableLanguages.find(lang => 
+        matches = availableLanguages.filter(lang => 
             lang.normalizedCode.startsWith(targetFamily) || lang.rawCode.startsWith(targetFamily)
         );
-        if (match) return match;
+        if (matches.length > 0) {
+            return selectBestMatch(matches);
+        }
     }
     
     // Case-insensitive partial matching
     const targetLower = targetLangCode.toLowerCase();
-    match = availableLanguages.find(lang => 
+    matches = availableLanguages.filter(lang => 
         lang.normalizedCode.toLowerCase().includes(targetLower) ||
         lang.rawCode.toLowerCase().includes(targetLower) ||
         lang.displayName.toLowerCase().includes(targetLower)
     );
-    if (match) return match;
+    if (matches.length > 0) {
+        return selectBestMatch(matches);
+    }
     
     return null;
 }
@@ -323,20 +366,32 @@ async function fetchAndProcessSubtitleUrl(masterPlaylistUrl, targetLanguage = nu
     let originalLanguageInfo = null;
     
     // Step 1: Check if we should use native target language (when available and smart subtitles enabled)
-    if (useNativeSubtitles && targetLanguage && targetLanguage !== originalLanguage) {
-        targetLanguageInfo = findSubtitleUriForLanguage(availableLanguages, targetLanguage);
-        if (targetLanguageInfo) {
-            console.log(`Background: ✅ Target language ${targetLanguage} found natively: ${targetLanguageInfo.displayName}`);
-            useNativeTarget = true;
+    if (useNativeSubtitles && targetLanguage) {
+        if (targetLanguage === originalLanguage) {
+            // Find the target language natively for single language mode
+            targetLanguageInfo = findSubtitleUriForLanguage(availableLanguages, targetLanguage);
+            if (targetLanguageInfo) {
+                console.log(`Background: ✅ Found native language ${targetLanguage}: ${targetLanguageInfo.displayName}`);
+                useNativeTarget = true;
+                // In this case, we'll use the same language for both original and target
+                originalLanguageInfo = targetLanguageInfo;
+            } else {
+                console.log(`Background: ❌ Native language ${targetLanguage} not available`);
+            }
         } else {
-            console.log(`Background: ❌ Target language ${targetLanguage} not available natively`);
+            // Different target and original languages - dual language mode
+            targetLanguageInfo = findSubtitleUriForLanguage(availableLanguages, targetLanguage);
+            if (targetLanguageInfo) {
+                console.log(`Background: ✅ Target language ${targetLanguage} found natively: ${targetLanguageInfo.displayName}`);
+                useNativeTarget = true;
+            } else {
+                console.log(`Background: ❌ Target language ${targetLanguage} not available natively`);
+            }
         }
-    } else {
-        console.log("Background: Skipping native target check - useNativeSubtitles:", useNativeSubtitles, "targetLanguage:", targetLanguage, "originalLanguage:", originalLanguage);
     }
     
-    // Step 2: Find original language subtitle for dual display
-    if (originalLanguage) {
+    // Step 2: Find original language subtitle for dual display (skip if already found in Step 1)
+    if (originalLanguage && !originalLanguageInfo) {
         originalLanguageInfo = findSubtitleUriForLanguage(availableLanguages, originalLanguage);
         if (originalLanguageInfo) {
             console.log(`Background: ✅ Found original language ${originalLanguage}: ${originalLanguageInfo.displayName}`);
