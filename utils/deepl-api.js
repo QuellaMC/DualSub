@@ -8,10 +8,10 @@
  * Makes a DeepL API translation request
  * @param {string} apiKey - The DeepL API key
  * @param {string} apiPlan - The API plan ('free' or 'pro')
- * @param {URLSearchParams} params - The request parameters
+ * @param {string} requestBody - The request body as a URL-encoded string
  * @returns {Promise<Response>} The fetch response
  */
-async function fetchDeepL(apiKey, apiPlan, params) {
+async function fetchDeepL(apiKey, apiPlan, requestBody) {
     const apiUrl = apiPlan === 'pro'
         ? 'https://api.deepl.com/v2/translate'
         : 'https://api-free.deepl.com/v2/translate';
@@ -23,7 +23,7 @@ async function fetchDeepL(apiKey, apiPlan, params) {
             'Content-Type': 'application/x-www-form-urlencoded',
             'User-Agent': 'Dualsub/1.0.0'
         },
-        body: params.toString()
+        body: requestBody
     });
 }
 
@@ -45,11 +45,10 @@ async function testDeepLConnection(apiKey, apiPlan, text = 'Hello', targetLang =
     }
 
     try {
-        const params = new URLSearchParams();
-        params.append('text', text);
-        params.append('target_lang', targetLang);
+        // Create request body manually to avoid URLSearchParams issues in service worker
+        const requestBody = `text=${encodeURIComponent(text)}&target_lang=${encodeURIComponent(targetLang)}`;
 
-        const response = await fetchDeepL(apiKey, apiPlan, params);
+        const response = await fetchDeepL(apiKey, apiPlan, requestBody);
 
         if (response.ok) {
             const data = await response.json();
@@ -92,12 +91,26 @@ async function testDeepLConnection(apiKey, apiPlan, text = 'Hello', targetLang =
     }
 }
 
-// Export functions for use in other modules
+// Universal export that works in both Node.js, browser, and service worker environments
 if (typeof module !== 'undefined' && module.exports) {
     // Node.js environment
     module.exports = { fetchDeepL, testDeepLConnection };
-} else if (typeof window !== 'undefined') {
-    // Browser environment - attach to window
-    window.DeepLAPI = { fetchDeepL, testDeepLConnection };
-}
-// In service worker environment, functions are just available in scope 
+} else {
+    // Browser or service worker environment
+    // Check for global object availability before using
+    const globalObj = (function() {
+        if (typeof globalThis !== 'undefined') return globalThis;
+        if (typeof window !== 'undefined') return window;
+        if (typeof global !== 'undefined') return global;
+        if (typeof self !== 'undefined') return self;
+        throw new Error('Unable to locate global object');
+    })();
+    
+    // Only attach to global object if it exists and is writable
+    try {
+        globalObj.DeepLAPI = { fetchDeepL, testDeepLConnection };
+    } catch (error) {
+        // In strict environments where we can't modify the global object, just log and continue
+        console.warn('Could not attach DeepLAPI to global object:', error.message);
+    }
+} 

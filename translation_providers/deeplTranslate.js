@@ -36,6 +36,30 @@ function mapLanguageCodeForDeepL(langCode) {
 }
 
 /**
+ * Safely detects the current environment (service worker vs browser)
+ * @returns {Object} Environment detection result
+ */
+function detectEnvironment() {
+    try {
+        const isServiceWorker = typeof window === 'undefined' && typeof self !== 'undefined' && typeof importScripts === 'function';
+        const isBrowser = typeof window !== 'undefined';
+        
+        return {
+            isServiceWorker,
+            isBrowser,
+            environmentType: isServiceWorker ? 'service-worker' : (isBrowser ? 'browser' : 'unknown')
+        };
+    } catch (error) {
+        console.warn("DeepL: Environment detection failed:", error.message);
+        return {
+            isServiceWorker: false,
+            isBrowser: false,
+            environmentType: 'unknown'
+        };
+    }
+}
+
+/**
  * Translates text using the DeepL API.
  *
  * @param {string} text The text to translate.
@@ -47,15 +71,25 @@ function mapLanguageCodeForDeepL(langCode) {
 export async function translate(text, sourceLang, targetLang) {
     console.log("DeepL: translate function called, checking environment...");
     
-    // Check environment immediately to debug the window issue
-    const isServiceWorker = typeof window === 'undefined' && typeof self !== 'undefined';
-    const isBrowser = typeof window !== 'undefined';
-    console.log("DeepL: Environment check - Service Worker:", isServiceWorker, "Browser:", isBrowser);
+    // Safe environment detection
+    const envInfo = detectEnvironment();
+    console.log("DeepL: Environment check -", envInfo);
+    
+    // Explicitly check for service worker environment and handle accordingly
+    if (envInfo.isServiceWorker) {
+        console.log("DeepL: Service worker environment detected, proceeding with SW-compatible operations");
+        // Service worker environment is supported, but we log it for debugging
+    }
     
     try {
-        // Get API credentials from storage
+        // Get API credentials from storage with enhanced error handling
         const { deeplApiKey: apiKey, deeplApiPlan: apiPlan } = await new Promise((resolve, reject) => {
             try {
+                if (typeof chrome === 'undefined' || !chrome.storage) {
+                    reject(new Error("Chrome storage API is not available"));
+                    return;
+                }
+                
                 chrome.storage.sync.get(['deeplApiKey', 'deeplApiPlan'], (result) => {
                     if (chrome.runtime.lastError) {
                         reject(new Error(`Storage error: ${chrome.runtime.lastError.message}`));
@@ -87,7 +121,7 @@ export async function translate(text, sourceLang, targetLang) {
         const mappedTargetLang = mapLanguageCodeForDeepL(targetLang);
         const mappedSourceLang = sourceLang !== 'auto' ? mapLanguageCodeForDeepL(sourceLang) : sourceLang;
 
-        // Create request body manually to avoid any URLSearchParams issues
+        // Create request body manually to avoid any URLSearchParams issues in service worker environment
         let bodyParts = [`text=${encodeURIComponent(text)}`];
         if (mappedSourceLang !== 'auto') {
             bodyParts.push(`source_lang=${encodeURIComponent(mappedSourceLang)}`);
@@ -95,9 +129,9 @@ export async function translate(text, sourceLang, targetLang) {
         bodyParts.push(`target_lang=${encodeURIComponent(mappedTargetLang)}`);
         const requestBody = bodyParts.join('&');
 
-        console.log(`DeepL API request: source=${mappedSourceLang}, target=${mappedTargetLang}`);
+        console.log(`DeepL API request: source=${mappedSourceLang}, target=${mappedTargetLang}, environment=${envInfo.environmentType}`);
 
-        // Make the API request
+        // Make the API request with enhanced error handling
         const response = await fetch(apiUrl, {
             method: 'POST',
             headers: {
@@ -150,15 +184,19 @@ export async function translate(text, sourceLang, targetLang) {
     } catch (error) {
         console.error("DeepLProvider: Translation error -", error);
         
-        // Handle specific error types
+        // Enhanced error handling using environment detection instead of string matching
         if (error.message.includes("Failed to fetch")) {
             throw new Error("Network error: Could not connect to DeepL API.");
         }
         
-        // This should help us identify the window issue
-        if (error.message.includes("window is not defined")) {
-            console.error("DeepL: Window access error detected in service worker context");
-            throw new Error("DeepL Error: Browser compatibility issue - service worker environment detected");
+        // Use explicit environment detection instead of error message inspection
+        if (envInfo.isServiceWorker && error.message.includes("window")) {
+            console.error("DeepL: Service worker environment compatibility issue detected");
+            throw new Error("DeepL Error: Service worker environment compatibility issue");
+        }
+        
+        if (error.message.includes("Chrome storage")) {
+            throw new Error("DeepL Error: Cannot access extension storage");
         }
         
         // Re-throw with DeepL prefix for consistency
