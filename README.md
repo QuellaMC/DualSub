@@ -1,10 +1,10 @@
-# Disney+ Dual Subtitles Chrome Extension
+# Dual Subtitles Chrome Extension
 
 ![](https://img.shields.io/github/v/release/QuellaMC/DualSub.svg) ![](https://img.shields.io/github/last-commit/QuellaMC/DualSub.svg)
 
 ## Description
 
-Disney+ Dual Subtitles enhances your Disney+ viewing experience by displaying two sets of subtitles simultaneously. This allows you to, for example, view subtitles in their original language alongside a translation in your preferred language. The extension offers customization options for subtitle appearance, timing, and translation preferences.
+Dual Subtitles enhances your streaming experience by displaying two sets of subtitles simultaneously. This allows you to, for example, view subtitles in their original language alongside a translation in your preferred language. The extension offers customization options for subtitle appearance, timing, and translation preferences.
 
 ## Features
 
