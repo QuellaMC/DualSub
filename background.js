@@ -1,5 +1,6 @@
 import { translate as googleTranslate } from './translation_providers/googleTranslate.js';
 import { translate as microsoftTranslateEdgeAuth } from './translation_providers/microsoftTranslateEdgeAuth.js';
+import { normalizeLanguageCode } from './utils/languageNormalization.js';
 console.log("Disney+ Dual Subtitles background script loaded.");
 
 const translationProviders = {
@@ -55,58 +56,6 @@ chrome.runtime.onInstalled.addListener(() => {
         }
     });
 });
-
-const languageNormalizationCache = new Map();
-
-const normalizedMap = {
-    'en': 'en',
-    'en-us': 'en',
-    'es': 'es',
-    'es-419': 'es', // Latin American Spanish
-    'es-es': 'es', // European Spanish
-    'fr': 'fr',
-    'fr-ca': 'fr', // Canadian French
-    'fr-fr': 'fr', // European French
-    'de': 'de',
-    'de-de': 'de',
-    'it': 'it',
-    'it-it': 'it',
-    'pt': 'pt',
-    'pt-br': 'pt', // Brazilian Portuguese
-    'pt-pt': 'pt', // European Portuguese
-    'ja': 'ja',
-    'ja-jp': 'ja',
-    'ko': 'ko',
-    'ko-kr': 'ko',
-    'zh': 'zh-CN',
-    'zh-cn': 'zh-CN',
-    'zh-hans': 'zh-CN', // Simplified Chinese
-    'zh-tw': 'zh-TW',
-    'zh-hant': 'zh-TW', // Traditional Chinese
-    'ru': 'ru',
-    'ru-ru': 'ru',
-    'ar': 'ar',
-    'hi': 'hi',
-    'hi-in': 'hi'
-};
-
-function normalizeLanguageCode(platformLangCode) {
-    if (!platformLangCode || typeof platformLangCode !== 'string') {
-        console.warn('Background: Invalid language code provided to normalizeLanguageCode:', platformLangCode);
-        return 'en';
-    }
-
-    // Normalize to lowercase for case-insensitive caching and lookup
-    const lowerCaseCode = platformLangCode.toLowerCase();
-
-    if (languageNormalizationCache.has(lowerCaseCode)) {
-        return languageNormalizationCache.get(lowerCaseCode);
-    }
-
-    const normalized = normalizedMap[lowerCaseCode] || platformLangCode;
-    languageNormalizationCache.set(lowerCaseCode, normalized);
-    return normalized;
-}
 
 function parseAvailableSubtitleLanguages(masterPlaylistText) {
     if (!masterPlaylistText || typeof masterPlaylistText !== 'string') {

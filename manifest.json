@@ -33,7 +33,8 @@
         "injected_scripts/disneyPlusInject.js",
         "video_platforms/disneyPlusPlatform.js",
         "video_platforms/platform_interface.js",
-        "content_scripts/subtitleUtilities.js"
+        "content_scripts/subtitleUtilities.js",
+        "utils/languageNormalization.js"
       ],
       "matches": ["*://*.disneyplus.com/*"]
     }
