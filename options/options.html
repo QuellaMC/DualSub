@@ -53,18 +53,68 @@
                     
                     <div class="setting">
                         <label for="translationBatchSize" data-i18n="batchSizeLabel">Batch Size:</label>
-                        <input type="number" id="translationBatchSize" min="1" max="10" value="3">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <input type="number" id="translationBatchSize" min="1" max="10" value="3">
+                            <span id="translationBatchSizeValue">3</span>
+                        </div>
                     </div>
                     
                     <div class="setting">
                         <label for="translationDelay" data-i18n="requestDelayLabel">Request Delay (ms):</label>
-                        <input type="number" id="translationDelay" min="0" max="5000" step="50" value="150">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <input type="number" id="translationDelay" min="0" max="5000" step="50" value="150">
+                            <span id="translationDelayValue">150ms</span>
+                        </div>
                     </div>
                 </div>
             </section>
             <section id="providers" class="hidden">
                 <h2 data-i18n="sectionProviders">Provider Settings</h2>
-                <div class="setting-card">
+                
+                <!-- Google Translate Card -->
+                <div class="setting-card" id="googleProviderCard" style="display: none;">
+                    <h3 data-i18n="cardGoogleTitle">Google Translate</h3>
+                    <p data-i18n="cardGoogleDesc">Free translation service provided by Google. No additional configuration required.</p>
+                    <div class="provider-info">
+                        <div class="info-item">
+                            <strong data-i18n="providerStatus">Status:</strong>
+                            <span class="status-badge success" data-i18n="statusReady">Ready to use</span>
+                        </div>
+                        <div class="info-item">
+                            <strong data-i18n="providerFeatures">Features:</strong>
+                            <ul>
+                                <li data-i18n="featureFree">Free to use</li>
+                                <li data-i18n="featureNoApiKey">No API key required</li>
+                                <li data-i18n="featureWideLanguageSupport">Wide language support</li>
+                                <li data-i18n="featureFastTranslation">Fast translation</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Microsoft Translate Card -->
+                <div class="setting-card" id="microsoftProviderCard" style="display: none;">
+                    <h3 data-i18n="cardMicrosoftTitle">Microsoft Translate</h3>
+                    <p data-i18n="cardMicrosoftDesc">Free translation service provided by Microsoft Edge. No additional configuration required.</p>
+                    <div class="provider-info">
+                        <div class="info-item">
+                            <strong data-i18n="providerStatus">Status:</strong>
+                            <span class="status-badge success" data-i18n="statusReady">Ready to use</span>
+                        </div>
+                        <div class="info-item">
+                            <strong data-i18n="providerFeatures">Features:</strong>
+                            <ul>
+                                <li data-i18n="featureFree">Free to use</li>
+                                <li data-i18n="featureNoApiKey">No API key required</li>
+                                <li data-i18n="featureHighQuality">High quality translation</li>
+                                <li data-i18n="featureGoodPerformance">Good performance</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DeepL Card -->
+                <div class="setting-card" id="deeplProviderCard" style="display: none;">
                     <h3 data-i18n="cardDeepLTitle">DeepL</h3>
                     <p data-i18n="cardDeepLDesc">Enter your API key for DeepL Translate. Choose between Free and Pro plans.</p>
                     <div class="setting">
@@ -77,6 +127,21 @@
                             <option value="free" data-i18n="apiPlanFree">DeepL API Free</option>
                             <option value="pro" data-i18n="apiPlanPro">DeepL API Pro</option>
                         </select>
+                    </div>
+                    <div class="setting">
+                        <button id="testDeepLButton" type="button" class="btn btn-primary" data-i18n="testDeepLButton">Test DeepL Connection</button>
+                        <div id="deeplTestResult" class="test-result" aria-live="polite"></div>
+                    </div>
+                    <div class="provider-info">
+                        <div class="info-item">
+                            <strong data-i18n="providerFeatures">Features:</strong>
+                            <ul>
+                                <li data-i18n="featureHighestQuality">Highest quality translation</li>
+                                <li data-i18n="featureApiKeyRequired">API key required</li>
+                                <li data-i18n="featureLimitedLanguages">Limited language support</li>
+                                <li data-i18n="featureUsageLimits">Usage limits apply</li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -91,6 +156,7 @@
             </section>
         </main>
     </div>
+    <script src="../utils/deepl-api.js"></script>
     <script src="options.js"></script>
 </body>
 </html> 

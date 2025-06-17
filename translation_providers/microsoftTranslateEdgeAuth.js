@@ -3,7 +3,18 @@
 
 const API_AUTH_EDGE = "https://edge.microsoft.com/translate/auth";
 const API_TRANSLATE_COGNITIVE = "https://api.cognitive.microsofttranslator.com/translate";
-const DEFAULT_USER_AGENT = navigator.userAgent || "Mozilla/5.0 (Windows; U; Windows NT 6.3; WOW64; en-US) AppleWebKit/603.43 (KHTML, like Gecko) Chrome/47.0.2805.119 Safari/603";
+
+// Safe User-Agent that works in both browser and service worker environments
+function getDefaultUserAgent() {
+    // Check if we're in a service worker environment
+    if (typeof navigator !== 'undefined' && navigator.userAgent) {
+        return navigator.userAgent;
+    }
+    // Fallback for service worker or other environments where navigator is not available
+    return "Mozilla/5.0 (Windows; U; Windows NT 6.3; WOW64; en-US) AppleWebKit/603.43 (KHTML, like Gecko) Chrome/47.0.2805.119 Safari/603";
+}
+
+const DEFAULT_USER_AGENT = getDefaultUserAgent();
 
 // --- Token Management ---
 let globalAuthToken = null;
@@ -25,9 +36,45 @@ async function fetchAuthToken() {
         const authJWT = await response.text();
         
         // Decode JWT payload to get expiration (exp is in seconds)
-        // In a browser environment, Buffer.from is not available, use atob.
+        // Use a safe base64 decode function that works in all environments
         const payloadBase64 = authJWT.split('.')[1];
-        const decodedPayload = atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/'));
+        
+        // Safe base64 decode for service worker and browser environments
+        let decodedPayload;
+        try {
+            if (typeof atob !== 'undefined') {
+                decodedPayload = atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/'));
+            } else {
+                // Fallback for environments where atob is not available
+                decodedPayload = Buffer.from(payloadBase64.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString();
+            }
+        } catch (decodeError) {
+            // Manual base64 decode as a last resort (simple implementation)
+            console.warn("MicrosoftTranslateEdgeAuth: Standard base64 decode failed, using fallback");
+            const base64chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+            const normalizedPayload = payloadBase64.replace(/-/g, '+').replace(/_/g, '/');
+            let result = '';
+            let buffer = 0;
+            let bitsCollected = 0;
+            
+            for (let i = 0; i < normalizedPayload.length; i++) {
+                const char = normalizedPayload[i];
+                if (char === '=') break;
+                
+                const charIndex = base64chars.indexOf(char);
+                if (charIndex === -1) continue;
+                
+                buffer = (buffer << 6) | charIndex;
+                bitsCollected += 6;
+                
+                if (bitsCollected >= 8) {
+                    result += String.fromCharCode((buffer >> (bitsCollected - 8)) & 0xFF);
+                    bitsCollected -= 8;
+                }
+            }
+            decodedPayload = result;
+        }
+        
         const jwtPayload = JSON.parse(decodedPayload);
 
         if (!jwtPayload.exp) {
@@ -99,16 +146,20 @@ export async function translate(text, sourceLang, targetLang) {
         const authToken = await ensureAuthentication();
 
         const requestBody = [{ "Text": text }];
-        const apiParams = new URLSearchParams({
-            "api-version": "3.0",
-            "to": targetLang,
-        });
-
+        
+        // Create query parameters manually to avoid URLSearchParams issues in service worker
+        let queryParts = [
+            `api-version=3.0`,
+            `to=${encodeURIComponent(targetLang)}`
+        ];
+        
         if (actualSourceLang) {
-            apiParams.append("from", actualSourceLang);
+            queryParts.push(`from=${encodeURIComponent(actualSourceLang)}`);
         }
+        
+        const queryString = queryParts.join('&');
 
-        const response = await fetch(`${API_TRANSLATE_COGNITIVE}?${apiParams.toString()}`, {
+        const response = await fetch(`${API_TRANSLATE_COGNITIVE}?${queryString}`, {
             method: "POST",
             headers: {
                 "Authorization": "Bearer " + authToken,
