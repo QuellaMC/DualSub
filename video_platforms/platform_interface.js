@@ -104,6 +104,76 @@ export class VideoPlatform {
     }
 
     /**
+     * Utility method: Hide official subtitles based on platform-specific selectors
+     * @param {string[]} selectors - Array of CSS selectors for subtitle containers
+     */
+    hideOfficialSubtitleContainers(selectors) {
+        selectors.forEach(selector => {
+            const containers = document.querySelectorAll(selector);
+            containers.forEach(container => {
+                container.style.display = 'none';
+                container.style.visibility = 'hidden';
+                container.style.opacity = '0';
+                container.setAttribute('data-dualsub-hidden', 'true');
+            });
+        });
+    }
+
+    /**
+     * Utility method: Show previously hidden official subtitles
+     */
+    showOfficialSubtitleContainers() {
+        const hiddenContainers = document.querySelectorAll('[data-dualsub-hidden="true"]');
+        hiddenContainers.forEach(container => {
+            container.style.display = '';
+            container.style.visibility = '';
+            container.style.opacity = '';
+            container.removeAttribute('data-dualsub-hidden');
+            console.log(`${this.constructor.name}: Restored official subtitle container`);
+        });
+    }
+
+    /**
+     * Utility method: Handle native subtitles based on user setting
+     * @param {string[]} selectors - Array of CSS selectors for subtitle containers
+     */
+    handleNativeSubtitlesWithSetting(selectors) {
+        chrome.storage.sync.get(['hideOfficialSubtitles'], (result) => {
+            const hideOfficialSubtitles = result.hideOfficialSubtitles || false;
+            
+            if (hideOfficialSubtitles) {
+                this.hideOfficialSubtitleContainers(selectors);
+            } else {
+                this.showOfficialSubtitleContainers();
+            }
+        });
+    }
+
+    /**
+     * Utility method: Set up storage listener for settings changes
+     * @param {string[]} selectors - Array of CSS selectors for subtitle containers
+     */
+    setupNativeSubtitleSettingsListener(selectors) {
+        // Store selectors for later use
+        this.subtitleSelectors = selectors;
+        
+        // Listen for storage changes
+        this.storageListener = (changes, areaName) => {
+            if (areaName === 'sync' && changes.hideOfficialSubtitles) {
+                const newValue = changes.hideOfficialSubtitles.newValue;
+                
+                if (newValue) {
+                    this.hideOfficialSubtitleContainers(this.subtitleSelectors);
+                } else {
+                    this.showOfficialSubtitleContainers();
+                }
+            }
+        };
+        
+        chrome.storage.onChanged.addListener(this.storageListener);
+    }
+
+    /**
      * Optional: Whether this platform supports/needs progress bar tracking for accurate time.
      * Some platforms have reliable HTML5 video.currentTime, while others need progress bar tracking
      * for better accuracy during seeking operations.
@@ -112,6 +182,17 @@ export class VideoPlatform {
     supportsProgressBarTracking() {
         // Default: use progress bar tracking for better accuracy during seeking
         return true;
+    }
+
+    /**
+     * Utility method: Clean up storage listener for subtitle settings
+     */
+    cleanupNativeSubtitleSettingsListener() {
+        if (this.storageListener) {
+            chrome.storage.onChanged.removeListener(this.storageListener);
+            this.storageListener = null;
+            this.subtitleSelectors = null;
+        }
     }
 
     /**

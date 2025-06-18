@@ -35,6 +35,20 @@
                         </select>
                     </div>
                 </div>
+                <div class="setting-card">
+                    <h3 data-i18n="cardHideOfficialSubtitlesTitle">Hide Official Subtitles</h3>
+                    <p data-i18n="cardHideOfficialSubtitlesDesc">Hide the official subtitles from the video platform when DualSub is active.</p>
+                    <div class="setting">
+                        <label for="hideOfficialSubtitles" data-i18n="hideOfficialSubtitlesLabel">Hide official subtitles:</label>
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="hideOfficialSubtitles" class="toggle-input">
+                            <label for="hideOfficialSubtitles" class="toggle-label">
+                                <span class="toggle-inner"></span>
+                                <span class="toggle-switch-handle"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
             </section>
             <section id="translation" class="hidden">
                 <h2 data-i18n="sectionTranslation">Translation</h2>
@@ -55,7 +69,6 @@
                         <label for="translationBatchSize" data-i18n="batchSizeLabel">Batch Size:</label>
                         <div style="display: flex; align-items: center; gap: 10px;">
                             <input type="number" id="translationBatchSize" min="1" max="10" value="3">
-                            <span id="translationBatchSizeValue">3</span>
                         </div>
                     </div>
                     
@@ -63,7 +76,6 @@
                         <label for="translationDelay" data-i18n="requestDelayLabel">Request Delay (ms):</label>
                         <div style="display: flex; align-items: center; gap: 10px;">
                             <input type="number" id="translationDelay" min="0" max="5000" step="50" value="150">
-                            <span id="translationDelayValue">150ms</span>
                         </div>
                     </div>
                 </div>
