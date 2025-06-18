@@ -35,6 +35,16 @@ export class NetflixPlatform extends VideoPlatform {
         // Just ensure our event listener is attached
         this.eventListener = this.handleInjectorEvents.bind(this);
         document.addEventListener(INJECT_EVENT_ID, this.eventListener);
+        
+        // Set up storage listener for subtitle settings
+        const netflixSubtitleSelectors = [
+            '.player-timedtext',
+            '.watch-video--bottom-controls-container .timedtext-text-container',
+            '.player-timedtext-text-container',
+            '[data-uia="player-timedtext-text-container"]'
+        ];
+        this.setupNativeSubtitleSettingsListener(netflixSubtitleSelectors);
+        
         console.log("NetflixPlatform: Initialized and event listener added.");
     }
 
@@ -208,19 +218,116 @@ export class NetflixPlatform extends VideoPlatform {
     }
 
     handleNativeSubtitles() {
-        // To ensure our subtitles are not obstructed, we can try to hide Netflix's native subtitles.
-        const nativeSubtitleContainers = [
+        // Netflix subtitle containers to hide
+        const netflixSubtitleSelectors = [
             '.player-timedtext',
             '.watch-video--bottom-controls-container .timedtext-text-container',
             '.player-timedtext-text-container',
             '[data-uia="player-timedtext-text-container"]'
         ];
         
-        nativeSubtitleContainers.forEach(selector => {
-            const container = document.querySelector(selector);
-            if (container) {
-                container.style.display = 'none';
-                console.log('NetflixPlatform: Hidden native subtitle container:', selector);
+        // Use the utility method from the base class
+        this.handleNativeSubtitlesWithSetting(netflixSubtitleSelectors);
+        
+        // Also set up a more robust monitoring system for Netflix
+        this.setupNetflixSubtitleMonitoring();
+    }
+
+    setupNetflixSubtitleMonitoring() {
+        // Add CSS to force hide Netflix subtitles when needed
+        this.addNetflixSubtitleCSS();
+        
+        // Monitor for dynamically created subtitle elements
+        this.setupSubtitleMutationObserver();
+    }
+
+    addNetflixSubtitleCSS() {
+        // Add CSS rules that are more specific and use !important
+        const cssId = 'dualsub-netflix-subtitle-hider';
+        let styleElement = document.getElementById(cssId);
+        
+        if (!styleElement) {
+            styleElement = document.createElement('style');
+            styleElement.id = cssId;
+            document.head.appendChild(styleElement);
+        }
+        
+        // CSS rules that will be applied when hiding is enabled
+        const hidingCSS = `
+            .player-timedtext[data-dualsub-hidden="true"] {
+                display: none !important;
+                visibility: hidden !important;
+                opacity: 0 !important;
+            }
+            .player-timedtext-text-container[data-dualsub-hidden="true"] {
+                display: none !important;
+                visibility: hidden !important;
+                opacity: 0 !important;
+            }
+            [data-uia="player-timedtext-text-container"][data-dualsub-hidden="true"] {
+                display: none !important;
+                visibility: hidden !important;
+                opacity: 0 !important;
+            }
+        `;
+        
+        styleElement.textContent = hidingCSS;
+    }
+
+    setupSubtitleMutationObserver() {
+        // Disconnect any existing observer
+        if (this.subtitleObserver) {
+            this.subtitleObserver.disconnect();
+        }
+        
+        // Set up mutation observer to catch dynamically created subtitle elements
+        this.subtitleObserver = new MutationObserver((mutations) => {
+            let foundNewSubtitles = false;
+            
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'childList') {
+                    mutation.addedNodes.forEach((node) => {
+                        if (node.nodeType === Node.ELEMENT_NODE) {
+                            // Check if the added node or its children contain subtitle elements
+                            if (node.classList?.contains('player-timedtext') || 
+                                node.classList?.contains('player-timedtext-text-container') ||
+                                node.querySelector?.('.player-timedtext, .player-timedtext-text-container')) {
+                                foundNewSubtitles = true;
+                            }
+                        }
+                    });
+                }
+            });
+            
+            if (foundNewSubtitles) {
+                // Reapply hiding rules after a short delay
+                setTimeout(() => {
+                    this.applyCurrentSubtitleSetting();
+                }, 100);
+            }
+        });
+        
+        // Start observing the document body for changes
+        this.subtitleObserver.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+    }
+
+    applyCurrentSubtitleSetting() {
+        chrome.storage.sync.get(['hideOfficialSubtitles'], (result) => {
+            const hideOfficialSubtitles = result.hideOfficialSubtitles || false;
+            
+            const netflixSubtitleSelectors = [
+                '.player-timedtext',
+                '.player-timedtext-text-container',
+                '[data-uia="player-timedtext-text-container"]'
+            ];
+            
+            if (hideOfficialSubtitles) {
+                this.hideOfficialSubtitleContainers(netflixSubtitleSelectors);
+            } else {
+                this.showOfficialSubtitleContainers();
             }
         });
     }
@@ -231,6 +338,23 @@ export class NetflixPlatform extends VideoPlatform {
             this.eventListener = null;
             console.log("NetflixPlatform: Event listener removed.");
         }
+        
+        // Clean up storage listener for subtitle settings
+        this.cleanupNativeSubtitleSettingsListener();
+        
+        // Clean up mutation observer
+        if (this.subtitleObserver) {
+            this.subtitleObserver.disconnect();
+            this.subtitleObserver = null;
+            console.log("NetflixPlatform: Subtitle mutation observer cleaned up.");
+        }
+        
+        // Remove our custom CSS
+        const cssElement = document.getElementById('dualsub-netflix-subtitle-hider');
+        if (cssElement) {
+            cssElement.remove();
+        }
+        
         const scriptTag = document.getElementById(INJECT_SCRIPT_TAG_ID);
         if (scriptTag) {
             scriptTag.remove();
