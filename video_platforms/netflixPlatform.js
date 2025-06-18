@@ -70,6 +70,14 @@ export class NetflixPlatform extends VideoPlatform {
             }
             
             console.log(`NetflixPlatform: SUBTITLE_DATA_FOUND for movieId: '${movieId}'. Data type:`, typeof timedtexttracks, "Content:", timedtexttracks);
+            
+            // Extract movieId from current URL to ensure we only process subtitles for the current content
+            const urlMovieId = this.extractMovieIdFromUrl();
+            if (urlMovieId && String(movieId) !== String(urlMovieId)) {
+                console.log(`NetflixPlatform: Ignoring subtitle data for movieId '${movieId}' (type: ${typeof movieId}) - doesn't match current URL movieId '${urlMovieId}' (type: ${typeof urlMovieId})`);
+                return;
+            }
+            console.log(`NetflixPlatform: MovieId '${movieId}' matches URL movieId '${urlMovieId}' - processing subtitle data`);
 
             // Handle video ID change
             if (this.currentVideoId !== movieId) {
@@ -198,6 +206,25 @@ export class NetflixPlatform extends VideoPlatform {
 
     getCurrentVideoId() {
         return this.currentVideoId;
+    }
+
+    extractMovieIdFromUrl() {
+        try {
+            // Netflix URLs are typically in the format: https://www.netflix.com/watch/MOVIEID or similar
+            const path = window.location.pathname;
+            const match = path.match(/\/watch\/(\d+)/);
+            if (match && match[1]) {
+                const extractedId = match[1];
+                console.log(`NetflixPlatform: Extracted movieId '${extractedId}' from URL: ${window.location.href}`);
+                return extractedId;
+            }
+            
+            console.warn(`NetflixPlatform: Could not extract movieId from URL: ${window.location.href}`);
+            return null;
+        } catch (error) {
+            console.error(`NetflixPlatform: Error extracting movieId from URL:`, error);
+            return null;
+        }
     }
 
     getPlayerContainerElement() {

@@ -216,16 +216,19 @@ function attemptVideoSetup() {
     }
     
     console.log(`${LOG_PREFIX}: Video element found! Setting up subtitle container and listeners.`);
+    console.log(`${LOG_PREFIX}: Current subtitlesActive state:`, subtitleUtils.subtitlesActive);
     
     // Ensure container and timeupdate listener for Netflix
     subtitleUtils.ensureSubtitleContainer(activePlatform, LOG_PREFIX);
     
     if (subtitleUtils.subtitlesActive) {
+        console.log(`${LOG_PREFIX}: Subtitles are active, showing container and setting up listeners`);
         subtitleUtils.showSubtitleContainer();
         if (videoElement.currentTime > 0) {
             subtitleUtils.updateSubtitles(videoElement.currentTime, activePlatform, LOG_PREFIX);
         }
     } else {
+        console.log(`${LOG_PREFIX}: Subtitles are not active, hiding container`);
         subtitleUtils.hideSubtitleContainer();
     }
     
@@ -424,27 +427,226 @@ if (document.readyState === 'loading') {
     initializeWhenReady();
 }
 
+// Netflix-specific navigation handling
 let currentUrl = window.location.href;
+let lastKnownPathname = window.location.pathname;
+let urlChangeCheckInterval = null;
+
+// More robust URL change detection that prevents extension context errors
 const checkForUrlChange = () => {
-    if (window.location.href !== currentUrl) {
-        currentUrl = window.location.href;
+    try {
+        const newUrl = window.location.href;
+        const newPathname = window.location.pathname;
         
-        if (activePlatform) {
-            stopVideoElementDetection();
-            activePlatform.cleanup();
-            activePlatform = null;
-            platformReady = false;
-            eventBuffer = [];
-        }
-        
-        chrome.storage.sync.get('subtitlesEnabled', (data) => {
-            if (data.subtitlesEnabled) {
-                setTimeout(() => {
-                    initializePlatform();
+        if (newUrl !== currentUrl || newPathname !== lastKnownPathname) {
+            console.log(`${LOG_PREFIX}: URL change detected from '${currentUrl}' to '${newUrl}'`);
+            
+            const wasOnPlayerPage = lastKnownPathname.includes('/watch/');
+            const isOnPlayerPage = newPathname.includes('/watch/');
+            
+            currentUrl = newUrl;
+            lastKnownPathname = newPathname;
+            
+            // Clean up existing platform if we're leaving a player page
+            if (wasOnPlayerPage && activePlatform) {
+                console.log(`${LOG_PREFIX}: Leaving player page, cleaning up platform`);
+                stopVideoElementDetection();
+                activePlatform.cleanup();
+                activePlatform = null;
+                platformReady = false;
+                eventBuffer = [];
+            }
+            
+            // Initialize platform if we're entering a player page and subtitles are enabled
+            if (isOnPlayerPage && !wasOnPlayerPage) {
+                console.log(`${LOG_PREFIX}: Entering player page, re-injecting script immediately`);
+                
+                // Re-inject script immediately to catch subtitle data
+                injectScriptEarly();
+                
+                // Then check settings and initialize platform
+                setTimeout(async () => {
+                    try {
+                        const settings = await new Promise((resolve) => {
+                            chrome.storage.sync.get('subtitlesEnabled', (data) => {
+                                if (chrome.runtime.lastError) {
+                                    console.warn(`${LOG_PREFIX}: Could not read settings:`, chrome.runtime.lastError);
+                                    resolve({ subtitlesEnabled: false });
+                                } else {
+                                    resolve(data);
+                                }
+                            });
+                        });
+                        
+                        if (settings.subtitlesEnabled) {
+                            console.log(`${LOG_PREFIX}: Subtitles enabled, initializing platform`);
+                            await initializePlatform();
+                        }
+                    } catch (error) {
+                        console.error(`${LOG_PREFIX}: Error during URL change initialization:`, error);
+                    }
                 }, 1500);
             }
-        });
+        }
+    } catch (error) {
+        console.error(`${LOG_PREFIX}: Error in URL change detection:`, error);
+        // If we get an extension context error, stop the interval to prevent spam
+        if (error.message && error.message.includes('Extension context invalidated')) {
+            if (urlChangeCheckInterval) {
+                clearInterval(urlChangeCheckInterval);
+                urlChangeCheckInterval = null;
+                console.log(`${LOG_PREFIX}: Stopped URL change detection due to extension context invalidation`);
+            }
+        }
     }
 };
 
-setInterval(checkForUrlChange, 2000);
+// Enhanced navigation detection using multiple approaches
+function setupNavigationDetection() {
+    // Method 1: Interval-based URL checking (fallback)
+    if (urlChangeCheckInterval) {
+        clearInterval(urlChangeCheckInterval);
+    }
+    urlChangeCheckInterval = setInterval(checkForUrlChange, 2000);
+    
+    // Method 2: History API interception (for programmatic navigation)
+    const originalPushState = history.pushState;
+    const originalReplaceState = history.replaceState;
+    
+    history.pushState = function() {
+        originalPushState.apply(history, arguments);
+        setTimeout(checkForUrlChange, 100);
+    };
+    
+    history.replaceState = function() {
+        originalReplaceState.apply(history, arguments);
+        setTimeout(checkForUrlChange, 100);
+    };
+    
+    // Method 3: Popstate event (for browser back/forward navigation)
+    window.addEventListener('popstate', () => {
+        setTimeout(checkForUrlChange, 100);
+    });
+    
+    // Method 4: Hash change event
+    window.addEventListener('hashchange', () => {
+        setTimeout(checkForUrlChange, 100);
+    });
+    
+    // Method 5: Focus event (when user returns to tab, check if URL changed)
+    window.addEventListener('focus', () => {
+        setTimeout(checkForUrlChange, 100);
+    });
+    
+    console.log(`${LOG_PREFIX}: Enhanced navigation detection set up`);
+}
+
+// Page observer for dynamic content changes
+const pageObserver = new MutationObserver((mutationsList, observerInstance) => {
+    if (!subtitleUtils) return; // Utilities not loaded yet
+
+    // Check for URL changes in case other detection methods missed it
+    setTimeout(checkForUrlChange, 100);
+
+    if (!activePlatform && subtitleUtils.subtitlesActive) {
+        console.log(`${LOG_PREFIX}: PageObserver detected DOM changes. Attempting to initialize platform.`);
+        initializePlatform();
+        return;
+    }
+
+    if (!activePlatform) return;
+
+    for (let mutation of mutationsList) {
+        if (mutation.type === 'childList') {
+            const videoElementNow = activePlatform.getVideoElement();
+            const currentDOMVideoElement = document.querySelector('video[data-listener-attached="true"]');
+
+            if (videoElementNow && (!currentDOMVideoElement || currentDOMVideoElement !== videoElementNow)) {
+                console.log(`${LOG_PREFIX}: PageObserver detected video element appearance or change.`);
+                if (subtitleUtils.subtitlesActive && platformReady && activePlatform) {
+                    console.log(`${LOG_PREFIX}: Platform is ready, re-ensuring container/listeners.`);
+                    subtitleUtils.ensureSubtitleContainer(activePlatform, LOG_PREFIX);
+                }
+            } else if (currentDOMVideoElement && !videoElementNow) {
+                console.log(`${LOG_PREFIX}: PageObserver detected video element removal.`);
+                subtitleUtils.hideSubtitleContainer();
+                if (subtitleUtils.clearSubtitleDOM) {
+                    subtitleUtils.clearSubtitleDOM();
+                }
+            }
+        }
+    }
+});
+
+// Ensure document.body exists before observing
+if (document.body) {
+    pageObserver.observe(document.body, { childList: true, subtree: true });
+} else {
+    // Wait for body to be available
+    const waitForBody = () => {
+        if (document.body) {
+            pageObserver.observe(document.body, { childList: true, subtree: true });
+            console.log(`${LOG_PREFIX}: Page observer started after body became available`);
+        } else {
+            setTimeout(waitForBody, 100);
+        }
+    };
+    waitForBody();
+}
+
+// Setup navigation detection
+setupNavigationDetection();
+
+console.log(`${LOG_PREFIX}: Content script fully initialized with enhanced navigation detection.`);
+
+// Cleanup function to prevent memory leaks and handle extension reloading
+function cleanupAll() {
+    try {
+        // Stop URL change detection
+        if (urlChangeCheckInterval) {
+            clearInterval(urlChangeCheckInterval);
+            urlChangeCheckInterval = null;
+        }
+        
+        // Stop video element detection
+        stopVideoElementDetection();
+        
+        // Cleanup platform
+        if (activePlatform) {
+            activePlatform.cleanup();
+            activePlatform = null;
+        }
+        
+        // Disconnect observers
+        if (pageObserver) {
+            pageObserver.disconnect();
+        }
+        
+        // Remove event listeners
+        if (eventListenerAttached) {
+            document.removeEventListener(INJECT_EVENT_ID, handleEarlyInjectorEvents);
+            eventListenerAttached = false;
+        }
+        
+        // Clear state
+        platformReady = false;
+        eventBuffer = [];
+        
+        console.log(`${LOG_PREFIX}: All cleanup completed`);
+    } catch (error) {
+        console.error(`${LOG_PREFIX}: Error during cleanup:`, error);
+    }
+}
+
+// Listen for extension context invalidation
+chrome.runtime.onConnect.addListener((port) => {
+    port.onDisconnect.addListener(() => {
+        if (chrome.runtime.lastError) {
+            console.log(`${LOG_PREFIX}: Extension context invalidated, cleaning up`);
+            cleanupAll();
+        }
+    });
+});
+
+// Handle page unload
+window.addEventListener('beforeunload', cleanupAll);
