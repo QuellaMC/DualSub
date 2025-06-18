@@ -321,7 +321,8 @@ export class NetflixPlatform extends VideoPlatform {
             const netflixSubtitleSelectors = [
                 '.player-timedtext',
                 '.player-timedtext-text-container',
-                '[data-uia="player-timedtext-text-container"]'
+                '[data-uia="player-timedtext-text-container"]',
+                '.watch-video--bottom-controls-container .timedtext-text-container'
             ];
             
             if (hideOfficialSubtitles) {
