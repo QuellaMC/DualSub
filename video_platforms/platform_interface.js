@@ -104,6 +104,17 @@ export class VideoPlatform {
     }
 
     /**
+     * Optional: Whether this platform supports/needs progress bar tracking for accurate time.
+     * Some platforms have reliable HTML5 video.currentTime, while others need progress bar tracking
+     * for better accuracy during seeking operations.
+     * @returns {boolean} True if progress bar tracking should be used, false to rely on HTML5 video currentTime
+     */
+    supportsProgressBarTracking() {
+        // Default: use progress bar tracking for better accuracy during seeking
+        return true;
+    }
+
+    /**
      * Cleans up any event listeners, observers, or other resources
      * used by the platform implementation. Called when the platform is no longer active
      * or the extension is disabled.

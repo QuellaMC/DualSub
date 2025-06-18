@@ -3,7 +3,7 @@ import { translate as microsoftTranslateEdgeAuth } from './translation_providers
 import { translate as deeplTranslate } from './translation_providers/deeplTranslate.js';
 import { normalizeLanguageCode } from './utils/languageNormalization.js';
 
-console.log("Disney+ Dual Subtitles background script loaded.");
+console.log("Dual Subtitles background script loaded.");
 
 const translationProviders = {
     'google': {
@@ -25,10 +25,8 @@ let currentTranslationProviderId = 'google';
 chrome.storage.sync.get('selectedProvider', (data) => {
     if (data.selectedProvider && translationProviders[data.selectedProvider]) {
         currentTranslationProviderId = data.selectedProvider;
-        console.log(`Background: Loaded provider from storage: ${translationProviders[currentTranslationProviderId].name}`);
     } else {
         chrome.storage.sync.set({ selectedProvider: currentTranslationProviderId });
-        console.log(`Background: Using default provider: ${translationProviders[currentTranslationProviderId].name}`);
     }
 });
 
@@ -56,9 +54,7 @@ chrome.runtime.onInstalled.addListener(() => {
         if (items.useNativeSubtitles === undefined) defaultsToSet.useNativeSubtitles = true;
 
         if (Object.keys(defaultsToSet).length > 0) {
-            chrome.storage.sync.set(defaultsToSet, () => {
-                console.log("Background: Default settings initialized.", defaultsToSet);
-            });
+            chrome.storage.sync.set(defaultsToSet);
         }
     });
 });
@@ -92,8 +88,6 @@ function parseAvailableSubtitleLanguages(masterPlaylistText) {
                         displayName: displayName,
                         uri: uri
                     });
-                    
-                    console.log(`Background: Found subtitle language: ${rawLangCode} -> ${normalizedLangCode} (${displayName})`);
                 }
             } catch (error) {
                 console.warn('Background: Error parsing subtitle language line:', trimmedLine, error);
@@ -109,7 +103,6 @@ function findSubtitleUriForLanguage(availableLanguages, targetLangCode) {
         return null;
     }
     
-    // Helper function to check if a subtitle track is forced
     const isForcedTrack = (lang) => {
         return lang.displayName?.toLowerCase().includes('forced') || 
                lang.displayName?.toLowerCase().includes('--forced--') ||
@@ -118,15 +111,12 @@ function findSubtitleUriForLanguage(availableLanguages, targetLangCode) {
                lang.uri?.toLowerCase().includes('_forced_');
     };
     
-    // Helper function to prefer normal tracks over forced tracks
     const selectBestMatch = (matches) => {
         if (matches.length === 0) return null;
         if (matches.length === 1) return matches[0];
         
-        // Prefer non-forced tracks
         const normalTracks = matches.filter(match => !isForcedTrack(match));
         if (normalTracks.length > 0) {
-            // Within normal tracks, prefer those with "NORMAL" in URI or display name
             const explicitNormalTracks = normalTracks.filter(track => 
                 track.uri?.includes('_NORMAL_') || 
                 track.displayName?.toLowerCase().includes('normal')
@@ -141,19 +131,16 @@ function findSubtitleUriForLanguage(availableLanguages, targetLangCode) {
         return matches[0];
     };
     
-    // Exact match on normalized code
     let matches = availableLanguages.filter(lang => lang.normalizedCode === targetLangCode);
     if (matches.length > 0) {
         return selectBestMatch(matches);
     }
     
-    // Exact match on raw code
     matches = availableLanguages.filter(lang => lang.rawCode === targetLangCode);
     if (matches.length > 0) {
         return selectBestMatch(matches);
     }
     
-    // Language family matching
     const languageFamilies = ['zh', 'es', 'en', 'fr', 'de', 'pt', 'it', 'ja', 'ko'];
     const targetFamily = languageFamilies.find(family => targetLangCode.startsWith(family));
     
@@ -166,7 +153,6 @@ function findSubtitleUriForLanguage(availableLanguages, targetLangCode) {
         }
     }
     
-    // Case-insensitive partial matching
     const targetLower = targetLangCode.toLowerCase();
     matches = availableLanguages.filter(lang => 
         lang.normalizedCode.toLowerCase().includes(targetLower) ||
@@ -284,6 +270,261 @@ async function fetchAndCombineVttSegments(segmentUrls, playlistUrlForLogging = "
 
     console.log(`Background: ${segmentsFetchedCount}/${segmentUrls.length} VTT segments combined.`);
     return combinedVttText;
+}
+
+async function processNetflixSubtitleData(data, targetLanguage = 'zh-CN', originalLanguage = 'en', useNativeSubtitles = true) {
+    if (!data || !data.tracks) {
+        throw new Error("Invalid Netflix subtitle data provided");
+    }
+    
+    const timedtexttracks = data.tracks;
+    const availableLanguages = [];
+    
+    const validTracks = timedtexttracks.filter(track => 
+        !track.isNoneTrack && !track.isForcedNarrative
+    );
+    
+    function getBestTrackForLanguage(tracks, langCode) {
+        const matchingTracks = tracks.filter(track => {
+            const trackLangCode = normalizeLanguageCode(track.language);
+            return trackLangCode === langCode;
+        });
+        
+        if (matchingTracks.length === 0) return null;
+        
+        const primaryTrack = matchingTracks.find(track => track.trackType === 'PRIMARY');
+        if (primaryTrack) {
+            return primaryTrack;
+        }
+        
+        const assistiveTrack = matchingTracks.find(track => track.trackType === 'ASSISTIVE');
+        if (assistiveTrack) {
+            return assistiveTrack;
+        }
+        
+        return matchingTracks[0];
+    }
+    
+    for (const track of validTracks) {
+        const rawLangCode = track.language;
+        const normalizedLangCode = normalizeLanguageCode(rawLangCode);
+        
+        let downloadUrl = null;
+        let downloadables = null;
+        
+        if (track.ttDownloadables && typeof track.ttDownloadables === 'object' && !Array.isArray(track.ttDownloadables)) {
+            downloadables = track.ttDownloadables;
+        }
+        else if (track.rawTrack?.ttDownloadables) {
+            downloadables = track.rawTrack.ttDownloadables;
+        }
+        
+        if (downloadables) {
+            const formats = Object.keys(downloadables);
+            for (const format of formats) {
+                const formatData = downloadables[format];
+                if (formatData && Array.isArray(formatData.urls) && formatData.urls.length > 0) {
+                    const urlObject = formatData.urls[0];
+                    if (urlObject && typeof urlObject.url === 'string') {
+                        downloadUrl = urlObject.url;
+                        break;
+                    }
+                }
+            }
+        }
+        
+        if (downloadUrl) {
+            availableLanguages.push({
+                rawCode: rawLangCode,
+                normalizedCode: normalizedLangCode,
+                displayName: track.displayName || track.rawTrack?.languageDescription || rawLangCode,
+                uri: downloadUrl,
+                trackType: track.trackType,
+                isForcedNarrative: track.isForcedNarrative || false,
+                track: track
+            });
+        }
+    }
+    
+    if (availableLanguages.length === 0) {
+        throw new Error("No downloadable subtitle tracks found in Netflix data");
+    }
+    
+    let targetLanguageInfo = null;
+    let originalLanguageInfo = null;
+    let useNativeTarget = false;
+    
+    if (useNativeSubtitles && targetLanguage) {
+        targetLanguageInfo = getBestTrackForLanguage(validTracks, targetLanguage);
+        if (targetLanguageInfo) {
+            targetLanguageInfo = availableLanguages.find(lang => 
+                lang.track === targetLanguageInfo
+            );
+            
+            if (targetLanguageInfo) {
+                useNativeTarget = true;
+            }
+        }
+    }
+    
+    if (originalLanguage && !originalLanguageInfo) {
+        const originalTrack = getBestTrackForLanguage(validTracks, originalLanguage);
+        if (originalTrack) {
+            originalLanguageInfo = availableLanguages.find(lang => 
+                lang.track === originalTrack
+            );
+        } else {
+            const englishTrack = getBestTrackForLanguage(validTracks, 'en');
+            if (englishTrack) {
+                originalLanguageInfo = availableLanguages.find(lang => 
+                    lang.track === englishTrack
+                );
+            }
+        }
+    }
+    
+    if (!originalLanguageInfo && availableLanguages.length > 0) {
+        originalLanguageInfo = availableLanguages[0];
+    }
+    
+    if (!originalLanguageInfo) {
+        throw new Error("No suitable Netflix subtitle language found");
+    }
+    
+    const originalSubtitleText = await fetchText(originalLanguageInfo.uri);
+    
+    let originalVttText;
+    if (originalSubtitleText.trim().startsWith('<?xml') || originalSubtitleText.includes('<tt')) {
+        originalVttText = convertTtmlToVtt(originalSubtitleText);
+    } else if (originalSubtitleText.trim().toUpperCase().startsWith("WEBVTT")) {
+        originalVttText = originalSubtitleText;
+    } else {
+        throw new Error("Netflix subtitle format not recognized (not TTML or VTT)");
+    }
+    
+    let targetVttText = null;
+    if (useNativeTarget && targetLanguageInfo) {
+        const targetSubtitleText = await fetchText(targetLanguageInfo.uri);
+        
+        if (targetSubtitleText.trim().startsWith('<?xml') || targetSubtitleText.includes('<tt')) {
+            targetVttText = convertTtmlToVtt(targetSubtitleText);
+        } else if (targetSubtitleText.trim().toUpperCase().startsWith("WEBVTT")) {
+            targetVttText = targetSubtitleText;
+        } else {
+            throw new Error("Netflix target subtitle format not recognized");
+        }
+    }
+    
+    return {
+        vttText: originalVttText,
+        targetVttText: targetVttText,
+        sourceLanguage: originalLanguageInfo.normalizedCode,
+        targetLanguage: useNativeTarget ? targetLanguageInfo.normalizedCode : null,
+        useNativeTarget: useNativeTarget,
+        availableLanguages: availableLanguages,
+        url: originalLanguageInfo.uri,
+        selectedLanguage: originalLanguageInfo
+    };
+}
+
+// Simple TTML to VTT converter for Netflix subtitles (service worker compatible)
+function convertTtmlToVtt(ttmlText) {
+    let vtt = "WEBVTT\n\n";
+    
+    try {
+        const pElementRegex = /<p[^>]*\s+begin\s*=\s*["']([^"']+)["'][^>]*\s+end\s*=\s*["']([^"']+)["'][^>]*>(.*?)<\/p>/gi;
+        
+        let match;
+        while ((match = pElementRegex.exec(ttmlText)) !== null) {
+            const begin = match[1];
+            const end = match[2];
+            let text = match[3];
+            
+            if (begin && end && text) {
+                text = text
+                    .replace(/<br\s*\/?>/gi, ' ') // Replace <br> tags with spaces
+                    .replace(/<[^>]*>/g, '') // Remove other XML tags
+                    .replace(/&lt;/g, '<')
+                    .replace(/&gt;/g, '>')
+                    .replace(/&amp;/g, '&')
+                    .replace(/&quot;/g, '"')
+                    .replace(/&#39;/g, "'")
+                    .replace(/\r?\n/g, ' ') // Replace line breaks with spaces
+                    .replace(/\s+/g, ' ') // Normalize multiple spaces to single space
+                    .trim();
+                
+                if (text) {
+                    const startTime = convertTtmlTimeToVtt(begin);
+                    const endTime = convertTtmlTimeToVtt(end);
+                    
+                    vtt += `${startTime} --> ${endTime}\n`;
+                    vtt += `${text}\n\n`;
+                }
+            }
+        }
+        
+        if (!vtt.includes('-->')) {
+            const altRegex = /<p[^>]*begin\s*=\s*["']([^"']+)["'][^>]*end\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/p>/gi;
+            
+            while ((match = altRegex.exec(ttmlText)) !== null) {
+                const begin = match[1];
+                const end = match[2];
+                let text = match[3];
+                
+                if (begin && end && text) {
+                    text = text
+                        .replace(/<br\s*\/?>/gi, ' ')
+                        .replace(/<[^>]*>/g, '')
+                        .replace(/&lt;/g, '<')
+                        .replace(/&gt;/g, '>')
+                        .replace(/&amp;/g, '&')
+                        .replace(/&quot;/g, '"')
+                        .replace(/&#39;/g, "'")
+                        .replace(/\r?\n/g, ' ')
+                        .replace(/\s+/g, ' ')
+                        .trim();
+                    
+                    if (text) {
+                        const startTime = convertTtmlTimeToVtt(begin);
+                        const endTime = convertTtmlTimeToVtt(end);
+                        
+                        vtt += `${startTime} --> ${endTime}\n`;
+                        vtt += `${text}\n\n`;
+                    }
+                }
+            }
+        }
+        
+        if (!vtt.includes('-->')) {
+            throw new Error("No valid TTML subtitle entries found");
+        }
+        
+        return vtt;
+    } catch (error) {
+        console.error("Background: Error converting TTML to VTT:", error);
+        throw new Error(`TTML conversion failed: ${error.message}`);
+    }
+}
+
+// Convert TTML time format to VTT time format
+function convertTtmlTimeToVtt(ttmlTime) {
+    // Handle Netflix's tick-based time format (e.g., "107607500t")
+    if (ttmlTime.endsWith('t')) {
+        const ticks = parseInt(ttmlTime.slice(0, -1));
+        const tickRate = 10000000; // Netflix uses 10,000,000 ticks per second
+        const seconds = ticks / tickRate;
+        
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        const secs = seconds % 60;
+        
+        // Format as HH:MM:SS.mmm
+        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toFixed(3).padStart(6, '0')}`;
+    }
+    
+    // Handle standard time format: 00:00:01.500 or 00:00:01,500
+    // VTT format: 00:00:01.500
+    return ttmlTime.replace(',', '.');
 }
 
 async function fetchAndProcessSubtitleUrl(masterPlaylistUrl, targetLanguage = null, originalLanguage = 'en') {
@@ -470,34 +711,54 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                         originalText: text, cueStart, cueVideoId
                     });
                 });
-            return true; // Indicates an asynchronous response.
+            return true;
         }
 
         case "fetchVTT": {
-            const { url, videoId, targetLanguage, originalLanguage } = message;
-            console.log("Background: Received fetchVTT request for URL:", url, "Target:", targetLanguage, "Original:", originalLanguage);
-            fetchAndProcessSubtitleUrl(url, targetLanguage, originalLanguage)
-                .then(result => {
-                    console.log("Background: Successfully fetched and processed VTT. Original length:", result.vttText?.length, "Target length:", result.targetVttText?.length);
-                    console.log("Background: Source language:", result.sourceLanguage, "Target language:", result.targetLanguage, "Use native target:", result.useNativeTarget);
-                    sendResponse({ 
-                        success: true, 
-                        vttText: result.vttText, 
-                        targetVttText: result.targetVttText,
-                        videoId, 
-                        url,
-                        sourceLanguage: result.sourceLanguage,
-                        targetLanguage: result.targetLanguage,
-                        useNativeTarget: result.useNativeTarget,
-                        availableLanguages: result.availableLanguages,
-                        selectedLanguage: result.selectedLanguage,
-                        targetLanguageInfo: result.targetLanguageInfo
+            if (message.source === 'netflix') {
+                const { data, videoId, targetLanguage, originalLanguage, useNativeSubtitles } = message;
+                
+                processNetflixSubtitleData(data, targetLanguage, originalLanguage, useNativeSubtitles)
+                    .then(result => {
+                        sendResponse({ 
+                            success: true, 
+                            vttText: result.vttText, 
+                            targetVttText: result.targetVttText,
+                            videoId, 
+                            url: result.url,
+                            sourceLanguage: result.sourceLanguage,
+                            targetLanguage: result.targetLanguage,
+                            useNativeTarget: result.useNativeTarget,
+                            availableLanguages: result.availableLanguages
+                        });
+                    })
+                    .catch(error => {
+                        console.error("Background: Failed to process Netflix VTT for videoId:", videoId, error);
+                        sendResponse({ success: false, error: `Netflix VTT Processing Error: ${error.message}`, videoId });
                     });
-                })
-                .catch(error => {
-                    console.error("Background: Failed to fetch/process VTT for URL:", url, error);
-                    sendResponse({ success: false, error: `VTT Processing Error: ${error.message}`, videoId, url });
-                });
+            } else {
+                const { url, videoId, targetLanguage, originalLanguage } = message;
+                fetchAndProcessSubtitleUrl(url, targetLanguage, originalLanguage)
+                    .then(result => {
+                        sendResponse({ 
+                            success: true, 
+                            vttText: result.vttText, 
+                            targetVttText: result.targetVttText,
+                            videoId, 
+                            url,
+                            sourceLanguage: result.sourceLanguage,
+                            targetLanguage: result.targetLanguage,
+                            useNativeTarget: result.useNativeTarget,
+                            availableLanguages: result.availableLanguages,
+                            selectedLanguage: result.selectedLanguage,
+                            targetLanguageInfo: result.targetLanguageInfo
+                        });
+                    })
+                    .catch(error => {
+                        console.error("Background: Failed to fetch/process VTT for URL:", url, error);
+                        sendResponse({ success: false, error: `VTT Processing Error: ${error.message}`, videoId, url });
+                    });
+            }
             return true;
         }
 
@@ -507,7 +768,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 currentTranslationProviderId = newProviderId;
                 chrome.storage.sync.set({ selectedProvider: newProviderId }, () => {
                     const providerName = translationProviders[currentTranslationProviderId].name;
-                    console.log(`Background: Translation provider changed to: ${providerName}`);
                     sendResponse({ success: true, message: `Provider changed to ${providerName}` });
                 });
             } else {
@@ -517,22 +777,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             return true;
         }
     }
-    // Return false for unhandled actions.
     return false;
 });
 
 chrome.storage.onChanged.addListener((changes, namespace) => {
     if (namespace === 'sync') {
-        for (let [key, { oldValue, newValue }] of Object.entries(changes)) {
-            // Log setting changes for easier debugging from the background script.
-            console.log(
-                `Background: Storage key "${key}" in "sync" changed.`,
-                { from: oldValue, to: newValue }
-            );
-            // Specifically handle provider change if it happens in another context (e.g., options page)
+        for (let [key, { newValue }] of Object.entries(changes)) {
             if (key === 'selectedProvider' && translationProviders[newValue]) {
                 currentTranslationProviderId = newValue;
-                console.log(`Background: Translation provider updated to: ${translationProviders[currentTranslationProviderId].name}`);
             }
         }
     }
