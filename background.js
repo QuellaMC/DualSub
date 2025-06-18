@@ -354,6 +354,7 @@ async function processNetflixSubtitleData(data, targetLanguage = 'zh-CN', origin
     let originalLanguageInfo = null;
     let useNativeTarget = false;
     
+    // Step 1: Try to find native target language if enabled
     if (useNativeSubtitles && targetLanguage) {
         targetLanguageInfo = getBestTrackForLanguage(validTracks, targetLanguage);
         if (targetLanguageInfo) {
@@ -363,68 +364,97 @@ async function processNetflixSubtitleData(data, targetLanguage = 'zh-CN', origin
             
             if (targetLanguageInfo) {
                 useNativeTarget = true;
+                console.log(`Background: ✅ Netflix native target found: ${targetLanguage} (${targetLanguageInfo.displayName})`);
             }
+        } else {
+            console.log(`Background: ❌ Netflix native target NOT found for: ${targetLanguage}. Will use translation mode.`);
         }
+    } else {
+        console.log(`Background: Native subtitles disabled or no target language specified. Will use translation mode.`);
     }
     
+    // Step 2: Find original language track
     if (originalLanguage && !originalLanguageInfo) {
         const originalTrack = getBestTrackForLanguage(validTracks, originalLanguage);
         if (originalTrack) {
             originalLanguageInfo = availableLanguages.find(lang => 
                 lang.track === originalTrack
             );
+            if (originalLanguageInfo) {
+                console.log(`Background: ✅ Netflix original language found: ${originalLanguage} (${originalLanguageInfo.displayName})`);
+            }
         } else {
+            console.log(`Background: ❌ Netflix original language NOT found: ${originalLanguage}. Trying English fallback...`);
             const englishTrack = getBestTrackForLanguage(validTracks, 'en');
             if (englishTrack) {
                 originalLanguageInfo = availableLanguages.find(lang => 
                     lang.track === englishTrack
                 );
+                if (originalLanguageInfo) {
+                    console.log(`Background: ✅ Netflix English fallback found: (${originalLanguageInfo.displayName})`);
+                }
             }
         }
     }
     
+    // Step 3: Final fallback to first available language
     if (!originalLanguageInfo && availableLanguages.length > 0) {
         originalLanguageInfo = availableLanguages[0];
+        console.log(`Background: ⚠️ Netflix using first available language as last resort: ${originalLanguageInfo.normalizedCode} (${originalLanguageInfo.displayName})`);
     }
     
     if (!originalLanguageInfo) {
         throw new Error("No suitable Netflix subtitle language found");
     }
     
+    console.log(`Background: Netflix processing mode - useNativeTarget: ${useNativeTarget}, originalLang: ${originalLanguageInfo.normalizedCode}, targetLang: ${targetLanguage || 'none'}`);
+    
+    // Step 4: Fetch and process original language subtitles
     const originalSubtitleText = await fetchText(originalLanguageInfo.uri);
     
     let originalVttText;
     if (originalSubtitleText.trim().startsWith('<?xml') || originalSubtitleText.includes('<tt')) {
         originalVttText = convertTtmlToVtt(originalSubtitleText);
+        console.log(`Background: ✅ Netflix TTML converted to VTT (${originalVttText.length} chars)`);
     } else if (originalSubtitleText.trim().toUpperCase().startsWith("WEBVTT")) {
         originalVttText = originalSubtitleText;
+        console.log(`Background: ✅ Netflix VTT loaded directly (${originalVttText.length} chars)`);
     } else {
         throw new Error("Netflix subtitle format not recognized (not TTML or VTT)");
     }
     
+    // Step 5: Fetch target language subtitles only if using native target
     let targetVttText = null;
     if (useNativeTarget && targetLanguageInfo) {
+        console.log(`Background: Fetching Netflix native target subtitles...`);
         const targetSubtitleText = await fetchText(targetLanguageInfo.uri);
         
         if (targetSubtitleText.trim().startsWith('<?xml') || targetSubtitleText.includes('<tt')) {
             targetVttText = convertTtmlToVtt(targetSubtitleText);
+            console.log(`Background: ✅ Netflix target TTML converted to VTT (${targetVttText.length} chars)`);
         } else if (targetSubtitleText.trim().toUpperCase().startsWith("WEBVTT")) {
             targetVttText = targetSubtitleText;
+            console.log(`Background: ✅ Netflix target VTT loaded directly (${targetVttText.length} chars)`);
         } else {
             throw new Error("Netflix target subtitle format not recognized");
         }
+    } else {
+        console.log(`Background: Netflix will use translation mode for target language: ${targetLanguage || 'none'}`);
     }
     
-    return {
+    const result = {
         vttText: originalVttText,
         targetVttText: targetVttText,
         sourceLanguage: originalLanguageInfo.normalizedCode,
-        targetLanguage: useNativeTarget ? targetLanguageInfo.normalizedCode : null,
+        targetLanguage: useNativeTarget ? targetLanguageInfo.normalizedCode : targetLanguage, // Pass through target language for translation
         useNativeTarget: useNativeTarget,
         availableLanguages: availableLanguages,
         url: originalLanguageInfo.uri,
         selectedLanguage: originalLanguageInfo
     };
+    
+    console.log(`Background: ✅ Netflix processing complete. Mode: ${useNativeTarget ? 'Native' : 'Translation'}, Original: ${result.sourceLanguage}, Target: ${result.targetLanguage}`);
+    return result;
 }
 
 // Simple TTML to VTT converter for Netflix subtitles (service worker compatible)
