@@ -126,6 +126,8 @@ export class VideoPlatform {
         const hiddenContainers = document.querySelectorAll('[data-dualsub-hidden="true"]');
         hiddenContainers.forEach(container => {
             container.style.display = '';
+            container.style.visibility = '';
+            container.style.opacity = '';
             container.removeAttribute('data-dualsub-hidden');
             console.log(`${this.constructor.name}: Restored official subtitle container`);
         });
