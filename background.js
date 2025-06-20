@@ -460,76 +460,101 @@ async function processNetflixSubtitleData(data, targetLanguage = 'zh-CN', origin
 // Simple TTML to VTT converter for Netflix subtitles (service worker compatible)
 function convertTtmlToVtt(ttmlText) {
     let vtt = "WEBVTT\n\n";
-    
+
     try {
-        const pElementRegex = /<p[^>]*\s+begin\s*=\s*["']([^"']+)["'][^>]*\s+end\s*=\s*["']([^"']+)["'][^>]*>(.*?)<\/p>/gi;
-        
-        let match;
-        while ((match = pElementRegex.exec(ttmlText)) !== null) {
-            const begin = match[1];
-            const end = match[2];
-            let text = match[3];
-            
-            if (begin && end && text) {
-                text = text
-                    .replace(/<br\s*\/?>/gi, ' ') // Replace <br> tags with spaces
-                    .replace(/<[^>]*>/g, '') // Remove other XML tags
-                    .replace(/&lt;/g, '<')
-                    .replace(/&gt;/g, '>')
-                    .replace(/&amp;/g, '&')
-                    .replace(/&quot;/g, '"')
-                    .replace(/&#39;/g, "'")
-                    .replace(/\r?\n/g, ' ') // Replace line breaks with spaces
-                    .replace(/\s+/g, ' ') // Normalize multiple spaces to single space
-                    .trim();
-                
-                if (text) {
-                    const startTime = convertTtmlTimeToVtt(begin);
-                    const endTime = convertTtmlTimeToVtt(end);
-                    
-                    vtt += `${startTime} --> ${endTime}\n`;
-                    vtt += `${text}\n\n`;
-                }
+        // Step 1: Parse region layouts to get their x/y coordinates
+        const regionLayouts = new Map();
+        const regionRegex = /<region\s+xml:id="([^"]+)"[^>]*\s+tts:origin="([^"]+)"/gi;
+        let regionMatch;
+        while ((regionMatch = regionRegex.exec(ttmlText)) !== null) {
+            const regionId = regionMatch[1];
+            const origin = regionMatch[2].split(' ');
+            if (origin.length === 2) {
+                const x = parseFloat(origin[0]);
+                const y = parseFloat(origin[1]);
+                regionLayouts.set(regionId, { x, y });
             }
         }
-        
-        if (!vtt.includes('-->')) {
-            const altRegex = /<p[^>]*begin\s*=\s*["']([^"']+)["'][^>]*end\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/p>/gi;
-            
-            while ((match = altRegex.exec(ttmlText)) !== null) {
-                const begin = match[1];
-                const end = match[2];
-                let text = match[3];
-                
-                if (begin && end && text) {
-                    text = text
-                        .replace(/<br\s*\/?>/gi, ' ')
-                        .replace(/<[^>]*>/g, '')
-                        .replace(/&lt;/g, '<')
-                        .replace(/&gt;/g, '>')
-                        .replace(/&amp;/g, '&')
-                        .replace(/&quot;/g, '"')
-                        .replace(/&#39;/g, "'")
-                        .replace(/\r?\n/g, ' ')
-                        .replace(/\s+/g, ' ')
-                        .trim();
-                    
-                    if (text) {
-                        const startTime = convertTtmlTimeToVtt(begin);
-                        const endTime = convertTtmlTimeToVtt(end);
-                        
-                        vtt += `${startTime} --> ${endTime}\n`;
-                        vtt += `${text}\n\n`;
-                    }
-                }
-            }
+
+        // Step 2: Parse all <p> tags into an intermediate structure, including their region
+        const intermediateCues = [];
+        const pElementRegex = /<p[^>]*\s+begin="([^"]+)"[^>]*\s+end="([^"]+)"[^>]*\s+region="([^"]+)"[^>]*>([\s\S]*?)<\/p>/gi;
+        let pMatch;
+        while ((pMatch = pElementRegex.exec(ttmlText)) !== null) {
+            const [_, begin, end, region, textContent] = pMatch;
+
+            let text = textContent
+                .replace(/<br\s*\/?>/gi, ' ')
+                .replace(/<[^>]*>/g, '')
+                .replace(/&lt;/g, '<')
+                .replace(/&gt;/g, '>')
+                .replace(/&amp;/g, '&')
+                .replace(/&quot;/g, '"')
+                .replace(/&#39;/g, "'")
+                .replace(/\r?\n/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+
+            intermediateCues.push({ begin, end, region, text });
         }
-        
-        if (!vtt.includes('-->')) {
+
+        if (intermediateCues.length === 0) {
             throw new Error("No valid TTML subtitle entries found");
+        }
+
+        // Step 3: Group cues by their timestamp
+        const groupedByTime = new Map();
+        for (const cue of intermediateCues) {
+            const key = `${cue.begin}-${cue.end}`;
+            if (!groupedByTime.has(key)) {
+                groupedByTime.set(key, []);
+            }
+            groupedByTime.get(key).push(cue);
+        }
+        
+        // Step 4: For each group, sort by position and merge into a final cue
+        const finalCues = [];
+        for (const [key, group] of groupedByTime.entries()) {
+            // Sort the group based on region position (top-to-bottom, then left-to-right)
+            group.sort((a, b) => {
+                const regionA = regionLayouts.get(a.region) || { y: 999, x: 999 };
+                const regionB = regionLayouts.get(b.region) || { y: 999, x: 999 };
+
+                // Primary sort: Y-coordinate (top to bottom)
+                if (regionA.y < regionB.y) return -1;
+                if (regionA.y > regionB.y) return 1;
+
+                // Secondary sort: X-coordinate (left to right)
+                if (regionA.x < regionB.x) return -1;
+                if (regionA.x > regionB.x) return 1;
+                
+                return 0;
+            });
+            
+            // Merge the text of the now-sorted group
+            const mergedText = group.map(cue => cue.text).join(' ').trim();
+            
+            const [begin, end] = key.split('-');
+            finalCues.push({
+                begin,
+                end,
+                text: mergedText
+            });
+        }
+
+        // Step 5: Sort the final, merged cues by start time and build the VTT string
+        finalCues.sort((a, b) => parseInt(a.begin) - parseInt(b.begin));
+        
+        for (const cue of finalCues) {
+            const startTime = convertTtmlTimeToVtt(cue.begin);
+            const endTime = convertTtmlTimeToVtt(cue.end);
+            
+            vtt += `${startTime} --> ${endTime}\n`;
+            vtt += `${cue.text}\n\n`;
         }
         
         return vtt;
+
     } catch (error) {
         console.error("Background: Error converting TTML to VTT:", error);
         throw new Error(`TTML conversion failed: ${error.message}`);
