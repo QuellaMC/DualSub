@@ -123,7 +123,11 @@ export function parseVTT(vttString) {
         const start = parseTimestampToSeconds(startTimeStr);
         const end = parseTimestampToSeconds(endTimeStr);
 
-        const text = textLines.join(" ").replace(/<[^>]*>/g, "").replace(/\s+/g, ' ').trim();
+        const text = textLines.join(" ")
+            .replace(/<br\s*\/?>/gi, ' ')
+            .replace(/<[^>]*>/g, "")
+            .replace(/\s+/g, ' ')
+            .trim();
 
         if (text && !isNaN(start) && !isNaN(end)) {
             cues.push({ start, end, text });
@@ -256,21 +260,33 @@ export function applySubtitleStyling() {
         }
     }
 }
+export function isVideoSetupComplete(activePlatform) {
+    if (!activePlatform) return false;
+    
+    const videoElement = activePlatform.getVideoElement();
+    if (!videoElement) return false;
+    
+    // Check if the video element has our listener attached
+    const hasListener = videoElement.getAttribute('data-listener-attached') === 'true';
+    
+    // Check if subtitle container exists and is properly attached
+    const hasContainer = subtitleContainer && document.body.contains(subtitleContainer);
+    
+    return hasListener && hasContainer;
+}
+
 export function ensureSubtitleContainer(activePlatform, logPrefix = "SubtitleUtils") {
     if (!activePlatform) {
-        console.log(`${logPrefix}: No active platform. Aborting.`);
-        return;
+        return false;
     }
 
     if (!activePlatform.isPlayerPageActive()) {
-        console.log(`${logPrefix}: Platform active, but not on a player page. Aborting UI setup.`);
         clearSubtitleDOM();
-        return;
+        return false;
     }
 
     const videoElement = activePlatform.getVideoElement();
     if (!videoElement) {
-        // Clean up if platform reports no video
         const previousVideoElement = document.querySelector('video[data-listener-attached="true"]');
         if (previousVideoElement && timeUpdateListener) {
             previousVideoElement.removeEventListener('timeupdate', timeUpdateListener);
@@ -285,13 +301,11 @@ export function ensureSubtitleContainer(activePlatform, logPrefix = "SubtitleUti
             findProgressBarIntervalId = null;
         }
         clearSubtitleDOM();
-        return;
+        return false;
     }
 
-    // Check if video element instance has changed
     const attachedVideoElement = document.querySelector('video[data-listener-attached="true"]');
     if (attachedVideoElement !== videoElement) {
-        console.log(`${logPrefix}: Video element instance changed or newly detected.`);
         if (attachedVideoElement && timeUpdateListener) {
             attachedVideoElement.removeEventListener('timeupdate', timeUpdateListener);
             attachedVideoElement.removeAttribute('data-listener-attached');
@@ -304,9 +318,10 @@ export function ensureSubtitleContainer(activePlatform, logPrefix = "SubtitleUti
             clearInterval(findProgressBarIntervalId);
             findProgressBarIntervalId = null;
         }
-        // Setup for the new video element
         attachTimeUpdateListener(videoElement, activePlatform, logPrefix);
-        setupProgressBarObserver(videoElement, activePlatform, logPrefix);
+        if (activePlatform.supportsProgressBarTracking?.() !== false) {
+            setupProgressBarObserver(videoElement, activePlatform, logPrefix);
+        }
     }
 
     if (subtitleContainer && document.body.contains(subtitleContainer)) {
@@ -316,14 +331,12 @@ export function ensureSubtitleContainer(activePlatform, logPrefix = "SubtitleUti
                 videoPlayerParent.style.position = 'relative';
             }
             videoPlayerParent.appendChild(subtitleContainer);
-            console.log(`${logPrefix}: Subtitle container moved to new video player parent.`);
         }
         applySubtitleStyling();
         if (subtitlesActive) showSubtitleContainer(); else hideSubtitleContainer();
-        return;
+        return true;
     }
 
-    console.log(`${logPrefix}: Creating subtitle container.`);
     subtitleContainer = document.createElement('div');
     subtitleContainer.id = 'disneyplus-dual-subtitle-container';
     subtitleContainer.className = 'disneyplus-subtitle-viewer-container';
@@ -401,11 +414,12 @@ export function ensureSubtitleContainer(activePlatform, logPrefix = "SubtitleUti
     if (videoElement && !videoElement.getAttribute('data-listener-attached')) {
         attachTimeUpdateListener(videoElement, activePlatform, logPrefix);
     }
-    if (videoElement && !progressBarObserver) {
+    if (videoElement && !progressBarObserver && activePlatform.supportsProgressBarTracking?.() !== false) {
         setupProgressBarObserver(videoElement, activePlatform, logPrefix);
     }
 
     if (subtitlesActive) showSubtitleContainer(); else hideSubtitleContainer();
+    return true;
 }
 
 export function attachTimeUpdateListener(videoElement, activePlatform, logPrefix = "SubtitleUtils") {
@@ -426,11 +440,9 @@ export function attachTimeUpdateListener(videoElement, activePlatform, logPrefix
                 const currentTime = currentVideoElem.currentTime;
                 const readyState = currentVideoElem.readyState;
                 
-                if (!progressBarObserver && (timeUpdateLogCounter % TIME_UPDATE_LOG_INTERVAL === 0)) {
-                    console.log(`${logPrefix}: [TimeUpdateDebug] HTML5 currentTime: ${currentTime.toFixed(2)}, readyState: ${readyState}, subtitlesActive: ${subtitlesActive}`);
-                }
+                const useProgressBar = activePlatform?.supportsProgressBarTracking?.() !== false;
                 
-                if (!progressBarObserver && subtitlesActive && typeof currentTime === 'number' && readyState >= currentVideoElem.HAVE_CURRENT_DATA) {
+                if ((!progressBarObserver || !useProgressBar) && subtitlesActive && typeof currentTime === 'number' && readyState >= currentVideoElem.HAVE_CURRENT_DATA) {
                     updateSubtitles(currentTime, activePlatform, logPrefix);
                 }
             }
@@ -569,25 +581,83 @@ export function updateSubtitles(rawCurrentTime, activePlatform, logPrefix = "Sub
     }
 
     let foundCue = false;
-    let activeCueToDisplay = null;
+    let originalActiveCue = null;
+    let translatedActiveCue = null;
 
     const platformVideoId = activePlatform ? activePlatform.getCurrentVideoId() : null;
 
+    // Find all active cues at current time
+    const activeCues = [];
     for (const cue of subtitleQueue) {
         if (typeof cue.start !== 'number' || typeof cue.end !== 'number' || isNaN(cue.start) || isNaN(cue.end)) {
             continue;
         }
         if (cue.videoId === platformVideoId && currentTime >= cue.start && currentTime <= cue.end) {
-            activeCueToDisplay = cue;
-            foundCue = true;
-            break;
+            activeCues.push(cue);
         }
     }
 
-    if (foundCue && activeCueToDisplay) {
-        const originalText = activeCueToDisplay.original || "";
-        const translatedText = activeCueToDisplay.translated || "";
-        const useNativeTarget = activeCueToDisplay.useNativeTarget || false;
+    if (activeCues.length > 0) {
+        foundCue = true;
+        
+        // Log multiple cues if detected (for debugging timing issues)
+        if (activeCues.length > 1 && currentWholeSecond !== lastLoggedTimeSec) {
+            console.log(`${logPrefix}: [DEBUG] Multiple active cues detected at time ${currentTime.toFixed(2)}s:`, 
+                activeCues.map(c => `[${c.start.toFixed(2)}-${c.end.toFixed(2)}s: "${(c.original || c.translated || 'empty').substring(0, 30)}..."]`));
+        }
+
+        // For native mode: find the best matching original and target cues
+        if (activeCues.some(c => c.useNativeTarget)) {
+            // Find original language cue (cueType === 'original' or has original text but no translated)
+            originalActiveCue = activeCues.find(c => c.cueType === 'original' || (c.original && !c.translated));
+            
+            // Find target language cue (cueType === 'target' or has translated text but no original)
+            translatedActiveCue = activeCues.find(c => c.cueType === 'target' || (c.translated && !c.original));
+            
+            // Alternative strategy if no cueType available (fallback compatibility)
+            if (!originalActiveCue && !translatedActiveCue) {
+                originalActiveCue = activeCues.find(c => c.original && !c.translated) || activeCues[0];
+                
+                // Look for target cue that overlaps most with original cue
+                if (originalActiveCue) {
+                    let bestTargetCue = null;
+                    let maxOverlap = 0;
+                    
+                    for (const cue of activeCues) {
+                        if (cue !== originalActiveCue && cue.translated) {
+                            // Calculate overlap between this cue and original cue
+                            const overlapStart = Math.max(originalActiveCue.start, cue.start);
+                            const overlapEnd = Math.min(originalActiveCue.end, cue.end);
+                            const overlap = Math.max(0, overlapEnd - overlapStart);
+                            
+                            if (overlap > maxOverlap) {
+                                maxOverlap = overlap;
+                                bestTargetCue = cue;
+                            }
+                        }
+                    }
+                    
+                    translatedActiveCue = bestTargetCue;
+                    
+                    if (bestTargetCue && currentWholeSecond !== lastLoggedTimeSec) {
+                        console.log(`${logPrefix}: [DEBUG] Native mode overlap search - Original: [${originalActiveCue.start.toFixed(2)}-${originalActiveCue.end.toFixed(2)}s], Target: [${bestTargetCue.start.toFixed(2)}-${bestTargetCue.end.toFixed(2)}s], Overlap: ${maxOverlap.toFixed(2)}s`);
+                    }
+                }
+            } else if (originalActiveCue && translatedActiveCue && currentWholeSecond !== lastLoggedTimeSec) {
+                console.log(`${logPrefix}: [DEBUG] Native mode direct match - Original: [${originalActiveCue.start.toFixed(2)}-${originalActiveCue.end.toFixed(2)}s], Target: [${translatedActiveCue.start.toFixed(2)}-${translatedActiveCue.end.toFixed(2)}s]`);
+            }
+        } else {
+            // For translation mode: use the first/best active cue
+            originalActiveCue = activeCues[0];
+        }
+    }
+
+    if (foundCue) {
+        const originalText = originalActiveCue ? (originalActiveCue.original || "") : "";
+        const translatedText = translatedActiveCue ? (translatedActiveCue.translated || "") : 
+                              (originalActiveCue ? (originalActiveCue.translated || "") : "");
+        const useNativeTarget = (originalActiveCue ? originalActiveCue.useNativeTarget : false) || 
+                               (translatedActiveCue ? translatedActiveCue.useNativeTarget : false);
 
         const originalTextFormatted = formatSubtitleTextForDisplay(originalText);
         const translatedTextFormatted = formatSubtitleTextForDisplay(translatedText);
@@ -595,7 +665,7 @@ export function updateSubtitles(rawCurrentTime, activePlatform, logPrefix = "Sub
         let contentChanged = false;
 
         if (currentWholeSecond !== lastLoggedTimeSec) {
-            console.log(`${logPrefix}: [Display] Time ${currentTime.toFixed(2)}s - Native: ${useNativeTarget}, Original: "${originalText.substring(0, 30)}${originalText.length > 30 ? '...' : ''}", Translated: "${translatedText.substring(0, 30)}${translatedText.length > 30 ? '...' : ''}"`);
+            console.log(`${logPrefix}: [Display] Time ${currentTime.toFixed(2)}s - Native: ${useNativeTarget}, Active cues: ${activeCues.length}, Original: "${originalText.substring(0, 30)}${originalText.length > 30 ? '...' : ''}", Translated: "${translatedText.substring(0, 30)}${translatedText.length > 30 ? '...' : ''}"`);
         }
 
         if (useNativeTarget) {
@@ -733,10 +803,6 @@ export function clearSubtitleDOM() {
     }
 }
 export function handleSubtitleDataFound(subtitleData, activePlatform, logPrefix = "SubtitleUtils") {
-    console.log(`${logPrefix}: Subtitle data found for videoId '${subtitleData.videoId}'. Current context videoId: '${currentVideoId}'`);
-    console.log(`${logPrefix}: Subtitle data details - sourceLanguage: '${subtitleData.sourceLanguage}', targetLanguage: '${subtitleData.targetLanguage}', useNativeTarget: ${subtitleData.useNativeTarget}`);
-
-    // Ensure currentVideoId is up-to-date from the platform
     if (!currentVideoId && activePlatform) {
         currentVideoId = activePlatform.getCurrentVideoId();
     }
@@ -746,119 +812,102 @@ export function handleSubtitleDataFound(subtitleData, activePlatform, logPrefix 
         return;
     }
 
-    // Check if the source language is different from user's original language setting
     if (subtitleData.selectedLanguage && subtitleData.selectedLanguage.normalizedCode !== userOriginalLanguage) {
-        console.log(`${logPrefix}: ⚠️ Language fallback occurred: User requested '${userOriginalLanguage}' but using '${subtitleData.selectedLanguage.normalizedCode}' (${subtitleData.selectedLanguage.displayName})`);
+        console.log(`${logPrefix}: Language fallback occurred: User requested '${userOriginalLanguage}' but using '${subtitleData.selectedLanguage.normalizedCode}' (${subtitleData.selectedLanguage.displayName})`);
     }
 
     ensureSubtitleContainer(activePlatform, logPrefix);
     const parsedOriginalCues = parseVTT(subtitleData.vttText);
     
-    // Parse target VTT if available (for native target mode)
     let parsedTargetCues = [];
     if (subtitleData.targetVttText) {
         parsedTargetCues = parseVTT(subtitleData.targetVttText);
-        console.log(`${logPrefix}: Parsed ${parsedTargetCues.length} target language cues from native subtitles`);
     }
 
     if (parsedOriginalCues.length > 0) {
-        // Clear queue for the current video ID and add new cues
         subtitleQueue = subtitleQueue.filter(cue => cue.videoId !== currentVideoId);
         
-        // Check if we're using native target language (no translation needed)
         const useNativeTarget = subtitleData.useNativeTarget || false;
         
-        console.log(`${logPrefix}: Processing ${parsedOriginalCues.length} original cues. Native target mode: ${useNativeTarget}`);
-        if (useNativeTarget && subtitleData.targetLanguage) {
-            console.log(`${logPrefix}: Using native ${subtitleData.targetLanguage} subtitles with ${subtitleData.sourceLanguage} originals (dual mode)`);
-        } else {
-            console.log(`${logPrefix}: Will translate from ${subtitleData.sourceLanguage} to ${userTargetLanguage}`);
-        }
-        
-        // Create optimized target cue lookup structures
-        const targetCueMap = new Map();
-        const targetCuesByStartTime = new Map(); // For efficient range searching
+        console.log(`${logPrefix}: Processing subtitles - useNativeTarget: ${useNativeTarget}, Original cues: ${parsedOriginalCues.length}, Target cues: ${parsedTargetCues.length}`);
         
         if (useNativeTarget && parsedTargetCues.length > 0) {
+            // In native mode, add both original and target cues separately to handle different timing
+            console.log(`${logPrefix}: Native mode - Adding original cues with timing:`, 
+                parsedOriginalCues.slice(0, 3).map(c => `[${c.start.toFixed(2)}-${c.end.toFixed(2)}s]`));
+            
+            // Add original cues
+            parsedOriginalCues.forEach(originalCue => {
+                subtitleQueue.push({
+                    original: originalCue.text,
+                    translated: null,
+                    start: originalCue.start,
+                    end: originalCue.end,
+                    videoId: currentVideoId,
+                    useNativeTarget: useNativeTarget,
+                    sourceLanguage: subtitleData.sourceLanguage || 'unknown',
+                    targetLanguage: subtitleData.targetLanguage || null,
+                    cueType: 'original'
+                });
+            });
+            
+            console.log(`${logPrefix}: Native mode - Adding target cues with timing:`, 
+                parsedTargetCues.slice(0, 3).map(c => `[${c.start.toFixed(2)}-${c.end.toFixed(2)}s]`));
+            
+            // Add target cues with their own timing
             parsedTargetCues.forEach(targetCue => {
-                // Exact timing match
-                const exactKey = `${targetCue.start.toFixed(2)}-${targetCue.end.toFixed(2)}`;
-                targetCueMap.set(exactKey, targetCue.text);
-                
-                // Group by start time (rounded to 0.1s) for range searching
-                const timeKey = Math.round(targetCue.start * 10) / 10;
-                if (!targetCuesByStartTime.has(timeKey)) {
-                    targetCuesByStartTime.set(timeKey, []);
-                }
-                targetCuesByStartTime.get(timeKey).push(targetCue);
+                subtitleQueue.push({
+                    original: null,
+                    translated: targetCue.text,
+                    start: targetCue.start,
+                    end: targetCue.end,
+                    videoId: currentVideoId,
+                    useNativeTarget: useNativeTarget,
+                    sourceLanguage: subtitleData.sourceLanguage || 'unknown',
+                    targetLanguage: subtitleData.targetLanguage || null,
+                    cueType: 'target'
+                });
+            });
+            
+            // Check for timing mismatches
+            const originalTimings = parsedOriginalCues.map(c => ({ start: c.start, end: c.end }));
+            const targetTimings = parsedTargetCues.map(c => ({ start: c.start, end: c.end }));
+            
+            const timingMismatches = originalTimings.filter(orig => 
+                !targetTimings.some(target => 
+                    Math.abs(target.start - orig.start) < 0.1 && Math.abs(target.end - orig.end) < 0.1
+                )
+            );
+            
+            if (timingMismatches.length > 0) {
+                console.warn(`${logPrefix}: ⚠️  Detected ${timingMismatches.length} timing mismatches between original and target subtitles`);
+                console.log(`${logPrefix}: First few mismatches:`, timingMismatches.slice(0, 3));
+            } else {
+                console.log(`${logPrefix}: ✅ Original and target subtitle timings align perfectly`);
+            }
+        } else {
+            // Translation mode - use original timing structure
+            parsedOriginalCues.forEach(originalCue => {
+                subtitleQueue.push({
+                    original: originalCue.text,
+                    translated: null,
+                    start: originalCue.start,
+                    end: originalCue.end,
+                    videoId: currentVideoId,
+                    useNativeTarget: useNativeTarget,
+                    sourceLanguage: subtitleData.sourceLanguage || 'unknown',
+                    targetLanguage: subtitleData.targetLanguage || null,
+                    cueType: 'original'
+                });
             });
         }
-        
-        parsedOriginalCues.forEach(originalCue => {
-            let translatedText = null;
-            
-            if (useNativeTarget) {
-                // Look for exact timing match first
-                const exactKey = `${originalCue.start.toFixed(2)}-${originalCue.end.toFixed(2)}`;
-                translatedText = targetCueMap.get(exactKey) || null;
-                
-                // If no exact match, use optimized range search
-                if (!translatedText) {
-                    const searchRadius = 1.0; // 1 second tolerance
-                    const startTime = Math.round((originalCue.start - searchRadius) * 10) / 10;
-                    const endTime = Math.round((originalCue.start + searchRadius) * 10) / 10;
-                    
-                    // Check time buckets within range
-                    for (let t = startTime; t <= endTime; t = Math.round((t + 0.1) * 10) / 10) {
-                        const candidates = targetCuesByStartTime.get(t);
-                        if (candidates) {
-                            // Find closest match within candidates
-                            let bestMatch = null;
-                            let minTimeDiff = Infinity;
-                            
-                            for (const candidate of candidates) {
-                                const timeDiff = Math.abs(originalCue.start - candidate.start);
-                                if (timeDiff <= searchRadius && timeDiff < minTimeDiff) {
-                                    bestMatch = candidate;
-                                    minTimeDiff = timeDiff;
-                                }
-                            }
-                            
-                            if (bestMatch) {
-                                translatedText = bestMatch.text;
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-            
-            subtitleQueue.push({
-                original: originalCue.text,
-                translated: translatedText, // Pre-filled for native target, null for translation mode
-                start: originalCue.start,
-                end: originalCue.end,
-                videoId: currentVideoId,
-                useNativeTarget: useNativeTarget,
-                sourceLanguage: subtitleData.sourceLanguage || 'unknown',
-                targetLanguage: subtitleData.targetLanguage || null
-            });
-        });
-        
-        console.log(`${logPrefix}: ${parsedOriginalCues.length} new cues added for videoId '${currentVideoId}'.`);
-        console.log(`${logPrefix}: Using native target language: ${useNativeTarget}, Source language: ${subtitleData.sourceLanguage}, Target language: ${subtitleData.targetLanguage}`);
         
         if (subtitleData.availableLanguages) {
             console.log(`${logPrefix}: Available subtitle languages:`, subtitleData.availableLanguages.map(lang => `${lang.normalizedCode} (${lang.displayName})`));
         }
         
-        // For native target, we have both originals and targets - display immediately
-        // For translation needed, start the translation process
         if (!useNativeTarget && parsedOriginalCues.length > 0) {
-            console.log(`${logPrefix}: Starting translation process for ${parsedOriginalCues.length} cues`);
             processSubtitleQueue(activePlatform, logPrefix);
-        } else if (useNativeTarget) {
-            console.log(`${logPrefix}: Native target mode - both languages ready, displaying dual subtitles`);
         }
     } else {
         console.warn(`${logPrefix}: VTT parsing yielded no cues for videoId '${currentVideoId}'. VTT URL from platform: ${subtitleData.url}`);
@@ -894,22 +943,25 @@ export async function processSubtitleQueue(activePlatform, logPrefix = "Subtitle
 
     let timeSource = videoElement.currentTime;
 
-    const sliderElement = activePlatform.getProgressBarElement();
+    // Only use progress bar for platforms that support it
+    if (activePlatform.supportsProgressBarTracking?.() !== false) {
+        const sliderElement = activePlatform.getProgressBarElement();
 
-    if (sliderElement && progressBarObserver) {
-        const nowStr = sliderElement.getAttribute('aria-valuenow');
-        const maxStr = sliderElement.getAttribute('aria-valuemax');
+        if (sliderElement && progressBarObserver) {
+            const nowStr = sliderElement.getAttribute('aria-valuenow');
+            const maxStr = sliderElement.getAttribute('aria-valuemax');
 
-        if (nowStr && maxStr) {
-            const valuenow = parseFloat(nowStr);
-            const valuemax = parseFloat(maxStr);
-            const videoDuration = videoElement.duration;
+            if (nowStr && maxStr) {
+                const valuenow = parseFloat(nowStr);
+                const valuemax = parseFloat(maxStr);
+                const videoDuration = videoElement.duration;
 
-            if (!isNaN(valuenow) && !isNaN(valuemax) && valuemax > 0) {
-                if (!isNaN(videoDuration) && videoDuration > 0) {
-                    timeSource = (valuenow / valuemax) * videoDuration;
-                } else {
-                    timeSource = valuenow;
+                if (!isNaN(valuenow) && !isNaN(valuemax) && valuemax > 0) {
+                    if (!isNaN(videoDuration) && videoDuration > 0) {
+                        timeSource = (valuenow / valuemax) * videoDuration;
+                    } else {
+                        timeSource = valuenow;
+                    }
                 }
             }
         }
