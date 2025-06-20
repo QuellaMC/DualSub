@@ -407,39 +407,73 @@ async function processNetflixSubtitleData(data, targetLanguage = 'zh-CN', origin
         throw new Error("No suitable Netflix subtitle language found");
     }
     
-    console.log(`Background: Netflix processing mode - useNativeTarget: ${useNativeTarget}, originalLang: ${originalLanguageInfo.normalizedCode}, targetLang: ${targetLanguage || 'none'}`);
+    console.log(`Background: 🎬 Netflix processing mode - useNativeTarget: ${useNativeTarget}, originalLang: ${originalLanguageInfo.normalizedCode}, targetLang: ${targetLanguage || 'none'}`);
     
     // Step 4: Fetch and process original language subtitles
+    console.log(`Background: 📥 Fetching Netflix original language subtitles from: ${originalLanguageInfo.uri.substring(0, 100)}...`);
     const originalSubtitleText = await fetchText(originalLanguageInfo.uri);
+    console.log(`Background: 📄 Netflix original subtitle raw size: ${originalSubtitleText.length} characters`);
     
     let originalVttText;
     if (originalSubtitleText.trim().startsWith('<?xml') || originalSubtitleText.includes('<tt')) {
+        console.log(`Background: 🔄 Netflix original subtitle detected as TTML, converting...`);
         originalVttText = convertTtmlToVtt(originalSubtitleText);
-        console.log(`Background: ✅ Netflix TTML converted to VTT (${originalVttText.length} chars)`);
+        console.log(`Background: ✅ Netflix original TTML converted to VTT (${originalVttText.length} chars)`);
+        
+        // Count cues in original
+        const originalCueCount = (originalVttText.match(/\d{2}:\d{2}:\d{2}\.\d{3} --> \d{2}:\d{2}:\d{2}\.\d{3}/g) || []).length;
+        console.log(`Background: 📊 Netflix original VTT contains ${originalCueCount} cues`);
     } else if (originalSubtitleText.trim().toUpperCase().startsWith("WEBVTT")) {
         originalVttText = originalSubtitleText;
-        console.log(`Background: ✅ Netflix VTT loaded directly (${originalVttText.length} chars)`);
+        console.log(`Background: ✅ Netflix original VTT loaded directly (${originalVttText.length} chars)`);
+        const originalCueCount = (originalVttText.match(/\d{2}:\d{2}:\d{2}\.\d{3} --> \d{2}:\d{2}:\d{2}\.\d{3}/g) || []).length;
+        console.log(`Background: 📊 Netflix original VTT contains ${originalCueCount} cues`);
     } else {
+        console.error(`Background: ❌ Netflix original subtitle format not recognized. First 200 chars: ${originalSubtitleText.substring(0, 200)}`);
         throw new Error("Netflix subtitle format not recognized (not TTML or VTT)");
     }
     
     // Step 5: Fetch target language subtitles only if using native target
     let targetVttText = null;
     if (useNativeTarget && targetLanguageInfo) {
-        console.log(`Background: Fetching Netflix native target subtitles...`);
+        console.log(`Background: 📥 Fetching Netflix native target subtitles from: ${targetLanguageInfo.uri.substring(0, 100)}...`);
         const targetSubtitleText = await fetchText(targetLanguageInfo.uri);
+        console.log(`Background: 📄 Netflix target subtitle raw size: ${targetSubtitleText.length} characters`);
         
         if (targetSubtitleText.trim().startsWith('<?xml') || targetSubtitleText.includes('<tt')) {
+            console.log(`Background: 🔄 Netflix target subtitle detected as TTML, converting...`);
             targetVttText = convertTtmlToVtt(targetSubtitleText);
             console.log(`Background: ✅ Netflix target TTML converted to VTT (${targetVttText.length} chars)`);
+            
+            // Count cues in target and compare timing
+            const targetCueCount = (targetVttText.match(/\d{2}:\d{2}:\d{2}\.\d{3} --> \d{2}:\d{2}:\d{2}\.\d{3}/g) || []).length;
+            const originalCueCount = (originalVttText.match(/\d{2}:\d{2}:\d{2}\.\d{3} --> \d{2}:\d{2}:\d{2}\.\d{3}/g) || []).length;
+            console.log(`Background: 📊 Netflix target VTT contains ${targetCueCount} cues vs ${originalCueCount} original cues`);
+            
+            if (targetCueCount !== originalCueCount) {
+                console.warn(`Background: ⚠️  Netflix subtitle cue count mismatch! This may cause synchronization issues.`);
+                console.log(`Background: 🔍 First 3 original timings:`);
+                const originalTimings = originalVttText.match(/\d{2}:\d{2}:\d{2}\.\d{3} --> \d{2}:\d{2}:\d{2}\.\d{3}/g) || [];
+                originalTimings.slice(0, 3).forEach((timing, i) => console.log(`Background: 🕐 Original ${i+1}: ${timing}`));
+                
+                console.log(`Background: 🔍 First 3 target timings:`);
+                const targetTimings = targetVttText.match(/\d{2}:\d{2}:\d{2}\.\d{3} --> \d{2}:\d{2}:\d{2}\.\d{3}/g) || [];
+                targetTimings.slice(0, 3).forEach((timing, i) => console.log(`Background: 🕐 Target ${i+1}: ${timing}`));
+            } else {
+                console.log(`Background: ✅ Netflix original and target subtitle cue counts match perfectly`);
+            }
         } else if (targetSubtitleText.trim().toUpperCase().startsWith("WEBVTT")) {
             targetVttText = targetSubtitleText;
             console.log(`Background: ✅ Netflix target VTT loaded directly (${targetVttText.length} chars)`);
+            const targetCueCount = (targetVttText.match(/\d{2}:\d{2}:\d{2}\.\d{3} --> \d{2}:\d{2}:\d{2}\.\d{3}/g) || []).length;
+            const originalCueCount = (originalVttText.match(/\d{2}:\d{2}:\d{2}\.\d{3} --> \d{2}:\d{2}:\d{2}\.\d{3}/g) || []).length;
+            console.log(`Background: 📊 Netflix target VTT contains ${targetCueCount} cues vs ${originalCueCount} original cues`);
         } else {
+            console.error(`Background: ❌ Netflix target subtitle format not recognized. First 200 chars: ${targetSubtitleText.substring(0, 200)}`);
             throw new Error("Netflix target subtitle format not recognized");
         }
     } else {
-        console.log(`Background: Netflix will use translation mode for target language: ${targetLanguage || 'none'}`);
+        console.log(`Background: 🔄 Netflix will use translation mode for target language: ${targetLanguage || 'none'}`);
     }
     
     const result = {
@@ -459,13 +493,18 @@ async function processNetflixSubtitleData(data, targetLanguage = 'zh-CN', origin
 
 // Simple TTML to VTT converter for Netflix subtitles (service worker compatible)
 function convertTtmlToVtt(ttmlText) {
+    console.log("Background: 🔄 Starting TTML to VTT conversion...");
+    console.log("Background: 📄 TTML input length:", ttmlText.length, "characters");
+    
     let vtt = "WEBVTT\n\n";
 
     try {
         // Step 1: Parse region layouts to get their x/y coordinates
+        console.log("Background: 🎯 Step 1: Parsing region layouts...");
         const regionLayouts = new Map();
         const regionRegex = /<region\s+xml:id="([^"]+)"[^>]*\s+tts:origin="([^"]+)"/gi;
         let regionMatch;
+        let regionCount = 0;
         while ((regionMatch = regionRegex.exec(ttmlText)) !== null) {
             const regionId = regionMatch[1];
             const origin = regionMatch[2].split(' ');
@@ -473,15 +512,21 @@ function convertTtmlToVtt(ttmlText) {
                 const x = parseFloat(origin[0]);
                 const y = parseFloat(origin[1]);
                 regionLayouts.set(regionId, { x, y });
+                regionCount++;
+                console.log(`Background: 📍 Region ${regionId}: x=${x}, y=${y}`);
             }
         }
+        console.log(`Background: ✅ Found ${regionCount} regions with layout info`);
 
         // Step 2: Parse all <p> tags into an intermediate structure, including their region
+        console.log("Background: 🎯 Step 2: Parsing <p> elements...");
         const intermediateCues = [];
         const pElementRegex = /<p[^>]*\s+begin="([^"]+)"[^>]*\s+end="([^"]+)"[^>]*\s+region="([^"]+)"[^>]*>([\s\S]*?)<\/p>/gi;
         let pMatch;
+        let pElementCount = 0;
         while ((pMatch = pElementRegex.exec(ttmlText)) !== null) {
             const [_, begin, end, region, textContent] = pMatch;
+            pElementCount++;
 
             let text = textContent
                 .replace(/<br\s*\/?>/gi, ' ')
@@ -496,13 +541,22 @@ function convertTtmlToVtt(ttmlText) {
                 .trim();
 
             intermediateCues.push({ begin, end, region, text });
+            
+            if (pElementCount <= 5) {
+                console.log(`Background: 📝 Cue ${pElementCount}: ${begin}-${end} [${region}] "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"`);
+            } else if (pElementCount === 6) {
+                console.log("Background: 📝 ... (showing first 5 cues only)");
+            }
         }
+        console.log(`Background: ✅ Parsed ${pElementCount} <p> elements into ${intermediateCues.length} intermediate cues`);
 
         if (intermediateCues.length === 0) {
+            console.error("Background: ❌ No valid TTML subtitle entries found");
             throw new Error("No valid TTML subtitle entries found");
         }
 
         // Step 3: Group cues by their timestamp
+        console.log("Background: 🎯 Step 3: Grouping cues by timestamp...");
         const groupedByTime = new Map();
         for (const cue of intermediateCues) {
             const key = `${cue.begin}-${cue.end}`;
@@ -511,9 +565,24 @@ function convertTtmlToVtt(ttmlText) {
             }
             groupedByTime.get(key).push(cue);
         }
+        console.log(`Background: ✅ Grouped into ${groupedByTime.size} unique time segments`);
+        
+        // Log some examples of grouped cues
+        let exampleCount = 0;
+        for (const [key, group] of groupedByTime.entries()) {
+            if (exampleCount < 3) {
+                console.log(`Background: 📊 Time segment "${key}": ${group.length} cue(s) - regions: [${group.map(c => c.region).join(', ')}]`);
+                exampleCount++;
+            } else if (exampleCount === 3) {
+                console.log("Background: 📊 ... (showing first 3 time segments only)");
+                break;
+            }
+        }
         
         // Step 4: For each group, sort by position and merge into a final cue
+        console.log("Background: 🎯 Step 4: Sorting by position and merging...");
         const finalCues = [];
+        let mergedCount = 0;
         for (const [key, group] of groupedByTime.entries()) {
             // Sort the group based on region position (top-to-bottom, then left-to-right)
             group.sort((a, b) => {
@@ -540,23 +609,45 @@ function convertTtmlToVtt(ttmlText) {
                 end,
                 text: mergedText
             });
+            
+            mergedCount++;
+            if (mergedCount <= 3) {
+                console.log(`Background: 🔗 Merged ${group.length} cue(s) into: "${mergedText.substring(0, 80)}${mergedText.length > 80 ? '...' : ''}"`);
+            } else if (mergedCount === 4) {
+                console.log("Background: 🔗 ... (showing first 3 merged cues only)");
+            }
         }
+        console.log(`Background: ✅ Created ${finalCues.length} final merged cues`);
 
         // Step 5: Sort the final, merged cues by start time and build the VTT string
+        console.log("Background: 🎯 Step 5: Sorting by time and building VTT...");
         finalCues.sort((a, b) => parseInt(a.begin) - parseInt(b.begin));
         
+        let vttCueCount = 0;
         for (const cue of finalCues) {
             const startTime = convertTtmlTimeToVtt(cue.begin);
             const endTime = convertTtmlTimeToVtt(cue.end);
             
             vtt += `${startTime} --> ${endTime}\n`;
             vtt += `${cue.text}\n\n`;
+            vttCueCount++;
+            
+            if (vttCueCount <= 3) {
+                console.log(`Background: ⏱️  VTT Cue ${vttCueCount}: ${startTime} --> ${endTime} | "${cue.text.substring(0, 60)}${cue.text.length > 60 ? '...' : ''}"`);
+            } else if (vttCueCount === 4) {
+                console.log("Background: ⏱️  ... (showing first 3 VTT cues only)");
+            }
         }
+        
+        console.log(`Background: ✅ TTML to VTT conversion complete!`);
+        console.log(`Background: 📊 Final stats: ${finalCues.length} cues, ${vtt.length} characters`);
+        console.log(`Background: 🎬 Time range: ${finalCues.length > 0 ? `${convertTtmlTimeToVtt(finalCues[0].begin)} to ${convertTtmlTimeToVtt(finalCues[finalCues.length - 1].end)}` : 'N/A'}`);
         
         return vtt;
 
     } catch (error) {
-        console.error("Background: Error converting TTML to VTT:", error);
+        console.error("Background: ❌ Error converting TTML to VTT:", error);
+        console.error("Background: 🔍 TTML sample (first 500 chars):", ttmlText.substring(0, 500));
         throw new Error(`TTML conversion failed: ${error.message}`);
     }
 }

@@ -581,25 +581,83 @@ export function updateSubtitles(rawCurrentTime, activePlatform, logPrefix = "Sub
     }
 
     let foundCue = false;
-    let activeCueToDisplay = null;
+    let originalActiveCue = null;
+    let translatedActiveCue = null;
 
     const platformVideoId = activePlatform ? activePlatform.getCurrentVideoId() : null;
 
+    // Find all active cues at current time
+    const activeCues = [];
     for (const cue of subtitleQueue) {
         if (typeof cue.start !== 'number' || typeof cue.end !== 'number' || isNaN(cue.start) || isNaN(cue.end)) {
             continue;
         }
         if (cue.videoId === platformVideoId && currentTime >= cue.start && currentTime <= cue.end) {
-            activeCueToDisplay = cue;
-            foundCue = true;
-            break;
+            activeCues.push(cue);
         }
     }
 
-    if (foundCue && activeCueToDisplay) {
-        const originalText = activeCueToDisplay.original || "";
-        const translatedText = activeCueToDisplay.translated || "";
-        const useNativeTarget = activeCueToDisplay.useNativeTarget || false;
+    if (activeCues.length > 0) {
+        foundCue = true;
+        
+        // Log multiple cues if detected (for debugging timing issues)
+        if (activeCues.length > 1 && currentWholeSecond !== lastLoggedTimeSec) {
+            console.log(`${logPrefix}: [DEBUG] Multiple active cues detected at time ${currentTime.toFixed(2)}s:`, 
+                activeCues.map(c => `[${c.start.toFixed(2)}-${c.end.toFixed(2)}s: "${(c.original || c.translated || 'empty').substring(0, 30)}..."]`));
+        }
+
+        // For native mode: find the best matching original and target cues
+        if (activeCues.some(c => c.useNativeTarget)) {
+            // Find original language cue (cueType === 'original' or has original text but no translated)
+            originalActiveCue = activeCues.find(c => c.cueType === 'original' || (c.original && !c.translated));
+            
+            // Find target language cue (cueType === 'target' or has translated text but no original)
+            translatedActiveCue = activeCues.find(c => c.cueType === 'target' || (c.translated && !c.original));
+            
+            // Alternative strategy if no cueType available (fallback compatibility)
+            if (!originalActiveCue && !translatedActiveCue) {
+                originalActiveCue = activeCues.find(c => c.original && !c.translated) || activeCues[0];
+                
+                // Look for target cue that overlaps most with original cue
+                if (originalActiveCue) {
+                    let bestTargetCue = null;
+                    let maxOverlap = 0;
+                    
+                    for (const cue of activeCues) {
+                        if (cue !== originalActiveCue && cue.translated) {
+                            // Calculate overlap between this cue and original cue
+                            const overlapStart = Math.max(originalActiveCue.start, cue.start);
+                            const overlapEnd = Math.min(originalActiveCue.end, cue.end);
+                            const overlap = Math.max(0, overlapEnd - overlapStart);
+                            
+                            if (overlap > maxOverlap) {
+                                maxOverlap = overlap;
+                                bestTargetCue = cue;
+                            }
+                        }
+                    }
+                    
+                    translatedActiveCue = bestTargetCue;
+                    
+                    if (bestTargetCue && currentWholeSecond !== lastLoggedTimeSec) {
+                        console.log(`${logPrefix}: [DEBUG] Native mode overlap search - Original: [${originalActiveCue.start.toFixed(2)}-${originalActiveCue.end.toFixed(2)}s], Target: [${bestTargetCue.start.toFixed(2)}-${bestTargetCue.end.toFixed(2)}s], Overlap: ${maxOverlap.toFixed(2)}s`);
+                    }
+                }
+            } else if (originalActiveCue && translatedActiveCue && currentWholeSecond !== lastLoggedTimeSec) {
+                console.log(`${logPrefix}: [DEBUG] Native mode direct match - Original: [${originalActiveCue.start.toFixed(2)}-${originalActiveCue.end.toFixed(2)}s], Target: [${translatedActiveCue.start.toFixed(2)}-${translatedActiveCue.end.toFixed(2)}s]`);
+            }
+        } else {
+            // For translation mode: use the first/best active cue
+            originalActiveCue = activeCues[0];
+        }
+    }
+
+    if (foundCue) {
+        const originalText = originalActiveCue ? (originalActiveCue.original || "") : "";
+        const translatedText = translatedActiveCue ? (translatedActiveCue.translated || "") : 
+                              (originalActiveCue ? (originalActiveCue.translated || "") : "");
+        const useNativeTarget = (originalActiveCue ? originalActiveCue.useNativeTarget : false) || 
+                               (translatedActiveCue ? translatedActiveCue.useNativeTarget : false);
 
         const originalTextFormatted = formatSubtitleTextForDisplay(originalText);
         const translatedTextFormatted = formatSubtitleTextForDisplay(translatedText);
@@ -607,7 +665,7 @@ export function updateSubtitles(rawCurrentTime, activePlatform, logPrefix = "Sub
         let contentChanged = false;
 
         if (currentWholeSecond !== lastLoggedTimeSec) {
-            console.log(`${logPrefix}: [Display] Time ${currentTime.toFixed(2)}s - Native: ${useNativeTarget}, Original: "${originalText.substring(0, 30)}${originalText.length > 30 ? '...' : ''}", Translated: "${translatedText.substring(0, 30)}${translatedText.length > 30 ? '...' : ''}"`);
+            console.log(`${logPrefix}: [Display] Time ${currentTime.toFixed(2)}s - Native: ${useNativeTarget}, Active cues: ${activeCues.length}, Original: "${originalText.substring(0, 30)}${originalText.length > 30 ? '...' : ''}", Translated: "${translatedText.substring(0, 30)}${translatedText.length > 30 ? '...' : ''}"`);
         }
 
         if (useNativeTarget) {
@@ -771,68 +829,78 @@ export function handleSubtitleDataFound(subtitleData, activePlatform, logPrefix 
         
         const useNativeTarget = subtitleData.useNativeTarget || false;
         
-        const targetCueMap = new Map();
-        const targetCuesByStartTime = new Map();
+        console.log(`${logPrefix}: Processing subtitles - useNativeTarget: ${useNativeTarget}, Original cues: ${parsedOriginalCues.length}, Target cues: ${parsedTargetCues.length}`);
         
         if (useNativeTarget && parsedTargetCues.length > 0) {
+            // In native mode, add both original and target cues separately to handle different timing
+            console.log(`${logPrefix}: Native mode - Adding original cues with timing:`, 
+                parsedOriginalCues.slice(0, 3).map(c => `[${c.start.toFixed(2)}-${c.end.toFixed(2)}s]`));
+            
+            // Add original cues
+            parsedOriginalCues.forEach(originalCue => {
+                subtitleQueue.push({
+                    original: originalCue.text,
+                    translated: null,
+                    start: originalCue.start,
+                    end: originalCue.end,
+                    videoId: currentVideoId,
+                    useNativeTarget: useNativeTarget,
+                    sourceLanguage: subtitleData.sourceLanguage || 'unknown',
+                    targetLanguage: subtitleData.targetLanguage || null,
+                    cueType: 'original'
+                });
+            });
+            
+            console.log(`${logPrefix}: Native mode - Adding target cues with timing:`, 
+                parsedTargetCues.slice(0, 3).map(c => `[${c.start.toFixed(2)}-${c.end.toFixed(2)}s]`));
+            
+            // Add target cues with their own timing
             parsedTargetCues.forEach(targetCue => {
-                const exactKey = `${targetCue.start.toFixed(2)}-${targetCue.end.toFixed(2)}`;
-                targetCueMap.set(exactKey, targetCue.text);
-                
-                const timeKey = Math.round(targetCue.start * 10) / 10;
-                if (!targetCuesByStartTime.has(timeKey)) {
-                    targetCuesByStartTime.set(timeKey, []);
-                }
-                targetCuesByStartTime.get(timeKey).push(targetCue);
+                subtitleQueue.push({
+                    original: null,
+                    translated: targetCue.text,
+                    start: targetCue.start,
+                    end: targetCue.end,
+                    videoId: currentVideoId,
+                    useNativeTarget: useNativeTarget,
+                    sourceLanguage: subtitleData.sourceLanguage || 'unknown',
+                    targetLanguage: subtitleData.targetLanguage || null,
+                    cueType: 'target'
+                });
+            });
+            
+            // Check for timing mismatches
+            const originalTimings = parsedOriginalCues.map(c => ({ start: c.start, end: c.end }));
+            const targetTimings = parsedTargetCues.map(c => ({ start: c.start, end: c.end }));
+            
+            const timingMismatches = originalTimings.filter(orig => 
+                !targetTimings.some(target => 
+                    Math.abs(target.start - orig.start) < 0.1 && Math.abs(target.end - orig.end) < 0.1
+                )
+            );
+            
+            if (timingMismatches.length > 0) {
+                console.warn(`${logPrefix}: ⚠️  Detected ${timingMismatches.length} timing mismatches between original and target subtitles`);
+                console.log(`${logPrefix}: First few mismatches:`, timingMismatches.slice(0, 3));
+            } else {
+                console.log(`${logPrefix}: ✅ Original and target subtitle timings align perfectly`);
+            }
+        } else {
+            // Translation mode - use original timing structure
+            parsedOriginalCues.forEach(originalCue => {
+                subtitleQueue.push({
+                    original: originalCue.text,
+                    translated: null,
+                    start: originalCue.start,
+                    end: originalCue.end,
+                    videoId: currentVideoId,
+                    useNativeTarget: useNativeTarget,
+                    sourceLanguage: subtitleData.sourceLanguage || 'unknown',
+                    targetLanguage: subtitleData.targetLanguage || null,
+                    cueType: 'original'
+                });
             });
         }
-        
-        parsedOriginalCues.forEach(originalCue => {
-            let translatedText = null;
-            
-            if (useNativeTarget) {
-                const exactKey = `${originalCue.start.toFixed(2)}-${originalCue.end.toFixed(2)}`;
-                translatedText = targetCueMap.get(exactKey) || null;
-                
-                if (!translatedText) {
-                    const searchRadius = 1.0;
-                    const startTime = Math.round((originalCue.start - searchRadius) * 10) / 10;
-                    const endTime = Math.round((originalCue.start + searchRadius) * 10) / 10;
-                    
-                    for (let t = startTime; t <= endTime; t = Math.round((t + 0.1) * 10) / 10) {
-                        const candidates = targetCuesByStartTime.get(t);
-                        if (candidates) {
-                            let bestMatch = null;
-                            let minTimeDiff = Infinity;
-                            
-                            for (const candidate of candidates) {
-                                const timeDiff = Math.abs(originalCue.start - candidate.start);
-                                if (timeDiff <= searchRadius && timeDiff < minTimeDiff) {
-                                    bestMatch = candidate;
-                                    minTimeDiff = timeDiff;
-                                }
-                            }
-                            
-                            if (bestMatch) {
-                                translatedText = bestMatch.text;
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-            
-            subtitleQueue.push({
-                original: originalCue.text,
-                translated: translatedText,
-                start: originalCue.start,
-                end: originalCue.end,
-                videoId: currentVideoId,
-                useNativeTarget: useNativeTarget,
-                sourceLanguage: subtitleData.sourceLanguage || 'unknown',
-                targetLanguage: subtitleData.targetLanguage || null
-            });
-        });
         
         if (subtitleData.availableLanguages) {
             console.log(`${logPrefix}: Available subtitle languages:`, subtitleData.availableLanguages.map(lang => `${lang.normalizedCode} (${lang.displayName})`));
