@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // General Settings
     const uiLanguageSelect = document.getElementById('uiLanguage');
+    const hideOfficialSubtitlesCheckbox = document.getElementById('hideOfficialSubtitles');
 
     // Translation Settings
     const translationProviderSelect = document.getElementById('translationProvider');
@@ -42,7 +43,8 @@ document.addEventListener('DOMContentLoaded', function () {
         translationBatchSize: 3,
         translationDelay: 150,
         deeplApiKey: '',
-        deeplApiPlan: 'free'
+        deeplApiPlan: 'free',
+        hideOfficialSubtitles: false
     };
 
     function populateProviderDropdown() {
@@ -131,6 +133,7 @@ document.addEventListener('DOMContentLoaded', function () {
             chrome.storage.sync.get(settingKeys, function (items) {
                 // General
                 uiLanguageSelect.value = items.uiLanguage || defaultSettings.uiLanguage;
+                hideOfficialSubtitlesCheckbox.checked = items.hideOfficialSubtitles !== undefined ? items.hideOfficialSubtitles : defaultSettings.hideOfficialSubtitles;
 
                 // Translation
                 const selectedProvider = items.selectedProvider || defaultSettings.selectedProvider;
@@ -194,6 +197,13 @@ document.addEventListener('DOMContentLoaded', function () {
         await loadAndApplyLanguage();
         console.log(`UI language changed to: ${selectedLang}`);
     });
+    
+    // Hide official subtitles setting
+    document.getElementById('hideOfficialSubtitles').addEventListener('change', function() {
+        saveSetting('hideOfficialSubtitles', this.checked);
+        console.log(`Hide official subtitles changed to: ${this.checked}`);
+    });
+    
     // Translation provider settings  
     document.getElementById('translationProvider').addEventListener('change', function() {
         saveSetting('selectedProvider', this.value);

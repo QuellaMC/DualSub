@@ -34,6 +34,16 @@ export class DisneyPlusPlatform extends VideoPlatform {
         // Store the bound listener to be able to remove it later
         this.eventListener = this._handleInjectorEvents.bind(this);
         document.addEventListener(INJECT_EVENT_ID, this.eventListener);
+        
+        // Set up storage listener for subtitle settings
+        const disneyPlusSubtitleSelectors = [
+            '.TimedTextOverlay',
+            '.hive-subtitle-renderer-wrapper',
+            '.hive-subtitle-renderer-cue-positioning-box',
+            '.hive-subtitle-renderer-cue-window'
+        ];
+        this.setupNativeSubtitleSettingsListener(disneyPlusSubtitleSelectors);
+        
         console.log("DisneyPlusPlatform: Initialized and event listener added.");
     }
 
@@ -159,10 +169,124 @@ export class DisneyPlusPlatform extends VideoPlatform {
     }
     
     handleNativeSubtitles() {
-        // Disney+ native subtitles are typically handled by the player itself.
-        // If we needed to hide them, we would add selectors here.
-        // For now, no specific action is taken as dual subs are overlaid.
-        console.log("DisneyPlusPlatform: handleNativeSubtitles called. No specific action taken.");
+        // Disney+ subtitle containers to hide (actual selectors from Disney+ DOM)
+        const disneyPlusSubtitleSelectors = [
+            '.TimedTextOverlay',
+            '.hive-subtitle-renderer-wrapper',
+            '.hive-subtitle-renderer-cue-positioning-box',
+            '.hive-subtitle-renderer-cue-window'
+        ];
+        
+        // Use the utility method from the base class
+        this.handleNativeSubtitlesWithSetting(disneyPlusSubtitleSelectors);
+        
+        // Also set up monitoring system like Netflix
+        this.setupDisneyPlusSubtitleMonitoring();
+    }
+
+    setupDisneyPlusSubtitleMonitoring() {
+        // Add CSS to force hide Disney+ subtitles when needed
+        this.addDisneyPlusSubtitleCSS();
+        
+        // Monitor for dynamically created subtitle elements
+        this.setupSubtitleMutationObserver();
+    }
+
+    addDisneyPlusSubtitleCSS() {
+        // Add CSS rules that are more specific and use !important
+        const cssId = 'dualsub-disneyplus-subtitle-hider';
+        let styleElement = document.getElementById(cssId);
+        
+        if (!styleElement) {
+            styleElement = document.createElement('style');
+            styleElement.id = cssId;
+            document.head.appendChild(styleElement);
+        }
+        
+        // CSS rules that will be applied when hiding is enabled
+        const hidingCSS = `
+            .TimedTextOverlay[data-dualsub-hidden="true"] {
+                display: none !important;
+                visibility: hidden !important;
+                opacity: 0 !important;
+            }
+            .hive-subtitle-renderer-wrapper[data-dualsub-hidden="true"] {
+                display: none !important;
+                visibility: hidden !important;
+                opacity: 0 !important;
+            }
+            .hive-subtitle-renderer-cue-positioning-box[data-dualsub-hidden="true"] {
+                display: none !important;
+                visibility: hidden !important;
+                opacity: 0 !important;
+            }
+            .hive-subtitle-renderer-cue-window[data-dualsub-hidden="true"] {
+                display: none !important;
+                visibility: hidden !important;
+                opacity: 0 !important;
+            }
+        `;
+        
+        styleElement.textContent = hidingCSS;
+    }
+
+    setupSubtitleMutationObserver() {
+        // Disconnect any existing observer
+        if (this.subtitleObserver) {
+            this.subtitleObserver.disconnect();
+        }
+        
+        // Set up mutation observer to catch dynamically created subtitle elements
+        this.subtitleObserver = new MutationObserver((mutations) => {
+            let foundNewSubtitles = false;
+            
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'childList') {
+                    mutation.addedNodes.forEach((node) => {
+                        if (node.nodeType === Node.ELEMENT_NODE) {
+                            // Check if the added node or its children contain subtitle elements
+                            if (node.classList?.contains('TimedTextOverlay') || 
+                                node.classList?.contains('hive-subtitle-renderer-wrapper') ||
+                                node.querySelector?.('.TimedTextOverlay, .hive-subtitle-renderer-wrapper')) {
+                                foundNewSubtitles = true;
+                            }
+                        }
+                    });
+                }
+            });
+            
+            if (foundNewSubtitles) {
+                // Reapply hiding rules after a short delay
+                setTimeout(() => {
+                    this.applyCurrentSubtitleSetting();
+                }, 100);
+            }
+        });
+        
+        // Start observing the document body for changes
+        this.subtitleObserver.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+    }
+
+    applyCurrentSubtitleSetting() {
+        chrome.storage.sync.get(['hideOfficialSubtitles'], (result) => {
+            const hideOfficialSubtitles = result.hideOfficialSubtitles || false;
+            
+            const disneyPlusSubtitleSelectors = [
+                '.TimedTextOverlay',
+                '.hive-subtitle-renderer-wrapper',
+                '.hive-subtitle-renderer-cue-positioning-box',
+                '.hive-subtitle-renderer-cue-window'
+            ];
+            
+            if (hideOfficialSubtitles) {
+                this.hideOfficialSubtitleContainers(disneyPlusSubtitleSelectors);
+            } else {
+                this.showOfficialSubtitleContainers();
+            }
+        });
     }
 
     cleanup() {
@@ -171,6 +295,22 @@ export class DisneyPlusPlatform extends VideoPlatform {
             this.eventListener = null;
             console.log("DisneyPlusPlatform: Event listener removed.");
         }
+        
+        // Clean up storage listener for subtitle settings
+        this.cleanupNativeSubtitleSettingsListener();
+        
+        // Clean up mutation observer
+        if (this.subtitleObserver) {
+            this.subtitleObserver.disconnect();
+            this.subtitleObserver = null;
+        }
+        
+        // Remove our custom CSS
+        const cssElement = document.getElementById('dualsub-disneyplus-subtitle-hider');
+        if (cssElement) {
+            cssElement.remove();
+        }
+        
         this.currentVideoId = null;
         this.onSubtitleUrlFoundCallback = null;
         this.onVideoIdChangeCallback = null;
