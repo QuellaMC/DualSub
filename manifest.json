@@ -13,7 +13,9 @@
     "*://*.disneyplus.com/*",
     "https://translate.googleapis.com/*",
     "https://api.cognitive.microsofttranslator.com/*",
-    "https://edge.microsoft.com/*"
+    "https://edge.microsoft.com/*",
+    "https://api-free.deepl.com/*",
+    "https://api.deepl.com/*"
   ],
   "background": {
     "service_worker": "background.js",
@@ -22,7 +24,7 @@
   "content_scripts": [
     {
       "matches": ["*://*.disneyplus.com/*"],
-      "js": ["content_scripts/content.js"],
+      "js": ["content_scripts/disneyPlusContent.js"],
       "css": ["content_scripts/content.css"],
       "run_at": "document_idle"
     }
@@ -30,9 +32,11 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "content_scripts/inject.js",
+        "injected_scripts/disneyPlusInject.js",
         "video_platforms/disneyPlusPlatform.js",
-        "video_platforms/platform_interface.js"
+        "video_platforms/platform_interface.js",
+        "content_scripts/subtitleUtilities.js",
+        "utils/languageNormalization.js"
       ],
       "matches": ["*://*.disneyplus.com/*"]
     }
