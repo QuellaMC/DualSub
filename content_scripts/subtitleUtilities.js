@@ -6,23 +6,27 @@ const localizedErrorMessages = {
     TRANSLATION_API_ERROR: {
         en: "[Translation API Error. Check settings or try another provider.]",
         es: "[Error de API de Traducción. Revisa la configuración o prueba otro proveedor.]",
-        'zh-CN': "[翻译API错误。请检查设置或尝试其他翻译源。]"
+        'zh-CN': "[翻译API错误。请检查设置或尝试其他翻译源。]",
+        'zh-TW': "[翻譯API錯誤。請檢查設定或嘗試其他翻譯源。]"
     },
     TRANSLATION_REQUEST_ERROR: {
         en: "[Translation Request Error. Please try again.]",
         es: "[Error en la Solicitud de Traducción. Por favor, inténtalo de nuevo.]",
-        'zh-CN': "[翻译请求错误。请重试。]"
+        'zh-CN': "[翻译请求错误。请重试。]",
+        'zh-TW': "[翻譯請求錯誤。請重試。]"
     },
     TRANSLATION_GENERIC_ERROR: {
         en: "[Translation Failed. Please try again or check settings.]",
         es: "[Traducción Fallida. Por favor, inténtalo de nuevo o revisa la configuración.]",
-        'zh-CN': "[翻译失败。请重试或检查设置。]"
+        'zh-CN': "[翻译失败。请重试或检查设置。]",
+        'zh-TW': "[翻譯失敗。請重試或檢查設定。]"
     }
 };
 
 export function getUILanguage() {
     const lang = (navigator.language || navigator.userLanguage || 'en').toLowerCase();
     if (lang.startsWith('zh-cn')) return 'zh-CN';
+    if (lang.startsWith('zh-tw')) return 'zh-TW';
     if (lang.startsWith('zh')) return 'zh-CN';
     if (lang.startsWith('es')) return 'es';
     return 'en';
