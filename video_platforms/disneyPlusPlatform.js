@@ -43,7 +43,7 @@ export class DisneyPlusPlatform extends VideoPlatform {
         ];
         this.setupNativeSubtitleSettingsListener(disneyPlusSubtitleSelectors);
         
-        console.log("DisneyPlusPlatform: Initialized and permanent event listener attached.");
+        console.log("DisneyPlusPlatform: Initialized and event listener added.");
     }
 
 
