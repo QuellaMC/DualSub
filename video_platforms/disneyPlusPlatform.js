@@ -29,7 +29,6 @@ export class DisneyPlusPlatform extends VideoPlatform {
         this.onSubtitleUrlFoundCallback = onSubtitleUrlFound;
         this.onVideoIdChangeCallback = onVideoIdChange;
 
-        this._injectScript();
 
         // Store the bound listener to be able to remove it later
         this.eventListener = this._handleInjectorEvents.bind(this);
@@ -47,23 +46,7 @@ export class DisneyPlusPlatform extends VideoPlatform {
         console.log("DisneyPlusPlatform: Initialized and event listener added.");
     }
 
-    _injectScript() {
-        if (document.getElementById(INJECT_SCRIPT_TAG_ID)) {
-            console.log("DisneyPlusPlatform: Inject script tag already exists.");
-            return;
-        }
-        try {
-            const s = document.createElement('script');
-            s.src = chrome.runtime.getURL(INJECT_SCRIPT_FILENAME);
-            s.id = INJECT_SCRIPT_TAG_ID;
-            (document.head || document.documentElement).appendChild(s);
-            s.onload = () => console.log('DisneyPlusPlatform: Inject.js script tag loaded into page.');
-            s.onerror = () => console.error('DisneyPlusPlatform: CRITICAL - Failed to load inject.js into page!');
-            console.log("DisneyPlusPlatform: Attempting to inject inject.js into page from:", s.src);
-        } catch (e) {
-            console.error("DisneyPlusPlatform: CRITICAL - Error during inject.js injection attempt:", e);
-        }
-    }
+
 
     _handleInjectorEvents(e) {
         const data = e.detail;
