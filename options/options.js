@@ -38,15 +38,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Available Translation Providers - can be extended
     const availableProviders = {
-        google: 'providerGoogleName',
-        microsoft_edge_auth: 'providerMicrosoftName',
-        deepl: 'providerDeepLName',
+        google: 'Google Translate (Free)',
+        microsoft_edge_auth: 'Microsoft Translate (Free)',
+        deepl: 'DeepL Translate (API Key Required)',
+        deepl_free: 'DeepL Translate (Free)',
     };
 
     // Default settings
     const defaultSettings = {
         uiLanguage: 'en',
-        selectedProvider: 'google',
+        selectedProvider: 'deepl_free',
         translationBatchSize: 3,
         translationDelay: 150,
         deeplApiKey: '',
@@ -58,28 +59,18 @@ document.addEventListener('DOMContentLoaded', function () {
         // Clear existing options first
         translationProviderSelect.innerHTML = '';
 
-        // Fallback provider names in case translations are not loaded yet
-        const fallbackNames = {
-            google: 'Google Translate (Free)',
-            microsoft_edge_auth: 'Microsoft Translate (Free)',
-            deepl: 'DeepL (API Key Required)',
-        };
-
+        // Use consistent provider names that don't change with UI language
         for (const providerId in availableProviders) {
             const option = document.createElement('option');
             option.value = providerId;
-            const translationKey = availableProviders[providerId];
+            const providerName = availableProviders[providerId];
 
-            // Use translated text if available, otherwise use fallback
-            if (loadedTranslations && loadedTranslations[translationKey]) {
-                option.textContent = loadedTranslations[translationKey].message;
-            } else {
-                option.textContent =
-                    fallbackNames[providerId] || translationKey;
-            }
+            // Use consistent provider names that don't change with UI language
+            option.textContent = providerName;
 
             translationProviderSelect.appendChild(option);
         }
+
     }
 
     function updateProviderSettings() {
@@ -89,10 +80,12 @@ document.addEventListener('DOMContentLoaded', function () {
         const googleCard = document.getElementById('googleProviderCard');
         const microsoftCard = document.getElementById('microsoftProviderCard');
         const deeplCard = document.getElementById('deeplProviderCard');
+        const deeplFreeCard = document.getElementById('deeplFreeProviderCard');
 
         googleCard.style.display = 'none';
         microsoftCard.style.display = 'none';
         deeplCard.style.display = 'none';
+        deeplFreeCard.style.display = 'none';
 
         // Show the selected provider card
         switch (selectedProvider) {
@@ -105,9 +98,12 @@ document.addEventListener('DOMContentLoaded', function () {
             case 'deepl':
                 deeplCard.style.display = 'block';
                 break;
+            case 'deepl_free':
+                deeplFreeCard.style.display = 'block';
+                break;
             default:
-                // Show Google as default
-                googleCard.style.display = 'block';
+                // Show DeepL Free as default
+                deeplFreeCard.style.display = 'block';
                 break;
         }
     }
