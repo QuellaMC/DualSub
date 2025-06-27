@@ -1,9 +1,9 @@
 // content_scripts/disneyPlusContent.js
 // Simplified Disney+ content script using shared utilities
 
-console.log("Disney+ Dual Subtitles content script loaded for Disney+.");
+console.log('Disney+ Dual Subtitles content script loaded for Disney+.');
 
-const LOG_PREFIX = "DisneyPlusContent";
+const LOG_PREFIX = 'DisneyPlusContent';
 
 // Platform management
 let activePlatform = null;
@@ -52,10 +52,20 @@ function injectScriptEarly() {
         s.src = chrome.runtime.getURL(INJECT_SCRIPT_FILENAME);
         s.id = INJECT_SCRIPT_TAG_ID;
         (document.head || document.documentElement).appendChild(s);
-        s.onload = () => console.log(`${LOG_PREFIX}: Early inject script loaded successfully.`);
-        s.onerror = (e) => console.error(`${LOG_PREFIX}: Failed to load early inject script!`, e);
+        s.onload = () =>
+            console.log(
+                `${LOG_PREFIX}: Early inject script loaded successfully.`
+            );
+        s.onerror = (e) =>
+            console.error(
+                `${LOG_PREFIX}: Failed to load early inject script!`,
+                e
+            );
     } catch (e) {
-        console.error(`${LOG_PREFIX}: Error during early inject script injection:`, e);
+        console.error(
+            `${LOG_PREFIX}: Error during early inject script injection:`,
+            e
+        );
     }
 }
 
@@ -63,9 +73,13 @@ function injectScriptEarly() {
 
 async function loadModules() {
     try {
-        const utilsModule = await import(chrome.runtime.getURL('content_scripts/subtitleUtilities.js'));
+        const utilsModule = await import(
+            chrome.runtime.getURL('content_scripts/subtitleUtilities.js')
+        );
         subtitleUtils = utilsModule;
-        const platformModule = await import(chrome.runtime.getURL('video_platforms/disneyPlusPlatform.js'));
+        const platformModule = await import(
+            chrome.runtime.getURL('video_platforms/disneyPlusPlatform.js')
+        );
         DisneyPlusPlatform = platformModule.DisneyPlusPlatform;
         return true;
     } catch (error) {
@@ -79,13 +93,20 @@ async function initializePlatform() {
 
     // The script is now injected early, so the platform doesn't need to do it.
     activePlatform = new DisneyPlusPlatform();
-    
+
     if (activePlatform.isPlayerPageActive()) {
-        console.log(`${LOG_PREFIX}: Initializing Disney+ platform on player page.`);
+        console.log(
+            `${LOG_PREFIX}: Initializing Disney+ platform on player page.`
+        );
         try {
             // The platform now just sets up callbacks and listeners
             await activePlatform.initialize(
-                (subtitleData) => subtitleUtils.handleSubtitleDataFound(subtitleData, activePlatform, LOG_PREFIX),
+                (subtitleData) =>
+                    subtitleUtils.handleSubtitleDataFound(
+                        subtitleData,
+                        activePlatform,
+                        LOG_PREFIX
+                    ),
                 (newVideoId) => {
                     subtitleUtils.handleVideoIdChange(newVideoId, LOG_PREFIX);
                     subtitleUtils.setCurrentVideoId(newVideoId);
@@ -93,13 +114,17 @@ async function initializePlatform() {
             );
             activePlatform.handleNativeSubtitles();
 
-            // Mark platform as ready 
+            // Mark platform as ready
             platformReady = true;
 
             if (eventBuffer.length > 0) {
-                 console.log(`${LOG_PREFIX}: Processing ${eventBuffer.length} buffered event(s).`);
+                console.log(
+                    `${LOG_PREFIX}: Processing ${eventBuffer.length} buffered event(s).`
+                );
                 // Have the new activePlatform instance handle each buffered event
-                eventBuffer.forEach(e => activePlatform._handleInjectorEvents(e));
+                eventBuffer.forEach((e) =>
+                    activePlatform._handleInjectorEvents(e)
+                );
                 // Clear the buffer ONLY AFTER it has been processed.
                 eventBuffer = [];
             }
@@ -107,12 +132,17 @@ async function initializePlatform() {
 
             startVideoElementDetection();
         } catch (error) {
-            console.error(`${LOG_PREFIX}: Error initializing Disney+ platform:`, error);
+            console.error(
+                `${LOG_PREFIX}: Error initializing Disney+ platform:`,
+                error
+            );
             activePlatform = null;
             platformReady = false;
         }
     } else {
-        console.log(`${LOG_PREFIX}: Not on a player page. Deferring full setup.`);
+        console.log(
+            `${LOG_PREFIX}: Not on a player page. Deferring full setup.`
+        );
     }
 }
 
@@ -121,12 +151,15 @@ async function initializePlatform() {
 function startVideoElementDetection() {
     if (videoDetectionIntervalId) clearInterval(videoDetectionIntervalId);
     videoDetectionRetries = 0;
-    
+
     if (attemptVideoSetup()) return;
-    
+
     videoDetectionIntervalId = setInterval(() => {
         videoDetectionRetries++;
-        if (attemptVideoSetup() || videoDetectionRetries >= MAX_VIDEO_DETECTION_RETRIES) {
+        if (
+            attemptVideoSetup() ||
+            videoDetectionRetries >= MAX_VIDEO_DETECTION_RETRIES
+        ) {
             clearInterval(videoDetectionIntervalId);
             videoDetectionIntervalId = null;
         }
@@ -135,19 +168,21 @@ function startVideoElementDetection() {
 
 function attemptVideoSetup() {
     if (!activePlatform || !subtitleUtils) return false;
-    
+
     const videoElement = activePlatform.getVideoElement();
     if (!videoElement) return false;
-    
-    console.log(`${LOG_PREFIX}: Video element found. Setting up UI and listeners.`);
+
+    console.log(
+        `${LOG_PREFIX}: Video element found. Setting up UI and listeners.`
+    );
     subtitleUtils.ensureSubtitleContainer(activePlatform, LOG_PREFIX);
-    
+
     if (subtitleUtils.subtitlesActive) {
         subtitleUtils.showSubtitleContainer();
     } else {
         subtitleUtils.hideSubtitleContainer();
     }
-    
+
     return true;
 }
 
@@ -167,7 +202,7 @@ const checkForUrlChange = () => {
         activePlatform = null;
         platformReady = false;
     }
-    
+
     // Always re-inject script on navigation and re-initialize
     injectScriptEarly();
     chrome.storage.sync.get('subtitlesEnabled', (settings) => {
@@ -180,12 +215,12 @@ const checkForUrlChange = () => {
 function setupNavigationDetection() {
     // Listen to history changes for SPA navigation
     const originalPushState = history.pushState;
-    history.pushState = function() {
+    history.pushState = function () {
         originalPushState.apply(history, arguments);
         checkForUrlChange();
     };
     window.addEventListener('popstate', checkForUrlChange);
-    
+
     // Fallback interval
     setInterval(checkForUrlChange, 2000);
 }
@@ -194,8 +229,11 @@ function setupNavigationDetection() {
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (!subtitleUtils) {
-        console.error(`${LOG_PREFIX}: Utilities not loaded, cannot handle message:`, request.action);
-        sendResponse({ success: false, error: "Utilities not loaded" });
+        console.error(
+            `${LOG_PREFIX}: Utilities not loaded, cannot handle message:`,
+            request.action
+        );
+        sendResponse({ success: false, error: 'Utilities not loaded' });
         return;
     }
 
@@ -203,144 +241,244 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     let actionHandled = true;
 
     switch (request.action) {
-        case "toggleSubtitles": {
+        case 'toggleSubtitles': {
             subtitleUtils.setSubtitlesActive(request.enabled);
-            console.log(`${LOG_PREFIX}: Subtitle active state changed to ${request.enabled}`);
+            console.log(
+                `${LOG_PREFIX}: Subtitle active state changed to ${request.enabled}`
+            );
             if (!request.enabled) {
                 subtitleUtils.hideSubtitleContainer();
-                subtitleUtils.clearSubtitlesDisplayAndQueue(activePlatform, true, LOG_PREFIX);
+                subtitleUtils.clearSubtitlesDisplayAndQueue(
+                    activePlatform,
+                    true,
+                    LOG_PREFIX
+                );
                 if (activePlatform) activePlatform.cleanup();
                 activePlatform = null;
             } else {
                 if (!activePlatform) {
                     initializePlatform().then(() => {
-                        if (activePlatform && activePlatform.isPlayerPageActive()) {
-                            subtitleUtils.ensureSubtitleContainer(activePlatform, LOG_PREFIX);
+                        if (
+                            activePlatform &&
+                            activePlatform.isPlayerPageActive()
+                        ) {
+                            subtitleUtils.ensureSubtitleContainer(
+                                activePlatform,
+                                LOG_PREFIX
+                            );
                             subtitleUtils.showSubtitleContainer();
                             needsDisplayUpdate = true;
                         } else if (activePlatform) {
-                            console.log(`${LOG_PREFIX}: Platform initialized, but not on player page. UI setup deferred.`);
+                            console.log(
+                                `${LOG_PREFIX}: Platform initialized, but not on player page. UI setup deferred.`
+                            );
                         } else {
-                            console.log(`${LOG_PREFIX}: Platform could not be initialized.`);
+                            console.log(
+                                `${LOG_PREFIX}: Platform could not be initialized.`
+                            );
                         }
                     });
                 } else if (activePlatform.isPlayerPageActive()) {
-                    subtitleUtils.ensureSubtitleContainer(activePlatform, LOG_PREFIX);
+                    subtitleUtils.ensureSubtitleContainer(
+                        activePlatform,
+                        LOG_PREFIX
+                    );
                     subtitleUtils.showSubtitleContainer();
                     needsDisplayUpdate = true;
                 } else {
-                    console.log(`${LOG_PREFIX}: Platform active, but not on player page. UI setup deferred.`);
+                    console.log(
+                        `${LOG_PREFIX}: Platform active, but not on player page. UI setup deferred.`
+                    );
                 }
             }
             sendResponse({ success: true, subtitlesEnabled: request.enabled });
             break;
         }
-            
-        case "changeLanguage": {
+
+        case 'changeLanguage': {
             subtitleUtils.setUserTargetLanguage(request.targetLanguage);
-            console.log(`${LOG_PREFIX}: Target language changed to:`, request.targetLanguage);
-            const currentContextVideoIdLang = activePlatform ? activePlatform.getCurrentVideoId() : null;
-            
+            console.log(
+                `${LOG_PREFIX}: Target language changed to:`,
+                request.targetLanguage
+            );
+            const currentContextVideoIdLang = activePlatform
+                ? activePlatform.getCurrentVideoId()
+                : null;
+
             // Clear existing translations and restart
             if (subtitleUtils.subtitlesActive && currentContextVideoIdLang) {
-                subtitleUtils.clearSubtitlesDisplayAndQueue(activePlatform, false, LOG_PREFIX);
+                subtitleUtils.clearSubtitlesDisplayAndQueue(
+                    activePlatform,
+                    false,
+                    LOG_PREFIX
+                );
                 subtitleUtils.showSubtitleContainer();
                 subtitleUtils.processSubtitleQueue(activePlatform, LOG_PREFIX);
             }
-            sendResponse({ success: true, newLanguage: request.targetLanguage });
+            sendResponse({
+                success: true,
+                newLanguage: request.targetLanguage,
+            });
             break;
         }
-            
-        case "changeTimeOffset": {
+
+        case 'changeTimeOffset': {
             subtitleUtils.setUserSubtitleTimeOffset(request.timeOffset);
-            console.log(`${LOG_PREFIX}: Time offset changed to:`, request.timeOffset, "s");
+            console.log(
+                `${LOG_PREFIX}: Time offset changed to:`,
+                request.timeOffset,
+                's'
+            );
             needsDisplayUpdate = true;
             sendResponse({ success: true, newTimeOffset: request.timeOffset });
             break;
         }
-            
-        case "changeLayoutOrder": {
+
+        case 'changeLayoutOrder': {
             subtitleUtils.setUserSubtitleLayoutOrder(request.layoutOrder);
-            console.log(`${LOG_PREFIX}: Layout order changed to:`, request.layoutOrder);
+            console.log(
+                `${LOG_PREFIX}: Layout order changed to:`,
+                request.layoutOrder
+            );
             subtitleUtils.applySubtitleStyling();
             needsDisplayUpdate = true;
-            sendResponse({ success: true, newLayoutOrder: request.layoutOrder });
+            sendResponse({
+                success: true,
+                newLayoutOrder: request.layoutOrder,
+            });
             break;
         }
-            
-        case "changeLayoutOrientation": {
+
+        case 'changeLayoutOrientation': {
             subtitleUtils.setUserSubtitleOrientation(request.layoutOrientation);
-            console.log(`${LOG_PREFIX}: Layout orientation changed to:`, request.layoutOrientation);
+            console.log(
+                `${LOG_PREFIX}: Layout orientation changed to:`,
+                request.layoutOrientation
+            );
             subtitleUtils.applySubtitleStyling();
             needsDisplayUpdate = true;
-            sendResponse({ success: true, newLayoutOrientation: request.layoutOrientation });
+            sendResponse({
+                success: true,
+                newLayoutOrientation: request.layoutOrientation,
+            });
             break;
         }
-            
-        case "changeFontSize": {
+
+        case 'changeFontSize': {
             subtitleUtils.setUserSubtitleFontSize(request.fontSize);
-            console.log(`${LOG_PREFIX}: Font size changed to:`, request.fontSize, "vw");
+            console.log(
+                `${LOG_PREFIX}: Font size changed to:`,
+                request.fontSize,
+                'vw'
+            );
             needsDisplayUpdate = true;
             sendResponse({ success: true, newFontSize: request.fontSize });
             break;
         }
-            
-        case "changeGap": {
+
+        case 'changeGap': {
             subtitleUtils.setUserSubtitleGap(request.gap);
-            console.log(`${LOG_PREFIX}: Subtitle gap changed to:`, request.gap, "em");
+            console.log(
+                `${LOG_PREFIX}: Subtitle gap changed to:`,
+                request.gap,
+                'em'
+            );
             subtitleUtils.applySubtitleStyling();
             needsDisplayUpdate = true;
             sendResponse({ success: true, newGap: request.gap });
             break;
         }
-            
-        case "changeBatchSize": {
+
+        case 'changeBatchSize': {
             subtitleUtils.setUserTranslationBatchSize(request.batchSize);
-            console.log(`${LOG_PREFIX}: Translation batch size changed to:`, request.batchSize);
+            console.log(
+                `${LOG_PREFIX}: Translation batch size changed to:`,
+                request.batchSize
+            );
             sendResponse({ success: true, newBatchSize: request.batchSize });
             break;
         }
-            
-        case "changeDelay": {
+
+        case 'changeDelay': {
             subtitleUtils.setUserTranslationDelay(request.delay);
-            console.log(`${LOG_PREFIX}: Translation delay changed to:`, request.delay, "ms");
+            console.log(
+                `${LOG_PREFIX}: Translation delay changed to:`,
+                request.delay,
+                'ms'
+            );
             sendResponse({ success: true, newDelay: request.delay });
             break;
         }
-        case "changeOriginalLanguage": {
+        case 'changeOriginalLanguage': {
             subtitleUtils.setUserOriginalLanguage(request.originalLanguage);
-            console.log(`${LOG_PREFIX}: Original language changed to:`, request.originalLanguage);
-            const currentContextVideoIdOrig = activePlatform ? activePlatform.getCurrentVideoId() : null;
-            
+            console.log(
+                `${LOG_PREFIX}: Original language changed to:`,
+                request.originalLanguage
+            );
+            const currentContextVideoIdOrig = activePlatform
+                ? activePlatform.getCurrentVideoId()
+                : null;
+
             // Clear existing data and re-initialize with new original language
-            if (subtitleUtils.subtitlesActive && currentContextVideoIdOrig && activePlatform) {
-                console.log(`${LOG_PREFIX}: Re-initializing platform due to original language change`);
-                subtitleUtils.clearSubtitlesDisplayAndQueue(activePlatform, false, LOG_PREFIX);
+            if (
+                subtitleUtils.subtitlesActive &&
+                currentContextVideoIdOrig &&
+                activePlatform
+            ) {
+                console.log(
+                    `${LOG_PREFIX}: Re-initializing platform due to original language change`
+                );
+                subtitleUtils.clearSubtitlesDisplayAndQueue(
+                    activePlatform,
+                    false,
+                    LOG_PREFIX
+                );
                 activePlatform.cleanup();
                 activePlatform = null;
                 initializePlatform();
             }
-            sendResponse({ success: true, newOriginalLanguage: request.originalLanguage });
+            sendResponse({
+                success: true,
+                newOriginalLanguage: request.originalLanguage,
+            });
             break;
         }
-            
-        case "changeUseNativeSubtitles": {
+
+        case 'changeUseNativeSubtitles': {
             subtitleUtils.setUserUseNativeSubtitles(request.useNativeSubtitles);
-            console.log(`${LOG_PREFIX}: Use native subtitles changed to:`, request.useNativeSubtitles);
-            const currentContextVideoIdNative = activePlatform ? activePlatform.getCurrentVideoId() : null;
-            
+            console.log(
+                `${LOG_PREFIX}: Use native subtitles changed to:`,
+                request.useNativeSubtitles
+            );
+            const currentContextVideoIdNative = activePlatform
+                ? activePlatform.getCurrentVideoId()
+                : null;
+
             // Clear existing data and re-initialize with new native subtitle preference
-            if (subtitleUtils.subtitlesActive && currentContextVideoIdNative && activePlatform) {
-                console.log(`${LOG_PREFIX}: Re-initializing platform due to native subtitle preference change`);
-                subtitleUtils.clearSubtitlesDisplayAndQueue(activePlatform, false, LOG_PREFIX);
+            if (
+                subtitleUtils.subtitlesActive &&
+                currentContextVideoIdNative &&
+                activePlatform
+            ) {
+                console.log(
+                    `${LOG_PREFIX}: Re-initializing platform due to native subtitle preference change`
+                );
+                subtitleUtils.clearSubtitlesDisplayAndQueue(
+                    activePlatform,
+                    false,
+                    LOG_PREFIX
+                );
                 activePlatform.cleanup();
                 activePlatform = null;
                 initializePlatform();
             }
-            sendResponse({ success: true, newUseNativeSubtitles: request.useNativeSubtitles });
+            sendResponse({
+                success: true,
+                newUseNativeSubtitles: request.useNativeSubtitles,
+            });
             break;
         }
-            
+
         default: {
             actionHandled = false;
             break;
@@ -348,11 +486,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
 
     // Update display if needed
-    if (needsDisplayUpdate && subtitleUtils.subtitlesActive && activePlatform?.isPlayerPageActive()) {
+    if (
+        needsDisplayUpdate &&
+        subtitleUtils.subtitlesActive &&
+        activePlatform?.isPlayerPageActive()
+    ) {
         const videoElement = activePlatform.getVideoElement();
         if (videoElement) {
             let timeToUpdate = videoElement.currentTime;
-            
+
             // Try to get more accurate time from progress bar if available
             const sliderElement = activePlatform.getProgressBarElement();
             if (sliderElement) {
@@ -362,12 +504,22 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                     const valuenow = parseFloat(nowStr);
                     const valuemax = parseFloat(maxStr);
                     const videoDuration = videoElement.duration;
-                    if (!isNaN(valuenow) && !isNaN(valuemax) && valuemax > 0 && !isNaN(videoDuration) && videoDuration > 0) {
+                    if (
+                        !isNaN(valuenow) &&
+                        !isNaN(valuemax) &&
+                        valuemax > 0 &&
+                        !isNaN(videoDuration) &&
+                        videoDuration > 0
+                    ) {
                         timeToUpdate = (valuenow / valuemax) * videoDuration;
                     }
                 }
             }
-            subtitleUtils.updateSubtitles(timeToUpdate, activePlatform, LOG_PREFIX);
+            subtitleUtils.updateSubtitles(
+                timeToUpdate,
+                activePlatform,
+                LOG_PREFIX
+            );
         }
     }
 
@@ -379,14 +531,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 (async () => {
     attachEarlyEventListener();
     injectScriptEarly();
-    
+
     const modulesLoaded = await loadModules();
     if (!modulesLoaded) return;
-    
+
     const settings = await subtitleUtils.loadInitialSettings();
     if (settings.active) {
         await initializePlatform();
     }
-    
+
     setupNavigationDetection();
-})(); 
+})();

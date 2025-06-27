@@ -9,13 +9,16 @@
     --link-hover-color: #005dd1;
     --border-color: #e5e5ea;
     --card-bg: #ffffff;
-    --card-shadow: 0 1px 4px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.04);
+    --card-shadow:
+        0 1px 4px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.04);
     --input-bg: #ffffff;
     --input-border: #d1d1d6;
     --toggle-bg: #e9e9eb;
     --toggle-active-bg: #34c759;
     --toggle-handle-bg: #ffffff;
-    --font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+    --font-family:
+        -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue',
+        Arial, sans-serif;
 }
 
 body {
@@ -39,7 +42,9 @@ body {
     min-height: 600px;
     background-color: var(--card-bg);
     border-radius: 12px;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.04);
+    box-shadow:
+        0 10px 40px rgba(0, 0, 0, 0.08),
+        0 4px 16px rgba(0, 0, 0, 0.04);
     overflow: hidden;
 }
 
@@ -128,7 +133,9 @@ body {
 }
 
 .setting-card:hover {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.06);
+    box-shadow:
+        0 2px 8px rgba(0, 0, 0, 0.06),
+        0 8px 24px rgba(0, 0, 0, 0.06);
     transform: translateY(-1px);
 }
 
@@ -196,7 +203,9 @@ body {
     background-color: var(--toggle-handle-bg);
     border-radius: 50%;
     transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15), 0 2px 8px rgba(0, 0, 0, 0.1);
+    box-shadow:
+        0 1px 3px rgba(0, 0, 0, 0.15),
+        0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .toggle-input:checked + .toggle-label {
@@ -217,7 +226,10 @@ body {
 }
 
 /* Form Elements */
-select, input[type="text"], input[type="password"], input[type="number"] {
+select,
+input[type='text'],
+input[type='password'],
+input[type='number'] {
     width: 250px;
     padding: 8px 12px;
     border-radius: 6px;
@@ -229,7 +241,8 @@ select, input[type="text"], input[type="password"], input[type="number"] {
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
-select:focus, input:focus {
+select:focus,
+input:focus {
     outline: none;
     border-color: var(--link-color);
     box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.2);
@@ -277,7 +290,7 @@ select:focus, input:focus {
     width: 250px;
 }
 
-input[type="range"] {
+input[type='range'] {
     flex-grow: 1;
     -webkit-appearance: none;
     appearance: none;
@@ -289,11 +302,11 @@ input[type="range"] {
     transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
-input[type="range"]:hover {
+input[type='range']:hover {
     background: #d1d1d6;
 }
 
-input[type="range"]::-webkit-slider-thumb {
+input[type='range']::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
     width: 18px;
@@ -303,7 +316,7 @@ input[type="range"]::-webkit-slider-thumb {
     border-radius: 50%;
 }
 
-input[type="range"]::-moz-range-thumb {
+input[type='range']::-moz-range-thumb {
     width: 18px;
     height: 18px;
     background: var(--link-color);
@@ -355,7 +368,9 @@ input[type="range"]::-moz-range-thumb {
     .setting label {
         margin-bottom: 10px;
     }
-    select, input, .slider-container {
+    select,
+    input,
+    .slider-container {
         width: 100%;
     }
 }
@@ -445,4 +460,4 @@ input[type="range"]::-moz-range-thumb {
     background-color: rgba(255, 59, 48, 0.15);
     color: #c0392b;
     border: 1px solid rgba(255, 59, 48, 0.3);
-} 
+}

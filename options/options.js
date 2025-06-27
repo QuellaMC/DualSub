@@ -5,16 +5,24 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // General Settings
     const uiLanguageSelect = document.getElementById('uiLanguage');
-    const hideOfficialSubtitlesCheckbox = document.getElementById('hideOfficialSubtitles');
+    const hideOfficialSubtitlesCheckbox = document.getElementById(
+        'hideOfficialSubtitles'
+    );
 
     // Translation Settings
-    const translationProviderSelect = document.getElementById('translationProvider');
-    const translationBatchSizeInput = document.getElementById('translationBatchSize');
-    const translationBatchSizeValue = document.getElementById('translationBatchSizeValue');
+    const translationProviderSelect = document.getElementById(
+        'translationProvider'
+    );
+    const translationBatchSizeInput = document.getElementById(
+        'translationBatchSize'
+    );
+    const translationBatchSizeValue = document.getElementById(
+        'translationBatchSizeValue'
+    );
     const translationDelayInput = document.getElementById('translationDelay');
-    const translationDelayValue = document.getElementById('translationDelayValue');
-
-
+    const translationDelayValue = document.getElementById(
+        'translationDelayValue'
+    );
 
     // Provider Settings
     const deeplApiKeyInput = document.getElementById('deeplApiKey');
@@ -28,12 +36,11 @@ document.addEventListener('DOMContentLoaded', function () {
     let loadedTranslations = {};
     const translationsCache = {};
 
-
     // Available Translation Providers - can be extended
-     const availableProviders = {
-        'google': 'providerGoogleName',
-        'microsoft_edge_auth': 'providerMicrosoftName',
-        'deepl': 'providerDeepLName'
+    const availableProviders = {
+        google: 'providerGoogleName',
+        microsoft_edge_auth: 'providerMicrosoftName',
+        deepl: 'providerDeepLName',
     };
 
     // Default settings
@@ -44,48 +51,49 @@ document.addEventListener('DOMContentLoaded', function () {
         translationDelay: 150,
         deeplApiKey: '',
         deeplApiPlan: 'free',
-        hideOfficialSubtitles: false
+        hideOfficialSubtitles: false,
     };
 
     function populateProviderDropdown() {
         // Clear existing options first
         translationProviderSelect.innerHTML = '';
-        
+
         // Fallback provider names in case translations are not loaded yet
         const fallbackNames = {
-            'google': 'Google Translate (Free)',
-            'microsoft_edge_auth': 'Microsoft Translate (Free)',
-            'deepl': 'DeepL (API Key Required)'
+            google: 'Google Translate (Free)',
+            microsoft_edge_auth: 'Microsoft Translate (Free)',
+            deepl: 'DeepL (API Key Required)',
         };
-        
+
         for (const providerId in availableProviders) {
             const option = document.createElement('option');
             option.value = providerId;
             const translationKey = availableProviders[providerId];
-            
+
             // Use translated text if available, otherwise use fallback
             if (loadedTranslations && loadedTranslations[translationKey]) {
                 option.textContent = loadedTranslations[translationKey].message;
             } else {
-                option.textContent = fallbackNames[providerId] || translationKey;
+                option.textContent =
+                    fallbackNames[providerId] || translationKey;
             }
-            
+
             translationProviderSelect.appendChild(option);
         }
     }
 
     function updateProviderSettings() {
         const selectedProvider = translationProviderSelect.value;
-        
+
         // Hide all provider cards first
         const googleCard = document.getElementById('googleProviderCard');
         const microsoftCard = document.getElementById('microsoftProviderCard');
         const deeplCard = document.getElementById('deeplProviderCard');
-        
+
         googleCard.style.display = 'none';
         microsoftCard.style.display = 'none';
         deeplCard.style.display = 'none';
-        
+
         // Show the selected provider card
         switch (selectedProvider) {
             case 'google':
@@ -104,18 +112,20 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-
-
     async function loadAndApplyLanguage() {
-        const items = await chrome.storage.sync.get(['uiLanguage', 'selectedProvider']);
+        const items = await chrome.storage.sync.get([
+            'uiLanguage',
+            'selectedProvider',
+        ]);
         const lang = items.uiLanguage || defaultSettings.uiLanguage;
-        const savedProvider = items.selectedProvider || defaultSettings.selectedProvider;
-        
+        const savedProvider =
+            items.selectedProvider || defaultSettings.selectedProvider;
+
         uiLanguageSelect.value = lang;
         loadedTranslations = await loadTranslations(lang);
         updateUILanguage();
         populateProviderDropdown(); // Re-populate provider dropdown with new language
-        
+
         // Restore the saved provider selection after re-populating
         if (availableProviders[savedProvider]) {
             translationProviderSelect.value = savedProvider;
@@ -132,29 +142,43 @@ document.addEventListener('DOMContentLoaded', function () {
         return new Promise((resolve) => {
             chrome.storage.sync.get(settingKeys, function (items) {
                 // General
-                uiLanguageSelect.value = items.uiLanguage || defaultSettings.uiLanguage;
-                hideOfficialSubtitlesCheckbox.checked = items.hideOfficialSubtitles !== undefined ? items.hideOfficialSubtitles : defaultSettings.hideOfficialSubtitles;
+                uiLanguageSelect.value =
+                    items.uiLanguage || defaultSettings.uiLanguage;
+                hideOfficialSubtitlesCheckbox.checked =
+                    items.hideOfficialSubtitles !== undefined
+                        ? items.hideOfficialSubtitles
+                        : defaultSettings.hideOfficialSubtitles;
 
                 // Translation
-                const selectedProvider = items.selectedProvider || defaultSettings.selectedProvider;
-                 if (availableProviders[selectedProvider]) {
+                const selectedProvider =
+                    items.selectedProvider || defaultSettings.selectedProvider;
+                if (availableProviders[selectedProvider]) {
                     translationProviderSelect.value = selectedProvider;
                 } else {
-                    translationProviderSelect.value = defaultSettings.selectedProvider;
+                    translationProviderSelect.value =
+                        defaultSettings.selectedProvider;
                 }
 
-                const batchSize = items.translationBatchSize !== undefined ? items.translationBatchSize : defaultSettings.translationBatchSize;
+                const batchSize =
+                    items.translationBatchSize !== undefined
+                        ? items.translationBatchSize
+                        : defaultSettings.translationBatchSize;
                 translationBatchSizeInput.value = batchSize;
                 translationBatchSizeValue.textContent = batchSize;
 
-                const delay = items.translationDelay !== undefined ? items.translationDelay : defaultSettings.translationDelay;
+                const delay =
+                    items.translationDelay !== undefined
+                        ? items.translationDelay
+                        : defaultSettings.translationDelay;
                 translationDelayInput.value = delay;
                 translationDelayValue.textContent = `${delay}ms`;
 
                 // Providers
-                deeplApiKeyInput.value = items.deeplApiKey || defaultSettings.deeplApiKey;
-                deeplApiPlanSelect.value = items.deeplApiPlan || defaultSettings.deeplApiPlan;
-                
+                deeplApiKeyInput.value =
+                    items.deeplApiKey || defaultSettings.deeplApiKey;
+                deeplApiPlanSelect.value =
+                    items.deeplApiPlan || defaultSettings.deeplApiPlan;
+
                 // Update provider settings visibility - now we're sure all DOM elements are set
                 updateProviderSettings();
                 resolve();
@@ -170,17 +194,17 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Navigation logic
-    navLinks.forEach(link => {
+    navLinks.forEach((link) => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
             const targetId = link.getAttribute('href').substring(1);
 
             // Update active link
-            navLinks.forEach(navLink => navLink.classList.remove('active'));
+            navLinks.forEach((navLink) => navLink.classList.remove('active'));
             link.classList.add('active');
 
             // Show target section
-            sections.forEach(section => {
+            sections.forEach((section) => {
                 if (section.id === targetId) {
                     section.classList.remove('hidden');
                 } else {
@@ -191,56 +215,86 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Event listeners
-    document.getElementById('uiLanguage').addEventListener('change', async function() {
-        const selectedLang = this.value;
-        saveSetting('uiLanguage', selectedLang);
-        await loadAndApplyLanguage();
-        console.log(`UI language changed to: ${selectedLang}`);
-    });
-    
+    document
+        .getElementById('uiLanguage')
+        .addEventListener('change', async function () {
+            const selectedLang = this.value;
+            saveSetting('uiLanguage', selectedLang);
+            await loadAndApplyLanguage();
+            console.log(`UI language changed to: ${selectedLang}`);
+        });
+
     // Hide official subtitles setting
-    document.getElementById('hideOfficialSubtitles').addEventListener('change', function() {
-        saveSetting('hideOfficialSubtitles', this.checked);
-        console.log(`Hide official subtitles changed to: ${this.checked}`);
-    });
-    
-    // Translation provider settings  
-    document.getElementById('translationProvider').addEventListener('change', function() {
-        saveSetting('selectedProvider', this.value);
-        updateProviderSettings();
-        console.log(`Translation provider changed to: ${this.value}`);
-    });
-    
+    document
+        .getElementById('hideOfficialSubtitles')
+        .addEventListener('change', function () {
+            saveSetting('hideOfficialSubtitles', this.checked);
+            console.log(`Hide official subtitles changed to: ${this.checked}`);
+        });
+
+    // Translation provider settings
+    document
+        .getElementById('translationProvider')
+        .addEventListener('change', function () {
+            saveSetting('selectedProvider', this.value);
+            updateProviderSettings();
+            console.log(`Translation provider changed to: ${this.value}`);
+        });
+
     // DeepL specific settings
-    deeplApiKeyInput.addEventListener('change', () => saveSetting('deeplApiKey', deeplApiKeyInput.value));
-    deeplApiPlanSelect.addEventListener('change', () => saveSetting('deeplApiPlan', deeplApiPlanSelect.value));
-    
+    deeplApiKeyInput.addEventListener('change', () =>
+        saveSetting('deeplApiKey', deeplApiKeyInput.value)
+    );
+    deeplApiPlanSelect.addEventListener('change', () =>
+        saveSetting('deeplApiPlan', deeplApiPlanSelect.value)
+    );
+
     // 安全地添加 DeepL 测试按钮的事件监听器
     // 检查 DeepLAPI 是否可用，如果不可用则禁用按钮并显示错误
-    if (typeof window.DeepLAPI !== 'undefined' && window.DeepLAPI && typeof window.DeepLAPI.testDeepLConnection === 'function') {
+    if (
+        typeof window.DeepLAPI !== 'undefined' &&
+        window.DeepLAPI &&
+        typeof window.DeepLAPI.testDeepLConnection === 'function'
+    ) {
         testDeepLButton.addEventListener('click', testDeepLConnection);
     } else {
         console.error('DeepLAPI is not available. Disabling testDeepLButton.');
         testDeepLButton.disabled = true;
-        testDeepLButton.textContent = getLocalizedText('deepLApiUnavailable', 'DeepL API Unavailable');
-        testDeepLButton.title = getLocalizedText('deepLApiUnavailableTooltip', 'DeepL API script failed to load');
-        
+        testDeepLButton.textContent = getLocalizedText(
+            'deepLApiUnavailable',
+            'DeepL API Unavailable'
+        );
+        testDeepLButton.title = getLocalizedText(
+            'deepLApiUnavailableTooltip',
+            'DeepL API script failed to load'
+        );
+
         // 为按钮添加点击处理，显示错误信息
         testDeepLButton.addEventListener('click', () => {
-            showTestResult(getLocalizedText('deeplApiNotLoadedError', '❌ DeepL API script is not available. Please refresh the page.'), 'error');
+            showTestResult(
+                getLocalizedText(
+                    'deeplApiNotLoadedError',
+                    '❌ DeepL API script is not available. Please refresh the page.'
+                ),
+                'error'
+            );
         });
     }
 
     // Performance settings
-    document.getElementById('translationBatchSize').addEventListener('change', function() {
-        saveSetting('translationBatchSize', parseInt(this.value));
-        translationBatchSizeValue.textContent = this.value;
-    });
+    document
+        .getElementById('translationBatchSize')
+        .addEventListener('change', function () {
+            saveSetting('translationBatchSize', parseInt(this.value));
+            translationBatchSizeValue.textContent = this.value;
+        });
 
-    document.getElementById('translationDelay').addEventListener('change', function() {
-        saveSetting('translationDelay', parseInt(this.value));
-        translationDelayValue.textContent = `${this.value}ms`;
-    });
+    document
+        .getElementById('translationDelay')
+        .addEventListener('change', function () {
+            saveSetting('translationDelay', parseInt(this.value));
+            translationDelayValue.textContent = `${this.value}ms`;
+        });
 
     // Translation Functions (similar to popup.js)
     async function loadTranslations(langCode) {
@@ -248,7 +302,9 @@ document.addEventListener('DOMContentLoaded', function () {
         if (translationsCache[normalizedLangCode]) {
             return translationsCache[normalizedLangCode];
         }
-        const translationsPath = chrome.runtime.getURL(`_locales/${normalizedLangCode}/messages.json`);
+        const translationsPath = chrome.runtime.getURL(
+            `_locales/${normalizedLangCode}/messages.json`
+        );
         try {
             const response = await fetch(translationsPath);
             if (response.ok) {
@@ -257,7 +313,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 return translations;
             }
         } catch (error) {
-            console.error(`Error fetching primary language ${normalizedLangCode}:`, error);
+            console.error(
+                `Error fetching primary language ${normalizedLangCode}:`,
+                error
+            );
         }
         // Fallback to English
         const fallbackLangCode = 'en';
@@ -265,7 +324,9 @@ document.addEventListener('DOMContentLoaded', function () {
             return translationsCache[fallbackLangCode];
         }
         try {
-            const fallbackPath = chrome.runtime.getURL(`_locales/${fallbackLangCode}/messages.json`);
+            const fallbackPath = chrome.runtime.getURL(
+                `_locales/${fallbackLangCode}/messages.json`
+            );
             const fallbackResponse = await fetch(fallbackPath);
             const fallbackTranslations = await fallbackResponse.json();
             translationsCache[fallbackLangCode] = fallbackTranslations;
@@ -278,13 +339,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function updateUILanguage() {
         if (!loadedTranslations) return;
-        document.querySelectorAll('[data-i18n]').forEach(elem => {
+        document.querySelectorAll('[data-i18n]').forEach((elem) => {
             const key = elem.getAttribute('data-i18n');
             if (loadedTranslations[key] && loadedTranslations[key].message) {
                 if (elem.tagName === 'TITLE') {
                     elem.textContent = loadedTranslations[key].message;
                 } else if (elem.placeholder) {
-                     elem.placeholder = loadedTranslations[key].message;
+                    elem.placeholder = loadedTranslations[key].message;
                 } else {
                     elem.textContent = loadedTranslations[key].message;
                 }
@@ -316,8 +377,18 @@ document.addEventListener('DOMContentLoaded', function () {
     // Test DeepL Connection
     async function testDeepLConnection() {
         // 运行时再次检查 DeepLAPI 是否可用
-        if (typeof window.DeepLAPI === 'undefined' || !window.DeepLAPI || typeof window.DeepLAPI.testDeepLConnection !== 'function') {
-            showTestResult(getLocalizedText('deeplApiNotLoadedError', '❌ DeepL API script is not available. Please refresh the page.'), 'error');
+        if (
+            typeof window.DeepLAPI === 'undefined' ||
+            !window.DeepLAPI ||
+            typeof window.DeepLAPI.testDeepLConnection !== 'function'
+        ) {
+            showTestResult(
+                getLocalizedText(
+                    'deeplApiNotLoadedError',
+                    '❌ DeepL API script is not available. Please refresh the page.'
+                ),
+                'error'
+            );
             return;
         }
 
@@ -325,67 +396,127 @@ document.addEventListener('DOMContentLoaded', function () {
         const apiPlan = deeplApiPlanSelect.value;
 
         if (!apiKey) {
-            showTestResult(getLocalizedText('deeplApiKeyError', 'Please enter your DeepL API key first.'), 'error');
+            showTestResult(
+                getLocalizedText(
+                    'deeplApiKeyError',
+                    'Please enter your DeepL API key first.'
+                ),
+                'error'
+            );
             return;
         }
 
         testDeepLButton.disabled = true;
-        testDeepLButton.textContent = getLocalizedText('testingButton', 'Testing...');
-        showTestResult(getLocalizedText('testingConnection', 'Testing DeepL connection...'), 'info');
+        testDeepLButton.textContent = getLocalizedText(
+            'testingButton',
+            'Testing...'
+        );
+        showTestResult(
+            getLocalizedText(
+                'testingConnection',
+                'Testing DeepL connection...'
+            ),
+            'info'
+        );
 
         try {
             // Use the shared DeepL API utility
-            const result = await window.DeepLAPI.testDeepLConnection(apiKey, apiPlan);
+            const result = await window.DeepLAPI.testDeepLConnection(
+                apiKey,
+                apiPlan
+            );
 
             if (result.success) {
-                showTestResult(getLocalizedText('deeplTestSuccess', '✅ DeepL API test successful! Translated "Hello" to "%s"', result.translatedText), 'success');
+                showTestResult(
+                    getLocalizedText(
+                        'deeplTestSuccess',
+                        '✅ DeepL API test successful! Translated "Hello" to "%s"',
+                        result.translatedText
+                    ),
+                    'success'
+                );
             } else {
                 let fallbackMessage;
-                
+
                 switch (result.error) {
                     case 'API_KEY_MISSING':
-                        fallbackMessage = getLocalizedText('deeplApiKeyError', 'Please enter your DeepL API key first.');
+                        fallbackMessage = getLocalizedText(
+                            'deeplApiKeyError',
+                            'Please enter your DeepL API key first.'
+                        );
                         break;
                     case 'UNEXPECTED_FORMAT':
-                        fallbackMessage = getLocalizedText('deeplTestUnexpectedFormat', '⚠️ DeepL API responded but with unexpected format');
+                        fallbackMessage = getLocalizedText(
+                            'deeplTestUnexpectedFormat',
+                            '⚠️ DeepL API responded but with unexpected format'
+                        );
                         break;
                     case 'HTTP_403':
-                        fallbackMessage = getLocalizedText('deeplTestInvalidKey', '❌ DeepL API key is invalid or has been rejected.');
+                        fallbackMessage = getLocalizedText(
+                            'deeplTestInvalidKey',
+                            '❌ DeepL API key is invalid or has been rejected.'
+                        );
                         break;
                     case 'HTTP_456':
-                        fallbackMessage = getLocalizedText('deeplTestQuotaExceeded', '❌ DeepL API quota exceeded. Please check your usage limits.');
+                        fallbackMessage = getLocalizedText(
+                            'deeplTestQuotaExceeded',
+                            '❌ DeepL API quota exceeded. Please check your usage limits.'
+                        );
                         break;
                     case 'NETWORK_ERROR':
-                        fallbackMessage = getLocalizedText('deeplTestNetworkError', '❌ Network error: Could not connect to DeepL API. Check your internet connection.');
+                        fallbackMessage = getLocalizedText(
+                            'deeplTestNetworkError',
+                            '❌ Network error: Could not connect to DeepL API. Check your internet connection.'
+                        );
                         break;
                     default:
                         if (result.error.startsWith('HTTP_')) {
-                            fallbackMessage = getLocalizedText('deeplTestApiError', '❌ DeepL API error (%d): %s', result.status, result.message || 'Unknown error');
+                            fallbackMessage = getLocalizedText(
+                                'deeplTestApiError',
+                                '❌ DeepL API error (%d): %s',
+                                result.status,
+                                result.message || 'Unknown error'
+                            );
                         } else {
-                            fallbackMessage = getLocalizedText('deeplTestGenericError', '❌ Test failed: %s', result.message);
+                            fallbackMessage = getLocalizedText(
+                                'deeplTestGenericError',
+                                '❌ Test failed: %s',
+                                result.message
+                            );
                         }
                         break;
                 }
 
-                const errorType = result.error === 'UNEXPECTED_FORMAT' ? 'warning' : 'error';
+                const errorType =
+                    result.error === 'UNEXPECTED_FORMAT' ? 'warning' : 'error';
                 showTestResult(fallbackMessage, errorType);
             }
         } catch (error) {
             console.error('DeepL test error:', error);
-            showTestResult(getLocalizedText('deeplTestGenericError', '❌ Test failed: %s', error.message), 'error');
+            showTestResult(
+                getLocalizedText(
+                    'deeplTestGenericError',
+                    '❌ Test failed: %s',
+                    error.message
+                ),
+                'error'
+            );
         } finally {
             testDeepLButton.disabled = false;
-            testDeepLButton.textContent = getLocalizedText('testDeepLButton', 'Test DeepL Connection');
+            testDeepLButton.textContent = getLocalizedText(
+                'testDeepLButton',
+                'Test DeepL Connection'
+            );
         }
     }
 
     function showTestResult(message, type) {
         deeplTestResult.style.display = 'block';
         deeplTestResult.textContent = message;
-        
+
         // Remove previous type classes
         deeplTestResult.classList.remove('success', 'error', 'warning', 'info');
-        
+
         // Add current type class
         deeplTestResult.classList.add(type);
     }
@@ -398,4 +529,4 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     init();
-}); 
+});
