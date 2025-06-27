@@ -74,7 +74,7 @@ export function getSupportedLanguageCodes() {
 export function isLanguageSupported(langCode) {
     if (!langCode) return false;
     const lowerCaseCode = langCode.toLowerCase();
-    return normalizedMap.hasOwnProperty(lowerCaseCode);
+    return Object.prototype.hasOwnProperty.call(normalizedMap, lowerCaseCode);
 }
 
 /**

@@ -283,7 +283,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             }
             break;
             
-        case "changeLanguage":
+        case "changeLanguage": {
             subtitleUtils.setUserTargetLanguage(request.targetLanguage);
             const currentContextVideoIdLang = activePlatform ? activePlatform.getCurrentVideoId() : null;
             
@@ -294,51 +294,59 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             }
             sendResponse({ success: true, newLanguage: request.targetLanguage });
             break;
+        }
             
-        case "changeTimeOffset":
+        case "changeTimeOffset": {
             subtitleUtils.setUserSubtitleTimeOffset(request.timeOffset);
             needsDisplayUpdate = true;
             sendResponse({ success: true, newTimeOffset: request.timeOffset });
             break;
+        }
             
-        case "changeLayoutOrder":
+        case "changeLayoutOrder": {
             subtitleUtils.setUserSubtitleLayoutOrder(request.layoutOrder);
             subtitleUtils.applySubtitleStyling();
             needsDisplayUpdate = true;
             sendResponse({ success: true, newLayoutOrder: request.layoutOrder });
             break;
+        }
             
-        case "changeLayoutOrientation":
+        case "changeLayoutOrientation": {
             subtitleUtils.setUserSubtitleOrientation(request.layoutOrientation);
             subtitleUtils.applySubtitleStyling();
             needsDisplayUpdate = true;
             sendResponse({ success: true, newLayoutOrientation: request.layoutOrientation });
             break;
+        }
             
-        case "changeFontSize":
+        case "changeFontSize": {
             subtitleUtils.setUserSubtitleFontSize(request.fontSize);
             needsDisplayUpdate = true;
             sendResponse({ success: true, newFontSize: request.fontSize });
             break;
+        }
             
-        case "changeGap":
+        case "changeGap": {
             subtitleUtils.setUserSubtitleGap(request.gap);
             subtitleUtils.applySubtitleStyling();
             needsDisplayUpdate = true;
             sendResponse({ success: true, newGap: request.gap });
             break;
+        }
             
-        case "changeBatchSize":
+        case "changeBatchSize": {
             subtitleUtils.setUserTranslationBatchSize(request.batchSize);
             sendResponse({ success: true, newBatchSize: request.batchSize });
             break;
+        }
             
-        case "changeDelay":
+        case "changeDelay": {
             subtitleUtils.setUserTranslationDelay(request.delay);
             sendResponse({ success: true, newDelay: request.delay });
             break;
+        }
             
-        case "changeOriginalLanguage":
+        case "changeOriginalLanguage": {
             subtitleUtils.setUserOriginalLanguage(request.originalLanguage);
             const currentContextVideoIdOrig = activePlatform ? activePlatform.getCurrentVideoId() : null;
             
@@ -357,8 +365,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             }
             sendResponse({ success: true, newOriginalLanguage: request.originalLanguage });
             break;
+        }
             
-        case "changeUseNativeSubtitles":
+        case "changeUseNativeSubtitles": {
             subtitleUtils.setUserUseNativeSubtitles(request.useNativeSubtitles);
             const currentContextVideoIdNative = activePlatform ? activePlatform.getCurrentVideoId() : null;
             
@@ -377,16 +386,19 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             }
             sendResponse({ success: true, newUseNativeSubtitles: request.useNativeSubtitles });
             break;
+        }
             
-        case "changeTranslationProvider":
+        case "changeTranslationProvider": {
             sendResponse({ success: true });
             break;
-            
-        default:
+        }
+        
+        default: {
             actionHandled = false;
             console.warn(`${LOG_PREFIX}: Unknown action received:`, request.action);
             sendResponse({ success: false, error: `Unknown action: ${request.action}` });
             break;
+        }
     }
 
     if (actionHandled && needsDisplayUpdate && subtitleUtils.subtitlesActive && activePlatform) {
