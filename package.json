@@ -1,0 +1,28 @@
+{
+  "name": "dualsub",
+  "version": "1.0.0",
+  "description": "![](https://img.shields.io/github/v/release/QuellaMC/DualSub.svg) ![](https://img.shields.io/github/last-commit/QuellaMC/DualSub.svg)",
+  "main": "background.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/QuellaMC/DualSub.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/QuellaMC/DualSub/issues"
+  },
+  "homepage": "https://github.com/QuellaMC/DualSub#readme",
+  "devDependencies": {
+    "@eslint/js": "^9.29.0",
+    "eslint": "^9.29.0",
+    "eslint-config-prettier": "^10.1.5",
+    "globals": "^16.2.0",
+    "prettier": "^3.6.2"
+  }
+}

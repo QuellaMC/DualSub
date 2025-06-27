@@ -1,0 +1,2 @@
+# Ignore build artifacts and dependencies
+node_modules/
