@@ -20,7 +20,10 @@ export class DisneyPlusPlatform extends VideoPlatform {
 
     isPlayerPageActive() {
         // For Disney+, player pages typically include "/video/" in the pathname.
-        return window.location.pathname.includes('/video/') || window.location.pathname.includes('/play/');
+        return (
+            window.location.pathname.includes('/video/') ||
+            window.location.pathname.includes('/play/')
+        );
     }
 
     async initialize(onSubtitleUrlFound, onVideoIdChange) {
@@ -29,43 +32,49 @@ export class DisneyPlusPlatform extends VideoPlatform {
         this.onSubtitleUrlFoundCallback = onSubtitleUrlFound;
         this.onVideoIdChangeCallback = onVideoIdChange;
 
-
         // Store the bound listener to be able to remove it later
         this.eventListener = this._handleInjectorEvents.bind(this);
         document.addEventListener(INJECT_EVENT_ID, this.eventListener);
-        
+
         // Set up storage listener for subtitle settings
         const disneyPlusSubtitleSelectors = [
             '.TimedTextOverlay',
             '.hive-subtitle-renderer-wrapper',
             '.hive-subtitle-renderer-cue-positioning-box',
-            '.hive-subtitle-renderer-cue-window'
+            '.hive-subtitle-renderer-cue-window',
         ];
         this.setupNativeSubtitleSettingsListener(disneyPlusSubtitleSelectors);
-        
-        console.log("DisneyPlusPlatform: Initialized and event listener added.");
+
+        console.log(
+            'DisneyPlusPlatform: Initialized and event listener added.'
+        );
     }
-
-
 
     _handleInjectorEvents(e) {
         const data = e.detail;
         if (!data || !data.type) return;
 
         if (data.type === 'INJECT_SCRIPT_READY') {
-            console.log("DisneyPlusPlatform: Inject script is ready.");
+            console.log('DisneyPlusPlatform: Inject script is ready.');
         } else if (data.type === 'SUBTITLE_URL_FOUND') {
             const injectedVideoId = data.videoId;
             const vttMasterUrl = data.url;
 
             if (!injectedVideoId) {
-                console.error("DisneyPlusPlatform: SUBTITLE_URL_FOUND event without a videoId. URL:", vttMasterUrl);
+                console.error(
+                    'DisneyPlusPlatform: SUBTITLE_URL_FOUND event without a videoId. URL:',
+                    vttMasterUrl
+                );
                 return;
             }
-            console.log(`DisneyPlusPlatform: SUBTITLE_URL_FOUND for injectedVideoId: '${injectedVideoId}'. URL: ${vttMasterUrl}`);
+            console.log(
+                `DisneyPlusPlatform: SUBTITLE_URL_FOUND for injectedVideoId: '${injectedVideoId}'. URL: ${vttMasterUrl}`
+            );
 
             if (this.currentVideoId !== injectedVideoId) {
-                console.log(`DisneyPlusPlatform: Video context changing from '${this.currentVideoId || "null"}' to '${injectedVideoId}'.`);
+                console.log(
+                    `DisneyPlusPlatform: Video context changing from '${this.currentVideoId || 'null'}' to '${injectedVideoId}'.`
+                );
                 if (this.currentVideoId) {
                     delete this.lastKnownVttUrlForVideoId[this.currentVideoId];
                 }
@@ -73,58 +82,104 @@ export class DisneyPlusPlatform extends VideoPlatform {
                 if (this.onVideoIdChangeCallback) {
                     this.onVideoIdChangeCallback(this.currentVideoId);
                 }
-            } else if (this.lastKnownVttUrlForVideoId[this.currentVideoId] === vttMasterUrl) {
-                console.log(`DisneyPlusPlatform: VTT URL ${vttMasterUrl} for videoId ${this.currentVideoId} already processed or known. Triggering re-evaluation if callback exists.`);
+            } else if (
+                this.lastKnownVttUrlForVideoId[this.currentVideoId] ===
+                vttMasterUrl
+            ) {
+                console.log(
+                    `DisneyPlusPlatform: VTT URL ${vttMasterUrl} for videoId ${this.currentVideoId} already processed or known. Triggering re-evaluation if callback exists.`
+                );
                 // If content.js needs to re-evaluate subtitles with existing data, it can do so.
                 // For now, we assume if the URL is the same, no new fetch is needed unless forced by content.js logic
                 // Potentially, we could resend the last known VTT text here if onSubtitleUrlFoundCallback expects it every time.
                 return; // Or decide if re-sending old data is needed.
             }
 
-            console.log("DisneyPlusPlatform: Requesting VTT from background. URL:", vttMasterUrl, "Video ID:", this.currentVideoId);
-            
+            console.log(
+                'DisneyPlusPlatform: Requesting VTT from background. URL:',
+                vttMasterUrl,
+                'Video ID:',
+                this.currentVideoId
+            );
+
             // Get user settings for language preferences
-            chrome.storage.sync.get(['targetLanguage', 'originalLanguage'], (settings) => {
-                const targetLanguage = settings.targetLanguage || 'zh-CN';
-                const originalLanguage = settings.originalLanguage || 'en';
-                
-                chrome.runtime.sendMessage({ 
-                    action: "fetchVTT", 
-                    url: vttMasterUrl, 
-                    videoId: this.currentVideoId,
-                    targetLanguage: targetLanguage,
-                    originalLanguage: originalLanguage
-                }, (response) => {
-                    if (chrome.runtime.lastError) {
-                        console.error("DisneyPlusPlatform: Error for VTT fetch:", chrome.runtime.lastError.message, "URL:", vttMasterUrl);
-                        return;
-                    }
-                    if (response && response.success && response.videoId === this.currentVideoId) {
-                        console.log(`DisneyPlusPlatform: VTT fetched successfully for ${this.currentVideoId}.`);
-                        this.lastKnownVttUrlForVideoId[this.currentVideoId] = response.url; 
-                        if (this.onSubtitleUrlFoundCallback) {
-                            this.onSubtitleUrlFoundCallback({ 
-                                vttText: response.vttText, 
-                                targetVttText: response.targetVttText,
-                                videoId: response.videoId, 
-                                url: response.url,
-                                sourceLanguage: response.sourceLanguage,
-                                targetLanguage: response.targetLanguage,
-                                useNativeTarget: response.useNativeTarget,
-                                availableLanguages: response.availableLanguages,
-                                selectedLanguage: response.selectedLanguage,
-                                targetLanguageInfo: response.targetLanguageInfo
-                            });
+            chrome.storage.sync.get(
+                ['targetLanguage', 'originalLanguage'],
+                (settings) => {
+                    const targetLanguage = settings.targetLanguage || 'zh-CN';
+                    const originalLanguage = settings.originalLanguage || 'en';
+
+                    chrome.runtime.sendMessage(
+                        {
+                            action: 'fetchVTT',
+                            url: vttMasterUrl,
+                            videoId: this.currentVideoId,
+                            targetLanguage: targetLanguage,
+                            originalLanguage: originalLanguage,
+                        },
+                        (response) => {
+                            if (chrome.runtime.lastError) {
+                                console.error(
+                                    'DisneyPlusPlatform: Error for VTT fetch:',
+                                    chrome.runtime.lastError.message,
+                                    'URL:',
+                                    vttMasterUrl
+                                );
+                                return;
+                            }
+                            if (
+                                response &&
+                                response.success &&
+                                response.videoId === this.currentVideoId
+                            ) {
+                                console.log(
+                                    `DisneyPlusPlatform: VTT fetched successfully for ${this.currentVideoId}.`
+                                );
+                                this.lastKnownVttUrlForVideoId[
+                                    this.currentVideoId
+                                ] = response.url;
+                                if (this.onSubtitleUrlFoundCallback) {
+                                    this.onSubtitleUrlFoundCallback({
+                                        vttText: response.vttText,
+                                        targetVttText: response.targetVttText,
+                                        videoId: response.videoId,
+                                        url: response.url,
+                                        sourceLanguage: response.sourceLanguage,
+                                        targetLanguage: response.targetLanguage,
+                                        useNativeTarget:
+                                            response.useNativeTarget,
+                                        availableLanguages:
+                                            response.availableLanguages,
+                                        selectedLanguage:
+                                            response.selectedLanguage,
+                                        targetLanguageInfo:
+                                            response.targetLanguageInfo,
+                                    });
+                                }
+                            } else if (response && !response.success) {
+                                console.error(
+                                    'DisneyPlusPlatform: Background failed to fetch VTT:',
+                                    response.error || 'Unknown',
+                                    'URL:',
+                                    response.url
+                                );
+                            } else if (
+                                response &&
+                                response.videoId !== this.currentVideoId
+                            ) {
+                                console.warn(
+                                    `DisneyPlusPlatform: Received VTT for '${response.videoId}', but current context is '${this.currentVideoId}'. Discarding.`
+                                );
+                            } else {
+                                console.error(
+                                    'DisneyPlusPlatform: No/invalid response from background for fetchVTT. URL:',
+                                    vttMasterUrl
+                                );
+                            }
                         }
-                    } else if (response && !response.success) {
-                        console.error("DisneyPlusPlatform: Background failed to fetch VTT:", response.error || "Unknown", "URL:", response.url);
-                    } else if (response && response.videoId !== this.currentVideoId) {
-                        console.warn(`DisneyPlusPlatform: Received VTT for '${response.videoId}', but current context is '${this.currentVideoId}'. Discarding.`);
-                    } else {
-                        console.error("DisneyPlusPlatform: No/invalid response from background for fetchVTT. URL:", vttMasterUrl);
-                    }
-                });
-            });
+                    );
+                }
+            );
         }
     }
 
@@ -146,23 +201,27 @@ export class DisneyPlusPlatform extends VideoPlatform {
         const videoElement = this.getVideoElement();
         if (!videoElement) return null;
 
-        const playerParent = videoElement.closest('div[data-testid="webAppRootView"], body');
-        const sliderSelector = 'div.slider-container[role="slider"]'; 
-        return playerParent ? playerParent.querySelector(sliderSelector) : document.querySelector(`div.progress-bar ${sliderSelector}`);
+        const playerParent = videoElement.closest(
+            'div[data-testid="webAppRootView"], body'
+        );
+        const sliderSelector = 'div.slider-container[role="slider"]';
+        return playerParent
+            ? playerParent.querySelector(sliderSelector)
+            : document.querySelector(`div.progress-bar ${sliderSelector}`);
     }
-    
+
     handleNativeSubtitles() {
         // Disney+ subtitle containers to hide (actual selectors from Disney+ DOM)
         const disneyPlusSubtitleSelectors = [
             '.TimedTextOverlay',
             '.hive-subtitle-renderer-wrapper',
             '.hive-subtitle-renderer-cue-positioning-box',
-            '.hive-subtitle-renderer-cue-window'
+            '.hive-subtitle-renderer-cue-window',
         ];
-        
+
         // Use the utility method from the base class
         this.handleNativeSubtitlesWithSetting(disneyPlusSubtitleSelectors);
-        
+
         // Also set up monitoring system like Netflix
         this.setupDisneyPlusSubtitleMonitoring();
     }
@@ -170,7 +229,7 @@ export class DisneyPlusPlatform extends VideoPlatform {
     setupDisneyPlusSubtitleMonitoring() {
         // Add CSS to force hide Disney+ subtitles when needed
         this.addDisneyPlusSubtitleCSS();
-        
+
         // Monitor for dynamically created subtitle elements
         this.setupSubtitleMutationObserver();
     }
@@ -179,13 +238,13 @@ export class DisneyPlusPlatform extends VideoPlatform {
         // Add CSS rules that are more specific and use !important
         const cssId = 'dualsub-disneyplus-subtitle-hider';
         let styleElement = document.getElementById(cssId);
-        
+
         if (!styleElement) {
             styleElement = document.createElement('style');
             styleElement.id = cssId;
             document.head.appendChild(styleElement);
         }
-        
+
         // CSS rules that will be applied when hiding is enabled
         const hidingCSS = `
             .TimedTextOverlay[data-dualsub-hidden="true"] {
@@ -209,7 +268,7 @@ export class DisneyPlusPlatform extends VideoPlatform {
                 opacity: 0 !important;
             }
         `;
-        
+
         styleElement.textContent = hidingCSS;
     }
 
@@ -218,26 +277,32 @@ export class DisneyPlusPlatform extends VideoPlatform {
         if (this.subtitleObserver) {
             this.subtitleObserver.disconnect();
         }
-        
+
         // Set up mutation observer to catch dynamically created subtitle elements
         this.subtitleObserver = new MutationObserver((mutations) => {
             let foundNewSubtitles = false;
-            
+
             mutations.forEach((mutation) => {
                 if (mutation.type === 'childList') {
                     mutation.addedNodes.forEach((node) => {
                         if (node.nodeType === Node.ELEMENT_NODE) {
                             // Check if the added node or its children contain subtitle elements
-                            if (node.classList?.contains('TimedTextOverlay') || 
-                                node.classList?.contains('hive-subtitle-renderer-wrapper') ||
-                                node.querySelector?.('.TimedTextOverlay, .hive-subtitle-renderer-wrapper')) {
+                            if (
+                                node.classList?.contains('TimedTextOverlay') ||
+                                node.classList?.contains(
+                                    'hive-subtitle-renderer-wrapper'
+                                ) ||
+                                node.querySelector?.(
+                                    '.TimedTextOverlay, .hive-subtitle-renderer-wrapper'
+                                )
+                            ) {
                                 foundNewSubtitles = true;
                             }
                         }
                     });
                 }
             });
-            
+
             if (foundNewSubtitles) {
                 // Reapply hiding rules after a short delay
                 setTimeout(() => {
@@ -245,27 +310,29 @@ export class DisneyPlusPlatform extends VideoPlatform {
                 }, 100);
             }
         });
-        
+
         // Start observing the document body for changes
         this.subtitleObserver.observe(document.body, {
             childList: true,
-            subtree: true
+            subtree: true,
         });
     }
 
     applyCurrentSubtitleSetting() {
         chrome.storage.sync.get(['hideOfficialSubtitles'], (result) => {
             const hideOfficialSubtitles = result.hideOfficialSubtitles || false;
-            
+
             const disneyPlusSubtitleSelectors = [
                 '.TimedTextOverlay',
                 '.hive-subtitle-renderer-wrapper',
                 '.hive-subtitle-renderer-cue-positioning-box',
-                '.hive-subtitle-renderer-cue-window'
+                '.hive-subtitle-renderer-cue-window',
             ];
-            
+
             if (hideOfficialSubtitles) {
-                this.hideOfficialSubtitleContainers(disneyPlusSubtitleSelectors);
+                this.hideOfficialSubtitleContainers(
+                    disneyPlusSubtitleSelectors
+                );
             } else {
                 this.showOfficialSubtitleContainers();
             }
@@ -276,28 +343,30 @@ export class DisneyPlusPlatform extends VideoPlatform {
         if (this.eventListener) {
             document.removeEventListener(INJECT_EVENT_ID, this.eventListener);
             this.eventListener = null;
-            console.log("DisneyPlusPlatform: Event listener removed.");
+            console.log('DisneyPlusPlatform: Event listener removed.');
         }
-        
+
         // Clean up storage listener for subtitle settings
         this.cleanupNativeSubtitleSettingsListener();
-        
+
         // Clean up mutation observer
         if (this.subtitleObserver) {
             this.subtitleObserver.disconnect();
             this.subtitleObserver = null;
         }
-        
+
         // Remove our custom CSS
-        const cssElement = document.getElementById('dualsub-disneyplus-subtitle-hider');
+        const cssElement = document.getElementById(
+            'dualsub-disneyplus-subtitle-hider'
+        );
         if (cssElement) {
             cssElement.remove();
         }
-        
+
         this.currentVideoId = null;
         this.onSubtitleUrlFoundCallback = null;
         this.onVideoIdChangeCallback = null;
         this.lastKnownVttUrlForVideoId = {};
-        console.log("DisneyPlusPlatform: Cleaned up.");
+        console.log('DisneyPlusPlatform: Cleaned up.');
     }
-} 
+}

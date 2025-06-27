@@ -4,35 +4,35 @@
 const languageNormalizationCache = new Map();
 
 const normalizedMap = {
-    'en': 'en',
+    en: 'en',
     'en-us': 'en',
-    'es': 'es',
+    es: 'es',
     'es-419': 'es', // Latin American Spanish
     'es-es': 'es', // European Spanish
-    'fr': 'fr',
+    fr: 'fr',
     'fr-ca': 'fr', // Canadian French
     'fr-fr': 'fr', // European French
-    'de': 'de',
+    de: 'de',
     'de-de': 'de',
-    'it': 'it',
+    it: 'it',
     'it-it': 'it',
-    'pt': 'pt',
+    pt: 'pt',
     'pt-br': 'pt', // Brazilian Portuguese
     'pt-pt': 'pt', // European Portuguese
-    'ja': 'ja',
+    ja: 'ja',
     'ja-jp': 'ja',
-    'ko': 'ko',
+    ko: 'ko',
     'ko-kr': 'ko',
-    'zh': 'zh-CN',
+    zh: 'zh-CN',
     'zh-cn': 'zh-CN',
     'zh-hans': 'zh-CN', // Simplified Chinese
     'zh-tw': 'zh-TW',
     'zh-hant': 'zh-TW', // Traditional Chinese
-    'ru': 'ru',
+    ru: 'ru',
     'ru-ru': 'ru',
-    'ar': 'ar',
-    'hi': 'hi',
-    'hi-in': 'hi'
+    ar: 'ar',
+    hi: 'hi',
+    'hi-in': 'hi',
 };
 
 /**
@@ -42,7 +42,10 @@ const normalizedMap = {
  */
 export function normalizeLanguageCode(platformLangCode) {
     if (!platformLangCode || typeof platformLangCode !== 'string') {
-        console.warn('LanguageNormalization: Invalid language code provided:', platformLangCode);
+        console.warn(
+            'LanguageNormalization: Invalid language code provided:',
+            platformLangCode
+        );
         return 'en';
     }
 
@@ -82,4 +85,4 @@ export function isLanguageSupported(langCode) {
  */
 export function clearCache() {
     languageNormalizationCache.clear();
-} 
+}

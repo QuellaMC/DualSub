@@ -1,120 +1,166 @@
 {
-  "appName": { "message": "DualSub" },
-  "appDesc": { "message": "Displays dual language subtitles on streaming platforms." },
-  "pageTitle": { "message": "DualSub Settings" },
-  "h1Title": { "message": "DualSub" },
-  "enableSubtitlesLabel": { "message": "Enable Dual Subtitles:" },
-  "useNativeSubtitlesLabel": { "message": "Use Official Subtitles:" },
-  "originalLanguageLabel": { "message": "Language Set:" },
-  "translationSettingsLegend": { "message": "Translation Settings" },
-  "providerLabel": { "message": "Provider:" },
-  "targetLanguageLabel": { "message": "Translate to:" },
-  "batchSizeLabel": { "message": "Batch Size:" },
-  "requestDelayLabel": { "message": "Request Delay (ms):" },
-  "subtitleAppearanceTimingLegend": { "message": "Subtitle Appearance & Timing" },
-  "displayOrderLabel": { "message": "Display Order:" },
-  "layoutLabel": { "message": "Layout:" },
-  "fontSizeLabel": { "message": "Font Size:" },
-  "verticalGapLabel": { "message": "Vertical Gap:" },
-  "timeOffsetLabel": { "message": "Time Offset(s):" },
-  "displayOrderOriginalFirst": { "message": "Original First" },
-  "displayOrderTranslationFirst": { "message": "Translation First" },
-  "layoutTopBottom": { "message": "Top / Bottom" },
-  "layoutLeftRight": { "message": "Left / Right" },
-  "uiLanguageLabel": { "message": "Language:" },
-  "openOptionsButton": { "message": "Advanced Settings" },
-  "statusLanguageSetTo": { "message": "Language Set (Refresh Page): " },
-  "statusDualEnabled": { "message": "Dual Subtitles Enabled. (Refresh Page)" },
-  "statusDualDisabled": { "message": "Dual Subtitles Disabled. (Refresh Page)" },
-  "statusSmartTranslationEnabled": { "message": "Smart Translation Enabled. (Refresh Page)" },
-  "statusSmartTranslationDisabled": { "message": "Smart Translation Disabled. (Refresh Page)" },
-  "statusOriginalLanguage": { "message": "Language Set (Refresh Page): " },
-  "statusTimeOffset": { "message": "Time offset: " },
-  "statusDisplayOrderUpdated": { "message": "Display order updated." },
-  "statusLayoutOrientationUpdated": { "message": "Layout orientation updated." },
-  "statusFontSize": { "message": "Font size: " },
-  "statusVerticalGap": { "message": "Vertical gap: " },
-  "statusInvalidOffset": { "message": "Invalid offset, reverting." },
-  "statusSettingNotApplied": { "message": "Setting not applied. Refresh page." },
+    "appName": { "message": "DualSub" },
+    "appDesc": {
+        "message": "Displays dual language subtitles on streaming platforms."
+    },
+    "pageTitle": { "message": "DualSub Settings" },
+    "h1Title": { "message": "DualSub" },
+    "enableSubtitlesLabel": { "message": "Enable Dual Subtitles:" },
+    "useNativeSubtitlesLabel": { "message": "Use Official Subtitles:" },
+    "originalLanguageLabel": { "message": "Language Set:" },
+    "translationSettingsLegend": { "message": "Translation Settings" },
+    "providerLabel": { "message": "Provider:" },
+    "targetLanguageLabel": { "message": "Translate to:" },
+    "batchSizeLabel": { "message": "Batch Size:" },
+    "requestDelayLabel": { "message": "Request Delay (ms):" },
+    "subtitleAppearanceTimingLegend": {
+        "message": "Subtitle Appearance & Timing"
+    },
+    "displayOrderLabel": { "message": "Display Order:" },
+    "layoutLabel": { "message": "Layout:" },
+    "fontSizeLabel": { "message": "Font Size:" },
+    "verticalGapLabel": { "message": "Vertical Gap:" },
+    "timeOffsetLabel": { "message": "Time Offset(s):" },
+    "displayOrderOriginalFirst": { "message": "Original First" },
+    "displayOrderTranslationFirst": { "message": "Translation First" },
+    "layoutTopBottom": { "message": "Top / Bottom" },
+    "layoutLeftRight": { "message": "Left / Right" },
+    "uiLanguageLabel": { "message": "Language:" },
+    "openOptionsButton": { "message": "Advanced Settings" },
+    "statusLanguageSetTo": { "message": "Language Set (Refresh Page): " },
+    "statusDualEnabled": {
+        "message": "Dual Subtitles Enabled. (Refresh Page)"
+    },
+    "statusDualDisabled": {
+        "message": "Dual Subtitles Disabled. (Refresh Page)"
+    },
+    "statusSmartTranslationEnabled": {
+        "message": "Smart Translation Enabled. (Refresh Page)"
+    },
+    "statusSmartTranslationDisabled": {
+        "message": "Smart Translation Disabled. (Refresh Page)"
+    },
+    "statusOriginalLanguage": { "message": "Language Set (Refresh Page): " },
+    "statusTimeOffset": { "message": "Time offset: " },
+    "statusDisplayOrderUpdated": { "message": "Display order updated." },
+    "statusLayoutOrientationUpdated": {
+        "message": "Layout orientation updated."
+    },
+    "statusFontSize": { "message": "Font size: " },
+    "statusVerticalGap": { "message": "Vertical gap: " },
+    "statusInvalidOffset": { "message": "Invalid offset, reverting." },
+    "statusSettingNotApplied": {
+        "message": "Setting not applied. Refresh page."
+    },
 
-  "optionsPageTitle": { "message": "DualSub Options" },
-  "optionsH1Title": { "message": "DualSub" },
-  "navGeneral": { "message": "General" },
-  "navTranslation": { "message": "Translation" },
-  "navProviders": { "message": "Providers" },
-  "navAbout": { "message": "About" },
-  "sectionGeneral": { "message": "General" },
-  "cardUILanguageTitle": { "message": "UI Language" },
-  "cardUILanguageDesc": { "message": "Choose the display language for the extension's interface." },
-  "cardHideOfficialSubtitlesTitle": { "message": "Hide Official Subtitles" },
-  "cardHideOfficialSubtitlesDesc": { "message": "Hide the official subtitles from the video platform when DualSub is active." },
-  "hideOfficialSubtitlesLabel": { "message": "Hide official subtitles:" },
-  "sectionTranslation": { "message": "Translation" },
-  "cardTranslationEngineTitle": { "message": "Translation Engine" },
-  "cardTranslationEngineDesc": { "message": "Select your preferred translation service." },
-  "cardPerformanceTitle": { "message": "Performance" },
-  "cardPerformanceDesc": { "message": "Adjust how the extension handles translation requests to balance speed and stability." },
-  "sectionProviders": { "message": "Provider Settings" },
-  "cardDeepLTitle": { "message": "DeepL" },
-  "cardDeepLDesc": { "message": "Enter your API key for DeepL Translate. Choose between Free and Pro plans." },
-  "apiKeyLabel": { "message": "API Key:" },
-  "apiPlanLabel": { "message": "API Plan:" },
-  "apiPlanFree": { "message": "DeepL API Free" },
-  "apiPlanPro": { "message": "DeepL API Pro" },
-  "sectionAbout": { "message": "About" },
-  "cardAboutTitle": { "message": "DualSub" },
-  "aboutVersion": { "message": "Version" },
-  "aboutDescription": { "message": "This extension helps you watch videos with dual language subtitles on various platforms." },
-  "aboutDevelopment": { "message": "Developed by QuellaMC & 1jifang." },
+    "optionsPageTitle": { "message": "DualSub Options" },
+    "optionsH1Title": { "message": "DualSub" },
+    "navGeneral": { "message": "General" },
+    "navTranslation": { "message": "Translation" },
+    "navProviders": { "message": "Providers" },
+    "navAbout": { "message": "About" },
+    "sectionGeneral": { "message": "General" },
+    "cardUILanguageTitle": { "message": "UI Language" },
+    "cardUILanguageDesc": {
+        "message": "Choose the display language for the extension's interface."
+    },
+    "cardHideOfficialSubtitlesTitle": { "message": "Hide Official Subtitles" },
+    "cardHideOfficialSubtitlesDesc": {
+        "message": "Hide the official subtitles from the video platform when DualSub is active."
+    },
+    "hideOfficialSubtitlesLabel": { "message": "Hide official subtitles:" },
+    "sectionTranslation": { "message": "Translation" },
+    "cardTranslationEngineTitle": { "message": "Translation Engine" },
+    "cardTranslationEngineDesc": {
+        "message": "Select your preferred translation service."
+    },
+    "cardPerformanceTitle": { "message": "Performance" },
+    "cardPerformanceDesc": {
+        "message": "Adjust how the extension handles translation requests to balance speed and stability."
+    },
+    "sectionProviders": { "message": "Provider Settings" },
+    "cardDeepLTitle": { "message": "DeepL" },
+    "cardDeepLDesc": {
+        "message": "Enter your API key for DeepL Translate. Choose between Free and Pro plans."
+    },
+    "apiKeyLabel": { "message": "API Key:" },
+    "apiPlanLabel": { "message": "API Plan:" },
+    "apiPlanFree": { "message": "DeepL API Free" },
+    "apiPlanPro": { "message": "DeepL API Pro" },
+    "sectionAbout": { "message": "About" },
+    "cardAboutTitle": { "message": "DualSub" },
+    "aboutVersion": { "message": "Version" },
+    "aboutDescription": {
+        "message": "This extension helps you watch videos with dual language subtitles on various platforms."
+    },
+    "aboutDevelopment": { "message": "Developed by QuellaMC & 1jifang." },
 
-  "lang_en": { "message": "English" },
-  "lang_es": { "message": "Spanish" },
-  "lang_fr": { "message": "French" },
-  "lang_de": { "message": "German" },
-  "lang_it": { "message": "Italian" },
-  "lang_pt": { "message": "Portuguese" },
-  "lang_ja": { "message": "Japanese" },
-  "lang_ko": { "message": "Korean" },
-  "lang_zh_CN": { "message": "Chinese (Simp)" },
-  "lang_zh_TW": { "message": "Chinese (Trad)" },
-  "lang_ru": { "message": "Russian" },
-  "lang_ar": { "message": "Arabic" },
-  "lang_hi": { "message": "Hindi" },
+    "lang_en": { "message": "English" },
+    "lang_es": { "message": "Spanish" },
+    "lang_fr": { "message": "French" },
+    "lang_de": { "message": "German" },
+    "lang_it": { "message": "Italian" },
+    "lang_pt": { "message": "Portuguese" },
+    "lang_ja": { "message": "Japanese" },
+    "lang_ko": { "message": "Korean" },
+    "lang_zh_CN": { "message": "Chinese (Simp)" },
+    "lang_zh_TW": { "message": "Chinese (Trad)" },
+    "lang_ru": { "message": "Russian" },
+    "lang_ar": { "message": "Arabic" },
+    "lang_hi": { "message": "Hindi" },
 
-  "testDeepLButton": { "message": "Test DeepL Connection" },
-  "deeplApiKeyError": { "message": "Please enter your DeepL API key first." },
-  "testingButton": { "message": "Testing..." },
-  "testingConnection": { "message": "Testing DeepL connection..." },
-  "deeplTestSuccess": { "message": "✅ DeepL API test successful! Translated \"Hello\" to \"%s\"" },
-  "deeplTestUnexpectedFormat": { "message": "⚠️ DeepL API responded but with unexpected format" },
-  "deeplTestInvalidKey": { "message": "❌ DeepL API key is invalid or has been rejected." },
-  "deeplTestQuotaExceeded": { "message": "❌ DeepL API quota exceeded. Please check your usage limits." },
-  "deeplTestApiError": { "message": "❌ DeepL API error (%d): %s" },
-  "deeplTestNetworkError": { "message": "❌ Network error: Could not connect to DeepL API. Check your internet connection." },
-  "deeplTestGenericError": { "message": "❌ Test failed: %s" },
-  "deepLApiUnavailable": { "message": "DeepL API Unavailable" },
-  "deepLApiUnavailableTooltip": { "message": "DeepL API script failed to load" },
-  "deeplApiNotLoadedError": { "message": "❌ DeepL API script is not available. Please refresh the page." },
+    "testDeepLButton": { "message": "Test DeepL Connection" },
+    "deeplApiKeyError": { "message": "Please enter your DeepL API key first." },
+    "testingButton": { "message": "Testing..." },
+    "testingConnection": { "message": "Testing DeepL connection..." },
+    "deeplTestSuccess": {
+        "message": "✅ DeepL API test successful! Translated \"Hello\" to \"%s\""
+    },
+    "deeplTestUnexpectedFormat": {
+        "message": "⚠️ DeepL API responded but with unexpected format"
+    },
+    "deeplTestInvalidKey": {
+        "message": "❌ DeepL API key is invalid or has been rejected."
+    },
+    "deeplTestQuotaExceeded": {
+        "message": "❌ DeepL API quota exceeded. Please check your usage limits."
+    },
+    "deeplTestApiError": { "message": "❌ DeepL API error (%d): %s" },
+    "deeplTestNetworkError": {
+        "message": "❌ Network error: Could not connect to DeepL API. Check your internet connection."
+    },
+    "deeplTestGenericError": { "message": "❌ Test failed: %s" },
+    "deepLApiUnavailable": { "message": "DeepL API Unavailable" },
+    "deepLApiUnavailableTooltip": {
+        "message": "DeepL API script failed to load"
+    },
+    "deeplApiNotLoadedError": {
+        "message": "❌ DeepL API script is not available. Please refresh the page."
+    },
 
-  "cardGoogleTitle": { "message": "Google Translate" },
-  "cardGoogleDesc": { "message": "Free translation service provided by Google. No additional configuration required." },
-  "cardMicrosoftTitle": { "message": "Microsoft Translate" },
-  "cardMicrosoftDesc": { "message": "Free translation service provided by Microsoft Edge. No additional configuration required." },
-  "providerStatus": { "message": "Status:" },
-  "statusReady": { "message": "Ready to use" },
-  "providerFeatures": { "message": "Features:" },
-  "featureFree": { "message": "Free to use" },
-  "featureNoApiKey": { "message": "No API key required" },
-  "featureWideLanguageSupport": { "message": "Wide language support" },
-  "featureFastTranslation": { "message": "Fast translation" },
-  "featureHighQuality": { "message": "High quality translation" },
-  "featureGoodPerformance": { "message": "Good performance" },
-  "featureHighestQuality": { "message": "Highest quality translation" },
-  "featureApiKeyRequired": { "message": "API key required" },
-  "featureLimitedLanguages": { "message": "Limited language support" },
-  "featureUsageLimits": { "message": "Usage limits apply" },
+    "cardGoogleTitle": { "message": "Google Translate" },
+    "cardGoogleDesc": {
+        "message": "Free translation service provided by Google. No additional configuration required."
+    },
+    "cardMicrosoftTitle": { "message": "Microsoft Translate" },
+    "cardMicrosoftDesc": {
+        "message": "Free translation service provided by Microsoft Edge. No additional configuration required."
+    },
+    "providerStatus": { "message": "Status:" },
+    "statusReady": { "message": "Ready to use" },
+    "providerFeatures": { "message": "Features:" },
+    "featureFree": { "message": "Free to use" },
+    "featureNoApiKey": { "message": "No API key required" },
+    "featureWideLanguageSupport": { "message": "Wide language support" },
+    "featureFastTranslation": { "message": "Fast translation" },
+    "featureHighQuality": { "message": "High quality translation" },
+    "featureGoodPerformance": { "message": "Good performance" },
+    "featureHighestQuality": { "message": "Highest quality translation" },
+    "featureApiKeyRequired": { "message": "API key required" },
+    "featureLimitedLanguages": { "message": "Limited language support" },
+    "featureUsageLimits": { "message": "Usage limits apply" },
 
-  "providerGoogleName": { "message": "Google Translate (Free)" },
-  "providerMicrosoftName": { "message": "Microsoft Translate (Free)" },
-  "providerDeepLName": { "message": "DeepL (API Key Required)" }
-} 
+    "providerGoogleName": { "message": "Google Translate (Free)" },
+    "providerMicrosoftName": { "message": "Microsoft Translate (Free)" },
+    "providerDeepLName": { "message": "DeepL (API Key Required)" }
+}

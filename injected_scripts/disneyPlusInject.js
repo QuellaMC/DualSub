@@ -1,14 +1,15 @@
-console.log("Disney+ Inject script: Starting execution.");
+console.log('Disney+ Inject script: Starting execution.');
 
 const INJECT_SCRIPT_ID = 'disneyplus-dualsub-injector-event'; // Must match disneyPlusPlatform.js
 const originalJSONParse = JSON.parse;
 
-console.log("Disney+ Inject script: Overriding JSON.parse to intercept subtitle data.");
+console.log(
+    'Disney+ Inject script: Overriding JSON.parse to intercept subtitle data.'
+);
 
 JSON.parse = function (text, reviver) {
     let parsedObject;
     parsedObject = originalJSONParse(text, reviver);
-
 
     try {
         let subtitleUrl = null;
@@ -26,7 +27,11 @@ JSON.parse = function (text, reviver) {
         }
 
         if (subtitleUrl) {
-            console.log(`%c[Disney+ Inject] Found Disney+ subtitle URL via ${sourcePath}: %s`, "color: blue; font-weight: bold;", subtitleUrl);
+            console.log(
+                `%c[Disney+ Inject] Found Disney+ subtitle URL via ${sourcePath}: %s`,
+                'color: blue; font-weight: bold;',
+                subtitleUrl
+            );
 
             // Extract Video ID from current page URL
             const pathSegments = window.location.pathname.split('/');
@@ -34,21 +39,29 @@ JSON.parse = function (text, reviver) {
             const videoIndex = pathSegments.indexOf('video');
             if (videoIndex !== -1 && videoIndex < pathSegments.length - 1) {
                 const potentialId = pathSegments[videoIndex + 1];
-                if (potentialId && potentialId.length > 10) { // Simple length check
+                if (potentialId && potentialId.length > 10) {
+                    // Simple length check
                     videoId = potentialId;
                 }
             }
-            console.log("[Disney+ Inject] Associated Video ID from URL:", videoId);
+            console.log(
+                '[Disney+ Inject] Associated Video ID from URL:',
+                videoId
+            );
 
-            document.dispatchEvent(new CustomEvent(INJECT_SCRIPT_ID, {
-                detail: {
-                    type: 'SUBTITLE_URL_FOUND',
-                    url: subtitleUrl,
-                    videoId: videoId,
-                    source: sourcePath
-                }
-            }));
-            console.log("[Disney+ Inject] Dispatched SUBTITLE_URL_FOUND event.");
+            document.dispatchEvent(
+                new CustomEvent(INJECT_SCRIPT_ID, {
+                    detail: {
+                        type: 'SUBTITLE_URL_FOUND',
+                        url: subtitleUrl,
+                        videoId: videoId,
+                        source: sourcePath,
+                    },
+                })
+            );
+            console.log(
+                '[Disney+ Inject] Dispatched SUBTITLE_URL_FOUND event.'
+            );
         }
     } catch (e) {
         // Do not log error for every JSON.parse to avoid console spam.
@@ -57,8 +70,12 @@ JSON.parse = function (text, reviver) {
     return parsedObject; // Always return the original parsed object
 };
 
-console.log("Disney+ Inject script: JSON.parse has been overridden.");
+console.log('Disney+ Inject script: JSON.parse has been overridden.');
 
 // Dispatch an event to let the content script know the inject script is ready
-document.dispatchEvent(new CustomEvent(INJECT_SCRIPT_ID, { detail: { type: 'INJECT_SCRIPT_READY' } }));
-console.log("Disney+ Inject script: Dispatched INJECT_SCRIPT_READY event."); 
+document.dispatchEvent(
+    new CustomEvent(INJECT_SCRIPT_ID, {
+        detail: { type: 'INJECT_SCRIPT_READY' },
+    })
+);
+console.log('Disney+ Inject script: Dispatched INJECT_SCRIPT_READY event.');
