@@ -19,7 +19,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.head.ref }}
+          ref: ${{ github.event.pull_request.head.ref }}
 
       - name: Import GPG key and Configure Git
         id: import_gpg
@@ -50,7 +50,7 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "style: Automatically apply linting and formatting fixes"
-          branch: ${{ github.head.ref }}
+          branch: ${{ github.event.pull_request.head.ref }}
           commit_author: "github-actions[bot] <${{ steps.import_gpg.outputs.email }}>"
           commit_user_name: github-actions[bot]
           commit_user_email: ${{ steps.import_gpg.outputs.email }}
