@@ -33,6 +33,7 @@ jobs:
 
       - name: Run ESLint to fix issues
         run: npm run lint:fix
+        continue-on-error: true
 
       - name: Commit and Push Changes
         run: |

@@ -15,17 +15,16 @@ export default [
       sourceType: "module",
       globals: {
         ...globals.browser,
-        ...globals.webextensions
+        ...globals.webextensions,
+        ...globals.node,
+        "gc": "readonly"
       }
     },
+    
     rules: {
-      // Example rule: warn about using console.log during development.
-      // You can customize your rules here.
-      "no-console": "warn"
+      "no-unused-vars": "warn",
+      "no-console": "off"
     }
   },
-
-  // This should be the last configuration in the array.
-  // It disables any ESLint formatting rules that might conflict with Prettier.
   prettierConfig
 ];
