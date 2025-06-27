@@ -108,6 +108,5 @@ jobs:
           branch: "style-fixes/main-branch"
           base: main
           delete-branch: true
-          # The committer and author MUST match the GPG key's identity
           committer: "github-actions[bot] <${{ steps.import_gpg.outputs.email }}>"
           author: "github-actions[bot] <${{ steps.import_gpg.outputs.email }}>"
