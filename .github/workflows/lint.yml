@@ -50,7 +50,7 @@ jobs:
       - name: Commit and Push Changes to PR Branch
         run: |
           git config --global user.name 'github-actions[bot]'
-          git config --global user.email '${{ steps.import_gpg.outputs.email }}'
+          git config --global user.email "${{ steps.import_gpg.outputs.email }}"
           
           if ! git diff --quiet; then
             echo "Found changes to commit to the PR branch."
