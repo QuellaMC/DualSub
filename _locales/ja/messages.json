@@ -86,6 +86,7 @@
   "testingButton": { "message": "テスト中..." },
   "testingConnection": { "message": "DeepL接続をテストしています..." },
   "deeplTestSuccess": { "message": "✅ DeepL APIテストが成功しました！\"Hello\"を\"%s\"に翻訳しました" },
+  "deeplTestSuccessSimple": { "message": "✅ DeepL APIテストが成功しました！" },
   "deeplTestUnexpectedFormat": { "message": "⚠️ DeepL APIは応答しましたが、予期しない形式でした" },
   "deeplTestInvalidKey": { "message": "❌ DeepL APIキーが無効であるか、拒否されました。" },
   "deeplTestQuotaExceeded": { "message": "❌ DeepL APIの使用量制限に達しました。使用制限を確認してください。" },

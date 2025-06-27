@@ -86,6 +86,7 @@
   "testingButton": { "message": "Testing..." },
   "testingConnection": { "message": "Testing DeepL connection..." },
   "deeplTestSuccess": { "message": "✅ DeepL API test successful! Translated \"Hello\" to \"%s\"" },
+  "deeplTestSuccessSimple": { "message": "✅ DeepL API test successful!" },
   "deeplTestUnexpectedFormat": { "message": "⚠️ DeepL API responded but with unexpected format" },
   "deeplTestInvalidKey": { "message": "❌ DeepL API key is invalid or has been rejected." },
   "deeplTestQuotaExceeded": { "message": "❌ DeepL API quota exceeded. Please check your usage limits." },

@@ -86,6 +86,7 @@
   "testingButton": { "message": "테스트 중..." },
   "testingConnection": { "message": "DeepL 연결을 테스트하고 있습니다..." },
   "deeplTestSuccess": { "message": "✅ DeepL API 테스트가 성공했습니다! \"Hello\"를 \"%s\"로 번역했습니다" },
+  "deeplTestSuccessSimple": { "message": "✅ DeepL API 테스트가 성공했습니다!" },
   "deeplTestUnexpectedFormat": { "message": "⚠️ DeepL API가 응답했지만 예상치 못한 형식이었습니다" },
   "deeplTestInvalidKey": { "message": "❌ DeepL API 키가 유효하지 않거나 거부되었습니다." },
   "deeplTestQuotaExceeded": { "message": "❌ DeepL API 사용량 한도에 도달했습니다. 사용 제한을 확인해주세요." },

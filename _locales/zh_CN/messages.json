@@ -86,6 +86,7 @@
   "testingButton": { "message": "测试中..." },
   "testingConnection": { "message": "正在测试 DeepL 连接..." },
   "deeplTestSuccess": { "message": "✅ DeepL API 测试成功！将 \"Hello\" 翻译为 \"%s\"" },
+  "deeplTestSuccessSimple": { "message": "✅ DeepL API 测试成功！" },
   "deeplTestUnexpectedFormat": { "message": "⚠️ DeepL API 响应但格式异常" },
   "deeplTestInvalidKey": { "message": "❌ DeepL API 密钥无效或被拒绝。" },
   "deeplTestQuotaExceeded": { "message": "❌ DeepL API 配额已超限。请检查您的使用限制。" },
