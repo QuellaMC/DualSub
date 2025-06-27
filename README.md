@@ -8,19 +8,19 @@ Dual Subtitles enhances your streaming experience by displaying two sets of subt
 
 ## Features
 
-* **Dual Subtitles:** Display original and translated subtitles at the same time.
-* **Customizable Target Language:** Choose from a wide range of languages for the second subtitle track.
-* **Timing Adjustment:** Fine-tune subtitle synchronization with a time offset option.
-* **Layout Customization:**
-  * **Display Order:** Choose whether original or translated subtitles appear on top/first.
-  * **Orientation:** Stack subtitles vertically (Top/Bottom) or display them side-by-side (Left/Right).
-* **Appearance Settings:**
-  * **Font Size:** Adjust the subtitle text size.
-  * **Subtitle Gap:** Control the spacing between the two subtitle tracks (for vertical layout).
-* **Translation Performance:**
-  * **Batch Size:** Configure the number of subtitle segments translated at once.
-  * **Translation Delay:** Set a delay between translation requests to manage API rate limits.
-* **Enable/Disable:** Easily toggle the dual subtitle functionality.
+- **Dual Subtitles:** Display original and translated subtitles at the same time.
+- **Customizable Target Language:** Choose from a wide range of languages for the second subtitle track.
+- **Timing Adjustment:** Fine-tune subtitle synchronization with a time offset option.
+- **Layout Customization:**
+    - **Display Order:** Choose whether original or translated subtitles appear on top/first.
+    - **Orientation:** Stack subtitles vertically (Top/Bottom) or display them side-by-side (Left/Right).
+- **Appearance Settings:**
+    - **Font Size:** Adjust the subtitle text size.
+    - **Subtitle Gap:** Control the spacing between the two subtitle tracks (for vertical layout).
+- **Translation Performance:**
+    - **Batch Size:** Configure the number of subtitle segments translated at once.
+    - **Translation Delay:** Set a delay between translation requests to manage API rate limits.
+- **Enable/Disable:** Easily toggle the dual subtitle functionality.
 
 ## How It Works
 
@@ -47,24 +47,24 @@ The extension injects scripts into Disney+ pages to capture and process subtitle
 
 You can configure the extension by clicking on its icon in the Chrome toolbar. The following settings are available:
 
-* **Enable Subtitles:** Toggle the dual subtitle feature on or off.
-* **Translate to:** Select your desired target language for the second subtitle.
-* **Time Offset (sec):** Adjust subtitle timing. Negative values make subtitles appear earlier, positive values later.
-* **Display Order:** Choose which subtitle (original or translation) appears first or on top.
-* **Layout Orientation:** Display subtitles stacked vertically (Top / Bottom) or side-by-side (Left / Right).
-* **Subtitle Size:** Adjust the size of the subtitle text.
-* **Subtitle Gap:** Adjust the gap between the original and translated subtitles (when using Top/Bottom layout).
-* **Translation Batch Size:** Number of subtitle segments to translate in each batch.
-* **Translation Delay (ms):** Delay between translation requests.
+- **Enable Subtitles:** Toggle the dual subtitle feature on or off.
+- **Translate to:** Select your desired target language for the second subtitle.
+- **Time Offset (sec):** Adjust subtitle timing. Negative values make subtitles appear earlier, positive values later.
+- **Display Order:** Choose which subtitle (original or translation) appears first or on top.
+- **Layout Orientation:** Display subtitles stacked vertically (Top / Bottom) or side-by-side (Left / Right).
+- **Subtitle Size:** Adjust the size of the subtitle text.
+- **Subtitle Gap:** Adjust the gap between the original and translated subtitles (when using Top/Bottom layout).
+- **Translation Batch Size:** Number of subtitle segments to translate in each batch.
+- **Translation Delay (ms):** Delay between translation requests.
 
 ## Permissions
 
 This extension requires the following permissions:
 
-* `storage`: To save user settings.
-* `scripting`: To inject scripts into Disney+ pages.
-* `activeTab`: To interact with the currently active Disney+ tab.
-* Host permissions for `*://*.disneyplus.com/*` (to operate on Disney+ pages) and `https://translate.googleapis.com/*` (for translations).
+- `storage`: To save user settings.
+- `scripting`: To inject scripts into Disney+ pages.
+- `activeTab`: To interact with the currently active Disney+ tab.
+- Host permissions for `*://*.disneyplus.com/*` (to operate on Disney+ pages) and `https://translate.googleapis.com/*` (for translations).
 
 ## License
 
@@ -78,14 +78,12 @@ This work is licensed under a
 [![CC BY-NC-SA 4.0][cc-by-nc-sa-image]][cc-by-nc-sa]
 
 [cc-by-nc-sa]: http://creativecommons.org/licenses/by-nc-sa/4.0/
-
 [cc-by-nc-sa-image]: https://licensebuttons.net/l/by-nc-sa/4.0/88x31.png
-
 [cc-by-nc-sa-shield]: https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg
 
 ---
 
-*Disclaimer: This extension is not officially affiliated with Disney+.*
+_Disclaimer: This extension is not officially affiliated with Disney+._
 
 ## Adding New Translation Providers
 
@@ -93,12 +91,12 @@ This extension is designed to support multiple translation service providers. If
 
 1.  **Understand the Interface**: Familiarize yourself with the required structure for a translation provider module by reading the interface definition located in `translation_providers/README.md`.
 2.  **Implement Your Provider**:
-    *   Create a new JavaScript file for your provider within the `translation_providers/` directory (e.g., `myNewProvider.js`).
-    *   You can use `translation_providers/deeplTranslate_example.js` as a starting template for your implementation.
-    *   Ensure your module exports an `async function translate(text, sourceLang, targetLang)` that adheres to the defined interface.
+    - Create a new JavaScript file for your provider within the `translation_providers/` directory (e.g., `myNewProvider.js`).
+    - You can use `translation_providers/deeplTranslate_example.js` as a starting template for your implementation.
+    - Ensure your module exports an `async function translate(text, sourceLang, targetLang)` that adheres to the defined interface.
 3.  **Register Your Provider**:
-    *   In `background.js`, import your new provider module and add it to the `translationProviders` object. This object maps a unique provider ID (e.g., 'myNewProvider') to its display name and `translate` function.
-    *   In `popup/popup.js`, add your new provider's ID and display name to the `availableProviders` object. This will make it visible in the extension's settings popup.
+    - In `background.js`, import your new provider module and add it to the `translationProviders` object. This object maps a unique provider ID (e.g., 'myNewProvider') to its display name and `translate` function.
+    - In `popup/popup.js`, add your new provider's ID and display name to the `availableProviders` object. This will make it visible in the extension's settings popup.
 4.  **Test Thoroughly**: Ensure your new provider works correctly and handles errors gracefully.
 
 By following these guidelines, you can extend the translation capabilities of this extension.

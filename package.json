@@ -1,0 +1,35 @@
+{
+    "name": "dualsub",
+    "version": "1.3.1",
+    "type": "module",
+    "description": "Displays dual language subtitles on streaming platforms.",
+    "main": "background.js",
+    "scripts": {
+        "format": "prettier --write .",
+        "lint": "eslint . --ext .js",
+        "lint:fix": "eslint . --ext .js --fix"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/QuellaMC/DualSub.git"
+    },
+    "keywords": [
+        "chrome-extension",
+        "subtitles",
+        "netflix",
+        "disneyplus"
+    ],
+    "author": "QuellaMC",
+    "license": "CC-BY-NC-SA-4.0",
+    "bugs": {
+        "url": "https://github.com/QuellaMC/DualSub/issues"
+    },
+    "homepage": "https://github.com/QuellaMC/DualSub#readme",
+    "devDependencies": {
+        "@eslint/js": "^9.29.0",
+        "eslint": "^9.29.0",
+        "eslint-config-prettier": "^10.1.5",
+        "globals": "^16.2.0",
+        "prettier": "^3.6.2"
+    }
+}

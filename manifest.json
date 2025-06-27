@@ -1,78 +1,74 @@
 {
-  "manifest_version": 3,
-  "name": "__MSG_appName__",
-  "version": "1.3.0",
-  "description": "__MSG_appDesc__",
-  "default_locale": "en",
-  "permissions": [
-    "storage",
-    "scripting",
-    "activeTab"
-  ],
-  "host_permissions": [
-    "*://*.disneyplus.com/*",
-    "*://*.netflix.com/*",
-    "https://translate.googleapis.com/*",
-    "https://api.cognitive.microsofttranslator.com/*",
-    "https://edge.microsoft.com/*",
-    "https://api-free.deepl.com/*",
-    "https://api.deepl.com/*"
-  ],
-  "background": {
-    "service_worker": "background.js",
-    "type": "module"
-  },
-  "content_scripts": [
-    {
-      "matches": ["*://*.disneyplus.com/*"],
-      "js": ["content_scripts/disneyPlusContent.js"],
-      "css": ["content_scripts/content.css"],
-      "run_at": "document_idle"
+    "manifest_version": 3,
+    "name": "__MSG_appName__",
+    "version": "1.3.1",
+    "description": "__MSG_appDesc__",
+    "default_locale": "en",
+    "permissions": ["storage", "scripting", "activeTab"],
+    "host_permissions": [
+        "*://*.disneyplus.com/*",
+        "*://*.netflix.com/*",
+        "https://translate.googleapis.com/*",
+        "https://api.cognitive.microsofttranslator.com/*",
+        "https://edge.microsoft.com/*",
+        "https://api-free.deepl.com/*",
+        "https://api.deepl.com/*"
+    ],
+    "background": {
+        "service_worker": "background.js",
+        "type": "module"
     },
-    {
-      "matches": ["*://*.netflix.com/*"],
-      "js": ["content_scripts/netflixContent.js"],
-      "css": ["content_scripts/content.css"],
-      "run_at": "document_start"
-    }
-  ],
-  "web_accessible_resources": [
-    {
-      "resources": [
-        "injected_scripts/disneyPlusInject.js",
-        "video_platforms/disneyPlusPlatform.js",
-        "video_platforms/platform_interface.js",
-        "content_scripts/subtitleUtilities.js",
-        "utils/languageNormalization.js"
-      ],
-      "matches": ["*://*.disneyplus.com/*"]
+    "content_scripts": [
+        {
+            "matches": ["*://*.disneyplus.com/*"],
+            "js": ["content_scripts/disneyPlusContent.js"],
+            "css": ["content_scripts/content.css"],
+            "run_at": "document_start"
+        },
+        {
+            "matches": ["*://*.netflix.com/*"],
+            "js": ["content_scripts/netflixContent.js"],
+            "css": ["content_scripts/content.css"],
+            "run_at": "document_start"
+        }
+    ],
+    "web_accessible_resources": [
+        {
+            "resources": [
+                "injected_scripts/disneyPlusInject.js",
+                "video_platforms/disneyPlusPlatform.js",
+                "video_platforms/platform_interface.js",
+                "content_scripts/subtitleUtilities.js",
+                "utils/languageNormalization.js"
+            ],
+            "matches": ["*://*.disneyplus.com/*"]
+        },
+        {
+            "resources": [
+                "injected_scripts/netflixInject.js",
+                "video_platforms/netflixPlatform.js",
+                "video_platforms/platform_interface.js",
+                "content_scripts/subtitleUtilities.js",
+                "utils/languageNormalization.js"
+            ],
+            "matches": ["*://*.netflix.com/*"]
+        }
+    ],
+    "action": {
+        "default_popup": "popup/popup.html",
+        "default_icon": {
+            "16": "icons/icon16.png",
+            "48": "icons/icon48.png",
+            "128": "icons/icon128.png"
+        }
     },
-    {
-      "resources": [
-        "injected_scripts/netflixInject.js",
-        "video_platforms/netflixPlatform.js",
-        "video_platforms/platform_interface.js",
-        "content_scripts/subtitleUtilities.js",
-        "utils/languageNormalization.js"
-      ],
-      "matches": ["*://*.netflix.com/*"]
+    "options_ui": {
+        "page": "options/options.html",
+        "open_in_tab": true
+    },
+    "icons": {
+        "16": "icons/icon16.png",
+        "48": "icons/icon48.png",
+        "128": "icons/icon128.png"
     }
-  ],
-  "action": {
-    "default_popup": "popup/popup.html",
-    "default_icon": {
-      "16": "icons/icon16.png",
-      "48": "icons/icon48.png",
-      "128": "icons/icon128.png"
-    }
-  },
-  "options_ui": {
-    "page": "options/options.html",
-    "open_in_tab": true
-  },
-  "icons": {
-    "16": "icons/icon16.png",
-    "48": "icons/icon48.png",
-    "128": "icons/icon128.png"
-  }
 }

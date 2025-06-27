@@ -16,13 +16,13 @@ Each module must export an asynchronous function named `translate`.
 
 ### Parameters
 
-*   `text` (String): The text content to be translated.
-*   `sourceLang` (String): The language code of the original text (e.g., 'auto', 'en', 'ja'). The specific supported codes may depend on the provider.
-*   `targetLang` (String): The language code for the desired translation (e.g., 'en', 'es', 'zh-CN'). The specific supported codes will depend on the provider.
+- `text` (String): The text content to be translated.
+- `sourceLang` (String): The language code of the original text (e.g., 'auto', 'en', 'ja'). The specific supported codes may depend on the provider.
+- `targetLang` (String): The language code for the desired translation (e.g., 'en', 'es', 'zh-CN'). The specific supported codes will depend on the provider.
 
 ### Returns
 
-*   `Promise<string>`: A Promise that resolves with the translated string. If the translation fails, the Promise should reject with an Error object containing a descriptive message.
+- `Promise<string>`: A Promise that resolves with the translated string. If the translation fails, the Promise should reject with an Error object containing a descriptive message.
 
 ### Example
 
@@ -32,9 +32,9 @@ export async function translate(text, sourceLang, targetLang) {
     // Implementation specific to this provider
     // ...
     if (success) {
-        return "translated text";
+        return 'translated text';
     } else {
-        throw new Error("Translation failed due to XYZ reason.");
+        throw new Error('Translation failed due to XYZ reason.');
     }
 }
 ```

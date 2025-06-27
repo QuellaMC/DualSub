@@ -11,7 +11,9 @@
     --slider-track-bg: #e9e9eb;
     --slider-thumb-bg: #ffffff;
     --slider-progress-bg: #007aff;
-    --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-family:
+        -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue',
+        Arial, sans-serif;
 }
 
 html {
@@ -35,7 +37,8 @@ body {
     align-items: center;
     padding: 4px 8px 12px 8px;
 }
-.header-left, .header-right {
+.header-left,
+.header-right {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -72,14 +75,16 @@ h1 {
     height: 22px;
 }
 
-.card, .accordion-card {
+.card,
+.accordion-card {
     background-color: var(--card-bg);
     border-radius: 12px;
     margin-bottom: 15px;
     overflow: hidden;
 }
 
-.setting-item, .accordion-header {
+.setting-item,
+.accordion-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -91,11 +96,13 @@ h1 {
     border-top: 1px solid var(--bg-color);
 }
 
-.setting-item label, .accordion-header {
+.setting-item label,
+.accordion-header {
     color: var(--label-color);
 }
 
-select, input[type="number"] {
+select,
+input[type='number'] {
     background: none;
     border: none;
     font-family: inherit;
@@ -107,11 +114,12 @@ select, input[type="number"] {
 select {
     max-width: 150px;
 }
-input[type="number"] {
+input[type='number'] {
     max-width: 90px;
 }
 
-select:focus, input[type="number"]:focus {
+select:focus,
+input[type='number']:focus {
     outline: none;
 }
 
@@ -122,27 +130,32 @@ select:focus, input[type="number"]:focus {
     width: 51px;
     height: 31px;
 }
-.switch input { display: none; }
+.switch input {
+    display: none;
+}
 
 .slider {
     position: absolute;
     cursor: pointer;
-    top: 0; left: 0; right: 0; bottom: 0;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     background-color: var(--switch-bg-off);
-    transition: .4s;
+    transition: 0.4s;
     border-radius: 34px;
 }
 .slider:before {
     position: absolute;
-    content: "";
+    content: '';
     height: 27px;
     width: 27px;
     left: 2px;
     bottom: 2px;
     background-color: white;
-    transition: .4s;
+    transition: 0.4s;
     border-radius: 50%;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 input:checked + .slider {
@@ -151,7 +164,6 @@ input:checked + .slider {
 input:checked + .slider:before {
     transform: translateX(20px);
 }
-
 
 /* Accordion */
 .accordion-card {
@@ -179,7 +191,8 @@ input:checked + .slider:before {
     padding: 0 16px;
     border-top: 1px solid var(--bg-color);
 }
-.accordion-body .setting-item, .accordion-body .setting-item-slider {
+.accordion-body .setting-item,
+.accordion-body .setting-item-slider {
     border: none;
     padding: 12px 0;
 }
@@ -195,7 +208,6 @@ input:checked + .slider:before {
     flex-basis: 110px;
 }
 
-
 /* Sliders */
 .setting-item-slider {
     display: flex;
@@ -209,27 +221,32 @@ input:checked + .slider:before {
     display: flex;
     align-items: center;
 }
-input[type=range] {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 100%;
-  height: 8px;
-  background: var(--slider-track-bg);
-  border-radius: 8px;
-  outline: none;
-  background-image: linear-gradient(var(--slider-progress-bg), var(--slider-progress-bg));
-  background-repeat: no-repeat;
+input[type='range'] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 8px;
+    background: var(--slider-track-bg);
+    border-radius: 8px;
+    outline: none;
+    background-image: linear-gradient(
+        var(--slider-progress-bg),
+        var(--slider-progress-bg)
+    );
+    background-repeat: no-repeat;
 }
-input[type=range]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--slider-thumb-bg);
-  cursor: pointer;
-  border: 0.5px solid rgba(0,0,0,0.04);
-  box-shadow: 0 0.5px 4px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.1);
+input[type='range']::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--slider-thumb-bg);
+    cursor: pointer;
+    border: 0.5px solid rgba(0, 0, 0, 0.04);
+    box-shadow:
+        0 0.5px 4px rgba(0, 0, 0, 0.12),
+        0 4px 8px rgba(0, 0, 0, 0.1);
 }
 .slider-value {
     color: var(--secondary-text);
@@ -263,9 +280,8 @@ input[type=range]::-webkit-slider-thumb {
         font-size: 1em;
     }
     .collapsible-content {
-       padding: 10px 15px 0px 15px;
+        padding: 10px 15px 0px 15px;
     }
-
 
     .setting.main-toggle {
         flex-direction: column;
@@ -279,7 +295,6 @@ input[type=range]::-webkit-slider-thumb {
         margin-left: 0;
     }
 
-
     .setting {
         flex-direction: column;
         align-items: stretch;
@@ -292,7 +307,7 @@ input[type=range]::-webkit-slider-thumb {
         margin-right: 0;
         text-align: left;
     }
-    .setting input[type="number"],
+    .setting input[type='number'],
     .setting select,
     .setting .slider-container,
     .setting > .switch {
@@ -305,7 +320,7 @@ input[type=range]::-webkit-slider-thumb {
         margin-top: 0;
         margin-left: 10px;
     }
-    .setting .slider-container input[type="range"] {
+    .setting .slider-container input[type='range'] {
         margin-right: 5px;
     }
     #statusMessage {

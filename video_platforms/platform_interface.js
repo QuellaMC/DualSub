@@ -58,7 +58,7 @@ export class VideoPlatform {
     getCurrentVideoId() {
         throw new Error("Method 'getCurrentVideoId()' must be implemented.");
     }
-    
+
     /**
      * Gets the element that serves as the container for the video player,
      * to which the subtitle display elements will be appended.
@@ -66,7 +66,9 @@ export class VideoPlatform {
      * @returns {HTMLElement | null} The player container element or null.
      */
     getPlayerContainerElement() {
-        throw new Error("Method 'getPlayerContainerElement()' must be implemented.");
+        throw new Error(
+            "Method 'getPlayerContainerElement()' must be implemented."
+        );
     }
 
     /**
@@ -108,9 +110,9 @@ export class VideoPlatform {
      * @param {string[]} selectors - Array of CSS selectors for subtitle containers
      */
     hideOfficialSubtitleContainers(selectors) {
-        selectors.forEach(selector => {
+        selectors.forEach((selector) => {
             const containers = document.querySelectorAll(selector);
-            containers.forEach(container => {
+            containers.forEach((container) => {
                 container.style.display = 'none';
                 container.style.visibility = 'hidden';
                 container.style.opacity = '0';
@@ -123,13 +125,17 @@ export class VideoPlatform {
      * Utility method: Show previously hidden official subtitles
      */
     showOfficialSubtitleContainers() {
-        const hiddenContainers = document.querySelectorAll('[data-dualsub-hidden="true"]');
-        hiddenContainers.forEach(container => {
+        const hiddenContainers = document.querySelectorAll(
+            '[data-dualsub-hidden="true"]'
+        );
+        hiddenContainers.forEach((container) => {
             container.style.display = '';
             container.style.visibility = '';
             container.style.opacity = '';
             container.removeAttribute('data-dualsub-hidden');
-            console.log(`${this.constructor.name}: Restored official subtitle container`);
+            console.log(
+                `${this.constructor.name}: Restored official subtitle container`
+            );
         });
     }
 
@@ -140,7 +146,7 @@ export class VideoPlatform {
     handleNativeSubtitlesWithSetting(selectors) {
         chrome.storage.sync.get(['hideOfficialSubtitles'], (result) => {
             const hideOfficialSubtitles = result.hideOfficialSubtitles || false;
-            
+
             if (hideOfficialSubtitles) {
                 this.hideOfficialSubtitleContainers(selectors);
             } else {
@@ -156,12 +162,12 @@ export class VideoPlatform {
     setupNativeSubtitleSettingsListener(selectors) {
         // Store selectors for later use
         this.subtitleSelectors = selectors;
-        
+
         // Listen for storage changes
         this.storageListener = (changes, areaName) => {
             if (areaName === 'sync' && changes.hideOfficialSubtitles) {
                 const newValue = changes.hideOfficialSubtitles.newValue;
-                
+
                 if (newValue) {
                     this.hideOfficialSubtitleContainers(this.subtitleSelectors);
                 } else {
@@ -169,7 +175,7 @@ export class VideoPlatform {
                 }
             }
         };
-        
+
         chrome.storage.onChanged.addListener(this.storageListener);
     }
 
@@ -204,4 +210,4 @@ export class VideoPlatform {
     cleanup() {
         throw new Error("Method 'cleanup()' must be implemented.");
     }
-} 
+}
