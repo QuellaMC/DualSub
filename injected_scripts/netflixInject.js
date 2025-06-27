@@ -15,11 +15,7 @@ if (window.netflixDualSubInjectorLoaded) {
 
     JSON.parse = function (text, reviver) {
         let parsedObject;
-        try {
-            parsedObject = originalJSONParse(text, reviver);
-        } catch (e) {
-            throw e;
-        }
+        parsedObject = originalJSONParse(text, reviver);
 
         try {
             // Look for the specific structure of Netflix subtitle data

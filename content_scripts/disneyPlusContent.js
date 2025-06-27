@@ -203,7 +203,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     let actionHandled = true;
 
     switch (request.action) {
-        case "toggleSubtitles":
+        case "toggleSubtitles": {
             subtitleUtils.setSubtitlesActive(request.enabled);
             console.log(`${LOG_PREFIX}: Subtitle active state changed to ${request.enabled}`);
             if (!request.enabled) {
@@ -234,8 +234,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             }
             sendResponse({ success: true, subtitlesEnabled: request.enabled });
             break;
+        }
             
-        case "changeLanguage":
+        case "changeLanguage": {
             subtitleUtils.setUserTargetLanguage(request.targetLanguage);
             console.log(`${LOG_PREFIX}: Target language changed to:`, request.targetLanguage);
             const currentContextVideoIdLang = activePlatform ? activePlatform.getCurrentVideoId() : null;
@@ -248,58 +249,65 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             }
             sendResponse({ success: true, newLanguage: request.targetLanguage });
             break;
+        }
             
-        case "changeTimeOffset":
+        case "changeTimeOffset": {
             subtitleUtils.setUserSubtitleTimeOffset(request.timeOffset);
             console.log(`${LOG_PREFIX}: Time offset changed to:`, request.timeOffset, "s");
             needsDisplayUpdate = true;
             sendResponse({ success: true, newTimeOffset: request.timeOffset });
             break;
+        }
             
-        case "changeLayoutOrder":
+        case "changeLayoutOrder": {
             subtitleUtils.setUserSubtitleLayoutOrder(request.layoutOrder);
             console.log(`${LOG_PREFIX}: Layout order changed to:`, request.layoutOrder);
             subtitleUtils.applySubtitleStyling();
             needsDisplayUpdate = true;
             sendResponse({ success: true, newLayoutOrder: request.layoutOrder });
             break;
+        }
             
-        case "changeLayoutOrientation":
+        case "changeLayoutOrientation": {
             subtitleUtils.setUserSubtitleOrientation(request.layoutOrientation);
             console.log(`${LOG_PREFIX}: Layout orientation changed to:`, request.layoutOrientation);
             subtitleUtils.applySubtitleStyling();
             needsDisplayUpdate = true;
             sendResponse({ success: true, newLayoutOrientation: request.layoutOrientation });
             break;
+        }
             
-        case "changeFontSize":
+        case "changeFontSize": {
             subtitleUtils.setUserSubtitleFontSize(request.fontSize);
             console.log(`${LOG_PREFIX}: Font size changed to:`, request.fontSize, "vw");
             needsDisplayUpdate = true;
             sendResponse({ success: true, newFontSize: request.fontSize });
             break;
+        }
             
-        case "changeGap":
+        case "changeGap": {
             subtitleUtils.setUserSubtitleGap(request.gap);
             console.log(`${LOG_PREFIX}: Subtitle gap changed to:`, request.gap, "em");
             subtitleUtils.applySubtitleStyling();
             needsDisplayUpdate = true;
             sendResponse({ success: true, newGap: request.gap });
             break;
+        }
             
-        case "changeBatchSize":
+        case "changeBatchSize": {
             subtitleUtils.setUserTranslationBatchSize(request.batchSize);
             console.log(`${LOG_PREFIX}: Translation batch size changed to:`, request.batchSize);
             sendResponse({ success: true, newBatchSize: request.batchSize });
             break;
+        }
             
-        case "changeDelay":
+        case "changeDelay": {
             subtitleUtils.setUserTranslationDelay(request.delay);
             console.log(`${LOG_PREFIX}: Translation delay changed to:`, request.delay, "ms");
             sendResponse({ success: true, newDelay: request.delay });
             break;
-            
-        case "changeOriginalLanguage":
+        }
+        case "changeOriginalLanguage": {
             subtitleUtils.setUserOriginalLanguage(request.originalLanguage);
             console.log(`${LOG_PREFIX}: Original language changed to:`, request.originalLanguage);
             const currentContextVideoIdOrig = activePlatform ? activePlatform.getCurrentVideoId() : null;
@@ -314,8 +322,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             }
             sendResponse({ success: true, newOriginalLanguage: request.originalLanguage });
             break;
+        }
             
-        case "changeUseNativeSubtitles":
+        case "changeUseNativeSubtitles": {
             subtitleUtils.setUserUseNativeSubtitles(request.useNativeSubtitles);
             console.log(`${LOG_PREFIX}: Use native subtitles changed to:`, request.useNativeSubtitles);
             const currentContextVideoIdNative = activePlatform ? activePlatform.getCurrentVideoId() : null;
@@ -330,10 +339,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             }
             sendResponse({ success: true, newUseNativeSubtitles: request.useNativeSubtitles });
             break;
+        }
             
-        default:
+        default: {
             actionHandled = false;
             break;
+        }
     }
 
     // Update display if needed

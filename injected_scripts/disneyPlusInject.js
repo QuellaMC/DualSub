@@ -7,11 +7,8 @@ console.log("Disney+ Inject script: Overriding JSON.parse to intercept subtitle 
 
 JSON.parse = function (text, reviver) {
     let parsedObject;
-    try {
-        parsedObject = originalJSONParse(text, reviver);
-    } catch (e) {
-        throw e;
-    }
+    parsedObject = originalJSONParse(text, reviver);
+
 
     try {
         let subtitleUrl = null;
