@@ -6,17 +6,22 @@ on:
   push:
     branches: [ main ]
   pull_request:
-    branches: [ main ]
+    types: [opened, synchronize, reopened]
 
 jobs:
   lint-and-format:
     name: Lint and Format
     runs-on: ubuntu-latest
 
+    # This grants the GITHUB_TOKEN write permission for this job
+    permissions:
+      contents: write
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
+          # This is necessary to check out the correct branch on pull_request events
           ref: ${{ github.head_ref }}
 
       - name: Set up Node.js
@@ -33,15 +38,12 @@ jobs:
 
       - name: Run ESLint to fix issues
         run: npm run lint:fix
-        continue-on-error: true
 
       - name: Commit and Push Changes
         run: |
-          # Configure git user
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           
-          # Check for changes
           if ! git diff --quiet; then
             echo "Found changes to commit."
             git add .
