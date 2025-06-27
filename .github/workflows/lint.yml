@@ -12,7 +12,7 @@ on:
 
 jobs:
   lint-and-fix-on-pr:
-    name: "Run Linter, Auto-Fix, and Sign on Pull Request"
+    name: "Run Linter on Pull Request"
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
