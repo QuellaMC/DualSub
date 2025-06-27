@@ -11,6 +11,50 @@ on:
       - main
 
 jobs:
+  lint-and-fix-on-pr:
+    name: "Run Linter, Auto-Fix, and Sign on Pull Request"
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head.ref }}
+
+      - name: Import GPG key and Configure Git
+        id: import_gpg
+        uses: crazy-max/ghaction-import-gpg@v6
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+          git_user_signingkey: true
+          git_commit_gpgsign: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Run Prettier to format code
+        run: npm run format
+
+      - name: Run ESLint to fix issues
+        run: npm run lint:fix
+        continue-on-error: true
+
+      - name: Commit changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "style: Automatically apply linting and formatting fixes"
+          branch: ${{ github.head.ref }}
+          commit_author: "github-actions[bot] <${{ steps.import_gpg.outputs.email }}>"
+          commit_user_name: github-actions[bot]
+          commit_user_email: ${{ steps.import_gpg.outputs.email }}
+          
   # This job runs on direct pushes to the main branch and creates a new PR with fixes.
   create-pr-for-main:
     name: "Create PR with fixes for main"
