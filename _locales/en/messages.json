@@ -114,7 +114,7 @@
     "testingButton": { "message": "Testing..." },
     "testingConnection": { "message": "Testing DeepL connection..." },
     "deeplTestSuccess": {
-        "message": "✅ DeepL API test successful! Translated \"Hello\" to \"%s\""
+        "message": "✅ DeepL API test successful!"
     },
     "deeplTestUnexpectedFormat": {
         "message": "⚠️ DeepL API responded but with unexpected format"
@@ -137,7 +137,6 @@
     "deeplApiNotLoadedError": {
         "message": "❌ DeepL API script is not available. Please refresh the page."
     },
-
     "cardGoogleTitle": { "message": "Google Translate" },
     "cardGoogleDesc": {
         "message": "Free translation service provided by Google. No additional configuration required."
