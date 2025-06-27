@@ -11,56 +11,6 @@ on:
       - main
 
 jobs:
-  # This job runs on pull requests and commits fixes directly to the PR branch.
-  fix-pr:
-    name: "Commit fixes to PR"
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout PR Code
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref }}
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install Dependencies
-        run: npm install
-
-      - name: Run Prettier to format code
-        run: npm run format
-
-      - name: Run ESLint to fix issues
-        run: npm run lint:fix
-        continue-on-error: true
-
-      - name: Import GPG key
-        id: import_gpg
-        uses: crazy-max/ghaction-import-gpg@v6
-        with:
-          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
-          passphrase: ${{ secrets.GPG_PASSPHRASE }}
-
-      - name: Commit and Push Changes to PR Branch
-        run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email "${{ steps.import_gpg.outputs.email }}"
-          
-          if ! git diff --quiet; then
-            echo "Found changes to commit to the PR branch."
-            git commit --all --message "style: Auto-format and lint code" -S
-            git push
-            echo "Formatting changes pushed to the branch."
-          else
-            echo "No formatting changes needed."
-          fi
-
   # This job runs on direct pushes to the main branch and creates a new PR with fixes.
   create-pr-for-main:
     name: "Create PR with fixes for main"
