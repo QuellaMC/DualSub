@@ -1,74 +1,106 @@
 <!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title data-i18n="optionsPageTitle">DualSub Options</title>
-    <link rel="stylesheet" href="options.css">
-</head>
-<body>
-    <div class="container">
-        <aside class="sidebar">
-            <header>
-                <h1 data-i18n="optionsH1Title">DualSub</h1>
-            </header>
-            <nav>
-                <ul>
-                    <li><a href="#general" class="active" data-i18n="navGeneral">General</a></li>
-                    <li><a href="#translation" data-i18n="navTranslation">Translation</a></li>
-                    <li><a href="#providers" data-i18n="navProviders">Providers</a></li>
-                    <li><a href="#about" data-i18n="navAbout">About</a></li>
-                </ul>
-            </nav>
-        </aside>
-        <main class="content">
-            <section id="general">
-                <h2 data-i18n="sectionGeneral">General</h2>
-                <div class="setting-card">
-                    <h3 data-i18n="cardUILanguageTitle">UI Language</h3>
-                    <p data-i18n="cardUILanguageDesc">Choose the display language for the extension's interface.</p>
-                    <div class="setting">
-                        <label for="uiLanguage" data-i18n="uiLanguageLabel">Language:</label>
-                        <select id="uiLanguage">
-                            <option value="en" data-i18n="lang_en">English</option>
-                            <option value="es" data-i18n="lang_es">Español</option>
-                            <option value="ja" data-i18n="lang_ja">日本語</option>
-                            <option value="ko" data-i18n="lang_ko">한국어</option>
-                            <option value="zh-CN" data-i18n="lang_zh_CN">中文 (简体)</option>
-                            <option value="zh-TW" data-i18n="lang_zh_TW">中文 (繁體)</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="setting-card">
-                    <h3 data-i18n="cardHideOfficialSubtitlesTitle">
-                        Hide Official Subtitles
-                    </h3>
-                    <p data-i18n="cardHideOfficialSubtitlesDesc">
-                        Hide the official subtitles from the video platform
-                        when DualSub is active.
-                    </p>
-                    <div class="setting">
-                        <label
-                            for="hideOfficialSubtitles"
-                            data-i18n="hideOfficialSubtitlesLabel"
-                            >Hide official subtitles:</label
-                        >
-                        <div class="toggle-switch">
-                            <input
-                                type="checkbox"
-                                id="hideOfficialSubtitles"
-                                class="toggle-input"
-                            />
-                            <label
-                                for="hideOfficialSubtitles"
-                                class="toggle-label"
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title data-i18n="optionsPageTitle">DualSub Options</title>
+        <link rel="stylesheet" href="options.css" />
+    </head>
+    <body>
+        <div class="container">
+            <aside class="sidebar">
+                <header>
+                    <h1 data-i18n="optionsH1Title">DualSub</h1>
+                </header>
+                <nav>
+                    <ul>
+                        <li>
+                            <a
+                                href="#general"
+                                class="active"
+                                data-i18n="navGeneral"
+                                >General</a
                             >
-                                <span class="toggle-inner"></span>
-                                <span class="toggle-switch-handle"></span>
-                            </label>
+                        </li>
+                        <li>
+                            <a href="#translation" data-i18n="navTranslation"
+                                >Translation</a
+                            >
+                        </li>
+                        <li>
+                            <a href="#providers" data-i18n="navProviders"
+                                >Providers</a
+                            >
+                        </li>
+                        <li><a href="#about" data-i18n="navAbout">About</a></li>
+                    </ul>
+                </nav>
+            </aside>
+            <main class="content">
+                <section id="general">
+                    <h2 data-i18n="sectionGeneral">General</h2>
+                    <div class="setting-card">
+                        <h3 data-i18n="cardUILanguageTitle">UI Language</h3>
+                        <p data-i18n="cardUILanguageDesc">
+                            Choose the display language for the extension's
+                            interface.
+                        </p>
+                        <div class="setting">
+                            <label for="uiLanguage" data-i18n="uiLanguageLabel"
+                                >Language:</label
+                            >
+                            <select id="uiLanguage">
+                                <option value="en" data-i18n="lang_en">
+                                    English
+                                </option>
+                                <option value="es" data-i18n="lang_es">
+                                    Español
+                                </option>
+                                <option value="ja" data-i18n="lang_ja">
+                                    日本語
+                                </option>
+                                <option value="ko" data-i18n="lang_ko">
+                                    한국어
+                                </option>
+                                <option value="zh-CN" data-i18n="lang_zh_CN">
+                                    中文 (简体)
+                                </option>
+                                <option value="zh-TW" data-i18n="lang_zh_TW">
+                                    中文 (繁體)
+                                </option>
+                            </select>
                         </div>
                     </div>
-                </div>
+                    <div class="setting-card">
+                        <h3 data-i18n="cardHideOfficialSubtitlesTitle">
+                            Hide Official Subtitles
+                        </h3>
+                        <p data-i18n="cardHideOfficialSubtitlesDesc">
+                            Hide the official subtitles from the video platform
+                            when DualSub is active.
+                        </p>
+                        <div class="setting">
+                            <label
+                                for="hideOfficialSubtitles"
+                                data-i18n="hideOfficialSubtitlesLabel"
+                                >Hide official subtitles:</label
+                            >
+                            <div class="toggle-switch">
+                                <input
+                                    type="checkbox"
+                                    id="hideOfficialSubtitles"
+                                    class="toggle-input"
+                                />
+                                <label
+                                    for="hideOfficialSubtitles"
+                                    class="toggle-label"
+                                >
+                                    <span class="toggle-inner"></span>
+                                    <span class="toggle-switch-handle"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
                 </section>
                 <section id="translation" class="hidden">
                     <h2 data-i18n="sectionTranslation">Translation</h2>

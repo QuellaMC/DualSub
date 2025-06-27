@@ -427,7 +427,13 @@ document.addEventListener('DOMContentLoaded', function () {
             );
 
             if (result.success) {
-                showTestResult(getLocalizedText('deeplTestSuccessSimple', '✅ DeepL API test successful!'), 'success');
+                showTestResult(
+                    getLocalizedText(
+                        'deeplTestSuccessSimple',
+                        '✅ DeepL API test successful!'
+                    ),
+                    'success'
+                );
             } else {
                 let fallbackMessage;
 
