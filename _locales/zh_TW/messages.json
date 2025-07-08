@@ -125,6 +125,10 @@
     "cardMicrosoftDesc": {
         "message": "由 Microsoft Edge 提供的免費翻譯服務。無需額外設定。"
     },
+    "cardDeepLFreeTitle": { "message": "DeepL 翻譯（免費）" },
+    "cardDeepLFreeDesc": {
+        "message": "免費的 DeepL 翻譯服務，提供高品質的翻譯結果。無需 API 金鑰 - 使用 DeepL 的網頁介面。"
+    },
     "providerStatus": { "message": "狀態：" },
     "statusReady": { "message": "可以使用" },
     "providerFeatures": { "message": "特性：" },
@@ -138,6 +142,12 @@
     "featureApiKeyRequired": { "message": "需要 API 金鑰" },
     "featureLimitedLanguages": { "message": "有限的語言支援" },
     "featureUsageLimits": { "message": "使用限制適用" },
+    "featureMultipleBackups": { "message": "多種備用方法" },
+
+    "providerNotes": { "message": "注意事項：" },
+    "noteSlowForSecurity": { "message": "由於安全措施，速度稍慢" },
+    "noteAutoFallback": { "message": "自動回退到其他服務" },
+    "noteRecommendedDefault": { "message": "推薦作為預設提供商" },
 
     "providerGoogleName": { "message": "Google 翻譯（免費）" },
     "providerMicrosoftName": { "message": "Microsoft 翻譯（免費）" },

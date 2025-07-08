@@ -153,6 +153,10 @@
     "cardMicrosoftDesc": {
         "message": "Microsoft Edge에서 제공하는 무료 번역 서비스입니다. 추가 설정이 필요하지 않습니다."
     },
+    "cardDeepLFreeTitle": { "message": "DeepL 번역 (무료)" },
+    "cardDeepLFreeDesc": {
+        "message": "고품질 결과를 제공하는 무료 DeepL 번역 서비스입니다. API 키 불필요 - DeepL 웹 인터페이스를 사용합니다."
+    },
     "providerStatus": { "message": "상태:" },
     "statusReady": { "message": "사용 가능" },
     "providerFeatures": { "message": "기능:" },
@@ -166,6 +170,12 @@
     "featureApiKeyRequired": { "message": "API 키 필요" },
     "featureLimitedLanguages": { "message": "제한적인 언어 지원" },
     "featureUsageLimits": { "message": "사용 제한 적용" },
+    "featureMultipleBackups": { "message": "다중 백업 방법" },
+
+    "providerNotes": { "message": "참고사항:" },
+    "noteSlowForSecurity": { "message": "보안 조치로 인해 약간 느림" },
+    "noteAutoFallback": { "message": "대체 서비스로 자동 전환" },
+    "noteRecommendedDefault": { "message": "기본 제공업체로 권장" },
 
     "providerGoogleName": { "message": "Google 번역 (무료)" },
     "providerMicrosoftName": { "message": "Microsoft 번역 (무료)" },
