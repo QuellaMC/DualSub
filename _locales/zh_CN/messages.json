@@ -148,5 +148,6 @@
 
     "providerGoogleName": { "message": "谷歌翻译（免费）" },
     "providerMicrosoftName": { "message": "微软翻译（免费）" },
-    "providerDeepLName": { "message": "DeepL（需要 API 密钥）" }
+    "providerDeepLName": { "message": "DeepL（需要 API 密钥）" },
+    "providerDeepLFreeName": { "message": "DeepL 翻译（免费）" }
 }

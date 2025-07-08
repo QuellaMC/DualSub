@@ -179,5 +179,6 @@
 
     "providerGoogleName": { "message": "Google 번역 (무료)" },
     "providerMicrosoftName": { "message": "Microsoft 번역 (무료)" },
-    "providerDeepLName": { "message": "DeepL (API 키 필요)" }
+    "providerDeepLName": { "message": "DeepL (API 키 필요)" },
+    "providerDeepLFreeName": { "message": "DeepL 번역 (무료)" }
 }

@@ -2,6 +2,39 @@
 // Uses DeepL's web translator interface to provide free translation
 
 /**
+ * Configuration constants for DeepL Free service
+ * Centralized to simplify maintenance if DeepL changes its interface
+ */
+const DEEPL_FREE_CONFIG = {
+    // API endpoints
+    ENDPOINTS: {
+        WEB_API: 'https://www2.deepl.com/jsonrpc',
+        FREE_API: 'https://api-free.deepl.com/v2/translate',
+        ALTERNATIVE_API: 'https://api.mymemory.translated.net/get',
+        TRANSLATOR_REFERER: 'https://www.deepl.com/translator',
+        ORIGIN: 'https://www.deepl.com'
+    },
+    
+    // User agent strings for rotation to avoid detection
+    USER_AGENTS: [
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.1 Safari/605.1.15',
+        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    ],
+    
+    // Text processing limits
+    MAX_TEXT_LENGTH: 5000,
+    
+    // Timing configuration
+    DELAY_RANGE: {
+        MIN: 50,
+        MAX: 200
+    }
+};
+
+/**
  * Maps language codes to DeepL's web interface format
  * @param {string} langCode - Input language code
  * @returns {string} - DeepL compatible language code
@@ -46,14 +79,7 @@ function mapLanguageCodeForDeepLWeb(langCode) {
  * @returns {string} - Random user agent string
  */
 function generateRandomUserAgent() {
-    const userAgents = [
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36', 
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.1 Safari/605.1.15',
-        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-    ];
-    return userAgents[Math.floor(Math.random() * userAgents.length)];
+    return DEEPL_FREE_CONFIG.USER_AGENTS[Math.floor(Math.random() * DEEPL_FREE_CONFIG.USER_AGENTS.length)];
 }
 
 /**
@@ -75,8 +101,6 @@ function randomDelay(minMs = 100, maxMs = 500) {
  * @returns {Promise<string>} - Translated text
  */
 export async function translate(text, sourceLang, targetLang) {
-    console.log("DeepL Free: Starting free translation...");
-    
     // Validate input
     if (!text || typeof text !== 'string' || text.trim() === '') {
         console.warn("DeepL Free: Empty or invalid text provided");
@@ -85,26 +109,23 @@ export async function translate(text, sourceLang, targetLang) {
 
     // Check text length limit (DeepL web interface has limits)
     let processedText = text;
-    if (text.length > 5000) {
-        console.warn("DeepL Free: Text too long, truncating to 5000 characters");
-        processedText = text.substring(0, 5000);
+    if (text.length > DEEPL_FREE_CONFIG.MAX_TEXT_LENGTH) {
+        console.warn(`DeepL Free: Text too long, truncating to ${DEEPL_FREE_CONFIG.MAX_TEXT_LENGTH} characters`);
+        processedText = text.substring(0, DEEPL_FREE_CONFIG.MAX_TEXT_LENGTH);
     }
 
     try {
         // Add random delay to avoid detection
-        await randomDelay(50, 200);
+        await randomDelay(DEEPL_FREE_CONFIG.DELAY_RANGE.MIN, DEEPL_FREE_CONFIG.DELAY_RANGE.MAX);
 
         // Map language codes to DeepL web format
         const mappedSourceLang = mapLanguageCodeForDeepLWeb(sourceLang);
         const mappedTargetLang = mapLanguageCodeForDeepLWeb(targetLang);
 
-        console.log(`DeepL Free: Translating from ${mappedSourceLang} to ${mappedTargetLang}`);
-
         // Method 1: Try the new DeepL web API endpoint
         try {
             const result = await translateViaWebAPI(processedText, mappedSourceLang, mappedTargetLang);
             if (result) {
-                console.log("DeepL Free: Successfully translated via web API");
                 return result;
             }
         } catch (error) {
@@ -115,7 +136,6 @@ export async function translate(text, sourceLang, targetLang) {
         try {
             const result = await translateViaTranslatorInterface(processedText, mappedSourceLang, mappedTargetLang);
             if (result) {
-                console.log("DeepL Free: Successfully translated via translator interface");
                 return result;
             }
         } catch (error) {
@@ -139,7 +159,7 @@ export async function translate(text, sourceLang, targetLang) {
  * @returns {Promise<string>} - Translated text
  */
 async function translateViaWebAPI(text, sourceLang, targetLang) {
-    const url = 'https://www2.deepl.com/jsonrpc';
+    const url = DEEPL_FREE_CONFIG.ENDPOINTS.WEB_API;
     
     // Generate request data similar to what the web interface sends
     const requestData = {
@@ -172,8 +192,8 @@ async function translateViaWebAPI(text, sourceLang, targetLang) {
             'Content-Type': 'application/json',
             'Accept': '*/*',
             'User-Agent': generateRandomUserAgent(),
-            'Referer': 'https://www.deepl.com/translator',
-            'Origin': 'https://www.deepl.com',
+            'Referer': DEEPL_FREE_CONFIG.ENDPOINTS.TRANSLATOR_REFERER,
+            'Origin': DEEPL_FREE_CONFIG.ENDPOINTS.ORIGIN,
             'Accept-Language': 'en-US,en;q=0.9',
             'Accept-Encoding': 'gzip, deflate, br',
             'Connection': 'keep-alive',
@@ -227,7 +247,7 @@ async function translateViaTranslatorInterface(text, sourceLang, targetLang) {
  */
 async function translateViaSimplifiedAPI(text, sourceLang, targetLang) {
     // Use a simplified approach that works more reliably
-    const url = 'https://api-free.deepl.com/v2/translate';
+    const url = DEEPL_FREE_CONFIG.ENDPOINTS.FREE_API;
     
     // This approach tries to use the free endpoint without auth
     // Note: This may not work and is kept as fallback
@@ -245,7 +265,7 @@ async function translateViaSimplifiedAPI(text, sourceLang, targetLang) {
                 'Content-Type': 'application/x-www-form-urlencoded',
                 'User-Agent': generateRandomUserAgent(),
                 'Accept': 'application/json',
-                'Referer': 'https://www.deepl.com/'
+                'Referer': DEEPL_FREE_CONFIG.ENDPOINTS.TRANSLATOR_REFERER
             },
             body: params.toString()
         });
@@ -276,7 +296,7 @@ async function translateViaAlternativeService(text, sourceLang, targetLang) {
     // As a final fallback, we can use MyMemory or LibreTranslate
     // MyMemory provides decent quality and has a generous free tier
     
-    const url = 'https://api.mymemory.translated.net/get';
+    const url = DEEPL_FREE_CONFIG.ENDPOINTS.ALTERNATIVE_API;
     const params = new URLSearchParams({
         q: text,
         langpair: `${sourceLang === 'auto' ? 'autodetect' : sourceLang}|${targetLang}`,

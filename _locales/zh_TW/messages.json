@@ -151,5 +151,6 @@
 
     "providerGoogleName": { "message": "Google 翻譯（免費）" },
     "providerMicrosoftName": { "message": "Microsoft 翻譯（免費）" },
-    "providerDeepLName": { "message": "DeepL（需要 API 金鑰）" }
+    "providerDeepLName": { "message": "DeepL（需要 API 金鑰）" },
+    "providerDeepLFreeName": { "message": "DeepL 翻譯（免費）" }
 }

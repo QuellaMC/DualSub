@@ -185,5 +185,6 @@
 
     "providerGoogleName": { "message": "Google Translate (Gratuito)" },
     "providerMicrosoftName": { "message": "Microsoft Translate (Gratuito)" },
-    "providerDeepLName": { "message": "DeepL (Requiere Clave API)" }
+    "providerDeepLName": { "message": "DeepL (Requiere Clave API)" },
+    "providerDeepLFreeName": { "message": "DeepL Translate (Gratuito)" }
 }

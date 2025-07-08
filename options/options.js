@@ -36,12 +36,12 @@ document.addEventListener('DOMContentLoaded', function () {
     let loadedTranslations = {};
     const translationsCache = {};
 
-    // Available Translation Providers - can be extended
+    // Available Translation Providers - uses i18n keys for consistency
     const availableProviders = {
-        google: 'Google Translate (Free)',
-        microsoft_edge_auth: 'Microsoft Translate (Free)',
-        deepl: 'DeepL Translate (API Key Required)',
-        deepl_free: 'DeepL Translate (Free)',
+        google: 'providerGoogleName',
+        microsoft_edge_auth: 'providerMicrosoftName',
+        deepl: 'providerDeepLName',
+        deepl_free: 'providerDeepLFreeName',
     };
 
     // Default settings
@@ -59,14 +59,14 @@ document.addEventListener('DOMContentLoaded', function () {
         // Clear existing options first
         translationProviderSelect.innerHTML = '';
 
-        // Use consistent provider names that don't change with UI language
+        // Use translated provider names for consistent UI language
         for (const providerId in availableProviders) {
             const option = document.createElement('option');
             option.value = providerId;
-            const providerName = availableProviders[providerId];
+            const translationKey = availableProviders[providerId];
 
-            // Use consistent provider names that don't change with UI language
-            option.textContent = providerName;
+            // Use getLocalizedText to get translated provider name
+            option.textContent = getLocalizedText(translationKey, `Provider: ${providerId}`);
 
             translationProviderSelect.appendChild(option);
         }

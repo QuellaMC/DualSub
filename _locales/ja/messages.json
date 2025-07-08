@@ -181,5 +181,6 @@
 
     "providerGoogleName": { "message": "Google翻訳（無料）" },
     "providerMicrosoftName": { "message": "Microsoft翻訳（無料）" },
-    "providerDeepLName": { "message": "DeepL（APIキー必須）" }
+    "providerDeepLName": { "message": "DeepL（APIキー必須）" },
+    "providerDeepLFreeName": { "message": "DeepL翻訳（無料）" }
 }
