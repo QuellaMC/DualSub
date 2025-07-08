@@ -7,7 +7,7 @@
  * @returns {string} - DeepL compatible language code
  */
 function mapLanguageCodeForDeepLWeb(langCode) {
-    const normalizedLangCode = langCode.toLowerCase().replace('_', '-');
+    const normalizedLangCode = langCode.toLowerCase().replaceAll('_', '-');
     
     const languageMap = {
         // Chinese mappings
@@ -84,9 +84,10 @@ export async function translate(text, sourceLang, targetLang) {
     }
 
     // Check text length limit (DeepL web interface has limits)
+    let processedText = text;
     if (text.length > 5000) {
         console.warn("DeepL Free: Text too long, truncating to 5000 characters");
-        text = text.substring(0, 5000);
+        processedText = text.substring(0, 5000);
     }
 
     try {
@@ -101,7 +102,7 @@ export async function translate(text, sourceLang, targetLang) {
 
         // Method 1: Try the new DeepL web API endpoint
         try {
-            const result = await translateViaWebAPI(text, mappedSourceLang, mappedTargetLang);
+            const result = await translateViaWebAPI(processedText, mappedSourceLang, mappedTargetLang);
             if (result) {
                 console.log("DeepL Free: Successfully translated via web API");
                 return result;
@@ -112,7 +113,7 @@ export async function translate(text, sourceLang, targetLang) {
 
         // Method 2: Try the translator interface endpoint  
         try {
-            const result = await translateViaTranslatorInterface(text, mappedSourceLang, mappedTargetLang);
+            const result = await translateViaTranslatorInterface(processedText, mappedSourceLang, mappedTargetLang);
             if (result) {
                 console.log("DeepL Free: Successfully translated via translator interface");
                 return result;
@@ -208,12 +209,7 @@ async function translateViaWebAPI(text, sourceLang, targetLang) {
  * @returns {Promise<string>} - Translated text
  */
 async function translateViaTranslatorInterface(text, sourceLang, targetLang) {
-    // This is a more complex method that simulates browser behavior
-    // First, get the translator page to establish session
-    
-    const translatorUrl = `https://www.deepl.com/translator#${sourceLang}/${targetLang}/${encodeURIComponent(text)}`;
-    
-    // Method 2a: Try the simplified approach
+    // Try the simplified approach as fallback method
     try {
         return await translateViaSimplifiedAPI(text, sourceLang, targetLang);
     } catch (error) {
