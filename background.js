@@ -3,6 +3,7 @@ import { translate as microsoftTranslateEdgeAuth } from './translation_providers
 import { translate as deeplTranslate } from './translation_providers/deeplTranslate.js';
 import { translate as deeplTranslateFree } from './translation_providers/deeplTranslateFree.js';
 import { normalizeLanguageCode } from './utils/languageNormalization.js';
+import { configService } from './services/configService.js';
 
 console.log('Dual Subtitles background script loaded.');
 
@@ -27,61 +28,20 @@ const translationProviders = {
 
 let currentTranslationProviderId = 'deepl_free';
 
-chrome.storage.sync.get('selectedProvider', (data) => {
-    if (data.selectedProvider && translationProviders[data.selectedProvider]) {
-        currentTranslationProviderId = data.selectedProvider;
+// Initialize provider from configuration service
+configService.get('selectedProvider').then(providerId => {
+    if (providerId && translationProviders[providerId]) {
+        currentTranslationProviderId = providerId;
+        console.log(`Background: Using translation provider: ${providerId}`);
     } else {
-        chrome.storage.sync.set({
-            selectedProvider: currentTranslationProviderId,
-        });
+        console.log(`Background: Provider ${providerId} not found, using default: ${currentTranslationProviderId}`);
     }
+}).catch(error => {
+    console.error('Background: Error loading translation provider setting:', error);
 });
 
-chrome.runtime.onInstalled.addListener(() => {
-    const allSettingKeys = [
-        'subtitlesEnabled',
-        'targetLanguage',
-        'subtitleTimeOffset',
-        'subtitleLayoutOrder',
-        'subtitleLayoutOrientation',
-        'subtitleFontSize',
-        'subtitleGap',
-        'translationBatchSize',
-        'translationDelay',
-        'selectedProvider',
-        'useNativeSubtitles',
-    ];
-
-    chrome.storage.sync.get(allSettingKeys, (items) => {
-        const defaultsToSet = {};
-
-        if (items.subtitlesEnabled === undefined)
-            defaultsToSet.subtitlesEnabled = true;
-        if (items.targetLanguage === undefined)
-            defaultsToSet.targetLanguage = 'zh-CN';
-        if (items.subtitleTimeOffset === undefined)
-            defaultsToSet.subtitleTimeOffset = 0.3;
-        if (items.subtitleLayoutOrder === undefined)
-            defaultsToSet.subtitleLayoutOrder = 'original_top';
-        if (items.subtitleLayoutOrientation === undefined)
-            defaultsToSet.subtitleLayoutOrientation = 'column';
-        if (items.subtitleFontSize === undefined)
-            defaultsToSet.subtitleFontSize = 1.1;
-        if (items.subtitleGap === undefined) defaultsToSet.subtitleGap = 0.3;
-        if (items.translationBatchSize === undefined)
-            defaultsToSet.translationBatchSize = 3;
-        if (items.translationDelay === undefined)
-            defaultsToSet.translationDelay = 150;
-        if (items.selectedProvider === undefined)
-            defaultsToSet.selectedProvider = 'deepl_free';
-        if (items.useNativeSubtitles === undefined)
-            defaultsToSet.useNativeSubtitles = true;
-
-        if (Object.keys(defaultsToSet).length > 0) {
-            chrome.storage.sync.set(defaultsToSet);
-        }
-    });
-});
+// Initialize default settings using the configuration service
+configService.initializeDefaults();
 
 function parseAvailableSubtitleLanguages(masterPlaylistText) {
     if (!masterPlaylistText || typeof masterPlaylistText !== 'string') {
@@ -1372,12 +1332,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return false;
 });
 
-chrome.storage.onChanged.addListener((changes, namespace) => {
-    if (namespace === 'sync') {
-        for (let [key, { newValue }] of Object.entries(changes)) {
-            if (key === 'selectedProvider' && translationProviders[newValue]) {
-                currentTranslationProviderId = newValue;
-            }
-        }
+// Listen for configuration changes using the configuration service
+configService.onChanged((changes) => {
+    if (changes.selectedProvider && translationProviders[changes.selectedProvider]) {
+        currentTranslationProviderId = changes.selectedProvider;
+        console.log(`Background: Translation provider changed to: ${changes.selectedProvider}`);
     }
 });
