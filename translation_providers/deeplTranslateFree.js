@@ -1,14 +1,14 @@
 /**
  * DeepL Free Translation Provider
  * Web interface based translation without API key
- * 
+ *
  * ===== ATTRIBUTION =====
  * This implementation is based on the Kotlin implementation from:
  * Repository: bob-plugin-akl-deepl-free-translate
  * Original Author: akl7777777
  * Original License: MIT License
  * Source: https://github.com/akl7777777/bob-plugin-akl-deepl-free-translate
- * 
+ *
  * Adapted and modified for Chrome Extension environment
  * Key components adapted from original:
  * - Language mapping logic for DeepL web interface
