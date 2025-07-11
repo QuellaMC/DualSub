@@ -1,5 +1,21 @@
-// DeepL Free Translation Provider - Web interface based translation without API key
-// Uses DeepL's web translator interface to provide free translation
+/**
+ * DeepL Free Translation Provider
+ * Web interface based translation without API key
+ * 
+ * ===== ATTRIBUTION =====
+ * This implementation is based on the Kotlin implementation from:
+ * Repository: bob-plugin-akl-deepl-free-translate
+ * Original Author: akl7777777
+ * Original License: MIT License
+ * Source: https://github.com/akl7777777/bob-plugin-akl-deepl-free-translate
+ * 
+ * Adapted and modified for Chrome Extension environment
+ * Key components adapted from original:
+ * - Language mapping logic for DeepL web interface
+ * - JSON-RPC request structure and timestamp manipulation
+ * - DeepL web API interaction patterns and endpoints
+ * - User agent rotation and detection avoidance strategies
+ */
 
 /**
  * Configuration constants for DeepL Free service
@@ -36,6 +52,7 @@ const DEEPL_FREE_CONFIG = {
 
 /**
  * Maps language codes to DeepL's web interface format
+ * Language mapping logic adapted from original implementation
  * @param {string} langCode - Input language code
  * @returns {string} - DeepL compatible language code
  */
@@ -173,6 +190,7 @@ export async function translate(text, sourceLang, targetLang) {
 
 /**
  * Translates using DeepL's web API endpoint (Method 1)
+ * JSON-RPC structure and timestamp manipulation from original implementation
  * @param {string} text - Text to translate
  * @param {string} sourceLang - Source language
  * @param {string} targetLang - Target language
