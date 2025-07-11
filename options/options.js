@@ -162,14 +162,12 @@ document.addEventListener('DOMContentLoaded', function () {
                         ? items.translationBatchSize
                         : defaultSettings.translationBatchSize;
                 translationBatchSizeInput.value = batchSize;
-                translationBatchSizeValue.textContent = batchSize;
 
                 const delay =
                     items.translationDelay !== undefined
                         ? items.translationDelay
                         : defaultSettings.translationDelay;
                 translationDelayInput.value = delay;
-                translationDelayValue.textContent = `${delay}ms`;
 
                 // Providers
                 deeplApiKeyInput.value =
