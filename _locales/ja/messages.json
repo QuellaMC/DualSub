@@ -155,6 +155,10 @@
     "cardMicrosoftDesc": {
         "message": "Microsoft Edgeが提供する無料の翻訳サービスです。追加の設定は必要ありません。"
     },
+    "cardDeepLFreeTitle": { "message": "DeepL翻訳（無料）" },
+    "cardDeepLFreeDesc": {
+        "message": "高品質な結果を提供する無料のDeepL翻訳サービス。APIキー不要 - DeepLのWebインターフェースを使用します。"
+    },
     "providerStatus": { "message": "ステータス：" },
     "statusReady": { "message": "使用可能" },
     "providerFeatures": { "message": "機能：" },
@@ -168,8 +172,15 @@
     "featureApiKeyRequired": { "message": "APIキーが必要" },
     "featureLimitedLanguages": { "message": "限定的な言語サポート" },
     "featureUsageLimits": { "message": "使用制限が適用されます" },
+    "featureMultipleBackups": { "message": "複数のバックアップ方法" },
+
+    "providerNotes": { "message": "注意事項：" },
+    "noteSlowForSecurity": { "message": "セキュリティ対策のため若干低速" },
+    "noteAutoFallback": { "message": "代替サービスへの自動フォールバック" },
+    "noteRecommendedDefault": { "message": "デフォルトプロバイダーとして推奨" },
 
     "providerGoogleName": { "message": "Google翻訳（無料）" },
     "providerMicrosoftName": { "message": "Microsoft翻訳（無料）" },
-    "providerDeepLName": { "message": "DeepL（APIキー必須）" }
+    "providerDeepLName": { "message": "DeepL（APIキー必須）" },
+    "providerDeepLFreeName": { "message": "DeepL翻訳（無料）" }
 }

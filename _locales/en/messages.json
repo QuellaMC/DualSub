@@ -145,6 +145,10 @@
     "cardMicrosoftDesc": {
         "message": "Free translation service provided by Microsoft Edge. No additional configuration required."
     },
+    "cardDeepLFreeTitle": { "message": "DeepL Translate (Free)" },
+    "cardDeepLFreeDesc": {
+        "message": "Free DeepL translation service with high quality results. No API key required - uses DeepL's web interface."
+    },
     "providerStatus": { "message": "Status:" },
     "statusReady": { "message": "Ready to use" },
     "providerFeatures": { "message": "Features:" },
@@ -158,8 +162,15 @@
     "featureApiKeyRequired": { "message": "API key required" },
     "featureLimitedLanguages": { "message": "Limited language support" },
     "featureUsageLimits": { "message": "Usage limits apply" },
+    "featureMultipleBackups": { "message": "Multiple backup methods" },
+
+    "providerNotes": { "message": "Notes:" },
+    "noteSlowForSecurity": { "message": "Slightly slower due to security measures" },
+    "noteAutoFallback": { "message": "Automatic fallback to alternative services" },
+    "noteRecommendedDefault": { "message": "Recommended as default provider" },
 
     "providerGoogleName": { "message": "Google Translate (Free)" },
     "providerMicrosoftName": { "message": "Microsoft Translate (Free)" },
-    "providerDeepLName": { "message": "DeepL (API Key Required)" }
+    "providerDeepLName": { "message": "DeepL (API Key Required)" },
+    "providerDeepLFreeName": { "message": "DeepL Translate (Free)" }
 }

@@ -1,6 +1,7 @@
 import { translate as googleTranslate } from './translation_providers/googleTranslate.js';
 import { translate as microsoftTranslateEdgeAuth } from './translation_providers/microsoftTranslateEdgeAuth.js';
 import { translate as deeplTranslate } from './translation_providers/deeplTranslate.js';
+import { translate as deeplTranslateFree } from './translation_providers/deeplTranslateFree.js';
 import { normalizeLanguageCode } from './utils/languageNormalization.js';
 
 console.log('Dual Subtitles background script loaded.');
@@ -15,12 +16,16 @@ const translationProviders = {
         translate: microsoftTranslateEdgeAuth,
     },
     deepl: {
-        name: 'DeepL Translate',
+        name: 'DeepL Translate (API Key Required)',
         translate: deeplTranslate,
+    },
+    deepl_free: {
+        name: 'DeepL Translate (Free)',
+        translate: deeplTranslateFree,
     },
 };
 
-let currentTranslationProviderId = 'google';
+let currentTranslationProviderId = 'deepl_free';
 
 chrome.storage.sync.get('selectedProvider', (data) => {
     if (data.selectedProvider && translationProviders[data.selectedProvider]) {
@@ -68,7 +73,7 @@ chrome.runtime.onInstalled.addListener(() => {
         if (items.translationDelay === undefined)
             defaultsToSet.translationDelay = 150;
         if (items.selectedProvider === undefined)
-            defaultsToSet.selectedProvider = 'google';
+            defaultsToSet.selectedProvider = 'deepl_free';
         if (items.useNativeSubtitles === undefined)
             defaultsToSet.useNativeSubtitles = true;
 

@@ -122,6 +122,10 @@
     "cardMicrosoftDesc": {
         "message": "由微软 Edge 提供的免费翻译服务。无需额外配置。"
     },
+    "cardDeepLFreeTitle": { "message": "DeepL 翻译（免费）" },
+    "cardDeepLFreeDesc": {
+        "message": "免费的 DeepL 翻译服务，提供高质量的翻译结果。无需 API 密钥 - 使用 DeepL 的网页接口。"
+    },
     "providerStatus": { "message": "状态：" },
     "statusReady": { "message": "可以使用" },
     "providerFeatures": { "message": "特性：" },
@@ -135,8 +139,15 @@
     "featureApiKeyRequired": { "message": "需要 API 密钥" },
     "featureLimitedLanguages": { "message": "有限的语言支持" },
     "featureUsageLimits": { "message": "使用限制适用" },
+    "featureMultipleBackups": { "message": "多种备用方法" },
+
+    "providerNotes": { "message": "注意事项：" },
+    "noteSlowForSecurity": { "message": "由于安全措施，速度稍慢" },
+    "noteAutoFallback": { "message": "自动回退到其他服务" },
+    "noteRecommendedDefault": { "message": "推荐作为默认提供商" },
 
     "providerGoogleName": { "message": "谷歌翻译（免费）" },
     "providerMicrosoftName": { "message": "微软翻译（免费）" },
-    "providerDeepLName": { "message": "DeepL（需要 API 密钥）" }
+    "providerDeepLName": { "message": "DeepL（需要 API 密钥）" },
+    "providerDeepLFreeName": { "message": "DeepL 翻译（免费）" }
 }
