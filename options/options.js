@@ -66,11 +66,13 @@ document.addEventListener('DOMContentLoaded', function () {
             const translationKey = availableProviders[providerId];
 
             // Use getLocalizedText to get translated provider name
-            option.textContent = getLocalizedText(translationKey, `Provider: ${providerId}`);
+            option.textContent = getLocalizedText(
+                translationKey,
+                `Provider: ${providerId}`
+            );
 
             translationProviderSelect.appendChild(option);
         }
-
     }
 
     function updateProviderSettings() {
