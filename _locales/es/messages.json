@@ -179,9 +179,15 @@
     "featureMultipleBackups": { "message": "Múltiples métodos de respaldo" },
 
     "providerNotes": { "message": "Notas:" },
-    "noteSlowForSecurity": { "message": "Ligeramente más lento debido a medidas de seguridad" },
-    "noteAutoFallback": { "message": "Respaldo automático a servicios alternativos" },
-    "noteRecommendedDefault": { "message": "Recomendado como proveedor predeterminado" },
+    "noteSlowForSecurity": {
+        "message": "Ligeramente más lento debido a medidas de seguridad"
+    },
+    "noteAutoFallback": {
+        "message": "Respaldo automático a servicios alternativos"
+    },
+    "noteRecommendedDefault": {
+        "message": "Recomendado como proveedor predeterminado"
+    },
 
     "providerGoogleName": { "message": "Google Translate (Gratuito)" },
     "providerMicrosoftName": { "message": "Microsoft Translate (Gratuito)" },
