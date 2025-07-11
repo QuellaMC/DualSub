@@ -5,6 +5,12 @@
  * Configuration constants for DeepL Free service
  * Centralized to simplify maintenance if DeepL changes its interface
  */
+// Based on Kotlin implementation demonstrating DeepL web API usage
+// Original Source: bob-plugin-akl-deepl-free-translate
+// Adapted and modified for Chrome Extension environment
+// License: MIT License
+// Author: akl7777777
+
 const DEEPL_FREE_CONFIG = {
     // API endpoints
     ENDPOINTS: {
@@ -34,6 +40,10 @@ const DEEPL_FREE_CONFIG = {
     },
 };
 
+// Language mapping logic based on original Kotlin implementation
+// Original Source: bob-plugin-akl-deepl-free-translate
+// License: MIT License
+// Author: akl7777777
 /**
  * Maps language codes to DeepL's web interface format
  * @param {string} langCode - Input language code
@@ -171,6 +181,10 @@ export async function translate(text, sourceLang, targetLang) {
     }
 }
 
+// Original Source: bob-plugin-akl-deepl-free-translate
+// License: MIT License
+// Author: akl7777777
+// JSON-RPC structure based on original Kotlin implementation
 /**
  * Translates using DeepL's web API endpoint (Method 1)
  * @param {string} text - Text to translate
