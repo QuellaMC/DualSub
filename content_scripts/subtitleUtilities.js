@@ -58,6 +58,8 @@ export function getLocalizedErrorMessage(errorTypeKey, details = '') {
     }
     return message || '[Translation Error]';
 }
+
+// Core state variables (these are NOT user preferences)
 export let currentVideoId = null;
 export let subtitleContainer = null;
 export let originalSubtitleElement = null;
@@ -65,17 +67,8 @@ export let translatedSubtitleElement = null;
 export let subtitlesActive = true;
 export let subtitleQueue = [];
 export let processingQueue = false;
-export let userSubtitleTimeOffset = 0.3;
-export let userSubtitleLayoutOrder = 'original_top';
-export let userSubtitleOrientation = 'column';
-export let userSubtitleFontSize = 1.1;
-export let userSubtitleGap = 0.3;
-export let userTranslationBatchSize = 3;
-export let userTranslationDelay = 150;
-export let userUseNativeSubtitles = true;
-export let userTargetLanguage = 'zh-CN';
-export let userOriginalLanguage = 'en';
 
+// Video tracking state
 export let timeUpdateListener = null;
 export let progressBarObserver = null;
 export let lastProgressBarTime = -1;
@@ -85,42 +78,16 @@ export const MAX_FIND_PROGRESS_BAR_RETRIES = 20;
 export let lastLoggedTimeSec = -1;
 export let timeUpdateLogCounter = 0;
 export const TIME_UPDATE_LOG_INTERVAL = 30;
+
+// State setters (only for core state, not user preferences)
 export function setCurrentVideoId(id) {
     currentVideoId = id;
 }
+
 export function setSubtitlesActive(active) {
     subtitlesActive = active;
 }
-export function setUserTargetLanguage(lang) {
-    userTargetLanguage = lang;
-}
-export function setUserOriginalLanguage(lang) {
-    userOriginalLanguage = lang;
-}
-export function setUserSubtitleTimeOffset(offset) {
-    userSubtitleTimeOffset = offset;
-}
-export function setUserSubtitleLayoutOrder(order) {
-    userSubtitleLayoutOrder = order;
-}
-export function setUserSubtitleOrientation(orientation) {
-    userSubtitleOrientation = orientation;
-}
-export function setUserSubtitleFontSize(size) {
-    userSubtitleFontSize = size;
-}
-export function setUserSubtitleGap(gap) {
-    userSubtitleGap = gap;
-}
-export function setUserTranslationBatchSize(size) {
-    userTranslationBatchSize = size;
-}
-export function setUserTranslationDelay(delay) {
-    userTranslationDelay = delay;
-}
-export function setUserUseNativeSubtitles(use) {
-    userUseNativeSubtitles = use;
-}
+
 export function formatSubtitleTextForDisplay(text) {
     if (!text) return '';
     return text
@@ -209,6 +176,7 @@ export function parseTimestampToSeconds(timestamp) {
     }
     return seconds;
 }
+
 export function showSubtitleContainer() {
     if (subtitleContainer) {
         subtitleContainer.style.visibility = 'visible';
@@ -220,7 +188,6 @@ export function showSubtitleContainer() {
         if (translatedSubtitleElement) {
             translatedSubtitleElement.style.display = 'inline-block';
         }
-        applySubtitleStyling();
     }
 }
 
@@ -239,7 +206,7 @@ export function hideSubtitleContainer() {
     }
 }
 
-export function applySubtitleStyling() {
+export function applySubtitleStyling(config) {
     if (
         !subtitleContainer ||
         !originalSubtitleElement ||
@@ -262,7 +229,7 @@ export function applySubtitleStyling() {
     translatedSubtitleElement.style.textOverflow = 'clip';
 
     // Container layout
-    subtitleContainer.style.flexDirection = userSubtitleOrientation;
+    subtitleContainer.style.flexDirection = config.subtitleLayoutOrientation;
     subtitleContainer.style.width = '94%';
     subtitleContainer.style.justifyContent = 'center';
     subtitleContainer.style.alignItems = 'center';
@@ -274,8 +241,8 @@ export function applySubtitleStyling() {
     translatedSubtitleElement.style.marginRight = '0';
 
     // Font size
-    originalSubtitleElement.style.fontSize = `${userSubtitleFontSize}vw`;
-    translatedSubtitleElement.style.fontSize = `${userSubtitleFontSize}vw`;
+    originalSubtitleElement.style.fontSize = `${config.subtitleFontSize}vw`;
+    translatedSubtitleElement.style.fontSize = `${config.subtitleFontSize}vw`;
 
     // Clear and re-add elements in correct order
     while (subtitleContainer.firstChild) {
@@ -283,11 +250,11 @@ export function applySubtitleStyling() {
     }
 
     const firstElement =
-        userSubtitleLayoutOrder === 'translation_top'
+        config.subtitleLayoutOrder === 'translation_top'
             ? translatedSubtitleElement
             : originalSubtitleElement;
     const secondElement =
-        userSubtitleLayoutOrder === 'translation_top'
+        config.subtitleLayoutOrder === 'translation_top'
             ? originalSubtitleElement
             : translatedSubtitleElement;
 
@@ -303,23 +270,24 @@ export function applySubtitleStyling() {
     subtitleContainer.appendChild(secondElement);
 
     // Orientation-specific styles
-    if (userSubtitleOrientation === 'column') {
+    if (config.subtitleLayoutOrientation === 'column') {
         firstElement.style.maxWidth = '100%';
         secondElement.style.maxWidth = '100%';
-        firstElement.style.marginBottom = `${userSubtitleGap}em`;
+        firstElement.style.marginBottom = `${config.subtitleGap}em`;
     } else {
         firstElement.style.maxWidth = 'calc(50% - 1%)';
         secondElement.style.maxWidth = 'calc(50% - 1%)';
         firstElement.style.verticalAlign = 'top';
         secondElement.style.verticalAlign = 'top';
 
-        if (userSubtitleLayoutOrder === 'translation_top') {
+        if (config.subtitleLayoutOrder === 'translation_top') {
             translatedSubtitleElement.style.marginRight = '2%';
         } else {
             originalSubtitleElement.style.marginRight = '2%';
         }
     }
 }
+
 export function isVideoSetupComplete(activePlatform) {
     if (!activePlatform) return false;
 
@@ -339,6 +307,7 @@ export function isVideoSetupComplete(activePlatform) {
 
 export function ensureSubtitleContainer(
     activePlatform,
+    config,
     logPrefix = 'SubtitleUtils'
 ) {
     if (!activePlatform) {
@@ -393,9 +362,9 @@ export function ensureSubtitleContainer(
             clearInterval(findProgressBarIntervalId);
             findProgressBarIntervalId = null;
         }
-        attachTimeUpdateListener(videoElement, activePlatform, logPrefix);
+        attachTimeUpdateListener(videoElement, activePlatform, config, logPrefix);
         if (activePlatform.supportsProgressBarTracking?.() !== false) {
-            setupProgressBarObserver(videoElement, activePlatform, logPrefix);
+            setupProgressBarObserver(videoElement, activePlatform, config, logPrefix);
         }
     }
 
@@ -410,7 +379,7 @@ export function ensureSubtitleContainer(
             }
             videoPlayerParent.appendChild(subtitleContainer);
         }
-        applySubtitleStyling();
+        applySubtitleStyling(config);
         if (subtitlesActive) showSubtitleContainer();
         else hideSubtitleContainer();
         return true;
@@ -440,7 +409,7 @@ export function ensureSubtitleContainer(
         color: 'white',
         backgroundColor: 'rgba(0, 0, 0, 0.6)',
         padding: '0.2em 0.5em',
-        fontSize: `${userSubtitleFontSize}vw`,
+        fontSize: `${config.subtitleFontSize}vw`,
         textShadow: '1px 1px 2px black, 0 0 3px black',
         borderRadius: '4px',
         lineHeight: '1.3',
@@ -460,7 +429,7 @@ export function ensureSubtitleContainer(
         color: '#00FFFF',
         backgroundColor: 'rgba(0, 0, 0, 0.6)',
         padding: '0.2em 0.5em',
-        fontSize: `${userSubtitleFontSize}vw`,
+        fontSize: `${config.subtitleFontSize}vw`,
         textShadow: '1px 1px 2px black, 0 0 3px black',
         borderRadius: '4px',
         lineHeight: '1.3',
@@ -490,17 +459,17 @@ export function ensureSubtitleContainer(
         );
     }
 
-    applySubtitleStyling();
+    applySubtitleStyling(config);
 
     if (videoElement && !videoElement.getAttribute('data-listener-attached')) {
-        attachTimeUpdateListener(videoElement, activePlatform, logPrefix);
+        attachTimeUpdateListener(videoElement, activePlatform, config, logPrefix);
     }
     if (
         videoElement &&
         !progressBarObserver &&
         activePlatform.supportsProgressBarTracking?.() !== false
     ) {
-        setupProgressBarObserver(videoElement, activePlatform, logPrefix);
+        setupProgressBarObserver(videoElement, activePlatform, config, logPrefix);
     }
 
     if (subtitlesActive) showSubtitleContainer();
@@ -511,6 +480,7 @@ export function ensureSubtitleContainer(
 export function attachTimeUpdateListener(
     videoElement,
     activePlatform,
+    config,
     logPrefix = 'SubtitleUtils'
 ) {
     if (!activePlatform || !videoElement) {
@@ -543,7 +513,7 @@ export function attachTimeUpdateListener(
                     typeof currentTime === 'number' &&
                     readyState >= currentVideoElem.HAVE_CURRENT_DATA
                 ) {
-                    updateSubtitles(currentTime, activePlatform, logPrefix);
+                    updateSubtitles(currentTime, activePlatform, config, logPrefix);
                 }
             }
         };
@@ -557,6 +527,7 @@ export function attachTimeUpdateListener(
 export function setupProgressBarObserver(
     videoElement,
     activePlatform,
+    config,
     logPrefix = 'SubtitleUtils'
 ) {
     if (findProgressBarIntervalId) {
@@ -569,6 +540,7 @@ export function setupProgressBarObserver(
         attemptToSetupProgressBarObserver(
             videoElement,
             activePlatform,
+            config,
             logPrefix
         )
     ) {
@@ -587,6 +559,7 @@ export function setupProgressBarObserver(
             attemptToSetupProgressBarObserver(
                 currentVideoElem,
                 activePlatform,
+                config,
                 logPrefix
             )
         ) {
@@ -606,6 +579,7 @@ export function setupProgressBarObserver(
 function attemptToSetupProgressBarObserver(
     videoElement,
     activePlatform,
+    config,
     logPrefix = 'SubtitleUtils'
 ) {
     if (!activePlatform || !videoElement) {
@@ -677,6 +651,7 @@ function attemptToSetupProgressBarObserver(
                                     updateSubtitles(
                                         calculatedTime,
                                         activePlatform,
+                                        config,
                                         logPrefix
                                     );
                                 }
@@ -699,16 +674,18 @@ function attemptToSetupProgressBarObserver(
     }
     return false;
 }
+
 export function updateSubtitles(
     rawCurrentTime,
     activePlatform,
+    config,
     logPrefix = 'SubtitleUtils'
 ) {
     if (typeof rawCurrentTime !== 'number' || isNaN(rawCurrentTime)) {
         return;
     }
 
-    const currentTime = rawCurrentTime + userSubtitleTimeOffset;
+    const currentTime = rawCurrentTime + config.subtitleTimeOffset;
 
     if (
         !originalSubtitleElement ||
@@ -717,7 +694,7 @@ export function updateSubtitles(
         !document.body.contains(subtitleContainer)
     ) {
         if (subtitlesActive) {
-            ensureSubtitleContainer(activePlatform, logPrefix);
+            ensureSubtitleContainer(activePlatform, config, logPrefix);
             if (
                 !originalSubtitleElement ||
                 !translatedSubtitleElement ||
@@ -991,7 +968,7 @@ export function updateSubtitles(
         }
 
         if (contentChanged) {
-            applySubtitleStyling();
+            applySubtitleStyling(config);
         }
     } else {
         if (originalSubtitleElement.innerHTML !== '')
@@ -1003,6 +980,7 @@ export function updateSubtitles(
         translatedSubtitleElement.style.display = 'none';
     }
 }
+
 export function clearSubtitlesDisplayAndQueue(
     activePlatform,
     clearAllQueue = true,
@@ -1064,9 +1042,11 @@ export function clearSubtitleDOM() {
         findProgressBarIntervalId = null;
     }
 }
+
 export function handleSubtitleDataFound(
     subtitleData,
     activePlatform,
+    config,
     logPrefix = 'SubtitleUtils'
 ) {
     if (!currentVideoId && activePlatform) {
@@ -1082,14 +1062,14 @@ export function handleSubtitleDataFound(
 
     if (
         subtitleData.selectedLanguage &&
-        subtitleData.selectedLanguage.normalizedCode !== userOriginalLanguage
+        subtitleData.selectedLanguage.normalizedCode !== config.originalLanguage
     ) {
         console.log(
-            `${logPrefix}: Language fallback occurred: User requested '${userOriginalLanguage}' but using '${subtitleData.selectedLanguage.normalizedCode}' (${subtitleData.selectedLanguage.displayName})`
+            `${logPrefix}: Language fallback occurred: User requested '${config.originalLanguage}' but using '${subtitleData.selectedLanguage.normalizedCode}' (${subtitleData.selectedLanguage.displayName})`
         );
     }
 
-    ensureSubtitleContainer(activePlatform, logPrefix);
+    ensureSubtitleContainer(activePlatform, config, logPrefix);
     const parsedOriginalCues = parseVTT(subtitleData.vttText);
 
     let parsedTargetCues = [];
@@ -1213,7 +1193,7 @@ export function handleSubtitleDataFound(
         }
 
         if (!useNativeTarget && parsedOriginalCues.length > 0) {
-            processSubtitleQueue(activePlatform, logPrefix);
+            processSubtitleQueue(activePlatform, config, logPrefix);
         }
     } else {
         console.warn(
@@ -1239,6 +1219,7 @@ export function handleVideoIdChange(newVideoId, logPrefix = 'SubtitleUtils') {
 
 export async function processSubtitleQueue(
     activePlatform,
+    config,
     logPrefix = 'SubtitleUtils'
 ) {
     if (processingQueue) return;
@@ -1254,7 +1235,7 @@ export async function processSubtitleQueue(
         console.log(
             `${logPrefix}: Progress bar observer setup in progress. Deferring queue processing slightly.`
         );
-        setTimeout(() => processSubtitleQueue(activePlatform, logPrefix), 200);
+        setTimeout(() => processSubtitleQueue(activePlatform, config, logPrefix), 200);
         return;
     }
 
@@ -1284,7 +1265,7 @@ export async function processSubtitleQueue(
         }
     }
 
-    const currentTime = timeSource + userSubtitleTimeOffset;
+    const currentTime = timeSource + config.subtitleTimeOffset;
 
     const relevantCues = subtitleQueue.filter(
         (cue) =>
@@ -1296,7 +1277,7 @@ export async function processSubtitleQueue(
     );
 
     relevantCues.sort((a, b) => a.start - b.start);
-    const cuesToProcess = relevantCues.slice(0, userTranslationBatchSize);
+    const cuesToProcess = relevantCues.slice(0, config.translationBatchSize);
 
     if (cuesToProcess.length === 0) return;
 
@@ -1312,7 +1293,7 @@ export async function processSubtitleQueue(
                         {
                             action: 'translate',
                             text: cueToProcess.original,
-                            targetLang: userTargetLanguage,
+                            targetLang: config.targetLanguage,
                             cueStart: cueToProcess.start,
                             cueVideoId: cueToProcess.videoId,
                         },
@@ -1369,9 +1350,9 @@ export async function processSubtitleQueue(
                     );
                 }
 
-                if (i < cuesToProcess.length - 1 && userTranslationDelay > 0) {
+                if (i < cuesToProcess.length - 1 && config.translationDelay > 0) {
                     await new Promise((resolve) =>
-                        setTimeout(resolve, userTranslationDelay)
+                        setTimeout(resolve, config.translationDelay)
                     );
                 }
             } catch (error) {
@@ -1417,82 +1398,6 @@ export async function processSubtitleQueue(
         currentContextVideoIdForNextCheck &&
         moreRelevantCuesExist
     ) {
-        setTimeout(() => processSubtitleQueue(activePlatform, logPrefix), 50);
-    }
-}
-
-export async function loadInitialSettings() {
-    const settingsToGet = {
-        subtitlesEnabled: true,
-        targetLanguage: 'zh-CN',
-        originalLanguage: 'en',
-        subtitleTimeOffset: 0.3,
-        subtitleLayoutOrder: 'original_top',
-        subtitleOrientation: 'column',
-        subtitleFontSize: 1.1,
-        subtitleGap: 0.3,
-        translationBatchSize: 3,
-        translationDelay: 150,
-        useNativeSubtitles: true,
-    };
-
-    try {
-        const items = await chrome.storage.sync.get(settingsToGet);
-        subtitlesActive =
-            items.subtitlesEnabled !== undefined
-                ? items.subtitlesEnabled
-                : settingsToGet.subtitlesEnabled;
-        userTargetLanguage =
-            items.targetLanguage || settingsToGet.targetLanguage;
-        userOriginalLanguage =
-            items.originalLanguage || settingsToGet.originalLanguage;
-        userSubtitleTimeOffset =
-            items.subtitleTimeOffset !== undefined
-                ? items.subtitleTimeOffset
-                : settingsToGet.subtitleTimeOffset;
-        userSubtitleLayoutOrder =
-            items.subtitleLayoutOrder || settingsToGet.subtitleLayoutOrder;
-        userSubtitleOrientation =
-            items.subtitleOrientation || settingsToGet.subtitleOrientation;
-        userSubtitleFontSize =
-            items.subtitleFontSize || settingsToGet.subtitleFontSize;
-        userSubtitleGap = items.subtitleGap || settingsToGet.subtitleGap;
-        userTranslationBatchSize =
-            items.translationBatchSize || settingsToGet.translationBatchSize;
-        userTranslationDelay =
-            items.translationDelay || settingsToGet.translationDelay;
-        userUseNativeSubtitles =
-            items.useNativeSubtitles !== undefined
-                ? items.useNativeSubtitles
-                : settingsToGet.useNativeSubtitles;
-
-        return {
-            active: subtitlesActive,
-            lang: userTargetLanguage,
-            originalLang: userOriginalLanguage,
-            offset: userSubtitleTimeOffset,
-            order: userSubtitleLayoutOrder,
-            orientation: userSubtitleOrientation,
-            fontSize: userSubtitleFontSize,
-            gap: userSubtitleGap,
-            batchSize: userTranslationBatchSize,
-            delay: userTranslationDelay,
-            useNative: userUseNativeSubtitles,
-        };
-    } catch (e) {
-        console.error('SubtitleUtils: Error loading initial settings:', e);
-        return {
-            active: true,
-            lang: 'zh-CN',
-            originalLang: 'en',
-            offset: 0.3,
-            order: 'original_top',
-            orientation: 'column',
-            fontSize: 1.1,
-            gap: 0.3,
-            batchSize: 3,
-            delay: 150,
-            useNative: true,
-        };
+        setTimeout(() => processSubtitleQueue(activePlatform, config, logPrefix), 50);
     }
 }

@@ -35,6 +35,8 @@
     "web_accessible_resources": [
         {
             "resources": [
+                "config/configSchema.js",
+                "services/configService.js",
                 "injected_scripts/disneyPlusInject.js",
                 "video_platforms/disneyPlusPlatform.js",
                 "video_platforms/platform_interface.js",
@@ -45,6 +47,8 @@
         },
         {
             "resources": [
+                "config/configSchema.js",
+                "services/configService.js",
                 "injected_scripts/netflixInject.js",
                 "video_platforms/netflixPlatform.js",
                 "video_platforms/platform_interface.js",
