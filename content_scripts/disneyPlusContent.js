@@ -111,7 +111,11 @@ async function initializePlatform() {
     // Set up configuration change listener
     configService.onChanged(async (changes) => {
         console.log(`${LOG_PREFIX}: Config changed, updating...`, changes);
-        currentConfig = await configService.getAll();
+        const newConfig = await configService.getAll();
+
+        // Update existing object properties while preserving the reference
+        Object.keys(currentConfig).forEach(key => delete currentConfig[key]);
+        Object.assign(currentConfig, newConfig);
 
         // Re-apply styles and trigger a subtitle re-render
         if (activePlatform && subtitleUtils.subtitlesActive) {
@@ -316,6 +320,31 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 }
             }
             sendResponse({ success: true, subtitlesEnabled: request.enabled });
+            break;
+        }
+
+        case 'configChanged': {
+            if (request.changes && activePlatform && subtitleUtils.subtitlesActive) {
+                // Update local config with the changes for immediate effect
+                Object.assign(currentConfig, request.changes);
+                
+                // Apply the changes immediately for instant visual feedback
+                subtitleUtils.applySubtitleStyling(currentConfig);
+                const videoElement = activePlatform.getVideoElement();
+                if (videoElement) {
+                    subtitleUtils.updateSubtitles(
+                        videoElement.currentTime,
+                        activePlatform,
+                        currentConfig,
+                        LOG_PREFIX
+                    );
+                }
+                console.log(
+                    `${LOG_PREFIX}: Applied immediate config changes:`,
+                    request.changes
+                );
+            }
+            sendResponse({ success: true });
             break;
         }
 

@@ -133,6 +133,24 @@ document.addEventListener('DOMContentLoaded', function () {
         }, duration);
     }
 
+    /**
+     * Sends immediate config change message to content scripts for instant visual feedback.
+     * This works alongside the storage change mechanism as a fallback for immediate updates.
+     * @param {Object} changes - Object containing the changed config keys and their new values
+     */
+    function sendImmediateConfigUpdate(changes) {
+        chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+            if (tabs[0]) {
+                chrome.tabs.sendMessage(tabs[0].id, { 
+                    action: 'configChanged',
+                    changes: changes
+                }).catch(error => {
+                    // Fail silently - the storage change mechanism should handle it as fallback
+                    console.log('Popup: Direct message failed, relying on storage events:', error);
+                });
+            }
+        });
+    }
 
 
     // --- Event Listeners ---
@@ -209,6 +227,9 @@ document.addEventListener('DOMContentLoaded', function () {
             loadedTranslations['statusDisplayOrderUpdated']?.message ||
             `Display order updated.`;
         showStatus(statusText);
+        
+        // Send immediate update for instant visual feedback
+        sendImmediateConfigUpdate({ subtitleLayoutOrder: layoutOrder });
     });
 
     subtitleLayoutOrientationSelect.addEventListener('change', async function () {
@@ -218,6 +239,9 @@ document.addEventListener('DOMContentLoaded', function () {
             loadedTranslations['statusLayoutOrientationUpdated']?.message ||
             `Layout orientation updated.`;
         showStatus(statusText);
+        
+        // Send immediate update for instant visual feedback
+        sendImmediateConfigUpdate({ subtitleLayoutOrientation: layoutOrientation });
     });
 
     subtitleFontSizeInput.addEventListener('input', function () {
@@ -230,6 +254,9 @@ document.addEventListener('DOMContentLoaded', function () {
         const statusPrefix =
             loadedTranslations['statusFontSize']?.message || 'Font size: ';
         showStatus(`${statusPrefix}${fontSize.toFixed(1)}vw.`);
+        
+        // Send immediate update for instant visual feedback
+        sendImmediateConfigUpdate({ subtitleFontSize: fontSize });
     });
 
     subtitleGapInput.addEventListener('input', function () {
@@ -243,6 +270,9 @@ document.addEventListener('DOMContentLoaded', function () {
             loadedTranslations['statusVerticalGap']?.message ||
             'Vertical gap: ';
         showStatus(`${statusPrefix}${gap.toFixed(1)}em.`);
+        
+        // Send immediate update for instant visual feedback
+        sendImmediateConfigUpdate({ subtitleGap: gap });
     });
 
     appearanceAccordion.addEventListener('toggle', async function () {
