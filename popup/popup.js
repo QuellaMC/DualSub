@@ -59,15 +59,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
 
-    function updateSliderProgress(sliderElement) {
+    const updateSliderProgress = function(sliderElement) {
         const value = sliderElement.value;
         const min = sliderElement.min || 0;
         const max = sliderElement.max || 100;
         const percentage = ((value - min) / (max - min)) * 100;
         sliderElement.style.backgroundSize = `${percentage}% 100%`;
-    }
+    };
 
-    function populateDropdown(selectElement, options, currentValue) {
+    const populateDropdown = function(selectElement, options, currentValue) {
         selectElement.innerHTML = ''; // Clear existing options
         for (const value in options) {
             const i18nKey = options[value];
@@ -81,9 +81,9 @@ document.addEventListener('DOMContentLoaded', function () {
             selectElement.appendChild(option);
         }
         if (currentValue) selectElement.value = currentValue;
-    }
+    };
 
-    async function loadSettings() {
+    const loadSettings = async function() {
         try {
             // Get all settings from the configuration service
             const settings = await configService.getAll();
@@ -118,9 +118,9 @@ document.addEventListener('DOMContentLoaded', function () {
         } catch (error) {
             console.error('Popup: Error loading settings:', error);
         }
-    }
+    };
 
-    function showStatus(message, duration = 3000) {
+    const showStatus = function(message, duration = 3000) {
         // Clear any existing timeout to prevent interference
         if (statusTimeoutId) {
             clearTimeout(statusTimeoutId);
@@ -131,14 +131,14 @@ document.addEventListener('DOMContentLoaded', function () {
             statusMessage.textContent = '';
             statusTimeoutId = null;
         }, duration);
-    }
+    };
 
     /**
      * Sends immediate config change message to content scripts for instant visual feedback.
      * This works alongside the storage change mechanism as a fallback for immediate updates.
      * @param {Object} changes - Object containing the changed config keys and their new values
      */
-    function sendImmediateConfigUpdate(changes) {
+    const sendImmediateConfigUpdate = function(changes) {
         chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
             if (tabs[0]) {
                 chrome.tabs.sendMessage(tabs[0].id, { 
@@ -150,7 +150,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
             }
         });
-    }
+    };
 
 
     // --- Event Listeners ---
@@ -287,7 +287,7 @@ document.addEventListener('DOMContentLoaded', function () {
     );
 
     // --- Language and Initialization ---
-    async function loadTranslations(langCode) {
+    const loadTranslations = async function(langCode) {
         // Convert hyphens to underscores for folder structure (zh-CN -> zh_CN)
         const normalizedLangCode = langCode.replace('-', '_');
         if (translationsCache[normalizedLangCode])
@@ -324,9 +324,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 return {};
             }
         }
-    }
+    };
 
-    function updateUILanguage() {
+    const updateUILanguage = function() {
         // Apply translations to all elements with data-i18n attribute
         document.querySelectorAll('[data-i18n]').forEach((elem) => {
             const key = elem.getAttribute('data-i18n');
@@ -361,7 +361,7 @@ document.addEventListener('DOMContentLoaded', function () {
             layoutOrientationOptions,
             subtitleLayoutOrientationSelect.value
         );
-    }
+    };
 
     // Listen for language changes from other parts of the extension (e.g., options page)
     configService.onChanged(async (changes) => {

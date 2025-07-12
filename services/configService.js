@@ -38,28 +38,48 @@ class ConfigService {
         const syncDefaults = {};
         const localDefaults = {};
 
-        syncKeys.forEach(key => {
-            if (!syncItems.hasOwnProperty(key)) {
+        // Set missing sync defaults
+        for (const key of syncKeys) {
+            if (!(key in syncItems)) {
                 syncDefaults[key] = getDefaultValue(key);
             }
-        });
+        }
 
-        localKeys.forEach(key => {
-            if (!localItems.hasOwnProperty(key)) {
+        // Set missing local defaults
+        for (const key of localKeys) {
+            if (!(key in localItems)) {
                 localDefaults[key] = getDefaultValue(key);
             }
-        });
+        }
 
-        // Set defaults for missing keys
-        const promises = [];
+        // Apply defaults with error handling
+        const errors = [];
+        
         if (Object.keys(syncDefaults).length > 0) {
-            promises.push(this.setToStorage('sync', syncDefaults));
-        }
-        if (Object.keys(localDefaults).length > 0) {
-            promises.push(this.setToStorage('local', localDefaults));
+            try {
+                await this.setToStorage('sync', syncDefaults);
+                console.log('ConfigService: Successfully set sync defaults for keys:', Object.keys(syncDefaults));
+            } catch (error) {
+                console.error('ConfigService: Failed to set sync defaults in storage:', error);
+                errors.push({ type: 'sync', error, keys: Object.keys(syncDefaults) });
+            }
         }
 
-        await Promise.all(promises);
+        if (Object.keys(localDefaults).length > 0) {
+            try {
+                await this.setToStorage('local', localDefaults);
+                console.log('ConfigService: Successfully set local defaults for keys:', Object.keys(localDefaults));
+            } catch (error) {
+                console.error('ConfigService: Failed to set local defaults in storage:', error);
+                errors.push({ type: 'local', error, keys: Object.keys(localDefaults) });
+            }
+        }
+
+        // Mark as initialized even if there were errors, but log them
+        if (errors.length > 0) {
+            console.warn('ConfigService: Initialization completed with errors:', errors);
+        }
+        
         this.isInitialized = true;
     }
 
@@ -187,18 +207,21 @@ class ConfigService {
      * @param {string} key - The setting key to save.
      * @param {any} value - The value to save.
      * @returns {Promise<void>}
+     * @throws {Error} If the key is invalid or the value doesn't match the schema
      */
     async set(key, value) {
         const schemaEntry = configSchema[key];
         if (!schemaEntry) {
-            console.error(`ConfigService: Invalid key "${key}" provided for set.`);
-            return;
+            const error = new Error(`ConfigService: Invalid key "${key}" provided for set.`);
+            console.error(error.message);
+            throw error;
         }
 
         // Validate the value
         if (!validateSetting(key, value)) {
-            console.error(`ConfigService: Invalid value for key "${key}":`, value);
-            return;
+            const error = new Error(`ConfigService: Invalid value for key "${key}": ${JSON.stringify(value)}. Expected type: ${schemaEntry.type.name}`);
+            console.error(error.message);
+            throw error;
         }
 
         try {
@@ -213,21 +236,27 @@ class ConfigService {
      * Saves multiple settings at once
      * @param {object} settings - Object with key-value pairs to save
      * @returns {Promise<void>}
+     * @throws {Error} If any key is invalid or any value doesn't match the schema
      */
     async setMultiple(settings) {
         const syncSettings = {};
         const localSettings = {};
+        const errors = [];
 
         // Validate and categorize settings
         for (const [key, value] of Object.entries(settings)) {
             const schemaEntry = configSchema[key];
             if (!schemaEntry) {
-                console.error(`ConfigService: Invalid key "${key}" provided for setMultiple.`);
+                const error = `Invalid key "${key}" provided for setMultiple.`;
+                console.error(`ConfigService: ${error}`);
+                errors.push(error);
                 continue;
             }
 
             if (!validateSetting(key, value)) {
-                console.error(`ConfigService: Invalid value for key "${key}":`, value);
+                const error = `Invalid value for key "${key}": ${JSON.stringify(value)}. Expected type: ${schemaEntry.type.name}`;
+                console.error(`ConfigService: ${error}`);
+                errors.push(error);
                 continue;
             }
 
@@ -236,6 +265,11 @@ class ConfigService {
             } else {
                 localSettings[key] = value;
             }
+        }
+
+        // If there were validation errors, throw them
+        if (errors.length > 0) {
+            throw new Error(`ConfigService: setMultiple failed with ${errors.length} validation error(s): ${errors.join('; ')}`);
         }
 
         // Save to appropriate storage areas
