@@ -162,6 +162,9 @@ document.addEventListener('DOMContentLoaded', function () {
             loadedTranslations[statusKey]?.message ||
             (enabled ? 'Dual subtitles enabled.' : 'Dual subtitles disabled.');
         showStatus(statusText);
+        
+        // Send immediate update for instant visual feedback and proper cleanup
+        sendImmediateConfigUpdate({ subtitlesEnabled: enabled });
     });
 
     useNativeSubtitlesToggle.addEventListener('change', async function () {
@@ -176,6 +179,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 ? 'Smart translation enabled.'
                 : 'Smart translation disabled.');
         showStatus(statusText);
+        
+        // Send immediate update for instant visual feedback and proper cleanup
+        sendImmediateConfigUpdate({ useNativeSubtitles: useNative });
     });
 
     originalLanguageSelect.addEventListener('change', async function () {
@@ -186,6 +192,9 @@ document.addEventListener('DOMContentLoaded', function () {
             'Original language: ';
         const statusText = `${statusPrefix}${this.options[this.selectedIndex].text}`;
         showStatus(statusText);
+        
+        // Send immediate update for instant visual feedback
+        sendImmediateConfigUpdate({ originalLanguage: lang });
     });
 
     targetLanguageSelect.addEventListener('change', async function () {
@@ -195,6 +204,9 @@ document.addEventListener('DOMContentLoaded', function () {
             loadedTranslations['statusLanguageSetTo']?.message ||
             'Language set to: ';
         showStatus(`${statusPrefix}${this.options[this.selectedIndex].text}`);
+        
+        // Send immediate update for instant visual feedback
+        sendImmediateConfigUpdate({ targetLanguage: lang });
     });
 
     subtitleTimeOffsetInput.addEventListener('change', async function () {
@@ -218,6 +230,9 @@ document.addEventListener('DOMContentLoaded', function () {
         const statusPrefix =
             loadedTranslations['statusTimeOffset']?.message || 'Time offset: ';
         showStatus(`${statusPrefix}${offset}s.`);
+        
+        // Send immediate update for instant visual feedback
+        sendImmediateConfigUpdate({ subtitleTimeOffset: offset });
     });
 
     subtitleLayoutOrderSelect.addEventListener('change', async function () {

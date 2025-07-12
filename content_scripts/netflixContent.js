@@ -156,6 +156,11 @@ async function initializePlatform() {
     // Load initial configuration
     currentConfig = await configService.getAll();
     console.log(`${LOG_PREFIX}: Loaded initial config:`, currentConfig);
+    
+    // Sync subtitleUtils state with saved configuration
+    if (subtitleUtils && typeof subtitleUtils.setSubtitlesActive === 'function') {
+        subtitleUtils.setSubtitlesActive(currentConfig.subtitlesEnabled);
+    }
 
     // Set up configuration change listener
     configService.onChanged(async (changes) => {
@@ -166,8 +171,14 @@ async function initializePlatform() {
         Object.keys(currentConfig).forEach(key => delete currentConfig[key]);
         Object.assign(currentConfig, newConfig);
 
-        // Re-apply styles and trigger a subtitle re-render
-        if (activePlatform && subtitleUtils.subtitlesActive) {
+        // Check if any changes affect subtitle functionality (exclude UI-only settings)
+        const uiOnlySettings = ['appearanceAccordionOpen'];
+        const functionalChanges = Object.keys(changes).filter(
+            key => !uiOnlySettings.includes(key)
+        );
+
+        // Re-apply styles and trigger a subtitle re-render only if functional settings changed
+        if (functionalChanges.length > 0 && activePlatform && subtitleUtils.subtitlesActive) {
             subtitleUtils.applySubtitleStyling(currentConfig);
             const videoElement = activePlatform.getVideoElement();
             if (videoElement) {
