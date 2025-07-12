@@ -1,3 +1,5 @@
+import { configService } from '../services/configService.js';
+
 document.addEventListener('DOMContentLoaded', function () {
     // Navigation
     const navLinks = document.querySelectorAll('.sidebar nav a');
@@ -42,17 +44,6 @@ document.addEventListener('DOMContentLoaded', function () {
         microsoft_edge_auth: 'providerMicrosoftName',
         deepl: 'providerDeepLName',
         deepl_free: 'providerDeepLFreeName',
-    };
-
-    // Default settings
-    const defaultSettings = {
-        uiLanguage: 'en',
-        selectedProvider: 'deepl_free',
-        translationBatchSize: 3,
-        translationDelay: 150,
-        deeplApiKey: '',
-        deeplApiPlan: 'free',
-        hideOfficialSubtitles: false,
     };
 
     function populateProviderDropdown() {
@@ -111,13 +102,12 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     async function loadAndApplyLanguage() {
-        const items = await chrome.storage.sync.get([
+        const settings = await configService.getMultiple([
             'uiLanguage',
             'selectedProvider',
         ]);
-        const lang = items.uiLanguage || defaultSettings.uiLanguage;
-        const savedProvider =
-            items.selectedProvider || defaultSettings.selectedProvider;
+        const lang = settings.uiLanguage;
+        const savedProvider = settings.selectedProvider;
 
         uiLanguageSelect.value = lang;
         loadedTranslations = await loadTranslations(lang);
@@ -128,65 +118,51 @@ document.addEventListener('DOMContentLoaded', function () {
         if (availableProviders[savedProvider]) {
             translationProviderSelect.value = savedProvider;
         } else {
-            translationProviderSelect.value = defaultSettings.selectedProvider;
+            // This should not happen since configService provides defaults from schema
+            translationProviderSelect.value = 'deepl_free';
         }
         updateProviderSettings(); // Update provider settings visibility
     }
 
     async function loadSettings() {
-        // Get all keys from defaultSettings
-        const settingKeys = Object.keys(defaultSettings);
+        try {
+            // Get all settings from configService
+            const settings = await configService.getAll();
 
-        return new Promise((resolve) => {
-            chrome.storage.sync.get(settingKeys, function (items) {
-                // General
-                uiLanguageSelect.value =
-                    items.uiLanguage || defaultSettings.uiLanguage;
-                hideOfficialSubtitlesCheckbox.checked =
-                    items.hideOfficialSubtitles !== undefined
-                        ? items.hideOfficialSubtitles
-                        : defaultSettings.hideOfficialSubtitles;
+            // General
+            uiLanguageSelect.value = settings.uiLanguage;
+            hideOfficialSubtitlesCheckbox.checked = settings.hideOfficialSubtitles;
 
-                // Translation
-                const selectedProvider =
-                    items.selectedProvider || defaultSettings.selectedProvider;
-                if (availableProviders[selectedProvider]) {
-                    translationProviderSelect.value = selectedProvider;
-                } else {
-                    translationProviderSelect.value =
-                        defaultSettings.selectedProvider;
-                }
+            // Translation
+            const selectedProvider = settings.selectedProvider;
+            if (availableProviders[selectedProvider]) {
+                translationProviderSelect.value = selectedProvider;
+            } else {
+                // This should not happen since configService provides defaults from schema
+                translationProviderSelect.value = 'deepl_free';
+            }
 
-                const batchSize =
-                    items.translationBatchSize !== undefined
-                        ? items.translationBatchSize
-                        : defaultSettings.translationBatchSize;
-                translationBatchSizeInput.value = batchSize;
+            translationBatchSizeInput.value = settings.translationBatchSize;
+            translationDelayInput.value = settings.translationDelay;
 
-                const delay =
-                    items.translationDelay !== undefined
-                        ? items.translationDelay
-                        : defaultSettings.translationDelay;
-                translationDelayInput.value = delay;
+            // Providers
+            deeplApiKeyInput.value = settings.deeplApiKey;
+            deeplApiPlanSelect.value = settings.deeplApiPlan;
 
-                // Providers
-                deeplApiKeyInput.value =
-                    items.deeplApiKey || defaultSettings.deeplApiKey;
-                deeplApiPlanSelect.value =
-                    items.deeplApiPlan || defaultSettings.deeplApiPlan;
-
-                // Update provider settings visibility - now we're sure all DOM elements are set
-                updateProviderSettings();
-                resolve();
-            });
-        });
+            // Update provider settings visibility - now we're sure all DOM elements are set
+            updateProviderSettings();
+        } catch (error) {
+            console.error('Options: Error loading settings:', error);
+        }
     }
 
-    function saveSetting(key, value) {
-        chrome.storage.sync.set({ [key]: value }, () => {
-            // Optional: Show a saved confirmation
-            console.log(`${key} saved as ${value}`);
-        });
+    async function saveSetting(key, value) {
+        try {
+            await configService.set(key, value);
+            console.log(`Options: ${key} saved as ${value}`);
+        } catch (error) {
+            console.error(`Options: Error saving ${key}:`, error);
+        }
     }
 
     // Navigation logic
@@ -215,34 +191,34 @@ document.addEventListener('DOMContentLoaded', function () {
         .getElementById('uiLanguage')
         .addEventListener('change', async function () {
             const selectedLang = this.value;
-            saveSetting('uiLanguage', selectedLang);
+            await saveSetting('uiLanguage', selectedLang);
             await loadAndApplyLanguage();
-            console.log(`UI language changed to: ${selectedLang}`);
+            console.log(`Options: UI language changed to: ${selectedLang}`);
         });
 
     // Hide official subtitles setting
     document
         .getElementById('hideOfficialSubtitles')
-        .addEventListener('change', function () {
-            saveSetting('hideOfficialSubtitles', this.checked);
-            console.log(`Hide official subtitles changed to: ${this.checked}`);
+        .addEventListener('change', async function () {
+            await saveSetting('hideOfficialSubtitles', this.checked);
+            console.log(`Options: Hide official subtitles changed to: ${this.checked}`);
         });
 
     // Translation provider settings
     document
         .getElementById('translationProvider')
-        .addEventListener('change', function () {
-            saveSetting('selectedProvider', this.value);
+        .addEventListener('change', async function () {
+            await saveSetting('selectedProvider', this.value);
             updateProviderSettings();
-            console.log(`Translation provider changed to: ${this.value}`);
+            console.log(`Options: Translation provider changed to: ${this.value}`);
         });
 
     // DeepL specific settings
-    deeplApiKeyInput.addEventListener('change', () =>
-        saveSetting('deeplApiKey', deeplApiKeyInput.value)
+    deeplApiKeyInput.addEventListener('change', async () =>
+        await saveSetting('deeplApiKey', deeplApiKeyInput.value)
     );
-    deeplApiPlanSelect.addEventListener('change', () =>
-        saveSetting('deeplApiPlan', deeplApiPlanSelect.value)
+    deeplApiPlanSelect.addEventListener('change', async () =>
+        await saveSetting('deeplApiPlan', deeplApiPlanSelect.value)
     );
 
     // 安全地添加 DeepL 测试按钮的事件监听器
@@ -280,15 +256,15 @@ document.addEventListener('DOMContentLoaded', function () {
     // Performance settings
     document
         .getElementById('translationBatchSize')
-        .addEventListener('change', function () {
-            saveSetting('translationBatchSize', parseInt(this.value));
+        .addEventListener('change', async function () {
+            await saveSetting('translationBatchSize', parseInt(this.value));
             translationBatchSizeValue.textContent = this.value;
         });
 
     document
         .getElementById('translationDelay')
-        .addEventListener('change', function () {
-            saveSetting('translationDelay', parseInt(this.value));
+        .addEventListener('change', async function () {
+            await saveSetting('translationDelay', parseInt(this.value));
             translationDelayValue.textContent = `${this.value}ms`;
         });
 
