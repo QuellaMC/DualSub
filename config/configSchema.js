@@ -30,6 +30,9 @@ export const configSchema = {
 
     // --- UI State Settings (local storage for better performance) ---
     appearanceAccordionOpen: { defaultValue: false, type: Boolean, scope: 'local' }, // UI state, doesn't need to sync
+
+    // --- Debug Settings (local storage for immediate availability) ---
+    debugMode: { defaultValue: false, type: Boolean, scope: 'local' }, // Debug logging mode
 };
 
 /**
@@ -81,4 +84,15 @@ export function getDefaultValue(key) {
  */
 export function getStorageScope(key) {
     return configSchema[key]?.scope;
-} 
+}
+
+// Export for both CommonJS and ES modules
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        configSchema,
+        getKeysByScope,
+        validateSetting,
+        getDefaultValue,
+        getStorageScope
+    };
+}

@@ -2,3 +2,4 @@
 .cursor
 temp/
 node_modules/
+.kiro/
