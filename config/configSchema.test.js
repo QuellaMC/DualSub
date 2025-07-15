@@ -1,10 +1,10 @@
 import { describe, it, expect } from '@jest/globals';
-import { 
-    configSchema, 
-    getKeysByScope, 
-    validateSetting, 
-    getDefaultValue, 
-    getStorageScope 
+import {
+    configSchema,
+    getKeysByScope,
+    validateSetting,
+    getDefaultValue,
+    getStorageScope,
 } from './configSchema.js';
 
 describe('configSchema', () => {
@@ -47,8 +47,10 @@ describe('configSchema', () => {
     describe('schema helper functions with debugMode', () => {
         it('should handle debugMode in getKeysByScope', () => {
             const localKeys = getKeysByScope('local');
-            expect(localKeys).toEqual(expect.arrayContaining(['debugMode', 'appearanceAccordionOpen']));
-            
+            expect(localKeys).toEqual(
+                expect.arrayContaining(['debugMode', 'appearanceAccordionOpen'])
+            );
+
             const syncKeys = getKeysByScope('sync');
             expect(syncKeys).not.toContain('debugMode');
             expect(syncKeys.length).toBeGreaterThan(0); // Should contain other sync settings
@@ -58,7 +60,7 @@ describe('configSchema', () => {
             // Valid boolean values
             expect(validateSetting('debugMode', true)).toBe(true);
             expect(validateSetting('debugMode', false)).toBe(true);
-            
+
             // Invalid values
             expect(validateSetting('debugMode', 'false')).toBe(false);
             expect(validateSetting('debugMode', 0)).toBe(false);
@@ -94,22 +96,26 @@ describe('configSchema', () => {
                 'subtitleFontSize',
                 'subtitleGap',
                 'appearanceAccordionOpen',
-                'debugMode'
+                'debugMode',
             ];
-            
+
             const actualSettings = Object.keys(configSchema);
-            expect(actualSettings).toEqual(expect.arrayContaining(expectedSettings));
+            expect(actualSettings).toEqual(
+                expect.arrayContaining(expectedSettings)
+            );
             expect(actualSettings.length).toBe(expectedSettings.length);
         });
 
         it('should have correct scope distribution', () => {
             const localKeys = getKeysByScope('local');
             const syncKeys = getKeysByScope('sync');
-            
+
             // Local scope should contain UI state and debug settings
-            expect(localKeys).toEqual(expect.arrayContaining(['appearanceAccordionOpen', 'debugMode']));
+            expect(localKeys).toEqual(
+                expect.arrayContaining(['appearanceAccordionOpen', 'debugMode'])
+            );
             expect(localKeys.length).toBe(2);
-            
+
             // Sync scope should contain all other settings
             expect(syncKeys.length).toBeGreaterThan(10);
             expect(syncKeys).toContain('uiLanguage');
@@ -122,12 +128,12 @@ describe('configSchema', () => {
             // String validation
             expect(validateSetting('uiLanguage', 'en')).toBe(true);
             expect(validateSetting('uiLanguage', 123)).toBe(false);
-            
+
             // Number validation
             expect(validateSetting('translationBatchSize', 3)).toBe(true);
             expect(validateSetting('translationBatchSize', '3')).toBe(false);
             expect(validateSetting('translationBatchSize', NaN)).toBe(false);
-            
+
             // Boolean validation
             expect(validateSetting('subtitlesEnabled', true)).toBe(true);
             expect(validateSetting('subtitlesEnabled', 'true')).toBe(false);

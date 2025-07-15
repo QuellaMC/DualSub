@@ -29,16 +29,26 @@ const translationProviders = {
 let currentTranslationProviderId = 'deepl_free';
 
 // Initialize provider from configuration service
-configService.get('selectedProvider').then(providerId => {
-    if (providerId && translationProviders[providerId]) {
-        currentTranslationProviderId = providerId;
-        console.log(`Background: Using translation provider: ${providerId}`);
-    } else {
-        console.log(`Background: Provider ${providerId} not found, using default: ${currentTranslationProviderId}`);
-    }
-}).catch(error => {
-    console.error('Background: Error loading translation provider setting:', error);
-});
+configService
+    .get('selectedProvider')
+    .then((providerId) => {
+        if (providerId && translationProviders[providerId]) {
+            currentTranslationProviderId = providerId;
+            console.log(
+                `Background: Using translation provider: ${providerId}`
+            );
+        } else {
+            console.log(
+                `Background: Provider ${providerId} not found, using default: ${currentTranslationProviderId}`
+            );
+        }
+    })
+    .catch((error) => {
+        console.error(
+            'Background: Error loading translation provider setting:',
+            error
+        );
+    });
 
 // Initialize default settings using the configuration service
 configService.initializeDefaults();
@@ -1334,8 +1344,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 // Listen for configuration changes using the configuration service
 configService.onChanged((changes) => {
-    if (changes.selectedProvider && translationProviders[changes.selectedProvider]) {
+    if (
+        changes.selectedProvider &&
+        translationProviders[changes.selectedProvider]
+    ) {
         currentTranslationProviderId = changes.selectedProvider;
-        console.log(`Background: Translation provider changed to: ${changes.selectedProvider}`);
+        console.log(
+            `Background: Translation provider changed to: ${changes.selectedProvider}`
+        );
     }
 });

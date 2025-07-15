@@ -362,9 +362,19 @@ export function ensureSubtitleContainer(
             clearInterval(findProgressBarIntervalId);
             findProgressBarIntervalId = null;
         }
-        attachTimeUpdateListener(videoElement, activePlatform, config, logPrefix);
+        attachTimeUpdateListener(
+            videoElement,
+            activePlatform,
+            config,
+            logPrefix
+        );
         if (activePlatform.supportsProgressBarTracking?.() !== false) {
-            setupProgressBarObserver(videoElement, activePlatform, config, logPrefix);
+            setupProgressBarObserver(
+                videoElement,
+                activePlatform,
+                config,
+                logPrefix
+            );
         }
     }
 
@@ -462,14 +472,24 @@ export function ensureSubtitleContainer(
     applySubtitleStyling(config);
 
     if (videoElement && !videoElement.getAttribute('data-listener-attached')) {
-        attachTimeUpdateListener(videoElement, activePlatform, config, logPrefix);
+        attachTimeUpdateListener(
+            videoElement,
+            activePlatform,
+            config,
+            logPrefix
+        );
     }
     if (
         videoElement &&
         !progressBarObserver &&
         activePlatform.supportsProgressBarTracking?.() !== false
     ) {
-        setupProgressBarObserver(videoElement, activePlatform, config, logPrefix);
+        setupProgressBarObserver(
+            videoElement,
+            activePlatform,
+            config,
+            logPrefix
+        );
     }
 
     if (subtitlesActive) showSubtitleContainer();
@@ -513,7 +533,12 @@ export function attachTimeUpdateListener(
                     typeof currentTime === 'number' &&
                     readyState >= currentVideoElem.HAVE_CURRENT_DATA
                 ) {
-                    updateSubtitles(currentTime, activePlatform, config, logPrefix);
+                    updateSubtitles(
+                        currentTime,
+                        activePlatform,
+                        config,
+                        logPrefix
+                    );
                 }
             }
         };
@@ -1235,7 +1260,10 @@ export async function processSubtitleQueue(
         console.log(
             `${logPrefix}: Progress bar observer setup in progress. Deferring queue processing slightly.`
         );
-        setTimeout(() => processSubtitleQueue(activePlatform, config, logPrefix), 200);
+        setTimeout(
+            () => processSubtitleQueue(activePlatform, config, logPrefix),
+            200
+        );
         return;
     }
 
@@ -1350,7 +1378,10 @@ export async function processSubtitleQueue(
                     );
                 }
 
-                if (i < cuesToProcess.length - 1 && config.translationDelay > 0) {
+                if (
+                    i < cuesToProcess.length - 1 &&
+                    config.translationDelay > 0
+                ) {
                     await new Promise((resolve) =>
                         setTimeout(resolve, config.translationDelay)
                     );
@@ -1398,6 +1429,9 @@ export async function processSubtitleQueue(
         currentContextVideoIdForNextCheck &&
         moreRelevantCuesExist
     ) {
-        setTimeout(() => processSubtitleQueue(activePlatform, config, logPrefix), 50);
+        setTimeout(
+            () => processSubtitleQueue(activePlatform, config, logPrefix),
+            50
+        );
     }
 }

@@ -47,12 +47,12 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     // Helper functions first (no dependencies)
-    const setVersion = function() {
+    const setVersion = function () {
         const manifest = chrome.runtime.getManifest();
         extensionVersionSpan.textContent = manifest.version;
     };
 
-    const saveSetting = async function(key, value) {
+    const saveSetting = async function (key, value) {
         try {
             await configService.set(key, value);
             console.log(`Options: ${key} saved as ${value}`);
@@ -62,7 +62,7 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     // Translation Functions (similar to popup.js)
-    const loadTranslations = async function(langCode) {
+    const loadTranslations = async function (langCode) {
         const normalizedLangCode = langCode.replace('-', '_');
         if (translationsCache[normalizedLangCode]) {
             return translationsCache[normalizedLangCode];
@@ -102,7 +102,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
-    const updateUILanguage = function() {
+    const updateUILanguage = function () {
         if (!loadedTranslations) return;
         document.querySelectorAll('[data-i18n]').forEach((elem) => {
             const key = elem.getAttribute('data-i18n');
@@ -119,7 +119,7 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     // Helper function to get localized text with fallback
-    const getLocalizedText = function(key, fallback, ...substitutions) {
+    const getLocalizedText = function (key, fallback, ...substitutions) {
         let message = loadedTranslations[key]?.message || fallback;
         // Replace %s and %d placeholders with substitutions
         if (substitutions.length > 0) {
@@ -134,7 +134,7 @@ document.addEventListener('DOMContentLoaded', function () {
         return message;
     };
 
-    const showTestResult = function(message, type) {
+    const showTestResult = function (message, type) {
         deeplTestResult.style.display = 'block';
         deeplTestResult.textContent = message;
 
@@ -146,7 +146,7 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     // Test DeepL Connection
-    const testDeepLConnection = async function() {
+    const testDeepLConnection = async function () {
         // 运行时再次检查 DeepLAPI 是否可用
         if (
             typeof window.DeepLAPI === 'undefined' ||
@@ -280,7 +280,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
-    const populateProviderDropdown = function() {
+    const populateProviderDropdown = function () {
         // Clear existing options first
         translationProviderSelect.innerHTML = '';
 
@@ -300,7 +300,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
-    const updateProviderSettings = function() {
+    const updateProviderSettings = function () {
         const selectedProvider = translationProviderSelect.value;
 
         // Hide all provider cards first
@@ -335,7 +335,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
-    const loadAndApplyLanguage = async function() {
+    const loadAndApplyLanguage = async function () {
         const settings = await configService.getMultiple([
             'uiLanguage',
             'selectedProvider',
@@ -357,14 +357,22 @@ document.addEventListener('DOMContentLoaded', function () {
         updateProviderSettings(); // Update provider settings visibility
     };
 
-    const loadSettings = async function() {
+    const loadSettings = async function () {
         try {
             // Get all settings from configService
             const settings = await configService.getAll();
 
             // General
-            const { uiLanguage, hideOfficialSubtitles, selectedProvider, translationBatchSize, translationDelay, deeplApiKey, deeplApiPlan } = settings;
-            
+            const {
+                uiLanguage,
+                hideOfficialSubtitles,
+                selectedProvider,
+                translationBatchSize,
+                translationDelay,
+                deeplApiKey,
+                deeplApiPlan,
+            } = settings;
+
             uiLanguageSelect.value = uiLanguage;
             hideOfficialSubtitlesCheckbox.checked = hideOfficialSubtitles;
 
@@ -391,7 +399,7 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     // Initialize
-    const init = async function() {
+    const init = async function () {
         setVersion();
         await loadAndApplyLanguage(); // Load language first
         await loadSettings(); // Then load settings which will restore the selected provider
@@ -433,7 +441,9 @@ document.addEventListener('DOMContentLoaded', function () {
         .getElementById('hideOfficialSubtitles')
         .addEventListener('change', async function () {
             await saveSetting('hideOfficialSubtitles', this.checked);
-            console.log(`Options: Hide official subtitles changed to: ${this.checked}`);
+            console.log(
+                `Options: Hide official subtitles changed to: ${this.checked}`
+            );
         });
 
     // Translation provider settings
@@ -442,15 +452,19 @@ document.addEventListener('DOMContentLoaded', function () {
         .addEventListener('change', async function () {
             await saveSetting('selectedProvider', this.value);
             updateProviderSettings();
-            console.log(`Options: Translation provider changed to: ${this.value}`);
+            console.log(
+                `Options: Translation provider changed to: ${this.value}`
+            );
         });
 
     // DeepL specific settings
-    deeplApiKeyInput.addEventListener('change', async () =>
-        await saveSetting('deeplApiKey', deeplApiKeyInput.value)
+    deeplApiKeyInput.addEventListener(
+        'change',
+        async () => await saveSetting('deeplApiKey', deeplApiKeyInput.value)
     );
-    deeplApiPlanSelect.addEventListener('change', async () =>
-        await saveSetting('deeplApiPlan', deeplApiPlanSelect.value)
+    deeplApiPlanSelect.addEventListener(
+        'change',
+        async () => await saveSetting('deeplApiPlan', deeplApiPlanSelect.value)
     );
 
     // 安全地添加 DeepL 测试按钮的事件监听器

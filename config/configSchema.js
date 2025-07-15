@@ -8,10 +8,18 @@
 export const configSchema = {
     // --- General Settings (from options.js) ---
     uiLanguage: { defaultValue: 'en', type: String, scope: 'sync' },
-    hideOfficialSubtitles: { defaultValue: false, type: Boolean, scope: 'sync' },
+    hideOfficialSubtitles: {
+        defaultValue: false,
+        type: Boolean,
+        scope: 'sync',
+    },
 
     // --- Translation & Provider Settings (from background.js & options.js) ---
-    selectedProvider: { defaultValue: 'deepl_free', type: String, scope: 'sync' },
+    selectedProvider: {
+        defaultValue: 'deepl_free',
+        type: String,
+        scope: 'sync',
+    },
     translationBatchSize: { defaultValue: 3, type: Number, scope: 'sync' },
     translationDelay: { defaultValue: 150, type: Number, scope: 'sync' },
     deeplApiKey: { defaultValue: '', type: String, scope: 'sync' },
@@ -23,13 +31,25 @@ export const configSchema = {
     targetLanguage: { defaultValue: 'zh-CN', type: String, scope: 'sync' },
     originalLanguage: { defaultValue: 'en', type: String, scope: 'sync' },
     subtitleTimeOffset: { defaultValue: 0.3, type: Number, scope: 'sync' },
-    subtitleLayoutOrder: { defaultValue: 'original_top', type: String, scope: 'sync' },
-    subtitleLayoutOrientation: { defaultValue: 'column', type: String, scope: 'sync' },
+    subtitleLayoutOrder: {
+        defaultValue: 'original_top',
+        type: String,
+        scope: 'sync',
+    },
+    subtitleLayoutOrientation: {
+        defaultValue: 'column',
+        type: String,
+        scope: 'sync',
+    },
     subtitleFontSize: { defaultValue: 1.1, type: Number, scope: 'sync' },
     subtitleGap: { defaultValue: 0.3, type: Number, scope: 'sync' },
 
     // --- UI State Settings (local storage for better performance) ---
-    appearanceAccordionOpen: { defaultValue: false, type: Boolean, scope: 'local' }, // UI state, doesn't need to sync
+    appearanceAccordionOpen: {
+        defaultValue: false,
+        type: Boolean,
+        scope: 'local',
+    }, // UI state, doesn't need to sync
 
     // --- Debug Settings (local storage for immediate availability) ---
     debugMode: { defaultValue: false, type: Boolean, scope: 'local' }, // Debug logging mode
@@ -41,7 +61,9 @@ export const configSchema = {
  * @returns {string[]} Array of keys for the specified scope
  */
 export function getKeysByScope(scope) {
-    return Object.keys(configSchema).filter(key => configSchema[key].scope === scope);
+    return Object.keys(configSchema).filter(
+        (key) => configSchema[key].scope === scope
+    );
 }
 
 /**
@@ -55,7 +77,7 @@ export function validateSetting(key, value) {
     if (!schemaEntry) {
         return false;
     }
-    
+
     // Check type
     if (schemaEntry.type === String) {
         return typeof value === 'string';
@@ -64,7 +86,7 @@ export function validateSetting(key, value) {
     } else if (schemaEntry.type === Boolean) {
         return typeof value === 'boolean';
     }
-    
+
     return false;
 }
 
@@ -93,6 +115,6 @@ if (typeof module !== 'undefined' && module.exports) {
         getKeysByScope,
         validateSetting,
         getDefaultValue,
-        getStorageScope
+        getStorageScope,
     };
 }

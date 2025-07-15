@@ -7,23 +7,23 @@ const mockChromeStorage = {
     sync: {
         get: jest.fn(),
         set: jest.fn(),
-        remove: jest.fn()
+        remove: jest.fn(),
     },
     local: {
         get: jest.fn(),
         set: jest.fn(),
-        remove: jest.fn()
-    }
+        remove: jest.fn(),
+    },
 };
 
 const mockChromeRuntime = {
-    lastError: null
+    lastError: null,
 };
 
 // Setup Chrome API mocks
 global.chrome = {
     storage: mockChromeStorage,
-    runtime: mockChromeRuntime
+    runtime: mockChromeRuntime,
 };
 
 describe('ConfigService Enhanced Storage Operations', () => {
@@ -31,9 +31,9 @@ describe('ConfigService Enhanced Storage Operations', () => {
         // Reset all mocks
         jest.clearAllMocks();
         mockChromeRuntime.lastError = null;
-        
+
         // Reset storage mocks to default success behavior
-        Object.values(mockChromeStorage).forEach(area => {
+        Object.values(mockChromeStorage).forEach((area) => {
             area.get.mockImplementation((keys, callback) => callback({}));
             area.set.mockImplementation((items, callback) => callback());
             area.remove.mockImplementation((keys, callback) => callback());
@@ -47,10 +47,16 @@ describe('ConfigService Enhanced Storage Operations', () => {
                 callback(testData);
             });
 
-            const result = await configService.getFromStorage('sync', ['key1', 'key2']);
-            
+            const result = await configService.getFromStorage('sync', [
+                'key1',
+                'key2',
+            ]);
+
             expect(result).toEqual(testData);
-            expect(mockChromeStorage.sync.get).toHaveBeenCalledWith(['key1', 'key2'], expect.any(Function));
+            expect(mockChromeStorage.sync.get).toHaveBeenCalledWith(
+                ['key1', 'key2'],
+                expect.any(Function)
+            );
         });
 
         it('should successfully retrieve data from local storage', async () => {
@@ -59,10 +65,15 @@ describe('ConfigService Enhanced Storage Operations', () => {
                 callback(testData);
             });
 
-            const result = await configService.getFromStorage('local', ['key1']);
-            
+            const result = await configService.getFromStorage('local', [
+                'key1',
+            ]);
+
             expect(result).toEqual(testData);
-            expect(mockChromeStorage.local.get).toHaveBeenCalledWith(['key1'], expect.any(Function));
+            expect(mockChromeStorage.local.get).toHaveBeenCalledWith(
+                ['key1'],
+                expect.any(Function)
+            );
         });
 
         it('should handle single key as string parameter', async () => {
@@ -72,9 +83,12 @@ describe('ConfigService Enhanced Storage Operations', () => {
             });
 
             const result = await configService.getFromStorage('sync', 'key1');
-            
+
             expect(result).toEqual(testData);
-            expect(mockChromeStorage.sync.get).toHaveBeenCalledWith('key1', expect.any(Function));
+            expect(mockChromeStorage.sync.get).toHaveBeenCalledWith(
+                'key1',
+                expect.any(Function)
+            );
         });
 
         it('should reject with enhanced error when Chrome storage fails', async () => {
@@ -84,8 +98,10 @@ describe('ConfigService Enhanced Storage Operations', () => {
                 callback(null);
             });
 
-            await expect(configService.getFromStorage('sync', ['key1'])).rejects.toThrow();
-            
+            await expect(
+                configService.getFromStorage('sync', ['key1'])
+            ).rejects.toThrow();
+
             try {
                 await configService.getFromStorage('sync', ['key1']);
             } catch (error) {
@@ -121,10 +137,17 @@ describe('ConfigService Enhanced Storage Operations', () => {
                 callback(null);
             });
 
-            const additionalContext = { callingMethod: 'get', userId: 'test123' };
+            const additionalContext = {
+                callingMethod: 'get',
+                userId: 'test123',
+            };
 
             try {
-                await configService.getFromStorage('sync', ['key1'], additionalContext);
+                await configService.getFromStorage(
+                    'sync',
+                    ['key1'],
+                    additionalContext
+                );
             } catch (error) {
                 expect(error.context.callingMethod).toBe('get');
                 expect(error.context.userId).toBe('test123');
@@ -135,18 +158,24 @@ describe('ConfigService Enhanced Storage Operations', () => {
     describe('setToStorage', () => {
         it('should successfully set data to sync storage', async () => {
             const testData = { key1: 'value1', key2: 'value2' };
-            
+
             await configService.setToStorage('sync', testData);
-            
-            expect(mockChromeStorage.sync.set).toHaveBeenCalledWith(testData, expect.any(Function));
+
+            expect(mockChromeStorage.sync.set).toHaveBeenCalledWith(
+                testData,
+                expect.any(Function)
+            );
         });
 
         it('should successfully set data to local storage', async () => {
             const testData = { key1: 'value1' };
-            
+
             await configService.setToStorage('local', testData);
-            
-            expect(mockChromeStorage.local.set).toHaveBeenCalledWith(testData, expect.any(Function));
+
+            expect(mockChromeStorage.local.set).toHaveBeenCalledWith(
+                testData,
+                expect.any(Function)
+            );
         });
 
         it('should reject with enhanced error when Chrome storage fails', async () => {
@@ -158,8 +187,10 @@ describe('ConfigService Enhanced Storage Operations', () => {
 
             const testData = { key1: 'value1', key2: 'value2' };
 
-            await expect(configService.setToStorage('sync', testData)).rejects.toThrow();
-            
+            await expect(
+                configService.setToStorage('sync', testData)
+            ).rejects.toThrow();
+
             try {
                 await configService.setToStorage('sync', testData);
             } catch (error) {
@@ -176,9 +207,11 @@ describe('ConfigService Enhanced Storage Operations', () => {
         it('should include timing and item count in error context', async () => {
             const chromeError = { message: 'Network error' };
             mockChromeRuntime.lastError = chromeError;
-            mockChromeStorage.local.set.mockImplementation((items, callback) => {
-                setTimeout(() => callback(), 10);
-            });
+            mockChromeStorage.local.set.mockImplementation(
+                (items, callback) => {
+                    setTimeout(() => callback(), 10);
+                }
+            );
 
             const testData = { key1: 'value1', key2: 'value2', key3: 'value3' };
 
@@ -192,7 +225,9 @@ describe('ConfigService Enhanced Storage Operations', () => {
         });
 
         it('should handle quota exceeded errors specifically', async () => {
-            const chromeError = { message: 'QUOTA_BYTES_PER_ITEM quota exceeded' };
+            const chromeError = {
+                message: 'QUOTA_BYTES_PER_ITEM quota exceeded',
+            };
             mockChromeRuntime.lastError = chromeError;
             mockChromeStorage.sync.set.mockImplementation((items, callback) => {
                 callback();
@@ -211,37 +246,50 @@ describe('ConfigService Enhanced Storage Operations', () => {
     describe('removeFromStorage', () => {
         it('should successfully remove data from sync storage', async () => {
             const keysToRemove = ['key1', 'key2'];
-            
+
             await configService.removeFromStorage('sync', keysToRemove);
-            
-            expect(mockChromeStorage.sync.remove).toHaveBeenCalledWith(keysToRemove, expect.any(Function));
+
+            expect(mockChromeStorage.sync.remove).toHaveBeenCalledWith(
+                keysToRemove,
+                expect.any(Function)
+            );
         });
 
         it('should successfully remove data from local storage', async () => {
             const keyToRemove = 'key1';
-            
+
             await configService.removeFromStorage('local', keyToRemove);
-            
-            expect(mockChromeStorage.local.remove).toHaveBeenCalledWith(keyToRemove, expect.any(Function));
+
+            expect(mockChromeStorage.local.remove).toHaveBeenCalledWith(
+                keyToRemove,
+                expect.any(Function)
+            );
         });
 
         it('should handle single key as string parameter', async () => {
             await configService.removeFromStorage('sync', 'key1');
-            
-            expect(mockChromeStorage.sync.remove).toHaveBeenCalledWith('key1', expect.any(Function));
+
+            expect(mockChromeStorage.sync.remove).toHaveBeenCalledWith(
+                'key1',
+                expect.any(Function)
+            );
         });
 
         it('should reject with enhanced error when Chrome storage fails', async () => {
             const chromeError = { message: 'Key not found' };
             mockChromeRuntime.lastError = chromeError;
-            mockChromeStorage.sync.remove.mockImplementation((keys, callback) => {
-                callback();
-            });
+            mockChromeStorage.sync.remove.mockImplementation(
+                (keys, callback) => {
+                    callback();
+                }
+            );
 
             const keysToRemove = ['key1', 'key2'];
 
-            await expect(configService.removeFromStorage('sync', keysToRemove)).rejects.toThrow();
-            
+            await expect(
+                configService.removeFromStorage('sync', keysToRemove)
+            ).rejects.toThrow();
+
             try {
                 await configService.removeFromStorage('sync', keysToRemove);
             } catch (error) {
@@ -257,9 +305,11 @@ describe('ConfigService Enhanced Storage Operations', () => {
         it('should include timing and key count in error context', async () => {
             const chromeError = { message: 'Permission denied' };
             mockChromeRuntime.lastError = chromeError;
-            mockChromeStorage.local.remove.mockImplementation((keys, callback) => {
-                setTimeout(() => callback(), 10);
-            });
+            mockChromeStorage.local.remove.mockImplementation(
+                (keys, callback) => {
+                    setTimeout(() => callback(), 10);
+                }
+            );
 
             const keysToRemove = ['key1', 'key2', 'key3'];
 
@@ -275,9 +325,11 @@ describe('ConfigService Enhanced Storage Operations', () => {
         it('should normalize single key to array in error context', async () => {
             const chromeError = { message: 'Storage error' };
             mockChromeRuntime.lastError = chromeError;
-            mockChromeStorage.sync.remove.mockImplementation((keys, callback) => {
-                callback();
-            });
+            mockChromeStorage.sync.remove.mockImplementation(
+                (keys, callback) => {
+                    callback();
+                }
+            );
 
             try {
                 await configService.removeFromStorage('sync', 'singleKey');
@@ -292,7 +344,9 @@ describe('ConfigService Enhanced Storage Operations', () => {
         it('should provide appropriate recovery actions for different error types', async () => {
             // Test quota error recovery
             mockChromeRuntime.lastError = { message: 'Storage quota exceeded' };
-            mockChromeStorage.sync.set.mockImplementation((items, callback) => callback());
+            mockChromeStorage.sync.set.mockImplementation((items, callback) =>
+                callback()
+            );
 
             try {
                 await configService.setToStorage('sync', { key: 'value' });
@@ -302,8 +356,10 @@ describe('ConfigService Enhanced Storage Operations', () => {
             }
 
             // Test network error recovery
-            mockChromeRuntime.lastError = { message: 'Network connection failed' };
-            
+            mockChromeRuntime.lastError = {
+                message: 'Network connection failed',
+            };
+
             try {
                 await configService.getFromStorage('sync', ['key']);
             } catch (error) {
@@ -312,7 +368,7 @@ describe('ConfigService Enhanced Storage Operations', () => {
 
             // Test permission error recovery
             mockChromeRuntime.lastError = { message: 'Access denied' };
-            
+
             try {
                 await configService.removeFromStorage('local', ['key']);
             } catch (error) {
@@ -324,7 +380,7 @@ describe('ConfigService Enhanced Storage Operations', () => {
     describe('Performance and Timing', () => {
         it('should track operation timing for successful operations', async () => {
             const startTime = Date.now();
-            
+
             // Mock a delay in the storage operation
             mockChromeStorage.sync.get.mockImplementation((keys, callback) => {
                 setTimeout(() => callback({ key1: 'value1' }), 50);
@@ -332,7 +388,7 @@ describe('ConfigService Enhanced Storage Operations', () => {
 
             const result = await configService.getFromStorage('sync', ['key1']);
             const endTime = Date.now();
-            
+
             expect(result).toEqual({ key1: 'value1' });
             expect(endTime - startTime).toBeGreaterThanOrEqual(40);
         });
@@ -344,7 +400,7 @@ describe('ConfigService Enhanced Storage Operations', () => {
             });
 
             const startTime = Date.now();
-            
+
             try {
                 await configService.setToStorage('sync', { key: 'value' });
             } catch (error) {
@@ -360,20 +416,26 @@ describe('ConfigService Enhanced Storage Operations', () => {
             const originalContext = {
                 callingMethod: 'setMultiple',
                 batchId: 'batch123',
-                userAction: 'settings-save'
+                userAction: 'settings-save',
             };
 
             mockChromeRuntime.lastError = { message: 'Storage error' };
-            mockChromeStorage.local.set.mockImplementation((items, callback) => callback());
+            mockChromeStorage.local.set.mockImplementation((items, callback) =>
+                callback()
+            );
 
             try {
-                await configService.setToStorage('local', { key1: 'value1' }, originalContext);
+                await configService.setToStorage(
+                    'local',
+                    { key1: 'value1' },
+                    originalContext
+                );
             } catch (error) {
                 // Check that original context is preserved
                 expect(error.context.callingMethod).toBe('setMultiple');
                 expect(error.context.batchId).toBe('batch123');
                 expect(error.context.userAction).toBe('settings-save');
-                
+
                 // Check that enhanced context is added
                 expect(error.context.operation).toBe('set');
                 expect(error.context.area).toBe('local');

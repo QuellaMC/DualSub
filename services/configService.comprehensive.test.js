@@ -15,31 +15,35 @@ describe('ConfigService Comprehensive Error Handling Tests', () => {
         // Reset all mocks
         jest.clearAllMocks();
         chrome.runtime.lastError = null;
-        
+
         // Spy on console methods
         consoleSpy = {
             debug: jest.spyOn(console, 'debug').mockImplementation(() => {}),
             info: jest.spyOn(console, 'info').mockImplementation(() => {}),
             warn: jest.spyOn(console, 'warn').mockImplementation(() => {}),
-            error: jest.spyOn(console, 'error').mockImplementation(() => {})
+            error: jest.spyOn(console, 'error').mockImplementation(() => {}),
         };
 
         // Store original logger
         originalLogger = configService.logger;
 
         // Reset storage mocks to default success behavior
-        Object.values(chrome.storage).forEach(area => {
-            if (area.get) area.get.mockImplementation((keys, callback) => callback({}));
-            if (area.set) area.set.mockImplementation((items, callback) => callback());
-            if (area.remove) area.remove.mockImplementation((keys, callback) => callback());
-            if (area.clear) area.clear.mockImplementation((callback) => callback());
+        Object.values(chrome.storage).forEach((area) => {
+            if (area.get)
+                area.get.mockImplementation((keys, callback) => callback({}));
+            if (area.set)
+                area.set.mockImplementation((items, callback) => callback());
+            if (area.remove)
+                area.remove.mockImplementation((keys, callback) => callback());
+            if (area.clear)
+                area.clear.mockImplementation((callback) => callback());
         });
     });
 
     afterEach(() => {
         // Restore console methods
-        Object.values(consoleSpy).forEach(spy => spy.mockRestore());
-        
+        Object.values(consoleSpy).forEach((spy) => spy.mockRestore());
+
         // Restore original logger
         configService.logger = originalLogger;
     });
@@ -48,25 +52,33 @@ describe('ConfigService Comprehensive Error Handling Tests', () => {
         describe('Storage Get Failures', () => {
             it('should handle quota exceeded errors in get operations', async () => {
                 chrome.runtime.lastError = { message: 'QUOTA_EXCEEDED' };
-                chrome.storage.sync.get.mockImplementation((keys, callback) => callback(null));
+                chrome.storage.sync.get.mockImplementation((keys, callback) =>
+                    callback(null)
+                );
 
                 const result = await configService.get('uiLanguage');
-                
+
                 // Should return default value when storage fails
                 expect(result).toBe('en'); // Default value from schema
-                
+
                 // Should log error with quota context
                 expect(consoleSpy.error).toHaveBeenCalledWith(
-                    expect.stringContaining('Storage quota exceeded during get operation')
+                    expect.stringContaining(
+                        'Storage quota exceeded during get operation'
+                    )
                 );
             });
 
             it('should handle network errors in get operations', async () => {
-                chrome.runtime.lastError = { message: 'Network connection failed' };
-                chrome.storage.sync.get.mockImplementation((keys, callback) => callback(null));
+                chrome.runtime.lastError = {
+                    message: 'Network connection failed',
+                };
+                chrome.storage.sync.get.mockImplementation((keys, callback) =>
+                    callback(null)
+                );
 
                 const result = await configService.get('uiLanguage');
-                
+
                 expect(result).toBe('en'); // Should return default
                 expect(consoleSpy.error).toHaveBeenCalledWith(
                     expect.stringContaining('Storage get operation failed')
@@ -74,11 +86,15 @@ describe('ConfigService Comprehensive Error Handling Tests', () => {
             });
 
             it('should handle permission errors in get operations', async () => {
-                chrome.runtime.lastError = { message: 'Access denied to storage' };
-                chrome.storage.local.get.mockImplementation((keys, callback) => callback(null));
+                chrome.runtime.lastError = {
+                    message: 'Access denied to storage',
+                };
+                chrome.storage.local.get.mockImplementation((keys, callback) =>
+                    callback(null)
+                );
 
                 const result = await configService.get('debugMode');
-                
+
                 expect(result).toBe(false); // Should return default
                 expect(consoleSpy.error).toHaveBeenCalledWith(
                     expect.stringContaining('Storage get operation failed')
@@ -87,10 +103,12 @@ describe('ConfigService Comprehensive Error Handling Tests', () => {
 
             it('should handle sync disabled errors', async () => {
                 chrome.runtime.lastError = { message: 'Sync is disabled' };
-                chrome.storage.sync.get.mockImplementation((keys, callback) => callback(null));
+                chrome.storage.sync.get.mockImplementation((keys, callback) =>
+                    callback(null)
+                );
 
                 const result = await configService.get('uiLanguage');
-                
+
                 expect(result).toBe('en');
                 expect(consoleSpy.error).toHaveBeenCalledWith(
                     expect.stringContaining('Storage get operation failed')
@@ -100,11 +118,17 @@ describe('ConfigService Comprehensive Error Handling Tests', () => {
 
         describe('Storage Set Failures', () => {
             it('should handle quota exceeded errors in set operations', async () => {
-                chrome.runtime.lastError = { message: 'QUOTA_BYTES_PER_ITEM quota exceeded' };
-                chrome.storage.sync.set.mockImplementation((items, callback) => callback());
+                chrome.runtime.lastError = {
+                    message: 'QUOTA_BYTES_PER_ITEM quota exceeded',
+                };
+                chrome.storage.sync.set.mockImplementation((items, callback) =>
+                    callback()
+                );
 
-                await expect(configService.set('uiLanguage', 'es')).rejects.toThrow();
-                
+                await expect(
+                    configService.set('uiLanguage', 'es')
+                ).rejects.toThrow();
+
                 try {
                     await configService.set('uiLanguage', 'es');
                 } catch (error) {
@@ -117,39 +141,59 @@ describe('ConfigService Comprehensive Error Handling Tests', () => {
 
             it('should handle rate limiting errors in set operations', async () => {
                 chrome.runtime.lastError = { message: 'rate limit exceeded' };
-                chrome.storage.local.set.mockImplementation((items, callback) => callback());
+                chrome.storage.local.set.mockImplementation((items, callback) =>
+                    callback()
+                );
 
-                await expect(configService.set('debugMode', true)).rejects.toThrow();
-                
+                await expect(
+                    configService.set('debugMode', true)
+                ).rejects.toThrow();
+
                 try {
                     await configService.set('debugMode', true);
                 } catch (error) {
-                    expect(error.recoveryAction).toContain('Rate limiting detected');
-                    expect(error.recoveryAction).toContain('exponential backoff');
+                    expect(error.recoveryAction).toContain(
+                        'Rate limiting detected'
+                    );
+                    expect(error.recoveryAction).toContain(
+                        'exponential backoff'
+                    );
                 }
             });
 
             it('should handle data validation errors in set operations', async () => {
                 chrome.runtime.lastError = { message: 'Invalid data format' };
-                chrome.storage.sync.set.mockImplementation((items, callback) => callback());
+                chrome.storage.sync.set.mockImplementation((items, callback) =>
+                    callback()
+                );
 
-                await expect(configService.set('uiLanguage', 'es')).rejects.toThrow();
-                
+                await expect(
+                    configService.set('uiLanguage', 'es')
+                ).rejects.toThrow();
+
                 try {
                     await configService.set('uiLanguage', 'es');
                 } catch (error) {
-                    expect(error.recoveryAction).toContain('Data validation error');
+                    expect(error.recoveryAction).toContain(
+                        'Data validation error'
+                    );
                 }
             });
         });
 
         describe('Storage Remove Failures', () => {
             it('should handle quota exceeded errors in remove operations', async () => {
-                chrome.runtime.lastError = { message: 'Storage quota exceeded' };
-                chrome.storage.sync.remove.mockImplementation((keys, callback) => callback());
+                chrome.runtime.lastError = {
+                    message: 'Storage quota exceeded',
+                };
+                chrome.storage.sync.remove.mockImplementation(
+                    (keys, callback) => callback()
+                );
 
-                await expect(configService.removeFromStorage('sync', ['key1'])).rejects.toThrow();
-                
+                await expect(
+                    configService.removeFromStorage('sync', ['key1'])
+                ).rejects.toThrow();
+
                 try {
                     await configService.removeFromStorage('sync', ['key1']);
                 } catch (error) {
@@ -160,10 +204,14 @@ describe('ConfigService Comprehensive Error Handling Tests', () => {
 
             it('should handle permission errors in remove operations', async () => {
                 chrome.runtime.lastError = { message: 'Permission denied' };
-                chrome.storage.local.remove.mockImplementation((keys, callback) => callback());
+                chrome.storage.local.remove.mockImplementation(
+                    (keys, callback) => callback()
+                );
 
-                await expect(configService.removeFromStorage('local', 'key1')).rejects.toThrow();
-                
+                await expect(
+                    configService.removeFromStorage('local', 'key1')
+                ).rejects.toThrow();
+
                 try {
                     await configService.removeFromStorage('local', 'key1');
                 } catch (error) {
@@ -176,33 +224,50 @@ describe('ConfigService Comprehensive Error Handling Tests', () => {
             it('should handle partial failures in getMultiple', async () => {
                 // Sync storage fails, local storage succeeds
                 chrome.runtime.lastError = { message: 'Sync storage error' };
-                chrome.storage.sync.get.mockImplementation((keys, callback) => callback(null));
-                chrome.storage.local.get.mockImplementation((keys, callback) => {
-                    chrome.runtime.lastError = null;
-                    callback({ debugMode: true });
-                });
+                chrome.storage.sync.get.mockImplementation((keys, callback) =>
+                    callback(null)
+                );
+                chrome.storage.local.get.mockImplementation(
+                    (keys, callback) => {
+                        chrome.runtime.lastError = null;
+                        callback({ debugMode: true });
+                    }
+                );
 
-                await expect(configService.getMultiple(['uiLanguage', 'debugMode'])).rejects.toThrow();
+                await expect(
+                    configService.getMultiple(['uiLanguage', 'debugMode'])
+                ).rejects.toThrow();
             });
 
             it('should handle partial failures in setMultiple', async () => {
                 // Sync storage succeeds, local storage fails
-                chrome.storage.sync.set.mockImplementation((items, callback) => {
-                    chrome.runtime.lastError = null;
-                    callback();
-                });
-                chrome.storage.local.set.mockImplementation((items, callback) => {
-                    chrome.runtime.lastError = { message: 'Local storage error' };
-                    callback();
-                });
+                chrome.storage.sync.set.mockImplementation(
+                    (items, callback) => {
+                        chrome.runtime.lastError = null;
+                        callback();
+                    }
+                );
+                chrome.storage.local.set.mockImplementation(
+                    (items, callback) => {
+                        chrome.runtime.lastError = {
+                            message: 'Local storage error',
+                        };
+                        callback();
+                    }
+                );
 
-                await expect(configService.setMultiple({
-                    uiLanguage: 'es',
-                    debugMode: true
-                })).rejects.toThrow();
-                
+                await expect(
+                    configService.setMultiple({
+                        uiLanguage: 'es',
+                        debugMode: true,
+                    })
+                ).rejects.toThrow();
+
                 try {
-                    await configService.setMultiple({ uiLanguage: 'es', debugMode: true });
+                    await configService.setMultiple({
+                        uiLanguage: 'es',
+                        debugMode: true,
+                    });
                 } catch (error) {
                     expect(error.message).toContain('partial failures');
                     expect(error.failed).toHaveLength(1);
@@ -215,21 +280,29 @@ describe('ConfigService Comprehensive Error Handling Tests', () => {
     describe('End-to-End Error Flow Integration Tests', () => {
         it('should handle complete storage system failure gracefully', async () => {
             // Simulate complete Chrome storage API failure
-            const storageError = { message: 'Chrome storage system unavailable' };
+            const storageError = {
+                message: 'Chrome storage system unavailable',
+            };
             chrome.runtime.lastError = storageError;
-            
-            Object.values(chrome.storage).forEach(area => {
-                if (area.get) area.get.mockImplementation((keys, callback) => callback(null));
-                if (area.set) area.set.mockImplementation((items, callback) => callback());
+
+            Object.values(chrome.storage).forEach((area) => {
+                if (area.get)
+                    area.get.mockImplementation((keys, callback) =>
+                        callback(null)
+                    );
+                if (area.set)
+                    area.set.mockImplementation((items, callback) =>
+                        callback()
+                    );
             });
 
             // getAll should return defaults when storage completely fails
             const config = await configService.getAll();
-            
+
             expect(config).toBeDefined();
             expect(config.uiLanguage).toBe('en'); // Default value
             expect(config.debugMode).toBe(false); // Default value
-            
+
             expect(consoleSpy.error).toHaveBeenCalledWith(
                 expect.stringContaining('Error getting all settings')
             );
@@ -238,13 +311,19 @@ describe('ConfigService Comprehensive Error Handling Tests', () => {
         it('should handle initialization failure and recovery', async () => {
             // Mock initialization failure
             chrome.runtime.lastError = { message: 'Initialization failed' };
-            chrome.storage.sync.get.mockImplementation((keys, callback) => callback(null));
-            chrome.storage.local.get.mockImplementation((keys, callback) => callback(null));
+            chrome.storage.sync.get.mockImplementation((keys, callback) =>
+                callback(null)
+            );
+            chrome.storage.local.get.mockImplementation((keys, callback) =>
+                callback(null)
+            );
 
             try {
                 await configService.setDefaultsForMissingKeys();
             } catch (error) {
-                expect(error.message).toContain('setDefaultsForMissingKeys() failed completely');
+                expect(error.message).toContain(
+                    'setDefaultsForMissingKeys() failed completely'
+                );
                 expect(configService.isInitialized).toBe(true); // Should still be marked as initialized
             }
         });
@@ -252,16 +331,22 @@ describe('ConfigService Comprehensive Error Handling Tests', () => {
         it('should handle cascading failures across multiple operations', async () => {
             // First operation fails
             chrome.runtime.lastError = { message: 'First operation failed' };
-            chrome.storage.sync.get.mockImplementation((keys, callback) => callback(null));
+            chrome.storage.sync.get.mockImplementation((keys, callback) =>
+                callback(null)
+            );
 
             const firstResult = await configService.get('uiLanguage');
             expect(firstResult).toBe('en'); // Default fallback
 
             // Second operation also fails but with different error
             chrome.runtime.lastError = { message: 'Second operation failed' };
-            chrome.storage.local.set.mockImplementation((items, callback) => callback());
+            chrome.storage.local.set.mockImplementation((items, callback) =>
+                callback()
+            );
 
-            await expect(configService.set('debugMode', true)).rejects.toThrow();
+            await expect(
+                configService.set('debugMode', true)
+            ).rejects.toThrow();
 
             // Both errors should be logged (may include additional internal errors)
             expect(consoleSpy.error).toHaveBeenCalled();
@@ -303,24 +388,29 @@ describe('ConfigService Comprehensive Error Handling Tests', () => {
                 warn: jest.fn(),
                 error: jest.fn(),
                 updateDebugMode: jest.fn().mockResolvedValue(),
-                debugEnabled: false
+                debugEnabled: false,
             };
             configService.logger = mockLogger;
         });
 
         it('should update debug mode when debugMode setting changes', async () => {
-            chrome.storage.local.set.mockImplementation((items, callback) => callback());
+            chrome.storage.local.set.mockImplementation((items, callback) =>
+                callback()
+            );
 
             await configService.set('debugMode', true);
 
             expect(mockLogger.updateDebugMode).toHaveBeenCalled();
-            expect(mockLogger.debug).toHaveBeenCalledWith('Debug mode updated', { debugMode: true });
+            expect(mockLogger.debug).toHaveBeenCalledWith(
+                'Debug mode updated',
+                { debugMode: true }
+            );
         });
 
         it('should log debug information only when debug mode is enabled', async () => {
             // Create a fresh mock logger that behaves like the real logger
             const freshMockLogger = {
-                debug: jest.fn().mockImplementation(function(message) {
+                debug: jest.fn().mockImplementation(function (message) {
                     if (this.debugEnabled) {
                         console.debug(`Mock debug: ${message}`);
                     }
@@ -329,16 +419,16 @@ describe('ConfigService Comprehensive Error Handling Tests', () => {
                 warn: jest.fn(),
                 error: jest.fn(),
                 updateDebugMode: jest.fn().mockResolvedValue(),
-                debugEnabled: false
+                debugEnabled: false,
             };
             configService.logger = freshMockLogger;
-            
+
             chrome.storage.sync.get.mockImplementation((keys, callback) => {
                 callback({ uiLanguage: 'en' });
             });
 
             await configService.get('uiLanguage');
-            
+
             // Check that debug was called but didn't actually log (because debugEnabled is false)
             expect(freshMockLogger.debug).toHaveBeenCalled();
             expect(consoleSpy.debug).not.toHaveBeenCalled();
@@ -347,7 +437,7 @@ describe('ConfigService Comprehensive Error Handling Tests', () => {
             freshMockLogger.debugEnabled = true;
             freshMockLogger.debug.mockClear();
             consoleSpy.debug.mockClear();
-            
+
             await configService.get('uiLanguage');
 
             // Debug logs should be called and actually logged when enabled
@@ -359,9 +449,13 @@ describe('ConfigService Comprehensive Error Handling Tests', () => {
             // Debug mode disabled
             mockLogger.debugEnabled = false;
             chrome.runtime.lastError = { message: 'Storage error' };
-            chrome.storage.sync.set.mockImplementation((items, callback) => callback());
+            chrome.storage.sync.set.mockImplementation((items, callback) =>
+                callback()
+            );
 
-            await expect(configService.set('uiLanguage', 'es')).rejects.toThrow();
+            await expect(
+                configService.set('uiLanguage', 'es')
+            ).rejects.toThrow();
 
             // Error should be logged even with debug disabled
             expect(mockLogger.error).toHaveBeenCalled();
@@ -388,16 +482,29 @@ describe('ConfigService Comprehensive Error Handling Tests', () => {
         });
 
         it('should log debug mode changes through configuration updates', async () => {
-            chrome.storage.local.set.mockImplementation((items, callback) => callback());
+            chrome.storage.local.set.mockImplementation((items, callback) =>
+                callback()
+            );
 
             // Test direct debugMode setting
             await configService.set('debugMode', true);
-            expect(mockLogger.debug).toHaveBeenCalledWith('Debug mode updated', { debugMode: true });
+            expect(mockLogger.debug).toHaveBeenCalledWith(
+                'Debug mode updated',
+                { debugMode: true }
+            );
 
             // Test debugMode in setMultiple
-            chrome.storage.sync.set.mockImplementation((items, callback) => callback());
-            await configService.setMultiple({ uiLanguage: 'es', debugMode: false });
-            expect(mockLogger.debug).toHaveBeenCalledWith('Debug mode updated via setMultiple', { debugMode: false });
+            chrome.storage.sync.set.mockImplementation((items, callback) =>
+                callback()
+            );
+            await configService.setMultiple({
+                uiLanguage: 'es',
+                debugMode: false,
+            });
+            expect(mockLogger.debug).toHaveBeenCalledWith(
+                'Debug mode updated via setMultiple',
+                { debugMode: false }
+            );
         });
     });
 
@@ -413,7 +520,7 @@ describe('ConfigService Comprehensive Error Handling Tests', () => {
         it('should not impact performance when debug logging is disabled', async () => {
             // Disable debug mode
             realLogger.debugEnabled = false;
-            
+
             chrome.storage.sync.get.mockImplementation((keys, callback) => {
                 callback({ uiLanguage: 'en' });
             });
@@ -442,28 +549,30 @@ describe('ConfigService Comprehensive Error Handling Tests', () => {
             // Debug logging should not significantly impact performance
             // Allow up to 1000% overhead for debug logging in test environment (very lenient for CI)
             expect(enabledTime).toBeLessThan(disabledTime * 10);
-            
+
             // Verify debug logs were actually called when enabled
             expect(consoleSpy.debug).toHaveBeenCalled();
         });
 
         it('should efficiently handle large data objects in debug logs', async () => {
             realLogger.debugEnabled = true;
-            
+
             // Create large data object
             const largeData = {};
             for (let i = 0; i < 1000; i++) {
                 largeData[`key${i}`] = `value${i}`.repeat(100);
             }
 
-            chrome.storage.local.set.mockImplementation((items, callback) => callback());
+            chrome.storage.local.set.mockImplementation((items, callback) =>
+                callback()
+            );
 
             const startTime = performance.now();
-            
+
             // This should not cause significant performance issues
-            await configService.setToStorage('local', largeData, { 
+            await configService.setToStorage('local', largeData, {
                 method: 'performanceTest',
-                largeDataTest: true 
+                largeDataTest: true,
             });
 
             const endTime = performance.now();
@@ -471,7 +580,7 @@ describe('ConfigService Comprehensive Error Handling Tests', () => {
 
             // Should complete within reasonable time (adjust threshold as needed)
             expect(duration).toBeLessThan(1000); // 1 second threshold
-            
+
             // Verify debug logging occurred
             expect(consoleSpy.debug).toHaveBeenCalledWith(
                 expect.stringContaining('Starting set operation')
@@ -501,19 +610,25 @@ describe('ConfigService Comprehensive Error Handling Tests', () => {
 
     describe('Error Context and Recovery Integration', () => {
         it('should provide comprehensive error context for debugging', async () => {
-            chrome.runtime.lastError = { 
-                message: 'QUOTA_EXCEEDED: Storage quota exceeded for sync area' 
+            chrome.runtime.lastError = {
+                message: 'QUOTA_EXCEEDED: Storage quota exceeded for sync area',
             };
-            chrome.storage.sync.set.mockImplementation((items, callback) => callback());
+            chrome.storage.sync.set.mockImplementation((items, callback) =>
+                callback()
+            );
 
             const testContext = {
                 userAction: 'settings-save',
                 batchId: 'batch-123',
-                retryCount: 2
+                retryCount: 2,
             };
 
             try {
-                await configService.setToStorage('sync', { key: 'value' }, testContext);
+                await configService.setToStorage(
+                    'sync',
+                    { key: 'value' },
+                    testContext
+                );
             } catch (error) {
                 // Verify comprehensive error context
                 expect(error.context).toMatchObject({
@@ -523,9 +638,9 @@ describe('ConfigService Comprehensive Error Handling Tests', () => {
                     method: 'setToStorage',
                     userAction: 'settings-save',
                     batchId: 'batch-123',
-                    retryCount: 2
+                    retryCount: 2,
                 });
-                
+
                 expect(error.context.timestamp).toBeInstanceOf(Date);
                 expect(typeof error.context.duration).toBe('number');
                 expect(error.isQuotaError).toBe(true);
@@ -546,8 +661,8 @@ describe('ConfigService Comprehensive Error Handling Tests', () => {
 
             try {
                 await configService.setMultiple({
-                    uiLanguage: 'es',      // sync storage
-                    debugMode: true        // local storage
+                    uiLanguage: 'es', // sync storage
+                    debugMode: true, // local storage
                 });
             } catch (error) {
                 expect(error.message).toContain('failed completely');
@@ -559,15 +674,19 @@ describe('ConfigService Comprehensive Error Handling Tests', () => {
                 if (error.failed) {
                     expect(error.failed).toHaveLength(2);
                 }
-                
+
                 // Verify error aggregation includes all failure details
-                const syncError = error.errors.find(e => e.area === 'sync');
-                const localError = error.errors.find(e => e.area === 'local');
-                
+                const syncError = error.errors.find((e) => e.area === 'sync');
+                const localError = error.errors.find((e) => e.area === 'local');
+
                 expect(syncError).toBeDefined();
                 expect(localError).toBeDefined();
-                expect(syncError.error.message).toContain('Sync storage failed');
-                expect(localError.error.message).toContain('Local storage failed');
+                expect(syncError.error.message).toContain(
+                    'Sync storage failed'
+                );
+                expect(localError.error.message).toContain(
+                    'Local storage failed'
+                );
             }
         });
 
@@ -576,33 +695,39 @@ describe('ConfigService Comprehensive Error Handling Tests', () => {
                 {
                     error: { message: 'QUOTA_EXCEEDED' },
                     area: 'sync',
-                    expectedRecovery: 'Chrome sync storage quota exceeded'
+                    expectedRecovery: 'Chrome sync storage quota exceeded',
                 },
                 {
                     error: { message: 'Network connection failed' },
                     area: 'sync',
-                    expectedRecovery: 'Network connectivity issue'
+                    expectedRecovery: 'Network connectivity issue',
                 },
                 {
                     error: { message: 'Permission denied' },
                     area: 'local',
-                    expectedRecovery: 'Permission error detected'
+                    expectedRecovery: 'Permission error detected',
                 },
                 {
                     error: { message: 'Chrome sync is disabled' },
                     area: 'sync',
-                    expectedRecovery: 'Chrome sync appears to be disabled'
-                }
+                    expectedRecovery: 'Chrome sync appears to be disabled',
+                },
             ];
 
             for (const scenario of errorScenarios) {
                 chrome.runtime.lastError = scenario.error;
-                chrome.storage[scenario.area].set.mockImplementation((items, callback) => callback());
+                chrome.storage[scenario.area].set.mockImplementation(
+                    (items, callback) => callback()
+                );
 
                 try {
-                    await configService.setToStorage(scenario.area, { key: 'value' });
+                    await configService.setToStorage(scenario.area, {
+                        key: 'value',
+                    });
                 } catch (error) {
-                    expect(error.recoveryAction).toContain(scenario.expectedRecovery);
+                    expect(error.recoveryAction).toContain(
+                        scenario.expectedRecovery
+                    );
                 }
             }
         });
@@ -614,7 +739,9 @@ describe('ConfigService Comprehensive Error Handling Tests', () => {
             chrome.storage.sync.get.mockImplementation((keys, callback) => {
                 callCount++;
                 if (callCount % 3 === 0) {
-                    chrome.runtime.lastError = { message: 'Intermittent failure' };
+                    chrome.runtime.lastError = {
+                        message: 'Intermittent failure',
+                    };
                     callback(null);
                 } else {
                     chrome.runtime.lastError = null;
@@ -628,11 +755,11 @@ describe('ConfigService Comprehensive Error Handling Tests', () => {
             }
 
             const results = await Promise.allSettled(promises);
-            
+
             // Some should succeed, some should return defaults due to errors
-            const fulfilled = results.filter(r => r.status === 'fulfilled');
+            const fulfilled = results.filter((r) => r.status === 'fulfilled');
             expect(fulfilled.length).toBe(10); // All should resolve (with defaults on error)
-            
+
             // Verify error logging occurred for failed operations
             expect(consoleSpy.error).toHaveBeenCalled();
         });
@@ -641,25 +768,33 @@ describe('ConfigService Comprehensive Error Handling Tests', () => {
             const largeContext = {
                 method: 'stressTest',
                 largeArray: new Array(10000).fill('test'),
-                largeObject: {}
+                largeObject: {},
             };
-            
+
             // Create large nested object
             for (let i = 0; i < 1000; i++) {
                 largeContext.largeObject[`key${i}`] = `value${i}`.repeat(50);
             }
 
-            chrome.runtime.lastError = { message: 'Storage error with large context' };
-            chrome.storage.sync.set.mockImplementation((items, callback) => callback());
+            chrome.runtime.lastError = {
+                message: 'Storage error with large context',
+            };
+            chrome.storage.sync.set.mockImplementation((items, callback) =>
+                callback()
+            );
 
             const startTime = performance.now();
 
             try {
-                await configService.setToStorage('sync', { key: 'value' }, largeContext);
+                await configService.setToStorage(
+                    'sync',
+                    { key: 'value' },
+                    largeContext
+                );
             } catch (error) {
                 const endTime = performance.now();
                 const duration = endTime - startTime;
-                
+
                 // Should handle large context efficiently
                 expect(duration).toBeLessThan(100); // 100ms threshold
                 // The method will be overridden by setToStorage, so check for the original context
@@ -671,13 +806,17 @@ describe('ConfigService Comprehensive Error Handling Tests', () => {
         it('should maintain error handling consistency under memory pressure', async () => {
             // Simulate memory pressure by creating many error objects
             const errors = [];
-            
+
             for (let i = 0; i < 1000; i++) {
                 chrome.runtime.lastError = { message: `Error ${i}` };
-                chrome.storage.local.set.mockImplementation((items, callback) => callback());
+                chrome.storage.local.set.mockImplementation((items, callback) =>
+                    callback()
+                );
 
                 try {
-                    await configService.setToStorage('local', { [`key${i}`]: `value${i}` });
+                    await configService.setToStorage('local', {
+                        [`key${i}`]: `value${i}`,
+                    });
                 } catch (error) {
                     errors.push(error);
                 }
