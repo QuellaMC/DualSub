@@ -15,7 +15,9 @@ describe('ConfigServiceErrorHandler', () => {
 
             expect(error).toBeInstanceOf(Error);
             expect(error.name).toBe('ConfigServiceStorageError');
-            expect(error.message).toContain('get operation failed for key "testKey" in sync storage');
+            expect(error.message).toContain(
+                'get operation failed for key "testKey" in sync storage'
+            );
             expect(error.message).toContain('Chrome storage failed');
             expect(error.originalError).toBe(originalError);
             expect(error.context.operation).toBe('get');
@@ -37,7 +39,9 @@ describe('ConfigServiceErrorHandler', () => {
                 originalError
             );
 
-            expect(error.message).toContain('set operation failed for keys [key1, key2, key3] in local storage');
+            expect(error.message).toContain(
+                'set operation failed for keys [key1, key2, key3] in local storage'
+            );
             expect(error.context.keys).toEqual(keys);
             expect(error.context.operation).toBe('set');
             expect(error.context.area).toBe('local');
@@ -71,7 +75,7 @@ describe('ConfigServiceErrorHandler', () => {
             const additionalContext = {
                 method: 'setMultiple',
                 retryCount: 2,
-                userAgent: 'test'
+                userAgent: 'test',
             };
             const error = ConfigServiceErrorHandler.createStorageError(
                 'set',
@@ -95,21 +99,27 @@ describe('ConfigServiceErrorHandler', () => {
                 new Error('Storage quota has been exceeded'),
                 new Error('Maximum storage limit reached'),
                 new Error('quota_bytes_per_item exceeded'),
-                new Error('max_write_operations_per_hour limit reached')
+                new Error('max_write_operations_per_hour limit reached'),
             ];
 
-            quotaErrors.forEach(error => {
-                expect(ConfigServiceErrorHandler.isQuotaExceededError(error)).toBe(true);
+            quotaErrors.forEach((error) => {
+                expect(
+                    ConfigServiceErrorHandler.isQuotaExceededError(error)
+                ).toBe(true);
             });
         });
 
         it('should detect quota exceeded errors from original error', () => {
             const error = {
                 message: 'Storage operation failed',
-                originalError: new Error('QUOTA_EXCEEDED: Storage quota exceeded')
+                originalError: new Error(
+                    'QUOTA_EXCEEDED: Storage quota exceeded'
+                ),
             };
 
-            expect(ConfigServiceErrorHandler.isQuotaExceededError(error)).toBe(true);
+            expect(ConfigServiceErrorHandler.isQuotaExceededError(error)).toBe(
+                true
+            );
         });
 
         it('should handle case insensitive detection', () => {
@@ -117,11 +127,13 @@ describe('ConfigServiceErrorHandler', () => {
                 new Error('Quota Exceeded'),
                 new Error('STORAGE QUOTA'),
                 new Error('Maximum Storage'),
-                { originalError: { message: 'Quota_Exceeded' } }
+                { originalError: { message: 'Quota_Exceeded' } },
             ];
 
-            errors.forEach(error => {
-                expect(ConfigServiceErrorHandler.isQuotaExceededError(error)).toBe(true);
+            errors.forEach((error) => {
+                expect(
+                    ConfigServiceErrorHandler.isQuotaExceededError(error)
+                ).toBe(true);
             });
         });
 
@@ -133,20 +145,24 @@ describe('ConfigServiceErrorHandler', () => {
                 { message: 'Connection failed' },
                 null,
                 undefined,
-                {}
+                {},
             ];
 
-            nonQuotaErrors.forEach(error => {
-                expect(ConfigServiceErrorHandler.isQuotaExceededError(error)).toBe(false);
+            nonQuotaErrors.forEach((error) => {
+                expect(
+                    ConfigServiceErrorHandler.isQuotaExceededError(error)
+                ).toBe(false);
             });
         });
 
         it('should handle errors without message property', () => {
             const error = {
-                toString: () => 'quota exceeded'
+                toString: () => 'quota exceeded',
             };
 
-            expect(ConfigServiceErrorHandler.isQuotaExceededError(error)).toBe(true);
+            expect(ConfigServiceErrorHandler.isQuotaExceededError(error)).toBe(
+                true
+            );
         });
     });
 
@@ -154,22 +170,26 @@ describe('ConfigServiceErrorHandler', () => {
         it('should provide quota recovery actions for sync storage', () => {
             const error = {
                 message: 'Quota exceeded',
-                context: { area: 'sync' }
+                context: { area: 'sync' },
             };
 
-            const action = ConfigServiceErrorHandler.getErrorRecoveryAction(error);
+            const action =
+                ConfigServiceErrorHandler.getErrorRecoveryAction(error);
             expect(action).toContain('Chrome sync storage quota exceeded');
-            expect(action).toContain('Moving non-essential settings to local storage');
+            expect(action).toContain(
+                'Moving non-essential settings to local storage'
+            );
             expect(action).toContain('sync is enabled in Chrome settings');
         });
 
         it('should provide quota recovery actions for local storage', () => {
             const error = {
                 message: 'Storage quota exceeded',
-                context: { area: 'local' }
+                context: { area: 'local' },
             };
 
-            const action = ConfigServiceErrorHandler.getErrorRecoveryAction(error);
+            const action =
+                ConfigServiceErrorHandler.getErrorRecoveryAction(error);
             expect(action).toContain('Local storage quota exceeded');
             expect(action).toContain('Clearing browser data');
             expect(action).toContain('data cleanup routines');
@@ -179,11 +199,12 @@ describe('ConfigServiceErrorHandler', () => {
             const networkErrors = [
                 new Error('Network connection failed'),
                 new Error('Offline mode detected'),
-                { originalError: { message: 'Connection timeout' } }
+                { originalError: { message: 'Connection timeout' } },
             ];
 
-            networkErrors.forEach(error => {
-                const action = ConfigServiceErrorHandler.getErrorRecoveryAction(error);
+            networkErrors.forEach((error) => {
+                const action =
+                    ConfigServiceErrorHandler.getErrorRecoveryAction(error);
                 expect(action).toContain('Network connectivity issue');
                 expect(action).toContain('Try again when online');
             });
@@ -193,11 +214,12 @@ describe('ConfigServiceErrorHandler', () => {
             const permissionErrors = [
                 new Error('Permission denied'),
                 new Error('Access denied to storage'),
-                { message: 'Unauthorized access' }
+                { message: 'Unauthorized access' },
             ];
 
-            permissionErrors.forEach(error => {
-                const action = ConfigServiceErrorHandler.getErrorRecoveryAction(error);
+            permissionErrors.forEach((error) => {
+                const action =
+                    ConfigServiceErrorHandler.getErrorRecoveryAction(error);
                 expect(action).toContain('Permission error detected');
                 expect(action).toContain('extension permissions');
             });
@@ -207,11 +229,12 @@ describe('ConfigServiceErrorHandler', () => {
             const syncErrors = [
                 new Error('Sync is disabled'),
                 new Error('Chrome sync not available'),
-                { originalError: { message: 'Sync service disabled' } }
+                { originalError: { message: 'Sync service disabled' } },
             ];
 
-            syncErrors.forEach(error => {
-                const action = ConfigServiceErrorHandler.getErrorRecoveryAction(error);
+            syncErrors.forEach((error) => {
+                const action =
+                    ConfigServiceErrorHandler.getErrorRecoveryAction(error);
                 expect(action).toContain('Chrome sync appears to be disabled');
                 expect(action).toContain('Enable Chrome sync');
             });
@@ -221,11 +244,12 @@ describe('ConfigServiceErrorHandler', () => {
             const validationErrors = [
                 new Error('Invalid data format'),
                 new Error('Malformed JSON'),
-                { message: 'Corrupt data detected' }
+                { message: 'Corrupt data detected' },
             ];
 
-            validationErrors.forEach(error => {
-                const action = ConfigServiceErrorHandler.getErrorRecoveryAction(error);
+            validationErrors.forEach((error) => {
+                const action =
+                    ConfigServiceErrorHandler.getErrorRecoveryAction(error);
                 expect(action).toContain('Data validation error');
                 expect(action).toContain('properly formatted');
             });
@@ -235,11 +259,12 @@ describe('ConfigServiceErrorHandler', () => {
             const rateLimitErrors = [
                 new Error('Rate limit exceeded'),
                 new Error('Too many requests'),
-                { originalError: { message: 'Throttled operation' } }
+                { originalError: { message: 'Throttled operation' } },
             ];
 
-            rateLimitErrors.forEach(error => {
-                const action = ConfigServiceErrorHandler.getErrorRecoveryAction(error);
+            rateLimitErrors.forEach((error) => {
+                const action =
+                    ConfigServiceErrorHandler.getErrorRecoveryAction(error);
                 expect(action).toContain('Rate limiting detected');
                 expect(action).toContain('exponential backoff');
             });
@@ -250,30 +275,38 @@ describe('ConfigServiceErrorHandler', () => {
                 { operation: 'get', expectedText: 'Failed to retrieve data' },
                 { operation: 'set', expectedText: 'Failed to save data' },
                 { operation: 'remove', expectedText: 'Failed to remove data' },
-                { operation: 'clear', expectedText: 'Failed to clear storage' }
+                { operation: 'clear', expectedText: 'Failed to clear storage' },
             ];
 
             operations.forEach(({ operation, expectedText }) => {
                 const error = {
                     message: 'Generic error',
-                    context: { operation }
+                    context: { operation },
                 };
 
-                const action = ConfigServiceErrorHandler.getErrorRecoveryAction(error);
+                const action =
+                    ConfigServiceErrorHandler.getErrorRecoveryAction(error);
                 expect(action).toContain(expectedText);
             });
         });
 
         it('should handle null/undefined errors', () => {
-            expect(ConfigServiceErrorHandler.getErrorRecoveryAction(null))
-                .toContain('Unknown error - no specific recovery action available');
-            expect(ConfigServiceErrorHandler.getErrorRecoveryAction(undefined))
-                .toContain('Unknown error - no specific recovery action available');
+            expect(
+                ConfigServiceErrorHandler.getErrorRecoveryAction(null)
+            ).toContain(
+                'Unknown error - no specific recovery action available'
+            );
+            expect(
+                ConfigServiceErrorHandler.getErrorRecoveryAction(undefined)
+            ).toContain(
+                'Unknown error - no specific recovery action available'
+            );
         });
 
         it('should provide generic recovery action for unknown errors', () => {
             const error = new Error('Some unknown error');
-            const action = ConfigServiceErrorHandler.getErrorRecoveryAction(error);
+            const action =
+                ConfigServiceErrorHandler.getErrorRecoveryAction(error);
             expect(action).toContain('Unknown storage error');
             expect(action).toContain('restarting the extension');
         });
@@ -288,13 +321,17 @@ describe('ConfigServiceErrorHandler', () => {
             );
 
             expect(enhancedError.isQuotaError).toBe(true);
-            expect(enhancedError.recoveryAction).toContain('Chrome sync storage quota exceeded');
+            expect(enhancedError.recoveryAction).toContain(
+                'Chrome sync storage quota exceeded'
+            );
         });
     });
 
     describe('integration tests', () => {
         it('should create fully enhanced error with all properties', () => {
-            const originalError = new Error('QUOTA_EXCEEDED: Storage limit reached');
+            const originalError = new Error(
+                'QUOTA_EXCEEDED: Storage limit reached'
+            );
             const error = ConfigServiceErrorHandler.createStorageError(
                 'set',
                 'sync',
@@ -305,10 +342,14 @@ describe('ConfigServiceErrorHandler', () => {
 
             // Verify all properties are set correctly
             expect(error.name).toBe('ConfigServiceStorageError');
-            expect(error.message).toContain('set operation failed for keys [key1, key2] in sync storage');
+            expect(error.message).toContain(
+                'set operation failed for keys [key1, key2] in sync storage'
+            );
             expect(error.originalError).toBe(originalError);
             expect(error.isQuotaError).toBe(true);
-            expect(error.recoveryAction).toContain('Chrome sync storage quota exceeded');
+            expect(error.recoveryAction).toContain(
+                'Chrome sync storage quota exceeded'
+            );
             expect(error.context.operation).toBe('set');
             expect(error.context.area).toBe('sync');
             expect(error.context.keys).toEqual(['key1', 'key2']);
@@ -317,7 +358,7 @@ describe('ConfigServiceErrorHandler', () => {
 
         it('should handle Chrome runtime lastError format', () => {
             const chromeError = {
-                message: 'QUOTA_EXCEEDED_PER_ITEM'
+                message: 'QUOTA_EXCEEDED_PER_ITEM',
             };
             const error = ConfigServiceErrorHandler.createStorageError(
                 'set',
@@ -328,7 +369,9 @@ describe('ConfigServiceErrorHandler', () => {
 
             expect(error.isQuotaError).toBe(true);
             expect(error.message).toContain('QUOTA_EXCEEDED_PER_ITEM');
-            expect(error.recoveryAction).toContain('Local storage quota exceeded');
+            expect(error.recoveryAction).toContain(
+                'Local storage quota exceeded'
+            );
         });
     });
 });

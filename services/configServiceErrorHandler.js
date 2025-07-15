@@ -13,31 +13,46 @@ export class ConfigServiceErrorHandler {
      * @param {object} additionalContext - Additional context information
      * @returns {Error} Enhanced error object with context
      */
-    static createStorageError(operation, area, keys, originalError, additionalContext = {}) {
+    static createStorageError(
+        operation,
+        area,
+        keys,
+        originalError,
+        additionalContext = {}
+    ) {
         // Normalize keys to array format
         const keyArray = Array.isArray(keys) ? keys : [keys];
-        
+
         // Create error context
         const context = {
             operation,
             area,
             keys: keyArray,
             timestamp: new Date(),
-            ...additionalContext
+            ...additionalContext,
         };
 
         // Create enhanced error message
-        const keyStr = keyArray.length === 1 ? `key "${keyArray[0]}"` : `keys [${keyArray.join(', ')}]`;
+        const keyStr =
+            keyArray.length === 1
+                ? `key "${keyArray[0]}"`
+                : `keys [${keyArray.join(', ')}]`;
         const baseMessage = `ConfigService: ${operation} operation failed for ${keyStr} in ${area} storage`;
-        
+
         // Extract original error message
         let originalMessage = 'Unknown error';
         if (originalError?.message) {
             originalMessage = originalError.message;
-        } else if (originalError && typeof originalError.toString === 'function') {
+        } else if (
+            originalError &&
+            typeof originalError.toString === 'function'
+        ) {
             const stringified = originalError.toString();
             // Avoid generic "[object Object]" representation
-            originalMessage = stringified === '[object Object]' ? 'Unknown error' : stringified;
+            originalMessage =
+                stringified === '[object Object]'
+                    ? 'Unknown error'
+                    : stringified;
         }
         const fullMessage = `${baseMessage}: ${originalMessage}`;
 
@@ -46,7 +61,7 @@ export class ConfigServiceErrorHandler {
         error.name = 'ConfigServiceStorageError';
         error.originalError = originalError;
         error.context = context;
-        
+
         // Add recovery action and quota error flag
         error.recoveryAction = this.getErrorRecoveryAction(error);
         error.isQuotaError = this.isQuotaExceededError(error);
@@ -63,9 +78,17 @@ export class ConfigServiceErrorHandler {
         if (!error) return false;
 
         // Check the error message for quota-related keywords
-        const errorMessage = (error.message || error.toString() || '').toLowerCase();
-        const originalMessage = (error.originalError?.message || error.originalError?.toString() || '').toLowerCase();
-        
+        const errorMessage = (
+            error.message ||
+            error.toString() ||
+            ''
+        ).toLowerCase();
+        const originalMessage = (
+            error.originalError?.message ||
+            error.originalError?.toString() ||
+            ''
+        ).toLowerCase();
+
         const quotaKeywords = [
             'quota exceeded',
             'quota_exceeded',
@@ -74,11 +97,13 @@ export class ConfigServiceErrorHandler {
             'storage limit',
             'quota_bytes_per_item',
             'max_write_operations_per_hour',
-            'max_write_operations_per_minute'
+            'max_write_operations_per_minute',
         ];
 
-        return quotaKeywords.some(keyword => 
-            errorMessage.includes(keyword) || originalMessage.includes(keyword)
+        return quotaKeywords.some(
+            (keyword) =>
+                errorMessage.includes(keyword) ||
+                originalMessage.includes(keyword)
         );
     }
 
@@ -88,7 +113,8 @@ export class ConfigServiceErrorHandler {
      * @returns {string} Suggested recovery action
      */
     static getErrorRecoveryAction(error) {
-        if (!error) return 'Unknown error - no specific recovery action available';
+        if (!error)
+            return 'Unknown error - no specific recovery action available';
 
         // Check if it's a quota error first
         if (this.isQuotaExceededError(error)) {
@@ -101,32 +127,60 @@ export class ConfigServiceErrorHandler {
         }
 
         // Analyze error message for other common issues
-        const errorMessage = (error.message || error.toString() || '').toLowerCase();
-        const originalMessage = (error.originalError?.message || error.originalError?.toString() || '').toLowerCase();
+        const errorMessage = (
+            error.message ||
+            error.toString() ||
+            ''
+        ).toLowerCase();
+        const originalMessage = (
+            error.originalError?.message ||
+            error.originalError?.toString() ||
+            ''
+        ).toLowerCase();
         const fullMessage = `${errorMessage} ${originalMessage}`;
 
         // Network/connectivity issues
-        if (fullMessage.includes('network') || fullMessage.includes('connection') || fullMessage.includes('offline')) {
+        if (
+            fullMessage.includes('network') ||
+            fullMessage.includes('connection') ||
+            fullMessage.includes('offline')
+        ) {
             return 'Network connectivity issue detected. Try again when online, or check Chrome sync settings if using sync storage';
         }
 
         // Permission issues
-        if (fullMessage.includes('permission') || fullMessage.includes('access denied') || fullMessage.includes('unauthorized')) {
+        if (
+            fullMessage.includes('permission') ||
+            fullMessage.includes('access denied') ||
+            fullMessage.includes('unauthorized')
+        ) {
             return 'Permission error detected. Check extension permissions and Chrome storage access settings';
         }
 
         // Sync disabled issues
-        if (fullMessage.includes('sync') && (fullMessage.includes('disabled') || fullMessage.includes('not available'))) {
+        if (
+            fullMessage.includes('sync') &&
+            (fullMessage.includes('disabled') ||
+                fullMessage.includes('not available'))
+        ) {
             return 'Chrome sync appears to be disabled. Enable Chrome sync in browser settings or use local storage for this setting';
         }
 
         // Invalid key/data issues
-        if (fullMessage.includes('invalid') || fullMessage.includes('malformed') || fullMessage.includes('corrupt')) {
+        if (
+            fullMessage.includes('invalid') ||
+            fullMessage.includes('malformed') ||
+            fullMessage.includes('corrupt')
+        ) {
             return 'Data validation error detected. Check that the data being stored is valid and properly formatted';
         }
 
         // Rate limiting
-        if (fullMessage.includes('rate') || fullMessage.includes('throttle') || fullMessage.includes('too many')) {
+        if (
+            fullMessage.includes('rate') ||
+            fullMessage.includes('throttle') ||
+            fullMessage.includes('too many')
+        ) {
             return 'Rate limiting detected. Reduce the frequency of storage operations or implement exponential backoff retry logic';
         }
 

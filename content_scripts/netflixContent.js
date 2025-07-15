@@ -156,9 +156,12 @@ async function initializePlatform() {
     // Load initial configuration
     currentConfig = await configService.getAll();
     console.log(`${LOG_PREFIX}: Loaded initial config:`, currentConfig);
-    
+
     // Sync subtitleUtils state with saved configuration
-    if (subtitleUtils && typeof subtitleUtils.setSubtitlesActive === 'function') {
+    if (
+        subtitleUtils &&
+        typeof subtitleUtils.setSubtitlesActive === 'function'
+    ) {
         subtitleUtils.setSubtitlesActive(currentConfig.subtitlesEnabled);
     }
 
@@ -168,17 +171,21 @@ async function initializePlatform() {
         const newConfig = await configService.getAll();
 
         // Update existing object properties while preserving the reference
-        Object.keys(currentConfig).forEach(key => delete currentConfig[key]);
+        Object.keys(currentConfig).forEach((key) => delete currentConfig[key]);
         Object.assign(currentConfig, newConfig);
 
         // Check if any changes affect subtitle functionality (exclude UI-only settings)
         const uiOnlySettings = ['appearanceAccordionOpen'];
         const functionalChanges = Object.keys(changes).filter(
-            key => !uiOnlySettings.includes(key)
+            (key) => !uiOnlySettings.includes(key)
         );
 
         // Re-apply styles and trigger a subtitle re-render only if functional settings changed
-        if (functionalChanges.length > 0 && activePlatform && subtitleUtils.subtitlesActive) {
+        if (
+            functionalChanges.length > 0 &&
+            activePlatform &&
+            subtitleUtils.subtitlesActive
+        ) {
             subtitleUtils.applySubtitleStyling(currentConfig);
             const videoElement = activePlatform.getVideoElement();
             if (videoElement) {
@@ -307,7 +314,11 @@ function attemptVideoSetup() {
     );
 
     // Ensure container and timeupdate listener for Netflix
-    subtitleUtils.ensureSubtitleContainer(activePlatform, currentConfig, LOG_PREFIX);
+    subtitleUtils.ensureSubtitleContainer(
+        activePlatform,
+        currentConfig,
+        LOG_PREFIX
+    );
 
     if (subtitleUtils.subtitlesActive) {
         console.log(
@@ -405,10 +416,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             break;
 
         case 'configChanged':
-            if (request.changes && activePlatform && subtitleUtils.subtitlesActive) {
+            if (
+                request.changes &&
+                activePlatform &&
+                subtitleUtils.subtitlesActive
+            ) {
                 // Update local config with the changes for immediate effect
                 Object.assign(currentConfig, request.changes);
-                
+
                 // Apply the changes immediately for instant visual feedback
                 subtitleUtils.applySubtitleStyling(currentConfig);
                 const videoElement = activePlatform.getVideoElement();
@@ -452,7 +467,7 @@ function initializeWhenReady() {
 
             // Load initial configuration
             currentConfig = await configService.getAll();
-            
+
             if (currentConfig.subtitlesEnabled) {
                 setTimeout(() => {
                     initializePlatform();

@@ -57,8 +57,6 @@ document.addEventListener('DOMContentLoaded', function () {
         row: 'layoutLeftRight',
     };
 
-
-
     const updateSliderProgress = (sliderElement) => {
         const value = sliderElement.value;
         const min = sliderElement.min || 0;
@@ -114,10 +112,14 @@ document.addEventListener('DOMContentLoaded', function () {
             originalLanguageSelect.value = settings.originalLanguage;
             targetLanguageSelect.value = settings.targetLanguage;
             subtitleLayoutOrderSelect.value = settings.subtitleLayoutOrder;
-            subtitleLayoutOrientationSelect.value = settings.subtitleLayoutOrientation;
+            subtitleLayoutOrientationSelect.value =
+                settings.subtitleLayoutOrientation;
         } catch (error) {
             console.error('Popup: Error loading settings:', error);
-            showStatus('Failed to load settings. Please try refreshing the popup.', 5000);
+            showStatus(
+                'Failed to load settings. Please try refreshing the popup.',
+                5000
+            );
         }
     };
 
@@ -142,29 +144,37 @@ document.addEventListener('DOMContentLoaded', function () {
     const sendImmediateConfigUpdate = (changes) => {
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
             if (tabs[0]) {
-                chrome.tabs.sendMessage(tabs[0].id, { 
-                    action: 'configChanged',
-                    changes: changes
-                }).catch(error => {
-                    // Fail silently - the storage change mechanism should handle it as fallback
-                    console.log('Popup: Direct message failed, relying on storage events:', error);
-                });
+                chrome.tabs
+                    .sendMessage(tabs[0].id, {
+                        action: 'configChanged',
+                        changes: changes,
+                    })
+                    .catch((error) => {
+                        // Fail silently - the storage change mechanism should handle it as fallback
+                        console.log(
+                            'Popup: Direct message failed, relying on storage events:',
+                            error
+                        );
+                    });
             }
         });
     };
-
 
     // --- Event Listeners ---
     enableSubtitlesToggle.addEventListener('change', async function () {
         try {
             const enabled = this.checked;
             await configService.set('subtitlesEnabled', enabled);
-            const statusKey = enabled ? 'statusDualEnabled' : 'statusDualDisabled';
+            const statusKey = enabled
+                ? 'statusDualEnabled'
+                : 'statusDualDisabled';
             const statusText =
                 loadedTranslations[statusKey]?.message ||
-                (enabled ? 'Dual subtitles enabled.' : 'Dual subtitles disabled.');
+                (enabled
+                    ? 'Dual subtitles enabled.'
+                    : 'Dual subtitles disabled.');
             showStatus(statusText);
-            
+
             // Send immediate update for instant visual feedback and proper cleanup
             sendImmediateConfigUpdate({ subtitlesEnabled: enabled });
         } catch (error) {
@@ -186,12 +196,14 @@ document.addEventListener('DOMContentLoaded', function () {
                     ? 'Smart translation enabled.'
                     : 'Smart translation disabled.');
             showStatus(statusText);
-            
+
             // Send immediate update for instant visual feedback and proper cleanup
             sendImmediateConfigUpdate({ useNativeSubtitles: useNative });
         } catch (error) {
             console.error('Popup: Error toggling native subtitles:', error);
-            showStatus('Failed to update smart translation setting. Please try again.');
+            showStatus(
+                'Failed to update smart translation setting. Please try again.'
+            );
         }
     });
 
@@ -204,7 +216,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 'Original language: ';
             const statusText = `${statusPrefix}${this.options[this.selectedIndex].text}`;
             showStatus(statusText);
-            
+
             // Send immediate update for instant visual feedback
             sendImmediateConfigUpdate({ originalLanguage: lang });
         } catch (error) {
@@ -220,8 +232,10 @@ document.addEventListener('DOMContentLoaded', function () {
             const statusPrefix =
                 loadedTranslations['statusLanguageSetTo']?.message ||
                 'Language set to: ';
-            showStatus(`${statusPrefix}${this.options[this.selectedIndex].text}`);
-            
+            showStatus(
+                `${statusPrefix}${this.options[this.selectedIndex].text}`
+            );
+
             // Send immediate update for instant visual feedback
             sendImmediateConfigUpdate({ targetLanguage: lang });
         } catch (error) {
@@ -239,10 +253,14 @@ document.addEventListener('DOMContentLoaded', function () {
                     'Invalid offset, reverting.';
                 showStatus(invalidMsg);
                 try {
-                    const currentOffset = await configService.get('subtitleTimeOffset');
+                    const currentOffset =
+                        await configService.get('subtitleTimeOffset');
                     this.value = currentOffset;
                 } catch (error) {
-                    console.error('Popup: Error loading subtitle time offset:', error);
+                    console.error(
+                        'Popup: Error loading subtitle time offset:',
+                        error
+                    );
                 }
                 return;
             }
@@ -250,9 +268,10 @@ document.addEventListener('DOMContentLoaded', function () {
             this.value = offset;
             await configService.set('subtitleTimeOffset', offset);
             const statusPrefix =
-                loadedTranslations['statusTimeOffset']?.message || 'Time offset: ';
+                loadedTranslations['statusTimeOffset']?.message ||
+                'Time offset: ';
             showStatus(`${statusPrefix}${offset}s.`);
-            
+
             // Send immediate update for instant visual feedback
             sendImmediateConfigUpdate({ subtitleTimeOffset: offset });
         } catch (error) {
@@ -269,7 +288,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 loadedTranslations['statusDisplayOrderUpdated']?.message ||
                 `Display order updated.`;
             showStatus(statusText);
-            
+
             // Send immediate update for instant visual feedback
             sendImmediateConfigUpdate({ subtitleLayoutOrder: layoutOrder });
         } catch (error) {
@@ -278,22 +297,35 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    subtitleLayoutOrientationSelect.addEventListener('change', async function () {
-        try {
-            const layoutOrientation = this.value;
-            await configService.set('subtitleLayoutOrientation', layoutOrientation);
-            const statusText =
-                loadedTranslations['statusLayoutOrientationUpdated']?.message ||
-                `Layout orientation updated.`;
-            showStatus(statusText);
-            
-            // Send immediate update for instant visual feedback
-            sendImmediateConfigUpdate({ subtitleLayoutOrientation: layoutOrientation });
-        } catch (error) {
-            console.error('Popup: Error setting layout orientation:', error);
-            showStatus('Failed to update layout orientation. Please try again.');
+    subtitleLayoutOrientationSelect.addEventListener(
+        'change',
+        async function () {
+            try {
+                const layoutOrientation = this.value;
+                await configService.set(
+                    'subtitleLayoutOrientation',
+                    layoutOrientation
+                );
+                const statusText =
+                    loadedTranslations['statusLayoutOrientationUpdated']
+                        ?.message || `Layout orientation updated.`;
+                showStatus(statusText);
+
+                // Send immediate update for instant visual feedback
+                sendImmediateConfigUpdate({
+                    subtitleLayoutOrientation: layoutOrientation,
+                });
+            } catch (error) {
+                console.error(
+                    'Popup: Error setting layout orientation:',
+                    error
+                );
+                showStatus(
+                    'Failed to update layout orientation. Please try again.'
+                );
+            }
         }
-    });
+    );
 
     subtitleFontSizeInput.addEventListener('input', function () {
         subtitleFontSizeValue.textContent = `${parseFloat(this.value).toFixed(1)}vw`;
@@ -306,7 +338,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const statusPrefix =
                 loadedTranslations['statusFontSize']?.message || 'Font size: ';
             showStatus(`${statusPrefix}${fontSize.toFixed(1)}vw.`);
-            
+
             // Send immediate update for instant visual feedback
             sendImmediateConfigUpdate({ subtitleFontSize: fontSize });
         } catch (error) {
@@ -327,7 +359,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 loadedTranslations['statusVerticalGap']?.message ||
                 'Vertical gap: ';
             showStatus(`${statusPrefix}${gap.toFixed(1)}em.`);
-            
+
             // Send immediate update for instant visual feedback
             sendImmediateConfigUpdate({ subtitleGap: gap });
         } catch (error) {
@@ -348,7 +380,7 @@ document.addEventListener('DOMContentLoaded', function () {
     );
 
     // --- Language and Initialization ---
-    const loadTranslations = async function(langCode) {
+    const loadTranslations = async function (langCode) {
         // Convert hyphens to underscores for folder structure (zh-CN -> zh_CN)
         const normalizedLangCode = langCode.replace('-', '_');
         if (translationsCache[normalizedLangCode])
@@ -387,7 +419,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
-    const updateUILanguage = function() {
+    const updateUILanguage = function () {
         // Apply translations to all elements with data-i18n attribute
         document.querySelectorAll('[data-i18n]').forEach((elem) => {
             const key = elem.getAttribute('data-i18n');

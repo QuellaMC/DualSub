@@ -8,29 +8,29 @@ const mockChromeStorage = {
     sync: {
         get: jest.fn(),
         set: jest.fn(),
-        remove: jest.fn()
+        remove: jest.fn(),
     },
     local: {
         get: jest.fn(),
         set: jest.fn(),
-        remove: jest.fn()
+        remove: jest.fn(),
     },
     onChanged: {
-        addListener: jest.fn()
-    }
+        addListener: jest.fn(),
+    },
 };
 
 const mockChromeRuntime = {
     lastError: null,
     onInstalled: {
-        addListener: jest.fn()
-    }
+        addListener: jest.fn(),
+    },
 };
 
 // Setup global mocks
 global.chrome = {
     storage: mockChromeStorage,
-    runtime: mockChromeRuntime
+    runtime: mockChromeRuntime,
 };
 
 describe('ConfigService Multi-Operation Error Handling', () => {
@@ -38,7 +38,7 @@ describe('ConfigService Multi-Operation Error Handling', () => {
         // Reset all mocks
         jest.clearAllMocks();
         mockChromeRuntime.lastError = null;
-        
+
         // Reset service state
         configService.isInitialized = false;
         configService.changeListeners.clear();
@@ -47,17 +47,27 @@ describe('ConfigService Multi-Operation Error Handling', () => {
     describe('setMultiple() error handling', () => {
         test('should handle validation errors with detailed information', async () => {
             const invalidSettings = {
-                'validKey1': 'validValue',
-                'invalidKey': 'someValue',
-                'validKey2': 123,
-                'anotherInvalidKey': 'anotherValue'
+                validKey1: 'validValue',
+                invalidKey: 'someValue',
+                validKey2: 123,
+                anotherInvalidKey: 'anotherValue',
             };
 
             // Mock schema to have only validKey1 and validKey2
             const originalSchema = { ...configSchema };
-            Object.keys(configSchema).forEach(key => delete configSchema[key]);
-            configSchema.validKey1 = { defaultValue: 'default1', type: String, scope: 'sync' };
-            configSchema.validKey2 = { defaultValue: 0, type: Number, scope: 'local' };
+            Object.keys(configSchema).forEach(
+                (key) => delete configSchema[key]
+            );
+            configSchema.validKey1 = {
+                defaultValue: 'default1',
+                type: String,
+                scope: 'sync',
+            };
+            configSchema.validKey2 = {
+                defaultValue: 0,
+                type: Number,
+                scope: 'local',
+            };
 
             try {
                 await configService.setMultiple(invalidSettings);
@@ -74,35 +84,59 @@ describe('ConfigService Multi-Operation Error Handling', () => {
             }
 
             // Restore original schema
-            Object.keys(configSchema).forEach(key => delete configSchema[key]);
+            Object.keys(configSchema).forEach(
+                (key) => delete configSchema[key]
+            );
             Object.assign(configSchema, originalSchema);
         });
 
         test('should handle partial storage failures with detailed error aggregation', async () => {
             const settings = {
-                'syncKey1': 'value1',
-                'syncKey2': 'value2',
-                'localKey1': 'value3',
-                'localKey2': 'value4'
+                syncKey1: 'value1',
+                syncKey2: 'value2',
+                localKey1: 'value3',
+                localKey2: 'value4',
             };
 
             // Mock schema
             const originalSchema = { ...configSchema };
-            Object.keys(configSchema).forEach(key => delete configSchema[key]);
-            configSchema.syncKey1 = { defaultValue: 'default1', type: String, scope: 'sync' };
-            configSchema.syncKey2 = { defaultValue: 'default2', type: String, scope: 'sync' };
-            configSchema.localKey1 = { defaultValue: 'default3', type: String, scope: 'local' };
-            configSchema.localKey2 = { defaultValue: 'default4', type: String, scope: 'local' };
+            Object.keys(configSchema).forEach(
+                (key) => delete configSchema[key]
+            );
+            configSchema.syncKey1 = {
+                defaultValue: 'default1',
+                type: String,
+                scope: 'sync',
+            };
+            configSchema.syncKey2 = {
+                defaultValue: 'default2',
+                type: String,
+                scope: 'sync',
+            };
+            configSchema.localKey1 = {
+                defaultValue: 'default3',
+                type: String,
+                scope: 'local',
+            };
+            configSchema.localKey2 = {
+                defaultValue: 'default4',
+                type: String,
+                scope: 'local',
+            };
 
             // Mock sync storage to succeed, local storage to fail
             mockChromeStorage.sync.set.mockImplementation((items, callback) => {
                 callback();
             });
-            
-            mockChromeStorage.local.set.mockImplementation((items, callback) => {
-                mockChromeRuntime.lastError = { message: 'Local storage quota exceeded' };
-                callback();
-            });
+
+            mockChromeStorage.local.set.mockImplementation(
+                (items, callback) => {
+                    mockChromeRuntime.lastError = {
+                        message: 'Local storage quota exceeded',
+                    };
+                    callback();
+                }
+            );
 
             try {
                 await configService.setMultiple(settings);
@@ -123,32 +157,48 @@ describe('ConfigService Multi-Operation Error Handling', () => {
             }
 
             // Restore original schema
-            Object.keys(configSchema).forEach(key => delete configSchema[key]);
+            Object.keys(configSchema).forEach(
+                (key) => delete configSchema[key]
+            );
             Object.assign(configSchema, originalSchema);
         });
 
         test('should handle complete storage failures', async () => {
             const settings = {
-                'syncKey1': 'value1',
-                'localKey1': 'value2'
+                syncKey1: 'value1',
+                localKey1: 'value2',
             };
 
             // Mock schema
             const originalSchema = { ...configSchema };
-            Object.keys(configSchema).forEach(key => delete configSchema[key]);
-            configSchema.syncKey1 = { defaultValue: 'default1', type: String, scope: 'sync' };
-            configSchema.localKey1 = { defaultValue: 'default2', type: String, scope: 'local' };
+            Object.keys(configSchema).forEach(
+                (key) => delete configSchema[key]
+            );
+            configSchema.syncKey1 = {
+                defaultValue: 'default1',
+                type: String,
+                scope: 'sync',
+            };
+            configSchema.localKey1 = {
+                defaultValue: 'default2',
+                type: String,
+                scope: 'local',
+            };
 
             // Mock both storage areas to fail
             mockChromeStorage.sync.set.mockImplementation((items, callback) => {
                 mockChromeRuntime.lastError = { message: 'Sync storage error' };
                 callback();
             });
-            
-            mockChromeStorage.local.set.mockImplementation((items, callback) => {
-                mockChromeRuntime.lastError = { message: 'Local storage error' };
-                callback();
-            });
+
+            mockChromeStorage.local.set.mockImplementation(
+                (items, callback) => {
+                    mockChromeRuntime.lastError = {
+                        message: 'Local storage error',
+                    };
+                    callback();
+                }
+            );
 
             try {
                 await configService.setMultiple(settings);
@@ -162,32 +212,48 @@ describe('ConfigService Multi-Operation Error Handling', () => {
             }
 
             // Restore original schema
-            Object.keys(configSchema).forEach(key => delete configSchema[key]);
+            Object.keys(configSchema).forEach(
+                (key) => delete configSchema[key]
+            );
             Object.assign(configSchema, originalSchema);
         });
 
         test('should succeed with proper logging when all operations complete', async () => {
             const settings = {
-                'syncKey1': 'value1',
-                'localKey1': 'value2'
+                syncKey1: 'value1',
+                localKey1: 'value2',
             };
 
             // Mock schema
             const originalSchema = { ...configSchema };
-            Object.keys(configSchema).forEach(key => delete configSchema[key]);
-            configSchema.syncKey1 = { defaultValue: 'default1', type: String, scope: 'sync' };
-            configSchema.localKey1 = { defaultValue: 'default2', type: String, scope: 'local' };
+            Object.keys(configSchema).forEach(
+                (key) => delete configSchema[key]
+            );
+            configSchema.syncKey1 = {
+                defaultValue: 'default1',
+                type: String,
+                scope: 'sync',
+            };
+            configSchema.localKey1 = {
+                defaultValue: 'default2',
+                type: String,
+                scope: 'local',
+            };
 
             // Mock both storage areas to succeed
             mockChromeStorage.sync.set.mockImplementation((items, callback) => {
                 callback();
             });
-            
-            mockChromeStorage.local.set.mockImplementation((items, callback) => {
-                callback();
-            });
 
-            await expect(configService.setMultiple(settings)).resolves.toBeUndefined();
+            mockChromeStorage.local.set.mockImplementation(
+                (items, callback) => {
+                    callback();
+                }
+            );
+
+            await expect(
+                configService.setMultiple(settings)
+            ).resolves.toBeUndefined();
 
             expect(mockChromeStorage.sync.set).toHaveBeenCalledWith(
                 { syncKey1: 'value1' },
@@ -199,7 +265,9 @@ describe('ConfigService Multi-Operation Error Handling', () => {
             );
 
             // Restore original schema
-            Object.keys(configSchema).forEach(key => delete configSchema[key]);
+            Object.keys(configSchema).forEach(
+                (key) => delete configSchema[key]
+            );
             Object.assign(configSchema, originalSchema);
         });
     });
@@ -208,16 +276,28 @@ describe('ConfigService Multi-Operation Error Handling', () => {
         test('should handle retrieval errors and continue with setting defaults', async () => {
             // Mock schema
             const originalSchema = { ...configSchema };
-            Object.keys(configSchema).forEach(key => delete configSchema[key]);
-            configSchema.syncKey1 = { defaultValue: 'syncDefault1', type: String, scope: 'sync' };
-            configSchema.localKey1 = { defaultValue: 'localDefault1', type: String, scope: 'local' };
+            Object.keys(configSchema).forEach(
+                (key) => delete configSchema[key]
+            );
+            configSchema.syncKey1 = {
+                defaultValue: 'syncDefault1',
+                type: String,
+                scope: 'sync',
+            };
+            configSchema.localKey1 = {
+                defaultValue: 'localDefault1',
+                type: String,
+                scope: 'local',
+            };
 
             // Mock sync get to fail, local get to succeed but return empty
             mockChromeStorage.sync.get.mockImplementation((keys, callback) => {
-                mockChromeRuntime.lastError = { message: 'Sync storage retrieval failed' };
+                mockChromeRuntime.lastError = {
+                    message: 'Sync storage retrieval failed',
+                };
                 callback({});
             });
-            
+
             mockChromeStorage.local.get.mockImplementation((keys, callback) => {
                 mockChromeRuntime.lastError = null; // Reset error for local get
                 callback({}); // Empty, so defaults will be set
@@ -228,11 +308,13 @@ describe('ConfigService Multi-Operation Error Handling', () => {
                 mockChromeRuntime.lastError = null; // Reset error for sync set
                 callback();
             });
-            
-            mockChromeStorage.local.set.mockImplementation((items, callback) => {
-                mockChromeRuntime.lastError = null; // Reset error for local set
-                callback();
-            });
+
+            mockChromeStorage.local.set.mockImplementation(
+                (items, callback) => {
+                    mockChromeRuntime.lastError = null; // Reset error for local set
+                    callback();
+                }
+            );
 
             await configService.setDefaultsForMissingKeys();
 
@@ -247,22 +329,34 @@ describe('ConfigService Multi-Operation Error Handling', () => {
             );
 
             // Restore original schema
-            Object.keys(configSchema).forEach(key => delete configSchema[key]);
+            Object.keys(configSchema).forEach(
+                (key) => delete configSchema[key]
+            );
             Object.assign(configSchema, originalSchema);
         });
 
         test('should handle partial failures in setting defaults', async () => {
             // Mock schema
             const originalSchema = { ...configSchema };
-            Object.keys(configSchema).forEach(key => delete configSchema[key]);
-            configSchema.syncKey1 = { defaultValue: 'syncDefault1', type: String, scope: 'sync' };
-            configSchema.localKey1 = { defaultValue: 'localDefault1', type: String, scope: 'local' };
+            Object.keys(configSchema).forEach(
+                (key) => delete configSchema[key]
+            );
+            configSchema.syncKey1 = {
+                defaultValue: 'syncDefault1',
+                type: String,
+                scope: 'sync',
+            };
+            configSchema.localKey1 = {
+                defaultValue: 'localDefault1',
+                type: String,
+                scope: 'local',
+            };
 
             // Mock get operations to return empty (need defaults)
             mockChromeStorage.sync.get.mockImplementation((keys, callback) => {
                 callback({});
             });
-            
+
             mockChromeStorage.local.get.mockImplementation((keys, callback) => {
                 callback({});
             });
@@ -271,11 +365,15 @@ describe('ConfigService Multi-Operation Error Handling', () => {
             mockChromeStorage.sync.set.mockImplementation((items, callback) => {
                 callback();
             });
-            
-            mockChromeStorage.local.set.mockImplementation((items, callback) => {
-                mockChromeRuntime.lastError = { message: 'Local storage quota exceeded' };
-                callback();
-            });
+
+            mockChromeStorage.local.set.mockImplementation(
+                (items, callback) => {
+                    mockChromeRuntime.lastError = {
+                        message: 'Local storage quota exceeded',
+                    };
+                    callback();
+                }
+            );
 
             await configService.setDefaultsForMissingKeys();
 
@@ -290,22 +388,34 @@ describe('ConfigService Multi-Operation Error Handling', () => {
             );
 
             // Restore original schema
-            Object.keys(configSchema).forEach(key => delete configSchema[key]);
+            Object.keys(configSchema).forEach(
+                (key) => delete configSchema[key]
+            );
             Object.assign(configSchema, originalSchema);
         });
 
         test('should handle complete failure in setting defaults', async () => {
             // Mock schema
             const originalSchema = { ...configSchema };
-            Object.keys(configSchema).forEach(key => delete configSchema[key]);
-            configSchema.syncKey1 = { defaultValue: 'syncDefault1', type: String, scope: 'sync' };
-            configSchema.localKey1 = { defaultValue: 'localDefault1', type: String, scope: 'local' };
+            Object.keys(configSchema).forEach(
+                (key) => delete configSchema[key]
+            );
+            configSchema.syncKey1 = {
+                defaultValue: 'syncDefault1',
+                type: String,
+                scope: 'sync',
+            };
+            configSchema.localKey1 = {
+                defaultValue: 'localDefault1',
+                type: String,
+                scope: 'local',
+            };
 
             // Mock get operations to return empty (need defaults)
             mockChromeStorage.sync.get.mockImplementation((keys, callback) => {
                 callback({});
             });
-            
+
             mockChromeStorage.local.get.mockImplementation((keys, callback) => {
                 callback({});
             });
@@ -315,15 +425,21 @@ describe('ConfigService Multi-Operation Error Handling', () => {
                 mockChromeRuntime.lastError = { message: 'Sync storage error' };
                 callback();
             });
-            
-            mockChromeStorage.local.set.mockImplementation((items, callback) => {
-                mockChromeRuntime.lastError = { message: 'Local storage error' };
-                callback();
-            });
+
+            mockChromeStorage.local.set.mockImplementation(
+                (items, callback) => {
+                    mockChromeRuntime.lastError = {
+                        message: 'Local storage error',
+                    };
+                    callback();
+                }
+            );
 
             try {
                 await configService.setDefaultsForMissingKeys();
-                fail('Expected setDefaultsForMissingKeys to throw complete failure error');
+                fail(
+                    'Expected setDefaultsForMissingKeys to throw complete failure error'
+                );
             } catch (error) {
                 expect(error.message).toContain('failed completely');
                 expect(error.completeFailure).toBe(true);
@@ -334,22 +450,34 @@ describe('ConfigService Multi-Operation Error Handling', () => {
             }
 
             // Restore original schema
-            Object.keys(configSchema).forEach(key => delete configSchema[key]);
+            Object.keys(configSchema).forEach(
+                (key) => delete configSchema[key]
+            );
             Object.assign(configSchema, originalSchema);
         });
 
         test('should succeed when no defaults are needed', async () => {
             // Mock schema
             const originalSchema = { ...configSchema };
-            Object.keys(configSchema).forEach(key => delete configSchema[key]);
-            configSchema.syncKey1 = { defaultValue: 'syncDefault1', type: String, scope: 'sync' };
-            configSchema.localKey1 = { defaultValue: 'localDefault1', type: String, scope: 'local' };
+            Object.keys(configSchema).forEach(
+                (key) => delete configSchema[key]
+            );
+            configSchema.syncKey1 = {
+                defaultValue: 'syncDefault1',
+                type: String,
+                scope: 'sync',
+            };
+            configSchema.localKey1 = {
+                defaultValue: 'localDefault1',
+                type: String,
+                scope: 'local',
+            };
 
             // Mock get operations to return existing values (no defaults needed)
             mockChromeStorage.sync.get.mockImplementation((keys, callback) => {
                 callback({ syncKey1: 'existingValue1' });
             });
-            
+
             mockChromeStorage.local.get.mockImplementation((keys, callback) => {
                 callback({ localKey1: 'existingValue2' });
             });
@@ -361,7 +489,9 @@ describe('ConfigService Multi-Operation Error Handling', () => {
             expect(mockChromeStorage.local.set).not.toHaveBeenCalled();
 
             // Restore original schema
-            Object.keys(configSchema).forEach(key => delete configSchema[key]);
+            Object.keys(configSchema).forEach(
+                (key) => delete configSchema[key]
+            );
             Object.assign(configSchema, originalSchema);
         });
     });
@@ -369,64 +499,96 @@ describe('ConfigService Multi-Operation Error Handling', () => {
     describe('Error aggregation and reporting', () => {
         test('should provide detailed error context for debugging', async () => {
             const settings = {
-                'syncKey1': 'value1',
-                'localKey1': 'value2'
+                syncKey1: 'value1',
+                localKey1: 'value2',
             };
 
             // Mock schema
             const originalSchema = { ...configSchema };
-            Object.keys(configSchema).forEach(key => delete configSchema[key]);
-            configSchema.syncKey1 = { defaultValue: 'default1', type: String, scope: 'sync' };
-            configSchema.localKey1 = { defaultValue: 'default2', type: String, scope: 'local' };
+            Object.keys(configSchema).forEach(
+                (key) => delete configSchema[key]
+            );
+            configSchema.syncKey1 = {
+                defaultValue: 'default1',
+                type: String,
+                scope: 'sync',
+            };
+            configSchema.localKey1 = {
+                defaultValue: 'default2',
+                type: String,
+                scope: 'local',
+            };
 
             // Mock sync to succeed, local to fail with quota error
             mockChromeStorage.sync.set.mockImplementation((items, callback) => {
                 callback();
             });
-            
-            mockChromeStorage.local.set.mockImplementation((items, callback) => {
-                mockChromeRuntime.lastError = { message: 'QUOTA_BYTES_PER_ITEM quota exceeded' };
-                callback();
-            });
+
+            mockChromeStorage.local.set.mockImplementation(
+                (items, callback) => {
+                    mockChromeRuntime.lastError = {
+                        message: 'QUOTA_BYTES_PER_ITEM quota exceeded',
+                    };
+                    callback();
+                }
+            );
 
             try {
                 await configService.setMultiple(settings);
                 fail('Expected setMultiple to throw error');
             } catch (error) {
                 expect(error.partialFailure).toBe(true);
-                expect(error.successful).toEqual([{
-                    area: 'sync',
-                    keys: ['syncKey1'],
-                    count: 1
-                }]);
-                expect(error.failed).toEqual([{
-                    area: 'local',
-                    keys: ['localKey1'],
-                    count: 1
-                }]);
+                expect(error.successful).toEqual([
+                    {
+                        area: 'sync',
+                        keys: ['syncKey1'],
+                        count: 1,
+                    },
+                ]);
+                expect(error.failed).toEqual([
+                    {
+                        area: 'local',
+                        keys: ['localKey1'],
+                        count: 1,
+                    },
+                ]);
                 expect(error.errors).toHaveLength(1);
                 expect(error.errors[0].area).toBe('local');
                 expect(error.errors[0].keys).toEqual(['localKey1']);
-                expect(error.errors[0].error.message).toContain('QUOTA_BYTES_PER_ITEM');
+                expect(error.errors[0].error.message).toContain(
+                    'QUOTA_BYTES_PER_ITEM'
+                );
             }
 
             // Restore original schema
-            Object.keys(configSchema).forEach(key => delete configSchema[key]);
+            Object.keys(configSchema).forEach(
+                (key) => delete configSchema[key]
+            );
             Object.assign(configSchema, originalSchema);
         });
 
         test('should handle mixed validation and storage errors', async () => {
             const settings = {
-                'validSyncKey': 'value1',
-                'invalidKey': 'value2',
-                'validLocalKey': 'value3'
+                validSyncKey: 'value1',
+                invalidKey: 'value2',
+                validLocalKey: 'value3',
             };
 
             // Mock schema
             const originalSchema = { ...configSchema };
-            Object.keys(configSchema).forEach(key => delete configSchema[key]);
-            configSchema.validSyncKey = { defaultValue: 'default1', type: String, scope: 'sync' };
-            configSchema.validLocalKey = { defaultValue: 'default2', type: String, scope: 'local' };
+            Object.keys(configSchema).forEach(
+                (key) => delete configSchema[key]
+            );
+            configSchema.validSyncKey = {
+                defaultValue: 'default1',
+                type: String,
+                scope: 'sync',
+            };
+            configSchema.validLocalKey = {
+                defaultValue: 'default2',
+                type: String,
+                scope: 'local',
+            };
 
             try {
                 await configService.setMultiple(settings);
@@ -441,7 +603,9 @@ describe('ConfigService Multi-Operation Error Handling', () => {
             }
 
             // Restore original schema
-            Object.keys(configSchema).forEach(key => delete configSchema[key]);
+            Object.keys(configSchema).forEach(
+                (key) => delete configSchema[key]
+            );
             Object.assign(configSchema, originalSchema);
         });
     });

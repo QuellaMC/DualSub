@@ -14,13 +14,13 @@ describe('ConfigService Debug Mode Tests', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         chrome.runtime.lastError = null;
-        
+
         // Spy on console methods
         consoleSpy = {
             debug: jest.spyOn(console, 'debug').mockImplementation(() => {}),
             info: jest.spyOn(console, 'info').mockImplementation(() => {}),
             warn: jest.spyOn(console, 'warn').mockImplementation(() => {}),
-            error: jest.spyOn(console, 'error').mockImplementation(() => {})
+            error: jest.spyOn(console, 'error').mockImplementation(() => {}),
         };
 
         // Use real logger for authentic debug behavior
@@ -31,13 +31,19 @@ describe('ConfigService Debug Mode Tests', () => {
         chrome.storage.local.get.mockImplementation((keys, callback) => {
             callback({ debugMode: false });
         });
-        chrome.storage.local.set.mockImplementation((items, callback) => callback());
-        chrome.storage.sync.get.mockImplementation((keys, callback) => callback({}));
-        chrome.storage.sync.set.mockImplementation((items, callback) => callback());
+        chrome.storage.local.set.mockImplementation((items, callback) =>
+            callback()
+        );
+        chrome.storage.sync.get.mockImplementation((keys, callback) =>
+            callback({})
+        );
+        chrome.storage.sync.set.mockImplementation((items, callback) =>
+            callback()
+        );
     });
 
     afterEach(() => {
-        Object.values(consoleSpy).forEach(spy => spy.mockRestore());
+        Object.values(consoleSpy).forEach((spy) => spy.mockRestore());
     });
 
     describe('Debug Mode Detection and Updates', () => {
@@ -101,9 +107,9 @@ describe('ConfigService Debug Mode Tests', () => {
         it('should update debug mode when debugMode setting changes via setMultiple()', async () => {
             const updateSpy = jest.spyOn(realLogger, 'updateDebugMode');
 
-            await configService.setMultiple({ 
-                debugMode: true, 
-                uiLanguage: 'es' 
+            await configService.setMultiple({
+                debugMode: true,
+                uiLanguage: 'es',
             });
 
             expect(updateSpy).toHaveBeenCalled();
@@ -121,7 +127,9 @@ describe('ConfigService Debug Mode Tests', () => {
             realLogger.debugEnabled = true;
             realLogger.debug('Test debug message', { key: 'value' });
             expect(consoleSpy.debug).toHaveBeenCalledWith(
-                expect.stringContaining('[DEBUG] [ConfigService] Test debug message')
+                expect.stringContaining(
+                    '[DEBUG] [ConfigService] Test debug message'
+                )
             );
         });
 
@@ -144,7 +152,9 @@ describe('ConfigService Debug Mode Tests', () => {
             realLogger.debug('Test operation', testData);
 
             expect(consoleSpy.debug).toHaveBeenCalledWith(
-                expect.stringMatching(/^\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\] \[DEBUG\] \[ConfigService\] Test operation \| Data: {"operation":"test","count":5}$/)
+                expect.stringMatching(
+                    /^\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\] \[DEBUG\] \[ConfigService\] Test operation \| Data: {"operation":"test","count":5}$/
+                )
             );
         });
 
@@ -154,7 +164,9 @@ describe('ConfigService Debug Mode Tests', () => {
             realLogger.debug('Test message without data');
 
             expect(consoleSpy.debug).toHaveBeenCalledWith(
-                expect.stringMatching(/^\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\] \[DEBUG\] \[ConfigService\] Test message without data$/)
+                expect.stringMatching(
+                    /^\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\] \[DEBUG\] \[ConfigService\] Test message without data$/
+                )
             );
         });
 
@@ -165,7 +177,7 @@ describe('ConfigService Debug Mode Tests', () => {
                 array: [1, 2, 3],
                 nullValue: null,
                 undefinedValue: undefined,
-                booleanValue: true
+                booleanValue: true,
             };
 
             realLogger.debug('Complex data test', complexData);
@@ -229,9 +241,9 @@ describe('ConfigService Debug Mode Tests', () => {
         });
 
         it('should log debug information for setMultiple() operations', async () => {
-            await configService.setMultiple({ 
-                uiLanguage: 'es', 
-                debugMode: true 
+            await configService.setMultiple({
+                uiLanguage: 'es',
+                debugMode: true,
             });
 
             expect(consoleSpy.debug).toHaveBeenCalledWith(
@@ -266,7 +278,7 @@ describe('ConfigService Debug Mode Tests', () => {
     describe('Debug Mode Performance Impact', () => {
         it('should have minimal performance impact when debug is disabled', async () => {
             const iterations = 100;
-            
+
             // Test with debug disabled
             realLogger.debugEnabled = false;
             chrome.storage.sync.get.mockImplementation((keys, callback) => {
@@ -289,19 +301,21 @@ describe('ConfigService Debug Mode Tests', () => {
 
             // Debug logging should not add more than 1000% overhead (very lenient for test environment)
             expect(enabledTime).toBeLessThan(disabledTime * 10);
-            
+
             // Verify debug logs were actually generated when enabled
             expect(consoleSpy.debug).toHaveBeenCalled();
         });
 
         it('should efficiently handle debug mode checks', async () => {
             const iterations = 1000;
-            
+
             const startTime = performance.now();
             for (let i = 0; i < iterations; i++) {
                 // Simulate the debug check that happens in logging
                 if (realLogger.debugEnabled) {
-                    realLogger.formatMessage('DEBUG', 'Test message', { iteration: i });
+                    realLogger.formatMessage('DEBUG', 'Test message', {
+                        iteration: i,
+                    });
                 }
             }
             const endTime = performance.now();
@@ -316,7 +330,7 @@ describe('ConfigService Debug Mode Tests', () => {
             });
 
             const startTime = performance.now();
-            
+
             // Rapidly toggle debug mode
             for (let i = 0; i < 100; i++) {
                 await realLogger.updateDebugMode();
@@ -329,11 +343,11 @@ describe('ConfigService Debug Mode Tests', () => {
 
         it('should efficiently serialize large debug data objects', async () => {
             realLogger.debugEnabled = true;
-            
+
             // Create large data object
             const largeData = {
                 array: new Array(1000).fill('test'),
-                object: {}
+                object: {},
             };
             for (let i = 0; i < 500; i++) {
                 largeData.object[`key${i}`] = `value${i}`;
@@ -353,7 +367,9 @@ describe('ConfigService Debug Mode Tests', () => {
         it('should log errors with debug context when debug mode is enabled', async () => {
             realLogger.debugEnabled = true;
             chrome.runtime.lastError = { message: 'Storage error' };
-            chrome.storage.sync.set.mockImplementation((items, callback) => callback());
+            chrome.storage.sync.set.mockImplementation((items, callback) =>
+                callback()
+            );
 
             try {
                 await configService.set('uiLanguage', 'es');
@@ -369,7 +385,9 @@ describe('ConfigService Debug Mode Tests', () => {
         it('should log errors without debug context when debug mode is disabled', async () => {
             realLogger.debugEnabled = false;
             chrome.runtime.lastError = { message: 'Storage error' };
-            chrome.storage.sync.set.mockImplementation((items, callback) => callback());
+            chrome.storage.sync.set.mockImplementation((items, callback) =>
+                callback()
+            );
 
             try {
                 await configService.set('uiLanguage', 'es');
@@ -384,7 +402,9 @@ describe('ConfigService Debug Mode Tests', () => {
         it('should maintain error logging quality regardless of debug mode', async () => {
             const testError = { message: 'Test storage error' };
             chrome.runtime.lastError = testError;
-            chrome.storage.local.set.mockImplementation((items, callback) => callback());
+            chrome.storage.local.set.mockImplementation((items, callback) =>
+                callback()
+            );
 
             // Test with debug enabled
             realLogger.debugEnabled = true;
@@ -414,13 +434,13 @@ describe('ConfigService Debug Mode Tests', () => {
             chrome.storage.local.get.mockImplementation((keys, callback) => {
                 callback({ debugMode: true });
             });
-            
+
             // Update debug mode from storage
             await realLogger.updateDebugMode();
-            
+
             // Verify debug mode is enabled
             expect(realLogger.debugEnabled).toBe(true);
-            
+
             // Verify debug logging works
             realLogger.debug('Test debug message');
             expect(consoleSpy.debug).toHaveBeenCalledWith(
@@ -430,11 +450,12 @@ describe('ConfigService Debug Mode Tests', () => {
 
         it('should handle debug mode changes through external storage updates', () => {
             // Simulate external change to debugMode
-            const changeListener = chrome.storage.onChanged.addListener.mock.calls[0]?.[0];
-            
+            const changeListener =
+                chrome.storage.onChanged.addListener.mock.calls[0]?.[0];
+
             if (changeListener) {
                 changeListener({ debugMode: { newValue: true } }, 'local');
-                
+
                 // Should trigger debug mode update
                 expect(realLogger.debugEnabled).toBe(true);
             }
@@ -447,7 +468,7 @@ describe('ConfigService Debug Mode Tests', () => {
 
             // Simulate service initialization
             await configService.initializeLogger();
-            
+
             expect(realLogger.debugEnabled).toBe(true);
         });
     });

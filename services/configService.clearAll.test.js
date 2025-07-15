@@ -143,7 +143,9 @@ describe('ConfigService clearAll method error handling', () => {
                 expect(error.successful[0].area).toBe('local');
                 expect(error.failed[0].area).toBe('sync');
                 expect(error.errors[0].area).toBe('sync');
-                expect(error.errors[0].error.message).toContain('Sync quota exceeded');
+                expect(error.errors[0].error.message).toContain(
+                    'Sync quota exceeded'
+                );
             }
         });
     });
@@ -169,7 +171,7 @@ describe('ConfigService clearAll method error handling', () => {
                 expect(error.successful).toHaveLength(1);
                 expect(error.failed).toHaveLength(1);
                 expect(error.errors).toHaveLength(1);
-                
+
                 // Check that error contains proper context
                 const errorInfo = error.errors[0];
                 expect(errorInfo.area).toBe('sync');
@@ -202,7 +204,9 @@ describe('ConfigService clearAll method error handling', () => {
 
     describe('Chrome API error simulation', () => {
         test('should handle quota exceeded errors specifically', async () => {
-            const quotaError = { message: 'QUOTA_BYTES_PER_ITEM quota exceeded' };
+            const quotaError = {
+                message: 'QUOTA_BYTES_PER_ITEM quota exceeded',
+            };
 
             chrome.storage.sync.remove.mockImplementation((keys, callback) => {
                 chrome.runtime.lastError = quotaError;
@@ -218,7 +222,9 @@ describe('ConfigService clearAll method error handling', () => {
                 fail('Expected clearAll to throw an error');
             } catch (error) {
                 expect(error.partialFailure).toBe(true);
-                expect(error.errors[0].error.message).toContain('QUOTA_BYTES_PER_ITEM');
+                expect(error.errors[0].error.message).toContain(
+                    'QUOTA_BYTES_PER_ITEM'
+                );
             }
         });
 
@@ -239,7 +245,9 @@ describe('ConfigService clearAll method error handling', () => {
                 fail('Expected clearAll to throw an error');
             } catch (error) {
                 expect(error.partialFailure).toBe(true);
-                expect(error.errors[0].error.message).toContain('Network error');
+                expect(error.errors[0].error.message).toContain(
+                    'Network error'
+                );
             }
         });
 
@@ -260,13 +268,14 @@ describe('ConfigService clearAll method error handling', () => {
                 fail('Expected clearAll to throw an error');
             } catch (error) {
                 expect(error.partialFailure).toBe(true);
-                expect(error.errors[0].error.message).toContain('Access denied');
+                expect(error.errors[0].error.message).toContain(
+                    'Access denied'
+                );
             }
         });
     });
 
     describe('edge cases', () => {
-
         test('should handle undefined chrome.runtime.lastError properly', async () => {
             chrome.storage.sync.remove.mockImplementation((keys, callback) => {
                 chrome.runtime.lastError = undefined;
@@ -334,7 +343,9 @@ describe('ConfigService clearAll method error handling', () => {
                 await configService.clearAll();
                 fail('Expected clearAll to throw an error');
             } catch (error) {
-                expect(error.message).toContain('clearAll() completed with partial failures');
+                expect(error.message).toContain(
+                    'clearAll() completed with partial failures'
+                );
                 expect(error.message).toContain('1 area(s) succeeded');
                 expect(error.message).toContain('1 area(s) failed');
             }

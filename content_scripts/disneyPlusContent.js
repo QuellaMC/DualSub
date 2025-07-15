@@ -83,17 +83,17 @@ async function loadModules() {
             chrome.runtime.getURL('content_scripts/subtitleUtilities.js')
         );
         subtitleUtils = utilsModule;
-        
+
         const platformModule = await import(
             chrome.runtime.getURL('video_platforms/disneyPlusPlatform.js')
         );
         DisneyPlusPlatform = platformModule.DisneyPlusPlatform;
-        
+
         const configModule = await import(
             chrome.runtime.getURL('services/configService.js')
         );
         configService = configModule.configService;
-        
+
         return true;
     } catch (error) {
         console.error(`${LOG_PREFIX}: Error loading modules:`, error);
@@ -114,17 +114,21 @@ async function initializePlatform() {
         const newConfig = await configService.getAll();
 
         // Update existing object properties while preserving the reference
-        Object.keys(currentConfig).forEach(key => delete currentConfig[key]);
+        Object.keys(currentConfig).forEach((key) => delete currentConfig[key]);
         Object.assign(currentConfig, newConfig);
 
         // Check if any changes affect subtitle functionality (exclude UI-only settings)
         const uiOnlySettings = ['appearanceAccordionOpen'];
         const functionalChanges = Object.keys(changes).filter(
-            key => !uiOnlySettings.includes(key)
+            (key) => !uiOnlySettings.includes(key)
         );
 
         // Re-apply styles and trigger a subtitle re-render only if functional settings changed
-        if (functionalChanges.length > 0 && activePlatform && subtitleUtils.subtitlesActive) {
+        if (
+            functionalChanges.length > 0 &&
+            activePlatform &&
+            subtitleUtils.subtitlesActive
+        ) {
             subtitleUtils.applySubtitleStyling(currentConfig);
             const videoElement = activePlatform.getVideoElement();
             if (videoElement) {
@@ -222,7 +226,11 @@ function attemptVideoSetup() {
     console.log(
         `${LOG_PREFIX}: Video element found. Setting up UI and listeners.`
     );
-    subtitleUtils.ensureSubtitleContainer(activePlatform, currentConfig, LOG_PREFIX);
+    subtitleUtils.ensureSubtitleContainer(
+        activePlatform,
+        currentConfig,
+        LOG_PREFIX
+    );
 
     if (subtitleUtils.subtitlesActive) {
         subtitleUtils.showSubtitleContainer();
@@ -330,10 +338,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         }
 
         case 'configChanged': {
-            if (request.changes && activePlatform && subtitleUtils.subtitlesActive) {
+            if (
+                request.changes &&
+                activePlatform &&
+                subtitleUtils.subtitlesActive
+            ) {
                 // Update local config with the changes for immediate effect
                 Object.assign(currentConfig, request.changes);
-                
+
                 // Apply the changes immediately for instant visual feedback
                 subtitleUtils.applySubtitleStyling(currentConfig);
                 const videoElement = activePlatform.getVideoElement();
@@ -377,7 +389,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     // Load initial configuration
     currentConfig = await configService.getAll();
-    
+
     if (currentConfig.subtitlesEnabled) {
         await initializePlatform();
     }
