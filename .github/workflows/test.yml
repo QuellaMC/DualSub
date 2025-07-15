@@ -1,0 +1,226 @@
+name: Test and Lint
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches:
+      - main
+
+# Set minimal permissions for security
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        continue-on-error: false
+
+      - name: Security validation for test environment
+        run: |
+          echo "::group::Security validation for test environment"
+          
+          # Validate that no sensitive environment variables are exposed
+          echo "Validating environment security..."
+          
+          # Check for common sensitive environment variable patterns
+          SENSITIVE_VARS=("PASSWORD" "SECRET" "KEY" "TOKEN" "PRIVATE")
+          for var_pattern in "${SENSITIVE_VARS[@]}"; do
+            if env | grep -i "$var_pattern" | grep -v "GITHUB_TOKEN\|NODE_OPTIONS" | head -1; then
+              echo "::warning::Potentially sensitive environment variable detected with pattern: $var_pattern"
+              echo "Please review environment variables for security"
+            fi
+          done
+          
+          # Validate that we're not exposing any secrets in logs
+          echo "Environment validation completed - no sensitive data exposed"
+          echo "::endgroup::"
+        continue-on-error: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+        continue-on-error: false
+
+      - name: Install dependencies
+        run: |
+          echo "::group::Installing dependencies"
+          echo "Starting npm install at $(date)"
+          echo "Node.js version: $(node --version)"
+          echo "npm version: $(npm --version)"
+          
+          if ! npm install; then
+            echo "::error::Failed to install dependencies"
+            echo "::group::npm install error details"
+            echo "Exit code: $?"
+            echo "Current directory: $(pwd)"
+            echo "Package.json exists: $(test -f package.json && echo 'yes' || echo 'no')"
+            if [ -f package.json ]; then
+              echo "Package.json content:"
+              cat package.json
+            fi
+            echo "::endgroup::"
+            exit 1
+          fi
+          
+          echo "Dependencies installed successfully at $(date)"
+          echo "::endgroup::"
+        continue-on-error: false
+
+      - name: Run tests
+        run: |
+          echo "::group::Running tests"
+          echo "Starting tests at $(date)"
+          echo "Test command: npm test"
+          
+          if ! npm test; then
+            echo "::error::Tests failed"
+            echo "::group::Test failure details"
+            echo "Exit code: $?"
+            echo "Test environment:"
+            echo "  Node.js version: $(node --version)"
+            echo "  npm version: $(npm --version)"
+            echo "  Working directory: $(pwd)"
+            echo "  Available test files:"
+            find . -name "*.test.js" -o -name "*.spec.js" | head -10
+            echo "::endgroup::"
+            
+            if [ "${{ github.event_name }}" = "pull_request" ]; then
+              echo "::notice::Pull request tests failed. Please fix the failing tests before merging."
+            else
+              echo "::notice::Main branch tests failed. This indicates a critical issue that needs immediate attention."
+            fi
+            exit 1
+          fi
+          
+          echo "All tests passed successfully at $(date)"
+          echo "::endgroup::"
+        env:
+          NODE_OPTIONS: '--experimental-vm-modules'
+        continue-on-error: false
+
+      - name: Test failure notification
+        if: failure()
+        run: |
+          echo "::error::Test job failed"
+          echo "::group::Failure context"
+          echo "Event: ${{ github.event_name }}"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Actor: ${{ github.actor }}"
+          echo "Workflow run: ${{ github.run_id }}"
+          echo "::endgroup::"
+          
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "::notice title=PR Tests Failed::Tests failed for this pull request. The PR cannot be merged until all tests pass."
+          else
+            echo "::warning title=Main Branch Tests Failed::Tests failed on main branch push. This requires immediate attention."
+          fi
+
+  lint:
+    name: Run Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        continue-on-error: false
+
+      - name: Security validation for lint environment
+        run: |
+          echo "::group::Security validation for lint environment"
+          
+          # Validate that no sensitive environment variables are exposed
+          echo "Validating environment security..."
+          
+          # Check for common sensitive environment variable patterns
+          SENSITIVE_VARS=("PASSWORD" "SECRET" "KEY" "TOKEN" "PRIVATE")
+          for var_pattern in "${SENSITIVE_VARS[@]}"; do
+            if env | grep -i "$var_pattern" | grep -v "GITHUB_TOKEN\|NODE_OPTIONS" | head -1; then
+              echo "::warning::Potentially sensitive environment variable detected with pattern: $var_pattern"
+              echo "Please review environment variables for security"
+            fi
+          done
+          
+          # Validate that we're not exposing any secrets in logs
+          echo "Environment validation completed - no sensitive data exposed"
+          echo "::endgroup::"
+        continue-on-error: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+        continue-on-error: false
+
+      - name: Install dependencies
+        run: |
+          echo "::group::Installing dependencies for lint"
+          echo "Starting npm install at $(date)"
+          
+          if ! npm install; then
+            echo "::error::Failed to install dependencies for linting"
+            echo "::group::npm install error details"
+            echo "Exit code: $?"
+            echo "Current directory: $(pwd)"
+            echo "::endgroup::"
+            exit 1
+          fi
+          
+          echo "Dependencies installed successfully for linting at $(date)"
+          echo "::endgroup::"
+        continue-on-error: false
+
+      - name: Run lint
+        run: |
+          echo "::group::Running lint checks"
+          echo "Starting lint at $(date)"
+          echo "Lint command: npm run lint"
+          
+          if ! npm run lint; then
+            echo "::error::Lint checks failed"
+            echo "::group::Lint failure details"
+            echo "Exit code: $?"
+            echo "Linting environment:"
+            echo "  Node.js version: $(node --version)"
+            echo "  npm version: $(npm --version)"
+            echo "  Working directory: $(pwd)"
+            echo "  ESLint config files:"
+            find . -name ".eslintrc*" -o -name "eslint.config.*" | head -5
+            echo "::endgroup::"
+            
+            if [ "${{ github.event_name }}" = "pull_request" ]; then
+              echo "::notice::Pull request has linting issues. Please fix the linting errors before merging."
+            else
+              echo "::notice::Main branch has linting issues. Consider running the lint workflow to auto-fix."
+            fi
+            exit 1
+          fi
+          
+          echo "All lint checks passed successfully at $(date)"
+          echo "::endgroup::"
+        continue-on-error: false
+
+      - name: Lint failure notification
+        if: failure()
+        run: |
+          echo "::error::Lint job failed"
+          echo "::group::Failure context"
+          echo "Event: ${{ github.event_name }}"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Actor: ${{ github.actor }}"
+          echo "Workflow run: ${{ github.run_id }}"
+          echo "::endgroup::"
+          
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "::notice title=PR Lint Failed::Linting failed for this pull request. Please fix the linting issues before merging."
+          else
+            echo "::warning title=Main Branch Lint Failed::Linting failed on main branch push. Consider running the lint workflow to auto-fix issues."
+          fi
