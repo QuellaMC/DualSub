@@ -5,7 +5,6 @@
 
 import { jest } from '@jest/globals';
 import { configService } from './configService.js';
-import { ConfigServiceErrorHandler } from './configServiceErrorHandler.js';
 import Logger from '../utils/logger.js';
 
 describe('ConfigService Comprehensive Error Handling Tests', () => {
@@ -321,7 +320,7 @@ describe('ConfigService Comprehensive Error Handling Tests', () => {
         it('should log debug information only when debug mode is enabled', async () => {
             // Create a fresh mock logger that behaves like the real logger
             const freshMockLogger = {
-                debug: jest.fn().mockImplementation(function(message, data) {
+                debug: jest.fn().mockImplementation(function(message) {
                     if (this.debugEnabled) {
                         console.debug(`Mock debug: ${message}`);
                     }

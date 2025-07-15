@@ -6,7 +6,6 @@
 
 import { jest } from '@jest/globals';
 import { configService } from './configService.js';
-import Logger from '../utils/logger.js';
 
 describe('ConfigService Logger Integration', () => {
     let consoleSpy;
@@ -196,7 +195,7 @@ describe('ConfigService Logger Integration', () => {
         test('should log validation errors with full context', async () => {
             try {
                 await configService.set('uiLanguage', 123); // Invalid type
-            } catch (error) {
+            } catch {
                 // Expected to throw
             }
 
@@ -234,7 +233,7 @@ describe('ConfigService Logger Integration', () => {
                     invalidKey: 'value',
                     debugMode: 'invalid-type'
                 });
-            } catch (error) {
+            } catch {
                 // Expected to throw
             }
 

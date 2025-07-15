@@ -357,7 +357,7 @@ describe('ConfigService Debug Mode Tests', () => {
 
             try {
                 await configService.set('uiLanguage', 'es');
-            } catch (error) {
+            } catch {
                 // Should have debug logs leading up to the error
                 expect(consoleSpy.debug).toHaveBeenCalledWith(
                     expect.stringContaining('set() called')
@@ -373,7 +373,7 @@ describe('ConfigService Debug Mode Tests', () => {
 
             try {
                 await configService.set('uiLanguage', 'es');
-            } catch (error) {
+            } catch {
                 // Should not have debug logs
                 expect(consoleSpy.debug).not.toHaveBeenCalled();
                 // But should still have error logs

@@ -1,7 +1,6 @@
 // services/configService.storage.test.js
 import { jest } from '@jest/globals';
 import { configService } from './configService.js';
-import { ConfigServiceErrorHandler } from './configServiceErrorHandler.js';
 
 // Mock Chrome storage API
 const mockChromeStorage = {

@@ -313,7 +313,7 @@ describe('ConfigService Quota Exceeded Error Handling', () => {
 
             try {
                 await configService.setToStorage('sync', testItems, testContext);
-            } catch (error) {
+            } catch {
                 // Verify the error logging includes all expected context
                 expect(mockLogger.error).toHaveBeenCalledWith(
                     'Storage quota exceeded during set operation',
@@ -346,7 +346,7 @@ describe('ConfigService Quota Exceeded Error Handling', () => {
 
             try {
                 await configService.getFromStorage('sync', ['testKey']);
-            } catch (error) {
+            } catch {
                 expect(mockLogger.error).toHaveBeenCalledWith(
                     'Storage quota exceeded during get operation',
                     expect.any(Object),
@@ -361,7 +361,7 @@ describe('ConfigService Quota Exceeded Error Handling', () => {
 
             try {
                 await configService.getFromStorage('sync', ['testKey']);
-            } catch (error) {
+            } catch {
                 expect(mockLogger.error).toHaveBeenCalledWith(
                     'Storage get operation failed',
                     expect.any(Object),
