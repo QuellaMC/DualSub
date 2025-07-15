@@ -46,10 +46,11 @@ class Logger {
    * @param {Object} data - Additional data to log
    */
   debug(message, data = {}) {
-    if (this.debugEnabled) {
-      const formattedMessage = this.formatMessage('DEBUG', message, data);
-      console.debug(formattedMessage);
+    if (!this.debugEnabled) {
+      return;
     }
+    const formattedMessage = this.formatMessage('DEBUG', message, data);
+    console.debug(formattedMessage);
   }
 
   /**
