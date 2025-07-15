@@ -7,6 +7,11 @@ export default [
     // Global recommended rules from ESLint
     js.configs.recommended,
 
+    // Ignore third-party and temporary files
+    {
+        ignores: ['temp/**', 'node_modules/**'],
+    },
+
     // Configuration for all JavaScript files in the project
     {
         files: ['**/*.js'],

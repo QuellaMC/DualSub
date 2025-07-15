@@ -532,8 +532,8 @@ class ConfigService {
 
         try {
             const items = await this.getFromStorage(schemaEntry.scope, [key], { method: 'get', requestedKey: key });
-            const value = items.hasOwnProperty(key) ? items[key] : schemaEntry.defaultValue;
-            const usedDefault = !items.hasOwnProperty(key);
+            const value = Object.prototype.hasOwnProperty.call(items, key) ? items[key] : schemaEntry.defaultValue;
+            const usedDefault = !Object.prototype.hasOwnProperty.call(items, key);
             
             this.logger.debug(`get() completed`, { 
                 key, 
@@ -591,7 +591,7 @@ class ConfigService {
                 }
 
                 const storedItems = schemaEntry.scope === 'sync' ? syncItems : localItems;
-                const hasStoredValue = storedItems.hasOwnProperty(key);
+                const hasStoredValue = Object.prototype.hasOwnProperty.call(storedItems, key);
                 result[key] = hasStoredValue ? storedItems[key] : schemaEntry.defaultValue;
                 
                 if (!hasStoredValue) {
@@ -647,7 +647,7 @@ class ConfigService {
             for (const key in configSchema) {
                 const entry = configSchema[key];
                 const storedItems = entry.scope === 'sync' ? syncItems : localItems;
-                const hasStoredValue = storedItems.hasOwnProperty(key);
+                const hasStoredValue = Object.prototype.hasOwnProperty.call(storedItems, key);
                 fullConfig[key] = hasStoredValue ? storedItems[key] : entry.defaultValue;
                 
                 if (!hasStoredValue) {
