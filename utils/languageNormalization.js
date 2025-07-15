@@ -28,6 +28,7 @@ const normalizedMap = {
     'zh-hans': 'zh-CN', // Simplified Chinese
     'zh-tw': 'zh-TW',
     'zh-hant': 'zh-TW', // Traditional Chinese
+    'zh-hk': 'zh-TW', // Hong Kong Chinese
     ru: 'ru',
     'ru-ru': 'ru',
     ar: 'ar',
