@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
 
-    const updateSliderProgress = function(sliderElement) {
+    const updateSliderProgress = (sliderElement) => {
         const value = sliderElement.value;
         const min = sliderElement.min || 0;
         const max = sliderElement.max || 100;
@@ -67,7 +67,7 @@ document.addEventListener('DOMContentLoaded', function () {
         sliderElement.style.backgroundSize = `${percentage}% 100%`;
     };
 
-    const populateDropdown = function(selectElement, options, currentValue) {
+    const populateDropdown = (selectElement, options, currentValue) => {
         selectElement.innerHTML = ''; // Clear existing options
         for (const value in options) {
             const i18nKey = options[value];
@@ -83,7 +83,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (currentValue) selectElement.value = currentValue;
     };
 
-    const loadSettings = async function() {
+    const loadSettings = async () => {
         try {
             // Get all settings from the configuration service
             const settings = await configService.getAll();
@@ -117,10 +117,11 @@ document.addEventListener('DOMContentLoaded', function () {
             subtitleLayoutOrientationSelect.value = settings.subtitleLayoutOrientation;
         } catch (error) {
             console.error('Popup: Error loading settings:', error);
+            showStatus('Failed to load settings. Please try refreshing the popup.', 5000);
         }
     };
 
-    const showStatus = function(message, duration = 3000) {
+    const showStatus = (message, duration = 3000) => {
         // Clear any existing timeout to prevent interference
         if (statusTimeoutId) {
             clearTimeout(statusTimeoutId);
@@ -138,8 +139,8 @@ document.addEventListener('DOMContentLoaded', function () {
      * This works alongside the storage change mechanism as a fallback for immediate updates.
      * @param {Object} changes - Object containing the changed config keys and their new values
      */
-    const sendImmediateConfigUpdate = function(changes) {
-        chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+    const sendImmediateConfigUpdate = (changes) => {
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
             if (tabs[0]) {
                 chrome.tabs.sendMessage(tabs[0].id, { 
                     action: 'configChanged',
@@ -155,108 +156,143 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // --- Event Listeners ---
     enableSubtitlesToggle.addEventListener('change', async function () {
-        const enabled = this.checked;
-        await configService.set('subtitlesEnabled', enabled);
-        const statusKey = enabled ? 'statusDualEnabled' : 'statusDualDisabled';
-        const statusText =
-            loadedTranslations[statusKey]?.message ||
-            (enabled ? 'Dual subtitles enabled.' : 'Dual subtitles disabled.');
-        showStatus(statusText);
-        
-        // Send immediate update for instant visual feedback and proper cleanup
-        sendImmediateConfigUpdate({ subtitlesEnabled: enabled });
+        try {
+            const enabled = this.checked;
+            await configService.set('subtitlesEnabled', enabled);
+            const statusKey = enabled ? 'statusDualEnabled' : 'statusDualDisabled';
+            const statusText =
+                loadedTranslations[statusKey]?.message ||
+                (enabled ? 'Dual subtitles enabled.' : 'Dual subtitles disabled.');
+            showStatus(statusText);
+            
+            // Send immediate update for instant visual feedback and proper cleanup
+            sendImmediateConfigUpdate({ subtitlesEnabled: enabled });
+        } catch (error) {
+            console.error('Popup: Error toggling subtitles:', error);
+            showStatus('Failed to update subtitle setting. Please try again.');
+        }
     });
 
     useNativeSubtitlesToggle.addEventListener('change', async function () {
-        const useNative = this.checked;
-        await configService.set('useNativeSubtitles', useNative);
-        const statusKey = useNative
-            ? 'statusSmartTranslationEnabled'
-            : 'statusSmartTranslationDisabled';
-        const statusText =
-            loadedTranslations[statusKey]?.message ||
-            (useNative
-                ? 'Smart translation enabled.'
-                : 'Smart translation disabled.');
-        showStatus(statusText);
-        
-        // Send immediate update for instant visual feedback and proper cleanup
-        sendImmediateConfigUpdate({ useNativeSubtitles: useNative });
+        try {
+            const useNative = this.checked;
+            await configService.set('useNativeSubtitles', useNative);
+            const statusKey = useNative
+                ? 'statusSmartTranslationEnabled'
+                : 'statusSmartTranslationDisabled';
+            const statusText =
+                loadedTranslations[statusKey]?.message ||
+                (useNative
+                    ? 'Smart translation enabled.'
+                    : 'Smart translation disabled.');
+            showStatus(statusText);
+            
+            // Send immediate update for instant visual feedback and proper cleanup
+            sendImmediateConfigUpdate({ useNativeSubtitles: useNative });
+        } catch (error) {
+            console.error('Popup: Error toggling native subtitles:', error);
+            showStatus('Failed to update smart translation setting. Please try again.');
+        }
     });
 
     originalLanguageSelect.addEventListener('change', async function () {
-        const lang = this.value;
-        await configService.set('originalLanguage', lang);
-        const statusPrefix =
-            loadedTranslations['statusOriginalLanguage']?.message ||
-            'Original language: ';
-        const statusText = `${statusPrefix}${this.options[this.selectedIndex].text}`;
-        showStatus(statusText);
-        
-        // Send immediate update for instant visual feedback
-        sendImmediateConfigUpdate({ originalLanguage: lang });
+        try {
+            const lang = this.value;
+            await configService.set('originalLanguage', lang);
+            const statusPrefix =
+                loadedTranslations['statusOriginalLanguage']?.message ||
+                'Original language: ';
+            const statusText = `${statusPrefix}${this.options[this.selectedIndex].text}`;
+            showStatus(statusText);
+            
+            // Send immediate update for instant visual feedback
+            sendImmediateConfigUpdate({ originalLanguage: lang });
+        } catch (error) {
+            console.error('Popup: Error setting original language:', error);
+            showStatus('Failed to update original language. Please try again.');
+        }
     });
 
     targetLanguageSelect.addEventListener('change', async function () {
-        const lang = this.value;
-        await configService.set('targetLanguage', lang);
-        const statusPrefix =
-            loadedTranslations['statusLanguageSetTo']?.message ||
-            'Language set to: ';
-        showStatus(`${statusPrefix}${this.options[this.selectedIndex].text}`);
-        
-        // Send immediate update for instant visual feedback
-        sendImmediateConfigUpdate({ targetLanguage: lang });
+        try {
+            const lang = this.value;
+            await configService.set('targetLanguage', lang);
+            const statusPrefix =
+                loadedTranslations['statusLanguageSetTo']?.message ||
+                'Language set to: ';
+            showStatus(`${statusPrefix}${this.options[this.selectedIndex].text}`);
+            
+            // Send immediate update for instant visual feedback
+            sendImmediateConfigUpdate({ targetLanguage: lang });
+        } catch (error) {
+            console.error('Popup: Error setting target language:', error);
+            showStatus('Failed to update target language. Please try again.');
+        }
     });
 
     subtitleTimeOffsetInput.addEventListener('change', async function () {
-        let offset = parseFloat(this.value);
-        if (isNaN(offset)) {
-            const invalidMsg =
-                loadedTranslations['statusInvalidOffset']?.message ||
-                'Invalid offset, reverting.';
-            showStatus(invalidMsg);
-            try {
-                const currentOffset = await configService.get('subtitleTimeOffset');
-                this.value = currentOffset;
-            } catch (error) {
-                console.error('Popup: Error loading subtitle time offset:', error);
+        try {
+            let offset = parseFloat(this.value);
+            if (isNaN(offset)) {
+                const invalidMsg =
+                    loadedTranslations['statusInvalidOffset']?.message ||
+                    'Invalid offset, reverting.';
+                showStatus(invalidMsg);
+                try {
+                    const currentOffset = await configService.get('subtitleTimeOffset');
+                    this.value = currentOffset;
+                } catch (error) {
+                    console.error('Popup: Error loading subtitle time offset:', error);
+                }
+                return;
             }
-            return;
+            offset = parseFloat(offset.toFixed(2));
+            this.value = offset;
+            await configService.set('subtitleTimeOffset', offset);
+            const statusPrefix =
+                loadedTranslations['statusTimeOffset']?.message || 'Time offset: ';
+            showStatus(`${statusPrefix}${offset}s.`);
+            
+            // Send immediate update for instant visual feedback
+            sendImmediateConfigUpdate({ subtitleTimeOffset: offset });
+        } catch (error) {
+            console.error('Popup: Error setting time offset:', error);
+            showStatus('Failed to update time offset. Please try again.');
         }
-        offset = parseFloat(offset.toFixed(2));
-        this.value = offset;
-        await configService.set('subtitleTimeOffset', offset);
-        const statusPrefix =
-            loadedTranslations['statusTimeOffset']?.message || 'Time offset: ';
-        showStatus(`${statusPrefix}${offset}s.`);
-        
-        // Send immediate update for instant visual feedback
-        sendImmediateConfigUpdate({ subtitleTimeOffset: offset });
     });
 
     subtitleLayoutOrderSelect.addEventListener('change', async function () {
-        const layoutOrder = this.value;
-        await configService.set('subtitleLayoutOrder', layoutOrder);
-        const statusText =
-            loadedTranslations['statusDisplayOrderUpdated']?.message ||
-            `Display order updated.`;
-        showStatus(statusText);
-        
-        // Send immediate update for instant visual feedback
-        sendImmediateConfigUpdate({ subtitleLayoutOrder: layoutOrder });
+        try {
+            const layoutOrder = this.value;
+            await configService.set('subtitleLayoutOrder', layoutOrder);
+            const statusText =
+                loadedTranslations['statusDisplayOrderUpdated']?.message ||
+                `Display order updated.`;
+            showStatus(statusText);
+            
+            // Send immediate update for instant visual feedback
+            sendImmediateConfigUpdate({ subtitleLayoutOrder: layoutOrder });
+        } catch (error) {
+            console.error('Popup: Error setting layout order:', error);
+            showStatus('Failed to update display order. Please try again.');
+        }
     });
 
     subtitleLayoutOrientationSelect.addEventListener('change', async function () {
-        const layoutOrientation = this.value;
-        await configService.set('subtitleLayoutOrientation', layoutOrientation);
-        const statusText =
-            loadedTranslations['statusLayoutOrientationUpdated']?.message ||
-            `Layout orientation updated.`;
-        showStatus(statusText);
-        
-        // Send immediate update for instant visual feedback
-        sendImmediateConfigUpdate({ subtitleLayoutOrientation: layoutOrientation });
+        try {
+            const layoutOrientation = this.value;
+            await configService.set('subtitleLayoutOrientation', layoutOrientation);
+            const statusText =
+                loadedTranslations['statusLayoutOrientationUpdated']?.message ||
+                `Layout orientation updated.`;
+            showStatus(statusText);
+            
+            // Send immediate update for instant visual feedback
+            sendImmediateConfigUpdate({ subtitleLayoutOrientation: layoutOrientation });
+        } catch (error) {
+            console.error('Popup: Error setting layout orientation:', error);
+            showStatus('Failed to update layout orientation. Please try again.');
+        }
     });
 
     subtitleFontSizeInput.addEventListener('input', function () {
@@ -264,14 +300,19 @@ document.addEventListener('DOMContentLoaded', function () {
         updateSliderProgress(this);
     });
     subtitleFontSizeInput.addEventListener('change', async function () {
-        const fontSize = parseFloat(this.value);
-        await configService.set('subtitleFontSize', fontSize);
-        const statusPrefix =
-            loadedTranslations['statusFontSize']?.message || 'Font size: ';
-        showStatus(`${statusPrefix}${fontSize.toFixed(1)}vw.`);
-        
-        // Send immediate update for instant visual feedback
-        sendImmediateConfigUpdate({ subtitleFontSize: fontSize });
+        try {
+            const fontSize = parseFloat(this.value);
+            await configService.set('subtitleFontSize', fontSize);
+            const statusPrefix =
+                loadedTranslations['statusFontSize']?.message || 'Font size: ';
+            showStatus(`${statusPrefix}${fontSize.toFixed(1)}vw.`);
+            
+            // Send immediate update for instant visual feedback
+            sendImmediateConfigUpdate({ subtitleFontSize: fontSize });
+        } catch (error) {
+            console.error('Popup: Error setting font size:', error);
+            showStatus('Failed to update font size. Please try again.');
+        }
     });
 
     subtitleGapInput.addEventListener('input', function () {
@@ -279,15 +320,20 @@ document.addEventListener('DOMContentLoaded', function () {
         updateSliderProgress(this);
     });
     subtitleGapInput.addEventListener('change', async function () {
-        const gap = parseFloat(this.value);
-        await configService.set('subtitleGap', gap);
-        const statusPrefix =
-            loadedTranslations['statusVerticalGap']?.message ||
-            'Vertical gap: ';
-        showStatus(`${statusPrefix}${gap.toFixed(1)}em.`);
-        
-        // Send immediate update for instant visual feedback
-        sendImmediateConfigUpdate({ subtitleGap: gap });
+        try {
+            const gap = parseFloat(this.value);
+            await configService.set('subtitleGap', gap);
+            const statusPrefix =
+                loadedTranslations['statusVerticalGap']?.message ||
+                'Vertical gap: ';
+            showStatus(`${statusPrefix}${gap.toFixed(1)}em.`);
+            
+            // Send immediate update for instant visual feedback
+            sendImmediateConfigUpdate({ subtitleGap: gap });
+        } catch (error) {
+            console.error('Popup: Error setting subtitle gap:', error);
+            showStatus('Failed to update subtitle gap. Please try again.');
+        }
     });
 
     appearanceAccordion.addEventListener('toggle', async function () {
