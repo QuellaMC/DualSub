@@ -20,8 +20,7 @@ jobs:
     
     # Job-level permissions - minimal required for release creation
     permissions:
-      contents: write  # Required for creating releases and tags
-      releases: write  # Required for managing releases
+      contents: write  # Required for creating releases, tags, and managing releases
     
     steps:
       - name: Checkout code
@@ -50,7 +49,7 @@ jobs:
             echo "::group::Permission error details"
             echo "The GITHUB_TOKEN secret is required for creating releases"
             echo "This usually indicates a workflow configuration issue"
-            echo "Required permissions: contents:write, releases:write"
+            echo "Required permissions: contents:write"
             echo "::endgroup::"
             exit 1
           fi
@@ -62,7 +61,7 @@ jobs:
             echo "::group::Authentication error details"
             echo "GitHub CLI cannot authenticate with the provided token"
             echo "This may indicate insufficient token permissions"
-            echo "Required permissions: contents:write, releases:write"
+            echo "Required permissions: contents:write"
             echo "Workflow permissions are configured at job level for security"
             echo "::endgroup::"
             exit 1
