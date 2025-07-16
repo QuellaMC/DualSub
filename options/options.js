@@ -83,9 +83,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const saveSetting = async function (key, value) {
         try {
             await configService.set(key, value);
-            console.log(`Options: ${key} saved as ${value}`);
+            optionsLogger.info(`${key} saved`, { key, value, component: 'saveSetting' });
         } catch (error) {
-            console.error(`Options: Error saving ${key}:`, error);
+            optionsLogger.error(`Error saving ${key}`, error, { key, value, component: 'saveSetting' });
         }
     };
 
@@ -106,9 +106,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 return translations;
             }
         } catch (error) {
-            console.error(
-                `Error fetching primary language ${normalizedLangCode}:`,
-                error
+            optionsLogger.error(
+                `Error fetching primary language ${normalizedLangCode}`,
+                error,
+                { normalizedLangCode, component: 'loadTranslations' }
             );
         }
         // Fallback to English
@@ -125,7 +126,7 @@ document.addEventListener('DOMContentLoaded', function () {
             translationsCache[fallbackLangCode] = fallbackTranslations;
             return fallbackTranslations;
         } catch (error) {
-            console.error(`Fatal: Failed to load any translations:`, error);
+            optionsLogger.error('Fatal: Failed to load any translations', error, { component: 'loadTranslations' });
             return {};
         }
     };
@@ -290,7 +291,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 showTestResult(fallbackMessage, errorType);
             }
         } catch (error) {
-            console.error('DeepL test error:', error);
+            optionsLogger.error('DeepL test error', error, { apiKey: apiKey ? '[REDACTED]' : 'empty', apiPlan, component: 'testDeepLConnection' });
             showTestResult(
                 getLocalizedText(
                     'deeplTestGenericError',
@@ -424,7 +425,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // Update provider settings visibility - now we're sure all DOM elements are set
             updateProviderSettings();
         } catch (error) {
-            console.error('Options: Error loading settings:', error);
+            optionsLogger.error('Error loading settings', error, { component: 'loadSettings' });
         }
     };
 
@@ -463,7 +464,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const selectedLang = this.value;
             await saveSetting('uiLanguage', selectedLang);
             await loadAndApplyLanguage();
-            console.log(`Options: UI language changed to: ${selectedLang}`);
+            optionsLogger.info(`UI language changed to: ${selectedLang}`, { selectedLang, component: 'uiLanguageSelect' });
         });
 
     // Hide official subtitles setting
@@ -471,8 +472,9 @@ document.addEventListener('DOMContentLoaded', function () {
         .getElementById('hideOfficialSubtitles')
         .addEventListener('change', async function () {
             await saveSetting('hideOfficialSubtitles', this.checked);
-            console.log(
-                `Options: Hide official subtitles changed to: ${this.checked}`
+            optionsLogger.info(
+                `Hide official subtitles changed to: ${this.checked}`,
+                { hideOfficialSubtitles: this.checked, component: 'hideOfficialSubtitlesCheckbox' }
             );
         });
 
@@ -482,7 +484,7 @@ document.addEventListener('DOMContentLoaded', function () {
         .addEventListener('change', async function () {
             const level = parseInt(this.value);
             await saveSetting('loggingLevel', level);
-            console.log(`Options: Logging level changed to: ${level}`);
+            optionsLogger.info(`Logging level changed to: ${level}`, { level, component: 'loggingLevelSelect' });
         });
 
     // Translation provider settings
@@ -491,8 +493,9 @@ document.addEventListener('DOMContentLoaded', function () {
         .addEventListener('change', async function () {
             await saveSetting('selectedProvider', this.value);
             updateProviderSettings();
-            console.log(
-                `Options: Translation provider changed to: ${this.value}`
+            optionsLogger.info(
+                `Translation provider changed to: ${this.value}`,
+                { selectedProvider: this.value, component: 'translationProviderSelect' }
             );
         });
 
@@ -515,7 +518,7 @@ document.addEventListener('DOMContentLoaded', function () {
     ) {
         testDeepLButton.addEventListener('click', testDeepLConnection);
     } else {
-        console.error('DeepLAPI is not available. Disabling testDeepLButton.');
+        optionsLogger.error('DeepLAPI is not available. Disabling testDeepLButton.', null, { component: 'testDeepLButton' });
         testDeepLButton.disabled = true;
         testDeepLButton.textContent = getLocalizedText(
             'deepLApiUnavailable',
