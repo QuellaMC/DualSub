@@ -18,15 +18,16 @@ class ConfigService {
     }
 
     /**
-     * Initialize logger with debug mode detection
+     * Initialize logger with logging level detection
      */
     async initializeLogger() {
         try {
-            await this.logger.updateDebugMode();
+            await this.logger.updateLevel();
         } catch (error) {
             // Logger initialization shouldn't block service initialization
+            // Use console.warn here since logger may not be fully initialized
             console.warn(
-                'ConfigService: Failed to initialize logger debug mode:',
+                'ConfigService: Failed to initialize logger level:',
                 error
             );
         }
@@ -39,8 +40,12 @@ class ConfigService {
     initializeDefaults() {
         chrome.runtime.onInstalled.addListener((details) => {
             if (details.reason === 'install' || details.reason === 'update') {
-                console.log(
-                    'DualSub ConfigService: Setting default configuration from schema.'
+                this.logger.info(
+                    'Setting default configuration from schema',
+                    {
+                        reason: details.reason,
+                        method: 'initializeDefaults'
+                    }
                 );
                 this.setDefaultsForMissingKeys();
             }
