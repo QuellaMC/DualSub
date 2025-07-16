@@ -19,7 +19,7 @@ export async function initializeLogger() {
         const loggerModule = await import(chrome.runtime.getURL('utils/logger.js'));
         const Logger = loggerModule.default;
         utilsLogger = Logger.create('SubtitleUtils');
-        
+
         // Try to get logging level from config if available
         try {
             const configModule = await import(chrome.runtime.getURL('services/configService.js'));
@@ -616,16 +616,16 @@ export function setupProgressBarObserver(
                 logPrefix
             )
         ) {
-            logWithFallback('info', 'Progress bar observer found and set up', { 
-                logPrefix, 
-                retries: findProgressBarRetries 
+            logWithFallback('info', 'Progress bar observer found and set up', {
+                logPrefix,
+                retries: findProgressBarRetries
             });
         } else if (findProgressBarRetries >= MAX_FIND_PROGRESS_BAR_RETRIES) {
             clearInterval(findProgressBarIntervalId);
             findProgressBarIntervalId = null;
-            logWithFallback('warn', 'Could not find the progress bar slider after max retries. Subtitle sync will rely on timeupdate only', { 
-                logPrefix, 
-                maxRetries: MAX_FIND_PROGRESS_BAR_RETRIES 
+            logWithFallback('warn', 'Could not find the progress bar slider after max retries. Subtitle sync will rely on timeupdate only', {
+                logPrefix,
+                maxRetries: MAX_FIND_PROGRESS_BAR_RETRIES
             });
         }
     }, 500);
@@ -656,9 +656,9 @@ function attemptToSetupProgressBarObserver(
     const sliderElement = activePlatform.getProgressBarElement();
 
     if (sliderElement) {
-        logWithFallback('info', 'Found progress bar slider via platform. Setting up observer', { 
-            logPrefix, 
-            sliderElement: sliderElement.tagName 
+        logWithFallback('info', 'Found progress bar slider via platform. Setting up observer', {
+            logPrefix,
+            sliderElement: sliderElement.tagName
         });
         if (findProgressBarIntervalId) {
             clearInterval(findProgressBarIntervalId);
@@ -698,7 +698,7 @@ function attemptToSetupProgressBarObserver(
                             if (
                                 calculatedTime >= 0 &&
                                 Math.abs(calculatedTime - lastProgressBarTime) >
-                                    0.1
+                                0.1
                             ) {
                                 if (subtitlesActive) {
                                     updateSubtitles(
@@ -913,8 +913,8 @@ export function updateSubtitles(
         const translatedText = translatedActiveCue
             ? translatedActiveCue.translated || ''
             : originalActiveCue
-              ? originalActiveCue.translated || ''
-              : '';
+                ? originalActiveCue.translated || ''
+                : '';
         const useNativeTarget =
             (originalActiveCue ? originalActiveCue.useNativeTarget : false) ||
             (translatedActiveCue ? translatedActiveCue.useNativeTarget : false);
@@ -1077,9 +1077,9 @@ export function clearSubtitlesDisplayAndQueue(
         subtitleQueue = subtitleQueue.filter(
             (cue) => cue.videoId !== platformVideoId
         );
-        logWithFallback('info', 'Subtitle queue cleared for videoId', { 
-            logPrefix, 
-            videoId: platformVideoId 
+        logWithFallback('info', 'Subtitle queue cleared for videoId', {
+            logPrefix,
+            videoId: platformVideoId
         });
     }
 
@@ -1185,7 +1185,7 @@ export function handleSubtitleDataFound(
                 cueCount: parsedOriginalCues.length,
                 firstThreeCues: parsedOriginalCues.slice(0, 3)
                     .map((c) => `[${c.start.toFixed(2)}-${c.end.toFixed(2)}s]`)
-            );
+            });
 
             // Add original cues
             parsedOriginalCues.forEach((originalCue) => {
@@ -1206,9 +1206,8 @@ export function handleSubtitleDataFound(
                 logPrefix,
                 cueCount: parsedTargetCues.length,
                 firstThreeCues: parsedTargetCues.slice(0, 3)
-                    .slice(0, 3)
                     .map((c) => `[${c.start.toFixed(2)}-${c.end.toFixed(2)}s]`)
-            );
+            });
 
             // Add target cues with their own timing
             parsedTargetCues.forEach((targetCue) => {
@@ -1276,7 +1275,7 @@ export function handleSubtitleDataFound(
                 languages: subtitleData.availableLanguages.map(
                     (lang) => `${lang.normalizedCode} (${lang.displayName})`
                 )
-            );
+            });
         }
 
         if (!useNativeTarget && parsedOriginalCues.length > 0) {
@@ -1411,7 +1410,7 @@ export async function processSubtitleQueue(
                             } else {
                                 const err = new Error(
                                     'Malformed response from background for translation. Response: ' +
-                                        JSON.stringify(res)
+                                    JSON.stringify(res)
                                 );
                                 err.errorType = 'TRANSLATION_REQUEST_ERROR';
                                 reject(err);
@@ -1459,9 +1458,9 @@ export async function processSubtitleQueue(
                     videoId: cueToProcess.videoId,
                     start: cueToProcess.start.toFixed(2),
                     originalText: cueToProcess.original.substring(0, 30),
-                    errorMessage: error.message
-                    error.errorType
-                );
+                    errorMessage: error.message,
+                    errorType: error.errorType
+                });
                 const cueInQueueOnError = subtitleQueue.find(
                     (c) =>
                         c.start === cueToProcess.start &&

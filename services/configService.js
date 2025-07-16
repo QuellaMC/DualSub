@@ -897,10 +897,10 @@ class ConfigService {
                 scope: schemaEntry.scope,
             });
 
-            // Update debug mode if this was the debugMode setting
-            if (key === 'debugMode') {
-                await this.logger.updateDebugMode();
-                this.logger.debug(`Debug mode updated`, { debugMode: value });
+            // Update logging level if this was the loggingLevel setting
+            if (key === 'loggingLevel') {
+                await this.logger.updateLevel();
+                this.logger.debug(`Logging level updated`, { loggingLevel: value });
             }
         } catch (error) {
             this.logger.error(`Error setting key "${key}"`, error, {
@@ -1137,11 +1137,11 @@ class ConfigService {
                 successfulAreas: results.successful.map((s) => s.area),
             });
 
-            // Update debug mode if debugMode was changed
-            if ('debugMode' in settings) {
-                await this.logger.updateDebugMode();
-                this.logger.debug(`Debug mode updated via setMultiple`, {
-                    debugMode: settings.debugMode,
+            // Update logging level if loggingLevel was changed
+            if ('loggingLevel' in settings) {
+                await this.logger.updateLevel();
+                this.logger.debug(`Logging level updated via setMultiple`, {
+                    loggingLevel: settings.loggingLevel,
                 });
             }
         }
@@ -1213,11 +1213,11 @@ class ConfigService {
                     }
                 });
 
-                // Update debug mode if debugMode changed
-                if ('debugMode' in relevantChanges) {
-                    this.logger.updateDebugMode().catch((error) => {
+                // Update logging level if loggingLevel changed
+                if ('loggingLevel' in relevantChanges) {
+                    this.logger.updateLevel().catch((error) => {
                         this.logger.error(
-                            'Failed to update debug mode after change',
+                            'Failed to update logging level after change',
                             error
                         );
                     });
@@ -1273,9 +1273,9 @@ class ConfigService {
                     Object.keys(localDefaults).length,
             });
 
-            // Update debug mode after reset
-            await this.logger.updateDebugMode();
-            this.logger.debug(`Debug mode updated after reset`);
+            // Update logging level after reset
+            await this.logger.updateLevel();
+            this.logger.debug(`Logging level updated after reset`);
         } catch (error) {
             this.logger.error(`Error in resetToDefaults`, error, {
                 method: 'resetToDefaults',

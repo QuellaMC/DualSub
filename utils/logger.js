@@ -60,6 +60,8 @@ class Logger {
         }
     }
 
+
+
     /**
      * Checks if a message should be logged based on current level
      * @param {number} level - The level to check

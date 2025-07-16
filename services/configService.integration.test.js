@@ -6,6 +6,7 @@
 
 import { jest } from '@jest/globals';
 import { configService } from './configService.js';
+import Logger from '../utils/logger.js';
 
 describe('ConfigService Logger Integration', () => {
     let consoleSpy;
@@ -30,7 +31,7 @@ describe('ConfigService Logger Integration', () => {
             info: jest.fn(),
             warn: jest.fn(),
             error: jest.fn(),
-            updateDebugMode: jest.fn().mockResolvedValue(),
+            updateLevel: jest.fn().mockResolvedValue(),
         };
 
         // Replace the logger in configService
@@ -42,23 +43,23 @@ describe('ConfigService Logger Integration', () => {
         Object.values(consoleSpy).forEach((spy) => spy.mockRestore());
     });
 
-    describe('Debug Mode Detection and Updates', () => {
-        test('should update debug mode when debugMode setting changes', async () => {
+    describe('Logging Level Detection and Updates', () => {
+        test('should update logging level when loggingLevel setting changes', async () => {
             // Mock successful storage operations
-            chrome.storage.local.set.mockImplementation((items, callback) => {
+            chrome.storage.sync.set.mockImplementation((items, callback) => {
                 callback();
             });
 
-            await configService.set('debugMode', true);
+            await configService.set('loggingLevel', Logger.LEVELS.DEBUG);
 
-            expect(mockLogger.updateDebugMode).toHaveBeenCalled();
+            expect(mockLogger.updateLevel).toHaveBeenCalled();
             expect(mockLogger.debug).toHaveBeenCalledWith(
-                'Debug mode updated',
-                { debugMode: true }
+                'Logging level updated',
+                { loggingLevel: Logger.LEVELS.DEBUG }
             );
         });
 
-        test('should update debug mode when setMultiple includes debugMode', async () => {
+        test('should update logging level when setMultiple includes loggingLevel', async () => {
             chrome.storage.local.set.mockImplementation((items, callback) => {
                 callback();
             });
@@ -67,18 +68,18 @@ describe('ConfigService Logger Integration', () => {
             });
 
             await configService.setMultiple({
-                debugMode: false,
+                loggingLevel: Logger.LEVELS.ERROR,
                 uiLanguage: 'es',
             });
 
-            expect(mockLogger.updateDebugMode).toHaveBeenCalled();
+            expect(mockLogger.updateLevel).toHaveBeenCalled();
             expect(mockLogger.debug).toHaveBeenCalledWith(
-                'Debug mode updated via setMultiple',
-                { debugMode: false }
+                'Logging level updated via setMultiple',
+                { loggingLevel: Logger.LEVELS.ERROR }
             );
         });
 
-        test('should update debug mode after resetToDefaults', async () => {
+        test('should update logging level after resetToDefaults', async () => {
             chrome.storage.sync.set.mockImplementation((items, callback) =>
                 callback()
             );
@@ -88,9 +89,9 @@ describe('ConfigService Logger Integration', () => {
 
             await configService.resetToDefaults();
 
-            expect(mockLogger.updateDebugMode).toHaveBeenCalled();
+            expect(mockLogger.updateLevel).toHaveBeenCalled();
             expect(mockLogger.debug).toHaveBeenCalledWith(
-                'Debug mode updated after reset'
+                'Logging level updated after reset'
             );
         });
     });
