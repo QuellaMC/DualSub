@@ -1,68 +1,68 @@
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
-
-// Mock Logger module
-const mockLoggerInstance = {
-    info: jest.fn(),
-    debug: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-};
-
-jest.unstable_mockModule('../utils/logger.js', () => ({
-    default: {
-        create: jest.fn(() => mockLoggerInstance)
-    }
-}));
-
-const { DisneyPlusPlatform } = await import('./disneyPlusPlatform.js');
-
-// Mock Chrome APIs
-global.chrome = {
-    storage: {
-        sync: {
-            get: jest.fn(),
-        },
-        onChanged: {
-            addListener: jest.fn(),
-            removeListener: jest.fn(),
-        },
-    },
-    runtime: {
-        sendMessage: jest.fn(),
-        lastError: null,
-    },
-};
-
-// Mock DOM
-Object.defineProperty(window, 'location', {
-    value: {
-        hostname: 'disneyplus.com',
-        pathname: '/video/12345',
-        href: 'https://disneyplus.com/video/12345',
-    },
-    writable: true,
-});
+import { DisneyPlusPlatform } from './disneyPlusPlatform.js';
+import { mockWindowLocation, LocationMock } from '../test-utils/location-mock.js';
+import { mockChromeApi, ChromeApiMock } from '../test-utils/chrome-api-mock.js';
+import { createLoggerMock } from '../test-utils/logger-mock.js';
+import Logger from '../utils/logger.js';
 
 describe('DisneyPlusPlatform Logging Integration', () => {
     let platform;
+    let mockLogger;
+    let chromeApiMock;
+    let locationCleanup;
 
     beforeEach(() => {
-        // Reset mocks
+        // Reset all mocks
         jest.clearAllMocks();
+        
+        // Setup Chrome API mock
+        chromeApiMock = ChromeApiMock.create();
+        global.chrome = chromeApiMock;
+        
+        // Create logger mock using centralized utility
+        mockLogger = createLoggerMock();
+        jest.spyOn(Logger, 'create').mockReturnValue(mockLogger);
         
         // Create platform instance
         platform = new DisneyPlusPlatform();
+        
+        // Mock platform detection methods to simulate Disney Plus environment
+        jest.spyOn(platform, 'isPlatformActive').mockReturnValue(true);
+        jest.spyOn(platform, 'isPlayerPageActive').mockReturnValue(true);
+        
+        locationCleanup = () => {
+            // No cleanup needed for method mocks
+        };
     });
 
     afterEach(() => {
+        // Cleanup platform
         if (platform) {
             platform.cleanup();
         }
+        
+        // Restore location mock
+        if (locationCleanup) {
+            locationCleanup();
+        }
+        
+        // Reset Chrome API mock
+        if (chromeApiMock) {
+            chromeApiMock.reset();
+        }
+        
+        // Reset logger mock
+        if (mockLogger) {
+            mockLogger.reset();
+        }
+        
+        // Clear all Jest mocks
+        jest.clearAllMocks();
     });
 
     describe('Logger Initialization', () => {
         test('should create logger instance with correct component name', () => {
-            expect(platform.logger).toBe(mockLoggerInstance);
+            expect(platform.logger).toBe(mockLogger);
         });
     });
 
@@ -85,7 +85,7 @@ describe('DisneyPlusPlatform Logging Integration', () => {
 
             await platform.initialize(mockOnSubtitleFound, mockOnVideoIdChange);
 
-            expect(mockLoggerInstance.info).toHaveBeenCalledWith(
+            expect(mockLogger.info).toHaveBeenCalledWith(
                 'Initialized and event listener added',
                 expect.objectContaining({
                     selectors: expect.any(Array)
@@ -104,7 +104,7 @@ describe('DisneyPlusPlatform Logging Integration', () => {
 
             platform._handleInjectorEvents(mockEvent);
 
-            expect(mockLoggerInstance.info).toHaveBeenCalledWith('Inject script is ready');
+            expect(mockLogger.info).toHaveBeenCalledWith('Inject script is ready');
         });
 
         test('should log subtitle URL found', () => {
@@ -118,7 +118,7 @@ describe('DisneyPlusPlatform Logging Integration', () => {
 
             platform._handleInjectorEvents(mockEvent);
 
-            expect(mockLoggerInstance.info).toHaveBeenCalledWith(
+            expect(mockLogger.info).toHaveBeenCalledWith(
                 'SUBTITLE_URL_FOUND for injectedVideoId',
                 expect.objectContaining({
                     injectedVideoId: '12345',
@@ -137,7 +137,7 @@ describe('DisneyPlusPlatform Logging Integration', () => {
 
             platform._handleInjectorEvents(mockEvent);
 
-            expect(mockLoggerInstance.error).toHaveBeenCalledWith(
+            expect(mockLogger.error).toHaveBeenCalledWith(
                 'SUBTITLE_URL_FOUND event without a videoId',
                 null,
                 expect.objectContaining({
@@ -159,14 +159,14 @@ describe('DisneyPlusPlatform Logging Integration', () => {
                 }
             };
 
-            chrome.storage.sync.get.mockImplementation((keys, callback) => {
+            chromeApiMock.storage.sync.get.mockImplementation((keys, callback) => {
                 callback({
                     targetLanguage: 'zh-CN',
                     originalLanguage: 'en'
                 });
             });
 
-            chrome.runtime.sendMessage.mockImplementation((message, callback) => {
+            chromeApiMock.runtime.sendMessage.mockImplementation((message, callback) => {
                 callback({
                     success: true,
                     videoId: '12345'
@@ -175,7 +175,7 @@ describe('DisneyPlusPlatform Logging Integration', () => {
 
             platform._handleInjectorEvents(mockEvent);
 
-            expect(mockLoggerInstance.info).toHaveBeenCalledWith(
+            expect(mockLogger.info).toHaveBeenCalledWith(
                 'Video context changing',
                 expect.objectContaining({
                     previousVideoId: '11111',
@@ -198,7 +198,7 @@ describe('DisneyPlusPlatform Logging Integration', () => {
 
             platform._handleInjectorEvents(mockEvent);
 
-            expect(mockLoggerInstance.debug).toHaveBeenCalledWith(
+            expect(mockLogger.debug).toHaveBeenCalledWith(
                 'VTT URL already processed or known',
                 expect.objectContaining({
                     url: 'http://example.com/master.m3u8',
@@ -210,14 +210,14 @@ describe('DisneyPlusPlatform Logging Integration', () => {
 
     describe('Background Communication Logging', () => {
         test('should log VTT request to background', () => {
-            chrome.storage.sync.get.mockImplementation((keys, callback) => {
+            chromeApiMock.storage.sync.get.mockImplementation((keys, callback) => {
                 callback({
                     targetLanguage: 'zh-CN',
                     originalLanguage: 'en'
                 });
             });
 
-            chrome.runtime.sendMessage.mockImplementation((message, callback) => {
+            chromeApiMock.runtime.sendMessage.mockImplementation((message, callback) => {
                 callback({
                     success: true,
                     videoId: '12345'
@@ -234,7 +234,7 @@ describe('DisneyPlusPlatform Logging Integration', () => {
 
             platform._handleInjectorEvents(mockEvent);
 
-            expect(mockLoggerInstance.info).toHaveBeenCalledWith(
+            expect(mockLogger.info).toHaveBeenCalledWith(
                 'Requesting VTT from background',
                 expect.objectContaining({
                     url: 'http://example.com/master.m3u8',
@@ -244,11 +244,11 @@ describe('DisneyPlusPlatform Logging Integration', () => {
         });
 
         test('should log successful VTT fetch', () => {
-            chrome.storage.sync.get.mockImplementation((keys, callback) => {
+            chromeApiMock.storage.sync.get.mockImplementation((keys, callback) => {
                 callback({});
             });
 
-            chrome.runtime.sendMessage.mockImplementation((message, callback) => {
+            chromeApiMock.runtime.sendMessage.mockImplementation((message, callback) => {
                 callback({
                     success: true,
                     videoId: '12345',
@@ -270,7 +270,7 @@ describe('DisneyPlusPlatform Logging Integration', () => {
 
             platform._handleInjectorEvents(mockEvent);
 
-            expect(mockLoggerInstance.info).toHaveBeenCalledWith(
+            expect(mockLogger.info).toHaveBeenCalledWith(
                 'VTT fetched successfully',
                 expect.objectContaining({
                     videoId: '12345',
@@ -281,11 +281,11 @@ describe('DisneyPlusPlatform Logging Integration', () => {
         });
 
         test('should log background fetch errors', () => {
-            chrome.storage.sync.get.mockImplementation((keys, callback) => {
+            chromeApiMock.storage.sync.get.mockImplementation((keys, callback) => {
                 callback({});
             });
 
-            chrome.runtime.sendMessage.mockImplementation((message, callback) => {
+            chromeApiMock.runtime.sendMessage.mockImplementation((message, callback) => {
                 callback({
                     success: false,
                     error: 'Network error',
@@ -305,7 +305,7 @@ describe('DisneyPlusPlatform Logging Integration', () => {
 
             platform._handleInjectorEvents(mockEvent);
 
-            expect(mockLoggerInstance.error).toHaveBeenCalledWith(
+            expect(mockLogger.error).toHaveBeenCalledWith(
                 'Background failed to fetch VTT',
                 null,
                 expect.objectContaining({
@@ -317,12 +317,12 @@ describe('DisneyPlusPlatform Logging Integration', () => {
         });
 
         test('should log chrome runtime errors', () => {
-            chrome.storage.sync.get.mockImplementation((keys, callback) => {
+            chromeApiMock.storage.sync.get.mockImplementation((keys, callback) => {
                 callback({});
             });
 
-            chrome.runtime.lastError = { message: 'Extension context invalidated' };
-            chrome.runtime.sendMessage.mockImplementation((message, callback) => {
+            chromeApiMock.runtime.lastError = { message: 'Extension context invalidated' };
+            chromeApiMock.runtime.sendMessage.mockImplementation((message, callback) => {
                 callback();
             });
 
@@ -336,9 +336,9 @@ describe('DisneyPlusPlatform Logging Integration', () => {
 
             platform._handleInjectorEvents(mockEvent);
 
-            expect(mockLoggerInstance.error).toHaveBeenCalledWith(
+            expect(mockLogger.error).toHaveBeenCalledWith(
                 'Error for VTT fetch',
-                chrome.runtime.lastError,
+                chromeApiMock.runtime.lastError,
                 expect.objectContaining({
                     url: 'http://example.com/master.m3u8',
                     videoId: '12345'
@@ -346,15 +346,15 @@ describe('DisneyPlusPlatform Logging Integration', () => {
             );
 
             // Reset lastError
-            chrome.runtime.lastError = null;
+            chromeApiMock.runtime.lastError = null;
         });
 
         test('should log video context mismatch warnings', () => {
-            chrome.storage.sync.get.mockImplementation((keys, callback) => {
+            chromeApiMock.storage.sync.get.mockImplementation((keys, callback) => {
                 callback({});
             });
 
-            chrome.runtime.sendMessage.mockImplementation((message, callback) => {
+            chromeApiMock.runtime.sendMessage.mockImplementation((message, callback) => {
                 callback({
                     success: true,
                     videoId: '67890' // Different from current
@@ -373,7 +373,7 @@ describe('DisneyPlusPlatform Logging Integration', () => {
 
             platform._handleInjectorEvents(mockEvent);
 
-            expect(mockLoggerInstance.warn).toHaveBeenCalledWith(
+            expect(mockLogger.warn).toHaveBeenCalledWith(
                 'Received VTT for different video context - discarding',
                 expect.objectContaining({
                     receivedVideoId: '67890',
@@ -390,9 +390,9 @@ describe('DisneyPlusPlatform Logging Integration', () => {
             
             platform.cleanup();
 
-            expect(mockLoggerInstance.debug).toHaveBeenCalledWith('Event listener removed');
-            expect(mockLoggerInstance.debug).toHaveBeenCalledWith('Subtitle mutation observer cleaned up');
-            expect(mockLoggerInstance.info).toHaveBeenCalledWith('Platform cleaned up successfully');
+            expect(mockLogger.debug).toHaveBeenCalledWith('Event listener removed');
+            expect(mockLogger.debug).toHaveBeenCalledWith('Subtitle mutation observer cleaned up');
+            expect(mockLogger.info).toHaveBeenCalledWith('Platform cleaned up successfully');
         });
     });
 });
