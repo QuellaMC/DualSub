@@ -1,6 +1,33 @@
 import { configService } from '../services/configService.js';
+import Logger from '../utils/logger.js';
 
 document.addEventListener('DOMContentLoaded', function () {
+    // Initialize options logger
+    const optionsLogger = Logger.create('Options', configService);
+    
+    // Initialize logging level from configuration
+    (async () => {
+        try {
+            const loggingLevel = await configService.get('loggingLevel');
+            optionsLogger.updateLevel(loggingLevel);
+            optionsLogger.info('Options logger initialized', { level: loggingLevel });
+        } catch (error) {
+            // Fallback to INFO level if config can't be read
+            optionsLogger.updateLevel(Logger.LEVELS.INFO);
+            optionsLogger.warn('Failed to load logging level from config, using INFO level', error);
+        }
+    })();
+
+    // Listen for logging level changes
+    configService.onChanged((changes) => {
+        if ('loggingLevel' in changes) {
+            optionsLogger.updateLevel(changes.loggingLevel);
+            optionsLogger.info('Logging level updated from configuration change', { 
+                newLevel: changes.loggingLevel 
+            });
+        }
+    });
+
     // Navigation
     const navLinks = document.querySelectorAll('.sidebar nav a');
     const sections = document.querySelectorAll('.content section');

@@ -7,6 +7,9 @@ console.log(
 
 const LOG_PREFIX = 'NetflixContent';
 
+// Logger instance for content script
+let contentLogger = null;
+
 // Platform management
 let activePlatform = null;
 
@@ -140,6 +143,26 @@ async function loadModules() {
             chrome.runtime.getURL('services/configService.js')
         );
         configService = configModule.configService;
+
+        // Load the Logger
+        const loggerModule = await import(
+            chrome.runtime.getURL('utils/logger.js')
+        );
+        const Logger = loggerModule.default;
+        
+        // Initialize content script logger with fallback mechanism
+        contentLogger = Logger.create(LOG_PREFIX);
+        
+        // Initialize logging level from configuration
+        try {
+            const loggingLevel = await configService.get('loggingLevel');
+            contentLogger.updateLevel(loggingLevel);
+            contentLogger.info('Content script logger initialized', { level: loggingLevel });
+        } catch (error) {
+            // Fallback to INFO level if config can't be read
+            contentLogger.updateLevel(Logger.LEVELS.INFO);
+            contentLogger.warn('Failed to load logging level from config, using INFO level', error);
+        }
 
         return true;
     } catch (error) {
@@ -353,10 +376,26 @@ function stopVideoElementDetection() {
 
 // Simplified Chrome message handler
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    // Handle logging level changes immediately, even if utilities aren't loaded
+    if (request.type === 'LOGGING_LEVEL_CHANGED') {
+        if (contentLogger) {
+            contentLogger.updateLevel(request.level);
+            contentLogger.info('Logging level updated from background script', { 
+                newLevel: request.level 
+            });
+        } else {
+            console.log(`${LOG_PREFIX}: Logging level change received but logger not initialized yet`, { 
+                level: request.level 
+            });
+        }
+        sendResponse({ success: true });
+        return false;
+    }
+
     if (!subtitleUtils || !configService) {
         console.error(
             `${LOG_PREFIX}: Utilities not loaded, cannot handle message:`,
-            request.action
+            request.action || request.type
         );
         sendResponse({ success: false, error: 'Utilities not loaded' });
         return true;

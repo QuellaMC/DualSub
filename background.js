@@ -4,6 +4,7 @@ import { translate as deeplTranslate } from './translation_providers/deeplTransl
 import { translate as deeplTranslateFree } from './translation_providers/deeplTranslateFree.js';
 import { normalizeLanguageCode } from './utils/languageNormalization.js';
 import { configService } from './services/configService.js';
+import Logger from './utils/logger.js';
 
 console.log('Dual Subtitles background script loaded.');
 
@@ -52,6 +53,82 @@ configService
 
 // Initialize default settings using the configuration service
 configService.initializeDefaults();
+
+// Initialize background logger with ConfigService integration
+const backgroundLogger = Logger.create('Background', configService);
+
+// Initialize logging level synchronization system
+let currentLoggingLevel = Logger.LEVELS.INFO; // Default level
+
+// Initialize logging level from configuration
+(async () => {
+    try {
+        currentLoggingLevel = await configService.get('loggingLevel');
+        backgroundLogger.updateLevel(currentLoggingLevel);
+        backgroundLogger.info('Background logging initialized', { 
+            level: currentLoggingLevel 
+        });
+    } catch (error) {
+        backgroundLogger.error('Failed to initialize logging level', error);
+    }
+})();
+
+// Listen for logging level changes and broadcast to all contexts
+configService.onChanged((changes) => {
+    if ('loggingLevel' in changes) {
+        const newLevel = changes.loggingLevel;
+        currentLoggingLevel = newLevel;
+        backgroundLogger.updateLevel(newLevel);
+        backgroundLogger.info('Logging level changed, broadcasting to all contexts', { 
+            newLevel 
+        });
+        
+        // Broadcast logging level change to all active tabs
+        broadcastLoggingLevelChange(newLevel);
+    }
+});
+
+/**
+ * Broadcasts logging level changes to all active extension contexts
+ * @param {number} newLevel - The new logging level to broadcast
+ */
+async function broadcastLoggingLevelChange(newLevel) {
+    try {
+        // Get all tabs to send message to content scripts
+        const tabs = await chrome.tabs.query({});
+        const messagePromises = [];
+        
+        for (const tab of tabs) {
+            // Only send to tabs that might have our content scripts
+            if (tab.url && (tab.url.includes('netflix.com') || tab.url.includes('disneyplus.com'))) {
+                const messagePromise = chrome.tabs.sendMessage(tab.id, {
+                    type: 'LOGGING_LEVEL_CHANGED',
+                    level: newLevel
+                }).catch((error) => {
+                    // Content script might not be loaded, ignore these errors
+                    backgroundLogger.debug('Failed to send logging level to tab', error, { 
+                        tabId: tab.id, 
+                        url: tab.url 
+                    });
+                });
+                messagePromises.push(messagePromise);
+            }
+        }
+        
+        // Wait for all messages to be sent (or fail)
+        await Promise.allSettled(messagePromises);
+        
+        backgroundLogger.debug('Logging level broadcast completed', { 
+            level: newLevel, 
+            tabCount: tabs.length 
+        });
+        
+    } catch (error) {
+        backgroundLogger.error('Error broadcasting logging level change', error, { 
+            level: newLevel 
+        });
+    }
+}
 
 function parseAvailableSubtitleLanguages(masterPlaylistText) {
     if (!masterPlaylistText || typeof masterPlaylistText !== 'string') {

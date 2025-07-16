@@ -1,7 +1,34 @@
 // disneyplus-dualsub-chrome-extension/popup/popup.js
 import { configService } from '../services/configService.js';
+import Logger from '../utils/logger.js';
 
 document.addEventListener('DOMContentLoaded', function () {
+    // Initialize popup logger
+    const popupLogger = Logger.create('Popup', configService);
+    
+    // Initialize logging level from configuration
+    (async () => {
+        try {
+            const loggingLevel = await configService.get('loggingLevel');
+            popupLogger.updateLevel(loggingLevel);
+            popupLogger.info('Popup logger initialized', { level: loggingLevel });
+        } catch (error) {
+            // Fallback to INFO level if config can't be read
+            popupLogger.updateLevel(Logger.LEVELS.INFO);
+            popupLogger.warn('Failed to load logging level from config, using INFO level', error);
+        }
+    })();
+
+    // Listen for logging level changes
+    configService.onChanged((changes) => {
+        if ('loggingLevel' in changes) {
+            popupLogger.updateLevel(changes.loggingLevel);
+            popupLogger.info('Logging level updated from configuration change', { 
+                newLevel: changes.loggingLevel 
+            });
+        }
+    });
+
     // UI Element References
     const enableSubtitlesToggle = document.getElementById('enableSubtitles');
     const useNativeSubtitlesToggle =
