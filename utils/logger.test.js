@@ -21,14 +21,24 @@ describe('Logger', () => {
         it('should create logger with component name', () => {
             expect(logger.component).toBe('TestComponent');
             expect(logger.configService).toBe(mockConfigService);
-            expect(logger.debugEnabled).toBe(false);
+            expect(logger.currentLevel).toBe(Logger.LEVELS.INFO);
         });
 
         it('should create logger without config service', () => {
             const loggerWithoutConfig = new Logger('TestComponent');
             expect(loggerWithoutConfig.component).toBe('TestComponent');
             expect(loggerWithoutConfig.configService).toBe(null);
-            expect(loggerWithoutConfig.debugEnabled).toBe(false);
+            expect(loggerWithoutConfig.currentLevel).toBe(Logger.LEVELS.INFO);
+        });
+    });
+
+    describe('LEVELS constants', () => {
+        it('should have correct level values', () => {
+            expect(Logger.LEVELS.OFF).toBe(0);
+            expect(Logger.LEVELS.ERROR).toBe(1);
+            expect(Logger.LEVELS.WARN).toBe(2);
+            expect(Logger.LEVELS.INFO).toBe(3);
+            expect(Logger.LEVELS.DEBUG).toBe(4);
         });
     });
 
@@ -51,45 +61,11 @@ describe('Logger', () => {
         });
     });
 
-    describe('updateDebugMode', () => {
-        it('should enable debug mode when config returns true', async () => {
-            mockConfigService.get.mockResolvedValue(true);
 
-            await logger.updateDebugMode();
-
-            expect(mockConfigService.get).toHaveBeenCalledWith('debugMode');
-            expect(logger.debugEnabled).toBe(true);
-        });
-
-        it('should disable debug mode when config returns false', async () => {
-            mockConfigService.get.mockResolvedValue(false);
-
-            await logger.updateDebugMode();
-
-            expect(mockConfigService.get).toHaveBeenCalledWith('debugMode');
-            expect(logger.debugEnabled).toBe(false);
-        });
-
-        it('should default to false when config service throws error', async () => {
-            mockConfigService.get.mockRejectedValue(new Error('Config error'));
-
-            await logger.updateDebugMode();
-
-            expect(logger.debugEnabled).toBe(false);
-        });
-
-        it('should handle null config service gracefully', async () => {
-            const loggerWithoutConfig = new Logger('TestComponent');
-
-            await loggerWithoutConfig.updateDebugMode();
-
-            expect(loggerWithoutConfig.debugEnabled).toBe(false);
-        });
-    });
 
     describe('debug logging', () => {
-        it('should log debug message when debug is enabled', () => {
-            logger.debugEnabled = true;
+        it('should log debug message when debug level is enabled', () => {
+            logger.currentLevel = Logger.LEVELS.DEBUG;
 
             logger.debug('Test debug message', { key: 'value' });
 
@@ -100,8 +76,8 @@ describe('Logger', () => {
             );
         });
 
-        it('should not log debug message when debug is disabled', () => {
-            logger.debugEnabled = false;
+        it('should not log debug message when debug level is disabled', () => {
+            logger.currentLevel = Logger.LEVELS.INFO;
 
             logger.debug('Test debug message', { key: 'value' });
 
@@ -109,7 +85,7 @@ describe('Logger', () => {
         });
 
         it('should handle empty data object', () => {
-            logger.debugEnabled = true;
+            logger.currentLevel = Logger.LEVELS.DEBUG;
 
             logger.debug('Test debug message');
 
@@ -256,12 +232,179 @@ describe('Logger', () => {
         });
     });
 
+    describe('updateLevel', () => {
+        it('should update level from config service', async () => {
+            mockConfigService.get.mockResolvedValue(Logger.LEVELS.DEBUG);
+
+            await logger.updateLevel();
+
+            expect(mockConfigService.get).toHaveBeenCalledWith('loggingLevel');
+            expect(logger.currentLevel).toBe(Logger.LEVELS.DEBUG);
+        });
+
+        it('should set level directly when provided', async () => {
+            await logger.updateLevel(Logger.LEVELS.ERROR);
+
+            expect(logger.currentLevel).toBe(Logger.LEVELS.ERROR);
+            expect(mockConfigService.get).not.toHaveBeenCalled();
+        });
+
+        it('should default to INFO when config is undefined', async () => {
+            mockConfigService.get.mockResolvedValue(undefined);
+
+            await logger.updateLevel();
+
+            expect(logger.currentLevel).toBe(Logger.LEVELS.INFO);
+        });
+
+        it('should default to INFO when config service throws error', async () => {
+            mockConfigService.get.mockRejectedValue(new Error('Config error'));
+
+            await logger.updateLevel();
+
+            expect(logger.currentLevel).toBe(Logger.LEVELS.INFO);
+        });
+
+        it('should handle null config service gracefully', async () => {
+            const loggerWithoutConfig = new Logger('TestComponent');
+
+            await loggerWithoutConfig.updateLevel();
+
+            expect(loggerWithoutConfig.currentLevel).toBe(Logger.LEVELS.INFO);
+        });
+    });
+
+    describe('shouldLog', () => {
+        it('should return true when current level is higher than message level', () => {
+            logger.currentLevel = Logger.LEVELS.DEBUG;
+            expect(logger.shouldLog(Logger.LEVELS.INFO)).toBe(true);
+            expect(logger.shouldLog(Logger.LEVELS.WARN)).toBe(true);
+            expect(logger.shouldLog(Logger.LEVELS.ERROR)).toBe(true);
+            expect(logger.shouldLog(Logger.LEVELS.DEBUG)).toBe(true);
+        });
+
+        it('should return true when current level equals message level', () => {
+            logger.currentLevel = Logger.LEVELS.WARN;
+            expect(logger.shouldLog(Logger.LEVELS.WARN)).toBe(true);
+        });
+
+        it('should return false when current level is lower than message level', () => {
+            logger.currentLevel = Logger.LEVELS.ERROR;
+            expect(logger.shouldLog(Logger.LEVELS.WARN)).toBe(false);
+            expect(logger.shouldLog(Logger.LEVELS.INFO)).toBe(false);
+            expect(logger.shouldLog(Logger.LEVELS.DEBUG)).toBe(false);
+        });
+
+        it('should return false when logging is OFF', () => {
+            logger.currentLevel = Logger.LEVELS.OFF;
+            expect(logger.shouldLog(Logger.LEVELS.ERROR)).toBe(false);
+            expect(logger.shouldLog(Logger.LEVELS.WARN)).toBe(false);
+            expect(logger.shouldLog(Logger.LEVELS.INFO)).toBe(false);
+            expect(logger.shouldLog(Logger.LEVELS.DEBUG)).toBe(false);
+        });
+    });
+
+    describe('level-based filtering', () => {
+        describe('OFF level', () => {
+            beforeEach(() => {
+                logger.currentLevel = Logger.LEVELS.OFF;
+            });
+
+            it('should not log any messages when level is OFF', () => {
+                logger.debug('Debug message');
+                logger.info('Info message');
+                logger.warn('Warn message');
+                logger.error('Error message');
+
+                expect(console.debug).not.toHaveBeenCalled();
+                expect(console.info).not.toHaveBeenCalled();
+                expect(console.warn).not.toHaveBeenCalled();
+                expect(console.error).not.toHaveBeenCalled();
+            });
+        });
+
+        describe('ERROR level', () => {
+            beforeEach(() => {
+                logger.currentLevel = Logger.LEVELS.ERROR;
+            });
+
+            it('should only log ERROR messages', () => {
+                logger.debug('Debug message');
+                logger.info('Info message');
+                logger.warn('Warn message');
+                logger.error('Error message');
+
+                expect(console.debug).not.toHaveBeenCalled();
+                expect(console.info).not.toHaveBeenCalled();
+                expect(console.warn).not.toHaveBeenCalled();
+                expect(console.error).toHaveBeenCalledTimes(1);
+            });
+        });
+
+        describe('WARN level', () => {
+            beforeEach(() => {
+                logger.currentLevel = Logger.LEVELS.WARN;
+            });
+
+            it('should log WARN and ERROR messages', () => {
+                logger.debug('Debug message');
+                logger.info('Info message');
+                logger.warn('Warn message');
+                logger.error('Error message');
+
+                expect(console.debug).not.toHaveBeenCalled();
+                expect(console.info).not.toHaveBeenCalled();
+                expect(console.warn).toHaveBeenCalledTimes(1);
+                expect(console.error).toHaveBeenCalledTimes(1);
+            });
+        });
+
+        describe('INFO level', () => {
+            beforeEach(() => {
+                logger.currentLevel = Logger.LEVELS.INFO;
+            });
+
+            it('should log INFO, WARN, and ERROR messages', () => {
+                logger.debug('Debug message');
+                logger.info('Info message');
+                logger.warn('Warn message');
+                logger.error('Error message');
+
+                expect(console.debug).not.toHaveBeenCalled();
+                expect(console.info).toHaveBeenCalledTimes(1);
+                expect(console.warn).toHaveBeenCalledTimes(1);
+                expect(console.error).toHaveBeenCalledTimes(1);
+            });
+        });
+
+        describe('DEBUG level', () => {
+            beforeEach(() => {
+                logger.currentLevel = Logger.LEVELS.DEBUG;
+            });
+
+            it('should log all messages', () => {
+                logger.debug('Debug message');
+                logger.info('Info message');
+                logger.warn('Warn message');
+                logger.error('Error message');
+
+                expect(console.debug).toHaveBeenCalledTimes(1);
+                expect(console.info).toHaveBeenCalledTimes(1);
+                expect(console.warn).toHaveBeenCalledTimes(1);
+                expect(console.error).toHaveBeenCalledTimes(1);
+            });
+        });
+    });
+
+
+
     describe('integration tests', () => {
         it('should work with real config service flow', async () => {
-            mockConfigService.get.mockResolvedValue(true);
+            // Set DEBUG level to enable all logging
+            mockConfigService.get.mockResolvedValue(Logger.LEVELS.DEBUG);
+            await logger.updateLevel();
 
-            await logger.updateDebugMode();
-            logger.debug('Debug after enabling');
+            logger.debug('Debug message');
             logger.info('Info message');
             logger.warn('Warning message');
             logger.error('Error message', new Error('Test error'));
@@ -272,19 +415,43 @@ describe('Logger', () => {
             expect(console.error).toHaveBeenCalledTimes(1);
         });
 
-        it('should handle debug mode toggle', async () => {
-            // Start with debug disabled
-            mockConfigService.get.mockResolvedValue(false);
-            await logger.updateDebugMode();
+        it('should handle level changes from config service', async () => {
+            // Start with ERROR level
+            mockConfigService.get.mockResolvedValue(Logger.LEVELS.ERROR);
+            await logger.updateLevel();
 
-            logger.debug('Should not log');
-            expect(console.debug).not.toHaveBeenCalled();
+            logger.info('Should not log');
+            logger.error('Should log');
 
-            // Enable debug mode
-            mockConfigService.get.mockResolvedValue(true);
-            await logger.updateDebugMode();
+            expect(console.info).not.toHaveBeenCalled();
+            expect(console.error).toHaveBeenCalledTimes(1);
+
+            // Change to DEBUG level
+            mockConfigService.get.mockResolvedValue(Logger.LEVELS.DEBUG);
+            await logger.updateLevel();
 
             logger.debug('Should log now');
+            logger.info('Should also log');
+
+            expect(console.debug).toHaveBeenCalledTimes(1);
+            expect(console.info).toHaveBeenCalledTimes(1);
+        });
+
+        it('should handle runtime level updates', async () => {
+            // Start with INFO level
+            expect(logger.currentLevel).toBe(Logger.LEVELS.INFO);
+
+            logger.debug('Should not log');
+            logger.info('Should log');
+
+            expect(console.debug).not.toHaveBeenCalled();
+            expect(console.info).toHaveBeenCalledTimes(1);
+
+            // Update to DEBUG level at runtime
+            await logger.updateLevel(Logger.LEVELS.DEBUG);
+
+            logger.debug('Should log now');
+
             expect(console.debug).toHaveBeenCalledTimes(1);
         });
     });
