@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const hideOfficialSubtitlesCheckbox = document.getElementById(
         'hideOfficialSubtitles'
     );
+    const loggingLevelSelect = document.getElementById('loggingLevel');
 
     // Translation Settings
     const translationProviderSelect = document.getElementById(
@@ -366,6 +367,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const {
                 uiLanguage,
                 hideOfficialSubtitles,
+                loggingLevel,
                 selectedProvider,
                 translationBatchSize,
                 translationDelay,
@@ -375,6 +377,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             uiLanguageSelect.value = uiLanguage;
             hideOfficialSubtitlesCheckbox.checked = hideOfficialSubtitles;
+            loggingLevelSelect.value = loggingLevel;
 
             // Translation
             if (availableProviders[selectedProvider]) {
@@ -444,6 +447,15 @@ document.addEventListener('DOMContentLoaded', function () {
             console.log(
                 `Options: Hide official subtitles changed to: ${this.checked}`
             );
+        });
+
+    // Logging level setting
+    document
+        .getElementById('loggingLevel')
+        .addEventListener('change', async function () {
+            const level = parseInt(this.value);
+            await saveSetting('loggingLevel', level);
+            console.log(`Options: Logging level changed to: ${level}`);
         });
 
     // Translation provider settings
