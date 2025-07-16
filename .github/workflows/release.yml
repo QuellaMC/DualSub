@@ -124,6 +124,42 @@ jobs:
           echo "Test command: npm test"
           echo "Node options: $NODE_OPTIONS"
           
+          # Validate test infrastructure setup
+          echo "Validating test infrastructure..."
+          echo "Jest configuration:"
+          if [ -f jest.config.js ]; then
+            echo "✓ Jest config found"
+          else
+            echo "::warning::Jest config not found, using defaults"
+          fi
+          
+          echo "Test utilities:"
+          if [ -d test-utils ]; then
+            echo "✓ Test utilities directory found"
+            echo "Available test utilities:"
+            ls -la test-utils/ | grep -E '\.(js|json)$' || echo "No test utility files found"
+          else
+            echo "::warning::Test utilities directory not found"
+          fi
+          
+          echo "Mock utilities validation:"
+          MOCK_FILES=("test-utils/chrome-api-mock.js" "test-utils/location-mock.js" "test-utils/logger-mock.js")
+          for mock_file in "${MOCK_FILES[@]}"; do
+            if [ -f "$mock_file" ]; then
+              echo "✓ $mock_file found"
+            else
+              echo "::warning::$mock_file not found - tests may use fallback mocking"
+            fi
+          done
+          
+          echo "Jest setup validation:"
+          if [ -f jest.setup.js ]; then
+            echo "✓ Jest setup file found"
+          else
+            echo "::warning::Jest setup file not found"
+          fi
+          
+          # Run tests with enhanced error reporting
           if ! npm test; then
             echo "::error::Tests failed during release process"
             echo "::group::Test failure details"
@@ -133,17 +169,33 @@ jobs:
             echo "  npm version: $(npm --version)"
             echo "  Working directory: $(pwd)"
             echo "  NODE_OPTIONS: $NODE_OPTIONS"
-            echo "  Available test files:"
-            find . -name "*.test.js" -o -name "*.spec.js" | head -10
+            echo "  Jest version: $(npx jest --version 2>/dev/null || echo 'Jest version unavailable')"
+            echo ""
+            echo "Test infrastructure status:"
+            echo "  Jest config: $(test -f jest.config.js && echo 'present' || echo 'missing')"
+            echo "  Jest setup: $(test -f jest.setup.js && echo 'present' || echo 'missing')"
+            echo "  Test utilities: $(test -d test-utils && echo 'present' || echo 'missing')"
+            echo ""
+            echo "Available test files:"
+            find . -name "*.test.js" -o -name "*.spec.js" | head -15
+            echo ""
+            echo "Test patterns and infrastructure:"
+            echo "  Integration tests: $(find . -name "*integration*.test.js" | wc -l) files"
+            echo "  Unit tests: $(find . -name "*.test.js" ! -name "*integration*" | wc -l) files"
+            echo "  Mock utilities: $(find test-utils -name "*mock*.js" 2>/dev/null | wc -l) files"
             echo "::endgroup::"
             echo "::error::Release aborted due to test failures on main branch"
+            echo "::notice::Test infrastructure has been updated with centralized mocks and enhanced Jest configuration. Ensure all tests are compatible with the new setup."
             exit 1
           fi
           
           echo "All tests passed successfully for release at $(date)"
+          echo "Test infrastructure validation completed successfully"
           echo "::endgroup::"
         env:
           NODE_OPTIONS: '--experimental-vm-modules'
+          # Set Jest verbose mode for better debugging in CI
+          JEST_VERBOSE: 'false'
         continue-on-error: false
       
       - name: Run lint
@@ -315,11 +367,12 @@ jobs:
           dist/
           .DS_Store
           
-          # Test files
+          # Test files and utilities
           **/*.test.js
           **/*.spec.js
           jest.config.js
           jest.setup.js
+          test-utils/
           
           # Development configuration files
           .eslintrc.*
