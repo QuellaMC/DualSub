@@ -1,4 +1,5 @@
 import { VideoPlatform } from './platform_interface.js';
+import Logger from '../utils/logger.js';
 
 const INJECT_SCRIPT_FILENAME = 'injected_scripts/disneyPlusInject.js';
 const INJECT_SCRIPT_TAG_ID = 'disneyplus-dualsub-injector-script-tag';
@@ -7,6 +8,7 @@ const INJECT_EVENT_ID = 'disneyplus-dualsub-injector-event'; // Must match injec
 export class DisneyPlusPlatform extends VideoPlatform {
     constructor() {
         super();
+        this.logger = Logger.create('DisneyPlusPlatform');
         this.currentVideoId = null;
         this.onSubtitleUrlFoundCallback = null;
         this.onVideoIdChangeCallback = null;
@@ -45,9 +47,9 @@ export class DisneyPlusPlatform extends VideoPlatform {
         ];
         this.setupNativeSubtitleSettingsListener(disneyPlusSubtitleSelectors);
 
-        console.log(
-            'DisneyPlusPlatform: Initialized and event listener added.'
-        );
+        this.logger.info('Initialized and event listener added', {
+            selectors: disneyPlusSubtitleSelectors
+        });
     }
 
     _handleInjectorEvents(e) {
@@ -55,26 +57,27 @@ export class DisneyPlusPlatform extends VideoPlatform {
         if (!data || !data.type) return;
 
         if (data.type === 'INJECT_SCRIPT_READY') {
-            console.log('DisneyPlusPlatform: Inject script is ready.');
+            this.logger.info('Inject script is ready');
         } else if (data.type === 'SUBTITLE_URL_FOUND') {
             const injectedVideoId = data.videoId;
             const vttMasterUrl = data.url;
 
             if (!injectedVideoId) {
-                console.error(
-                    'DisneyPlusPlatform: SUBTITLE_URL_FOUND event without a videoId. URL:',
-                    vttMasterUrl
-                );
+                this.logger.error('SUBTITLE_URL_FOUND event without a videoId', null, {
+                    url: vttMasterUrl
+                });
                 return;
             }
-            console.log(
-                `DisneyPlusPlatform: SUBTITLE_URL_FOUND for injectedVideoId: '${injectedVideoId}'. URL: ${vttMasterUrl}`
-            );
+            this.logger.info('SUBTITLE_URL_FOUND for injectedVideoId', {
+                injectedVideoId: injectedVideoId,
+                url: vttMasterUrl
+            });
 
             if (this.currentVideoId !== injectedVideoId) {
-                console.log(
-                    `DisneyPlusPlatform: Video context changing from '${this.currentVideoId || 'null'}' to '${injectedVideoId}'.`
-                );
+                this.logger.info('Video context changing', {
+                    previousVideoId: this.currentVideoId || 'null',
+                    newVideoId: injectedVideoId
+                });
                 if (this.currentVideoId) {
                     delete this.lastKnownVttUrlForVideoId[this.currentVideoId];
                 }
@@ -86,21 +89,20 @@ export class DisneyPlusPlatform extends VideoPlatform {
                 this.lastKnownVttUrlForVideoId[this.currentVideoId] ===
                 vttMasterUrl
             ) {
-                console.log(
-                    `DisneyPlusPlatform: VTT URL ${vttMasterUrl} for videoId ${this.currentVideoId} already processed or known. Triggering re-evaluation if callback exists.`
-                );
+                this.logger.debug('VTT URL already processed or known', {
+                    url: vttMasterUrl,
+                    videoId: this.currentVideoId
+                });
                 // If content.js needs to re-evaluate subtitles with existing data, it can do so.
                 // For now, we assume if the URL is the same, no new fetch is needed unless forced by content.js logic
                 // Potentially, we could resend the last known VTT text here if onSubtitleUrlFoundCallback expects it every time.
                 return; // Or decide if re-sending old data is needed.
             }
 
-            console.log(
-                'DisneyPlusPlatform: Requesting VTT from background. URL:',
-                vttMasterUrl,
-                'Video ID:',
-                this.currentVideoId
-            );
+            this.logger.info('Requesting VTT from background', {
+                url: vttMasterUrl,
+                videoId: this.currentVideoId
+            });
 
             // Get user settings for language preferences
             chrome.storage.sync.get(
@@ -119,12 +121,10 @@ export class DisneyPlusPlatform extends VideoPlatform {
                         },
                         (response) => {
                             if (chrome.runtime.lastError) {
-                                console.error(
-                                    'DisneyPlusPlatform: Error for VTT fetch:',
-                                    chrome.runtime.lastError.message,
-                                    'URL:',
-                                    vttMasterUrl
-                                );
+                                this.logger.error('Error for VTT fetch', chrome.runtime.lastError, {
+                                    url: vttMasterUrl,
+                                    videoId: this.currentVideoId
+                                });
                                 return;
                             }
                             if (
@@ -132,9 +132,11 @@ export class DisneyPlusPlatform extends VideoPlatform {
                                 response.success &&
                                 response.videoId === this.currentVideoId
                             ) {
-                                console.log(
-                                    `DisneyPlusPlatform: VTT fetched successfully for ${this.currentVideoId}.`
-                                );
+                                this.logger.info('VTT fetched successfully', {
+                                    videoId: this.currentVideoId,
+                                    sourceLanguage: response.sourceLanguage,
+                                    targetLanguage: response.targetLanguage
+                                });
                                 this.lastKnownVttUrlForVideoId[
                                     this.currentVideoId
                                 ] = response.url;
@@ -157,24 +159,24 @@ export class DisneyPlusPlatform extends VideoPlatform {
                                     });
                                 }
                             } else if (response && !response.success) {
-                                console.error(
-                                    'DisneyPlusPlatform: Background failed to fetch VTT:',
-                                    response.error || 'Unknown',
-                                    'URL:',
-                                    response.url
-                                );
+                                this.logger.error('Background failed to fetch VTT', null, {
+                                    error: response.error || 'Unknown',
+                                    url: response.url,
+                                    videoId: this.currentVideoId
+                                });
                             } else if (
                                 response &&
                                 response.videoId !== this.currentVideoId
                             ) {
-                                console.warn(
-                                    `DisneyPlusPlatform: Received VTT for '${response.videoId}', but current context is '${this.currentVideoId}'. Discarding.`
-                                );
+                                this.logger.warn('Received VTT for different video context - discarding', {
+                                    receivedVideoId: response.videoId,
+                                    currentVideoId: this.currentVideoId
+                                });
                             } else {
-                                console.error(
-                                    'DisneyPlusPlatform: No/invalid response from background for fetchVTT. URL:',
-                                    vttMasterUrl
-                                );
+                                this.logger.error('No/invalid response from background for fetchVTT', null, {
+                                    url: vttMasterUrl,
+                                    videoId: this.currentVideoId
+                                });
                             }
                         }
                     );
@@ -343,7 +345,7 @@ export class DisneyPlusPlatform extends VideoPlatform {
         if (this.eventListener) {
             document.removeEventListener(INJECT_EVENT_ID, this.eventListener);
             this.eventListener = null;
-            console.log('DisneyPlusPlatform: Event listener removed.');
+            this.logger.debug('Event listener removed');
         }
 
         // Clean up storage listener for subtitle settings
@@ -353,6 +355,7 @@ export class DisneyPlusPlatform extends VideoPlatform {
         if (this.subtitleObserver) {
             this.subtitleObserver.disconnect();
             this.subtitleObserver = null;
+            this.logger.debug('Subtitle mutation observer cleaned up');
         }
 
         // Remove our custom CSS
@@ -367,6 +370,6 @@ export class DisneyPlusPlatform extends VideoPlatform {
         this.onSubtitleUrlFoundCallback = null;
         this.onVideoIdChangeCallback = null;
         this.lastKnownVttUrlForVideoId = {};
-        console.log('DisneyPlusPlatform: Cleaned up.');
+        this.logger.info('Platform cleaned up successfully');
     }
 }
