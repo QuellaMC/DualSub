@@ -17,6 +17,11 @@
  * - User agent rotation and detection avoidance strategies
  */
 
+import Logger from '../utils/logger.js';
+
+// Initialize logger for DeepL Free translation provider
+const logger = Logger.create('DeepLTranslateFree');
+
 /**
  * Configuration constants for DeepL Free service
  * Centralized to simplify maintenance if DeepL changes its interface
@@ -120,18 +125,25 @@ function randomDelay(minMs = 100, maxMs = 500) {
  * @returns {Promise<string>} - Translated text
  */
 export async function translate(text, sourceLang, targetLang) {
+    logger.info('Translation request initiated', { 
+        sourceLang, 
+        targetLang, 
+        textLength: text?.length || 0 
+    });
+
     // Validate input
     if (!text || typeof text !== 'string' || text.trim() === '') {
-        console.warn('DeepL Free: Empty or invalid text provided');
+        logger.warn('Empty or invalid text provided for translation', { text: text?.substring(0, 50) });
         return text || '';
     }
 
     // Check text length limit (DeepL web interface has limits)
     let processedText = text;
     if (text.length > DEEPL_FREE_CONFIG.MAX_TEXT_LENGTH) {
-        console.warn(
-            `DeepL Free: Text too long, truncating to ${DEEPL_FREE_CONFIG.MAX_TEXT_LENGTH} characters`
-        );
+        logger.warn('Text too long, truncating to maximum allowed length', {
+            originalLength: text.length,
+            maxLength: DEEPL_FREE_CONFIG.MAX_TEXT_LENGTH
+        });
         processedText = text.substring(0, DEEPL_FREE_CONFIG.MAX_TEXT_LENGTH);
     }
 
@@ -154,13 +166,17 @@ export async function translate(text, sourceLang, targetLang) {
                 mappedTargetLang
             );
             if (result) {
+                logger.info('Translation completed successfully via Web API', {
+                    method: 'webAPI',
+                    translatedLength: result.length
+                });
                 return result;
             }
         } catch (error) {
-            console.warn(
-                'DeepL Free: Web API method failed, trying alternative:',
-                error.message
-            );
+            logger.warn('Web API method failed, trying alternative', { 
+                errorMessage: error.message,
+                method: 'webAPI'
+            });
         }
 
         // Method 2: Try the translator interface endpoint
@@ -171,19 +187,27 @@ export async function translate(text, sourceLang, targetLang) {
                 mappedTargetLang
             );
             if (result) {
+                logger.info('Translation completed successfully via Translator Interface', {
+                    method: 'translatorInterface',
+                    translatedLength: result.length
+                });
                 return result;
             }
         } catch (error) {
-            console.warn(
-                'DeepL Free: Translator interface method failed:',
-                error.message
-            );
+            logger.warn('Translator interface method failed', { 
+                errorMessage: error.message,
+                method: 'translatorInterface'
+            });
         }
 
         // If all methods fail, throw error
         throw new Error('All DeepL free translation methods failed');
     } catch (error) {
-        console.error('DeepL Free: Translation error:', error);
+        logger.error('Translation error occurred', error, { 
+            sourceLang: mappedSourceLang,
+            targetLang: mappedTargetLang,
+            textLength: processedText.length
+        });
         throw new Error(`DeepL Free Error: ${error.message}`);
     }
 }
@@ -274,7 +298,7 @@ async function translateViaTranslatorInterface(text, sourceLang, targetLang) {
     try {
         return await translateViaSimplifiedAPI(text, sourceLang, targetLang);
     } catch (error) {
-        console.warn('DeepL Free: Simplified API failed:', error.message);
+        logger.warn('Simplified API failed', { errorMessage: error.message });
         throw error;
     }
 }
@@ -365,9 +389,10 @@ async function translateViaAlternativeService(text, sourceLang, targetLang) {
         data.responseData &&
         data.responseData.translatedText
     ) {
-        console.log(
-            'DeepL Free: Using alternative service (MyMemory) as fallback'
-        );
+        logger.info('Using alternative service as fallback', {
+            service: 'MyMemory',
+            translatedLength: data.responseData.translatedText.length
+        });
         return data.responseData.translatedText;
     }
 
