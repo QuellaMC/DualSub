@@ -205,7 +205,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // Send immediate update for instant visual feedback and proper cleanup
             sendImmediateConfigUpdate({ subtitlesEnabled: enabled });
         } catch (error) {
-            popupLogger.error('Error toggling subtitles', error, { enabled, component: 'enableSubtitlesToggle' });
+            popupLogger.error('Error toggling subtitles', error, { enabled: this.checked, component: 'enableSubtitlesToggle' });
             showStatus('Failed to update subtitle setting. Please try again.');
         }
     });
@@ -227,7 +227,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // Send immediate update for instant visual feedback and proper cleanup
             sendImmediateConfigUpdate({ useNativeSubtitles: useNative });
         } catch (error) {
-            popupLogger.error('Error toggling native subtitles', error, { useNative, component: 'useNativeSubtitlesToggle' });
+            popupLogger.error('Error toggling native subtitles', error, { useNative: this.checked, component: 'useNativeSubtitlesToggle' });
             showStatus(
                 'Failed to update smart translation setting. Please try again.'
             );
@@ -247,7 +247,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // Send immediate update for instant visual feedback
             sendImmediateConfigUpdate({ originalLanguage: lang });
         } catch (error) {
-            popupLogger.error('Error setting original language', error, { lang, component: 'originalLanguageSelect' });
+            popupLogger.error('Error setting original language', error, { lang: this.value, component: 'originalLanguageSelect' });
             showStatus('Failed to update original language. Please try again.');
         }
     });
@@ -266,7 +266,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // Send immediate update for instant visual feedback
             sendImmediateConfigUpdate({ targetLanguage: lang });
         } catch (error) {
-            popupLogger.error('Error setting target language', error, { lang, component: 'targetLanguageSelect' });
+            popupLogger.error('Error setting target language', error, { lang: this.value, component: 'targetLanguageSelect' });
             showStatus('Failed to update target language. Please try again.');
         }
     });
@@ -303,7 +303,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // Send immediate update for instant visual feedback
             sendImmediateConfigUpdate({ subtitleTimeOffset: offset });
         } catch (error) {
-            popupLogger.error('Error setting time offset', error, { offset, component: 'subtitleTimeOffsetInput' });
+            popupLogger.error('Error setting time offset', error, { offset: parseFloat(this.value), component: 'subtitleTimeOffsetInput' });
             showStatus('Failed to update time offset. Please try again.');
         }
     });
@@ -320,7 +320,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // Send immediate update for instant visual feedback
             sendImmediateConfigUpdate({ subtitleLayoutOrder: layoutOrder });
         } catch (error) {
-            popupLogger.error('Error setting layout order', error, { layoutOrder, component: 'subtitleLayoutOrderSelect' });
+            popupLogger.error('Error setting layout order', error, { layoutOrder: this.value, component: 'subtitleLayoutOrderSelect' });
             showStatus('Failed to update display order. Please try again.');
         }
     });
@@ -347,7 +347,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 popupLogger.error(
                     'Error setting layout orientation',
                     error,
-                    { layoutOrientation, component: 'subtitleLayoutOrientationSelect' }
+                    { layoutOrientation: this.value, component: 'subtitleLayoutOrientationSelect' }
                 );
                 showStatus(
                     'Failed to update layout orientation. Please try again.'
@@ -371,7 +371,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // Send immediate update for instant visual feedback
             sendImmediateConfigUpdate({ subtitleFontSize: fontSize });
         } catch (error) {
-            popupLogger.error('Error setting font size', error, { fontSize, component: 'subtitleFontSizeInput' });
+            popupLogger.error('Error setting font size', error, { fontSize: parseFloat(this.value), component: 'subtitleFontSizeInput' });
             showStatus('Failed to update font size. Please try again.');
         }
     });
@@ -392,7 +392,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // Send immediate update for instant visual feedback
             sendImmediateConfigUpdate({ subtitleGap: gap });
         } catch (error) {
-            popupLogger.error('Error setting subtitle gap', error, { gap, component: 'subtitleGapInput' });
+            popupLogger.error('Error setting subtitle gap', error, { gap: parseFloat(this.value), component: 'subtitleGapInput' });
             showStatus('Failed to update subtitle gap. Please try again.');
         }
     });

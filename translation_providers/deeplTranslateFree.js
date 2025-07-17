@@ -147,16 +147,16 @@ export async function translate(text, sourceLang, targetLang) {
         processedText = text.substring(0, DEEPL_FREE_CONFIG.MAX_TEXT_LENGTH);
     }
 
+    // Map language codes to DeepL web format (moved outside try block for proper scope)
+    const mappedSourceLang = mapLanguageCodeForDeepLWeb(sourceLang);
+    const mappedTargetLang = mapLanguageCodeForDeepLWeb(targetLang);
+
     try {
         // Add random delay to avoid detection
         await randomDelay(
             DEEPL_FREE_CONFIG.DELAY_RANGE.MIN,
             DEEPL_FREE_CONFIG.DELAY_RANGE.MAX
         );
-
-        // Map language codes to DeepL web format
-        const mappedSourceLang = mapLanguageCodeForDeepLWeb(sourceLang);
-        const mappedTargetLang = mapLanguageCodeForDeepLWeb(targetLang);
 
         // Method 1: Try the new DeepL web API endpoint
         try {
@@ -342,7 +342,7 @@ async function translateViaSimplifiedAPI(text, sourceLang, targetLang) {
                 return data.translations[0].text;
             }
         }
-    } catch (error) {
+    } catch {
         // Expected to fail, continue to next method
     }
 

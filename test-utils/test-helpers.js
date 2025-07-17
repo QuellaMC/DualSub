@@ -5,7 +5,7 @@
  * and mock state management functionality for consistent testing patterns.
  */
 
-import { jest } from '@jest/globals';
+import { jest, describe, test, beforeEach, afterEach, expect } from '@jest/globals';
 import { LocationMock, mockWindowLocation } from './location-mock.js';
 import { ChromeApiMock, mockChromeApi } from './chrome-api-mock.js';
 import { createLoggerMock } from './logger-mock.js';

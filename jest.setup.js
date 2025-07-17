@@ -1,5 +1,5 @@
 // Import jest for ES modules compatibility
-import { jest } from '@jest/globals';
+import { jest, beforeEach, afterEach } from '@jest/globals';
 
 // Import centralized mock utilities
 import { ChromeApiMock } from './test-utils/chrome-api-mock.js';
@@ -15,9 +15,6 @@ global.mockInstances = {
 
 // Setup Chrome API mock globally
 global.chrome = global.mockInstances.chromeApi;
-
-// Store original location for tests that need to mock it
-const originalLocation = global.window?.location;
 
 // Mock console methods to capture logs in tests while preserving original functionality
 const originalConsole = { ...console };
