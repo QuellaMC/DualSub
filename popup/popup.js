@@ -1,7 +1,34 @@
 // disneyplus-dualsub-chrome-extension/popup/popup.js
 import { configService } from '../services/configService.js';
+import Logger from '../utils/logger.js';
 
 document.addEventListener('DOMContentLoaded', function () {
+    // Initialize popup logger
+    const popupLogger = Logger.create('Popup', configService);
+    
+    // Initialize logging level from configuration
+    (async () => {
+        try {
+            const loggingLevel = await configService.get('loggingLevel');
+            popupLogger.updateLevel(loggingLevel);
+            popupLogger.info('Popup logger initialized', { level: loggingLevel });
+        } catch (error) {
+            // Fallback to INFO level if config can't be read
+            popupLogger.updateLevel(Logger.LEVELS.INFO);
+            popupLogger.warn('Failed to load logging level from config, using INFO level', error);
+        }
+    })();
+
+    // Listen for logging level changes
+    configService.onChanged((changes) => {
+        if ('loggingLevel' in changes) {
+            popupLogger.updateLevel(changes.loggingLevel);
+            popupLogger.info('Logging level updated from configuration change', { 
+                newLevel: changes.loggingLevel 
+            });
+        }
+    });
+
     // UI Element References
     const enableSubtitlesToggle = document.getElementById('enableSubtitles');
     const useNativeSubtitlesToggle =
@@ -115,7 +142,7 @@ document.addEventListener('DOMContentLoaded', function () {
             subtitleLayoutOrientationSelect.value =
                 settings.subtitleLayoutOrientation;
         } catch (error) {
-            console.error('Popup: Error loading settings:', error);
+            popupLogger.error('Error loading settings', error, { component: 'loadSettings' });
             showStatus(
                 'Failed to load settings. Please try refreshing the popup.',
                 5000
@@ -151,9 +178,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     })
                     .catch((error) => {
                         // Fail silently - the storage change mechanism should handle it as fallback
-                        console.log(
-                            'Popup: Direct message failed, relying on storage events:',
-                            error
+                        popupLogger.debug(
+                            'Direct message failed, relying on storage events',
+                            { error: error.message, component: 'sendImmediateConfigUpdate' }
                         );
                     });
             }
@@ -178,7 +205,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // Send immediate update for instant visual feedback and proper cleanup
             sendImmediateConfigUpdate({ subtitlesEnabled: enabled });
         } catch (error) {
-            console.error('Popup: Error toggling subtitles:', error);
+            popupLogger.error('Error toggling subtitles', error, { enabled: this.checked, component: 'enableSubtitlesToggle' });
             showStatus('Failed to update subtitle setting. Please try again.');
         }
     });
@@ -200,7 +227,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // Send immediate update for instant visual feedback and proper cleanup
             sendImmediateConfigUpdate({ useNativeSubtitles: useNative });
         } catch (error) {
-            console.error('Popup: Error toggling native subtitles:', error);
+            popupLogger.error('Error toggling native subtitles', error, { useNative: this.checked, component: 'useNativeSubtitlesToggle' });
             showStatus(
                 'Failed to update smart translation setting. Please try again.'
             );
@@ -220,7 +247,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // Send immediate update for instant visual feedback
             sendImmediateConfigUpdate({ originalLanguage: lang });
         } catch (error) {
-            console.error('Popup: Error setting original language:', error);
+            popupLogger.error('Error setting original language', error, { lang: this.value, component: 'originalLanguageSelect' });
             showStatus('Failed to update original language. Please try again.');
         }
     });
@@ -239,7 +266,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // Send immediate update for instant visual feedback
             sendImmediateConfigUpdate({ targetLanguage: lang });
         } catch (error) {
-            console.error('Popup: Error setting target language:', error);
+            popupLogger.error('Error setting target language', error, { lang: this.value, component: 'targetLanguageSelect' });
             showStatus('Failed to update target language. Please try again.');
         }
     });
@@ -257,9 +284,10 @@ document.addEventListener('DOMContentLoaded', function () {
                         await configService.get('subtitleTimeOffset');
                     this.value = currentOffset;
                 } catch (error) {
-                    console.error(
-                        'Popup: Error loading subtitle time offset:',
-                        error
+                    popupLogger.error(
+                        'Error loading subtitle time offset',
+                        error,
+                        { component: 'subtitleTimeOffsetInput' }
                     );
                 }
                 return;
@@ -275,7 +303,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // Send immediate update for instant visual feedback
             sendImmediateConfigUpdate({ subtitleTimeOffset: offset });
         } catch (error) {
-            console.error('Popup: Error setting time offset:', error);
+            popupLogger.error('Error setting time offset', error, { offset: parseFloat(this.value), component: 'subtitleTimeOffsetInput' });
             showStatus('Failed to update time offset. Please try again.');
         }
     });
@@ -292,7 +320,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // Send immediate update for instant visual feedback
             sendImmediateConfigUpdate({ subtitleLayoutOrder: layoutOrder });
         } catch (error) {
-            console.error('Popup: Error setting layout order:', error);
+            popupLogger.error('Error setting layout order', error, { layoutOrder: this.value, component: 'subtitleLayoutOrderSelect' });
             showStatus('Failed to update display order. Please try again.');
         }
     });
@@ -316,9 +344,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     subtitleLayoutOrientation: layoutOrientation,
                 });
             } catch (error) {
-                console.error(
-                    'Popup: Error setting layout orientation:',
-                    error
+                popupLogger.error(
+                    'Error setting layout orientation',
+                    error,
+                    { layoutOrientation: this.value, component: 'subtitleLayoutOrientationSelect' }
                 );
                 showStatus(
                     'Failed to update layout orientation. Please try again.'
@@ -342,7 +371,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // Send immediate update for instant visual feedback
             sendImmediateConfigUpdate({ subtitleFontSize: fontSize });
         } catch (error) {
-            console.error('Popup: Error setting font size:', error);
+            popupLogger.error('Error setting font size', error, { fontSize: parseFloat(this.value), component: 'subtitleFontSizeInput' });
             showStatus('Failed to update font size. Please try again.');
         }
     });
@@ -363,7 +392,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // Send immediate update for instant visual feedback
             sendImmediateConfigUpdate({ subtitleGap: gap });
         } catch (error) {
-            console.error('Popup: Error setting subtitle gap:', error);
+            popupLogger.error('Error setting subtitle gap', error, { gap: parseFloat(this.value), component: 'subtitleGapInput' });
             showStatus('Failed to update subtitle gap. Please try again.');
         }
     });
@@ -396,9 +425,9 @@ document.addEventListener('DOMContentLoaded', function () {
             translationsCache[normalizedLangCode] = translations;
             return translations;
         } catch (error) {
-            console.warn(
-                `Could not load '${normalizedLangCode}' translations, falling back to English. Error:`,
-                error
+            popupLogger.warn(
+                `Could not load '${normalizedLangCode}' translations, falling back to English`,
+                { normalizedLangCode, error: error.message, component: 'loadTranslations' }
             );
             // Fallback to English
             const fallbackPath = chrome.runtime.getURL(
@@ -410,9 +439,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 translationsCache['en'] = translations;
                 return translations;
             } catch (fatalError) {
-                console.error(
-                    `Fatal: Failed to load any translations, including English.`,
-                    fatalError
+                popupLogger.error(
+                    'Fatal: Failed to load any translations, including English',
+                    fatalError,
+                    { component: 'loadTranslations' }
                 );
                 return {};
             }
@@ -460,8 +490,9 @@ document.addEventListener('DOMContentLoaded', function () {
     configService.onChanged(async (changes) => {
         if (changes.uiLanguage) {
             const newLang = changes.uiLanguage;
-            console.log(
-                `Popup: Detected UI language change to '${newLang}'. Reloading UI.`
+            popupLogger.info(
+                `Detected UI language change to '${newLang}'. Reloading UI.`,
+                { newLang, component: 'uiLanguageChange' }
             );
             loadedTranslations = await loadTranslations(newLang);
             updateUILanguage();

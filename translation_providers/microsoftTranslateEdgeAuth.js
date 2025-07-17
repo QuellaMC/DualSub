@@ -1,9 +1,14 @@
 // disneyplus-dualsub-chrome-extension/translation_providers/microsoftTranslateEdgeAuth.js
 // Thanks to: https://github.com/Chewawi/microsoft-translate-api/
 
+import Logger from '../utils/logger.js';
+
 const API_AUTH_EDGE = 'https://edge.microsoft.com/translate/auth';
 const API_TRANSLATE_COGNITIVE =
     'https://api.cognitive.microsofttranslator.com/translate';
+
+// Initialize logger for Microsoft Translate provider
+const logger = Logger.create('MicrosoftTranslate');
 
 // Safe User-Agent that works in both browser and service worker environments
 function getDefaultUserAgent() {
@@ -26,9 +31,7 @@ let ongoingAuthPromise = null;
  * Fetches or refreshes the authentication token from Microsoft Edge's auth service.
  */
 async function fetchAuthToken() {
-    console.log(
-        'MicrosoftTranslateEdgeAuth: Attempting to fetch new auth token.'
-    );
+    logger.debug('Attempting to fetch new auth token');
     try {
         const response = await fetch(API_AUTH_EDGE, {
             headers: { 'User-Agent': DEFAULT_USER_AGENT },
@@ -58,9 +61,9 @@ async function fetchAuthToken() {
             }
         } catch (decodeError) {
             // Manual base64 decode as a last resort (simple implementation)
-            console.warn(
-                'MicrosoftTranslateEdgeAuth: Standard base64 decode failed, using fallback'
-            );
+            logger.warn('Standard base64 decode failed, using fallback', { 
+                errorMessage: decodeError.message 
+            });
             const base64chars =
                 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
             const normalizedPayload = payloadBase64
@@ -100,16 +103,13 @@ async function fetchAuthToken() {
 
         globalAuthToken = authJWT;
         tokenExpiresAt = jwtPayload.exp * 1000; // Convert to milliseconds
-        console.log(
-            'MicrosoftTranslateEdgeAuth: New auth token fetched. Expires at:',
-            new Date(tokenExpiresAt).toISOString()
-        );
+        logger.debug('New auth token fetched successfully', {
+            expiresAt: new Date(tokenExpiresAt).toISOString(),
+            tokenLength: authJWT.length
+        });
         return globalAuthToken;
     } catch (e) {
-        console.error(
-            'MicrosoftTranslateEdgeAuth: Failed to fetch auth token:',
-            e
-        );
+        logger.error('Failed to fetch auth token', e);
         globalAuthToken = null;
         tokenExpiresAt = 0;
         throw new Error('Failed to fetch auth token for Microsoft Translator.');
@@ -131,14 +131,10 @@ function isTokenExpired() {
 async function ensureAuthentication() {
     if (isTokenExpired()) {
         if (ongoingAuthPromise) {
-            console.log(
-                'MicrosoftTranslateEdgeAuth: Waiting for ongoing auth token refresh...'
-            );
+            logger.debug('Waiting for ongoing auth token refresh');
             await ongoingAuthPromise;
         } else {
-            console.log(
-                'MicrosoftTranslateEdgeAuth: Token expired or missing. Refreshing...'
-            );
+            logger.debug('Token expired or missing, refreshing');
             ongoingAuthPromise = fetchAuthToken();
             try {
                 await ongoingAuthPromise;
@@ -165,7 +161,14 @@ async function ensureAuthentication() {
  * @throws {Error} If the translation API request or processing fails.
  */
 export async function translate(text, sourceLang, targetLang) {
+    logger.info('Translation request initiated', { 
+        sourceLang, 
+        targetLang, 
+        textLength: text?.length || 0 
+    });
+
     if (!text || typeof text !== 'string' || text.trim() === '') {
+        logger.warn('Empty or invalid text provided for translation', { text: text?.substring(0, 50) });
         return ''; // Return empty string for empty input
     }
 
@@ -212,10 +215,11 @@ export async function translate(text, sourceLang, targetLang) {
             } catch (e) {
                 errorDetails = await response.text();
             }
-            console.error(
-                `MicrosoftTranslateEdgeAuth: API HTTP error! Status: ${response.status}. Details:`,
-                errorDetails
-            );
+            logger.error('Microsoft Translate API HTTP error', null, {
+                status: response.status,
+                statusText: response.statusText,
+                errorDetails: errorDetails.substring(0, 200)
+            });
             throw new Error(
                 `Translation API HTTP error ${response.status}. Details: ${errorDetails.substring(0, 200)}`
             );
@@ -231,21 +235,26 @@ export async function translate(text, sourceLang, targetLang) {
             result[0].translations.length > 0 &&
             typeof result[0].translations[0].text === 'string'
         ) {
-            return result[0].translations[0].text;
+            const translatedText = result[0].translations[0].text;
+            logger.info('Translation completed successfully', {
+                translatedLength: translatedText.length,
+                detectedSourceLang: result[0].detectedLanguage?.language
+            });
+            return translatedText;
         } else {
-            console.error(
-                'MicrosoftTranslateEdgeAuth: Translation JSON parsing failed or unexpected structure. Response:',
-                result
-            );
+            logger.error('Translation JSON parsing failed or unexpected structure', null, {
+                responseData: result
+            });
             throw new Error(
                 'Translation Error: Malformed JSON response from Microsoft Translator.'
             );
         }
     } catch (error) {
-        console.error(
-            'MicrosoftTranslateEdgeAuth: API request/processing error:',
-            error
-        );
+        logger.error('API request/processing error occurred', error, {
+            sourceLang: actualSourceLang,
+            targetLang,
+            textLength: text?.length || 0
+        });
         // Re-throw the error to be caught by the caller in background.js
         throw error;
     }

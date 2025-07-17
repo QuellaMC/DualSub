@@ -1,4 +1,6 @@
 import { VideoPlatform } from './platform_interface.js';
+import Logger from '../utils/logger.js';
+import { configService } from '../services/configService.js';
 
 // Define constants for the injected script and communication events
 // It is crucial that these values match what you will use in 'netflixInject.js'
@@ -9,11 +11,25 @@ const INJECT_EVENT_ID = 'netflix-dualsub-injector-event'; // Must match netflixI
 export class NetflixPlatform extends VideoPlatform {
     constructor() {
         super();
+        this.logger = Logger.create('NetflixPlatform', configService);
         this.currentVideoId = null;
         this.onSubtitleUrlFoundCallback = null;
         this.onVideoIdChangeCallback = null;
         this.lastKnownVttUrlForVideoId = {}; // To prevent reprocessing the same subtitle data
         this.eventListener = null; // To hold the bound event listener for later removal
+        this.initializeLogger();
+    }
+
+    /**
+     * Initialize logger with logging level detection
+     */
+    async initializeLogger() {
+        try {
+            await this.logger.updateLevel();
+        } catch (error) {
+            // Logger initialization shouldn't block platform initialization
+            console.warn('NetflixPlatform: Failed to initialize logger level:', error);
+        }
     }
 
     isPlatformActive() {
@@ -45,7 +61,9 @@ export class NetflixPlatform extends VideoPlatform {
         ];
         this.setupNativeSubtitleSettingsListener(netflixSubtitleSelectors);
 
-        console.log('NetflixPlatform: Initialized and event listener added.');
+        this.logger.info('Initialized and event listener added', {
+            selectors: netflixSubtitleSelectors
+        });
     }
 
     handleInjectorEvents(e) {
@@ -53,55 +71,56 @@ export class NetflixPlatform extends VideoPlatform {
         if (!data || !data.type) return;
 
         if (data.type === 'INJECT_SCRIPT_READY') {
-            console.log('NetflixPlatform: Inject script is ready.');
+            this.logger.info('Inject script is ready');
         } else if (data.type === 'SUBTITLE_DATA_FOUND') {
-            console.log(
-                'NetflixPlatform: Raw subtitle data received:',
-                data.payload
-            );
+            this.logger.debug('Raw subtitle data received', {
+                payload: data.payload
+            });
 
             const { movieId, timedtexttracks } = data.payload;
 
             if (!movieId) {
-                console.error(
-                    'NetflixPlatform: SUBTITLE_DATA_FOUND event missing movieId.',
-                    data.payload
-                );
+                this.logger.error('SUBTITLE_DATA_FOUND event missing movieId', null, {
+                    payload: data.payload
+                });
                 return;
             }
 
             if (!timedtexttracks) {
-                console.error(
-                    'NetflixPlatform: SUBTITLE_DATA_FOUND event missing timedtexttracks.',
-                    data.payload
-                );
+                this.logger.error('SUBTITLE_DATA_FOUND event missing timedtexttracks', null, {
+                    payload: data.payload
+                });
                 return;
             }
 
-            console.log(
-                `NetflixPlatform: SUBTITLE_DATA_FOUND for movieId: '${movieId}'. Data type:`,
-                typeof timedtexttracks,
-                'Content:',
-                timedtexttracks
-            );
+            this.logger.debug('SUBTITLE_DATA_FOUND for movieId', {
+                movieId: movieId,
+                dataType: typeof timedtexttracks,
+                content: timedtexttracks
+            });
 
             // Extract movieId from current URL to ensure we only process subtitles for the current content
             const urlMovieId = this.extractMovieIdFromUrl();
             if (urlMovieId && String(movieId) !== String(urlMovieId)) {
-                console.log(
-                    `NetflixPlatform: Ignoring subtitle data for movieId '${movieId}' (type: ${typeof movieId}) - doesn't match current URL movieId '${urlMovieId}' (type: ${typeof urlMovieId})`
-                );
+                this.logger.debug('Ignoring subtitle data - movieId mismatch', {
+                    receivedMovieId: movieId,
+                    receivedType: typeof movieId,
+                    urlMovieId: urlMovieId,
+                    urlType: typeof urlMovieId
+                });
                 return;
             }
-            console.log(
-                `NetflixPlatform: MovieId '${movieId}' matches URL movieId '${urlMovieId}' - processing subtitle data`
-            );
+            this.logger.debug('MovieId matches URL - processing subtitle data', {
+                movieId: movieId,
+                urlMovieId: urlMovieId
+            });
 
             // Handle video ID change
             if (this.currentVideoId !== movieId) {
-                console.log(
-                    `NetflixPlatform: Video context changing from '${this.currentVideoId || 'null'}' to '${movieId}'.`
-                );
+                this.logger.info('Video context changing', {
+                    previousVideoId: this.currentVideoId || 'null',
+                    newVideoId: movieId
+                });
                 if (this.currentVideoId) {
                     delete this.lastKnownVttUrlForVideoId[this.currentVideoId];
                 }
@@ -116,29 +135,28 @@ export class NetflixPlatform extends VideoPlatform {
                 !Array.isArray(timedtexttracks) ||
                 timedtexttracks.length === 0
             ) {
-                console.warn(
-                    'NetflixPlatform: No subtitle tracks available in timedtexttracks data.'
-                );
+                this.logger.warn('No subtitle tracks available in timedtexttracks data');
                 return;
             }
 
-            console.log(
-                `NetflixPlatform: Found ${timedtexttracks.length} subtitle tracks for movieId: '${movieId}'.`
-            );
+            this.logger.info('Found subtitle tracks for movieId', {
+                trackCount: timedtexttracks.length,
+                movieId: movieId
+            });
 
             // Filter tracks first: exclude forced narrative tracks and None tracks
             const validTracks = timedtexttracks.filter(
                 (track) => !track.isNoneTrack && !track.isForcedNarrative
             );
 
-            console.log(
-                `NetflixPlatform: Filtered to ${validTracks.length} valid tracks (non-forced, non-None)`
-            );
+            this.logger.debug('Filtered to valid tracks', {
+                validTrackCount: validTracks.length,
+                originalCount: timedtexttracks.length,
+                filterCriteria: 'non-forced, non-None'
+            });
 
             if (validTracks.length === 0) {
-                console.warn(
-                    'NetflixPlatform: No valid subtitle tracks available after filtering.'
-                );
+                this.logger.warn('No valid subtitle tracks available after filtering');
                 return;
             }
 
@@ -186,13 +204,10 @@ export class NetflixPlatform extends VideoPlatform {
             }
 
             if (!primaryTrackUrl) {
-                console.warn(
-                    'NetflixPlatform: No downloadable subtitle URLs found in any track.'
-                );
-                console.log(
-                    'NetflixPlatform: Full tracks data for debugging:',
-                    JSON.stringify(timedtexttracks, null, 2)
-                );
+                this.logger.warn('No downloadable subtitle URLs found in any track');
+                this.logger.debug('Full tracks data for debugging', {
+                    tracksData: JSON.stringify(timedtexttracks, null, 2)
+                });
                 return;
             }
 
@@ -200,18 +215,19 @@ export class NetflixPlatform extends VideoPlatform {
                 this.lastKnownVttUrlForVideoId[this.currentVideoId] ===
                 primaryTrackUrl
             ) {
-                console.log(
-                    `NetflixPlatform: Subtitle data for videoId ${this.currentVideoId} already processed.`
-                );
+                this.logger.debug('Subtitle data already processed', {
+                    videoId: this.currentVideoId,
+                    url: primaryTrackUrl
+                });
                 return;
             }
             this.lastKnownVttUrlForVideoId[this.currentVideoId] =
                 primaryTrackUrl;
 
-            console.log(
-                'NetflixPlatform: Requesting VTT processing from background. Video ID:',
-                this.currentVideoId
-            );
+            this.logger.info('Requesting VTT processing from background', {
+                videoId: this.currentVideoId,
+                primaryTrackUrl: primaryTrackUrl
+            });
 
             chrome.storage.sync.get(
                 ['targetLanguage', 'originalLanguage', 'useNativeSubtitles'],
@@ -234,10 +250,9 @@ export class NetflixPlatform extends VideoPlatform {
                         },
                         (response) => {
                             if (chrome.runtime.lastError) {
-                                console.error(
-                                    'NetflixPlatform: Error for VTT fetch:',
-                                    chrome.runtime.lastError.message
-                                );
+                                this.logger.error('Error for VTT fetch', chrome.runtime.lastError, {
+                                    videoId: this.currentVideoId
+                                });
                                 delete this.lastKnownVttUrlForVideoId[
                                     this.currentVideoId
                                 ]; // Allow retry
@@ -248,9 +263,11 @@ export class NetflixPlatform extends VideoPlatform {
                                 response.success &&
                                 response.videoId === this.currentVideoId
                             ) {
-                                console.log(
-                                    `NetflixPlatform: VTT processed successfully for ${this.currentVideoId}.`
-                                );
+                                this.logger.info('VTT processed successfully', {
+                                    videoId: this.currentVideoId,
+                                    sourceLanguage: response.sourceLanguage,
+                                    targetLanguage: response.targetLanguage
+                                });
                                 if (this.onSubtitleUrlFoundCallback) {
                                     // The callback expects a 'SubtitleData' object, as defined in subtitleUtilities.js
                                     this.onSubtitleUrlFoundCallback({
@@ -267,10 +284,10 @@ export class NetflixPlatform extends VideoPlatform {
                                     });
                                 }
                             } else if (response && !response.success) {
-                                console.error(
-                                    'NetflixPlatform: Background failed to process VTT:',
-                                    response.error
-                                );
+                                this.logger.error('Background failed to process VTT', null, {
+                                    error: response.error,
+                                    videoId: this.currentVideoId
+                                });
                                 delete this.lastKnownVttUrlForVideoId[
                                     this.currentVideoId
                                 ];
@@ -278,9 +295,10 @@ export class NetflixPlatform extends VideoPlatform {
                                 response &&
                                 response.videoId !== this.currentVideoId
                             ) {
-                                console.warn(
-                                    `NetflixPlatform: Received VTT for '${response.videoId}', but current context is '${this.currentVideoId}'. Discarding.`
-                                );
+                                this.logger.warn('Received VTT for different video context - discarding', {
+                                    receivedVideoId: response.videoId,
+                                    currentVideoId: this.currentVideoId
+                                });
                             }
                         }
                     );
@@ -304,21 +322,22 @@ export class NetflixPlatform extends VideoPlatform {
             const match = path.match(/\/watch\/(\d+)/);
             if (match && match[1]) {
                 const extractedId = match[1];
-                console.log(
-                    `NetflixPlatform: Extracted movieId '${extractedId}' from URL: ${window.location.href}`
-                );
+                this.logger.debug('Extracted movieId from URL', {
+                    extractedId: extractedId,
+                    url: window.location.href
+                });
                 return extractedId;
             }
 
-            console.warn(
-                `NetflixPlatform: Could not extract movieId from URL: ${window.location.href}`
-            );
+            this.logger.warn('Could not extract movieId from URL', {
+                url: window.location.href,
+                pathname: path
+            });
             return null;
         } catch (error) {
-            console.error(
-                `NetflixPlatform: Error extracting movieId from URL:`,
-                error
-            );
+            this.logger.error('Error extracting movieId from URL', error, {
+                url: window.location.href
+            });
             return null;
         }
     }
@@ -466,7 +485,7 @@ export class NetflixPlatform extends VideoPlatform {
         if (this.eventListener) {
             document.removeEventListener(INJECT_EVENT_ID, this.eventListener);
             this.eventListener = null;
-            console.log('NetflixPlatform: Event listener removed.');
+            this.logger.debug('Event listener removed');
         }
 
         // Clean up storage listener for subtitle settings
@@ -476,9 +495,7 @@ export class NetflixPlatform extends VideoPlatform {
         if (this.subtitleObserver) {
             this.subtitleObserver.disconnect();
             this.subtitleObserver = null;
-            console.log(
-                'NetflixPlatform: Subtitle mutation observer cleaned up.'
-            );
+            this.logger.debug('Subtitle mutation observer cleaned up');
         }
 
         // Remove our custom CSS
@@ -497,6 +514,6 @@ export class NetflixPlatform extends VideoPlatform {
         this.onSubtitleUrlFoundCallback = null;
         this.onVideoIdChangeCallback = null;
         this.lastKnownVttUrlForVideoId = {};
-        console.log('NetflixPlatform: Cleaned up.');
+        this.logger.info('Platform cleaned up successfully');
     }
 }

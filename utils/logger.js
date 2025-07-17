@@ -1,17 +1,28 @@
 /**
  * Global logging framework for the extension
- * Provides component-based logging with configurable debug mode
+ * Provides component-based logging with configurable logging levels
  */
 class Logger {
     /**
+     * Logging level constants
+     */
+    static LEVELS = {
+        OFF: 0,
+        ERROR: 1,
+        WARN: 2,
+        INFO: 3,
+        DEBUG: 4
+    };
+
+    /**
      * Creates a new Logger instance
      * @param {string} component - The component name for this logger
-     * @param {Object} configService - Optional ConfigService instance for debug mode detection
+     * @param {Object} configService - Optional ConfigService instance for logging level detection
      */
     constructor(component, configService = null) {
         this.component = component;
         this.configService = configService;
-        this.debugEnabled = false;
+        this.currentLevel = Logger.LEVELS.INFO; // Default level
     }
 
     /**
@@ -24,29 +35,49 @@ class Logger {
         return new Logger(component, configService);
     }
 
+
+
     /**
-     * Updates debug mode from configuration
+     * Updates logging level from configuration or direct value
+     * @param {number} level - Optional direct level to set
      * @returns {Promise<void>}
      */
-    async updateDebugMode() {
+    async updateLevel(level = null) {
+        if (level !== null) {
+            // Direct level setting
+            this.currentLevel = level;
+            return;
+        }
+
         if (this.configService) {
             try {
-                const debugMode = await this.configService.get('debugMode');
-                this.debugEnabled = debugMode || false;
+                const loggingLevel = await this.configService.get('loggingLevel');
+                this.currentLevel = loggingLevel !== undefined ? loggingLevel : Logger.LEVELS.INFO;
             } catch (error) {
-                // Fallback to false if config can't be read
-                this.debugEnabled = false;
+                // Fallback to INFO level if config can't be read
+                this.currentLevel = Logger.LEVELS.INFO;
             }
         }
     }
 
+
+
     /**
-     * Logs debug information when debug mode is enabled
+     * Checks if a message should be logged based on current level
+     * @param {number} level - The level to check
+     * @returns {boolean} True if message should be logged
+     */
+    shouldLog(level) {
+        return this.currentLevel >= level && this.currentLevel > Logger.LEVELS.OFF;
+    }
+
+    /**
+     * Logs debug information when debug level is enabled
      * @param {string} message - The debug message
      * @param {Object} data - Additional data to log
      */
     debug(message, data = {}) {
-        if (!this.debugEnabled) {
+        if (!this.shouldLog(Logger.LEVELS.DEBUG)) {
             return;
         }
         const formattedMessage = this.formatMessage('DEBUG', message, data);
@@ -59,6 +90,9 @@ class Logger {
      * @param {Object} data - Additional data to log
      */
     info(message, data = {}) {
+        if (!this.shouldLog(Logger.LEVELS.INFO)) {
+            return;
+        }
         const formattedMessage = this.formatMessage('INFO', message, data);
         console.info(formattedMessage);
     }
@@ -69,17 +103,24 @@ class Logger {
      * @param {Object} data - Additional data to log
      */
     warn(message, data = {}) {
+        if (!this.shouldLog(Logger.LEVELS.WARN)) {
+            return;
+        }
         const formattedMessage = this.formatMessage('WARN', message, data);
         console.warn(formattedMessage);
     }
 
     /**
-     * Always logs errors with full context
+     * Logs errors with full context
      * @param {string} message - The error message
      * @param {Error} error - The error object (optional)
      * @param {Object} context - Additional context information
      */
     error(message, error = null, context = {}) {
+        if (!this.shouldLog(Logger.LEVELS.ERROR)) {
+            return;
+        }
+        
         const errorData = {
             ...context,
             ...(error && {
