@@ -1,5 +1,6 @@
 import { VideoPlatform } from './platform_interface.js';
 import Logger from '../utils/logger.js';
+import { configService } from '../services/configService.js';
 
 const INJECT_SCRIPT_FILENAME = 'injected_scripts/disneyPlusInject.js';
 const INJECT_SCRIPT_TAG_ID = 'disneyplus-dualsub-injector-script-tag';
@@ -8,12 +9,25 @@ const INJECT_EVENT_ID = 'disneyplus-dualsub-injector-event'; // Must match injec
 export class DisneyPlusPlatform extends VideoPlatform {
     constructor() {
         super();
-        this.logger = Logger.create('DisneyPlusPlatform');
+        this.logger = Logger.create('DisneyPlusPlatform', configService);
         this.currentVideoId = null;
         this.onSubtitleUrlFoundCallback = null;
         this.onVideoIdChangeCallback = null;
         this.lastKnownVttUrlForVideoId = {};
         this.eventListener = null; // To store the bound event listener for removal
+        this.initializeLogger();
+    }
+
+    /**
+     * Initialize logger with logging level detection
+     */
+    async initializeLogger() {
+        try {
+            await this.logger.updateLevel();
+        } catch (error) {
+            // Logger initialization shouldn't block platform initialization
+            console.warn('DisneyPlusPlatform: Failed to initialize logger level:', error);
+        }
     }
 
     isPlatformActive() {

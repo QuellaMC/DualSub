@@ -1,5 +1,6 @@
 import { VideoPlatform } from './platform_interface.js';
 import Logger from '../utils/logger.js';
+import { configService } from '../services/configService.js';
 
 // Define constants for the injected script and communication events
 // It is crucial that these values match what you will use in 'netflixInject.js'
@@ -10,12 +11,25 @@ const INJECT_EVENT_ID = 'netflix-dualsub-injector-event'; // Must match netflixI
 export class NetflixPlatform extends VideoPlatform {
     constructor() {
         super();
-        this.logger = Logger.create('NetflixPlatform');
+        this.logger = Logger.create('NetflixPlatform', configService);
         this.currentVideoId = null;
         this.onSubtitleUrlFoundCallback = null;
         this.onVideoIdChangeCallback = null;
         this.lastKnownVttUrlForVideoId = {}; // To prevent reprocessing the same subtitle data
         this.eventListener = null; // To hold the bound event listener for later removal
+        this.initializeLogger();
+    }
+
+    /**
+     * Initialize logger with logging level detection
+     */
+    async initializeLogger() {
+        try {
+            await this.logger.updateLevel();
+        } catch (error) {
+            // Logger initialization shouldn't block platform initialization
+            console.warn('NetflixPlatform: Failed to initialize logger level:', error);
+        }
     }
 
     isPlatformActive() {

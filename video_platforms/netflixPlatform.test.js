@@ -60,7 +60,7 @@ describe('NetflixPlatform Logging Integration', () => {
 
     describe('Logger Initialization', () => {
         test('should create logger instance with correct component name', () => {
-            expect(Logger.create).toHaveBeenCalledWith('NetflixPlatform');
+            expect(Logger.create).toHaveBeenCalledWith('NetflixPlatform', expect.any(Object));
             expect(platform.logger).toBe(mockLogger);
         });
     });
