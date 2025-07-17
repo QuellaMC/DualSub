@@ -180,5 +180,16 @@
     "providerGoogleName": { "message": "Google 번역 (무료)" },
     "providerMicrosoftName": { "message": "Microsoft 번역 (무료)" },
     "providerDeepLName": { "message": "DeepL (API 키 필요)" },
-    "providerDeepLFreeName": { "message": "DeepL 번역 (무료)" }
+    "providerDeepLFreeName": { "message": "DeepL 번역 (무료)" },
+
+    "cardLoggingLevelTitle": { "message": "로깅 레벨" },
+    "cardLoggingLevelDesc": {
+        "message": "브라우저 콘솔에 표시되는 디버그 정보의 양을 제어합니다. 높은 레벨에는 낮은 레벨의 모든 메시지가 포함됩니다."
+    },
+    "loggingLevelLabel": { "message": "로깅 레벨:" },
+    "loggingLevelOff": { "message": "끄기" },
+    "loggingLevelError": { "message": "오류만" },
+    "loggingLevelWarn": { "message": "경고 및 오류" },
+    "loggingLevelInfo": { "message": "정보 이상" },
+    "loggingLevelDebug": { "message": "디버그 (모두)" }
 }

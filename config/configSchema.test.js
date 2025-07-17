@@ -76,6 +76,61 @@ describe('configSchema', () => {
         });
     });
 
+    describe('loggingLevel setting', () => {
+        it('should have loggingLevel setting with correct properties', () => {
+            expect(configSchema.loggingLevel).toBeDefined();
+            expect(configSchema.loggingLevel.defaultValue).toBe(3);
+            expect(configSchema.loggingLevel.type).toBe(Number);
+            expect(configSchema.loggingLevel.scope).toBe('sync');
+        });
+
+        it('should include loggingLevel in sync scope keys', () => {
+            const syncKeys = getKeysByScope('sync');
+            expect(syncKeys).toContain('loggingLevel');
+        });
+
+        it('should not include loggingLevel in local scope keys', () => {
+            const localKeys = getKeysByScope('local');
+            expect(localKeys).not.toContain('loggingLevel');
+        });
+
+        it('should validate loggingLevel numeric values correctly', () => {
+            // Valid logging levels (0-4)
+            expect(validateSetting('loggingLevel', 0)).toBe(true); // OFF
+            expect(validateSetting('loggingLevel', 1)).toBe(true); // ERROR
+            expect(validateSetting('loggingLevel', 2)).toBe(true); // WARN
+            expect(validateSetting('loggingLevel', 3)).toBe(true); // INFO
+            expect(validateSetting('loggingLevel', 4)).toBe(true); // DEBUG
+
+            // Invalid values - out of range
+            expect(validateSetting('loggingLevel', -1)).toBe(false);
+            expect(validateSetting('loggingLevel', 5)).toBe(false);
+            expect(validateSetting('loggingLevel', 10)).toBe(false);
+
+            // Invalid values - wrong type
+            expect(validateSetting('loggingLevel', '3')).toBe(false);
+            expect(validateSetting('loggingLevel', true)).toBe(false);
+            expect(validateSetting('loggingLevel', null)).toBe(false);
+            expect(validateSetting('loggingLevel', undefined)).toBe(false);
+            expect(validateSetting('loggingLevel', [])).toBe(false);
+            expect(validateSetting('loggingLevel', {})).toBe(false);
+
+            // Invalid values - non-integer numbers
+            expect(validateSetting('loggingLevel', 3.5)).toBe(false);
+            expect(validateSetting('loggingLevel', 2.1)).toBe(false);
+            expect(validateSetting('loggingLevel', NaN)).toBe(false);
+            expect(validateSetting('loggingLevel', Infinity)).toBe(false);
+        });
+
+        it('should return correct default value for loggingLevel', () => {
+            expect(getDefaultValue('loggingLevel')).toBe(3);
+        });
+
+        it('should return correct storage scope for loggingLevel', () => {
+            expect(getStorageScope('loggingLevel')).toBe('sync');
+        });
+    });
+
     describe('existing schema integrity', () => {
         it('should maintain all existing settings', () => {
             const expectedSettings = [
@@ -97,6 +152,7 @@ describe('configSchema', () => {
                 'subtitleGap',
                 'appearanceAccordionOpen',
                 'debugMode',
+                'loggingLevel',
             ];
 
             const actualSettings = Object.keys(configSchema);
@@ -116,10 +172,11 @@ describe('configSchema', () => {
             );
             expect(localKeys.length).toBe(2);
 
-            // Sync scope should contain all other settings
+            // Sync scope should contain all other settings including loggingLevel
             expect(syncKeys.length).toBeGreaterThan(10);
             expect(syncKeys).toContain('uiLanguage');
             expect(syncKeys).toContain('subtitlesEnabled');
+            expect(syncKeys).toContain('loggingLevel');
         });
     });
 

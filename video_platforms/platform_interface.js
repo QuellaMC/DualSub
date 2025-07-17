@@ -1,3 +1,5 @@
+import Logger from '../utils/logger.js';
+
 /**
  * @typedef {Object} SubtitleCue
  * @property {string} original - The original subtitle text.
@@ -19,6 +21,9 @@
  * Defines the contract for platform-specific subtitle handling.
  */
 export class VideoPlatform {
+    constructor() {
+        this.logger = Logger.create('VideoPlatform');
+    }
     /**
      * Checks if the current page is relevant to this platform.
      * @abstract
@@ -133,9 +138,10 @@ export class VideoPlatform {
             container.style.visibility = '';
             container.style.opacity = '';
             container.removeAttribute('data-dualsub-hidden');
-            console.log(
-                `${this.constructor.name}: Restored official subtitle container`
-            );
+            this.logger.debug('Restored official subtitle container', {
+                className: this.constructor.name,
+                containerElement: container.tagName,
+            });
         });
     }
 

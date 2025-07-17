@@ -1,9 +1,22 @@
 // content_scripts/disneyPlusContent.js
 // Simplified Disney+ content script using shared utilities
 
-console.log('Disney+ Dual Subtitles content script loaded for Disney+.');
-
 const LOG_PREFIX = 'DisneyPlusContent';
+
+// Logger instance for content script
+let contentLogger = null;
+
+// Initialize fallback console logging until Logger is loaded
+function logWithFallback(level, message, data = {}) {
+    if (contentLogger) {
+        contentLogger[level](message, data);
+    } else {
+        console.log(
+            `[${LOG_PREFIX}] [${level.toUpperCase()}] ${message}`,
+            data
+        );
+    }
+}
 
 // Platform management
 let activePlatform = null;
@@ -33,7 +46,9 @@ let platformReady = false;
 // Buffer events until the main platform logic is ready
 function handleEarlyInjectorEvents(e) {
     if (e.detail) {
-        console.log(`${LOG_PREFIX}: Intercepted early event:`, e.detail.type);
+        logWithFallback('debug', 'Intercepted early event', {
+            eventType: e.detail.type,
+        });
         eventBuffer.push(e);
     }
 }
@@ -59,19 +74,15 @@ function injectScriptEarly() {
         s.id = INJECT_SCRIPT_TAG_ID;
         (document.head || document.documentElement).appendChild(s);
         s.onload = () =>
-            console.log(
-                `${LOG_PREFIX}: Early inject script loaded successfully.`
-            );
+            logWithFallback('info', 'Early inject script loaded successfully');
         s.onerror = (e) =>
-            console.error(
-                `${LOG_PREFIX}: Failed to load early inject script!`,
-                e
-            );
+            logWithFallback('error', 'Failed to load early inject script!', {
+                error: e,
+            });
     } catch (e) {
-        console.error(
-            `${LOG_PREFIX}: Error during early inject script injection:`,
-            e
-        );
+        logWithFallback('error', 'Error during early inject script injection', {
+            error: e,
+        });
     }
 }
 
@@ -94,9 +105,34 @@ async function loadModules() {
         );
         configService = configModule.configService;
 
+        // Load the Logger
+        const loggerModule = await import(
+            chrome.runtime.getURL('utils/logger.js')
+        );
+        const Logger = loggerModule.default;
+
+        // Initialize content script logger with fallback mechanism
+        contentLogger = Logger.create(LOG_PREFIX);
+
+        // Initialize logging level from configuration
+        try {
+            const loggingLevel = await configService.get('loggingLevel');
+            contentLogger.updateLevel(loggingLevel);
+            contentLogger.info('Content script logger initialized', {
+                level: loggingLevel,
+            });
+        } catch (error) {
+            // Fallback to INFO level if config can't be read
+            contentLogger.updateLevel(Logger.LEVELS.INFO);
+            contentLogger.warn(
+                'Failed to load logging level from config, using INFO level',
+                error
+            );
+        }
+
         return true;
     } catch (error) {
-        console.error(`${LOG_PREFIX}: Error loading modules:`, error);
+        logWithFallback('error', 'Error loading modules', { error });
         return false;
     }
 }
@@ -106,11 +142,11 @@ async function initializePlatform() {
 
     // Load initial configuration
     currentConfig = await configService.getAll();
-    console.log(`${LOG_PREFIX}: Loaded initial config:`, currentConfig);
+    logWithFallback('info', 'Loaded initial config', { config: currentConfig });
 
     // Set up configuration change listener
     configService.onChanged(async (changes) => {
-        console.log(`${LOG_PREFIX}: Config changed, updating...`, changes);
+        logWithFallback('info', 'Config changed, updating', { changes });
         const newConfig = await configService.getAll();
 
         // Update existing object properties while preserving the reference
@@ -146,9 +182,7 @@ async function initializePlatform() {
     activePlatform = new DisneyPlusPlatform();
 
     if (activePlatform.isPlayerPageActive()) {
-        console.log(
-            `${LOG_PREFIX}: Initializing Disney+ platform on player page.`
-        );
+        logWithFallback('info', 'Initializing Disney+ platform on player page');
         try {
             // The platform now just sets up callbacks and listeners
             await activePlatform.initialize(
@@ -170,9 +204,9 @@ async function initializePlatform() {
             platformReady = true;
 
             if (eventBuffer.length > 0) {
-                console.log(
-                    `${LOG_PREFIX}: Processing ${eventBuffer.length} buffered event(s).`
-                );
+                logWithFallback('info', 'Processing buffered events', {
+                    eventCount: eventBuffer.length,
+                });
                 // Have the new activePlatform instance handle each buffered event
                 eventBuffer.forEach((e) =>
                     activePlatform._handleInjectorEvents(e)
@@ -183,17 +217,14 @@ async function initializePlatform() {
 
             startVideoElementDetection();
         } catch (error) {
-            console.error(
-                `${LOG_PREFIX}: Error initializing Disney+ platform:`,
-                error
-            );
+            logWithFallback('error', 'Error initializing Disney+ platform', {
+                error,
+            });
             activePlatform = null;
             platformReady = false;
         }
     } else {
-        console.log(
-            `${LOG_PREFIX}: Not on a player page. Deferring full setup.`
-        );
+        logWithFallback('info', 'Not on a player page. Deferring full setup');
     }
 }
 
@@ -223,9 +254,7 @@ function attemptVideoSetup() {
     const videoElement = activePlatform.getVideoElement();
     if (!videoElement) return false;
 
-    console.log(
-        `${LOG_PREFIX}: Video element found. Setting up UI and listeners.`
-    );
+    logWithFallback('info', 'Video element found. Setting up UI and listeners');
     subtitleUtils.ensureSubtitleContainer(
         activePlatform,
         currentConfig,
@@ -248,7 +277,7 @@ let currentUrl = window.location.href;
 const checkForUrlChange = () => {
     if (window.location.href === currentUrl) return;
 
-    console.log(`${LOG_PREFIX}: URL change detected. Re-evaluating page.`);
+    logWithFallback('info', 'URL change detected. Re-evaluating page');
     currentUrl = window.location.href;
 
     // Clean up old platform if it exists
@@ -281,10 +310,33 @@ function setupNavigationDetection() {
 // --- Simplified Chrome Message Handler ---
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    // Handle logging level changes immediately, even if utilities aren't loaded
+    if (request.type === 'LOGGING_LEVEL_CHANGED') {
+        if (contentLogger) {
+            contentLogger.updateLevel(request.level);
+            contentLogger.info('Logging level updated from background script', {
+                newLevel: request.level,
+            });
+        } else {
+            logWithFallback(
+                'info',
+                'Logging level change received but logger not initialized yet',
+                {
+                    level: request.level,
+                }
+            );
+        }
+        sendResponse({ success: true });
+        return false;
+    }
+
     if (!subtitleUtils || !configService) {
-        console.error(
-            `${LOG_PREFIX}: Utilities not loaded, cannot handle message:`,
-            request.action
+        logWithFallback(
+            'error',
+            'Utilities not loaded, cannot handle message',
+            {
+                action: request.action || request.type,
+            }
         );
         sendResponse({ success: false, error: 'Utilities not loaded' });
         return;
@@ -293,9 +345,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     switch (request.action) {
         case 'toggleSubtitles': {
             subtitleUtils.setSubtitlesActive(request.enabled);
-            console.log(
-                `${LOG_PREFIX}: Subtitle active state changed to ${request.enabled}`
-            );
+            logWithFallback('info', 'Subtitle active state changed', {
+                enabled: request.enabled,
+            });
             if (!request.enabled) {
                 subtitleUtils.hideSubtitleContainer();
                 subtitleUtils.clearSubtitlesDisplayAndQueue(
@@ -357,19 +409,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                         LOG_PREFIX
                     );
                 }
-                console.log(
-                    `${LOG_PREFIX}: Applied immediate config changes:`,
-                    request.changes
-                );
+                logWithFallback('info', 'Applied immediate config changes', {
+                    changes: request.changes,
+                });
             }
             sendResponse({ success: true });
             break;
         }
 
         default: {
-            console.log(
-                `${LOG_PREFIX}: Message '${request.action}' handled by config service`
-            );
+            logWithFallback('debug', 'Message handled by config service', {
+                action: request.action,
+            });
             sendResponse({ success: true });
             break;
         }

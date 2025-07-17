@@ -149,5 +149,16 @@
     "providerGoogleName": { "message": "谷歌翻译（免费）" },
     "providerMicrosoftName": { "message": "微软翻译（免费）" },
     "providerDeepLName": { "message": "DeepL（需要 API 密钥）" },
-    "providerDeepLFreeName": { "message": "DeepL 翻译（免费）" }
+    "providerDeepLFreeName": { "message": "DeepL 翻译（免费）" },
+
+    "cardLoggingLevelTitle": { "message": "日志级别" },
+    "cardLoggingLevelDesc": {
+        "message": "控制浏览器控制台中显示的调试信息量。较高级别包含所有较低级别的消息。"
+    },
+    "loggingLevelLabel": { "message": "日志级别：" },
+    "loggingLevelOff": { "message": "关闭" },
+    "loggingLevelError": { "message": "仅错误" },
+    "loggingLevelWarn": { "message": "警告和错误" },
+    "loggingLevelInfo": { "message": "信息及以上" },
+    "loggingLevelDebug": { "message": "调试（全部）" }
 }

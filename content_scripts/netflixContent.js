@@ -1,11 +1,22 @@
 // content_scripts/netflixContent.js
 // Netflix content script using shared utilities (based on disneyPlusContent.js pattern)
 
-console.log(
-    'Netflix Dual Subtitles content script loaded for Netflix at document_start.'
-);
-
 const LOG_PREFIX = 'NetflixContent';
+
+// Logger instance for content script
+let contentLogger = null;
+
+// Initialize fallback console logging until Logger is loaded
+function logWithFallback(level, message, data = {}) {
+    if (contentLogger) {
+        contentLogger[level](message, data);
+    } else {
+        console.log(
+            `[${LOG_PREFIX}] [${level.toUpperCase()}] ${message}`,
+            data
+        );
+    }
+}
 
 // Platform management
 let activePlatform = null;
@@ -40,7 +51,7 @@ function handleEarlyInjectorEvents(e) {
     if (!data || !data.type) return;
 
     if (data.type === 'INJECT_SCRIPT_READY') {
-        console.log(`${LOG_PREFIX}: Inject script is ready.`);
+        logWithFallback('info', 'Inject script is ready');
     } else if (data.type === 'SUBTITLE_DATA_FOUND') {
         eventBuffer.push(data);
     }
@@ -84,22 +95,23 @@ function injectScriptEarly() {
         if (target) {
             target.appendChild(s);
             s.onload = () =>
-                console.log(
-                    `${LOG_PREFIX}: Early inject script loaded successfully.`
+                logWithFallback(
+                    'info',
+                    'Early inject script loaded successfully'
                 );
             s.onerror = (e) =>
-                console.error(
-                    `${LOG_PREFIX}: Failed to load early inject script!`,
-                    e
+                logWithFallback(
+                    'error',
+                    'Failed to load early inject script!',
+                    { error: e }
                 );
         } else {
             setTimeout(injectScriptEarly, 10);
         }
     } catch (e) {
-        console.error(
-            `${LOG_PREFIX}: Error during early inject script injection:`,
-            e
-        );
+        logWithFallback('error', 'Error during early inject script injection', {
+            error: e,
+        });
         setTimeout(injectScriptEarly, 10);
     }
 }
@@ -141,9 +153,34 @@ async function loadModules() {
         );
         configService = configModule.configService;
 
+        // Load the Logger
+        const loggerModule = await import(
+            chrome.runtime.getURL('utils/logger.js')
+        );
+        const Logger = loggerModule.default;
+
+        // Initialize content script logger with fallback mechanism
+        contentLogger = Logger.create(LOG_PREFIX);
+
+        // Initialize logging level from configuration
+        try {
+            const loggingLevel = await configService.get('loggingLevel');
+            contentLogger.updateLevel(loggingLevel);
+            contentLogger.info('Content script logger initialized', {
+                level: loggingLevel,
+            });
+        } catch (error) {
+            // Fallback to INFO level if config can't be read
+            contentLogger.updateLevel(Logger.LEVELS.INFO);
+            contentLogger.warn(
+                'Failed to load logging level from config, using INFO level',
+                error
+            );
+        }
+
         return true;
     } catch (error) {
-        console.error(`${LOG_PREFIX}: Error loading modules:`, error);
+        logWithFallback('error', 'Error loading modules', { error });
         return false;
     }
 }
@@ -155,7 +192,7 @@ async function initializePlatform() {
 
     // Load initial configuration
     currentConfig = await configService.getAll();
-    console.log(`${LOG_PREFIX}: Loaded initial config:`, currentConfig);
+    logWithFallback('info', 'Loaded initial config', { config: currentConfig });
 
     // Sync subtitleUtils state with saved configuration
     if (
@@ -167,7 +204,7 @@ async function initializePlatform() {
 
     // Set up configuration change listener
     configService.onChanged(async (changes) => {
-        console.log(`${LOG_PREFIX}: Config changed, updating...`, changes);
+        logWithFallback('info', 'Config changed, updating', { changes });
         const newConfig = await configService.getAll();
 
         // Update existing object properties while preserving the reference
@@ -238,16 +275,16 @@ async function initializePlatform() {
             // Start video element detection with retry mechanism
             startVideoElementDetection();
         } catch (error) {
-            console.error(
-                `${LOG_PREFIX}: Error initializing Netflix platform:`,
-                error
-            );
+            logWithFallback('error', 'Error initializing Netflix platform', {
+                error,
+            });
             activePlatform = null;
             platformReady = false;
         }
     } else {
-        console.log(
-            `${LOG_PREFIX}: Not on a Netflix player page. UI setup deferred.`
+        logWithFallback(
+            'info',
+            'Not on a Netflix player page. UI setup deferred'
         );
         if (subtitleUtils) {
             subtitleUtils.hideSubtitleContainer();
@@ -256,7 +293,7 @@ async function initializePlatform() {
 }
 
 function startVideoElementDetection() {
-    console.log(`${LOG_PREFIX}: Starting video element detection...`);
+    logWithFallback('info', 'Starting video element detection');
     videoDetectionRetries = 0;
 
     // Clear any existing detection interval
@@ -273,23 +310,28 @@ function startVideoElementDetection() {
     // Start retry mechanism
     videoDetectionIntervalId = setInterval(() => {
         videoDetectionRetries++;
-        console.log(
-            `${LOG_PREFIX}: Video detection attempt ${videoDetectionRetries}/${MAX_VIDEO_DETECTION_RETRIES}`
-        );
+        logWithFallback('debug', 'Video detection attempt', {
+            attempt: videoDetectionRetries,
+            maxAttempts: MAX_VIDEO_DETECTION_RETRIES,
+        });
 
         if (attemptVideoSetup()) {
             // Success! Clear the interval
             clearInterval(videoDetectionIntervalId);
             videoDetectionIntervalId = null;
-            console.log(
-                `${LOG_PREFIX}: Video element found and setup completed after ${videoDetectionRetries} attempts.`
-            );
+            logWithFallback('info', 'Video element found and setup completed', {
+                attempts: videoDetectionRetries,
+            });
         } else if (videoDetectionRetries >= MAX_VIDEO_DETECTION_RETRIES) {
             // Give up after max retries
             clearInterval(videoDetectionIntervalId);
             videoDetectionIntervalId = null;
-            console.warn(
-                `${LOG_PREFIX}: Could not find video element after ${MAX_VIDEO_DETECTION_RETRIES} attempts. Giving up.`
+            logWithFallback(
+                'warn',
+                'Could not find video element after max attempts. Giving up',
+                {
+                    maxAttempts: MAX_VIDEO_DETECTION_RETRIES,
+                }
             );
         }
     }, VIDEO_DETECTION_INTERVAL);
@@ -305,13 +347,13 @@ function attemptVideoSetup() {
         return false; // Video not ready yet
     }
 
-    console.log(
-        `${LOG_PREFIX}: Video element found! Setting up subtitle container and listeners.`
+    logWithFallback(
+        'info',
+        'Video element found! Setting up subtitle container and listeners'
     );
-    console.log(
-        `${LOG_PREFIX}: Current subtitlesActive state:`,
-        subtitleUtils.subtitlesActive
-    );
+    logWithFallback('debug', 'Current subtitlesActive state', {
+        subtitlesActive: subtitleUtils.subtitlesActive,
+    });
 
     // Ensure container and timeupdate listener for Netflix
     subtitleUtils.ensureSubtitleContainer(
@@ -321,8 +363,9 @@ function attemptVideoSetup() {
     );
 
     if (subtitleUtils.subtitlesActive) {
-        console.log(
-            `${LOG_PREFIX}: Subtitles are active, showing container and setting up listeners`
+        logWithFallback(
+            'info',
+            'Subtitles are active, showing container and setting up listeners'
         );
         subtitleUtils.showSubtitleContainer();
         if (videoElement.currentTime > 0) {
@@ -334,9 +377,7 @@ function attemptVideoSetup() {
             );
         }
     } else {
-        console.log(
-            `${LOG_PREFIX}: Subtitles are not active, hiding container`
-        );
+        logWithFallback('info', 'Subtitles are not active, hiding container');
         subtitleUtils.hideSubtitleContainer();
     }
 
@@ -347,16 +388,39 @@ function stopVideoElementDetection() {
     if (videoDetectionIntervalId) {
         clearInterval(videoDetectionIntervalId);
         videoDetectionIntervalId = null;
-        console.log(`${LOG_PREFIX}: Video element detection stopped.`);
+        logWithFallback('info', 'Video element detection stopped');
     }
 }
 
 // Simplified Chrome message handler
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    // Handle logging level changes immediately, even if utilities aren't loaded
+    if (request.type === 'LOGGING_LEVEL_CHANGED') {
+        if (contentLogger) {
+            contentLogger.updateLevel(request.level);
+            contentLogger.info('Logging level updated from background script', {
+                newLevel: request.level,
+            });
+        } else {
+            logWithFallback(
+                'info',
+                'Logging level change received but logger not initialized yet',
+                {
+                    level: request.level,
+                }
+            );
+        }
+        sendResponse({ success: true });
+        return false;
+    }
+
     if (!subtitleUtils || !configService) {
-        console.error(
-            `${LOG_PREFIX}: Utilities not loaded, cannot handle message:`,
-            request.action
+        logWithFallback(
+            'error',
+            'Utilities not loaded, cannot handle message',
+            {
+                action: request.action || request.type,
+            }
         );
         sendResponse({ success: false, error: 'Utilities not loaded' });
         return true;
@@ -390,9 +454,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                             });
                         })
                         .catch((error) => {
-                            console.error(
-                                `${LOG_PREFIX}: Error in platform initialization:`,
-                                error
+                            logWithFallback(
+                                'error',
+                                'Error in platform initialization',
+                                { error }
                             );
                             sendResponse({
                                 success: false,
@@ -435,18 +500,17 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                         LOG_PREFIX
                     );
                 }
-                console.log(
-                    `${LOG_PREFIX}: Applied immediate config changes:`,
-                    request.changes
-                );
+                logWithFallback('info', 'Applied immediate config changes', {
+                    changes: request.changes,
+                });
             }
             sendResponse({ success: true });
             break;
 
         default:
-            console.log(
-                `${LOG_PREFIX}: Message '${request.action}' handled by config service`
-            );
+            logWithFallback('debug', 'Message handled by config service', {
+                action: request.action,
+            });
             sendResponse({ success: true });
             break;
     }
@@ -459,9 +523,7 @@ function initializeWhenReady() {
         try {
             const modulesLoaded = await loadModules();
             if (!modulesLoaded) {
-                console.error(
-                    `${LOG_PREFIX}: Failed to load required modules.`
-                );
+                logWithFallback('error', 'Failed to load required modules');
                 return;
             }
 
@@ -474,7 +536,9 @@ function initializeWhenReady() {
                 }, 1000);
             }
         } catch (e) {
-            console.error(`${LOG_PREFIX}: Error during initialization:`, e);
+            logWithFallback('error', 'Error during initialization', {
+                error: e,
+            });
         }
     })();
 }
@@ -497,9 +561,10 @@ const checkForUrlChange = () => {
         const newPathname = window.location.pathname;
 
         if (newUrl !== currentUrl || newPathname !== lastKnownPathname) {
-            console.log(
-                `${LOG_PREFIX}: URL change detected from '${currentUrl}' to '${newUrl}'`
-            );
+            logWithFallback('info', 'URL change detected', {
+                from: currentUrl,
+                to: newUrl,
+            });
 
             const wasOnPlayerPage = lastKnownPathname.includes('/watch/');
             const isOnPlayerPage = newPathname.includes('/watch/');
@@ -509,8 +574,9 @@ const checkForUrlChange = () => {
 
             // Clean up existing platform if we're leaving a player page
             if (wasOnPlayerPage && activePlatform) {
-                console.log(
-                    `${LOG_PREFIX}: Leaving player page, cleaning up platform`
+                logWithFallback(
+                    'info',
+                    'Leaving player page, cleaning up platform'
                 );
                 stopVideoElementDetection();
                 activePlatform.cleanup();
@@ -521,8 +587,9 @@ const checkForUrlChange = () => {
 
             // Initialize platform if we're entering a player page and subtitles are enabled
             if (isOnPlayerPage && !wasOnPlayerPage) {
-                console.log(
-                    `${LOG_PREFIX}: Entering player page, re-injecting script immediately`
+                logWithFallback(
+                    'info',
+                    'Entering player page, re-injecting script immediately'
                 );
 
                 // Re-inject script immediately to catch subtitle data
@@ -532,22 +599,24 @@ const checkForUrlChange = () => {
                 setTimeout(async () => {
                     try {
                         if (currentConfig.subtitlesEnabled) {
-                            console.log(
-                                `${LOG_PREFIX}: Subtitles enabled, initializing platform`
+                            logWithFallback(
+                                'info',
+                                'Subtitles enabled, initializing platform'
                             );
                             await initializePlatform();
                         }
                     } catch (error) {
-                        console.error(
-                            `${LOG_PREFIX}: Error during URL change initialization:`,
-                            error
+                        logWithFallback(
+                            'error',
+                            'Error during URL change initialization',
+                            { error }
                         );
                     }
                 }, 1500);
             }
         }
     } catch (error) {
-        console.error(`${LOG_PREFIX}: Error in URL change detection:`, error);
+        logWithFallback('error', 'Error in URL change detection', { error });
         // If we get an extension context error, stop the interval to prevent spam
         if (
             error.message &&
@@ -556,8 +625,9 @@ const checkForUrlChange = () => {
             if (urlChangeCheckInterval) {
                 clearInterval(urlChangeCheckInterval);
                 urlChangeCheckInterval = null;
-                console.log(
-                    `${LOG_PREFIX}: Stopped URL change detection due to extension context invalidation`
+                logWithFallback(
+                    'info',
+                    'Stopped URL change detection due to extension context invalidation'
                 );
             }
         }
@@ -601,7 +671,7 @@ function setupNavigationDetection() {
         setTimeout(checkForUrlChange, 100);
     });
 
-    console.log(`${LOG_PREFIX}: Enhanced navigation detection set up`);
+    logWithFallback('info', 'Enhanced navigation detection set up');
 }
 
 // Page observer for dynamic content changes
@@ -612,8 +682,9 @@ const pageObserver = new MutationObserver((mutationsList, observerInstance) => {
     setTimeout(checkForUrlChange, 100);
 
     if (!activePlatform && subtitleUtils.subtitlesActive) {
-        console.log(
-            `${LOG_PREFIX}: PageObserver detected DOM changes. Attempting to initialize platform.`
+        logWithFallback(
+            'info',
+            'PageObserver detected DOM changes. Attempting to initialize platform'
         );
         initializePlatform();
         return;
@@ -633,16 +704,18 @@ const pageObserver = new MutationObserver((mutationsList, observerInstance) => {
                 (!currentDOMVideoElement ||
                     currentDOMVideoElement !== videoElementNow)
             ) {
-                console.log(
-                    `${LOG_PREFIX}: PageObserver detected video element appearance or change.`
+                logWithFallback(
+                    'debug',
+                    'PageObserver detected video element appearance or change'
                 );
                 if (
                     subtitleUtils.subtitlesActive &&
                     platformReady &&
                     activePlatform
                 ) {
-                    console.log(
-                        `${LOG_PREFIX}: Platform is ready, re-ensuring container/listeners.`
+                    logWithFallback(
+                        'debug',
+                        'Platform is ready, re-ensuring container/listeners'
                     );
                     subtitleUtils.ensureSubtitleContainer(
                         activePlatform,
@@ -651,8 +724,9 @@ const pageObserver = new MutationObserver((mutationsList, observerInstance) => {
                     );
                 }
             } else if (currentDOMVideoElement && !videoElementNow) {
-                console.log(
-                    `${LOG_PREFIX}: PageObserver detected video element removal.`
+                logWithFallback(
+                    'debug',
+                    'PageObserver detected video element removal'
                 );
                 subtitleUtils.hideSubtitleContainer();
                 if (subtitleUtils.clearSubtitleDOM) {
@@ -674,8 +748,9 @@ if (document.body) {
                 childList: true,
                 subtree: true,
             });
-            console.log(
-                `${LOG_PREFIX}: Page observer started after body became available`
+            logWithFallback(
+                'info',
+                'Page observer started after body became available'
             );
         } else {
             setTimeout(waitForBody, 100);
@@ -687,8 +762,9 @@ if (document.body) {
 // Setup navigation detection
 setupNavigationDetection();
 
-console.log(
-    `${LOG_PREFIX}: Content script fully initialized with enhanced navigation detection.`
+logWithFallback(
+    'info',
+    'Content script fully initialized with enhanced navigation detection'
 );
 
 // Cleanup function to prevent memory leaks and handle extension reloading
@@ -727,9 +803,9 @@ function cleanupAll() {
         platformReady = false;
         eventBuffer = [];
 
-        console.log(`${LOG_PREFIX}: All cleanup completed`);
+        logWithFallback('info', 'All cleanup completed');
     } catch (error) {
-        console.error(`${LOG_PREFIX}: Error during cleanup:`, error);
+        logWithFallback('error', 'Error during cleanup', { error });
     }
 }
 
@@ -737,8 +813,9 @@ function cleanupAll() {
 chrome.runtime.onConnect.addListener((port) => {
     port.onDisconnect.addListener(() => {
         if (chrome.runtime.lastError) {
-            console.log(
-                `${LOG_PREFIX}: Extension context invalidated, cleaning up`
+            logWithFallback(
+                'info',
+                'Extension context invalidated, cleaning up'
             );
             cleanupAll();
         }

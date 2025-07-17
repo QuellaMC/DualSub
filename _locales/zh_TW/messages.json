@@ -152,5 +152,16 @@
     "providerGoogleName": { "message": "Google 翻譯（免費）" },
     "providerMicrosoftName": { "message": "Microsoft 翻譯（免費）" },
     "providerDeepLName": { "message": "DeepL（需要 API 金鑰）" },
-    "providerDeepLFreeName": { "message": "DeepL 翻譯（免費）" }
+    "providerDeepLFreeName": { "message": "DeepL 翻譯（免費）" },
+
+    "cardLoggingLevelTitle": { "message": "日誌級別" },
+    "cardLoggingLevelDesc": {
+        "message": "控制瀏覽器控制台中顯示的除錯資訊量。較高級別包含所有較低級別的訊息。"
+    },
+    "loggingLevelLabel": { "message": "日誌級別：" },
+    "loggingLevelOff": { "message": "關閉" },
+    "loggingLevelError": { "message": "僅錯誤" },
+    "loggingLevelWarn": { "message": "警告和錯誤" },
+    "loggingLevelInfo": { "message": "資訊及以上" },
+    "loggingLevelDebug": { "message": "除錯（全部）" }
 }

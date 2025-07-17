@@ -192,5 +192,16 @@
     "providerGoogleName": { "message": "Google Translate (Gratuito)" },
     "providerMicrosoftName": { "message": "Microsoft Translate (Gratuito)" },
     "providerDeepLName": { "message": "DeepL (Requiere Clave API)" },
-    "providerDeepLFreeName": { "message": "DeepL Translate (Gratuito)" }
+    "providerDeepLFreeName": { "message": "DeepL Translate (Gratuito)" },
+
+    "cardLoggingLevelTitle": { "message": "Nivel de Registro" },
+    "cardLoggingLevelDesc": {
+        "message": "Controla la cantidad de información de depuración mostrada en la consola del navegador. Los niveles más altos incluyen todos los mensajes de niveles inferiores."
+    },
+    "loggingLevelLabel": { "message": "Nivel de Registro:" },
+    "loggingLevelOff": { "message": "Desactivado" },
+    "loggingLevelError": { "message": "Solo Errores" },
+    "loggingLevelWarn": { "message": "Advertencias y Errores" },
+    "loggingLevelInfo": { "message": "Info y Superior" },
+    "loggingLevelDebug": { "message": "Debug (Todo)" }
 }

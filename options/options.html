@@ -89,6 +89,39 @@
                             </div>
                         </div>
                     </div>
+                    <div class="setting-card">
+                        <h3 data-i18n="cardLoggingLevelTitle">Logging Level</h3>
+                        <p data-i18n="cardLoggingLevelDesc">
+                            Control the amount of debug information displayed in
+                            browser console. Higher levels include all lower
+                            level messages.
+                        </p>
+                        <div class="setting">
+                            <label
+                                for="loggingLevel"
+                                data-i18n="loggingLevelLabel"
+                            >
+                                Logging Level:
+                            </label>
+                            <select id="loggingLevel">
+                                <option value="0" data-i18n="loggingLevelOff">
+                                    Off
+                                </option>
+                                <option value="1" data-i18n="loggingLevelError">
+                                    Error Only
+                                </option>
+                                <option value="2" data-i18n="loggingLevelWarn">
+                                    Warnings & Errors
+                                </option>
+                                <option value="3" data-i18n="loggingLevelInfo">
+                                    Info & Above
+                                </option>
+                                <option value="4" data-i18n="loggingLevelDebug">
+                                    Debug (All)
+                                </option>
+                            </select>
+                        </div>
+                    </div>
                 </section>
                 <section id="translation" class="hidden">
                     <h2 data-i18n="sectionTranslation">Translation</h2>

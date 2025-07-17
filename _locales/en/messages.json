@@ -176,5 +176,16 @@
     "providerGoogleName": { "message": "Google Translate (Free)" },
     "providerMicrosoftName": { "message": "Microsoft Translate (Free)" },
     "providerDeepLName": { "message": "DeepL (API Key Required)" },
-    "providerDeepLFreeName": { "message": "DeepL Translate (Free)" }
+    "providerDeepLFreeName": { "message": "DeepL Translate (Free)" },
+
+    "cardLoggingLevelTitle": { "message": "Logging Level" },
+    "cardLoggingLevelDesc": {
+        "message": "Control the amount of debug information displayed in browser console. Higher levels include all lower level messages."
+    },
+    "loggingLevelLabel": { "message": "Logging Level:" },
+    "loggingLevelOff": { "message": "Off" },
+    "loggingLevelError": { "message": "Error Only" },
+    "loggingLevelWarn": { "message": "Warnings & Errors" },
+    "loggingLevelInfo": { "message": "Info & Above" },
+    "loggingLevelDebug": { "message": "Debug (All)" }
 }

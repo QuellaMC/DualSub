@@ -46,69 +46,69 @@ describe('ConfigService Debug Mode Tests', () => {
         Object.values(consoleSpy).forEach((spy) => spy.mockRestore());
     });
 
-    describe('Debug Mode Detection and Updates', () => {
-        it('should initialize with debug mode disabled by default', async () => {
-            await realLogger.updateDebugMode();
-            expect(realLogger.debugEnabled).toBe(false);
+    describe('Logging Level Detection and Updates', () => {
+        it('should initialize with INFO level by default', async () => {
+            await realLogger.updateLevel();
+            expect(realLogger.currentLevel).toBe(Logger.LEVELS.INFO);
         });
 
-        it('should enable debug mode when debugMode setting is true', async () => {
-            chrome.storage.local.get.mockImplementation((keys, callback) => {
-                callback({ debugMode: true });
+        it('should set logging level when loggingLevel setting is provided', async () => {
+            chrome.storage.sync.get.mockImplementation((keys, callback) => {
+                callback({ loggingLevel: Logger.LEVELS.DEBUG });
             });
 
-            await realLogger.updateDebugMode();
-            expect(realLogger.debugEnabled).toBe(true);
+            await realLogger.updateLevel();
+            expect(realLogger.currentLevel).toBe(Logger.LEVELS.DEBUG);
         });
 
-        it('should disable debug mode when debugMode setting is false', async () => {
-            // First enable it
-            chrome.storage.local.get.mockImplementation((keys, callback) => {
-                callback({ debugMode: true });
+        it('should change logging level when loggingLevel setting changes', async () => {
+            // First set to DEBUG
+            chrome.storage.sync.get.mockImplementation((keys, callback) => {
+                callback({ loggingLevel: Logger.LEVELS.DEBUG });
             });
-            await realLogger.updateDebugMode();
-            expect(realLogger.debugEnabled).toBe(true);
+            await realLogger.updateLevel();
+            expect(realLogger.currentLevel).toBe(Logger.LEVELS.DEBUG);
 
-            // Then disable it
-            chrome.storage.local.get.mockImplementation((keys, callback) => {
-                callback({ debugMode: false });
+            // Then change to ERROR
+            chrome.storage.sync.get.mockImplementation((keys, callback) => {
+                callback({ loggingLevel: Logger.LEVELS.ERROR });
             });
-            await realLogger.updateDebugMode();
-            expect(realLogger.debugEnabled).toBe(false);
+            await realLogger.updateLevel();
+            expect(realLogger.currentLevel).toBe(Logger.LEVELS.ERROR);
         });
 
-        it('should handle missing debugMode setting gracefully', async () => {
-            chrome.storage.local.get.mockImplementation((keys, callback) => {
-                callback({}); // No debugMode key
+        it('should handle missing loggingLevel setting gracefully', async () => {
+            chrome.storage.sync.get.mockImplementation((keys, callback) => {
+                callback({}); // No loggingLevel key
             });
 
-            await realLogger.updateDebugMode();
-            expect(realLogger.debugEnabled).toBe(false);
+            await realLogger.updateLevel();
+            expect(realLogger.currentLevel).toBe(Logger.LEVELS.INFO); // Default to INFO
         });
 
-        it('should handle config service errors during debug mode update', async () => {
-            chrome.storage.local.get.mockImplementation((keys, callback) => {
+        it('should handle config service errors during level update', async () => {
+            chrome.storage.sync.get.mockImplementation((keys, callback) => {
                 chrome.runtime.lastError = { message: 'Storage error' };
                 callback(null);
             });
 
-            await realLogger.updateDebugMode();
-            expect(realLogger.debugEnabled).toBe(false); // Should default to false
+            await realLogger.updateLevel();
+            expect(realLogger.currentLevel).toBe(Logger.LEVELS.INFO); // Should default to INFO
         });
 
-        it('should update debug mode when debugMode setting changes via set()', async () => {
-            const updateSpy = jest.spyOn(realLogger, 'updateDebugMode');
+        it('should update logging level when loggingLevel setting changes via set()', async () => {
+            const updateSpy = jest.spyOn(realLogger, 'updateLevel');
 
-            await configService.set('debugMode', true);
+            await configService.set('loggingLevel', Logger.LEVELS.DEBUG);
 
             expect(updateSpy).toHaveBeenCalled();
         });
 
-        it('should update debug mode when debugMode setting changes via setMultiple()', async () => {
-            const updateSpy = jest.spyOn(realLogger, 'updateDebugMode');
+        it('should update logging level when loggingLevel setting changes via setMultiple()', async () => {
+            const updateSpy = jest.spyOn(realLogger, 'updateLevel');
 
             await configService.setMultiple({
-                debugMode: true,
+                loggingLevel: Logger.LEVELS.DEBUG,
                 uiLanguage: 'es',
             });
 
@@ -116,15 +116,15 @@ describe('ConfigService Debug Mode Tests', () => {
         });
     });
 
-    describe('Debug Logging Behavior', () => {
-        it('should log debug messages only when debug mode is enabled', async () => {
-            // Debug disabled
-            realLogger.debugEnabled = false;
+    describe('Level-Based Logging Behavior', () => {
+        it('should log debug messages only when DEBUG level is enabled', async () => {
+            // Debug level disabled (INFO level)
+            realLogger.currentLevel = Logger.LEVELS.INFO;
             realLogger.debug('Test debug message', { key: 'value' });
             expect(consoleSpy.debug).not.toHaveBeenCalled();
 
-            // Debug enabled
-            realLogger.debugEnabled = true;
+            // Debug level enabled
+            realLogger.currentLevel = Logger.LEVELS.DEBUG;
             realLogger.debug('Test debug message', { key: 'value' });
             expect(consoleSpy.debug).toHaveBeenCalledWith(
                 expect.stringContaining(
@@ -133,8 +133,8 @@ describe('ConfigService Debug Mode Tests', () => {
             );
         });
 
-        it('should always log info, warn, and error messages regardless of debug mode', async () => {
-            realLogger.debugEnabled = false;
+        it('should always log info, warn, and error messages when level allows', async () => {
+            realLogger.currentLevel = Logger.LEVELS.INFO;
 
             realLogger.info('Info message');
             realLogger.warn('Warning message');
@@ -146,7 +146,7 @@ describe('ConfigService Debug Mode Tests', () => {
         });
 
         it('should include proper formatting in debug messages', async () => {
-            realLogger.debugEnabled = true;
+            realLogger.currentLevel = Logger.LEVELS.DEBUG;
             const testData = { operation: 'test', count: 5 };
 
             realLogger.debug('Test operation', testData);
@@ -159,7 +159,7 @@ describe('ConfigService Debug Mode Tests', () => {
         });
 
         it('should handle empty data objects in debug messages', async () => {
-            realLogger.debugEnabled = true;
+            realLogger.currentLevel = Logger.LEVELS.DEBUG;
 
             realLogger.debug('Test message without data');
 
@@ -171,7 +171,7 @@ describe('ConfigService Debug Mode Tests', () => {
         });
 
         it('should handle complex data objects in debug messages', async () => {
-            realLogger.debugEnabled = true;
+            realLogger.currentLevel = Logger.LEVELS.DEBUG;
             const complexData = {
                 nested: { key: 'value' },
                 array: [1, 2, 3],
@@ -193,7 +193,7 @@ describe('ConfigService Debug Mode Tests', () => {
 
     describe('ConfigService Method Debug Logging', () => {
         beforeEach(() => {
-            realLogger.debugEnabled = true;
+            realLogger.currentLevel = Logger.LEVELS.DEBUG;
         });
 
         it('should log debug information for get() operations', async () => {
@@ -243,7 +243,7 @@ describe('ConfigService Debug Mode Tests', () => {
         it('should log debug information for setMultiple() operations', async () => {
             await configService.setMultiple({
                 uiLanguage: 'es',
-                debugMode: true,
+                loggingLevel: Logger.LEVELS.DEBUG,
             });
 
             expect(consoleSpy.debug).toHaveBeenCalledWith(
@@ -262,8 +262,8 @@ describe('ConfigService Debug Mode Tests', () => {
             );
         });
 
-        it('should not log debug information when debug mode is disabled', async () => {
-            realLogger.debugEnabled = false;
+        it('should not log debug information when debug level is disabled', async () => {
+            realLogger.currentLevel = Logger.LEVELS.INFO;
 
             chrome.storage.sync.get.mockImplementation((keys, callback) => {
                 callback({ uiLanguage: 'en' });
@@ -275,12 +275,12 @@ describe('ConfigService Debug Mode Tests', () => {
         });
     });
 
-    describe('Debug Mode Performance Impact', () => {
-        it('should have minimal performance impact when debug is disabled', async () => {
+    describe('Logging Level Performance Impact', () => {
+        it('should have minimal performance impact when debug level is disabled', async () => {
             const iterations = 100;
 
-            // Test with debug disabled
-            realLogger.debugEnabled = false;
+            // Test with debug level disabled
+            realLogger.currentLevel = Logger.LEVELS.INFO;
             chrome.storage.sync.get.mockImplementation((keys, callback) => {
                 callback({ uiLanguage: 'en' });
             });
@@ -291,8 +291,8 @@ describe('ConfigService Debug Mode Tests', () => {
             }
             const disabledTime = performance.now() - startTimeDisabled;
 
-            // Test with debug enabled
-            realLogger.debugEnabled = true;
+            // Test with debug level enabled
+            realLogger.currentLevel = Logger.LEVELS.DEBUG;
             const startTimeEnabled = performance.now();
             for (let i = 0; i < iterations; i++) {
                 await configService.get('uiLanguage');
@@ -306,13 +306,13 @@ describe('ConfigService Debug Mode Tests', () => {
             expect(consoleSpy.debug).toHaveBeenCalled();
         });
 
-        it('should efficiently handle debug mode checks', async () => {
+        it('should efficiently handle logging level checks', async () => {
             const iterations = 1000;
 
             const startTime = performance.now();
             for (let i = 0; i < iterations; i++) {
-                // Simulate the debug check that happens in logging
-                if (realLogger.debugEnabled) {
+                // Simulate the level check that happens in logging
+                if (realLogger.shouldLog(Logger.LEVELS.DEBUG)) {
                     realLogger.formatMessage('DEBUG', 'Test message', {
                         iteration: i,
                     });
@@ -320,21 +320,22 @@ describe('ConfigService Debug Mode Tests', () => {
             }
             const endTime = performance.now();
 
-            // Should complete quickly even with many debug checks
+            // Should complete quickly even with many level checks
             expect(endTime - startTime).toBeLessThan(50); // 50ms threshold
         });
 
-        it('should handle rapid debug mode toggles without performance degradation', async () => {
-            chrome.storage.local.get.mockImplementation((keys, callback) => {
-                callback({ debugMode: true });
+        it('should handle rapid logging level changes without performance degradation', async () => {
+            chrome.storage.sync.get.mockImplementation((keys, callback) => {
+                callback({ loggingLevel: Logger.LEVELS.DEBUG });
             });
 
             const startTime = performance.now();
 
-            // Rapidly toggle debug mode
+            // Rapidly toggle logging levels
             for (let i = 0; i < 100; i++) {
-                await realLogger.updateDebugMode();
-                realLogger.debugEnabled = !realLogger.debugEnabled;
+                await realLogger.updateLevel();
+                realLogger.currentLevel =
+                    i % 2 === 0 ? Logger.LEVELS.DEBUG : Logger.LEVELS.INFO;
             }
 
             const endTime = performance.now();
@@ -342,7 +343,7 @@ describe('ConfigService Debug Mode Tests', () => {
         });
 
         it('should efficiently serialize large debug data objects', async () => {
-            realLogger.debugEnabled = true;
+            realLogger.currentLevel = Logger.LEVELS.DEBUG;
 
             // Create large data object
             const largeData = {
@@ -363,9 +364,9 @@ describe('ConfigService Debug Mode Tests', () => {
         });
     });
 
-    describe('Debug Mode Integration with Error Handling', () => {
-        it('should log errors with debug context when debug mode is enabled', async () => {
-            realLogger.debugEnabled = true;
+    describe('Logging Level Integration with Error Handling', () => {
+        it('should log errors with debug context when debug level is enabled', async () => {
+            realLogger.currentLevel = Logger.LEVELS.DEBUG;
             chrome.runtime.lastError = { message: 'Storage error' };
             chrome.storage.sync.set.mockImplementation((items, callback) =>
                 callback()
@@ -382,8 +383,8 @@ describe('ConfigService Debug Mode Tests', () => {
             }
         });
 
-        it('should log errors without debug context when debug mode is disabled', async () => {
-            realLogger.debugEnabled = false;
+        it('should log errors without debug context when debug level is disabled', async () => {
+            realLogger.currentLevel = Logger.LEVELS.INFO;
             chrome.runtime.lastError = { message: 'Storage error' };
             chrome.storage.sync.set.mockImplementation((items, callback) =>
                 callback()
@@ -399,17 +400,17 @@ describe('ConfigService Debug Mode Tests', () => {
             }
         });
 
-        it('should maintain error logging quality regardless of debug mode', async () => {
+        it('should maintain error logging quality regardless of logging level', async () => {
             const testError = { message: 'Test storage error' };
             chrome.runtime.lastError = testError;
             chrome.storage.local.set.mockImplementation((items, callback) =>
                 callback()
             );
 
-            // Test with debug enabled
-            realLogger.debugEnabled = true;
+            // Test with debug level enabled
+            realLogger.currentLevel = Logger.LEVELS.DEBUG;
             try {
-                await configService.set('debugMode', true);
+                await configService.set('loggingLevel', Logger.LEVELS.DEBUG);
             } catch (error) {
                 expect(error.originalError).toBe(testError);
             }
@@ -418,28 +419,28 @@ describe('ConfigService Debug Mode Tests', () => {
             jest.clearAllMocks();
             chrome.runtime.lastError = testError;
 
-            // Test with debug disabled
-            realLogger.debugEnabled = false;
+            // Test with debug level disabled
+            realLogger.currentLevel = Logger.LEVELS.INFO;
             try {
-                await configService.set('debugMode', false);
+                await configService.set('loggingLevel', Logger.LEVELS.INFO);
             } catch (error) {
                 expect(error.originalError).toBe(testError);
             }
         });
     });
 
-    describe('Debug Mode Configuration Persistence', () => {
-        it('should persist debug mode setting across service operations', async () => {
-            // Mock storage to return debugMode as true
-            chrome.storage.local.get.mockImplementation((keys, callback) => {
-                callback({ debugMode: true });
+    describe('Logging Level Configuration Persistence', () => {
+        it('should persist logging level setting across service operations', async () => {
+            // Mock storage to return loggingLevel as DEBUG
+            chrome.storage.sync.get.mockImplementation((keys, callback) => {
+                callback({ loggingLevel: Logger.LEVELS.DEBUG });
             });
 
-            // Update debug mode from storage
-            await realLogger.updateDebugMode();
+            // Update logging level from storage
+            await realLogger.updateLevel();
 
-            // Verify debug mode is enabled
-            expect(realLogger.debugEnabled).toBe(true);
+            // Verify logging level is set
+            expect(realLogger.currentLevel).toBe(Logger.LEVELS.DEBUG);
 
             // Verify debug logging works
             realLogger.debug('Test debug message');
@@ -448,28 +449,31 @@ describe('ConfigService Debug Mode Tests', () => {
             );
         });
 
-        it('should handle debug mode changes through external storage updates', () => {
-            // Simulate external change to debugMode
+        it('should handle logging level changes through external storage updates', () => {
+            // Simulate external change to loggingLevel
             const changeListener =
                 chrome.storage.onChanged.addListener.mock.calls[0]?.[0];
 
             if (changeListener) {
-                changeListener({ debugMode: { newValue: true } }, 'local');
+                changeListener(
+                    { loggingLevel: { newValue: Logger.LEVELS.DEBUG } },
+                    'sync'
+                );
 
-                // Should trigger debug mode update
-                expect(realLogger.debugEnabled).toBe(true);
+                // Should trigger logging level update
+                expect(realLogger.currentLevel).toBe(Logger.LEVELS.DEBUG);
             }
         });
 
-        it('should maintain debug mode state during service initialization', async () => {
-            chrome.storage.local.get.mockImplementation((keys, callback) => {
-                callback({ debugMode: true });
+        it('should maintain logging level state during service initialization', async () => {
+            chrome.storage.sync.get.mockImplementation((keys, callback) => {
+                callback({ loggingLevel: Logger.LEVELS.DEBUG });
             });
 
             // Simulate service initialization
             await configService.initializeLogger();
 
-            expect(realLogger.debugEnabled).toBe(true);
+            expect(realLogger.currentLevel).toBe(Logger.LEVELS.DEBUG);
         });
     });
 });
