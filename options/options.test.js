@@ -2,7 +2,14 @@
  * @jest-environment jsdom
  */
 
-import { describe, test, expect, beforeEach, afterEach, jest } from '@jest/globals';
+import {
+    describe,
+    test,
+    expect,
+    beforeEach,
+    afterEach,
+    jest,
+} from '@jest/globals';
 import Logger from '../utils/logger.js';
 
 // Mock the configService
@@ -42,10 +49,10 @@ describe('Options Logging Integration', () => {
     beforeEach(() => {
         // Reset all mocks
         jest.clearAllMocks();
-        
+
         // Create logger instance
         optionsLogger = Logger.create('Options', mockConfigService);
-        
+
         // Spy on console methods
         consoleSpy = {
             debug: jest.spyOn(console, 'debug').mockImplementation(),
@@ -93,7 +100,7 @@ describe('Options Logging Integration', () => {
 
     afterEach(() => {
         // Restore console methods
-        Object.values(consoleSpy).forEach(spy => spy.mockRestore());
+        Object.values(consoleSpy).forEach((spy) => spy.mockRestore());
     });
 
     describe('Logger Initialization', () => {
@@ -108,18 +115,18 @@ describe('Options Logging Integration', () => {
 
         test('should update logging level from config', async () => {
             mockConfigService.get.mockResolvedValue(Logger.LEVELS.DEBUG);
-            
+
             await optionsLogger.updateLevel();
-            
+
             expect(mockConfigService.get).toHaveBeenCalledWith('loggingLevel');
             expect(optionsLogger.currentLevel).toBe(Logger.LEVELS.DEBUG);
         });
 
         test('should fallback to INFO level if config fails', async () => {
             mockConfigService.get.mockRejectedValue(new Error('Config error'));
-            
+
             await optionsLogger.updateLevel();
-            
+
             expect(optionsLogger.currentLevel).toBe(Logger.LEVELS.INFO);
         });
     });
@@ -128,7 +135,7 @@ describe('Options Logging Integration', () => {
         test('should listen for logging level changes', () => {
             const changeHandler = jest.fn();
             mockConfigService.onChanged.mockImplementation(changeHandler);
-            
+
             // Simulate the options initialization
             mockConfigService.onChanged((changes) => {
                 if ('loggingLevel' in changes) {
@@ -141,7 +148,7 @@ describe('Options Logging Integration', () => {
 
         test('should update logger when logging level changes', async () => {
             optionsLogger.updateLevel(Logger.LEVELS.WARN);
-            
+
             expect(optionsLogger.currentLevel).toBe(Logger.LEVELS.WARN);
         });
     });
@@ -157,14 +164,22 @@ describe('Options Logging Integration', () => {
             const saveSetting = async (key, value) => {
                 try {
                     await mockConfigService.set(key, value);
-                    optionsLogger.info(`${key} saved`, { key, value, component: 'saveSetting' });
+                    optionsLogger.info(`${key} saved`, {
+                        key,
+                        value,
+                        component: 'saveSetting',
+                    });
                 } catch (error) {
-                    optionsLogger.error(`Error saving ${key}`, error, { key, value, component: 'saveSetting' });
+                    optionsLogger.error(`Error saving ${key}`, error, {
+                        key,
+                        value,
+                        component: 'saveSetting',
+                    });
                 }
             };
 
             await saveSetting('uiLanguage', 'es');
-            
+
             expect(consoleSpy.info).toHaveBeenCalledWith(
                 expect.stringContaining('[INFO] [Options] uiLanguage saved')
             );
@@ -177,22 +192,34 @@ describe('Options Logging Integration', () => {
         });
 
         test('should log setting save errors', async () => {
-            mockConfigService.set.mockRejectedValue(new Error('Storage quota exceeded'));
-            
+            mockConfigService.set.mockRejectedValue(
+                new Error('Storage quota exceeded')
+            );
+
             // Simulate saveSetting function
             const saveSetting = async (key, value) => {
                 try {
                     await mockConfigService.set(key, value);
-                    optionsLogger.info(`${key} saved`, { key, value, component: 'saveSetting' });
+                    optionsLogger.info(`${key} saved`, {
+                        key,
+                        value,
+                        component: 'saveSetting',
+                    });
                 } catch (error) {
-                    optionsLogger.error(`Error saving ${key}`, error, { key, value, component: 'saveSetting' });
+                    optionsLogger.error(`Error saving ${key}`, error, {
+                        key,
+                        value,
+                        component: 'saveSetting',
+                    });
                 }
             };
 
             await saveSetting('loggingLevel', 4);
-            
+
             expect(consoleSpy.error).toHaveBeenCalledWith(
-                expect.stringContaining('[ERROR] [Options] Error saving loggingLevel')
+                expect.stringContaining(
+                    '[ERROR] [Options] Error saving loggingLevel'
+                )
             );
             expect(consoleSpy.error).toHaveBeenCalledWith(
                 expect.stringContaining('Storage quota exceeded')
@@ -207,14 +234,20 @@ describe('Options Logging Integration', () => {
 
         test('should log translation loading errors', () => {
             const error = new Error('Network error');
-            
-            optionsLogger.error('Error fetching primary language es_ES', error, {
-                normalizedLangCode: 'es_ES',
-                component: 'loadTranslations'
-            });
-            
+
+            optionsLogger.error(
+                'Error fetching primary language es_ES',
+                error,
+                {
+                    normalizedLangCode: 'es_ES',
+                    component: 'loadTranslations',
+                }
+            );
+
             expect(consoleSpy.error).toHaveBeenCalledWith(
-                expect.stringContaining('[ERROR] [Options] Error fetching primary language es_ES')
+                expect.stringContaining(
+                    '[ERROR] [Options] Error fetching primary language es_ES'
+                )
             );
             expect(consoleSpy.error).toHaveBeenCalledWith(
                 expect.stringContaining('"normalizedLangCode":"es_ES"')
@@ -223,13 +256,19 @@ describe('Options Logging Integration', () => {
 
         test('should log fatal translation loading errors', () => {
             const error = new Error('All translation sources failed');
-            
-            optionsLogger.error('Fatal: Failed to load any translations', error, {
-                component: 'loadTranslations'
-            });
-            
+
+            optionsLogger.error(
+                'Fatal: Failed to load any translations',
+                error,
+                {
+                    component: 'loadTranslations',
+                }
+            );
+
             expect(consoleSpy.error).toHaveBeenCalledWith(
-                expect.stringContaining('[ERROR] [Options] Fatal: Failed to load any translations')
+                expect.stringContaining(
+                    '[ERROR] [Options] Fatal: Failed to load any translations'
+                )
             );
         });
     });
@@ -241,13 +280,13 @@ describe('Options Logging Integration', () => {
 
         test('should log DeepL test errors with redacted API key', () => {
             const error = new Error('API connection failed');
-            
+
             optionsLogger.error('DeepL test error', error, {
                 apiKey: '[REDACTED]',
                 apiPlan: 'free',
-                component: 'testDeepLConnection'
+                component: 'testDeepLConnection',
             });
-            
+
             expect(consoleSpy.error).toHaveBeenCalledWith(
                 expect.stringContaining('[ERROR] [Options] DeepL test error')
             );
@@ -260,12 +299,18 @@ describe('Options Logging Integration', () => {
         });
 
         test('should log DeepL API unavailability', () => {
-            optionsLogger.error('DeepLAPI is not available. Disabling testDeepLButton.', null, {
-                component: 'testDeepLButton'
-            });
-            
+            optionsLogger.error(
+                'DeepLAPI is not available. Disabling testDeepLButton.',
+                null,
+                {
+                    component: 'testDeepLButton',
+                }
+            );
+
             expect(consoleSpy.error).toHaveBeenCalledWith(
-                expect.stringContaining('[ERROR] [Options] DeepLAPI is not available')
+                expect.stringContaining(
+                    '[ERROR] [Options] DeepLAPI is not available'
+                )
             );
         });
     });
@@ -278,11 +323,13 @@ describe('Options Logging Integration', () => {
         test('should log UI language changes', () => {
             optionsLogger.info('UI language changed to: es', {
                 selectedLang: 'es',
-                component: 'uiLanguageSelect'
+                component: 'uiLanguageSelect',
             });
-            
+
             expect(consoleSpy.info).toHaveBeenCalledWith(
-                expect.stringContaining('[INFO] [Options] UI language changed to: es')
+                expect.stringContaining(
+                    '[INFO] [Options] UI language changed to: es'
+                )
             );
             expect(consoleSpy.info).toHaveBeenCalledWith(
                 expect.stringContaining('"selectedLang":"es"')
@@ -292,33 +339,39 @@ describe('Options Logging Integration', () => {
         test('should log hide official subtitles changes', () => {
             optionsLogger.info('Hide official subtitles changed to: true', {
                 hideOfficialSubtitles: true,
-                component: 'hideOfficialSubtitlesCheckbox'
+                component: 'hideOfficialSubtitlesCheckbox',
             });
-            
+
             expect(consoleSpy.info).toHaveBeenCalledWith(
-                expect.stringContaining('[INFO] [Options] Hide official subtitles changed to: true')
+                expect.stringContaining(
+                    '[INFO] [Options] Hide official subtitles changed to: true'
+                )
             );
         });
 
         test('should log logging level changes', () => {
             optionsLogger.info('Logging level changed to: 4', {
                 level: 4,
-                component: 'loggingLevelSelect'
+                component: 'loggingLevelSelect',
             });
-            
+
             expect(consoleSpy.info).toHaveBeenCalledWith(
-                expect.stringContaining('[INFO] [Options] Logging level changed to: 4')
+                expect.stringContaining(
+                    '[INFO] [Options] Logging level changed to: 4'
+                )
             );
         });
 
         test('should log translation provider changes', () => {
             optionsLogger.info('Translation provider changed to: deepl', {
                 selectedProvider: 'deepl',
-                component: 'translationProviderSelect'
+                component: 'translationProviderSelect',
             });
-            
+
             expect(consoleSpy.info).toHaveBeenCalledWith(
-                expect.stringContaining('[INFO] [Options] Translation provider changed to: deepl')
+                expect.stringContaining(
+                    '[INFO] [Options] Translation provider changed to: deepl'
+                )
             );
         });
     });
@@ -326,13 +379,15 @@ describe('Options Logging Integration', () => {
     describe('Settings Loading Logging', () => {
         test('should log settings loading errors', () => {
             const error = new Error('Storage access denied');
-            
+
             optionsLogger.error('Error loading settings', error, {
-                component: 'loadSettings'
+                component: 'loadSettings',
             });
-            
+
             expect(consoleSpy.error).toHaveBeenCalledWith(
-                expect.stringContaining('[ERROR] [Options] Error loading settings')
+                expect.stringContaining(
+                    '[ERROR] [Options] Error loading settings'
+                )
             );
             expect(consoleSpy.error).toHaveBeenCalledWith(
                 expect.stringContaining('Storage access denied')
@@ -343,28 +398,28 @@ describe('Options Logging Integration', () => {
     describe('Logging Level Filtering', () => {
         test('should not log debug messages when level is INFO', () => {
             optionsLogger.updateLevel(Logger.LEVELS.INFO);
-            
+
             optionsLogger.debug('Debug message', { test: true });
-            
+
             expect(consoleSpy.debug).not.toHaveBeenCalled();
         });
 
         test('should log error messages when level is ERROR', () => {
             optionsLogger.updateLevel(Logger.LEVELS.ERROR);
-            
+
             optionsLogger.error('Error message', null, { test: true });
-            
+
             expect(consoleSpy.error).toHaveBeenCalled();
         });
 
         test('should not log any messages when level is OFF', () => {
             optionsLogger.updateLevel(Logger.LEVELS.OFF);
-            
+
             optionsLogger.error('Error message');
             optionsLogger.warn('Warning message');
             optionsLogger.info('Info message');
             optionsLogger.debug('Debug message');
-            
+
             expect(consoleSpy.error).not.toHaveBeenCalled();
             expect(consoleSpy.warn).not.toHaveBeenCalled();
             expect(consoleSpy.info).not.toHaveBeenCalled();
@@ -375,20 +430,22 @@ describe('Options Logging Integration', () => {
     describe('Component Naming', () => {
         test('should use consistent component names in log messages', () => {
             optionsLogger.info('Test message');
-            
+
             expect(consoleSpy.info).toHaveBeenCalledWith(
                 expect.stringContaining('[Options]')
             );
         });
 
         test('should include sub-component context in structured data', () => {
-            optionsLogger.error('Provider error', null, { 
+            optionsLogger.error('Provider error', null, {
                 component: 'translationProviderSelect',
-                selectedProvider: 'google' 
+                selectedProvider: 'google',
             });
-            
+
             expect(consoleSpy.error).toHaveBeenCalledWith(
-                expect.stringContaining('"component":"translationProviderSelect"')
+                expect.stringContaining(
+                    '"component":"translationProviderSelect"'
+                )
             );
         });
     });

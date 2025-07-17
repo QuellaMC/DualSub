@@ -21,16 +21,16 @@ describe('ConfigService Comprehensive Error Handling Tests', () => {
         // Setup Chrome API mock
         chromeApiMock = ChromeApiMock.create();
         chromeCleanup = mockChromeApi(chromeApiMock);
-        
+
         // Reset runtime error
         chrome.runtime.lastError = null;
 
         // Spy on console methods
         consoleSpy = {
-            debug: jest.spyOn(console, 'debug').mockImplementation(() => { }),
-            info: jest.spyOn(console, 'info').mockImplementation(() => { }),
-            warn: jest.spyOn(console, 'warn').mockImplementation(() => { }),
-            error: jest.spyOn(console, 'error').mockImplementation(() => { }),
+            debug: jest.spyOn(console, 'debug').mockImplementation(() => {}),
+            info: jest.spyOn(console, 'info').mockImplementation(() => {}),
+            warn: jest.spyOn(console, 'warn').mockImplementation(() => {}),
+            error: jest.spyOn(console, 'error').mockImplementation(() => {}),
         };
 
         // Store original logger
@@ -43,12 +43,12 @@ describe('ConfigService Comprehensive Error Handling Tests', () => {
 
         // Restore original logger
         configService.logger = originalLogger;
-        
+
         // Cleanup Chrome API mock
         if (chromeCleanup) {
             chromeCleanup();
         }
-        
+
         // Reset Chrome API mock
         if (chromeApiMock) {
             chromeApiMock.reset();
@@ -608,7 +608,8 @@ describe('ConfigService Comprehensive Error Handling Tests', () => {
             // Rapidly toggle logging levels
             for (let i = 0; i < 50; i++) {
                 await realLogger.updateLevel();
-                realLogger.currentLevel = i % 2 === 0 ? Logger.LEVELS.DEBUG : Logger.LEVELS.INFO;
+                realLogger.currentLevel =
+                    i % 2 === 0 ? Logger.LEVELS.DEBUG : Logger.LEVELS.INFO;
             }
 
             const endTime = performance.now();

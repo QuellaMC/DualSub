@@ -38,18 +38,21 @@ configService
     .then((providerId) => {
         if (providerId && translationProviders[providerId]) {
             currentTranslationProviderId = providerId;
-            backgroundLogger.info('Using translation provider', { 
-                providerId 
+            backgroundLogger.info('Using translation provider', {
+                providerId,
             });
         } else {
-            backgroundLogger.info('Provider not found, using default', { 
-                requestedProvider: providerId, 
-                defaultProvider: currentTranslationProviderId 
+            backgroundLogger.info('Provider not found, using default', {
+                requestedProvider: providerId,
+                defaultProvider: currentTranslationProviderId,
             });
         }
     })
     .catch((error) => {
-        backgroundLogger.error('Error loading translation provider setting', error);
+        backgroundLogger.error(
+            'Error loading translation provider setting',
+            error
+        );
     });
 
 // Initialize default settings using the configuration service
@@ -63,8 +66,8 @@ let currentLoggingLevel = Logger.LEVELS.INFO; // Default level
     try {
         currentLoggingLevel = await configService.get('loggingLevel');
         backgroundLogger.updateLevel(currentLoggingLevel);
-        backgroundLogger.info('Background logging initialized', { 
-            level: currentLoggingLevel 
+        backgroundLogger.info('Background logging initialized', {
+            level: currentLoggingLevel,
         });
     } catch (error) {
         backgroundLogger.error('Failed to initialize logging level', error);
@@ -77,10 +80,13 @@ configService.onChanged((changes) => {
         const newLevel = changes.loggingLevel;
         currentLoggingLevel = newLevel;
         backgroundLogger.updateLevel(newLevel);
-        backgroundLogger.info('Logging level changed, broadcasting to all contexts', { 
-            newLevel 
-        });
-        
+        backgroundLogger.info(
+            'Logging level changed, broadcasting to all contexts',
+            {
+                newLevel,
+            }
+        );
+
         // Broadcast logging level change to all active tabs
         broadcastLoggingLevelChange(newLevel);
     }
@@ -95,42 +101,57 @@ async function broadcastLoggingLevelChange(newLevel) {
         // Get all tabs to send message to content scripts
         const tabs = await chrome.tabs.query({});
         const messagePromises = [];
-        
+
         for (const tab of tabs) {
             // Only send to tabs that might have our content scripts
-            if (tab.url && (tab.url.includes('netflix.com') || tab.url.includes('disneyplus.com'))) {
-                const messagePromise = chrome.tabs.sendMessage(tab.id, {
-                    type: 'LOGGING_LEVEL_CHANGED',
-                    level: newLevel
-                }).catch((error) => {
-                    // Content script might not be loaded, ignore these errors
-                    backgroundLogger.debug('Failed to send logging level to tab', error, { 
-                        tabId: tab.id, 
-                        url: tab.url 
+            if (
+                tab.url &&
+                (tab.url.includes('netflix.com') ||
+                    tab.url.includes('disneyplus.com'))
+            ) {
+                const messagePromise = chrome.tabs
+                    .sendMessage(tab.id, {
+                        type: 'LOGGING_LEVEL_CHANGED',
+                        level: newLevel,
+                    })
+                    .catch((error) => {
+                        // Content script might not be loaded, ignore these errors
+                        backgroundLogger.debug(
+                            'Failed to send logging level to tab',
+                            error,
+                            {
+                                tabId: tab.id,
+                                url: tab.url,
+                            }
+                        );
                     });
-                });
                 messagePromises.push(messagePromise);
             }
         }
-        
+
         // Wait for all messages to be sent (or fail)
         await Promise.allSettled(messagePromises);
-        
-        backgroundLogger.debug('Logging level broadcast completed', { 
-            level: newLevel, 
-            tabCount: tabs.length 
+
+        backgroundLogger.debug('Logging level broadcast completed', {
+            level: newLevel,
+            tabCount: tabs.length,
         });
-        
     } catch (error) {
-        backgroundLogger.error('Error broadcasting logging level change', error, { 
-            level: newLevel 
-        });
+        backgroundLogger.error(
+            'Error broadcasting logging level change',
+            error,
+            {
+                level: newLevel,
+            }
+        );
     }
 }
 
 function parseAvailableSubtitleLanguages(masterPlaylistText) {
     if (!masterPlaylistText || typeof masterPlaylistText !== 'string') {
-        backgroundLogger.warn('Invalid playlist text provided to parseAvailableSubtitleLanguages');
+        backgroundLogger.warn(
+            'Invalid playlist text provided to parseAvailableSubtitleLanguages'
+        );
         return [];
     }
 
@@ -163,9 +184,13 @@ function parseAvailableSubtitleLanguages(masterPlaylistText) {
                     });
                 }
             } catch (error) {
-                backgroundLogger.warn('Error parsing subtitle language line', error, {
-                    line: trimmedLine
-                });
+                backgroundLogger.warn(
+                    'Error parsing subtitle language line',
+                    error,
+                    {
+                        line: trimmedLine,
+                    }
+                );
             }
         }
     }
@@ -288,15 +313,20 @@ function findSubtitlePlaylistUri(masterPlaylistText) {
         ) {
             subtitlePlaylistUri = getUriFromExtXMedia(trimmedLine);
             if (subtitlePlaylistUri) {
-                backgroundLogger.debug('Found subtitle playlist URI (TYPE=SUBTITLES)', {
-                    uri: subtitlePlaylistUri
-                });
+                backgroundLogger.debug(
+                    'Found subtitle playlist URI (TYPE=SUBTITLES)',
+                    {
+                        uri: subtitlePlaylistUri,
+                    }
+                );
                 return subtitlePlaylistUri;
             }
         }
     }
 
-    backgroundLogger.debug('No direct TYPE=SUBTITLES URI. Checking for streams with SUBTITLES attribute');
+    backgroundLogger.debug(
+        'No direct TYPE=SUBTITLES URI. Checking for streams with SUBTITLES attribute'
+    );
     for (let i = 0; i < lines.length; i++) {
         const trimmedLine = lines[i].trim();
         if (
@@ -315,10 +345,13 @@ function findSubtitlePlaylistUri(masterPlaylistText) {
                     ) {
                         subtitlePlaylistUri = getUriFromExtXMedia(mediaLine);
                         if (subtitlePlaylistUri) {
-                            backgroundLogger.debug('Found subtitle playlist URI (GROUP-ID)', {
-                                groupId: groupId,
-                                uri: subtitlePlaylistUri
-                            });
+                            backgroundLogger.debug(
+                                'Found subtitle playlist URI (GROUP-ID)',
+                                {
+                                    groupId: groupId,
+                                    uri: subtitlePlaylistUri,
+                                }
+                            );
                             return subtitlePlaylistUri;
                         }
                     }
@@ -347,10 +380,14 @@ function parsePlaylistForVttSegments(playlistText, playlistUrl) {
                     const segmentUrl = new URL(trimmedLine, baseUrl.href).href;
                     segmentUrls.push(segmentUrl);
                 } catch (e) {
-                    backgroundLogger.warn('Could not form valid URL from M3U8 line', e, {
-                        line: trimmedLine,
-                        baseUrl: baseUrl.href
-                    });
+                    backgroundLogger.warn(
+                        'Could not form valid URL from M3U8 line',
+                        e,
+                        {
+                            line: trimmedLine,
+                            baseUrl: baseUrl.href,
+                        }
+                    );
                 }
             }
         }
@@ -364,7 +401,7 @@ async function fetchAndCombineVttSegments(
 ) {
     backgroundLogger.info('Found VTT segments from playlist, fetching', {
         segmentCount: segmentUrls.length,
-        playlistUrl: playlistUrlForLogging
+        playlistUrl: playlistUrlForLogging,
     });
 
     const fetchPromises = segmentUrls.map(async (url) => {
@@ -400,7 +437,7 @@ async function fetchAndCombineVttSegments(
 
     backgroundLogger.info('VTT segments combined', {
         segmentsFetched: segmentsFetchedCount,
-        totalSegments: segmentUrls.length
+        totalSegments: segmentUrls.length,
     });
     return combinedVttText;
 }
@@ -523,16 +560,21 @@ async function processNetflixSubtitleData(
                 useNativeTarget = true;
                 backgroundLogger.info('Netflix native target found', {
                     targetLanguage,
-                    displayName: targetLanguageInfo.displayName
+                    displayName: targetLanguageInfo.displayName,
                 });
             }
         } else {
-            backgroundLogger.info('Netflix native target NOT found, will use translation mode', {
-                targetLanguage
-            });
+            backgroundLogger.info(
+                'Netflix native target NOT found, will use translation mode',
+                {
+                    targetLanguage,
+                }
+            );
         }
     } else {
-        backgroundLogger.info('Native subtitles disabled or no target language specified, will use translation mode');
+        backgroundLogger.info(
+            'Native subtitles disabled or no target language specified, will use translation mode'
+        );
     }
 
     // Step 2: Find original language track
@@ -548,13 +590,16 @@ async function processNetflixSubtitleData(
             if (originalLanguageInfo) {
                 backgroundLogger.info('Netflix original language found', {
                     originalLanguage,
-                    displayName: originalLanguageInfo.displayName
+                    displayName: originalLanguageInfo.displayName,
                 });
             }
         } else {
-            backgroundLogger.info('Netflix original language NOT found, trying English fallback', {
-                originalLanguage
-            });
+            backgroundLogger.info(
+                'Netflix original language NOT found, trying English fallback',
+                {
+                    originalLanguage,
+                }
+            );
             const englishTrack = getBestTrackForLanguage(validTracks, 'en');
             if (englishTrack) {
                 originalLanguageInfo = availableLanguages.find(
@@ -562,7 +607,7 @@ async function processNetflixSubtitleData(
                 );
                 if (originalLanguageInfo) {
                     backgroundLogger.info('Netflix English fallback found', {
-                        displayName: originalLanguageInfo.displayName
+                        displayName: originalLanguageInfo.displayName,
                     });
                 }
             }
@@ -572,10 +617,13 @@ async function processNetflixSubtitleData(
     // Step 3: Final fallback to first available language
     if (!originalLanguageInfo && availableLanguages.length > 0) {
         originalLanguageInfo = availableLanguages[0];
-        backgroundLogger.warn('Netflix using first available language as last resort', {
-            normalizedCode: originalLanguageInfo.normalizedCode,
-            displayName: originalLanguageInfo.displayName
-        });
+        backgroundLogger.warn(
+            'Netflix using first available language as last resort',
+            {
+                normalizedCode: originalLanguageInfo.normalizedCode,
+                displayName: originalLanguageInfo.displayName,
+            }
+        );
     }
 
     if (!originalLanguageInfo) {
@@ -585,16 +633,16 @@ async function processNetflixSubtitleData(
     backgroundLogger.info('Netflix processing mode', {
         useNativeTarget,
         originalLang: originalLanguageInfo.normalizedCode,
-        targetLang: targetLanguage || 'none'
+        targetLang: targetLanguage || 'none',
     });
 
     // Step 4: Fetch and process original language subtitles
     backgroundLogger.info('Fetching Netflix original language subtitles', {
-        uriPreview: originalLanguageInfo.uri.substring(0, 100)
+        uriPreview: originalLanguageInfo.uri.substring(0, 100),
     });
     const originalSubtitleText = await fetchText(originalLanguageInfo.uri);
     backgroundLogger.debug('Netflix original subtitle raw size', {
-        size: originalSubtitleText.length
+        size: originalSubtitleText.length,
     });
 
     let originalVttText;
@@ -602,10 +650,12 @@ async function processNetflixSubtitleData(
         originalSubtitleText.trim().startsWith('<?xml') ||
         originalSubtitleText.includes('<tt')
     ) {
-        backgroundLogger.info('Netflix original subtitle detected as TTML, converting');
+        backgroundLogger.info(
+            'Netflix original subtitle detected as TTML, converting'
+        );
         originalVttText = convertTtmlToVtt(originalSubtitleText);
         backgroundLogger.info('Netflix original TTML converted to VTT', {
-            size: originalVttText.length
+            size: originalVttText.length,
         });
 
         // Count cues in original
@@ -615,12 +665,12 @@ async function processNetflixSubtitleData(
             ) || []
         ).length;
         backgroundLogger.debug('Netflix original VTT cue count', {
-            cueCount: originalCueCount
+            cueCount: originalCueCount,
         });
     } else if (originalSubtitleText.trim().toUpperCase().startsWith('WEBVTT')) {
         originalVttText = originalSubtitleText;
         backgroundLogger.info('Netflix original VTT loaded directly', {
-            size: originalVttText.length
+            size: originalVttText.length,
         });
         const originalCueCount = (
             originalVttText.match(
@@ -628,13 +678,17 @@ async function processNetflixSubtitleData(
             ) || []
         ).length;
         backgroundLogger.debug('Netflix original VTT cue count', {
-            cueCount: originalCueCount
+            cueCount: originalCueCount,
         });
     } else {
         const preview = originalSubtitleText.substring(0, 200);
-        backgroundLogger.error('Netflix original subtitle format not recognized', null, {
-            preview
-        });
+        backgroundLogger.error(
+            'Netflix original subtitle format not recognized',
+            null,
+            {
+                preview,
+            }
+        );
         throw new Error(
             'Netflix subtitle format not recognized (not TTML or VTT)'
         );
@@ -644,21 +698,23 @@ async function processNetflixSubtitleData(
     let targetVttText = null;
     if (useNativeTarget && targetLanguageInfo) {
         backgroundLogger.info('Fetching Netflix native target subtitles', {
-            uriPreview: targetLanguageInfo.uri.substring(0, 100)
+            uriPreview: targetLanguageInfo.uri.substring(0, 100),
         });
         const targetSubtitleText = await fetchText(targetLanguageInfo.uri);
         backgroundLogger.debug('Netflix target subtitle raw size', {
-            size: targetSubtitleText.length
+            size: targetSubtitleText.length,
         });
 
         if (
             targetSubtitleText.trim().startsWith('<?xml') ||
             targetSubtitleText.includes('<tt')
         ) {
-            backgroundLogger.info('Netflix target subtitle detected as TTML, converting');
+            backgroundLogger.info(
+                'Netflix target subtitle detected as TTML, converting'
+            );
             targetVttText = convertTtmlToVtt(targetSubtitleText);
             backgroundLogger.info('Netflix target TTML converted to VTT', {
-                size: targetVttText.length
+                size: targetVttText.length,
             });
 
             // Count cues in target and compare timing
@@ -674,15 +730,18 @@ async function processNetflixSubtitleData(
             ).length;
             backgroundLogger.debug('Netflix target VTT cue count comparison', {
                 targetCueCount,
-                originalCueCount
+                originalCueCount,
             });
 
             if (targetCueCount !== originalCueCount) {
-                backgroundLogger.warn('Netflix subtitle cue count mismatch! This may cause synchronization issues', {
-                    targetCueCount,
-                    originalCueCount
-                });
-                
+                backgroundLogger.warn(
+                    'Netflix subtitle cue count mismatch! This may cause synchronization issues',
+                    {
+                        targetCueCount,
+                        originalCueCount,
+                    }
+                );
+
                 const originalTimings =
                     originalVttText.match(
                         /\d{2}:\d{2}:\d{2}\.\d{3} --> \d{2}:\d{2}:\d{2}\.\d{3}/g
@@ -691,20 +750,22 @@ async function processNetflixSubtitleData(
                     targetVttText.match(
                         /\d{2}:\d{2}:\d{2}\.\d{3} --> \d{2}:\d{2}:\d{2}\.\d{3}/g
                     ) || [];
-                
+
                 backgroundLogger.debug('First 3 timing comparisons', {
                     originalTimings: originalTimings.slice(0, 3),
-                    targetTimings: targetTimings.slice(0, 3)
+                    targetTimings: targetTimings.slice(0, 3),
                 });
             } else {
-                backgroundLogger.info('Netflix original and target subtitle cue counts match perfectly');
+                backgroundLogger.info(
+                    'Netflix original and target subtitle cue counts match perfectly'
+                );
             }
         } else if (
             targetSubtitleText.trim().toUpperCase().startsWith('WEBVTT')
         ) {
             targetVttText = targetSubtitleText;
             backgroundLogger.info('Netflix target VTT loaded directly', {
-                size: targetVttText.length
+                size: targetVttText.length,
             });
             const targetCueCount = (
                 targetVttText.match(
@@ -718,19 +779,26 @@ async function processNetflixSubtitleData(
             ).length;
             backgroundLogger.debug('Netflix target VTT cue count comparison', {
                 targetCueCount,
-                originalCueCount
+                originalCueCount,
             });
         } else {
             const preview = targetSubtitleText.substring(0, 200);
-            backgroundLogger.error('Netflix target subtitle format not recognized', null, {
-                preview
-            });
+            backgroundLogger.error(
+                'Netflix target subtitle format not recognized',
+                null,
+                {
+                    preview,
+                }
+            );
             throw new Error('Netflix target subtitle format not recognized');
         }
     } else {
-        backgroundLogger.info('Netflix will use translation mode for target language', {
-            targetLanguage: targetLanguage || 'none'
-        });
+        backgroundLogger.info(
+            'Netflix will use translation mode for target language',
+            {
+                targetLanguage: targetLanguage || 'none',
+            }
+        );
     }
 
     const result = {
@@ -749,7 +817,7 @@ async function processNetflixSubtitleData(
     backgroundLogger.info('Netflix processing complete', {
         mode: useNativeTarget ? 'Native' : 'Translation',
         originalLanguage: result.sourceLanguage,
-        targetLanguage: result.targetLanguage
+        targetLanguage: result.targetLanguage,
     });
     return result;
 }
@@ -757,7 +825,7 @@ async function processNetflixSubtitleData(
 // Simple TTML to VTT converter for Netflix subtitles (service worker compatible)
 function convertTtmlToVtt(ttmlText) {
     backgroundLogger.debug('Starting TTML to VTT conversion', {
-        inputLength: ttmlText.length
+        inputLength: ttmlText.length,
     });
 
     let vtt = 'WEBVTT\n\n';
@@ -781,12 +849,12 @@ function convertTtmlToVtt(ttmlText) {
                 backgroundLogger.debug('Region layout parsed', {
                     regionId,
                     x,
-                    y
+                    y,
                 });
             }
         }
         backgroundLogger.debug('Found regions with layout info', {
-            regionCount
+            regionCount,
         });
 
         // Step 2: Parse all <p> tags into an intermediate structure, including their region
@@ -820,13 +888,14 @@ function convertTtmlToVtt(ttmlText) {
                     begin,
                     end,
                     region,
-                    textPreview: text.substring(0, 50) + (text.length > 50 ? '...' : '')
+                    textPreview:
+                        text.substring(0, 50) + (text.length > 50 ? '...' : ''),
                 });
             }
         }
         backgroundLogger.debug('Parsed p elements into intermediate cues', {
             pElementCount,
-            intermediateCueCount: intermediateCues.length
+            intermediateCueCount: intermediateCues.length,
         });
 
         if (intermediateCues.length === 0) {
@@ -845,7 +914,7 @@ function convertTtmlToVtt(ttmlText) {
             groupedByTime.get(key).push(cue);
         }
         backgroundLogger.debug('Grouped into unique time segments', {
-            segmentCount: groupedByTime.size
+            segmentCount: groupedByTime.size,
         });
 
         // Log some examples of grouped cues
@@ -855,7 +924,7 @@ function convertTtmlToVtt(ttmlText) {
                 backgroundLogger.debug('Time segment example', {
                     key,
                     cueCount: group.length,
-                    regions: group.map((c) => c.region)
+                    regions: group.map((c) => c.region),
                 });
                 exampleCount++;
             } else if (exampleCount === 3) {
@@ -907,12 +976,14 @@ function convertTtmlToVtt(ttmlText) {
             if (mergedCount <= 3) {
                 backgroundLogger.debug('Merged cues', {
                     groupSize: group.length,
-                    textPreview: mergedText.substring(0, 80) + (mergedText.length > 80 ? '...' : '')
+                    textPreview:
+                        mergedText.substring(0, 80) +
+                        (mergedText.length > 80 ? '...' : ''),
                 });
             }
         }
         backgroundLogger.debug('Created final merged cues', {
-            finalCueCount: finalCues.length
+            finalCueCount: finalCues.length,
         });
 
         // Step 5: Sort the final, merged cues by start time and build the VTT string
@@ -933,7 +1004,9 @@ function convertTtmlToVtt(ttmlText) {
                     cueNumber: vttCueCount,
                     startTime,
                     endTime,
-                    textPreview: cue.text.substring(0, 60) + (cue.text.length > 60 ? '...' : '')
+                    textPreview:
+                        cue.text.substring(0, 60) +
+                        (cue.text.length > 60 ? '...' : ''),
                 });
             }
         }
@@ -941,15 +1014,16 @@ function convertTtmlToVtt(ttmlText) {
         backgroundLogger.info('TTML to VTT conversion complete', {
             finalCueCount: finalCues.length,
             vttLength: vtt.length,
-            timeRange: finalCues.length > 0 ? 
-                `${convertTtmlTimeToVtt(finalCues[0].begin)} to ${convertTtmlTimeToVtt(finalCues[finalCues.length - 1].end)}` : 
-                'N/A'
+            timeRange:
+                finalCues.length > 0
+                    ? `${convertTtmlTimeToVtt(finalCues[0].begin)} to ${convertTtmlTimeToVtt(finalCues[finalCues.length - 1].end)}`
+                    : 'N/A',
         });
 
         return vtt;
     } catch (error) {
         backgroundLogger.error('Error converting TTML to VTT', error, {
-            ttmlSample: ttmlText.substring(0, 500)
+            ttmlSample: ttmlText.substring(0, 500),
         });
         throw new Error(`TTML conversion failed: ${error.message}`);
     }
@@ -981,10 +1055,10 @@ async function fetchAndProcessSubtitleUrl(
     targetLanguage = null,
     originalLanguage = 'en'
 ) {
-    backgroundLogger.info('Fetching master URL', { 
+    backgroundLogger.info('Fetching master URL', {
         masterPlaylistUrl,
         originalLanguage,
-        targetLanguage
+        targetLanguage,
     });
 
     const masterPlaylistText = await fetchText(masterPlaylistUrl);
@@ -1005,13 +1079,15 @@ async function fetchAndProcessSubtitleUrl(
         );
     }
 
-    backgroundLogger.info('Master content is an M3U8 playlist. Parsing available languages');
+    backgroundLogger.info(
+        'Master content is an M3U8 playlist. Parsing available languages'
+    );
     const availableLanguages =
         parseAvailableSubtitleLanguages(masterPlaylistText);
     backgroundLogger.debug('Available subtitle languages', {
         languages: availableLanguages.map(
             (lang) => `${lang.normalizedCode} (${lang.displayName})`
-        )
+        ),
     });
 
     // Get user settings for smart subtitle logic
@@ -1019,7 +1095,7 @@ async function fetchAndProcessSubtitleUrl(
     const useNativeSubtitles = settings.useNativeSubtitles !== false; // Default to true
 
     backgroundLogger.debug('Smart subtitle settings', {
-        useNativeSubtitles
+        useNativeSubtitles,
     });
 
     let useNativeTarget = false;
@@ -1037,14 +1113,14 @@ async function fetchAndProcessSubtitleUrl(
             if (targetLanguageInfo) {
                 backgroundLogger.info('Found native language', {
                     targetLanguage,
-                    displayName: targetLanguageInfo.displayName
+                    displayName: targetLanguageInfo.displayName,
                 });
                 useNativeTarget = true;
                 // In this case, we'll use the same language for both original and target
                 originalLanguageInfo = targetLanguageInfo;
             } else {
                 backgroundLogger.info('Native language not available', {
-                    targetLanguage
+                    targetLanguage,
                 });
             }
         } else {
@@ -1056,13 +1132,16 @@ async function fetchAndProcessSubtitleUrl(
             if (targetLanguageInfo) {
                 backgroundLogger.info('Target language found natively', {
                     targetLanguage,
-                    displayName: targetLanguageInfo.displayName
+                    displayName: targetLanguageInfo.displayName,
                 });
                 useNativeTarget = true;
             } else {
-                backgroundLogger.info('Target language not available natively', {
-                    targetLanguage
-                });
+                backgroundLogger.info(
+                    'Target language not available natively',
+                    {
+                        targetLanguage,
+                    }
+                );
             }
         }
     }
@@ -1076,11 +1155,11 @@ async function fetchAndProcessSubtitleUrl(
         if (originalLanguageInfo) {
             backgroundLogger.info('Found original language', {
                 originalLanguage,
-                displayName: originalLanguageInfo.displayName
+                displayName: originalLanguageInfo.displayName,
             });
         } else {
             backgroundLogger.info('Original language not available', {
-                originalLanguage
+                originalLanguage,
             });
             // Fallback to English if original language is not available
             originalLanguageInfo = findSubtitleUriForLanguage(
@@ -1089,7 +1168,7 @@ async function fetchAndProcessSubtitleUrl(
             );
             if (originalLanguageInfo) {
                 backgroundLogger.info('Using English fallback for original', {
-                    displayName: originalLanguageInfo.displayName
+                    displayName: originalLanguageInfo.displayName,
                 });
             }
         }
@@ -1097,15 +1176,20 @@ async function fetchAndProcessSubtitleUrl(
 
     // Step 3: Universal fallback to first available language if no suitable original found
     if (!originalLanguageInfo) {
-        backgroundLogger.info('No suitable original language found. Attempting universal fallback');
+        backgroundLogger.info(
+            'No suitable original language found. Attempting universal fallback'
+        );
 
         // Use the first available language if no original language found
         if (availableLanguages.length > 0) {
             originalLanguageInfo = availableLanguages[0];
-            backgroundLogger.info('Using first available language as fallback', {
-                displayName: originalLanguageInfo.displayName,
-                normalizedCode: originalLanguageInfo.normalizedCode
-            });
+            backgroundLogger.info(
+                'Using first available language as fallback',
+                {
+                    displayName: originalLanguageInfo.displayName,
+                    normalizedCode: originalLanguageInfo.normalizedCode,
+                }
+            );
         }
     }
 
@@ -1124,12 +1208,12 @@ async function fetchAndProcessSubtitleUrl(
     backgroundLogger.info('Final decision', {
         originalCode: originalLanguageInfo.normalizedCode,
         originalDisplayName: originalLanguageInfo.displayName,
-        useNativeTarget
+        useNativeTarget,
     });
     if (useNativeTarget && targetLanguageInfo) {
         backgroundLogger.info('Will use native target', {
             targetCode: targetLanguageInfo.normalizedCode,
-            targetDisplayName: targetLanguageInfo.displayName
+            targetDisplayName: targetLanguageInfo.displayName,
         });
     }
 
@@ -1139,16 +1223,20 @@ async function fetchAndProcessSubtitleUrl(
         masterPlaylistUrl
     ).href;
     backgroundLogger.info('Fetching original subtitle playlist', {
-        url: fullOriginalSubtitleUrl
+        url: fullOriginalSubtitleUrl,
     });
     const originalSubtitleText = await fetchText(fullOriginalSubtitleUrl);
 
     let originalVttText;
     if (originalSubtitleText.trim().toUpperCase().startsWith('WEBVTT')) {
-        backgroundLogger.debug('Original subtitle playlist URI pointed directly to VTT content');
+        backgroundLogger.debug(
+            'Original subtitle playlist URI pointed directly to VTT content'
+        );
         originalVttText = originalSubtitleText;
     } else if (originalSubtitleText.trim().startsWith('#EXTM3U')) {
-        backgroundLogger.debug('Original subtitle-specific playlist is an M3U8. Parsing for VTT segments');
+        backgroundLogger.debug(
+            'Original subtitle-specific playlist is an M3U8. Parsing for VTT segments'
+        );
         const vttSegmentUrls = parsePlaylistForVttSegments(
             originalSubtitleText,
             fullOriginalSubtitleUrl
@@ -1176,15 +1264,19 @@ async function fetchAndProcessSubtitleUrl(
             masterPlaylistUrl
         ).href;
         backgroundLogger.info('Fetching target subtitle playlist', {
-            url: fullTargetSubtitleUrl
+            url: fullTargetSubtitleUrl,
         });
         const targetSubtitleText = await fetchText(fullTargetSubtitleUrl);
 
         if (targetSubtitleText.trim().toUpperCase().startsWith('WEBVTT')) {
-            backgroundLogger.debug('Target subtitle playlist URI pointed directly to VTT content');
+            backgroundLogger.debug(
+                'Target subtitle playlist URI pointed directly to VTT content'
+            );
             targetVttText = targetSubtitleText;
         } else if (targetSubtitleText.trim().startsWith('#EXTM3U')) {
-            backgroundLogger.debug('Target subtitle-specific playlist is an M3U8. Parsing for VTT segments');
+            backgroundLogger.debug(
+                'Target subtitle-specific playlist is an M3U8. Parsing for VTT segments'
+            );
             const vttSegmentUrls = parsePlaylistForVttSegments(
                 targetSubtitleText,
                 fullTargetSubtitleUrl
@@ -1208,7 +1300,7 @@ async function fetchAndProcessSubtitleUrl(
     backgroundLogger.info('Successfully processed VTT', {
         originalLength: originalVttText.length,
         targetLength: targetVttText ? targetVttText.length : null,
-        useNativeTarget
+        useNativeTarget,
     });
 
     return {
@@ -1235,7 +1327,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
             if (!selectedProvider?.translate) {
                 backgroundLogger.error('Invalid translation provider', null, {
-                    providerId: currentTranslationProviderId
+                    providerId: currentTranslationProviderId,
                 });
                 sendResponse({
                     error: 'Translation failed',
@@ -1258,9 +1350,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                     });
                 })
                 .catch((error) => {
-                    backgroundLogger.error('Translation failed for provider', error, {
-                        providerName: selectedProvider.name
-                    });
+                    backgroundLogger.error(
+                        'Translation failed for provider',
+                        error,
+                        {
+                            providerName: selectedProvider.name,
+                        }
+                    );
                     sendResponse({
                         error: 'Translation failed',
                         errorType: 'TRANSLATION_API_ERROR',
@@ -1305,9 +1401,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                         });
                     })
                     .catch((error) => {
-                        backgroundLogger.error('Failed to process Netflix VTT for videoId', error, {
-                            videoId
-                        });
+                        backgroundLogger.error(
+                            'Failed to process Netflix VTT for videoId',
+                            error,
+                            {
+                                videoId,
+                            }
+                        );
                         sendResponse({
                             success: false,
                             error: `Netflix VTT Processing Error: ${error.message}`,
@@ -1338,9 +1438,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                         });
                     })
                     .catch((error) => {
-                        backgroundLogger.error('Failed to fetch/process VTT for URL', error, {
-                            url
-                        });
+                        backgroundLogger.error(
+                            'Failed to fetch/process VTT for URL',
+                            error,
+                            {
+                                url,
+                            }
+                        );
                         sendResponse({
                             success: false,
                             error: `VTT Processing Error: ${error.message}`,
@@ -1369,9 +1473,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                     }
                 );
             } else {
-                backgroundLogger.error('Attempted to switch to unknown provider', null, {
-                    providerId: newProviderId
-                });
+                backgroundLogger.error(
+                    'Attempted to switch to unknown provider',
+                    null,
+                    {
+                        providerId: newProviderId,
+                    }
+                );
                 sendResponse({
                     success: false,
                     message: `Unknown provider: ${newProviderId}`,
@@ -1391,7 +1499,7 @@ configService.onChanged((changes) => {
     ) {
         currentTranslationProviderId = changes.selectedProvider;
         backgroundLogger.info('Translation provider changed', {
-            selectedProvider: changes.selectedProvider
+            selectedProvider: changes.selectedProvider,
         });
     }
 });

@@ -11,7 +11,10 @@ function logWithFallback(level, message, data = {}) {
     if (contentLogger) {
         contentLogger[level](message, data);
     } else {
-        console.log(`[${LOG_PREFIX}] [${level.toUpperCase()}] ${message}`, data);
+        console.log(
+            `[${LOG_PREFIX}] [${level.toUpperCase()}] ${message}`,
+            data
+        );
     }
 }
 
@@ -43,7 +46,9 @@ let platformReady = false;
 // Buffer events until the main platform logic is ready
 function handleEarlyInjectorEvents(e) {
     if (e.detail) {
-        logWithFallback('debug', 'Intercepted early event', { eventType: e.detail.type });
+        logWithFallback('debug', 'Intercepted early event', {
+            eventType: e.detail.type,
+        });
         eventBuffer.push(e);
     }
 }
@@ -71,9 +76,13 @@ function injectScriptEarly() {
         s.onload = () =>
             logWithFallback('info', 'Early inject script loaded successfully');
         s.onerror = (e) =>
-            logWithFallback('error', 'Failed to load early inject script!', { error: e });
+            logWithFallback('error', 'Failed to load early inject script!', {
+                error: e,
+            });
     } catch (e) {
-        logWithFallback('error', 'Error during early inject script injection', { error: e });
+        logWithFallback('error', 'Error during early inject script injection', {
+            error: e,
+        });
     }
 }
 
@@ -101,19 +110,24 @@ async function loadModules() {
             chrome.runtime.getURL('utils/logger.js')
         );
         const Logger = loggerModule.default;
-        
+
         // Initialize content script logger with fallback mechanism
         contentLogger = Logger.create(LOG_PREFIX);
-        
+
         // Initialize logging level from configuration
         try {
             const loggingLevel = await configService.get('loggingLevel');
             contentLogger.updateLevel(loggingLevel);
-            contentLogger.info('Content script logger initialized', { level: loggingLevel });
+            contentLogger.info('Content script logger initialized', {
+                level: loggingLevel,
+            });
         } catch (error) {
             // Fallback to INFO level if config can't be read
             contentLogger.updateLevel(Logger.LEVELS.INFO);
-            contentLogger.warn('Failed to load logging level from config, using INFO level', error);
+            contentLogger.warn(
+                'Failed to load logging level from config, using INFO level',
+                error
+            );
         }
 
         return true;
@@ -190,8 +204,8 @@ async function initializePlatform() {
             platformReady = true;
 
             if (eventBuffer.length > 0) {
-                logWithFallback('info', 'Processing buffered events', { 
-                    eventCount: eventBuffer.length 
+                logWithFallback('info', 'Processing buffered events', {
+                    eventCount: eventBuffer.length,
                 });
                 // Have the new activePlatform instance handle each buffered event
                 eventBuffer.forEach((e) =>
@@ -203,7 +217,9 @@ async function initializePlatform() {
 
             startVideoElementDetection();
         } catch (error) {
-            logWithFallback('error', 'Error initializing Disney+ platform', { error });
+            logWithFallback('error', 'Error initializing Disney+ platform', {
+                error,
+            });
             activePlatform = null;
             platformReady = false;
         }
@@ -298,22 +314,30 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.type === 'LOGGING_LEVEL_CHANGED') {
         if (contentLogger) {
             contentLogger.updateLevel(request.level);
-            contentLogger.info('Logging level updated from background script', { 
-                newLevel: request.level 
+            contentLogger.info('Logging level updated from background script', {
+                newLevel: request.level,
             });
         } else {
-            logWithFallback('info', 'Logging level change received but logger not initialized yet', { 
-                level: request.level 
-            });
+            logWithFallback(
+                'info',
+                'Logging level change received but logger not initialized yet',
+                {
+                    level: request.level,
+                }
+            );
         }
         sendResponse({ success: true });
         return false;
     }
 
     if (!subtitleUtils || !configService) {
-        logWithFallback('error', 'Utilities not loaded, cannot handle message', {
-            action: request.action || request.type
-        });
+        logWithFallback(
+            'error',
+            'Utilities not loaded, cannot handle message',
+            {
+                action: request.action || request.type,
+            }
+        );
         sendResponse({ success: false, error: 'Utilities not loaded' });
         return;
     }
@@ -321,8 +345,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     switch (request.action) {
         case 'toggleSubtitles': {
             subtitleUtils.setSubtitlesActive(request.enabled);
-            logWithFallback('info', 'Subtitle active state changed', { 
-                enabled: request.enabled 
+            logWithFallback('info', 'Subtitle active state changed', {
+                enabled: request.enabled,
             });
             if (!request.enabled) {
                 subtitleUtils.hideSubtitleContainer();
@@ -385,8 +409,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                         LOG_PREFIX
                     );
                 }
-                logWithFallback('info', 'Applied immediate config changes', { 
-                    changes: request.changes 
+                logWithFallback('info', 'Applied immediate config changes', {
+                    changes: request.changes,
                 });
             }
             sendResponse({ success: true });
@@ -394,8 +418,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         }
 
         default: {
-            logWithFallback('debug', 'Message handled by config service', { 
-                action: request.action 
+            logWithFallback('debug', 'Message handled by config service', {
+                action: request.action,
             });
             sendResponse({ success: true });
             break;

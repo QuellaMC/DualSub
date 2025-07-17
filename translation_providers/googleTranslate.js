@@ -15,10 +15,10 @@ const logger = Logger.create('GoogleTranslate');
  * @throws {Error} If the translation API request or processing fails.
  */
 export async function translate(text, sourceLang, targetLang) {
-    logger.info('Translation request initiated', { 
-        sourceLang, 
-        targetLang, 
-        textLength: text?.length || 0 
+    logger.info('Translation request initiated', {
+        sourceLang,
+        targetLang,
+        textLength: text?.length || 0,
     });
     const G_TRANSLATE_URL = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceLang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
 
@@ -29,7 +29,7 @@ export async function translate(text, sourceLang, targetLang) {
             logger.error('Google Translate API HTTP error', null, {
                 status: response.status,
                 statusText: response.statusText,
-                responsePreview: errorText.substring(0, 200)
+                responsePreview: errorText.substring(0, 200),
             });
             throw new Error(`Translation API HTTP error ${response.status}.`);
         }
@@ -44,16 +44,22 @@ export async function translate(text, sourceLang, targetLang) {
                 data[0][0] &&
                 typeof data[0][0][0] === 'string'
             ) {
-                const translatedText = data[0].map((sentence) => sentence[0]).join('');
+                const translatedText = data[0]
+                    .map((sentence) => sentence[0])
+                    .join('');
                 logger.info('Translation completed successfully', {
                     translatedLength: translatedText.length,
-                    sentenceCount: data[0].length
+                    sentenceCount: data[0].length,
                 });
                 return translatedText;
             } else {
-                logger.error('Translation JSON parsing failed or unexpected structure', null, {
-                    responseData: data
-                });
+                logger.error(
+                    'Translation JSON parsing failed or unexpected structure',
+                    null,
+                    {
+                        responseData: data,
+                    }
+                );
                 throw new Error(
                     'Translation Error: Malformed JSON response from Google Translate.'
                 );
@@ -62,7 +68,7 @@ export async function translate(text, sourceLang, targetLang) {
             const textResponse = await response.text();
             logger.error('Google Translate API did not return JSON', null, {
                 contentType,
-                responsePreview: textResponse.substring(0, 500)
+                responsePreview: textResponse.substring(0, 500),
             });
             if (
                 textResponse.includes('<title>Google</title>') &&
@@ -80,7 +86,7 @@ export async function translate(text, sourceLang, targetLang) {
         logger.error('API request/processing error occurred', error, {
             sourceLang,
             targetLang,
-            textLength: text?.length || 0
+            textLength: text?.length || 0,
         });
         // Re-throw the error to be caught by the caller in background.js
         // or provide a more specific error message if desired.

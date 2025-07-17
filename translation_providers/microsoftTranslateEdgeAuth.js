@@ -61,8 +61,8 @@ async function fetchAuthToken() {
             }
         } catch (decodeError) {
             // Manual base64 decode as a last resort (simple implementation)
-            logger.warn('Standard base64 decode failed, using fallback', { 
-                errorMessage: decodeError.message 
+            logger.warn('Standard base64 decode failed, using fallback', {
+                errorMessage: decodeError.message,
             });
             const base64chars =
                 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
@@ -105,7 +105,7 @@ async function fetchAuthToken() {
         tokenExpiresAt = jwtPayload.exp * 1000; // Convert to milliseconds
         logger.debug('New auth token fetched successfully', {
             expiresAt: new Date(tokenExpiresAt).toISOString(),
-            tokenLength: authJWT.length
+            tokenLength: authJWT.length,
         });
         return globalAuthToken;
     } catch (e) {
@@ -161,14 +161,16 @@ async function ensureAuthentication() {
  * @throws {Error} If the translation API request or processing fails.
  */
 export async function translate(text, sourceLang, targetLang) {
-    logger.info('Translation request initiated', { 
-        sourceLang, 
-        targetLang, 
-        textLength: text?.length || 0 
+    logger.info('Translation request initiated', {
+        sourceLang,
+        targetLang,
+        textLength: text?.length || 0,
     });
 
     if (!text || typeof text !== 'string' || text.trim() === '') {
-        logger.warn('Empty or invalid text provided for translation', { text: text?.substring(0, 50) });
+        logger.warn('Empty or invalid text provided for translation', {
+            text: text?.substring(0, 50),
+        });
         return ''; // Return empty string for empty input
     }
 
@@ -218,7 +220,7 @@ export async function translate(text, sourceLang, targetLang) {
             logger.error('Microsoft Translate API HTTP error', null, {
                 status: response.status,
                 statusText: response.statusText,
-                errorDetails: errorDetails.substring(0, 200)
+                errorDetails: errorDetails.substring(0, 200),
             });
             throw new Error(
                 `Translation API HTTP error ${response.status}. Details: ${errorDetails.substring(0, 200)}`
@@ -238,13 +240,17 @@ export async function translate(text, sourceLang, targetLang) {
             const translatedText = result[0].translations[0].text;
             logger.info('Translation completed successfully', {
                 translatedLength: translatedText.length,
-                detectedSourceLang: result[0].detectedLanguage?.language
+                detectedSourceLang: result[0].detectedLanguage?.language,
             });
             return translatedText;
         } else {
-            logger.error('Translation JSON parsing failed or unexpected structure', null, {
-                responseData: result
-            });
+            logger.error(
+                'Translation JSON parsing failed or unexpected structure',
+                null,
+                {
+                    responseData: result,
+                }
+            );
             throw new Error(
                 'Translation Error: Malformed JSON response from Microsoft Translator.'
             );
@@ -253,7 +259,7 @@ export async function translate(text, sourceLang, targetLang) {
         logger.error('API request/processing error occurred', error, {
             sourceLang: actualSourceLang,
             targetLang,
-            textLength: text?.length || 0
+            textLength: text?.length || 0,
         });
         // Re-throw the error to be caught by the caller in background.js
         throw error;

@@ -185,7 +185,9 @@
     "providerDeepLFreeName": { "message": "DeepL翻訳（無料）" },
 
     "cardLoggingLevelTitle": { "message": "ログレベル" },
-    "cardLoggingLevelDesc": { "message": "ブラウザコンソールに表示されるデバッグ情報の量を制御します。高いレベルには低いレベルのメッセージも含まれます。" },
+    "cardLoggingLevelDesc": {
+        "message": "ブラウザコンソールに表示されるデバッグ情報の量を制御します。高いレベルには低いレベルのメッセージも含まれます。"
+    },
     "loggingLevelLabel": { "message": "ログレベル：" },
     "loggingLevelOff": { "message": "オフ" },
     "loggingLevelError": { "message": "エラーのみ" },

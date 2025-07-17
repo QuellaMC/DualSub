@@ -11,14 +11,14 @@ const mockChrome = {
     ...global.chrome,
     tabs: {
         query: jest.fn(),
-        sendMessage: jest.fn()
-    }
+        sendMessage: jest.fn(),
+    },
 };
 
 // Mock ConfigService
 const mockConfigService = {
     get: jest.fn(),
-    onChanged: jest.fn()
+    onChanged: jest.fn(),
 };
 
 global.chrome = mockChrome;
@@ -32,7 +32,7 @@ describe('Cross-Context Logging Level Synchronization', () => {
     beforeEach(() => {
         // Reset all mocks
         jest.clearAllMocks();
-        
+
         // Create logger instances for different contexts
         backgroundLogger = Logger.create('Background', mockConfigService);
         contentLogger = Logger.create('ContentScript');
@@ -46,7 +46,7 @@ describe('Cross-Context Logging Level Synchronization', () => {
             const mockTabs = [
                 { id: 1, url: 'https://netflix.com/watch/123' },
                 { id: 2, url: 'https://disneyplus.com/video/456' },
-                { id: 3, url: 'https://example.com' } // Should be ignored
+                { id: 3, url: 'https://example.com' }, // Should be ignored
             ];
             mockChrome.tabs.query.mockResolvedValue(mockTabs);
             mockChrome.tabs.sendMessage.mockResolvedValue({ success: true });
@@ -55,19 +55,25 @@ describe('Cross-Context Logging Level Synchronization', () => {
             const broadcastLoggingLevelChange = async (newLevel) => {
                 const tabs = await chrome.tabs.query({});
                 const messagePromises = [];
-                
+
                 for (const tab of tabs) {
-                    if (tab.url && (tab.url.includes('netflix.com') || tab.url.includes('disneyplus.com'))) {
-                        const messagePromise = chrome.tabs.sendMessage(tab.id, {
-                            type: 'LOGGING_LEVEL_CHANGED',
-                            level: newLevel
-                        }).catch(() => {
-                            // Ignore errors for tabs without content scripts
-                        });
+                    if (
+                        tab.url &&
+                        (tab.url.includes('netflix.com') ||
+                            tab.url.includes('disneyplus.com'))
+                    ) {
+                        const messagePromise = chrome.tabs
+                            .sendMessage(tab.id, {
+                                type: 'LOGGING_LEVEL_CHANGED',
+                                level: newLevel,
+                            })
+                            .catch(() => {
+                                // Ignore errors for tabs without content scripts
+                            });
                         messagePromises.push(messagePromise);
                     }
                 }
-                
+
                 await Promise.allSettled(messagePromises);
             };
 
@@ -81,42 +87,50 @@ describe('Cross-Context Logging Level Synchronization', () => {
             expect(mockChrome.tabs.sendMessage).toHaveBeenCalledTimes(2);
             expect(mockChrome.tabs.sendMessage).toHaveBeenCalledWith(1, {
                 type: 'LOGGING_LEVEL_CHANGED',
-                level: Logger.LEVELS.DEBUG
+                level: Logger.LEVELS.DEBUG,
             });
             expect(mockChrome.tabs.sendMessage).toHaveBeenCalledWith(2, {
                 type: 'LOGGING_LEVEL_CHANGED',
-                level: Logger.LEVELS.DEBUG
+                level: Logger.LEVELS.DEBUG,
             });
         });
 
         test('should handle tab message failures gracefully', async () => {
-            const mockTabs = [
-                { id: 1, url: 'https://netflix.com/watch/123' }
-            ];
+            const mockTabs = [{ id: 1, url: 'https://netflix.com/watch/123' }];
             mockChrome.tabs.query.mockResolvedValue(mockTabs);
-            mockChrome.tabs.sendMessage.mockRejectedValue(new Error('Tab not found'));
+            mockChrome.tabs.sendMessage.mockRejectedValue(
+                new Error('Tab not found')
+            );
 
             const broadcastLoggingLevelChange = async (newLevel) => {
                 const tabs = await chrome.tabs.query({});
                 const messagePromises = [];
-                
+
                 for (const tab of tabs) {
-                    if (tab.url && (tab.url.includes('netflix.com') || tab.url.includes('disneyplus.com'))) {
-                        const messagePromise = chrome.tabs.sendMessage(tab.id, {
-                            type: 'LOGGING_LEVEL_CHANGED',
-                            level: newLevel
-                        }).catch(() => {
-                            // Should handle errors gracefully
-                        });
+                    if (
+                        tab.url &&
+                        (tab.url.includes('netflix.com') ||
+                            tab.url.includes('disneyplus.com'))
+                    ) {
+                        const messagePromise = chrome.tabs
+                            .sendMessage(tab.id, {
+                                type: 'LOGGING_LEVEL_CHANGED',
+                                level: newLevel,
+                            })
+                            .catch(() => {
+                                // Should handle errors gracefully
+                            });
                         messagePromises.push(messagePromise);
                     }
                 }
-                
+
                 await Promise.allSettled(messagePromises);
             };
 
             // Should not throw despite tab message failure
-            await expect(broadcastLoggingLevelChange(Logger.LEVELS.ERROR)).resolves.toBeUndefined();
+            await expect(
+                broadcastLoggingLevelChange(Logger.LEVELS.ERROR)
+            ).resolves.toBeUndefined();
             expect(mockChrome.tabs.sendMessage).toHaveBeenCalledTimes(1);
         });
     });
@@ -125,7 +139,7 @@ describe('Cross-Context Logging Level Synchronization', () => {
         test('should update logging level when receiving message from background', () => {
             const initialLevel = Logger.LEVELS.INFO;
             const newLevel = Logger.LEVELS.DEBUG;
-            
+
             contentLogger.updateLevel(initialLevel);
             expect(contentLogger.currentLevel).toBe(initialLevel);
 
@@ -139,10 +153,14 @@ describe('Cross-Context Logging Level Synchronization', () => {
             };
 
             const mockSendResponse = jest.fn();
-            const result = handleMessage({
-                type: 'LOGGING_LEVEL_CHANGED',
-                level: newLevel
-            }, {}, mockSendResponse);
+            const result = handleMessage(
+                {
+                    type: 'LOGGING_LEVEL_CHANGED',
+                    level: newLevel,
+                },
+                {},
+                mockSendResponse
+            );
 
             expect(contentLogger.currentLevel).toBe(newLevel);
             expect(mockSendResponse).toHaveBeenCalledWith({ success: true });
@@ -151,14 +169,16 @@ describe('Cross-Context Logging Level Synchronization', () => {
 
         test('should handle message even when logger not initialized', () => {
             let tempLogger = null;
-            
+
             const handleMessage = (request, sender, sendResponse) => {
                 if (request.type === 'LOGGING_LEVEL_CHANGED') {
                     if (tempLogger) {
                         tempLogger.updateLevel(request.level);
                     } else {
                         // Should log but not crash
-                        console.log('Logging level change received but logger not initialized yet');
+                        console.log(
+                            'Logging level change received but logger not initialized yet'
+                        );
                     }
                     sendResponse({ success: true });
                     return false;
@@ -168,10 +188,14 @@ describe('Cross-Context Logging Level Synchronization', () => {
             const mockSendResponse = jest.fn();
             const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
 
-            const result = handleMessage({
-                type: 'LOGGING_LEVEL_CHANGED',
-                level: Logger.LEVELS.WARN
-            }, {}, mockSendResponse);
+            const result = handleMessage(
+                {
+                    type: 'LOGGING_LEVEL_CHANGED',
+                    level: Logger.LEVELS.WARN,
+                },
+                {},
+                mockSendResponse
+            );
 
             expect(consoleSpy).toHaveBeenCalled();
             expect(mockSendResponse).toHaveBeenCalledWith({ success: true });
@@ -185,7 +209,7 @@ describe('Cross-Context Logging Level Synchronization', () => {
         test('should update logging level when configuration changes', async () => {
             const initialLevel = Logger.LEVELS.INFO;
             const newLevel = Logger.LEVELS.ERROR;
-            
+
             // Mock config service to return initial level
             mockConfigService.get.mockResolvedValue(initialLevel);
             await popupLogger.updateLevel();
@@ -212,10 +236,12 @@ describe('Cross-Context Logging Level Synchronization', () => {
         });
 
         test('should initialize with fallback level when config fails', async () => {
-            mockConfigService.get.mockRejectedValue(new Error('Config unavailable'));
-            
+            mockConfigService.get.mockRejectedValue(
+                new Error('Config unavailable')
+            );
+
             await popupLogger.updateLevel();
-            
+
             // Should fallback to INFO level
             expect(popupLogger.currentLevel).toBe(Logger.LEVELS.INFO);
         });
@@ -227,7 +253,7 @@ describe('Cross-Context Logging Level Synchronization', () => {
                 debug: jest.spyOn(console, 'debug').mockImplementation(),
                 info: jest.spyOn(console, 'info').mockImplementation(),
                 warn: jest.spyOn(console, 'warn').mockImplementation(),
-                error: jest.spyOn(console, 'error').mockImplementation()
+                error: jest.spyOn(console, 'error').mockImplementation(),
             };
 
             // Test DEBUG level (should show all)
@@ -243,7 +269,7 @@ describe('Cross-Context Logging Level Synchronization', () => {
             expect(consoleSpy.error).toHaveBeenCalledTimes(1);
 
             // Reset spies
-            Object.values(consoleSpy).forEach(spy => spy.mockClear());
+            Object.values(consoleSpy).forEach((spy) => spy.mockClear());
 
             // Test WARN level (should show warn and error only)
             contentLogger.updateLevel(Logger.LEVELS.WARN);
@@ -258,7 +284,7 @@ describe('Cross-Context Logging Level Synchronization', () => {
             expect(consoleSpy.error).toHaveBeenCalledTimes(1);
 
             // Reset spies
-            Object.values(consoleSpy).forEach(spy => spy.mockClear());
+            Object.values(consoleSpy).forEach((spy) => spy.mockClear());
 
             // Test OFF level (should show nothing)
             contentLogger.updateLevel(Logger.LEVELS.OFF);
@@ -273,17 +299,17 @@ describe('Cross-Context Logging Level Synchronization', () => {
             expect(consoleSpy.error).toHaveBeenCalledTimes(0);
 
             // Restore spies
-            Object.values(consoleSpy).forEach(spy => spy.mockRestore());
+            Object.values(consoleSpy).forEach((spy) => spy.mockRestore());
         });
     });
 
     describe('Real-time Synchronization', () => {
         test('should synchronize logging levels across all contexts in real-time', async () => {
             const newLevel = Logger.LEVELS.WARN;
-            
+
             // Mock configuration service for contexts that use it
             mockConfigService.get.mockResolvedValue(Logger.LEVELS.INFO);
-            
+
             // Initialize all loggers
             await backgroundLogger.updateLevel();
             await popupLogger.updateLevel();
@@ -320,11 +346,11 @@ describe('Cross-Context Logging Level Synchronization', () => {
 
             // Trigger configuration change
             configChangeCallback({ loggingLevel: newLevel });
-            
+
             // Simulate background script broadcasting to content script
             handleContentMessage({
                 type: 'LOGGING_LEVEL_CHANGED',
-                level: newLevel
+                level: newLevel,
             });
 
             // Verify all contexts are synchronized
@@ -337,19 +363,21 @@ describe('Cross-Context Logging Level Synchronization', () => {
     describe('Error Handling and Resilience', () => {
         test('should continue working when some contexts fail to update', async () => {
             const newLevel = Logger.LEVELS.DEBUG;
-            
+
             // Mock one context to fail
             const failingLogger = Logger.create('FailingContext', {
-                get: jest.fn().mockRejectedValue(new Error('Config service unavailable')),
-                onChanged: jest.fn()
+                get: jest
+                    .fn()
+                    .mockRejectedValue(new Error('Config service unavailable')),
+                onChanged: jest.fn(),
             });
 
             // Should not throw when updating failing logger
             await expect(failingLogger.updateLevel()).resolves.toBeUndefined();
-            
+
             // Should fallback to INFO level
             expect(failingLogger.currentLevel).toBe(Logger.LEVELS.INFO);
-            
+
             // Other loggers should still work
             contentLogger.updateLevel(newLevel);
             expect(contentLogger.currentLevel).toBe(newLevel);
@@ -359,7 +387,10 @@ describe('Cross-Context Logging Level Synchronization', () => {
             const handleMessage = (request, sender, sendResponse) => {
                 if (request.type === 'LOGGING_LEVEL_CHANGED') {
                     // Should handle invalid level gracefully
-                    const level = typeof request.level === 'number' ? request.level : Logger.LEVELS.INFO;
+                    const level =
+                        typeof request.level === 'number'
+                            ? request.level
+                            : Logger.LEVELS.INFO;
                     contentLogger.updateLevel(level);
                     sendResponse({ success: true });
                     return false;
@@ -367,12 +398,16 @@ describe('Cross-Context Logging Level Synchronization', () => {
             };
 
             const mockSendResponse = jest.fn();
-            
+
             // Test with invalid level
-            handleMessage({
-                type: 'LOGGING_LEVEL_CHANGED',
-                level: 'invalid'
-            }, {}, mockSendResponse);
+            handleMessage(
+                {
+                    type: 'LOGGING_LEVEL_CHANGED',
+                    level: 'invalid',
+                },
+                {},
+                mockSendResponse
+            );
 
             // Should fallback to INFO level
             expect(contentLogger.currentLevel).toBe(Logger.LEVELS.INFO);

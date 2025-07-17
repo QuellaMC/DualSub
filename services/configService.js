@@ -40,13 +40,10 @@ class ConfigService {
     initializeDefaults() {
         chrome.runtime.onInstalled.addListener((details) => {
             if (details.reason === 'install' || details.reason === 'update') {
-                this.logger.info(
-                    'Setting default configuration from schema',
-                    {
-                        reason: details.reason,
-                        method: 'initializeDefaults'
-                    }
-                );
+                this.logger.info('Setting default configuration from schema', {
+                    reason: details.reason,
+                    method: 'initializeDefaults',
+                });
                 this.setDefaultsForMissingKeys();
             }
         });
@@ -900,7 +897,9 @@ class ConfigService {
             // Update logging level if this was the loggingLevel setting
             if (key === 'loggingLevel') {
                 await this.logger.updateLevel();
-                this.logger.debug(`Logging level updated`, { loggingLevel: value });
+                this.logger.debug(`Logging level updated`, {
+                    loggingLevel: value,
+                });
             }
         } catch (error) {
             this.logger.error(`Error setting key "${key}"`, error, {

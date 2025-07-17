@@ -86,12 +86,12 @@ export function validateSetting(key, value) {
         if (typeof value !== 'number' || isNaN(value)) {
             return false;
         }
-        
+
         // Special validation for loggingLevel - must be integer between 0 and 4
         if (key === 'loggingLevel') {
             return Number.isInteger(value) && value >= 0 && value <= 4;
         }
-        
+
         return true;
     } else if (schemaEntry.type === Boolean) {
         return typeof value === 'boolean';

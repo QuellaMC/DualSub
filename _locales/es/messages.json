@@ -195,7 +195,9 @@
     "providerDeepLFreeName": { "message": "DeepL Translate (Gratuito)" },
 
     "cardLoggingLevelTitle": { "message": "Nivel de Registro" },
-    "cardLoggingLevelDesc": { "message": "Controla la cantidad de información de depuración mostrada en la consola del navegador. Los niveles más altos incluyen todos los mensajes de niveles inferiores." },
+    "cardLoggingLevelDesc": {
+        "message": "Controla la cantidad de información de depuración mostrada en la consola del navegador. Los niveles más altos incluyen todos los mensajes de niveles inferiores."
+    },
     "loggingLevelLabel": { "message": "Nivel de Registro:" },
     "loggingLevelOff": { "message": "Desactivado" },
     "loggingLevelError": { "message": "Solo Errores" },
