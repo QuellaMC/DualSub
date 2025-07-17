@@ -1,6 +1,6 @@
 {
     "name": "dualsub",
-    "version": "1.3.2",
+    "version": "1.3.5",
     "type": "module",
     "description": "Displays dual language subtitles on streaming platforms.",
     "main": "background.js",
