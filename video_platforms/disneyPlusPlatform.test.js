@@ -1,6 +1,16 @@
-import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
+import {
+    describe,
+    it,
+    expect,
+    beforeEach,
+    afterEach,
+    jest,
+} from '@jest/globals';
 import { DisneyPlusPlatform } from './disneyPlusPlatform.js';
-import { mockWindowLocation, LocationMock } from '../test-utils/location-mock.js';
+import {
+    mockWindowLocation,
+    LocationMock,
+} from '../test-utils/location-mock.js';
 import { mockChromeApi, ChromeApiMock } from '../test-utils/chrome-api-mock.js';
 import { createLoggerMock } from '../test-utils/logger-mock.js';
 import Logger from '../utils/logger.js';
@@ -14,22 +24,22 @@ describe('DisneyPlusPlatform Logging Integration', () => {
     beforeEach(() => {
         // Reset all mocks
         jest.clearAllMocks();
-        
+
         // Setup Chrome API mock
         chromeApiMock = ChromeApiMock.create();
         global.chrome = chromeApiMock;
-        
+
         // Create logger mock using centralized utility
         mockLogger = createLoggerMock();
         jest.spyOn(Logger, 'create').mockReturnValue(mockLogger);
-        
+
         // Create platform instance
         platform = new DisneyPlusPlatform();
-        
+
         // Mock platform detection methods to simulate Disney Plus environment
         jest.spyOn(platform, 'isPlatformActive').mockReturnValue(true);
         jest.spyOn(platform, 'isPlayerPageActive').mockReturnValue(true);
-        
+
         locationCleanup = () => {
             // No cleanup needed for method mocks
         };
@@ -40,22 +50,22 @@ describe('DisneyPlusPlatform Logging Integration', () => {
         if (platform) {
             platform.cleanup();
         }
-        
+
         // Restore location mock
         if (locationCleanup) {
             locationCleanup();
         }
-        
+
         // Reset Chrome API mock
         if (chromeApiMock) {
             chromeApiMock.reset();
         }
-        
+
         // Reset logger mock
         if (mockLogger) {
             mockLogger.reset();
         }
-        
+
         // Clear all Jest mocks
         jest.clearAllMocks();
     });
@@ -88,7 +98,7 @@ describe('DisneyPlusPlatform Logging Integration', () => {
             expect(mockLogger.info).toHaveBeenCalledWith(
                 'Initialized and event listener added',
                 expect.objectContaining({
-                    selectors: expect.any(Array)
+                    selectors: expect.any(Array),
                 })
             );
         });
@@ -98,13 +108,15 @@ describe('DisneyPlusPlatform Logging Integration', () => {
         test('should log inject script ready event', () => {
             const mockEvent = {
                 detail: {
-                    type: 'INJECT_SCRIPT_READY'
-                }
+                    type: 'INJECT_SCRIPT_READY',
+                },
             };
 
             platform._handleInjectorEvents(mockEvent);
 
-            expect(mockLogger.info).toHaveBeenCalledWith('Inject script is ready');
+            expect(mockLogger.info).toHaveBeenCalledWith(
+                'Inject script is ready'
+            );
         });
 
         test('should log subtitle URL found', () => {
@@ -112,8 +124,8 @@ describe('DisneyPlusPlatform Logging Integration', () => {
                 detail: {
                     type: 'SUBTITLE_URL_FOUND',
                     videoId: '12345',
-                    url: 'http://example.com/master.m3u8'
-                }
+                    url: 'http://example.com/master.m3u8',
+                },
             };
 
             platform._handleInjectorEvents(mockEvent);
@@ -122,7 +134,7 @@ describe('DisneyPlusPlatform Logging Integration', () => {
                 'SUBTITLE_URL_FOUND for injectedVideoId',
                 expect.objectContaining({
                     injectedVideoId: '12345',
-                    url: 'http://example.com/master.m3u8'
+                    url: 'http://example.com/master.m3u8',
                 })
             );
         });
@@ -131,8 +143,8 @@ describe('DisneyPlusPlatform Logging Integration', () => {
             const mockEvent = {
                 detail: {
                     type: 'SUBTITLE_URL_FOUND',
-                    url: 'http://example.com/master.m3u8'
-                }
+                    url: 'http://example.com/master.m3u8',
+                },
             };
 
             platform._handleInjectorEvents(mockEvent);
@@ -141,7 +153,7 @@ describe('DisneyPlusPlatform Logging Integration', () => {
                 'SUBTITLE_URL_FOUND event without a videoId',
                 null,
                 expect.objectContaining({
-                    url: 'http://example.com/master.m3u8'
+                    url: 'http://example.com/master.m3u8',
                 })
             );
         });
@@ -150,28 +162,32 @@ describe('DisneyPlusPlatform Logging Integration', () => {
     describe('Video Context Change Logging', () => {
         test('should log video context change', () => {
             platform.currentVideoId = '11111';
-            
+
             const mockEvent = {
                 detail: {
                     type: 'SUBTITLE_URL_FOUND',
                     videoId: '12345',
-                    url: 'http://example.com/master.m3u8'
-                }
+                    url: 'http://example.com/master.m3u8',
+                },
             };
 
-            chromeApiMock.storage.sync.get.mockImplementation((keys, callback) => {
-                callback({
-                    targetLanguage: 'zh-CN',
-                    originalLanguage: 'en'
-                });
-            });
+            chromeApiMock.storage.sync.get.mockImplementation(
+                (keys, callback) => {
+                    callback({
+                        targetLanguage: 'zh-CN',
+                        originalLanguage: 'en',
+                    });
+                }
+            );
 
-            chromeApiMock.runtime.sendMessage.mockImplementation((message, callback) => {
-                callback({
-                    success: true,
-                    videoId: '12345'
-                });
-            });
+            chromeApiMock.runtime.sendMessage.mockImplementation(
+                (message, callback) => {
+                    callback({
+                        success: true,
+                        videoId: '12345',
+                    });
+                }
+            );
 
             platform._handleInjectorEvents(mockEvent);
 
@@ -179,21 +195,22 @@ describe('DisneyPlusPlatform Logging Integration', () => {
                 'Video context changing',
                 expect.objectContaining({
                     previousVideoId: '11111',
-                    newVideoId: '12345'
+                    newVideoId: '12345',
                 })
             );
         });
 
         test('should log already processed URL', () => {
             platform.currentVideoId = '12345';
-            platform.lastKnownVttUrlForVideoId['12345'] = 'http://example.com/master.m3u8';
-            
+            platform.lastKnownVttUrlForVideoId['12345'] =
+                'http://example.com/master.m3u8';
+
             const mockEvent = {
                 detail: {
                     type: 'SUBTITLE_URL_FOUND',
                     videoId: '12345',
-                    url: 'http://example.com/master.m3u8'
-                }
+                    url: 'http://example.com/master.m3u8',
+                },
             };
 
             platform._handleInjectorEvents(mockEvent);
@@ -202,7 +219,7 @@ describe('DisneyPlusPlatform Logging Integration', () => {
                 'VTT URL already processed or known',
                 expect.objectContaining({
                     url: 'http://example.com/master.m3u8',
-                    videoId: '12345'
+                    videoId: '12345',
                 })
             );
         });
@@ -210,26 +227,30 @@ describe('DisneyPlusPlatform Logging Integration', () => {
 
     describe('Background Communication Logging', () => {
         test('should log VTT request to background', () => {
-            chromeApiMock.storage.sync.get.mockImplementation((keys, callback) => {
-                callback({
-                    targetLanguage: 'zh-CN',
-                    originalLanguage: 'en'
-                });
-            });
+            chromeApiMock.storage.sync.get.mockImplementation(
+                (keys, callback) => {
+                    callback({
+                        targetLanguage: 'zh-CN',
+                        originalLanguage: 'en',
+                    });
+                }
+            );
 
-            chromeApiMock.runtime.sendMessage.mockImplementation((message, callback) => {
-                callback({
-                    success: true,
-                    videoId: '12345'
-                });
-            });
+            chromeApiMock.runtime.sendMessage.mockImplementation(
+                (message, callback) => {
+                    callback({
+                        success: true,
+                        videoId: '12345',
+                    });
+                }
+            );
 
             const mockEvent = {
                 detail: {
                     type: 'SUBTITLE_URL_FOUND',
                     videoId: '12345',
-                    url: 'http://example.com/master.m3u8'
-                }
+                    url: 'http://example.com/master.m3u8',
+                },
             };
 
             platform._handleInjectorEvents(mockEvent);
@@ -238,34 +259,38 @@ describe('DisneyPlusPlatform Logging Integration', () => {
                 'Requesting VTT from background',
                 expect.objectContaining({
                     url: 'http://example.com/master.m3u8',
-                    videoId: '12345'
+                    videoId: '12345',
                 })
             );
         });
 
         test('should log successful VTT fetch', () => {
-            chromeApiMock.storage.sync.get.mockImplementation((keys, callback) => {
-                callback({});
-            });
+            chromeApiMock.storage.sync.get.mockImplementation(
+                (keys, callback) => {
+                    callback({});
+                }
+            );
 
-            chromeApiMock.runtime.sendMessage.mockImplementation((message, callback) => {
-                callback({
-                    success: true,
-                    videoId: '12345',
-                    sourceLanguage: 'en',
-                    targetLanguage: 'zh-CN',
-                    url: 'http://example.com/subtitle.vtt'
-                });
-            });
+            chromeApiMock.runtime.sendMessage.mockImplementation(
+                (message, callback) => {
+                    callback({
+                        success: true,
+                        videoId: '12345',
+                        sourceLanguage: 'en',
+                        targetLanguage: 'zh-CN',
+                        url: 'http://example.com/subtitle.vtt',
+                    });
+                }
+            );
 
             platform.currentVideoId = '12345';
-            
+
             const mockEvent = {
                 detail: {
                     type: 'SUBTITLE_URL_FOUND',
                     videoId: '12345',
-                    url: 'http://example.com/master.m3u8'
-                }
+                    url: 'http://example.com/master.m3u8',
+                },
             };
 
             platform._handleInjectorEvents(mockEvent);
@@ -275,32 +300,36 @@ describe('DisneyPlusPlatform Logging Integration', () => {
                 expect.objectContaining({
                     videoId: '12345',
                     sourceLanguage: 'en',
-                    targetLanguage: 'zh-CN'
+                    targetLanguage: 'zh-CN',
                 })
             );
         });
 
         test('should log background fetch errors', () => {
-            chromeApiMock.storage.sync.get.mockImplementation((keys, callback) => {
-                callback({});
-            });
+            chromeApiMock.storage.sync.get.mockImplementation(
+                (keys, callback) => {
+                    callback({});
+                }
+            );
 
-            chromeApiMock.runtime.sendMessage.mockImplementation((message, callback) => {
-                callback({
-                    success: false,
-                    error: 'Network error',
-                    url: 'http://example.com/subtitle.vtt'
-                });
-            });
+            chromeApiMock.runtime.sendMessage.mockImplementation(
+                (message, callback) => {
+                    callback({
+                        success: false,
+                        error: 'Network error',
+                        url: 'http://example.com/subtitle.vtt',
+                    });
+                }
+            );
 
             platform.currentVideoId = '12345';
-            
+
             const mockEvent = {
                 detail: {
                     type: 'SUBTITLE_URL_FOUND',
                     videoId: '12345',
-                    url: 'http://example.com/master.m3u8'
-                }
+                    url: 'http://example.com/master.m3u8',
+                },
             };
 
             platform._handleInjectorEvents(mockEvent);
@@ -311,27 +340,33 @@ describe('DisneyPlusPlatform Logging Integration', () => {
                 expect.objectContaining({
                     error: 'Network error',
                     url: 'http://example.com/subtitle.vtt',
-                    videoId: '12345'
+                    videoId: '12345',
                 })
             );
         });
 
         test('should log chrome runtime errors', () => {
-            chromeApiMock.storage.sync.get.mockImplementation((keys, callback) => {
-                callback({});
-            });
+            chromeApiMock.storage.sync.get.mockImplementation(
+                (keys, callback) => {
+                    callback({});
+                }
+            );
 
-            chromeApiMock.runtime.lastError = { message: 'Extension context invalidated' };
-            chromeApiMock.runtime.sendMessage.mockImplementation((message, callback) => {
-                callback();
-            });
+            chromeApiMock.runtime.lastError = {
+                message: 'Extension context invalidated',
+            };
+            chromeApiMock.runtime.sendMessage.mockImplementation(
+                (message, callback) => {
+                    callback();
+                }
+            );
 
             const mockEvent = {
                 detail: {
                     type: 'SUBTITLE_URL_FOUND',
                     videoId: '12345',
-                    url: 'http://example.com/master.m3u8'
-                }
+                    url: 'http://example.com/master.m3u8',
+                },
             };
 
             platform._handleInjectorEvents(mockEvent);
@@ -341,7 +376,7 @@ describe('DisneyPlusPlatform Logging Integration', () => {
                 chromeApiMock.runtime.lastError,
                 expect.objectContaining({
                     url: 'http://example.com/master.m3u8',
-                    videoId: '12345'
+                    videoId: '12345',
                 })
             );
 
@@ -350,25 +385,29 @@ describe('DisneyPlusPlatform Logging Integration', () => {
         });
 
         test('should log video context mismatch warnings', () => {
-            chromeApiMock.storage.sync.get.mockImplementation((keys, callback) => {
-                callback({});
-            });
+            chromeApiMock.storage.sync.get.mockImplementation(
+                (keys, callback) => {
+                    callback({});
+                }
+            );
 
-            chromeApiMock.runtime.sendMessage.mockImplementation((message, callback) => {
-                callback({
-                    success: true,
-                    videoId: '67890' // Different from current
-                });
-            });
+            chromeApiMock.runtime.sendMessage.mockImplementation(
+                (message, callback) => {
+                    callback({
+                        success: true,
+                        videoId: '67890', // Different from current
+                    });
+                }
+            );
 
             platform.currentVideoId = '12345';
-            
+
             const mockEvent = {
                 detail: {
                     type: 'SUBTITLE_URL_FOUND',
                     videoId: '12345',
-                    url: 'http://example.com/master.m3u8'
-                }
+                    url: 'http://example.com/master.m3u8',
+                },
             };
 
             platform._handleInjectorEvents(mockEvent);
@@ -377,7 +416,7 @@ describe('DisneyPlusPlatform Logging Integration', () => {
                 'Received VTT for different video context - discarding',
                 expect.objectContaining({
                     receivedVideoId: '67890',
-                    currentVideoId: '12345'
+                    currentVideoId: '12345',
                 })
             );
         });
@@ -387,12 +426,18 @@ describe('DisneyPlusPlatform Logging Integration', () => {
         test('should log successful cleanup', () => {
             platform.eventListener = jest.fn();
             platform.subtitleObserver = { disconnect: jest.fn() };
-            
+
             platform.cleanup();
 
-            expect(mockLogger.debug).toHaveBeenCalledWith('Event listener removed');
-            expect(mockLogger.debug).toHaveBeenCalledWith('Subtitle mutation observer cleaned up');
-            expect(mockLogger.info).toHaveBeenCalledWith('Platform cleaned up successfully');
+            expect(mockLogger.debug).toHaveBeenCalledWith(
+                'Event listener removed'
+            );
+            expect(mockLogger.debug).toHaveBeenCalledWith(
+                'Subtitle mutation observer cleaned up'
+            );
+            expect(mockLogger.info).toHaveBeenCalledWith(
+                'Platform cleaned up successfully'
+            );
         });
     });
 });

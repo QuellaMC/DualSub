@@ -31,7 +31,7 @@ describe('ConfigService Logging Integration', () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
-        
+
         // Create mock logger instance
         mockLogger = {
             debug: jest.fn(),
@@ -57,10 +57,12 @@ describe('ConfigService Logging Integration', () => {
         test('should handle logger initialization failure gracefully', async () => {
             const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
             const error = new Error('Logger init failed');
-            
+
             // Mock the updateLevel to fail
             const originalUpdateLevel = configService.logger.updateLevel;
-            configService.logger.updateLevel = jest.fn().mockRejectedValue(error);
+            configService.logger.updateLevel = jest
+                .fn()
+                .mockRejectedValue(error);
 
             // Call initializeLogger directly
             await configService.initializeLogger();
@@ -79,12 +81,15 @@ describe('ConfigService Logging Integration', () => {
     describe('initializeDefaults Method', () => {
         test('should log installation events with structured data', () => {
             const mockListener = jest.fn();
-            chrome.runtime.onInstalled.addListener.mockImplementation(mockListener);
+            chrome.runtime.onInstalled.addListener.mockImplementation(
+                mockListener
+            );
 
             configService.initializeDefaults();
 
             // Get the listener function that was registered
-            const listenerFn = chrome.runtime.onInstalled.addListener.mock.calls[0][0];
+            const listenerFn =
+                chrome.runtime.onInstalled.addListener.mock.calls[0][0];
 
             // Simulate install event
             listenerFn({ reason: 'install' });
@@ -93,19 +98,22 @@ describe('ConfigService Logging Integration', () => {
                 'Setting default configuration from schema',
                 {
                     reason: 'install',
-                    method: 'initializeDefaults'
+                    method: 'initializeDefaults',
                 }
             );
         });
 
         test('should log update events with structured data', () => {
             const mockListener = jest.fn();
-            chrome.runtime.onInstalled.addListener.mockImplementation(mockListener);
+            chrome.runtime.onInstalled.addListener.mockImplementation(
+                mockListener
+            );
 
             configService.initializeDefaults();
 
             // Get the listener function that was registered
-            const listenerFn = chrome.runtime.onInstalled.addListener.mock.calls[0][0];
+            const listenerFn =
+                chrome.runtime.onInstalled.addListener.mock.calls[0][0];
 
             // Simulate update event
             listenerFn({ reason: 'update' });
@@ -114,19 +122,22 @@ describe('ConfigService Logging Integration', () => {
                 'Setting default configuration from schema',
                 {
                     reason: 'update',
-                    method: 'initializeDefaults'
+                    method: 'initializeDefaults',
                 }
             );
         });
 
         test('should not log for other event reasons', () => {
             const mockListener = jest.fn();
-            chrome.runtime.onInstalled.addListener.mockImplementation(mockListener);
+            chrome.runtime.onInstalled.addListener.mockImplementation(
+                mockListener
+            );
 
             configService.initializeDefaults();
 
             // Get the listener function that was registered
-            const listenerFn = chrome.runtime.onInstalled.addListener.mock.calls[0][0];
+            const listenerFn =
+                chrome.runtime.onInstalled.addListener.mock.calls[0][0];
 
             // Simulate other event
             listenerFn({ reason: 'startup' });
@@ -141,14 +152,16 @@ describe('ConfigService Logging Integration', () => {
                 callback({ testKey: 'testValue' });
             });
 
-            await configService.getFromStorage('sync', ['testKey'], { method: 'test' });
+            await configService.getFromStorage('sync', ['testKey'], {
+                method: 'test',
+            });
 
             expect(mockLogger.debug).toHaveBeenCalledWith(
                 'Starting get operation',
                 expect.objectContaining({
                     area: 'sync',
                     keys: ['testKey'],
-                    context: { method: 'test' }
+                    context: { method: 'test' },
                 })
             );
 
@@ -157,7 +170,7 @@ describe('ConfigService Logging Integration', () => {
                 expect.objectContaining({
                     area: 'sync',
                     keys: ['testKey'],
-                    resultKeys: ['testKey']
+                    resultKeys: ['testKey'],
                 })
             );
         });
@@ -170,7 +183,9 @@ describe('ConfigService Logging Integration', () => {
             });
 
             await expect(
-                configService.getFromStorage('sync', ['testKey'], { method: 'test' })
+                configService.getFromStorage('sync', ['testKey'], {
+                    method: 'test',
+                })
             ).rejects.toThrow();
 
             expect(mockLogger.error).toHaveBeenCalledWith(
@@ -178,7 +193,7 @@ describe('ConfigService Logging Integration', () => {
                 expect.any(Error),
                 expect.objectContaining({
                     area: 'sync',
-                    keys: ['testKey']
+                    keys: ['testKey'],
                 })
             );
 
@@ -190,7 +205,11 @@ describe('ConfigService Logging Integration', () => {
                 callback();
             });
 
-            await configService.setToStorage('sync', { testKey: 'testValue' }, { method: 'test' });
+            await configService.setToStorage(
+                'sync',
+                { testKey: 'testValue' },
+                { method: 'test' }
+            );
 
             expect(mockLogger.debug).toHaveBeenCalledWith(
                 'Starting set operation',
@@ -198,7 +217,7 @@ describe('ConfigService Logging Integration', () => {
                     area: 'sync',
                     keys: ['testKey'],
                     itemCount: 1,
-                    context: { method: 'test' }
+                    context: { method: 'test' },
                 })
             );
 
@@ -207,7 +226,7 @@ describe('ConfigService Logging Integration', () => {
                 expect.objectContaining({
                     area: 'sync',
                     keys: ['testKey'],
-                    itemCount: 1
+                    itemCount: 1,
                 })
             );
         });
@@ -220,7 +239,11 @@ describe('ConfigService Logging Integration', () => {
             });
 
             await expect(
-                configService.setToStorage('sync', { testKey: 'testValue' }, { method: 'test' })
+                configService.setToStorage(
+                    'sync',
+                    { testKey: 'testValue' },
+                    { method: 'test' }
+                )
             ).rejects.toThrow();
 
             expect(mockLogger.error).toHaveBeenCalledWith(
@@ -230,7 +253,7 @@ describe('ConfigService Logging Integration', () => {
                     area: 'sync',
                     keys: ['testKey'],
                     quotaError: true,
-                    recoveryAction: expect.any(String)
+                    recoveryAction: expect.any(String),
                 })
             );
 
@@ -256,7 +279,7 @@ describe('ConfigService Logging Integration', () => {
                 null,
                 {
                     method: 'get',
-                    requestedKey: 'invalidKey'
+                    requestedKey: 'invalidKey',
                 }
             );
         });
@@ -272,7 +295,7 @@ describe('ConfigService Logging Integration', () => {
                 'getMultiple() called',
                 {
                     keys: ['key1', 'key2'],
-                    keyCount: 2
+                    keyCount: 2,
                 }
             );
         });
@@ -294,7 +317,7 @@ describe('ConfigService Logging Integration', () => {
 
             // Logger should still be functional
             expect(mockLogger.debug).toHaveBeenCalled();
-            
+
             chrome.runtime.lastError = null;
         });
 
@@ -311,9 +334,9 @@ describe('ConfigService Logging Integration', () => {
                 callback({ testKey: 'value' });
             });
 
-            await configService.getFromStorage('sync', ['testKey'], { 
+            await configService.getFromStorage('sync', ['testKey'], {
                 method: 'testMethod',
-                operation: 'testOperation' 
+                operation: 'testOperation',
             });
 
             expect(mockLogger.debug).toHaveBeenCalledWith(
@@ -323,8 +346,8 @@ describe('ConfigService Logging Integration', () => {
                     keys: ['testKey'],
                     context: {
                         method: 'testMethod',
-                        operation: 'testOperation'
-                    }
+                        operation: 'testOperation',
+                    },
                 })
             );
         });
@@ -339,7 +362,7 @@ describe('ConfigService Logging Integration', () => {
             expect(mockLogger.debug).toHaveBeenCalledWith(
                 'Storage get operation completed',
                 expect.objectContaining({
-                    duration: expect.any(Number)
+                    duration: expect.any(Number),
                 })
             );
         });

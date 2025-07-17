@@ -11,7 +11,7 @@ class Logger {
         ERROR: 1,
         WARN: 2,
         INFO: 3,
-        DEBUG: 4
+        DEBUG: 4,
     };
 
     /**
@@ -35,8 +35,6 @@ class Logger {
         return new Logger(component, configService);
     }
 
-
-
     /**
      * Updates logging level from configuration or direct value
      * @param {number} level - Optional direct level to set
@@ -51,8 +49,12 @@ class Logger {
 
         if (this.configService) {
             try {
-                const loggingLevel = await this.configService.get('loggingLevel');
-                this.currentLevel = loggingLevel !== undefined ? loggingLevel : Logger.LEVELS.INFO;
+                const loggingLevel =
+                    await this.configService.get('loggingLevel');
+                this.currentLevel =
+                    loggingLevel !== undefined
+                        ? loggingLevel
+                        : Logger.LEVELS.INFO;
             } catch (error) {
                 // Fallback to INFO level if config can't be read
                 this.currentLevel = Logger.LEVELS.INFO;
@@ -60,15 +62,15 @@ class Logger {
         }
     }
 
-
-
     /**
      * Checks if a message should be logged based on current level
      * @param {number} level - The level to check
      * @returns {boolean} True if message should be logged
      */
     shouldLog(level) {
-        return this.currentLevel >= level && this.currentLevel > Logger.LEVELS.OFF;
+        return (
+            this.currentLevel >= level && this.currentLevel > Logger.LEVELS.OFF
+        );
     }
 
     /**
@@ -120,7 +122,7 @@ class Logger {
         if (!this.shouldLog(Logger.LEVELS.ERROR)) {
             return;
         }
-        
+
         const errorData = {
             ...context,
             ...(error && {

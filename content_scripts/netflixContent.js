@@ -11,7 +11,10 @@ function logWithFallback(level, message, data = {}) {
     if (contentLogger) {
         contentLogger[level](message, data);
     } else {
-        console.log(`[${LOG_PREFIX}] [${level.toUpperCase()}] ${message}`, data);
+        console.log(
+            `[${LOG_PREFIX}] [${level.toUpperCase()}] ${message}`,
+            data
+        );
     }
 }
 
@@ -92,14 +95,23 @@ function injectScriptEarly() {
         if (target) {
             target.appendChild(s);
             s.onload = () =>
-                logWithFallback('info', 'Early inject script loaded successfully');
+                logWithFallback(
+                    'info',
+                    'Early inject script loaded successfully'
+                );
             s.onerror = (e) =>
-                logWithFallback('error', 'Failed to load early inject script!', { error: e });
+                logWithFallback(
+                    'error',
+                    'Failed to load early inject script!',
+                    { error: e }
+                );
         } else {
             setTimeout(injectScriptEarly, 10);
         }
     } catch (e) {
-        logWithFallback('error', 'Error during early inject script injection', { error: e });
+        logWithFallback('error', 'Error during early inject script injection', {
+            error: e,
+        });
         setTimeout(injectScriptEarly, 10);
     }
 }
@@ -146,19 +158,24 @@ async function loadModules() {
             chrome.runtime.getURL('utils/logger.js')
         );
         const Logger = loggerModule.default;
-        
+
         // Initialize content script logger with fallback mechanism
         contentLogger = Logger.create(LOG_PREFIX);
-        
+
         // Initialize logging level from configuration
         try {
             const loggingLevel = await configService.get('loggingLevel');
             contentLogger.updateLevel(loggingLevel);
-            contentLogger.info('Content script logger initialized', { level: loggingLevel });
+            contentLogger.info('Content script logger initialized', {
+                level: loggingLevel,
+            });
         } catch (error) {
             // Fallback to INFO level if config can't be read
             contentLogger.updateLevel(Logger.LEVELS.INFO);
-            contentLogger.warn('Failed to load logging level from config, using INFO level', error);
+            contentLogger.warn(
+                'Failed to load logging level from config, using INFO level',
+                error
+            );
         }
 
         return true;
@@ -258,12 +275,17 @@ async function initializePlatform() {
             // Start video element detection with retry mechanism
             startVideoElementDetection();
         } catch (error) {
-            logWithFallback('error', 'Error initializing Netflix platform', { error });
+            logWithFallback('error', 'Error initializing Netflix platform', {
+                error,
+            });
             activePlatform = null;
             platformReady = false;
         }
     } else {
-        logWithFallback('info', 'Not on a Netflix player page. UI setup deferred');
+        logWithFallback(
+            'info',
+            'Not on a Netflix player page. UI setup deferred'
+        );
         if (subtitleUtils) {
             subtitleUtils.hideSubtitleContainer();
         }
@@ -288,25 +310,29 @@ function startVideoElementDetection() {
     // Start retry mechanism
     videoDetectionIntervalId = setInterval(() => {
         videoDetectionRetries++;
-        logWithFallback('debug', 'Video detection attempt', { 
-            attempt: videoDetectionRetries, 
-            maxAttempts: MAX_VIDEO_DETECTION_RETRIES 
+        logWithFallback('debug', 'Video detection attempt', {
+            attempt: videoDetectionRetries,
+            maxAttempts: MAX_VIDEO_DETECTION_RETRIES,
         });
 
         if (attemptVideoSetup()) {
             // Success! Clear the interval
             clearInterval(videoDetectionIntervalId);
             videoDetectionIntervalId = null;
-            logWithFallback('info', 'Video element found and setup completed', { 
-                attempts: videoDetectionRetries 
+            logWithFallback('info', 'Video element found and setup completed', {
+                attempts: videoDetectionRetries,
             });
         } else if (videoDetectionRetries >= MAX_VIDEO_DETECTION_RETRIES) {
             // Give up after max retries
             clearInterval(videoDetectionIntervalId);
             videoDetectionIntervalId = null;
-            logWithFallback('warn', 'Could not find video element after max attempts. Giving up', { 
-                maxAttempts: MAX_VIDEO_DETECTION_RETRIES 
-            });
+            logWithFallback(
+                'warn',
+                'Could not find video element after max attempts. Giving up',
+                {
+                    maxAttempts: MAX_VIDEO_DETECTION_RETRIES,
+                }
+            );
         }
     }, VIDEO_DETECTION_INTERVAL);
 }
@@ -321,9 +347,12 @@ function attemptVideoSetup() {
         return false; // Video not ready yet
     }
 
-    logWithFallback('info', 'Video element found! Setting up subtitle container and listeners');
-    logWithFallback('debug', 'Current subtitlesActive state', { 
-        subtitlesActive: subtitleUtils.subtitlesActive 
+    logWithFallback(
+        'info',
+        'Video element found! Setting up subtitle container and listeners'
+    );
+    logWithFallback('debug', 'Current subtitlesActive state', {
+        subtitlesActive: subtitleUtils.subtitlesActive,
     });
 
     // Ensure container and timeupdate listener for Netflix
@@ -334,7 +363,10 @@ function attemptVideoSetup() {
     );
 
     if (subtitleUtils.subtitlesActive) {
-        logWithFallback('info', 'Subtitles are active, showing container and setting up listeners');
+        logWithFallback(
+            'info',
+            'Subtitles are active, showing container and setting up listeners'
+        );
         subtitleUtils.showSubtitleContainer();
         if (videoElement.currentTime > 0) {
             subtitleUtils.updateSubtitles(
@@ -366,22 +398,30 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.type === 'LOGGING_LEVEL_CHANGED') {
         if (contentLogger) {
             contentLogger.updateLevel(request.level);
-            contentLogger.info('Logging level updated from background script', { 
-                newLevel: request.level 
+            contentLogger.info('Logging level updated from background script', {
+                newLevel: request.level,
             });
         } else {
-            logWithFallback('info', 'Logging level change received but logger not initialized yet', { 
-                level: request.level 
-            });
+            logWithFallback(
+                'info',
+                'Logging level change received but logger not initialized yet',
+                {
+                    level: request.level,
+                }
+            );
         }
         sendResponse({ success: true });
         return false;
     }
 
     if (!subtitleUtils || !configService) {
-        logWithFallback('error', 'Utilities not loaded, cannot handle message', {
-            action: request.action || request.type
-        });
+        logWithFallback(
+            'error',
+            'Utilities not loaded, cannot handle message',
+            {
+                action: request.action || request.type,
+            }
+        );
         sendResponse({ success: false, error: 'Utilities not loaded' });
         return true;
     }
@@ -414,7 +454,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                             });
                         })
                         .catch((error) => {
-                            logWithFallback('error', 'Error in platform initialization', { error });
+                            logWithFallback(
+                                'error',
+                                'Error in platform initialization',
+                                { error }
+                            );
                             sendResponse({
                                 success: false,
                                 error: error.message,
@@ -456,16 +500,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                         LOG_PREFIX
                     );
                 }
-                logWithFallback('info', 'Applied immediate config changes', { 
-                    changes: request.changes 
+                logWithFallback('info', 'Applied immediate config changes', {
+                    changes: request.changes,
                 });
             }
             sendResponse({ success: true });
             break;
 
         default:
-            logWithFallback('debug', 'Message handled by config service', { 
-                action: request.action 
+            logWithFallback('debug', 'Message handled by config service', {
+                action: request.action,
             });
             sendResponse({ success: true });
             break;
@@ -492,7 +536,9 @@ function initializeWhenReady() {
                 }, 1000);
             }
         } catch (e) {
-            logWithFallback('error', 'Error during initialization', { error: e });
+            logWithFallback('error', 'Error during initialization', {
+                error: e,
+            });
         }
     })();
 }
@@ -515,9 +561,9 @@ const checkForUrlChange = () => {
         const newPathname = window.location.pathname;
 
         if (newUrl !== currentUrl || newPathname !== lastKnownPathname) {
-            logWithFallback('info', 'URL change detected', { 
-                from: currentUrl, 
-                to: newUrl 
+            logWithFallback('info', 'URL change detected', {
+                from: currentUrl,
+                to: newUrl,
             });
 
             const wasOnPlayerPage = lastKnownPathname.includes('/watch/');
@@ -528,7 +574,10 @@ const checkForUrlChange = () => {
 
             // Clean up existing platform if we're leaving a player page
             if (wasOnPlayerPage && activePlatform) {
-                logWithFallback('info', 'Leaving player page, cleaning up platform');
+                logWithFallback(
+                    'info',
+                    'Leaving player page, cleaning up platform'
+                );
                 stopVideoElementDetection();
                 activePlatform.cleanup();
                 activePlatform = null;
@@ -538,7 +587,10 @@ const checkForUrlChange = () => {
 
             // Initialize platform if we're entering a player page and subtitles are enabled
             if (isOnPlayerPage && !wasOnPlayerPage) {
-                logWithFallback('info', 'Entering player page, re-injecting script immediately');
+                logWithFallback(
+                    'info',
+                    'Entering player page, re-injecting script immediately'
+                );
 
                 // Re-inject script immediately to catch subtitle data
                 injectScriptEarly();
@@ -547,11 +599,18 @@ const checkForUrlChange = () => {
                 setTimeout(async () => {
                     try {
                         if (currentConfig.subtitlesEnabled) {
-                            logWithFallback('info', 'Subtitles enabled, initializing platform');
+                            logWithFallback(
+                                'info',
+                                'Subtitles enabled, initializing platform'
+                            );
                             await initializePlatform();
                         }
                     } catch (error) {
-                        logWithFallback('error', 'Error during URL change initialization', { error });
+                        logWithFallback(
+                            'error',
+                            'Error during URL change initialization',
+                            { error }
+                        );
                     }
                 }, 1500);
             }
@@ -566,7 +625,10 @@ const checkForUrlChange = () => {
             if (urlChangeCheckInterval) {
                 clearInterval(urlChangeCheckInterval);
                 urlChangeCheckInterval = null;
-                logWithFallback('info', 'Stopped URL change detection due to extension context invalidation');
+                logWithFallback(
+                    'info',
+                    'Stopped URL change detection due to extension context invalidation'
+                );
             }
         }
     }
@@ -620,7 +682,10 @@ const pageObserver = new MutationObserver((mutationsList, observerInstance) => {
     setTimeout(checkForUrlChange, 100);
 
     if (!activePlatform && subtitleUtils.subtitlesActive) {
-        logWithFallback('info', 'PageObserver detected DOM changes. Attempting to initialize platform');
+        logWithFallback(
+            'info',
+            'PageObserver detected DOM changes. Attempting to initialize platform'
+        );
         initializePlatform();
         return;
     }
@@ -639,13 +704,19 @@ const pageObserver = new MutationObserver((mutationsList, observerInstance) => {
                 (!currentDOMVideoElement ||
                     currentDOMVideoElement !== videoElementNow)
             ) {
-                logWithFallback('debug', 'PageObserver detected video element appearance or change');
+                logWithFallback(
+                    'debug',
+                    'PageObserver detected video element appearance or change'
+                );
                 if (
                     subtitleUtils.subtitlesActive &&
                     platformReady &&
                     activePlatform
                 ) {
-                    logWithFallback('debug', 'Platform is ready, re-ensuring container/listeners');
+                    logWithFallback(
+                        'debug',
+                        'Platform is ready, re-ensuring container/listeners'
+                    );
                     subtitleUtils.ensureSubtitleContainer(
                         activePlatform,
                         currentConfig,
@@ -653,7 +724,10 @@ const pageObserver = new MutationObserver((mutationsList, observerInstance) => {
                     );
                 }
             } else if (currentDOMVideoElement && !videoElementNow) {
-                logWithFallback('debug', 'PageObserver detected video element removal');
+                logWithFallback(
+                    'debug',
+                    'PageObserver detected video element removal'
+                );
                 subtitleUtils.hideSubtitleContainer();
                 if (subtitleUtils.clearSubtitleDOM) {
                     subtitleUtils.clearSubtitleDOM();
@@ -674,7 +748,10 @@ if (document.body) {
                 childList: true,
                 subtree: true,
             });
-            logWithFallback('info', 'Page observer started after body became available');
+            logWithFallback(
+                'info',
+                'Page observer started after body became available'
+            );
         } else {
             setTimeout(waitForBody, 100);
         }
@@ -685,7 +762,10 @@ if (document.body) {
 // Setup navigation detection
 setupNavigationDetection();
 
-logWithFallback('info', 'Content script fully initialized with enhanced navigation detection');
+logWithFallback(
+    'info',
+    'Content script fully initialized with enhanced navigation detection'
+);
 
 // Cleanup function to prevent memory leaks and handle extension reloading
 function cleanupAll() {
@@ -733,7 +813,10 @@ function cleanupAll() {
 chrome.runtime.onConnect.addListener((port) => {
     port.onDisconnect.addListener(() => {
         if (chrome.runtime.lastError) {
-            logWithFallback('info', 'Extension context invalidated, cleaning up');
+            logWithFallback(
+                'info',
+                'Extension context invalidated, cleaning up'
+            );
             cleanupAll();
         }
     });

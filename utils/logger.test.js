@@ -61,8 +61,6 @@ describe('Logger', () => {
         });
     });
 
-
-
     describe('debug logging', () => {
         it('should log debug message when debug level is enabled', () => {
             logger.currentLevel = Logger.LEVELS.DEBUG;
@@ -395,8 +393,6 @@ describe('Logger', () => {
             });
         });
     });
-
-
 
     describe('integration tests', () => {
         it('should work with real config service flow', async () => {

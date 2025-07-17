@@ -4,17 +4,22 @@ import Logger from '../utils/logger.js';
 document.addEventListener('DOMContentLoaded', function () {
     // Initialize options logger
     const optionsLogger = Logger.create('Options', configService);
-    
+
     // Initialize logging level from configuration
     (async () => {
         try {
             const loggingLevel = await configService.get('loggingLevel');
             optionsLogger.updateLevel(loggingLevel);
-            optionsLogger.info('Options logger initialized', { level: loggingLevel });
+            optionsLogger.info('Options logger initialized', {
+                level: loggingLevel,
+            });
         } catch (error) {
             // Fallback to INFO level if config can't be read
             optionsLogger.updateLevel(Logger.LEVELS.INFO);
-            optionsLogger.warn('Failed to load logging level from config, using INFO level', error);
+            optionsLogger.warn(
+                'Failed to load logging level from config, using INFO level',
+                error
+            );
         }
     })();
 
@@ -22,9 +27,12 @@ document.addEventListener('DOMContentLoaded', function () {
     configService.onChanged((changes) => {
         if ('loggingLevel' in changes) {
             optionsLogger.updateLevel(changes.loggingLevel);
-            optionsLogger.info('Logging level updated from configuration change', { 
-                newLevel: changes.loggingLevel 
-            });
+            optionsLogger.info(
+                'Logging level updated from configuration change',
+                {
+                    newLevel: changes.loggingLevel,
+                }
+            );
         }
     });
 
@@ -83,9 +91,17 @@ document.addEventListener('DOMContentLoaded', function () {
     const saveSetting = async function (key, value) {
         try {
             await configService.set(key, value);
-            optionsLogger.info(`${key} saved`, { key, value, component: 'saveSetting' });
+            optionsLogger.info(`${key} saved`, {
+                key,
+                value,
+                component: 'saveSetting',
+            });
         } catch (error) {
-            optionsLogger.error(`Error saving ${key}`, error, { key, value, component: 'saveSetting' });
+            optionsLogger.error(`Error saving ${key}`, error, {
+                key,
+                value,
+                component: 'saveSetting',
+            });
         }
     };
 
@@ -126,7 +142,11 @@ document.addEventListener('DOMContentLoaded', function () {
             translationsCache[fallbackLangCode] = fallbackTranslations;
             return fallbackTranslations;
         } catch (error) {
-            optionsLogger.error('Fatal: Failed to load any translations', error, { component: 'loadTranslations' });
+            optionsLogger.error(
+                'Fatal: Failed to load any translations',
+                error,
+                { component: 'loadTranslations' }
+            );
             return {};
         }
     };
@@ -291,7 +311,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 showTestResult(fallbackMessage, errorType);
             }
         } catch (error) {
-            optionsLogger.error('DeepL test error', error, { apiKey: apiKey ? '[REDACTED]' : 'empty', apiPlan, component: 'testDeepLConnection' });
+            optionsLogger.error('DeepL test error', error, {
+                apiKey: apiKey ? '[REDACTED]' : 'empty',
+                apiPlan,
+                component: 'testDeepLConnection',
+            });
             showTestResult(
                 getLocalizedText(
                     'deeplTestGenericError',
@@ -425,7 +449,9 @@ document.addEventListener('DOMContentLoaded', function () {
             // Update provider settings visibility - now we're sure all DOM elements are set
             updateProviderSettings();
         } catch (error) {
-            optionsLogger.error('Error loading settings', error, { component: 'loadSettings' });
+            optionsLogger.error('Error loading settings', error, {
+                component: 'loadSettings',
+            });
         }
     };
 
@@ -464,7 +490,10 @@ document.addEventListener('DOMContentLoaded', function () {
             const selectedLang = this.value;
             await saveSetting('uiLanguage', selectedLang);
             await loadAndApplyLanguage();
-            optionsLogger.info(`UI language changed to: ${selectedLang}`, { selectedLang, component: 'uiLanguageSelect' });
+            optionsLogger.info(`UI language changed to: ${selectedLang}`, {
+                selectedLang,
+                component: 'uiLanguageSelect',
+            });
         });
 
     // Hide official subtitles setting
@@ -474,7 +503,10 @@ document.addEventListener('DOMContentLoaded', function () {
             await saveSetting('hideOfficialSubtitles', this.checked);
             optionsLogger.info(
                 `Hide official subtitles changed to: ${this.checked}`,
-                { hideOfficialSubtitles: this.checked, component: 'hideOfficialSubtitlesCheckbox' }
+                {
+                    hideOfficialSubtitles: this.checked,
+                    component: 'hideOfficialSubtitlesCheckbox',
+                }
             );
         });
 
@@ -484,7 +516,10 @@ document.addEventListener('DOMContentLoaded', function () {
         .addEventListener('change', async function () {
             const level = parseInt(this.value);
             await saveSetting('loggingLevel', level);
-            optionsLogger.info(`Logging level changed to: ${level}`, { level, component: 'loggingLevelSelect' });
+            optionsLogger.info(`Logging level changed to: ${level}`, {
+                level,
+                component: 'loggingLevelSelect',
+            });
         });
 
     // Translation provider settings
@@ -495,7 +530,10 @@ document.addEventListener('DOMContentLoaded', function () {
             updateProviderSettings();
             optionsLogger.info(
                 `Translation provider changed to: ${this.value}`,
-                { selectedProvider: this.value, component: 'translationProviderSelect' }
+                {
+                    selectedProvider: this.value,
+                    component: 'translationProviderSelect',
+                }
             );
         });
 
@@ -518,7 +556,11 @@ document.addEventListener('DOMContentLoaded', function () {
     ) {
         testDeepLButton.addEventListener('click', testDeepLConnection);
     } else {
-        optionsLogger.error('DeepLAPI is not available. Disabling testDeepLButton.', null, { component: 'testDeepLButton' });
+        optionsLogger.error(
+            'DeepLAPI is not available. Disabling testDeepLButton.',
+            null,
+            { component: 'testDeepLButton' }
+        );
         testDeepLButton.disabled = true;
         testDeepLButton.textContent = getLocalizedText(
             'deepLApiUnavailable',

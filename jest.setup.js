@@ -10,7 +10,7 @@ import { LoggerMock } from './test-utils/logger-mock.js';
 global.mockInstances = {
     chromeApi: ChromeApiMock.create(),
     location: new LocationMock(),
-    logger: new LoggerMock()
+    logger: new LoggerMock(),
 };
 
 // Setup Chrome API mock globally
@@ -48,10 +48,10 @@ global.resetAllMocks = () => {
     global.mockInstances.chromeApi.reset();
     global.mockInstances.location.reset();
     global.mockInstances.logger.reset();
-    
+
     // Clear all Jest mocks
     jest.clearAllMocks();
-    
+
     // Reset console mocks
     global.console.debug.mockClear();
     global.console.info.mockClear();
@@ -73,7 +73,7 @@ global.testUtils = {
         global.mockInstances.location = netflixLocation;
         return netflixLocation;
     },
-    
+
     /**
      * Create a Disney Plus location mock
      * @param {string} contentId - Disney Plus content ID
@@ -86,27 +86,27 @@ global.testUtils = {
         global.mockInstances.location = disneyLocation;
         return disneyLocation;
     },
-    
+
     /**
      * Setup Chrome storage with test data
      * @param {Object} data - Data to populate storage with
      */
     setupChromeStorage: (data = {}) => {
         global.mockInstances.chromeApi.storage.data.clear();
-        Object.keys(data).forEach(key => {
+        Object.keys(data).forEach((key) => {
             global.mockInstances.chromeApi.storage.data.set(key, data[key]);
         });
     },
-    
+
     /**
      * Get logged messages from logger mock
      * @param {string} level - Optional log level filter
      */
     getLoggedMessages: (level = null) => {
-        return level 
+        return level
             ? global.mockInstances.logger.getLogsByLevel(level)
             : global.mockInstances.logger.getLogs();
-    }
+    },
 };
 
 // Setup global beforeEach and afterEach for consistent test isolation

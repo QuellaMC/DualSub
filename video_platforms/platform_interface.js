@@ -140,7 +140,7 @@ export class VideoPlatform {
             container.removeAttribute('data-dualsub-hidden');
             this.logger.debug('Restored official subtitle container', {
                 className: this.constructor.name,
-                containerElement: container.tagName
+                containerElement: container.tagName,
             });
         });
     }

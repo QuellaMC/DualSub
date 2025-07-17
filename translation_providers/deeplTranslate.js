@@ -65,7 +65,9 @@ function detectEnvironment() {
                   : 'unknown',
         };
     } catch (error) {
-        logger.warn('Environment detection failed', { errorMessage: error.message });
+        logger.warn('Environment detection failed', {
+            errorMessage: error.message,
+        });
         return {
             isServiceWorker: false,
             isBrowser: false,
@@ -90,7 +92,11 @@ function handleDeepLError(error, envInfo) {
 
     // Service worker environment compatibility issues
     if (envInfo.isServiceWorker && error.message.includes('window')) {
-        logger.error('Service worker environment compatibility issue detected', error, { environment: envInfo });
+        logger.error(
+            'Service worker environment compatibility issue detected',
+            error,
+            { environment: envInfo }
+        );
         throw new Error(
             'DeepL Error: Service worker environment compatibility issue'
         );
@@ -133,10 +139,10 @@ function handleDeepLError(error, envInfo) {
  * @throws {Error} If the translation API request or processing fails.
  */
 export async function translate(text, sourceLang, targetLang) {
-    logger.info('Translation request initiated', { 
-        sourceLang, 
-        targetLang, 
-        textLength: text?.length || 0 
+    logger.info('Translation request initiated', {
+        sourceLang,
+        targetLang,
+        textLength: text?.length || 0,
     });
 
     // Safe environment detection
@@ -145,7 +151,9 @@ export async function translate(text, sourceLang, targetLang) {
 
     // Explicitly check for service worker environment and handle accordingly
     if (envInfo.isServiceWorker) {
-        logger.debug('Service worker environment detected, proceeding with SW-compatible operations');
+        logger.debug(
+            'Service worker environment detected, proceeding with SW-compatible operations'
+        );
         // Service worker environment is supported, but we log it for debugging
     }
 
@@ -192,7 +200,9 @@ export async function translate(text, sourceLang, targetLang) {
 
         // Validate input
         if (!text || typeof text !== 'string' || text.trim() === '') {
-            logger.warn('Empty or invalid text provided for translation', { text: text?.substring(0, 50) });
+            logger.warn('Empty or invalid text provided for translation', {
+                text: text?.substring(0, 50),
+            });
             return text || '';
         }
 
@@ -221,7 +231,7 @@ export async function translate(text, sourceLang, targetLang) {
             sourceLang: mappedSourceLang,
             targetLang: mappedTargetLang,
             environment: envInfo.environmentType,
-            apiUrl: apiUrl.includes('api-free') ? 'free' : 'pro'
+            apiUrl: apiUrl.includes('api-free') ? 'free' : 'pro',
         });
 
         // Make the API request with enhanced error handling
@@ -247,7 +257,10 @@ export async function translate(text, sourceLang, targetLang) {
                 try {
                     const errorData = await response.json();
                     errorMessage = `DeepL API request invalid: ${errorData.message || 'Bad request parameters'}`;
-                    logger.error('DeepL API 400 error details', null, { status: 400, errorData });
+                    logger.error('DeepL API 400 error details', null, {
+                        status: 400,
+                        errorData,
+                    });
                 } catch {
                     errorMessage = `DeepL API request invalid: ${response.statusText}`;
                 }
@@ -255,9 +268,9 @@ export async function translate(text, sourceLang, targetLang) {
                 try {
                     const errorData = await response.json();
                     errorMessage = `DeepL API request failed with status ${response.status}: ${errorData.message || 'Unknown error'}`;
-                    logger.error('DeepL API error', null, { 
-                        status: response.status, 
-                        errorData 
+                    logger.error('DeepL API error', null, {
+                        status: response.status,
+                        errorData,
                     });
                 } catch {
                     errorMessage = `DeepL API request failed with status ${response.status}: ${response.statusText}`;
@@ -271,14 +284,15 @@ export async function translate(text, sourceLang, targetLang) {
 
         if (data && data.translations && data.translations.length > 0) {
             const translatedText = data.translations[0].text;
-            logger.info('Translation completed successfully', { 
+            logger.info('Translation completed successfully', {
                 translatedLength: translatedText.length,
-                detectedSourceLang: data.translations[0].detected_source_language 
+                detectedSourceLang:
+                    data.translations[0].detected_source_language,
             });
             return translatedText;
         } else {
-            logger.error('Invalid response structure from DeepL API', null, { 
-                responseData: data 
+            logger.error('Invalid response structure from DeepL API', null, {
+                responseData: data,
             });
             throw new Error(
                 'DeepL translation response was empty or malformed.'

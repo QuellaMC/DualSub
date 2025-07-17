@@ -152,7 +152,9 @@
     "providerDeepLFreeName": { "message": "DeepL 翻译（免费）" },
 
     "cardLoggingLevelTitle": { "message": "日志级别" },
-    "cardLoggingLevelDesc": { "message": "控制浏览器控制台中显示的调试信息量。较高级别包含所有较低级别的消息。" },
+    "cardLoggingLevelDesc": {
+        "message": "控制浏览器控制台中显示的调试信息量。较高级别包含所有较低级别的消息。"
+    },
     "loggingLevelLabel": { "message": "日志级别：" },
     "loggingLevelOff": { "message": "关闭" },
     "loggingLevelError": { "message": "仅错误" },

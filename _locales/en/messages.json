@@ -179,7 +179,9 @@
     "providerDeepLFreeName": { "message": "DeepL Translate (Free)" },
 
     "cardLoggingLevelTitle": { "message": "Logging Level" },
-    "cardLoggingLevelDesc": { "message": "Control the amount of debug information displayed in browser console. Higher levels include all lower level messages." },
+    "cardLoggingLevelDesc": {
+        "message": "Control the amount of debug information displayed in browser console. Higher levels include all lower level messages."
+    },
     "loggingLevelLabel": { "message": "Logging Level:" },
     "loggingLevelOff": { "message": "Off" },
     "loggingLevelError": { "message": "Error Only" },

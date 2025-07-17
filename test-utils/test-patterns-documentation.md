@@ -19,11 +19,11 @@ const testHelpers = new TestHelpers();
 
 // Setup complete test environment
 const env = testHelpers.setupTestEnvironment({
-  platform: 'netflix',           // 'netflix' | 'disneyplus'
-  enableLogger: true,            // Enable logger mocking
-  enableChromeApi: true,         // Enable Chrome API mocking
-  enableLocation: true,          // Enable location mocking
-  loggerDebugMode: false         // Logger debug mode
+    platform: 'netflix', // 'netflix' | 'disneyplus'
+    enableLogger: true, // Enable logger mocking
+    enableChromeApi: true, // Enable Chrome API mocking
+    enableLocation: true, // Enable location mocking
+    loggerDebugMode: false, // Logger debug mode
 });
 
 // Use mocks in tests
@@ -59,7 +59,11 @@ registry.cleanup();
 Standardized test data for consistent testing:
 
 ```javascript
-import { NetflixFixtures, DisneyPlusFixtures, ChromeApiFixtures } from './test-utils/test-fixtures.js';
+import {
+    NetflixFixtures,
+    DisneyPlusFixtures,
+    ChromeApiFixtures,
+} from './test-utils/test-fixtures.js';
 
 // Use predefined Netflix events
 const subtitleEvent = NetflixFixtures.subtitleDataEvent;
@@ -82,38 +86,41 @@ import { TestHelpers } from './test-utils/test-helpers.js';
 import { NetflixPlatform } from './netflixPlatform.js';
 
 describe('NetflixPlatform Tests', () => {
-  let testHelpers;
-  let platform;
-  let testEnv;
+    let testHelpers;
+    let platform;
+    let testEnv;
 
-  beforeEach(() => {
-    testHelpers = new TestHelpers();
-    testEnv = testHelpers.setupTestEnvironment({
-      platform: 'netflix',
-      enableLogger: true,
-      enableChromeApi: true,
-      enableLocation: true
+    beforeEach(() => {
+        testHelpers = new TestHelpers();
+        testEnv = testHelpers.setupTestEnvironment({
+            platform: 'netflix',
+            enableLogger: true,
+            enableChromeApi: true,
+            enableLocation: true,
+        });
+
+        platform = new NetflixPlatform();
     });
 
-    platform = new NetflixPlatform();
-  });
+    afterEach(() => {
+        if (platform && typeof platform.cleanup === 'function') {
+            platform.cleanup();
+        }
+        testEnv.cleanup();
+        testHelpers.resetAllMocks();
+    });
 
-  afterEach(() => {
-    if (platform && typeof platform.cleanup === 'function') {
-      platform.cleanup();
-    }
-    testEnv.cleanup();
-    testHelpers.resetAllMocks();
-  });
+    test('should initialize correctly', async () => {
+        const mockOnSubtitleFound = jest.fn();
+        const mockOnVideoIdChange = jest.fn();
 
-  test('should initialize correctly', async () => {
-    const mockOnSubtitleFound = jest.fn();
-    const mockOnVideoIdChange = jest.fn();
+        await platform.initialize(mockOnSubtitleFound, mockOnVideoIdChange);
 
-    await platform.initialize(mockOnSubtitleFound, mockOnVideoIdChange);
-
-    testHelpers.assertions.expectPlatformInitialized(platform, testEnv.mocks.logger);
-  });
+        testHelpers.assertions.expectPlatformInitialized(
+            platform,
+            testEnv.mocks.logger
+        );
+    });
 });
 ```
 
@@ -123,19 +130,19 @@ Testing platform event handling:
 
 ```javascript
 test('should handle subtitle data events', () => {
-  const subtitleEvent = testHelpers.createNetflixEvent('subtitleData', {
-    movieId: '12345',
-    timedtexttracks: [{ language: 'en' }]
-  });
+    const subtitleEvent = testHelpers.createNetflixEvent('subtitleData', {
+        movieId: '12345',
+        timedtexttracks: [{ language: 'en' }],
+    });
 
-  testHelpers.setupChromeApiResponses();
-  platform.handleInjectorEvents(subtitleEvent);
+    testHelpers.setupChromeApiResponses();
+    platform.handleInjectorEvents(subtitleEvent);
 
-  testHelpers.assertions.expectLoggerCalled(
-    testEnv.mocks.logger,
-    'debug',
-    'Raw subtitle data received'
-  );
+    testHelpers.assertions.expectLoggerCalled(
+        testEnv.mocks.logger,
+        'debug',
+        'Raw subtitle data received'
+    );
 });
 ```
 
@@ -145,26 +152,25 @@ Testing Chrome extension API interactions:
 
 ```javascript
 test('should communicate with background script', () => {
-  // Setup Chrome API responses
-  testHelpers.setupChromeApiResponses(
-    { targetLanguage: 'zh-CN' },  // Storage response
-    { success: true, videoId: '12345' }  // Runtime response
-  );
+    // Setup Chrome API responses
+    testHelpers.setupChromeApiResponses(
+        { targetLanguage: 'zh-CN' }, // Storage response
+        { success: true, videoId: '12345' } // Runtime response
+    );
 
-  // Trigger functionality that uses Chrome APIs
-  platform.processSubtitleData(mockData);
+    // Trigger functionality that uses Chrome APIs
+    platform.processSubtitleData(mockData);
 
-  // Verify API calls
-  testHelpers.assertions.expectStorageAccessed(
-    testEnv.mocks.chromeApi,
-    'get',
-    ['targetLanguage', 'originalLanguage']
-  );
+    // Verify API calls
+    testHelpers.assertions.expectStorageAccessed(
+        testEnv.mocks.chromeApi,
+        'get',
+        ['targetLanguage', 'originalLanguage']
+    );
 
-  testHelpers.assertions.expectRuntimeMessageSent(
-    testEnv.mocks.chromeApi,
-    { type: 'PROCESS_VTT' }
-  );
+    testHelpers.assertions.expectRuntimeMessageSent(testEnv.mocks.chromeApi, {
+        type: 'PROCESS_VTT',
+    });
 });
 ```
 
@@ -174,20 +180,20 @@ Testing URL-dependent functionality:
 
 ```javascript
 test('should extract video ID from URL', () => {
-  // Set specific location
-  testEnv.mocks.location.setLocation({
-    hostname: 'www.netflix.com',
-    pathname: '/watch/67890'
-  });
+    // Set specific location
+    testEnv.mocks.location.setLocation({
+        hostname: 'www.netflix.com',
+        pathname: '/watch/67890',
+    });
 
-  const videoId = platform.extractMovieIdFromUrl();
+    const videoId = platform.extractMovieIdFromUrl();
 
-  expect(videoId).toBe('67890');
-  testHelpers.assertions.expectLoggerCalled(
-    testEnv.mocks.logger,
-    'debug',
-    'Extracted movieId from URL'
-  );
+    expect(videoId).toBe('67890');
+    testHelpers.assertions.expectLoggerCalled(
+        testEnv.mocks.logger,
+        'debug',
+        'Extracted movieId from URL'
+    );
 });
 ```
 
@@ -197,18 +203,20 @@ Testing error scenarios:
 
 ```javascript
 test('should handle Chrome API errors', () => {
-  // Setup error response
-  testEnv.mocks.chromeApi.runtime.sendMessage.mockImplementation((message, callback) => {
-    callback({ success: false, error: 'Network timeout' });
-  });
+    // Setup error response
+    testEnv.mocks.chromeApi.runtime.sendMessage.mockImplementation(
+        (message, callback) => {
+            callback({ success: false, error: 'Network timeout' });
+        }
+    );
 
-  platform.processSubtitleData(mockData);
+    platform.processSubtitleData(mockData);
 
-  testHelpers.assertions.expectLoggerCalled(
-    testEnv.mocks.logger,
-    'error',
-    'Background failed to process VTT'
-  );
+    testHelpers.assertions.expectLoggerCalled(
+        testEnv.mocks.logger,
+        'error',
+        'Background failed to process VTT'
+    );
 });
 ```
 
@@ -221,7 +229,10 @@ Automated test suite generation for consistent platform testing:
 ```javascript
 import { PlatformTestSuiteGenerator } from './test-utils/test-helpers.js';
 
-describe('Netflix Platform', PlatformTestSuiteGenerator.generateNetflixTestSuite(NetflixPlatform));
+describe(
+    'Netflix Platform',
+    PlatformTestSuiteGenerator.generateNetflixTestSuite(NetflixPlatform)
+);
 ```
 
 ### 2. Scenario-Based Testing
@@ -233,25 +244,25 @@ import { TestScenarioGenerator } from './test-utils/test-fixtures.js';
 
 const scenarios = TestScenarioGenerator.generateNetflixScenarios();
 
-scenarios.forEach(scenario => {
-  test(`should handle ${scenario.name}`, () => {
-    // Setup environment for scenario
-    testEnv.mocks.location.setLocation(scenario.location);
-    
-    if (scenario.chromeResponse) {
-      testHelpers.setupChromeApiResponses({}, scenario.chromeResponse);
-    }
+scenarios.forEach((scenario) => {
+    test(`should handle ${scenario.name}`, () => {
+        // Setup environment for scenario
+        testEnv.mocks.location.setLocation(scenario.location);
 
-    // Execute scenario
-    platform.handleInjectorEvents(scenario.event);
+        if (scenario.chromeResponse) {
+            testHelpers.setupChromeApiResponses({}, scenario.chromeResponse);
+        }
 
-    // Verify expected outcome
-    if (scenario.expectedOutcome === 'success') {
-      expect(/* success condition */).toBeTruthy();
-    } else {
-      expect(/* error condition */).toBeTruthy();
-    }
-  });
+        // Execute scenario
+        platform.handleInjectorEvents(scenario.event);
+
+        // Verify expected outcome
+        if (scenario.expectedOutcome === 'success') {
+            expect(/* success condition */).toBeTruthy();
+        } else {
+            expect(/* error condition */).toBeTruthy();
+        }
+    });
 });
 ```
 
@@ -261,27 +272,30 @@ Testing complete workflows:
 
 ```javascript
 test('should handle complete subtitle processing workflow', async () => {
-  // Setup initial state
-  testHelpers.setupChromeApiResponses(
-    { targetLanguage: 'zh-CN', originalLanguage: 'en' },
-    { success: true, vttText: 'WEBVTT\n\n1\n00:00:01.000 --> 00:00:02.000\nTest' }
-  );
+    // Setup initial state
+    testHelpers.setupChromeApiResponses(
+        { targetLanguage: 'zh-CN', originalLanguage: 'en' },
+        {
+            success: true,
+            vttText: 'WEBVTT\n\n1\n00:00:01.000 --> 00:00:02.000\nTest',
+        }
+    );
 
-  // Initialize platform
-  const onSubtitleFound = jest.fn();
-  await platform.initialize(onSubtitleFound, jest.fn());
+    // Initialize platform
+    const onSubtitleFound = jest.fn();
+    await platform.initialize(onSubtitleFound, jest.fn());
 
-  // Trigger subtitle data event
-  const subtitleEvent = testHelpers.createNetflixEvent('subtitleData');
-  platform.handleInjectorEvents(subtitleEvent);
+    // Trigger subtitle data event
+    const subtitleEvent = testHelpers.createNetflixEvent('subtitleData');
+    platform.handleInjectorEvents(subtitleEvent);
 
-  // Verify complete workflow
-  expect(onSubtitleFound).toHaveBeenCalled();
-  testHelpers.assertions.expectLoggerCalled(
-    testEnv.mocks.logger,
-    'info',
-    'VTT processed successfully'
-  );
+    // Verify complete workflow
+    expect(onSubtitleFound).toHaveBeenCalled();
+    testHelpers.assertions.expectLoggerCalled(
+        testEnv.mocks.logger,
+        'info',
+        'VTT processed successfully'
+    );
 });
 ```
 
@@ -293,14 +307,14 @@ Always ensure tests are isolated and don't affect each other:
 
 ```javascript
 beforeEach(() => {
-  // Setup fresh environment for each test
-  testEnv = testHelpers.setupTestEnvironment(/* config */);
+    // Setup fresh environment for each test
+    testEnv = testHelpers.setupTestEnvironment(/* config */);
 });
 
 afterEach(() => {
-  // Clean up after each test
-  testEnv.cleanup();
-  testHelpers.resetAllMocks();
+    // Clean up after each test
+    testEnv.cleanup();
+    testHelpers.resetAllMocks();
 });
 ```
 
@@ -311,7 +325,7 @@ Use the centralized mock registry for consistent cleanup:
 ```javascript
 // Register custom mocks with cleanup
 testHelpers.mockRegistry.register('customMock', mockObject, () => {
-  // Custom cleanup logic
+    // Custom cleanup logic
 });
 ```
 
@@ -332,17 +346,17 @@ Always test error scenarios:
 
 ```javascript
 test('should handle missing data gracefully', () => {
-  const invalidEvent = { detail: { type: 'INVALID' } };
-  
-  expect(() => {
-    platform.handleInjectorEvents(invalidEvent);
-  }).not.toThrow();
+    const invalidEvent = { detail: { type: 'INVALID' } };
 
-  testHelpers.assertions.expectLoggerCalled(
-    testEnv.mocks.logger,
-    'error',
-    'Unknown event type'
-  );
+    expect(() => {
+        platform.handleInjectorEvents(invalidEvent);
+    }).not.toThrow();
+
+    testHelpers.assertions.expectLoggerCalled(
+        testEnv.mocks.logger,
+        'error',
+        'Unknown event type'
+    );
 });
 ```
 
@@ -352,13 +366,13 @@ Be mindful of test performance:
 
 ```javascript
 test('should handle large data efficiently', () => {
-  const startTime = Date.now();
-  
-  // Test with large dataset
-  platform.processLargeDataset(largeData);
-  
-  const duration = Date.now() - startTime;
-  expect(duration).toBeLessThan(1000); // Should complete within 1 second
+    const startTime = Date.now();
+
+    // Test with large dataset
+    platform.processLargeDataset(largeData);
+
+    const duration = Date.now() - startTime;
+    expect(duration).toBeLessThan(1000); // Should complete within 1 second
 });
 ```
 
@@ -376,7 +390,7 @@ window.location.href = 'https://netflix.com/watch/12345';
 
 // ✅ Do this instead
 testEnv.mocks.location.setLocation({
-  href: 'https://netflix.com/watch/12345'
+    href: 'https://netflix.com/watch/12345',
 });
 ```
 
@@ -388,8 +402,8 @@ testEnv.mocks.location.setLocation({
 
 ```javascript
 afterEach(() => {
-  testEnv.cleanup();
-  testHelpers.resetAllMocks();
+    testEnv.cleanup();
+    testHelpers.resetAllMocks();
 });
 ```
 
@@ -415,10 +429,10 @@ testHelpers.setupChromeApiResponses(storageData, runtimeResponse);
 
 ```javascript
 test('should handle async initialization', async () => {
-  await platform.initialize(mockCallback, mockCallback);
-  
-  // Assertions after async completion
-  expect(platform.isInitialized).toBe(true);
+    await platform.initialize(mockCallback, mockCallback);
+
+    // Assertions after async completion
+    expect(platform.isInitialized).toBe(true);
 });
 ```
 

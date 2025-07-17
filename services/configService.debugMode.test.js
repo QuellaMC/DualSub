@@ -334,7 +334,8 @@ describe('ConfigService Debug Mode Tests', () => {
             // Rapidly toggle logging levels
             for (let i = 0; i < 100; i++) {
                 await realLogger.updateLevel();
-                realLogger.currentLevel = i % 2 === 0 ? Logger.LEVELS.DEBUG : Logger.LEVELS.INFO;
+                realLogger.currentLevel =
+                    i % 2 === 0 ? Logger.LEVELS.DEBUG : Logger.LEVELS.INFO;
             }
 
             const endTime = performance.now();
@@ -454,7 +455,10 @@ describe('ConfigService Debug Mode Tests', () => {
                 chrome.storage.onChanged.addListener.mock.calls[0]?.[0];
 
             if (changeListener) {
-                changeListener({ loggingLevel: { newValue: Logger.LEVELS.DEBUG } }, 'sync');
+                changeListener(
+                    { loggingLevel: { newValue: Logger.LEVELS.DEBUG } },
+                    'sync'
+                );
 
                 // Should trigger logging level update
                 expect(realLogger.currentLevel).toBe(Logger.LEVELS.DEBUG);

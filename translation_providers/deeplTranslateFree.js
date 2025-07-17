@@ -125,15 +125,17 @@ function randomDelay(minMs = 100, maxMs = 500) {
  * @returns {Promise<string>} - Translated text
  */
 export async function translate(text, sourceLang, targetLang) {
-    logger.info('Translation request initiated', { 
-        sourceLang, 
-        targetLang, 
-        textLength: text?.length || 0 
+    logger.info('Translation request initiated', {
+        sourceLang,
+        targetLang,
+        textLength: text?.length || 0,
     });
 
     // Validate input
     if (!text || typeof text !== 'string' || text.trim() === '') {
-        logger.warn('Empty or invalid text provided for translation', { text: text?.substring(0, 50) });
+        logger.warn('Empty or invalid text provided for translation', {
+            text: text?.substring(0, 50),
+        });
         return text || '';
     }
 
@@ -142,7 +144,7 @@ export async function translate(text, sourceLang, targetLang) {
     if (text.length > DEEPL_FREE_CONFIG.MAX_TEXT_LENGTH) {
         logger.warn('Text too long, truncating to maximum allowed length', {
             originalLength: text.length,
-            maxLength: DEEPL_FREE_CONFIG.MAX_TEXT_LENGTH
+            maxLength: DEEPL_FREE_CONFIG.MAX_TEXT_LENGTH,
         });
         processedText = text.substring(0, DEEPL_FREE_CONFIG.MAX_TEXT_LENGTH);
     }
@@ -168,14 +170,14 @@ export async function translate(text, sourceLang, targetLang) {
             if (result) {
                 logger.info('Translation completed successfully via Web API', {
                     method: 'webAPI',
-                    translatedLength: result.length
+                    translatedLength: result.length,
                 });
                 return result;
             }
         } catch (error) {
-            logger.warn('Web API method failed, trying alternative', { 
+            logger.warn('Web API method failed, trying alternative', {
                 errorMessage: error.message,
-                method: 'webAPI'
+                method: 'webAPI',
             });
         }
 
@@ -187,26 +189,29 @@ export async function translate(text, sourceLang, targetLang) {
                 mappedTargetLang
             );
             if (result) {
-                logger.info('Translation completed successfully via Translator Interface', {
-                    method: 'translatorInterface',
-                    translatedLength: result.length
-                });
+                logger.info(
+                    'Translation completed successfully via Translator Interface',
+                    {
+                        method: 'translatorInterface',
+                        translatedLength: result.length,
+                    }
+                );
                 return result;
             }
         } catch (error) {
-            logger.warn('Translator interface method failed', { 
+            logger.warn('Translator interface method failed', {
                 errorMessage: error.message,
-                method: 'translatorInterface'
+                method: 'translatorInterface',
             });
         }
 
         // If all methods fail, throw error
         throw new Error('All DeepL free translation methods failed');
     } catch (error) {
-        logger.error('Translation error occurred', error, { 
+        logger.error('Translation error occurred', error, {
             sourceLang: mappedSourceLang,
             targetLang: mappedTargetLang,
-            textLength: processedText.length
+            textLength: processedText.length,
         });
         throw new Error(`DeepL Free Error: ${error.message}`);
     }
@@ -391,7 +396,7 @@ async function translateViaAlternativeService(text, sourceLang, targetLang) {
     ) {
         logger.info('Using alternative service as fallback', {
             service: 'MyMemory',
-            translatedLength: data.responseData.translatedText.length
+            translatedLength: data.responseData.translatedText.length,
         });
         return data.responseData.translatedText;
     }

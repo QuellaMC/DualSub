@@ -2,7 +2,14 @@
  * @jest-environment jsdom
  */
 
-import { describe, test, expect, beforeEach, afterEach, jest } from '@jest/globals';
+import {
+    describe,
+    test,
+    expect,
+    beforeEach,
+    afterEach,
+    jest,
+} from '@jest/globals';
 import Logger from '../utils/logger.js';
 
 // Mock the configService
@@ -37,10 +44,10 @@ describe('Popup Logging Integration', () => {
     beforeEach(() => {
         // Reset all mocks
         jest.clearAllMocks();
-        
+
         // Create logger instance
         popupLogger = Logger.create('Popup', mockConfigService);
-        
+
         // Spy on console methods
         consoleSpy = {
             debug: jest.spyOn(console, 'debug').mockImplementation(),
@@ -71,7 +78,7 @@ describe('Popup Logging Integration', () => {
 
     afterEach(() => {
         // Restore console methods
-        Object.values(consoleSpy).forEach(spy => spy.mockRestore());
+        Object.values(consoleSpy).forEach((spy) => spy.mockRestore());
     });
 
     describe('Logger Initialization', () => {
@@ -86,18 +93,18 @@ describe('Popup Logging Integration', () => {
 
         test('should update logging level from config', async () => {
             mockConfigService.get.mockResolvedValue(Logger.LEVELS.DEBUG);
-            
+
             await popupLogger.updateLevel();
-            
+
             expect(mockConfigService.get).toHaveBeenCalledWith('loggingLevel');
             expect(popupLogger.currentLevel).toBe(Logger.LEVELS.DEBUG);
         });
 
         test('should fallback to INFO level if config fails', async () => {
             mockConfigService.get.mockRejectedValue(new Error('Config error'));
-            
+
             await popupLogger.updateLevel();
-            
+
             expect(popupLogger.currentLevel).toBe(Logger.LEVELS.INFO);
         });
     });
@@ -106,7 +113,7 @@ describe('Popup Logging Integration', () => {
         test('should listen for logging level changes', () => {
             const changeHandler = jest.fn();
             mockConfigService.onChanged.mockImplementation(changeHandler);
-            
+
             // Simulate the popup initialization
             mockConfigService.onChanged((changes) => {
                 if ('loggingLevel' in changes) {
@@ -119,7 +126,7 @@ describe('Popup Logging Integration', () => {
 
         test('should update logger when logging level changes', async () => {
             popupLogger.updateLevel(Logger.LEVELS.ERROR);
-            
+
             expect(popupLogger.currentLevel).toBe(Logger.LEVELS.ERROR);
         });
     });
@@ -131,11 +138,15 @@ describe('Popup Logging Integration', () => {
 
         test('should log settings loading errors with context', () => {
             const error = new Error('Settings load failed');
-            
-            popupLogger.error('Error loading settings', error, { component: 'loadSettings' });
-            
+
+            popupLogger.error('Error loading settings', error, {
+                component: 'loadSettings',
+            });
+
             expect(consoleSpy.error).toHaveBeenCalledWith(
-                expect.stringContaining('[ERROR] [Popup] Error loading settings')
+                expect.stringContaining(
+                    '[ERROR] [Popup] Error loading settings'
+                )
             );
             expect(consoleSpy.error).toHaveBeenCalledWith(
                 expect.stringContaining('Settings load failed')
@@ -143,8 +154,11 @@ describe('Popup Logging Integration', () => {
         });
 
         test('should log configuration changes with structured data', () => {
-            popupLogger.info('Subtitles enabled', { enabled: true, component: 'enableSubtitlesToggle' });
-            
+            popupLogger.info('Subtitles enabled', {
+                enabled: true,
+                component: 'enableSubtitlesToggle',
+            });
+
             expect(consoleSpy.info).toHaveBeenCalledWith(
                 expect.stringContaining('[INFO] [Popup] Subtitles enabled')
             );
@@ -155,15 +169,20 @@ describe('Popup Logging Integration', () => {
 
         test('should log translation loading warnings', () => {
             const error = new Error('Translation fetch failed');
-            
-            popupLogger.warn('Could not load translations, falling back to English', {
-                normalizedLangCode: 'es_ES',
-                error: error.message,
-                component: 'loadTranslations'
-            });
-            
+
+            popupLogger.warn(
+                'Could not load translations, falling back to English',
+                {
+                    normalizedLangCode: 'es_ES',
+                    error: error.message,
+                    component: 'loadTranslations',
+                }
+            );
+
             expect(consoleSpy.warn).toHaveBeenCalledWith(
-                expect.stringContaining('[WARN] [Popup] Could not load translations')
+                expect.stringContaining(
+                    '[WARN] [Popup] Could not load translations'
+                )
             );
             expect(consoleSpy.warn).toHaveBeenCalledWith(
                 expect.stringContaining('es_ES')
@@ -171,11 +190,14 @@ describe('Popup Logging Integration', () => {
         });
 
         test('should log debug messages for message passing failures', () => {
-            popupLogger.debug('Direct message failed, relying on storage events', {
-                error: 'Tab not found',
-                component: 'sendImmediateConfigUpdate'
-            });
-            
+            popupLogger.debug(
+                'Direct message failed, relying on storage events',
+                {
+                    error: 'Tab not found',
+                    component: 'sendImmediateConfigUpdate',
+                }
+            );
+
             expect(consoleSpy.debug).toHaveBeenCalledWith(
                 expect.stringContaining('[DEBUG] [Popup] Direct message failed')
             );
@@ -185,28 +207,28 @@ describe('Popup Logging Integration', () => {
     describe('Logging Level Filtering', () => {
         test('should not log debug messages when level is INFO', () => {
             popupLogger.updateLevel(Logger.LEVELS.INFO);
-            
+
             popupLogger.debug('Debug message', { test: true });
-            
+
             expect(consoleSpy.debug).not.toHaveBeenCalled();
         });
 
         test('should log info messages when level is INFO', () => {
             popupLogger.updateLevel(Logger.LEVELS.INFO);
-            
+
             popupLogger.info('Info message', { test: true });
-            
+
             expect(consoleSpy.info).toHaveBeenCalled();
         });
 
         test('should not log any messages when level is OFF', () => {
             popupLogger.updateLevel(Logger.LEVELS.OFF);
-            
+
             popupLogger.error('Error message');
             popupLogger.warn('Warning message');
             popupLogger.info('Info message');
             popupLogger.debug('Debug message');
-            
+
             expect(consoleSpy.error).not.toHaveBeenCalled();
             expect(consoleSpy.warn).not.toHaveBeenCalled();
             expect(consoleSpy.info).not.toHaveBeenCalled();
@@ -222,9 +244,11 @@ describe('Popup Logging Integration', () => {
         test('should include error stack traces in error logs', () => {
             const error = new Error('Test error');
             error.stack = 'Error: Test error\n    at test.js:1:1';
-            
-            popupLogger.error('Configuration error', error, { setting: 'subtitlesEnabled' });
-            
+
+            popupLogger.error('Configuration error', error, {
+                setting: 'subtitlesEnabled',
+            });
+
             expect(consoleSpy.error).toHaveBeenCalledWith(
                 expect.stringContaining('errorStack')
             );
@@ -234,12 +258,12 @@ describe('Popup Logging Integration', () => {
         });
 
         test('should include component context in all error logs', () => {
-            popupLogger.error('Setting save failed', null, { 
+            popupLogger.error('Setting save failed', null, {
                 component: 'saveSetting',
                 key: 'targetLanguage',
-                value: 'es'
+                value: 'es',
             });
-            
+
             expect(consoleSpy.error).toHaveBeenCalledWith(
                 expect.stringContaining('"component":"saveSetting"')
             );
@@ -252,18 +276,18 @@ describe('Popup Logging Integration', () => {
     describe('Component Naming', () => {
         test('should use consistent component names in log messages', () => {
             popupLogger.info('Test message');
-            
+
             expect(consoleSpy.info).toHaveBeenCalledWith(
                 expect.stringContaining('[Popup]')
             );
         });
 
         test('should include sub-component context in structured data', () => {
-            popupLogger.error('Font size error', null, { 
+            popupLogger.error('Font size error', null, {
                 component: 'subtitleFontSizeInput',
-                fontSize: 2.5 
+                fontSize: 2.5,
             });
-            
+
             expect(consoleSpy.error).toHaveBeenCalledWith(
                 expect.stringContaining('"component":"subtitleFontSizeInput"')
             );
