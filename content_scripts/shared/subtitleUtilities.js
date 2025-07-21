@@ -1,4 +1,4 @@
-// content_scripts/subtitleUtilities.js
+// content_scripts/shared/subtitleUtilities.js
 // Shared utilities for dual subtitle functionality across all streaming platforms
 
 // Logger instance for subtitle utilities

@@ -21,14 +21,14 @@
     "content_scripts": [
         {
             "matches": ["*://*.disneyplus.com/*"],
-            "js": ["content_scripts/disneyPlusContent.js"],
-            "css": ["content_scripts/content.css"],
+            "js": ["content_scripts/platforms/disneyPlusContent.js"],
+            "css": ["content_scripts/shared/content.css"],
             "run_at": "document_start"
         },
         {
             "matches": ["*://*.netflix.com/*"],
-            "js": ["content_scripts/netflixContent.js"],
-            "css": ["content_scripts/content.css"],
+            "js": ["content_scripts/platforms/netflixContent.js"],
+            "css": ["content_scripts/shared/content.css"],
             "run_at": "document_start"
         }
     ],
@@ -42,7 +42,7 @@
                 "injected_scripts/disneyPlusInject.js",
                 "video_platforms/disneyPlusPlatform.js",
                 "video_platforms/platform_interface.js",
-                "content_scripts/subtitleUtilities.js",
+                "content_scripts/shared/subtitleUtilities.js",
                 "utils/languageNormalization.js"
             ],
             "matches": ["*://*.disneyplus.com/*"]
@@ -56,7 +56,7 @@
                 "injected_scripts/netflixInject.js",
                 "video_platforms/netflixPlatform.js",
                 "video_platforms/platform_interface.js",
-                "content_scripts/subtitleUtilities.js",
+                "content_scripts/shared/subtitleUtilities.js",
                 "utils/languageNormalization.js"
             ],
             "matches": ["*://*.netflix.com/*"]

@@ -114,6 +114,15 @@ class LoggerMock {
     }
 
     /**
+     * Mock updateLevel method for logger compatibility
+     * @param {string} level - New log level
+     */
+    updateLevel = jest.fn((level) => {
+        // Mock implementation - just store the level
+        this.currentLevel = level;
+    });
+
+    /**
      * Clear all logged messages
      */
     clearLogs() {

@@ -137,7 +137,7 @@ async function loadModules() {
     try {
         // Load the utilities module
         const utilsModule = await import(
-            chrome.runtime.getURL('content_scripts/subtitleUtilities.js')
+            chrome.runtime.getURL('content_scripts/shared/subtitleUtilities.js')
         );
         subtitleUtils = utilsModule;
 
