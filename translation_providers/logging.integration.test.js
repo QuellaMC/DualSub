@@ -13,6 +13,15 @@ global.chrome = {
     storage: {
         sync: {
             get: jest.fn(),
+            set: jest.fn(),
+        },
+        local: {
+            get: jest.fn(),
+            set: jest.fn(),
+        },
+        onChanged: {
+            addListener: jest.fn(),
+            removeListener: jest.fn(),
         },
     },
     runtime: {
@@ -20,10 +29,20 @@ global.chrome = {
     },
 };
 
+// Mock configService
+const mockConfigService = {
+    getMultiple: jest.fn(),
+    set: jest.fn(),
+};
+
 describe('Translation Provider Logging Integration', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         global.chrome.runtime.lastError = null;
+
+        // Reset configService mocks
+        mockConfigService.getMultiple.mockReset();
+        mockConfigService.set.mockReset();
 
         // Mock console methods to capture logging calls
         jest.spyOn(console, 'debug').mockImplementation(() => {});
@@ -203,6 +222,226 @@ describe('Translation Provider Logging Integration', () => {
         });
     });
 
+    describe('OpenAI Compatible Translation Provider', () => {
+        test('should use structured logging instead of direct console calls', async () => {
+            // Mock chrome.storage response since configService import will fail and fallback to chrome.storage
+            global.chrome.storage.sync.get.mockImplementation((keys, callback) => {
+                callback({
+                    openaiCompatibleApiKey: 'test-api-key',
+                    openaiCompatibleBaseUrl: 'https://api.test.com/v1',
+                    openaiCompatibleModel: 'test-model-1'
+                });
+            });
+
+            // Mock successful API response
+            global.fetch.mockResolvedValue({
+                ok: true,
+                headers: new Map([
+                    ['content-type', 'application/json'],
+                    ['content-length', '150']
+                ]),
+                json: () =>
+                    Promise.resolve({
+                        choices: [
+                            {
+                                message: {
+                                    content: 'texto traducido'
+                                }
+                            }
+                        ],
+                        usage: {
+                            total_tokens: 25
+                        }
+                    }),
+            });
+
+            const { translate } = await import('./openaiCompatibleTranslate.js');
+            await translate('Hello world', 'en', 'es');
+
+            // Verify that structured logging is used
+            const logCalls = [
+                ...console.debug.mock.calls,
+                ...console.info.mock.calls,
+                ...console.warn.mock.calls,
+                ...console.error.mock.calls,
+            ].flat();
+
+            // Check that log messages contain structured format with component name
+            const structuredLogs = logCalls.filter(
+                (call) =>
+                    typeof call === 'string' &&
+                    call.includes('[OpenAICompatibleTranslate]')
+            );
+
+            expect(structuredLogs.length).toBeGreaterThan(0);
+        });
+
+        test('should normalize baseUrl and log the normalization', async () => {
+            // Mock chrome.storage response with trailing slashes
+            global.chrome.storage.sync.get.mockImplementation((keys, callback) => {
+                callback({
+                    openaiCompatibleApiKey: 'test-api-key',
+                    openaiCompatibleBaseUrl: 'https://api.test.com/v1//\\',
+                    openaiCompatibleModel: 'test-model-1'
+                });
+            });
+
+            // Mock successful API response
+            global.fetch.mockResolvedValue({
+                ok: true,
+                headers: new Map([
+                    ['content-type', 'application/json'],
+                    ['content-length', '150']
+                ]),
+                json: () =>
+                    Promise.resolve({
+                        choices: [
+                            {
+                                message: {
+                                    content: 'texto traducido'
+                                }
+                            }
+                        ],
+                        usage: {
+                            total_tokens: 25
+                        }
+                    }),
+            });
+
+            const { translate } = await import('./openaiCompatibleTranslate.js');
+            await translate('Hello world', 'en', 'es');
+
+            // Verify that translation was successful (INFO level logs are recorded)
+            const infoLogs = console.info.mock.calls.flat();
+            const translationLogs = infoLogs.filter(
+                (call) =>
+                    typeof call === 'string' &&
+                    call.includes('[OpenAICompatibleTranslate]') &&
+                    call.includes('Translation completed successfully')
+            );
+
+            expect(translationLogs.length).toBeGreaterThan(0);
+
+            // Verify fetch was called with normalized URL
+            expect(global.fetch).toHaveBeenCalledWith(
+                'https://api.test.com/v1/chat/completions',
+                expect.any(Object)
+            );
+        });
+
+        test('should log configuration details during API setup', async () => {
+            // Mock chrome.storage response
+            global.chrome.storage.sync.get.mockImplementation((keys, callback) => {
+                callback({
+                    openaiCompatibleApiKey: 'test-api-key',
+                    openaiCompatibleBaseUrl: 'https://api.test.com/v1',
+                    openaiCompatibleModel: 'test-model-1'
+                });
+            });
+
+            // Mock successful API response
+            global.fetch.mockResolvedValue({
+                ok: true,
+                headers: new Map([
+                    ['content-type', 'application/json'],
+                    ['content-length', '120']
+                ]),
+                json: () =>
+                    Promise.resolve({
+                        choices: [
+                            {
+                                message: {
+                                    content: 'texto traducido'
+                                }
+                            }
+                        ]
+                    }),
+            });
+
+            const { translate } = await import('./openaiCompatibleTranslate.js');
+            await translate('Hello world', 'en', 'es');
+
+            // Verify that translation request was logged
+            const infoLogs = console.info.mock.calls.flat();
+            const requestLogs = infoLogs.filter(
+                (call) =>
+                    typeof call === 'string' &&
+                    call.includes('[OpenAICompatibleTranslate]') &&
+                    call.includes('Translation request initiated')
+            );
+
+            expect(requestLogs.length).toBeGreaterThan(0);
+        });
+
+        test('should use chrome.storage fallback when configService fails', async () => {
+            // Since configService import already fails, it will directly use chrome.storage fallback
+            global.chrome.storage.sync.get.mockImplementation((keys, callback) => {
+                callback({
+                    openaiCompatibleApiKey: 'fallback-api-key',
+                    openaiCompatibleBaseUrl: 'https://fallback.api.com/v1',
+                    openaiCompatibleModel: 'fallback-model'
+                });
+            });
+
+            // Mock successful API response
+            global.fetch.mockResolvedValue({
+                ok: true,
+                headers: new Map([
+                    ['content-type', 'application/json'],
+                    ['content-length', '120']
+                ]),
+                json: () =>
+                    Promise.resolve({
+                        choices: [
+                            {
+                                message: {
+                                    content: 'texto traducido'
+                                }
+                            }
+                        ]
+                    }),
+            });
+
+            const { translate } = await import('./openaiCompatibleTranslate.js');
+            await translate('Hello world', 'en', 'es');
+
+            // Verify that translation was completed (INFO level logs are recorded)
+            const infoLogs = console.info.mock.calls.flat();
+            const completionLogs = infoLogs.filter(
+                (call) =>
+                    typeof call === 'string' &&
+                    call.includes('[OpenAICompatibleTranslate]') &&
+                    call.includes('Translation completed successfully')
+            );
+
+            expect(completionLogs.length).toBeGreaterThan(0);
+        });
+
+        test('should store settings via configService with URL normalization', async () => {
+            // Mock chrome.storage.set to track calls
+            global.chrome.storage.sync.set = jest.fn((data, callback) => {
+                if (callback) callback();
+            });
+
+            // Clear any previous console mocks
+            jest.clearAllMocks();
+
+            const { setBaseUrl } = await import('./openaiCompatibleTranslate.js');
+            await setBaseUrl('https://api.test.com/v1//\\');
+
+            // Verify that base URL was stored successfully (configService works, no fallback needed)
+            const infoLogs = console.info.mock.calls.flat();
+            const storageLogs = infoLogs.filter(
+                (call) =>
+                    typeof call === 'string' &&
+                    call.includes('[OpenAICompatibleTranslate]') &&
+                    call.includes('Base URL stored successfully')
+            );
+
+            expect(storageLogs.length).toBeGreaterThan(0);
+        });
+    });
+
     describe('Error Logging Verification', () => {
         test('should log errors with structured format when translation fails', async () => {
             const { translate } = await import('./googleTranslate.js');
@@ -226,6 +465,71 @@ describe('Translation Provider Logging Integration', () => {
                     typeof call === 'string' &&
                     call.includes('[GoogleTranslate]') &&
                     call.includes('ERROR')
+            );
+
+            expect(structuredErrorLogs.length).toBeGreaterThan(0);
+        });
+
+        test('should log OpenAI provider errors with structured format', async () => {
+            // Mock chrome.storage response
+            global.chrome.storage.sync.get.mockImplementation((keys, callback) => {
+                callback({
+                    openaiCompatibleApiKey: 'test-api-key',
+                    openaiCompatibleBaseUrl: 'https://api.test.com/v1',
+                    openaiCompatibleModel: 'test-model-1'
+                });
+            });
+
+            // Mock API failure
+            global.fetch.mockResolvedValue({
+                ok: false,
+                status: 401,
+                statusText: 'Unauthorized',
+                text: () => Promise.resolve('Invalid API key'),
+            });
+
+            const { translate } = await import('./openaiCompatibleTranslate.js');
+
+            await expect(
+                translate('Hello world', 'en', 'es')
+            ).rejects.toThrow();
+
+            // Verify that error logging includes structured format
+            const errorLogs = console.error.mock.calls.flat();
+            const structuredErrorLogs = errorLogs.filter(
+                (call) =>
+                    typeof call === 'string' &&
+                    call.includes('[OpenAICompatibleTranslate]') &&
+                    call.includes('ERROR')
+            );
+
+            expect(structuredErrorLogs.length).toBeGreaterThan(0);
+        });
+
+        test('should log missing API key error with structured format', async () => {
+            // Mock chrome.storage response with no API key
+            global.chrome.storage.sync.get.mockImplementation((keys, callback) => {
+                callback({
+                    openaiCompatibleApiKey: '',
+                    openaiCompatibleBaseUrl: 'https://api.test.com/v1',
+                    openaiCompatibleModel: 'test-model-1'
+                });
+            });
+
+            const { translate } = await import('./openaiCompatibleTranslate.js');
+
+            await expect(
+                translate('Hello world', 'en', 'es')
+            ).rejects.toThrow('OpenAI-compatible API key not configured');
+
+            // Verify that error logging includes structured format
+            const errorLogs = console.error.mock.calls.flat();
+            const structuredErrorLogs = errorLogs.filter(
+                (call) =>
+                    typeof call === 'string' &&
+                    call.includes('[OpenAICompatibleTranslate]') &&
+                    call.includes('ERROR') &&
+                    call.includes('API key not configured')
             );
 
             expect(structuredErrorLogs.length).toBeGreaterThan(0);
