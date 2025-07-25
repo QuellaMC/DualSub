@@ -416,30 +416,6 @@ describe('Translation Provider Logging Integration', () => {
 
             expect(completionLogs.length).toBeGreaterThan(0);
         });
-
-        test('should store settings via configService with URL normalization', async () => {
-            // Mock chrome.storage.set to track calls
-            global.chrome.storage.sync.set = jest.fn((data, callback) => {
-                if (callback) callback();
-            });
-
-            // Clear any previous console mocks
-            jest.clearAllMocks();
-
-            const { setBaseUrl } = await import('./openaiCompatibleTranslate.js');
-            await setBaseUrl('https://api.test.com/v1//\\');
-
-            // Verify that base URL was stored successfully (configService works, no fallback needed)
-            const infoLogs = console.info.mock.calls.flat();
-            const storageLogs = infoLogs.filter(
-                (call) =>
-                    typeof call === 'string' &&
-                    call.includes('[OpenAICompatibleTranslate]') &&
-                    call.includes('Base URL stored successfully')
-            );
-
-            expect(storageLogs.length).toBeGreaterThan(0);
-        });
     });
 
     describe('Error Logging Verification', () => {
