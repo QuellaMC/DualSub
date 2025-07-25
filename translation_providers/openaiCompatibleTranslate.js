@@ -257,24 +257,24 @@ export async function translate(text, sourceLang, targetLang) {
             // Enhanced error messages for common issues
             if (response.status === 401) {
                 if (normalizedBaseUrl.includes('generativelanguage.googleapis.com')) {
-                    throw new Error('Gemini API authentication failed. Please check your Google API key and ensure the Generative Language API is enabled in your Google Cloud project.');
+                    throw new Error('API authentication failed. Please check your Google API key and ensure the Generative Language API is enabled in your Google Cloud project.');
                 }
                 throw new Error('Translation API authentication failed. Please check your API key.');
             } else if (response.status === 429) {
                 throw new Error('Translation API rate limit exceeded. Please try again later or check your quota limits.');
             } else if (response.status === 403) {
                 if (normalizedBaseUrl.includes('generativelanguage.googleapis.com')) {
-                    throw new Error('Gemini API access forbidden. Please verify your API key has proper permissions and the Generative Language API is enabled.');
+                    throw new Error('API access forbidden. Please verify your API key has proper permissions and the Generative Language API is enabled.');
                 }
                 throw new Error('Translation API access forbidden. Please check your API permissions.');
             } else if (response.status === 404) {
                 if (normalizedBaseUrl.includes('generativelanguage.googleapis.com')) {
-                    throw new Error(`Gemini API endpoint not found. The OpenAI-compatible endpoint may not be available. Try using the correct base URL: https://generativelanguage.googleapis.com/v1beta/openai (without trailing slash)`);
+                    throw new Error(`API endpoint not found. The OpenAI-compatible endpoint may not be available. Try using the correct base URL: https://generativelanguage.googleapis.com/v1beta/openai (without trailing slash)`);
                 }
                 throw new Error(`Translation API endpoint not found. Please verify the base URL: ${normalizedBaseUrl}`);
             } else if (response.status >= 500) {
                 if (normalizedBaseUrl.includes('generativelanguage.googleapis.com')) {
-                    throw new Error(`Gemini API server error (${response.status}). The OpenAI-compatible endpoint may be experiencing issues. You might want to check Google's service status or try again later.`);
+                    throw new Error(`API server error (${response.status}). The OpenAI-compatible endpoint may be experiencing issues. You might want to check Google's service status or try again later.`);
                 }
                 throw new Error(`Translation API server error (${response.status}). The service may be temporarily unavailable.`);
             }
