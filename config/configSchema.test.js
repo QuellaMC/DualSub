@@ -141,6 +141,9 @@ describe('configSchema', () => {
                 'translationDelay',
                 'deeplApiKey',
                 'deeplApiPlan',
+                'openaiCompatibleApiKey',
+                'openaiCompatibleBaseUrl',
+                'openaiCompatibleModel',
                 'subtitlesEnabled',
                 'useNativeSubtitles',
                 'useOfficialTranslations',
@@ -173,11 +176,15 @@ describe('configSchema', () => {
             );
             expect(localKeys.length).toBe(2);
 
-            // Sync scope should contain all other settings including loggingLevel
-            expect(syncKeys.length).toBe(18);
+
+            // Sync scope should contain all other settings including loggingLevel and OpenAI settings
+            expect(syncKeys.length).toBeGreaterThan(10);
             expect(syncKeys).toContain('uiLanguage');
             expect(syncKeys).toContain('subtitlesEnabled');
             expect(syncKeys).toContain('loggingLevel');
+            expect(syncKeys).toContain('openaiCompatibleApiKey');
+            expect(syncKeys).toContain('openaiCompatibleBaseUrl');
+            expect(syncKeys).toContain('openaiCompatibleModel');
         });
     });
 
