@@ -8,6 +8,7 @@ framework and leverages the shared functionality.
 ## Overview
 
 Adding a new platform involves the following key steps:
+
 1. Creating a platform-specific content script class
 2. Implementing required abstract methods
 3. Creating an entry point file
@@ -27,11 +28,11 @@ Create a new file: `content_scripts/platforms/{PlatformName}ContentScript.js`
 ```javascript
 /**
  * {PlatformName}ContentScript - {Platform} specific content script extending BaseContentScript
- * 
+ *
  * This class implements {Platform} specific functionality including navigation detection,
  * injection configuration, and platform-specific message handling while leveraging
  * the common functionality provided by BaseContentScript.
- * 
+ *
  * @extends BaseContentScript
  * @author DualSub Extension
  * @version 1.0.0
@@ -154,7 +155,7 @@ export class {PlatformName}ContentScript extends BaseContentScript {
     handlePlatformSpecificMessage(request, sendResponse) {
         try {
             const action = request.action || request.type;
-            
+
             this.logWithFallback('debug', 'Processing {Platform} specific message', {
                 action,
                 hasRequest: !!request,
@@ -166,17 +167,17 @@ export class {PlatformName}ContentScript extends BaseContentScript {
                 // Example platform-specific message:
                 // case '{platformName}-specific-action':
                 //     return this._handle{PlatformName}SpecificAction(request, sendResponse);
-                
+
                 default:
                     // No platform-specific handling needed for this message
                     this.logWithFallback('debug', 'No {Platform} specific handling required', {
                         action,
                         message: 'Delegating to default handling or returning success'
                     });
-                    
+
                     // Ensure backward compatibility
-                    sendResponse({ 
-                        success: true, 
+                    sendResponse({
+                        success: true,
                         handled: false,
                         platform: '{platformName}',
                         message: 'No platform-specific handling required'
@@ -185,13 +186,13 @@ export class {PlatformName}ContentScript extends BaseContentScript {
             }
         } catch (error) {
             const action = request ? (request.action || request.type) : 'unknown';
-            
+
             this.logWithFallback('error', 'Error in {Platform} specific message handling', {
                 error: error.message,
                 stack: error.stack,
                 action
             });
-            
+
             // Ensure backward compatibility even on error
             try {
                 if (typeof sendResponse === 'function') {
@@ -228,7 +229,7 @@ export class {PlatformName}ContentScript extends BaseContentScript {
         // Disney+: pathname.includes('/play/') || pathname.includes('/video/')
         // Hulu: pathname.includes('/watch/')
         // Amazon Prime: pathname.includes('/detail/') && pathname.includes('/play')
-        
+
         return pathname.includes('/watch/'); // Customize for your platform
     }
 
@@ -284,11 +285,11 @@ setupNavigationDetection() {
     this._setupIntervalBasedDetection();
 
     // Add other detection methods based on platform needs:
-    
+
     // For SPA platforms (most modern streaming sites):
     this._setupHistoryAPIInterception();
     this._setupBrowserNavigationEvents();
-    
+
     // Optional for enhanced detection:
     this._setupFocusAndVisibilityEvents();
 
@@ -338,15 +339,15 @@ Handle platform-specific Chrome messages:
 handlePlatformSpecificMessage(request, sendResponse) {
     try {
         const action = request.action || request.type;
-        
+
         switch (action) {
             case 'hulu-specific-action':
                 return this._handleHuluSpecificAction(request, sendResponse);
-            
+
             default:
                 // No platform-specific handling needed
-                sendResponse({ 
-                    success: true, 
+                sendResponse({
+                    success: true,
                     handled: false,
                     platform: 'hulu',
                     message: 'No platform-specific handling required'
@@ -358,7 +359,7 @@ handlePlatformSpecificMessage(request, sendResponse) {
             error: error.message,
             action: request ? (request.action || request.type) : 'unknown'
         });
-        
+
         sendResponse({
             success: false,
             error: error.message,
@@ -425,7 +426,7 @@ _setupBrowserNavigationEvents() {
 
     events.forEach(({ name, delay }) => {
         const handler = () => setTimeout(() => this.checkForUrlChange(), delay);
-        
+
         const options = this.abortController ? { signal: this.abortController.signal } : {};
         window.addEventListener(name, handler, options);
     });
@@ -451,11 +452,11 @@ _handlePageTransition(wasOnPlayerPage, isOnPlayerPage) {
  */
 _cleanupOnPageLeave() {
     this.stopVideoElementDetection();
-    
+
     if (this.activePlatform && typeof this.activePlatform.cleanup === 'function') {
         this.activePlatform.cleanup();
     }
-    
+
     this.activePlatform = null;
     this.platformReady = false;
     this.eventBuffer.clear();
@@ -489,10 +490,10 @@ Create `content_scripts/platforms/{platformName}Content.js`:
 ```javascript
 /**
  * {Platform} Content Script Entry Point
- * 
+ *
  * This file serves as the entry point for the {Platform} content script.
  * It instantiates and initializes the {PlatformName}ContentScript class.
- * 
+ *
  * @author DualSub Extension
  * @version 1.0.0
  */
@@ -552,11 +553,11 @@ get{PlatformName}SpecificConfig() {
         // Platform-specific retry settings
         maxVideoDetectionRetries: 30,
         videoDetectionInterval: 1000,
-        
+
         // Navigation detection settings
         urlChangeCheckInterval: 1000,
         pageTransitionDelay: 1500,
-        
+
         // Injection settings
         injectRetryDelay: 10,
         injectMaxRetries: 100
@@ -570,7 +571,7 @@ get{PlatformName}SpecificConfig() {
  */
 apply{PlatformName}ConfigOverrides(baseConfig) {
     const platformConfig = this.get{PlatformName}SpecificConfig();
-    
+
     return {
         ...baseConfig,
         ...platformConfig,
@@ -629,7 +630,7 @@ describe('{PlatformName}ContentScript', () => {
         test('setupNavigationDetection sets up detection methods', () => {
             const spy = jest.spyOn(contentScript, 'logWithFallback');
             contentScript.setupNavigationDetection();
-            
+
             expect(spy).toHaveBeenCalledWith('info', 'Setting up {Platform} navigation detection');
             expect(spy).toHaveBeenCalledWith('info', '{Platform} navigation detection set up');
         });
@@ -637,15 +638,15 @@ describe('{PlatformName}ContentScript', () => {
         test('checkForUrlChange handles URL changes', () => {
             const originalUrl = window.location.href;
             const spy = jest.spyOn(contentScript, '_handlePageTransition');
-            
+
             // Mock URL change
             Object.defineProperty(window, 'location', {
                 value: { href: 'https://{platform}.com/new-page', pathname: '/new-page' },
                 writable: true
             });
-            
+
             contentScript.checkForUrlChange();
-            
+
             expect(spy).toHaveBeenCalled();
         });
     });
@@ -654,9 +655,9 @@ describe('{PlatformName}ContentScript', () => {
         test('handlePlatformSpecificMessage handles unknown messages gracefully', () => {
             const request = { action: 'unknown-action' };
             const sendResponse = jest.fn();
-            
+
             const result = contentScript.handlePlatformSpecificMessage(request, sendResponse);
-            
+
             expect(result).toBe(false); // Synchronous handling
             expect(sendResponse).toHaveBeenCalledWith({
                 success: true,
@@ -683,16 +684,16 @@ _isPlayerPath(pathname) {
 
 // Disney+
 _isPlayerPath(pathname) {
-    return pathname.includes('/play/') || 
-           pathname.includes('/video/') || 
-           pathname.includes('/movies/') || 
+    return pathname.includes('/play/') ||
+           pathname.includes('/video/') ||
+           pathname.includes('/movies/') ||
            pathname.includes('/series/');
 }
 
 // Hulu
 _isPlayerPath(pathname) {
-    return pathname.includes('/watch/') || 
-           pathname.includes('/movie/') || 
+    return pathname.includes('/watch/') ||
+           pathname.includes('/movie/') ||
            pathname.includes('/series/');
 }
 
@@ -733,24 +734,24 @@ urlChangeCheckInterval: 3000,
 ### Manual Testing Checklist
 
 1. **Basic Functionality**
-   - [ ] Content script loads without errors
-   - [ ] Platform detection works correctly
-   - [ ] Navigation between pages works
-   - [ ] Subtitle toggle works
-   - [ ] Configuration changes apply correctly
+    - [ ] Content script loads without errors
+    - [ ] Platform detection works correctly
+    - [ ] Navigation between pages works
+    - [ ] Subtitle toggle works
+    - [ ] Configuration changes apply correctly
 
 2. **Navigation Testing**
-   - [ ] URL changes are detected
-   - [ ] Page transitions trigger correctly
-   - [ ] Player page detection works
-   - [ ] Non-player page detection works
-   - [ ] Browser back/forward buttons work
+    - [ ] URL changes are detected
+    - [ ] Page transitions trigger correctly
+    - [ ] Player page detection works
+    - [ ] Non-player page detection works
+    - [ ] Browser back/forward buttons work
 
 3. **Error Handling**
-   - [ ] Extension context invalidation is handled
-   - [ ] Module loading failures are handled gracefully
-   - [ ] Platform initialization errors are recovered
-   - [ ] Network errors don't break functionality
+    - [ ] Extension context invalidation is handled
+    - [ ] Module loading failures are handled gracefully
+    - [ ] Platform initialization errors are recovered
+    - [ ] Network errors don't break functionality
 
 ### Automated Testing
 
@@ -823,7 +824,7 @@ setupNavigationDetection() {
         originalPushState.apply(history, args);
         setTimeout(() => this.checkForUrlChange(), 100);
     };
-    
+
     this._originalHistoryMethods = { pushState: originalPushState };
 }
 ```

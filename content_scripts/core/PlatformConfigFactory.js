@@ -1,8 +1,8 @@
 /**
  * Platform Configuration Factory
- * 
+ *
  * Factory pattern implementation for creating platform-specific configurations.
- * 
+ *
  * @author DualSub Extension
  * @version 1.0.0
  */
@@ -49,7 +49,12 @@ export class PlatformConfigFactory {
      */
     static createByUrl(url = window.location.href) {
         for (const [, config] of this.#registeredPlatforms) {
-            if (this.#matchesUrlPatterns(url, config.navigation?.urlPatterns || [])) {
+            if (
+                this.#matchesUrlPatterns(
+                    url,
+                    config.navigation?.urlPatterns || []
+                )
+            ) {
                 return { ...config };
             }
         }
@@ -79,8 +84,13 @@ export class PlatformConfigFactory {
      * @returns {boolean} `true` if the platform is supported, otherwise `false`.
      */
     static isSupported(platformName) {
-        return this.#registeredPlatforms.has(platformName) || 
-               Object.prototype.hasOwnProperty.call(DEFAULT_PLATFORM_CONFIGS, platformName);
+        return (
+            this.#registeredPlatforms.has(platformName) ||
+            Object.prototype.hasOwnProperty.call(
+                DEFAULT_PLATFORM_CONFIGS,
+                platformName
+            )
+        );
     }
 
     /**
@@ -92,8 +102,13 @@ export class PlatformConfigFactory {
         const errors = [];
         const warnings = [];
 
-        const requiredFields = ['name', 'injectScript', 'navigation', 'videoDetection'];
-        requiredFields.forEach(field => {
+        const requiredFields = [
+            'name',
+            'injectScript',
+            'navigation',
+            'videoDetection',
+        ];
+        requiredFields.forEach((field) => {
             if (!config[field]) {
                 errors.push(`Missing required field: ${field}`);
             }
@@ -101,9 +116,11 @@ export class PlatformConfigFactory {
 
         if (config.injectScript) {
             const requiredInjectFields = ['filename', 'tagId', 'eventId'];
-            requiredInjectFields.forEach(field => {
+            requiredInjectFields.forEach((field) => {
                 if (!config.injectScript[field]) {
-                    errors.push(`Missing required injectScript field: ${field}`);
+                    errors.push(
+                        `Missing required injectScript field: ${field}`
+                    );
                 }
             });
         }
@@ -122,14 +139,16 @@ export class PlatformConfigFactory {
                 warnings.push('videoDetection.maxRetries should be a number.');
             }
             if (typeof config.videoDetection.retryInterval !== 'number') {
-                warnings.push('videoDetection.retryInterval should be a number.');
+                warnings.push(
+                    'videoDetection.retryInterval should be a number.'
+                );
             }
         }
 
         return {
             isValid: errors.length === 0,
             errors,
-            warnings
+            warnings,
         };
     }
 
@@ -150,7 +169,7 @@ export class PlatformConfigFactory {
      * @returns {boolean} `true` if the URL matches any pattern, otherwise `false`.
      */
     static #matchesUrlPatterns(url, patterns) {
-        return patterns.some(pattern => {
+        return patterns.some((pattern) => {
             if (pattern.startsWith('/') && pattern.endsWith('/')) {
                 try {
                     const regex = new RegExp(pattern.slice(1, -1));
@@ -176,12 +195,12 @@ export class PlatformConfigBuilder {
             navigation: {
                 urlPatterns: [],
                 spaHandling: false,
-                checkInterval: 2000
+                checkInterval: 2000,
             },
             videoDetection: {
                 maxRetries: 30,
-                retryInterval: 1000
-            }
+                retryInterval: 1000,
+            },
         };
     }
 
@@ -238,7 +257,9 @@ export class PlatformConfigBuilder {
     build() {
         const validation = PlatformConfigFactory.validate(this.config);
         if (!validation.isValid) {
-            throw new Error(`Invalid platform configuration: ${validation.errors.join(', ')}`);
+            throw new Error(
+                `Invalid platform configuration: ${validation.errors.join(', ')}`
+            );
         }
         return { ...this.config };
     }

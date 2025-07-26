@@ -60,10 +60,7 @@
                 "video_platforms/netflixPlatform.js",
                 "content_scripts/platforms/NetflixContentScript.js"
             ],
-            "matches": [
-                "*://*.disneyplus.com/*",
-                "*://*.netflix.com/*"
-            ]
+            "matches": ["*://*.disneyplus.com/*", "*://*.netflix.com/*"]
         }
     ],
     "action": {

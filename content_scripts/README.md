@@ -7,21 +7,25 @@ The DualSub extension uses a refactored content script architecture that elimina
 ## Architecture Components
 
 ### 1. BaseContentScript (Abstract Base Class)
+
 - **Location**: `content_scripts/core/BaseContentScript.js`
 - **Purpose**: Provides common functionality shared across all streaming platforms
 - **Pattern**: Template Method Pattern with abstract methods for platform-specific behavior
 
 ### 2. Platform-Specific Content Scripts
+
 - **NetflixContentScript**: `content_scripts/platforms/NetflixContentScript.js`
 - **DisneyPlusContentScript**: `content_scripts/platforms/DisneyPlusContentScript.js`
 - **Purpose**: Implement platform-specific behavior while leveraging common functionality
 
 ### 3. Entry Points
+
 - **Netflix**: `content_scripts/platforms/netflixContent.js`
 - **Disney+**: `content_scripts/platforms/disneyPlusContent.js`
 - **Purpose**: Simple entry points that instantiate and initialize platform-specific classes
 
 ### 4. Shared Utilities
+
 - **Location**: `content_scripts/shared/`
 - **Purpose**: Common utilities used across platforms (DOM manipulation, event handling, etc.)
 
@@ -82,6 +86,7 @@ The architecture includes comprehensive testing infrastructure:
 - **Backward Compatibility Tests**: Ensure refactored code maintains identical behavior
 
 Run tests with:
+
 ```bash
 npm test
 ```

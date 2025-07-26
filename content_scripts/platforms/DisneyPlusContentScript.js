@@ -26,7 +26,7 @@ export class DisneyPlusContentScript extends BaseContentScript {
         this.injectConfig = {
             filename: 'injected_scripts/disneyPlusInject.js',
             tagId: 'disneyplus-dualsub-injector-script-tag',
-            eventId: 'disneyplus-dualsub-injector-event'
+            eventId: 'disneyplus-dualsub-injector-event',
         };
         this.urlPatterns = ['*.disneyplus.com'];
     }
@@ -68,12 +68,18 @@ export class DisneyPlusContentScript extends BaseContentScript {
      * Sets up Disney+ specific navigation detection.
      */
     setupNavigationDetection() {
-        this.logWithFallback('info', 'Setting up Disney+ navigation detection.');
+        this.logWithFallback(
+            'info',
+            'Setting up Disney+ navigation detection.'
+        );
         this._setupIntervalBasedDetection();
         this._setupHistoryAPIInterception();
         this._setupBrowserNavigationEvents();
         this._setupFocusAndVisibilityEvents();
-        this.logWithFallback('info', 'Enhanced Disney+ navigation detection is set up.');
+        this.logWithFallback(
+            'info',
+            'Enhanced Disney+ navigation detection is set up.'
+        );
     }
 
     /**
@@ -84,13 +90,18 @@ export class DisneyPlusContentScript extends BaseContentScript {
             const newUrl = window.location.href;
             const newPathname = window.location.pathname;
 
-            if (newUrl !== this.currentUrl || newPathname !== this.lastKnownPathname) {
+            if (
+                newUrl !== this.currentUrl ||
+                newPathname !== this.lastKnownPathname
+            ) {
                 this.logWithFallback('info', 'URL change detected.', {
                     from: this.currentUrl,
                     to: newUrl,
                 });
 
-                const wasOnPlayerPage = this._isPlayerPath(this.lastKnownPathname);
+                const wasOnPlayerPage = this._isPlayerPath(
+                    this.lastKnownPathname
+                );
                 const isOnPlayerPage = this._isPlayerPath(newPathname);
 
                 this.currentUrl = newUrl;
@@ -99,7 +110,9 @@ export class DisneyPlusContentScript extends BaseContentScript {
                 this._handlePageTransition(wasOnPlayerPage, isOnPlayerPage);
             }
         } catch (error) {
-            this.logWithFallback('error', 'Error in URL change detection.', { error });
+            this.logWithFallback('error', 'Error in URL change detection.', {
+                error,
+            });
             this._handleExtensionContextError(error);
         }
     }
@@ -129,48 +142,60 @@ export class DisneyPlusContentScript extends BaseContentScript {
         try {
             const action = request.action || request.type;
 
-            this.logWithFallback('debug', 'Processing Disney+ specific message.', {
-                action,
-                hasRequest: !!request,
-                requestKeys: Object.keys(request || {})
-            });
+            this.logWithFallback(
+                'debug',
+                'Processing Disney+ specific message.',
+                {
+                    action,
+                    hasRequest: !!request,
+                    requestKeys: Object.keys(request || {}),
+                }
+            );
 
             switch (action) {
                 default:
-                    this.logWithFallback('debug', 'No Disney+ specific handling required.', {
-                        action,
-                        message: 'Delegating to default handling.'
-                    });
+                    this.logWithFallback(
+                        'debug',
+                        'No Disney+ specific handling required.',
+                        {
+                            action,
+                            message: 'Delegating to default handling.',
+                        }
+                    );
 
                     sendResponse({
                         success: true,
                         handled: false,
                         platform: 'disneyplus',
-                        message: 'No platform-specific handling required.'
+                        message: 'No platform-specific handling required.',
                     });
                     return false;
             }
         } catch (error) {
-            const action = request ? (request.action || request.type) : 'unknown';
+            const action = request ? request.action || request.type : 'unknown';
 
-            this.logWithFallback('error', 'Error in Disney+ specific message handling.', {
-                error: error.message,
-                stack: error.stack,
-                action
-            });
+            this.logWithFallback(
+                'error',
+                'Error in Disney+ specific message handling.',
+                {
+                    error: error.message,
+                    stack: error.stack,
+                    action,
+                }
+            );
 
             try {
                 if (typeof sendResponse === 'function') {
                     sendResponse({
                         success: false,
                         error: error.message,
-                        platform: 'disneyplus'
+                        platform: 'disneyplus',
                     });
                 }
             } catch (responseError) {
                 this.logWithFallback('error', 'Error sending error response.', {
                     originalError: error.message,
-                    responseError: responseError.message
+                    responseError: responseError.message,
                 });
             }
             return false;
@@ -211,7 +236,7 @@ export class DisneyPlusContentScript extends BaseContentScript {
 
         this._originalHistoryMethods = {
             pushState: originalPushState,
-            replaceState: originalReplaceState
+            replaceState: originalReplaceState,
         };
     }
 
@@ -222,13 +247,16 @@ export class DisneyPlusContentScript extends BaseContentScript {
     _setupBrowserNavigationEvents() {
         const events = [
             { name: 'popstate', delay: 100 },
-            { name: 'hashchange', delay: 100 }
+            { name: 'hashchange', delay: 100 },
         ];
 
         events.forEach(({ name, delay }) => {
-            const handler = () => setTimeout(() => this.checkForUrlChange(), delay);
-            
-            const options = this.abortController ? { signal: this.abortController.signal } : {};
+            const handler = () =>
+                setTimeout(() => this.checkForUrlChange(), delay);
+
+            const options = this.abortController
+                ? { signal: this.abortController.signal }
+                : {};
             window.addEventListener(name, handler, options);
         });
     }
@@ -238,9 +266,12 @@ export class DisneyPlusContentScript extends BaseContentScript {
      * @private
      */
     _setupFocusAndVisibilityEvents() {
-        const focusHandler = () => setTimeout(() => this.checkForUrlChange(), 100);
-        
-        const options = this.abortController ? { signal: this.abortController.signal } : {};
+        const focusHandler = () =>
+            setTimeout(() => this.checkForUrlChange(), 100);
+
+        const options = this.abortController
+            ? { signal: this.abortController.signal }
+            : {};
         window.addEventListener('focus', focusHandler, options);
         document.addEventListener('visibilitychange', focusHandler, options);
     }
@@ -253,10 +284,16 @@ export class DisneyPlusContentScript extends BaseContentScript {
      */
     _handlePageTransition(wasOnPlayerPage, isOnPlayerPage) {
         if (wasOnPlayerPage && !isOnPlayerPage) {
-            this.logWithFallback('info', 'Leaving player page, cleaning up platform.');
+            this.logWithFallback(
+                'info',
+                'Leaving player page, cleaning up platform.'
+            );
             this._cleanupOnPageLeave();
         } else if (!wasOnPlayerPage && isOnPlayerPage) {
-            this.logWithFallback('info', 'Entering player page, preparing for initialization.');
+            this.logWithFallback(
+                'info',
+                'Entering player page, preparing for initialization.'
+            );
             this._initializeOnPageEnter();
         }
     }
@@ -267,11 +304,14 @@ export class DisneyPlusContentScript extends BaseContentScript {
      */
     _cleanupOnPageLeave() {
         this.stopVideoElementDetection();
-        
-        if (this.activePlatform && typeof this.activePlatform.cleanup === 'function') {
+
+        if (
+            this.activePlatform &&
+            typeof this.activePlatform.cleanup === 'function'
+        ) {
             this.activePlatform.cleanup();
         }
-        
+
         this.activePlatform = null;
         this.platformReady = false;
         this.eventBuffer.clear();
@@ -288,11 +328,18 @@ export class DisneyPlusContentScript extends BaseContentScript {
             try {
                 const config = await this.configService.getAll();
                 if (config?.subtitlesEnabled) {
-                    this.logWithFallback('info', 'Subtitles enabled, initializing platform.');
+                    this.logWithFallback(
+                        'info',
+                        'Subtitles enabled, initializing platform.'
+                    );
                     await this.initializePlatform();
                 }
             } catch (error) {
-                this.logWithFallback('error', 'Error during URL change initialization.', { error });
+                this.logWithFallback(
+                    'error',
+                    'Error during URL change initialization.',
+                    { error }
+                );
             }
         }, 1500);
     }
@@ -303,7 +350,9 @@ export class DisneyPlusContentScript extends BaseContentScript {
      */
     _reinjectScript() {
         try {
-            const existingScript = document.getElementById(this.injectConfig.tagId);
+            const existingScript = document.getElementById(
+                this.injectConfig.tagId
+            );
             if (existingScript) {
                 existingScript.remove();
             }
@@ -315,11 +364,22 @@ export class DisneyPlusContentScript extends BaseContentScript {
             const target = document.head || document.documentElement;
             if (target) {
                 target.appendChild(script);
-                script.onload = () => this.logWithFallback('info', 'Script re-injected successfully.');
-                script.onerror = (e) => this.logWithFallback('error', 'Failed to re-inject script.', { error: e });
+                script.onload = () =>
+                    this.logWithFallback(
+                        'info',
+                        'Script re-injected successfully.'
+                    );
+                script.onerror = (e) =>
+                    this.logWithFallback(
+                        'error',
+                        'Failed to re-inject script.',
+                        { error: e }
+                    );
             }
         } catch (error) {
-            this.logWithFallback('error', 'Error during script re-injection.', { error });
+            this.logWithFallback('error', 'Error during script re-injection.', {
+                error,
+            });
         }
     }
 
@@ -331,7 +391,10 @@ export class DisneyPlusContentScript extends BaseContentScript {
     _handleExtensionContextError(error) {
         if (error.message?.includes('Extension context invalidated')) {
             this.intervalManager.clear('urlChangeCheck');
-            this.logWithFallback('info', 'Stopped URL change detection due to extension context invalidation.');
+            this.logWithFallback(
+                'info',
+                'Stopped URL change detection due to extension context invalidation.'
+            );
         }
     }
 
@@ -343,7 +406,8 @@ export class DisneyPlusContentScript extends BaseContentScript {
         try {
             if (this._originalHistoryMethods) {
                 history.pushState = this._originalHistoryMethods.pushState;
-                history.replaceState = this._originalHistoryMethods.replaceState;
+                history.replaceState =
+                    this._originalHistoryMethods.replaceState;
                 this._originalHistoryMethods = null;
             }
 
@@ -351,7 +415,11 @@ export class DisneyPlusContentScript extends BaseContentScript {
 
             this.logWithFallback('info', 'Disney+ specific cleanup completed.');
         } catch (error) {
-            this.logWithFallback('error', 'Error during Disney+ specific cleanup.', { error });
+            this.logWithFallback(
+                'error',
+                'Error during Disney+ specific cleanup.',
+                { error }
+            );
             throw error;
         }
     }
@@ -367,7 +435,7 @@ export class DisneyPlusContentScript extends BaseContentScript {
             urlChangeCheckInterval: 1000,
             pageTransitionDelay: 1500,
             injectRetryDelay: 10,
-            injectMaxRetries: 100
+            injectMaxRetries: 100,
         };
     }
 
@@ -378,14 +446,14 @@ export class DisneyPlusContentScript extends BaseContentScript {
      */
     applyDisneyPlusConfigOverrides(baseConfig) {
         const disneyPlusConfig = this.getDisneyPlusSpecificConfig();
-        
+
         return {
             ...baseConfig,
             ...disneyPlusConfig,
             // Ensure Disney+ specific values take precedence
             platformName: this.getPlatformName(),
             injectConfig: this.getInjectScriptConfig(),
-            urlPatterns: this.urlPatterns
+            urlPatterns: this.urlPatterns,
         };
     }
 }

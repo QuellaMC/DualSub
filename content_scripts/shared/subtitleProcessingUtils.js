@@ -31,17 +31,17 @@ export class SubtitleProcessingManager {
             targetLanguage: 'en',
             timeOffset: 0,
             logger: null,
-            ...config
+            ...config,
         };
 
         // Processing state
         this.subtitleQueue = [];
         this.processingQueue = false;
         this.currentVideoId = null;
-        
+
         // Translation cache
         this.translationCache = new Map();
-        
+
         // Performance tracking
         this.performanceMetrics = {
             initializationTime: Date.now(),
@@ -52,23 +52,29 @@ export class SubtitleProcessingManager {
             apiTranslationAttempts: 0,
             apiTranslationSuccesses: 0,
             displayAttempts: 0,
-            displaySuccesses: 0
+            displaySuccesses: 0,
         };
-        
+
         // Bind methods
         this.processSubtitleData = this.processSubtitleData.bind(this);
-        this.parseOfficialTranslations = this.parseOfficialTranslations.bind(this);
-        
-        this._logSubtitleProcessing('info', 'SubtitleProcessingManager initialized.', {
-            platform: this.platform,
-            config: {
-                useOfficialTranslations: this.config.useOfficialTranslations,
-                translationProvider: this.config.translationProvider,
-                displayMode: this.config.displayMode,
-                targetLanguage: this.config.targetLanguage
-            },
-            initializationTime: this.performanceMetrics.initializationTime
-        });
+        this.parseOfficialTranslations =
+            this.parseOfficialTranslations.bind(this);
+
+        this._logSubtitleProcessing(
+            'info',
+            'SubtitleProcessingManager initialized.',
+            {
+                platform: this.platform,
+                config: {
+                    useOfficialTranslations:
+                        this.config.useOfficialTranslations,
+                    translationProvider: this.config.translationProvider,
+                    displayMode: this.config.displayMode,
+                    targetLanguage: this.config.targetLanguage,
+                },
+                initializationTime: this.performanceMetrics.initializationTime,
+            }
+        );
     }
 
     /**
@@ -78,42 +84,54 @@ export class SubtitleProcessingManager {
      */
     async processSubtitleData(subtitleData) {
         const processingStartTime = performance.now();
-        
-        this._logSubtitleProcessing('info', 'Starting subtitle data processing.', {
-            videoId: subtitleData.videoId,
-            hasOriginal: !!subtitleData.originalCues,
-            hasTranslated: !!subtitleData.translatedCues,
-            originalCueCount: subtitleData.originalCues?.length || 0,
-            translatedCueCount: subtitleData.translatedCues?.length || 0,
-            useOfficial: this.config.useOfficialTranslations,
-            translationProvider: this.config.translationProvider,
-            displayMode: this.config.displayMode,
-            targetLanguage: this.config.targetLanguage,
-            processingStartTime
-        });
+
+        this._logSubtitleProcessing(
+            'info',
+            'Starting subtitle data processing.',
+            {
+                videoId: subtitleData.videoId,
+                hasOriginal: !!subtitleData.originalCues,
+                hasTranslated: !!subtitleData.translatedCues,
+                originalCueCount: subtitleData.originalCues?.length || 0,
+                translatedCueCount: subtitleData.translatedCues?.length || 0,
+                useOfficial: this.config.useOfficialTranslations,
+                translationProvider: this.config.translationProvider,
+                displayMode: this.config.displayMode,
+                targetLanguage: this.config.targetLanguage,
+                processingStartTime,
+            }
+        );
 
         try {
             this.currentVideoId = subtitleData.videoId;
 
-            const shouldUseOfficial = this.config.useOfficialTranslations && 
-                                    subtitleData.translatedCues?.length > 0;
+            const shouldUseOfficial =
+                this.config.useOfficialTranslations &&
+                subtitleData.translatedCues?.length > 0;
 
-            this._logSubtitleProcessing('info', 'Subtitle source detection completed.', {
-                videoId: subtitleData.videoId,
-                shouldUseOfficial,
-                officialTranslationsAvailable: !!(subtitleData.translatedCues?.length),
-                userPreference: this.config.useOfficialTranslations,
-                selectedSource: shouldUseOfficial ? 'official' : 'api'
-            });
+            this._logSubtitleProcessing(
+                'info',
+                'Subtitle source detection completed.',
+                {
+                    videoId: subtitleData.videoId,
+                    shouldUseOfficial,
+                    officialTranslationsAvailable:
+                        !!subtitleData.translatedCues?.length,
+                    userPreference: this.config.useOfficialTranslations,
+                    selectedSource: shouldUseOfficial ? 'official' : 'api',
+                }
+            );
 
             let processedResult;
             if (shouldUseOfficial) {
                 this.performanceMetrics.officialTranslationAttempts++;
-                processedResult = await this._processWithOfficialTranslations(subtitleData);
+                processedResult =
+                    await this._processWithOfficialTranslations(subtitleData);
                 this.performanceMetrics.officialTranslationSuccesses++;
             } else {
                 this.performanceMetrics.apiTranslationAttempts++;
-                processedResult = await this._processWithAPITranslations(subtitleData);
+                processedResult =
+                    await this._processWithAPITranslations(subtitleData);
                 this.performanceMetrics.apiTranslationSuccesses++;
             }
 
@@ -123,43 +141,57 @@ export class SubtitleProcessingManager {
             this.performanceMetrics.totalProcessingTime += processingTime;
             this.performanceMetrics.processedSubtitleCount++;
 
-            this._logSubtitleProcessing('info', 'Subtitle processing completed successfully.', {
-                videoId: subtitleData.videoId,
-                cueCount: processedResult.cues.length,
-                source: shouldUseOfficial ? 'official' : 'api',
-                originalCount: processedResult.originalCount,
-                translatedCount: processedResult.translatedCount,
-                dualCount: processedResult.dualCount,
-                processingTime: `${processingTime.toFixed(2)}ms`,
-                averageProcessingTime: `${(this.performanceMetrics.totalProcessingTime / this.performanceMetrics.processedSubtitleCount).toFixed(2)}ms`,
-                performanceMetrics: {
-                    totalProcessed: this.performanceMetrics.processedSubtitleCount,
-                    officialAttempts: this.performanceMetrics.officialTranslationAttempts,
-                    officialSuccesses: this.performanceMetrics.officialTranslationSuccesses,
-                    apiAttempts: this.performanceMetrics.apiTranslationAttempts,
-                    apiSuccesses: this.performanceMetrics.apiTranslationSuccesses
+            this._logSubtitleProcessing(
+                'info',
+                'Subtitle processing completed successfully.',
+                {
+                    videoId: subtitleData.videoId,
+                    cueCount: processedResult.cues.length,
+                    source: shouldUseOfficial ? 'official' : 'api',
+                    originalCount: processedResult.originalCount,
+                    translatedCount: processedResult.translatedCount,
+                    dualCount: processedResult.dualCount,
+                    processingTime: `${processingTime.toFixed(2)}ms`,
+                    averageProcessingTime: `${(this.performanceMetrics.totalProcessingTime / this.performanceMetrics.processedSubtitleCount).toFixed(2)}ms`,
+                    performanceMetrics: {
+                        totalProcessed:
+                            this.performanceMetrics.processedSubtitleCount,
+                        officialAttempts:
+                            this.performanceMetrics.officialTranslationAttempts,
+                        officialSuccesses:
+                            this.performanceMetrics
+                                .officialTranslationSuccesses,
+                        apiAttempts:
+                            this.performanceMetrics.apiTranslationAttempts,
+                        apiSuccesses:
+                            this.performanceMetrics.apiTranslationSuccesses,
+                    },
                 }
-            });
+            );
 
             return processedResult;
-
         } catch (error) {
             const processingTime = performance.now() - processingStartTime;
-            
-            this._logSubtitleProcessing('error', 'Error processing subtitle data.', {
-                error: error.message,
-                stack: error.stack,
-                videoId: subtitleData.videoId,
-                processingTime: `${processingTime.toFixed(2)}ms`,
-                subtitleDataKeys: Object.keys(subtitleData || {}),
-                hasOriginalCues: !!subtitleData?.originalCues,
-                hasTranslatedCues: !!subtitleData?.translatedCues,
-                configState: {
-                    useOfficialTranslations: this.config.useOfficialTranslations,
-                    translationProvider: this.config.translationProvider,
-                    displayMode: this.config.displayMode
+
+            this._logSubtitleProcessing(
+                'error',
+                'Error processing subtitle data.',
+                {
+                    error: error.message,
+                    stack: error.stack,
+                    videoId: subtitleData.videoId,
+                    processingTime: `${processingTime.toFixed(2)}ms`,
+                    subtitleDataKeys: Object.keys(subtitleData || {}),
+                    hasOriginalCues: !!subtitleData?.originalCues,
+                    hasTranslatedCues: !!subtitleData?.translatedCues,
+                    configState: {
+                        useOfficialTranslations:
+                            this.config.useOfficialTranslations,
+                        translationProvider: this.config.translationProvider,
+                        displayMode: this.config.displayMode,
+                    },
                 }
-            });
+            );
             throw error;
         }
     }
@@ -172,68 +204,114 @@ export class SubtitleProcessingManager {
      */
     async parseOfficialTranslations(platformData, platform = this.platform) {
         const parseStartTime = performance.now();
-        
-        this._logSubtitleProcessing('info', 'Starting official translation parsing.', {
-            platform,
-            dataType: typeof platformData,
-            dataSize: platformData ? JSON.stringify(platformData).length : 0,
-            hasData: !!platformData,
-            isArray: Array.isArray(platformData),
-            parseStartTime
-        });
+
+        this._logSubtitleProcessing(
+            'info',
+            'Starting official translation parsing.',
+            {
+                platform,
+                dataType: typeof platformData,
+                dataSize: platformData
+                    ? JSON.stringify(platformData).length
+                    : 0,
+                hasData: !!platformData,
+                isArray: Array.isArray(platformData),
+                parseStartTime,
+            }
+        );
 
         try {
             let parsedCues = [];
-            
+
             switch (platform.toLowerCase()) {
                 case 'netflix':
-                    this._logSubtitleProcessing('debug', 'Using Netflix-specific parsing logic.');
-                    parsedCues = await this._parseNetflixOfficialTranslations(platformData);
+                    this._logSubtitleProcessing(
+                        'debug',
+                        'Using Netflix-specific parsing logic.'
+                    );
+                    parsedCues =
+                        await this._parseNetflixOfficialTranslations(
+                            platformData
+                        );
                     break;
                 case 'disneyplus':
-                    this._logSubtitleProcessing('debug', 'Using Disney+ specific parsing logic.');
-                    parsedCues = await this._parseDisneyPlusOfficialTranslations(platformData);
+                    this._logSubtitleProcessing(
+                        'debug',
+                        'Using Disney+ specific parsing logic.'
+                    );
+                    parsedCues =
+                        await this._parseDisneyPlusOfficialTranslations(
+                            platformData
+                        );
                     break;
                 default:
-                    this._logSubtitleProcessing('debug', 'Using generic parsing logic.', { platform });
-                    parsedCues = await this._parseGenericOfficialTranslations(platformData);
+                    this._logSubtitleProcessing(
+                        'debug',
+                        'Using generic parsing logic.',
+                        { platform }
+                    );
+                    parsedCues =
+                        await this._parseGenericOfficialTranslations(
+                            platformData
+                        );
                     break;
             }
 
             const parseTime = performance.now() - parseStartTime;
-            
-            this._logSubtitleProcessing('info', 'Official translation parsing completed.', {
-                platform,
-                success: true,
-                parsedCueCount: parsedCues.length,
-                parseTime: `${parseTime.toFixed(2)}ms`,
-                firstCue: parsedCues.length > 0 ? {
-                    start: parsedCues[0].start,
-                    end: parsedCues[0].end,
-                    textLength: parsedCues[0].text?.length || 0
-                } : null,
-                lastCue: parsedCues.length > 0 ? {
-                    start: parsedCues[parsedCues.length - 1].start,
-                    end: parsedCues[parsedCues.length - 1].end,
-                    textLength: parsedCues[parsedCues.length - 1].text?.length || 0
-                } : null
-            });
+
+            this._logSubtitleProcessing(
+                'info',
+                'Official translation parsing completed.',
+                {
+                    platform,
+                    success: true,
+                    parsedCueCount: parsedCues.length,
+                    parseTime: `${parseTime.toFixed(2)}ms`,
+                    firstCue:
+                        parsedCues.length > 0
+                            ? {
+                                  start: parsedCues[0].start,
+                                  end: parsedCues[0].end,
+                                  textLength: parsedCues[0].text?.length || 0,
+                              }
+                            : null,
+                    lastCue:
+                        parsedCues.length > 0
+                            ? {
+                                  start: parsedCues[parsedCues.length - 1]
+                                      .start,
+                                  end: parsedCues[parsedCues.length - 1].end,
+                                  textLength:
+                                      parsedCues[parsedCues.length - 1].text
+                                          ?.length || 0,
+                              }
+                            : null,
+                }
+            );
 
             return parsedCues;
-            
         } catch (error) {
             const parseTime = performance.now() - parseStartTime;
-            
-            this._logSubtitleProcessing('error', 'Error parsing official translations.', {
-                error: error.message,
-                stack: error.stack,
-                platform,
-                parseTime: `${parseTime.toFixed(2)}ms`,
-                dataType: typeof platformData,
-                dataKeys: platformData && typeof platformData === 'object' ? Object.keys(platformData) : null,
-                isArray: Array.isArray(platformData),
-                arrayLength: Array.isArray(platformData) ? platformData.length : null
-            });
+
+            this._logSubtitleProcessing(
+                'error',
+                'Error parsing official translations.',
+                {
+                    error: error.message,
+                    stack: error.stack,
+                    platform,
+                    parseTime: `${parseTime.toFixed(2)}ms`,
+                    dataType: typeof platformData,
+                    dataKeys:
+                        platformData && typeof platformData === 'object'
+                            ? Object.keys(platformData)
+                            : null,
+                    isArray: Array.isArray(platformData),
+                    arrayLength: Array.isArray(platformData)
+                        ? platformData.length
+                        : null,
+                }
+            );
             return [];
         }
     }
@@ -244,37 +322,42 @@ export class SubtitleProcessingManager {
      */
     async updateSubtitleMode(useOfficial) {
         const modeChangeTime = Date.now();
-        
+
         this._logSubtitleProcessing('info', 'Updating subtitle mode.', {
             from: this.config.useOfficialTranslations,
             to: useOfficial,
             modeChangeTime,
             currentVideoId: this.currentVideoId,
             cacheSize: this.translationCache.size,
-            queueSize: this.subtitleQueue.length
+            queueSize: this.subtitleQueue.length,
         });
 
         const previousMode = this.config.useOfficialTranslations;
         this.config.useOfficialTranslations = useOfficial;
-        
+
         const cacheCleared = this.translationCache.size;
         this.translationCache.clear();
-        
+
         if (previousMode !== useOfficial) {
             this.performanceMetrics.officialTranslationAttempts = 0;
             this.performanceMetrics.officialTranslationSuccesses = 0;
             this.performanceMetrics.apiTranslationAttempts = 0;
             this.performanceMetrics.apiTranslationSuccesses = 0;
         }
-        
-        this._logSubtitleProcessing('info', 'Subtitle mode updated successfully.', {
-            newMode: useOfficial ? 'official' : 'api',
-            previousMode: previousMode ? 'official' : 'api',
-            cacheCleared,
-            metricsReset: previousMode !== useOfficial,
-            reprocessingNeeded: this.subtitleQueue.length > 0,
-            timeSinceInit: modeChangeTime - this.performanceMetrics.initializationTime
-        });
+
+        this._logSubtitleProcessing(
+            'info',
+            'Subtitle mode updated successfully.',
+            {
+                newMode: useOfficial ? 'official' : 'api',
+                previousMode: previousMode ? 'official' : 'api',
+                cacheCleared,
+                metricsReset: previousMode !== useOfficial,
+                reprocessingNeeded: this.subtitleQueue.length > 0,
+                timeSinceInit:
+                    modeChangeTime - this.performanceMetrics.initializationTime,
+            }
+        );
     }
 
     /**
@@ -305,70 +388,117 @@ export class SubtitleProcessingManager {
      */
     async _processWithOfficialTranslations(subtitleData) {
         const processStartTime = performance.now();
-        
-        this._logSubtitleProcessing('info', 'Processing with official translations.', {
-            videoId: subtitleData.videoId,
-            originalCueCount: subtitleData.originalCues?.length || 0,
-            translatedCueCount: subtitleData.translatedCues?.length || 0
-        });
+
+        this._logSubtitleProcessing(
+            'info',
+            'Processing with official translations.',
+            {
+                videoId: subtitleData.videoId,
+                originalCueCount: subtitleData.originalCues?.length || 0,
+                translatedCueCount: subtitleData.translatedCues?.length || 0,
+            }
+        );
 
         try {
             this._logSubtitleProcessing('debug', 'Normalizing original cues.');
-            const originalCues = this._normalizeCues(subtitleData.originalCues, 'original');
-            
-            this._logSubtitleProcessing('debug', 'Normalizing translated cues.');
-            const translatedCues = this._normalizeCues(subtitleData.translatedCues, 'translated');
+            const originalCues = this._normalizeCues(
+                subtitleData.originalCues,
+                'original'
+            );
 
-            this._logSubtitleProcessing('info', 'Cue normalization completed.', {
-                originalInput: subtitleData.originalCues?.length || 0,
-                originalNormalized: originalCues.length,
-                originalFiltered: (subtitleData.originalCues?.length || 0) - originalCues.length,
-                translatedInput: subtitleData.translatedCues?.length || 0,
-                translatedNormalized: translatedCues.length,
-                translatedFiltered: (subtitleData.translatedCues?.length || 0) - translatedCues.length
-            });
+            this._logSubtitleProcessing(
+                'debug',
+                'Normalizing translated cues.'
+            );
+            const translatedCues = this._normalizeCues(
+                subtitleData.translatedCues,
+                'translated'
+            );
 
-            this._logSubtitleProcessing('debug', 'Creating dual subtitle cues with official translations.');
-            const dualCues = this._createDualSubtitleCues(originalCues, translatedCues, true);
+            this._logSubtitleProcessing(
+                'info',
+                'Cue normalization completed.',
+                {
+                    originalInput: subtitleData.originalCues?.length || 0,
+                    originalNormalized: originalCues.length,
+                    originalFiltered:
+                        (subtitleData.originalCues?.length || 0) -
+                        originalCues.length,
+                    translatedInput: subtitleData.translatedCues?.length || 0,
+                    translatedNormalized: translatedCues.length,
+                    translatedFiltered:
+                        (subtitleData.translatedCues?.length || 0) -
+                        translatedCues.length,
+                }
+            );
+
+            this._logSubtitleProcessing(
+                'debug',
+                'Creating dual subtitle cues with official translations.'
+            );
+            const dualCues = this._createDualSubtitleCues(
+                originalCues,
+                translatedCues,
+                true
+            );
 
             const processTime = performance.now() - processStartTime;
-            
+
             const result = {
                 source: 'official',
                 cues: dualCues,
                 originalCount: originalCues.length,
                 translatedCount: translatedCues.length,
-                dualCount: dualCues.length
+                dualCount: dualCues.length,
             };
 
-            this._logSubtitleProcessing('info', 'Official translation processing completed.', {
-                ...result,
-                processTime: `${processTime.toFixed(2)}ms`,
-                matchingRate: originalCues.length > 0 
-                    ? `${((dualCues.length / originalCues.length) * 100).toFixed(1)}%`
-                    : '0%',
-                averageCueLength: dualCues.length > 0
-                    ? (dualCues.reduce((sum, cue) => sum + (cue.original?.length || 0) + (cue.translated?.length || 0), 0) / (dualCues.length * 2)).toFixed(1)
-                    : 0
-            });
+            this._logSubtitleProcessing(
+                'info',
+                'Official translation processing completed.',
+                {
+                    ...result,
+                    processTime: `${processTime.toFixed(2)}ms`,
+                    matchingRate:
+                        originalCues.length > 0
+                            ? `${((dualCues.length / originalCues.length) * 100).toFixed(1)}%`
+                            : '0%',
+                    averageCueLength:
+                        dualCues.length > 0
+                            ? (
+                                  dualCues.reduce(
+                                      (sum, cue) =>
+                                          sum +
+                                          (cue.original?.length || 0) +
+                                          (cue.translated?.length || 0),
+                                      0
+                                  ) /
+                                  (dualCues.length * 2)
+                              ).toFixed(1)
+                            : 0,
+                }
+            );
 
             return result;
-            
         } catch (error) {
             const processTime = performance.now() - processStartTime;
-            
-            this._logSubtitleProcessing('error', 'Error processing with official translations.', {
-                error: error.message,
-                stack: error.stack,
-                processTime: `${processTime.toFixed(2)}ms`,
-                videoId: subtitleData.videoId,
-                inputData: {
-                    hasOriginal: !!subtitleData.originalCues,
-                    hasTranslated: !!subtitleData.translatedCues,
-                    originalCount: subtitleData.originalCues?.length || 0,
-                    translatedCount: subtitleData.translatedCues?.length || 0
+
+            this._logSubtitleProcessing(
+                'error',
+                'Error processing with official translations.',
+                {
+                    error: error.message,
+                    stack: error.stack,
+                    processTime: `${processTime.toFixed(2)}ms`,
+                    videoId: subtitleData.videoId,
+                    inputData: {
+                        hasOriginal: !!subtitleData.originalCues,
+                        hasTranslated: !!subtitleData.translatedCues,
+                        originalCount: subtitleData.originalCues?.length || 0,
+                        translatedCount:
+                            subtitleData.translatedCues?.length || 0,
+                    },
                 }
-            });
+            );
             throw error;
         }
     }
@@ -381,80 +511,116 @@ export class SubtitleProcessingManager {
      */
     async _processWithAPITranslations(subtitleData) {
         const processStartTime = performance.now();
-        
-        this._logSubtitleProcessing('info', 'Processing with API translations.', {
-            videoId: subtitleData.videoId,
-            originalCueCount: subtitleData.originalCues?.length || 0,
-            translationProvider: this.config.translationProvider,
-            targetLanguage: this.config.targetLanguage
-        });
+
+        this._logSubtitleProcessing(
+            'info',
+            'Processing with API translations.',
+            {
+                videoId: subtitleData.videoId,
+                originalCueCount: subtitleData.originalCues?.length || 0,
+                translationProvider: this.config.translationProvider,
+                targetLanguage: this.config.targetLanguage,
+            }
+        );
 
         try {
-            this._logSubtitleProcessing('debug', 'Normalizing original cues for API translation.');
-            const originalCues = this._normalizeCues(subtitleData.originalCues, 'original');
-            
-            this._logSubtitleProcessing('info', 'Original cue normalization completed.', {
-                originalInput: subtitleData.originalCues?.length || 0,
-                originalNormalized: originalCues.length,
-                originalFiltered: (subtitleData.originalCues?.length || 0) - originalCues.length
-            });
+            this._logSubtitleProcessing(
+                'debug',
+                'Normalizing original cues for API translation.'
+            );
+            const originalCues = this._normalizeCues(
+                subtitleData.originalCues,
+                'original'
+            );
 
-            this._logSubtitleProcessing('debug', 'Starting API translation process.');
+            this._logSubtitleProcessing(
+                'info',
+                'Original cue normalization completed.',
+                {
+                    originalInput: subtitleData.originalCues?.length || 0,
+                    originalNormalized: originalCues.length,
+                    originalFiltered:
+                        (subtitleData.originalCues?.length || 0) -
+                        originalCues.length,
+                }
+            );
+
+            this._logSubtitleProcessing(
+                'debug',
+                'Starting API translation process.'
+            );
             const translationStartTime = performance.now();
-            const translatedCues = await this._translateCuesWithAPI(originalCues);
+            const translatedCues =
+                await this._translateCuesWithAPI(originalCues);
             const translationTime = performance.now() - translationStartTime;
 
             this._logSubtitleProcessing('info', 'API translation completed.', {
                 originalCueCount: originalCues.length,
                 translatedCueCount: translatedCues.length,
                 translationTime: `${translationTime.toFixed(2)}ms`,
-                averageTimePerCue: originalCues.length > 0 
-                    ? `${(translationTime / originalCues.length).toFixed(2)}ms`
-                    : '0ms',
-                provider: this.config.translationProvider
+                averageTimePerCue:
+                    originalCues.length > 0
+                        ? `${(translationTime / originalCues.length).toFixed(2)}ms`
+                        : '0ms',
+                provider: this.config.translationProvider,
             });
 
-            this._logSubtitleProcessing('debug', 'Creating dual subtitle cues with API translations.');
-            const dualCues = this._createDualSubtitleCues(originalCues, translatedCues, false);
+            this._logSubtitleProcessing(
+                'debug',
+                'Creating dual subtitle cues with API translations.'
+            );
+            const dualCues = this._createDualSubtitleCues(
+                originalCues,
+                translatedCues,
+                false
+            );
 
             const processTime = performance.now() - processStartTime;
-            
+
             const result = {
                 source: 'api',
                 cues: dualCues,
                 originalCount: originalCues.length,
                 translatedCount: translatedCues.length,
-                dualCount: dualCues.length
+                dualCount: dualCues.length,
             };
 
-            this._logSubtitleProcessing('info', 'API translation processing completed.', {
-                ...result,
-                processTime: `${processTime.toFixed(2)}ms`,
-                translationTime: `${translationTime.toFixed(2)}ms`,
-                matchingRate: originalCues.length > 0 
-                    ? `${((dualCues.length / originalCues.length) * 100).toFixed(1)}%`
-                    : '0%',
-                translationProvider: this.config.translationProvider,
-                targetLanguage: this.config.targetLanguage
-            });
+            this._logSubtitleProcessing(
+                'info',
+                'API translation processing completed.',
+                {
+                    ...result,
+                    processTime: `${processTime.toFixed(2)}ms`,
+                    translationTime: `${translationTime.toFixed(2)}ms`,
+                    matchingRate:
+                        originalCues.length > 0
+                            ? `${((dualCues.length / originalCues.length) * 100).toFixed(1)}%`
+                            : '0%',
+                    translationProvider: this.config.translationProvider,
+                    targetLanguage: this.config.targetLanguage,
+                }
+            );
 
             return result;
-            
         } catch (error) {
             const processTime = performance.now() - processStartTime;
-            
-            this._logSubtitleProcessing('error', 'Error processing with API translations.', {
-                error: error.message,
-                stack: error.stack,
-                processTime: `${processTime.toFixed(2)}ms`,
-                videoId: subtitleData.videoId,
-                translationProvider: this.config.translationProvider,
-                targetLanguage: this.config.targetLanguage,
-                inputData: {
-                    hasOriginal: !!subtitleData.originalCues,
-                    originalCount: subtitleData.originalCues?.length || 0
+
+            this._logSubtitleProcessing(
+                'error',
+                'Error processing with API translations.',
+                {
+                    error: error.message,
+                    stack: error.stack,
+                    processTime: `${processTime.toFixed(2)}ms`,
+                    videoId: subtitleData.videoId,
+                    translationProvider: this.config.translationProvider,
+                    targetLanguage: this.config.targetLanguage,
+                    inputData: {
+                        hasOriginal: !!subtitleData.originalCues,
+                        originalCount: subtitleData.originalCues?.length || 0,
+                    },
                 }
-            });
+            );
             throw error;
         }
     }
@@ -471,15 +637,19 @@ export class SubtitleProcessingManager {
             return [];
         }
 
-        return cues.map(cue => ({
-            start: this._parseTimeToSeconds(cue.start),
-            end: this._parseTimeToSeconds(cue.end),
-            text: this._sanitizeText(cue.text),
-            type,
-            videoId: this.currentVideoId,
-            original: type === 'original' ? this._sanitizeText(cue.text) : null,
-            translated: type === 'translated' ? this._sanitizeText(cue.text) : null
-        })).filter(cue => cue.text && !isNaN(cue.start) && !isNaN(cue.end));
+        return cues
+            .map((cue) => ({
+                start: this._parseTimeToSeconds(cue.start),
+                end: this._parseTimeToSeconds(cue.end),
+                text: this._sanitizeText(cue.text),
+                type,
+                videoId: this.currentVideoId,
+                original:
+                    type === 'original' ? this._sanitizeText(cue.text) : null,
+                translated:
+                    type === 'translated' ? this._sanitizeText(cue.text) : null,
+            }))
+            .filter((cue) => cue.text && !isNaN(cue.start) && !isNaN(cue.end));
     }
 
     /**
@@ -495,13 +665,13 @@ export class SubtitleProcessingManager {
 
         // Create a map of translated cues by timing for efficient lookup
         const translatedMap = new Map();
-        translatedCues.forEach(cue => {
+        translatedCues.forEach((cue) => {
             const key = `${cue.start}-${cue.end}`;
             translatedMap.set(key, cue);
         });
 
         // Match original cues with translated cues
-        originalCues.forEach(originalCue => {
+        originalCues.forEach((originalCue) => {
             const key = `${originalCue.start}-${originalCue.end}`;
             const translatedCue = translatedMap.get(key);
 
@@ -514,20 +684,25 @@ export class SubtitleProcessingManager {
                     translated: translatedCue.text,
                     videoId: this.currentVideoId,
                     useNativeTarget,
-                    cueType: 'dual'
+                    cueType: 'dual',
                 });
             } else {
                 // Find best overlapping translated cue
-                const overlappingCue = this._findBestOverlappingCue(originalCue, translatedCues);
-                
+                const overlappingCue = this._findBestOverlappingCue(
+                    originalCue,
+                    translatedCues
+                );
+
                 dualCues.push({
                     start: originalCue.start,
                     end: originalCue.end,
                     original: originalCue.text,
-                    translated: overlappingCue ? overlappingCue.text : '[Translation pending...]',
+                    translated: overlappingCue
+                        ? overlappingCue.text
+                        : '[Translation pending...]',
                     videoId: this.currentVideoId,
                     useNativeTarget,
-                    cueType: 'dual'
+                    cueType: 'dual',
                 });
             }
         });
@@ -546,8 +721,11 @@ export class SubtitleProcessingManager {
         let bestCue = null;
         let maxOverlap = 0;
 
-        translatedCues.forEach(translatedCue => {
-            const overlapStart = Math.max(originalCue.start, translatedCue.start);
+        translatedCues.forEach((translatedCue) => {
+            const overlapStart = Math.max(
+                originalCue.start,
+                translatedCue.start
+            );
             const overlapEnd = Math.min(originalCue.end, translatedCue.end);
             const overlap = Math.max(0, overlapEnd - overlapStart);
 
@@ -570,14 +748,14 @@ export class SubtitleProcessingManager {
         // TODO: Implement actual translation service integration.
         this._log('info', 'Translating cues with API.', {
             provider: this.config.translationProvider,
-            cueCount: originalCues.length
+            cueCount: originalCues.length,
         });
 
         // TODO: Integrate with actual translation service
-        return originalCues.map(cue => ({
+        return originalCues.map((cue) => ({
             ...cue,
             text: `[${cue.text}]`, // Placeholder translation
-            type: 'translated'
+            type: 'translated',
         }));
     }
 
@@ -589,7 +767,7 @@ export class SubtitleProcessingManager {
     _updateSubtitleQueue(newCues) {
         // Clear existing cues for this video
         this.subtitleQueue = this.subtitleQueue.filter(
-            cue => cue.videoId !== this.currentVideoId
+            (cue) => cue.videoId !== this.currentVideoId
         );
 
         // Add new cues
@@ -601,7 +779,7 @@ export class SubtitleProcessingManager {
         this._log('debug', 'Subtitle queue updated.', {
             videoId: this.currentVideoId,
             totalCues: this.subtitleQueue.length,
-            newCues: newCues.length
+            newCues: newCues.length,
         });
     }
 
@@ -616,76 +794,113 @@ export class SubtitleProcessingManager {
      * @returns {Promise<Array>} A promise that resolves to the parsed cues.
      */
     async _parseNetflixOfficialTranslations(platformData) {
-        this._logSubtitleProcessing('debug', 'Starting Netflix official translation parsing.', {
-            hasData: !!platformData,
-            dataType: typeof platformData,
-            hasEvents: !!(platformData?.events),
-            eventCount: platformData?.events?.length || 0
-        });
-        
+        this._logSubtitleProcessing(
+            'debug',
+            'Starting Netflix official translation parsing.',
+            {
+                hasData: !!platformData,
+                dataType: typeof platformData,
+                hasEvents: !!platformData?.events,
+                eventCount: platformData?.events?.length || 0,
+            }
+        );
+
         try {
             if (platformData?.events && Array.isArray(platformData.events)) {
                 const parsedCues = platformData.events
-                    .filter(event => event && typeof event === 'object')
+                    .filter((event) => event && typeof event === 'object')
                     .map((event, index) => {
                         const cue = {
                             start: event.startMs ? event.startMs / 1000 : 0,
                             end: event.endMs ? event.endMs / 1000 : 0,
-                            text: event.text || ''
+                            text: event.text || '',
                         };
-                        
+
                         if (!event.startMs || !event.endMs) {
-                            this._logSubtitleProcessing('warn', 'Netflix event missing timing data.', {
-                                eventIndex: index,
-                                event: {
-                                    hasStartMs: !!event.startMs,
-                                    hasEndMs: !!event.endMs,
-                                    hasText: !!event.text,
-                                    startMs: event.startMs,
-                                    endMs: event.endMs
+                            this._logSubtitleProcessing(
+                                'warn',
+                                'Netflix event missing timing data.',
+                                {
+                                    eventIndex: index,
+                                    event: {
+                                        hasStartMs: !!event.startMs,
+                                        hasEndMs: !!event.endMs,
+                                        hasText: !!event.text,
+                                        startMs: event.startMs,
+                                        endMs: event.endMs,
+                                    },
                                 }
-                            });
+                            );
                         }
-                        
+
                         if (!event.text || event.text.trim() === '') {
-                            this._logSubtitleProcessing('warn', 'Netflix event missing text content.', {
-                                eventIndex: index,
-                                timing: `${event.startMs}ms - ${event.endMs}ms`
-                            });
+                            this._logSubtitleProcessing(
+                                'warn',
+                                'Netflix event missing text content.',
+                                {
+                                    eventIndex: index,
+                                    timing: `${event.startMs}ms - ${event.endMs}ms`,
+                                }
+                            );
                         }
-                        
+
                         return cue;
                     })
-                    .filter(cue => cue.text.trim() !== '' && cue.start < cue.end);
+                    .filter(
+                        (cue) => cue.text.trim() !== '' && cue.start < cue.end
+                    );
 
-                this._logSubtitleProcessing('info', 'Netflix official translation parsing completed.', {
-                    originalEventCount: platformData.events.length,
-                    parsedCueCount: parsedCues.length,
-                    filteredOut: platformData.events.length - parsedCues.length,
-                    firstCue: parsedCues.length > 0 ? {
-                        start: parsedCues[0].start,
-                        end: parsedCues[0].end,
-                        textPreview: parsedCues[0].text.substring(0, 50)
-                    } : null
-                });
+                this._logSubtitleProcessing(
+                    'info',
+                    'Netflix official translation parsing completed.',
+                    {
+                        originalEventCount: platformData.events.length,
+                        parsedCueCount: parsedCues.length,
+                        filteredOut:
+                            platformData.events.length - parsedCues.length,
+                        firstCue:
+                            parsedCues.length > 0
+                                ? {
+                                      start: parsedCues[0].start,
+                                      end: parsedCues[0].end,
+                                      textPreview: parsedCues[0].text.substring(
+                                          0,
+                                          50
+                                      ),
+                                  }
+                                : null,
+                    }
+                );
 
                 return parsedCues;
             } else {
-                this._logSubtitleProcessing('warn', 'Netflix platform data is invalid or missing events.', {
-                    hasData: !!platformData,
-                    dataKeys: platformData ? Object.keys(platformData) : null,
-                    hasEvents: !!(platformData?.events),
-                    eventsType: platformData?.events ? typeof platformData.events : null
-                });
+                this._logSubtitleProcessing(
+                    'warn',
+                    'Netflix platform data is invalid or missing events.',
+                    {
+                        hasData: !!platformData,
+                        dataKeys: platformData
+                            ? Object.keys(platformData)
+                            : null,
+                        hasEvents: !!platformData?.events,
+                        eventsType: platformData?.events
+                            ? typeof platformData.events
+                            : null,
+                    }
+                );
                 return [];
             }
         } catch (error) {
-            this._logSubtitleProcessing('error', 'Error in Netflix official translation parsing.', {
-                error: error.message,
-                stack: error.stack,
-                platformDataType: typeof platformData,
-                hasEvents: !!(platformData?.events)
-            });
+            this._logSubtitleProcessing(
+                'error',
+                'Error in Netflix official translation parsing.',
+                {
+                    error: error.message,
+                    stack: error.stack,
+                    platformDataType: typeof platformData,
+                    hasEvents: !!platformData?.events,
+                }
+            );
             return [];
         }
     }
@@ -697,83 +912,135 @@ export class SubtitleProcessingManager {
      * @returns {Promise<Array>} A promise that resolves to the parsed cues.
      */
     async _parseDisneyPlusOfficialTranslations(platformData) {
-        this._logSubtitleProcessing('debug', 'Starting Disney+ official translation parsing.', {
-            hasData: !!platformData,
-            dataType: typeof platformData,
-            isArray: Array.isArray(platformData),
-            arrayLength: Array.isArray(platformData) ? platformData.length : null
-        });
-        
+        this._logSubtitleProcessing(
+            'debug',
+            'Starting Disney+ official translation parsing.',
+            {
+                hasData: !!platformData,
+                dataType: typeof platformData,
+                isArray: Array.isArray(platformData),
+                arrayLength: Array.isArray(platformData)
+                    ? platformData.length
+                    : null,
+            }
+        );
+
         try {
             if (Array.isArray(platformData)) {
                 const parsedCues = platformData
-                    .filter(item => item && typeof item === 'object')
+                    .filter((item) => item && typeof item === 'object')
                     .map((item, index) => {
                         const startTime = this._parseTimeToSeconds(item.start);
                         const endTime = this._parseTimeToSeconds(item.end);
                         const text = item.text || '';
-                        
+
                         if (isNaN(startTime) || isNaN(endTime)) {
-                            this._logSubtitleProcessing('warn', 'Disney+ item has invalid timing.', {
-                                itemIndex: index,
-                                originalStart: item.start,
-                                originalEnd: item.end,
-                                parsedStart: startTime,
-                                parsedEnd: endTime
-                            });
+                            this._logSubtitleProcessing(
+                                'warn',
+                                'Disney+ item has invalid timing.',
+                                {
+                                    itemIndex: index,
+                                    originalStart: item.start,
+                                    originalEnd: item.end,
+                                    parsedStart: startTime,
+                                    parsedEnd: endTime,
+                                }
+                            );
                         }
-                        
+
                         if (!text || text.trim() === '') {
-                            this._logSubtitleProcessing('warn', 'Disney+ item missing text content.', {
-                                itemIndex: index,
-                                timing: `${startTime}s - ${endTime}s`,
-                                hasText: !!item.text,
-                                textLength: item.text ? item.text.length : 0
-                            });
+                            this._logSubtitleProcessing(
+                                'warn',
+                                'Disney+ item missing text content.',
+                                {
+                                    itemIndex: index,
+                                    timing: `${startTime}s - ${endTime}s`,
+                                    hasText: !!item.text,
+                                    textLength: item.text
+                                        ? item.text.length
+                                        : 0,
+                                }
+                            );
                         }
-                        
+
                         return {
                             start: startTime,
                             end: endTime,
-                            text: text
+                            text: text,
                         };
                     })
-                    .filter(cue => cue.text.trim() !== '' && !isNaN(cue.start) && !isNaN(cue.end) && cue.start < cue.end);
+                    .filter(
+                        (cue) =>
+                            cue.text.trim() !== '' &&
+                            !isNaN(cue.start) &&
+                            !isNaN(cue.end) &&
+                            cue.start < cue.end
+                    );
 
-                this._logSubtitleProcessing('info', 'Disney+ official translation parsing completed.', {
-                    originalItemCount: platformData.length,
-                    parsedCueCount: parsedCues.length,
-                    filteredOut: platformData.length - parsedCues.length,
-                    firstCue: parsedCues.length > 0 ? {
-                        start: parsedCues[0].start,
-                        end: parsedCues[0].end,
-                        textPreview: parsedCues[0].text.substring(0, 50)
-                    } : null,
-                    lastCue: parsedCues.length > 0 ? {
-                        start: parsedCues[parsedCues.length - 1].start,
-                        end: parsedCues[parsedCues.length - 1].end,
-                        textPreview: parsedCues[parsedCues.length - 1].text.substring(0, 50)
-                    } : null
-                });
+                this._logSubtitleProcessing(
+                    'info',
+                    'Disney+ official translation parsing completed.',
+                    {
+                        originalItemCount: platformData.length,
+                        parsedCueCount: parsedCues.length,
+                        filteredOut: platformData.length - parsedCues.length,
+                        firstCue:
+                            parsedCues.length > 0
+                                ? {
+                                      start: parsedCues[0].start,
+                                      end: parsedCues[0].end,
+                                      textPreview: parsedCues[0].text.substring(
+                                          0,
+                                          50
+                                      ),
+                                  }
+                                : null,
+                        lastCue:
+                            parsedCues.length > 0
+                                ? {
+                                      start: parsedCues[parsedCues.length - 1]
+                                          .start,
+                                      end: parsedCues[parsedCues.length - 1]
+                                          .end,
+                                      textPreview: parsedCues[
+                                          parsedCues.length - 1
+                                      ].text.substring(0, 50),
+                                  }
+                                : null,
+                    }
+                );
 
                 return parsedCues;
             } else {
-                this._logSubtitleProcessing('warn', 'Disney+ platform data is invalid or not an array.', {
-                    hasData: !!platformData,
-                    dataType: typeof platformData,
-                    isArray: Array.isArray(platformData),
-                    dataKeys: platformData && typeof platformData === 'object' ? Object.keys(platformData) : null
-                });
+                this._logSubtitleProcessing(
+                    'warn',
+                    'Disney+ platform data is invalid or not an array.',
+                    {
+                        hasData: !!platformData,
+                        dataType: typeof platformData,
+                        isArray: Array.isArray(platformData),
+                        dataKeys:
+                            platformData && typeof platformData === 'object'
+                                ? Object.keys(platformData)
+                                : null,
+                    }
+                );
                 return [];
             }
         } catch (error) {
-            this._logSubtitleProcessing('error', 'Error in Disney+ official translation parsing.', {
-                error: error.message,
-                stack: error.stack,
-                platformDataType: typeof platformData,
-                isArray: Array.isArray(platformData),
-                arrayLength: Array.isArray(platformData) ? platformData.length : null
-            });
+            this._logSubtitleProcessing(
+                'error',
+                'Error in Disney+ official translation parsing.',
+                {
+                    error: error.message,
+                    stack: error.stack,
+                    platformDataType: typeof platformData,
+                    isArray: Array.isArray(platformData),
+                    arrayLength: Array.isArray(platformData)
+                        ? platformData.length
+                        : null,
+                }
+            );
             return [];
         }
     }
@@ -786,15 +1053,15 @@ export class SubtitleProcessingManager {
      */
     async _parseGenericOfficialTranslations(platformData) {
         this._log('debug', 'Parsing generic official translations.');
-        
+
         if (Array.isArray(platformData)) {
-            return platformData.map(item => ({
+            return platformData.map((item) => ({
                 start: this._parseTimeToSeconds(item.start || item.startTime),
                 end: this._parseTimeToSeconds(item.end || item.endTime),
-                text: item.text || item.content || ''
+                text: item.text || item.content || '',
             }));
         }
-        
+
         return [];
     }
 
@@ -812,28 +1079,28 @@ export class SubtitleProcessingManager {
         if (typeof time === 'number') {
             return time;
         }
-        
+
         if (typeof time === 'string') {
             // Handle various time formats
             if (time.includes(':')) {
                 const parts = time.split(':');
                 let seconds = 0;
-                
+
                 if (parts.length === 3) {
                     seconds += parseInt(parts[0], 10) * 3600; // hours
-                    seconds += parseInt(parts[1], 10) * 60;   // minutes
+                    seconds += parseInt(parts[1], 10) * 60; // minutes
                     seconds += parseFloat(parts[2].replace(',', '.')); // seconds
                 } else if (parts.length === 2) {
-                    seconds += parseInt(parts[0], 10) * 60;   // minutes
+                    seconds += parseInt(parts[0], 10) * 60; // minutes
                     seconds += parseFloat(parts[1].replace(',', '.')); // seconds
                 }
-                
+
                 return isNaN(seconds) ? 0 : seconds;
             } else {
                 return parseFloat(time) || 0;
             }
         }
-        
+
         return 0;
     }
 
@@ -845,7 +1112,7 @@ export class SubtitleProcessingManager {
      */
     _sanitizeText(text) {
         if (!text) return '';
-        
+
         return text
             .replace(/<br\s*\/?>/gi, ' ')
             .replace(/<[^>]*>/g, '')
@@ -862,9 +1129,16 @@ export class SubtitleProcessingManager {
      */
     _log(level, message, data = {}) {
         if (this.config.logger) {
-            this.config.logger(level, `[SubtitleProcessor:${this.platform}] ${message}`, data);
+            this.config.logger(
+                level,
+                `[SubtitleProcessor:${this.platform}] ${message}`,
+                data
+            );
         } else {
-            console.log(`[SubtitleProcessor:${this.platform}] [${level.toUpperCase()}] ${message}`, data);
+            console.log(
+                `[SubtitleProcessor:${this.platform}] [${level.toUpperCase()}] ${message}`,
+                data
+            );
         }
     }
 
@@ -884,20 +1158,27 @@ export class SubtitleProcessingManager {
             processingState: {
                 queueSize: this.subtitleQueue.length,
                 cacheSize: this.translationCache.size,
-                isProcessing: this.processingQueue
+                isProcessing: this.processingQueue,
             },
             config: {
                 useOfficialTranslations: this.config.useOfficialTranslations,
                 translationProvider: this.config.translationProvider,
                 displayMode: this.config.displayMode,
-                targetLanguage: this.config.targetLanguage
-            }
+                targetLanguage: this.config.targetLanguage,
+            },
         };
 
         if (this.config.logger) {
-            this.config.logger(level, `[SubtitleProcessing:${this.platform}] ${message}`, enhancedData);
+            this.config.logger(
+                level,
+                `[SubtitleProcessing:${this.platform}] ${message}`,
+                enhancedData
+            );
         } else {
-            console.log(`[SubtitleProcessing:${this.platform}] [${level.toUpperCase()}] ${message}`, enhancedData);
+            console.log(
+                `[SubtitleProcessing:${this.platform}] [${level.toUpperCase()}] ${message}`,
+                enhancedData
+            );
         }
     }
 
@@ -914,7 +1195,9 @@ export class SubtitleProcessingManager {
         }
 
         const logLevel = success ? 'info' : 'error';
-        const message = success ? 'Subtitle display successful' : 'Subtitle display failed';
+        const message = success
+            ? 'Subtitle display successful'
+            : 'Subtitle display failed';
 
         this._logSubtitleProcessing(logLevel, message, {
             success,
@@ -923,20 +1206,27 @@ export class SubtitleProcessingManager {
                 displayMode: displayData.displayMode || this.config.displayMode,
                 containerIds: displayData.containerIds || [],
                 timing: displayData.timing || null,
-                ...displayData
+                ...displayData,
             },
-            error: error ? {
-                message: error.message,
-                stack: error.stack,
-                name: error.name
-            } : null,
+            error: error
+                ? {
+                      message: error.message,
+                      stack: error.stack,
+                      name: error.name,
+                  }
+                : null,
             displayMetrics: {
                 totalAttempts: this.performanceMetrics.displayAttempts,
                 totalSuccesses: this.performanceMetrics.displaySuccesses,
-                successRate: this.performanceMetrics.displayAttempts > 0 
-                    ? ((this.performanceMetrics.displaySuccesses / this.performanceMetrics.displayAttempts) * 100).toFixed(2) + '%'
-                    : '0%'
-            }
+                successRate:
+                    this.performanceMetrics.displayAttempts > 0
+                        ? (
+                              (this.performanceMetrics.displaySuccesses /
+                                  this.performanceMetrics.displayAttempts) *
+                              100
+                          ).toFixed(2) + '%'
+                        : '0%',
+            },
         });
     }
 }
@@ -969,18 +1259,18 @@ export class SubtitleSourceManager {
             this.currentSource = 'official';
             return 'official';
         }
-        
+
         if (availableSources.hasAPI) {
             this.currentSource = 'api';
             return 'api';
         }
-        
+
         // Fallback to official if API is not available
         if (availableSources.hasOfficial) {
             this.currentSource = 'official';
             return 'official';
         }
-        
+
         this.currentSource = 'none';
         return 'none';
     }
@@ -1000,9 +1290,11 @@ export class SubtitleSourceManager {
      * @returns {boolean} `true` if official translations should be used.
      */
     shouldUseOfficialTranslations(config, availability) {
-        return config.useOfficialTranslations && 
-               availability.hasOfficial && 
-               availability.officialLanguageMatches;
+        return (
+            config.useOfficialTranslations &&
+            availability.hasOfficial &&
+            availability.officialLanguageMatches
+        );
     }
 }
 
@@ -1017,7 +1309,7 @@ export class SubtitleSourceManager {
  */
 export function formatSubtitleTextForDisplay(text) {
     if (!text) return '';
-    
+
     return text
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
@@ -1038,7 +1330,7 @@ export function parseVTT(vttString) {
     const cues = [];
     const cueBlocks = vttString
         .split(/\r?\n\r?\n/)
-        .filter(block => block.trim() !== '');
+        .filter((block) => block.trim() !== '');
 
     for (const block of cueBlocks) {
         if (!block.includes('-->')) {

@@ -16,11 +16,11 @@
      * Common base styles for both original and translated subtitles. 
      * Specific styling such as colors, padding, and font-size are controlled by the content script.
      */
-    line-height: 1.4;        /* Improves readability for multi-line subtitles. */
-    display: inline-block;   /* Ensures the background fits the text width. */
-    max-width: 100%;         /* Prevents the subtitle from overflowing its container. */
-    box-sizing: border-box;  /* Includes padding and border in the element's total width and height. */
-    word-wrap: break-word;   /* Breaks long words to prevent overflow. */
+    line-height: 1.4; /* Improves readability for multi-line subtitles. */
+    display: inline-block; /* Ensures the background fits the text width. */
+    max-width: 100%; /* Prevents the subtitle from overflowing its container. */
+    box-sizing: border-box; /* Includes padding and border in the element's total width and height. */
+    word-wrap: break-word; /* Breaks long words to prevent overflow. */
 }
 
 /* 

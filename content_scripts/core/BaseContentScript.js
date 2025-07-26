@@ -1,21 +1,21 @@
 /**
  * BaseContentScript - Abstract base class for platform-specific content scripts
- * 
+ *
  * This class provides common functionality shared across all streaming platform
  * content scripts, including module loading, platform initialization, video element
  * detection, configuration management, Chrome message handling, and navigation detection.
- * 
+ *
  * Platform-specific content scripts should extend this class and implement the
  * abstract methods to provide platform-specific behavior.
- * 
+ *
  * ## Architecture Overview
- * 
+ *
  * The BaseContentScript follows the Template Method Pattern, where the base class
  * defines the algorithm structure and subclasses implement specific steps. This
  * ensures consistent behavior across all platforms while allowing customization.
- * 
+ *
  * ## Key Features
- * 
+ *
  * - **Module Loading**: Dynamic loading of required modules with error handling
  * - **Platform Lifecycle**: Standardized initialization and cleanup patterns
  * - **Message Handling**: Extensible Chrome message handling with action-based routing
@@ -23,17 +23,17 @@
  * - **Configuration Management**: Real-time configuration updates and validation
  * - **Error Recovery**: Comprehensive error handling with retry mechanisms
  * - **Resource Management**: Automatic cleanup and memory management
- * 
+ *
  * ## Usage Example
- * 
+ *
  * ```javascript
  * import { BaseContentScript } from '../core/BaseContentScript.js';
- * 
+ *
  * export class MyPlatformContentScript extends BaseContentScript {
  *     constructor() {
  *         super('MyPlatformContent');
  *     }
- * 
+ *
  *     // Implement required abstract methods
  *     getPlatformName() { return 'myplatform'; }
  *     getPlatformClass() { return 'MyPlatformPlatform'; }
@@ -42,14 +42,14 @@
  *     checkForUrlChange() { ... }
  *     handlePlatformSpecificMessage(request, sendResponse) { ... }
  * }
- * 
+ *
  * // Initialize the content script
  * const contentScript = new MyPlatformContentScript();
  * await contentScript.initialize();
  * ```
- * 
+ *
  * ## Abstract Methods
- * 
+ *
  * Subclasses must implement these abstract methods:
  * - `getPlatformName()`: Return platform identifier (e.g., 'netflix')
  * - `getPlatformClass()`: Return platform class name (e.g., 'NetflixPlatform')
@@ -57,36 +57,36 @@
  * - `setupNavigationDetection()`: Setup platform-specific navigation detection
  * - `checkForUrlChange()`: Handle URL changes with platform-specific logic
  * - `handlePlatformSpecificMessage()`: Handle platform-specific Chrome messages
- * 
+ *
  * ## Template Methods
- * 
+ *
  * These methods orchestrate the initialization flow and should not be overridden:
  * - `initialize()`: Main initialization method
  * - `initializeCore()`: Core module initialization
  * - `initializeConfiguration()`: Configuration setup
  * - `initializeEventHandling()`: Event handling setup
  * - `initializeObservers()`: Observer setup
- * 
+ *
  * @abstract
  * @author DualSub Extension
  * @version 1.0.0
  * @since 1.0.0
- * 
+ *
  * @example
  * // Basic platform implementation
  * class ExampleContentScript extends BaseContentScript {
  *     constructor() {
  *         super('ExampleContent');
  *     }
- * 
+ *
  *     getPlatformName() {
  *         return 'example';
  *     }
- * 
+ *
  *     getPlatformClass() {
  *         return 'ExamplePlatform';
  *     }
- * 
+ *
  *     getInjectScriptConfig() {
  *         return {
  *             filename: 'injected_scripts/exampleInject.js',
@@ -94,11 +94,11 @@
  *             eventId: 'example-dualsub-injector-event'
  *         };
  *     }
- * 
+ *
  *     setupNavigationDetection() {
  *         this.intervalManager.set('urlChangeCheck', () => this.checkForUrlChange(), 1000);
  *     }
- * 
+ *
  *     checkForUrlChange() {
  *         const newUrl = window.location.href;
  *         if (newUrl !== this.currentUrl) {
@@ -106,7 +106,7 @@
  *             // Handle URL change logic
  *         }
  *     }
- * 
+ *
  *     handlePlatformSpecificMessage(request, sendResponse) {
  *         sendResponse({ success: true, handled: false });
  *         return false;
@@ -120,7 +120,7 @@ import {
     injectScript,
     isExtensionContextValid,
     ModuleLoader,
-    MessageHandlerRegistry
+    MessageHandlerRegistry,
 } from './utils.js';
 import { COMMON_CONSTANTS } from './constants.js';
 
@@ -131,7 +131,9 @@ export class BaseContentScript {
      */
     constructor(logPrefix) {
         if (new.target === BaseContentScript) {
-            throw new Error('BaseContentScript is abstract and cannot be instantiated directly');
+            throw new Error(
+                'BaseContentScript is abstract and cannot be instantiated directly'
+            );
         }
 
         this.logPrefix = logPrefix;
@@ -172,7 +174,8 @@ export class BaseContentScript {
     _initializeVideoDetectionState() {
         this.videoDetectionRetries = 0;
         this.videoDetectionIntervalId = null;
-        this.maxVideoDetectionRetries = COMMON_CONSTANTS.MAX_VIDEO_DETECTION_RETRIES;
+        this.maxVideoDetectionRetries =
+            COMMON_CONSTANTS.MAX_VIDEO_DETECTION_RETRIES;
         this.videoDetectionInterval = COMMON_CONSTANTS.VIDEO_DETECTION_INTERVAL;
     }
 
@@ -181,7 +184,9 @@ export class BaseContentScript {
      * @private
      */
     _initializeEventHandling() {
-        this.eventBuffer = new EventBuffer((msg, data) => this.logWithFallback('debug', msg, data));
+        this.eventBuffer = new EventBuffer((msg, data) =>
+            this.logWithFallback('debug', msg, data)
+        );
         this.eventListenerAttached = false;
         this.platformReady = false;
         this.eventListenerCleanupFunctions = [];
@@ -213,11 +218,15 @@ export class BaseContentScript {
     _initializeCleanupTracking() {
         this.isCleanedUp = false;
         this.passiveVideoObserver = null;
-        
+
         try {
             this.abortController = new AbortController();
         } catch (error) {
-            this.logWithFallback('warn', 'AbortController not available, using fallback cleanup', { error });
+            this.logWithFallback(
+                'warn',
+                'AbortController not available, using fallback cleanup',
+                { error }
+            );
             this.abortController = null;
         }
     }
@@ -243,25 +252,33 @@ export class BaseContentScript {
                 action: 'toggleSubtitles',
                 handler: this.handleToggleSubtitles.bind(this),
                 requiresUtilities: true,
-                description: 'Toggle subtitle display and manage platform initialization.'
+                description:
+                    'Toggle subtitle display and manage platform initialization.',
             },
             {
                 action: 'configChanged',
                 handler: this.handleConfigChanged.bind(this),
                 requiresUtilities: true,
-                description: 'Handle and apply configuration changes immediately.'
+                description:
+                    'Handle and apply configuration changes immediately.',
             },
             {
                 action: 'LOGGING_LEVEL_CHANGED',
                 handler: this.handleLoggingLevelChanged.bind(this),
                 requiresUtilities: false,
-                description: 'Update logging level for the content script logger.'
-            }
+                description:
+                    'Update logging level for the content script logger.',
+            },
         ];
 
-        commonHandlers.forEach(({ action, handler, requiresUtilities, description }) => {
-            this.registerMessageHandler(action, handler, { requiresUtilities, description });
-        });
+        commonHandlers.forEach(
+            ({ action, handler, requiresUtilities, description }) => {
+                this.registerMessageHandler(action, handler, {
+                    requiresUtilities,
+                    description,
+                });
+            }
+        );
     }
 
     /**
@@ -269,11 +286,20 @@ export class BaseContentScript {
      * @private
      */
     _attachChromeMessageListener() {
-        if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
-            chrome.runtime.onMessage.addListener(this.handleChromeMessage.bind(this));
+        if (
+            typeof chrome !== 'undefined' &&
+            chrome.runtime &&
+            chrome.runtime.onMessage
+        ) {
+            chrome.runtime.onMessage.addListener(
+                this.handleChromeMessage.bind(this)
+            );
             this.logWithFallback('debug', 'Chrome message listener attached.');
         } else {
-            this.logWithFallback('debug', 'Chrome API not available, skipping message listener attachment.');
+            this.logWithFallback(
+                'debug',
+                'Chrome API not available, skipping message listener attachment.'
+            );
         }
     }
 
@@ -289,7 +315,7 @@ export class BaseContentScript {
         if (typeof action !== 'string' || !action.trim()) {
             throw new Error('Action must be a non-empty string.');
         }
-        
+
         if (typeof handler !== 'function') {
             throw new Error('Handler must be a function.');
         }
@@ -298,14 +324,14 @@ export class BaseContentScript {
             handler,
             requiresUtilities: options.requiresUtilities !== false,
             description: options.description || `Handler for ${action}`,
-            registeredAt: new Date().toISOString()
+            registeredAt: new Date().toISOString(),
         };
 
         this.messageHandlers.set(action, handlerConfig);
-        this.logWithFallback('debug', 'Registered message handler.', { 
-            action, 
+        this.logWithFallback('debug', 'Registered message handler.', {
+            action,
             requiresUtilities: handlerConfig.requiresUtilities,
-            description: handlerConfig.description
+            description: handlerConfig.description,
         });
     }
 
@@ -317,9 +343,15 @@ export class BaseContentScript {
     unregisterMessageHandler(action) {
         const removed = this.messageHandlers.delete(action);
         if (removed) {
-            this.logWithFallback('debug', 'Unregistered message handler.', { action });
+            this.logWithFallback('debug', 'Unregistered message handler.', {
+                action,
+            });
         } else {
-            this.logWithFallback('warn', 'Attempted to unregister non-existent message handler.', { action });
+            this.logWithFallback(
+                'warn',
+                'Attempted to unregister non-existent message handler.',
+                { action }
+            );
         }
         return removed;
     }
@@ -329,12 +361,14 @@ export class BaseContentScript {
      * @returns {Array<Object>} An array of handler information objects.
      */
     getRegisteredHandlers() {
-        return Array.from(this.messageHandlers.entries()).map(([action, config]) => ({
-            action,
-            requiresUtilities: config.requiresUtilities,
-            description: config.description,
-            registeredAt: config.registeredAt
-        }));
+        return Array.from(this.messageHandlers.entries()).map(
+            ([action, config]) => ({
+                action,
+                requiresUtilities: config.requiresUtilities,
+                description: config.description,
+                registeredAt: config.registeredAt,
+            })
+        );
     }
 
     /**
@@ -352,7 +386,10 @@ export class BaseContentScript {
      * @protected
      */
     registerPlatformMessageHandlers() {
-        this.logWithFallback('debug', 'No platform-specific message handlers to register.');
+        this.logWithFallback(
+            'debug',
+            'No platform-specific message handlers to register.'
+        );
     }
 
     /**
@@ -419,7 +456,9 @@ export class BaseContentScript {
      * @returns {{filename: string, tagId: string, eventId: string}} The inject script configuration.
      */
     getInjectScriptConfig() {
-        throw new Error('getInjectScriptConfig() must be implemented by subclass');
+        throw new Error(
+            'getInjectScriptConfig() must be implemented by subclass'
+        );
     }
 
     /**
@@ -427,7 +466,9 @@ export class BaseContentScript {
      * @abstract
      */
     setupNavigationDetection() {
-        throw new Error('setupNavigationDetection() must be implemented by subclass');
+        throw new Error(
+            'setupNavigationDetection() must be implemented by subclass'
+        );
     }
 
     /**
@@ -445,8 +486,11 @@ export class BaseContentScript {
      * @param {Function} sendResponse - The callback to send a response.
      * @returns {boolean} `true` if the response is sent asynchronously, otherwise `false`.
      */
-    handlePlatformSpecificMessage(request, sendResponse) { // eslint-disable-line no-unused-vars
-        throw new Error('handlePlatformSpecificMessage() must be implemented by subclass');
+    handlePlatformSpecificMessage(request, sendResponse) {
+         
+        throw new Error(
+            'handlePlatformSpecificMessage() must be implemented by subclass'
+        );
     }
 
     // ========================================
@@ -460,35 +504,57 @@ export class BaseContentScript {
      */
     async initialize() {
         try {
-            this.logWithFallback('info', 'Starting content script initialization');
+            this.logWithFallback(
+                'info',
+                'Starting content script initialization'
+            );
 
-            if (!await this.initializeCore()) {
-                this.logWithFallback('error', 'Initialization failed at core module setup.');
+            if (!(await this.initializeCore())) {
+                this.logWithFallback(
+                    'error',
+                    'Initialization failed at core module setup.'
+                );
                 return false;
             }
 
-            if (!await this.initializeConfiguration()) {
-                this.logWithFallback('error', 'Initialization failed at configuration setup.');
+            if (!(await this.initializeConfiguration())) {
+                this.logWithFallback(
+                    'error',
+                    'Initialization failed at configuration setup.'
+                );
                 return false;
             }
 
-            if (!await this.initializeEventHandling()) {
-                this.logWithFallback('error', 'Initialization failed at event handling setup.');
+            if (!(await this.initializeEventHandling())) {
+                this.logWithFallback(
+                    'error',
+                    'Initialization failed at event handling setup.'
+                );
                 return false;
             }
 
-            if (!await this.initializeObservers()) {
-                this.logWithFallback('error', 'Initialization failed at observer setup.');
+            if (!(await this.initializeObservers())) {
+                this.logWithFallback(
+                    'error',
+                    'Initialization failed at observer setup.'
+                );
                 return false;
             }
 
-            this.logWithFallback('info', 'Content script initialization completed successfully');
+            this.logWithFallback(
+                'info',
+                'Content script initialization completed successfully'
+            );
             return true;
         } catch (error) {
-            this.logWithFallback('error', 'An unexpected error occurred during initialization.', { 
-                error: error.message,
-                stack: error.stack
-            });
+            this.logWithFallback(
+                'error',
+                'An unexpected error occurred during initialization.',
+                {
+                    error: error.message,
+                    stack: error.stack,
+                }
+            );
             return false;
         }
     }
@@ -500,16 +566,22 @@ export class BaseContentScript {
     async initializeCore() {
         try {
             this.logWithFallback('debug', 'Loading required modules...');
-            if (!await this.loadModules()) {
-                this.logWithFallback('error', 'Failed to load required modules.');
+            if (!(await this.loadModules())) {
+                this.logWithFallback(
+                    'error',
+                    'Failed to load required modules.'
+                );
                 return false;
             }
-            this.logWithFallback('debug', 'All required modules loaded successfully.');
+            this.logWithFallback(
+                'debug',
+                'All required modules loaded successfully.'
+            );
             return true;
         } catch (error) {
             this.logWithFallback('error', 'Error initializing core modules.', {
                 error: error.message,
-                stack: error.stack
+                stack: error.stack,
             });
             return false;
         }
@@ -521,21 +593,30 @@ export class BaseContentScript {
      */
     async initializeConfiguration() {
         try {
-            this.logWithFallback('debug', 'Loading configuration from configService...');
+            this.logWithFallback(
+                'debug',
+                'Loading configuration from configService...'
+            );
             this.currentConfig = await this.configService.getAll();
             this._normalizeConfiguration();
             this.logWithFallback('info', 'Loaded initial configuration.', {
-                config: this.currentConfig
+                config: this.currentConfig,
             });
-            
-            this.logWithFallback('debug', 'Setting up configuration listeners...');
+
+            this.logWithFallback(
+                'debug',
+                'Setting up configuration listeners...'
+            );
             this.setupConfigurationListeners();
-            this.logWithFallback('debug', 'Configuration listeners set up successfully.');
+            this.logWithFallback(
+                'debug',
+                'Configuration listeners set up successfully.'
+            );
             return true;
         } catch (error) {
             this.logWithFallback('error', 'Error initializing configuration.', {
                 error: error.message,
-                stack: error.stack
+                stack: error.stack,
             });
             return false;
         }
@@ -549,20 +630,33 @@ export class BaseContentScript {
         try {
             this.logWithFallback('debug', 'Setting up early event handling...');
             this.setupEarlyEventHandling();
-            this.logWithFallback('debug', 'Early event handling set up successfully.');
+            this.logWithFallback(
+                'debug',
+                'Early event handling set up successfully.'
+            );
 
             if (this.currentConfig.subtitlesEnabled) {
-                this.logWithFallback('debug', 'Subtitles enabled, initializing platform...');
+                this.logWithFallback(
+                    'debug',
+                    'Subtitles enabled, initializing platform...'
+                );
                 await this.initializePlatform();
             } else {
-                this.logWithFallback('debug', 'Subtitles disabled, skipping platform initialization.');
+                this.logWithFallback(
+                    'debug',
+                    'Subtitles disabled, skipping platform initialization.'
+                );
             }
             return true;
         } catch (error) {
-            this.logWithFallback('error', 'Error initializing event handling.', {
-                error: error.message,
-                stack: error.stack
-            });
+            this.logWithFallback(
+                'error',
+                'Error initializing event handling.',
+                {
+                    error: error.message,
+                    stack: error.stack,
+                }
+            );
             return false;
         }
     }
@@ -575,21 +669,30 @@ export class BaseContentScript {
         try {
             this.logWithFallback('debug', 'Setting up navigation detection...');
             this.setupNavigationDetection();
-            this.logWithFallback('debug', 'Navigation detection set up successfully.');
+            this.logWithFallback(
+                'debug',
+                'Navigation detection set up successfully.'
+            );
 
             this.logWithFallback('debug', 'Setting up DOM observation...');
             this.setupDOMObservation();
-            this.logWithFallback('debug', 'DOM observation set up successfully.');
+            this.logWithFallback(
+                'debug',
+                'DOM observation set up successfully.'
+            );
 
             this.logWithFallback('debug', 'Setting up cleanup handlers...');
             this.setupCleanupHandlers();
-            this.logWithFallback('debug', 'Cleanup handlers set up successfully.');
+            this.logWithFallback(
+                'debug',
+                'Cleanup handlers set up successfully.'
+            );
 
             return true;
         } catch (error) {
             this.logWithFallback('error', 'Error initializing observers.', {
                 error: error.message,
-                stack: error.stack
+                stack: error.stack,
             });
             return false;
         }
@@ -607,9 +710,9 @@ export class BaseContentScript {
             await this._loadAndInitializeLogger();
             return true;
         } catch (error) {
-            this.logWithFallback('error', 'Error loading modules.', { 
+            this.logWithFallback('error', 'Error loading modules.', {
                 error: error.message,
-                stack: error.stack
+                stack: error.stack,
             });
             return false;
         }
@@ -621,14 +724,22 @@ export class BaseContentScript {
      */
     async _loadSubtitleUtilities() {
         try {
-            const utilsUrl = chrome.runtime.getURL('content_scripts/shared/subtitleUtilities.js');
-            this.logWithFallback('debug', 'Loading subtitle utilities.', { url: utilsUrl });
+            const utilsUrl = chrome.runtime.getURL(
+                'content_scripts/shared/subtitleUtilities.js'
+            );
+            this.logWithFallback('debug', 'Loading subtitle utilities.', {
+                url: utilsUrl,
+            });
             const utilsModule = await import(utilsUrl);
             this.subtitleUtils = utilsModule;
         } catch (error) {
-            this.logWithFallback('error', 'Failed to load subtitle utilities.', {
-                error: error.message
-            });
+            this.logWithFallback(
+                'error',
+                'Failed to load subtitle utilities.',
+                {
+                    error: error.message,
+                }
+            );
             throw error;
         }
     }
@@ -642,20 +753,29 @@ export class BaseContentScript {
             const platformName = this.getPlatformName();
             const fileName = this._getPlatformFileName(platformName);
             const className = this.getPlatformClass();
-            const platformUrl = chrome.runtime.getURL(`video_platforms/${fileName}`);
-            
-            this.logWithFallback('debug', 'Loading platform class.', { platformName, fileName, className, url: platformUrl });
-            
+            const platformUrl = chrome.runtime.getURL(
+                `video_platforms/${fileName}`
+            );
+
+            this.logWithFallback('debug', 'Loading platform class.', {
+                platformName,
+                fileName,
+                className,
+                url: platformUrl,
+            });
+
             const platformModule = await import(platformUrl);
             this.PlatformClass = platformModule[className];
-            
+
             if (!this.PlatformClass) {
-                throw new Error(`Platform class '${className}' not found in module.`);
+                throw new Error(
+                    `Platform class '${className}' not found in module.`
+                );
             }
         } catch (error) {
             this.logWithFallback('error', 'Failed to load platform class.', {
                 error: error.message,
-                platformName: this.getPlatformName()
+                platformName: this.getPlatformName(),
             });
             throw error;
         }
@@ -689,17 +809,21 @@ export class BaseContentScript {
      */
     async _loadConfigService() {
         try {
-            const configUrl = chrome.runtime.getURL('services/configService.js');
-            this.logWithFallback('debug', 'Loading config service.', { url: configUrl });
+            const configUrl = chrome.runtime.getURL(
+                'services/configService.js'
+            );
+            this.logWithFallback('debug', 'Loading config service.', {
+                url: configUrl,
+            });
             const configModule = await import(configUrl);
             this.configService = configModule.configService;
-            
+
             if (!this.configService) {
                 throw new Error('configService not found in module.');
             }
         } catch (error) {
             this.logWithFallback('error', 'Failed to load config service.', {
-                error: error.message
+                error: error.message,
             });
             throw error;
         }
@@ -712,20 +836,26 @@ export class BaseContentScript {
     async _loadAndInitializeLogger() {
         try {
             const loggerUrl = chrome.runtime.getURL('utils/logger.js');
-            this.logWithFallback('debug', 'Loading logger.', { url: loggerUrl });
+            this.logWithFallback('debug', 'Loading logger.', {
+                url: loggerUrl,
+            });
             const loggerModule = await import(loggerUrl);
             const Logger = loggerModule.default;
-            
+
             if (!Logger) {
                 throw new Error('Logger not found in module.');
             }
-            
+
             this.contentLogger = Logger.create(this.logPrefix);
             await this._initializeLoggerLevel(Logger);
         } catch (error) {
-            this.logWithFallback('error', 'Failed to load and initialize logger.', {
-                error: error.message
-            });
+            this.logWithFallback(
+                'error',
+                'Failed to load and initialize logger.',
+                {
+                    error: error.message,
+                }
+            );
             throw error;
         }
     }
@@ -759,9 +889,9 @@ export class BaseContentScript {
      * @returns {Promise<boolean>} Success status
      */
     async initializePlatform(retryCount = 0) {
-        
-        const initializationContext = this._createInitializationContext(retryCount);
-        
+        const initializationContext =
+            this._createInitializationContext(retryCount);
+
         if (!this._validateInitializationPrerequisites()) {
             return false;
         }
@@ -769,7 +899,10 @@ export class BaseContentScript {
         try {
             return await this._executeInitializationFlow(initializationContext);
         } catch (error) {
-            return await this._handleInitializationError(error, initializationContext);
+            return await this._handleInitializationError(
+                error,
+                initializationContext
+            );
         }
     }
 
@@ -781,13 +914,13 @@ export class BaseContentScript {
      */
     _createInitializationContext(retryCount) {
         const retryConfig = this._getRetryConfiguration();
-        
+
         return {
             retryCount,
             maxRetries: retryConfig.maxRetries,
             retryDelay: retryConfig.retryDelay,
             attempt: retryCount + 1,
-            totalAttempts: retryConfig.maxRetries + 1
+            totalAttempts: retryConfig.maxRetries + 1,
         };
     }
 
@@ -808,10 +941,10 @@ export class BaseContentScript {
      */
     async _executeInitializationFlow(context) {
         this._logInitializationStart(context);
-        
+
         await this._prepareForInitialization();
         this.activePlatform = await this._createPlatformInstance();
-        
+
         return await this._initializeBasedOnPageType();
     }
 
@@ -826,8 +959,12 @@ export class BaseContentScript {
      */
     _getRetryConfiguration() {
         return {
-            maxRetries: this.currentConfig?.platformInitMaxRetries || COMMON_CONSTANTS.PLATFORM_INIT_MAX_RETRIES,
-            retryDelay: this.currentConfig?.platformInitRetryDelay || COMMON_CONSTANTS.PLATFORM_INIT_RETRY_DELAY
+            maxRetries:
+                this.currentConfig?.platformInitMaxRetries ||
+                COMMON_CONSTANTS.PLATFORM_INIT_MAX_RETRIES,
+            retryDelay:
+                this.currentConfig?.platformInitRetryDelay ||
+                COMMON_CONSTANTS.PLATFORM_INIT_RETRY_DELAY,
         };
     }
 
@@ -838,7 +975,10 @@ export class BaseContentScript {
      */
     _validateModulesLoaded() {
         if (!this.PlatformClass || !this.subtitleUtils || !this.configService) {
-            this.logWithFallback('error', 'Required modules not loaded for platform initialization');
+            this.logWithFallback(
+                'error',
+                'Required modules not loaded for platform initialization'
+            );
             return false;
         }
         return true;
@@ -853,7 +993,7 @@ export class BaseContentScript {
     _logInitializationStart(retryCount, maxRetries) {
         this.logWithFallback('info', 'Starting platform initialization', {
             attempt: retryCount + 1,
-            maxRetries: maxRetries + 1
+            maxRetries: maxRetries + 1,
         });
     }
 
@@ -864,8 +1004,13 @@ export class BaseContentScript {
      */
     async _prepareForInitialization() {
         // Sync subtitleUtils state with saved configuration
-        if (this.subtitleUtils && typeof this.subtitleUtils.setSubtitlesActive === 'function') {
-            this.subtitleUtils.setSubtitlesActive(this.currentConfig.subtitlesEnabled);
+        if (
+            this.subtitleUtils &&
+            typeof this.subtitleUtils.setSubtitlesActive === 'function'
+        ) {
+            this.subtitleUtils.setSubtitlesActive(
+                this.currentConfig.subtitlesEnabled
+            );
         }
 
         // Clean up any existing platform instance
@@ -902,7 +1047,10 @@ export class BaseContentScript {
         this.processBufferedEvents();
         this.startVideoElementDetection();
 
-        this.logWithFallback('info', 'Platform initialization completed successfully');
+        this.logWithFallback(
+            'info',
+            'Platform initialization completed successfully'
+        );
         return true;
     }
 
@@ -928,7 +1076,10 @@ export class BaseContentScript {
      */
     async _handleInitializationError(error, context) {
         if (error.message?.includes('Extension context invalidated')) {
-            this.logWithFallback('warn', 'Extension context invalidated during platform initialization. Aborting and cleaning up.');
+            this.logWithFallback(
+                'warn',
+                'Extension context invalidated during platform initialization. Aborting and cleaning up.'
+            );
             await this.cleanup();
             return false;
         }
@@ -936,13 +1087,16 @@ export class BaseContentScript {
         this.logWithFallback('error', 'Error initializing platform', {
             error: error.message,
             attempt: context.attempt,
-            maxRetries: context.totalAttempts
+            maxRetries: context.totalAttempts,
         });
 
         await this._cleanupPartialInitialization();
 
         if (context.retryCount < context.maxRetries) {
-            return await this._scheduleRetry(context.retryCount, context.retryDelay);
+            return await this._scheduleRetry(
+                context.retryCount,
+                context.retryDelay
+            );
         } else {
             return this._handleMaxRetriesExceeded();
         }
@@ -957,10 +1111,14 @@ export class BaseContentScript {
      */
     async _scheduleRetry(retryCount, baseDelay) {
         const delay = baseDelay * Math.pow(2, retryCount);
-        this.logWithFallback('info', `Retrying platform initialization in ${delay}ms`, {
-            nextAttempt: retryCount + 2,
-            delay
-        });
+        this.logWithFallback(
+            'info',
+            `Retrying platform initialization in ${delay}ms`,
+            {
+                nextAttempt: retryCount + 2,
+                delay,
+            }
+        );
 
         return new Promise((resolve) => {
             setTimeout(async () => {
@@ -976,7 +1134,10 @@ export class BaseContentScript {
      * @returns {boolean} Success status (always false)
      */
     _handleMaxRetriesExceeded() {
-        this.logWithFallback('error', 'Platform initialization failed after all retry attempts');
+        this.logWithFallback(
+            'error',
+            'Platform initialization failed after all retry attempts'
+        );
         this.activePlatform = null;
         this.platformReady = false;
         return false;
@@ -1019,10 +1180,14 @@ export class BaseContentScript {
     async _createPlatformInstance() {
         try {
             const platform = new this.PlatformClass();
-            this.logWithFallback('debug', 'Platform instance created successfully', {
-                platformName: this.getPlatformName(),
-                className: this.PlatformClass.name
-            });
+            this.logWithFallback(
+                'debug',
+                'Platform instance created successfully',
+                {
+                    platformName: this.getPlatformName(),
+                    className: this.PlatformClass.name,
+                }
+            );
             return platform;
         } catch (error) {
             const errorContext = {
@@ -1030,9 +1195,13 @@ export class BaseContentScript {
                 stack: error.stack,
                 platformName: this.getPlatformName(),
                 className: this.PlatformClass?.name || 'unknown',
-                currentUrl: window.location.href
+                currentUrl: window.location.href,
             };
-            this.logWithFallback('error', 'Failed to create platform instance', errorContext);
+            this.logWithFallback(
+                'error',
+                'Failed to create platform instance',
+                errorContext
+            );
             throw new Error(`Platform instantiation failed: ${error.message}`);
         }
     }
@@ -1043,7 +1212,9 @@ export class BaseContentScript {
      * @returns {Promise<void>}
      */
     async _initializePlatformWithTimeout() {
-        const timeout = this.currentConfig?.platformInitTimeout || COMMON_CONSTANTS.PLATFORM_INIT_TIMEOUT;
+        const timeout =
+            this.currentConfig?.platformInitTimeout ||
+            COMMON_CONSTANTS.PLATFORM_INIT_TIMEOUT;
 
         const initPromise = this.activePlatform.initialize(
             (subtitleData) => this.handleSubtitleDataFound(subtitleData),
@@ -1052,7 +1223,11 @@ export class BaseContentScript {
 
         const timeoutPromise = new Promise((_, reject) => {
             setTimeout(() => {
-                reject(new Error(`Platform initialization timed out after ${timeout}ms`));
+                reject(
+                    new Error(
+                        `Platform initialization timed out after ${timeout}ms`
+                    )
+                );
             }, timeout);
         });
 
@@ -1067,12 +1242,22 @@ export class BaseContentScript {
      */
     async _cleanupPlatformInstance() {
         try {
-            if (this.activePlatform && typeof this.activePlatform.cleanup === 'function') {
+            if (
+                this.activePlatform &&
+                typeof this.activePlatform.cleanup === 'function'
+            ) {
                 await this.activePlatform.cleanup();
-                this.logWithFallback('debug', 'Previous platform instance cleaned up');
+                this.logWithFallback(
+                    'debug',
+                    'Previous platform instance cleaned up'
+                );
             }
         } catch (error) {
-            this.logWithFallback('warn', 'Error cleaning up previous platform instance', { error });
+            this.logWithFallback(
+                'warn',
+                'Error cleaning up previous platform instance',
+                { error }
+            );
         }
         this.activePlatform = null;
         this.platformReady = false;
@@ -1099,9 +1284,16 @@ export class BaseContentScript {
             // Reset state
             this.platformReady = false;
 
-            this.logWithFallback('debug', 'Partial initialization state cleaned up');
+            this.logWithFallback(
+                'debug',
+                'Partial initialization state cleaned up'
+            );
         } catch (error) {
-            this.logWithFallback('warn', 'Error during partial initialization cleanup', { error });
+            this.logWithFallback(
+                'warn',
+                'Error during partial initialization cleanup',
+                { error }
+            );
         }
     }
 
@@ -1115,20 +1307,31 @@ export class BaseContentScript {
      */
     _normalizeConfiguration() {
         // Handle transition from useNativeSubtitles to useOfficialTranslations
-        if (this.currentConfig.useOfficialTranslations === undefined && 
-            this.currentConfig.useNativeSubtitles !== undefined) {
-            this.currentConfig.useOfficialTranslations = this.currentConfig.useNativeSubtitles;
-            this.logWithFallback('debug', 'Normalized useOfficialTranslations from useNativeSubtitles', {
-                value: this.currentConfig.useOfficialTranslations
-            });
+        if (
+            this.currentConfig.useOfficialTranslations === undefined &&
+            this.currentConfig.useNativeSubtitles !== undefined
+        ) {
+            this.currentConfig.useOfficialTranslations =
+                this.currentConfig.useNativeSubtitles;
+            this.logWithFallback(
+                'debug',
+                'Normalized useOfficialTranslations from useNativeSubtitles',
+                {
+                    value: this.currentConfig.useOfficialTranslations,
+                }
+            );
         }
-        
+
         // Ensure useOfficialTranslations has a default value
         if (this.currentConfig.useOfficialTranslations === undefined) {
             this.currentConfig.useOfficialTranslations = true; // Default to true
-            this.logWithFallback('debug', 'Set default useOfficialTranslations value', {
-                value: this.currentConfig.useOfficialTranslations
-            });
+            this.logWithFallback(
+                'debug',
+                'Set default useOfficialTranslations value',
+                {
+                    value: this.currentConfig.useOfficialTranslations,
+                }
+            );
         }
     }
 
@@ -1137,16 +1340,20 @@ export class BaseContentScript {
      */
     setupConfigurationListeners() {
         this.configService.onChanged(async (changes) => {
-            this.logWithFallback('info', 'Config changed, updating', { changes });
+            this.logWithFallback('info', 'Config changed, updating', {
+                changes,
+            });
             const newConfig = await this.configService.getAll();
-            
+
             // Normalize the new configuration
             const oldConfig = this.currentConfig;
             this.currentConfig = newConfig;
             this._normalizeConfiguration();
 
             // Update existing object properties while preserving the reference
-            Object.keys(this.currentConfig).forEach((key) => delete this.currentConfig[key]);
+            Object.keys(this.currentConfig).forEach(
+                (key) => delete this.currentConfig[key]
+            );
             Object.assign(this.currentConfig, newConfig);
 
             // Apply configuration changes
@@ -1198,17 +1405,23 @@ export class BaseContentScript {
         // Attach event listener immediately to catch early events with proper cleanup tracking
         if (!this.eventListenerAttached) {
             const eventHandler = (e) => this.handleEarlyInjectorEvents(e);
-            document.addEventListener(config.eventId, eventHandler, { passive: true });
+            document.addEventListener(config.eventId, eventHandler, {
+                passive: true,
+            });
             this.eventListenerAttached = true;
-            
+
             // Track cleanup function for proper memory management
             this.eventListenerCleanupFunctions.push(() => {
                 document.removeEventListener(config.eventId, eventHandler);
                 this.eventListenerAttached = false;
-                this.logWithFallback('debug', 'Early event listener removed', { eventId: config.eventId });
+                this.logWithFallback('debug', 'Early event listener removed', {
+                    eventId: config.eventId,
+                });
             });
-            
-            this.logWithFallback('debug', 'Early event listener attached', { eventId: config.eventId });
+
+            this.logWithFallback('debug', 'Early event listener attached', {
+                eventId: config.eventId,
+            });
         }
 
         // Inject script early to catch subtitle data
@@ -1229,7 +1442,10 @@ export class BaseContentScript {
 
             const data = e.detail;
             if (!data || !data.type) {
-                this.logWithFallback('warn', 'Event data missing required type field');
+                this.logWithFallback(
+                    'warn',
+                    'Event data missing required type field'
+                );
                 return;
             }
 
@@ -1240,38 +1456,55 @@ export class BaseContentScript {
             const eventData = {
                 ...data,
                 timestamp: Date.now(),
-                pageUrl: window.location.href
+                pageUrl: window.location.href,
             };
 
             if (data.type === 'INJECT_SCRIPT_READY') {
                 this.logWithFallback('info', 'Inject script is ready');
                 // Clear any stale buffered events when script reloads
                 if (this.eventBuffer.size() > 0) {
-                    this.logWithFallback('debug', 'Clearing stale buffered events on script reload');
+                    this.logWithFallback(
+                        'debug',
+                        'Clearing stale buffered events on script reload'
+                    );
                     this.eventBuffer.clear();
                 }
-            } else if (data.type === 'SUBTITLE_DATA_FOUND' || data.type === 'SUBTITLE_URL_FOUND') {
+            } else if (
+                data.type === 'SUBTITLE_DATA_FOUND' ||
+                data.type === 'SUBTITLE_URL_FOUND'
+            ) {
                 // Enhanced buffering with size limits to prevent memory issues
                 if (this.eventBuffer.size() >= 100) {
-                    this.logWithFallback('warn', 'Event buffer size limit reached, clearing old events');
+                    this.logWithFallback(
+                        'warn',
+                        'Event buffer size limit reached, clearing old events'
+                    );
                     this.eventBuffer.clear();
                 }
                 this.eventBuffer.add(eventData);
-                this.logWithFallback('debug', 'Subtitle data buffered', { 
+                this.logWithFallback('debug', 'Subtitle data buffered', {
                     bufferSize: this.eventBuffer.size(),
-                    eventType: data.type 
+                    eventType: data.type,
                 });
             }
 
             // Process buffered events if platform is ready
-            if (this.platformReady && this.activePlatform && this.eventBuffer.size() > 0) {
+            if (
+                this.platformReady &&
+                this.activePlatform &&
+                this.eventBuffer.size() > 0
+            ) {
                 this.processBufferedEvents();
             }
         } catch (error) {
-            this.logWithFallback('error', 'Error handling early injector event', { 
-                error: error.message,
-                stack: error.stack 
-            });
+            this.logWithFallback(
+                'error',
+                'Error handling early injector event',
+                {
+                    error: error.message,
+                    stack: error.stack,
+                }
+            );
         }
     }
 
@@ -1280,18 +1513,27 @@ export class BaseContentScript {
      */
     processBufferedEvents() {
         if (!this.activePlatform) {
-            this.logWithFallback('warn', 'Cannot process buffered events: platform not ready');
+            this.logWithFallback(
+                'warn',
+                'Cannot process buffered events: platform not ready'
+            );
             return;
         }
 
         const bufferSize = this.eventBuffer.size();
-        this.logWithFallback('info', 'Processing buffered events', { count: bufferSize });
+        this.logWithFallback('info', 'Processing buffered events', {
+            count: bufferSize,
+        });
 
         this.eventBuffer.processAll((eventData, index) => {
             try {
                 // Validate event data before processing
                 if (!eventData || !eventData.type) {
-                    this.logWithFallback('warn', 'Skipping invalid buffered event', { index, eventData });
+                    this.logWithFallback(
+                        'warn',
+                        'Skipping invalid buffered event',
+                        { index, eventData }
+                    );
                     return;
                 }
 
@@ -1299,30 +1541,47 @@ export class BaseContentScript {
                 const eventAge = Date.now() - (eventData.timestamp || 0);
                 const maxEventAge = 30000; // 30 seconds
                 if (eventAge > maxEventAge) {
-                    this.logWithFallback('debug', 'Skipping stale buffered event', { 
-                        index, 
-                        age: eventAge,
-                        type: eventData.type 
-                    });
+                    this.logWithFallback(
+                        'debug',
+                        'Skipping stale buffered event',
+                        {
+                            index,
+                            age: eventAge,
+                            type: eventData.type,
+                        }
+                    );
                     return;
                 }
 
-                if (eventData.type === 'SUBTITLE_DATA_FOUND' || eventData.type === 'SUBTITLE_URL_FOUND') {
-                    this.activePlatform.handleInjectorEvents({ detail: eventData });
-                    this.logWithFallback('debug', 'Processed buffered subtitle event', { index });
+                if (
+                    eventData.type === 'SUBTITLE_DATA_FOUND' ||
+                    eventData.type === 'SUBTITLE_URL_FOUND'
+                ) {
+                    this.activePlatform.handleInjectorEvents({
+                        detail: eventData,
+                    });
+                    this.logWithFallback(
+                        'debug',
+                        'Processed buffered subtitle event',
+                        { index }
+                    );
                 }
             } catch (error) {
-                this.logWithFallback('error', 'Error processing buffered event', { 
-                    index, 
-                    error: error.message,
-                    eventType: eventData?.type 
-                });
+                this.logWithFallback(
+                    'error',
+                    'Error processing buffered event',
+                    {
+                        index,
+                        error: error.message,
+                        eventType: eventData?.type,
+                    }
+                );
             }
         });
 
-        this.logWithFallback('info', 'Finished processing buffered events', { 
+        this.logWithFallback('info', 'Finished processing buffered events', {
             originalCount: bufferSize,
-            remainingCount: this.eventBuffer.size() 
+            remainingCount: this.eventBuffer.size(),
         });
     }
 
@@ -1335,9 +1594,17 @@ export class BaseContentScript {
         injectScript(
             chrome.runtime.getURL(config.filename),
             config.tagId,
-            () => this.logWithFallback('info', 'Early inject script loaded successfully'),
+            () =>
+                this.logWithFallback(
+                    'info',
+                    'Early inject script loaded successfully'
+                ),
             (error) => {
-                this.logWithFallback('error', 'Failed to load early inject script!', { error });
+                this.logWithFallback(
+                    'error',
+                    'Failed to load early inject script!',
+                    { error }
+                );
                 // Retry after a short delay
                 setTimeout(() => this.injectScriptEarly(), 100);
             },
@@ -1372,7 +1639,10 @@ export class BaseContentScript {
     handleVideoIdChange(newVideoId) {
         if (this.subtitleUtils) {
             if (this.subtitleUtils.handleVideoIdChange) {
-                this.subtitleUtils.handleVideoIdChange(newVideoId, this.logPrefix);
+                this.subtitleUtils.handleVideoIdChange(
+                    newVideoId,
+                    this.logPrefix
+                );
             }
             if (this.subtitleUtils.setCurrentVideoId) {
                 this.subtitleUtils.setCurrentVideoId(newVideoId);
@@ -1414,10 +1684,16 @@ export class BaseContentScript {
                 // Success! Clear the interval
                 clearInterval(this.videoDetectionIntervalId);
                 this.videoDetectionIntervalId = null;
-                this.logWithFallback('info', 'Video element found and setup completed', {
-                    attempts: this.videoDetectionRetries,
-                });
-            } else if (this.videoDetectionRetries >= this.maxVideoDetectionRetries) {
+                this.logWithFallback(
+                    'info',
+                    'Video element found and setup completed',
+                    {
+                        attempts: this.videoDetectionRetries,
+                    }
+                );
+            } else if (
+                this.videoDetectionRetries >= this.maxVideoDetectionRetries
+            ) {
                 // Give up after max retries
                 clearInterval(this.videoDetectionIntervalId);
                 this.videoDetectionIntervalId = null;
@@ -1437,7 +1713,11 @@ export class BaseContentScript {
      * @returns {boolean} Success status
      */
     attemptVideoSetup() {
-        if (!this.activePlatform || !this.subtitleUtils || !this.currentConfig) {
+        if (
+            !this.activePlatform ||
+            !this.subtitleUtils ||
+            !this.currentConfig
+        ) {
             return false;
         }
 
@@ -1476,7 +1756,10 @@ export class BaseContentScript {
                 );
             }
         } else {
-            this.logWithFallback('info', 'Subtitles are not active, hiding container');
+            this.logWithFallback(
+                'info',
+                'Subtitles are not active, hiding container'
+            );
             this.subtitleUtils.hideSubtitleContainer();
         }
 
@@ -1521,7 +1804,8 @@ export class BaseContentScript {
 
             for (let mutation of mutationsList) {
                 if (mutation.type === 'childList') {
-                    const videoElementNow = this.activePlatform.getVideoElement();
+                    const videoElementNow =
+                        this.activePlatform.getVideoElement();
                     const currentDOMVideoElement = document.querySelector(
                         'video[data-listener-attached="true"]'
                     );
@@ -1566,7 +1850,10 @@ export class BaseContentScript {
 
         // Ensure document.body exists before observing
         if (document.body) {
-            this.pageObserver.observe(document.body, { childList: true, subtree: true });
+            this.pageObserver.observe(document.body, {
+                childList: true,
+                subtree: true,
+            });
         } else {
             // Wait for body to be available
             const waitForBody = () => {
@@ -1591,8 +1878,6 @@ export class BaseContentScript {
     // CHROME MESSAGE HANDLING
     // ========================================
 
-
-
     /**
      * Handle Chrome message routing and processing
      * Main entry point for all Chrome extension messages with extensible action-based routing
@@ -1605,39 +1890,66 @@ export class BaseContentScript {
         try {
             // Validate request object
             if (!request) {
-                this.logWithFallback('warn', 'Received null or undefined request');
-                sendResponse({ success: false, error: 'Invalid request format' });
+                this.logWithFallback(
+                    'warn',
+                    'Received null or undefined request'
+                );
+                sendResponse({
+                    success: false,
+                    error: 'Invalid request format',
+                });
                 return false;
             }
 
             const action = request.action || request.type;
-            
-            this.logWithFallback('debug', 'Received Chrome message', { 
-                action, 
+
+            this.logWithFallback('debug', 'Received Chrome message', {
+                action,
                 hasUtilities: !!(this.subtitleUtils && this.configService),
-                hasRegisteredHandler: this.messageHandlers.has(action)
+                hasRegisteredHandler: this.messageHandlers.has(action),
             });
 
             // Validate message structure
             if (!action) {
-                this.logWithFallback('warn', 'Received message without action or type', { request });
-                sendResponse({ success: false, error: 'Message missing action or type' });
+                this.logWithFallback(
+                    'warn',
+                    'Received message without action or type',
+                    { request }
+                );
+                sendResponse({
+                    success: false,
+                    error: 'Message missing action or type',
+                });
                 return false;
             }
 
             // Check if we have a registered handler for this action
             const handlerConfig = this.messageHandlers.get(action);
             if (handlerConfig) {
-                this.logWithFallback('debug', 'Using registered message handler', { 
-                    action,
-                    description: handlerConfig.description,
-                    requiresUtilities: handlerConfig.requiresUtilities
-                });
+                this.logWithFallback(
+                    'debug',
+                    'Using registered message handler',
+                    {
+                        action,
+                        description: handlerConfig.description,
+                        requiresUtilities: handlerConfig.requiresUtilities,
+                    }
+                );
 
                 // Check if handler requires utilities and they're not loaded
-                if (handlerConfig.requiresUtilities && (!this.subtitleUtils || !this.configService)) {
-                    this.logWithFallback('error', 'Handler requires utilities but they are not loaded', { action });
-                    sendResponse({ success: false, error: 'Utilities not loaded' });
+                if (
+                    handlerConfig.requiresUtilities &&
+                    (!this.subtitleUtils || !this.configService)
+                ) {
+                    this.logWithFallback(
+                        'error',
+                        'Handler requires utilities but they are not loaded',
+                        { action }
+                    );
+                    sendResponse({
+                        success: false,
+                        error: 'Utilities not loaded',
+                    });
                     return true; // Return true to indicate async handling (even though it's immediate)
                 }
 
@@ -1656,14 +1968,17 @@ export class BaseContentScript {
             }
 
             // Delegate to platform-specific handler for unregistered actions
-            this.logWithFallback('debug', 'Delegating to platform-specific handler', { action });
+            this.logWithFallback(
+                'debug',
+                'Delegating to platform-specific handler',
+                { action }
+            );
             return this.handlePlatformSpecificMessage(request, sendResponse);
-
         } catch (error) {
-            this.logWithFallback('error', 'Error in Chrome message handling', { 
-                error: error.message, 
+            this.logWithFallback('error', 'Error in Chrome message handling', {
+                error: error.message,
                 stack: error.stack,
-                action: request.action || request.type 
+                action: request.action || request.type,
             });
             sendResponse({ success: false, error: error.message });
             return false;
@@ -1678,15 +1993,19 @@ export class BaseContentScript {
      */
     handleToggleSubtitles(request, sendResponse) {
         try {
-            this.logWithFallback('info', 'Handling toggle subtitles', { enabled: request.enabled });
-            
+            this.logWithFallback('info', 'Handling toggle subtitles', {
+                enabled: request.enabled,
+            });
+
             this.subtitleUtils.setSubtitlesActive(request.enabled);
 
-            return request.enabled 
+            return request.enabled
                 ? this._enableSubtitles(sendResponse, request.enabled)
                 : this._disableSubtitles(sendResponse, request.enabled);
         } catch (error) {
-            this.logWithFallback('error', 'Error in handleToggleSubtitles', { error: error.message });
+            this.logWithFallback('error', 'Error in handleToggleSubtitles', {
+                error: error.message,
+            });
             sendResponse({ success: false, error: error.message });
             return false;
         }
@@ -1700,13 +2019,23 @@ export class BaseContentScript {
      */
     handleConfigChanged(request, sendResponse) {
         try {
-            this.logWithFallback('debug', 'Handling config changed', { changes: request.changes });
+            this.logWithFallback('debug', 'Handling config changed', {
+                changes: request.changes,
+            });
 
-            if (request.changes && this.activePlatform && this.subtitleUtils.subtitlesActive) {
+            if (
+                request.changes &&
+                this.activePlatform &&
+                this.subtitleUtils.subtitlesActive
+            ) {
                 Object.assign(this.currentConfig, request.changes);
-                
-                if (request.changes.useNativeSubtitles !== undefined && request.changes.useOfficialTranslations === undefined) {
-                    this.currentConfig.useOfficialTranslations = request.changes.useNativeSubtitles;
+
+                if (
+                    request.changes.useNativeSubtitles !== undefined &&
+                    request.changes.useOfficialTranslations === undefined
+                ) {
+                    this.currentConfig.useOfficialTranslations =
+                        request.changes.useNativeSubtitles;
                 }
 
                 this.subtitleUtils.applySubtitleStyling(this.currentConfig);
@@ -1719,14 +2048,20 @@ export class BaseContentScript {
                         this.logPrefix
                     );
                 }
-                this.logWithFallback('info', 'Applied immediate config changes', {
-                    changes: request.changes
-                });
+                this.logWithFallback(
+                    'info',
+                    'Applied immediate config changes',
+                    {
+                        changes: request.changes,
+                    }
+                );
             }
             sendResponse({ success: true });
             return false;
         } catch (error) {
-            this.logWithFallback('error', 'Error in handleConfigChanged', { error: error.message });
+            this.logWithFallback('error', 'Error in handleConfigChanged', {
+                error: error.message,
+            });
             sendResponse({ success: false, error: error.message });
             return false;
         }
@@ -1740,13 +2075,18 @@ export class BaseContentScript {
      */
     handleLoggingLevelChanged(request, sendResponse) {
         try {
-            this.logWithFallback('debug', 'Handling logging level change', { level: request.level });
+            this.logWithFallback('debug', 'Handling logging level change', {
+                level: request.level,
+            });
 
             if (this.contentLogger) {
                 this.contentLogger.updateLevel(request.level);
-                this.contentLogger.info('Logging level updated from background script', {
-                    newLevel: request.level,
-                });
+                this.contentLogger.info(
+                    'Logging level updated from background script',
+                    {
+                        newLevel: request.level,
+                    }
+                );
             } else {
                 this.logWithFallback(
                     'info',
@@ -1759,7 +2099,11 @@ export class BaseContentScript {
             sendResponse({ success: true });
             return false;
         } catch (error) {
-            this.logWithFallback('error', 'Error in handleLoggingLevelChanged', { error: error.message });
+            this.logWithFallback(
+                'error',
+                'Error in handleLoggingLevelChanged',
+                { error: error.message }
+            );
             sendResponse({ success: false, error: error.message });
             return false;
         }
@@ -1799,22 +2143,26 @@ export class BaseContentScript {
     _enableSubtitles(sendResponse, enabled) {
         if (!this.activePlatform) {
             this.initializePlatform()
-                .then(() => sendResponse({ success: true, subtitlesEnabled: enabled }))
+                .then(() =>
+                    sendResponse({ success: true, subtitlesEnabled: enabled })
+                )
                 .catch((error) => {
-                    this.logWithFallback('error', 'Error in platform initialization', { error: error.message });
+                    this.logWithFallback(
+                        'error',
+                        'Error in platform initialization',
+                        { error: error.message }
+                    );
                     sendResponse({ success: false, error: error.message });
                 });
             return true;
         }
-        
+
         if (this.activePlatform.isPlayerPageActive()) {
             this.startVideoElementDetection();
         }
         sendResponse({ success: true, subtitlesEnabled: enabled });
         return false;
     }
-
-
 
     // ========================================
     // CLEANUP AND LIFECYCLE MANAGEMENT
@@ -1835,11 +2183,21 @@ export class BaseContentScript {
         // Handle page visibility changes
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
-                this.logWithFallback('debug', 'Page hidden, pausing operations');
+                this.logWithFallback(
+                    'debug',
+                    'Page hidden, pausing operations'
+                );
             } else {
-                this.logWithFallback('debug', 'Page visible, resuming operations');
+                this.logWithFallback(
+                    'debug',
+                    'Page visible, resuming operations'
+                );
                 // Re-check video setup when page becomes visible
-                if (this.activePlatform && this.subtitleUtils && this.subtitleUtils.subtitlesActive) {
+                if (
+                    this.activePlatform &&
+                    this.subtitleUtils &&
+                    this.subtitleUtils.subtitlesActive
+                ) {
                     setTimeout(() => this.attemptVideoSetup(), 500);
                 }
             }
@@ -1854,11 +2212,17 @@ export class BaseContentScript {
      */
     async cleanup(force = false) {
         if (this.isCleanedUp && !force) {
-            this.logWithFallback('debug', 'Cleanup already performed, skipping');
+            this.logWithFallback(
+                'debug',
+                'Cleanup already performed, skipping'
+            );
             return;
         }
 
-        this.logWithFallback('info', 'Starting comprehensive content script cleanup');
+        this.logWithFallback(
+            'info',
+            'Starting comprehensive content script cleanup'
+        );
 
         // Mark as cleaning up to prevent concurrent cleanup calls
         this.isCleanedUp = true;
@@ -1884,7 +2248,10 @@ export class BaseContentScript {
         // 7. Reset internal state
         this._resetInternalState();
 
-        this.logWithFallback('info', 'Content script cleanup completed successfully');
+        this.logWithFallback(
+            'info',
+            'Content script cleanup completed successfully'
+        );
     }
 
     /**
@@ -1904,7 +2271,11 @@ export class BaseContentScript {
 
             this.logWithFallback('debug', 'All detection activities stopped');
         } catch (error) {
-            this.logWithFallback('warn', 'Error stopping detection activities', { error });
+            this.logWithFallback(
+                'warn',
+                'Error stopping detection activities',
+                { error }
+            );
         }
     }
 
@@ -1917,15 +2288,21 @@ export class BaseContentScript {
         try {
             if (this.activePlatform) {
                 // Call platform cleanup with timeout protection
-                const cleanupTimeout = this.currentConfig?.cleanupTimeout || COMMON_CONSTANTS.CLEANUP_TIMEOUT;
+                const cleanupTimeout =
+                    this.currentConfig?.cleanupTimeout ||
+                    COMMON_CONSTANTS.CLEANUP_TIMEOUT;
 
-                const cleanupPromise = typeof this.activePlatform.cleanup === 'function'
-                    ? this.activePlatform.cleanup()
-                    : Promise.resolve();
+                const cleanupPromise =
+                    typeof this.activePlatform.cleanup === 'function'
+                        ? this.activePlatform.cleanup()
+                        : Promise.resolve();
 
                 const timeoutPromise = new Promise((resolve) => {
                     setTimeout(() => {
-                        this.logWithFallback('warn', 'Platform cleanup timed out');
+                        this.logWithFallback(
+                            'warn',
+                            'Platform cleanup timed out'
+                        );
                         resolve();
                     }, cleanupTimeout);
                 });
@@ -1935,7 +2312,11 @@ export class BaseContentScript {
                 this.logWithFallback('debug', 'Platform resources cleaned up');
             }
         } catch (error) {
-            this.logWithFallback('warn', 'Error cleaning up platform resources', { error });
+            this.logWithFallback(
+                'warn',
+                'Error cleaning up platform resources',
+                { error }
+            );
             this.activePlatform = null;
         }
     }
@@ -1952,7 +2333,10 @@ export class BaseContentScript {
                 if (typeof this.subtitleUtils.clearSubtitleDOM === 'function') {
                     this.subtitleUtils.clearSubtitleDOM();
                 }
-                if (typeof this.subtitleUtils.hideSubtitleContainer === 'function') {
+                if (
+                    typeof this.subtitleUtils.hideSubtitleContainer ===
+                    'function'
+                ) {
                     this.subtitleUtils.hideSubtitleContainer();
                 }
                 if (typeof this.subtitleUtils.cleanup === 'function') {
@@ -1965,12 +2349,17 @@ export class BaseContentScript {
             const injectedScript = document.getElementById(config.tagId);
             if (injectedScript) {
                 injectedScript.remove();
-                this.logWithFallback('debug', 'Injected script removed from DOM');
+                this.logWithFallback(
+                    'debug',
+                    'Injected script removed from DOM'
+                );
             }
 
             this.logWithFallback('debug', 'DOM resources cleaned up');
         } catch (error) {
-            this.logWithFallback('warn', 'Error cleaning up DOM resources', { error });
+            this.logWithFallback('warn', 'Error cleaning up DOM resources', {
+                error,
+            });
         }
     }
 
@@ -1987,18 +2376,29 @@ export class BaseContentScript {
             }
 
             // Execute all tracked event listener cleanup functions
-            if (this.eventListenerCleanupFunctions && this.eventListenerCleanupFunctions.length > 0) {
-                this.logWithFallback('debug', 'Executing event listener cleanup functions', { 
-                    count: this.eventListenerCleanupFunctions.length 
-                });
-                
+            if (
+                this.eventListenerCleanupFunctions &&
+                this.eventListenerCleanupFunctions.length > 0
+            ) {
+                this.logWithFallback(
+                    'debug',
+                    'Executing event listener cleanup functions',
+                    {
+                        count: this.eventListenerCleanupFunctions.length,
+                    }
+                );
+
                 for (const cleanupFn of this.eventListenerCleanupFunctions) {
                     try {
                         cleanupFn();
                     } catch (cleanupError) {
-                        this.logWithFallback('warn', 'Error in event listener cleanup function', { 
-                            error: cleanupError.message 
-                        });
+                        this.logWithFallback(
+                            'warn',
+                            'Error in event listener cleanup function',
+                            {
+                                error: cleanupError.message,
+                            }
+                        );
                     }
                 }
                 this.eventListenerCleanupFunctions = [];
@@ -2007,12 +2407,17 @@ export class BaseContentScript {
             // Clean up Chrome message listeners
             if (chrome.runtime && chrome.runtime.onMessage) {
                 // Note: Chrome extension listeners are automatically cleaned up when content script is destroyed
-                this.logWithFallback('debug', 'Chrome message listeners will be cleaned up automatically');
+                this.logWithFallback(
+                    'debug',
+                    'Chrome message listeners will be cleaned up automatically'
+                );
             }
 
             this.logWithFallback('debug', 'Event handling cleaned up');
         } catch (error) {
-            this.logWithFallback('warn', 'Error cleaning up event handling', { error });
+            this.logWithFallback('warn', 'Error cleaning up event handling', {
+                error,
+            });
         }
     }
 
@@ -2037,7 +2442,11 @@ export class BaseContentScript {
 
             this.logWithFallback('debug', 'Timers and intervals cleaned up');
         } catch (error) {
-            this.logWithFallback('warn', 'Error cleaning up timers and intervals', { error });
+            this.logWithFallback(
+                'warn',
+                'Error cleaning up timers and intervals',
+                { error }
+            );
             throw error;
         }
     }
@@ -2050,18 +2459,29 @@ export class BaseContentScript {
     async _cleanupObservers() {
         try {
             // Execute all tracked DOM observer cleanup functions
-            if (this.domObserverCleanupFunctions && this.domObserverCleanupFunctions.length > 0) {
-                this.logWithFallback('debug', 'Executing DOM observer cleanup functions', { 
-                    count: this.domObserverCleanupFunctions.length 
-                });
-                
+            if (
+                this.domObserverCleanupFunctions &&
+                this.domObserverCleanupFunctions.length > 0
+            ) {
+                this.logWithFallback(
+                    'debug',
+                    'Executing DOM observer cleanup functions',
+                    {
+                        count: this.domObserverCleanupFunctions.length,
+                    }
+                );
+
                 for (const cleanupFn of this.domObserverCleanupFunctions) {
                     try {
                         cleanupFn();
                     } catch (cleanupError) {
-                        this.logWithFallback('warn', 'Error in DOM observer cleanup function', { 
-                            error: cleanupError.message 
-                        });
+                        this.logWithFallback(
+                            'warn',
+                            'Error in DOM observer cleanup function',
+                            {
+                                error: cleanupError.message,
+                            }
+                        );
                     }
                 }
                 this.domObserverCleanupFunctions = [];
@@ -2071,28 +2491,40 @@ export class BaseContentScript {
             if (this.pageObserver) {
                 this.pageObserver.disconnect();
                 this.pageObserver = null;
-                this.logWithFallback('debug', 'Main DOM observer disconnected (fallback)');
+                this.logWithFallback(
+                    'debug',
+                    'Main DOM observer disconnected (fallback)'
+                );
             }
 
             // Disconnect video element observer (fallback cleanup)
             if (this.videoElementObserver) {
                 this.videoElementObserver.disconnect();
                 this.videoElementObserver = null;
-                this.logWithFallback('debug', 'Video element observer disconnected (fallback)');
+                this.logWithFallback(
+                    'debug',
+                    'Video element observer disconnected (fallback)'
+                );
             }
 
             // Disconnect navigation observer (fallback cleanup)
             if (this.navigationObserver) {
                 this.navigationObserver.disconnect();
                 this.navigationObserver = null;
-                this.logWithFallback('debug', 'Navigation observer disconnected (fallback)');
+                this.logWithFallback(
+                    'debug',
+                    'Navigation observer disconnected (fallback)'
+                );
             }
 
             // Disconnect passive video observer
             if (this.passiveVideoObserver) {
                 this.passiveVideoObserver.disconnect();
                 this.passiveVideoObserver = null;
-                this.logWithFallback('debug', 'Passive video observer disconnected');
+                this.logWithFallback(
+                    'debug',
+                    'Passive video observer disconnected'
+                );
             }
 
             // Clean up any other observers
@@ -2103,7 +2535,9 @@ export class BaseContentScript {
 
             this.logWithFallback('debug', 'Observers cleaned up');
         } catch (error) {
-            this.logWithFallback('warn', 'Error cleaning up observers', { error });
+            this.logWithFallback('warn', 'Error cleaning up observers', {
+                error,
+            });
         }
     }
 
@@ -2130,13 +2564,16 @@ export class BaseContentScript {
 
             // Clear configuration (keep reference but clear contents)
             if (this.currentConfig && typeof this.currentConfig === 'object') {
-                Object.keys(this.currentConfig).forEach(key => delete this.currentConfig[key]);
+                Object.keys(this.currentConfig).forEach(
+                    (key) => delete this.currentConfig[key]
+                );
             }
 
             this.logWithFallback('debug', 'Internal state reset');
         } catch (error) {
-            this.logWithFallback('warn', 'Error resetting internal state', { error });
+            this.logWithFallback('warn', 'Error resetting internal state', {
+                error,
+            });
         }
     }
-
 }

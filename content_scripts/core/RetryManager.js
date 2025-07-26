@@ -23,25 +23,35 @@ export class RetryManager {
      */
     async executeWithRetry(operation, context = {}, logger = console.log) {
         let lastError;
-        
+
         for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
             try {
-                logger('info', `Attempting operation (${attempt + 1}/${this.maxRetries + 1})`, context);
+                logger(
+                    'info',
+                    `Attempting operation (${attempt + 1}/${this.maxRetries + 1})`,
+                    context
+                );
                 return await operation();
             } catch (error) {
                 lastError = error;
-                logger('warn', `Operation failed on attempt ${attempt + 1}`, { error: error.message, ...context });
-                
+                logger('warn', `Operation failed on attempt ${attempt + 1}`, {
+                    error: error.message,
+                    ...context,
+                });
+
                 if (attempt < this.maxRetries) {
                     const delay = this.baseDelay * Math.pow(2, attempt);
                     logger('info', `Retrying in ${delay}ms`, context);
                     await this.delay(delay);
                 } else {
-                    logger('error', 'All retry attempts exhausted', { error: error.message, ...context });
+                    logger('error', 'All retry attempts exhausted', {
+                        error: error.message,
+                        ...context,
+                    });
                 }
             }
         }
-        
+
         throw lastError;
     }
 
@@ -51,6 +61,6 @@ export class RetryManager {
      * @returns {Promise<void>} A promise that resolves after the specified delay.
      */
     delay(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
+        return new Promise((resolve) => setTimeout(resolve, ms));
     }
 }

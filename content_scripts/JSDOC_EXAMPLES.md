@@ -19,40 +19,40 @@ the extension.
 
 ### Platform Content Script Class
 
-```javascript
+````javascript
 /**
  * ExampleContentScript - Example platform-specific content script extending BaseContentScript
- * 
+ *
  * This class demonstrates how to implement a platform-specific content script that extends
  * BaseContentScript. It provides Example platform-specific functionality including navigation
  * detection, injection configuration, and message handling while leveraging the common
  * functionality provided by BaseContentScript.
- * 
+ *
  * ## Platform-Specific Features
- * 
+ *
  * - Custom navigation detection for Example platform's SPA routing
  * - Specialized video element detection for Example's player architecture
  * - Platform-specific message handling for Example-only features
  * - Optimized configuration for Example's performance characteristics
- * 
+ *
  * ## Usage
- * 
+ *
  * ```javascript
  * // Create and initialize the content script
  * const contentScript = new ExampleContentScript();
  * const success = await contentScript.initialize();
- * 
+ *
  * if (success) {
  *     console.log('Example content script initialized successfully');
  * } else {
  *     console.error('Example content script initialization failed');
  * }
  * ```
- * 
+ *
  * ## Configuration
- * 
+ *
  * The Example platform requires specific configuration for optimal performance:
- * 
+ *
  * ```javascript
  * const exampleConfig = {
  *     maxVideoDetectionRetries: 25,     // Example loads videos slowly
@@ -61,24 +61,24 @@ the extension.
  *     pageTransitionDelay: 2000         // Example needs time for DOM updates
  * };
  * ```
- * 
+ *
  * ## Navigation Patterns
- * 
+ *
  * Example platform uses the following URL patterns:
  * - Player pages: `/watch/*`, `/play/*`, `/stream/*`
  * - Home page: `/`, `/home`, `/dashboard`
  * - Browse pages: `/browse/*`, `/category/*`
- * 
+ *
  * @extends BaseContentScript
  * @author DualSub Extension
  * @version 1.0.0
  * @since 1.0.0
- * 
+ *
  * @example
  * // Basic initialization
  * const exampleCS = new ExampleContentScript();
  * await exampleCS.initialize();
- * 
+ *
  * @example
  * // With custom configuration
  * const exampleCS = new ExampleContentScript();
@@ -87,7 +87,7 @@ the extension.
  *     customFeatureEnabled: true
  * });
  * await exampleCS.initialize();
- * 
+ *
  * @example
  * // Handling custom messages
  * chrome.runtime.sendMessage({
@@ -100,10 +100,10 @@ the extension.
 export class ExampleContentScript extends BaseContentScript {
     /**
      * Creates a new `ExampleContentScript` instance.
-     * 
+     *
      * Initializes the Example platform-specific content script with default configuration
      * and sets up the injection parameters required for Example platform integration.
-     * 
+     *
      * @constructor
      * @example
      * const contentScript = new ExampleContentScript();
@@ -113,30 +113,30 @@ export class ExampleContentScript extends BaseContentScript {
         this._initializeExampleSpecificState();
     }
 }
-```
+````
 
 ## Method Documentation
 
 ### Abstract Method Implementation
 
-```javascript
+````javascript
 /**
  * Get the platform name identifier
- * 
+ *
  * Returns the lowercase string identifier used throughout the extension to identify
  * this platform. This identifier is used for:
  * - Configuration keys and namespacing
  * - Log message prefixes and filtering
  * - Platform-specific feature toggles
  * - Analytics and error reporting
- * 
+ *
  * @override
  * @returns {string} The platform identifier 'example'
- * 
+ *
  * @example
  * const contentScript = new ExampleContentScript();
  * console.log(contentScript.getPlatformName()); // 'example'
- * 
+ *
  * @example
  * // Used internally for configuration
  * const configKey = `${this.getPlatformName()}_enabled`; // 'example_enabled'
@@ -147,20 +147,20 @@ getPlatformName() {
 
 /**
  * Get the platform class constructor name
- * 
+ *
  * Returns the name of the platform class that will be dynamically loaded from
  * the video_platforms directory. This class must exist and be exported from
  * the corresponding platform file.
- * 
+ *
  * @override
  * @returns {string} The platform class name 'ExamplePlatform'
- * 
+ *
  * @throws {Error} If the platform class cannot be found during module loading
- * 
+ *
  * @example
  * const contentScript = new ExampleContentScript();
  * console.log(contentScript.getPlatformClass()); // 'ExamplePlatform'
- * 
+ *
  * @example
  * // The class will be loaded from:
  * // video_platforms/examplePlatform.js
@@ -172,17 +172,17 @@ getPlatformClass() {
 
 /**
  * Get the inject script configuration
- * 
+ *
  * Returns the configuration object used to inject the platform-specific script
  * into the page context. This script enables deep integration with the platform's
  * video player and subtitle systems.
- * 
+ *
  * @override
  * @returns {Object} Inject script configuration
  * @returns {string} returns.filename - Path to the inject script relative to extension root
  * @returns {string} returns.tagId - Unique DOM element ID for the script tag
  * @returns {string} returns.eventId - Unique event ID for script communication
- * 
+ *
  * @example
  * const contentScript = new ExampleContentScript();
  * const config = contentScript.getInjectScriptConfig();
@@ -192,10 +192,10 @@ getPlatformClass() {
  * //   tagId: 'example-dualsub-injector-script-tag',
  * //   eventId: 'example-dualsub-injector-event'
  * // }
- * 
+ *
  * @example
  * // The inject script will be loaded as:
- * // <script id="example-dualsub-injector-script-tag" 
+ * // <script id="example-dualsub-injector-script-tag"
  * //         src="chrome-extension://[id]/injected_scripts/exampleInject.js">
  * // </script>
  */
@@ -209,27 +209,27 @@ getInjectScriptConfig() {
 
 /**
  * Setup platform-specific navigation detection
- * 
+ *
  * Implements navigation detection strategies appropriate for the Example platform's
  * architecture. This method should set up all necessary event listeners and
  * intervals to detect when users navigate between pages.
- * 
+ *
  * ## Detection Strategies
- * 
+ *
  * For Example platform, we use multiple detection methods:
  * 1. **Interval-based checking**: Fallback method that works on all platforms
  * 2. **History API interception**: Catches programmatic navigation
  * 3. **Browser events**: Handles back/forward button navigation
  * 4. **Focus events**: Detects navigation when returning to tab
- * 
+ *
  * @override
  * @throws {Error} If navigation detection setup fails
- * 
+ *
  * @example
  * // Called automatically during initialization
  * const contentScript = new ExampleContentScript();
  * await contentScript.initialize(); // setupNavigationDetection() called internally
- * 
+ *
  * @example
  * // Manual setup (not recommended)
  * const contentScript = new ExampleContentScript();
@@ -255,43 +255,43 @@ setupNavigationDetection() {
 
 /**
  * Check for URL changes with platform-specific logic
- * 
+ *
  * Implements URL change detection with Example platform-specific logic for
  * determining page types and handling transitions. This method is called
  * by various navigation detection strategies.
- * 
+ *
  * ## Page Type Detection
- * 
+ *
  * Example platform has the following page types:
  * - **Player pages**: `/watch/*`, `/play/*`, `/stream/*`
  * - **Browse pages**: `/browse/*`, `/category/*`, `/search/*`
  * - **Home pages**: `/`, `/home`, `/dashboard`
- * 
+ *
  * ## Transition Handling
- * 
+ *
  * Different transitions require different handling:
  * - **To player page**: Initialize platform and start subtitle processing
  * - **From player page**: Cleanup platform and stop processing
  * - **Between non-player pages**: No action required
- * 
+ *
  * @override
  * @throws {Error} If URL access fails or extension context is invalidated
- * 
+ *
  * @example
  * // Called automatically by navigation detection
  * // No need to call manually
- * 
+ *
  * @example
  * // Manual URL change check (for testing)
  * const contentScript = new ExampleContentScript();
  * contentScript.currentUrl = 'https://example.com/home';
  * contentScript.lastKnownPathname = '/home';
- * 
+ *
  * // Simulate navigation to player page
  * Object.defineProperty(window, 'location', {
  *     value: { href: 'https://example.com/watch/123', pathname: '/watch/123' }
  * });
- * 
+ *
  * contentScript.checkForUrlChange(); // Will detect change and handle transition
  */
 checkForUrlChange() {
@@ -319,9 +319,9 @@ checkForUrlChange() {
             this._handlePageTransition(wasOnPlayerPage, isOnPlayerPage);
         }
     } catch (error) {
-        this.logWithFallback('error', 'Error in URL change detection', { 
+        this.logWithFallback('error', 'Error in URL change detection', {
             error: error.message,
-            stack: error.stack 
+            stack: error.stack
         });
         this._handleExtensionContextError(error);
     }
@@ -329,13 +329,13 @@ checkForUrlChange() {
 
 /**
  * Handle platform-specific Chrome messages
- * 
+ *
  * Processes Chrome messages that are specific to the Example platform.
  * This method is called after common message handlers have been checked,
  * allowing platforms to implement custom functionality.
- * 
+ *
  * ## Message Format
- * 
+ *
  * Platform-specific messages should follow this format:
  * ```javascript
  * {
@@ -348,9 +348,9 @@ checkForUrlChange() {
  *     source: 'popup'                     // Optional source identifier
  * }
  * ```
- * 
+ *
  * ## Response Format
- * 
+ *
  * Responses should follow this format:
  * ```javascript
  * {
@@ -361,16 +361,16 @@ checkForUrlChange() {
  *     timestamp: 1234567890               // Response timestamp
  * }
  * ```
- * 
+ *
  * @override
  * @param {Object} request - Chrome message request object
  * @param {string} request.action - The action to perform
  * @param {Object} [request.data] - Action-specific data
  * @param {Function} sendResponse - Response callback function
  * @returns {boolean} Whether response is handled asynchronously (true) or synchronously (false)
- * 
+ *
  * @throws {Error} If message processing fails
- * 
+ *
  * @example
  * // Handle a custom Example platform message
  * chrome.runtime.sendMessage({
@@ -383,7 +383,7 @@ checkForUrlChange() {
  *         console.error('Failed to get player info:', response.error);
  *     }
  * });
- * 
+ *
  * @example
  * // Async message handling
  * handlePlatformSpecificMessage(request, sendResponse) {
@@ -393,7 +393,7 @@ checkForUrlChange() {
  *             .catch(error => sendResponse({ success: false, error: error.message }));
  *         return true; // Async handling
  *     }
- *     
+ *
  *     // Sync handling for other actions
  *     sendResponse({ success: true, handled: false });
  *     return false;
@@ -402,7 +402,7 @@ checkForUrlChange() {
 handlePlatformSpecificMessage(request, sendResponse) {
     try {
         const action = request.action || request.type;
-        
+
         this.logWithFallback('debug', 'Processing Example platform-specific message', {
             action,
             hasData: !!request.data,
@@ -413,23 +413,23 @@ handlePlatformSpecificMessage(request, sendResponse) {
         switch (action) {
             case 'example-get-player-info':
                 return this._handleGetPlayerInfo(request, sendResponse);
-            
+
             case 'example-update-settings':
                 return this._handleUpdateSettings(request, sendResponse);
-            
+
             case 'example-refresh-subtitles':
                 return this._handleRefreshSubtitles(request, sendResponse);
-            
+
             default:
                 // No platform-specific handling needed for this message
                 this.logWithFallback('debug', 'No Example platform-specific handling required', {
                     action,
                     message: 'Delegating to default handling'
                 });
-                
+
                 // Ensure backward compatibility
-                sendResponse({ 
-                    success: true, 
+                sendResponse({
+                    success: true,
                     handled: false,
                     platform: 'example',
                     message: 'No platform-specific handling required'
@@ -438,13 +438,13 @@ handlePlatformSpecificMessage(request, sendResponse) {
         }
     } catch (error) {
         const action = request ? (request.action || request.type) : 'unknown';
-        
+
         this.logWithFallback('error', 'Error in Example platform-specific message handling', {
             error: error.message,
             stack: error.stack,
             action
         });
-        
+
         // Ensure backward compatibility even on error
         try {
             if (typeof sendResponse === 'function') {
@@ -464,7 +464,7 @@ handlePlatformSpecificMessage(request, sendResponse) {
         return false; // Synchronous error handling
     }
 }
-```
+````
 
 ## Property Documentation
 
@@ -478,15 +478,15 @@ handlePlatformSpecificMessage(request, sendResponse) {
 export class ExampleContentScript extends BaseContentScript {
     /**
      * Example platform-specific injection configuration
-     * 
+     *
      * Contains the configuration needed to inject the Example platform script
      * into the page context for deep integration with the video player.
-     * 
+     *
      * @type {Object}
      * @property {string} filename - Path to the inject script
      * @property {string} tagId - Unique DOM element ID for the script tag
      * @property {string} eventId - Unique event ID for script communication
-     * 
+     *
      * @example
      * const contentScript = new ExampleContentScript();
      * console.log(contentScript.injectConfig.filename); // 'injected_scripts/exampleInject.js'
@@ -494,24 +494,24 @@ export class ExampleContentScript extends BaseContentScript {
     injectConfig = {
         filename: 'injected_scripts/exampleInject.js',
         tagId: 'example-dualsub-injector-script-tag',
-        eventId: 'example-dualsub-injector-event'
+        eventId: 'example-dualsub-injector-event',
     };
 
     /**
      * URL patterns for Example platform detection
-     * 
+     *
      * Array of URL patterns used to identify when the extension is running
      * on the Example platform. Supports wildcard matching.
-     * 
+     *
      * @type {string[]}
-     * 
+     *
      * @example
      * const contentScript = new ExampleContentScript();
      * console.log(contentScript.urlPatterns); // ['*.example.com']
-     * 
+     *
      * @example
      * // Check if current URL matches platform
-     * const isExamplePlatform = contentScript.urlPatterns.some(pattern => 
+     * const isExamplePlatform = contentScript.urlPatterns.some(pattern =>
      *     window.location.hostname.match(pattern.replace('*', '.*'))
      * );
      */
@@ -519,10 +519,10 @@ export class ExampleContentScript extends BaseContentScript {
 
     /**
      * Example platform-specific configuration defaults
-     * 
+     *
      * Default configuration values optimized for the Example platform's
      * performance characteristics and behavior patterns.
-     * 
+     *
      * @type {Object}
      * @property {number} maxVideoDetectionRetries - Maximum video detection attempts
      * @property {number} videoDetectionInterval - Interval between detection attempts (ms)
@@ -530,7 +530,7 @@ export class ExampleContentScript extends BaseContentScript {
      * @property {number} pageTransitionDelay - Delay after page transitions (ms)
      * @property {number} injectRetryDelay - Delay between injection retries (ms)
      * @property {number} injectMaxRetries - Maximum injection attempts
-     * 
+     *
      * @example
      * const contentScript = new ExampleContentScript();
      * const config = contentScript.getExampleSpecificConfig();
@@ -542,7 +542,7 @@ export class ExampleContentScript extends BaseContentScript {
         urlChangeCheckInterval: 1000,
         pageTransitionDelay: 2000,
         injectRetryDelay: 10,
-        injectMaxRetries: 100
+        injectMaxRetries: 100,
     };
 }
 ```
@@ -551,38 +551,38 @@ export class ExampleContentScript extends BaseContentScript {
 
 ### Template for Abstract Methods
 
-```javascript
+````javascript
 /**
  * Abstract method template for platform identification
- * 
+ *
  * This method must be implemented by all platform-specific content scripts
  * to provide a unique identifier for the platform.
- * 
+ *
  * ## Implementation Requirements
- * 
+ *
  * - Must return a lowercase string
  * - Must be unique across all platforms
  * - Should match the platform's common name
  * - Used for configuration keys and logging
- * 
+ *
  * ## Common Platform Names
- * 
+ *
  * - 'netflix' - Netflix streaming platform
  * - 'disneyplus' - Disney+ streaming platform
  * - 'hulu' - Hulu streaming platform
  * - 'amazonprime' - Amazon Prime Video
  * - 'hbomax' - HBO Max streaming platform
- * 
+ *
  * @abstract
  * @returns {string} Platform identifier (lowercase, unique)
  * @throws {Error} If not implemented by subclass
- * 
+ *
  * @example
  * // Implementation example
  * getPlatformName() {
  *     return 'myplatform';
  * }
- * 
+ *
  * @example
  * // Usage in configuration
  * const configKey = `${this.getPlatformName()}_enabled`;
@@ -594,34 +594,34 @@ getPlatformName() {
 
 /**
  * Abstract method template for platform class identification
- * 
+ *
  * This method must be implemented to specify which platform class should be
  * dynamically loaded from the video_platforms directory.
- * 
+ *
  * ## Implementation Requirements
- * 
+ *
  * - Must return the exact class name as exported from the platform file
  * - Class must exist in video_platforms/{platformName}Platform.js
  * - Class must extend the base platform interface
  * - Class name should follow PascalCase convention
- * 
+ *
  * ## File Naming Convention
- * 
+ *
  * - Platform file: `video_platforms/{platformName}Platform.js`
  * - Class name: `{PlatformName}Platform`
  * - Export: `export class {PlatformName}Platform { ... }`
- * 
+ *
  * @abstract
  * @returns {string} Platform class name (PascalCase)
  * @throws {Error} If not implemented by subclass
  * @throws {Error} If platform class cannot be found during loading
- * 
+ *
  * @example
  * // Implementation example
  * getPlatformClass() {
  *     return 'MyPlatformPlatform';
  * }
- * 
+ *
  * @example
  * // Corresponding file structure
  * // video_platforms/myPlatformPlatform.js
@@ -635,12 +635,12 @@ getPlatformClass() {
 
 /**
  * Abstract method template for injection script configuration
- * 
+ *
  * This method must be implemented to provide the configuration needed to
  * inject platform-specific scripts into the page context.
- * 
+ *
  * ## Configuration Object Structure
- * 
+ *
  * ```javascript
  * {
  *     filename: string,    // Path to inject script (relative to extension root)
@@ -648,27 +648,27 @@ getPlatformClass() {
  *     eventId: string      // Unique event ID for script communication
  * }
  * ```
- * 
+ *
  * ## Implementation Requirements
- * 
+ *
  * - `filename` must point to existing script in injected_scripts directory
  * - `tagId` must be unique across all platforms to avoid conflicts
  * - `eventId` must be unique for proper event handling
  * - All IDs should include platform name for uniqueness
- * 
+ *
  * ## Naming Conventions
- * 
+ *
  * - Filename: `injected_scripts/{platformName}Inject.js`
  * - Tag ID: `{platformName}-dualsub-injector-script-tag`
  * - Event ID: `{platformName}-dualsub-injector-event`
- * 
+ *
  * @abstract
  * @returns {Object} Injection script configuration
  * @returns {string} returns.filename - Path to inject script
  * @returns {string} returns.tagId - Unique DOM element ID
  * @returns {string} returns.eventId - Unique event ID
  * @throws {Error} If not implemented by subclass
- * 
+ *
  * @example
  * // Implementation example
  * getInjectScriptConfig() {
@@ -678,7 +678,7 @@ getPlatformClass() {
  *         eventId: 'myplatform-dualsub-injector-event'
  *     };
  * }
- * 
+ *
  * @example
  * // Usage in script injection
  * const config = this.getInjectScriptConfig();
@@ -690,7 +690,7 @@ getPlatformClass() {
 getInjectScriptConfig() {
     throw new Error('getInjectScriptConfig() must be implemented by subclass');
 }
-```
+````
 
 ## Event Documentation
 
@@ -699,17 +699,17 @@ getInjectScriptConfig() {
 ```javascript
 /**
  * Platform-specific custom events
- * 
+ *
  * Documents the custom events that can be dispatched and handled by
  * platform-specific content scripts.
  */
 
 /**
  * Subtitle data received event
- * 
+ *
  * Fired when subtitle data is received from the injected script.
  * This event contains the subtitle text and timing information.
- * 
+ *
  * @event ExampleContentScript#subtitleDataReceived
  * @type {CustomEvent}
  * @property {Object} detail - Event detail object
@@ -718,14 +718,14 @@ getInjectScriptConfig() {
  * @property {number} detail.endTime - Subtitle end time in seconds
  * @property {string} detail.language - Subtitle language code
  * @property {string} detail.source - Data source identifier
- * 
+ *
  * @example
  * // Listen for subtitle data
  * document.addEventListener('example-subtitle-data', (event) => {
  *     const { text, startTime, endTime, language } = event.detail;
  *     console.log(`Subtitle [${startTime}-${endTime}]: ${text}`);
  * });
- * 
+ *
  * @example
  * // Dispatch subtitle data (from injected script)
  * const subtitleEvent = new CustomEvent('example-subtitle-data', {
@@ -742,11 +742,11 @@ getInjectScriptConfig() {
 
 /**
  * Player state changed event
- * 
+ *
  * Fired when the video player state changes (e.g., play, pause, seek).
  * This event is essential for synchronizing the subtitle display with the player's
  * current state and ensuring a seamless user experience.
- * 
+ *
  * @event ExampleContentScript#playerStateChanged
  * @type {CustomEvent}
  * @property {Object} detail - Event detail object
@@ -754,7 +754,7 @@ getInjectScriptConfig() {
  * @property {number} detail.currentTime - Current playback time in seconds
  * @property {number} detail.duration - Total video duration in seconds
  * @property {number} detail.playbackRate - Current playback rate (1.0 = normal speed)
- * 
+ *
  * @example
  * // Listen for player state changes
  * document.addEventListener('example-player-state', (event) => {
@@ -765,10 +765,10 @@ getInjectScriptConfig() {
 
 /**
  * Navigation event
- * 
+ *
  * Fired when platform-specific navigation is detected.
  * This event provides information about page transitions.
- * 
+ *
  * @event ExampleContentScript#navigationDetected
  * @type {CustomEvent}
  * @property {Object} detail - Event detail object
@@ -778,7 +778,7 @@ getInjectScriptConfig() {
  * @property {string} detail.toPath - New pathname
  * @property {boolean} detail.isPlayerPage - Whether new page is a player page
  * @property {string} detail.transitionType - Type of transition ('enter-player', 'exit-player', 'page-change')
- * 
+ *
  * @example
  * // Listen for navigation events
  * document.addEventListener('example-navigation', (event) => {
@@ -795,14 +795,14 @@ getInjectScriptConfig() {
 ```javascript
 /**
  * Platform-specific configuration schema
- * 
+ *
  * Documents the configuration options available for platform-specific
  * content scripts and their expected types and values.
  */
 
 /**
  * Example platform configuration schema
- * 
+ *
  * @typedef {Object} ExamplePlatformConfig
  * @property {boolean} enabled - Whether Example platform support is enabled
  * @property {number} maxVideoDetectionRetries - Maximum attempts to detect video element
@@ -817,7 +817,7 @@ getInjectScriptConfig() {
  * @property {string} subtitleSettings.fontFamily - Font family name
  * @property {string} subtitleSettings.backgroundColor - Background color (CSS color)
  * @property {number} subtitleSettings.opacity - Background opacity (0-1)
- * 
+ *
  * @example
  * // Default configuration
  * const defaultConfig = {
@@ -839,42 +839,42 @@ getInjectScriptConfig() {
  *         opacity: 0.9
  *     }
  * };
- * 
+ *
  * @example
  * // Configuration validation
  * function validateExampleConfig(config) {
  *     const errors = [];
- *     
+ *
  *     if (typeof config.enabled !== 'boolean') {
  *         errors.push('enabled must be a boolean');
  *     }
- *     
+ *
  *     if (!Number.isInteger(config.maxVideoDetectionRetries) || config.maxVideoDetectionRetries < 1) {
  *         errors.push('maxVideoDetectionRetries must be a positive integer');
  *     }
- *     
+ *
  *     if (!Number.isInteger(config.videoDetectionInterval) || config.videoDetectionInterval < 100) {
  *         errors.push('videoDetectionInterval must be at least 100ms');
  *     }
- *     
+ *
  *     return errors;
  * }
  */
 
 /**
  * Apply platform-specific configuration overrides
- * 
+ *
  * Merges platform-specific configuration with base configuration,
  * ensuring platform-specific values take precedence.
- * 
+ *
  * @param {Object} baseConfig - Base configuration object
  * @returns {Object} Configuration with platform-specific overrides applied
- * 
+ *
  * @example
  * // Apply Example platform overrides
  * applyExampleConfigOverrides(baseConfig) {
  *     const exampleConfig = this.getExampleSpecificConfig();
- *     
+ *
  *     return {
  *         ...baseConfig,
  *         ...exampleConfig,
@@ -894,18 +894,18 @@ getInjectScriptConfig() {
 ```javascript
 /**
  * Platform-specific error types and handling strategies
- * 
+ *
  * Documents the types of errors that can occur in platform-specific
  * content scripts and how they should be handled.
  */
 
 /**
  * Platform initialization error
- * 
+ *
  * Thrown when platform-specific initialization fails.
  * This can occur due to missing dependencies, network issues,
  * or platform-specific API changes.
- * 
+ *
  * @class PlatformInitializationError
  * @extends Error
  * @property {string} name - Error name 'PlatformInitializationError'
@@ -913,7 +913,7 @@ getInjectScriptConfig() {
  * @property {string} platform - Platform identifier
  * @property {string} phase - Initialization phase where error occurred
  * @property {Error} [cause] - Original error that caused this error
- * 
+ *
  * @example
  * // Throwing a platform initialization error
  * throw new PlatformInitializationError(
@@ -922,7 +922,7 @@ getInjectScriptConfig() {
  *     'module-loading',
  *     originalError
  * );
- * 
+ *
  * @example
  * // Handling platform initialization errors
  * try {
@@ -946,10 +946,10 @@ class PlatformInitializationError extends Error {
 
 /**
  * Navigation detection error
- * 
+ *
  * Thrown when navigation detection fails or encounters
  * unexpected conditions.
- * 
+ *
  * @class NavigationDetectionError
  * @extends Error
  * @property {string} name - Error name 'NavigationDetectionError'
@@ -957,7 +957,7 @@ class PlatformInitializationError extends Error {
  * @property {string} platform - Platform identifier
  * @property {string} detectionMethod - Navigation detection method that failed
  * @property {string} currentUrl - Current URL when error occurred
- * 
+ *
  * @example
  * // Throwing a navigation detection error
  * throw new NavigationDetectionError(
@@ -979,9 +979,9 @@ class NavigationDetectionError extends Error {
 
 /**
  * Message handling error
- * 
+ *
  * Thrown when Chrome message handling fails for platform-specific messages.
- * 
+ *
  * @class MessageHandlingError
  * @extends Error
  * @property {string} name - Error name 'MessageHandlingError'
@@ -989,7 +989,7 @@ class NavigationDetectionError extends Error {
  * @property {string} platform - Platform identifier
  * @property {string} action - Message action that failed
  * @property {Object} request - Original message request
- * 
+ *
  * @example
  * // Throwing a message handling error
  * throw new MessageHandlingError(
@@ -1011,19 +1011,19 @@ class MessageHandlingError extends Error {
 
 /**
  * Error recovery strategies
- * 
+ *
  * Documents the strategies for recovering from different types of errors.
  */
 
 /**
  * Recover from platform initialization error
- * 
+ *
  * Attempts to recover from platform initialization failures using
  * various strategies based on the error type and phase.
- * 
+ *
  * @param {PlatformInitializationError} error - The initialization error
  * @returns {Promise<boolean>} Whether recovery was successful
- * 
+ *
  * @example
  * // Error recovery implementation
  * async recoverFromInitializationError(error) {
@@ -1032,17 +1032,17 @@ class MessageHandlingError extends Error {
  *         phase: error.phase,
  *         error: error.message
  *     });
- * 
+ *
  *     switch (error.phase) {
  *         case 'module-loading':
  *             return await this.retryModuleLoading();
- *         
+ *
  *         case 'platform-creation':
  *             return await this.retryPlatformCreation();
- *         
+ *
  *         case 'video-detection':
  *             return await this.retryVideoDetection();
- *         
+ *
  *         default:
  *             return false; // No recovery strategy available
  *     }

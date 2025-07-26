@@ -83,29 +83,29 @@ ensure they adhere to the contract defined by `BaseContentScript`.
  * Gets the platform name (e.g., 'netflix', 'disneyplus').
  * @returns {string} The platform name.
  */
-getPlatformName()
+getPlatformName();
 
 /**
  * Gets the platform class constructor name.
  * @returns {string} The platform class name (e.g., 'NetflixPlatform').
  */
-getPlatformClass()
+getPlatformClass();
 
 /**
  * Gets the inject script configuration.
  * @returns {Object} The inject script configuration.
  */
-getInjectScriptConfig()
+getInjectScriptConfig();
 
 /**
  * Sets up platform-specific navigation detection.
  */
-setupNavigationDetection()
+setupNavigationDetection();
 
 /**
  * Checks for URL changes with platform-specific logic.
  */
-checkForUrlChange()
+checkForUrlChange();
 
 /**
  * Handles platform-specific Chrome messages.
@@ -113,7 +113,7 @@ checkForUrlChange()
  * @param {Function} sendResponse - The callback to send a response.
  * @returns {boolean} `true` if the response is sent asynchronously.
  */
-handlePlatformSpecificMessage(request, sendResponse)
+handlePlatformSpecificMessage(request, sendResponse);
 ```
 
 ## Message Handling System
@@ -137,10 +137,10 @@ registerMessageHandler(action, handler, options);
 
 ```javascript
 const handlerConfig = {
-    handler: Function,          // The function to execute for the message.
+    handler: Function, // The function to execute for the message.
     requiresUtilities: boolean, // `true` if utilities must be loaded.
-    description: string,        // A description of the handler's purpose.
-    registeredAt: string        // The timestamp of registration.
+    description: string, // A description of the handler's purpose.
+    registeredAt: string, // The timestamp of registration.
 };
 ```
 
@@ -150,16 +150,18 @@ Different platforms require different navigation detection strategies due to the
 unique SPA implementations.
 
 ### Netflix (Complex SPA)
--   Interval-based URL checking as a reliable fallback.
--   History API interception (`pushState`/`replaceState`) for programmatic navigation.
--   Browser navigation events (`popstate`, `hashchange`) for user-initiated navigation.
--   Focus and visibility events to detect changes when the tab becomes active.
--   Enhanced page transition handling for complex routing logic.
+
+- Interval-based URL checking as a reliable fallback.
+- History API interception (`pushState`/`replaceState`) for programmatic navigation.
+- Browser navigation events (`popstate`, `hashchange`) for user-initiated navigation.
+- Focus and visibility events to detect changes when the tab becomes active.
+- Enhanced page transition handling for complex routing logic.
 
 ### Disney+ (Standard SPA)
--   Similar strategies to Netflix but with simpler URL patterns.
--   Player page detection for multiple URL variations.
--   Standard page transition handling.
+
+- Similar strategies to Netflix but with simpler URL patterns.
+- Player page detection for multiple URL variations.
+- Standard page transition handling.
 
 ## Resource Management
 
@@ -182,10 +184,10 @@ this.domObserverCleanupFunctions = [];
 
 ### Memory Management
 
--   Automatic cleanup of resources on page navigation.
--   Proper disposal of all registered event listeners.
--   Resource pooling for frequently used objects.
--   Use of weak references where appropriate to avoid memory leaks.
+- Automatic cleanup of resources on page navigation.
+- Proper disposal of all registered event listeners.
+- Resource pooling for frequently used objects.
+- Use of weak references where appropriate to avoid memory leaks.
 
 ## Error Handling
 
@@ -207,7 +209,7 @@ without crashing the extension.
 const retryConfig = {
     maxRetries: 3,
     retryDelay: 1000,
-    backoffMultiplier: 2
+    backoffMultiplier: 2,
 };
 ```
 
@@ -261,8 +263,8 @@ this.eventBuffer.processAll(handler);
 
 ```javascript
 // Add event listeners with automatic cleanup tracking via AbortController.
-const options = this.abortController 
-    ? { signal: this.abortController.signal } 
+const options = this.abortController
+    ? { signal: this.abortController.signal }
     : {};
 window.addEventListener('event', handler, options);
 ```
@@ -288,33 +290,33 @@ NetflixContentScript.test.js
 
 ### Mock Infrastructure
 
--   `test-utils/chrome-api-mock.js`: Provides mocks for the Chrome extension APIs.
--   `test-utils/test-helpers.js`: Offers centralized mock management and test environment setup.
--   `test-utils/logger-mock.js`: Provides a mock for the logger.
--   `test-utils/test-fixtures.js`: Contains standardized test data and fixtures.
+- `test-utils/chrome-api-mock.js`: Provides mocks for the Chrome extension APIs.
+- `test-utils/test-helpers.js`: Offers centralized mock management and test environment setup.
+- `test-utils/logger-mock.js`: Provides a mock for the logger.
+- `test-utils/test-fixtures.js`: Contains standardized test data and fixtures.
 
 ## Performance Considerations
 
 ### Initialization Optimization
 
--   Lazy loading of non-critical modules to speed up initial load.
--   Parallel loading of modules where possible.
--   Efficient video element detection algorithms.
--   Minimal DOM manipulation during the setup phase.
+- Lazy loading of non-critical modules to speed up initial load.
+- Parallel loading of modules where possible.
+- Efficient video element detection algorithms.
+- Minimal DOM manipulation during the setup phase.
 
 ### Runtime Performance
 
--   Debounced event handlers for high-frequency events.
--   Optimized navigation detection strategies to reduce overhead.
--   Efficient subtitle update cycles to minimize re-renders.
--   Minimal memory allocations in performance-critical code paths.
+- Debounced event handlers for high-frequency events.
+- Optimized navigation detection strategies to reduce overhead.
+- Efficient subtitle update cycles to minimize re-renders.
+- Minimal memory allocations in performance-critical code paths.
 
 ### Memory Management
 
--   Proper cleanup of all event listeners and observers.
--   Use of weak references to prevent circular dependencies.
--   Resource pooling for frequently created objects.
--   Garbage collection-friendly coding patterns.
+- Proper cleanup of all event listeners and observers.
+- Use of weak references to prevent circular dependencies.
+- Resource pooling for frequently created objects.
+- Garbage collection-friendly coding patterns.
 
 ## Extension Points
 
@@ -330,10 +332,14 @@ NetflixContentScript.test.js
 
 ```javascript
 // Register a custom message handler in the platform-specific class.
-this.registerMessageHandler('customAction', this.handleCustomAction.bind(this), {
-    requiresUtilities: true,
-    description: 'Handles a custom platform-specific action.'
-});
+this.registerMessageHandler(
+    'customAction',
+    this.handleCustomAction.bind(this),
+    {
+        requiresUtilities: true,
+        description: 'Handles a custom platform-specific action.',
+    }
+);
 ```
 
 ### Adding New Utilities
@@ -350,35 +356,35 @@ import { customUtility } from '../shared/customUtils.js';
 
 ### Backward Compatibility
 
--   Maintains the existing Chrome message API to ensure compatibility with popup and options pages.
--   Preserves all current functionality and user experience.
--   Maintains compatibility with existing configuration formats.
+- Maintains the existing Chrome message API to ensure compatibility with popup and options pages.
+- Preserves all current functionality and user experience.
+- Maintains compatibility with existing configuration formats.
 
 ### Rollback Plan
 
--   Original files are kept as `.backup` for easy rollback.
--   Feature flags can be used for a gradual rollout.
--   Comprehensive testing is performed before deployment.
--   A quick rollback mechanism is in place if issues are discovered.
+- Original files are kept as `.backup` for easy rollback.
+- Feature flags can be used for a gradual rollout.
+- Comprehensive testing is performed before deployment.
+- A quick rollback mechanism is in place if issues are discovered.
 
 ## Security Considerations
 
 ### Content Script Isolation
 
--   Proper module loading using Chrome extension URLs to prevent cross-site scripting.
--   Secure message passing between different extension contexts.
--   Input validation for all external data and messages.
--   Safe DOM manipulation practices to avoid vulnerabilities.
+- Proper module loading using Chrome extension URLs to prevent cross-site scripting.
+- Secure message passing between different extension contexts.
+- Input validation for all external data and messages.
+- Safe DOM manipulation practices to avoid vulnerabilities.
 
 ### Extension Context Management
 
--   Graceful handling of extension context invalidation.
--   Proper cleanup of all resources when the context is lost.
--   Secure communication with the background script.
--   Validation of all Chrome API calls.
+- Graceful handling of extension context invalidation.
+- Proper cleanup of all resources when the context is lost.
+- Secure communication with the background script.
+- Validation of all Chrome API calls.
 
 ## See Also
 
--   [API_REFERENCE.md](./API_REFERENCE.md) - For a detailed API reference.
--   [PLATFORM_IMPLEMENTATION_GUIDE.md](./PLATFORM_IMPLEMENTATION_GUIDE.md) - For a guide on adding new platforms.
--   [EXAMPLES.md](./EXAMPLES.md) - For practical implementation examples.
+- [API_REFERENCE.md](./API_REFERENCE.md) - For a detailed API reference.
+- [PLATFORM_IMPLEMENTATION_GUIDE.md](./PLATFORM_IMPLEMENTATION_GUIDE.md) - For a guide on adding new platforms.
+- [EXAMPLES.md](./EXAMPLES.md) - For practical implementation examples.

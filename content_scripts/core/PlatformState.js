@@ -10,7 +10,7 @@ export class PlatformState {
             modulesLoaded: false,
             videoDetectionActive: false,
             cleanedUp: false,
-            retryCount: 0
+            retryCount: 0,
         };
         this.listeners = new Map();
     }
@@ -31,7 +31,7 @@ export class PlatformState {
      */
     set(key, value) {
         const changes = {};
-        
+
         if (typeof key === 'object') {
             Object.assign(this.state, key);
             Object.assign(changes, key);
@@ -54,9 +54,9 @@ export class PlatformState {
         if (!this.listeners.has(key)) {
             this.listeners.set(key, new Set());
         }
-        
+
         this.listeners.get(key).add(callback);
-        
+
         return () => {
             const keyListeners = this.listeners.get(key);
             if (keyListeners) {
@@ -77,11 +77,14 @@ export class PlatformState {
         for (const [key, change] of Object.entries(changes)) {
             const keyListeners = this.listeners.get(key);
             if (keyListeners) {
-                keyListeners.forEach(callback => {
+                keyListeners.forEach((callback) => {
                     try {
                         callback(change.new, change.old);
                     } catch (error) {
-                        console.error(`State listener error for key ${key}:`, error);
+                        console.error(
+                            `State listener error for key ${key}:`,
+                            error
+                        );
                     }
                 });
             }
@@ -98,7 +101,7 @@ export class PlatformState {
             modulesLoaded: false,
             videoDetectionActive: false,
             cleanedUp: false,
-            retryCount: 0
+            retryCount: 0,
         });
     }
 
@@ -107,8 +110,10 @@ export class PlatformState {
      * @returns {boolean} `true` if the platform is initialized and not cleaned up, otherwise `false`.
      */
     isOperational() {
-        return this.state.initialized && 
-               this.state.modulesLoaded && 
-               !this.state.cleanedUp;
+        return (
+            this.state.initialized &&
+            this.state.modulesLoaded &&
+            !this.state.cleanedUp
+        );
     }
 }

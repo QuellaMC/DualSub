@@ -1,20 +1,27 @@
 /**
  * EventUtils Tests
- * 
+ *
  * Tests for the shared event listener management and cleanup utilities.
- * 
+ *
  * @author DualSub Extension
  * @version 1.0.0
  */
 
-import { jest, describe, test, beforeEach, afterEach, expect } from '@jest/globals';
-import { 
-    EventListenerManager, 
-    EventDebouncer, 
+import {
+    jest,
+    describe,
+    test,
+    beforeEach,
+    afterEach,
+    expect,
+} from '@jest/globals';
+import {
+    EventListenerManager,
+    EventDebouncer,
     CustomEventDispatcher,
     createPlatformEventManager,
     createEventDebouncer,
-    createPlatformEventDispatcher
+    createPlatformEventDispatcher,
 } from '../shared/eventUtils.js';
 import { TestHelpers } from '../../test-utils/test-helpers.js';
 
@@ -31,13 +38,13 @@ describe('EventListenerManager', () => {
             platform: 'netflix',
             enableLogger: false,
             enableLocation: false,
-            enableChromeApi: false
+            enableChromeApi: false,
         });
 
         mockLogger = jest.fn();
         eventManager = new EventListenerManager('netflix', {
             logger: mockLogger,
-            useAbortController: true
+            useAbortController: true,
         });
 
         testElement = document.createElement('div');
@@ -58,18 +65,20 @@ describe('EventListenerManager', () => {
     describe('Constructor', () => {
         test('should initialize with default options', () => {
             const defaultManager = new EventListenerManager('netflix');
-            
+
             expect(defaultManager.platform).toBe('netflix');
             expect(defaultManager.options.useAbortController).toBe(true);
             expect(defaultManager.listeners.size).toBe(0);
-            expect(defaultManager.abortController).toBeInstanceOf(AbortController);
+            expect(defaultManager.abortController).toBeInstanceOf(
+                AbortController
+            );
         });
 
         test('should initialize without AbortController when disabled', () => {
             const manager = new EventListenerManager('netflix', {
-                useAbortController: false
+                useAbortController: false,
             });
-            
+
             expect(manager.abortController).toBeNull();
         });
     });
@@ -77,7 +86,11 @@ describe('EventListenerManager', () => {
     describe('addEventListener', () => {
         test('should add event listener and return listener ID', () => {
             const handler = jest.fn();
-            const listenerId = eventManager.addEventListener(testElement, 'click', handler);
+            const listenerId = eventManager.addEventListener(
+                testElement,
+                'click',
+                handler
+            );
 
             expect(listenerId).toBeTruthy();
             expect(typeof listenerId).toBe('string');
@@ -98,16 +111,28 @@ describe('EventListenerManager', () => {
             const errorHandler = jest.fn(() => {
                 throw new Error('Test error');
             });
-            
+
             eventManager.addEventListener(testElement, 'click', errorHandler);
             testElement.click();
 
-            expect(mockLogger).toHaveBeenCalledWith('error', '[EventListenerManager:netflix] Error in event listener.', expect.any(Object));
+            expect(mockLogger).toHaveBeenCalledWith(
+                'error',
+                '[EventListenerManager:netflix] Error in event listener.',
+                expect.any(Object)
+            );
         });
 
         test('should return null for invalid parameters', () => {
-            const listenerId1 = eventManager.addEventListener(null, 'click', jest.fn());
-            const listenerId2 = eventManager.addEventListener(testElement, 'click', null);
+            const listenerId1 = eventManager.addEventListener(
+                null,
+                'click',
+                jest.fn()
+            );
+            const listenerId2 = eventManager.addEventListener(
+                testElement,
+                'click',
+                null
+            );
 
             expect(listenerId1).toBeNull();
             expect(listenerId2).toBeNull();
@@ -115,17 +140,27 @@ describe('EventListenerManager', () => {
 
         test('should add AbortController signal to options', () => {
             const handler = jest.fn();
-            const listenerId = eventManager.addEventListener(testElement, 'click', handler);
-            
+            const listenerId = eventManager.addEventListener(
+                testElement,
+                'click',
+                handler
+            );
+
             const listenerInfo = eventManager.listeners.get(listenerId);
-            expect(listenerInfo.options.signal).toBe(eventManager.abortController.signal);
+            expect(listenerInfo.options.signal).toBe(
+                eventManager.abortController.signal
+            );
         });
     });
 
     describe('removeEventListener', () => {
         test('should remove specific event listener', () => {
             const handler = jest.fn();
-            const listenerId = eventManager.addEventListener(testElement, 'click', handler);
+            const listenerId = eventManager.addEventListener(
+                testElement,
+                'click',
+                handler
+            );
 
             const success = eventManager.removeEventListener(listenerId);
 
@@ -140,9 +175,13 @@ describe('EventListenerManager', () => {
 
         test('should return false for non-existent listener', () => {
             const success = eventManager.removeEventListener('non-existent-id');
-            
+
             expect(success).toBe(false);
-            expect(mockLogger).toHaveBeenCalledWith('warn', '[EventListenerManager:netflix] Listener not found for removal.', { listenerId: 'non-existent-id' });
+            expect(mockLogger).toHaveBeenCalledWith(
+                'warn',
+                '[EventListenerManager:netflix] Listener not found for removal.',
+                { listenerId: 'non-existent-id' }
+            );
         });
     });
 
@@ -156,7 +195,8 @@ describe('EventListenerManager', () => {
             eventManager.addEventListener(testElement, 'focus', handler2);
             eventManager.addEventListener(otherElement, 'click', jest.fn());
 
-            const removedCount = eventManager.removeListenersForTarget(testElement);
+            const removedCount =
+                eventManager.removeListenersForTarget(testElement);
 
             expect(removedCount).toBe(2);
             expect(eventManager.getListenerCount()).toBe(1);
@@ -201,7 +241,7 @@ describe('EventListenerManager', () => {
         test('should clean up all event listeners', () => {
             const handler1 = jest.fn();
             const handler2 = jest.fn();
-            
+
             eventManager.addEventListener(testElement, 'click', handler1);
             eventManager.addEventListener(document, 'keydown', handler2);
 
@@ -225,7 +265,7 @@ describe('EventDebouncer', () => {
     beforeEach(() => {
         mockLogger = jest.fn();
         debouncer = new EventDebouncer({
-            logger: mockLogger
+            logger: mockLogger,
         });
         jest.useFakeTimers();
     });
@@ -259,7 +299,9 @@ describe('EventDebouncer', () => {
 
         test('should support immediate execution', () => {
             const mockFn = jest.fn();
-            const debouncedFn = debouncer.debounce(mockFn, 100, { immediate: true });
+            const debouncedFn = debouncer.debounce(mockFn, 100, {
+                immediate: true,
+            });
 
             debouncedFn();
 
@@ -360,7 +402,7 @@ describe('CustomEventDispatcher', () => {
     beforeEach(() => {
         mockLogger = jest.fn();
         dispatcher = new CustomEventDispatcher('netflix', {
-            logger: mockLogger
+            logger: mockLogger,
         });
     });
 
@@ -373,7 +415,10 @@ describe('CustomEventDispatcher', () => {
     describe('addEventListener', () => {
         test('should add event listener and return listener ID', () => {
             const handler = jest.fn();
-            const listenerId = dispatcher.addEventListener('test-event', handler);
+            const listenerId = dispatcher.addEventListener(
+                'test-event',
+                handler
+            );
 
             expect(listenerId).toBeTruthy();
             expect(typeof listenerId).toBe('string');
@@ -393,9 +438,13 @@ describe('CustomEventDispatcher', () => {
 
         test('should return null for invalid listener', () => {
             const listenerId = dispatcher.addEventListener('test-event', null);
-            
+
             expect(listenerId).toBeNull();
-            expect(mockLogger).toHaveBeenCalledWith('error', '[CustomEventDispatcher:netflix] Event listener must be a function', { eventType: 'test-event' });
+            expect(mockLogger).toHaveBeenCalledWith(
+                'error',
+                '[CustomEventDispatcher:netflix] Event listener must be a function',
+                { eventType: 'test-event' }
+            );
         });
     });
 
@@ -403,11 +452,14 @@ describe('CustomEventDispatcher', () => {
         test('should dispatch event to all listeners', () => {
             const handler1 = jest.fn();
             const handler2 = jest.fn();
-            
+
             dispatcher.addEventListener('test-event', handler1);
             dispatcher.addEventListener('test-event', handler2);
 
-            const notifiedCount = dispatcher.dispatchEvent('test-event', 'test-data');
+            const notifiedCount = dispatcher.dispatchEvent(
+                'test-event',
+                'test-data'
+            );
 
             expect(notifiedCount).toBe(2);
             expect(handler1).toHaveBeenCalledWith('test-data');
@@ -415,10 +467,17 @@ describe('CustomEventDispatcher', () => {
         });
 
         test('should return 0 for events with no listeners', () => {
-            const notifiedCount = dispatcher.dispatchEvent('non-existent-event', 'data');
-            
+            const notifiedCount = dispatcher.dispatchEvent(
+                'non-existent-event',
+                'data'
+            );
+
             expect(notifiedCount).toBe(0);
-            expect(mockLogger).toHaveBeenCalledWith('debug', '[CustomEventDispatcher:netflix] No listeners for custom event.', { eventType: 'non-existent-event' });
+            expect(mockLogger).toHaveBeenCalledWith(
+                'debug',
+                '[CustomEventDispatcher:netflix] No listeners for custom event.',
+                { eventType: 'non-existent-event' }
+            );
         });
 
         test('should handle listener errors gracefully', () => {
@@ -426,15 +485,22 @@ describe('CustomEventDispatcher', () => {
                 throw new Error('Test error');
             });
             const normalHandler = jest.fn();
-            
+
             dispatcher.addEventListener('test-event', errorHandler);
             dispatcher.addEventListener('test-event', normalHandler);
 
-            const notifiedCount = dispatcher.dispatchEvent('test-event', 'data');
+            const notifiedCount = dispatcher.dispatchEvent(
+                'test-event',
+                'data'
+            );
 
             expect(notifiedCount).toBe(2); // Both handlers are attempted, but one fails
             expect(normalHandler).toHaveBeenCalledWith('data');
-            expect(mockLogger).toHaveBeenCalledWith('error', '[CustomEventDispatcher:netflix] Error in custom event listener.', expect.any(Object));
+            expect(mockLogger).toHaveBeenCalledWith(
+                'error',
+                '[CustomEventDispatcher:netflix] Error in custom event listener.',
+                expect.any(Object)
+            );
         });
 
         test('should support async dispatch', (done) => {
@@ -457,21 +523,34 @@ describe('CustomEventDispatcher', () => {
     describe('removeEventListener', () => {
         test('should remove specific event listener', () => {
             const handler = jest.fn();
-            const listenerId = dispatcher.addEventListener('test-event', handler);
+            const listenerId = dispatcher.addEventListener(
+                'test-event',
+                handler
+            );
 
-            const success = dispatcher.removeEventListener('test-event', listenerId);
+            const success = dispatcher.removeEventListener(
+                'test-event',
+                listenerId
+            );
 
             expect(success).toBe(true);
-            
+
             dispatcher.dispatchEvent('test-event', 'data');
             expect(handler).not.toHaveBeenCalled();
         });
 
         test('should return false for non-existent listener', () => {
-            const success = dispatcher.removeEventListener('test-event', 'non-existent-id');
-            
+            const success = dispatcher.removeEventListener(
+                'test-event',
+                'non-existent-id'
+            );
+
             expect(success).toBe(false);
-            expect(mockLogger).toHaveBeenCalledWith('warn', '[CustomEventDispatcher:netflix] Custom event listener not found.', expect.any(Object));
+            expect(mockLogger).toHaveBeenCalledWith(
+                'warn',
+                '[CustomEventDispatcher:netflix] Custom event listener not found.',
+                expect.any(Object)
+            );
         });
     });
 
@@ -479,7 +558,7 @@ describe('CustomEventDispatcher', () => {
         test('should return listener information', () => {
             const handler1 = jest.fn();
             const handler2 = jest.fn();
-            
+
             dispatcher.addEventListener('test-event', handler1);
             dispatcher.addEventListener('test-event', handler2, { once: true });
 
@@ -503,7 +582,7 @@ describe('CustomEventDispatcher', () => {
             // Add a listener so events are dispatched
             dispatcher.addEventListener('event1', jest.fn());
             dispatcher.addEventListener('event2', jest.fn());
-            
+
             dispatcher.dispatchEvent('event1', 'data1');
             dispatcher.dispatchEvent('event2', 'data2');
 
@@ -520,7 +599,7 @@ describe('CustomEventDispatcher', () => {
             // Add listeners so events are dispatched
             dispatcher.addEventListener('event1', jest.fn());
             dispatcher.addEventListener('event2', jest.fn());
-            
+
             dispatcher.dispatchEvent('event1', 'data1');
             dispatcher.dispatchEvent('event2', 'data2');
             dispatcher.dispatchEvent('event1', 'data3');
@@ -535,7 +614,7 @@ describe('CustomEventDispatcher', () => {
         test('should limit history results', () => {
             // Add a listener so events are dispatched
             dispatcher.addEventListener('event1', jest.fn());
-            
+
             dispatcher.dispatchEvent('event1', 'data1');
             dispatcher.dispatchEvent('event1', 'data2');
             dispatcher.dispatchEvent('event1', 'data3');
@@ -564,34 +643,34 @@ describe('CustomEventDispatcher', () => {
 describe('Factory Functions', () => {
     test('should create platform event manager', () => {
         const manager = createPlatformEventManager('netflix', {
-            logger: jest.fn()
+            logger: jest.fn(),
         });
-        
+
         expect(manager).toBeInstanceOf(EventListenerManager);
         expect(manager.platform).toBe('netflix');
         expect(manager.options.useAbortController).toBe(true);
-        
+
         manager.cleanup();
     });
 
     test('should create event debouncer', () => {
         const debouncer = createEventDebouncer({
-            logger: jest.fn()
+            logger: jest.fn(),
         });
-        
+
         expect(debouncer).toBeInstanceOf(EventDebouncer);
-        
+
         debouncer.cleanup();
     });
 
     test('should create platform event dispatcher', () => {
         const dispatcher = createPlatformEventDispatcher('disneyplus', {
-            logger: jest.fn()
+            logger: jest.fn(),
         });
-        
+
         expect(dispatcher).toBeInstanceOf(CustomEventDispatcher);
         expect(dispatcher.platform).toBe('disneyplus');
-        
+
         dispatcher.cleanup();
     });
 });

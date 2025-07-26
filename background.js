@@ -450,9 +450,10 @@ async function processNetflixSubtitleData(
     useOfficialTranslations = undefined
 ) {
     // Normalize the official translations setting
-    const useOfficialSubtitles = useOfficialTranslations !== undefined 
-        ? useOfficialTranslations 
-        : useNativeSubtitles;
+    const useOfficialSubtitles =
+        useOfficialTranslations !== undefined
+            ? useOfficialTranslations
+            : useNativeSubtitles;
     if (!data || !data.tracks) {
         throw new Error('Invalid Netflix subtitle data provided');
     }
@@ -1096,10 +1097,14 @@ async function fetchAndProcessSubtitleUrl(
     });
 
     // Get user settings for smart subtitle logic
-    const settings = await chrome.storage.sync.get(['useNativeSubtitles', 'useOfficialTranslations']);
-    const useOfficialTranslations = settings.useOfficialTranslations !== undefined 
-        ? settings.useOfficialTranslations 
-        : (settings.useNativeSubtitles !== false); // Default to true, with backward compatibility
+    const settings = await chrome.storage.sync.get([
+        'useNativeSubtitles',
+        'useOfficialTranslations',
+    ]);
+    const useOfficialTranslations =
+        settings.useOfficialTranslations !== undefined
+            ? settings.useOfficialTranslations
+            : settings.useNativeSubtitles !== false; // Default to true, with backward compatibility
     const useNativeSubtitles = useOfficialTranslations; // For backward compatibility in this function
 
     backgroundLogger.debug('Smart subtitle settings', {

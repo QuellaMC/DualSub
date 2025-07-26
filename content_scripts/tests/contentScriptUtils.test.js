@@ -1,6 +1,6 @@
 /**
  * Content Script Utilities Tests
- * 
+ *
  * Tests for shared utility functions including video detection,
  * event handling, configuration processing, and navigation helpers.
  */
@@ -19,7 +19,7 @@ import {
     detectPlatform,
     isExtensionContextValid,
     safeChromeApiCall,
-    IntervalManager
+    IntervalManager,
 } from '../core/utils.js';
 import { DEFAULT_PLATFORM_CONFIGS } from '../core/constants.js';
 import { TestHelpers } from '../../test-utils/test-helpers.js';
@@ -44,7 +44,13 @@ describe('Content Script Utilities', () => {
             const onSuccess = jest.fn();
             const onFailure = jest.fn();
 
-            const result = startVideoDetection(getVideoElement, 5, 100, onSuccess, onFailure);
+            const result = startVideoDetection(
+                getVideoElement,
+                5,
+                100,
+                onSuccess,
+                onFailure
+            );
 
             expect(result).toBeNull();
             expect(onSuccess).toHaveBeenCalledWith(mockVideo);
@@ -98,11 +104,21 @@ describe('Content Script Utilities', () => {
             const onFailure = jest.fn();
             const logger = jest.fn();
 
-            const result = startVideoDetection(getVideoElement, 5, 100, () => {}, onFailure, logger);
+            const result = startVideoDetection(
+                getVideoElement,
+                5,
+                100,
+                () => {},
+                onFailure,
+                logger
+            );
 
             expect(result).toBeNull();
             expect(onFailure).toHaveBeenCalledWith(expect.any(Error));
-            expect(logger).toHaveBeenCalledWith('Error calling getVideoElement:', expect.any(Error));
+            expect(logger).toHaveBeenCalledWith(
+                'Error calling getVideoElement:',
+                expect.any(Error)
+            );
         });
     });
 
@@ -111,15 +127,18 @@ describe('Content Script Utilities', () => {
             const originalUrl = 'https://example.com/page1';
             const onUrlChange = jest.fn();
 
-            // Since we can't easily mock window.location in JSDOM, 
+            // Since we can't easily mock window.location in JSDOM,
             // we'll test with the current URL being different from the original
             const currentUrl = window.location.href; // This will be http://localhost/
-            
+
             const result = detectUrlChange(originalUrl, onUrlChange);
 
             // Since the current URL (localhost) is different from originalUrl, it should detect a change
             expect(result).toBe(currentUrl);
-            expect(onUrlChange).toHaveBeenCalledWith(currentUrl, window.location.pathname);
+            expect(onUrlChange).toHaveBeenCalledWith(
+                currentUrl,
+                window.location.pathname
+            );
         });
 
         test('should return null when URL unchanged', () => {
@@ -136,15 +155,22 @@ describe('Content Script Utilities', () => {
     describe('injectScript', () => {
         afterEach(() => {
             // Clean up any created scripts
-            const scripts = document.querySelectorAll('script[id^="test-script"]');
-            scripts.forEach(script => script.remove());
+            const scripts = document.querySelectorAll(
+                'script[id^="test-script"]'
+            );
+            scripts.forEach((script) => script.remove());
         });
 
         test('should inject script successfully', () => {
             const onLoad = jest.fn();
             const onError = jest.fn();
 
-            const result = injectScript('test-script.js', 'test-script', onLoad, onError);
+            const result = injectScript(
+                'test-script.js',
+                'test-script',
+                onLoad,
+                onError
+            );
 
             expect(result).toBe(true);
             const script = document.getElementById('test-script');
@@ -162,14 +188,17 @@ describe('Content Script Utilities', () => {
             existingScript.id = 'test-script-existing';
             document.head.appendChild(existingScript);
 
-            const result = injectScript('test-script.js', 'test-script-existing');
+            const result = injectScript(
+                'test-script.js',
+                'test-script-existing'
+            );
 
             expect(result).toBe(false);
         });
 
         test('should handle injection errors', () => {
             const onError = jest.fn();
-            
+
             // Mock createElement to throw error
             const originalCreateElement = document.createElement;
             document.createElement = jest.fn().mockImplementation((tagName) => {
@@ -179,7 +208,12 @@ describe('Content Script Utilities', () => {
                 return originalCreateElement.call(document, tagName);
             });
 
-            const result = injectScript('test-script.js', 'test-script-error', () => {}, onError);
+            const result = injectScript(
+                'test-script.js',
+                'test-script-error',
+                () => {},
+                onError
+            );
 
             expect(result).toBe(false);
             expect(onError).toHaveBeenCalled();
@@ -221,7 +255,7 @@ describe('Content Script Utilities', () => {
             const event = { type: 'test', data: 'data' };
 
             eventBuffer.add(event);
-            
+
             expect(() => eventBuffer.processAll(processor)).not.toThrow();
             expect(eventBuffer.size()).toBe(0);
         });
@@ -239,7 +273,7 @@ describe('Content Script Utilities', () => {
 
         test('should enforce size limits', () => {
             const smallBuffer = new EventBuffer(console.log, 3); // Max 3 events
-            
+
             // Add 5 events
             for (let i = 0; i < 5; i++) {
                 smallBuffer.add({ type: 'test', data: i });
@@ -251,11 +285,11 @@ describe('Content Script Utilities', () => {
 
         test('should handle age-based cleanup', () => {
             const shortAgeBuffer = new EventBuffer(console.log, 100, 100); // 100ms max age
-            
+
             // Add old event
             const oldEvent = { type: 'old', timestamp: Date.now() - 200 };
             const newEvent = { type: 'new', timestamp: Date.now() };
-            
+
             shortAgeBuffer.add(oldEvent);
             shortAgeBuffer.add(newEvent);
 
@@ -281,16 +315,16 @@ describe('Content Script Utilities', () => {
 
         test('should perform maintenance when needed', () => {
             const buffer = new EventBuffer(console.log, 5, 1000);
-            
+
             // Fill buffer to trigger maintenance need
             for (let i = 0; i < 5; i++) {
                 buffer.add({ type: 'test', data: i });
             }
 
             expect(buffer.needsMaintenance()).toBe(true);
-            
+
             buffer.performMaintenance();
-            
+
             expect(buffer.size()).toBeLessThan(5);
         });
     });
@@ -301,25 +335,34 @@ describe('Content Script Utilities', () => {
                 subtitleFontSize: '2.0',
                 translationProvider: 'google',
                 appearanceAccordionOpen: false,
-                debugMode: false
+                debugMode: false,
             };
 
             const newConfig = {
                 subtitleFontSize: '2.5',
                 translationProvider: 'google',
                 appearanceAccordionOpen: true,
-                debugMode: true
+                debugMode: true,
             };
 
             const uiOnlySettings = ['appearanceAccordionOpen'];
 
-            const analysis = analyzeConfigChanges(oldConfig, newConfig, uiOnlySettings);
+            const analysis = analyzeConfigChanges(
+                oldConfig,
+                newConfig,
+                uiOnlySettings
+            );
 
             expect(analysis.hasChanges).toBe(true);
             expect(analysis.hasFunctionalChanges).toBe(true);
             expect(analysis.hasUiOnlyChanges).toBe(true);
-            expect(Object.keys(analysis.functionalChanges)).toEqual(['subtitleFontSize', 'debugMode']);
-            expect(Object.keys(analysis.uiOnlyChanges)).toEqual(['appearanceAccordionOpen']);
+            expect(Object.keys(analysis.functionalChanges)).toEqual([
+                'subtitleFontSize',
+                'debugMode',
+            ]);
+            expect(Object.keys(analysis.uiOnlyChanges)).toEqual([
+                'appearanceAccordionOpen',
+            ]);
         });
 
         test('should handle no changes', () => {
@@ -335,11 +378,11 @@ describe('Content Script Utilities', () => {
     describe('onDOMReady', () => {
         test('should execute callback immediately if DOM ready', () => {
             const callback = jest.fn();
-            
+
             // Mock DOM ready state
             Object.defineProperty(document, 'readyState', {
                 value: 'complete',
-                writable: true
+                writable: true,
             });
 
             onDOMReady(callback);
@@ -349,27 +392,35 @@ describe('Content Script Utilities', () => {
 
         test('should wait for DOM ready event if loading', () => {
             const callback = jest.fn();
-            
+
             // Mock DOM loading state
             Object.defineProperty(document, 'readyState', {
                 value: 'loading',
-                writable: true
+                writable: true,
             });
 
-            const addEventListenerSpy = jest.spyOn(document, 'addEventListener');
+            const addEventListenerSpy = jest.spyOn(
+                document,
+                'addEventListener'
+            );
 
             onDOMReady(callback);
 
             expect(callback).not.toHaveBeenCalled();
-            expect(addEventListenerSpy).toHaveBeenCalledWith('DOMContentLoaded', callback);
+            expect(addEventListenerSpy).toHaveBeenCalledWith(
+                'DOMContentLoaded',
+                callback
+            );
         });
     });
 
     describe('waitForElement', () => {
         afterEach(() => {
             // Clean up any test elements
-            const testElements = document.querySelectorAll('[id^="test-element"], [id^="delayed-element"]');
-            testElements.forEach(element => element.remove());
+            const testElements = document.querySelectorAll(
+                '[id^="test-element"], [id^="delayed-element"]'
+            );
+            testElements.forEach((element) => element.remove());
         });
 
         test('should find element immediately if exists', async () => {
@@ -449,12 +500,27 @@ describe('Content Script Utilities', () => {
         test('should detect platform from URL', () => {
             const platformPatterns = {
                 netflix: ['.*\\.netflix\\.com.*'],
-                disneyplus: ['.*\\.disneyplus\\.com.*']
+                disneyplus: ['.*\\.disneyplus\\.com.*'],
             };
 
-            expect(detectPlatform('https://www.netflix.com/watch/123', platformPatterns)).toBe('netflix');
-            expect(detectPlatform('https://www.disneyplus.com/video/456', platformPatterns)).toBe('disneyplus');
-            expect(detectPlatform('https://www.youtube.com/watch?v=789', platformPatterns)).toBeNull();
+            expect(
+                detectPlatform(
+                    'https://www.netflix.com/watch/123',
+                    platformPatterns
+                )
+            ).toBe('netflix');
+            expect(
+                detectPlatform(
+                    'https://www.disneyplus.com/video/456',
+                    platformPatterns
+                )
+            ).toBe('disneyplus');
+            expect(
+                detectPlatform(
+                    'https://www.youtube.com/watch?v=789',
+                    platformPatterns
+                )
+            ).toBeNull();
         });
     });
 
@@ -462,8 +528,8 @@ describe('Content Script Utilities', () => {
         test('should return true when chrome runtime is available', () => {
             global.chrome = {
                 runtime: {
-                    id: 'test-extension-id'
-                }
+                    id: 'test-extension-id',
+                },
             };
 
             expect(isExtensionContextValid()).toBe(true);
@@ -489,14 +555,19 @@ describe('Content Script Utilities', () => {
 
         test('should call API successfully', () => {
             global.chrome = {
-                runtime: { id: 'test' }
+                runtime: { id: 'test' },
             };
 
             const mockApiCall = jest.fn().mockReturnValue('success');
             const onSuccess = jest.fn();
             const onError = jest.fn();
 
-            safeChromeApiCall(mockApiCall, ['arg1', 'arg2'], onSuccess, onError);
+            safeChromeApiCall(
+                mockApiCall,
+                ['arg1', 'arg2'],
+                onSuccess,
+                onError
+            );
 
             expect(mockApiCall).toHaveBeenCalledWith('arg1', 'arg2');
             expect(onSuccess).toHaveBeenCalledWith('success');
@@ -519,7 +590,7 @@ describe('Content Script Utilities', () => {
 
         test('should handle API call throwing error', () => {
             global.chrome = {
-                runtime: { id: 'test' }
+                runtime: { id: 'test' },
             };
 
             const mockApiCall = jest.fn().mockImplementation(() => {
@@ -537,10 +608,10 @@ describe('Content Script Utilities', () => {
 
         test('should handle Chrome runtime lastError', () => {
             global.chrome = {
-                runtime: { 
+                runtime: {
                     id: 'test',
-                    lastError: { message: 'Runtime error' }
-                }
+                    lastError: { message: 'Runtime error' },
+                },
             };
 
             const mockApiCall = jest.fn().mockReturnValue('success');
@@ -551,9 +622,11 @@ describe('Content Script Utilities', () => {
 
             expect(mockApiCall).toHaveBeenCalled();
             expect(onSuccess).not.toHaveBeenCalled();
-            expect(onError).toHaveBeenCalledWith(expect.objectContaining({
-                message: expect.stringContaining('Runtime error')
-            }));
+            expect(onError).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    message: expect.stringContaining('Runtime error'),
+                })
+            );
         });
     });
 
@@ -570,13 +643,18 @@ describe('Content Script Utilities', () => {
 
         test('should set and clear intervals', () => {
             const callback = jest.fn();
-            const setIntervalSpy = jest.spyOn(global, 'setInterval').mockReturnValue(123);
+            const setIntervalSpy = jest
+                .spyOn(global, 'setInterval')
+                .mockReturnValue(123);
             const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
 
             const result = intervalManager.set('test', callback, 1000);
 
             expect(result).toBe(true);
-            expect(setIntervalSpy).toHaveBeenCalledWith(expect.any(Function), 1000);
+            expect(setIntervalSpy).toHaveBeenCalledWith(
+                expect.any(Function),
+                1000
+            );
             expect(intervalManager.count()).toBe(1);
 
             intervalManager.clear('test');
@@ -590,7 +668,7 @@ describe('Content Script Utilities', () => {
 
         test('should clear all intervals', () => {
             const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
-            
+
             intervalManager.set('test1', () => {}, 1000);
             intervalManager.set('test2', () => {}, 2000);
 
@@ -611,12 +689,20 @@ describe('Content Script Utilities', () => {
             expect(DEFAULT_PLATFORM_CONFIGS.disneyplus).toBeDefined();
 
             expect(DEFAULT_PLATFORM_CONFIGS.netflix.name).toBe('netflix');
-            expect(DEFAULT_PLATFORM_CONFIGS.netflix.injectScript.filename).toBe('injected_scripts/netflixInject.js');
-            expect(DEFAULT_PLATFORM_CONFIGS.netflix.navigation.spaHandling).toBe(true);
+            expect(DEFAULT_PLATFORM_CONFIGS.netflix.injectScript.filename).toBe(
+                'injected_scripts/netflixInject.js'
+            );
+            expect(
+                DEFAULT_PLATFORM_CONFIGS.netflix.navigation.spaHandling
+            ).toBe(true);
 
             expect(DEFAULT_PLATFORM_CONFIGS.disneyplus.name).toBe('disneyplus');
-            expect(DEFAULT_PLATFORM_CONFIGS.disneyplus.injectScript.filename).toBe('injected_scripts/disneyPlusInject.js');
-            expect(DEFAULT_PLATFORM_CONFIGS.disneyplus.navigation.spaHandling).toBe(false);
+            expect(
+                DEFAULT_PLATFORM_CONFIGS.disneyplus.injectScript.filename
+            ).toBe('injected_scripts/disneyPlusInject.js');
+            expect(
+                DEFAULT_PLATFORM_CONFIGS.disneyplus.navigation.spaHandling
+            ).toBe(false);
         });
     });
 
@@ -624,7 +710,7 @@ describe('Content Script Utilities', () => {
         test('should properly clean up intervals in IntervalManager', () => {
             const intervalManager = new IntervalManager();
             const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
-            
+
             // Set multiple intervals
             intervalManager.set('test1', () => {}, 1000);
             intervalManager.set('test2', () => {}, 2000);
@@ -643,7 +729,7 @@ describe('Content Script Utilities', () => {
 
         test('should handle EventBuffer memory management', () => {
             const buffer = new EventBuffer(console.log, 5, 1000);
-            
+
             // Add events and test memory management
             for (let i = 0; i < 10; i++) {
                 buffer.add({ type: 'test', data: i });
@@ -651,7 +737,7 @@ describe('Content Script Utilities', () => {
 
             // Should manage memory by limiting size
             expect(buffer.size()).toBeLessThanOrEqual(8); // Allow for implementation behavior
-            
+
             // Should provide stats
             const stats = buffer.getStats();
             expect(stats.size).toBeGreaterThan(0);

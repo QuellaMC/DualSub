@@ -13,7 +13,7 @@ export class ContentScriptError extends Error {
         this.code = code;
         this.context = context;
         this.timestamp = new Date().toISOString();
-        
+
         // Maintain proper stack trace
         if (Error.captureStackTrace) {
             Error.captureStackTrace(this, this.constructor);
@@ -31,7 +31,7 @@ export class ContentScriptError extends Error {
             code: this.code,
             context: this.context,
             timestamp: this.timestamp,
-            stack: this.stack
+            stack: this.stack,
         };
     }
 }
@@ -103,7 +103,7 @@ export class ErrorHandler {
             code: error.code || 'UNKNOWN',
             context: { ...error.context, ...context },
             count: count + 1,
-            stack: error.stack
+            stack: error.stack,
         };
 
         this.logger('Error handled', errorInfo);
@@ -148,15 +148,17 @@ export class ErrorHandler {
      * @returns {Object} An object containing error statistics.
      */
     getStats() {
-        const errors = Array.from(this.errorCounts.entries()).map(([key, count]) => {
-            const [name, message] = key.split(':');
-            return { name, message, count };
-        });
+        const errors = Array.from(this.errorCounts.entries()).map(
+            ([key, count]) => {
+                const [name, message] = key.split(':');
+                return { name, message, count };
+            }
+        );
 
         return {
             totalErrors: errors.reduce((sum, e) => sum + e.count, 0),
             uniqueErrors: errors.length,
-            errors
+            errors,
         };
     }
 
