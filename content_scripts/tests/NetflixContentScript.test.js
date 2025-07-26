@@ -239,7 +239,7 @@ describe('NetflixContentScript Comprehensive Tests', () => {
 
             // Should log setup completion
             expect(consoleLogSpy).toHaveBeenCalledWith(
-                expect.stringContaining('Enhanced Netflix navigation detection set up'),
+                expect.stringContaining('Enhanced Netflix navigation detection is set up.'),
                 expect.any(Object)
             );
         });
@@ -486,7 +486,7 @@ describe('NetflixContentScript Comprehensive Tests', () => {
                 success: true,
                 handled: false,
                 platform: 'netflix',
-                message: 'No platform-specific handling required'
+                message: 'No platform-specific handling required.'
             });
         });
 
@@ -566,7 +566,7 @@ describe('NetflixContentScript Comprehensive Tests', () => {
             expect(intervalManagerClearSpy).toHaveBeenCalled();
             expect(netflixScript.logWithFallback).toHaveBeenCalledWith(
                 'error',
-                'Error during Netflix-specific cleanup',
+                'Error during Netflix-specific cleanup.',
                 expect.objectContaining({
                     error: expect.any(Error)
                 })

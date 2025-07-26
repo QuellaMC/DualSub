@@ -102,7 +102,7 @@ describe('EventListenerManager', () => {
             eventManager.addEventListener(testElement, 'click', errorHandler);
             testElement.click();
 
-            expect(mockLogger).toHaveBeenCalledWith('error', '[EventListenerManager:netflix] Error in event listener', expect.any(Object));
+            expect(mockLogger).toHaveBeenCalledWith('error', '[EventListenerManager:netflix] Error in event listener.', expect.any(Object));
         });
 
         test('should return null for invalid parameters', () => {
@@ -142,7 +142,7 @@ describe('EventListenerManager', () => {
             const success = eventManager.removeEventListener('non-existent-id');
             
             expect(success).toBe(false);
-            expect(mockLogger).toHaveBeenCalledWith('warn', '[EventListenerManager:netflix] Listener not found for removal', { listenerId: 'non-existent-id' });
+            expect(mockLogger).toHaveBeenCalledWith('warn', '[EventListenerManager:netflix] Listener not found for removal.', { listenerId: 'non-existent-id' });
         });
     });
 
@@ -418,7 +418,7 @@ describe('CustomEventDispatcher', () => {
             const notifiedCount = dispatcher.dispatchEvent('non-existent-event', 'data');
             
             expect(notifiedCount).toBe(0);
-            expect(mockLogger).toHaveBeenCalledWith('debug', '[CustomEventDispatcher:netflix] No listeners for custom event', { eventType: 'non-existent-event' });
+            expect(mockLogger).toHaveBeenCalledWith('debug', '[CustomEventDispatcher:netflix] No listeners for custom event.', { eventType: 'non-existent-event' });
         });
 
         test('should handle listener errors gracefully', () => {
@@ -434,7 +434,7 @@ describe('CustomEventDispatcher', () => {
 
             expect(notifiedCount).toBe(2); // Both handlers are attempted, but one fails
             expect(normalHandler).toHaveBeenCalledWith('data');
-            expect(mockLogger).toHaveBeenCalledWith('error', '[CustomEventDispatcher:netflix] Error in custom event listener', expect.any(Object));
+            expect(mockLogger).toHaveBeenCalledWith('error', '[CustomEventDispatcher:netflix] Error in custom event listener.', expect.any(Object));
         });
 
         test('should support async dispatch', (done) => {
@@ -471,7 +471,7 @@ describe('CustomEventDispatcher', () => {
             const success = dispatcher.removeEventListener('test-event', 'non-existent-id');
             
             expect(success).toBe(false);
-            expect(mockLogger).toHaveBeenCalledWith('warn', '[CustomEventDispatcher:netflix] Custom event listener not found', expect.any(Object));
+            expect(mockLogger).toHaveBeenCalledWith('warn', '[CustomEventDispatcher:netflix] Custom event listener not found.', expect.any(Object));
         });
     });
 

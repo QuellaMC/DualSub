@@ -120,14 +120,14 @@ import {
     analyzeConfigChanges,
     injectScript,
     isExtensionContextValid,
-    safeChromeApiCall,
-    COMMON_CONSTANTS
+    safeChromeApiCall
 } from './utils.js';
+import { COMMON_CONSTANTS } from './constants.js';
 
 export class BaseContentScript {
     /**
-     * Creates a new BaseContentScript instance
-     * @param {string} logPrefix - The log prefix for this content script (e.g., 'NetflixContent')
+     * Creates a new BaseContentScript instance.
+     * @param {string} logPrefix - The log prefix for this content script (e.g., 'NetflixContent').
      */
     constructor(logPrefix) {
         if (new.target === BaseContentScript) {
@@ -146,7 +146,7 @@ export class BaseContentScript {
     }
 
     /**
-     * Initialize core properties
+     * Initializes core properties for the content script instance.
      * @private
      */
     _initializeCoreProperties() {
@@ -156,7 +156,7 @@ export class BaseContentScript {
     }
 
     /**
-     * Initialize module references
+     * Initializes references to dynamically loaded modules.
      * @private
      */
     _initializeModuleReferences() {
@@ -166,7 +166,7 @@ export class BaseContentScript {
     }
 
     /**
-     * Initialize video detection state
+     * Initializes state related to video element detection.
      * @private
      */
     _initializeVideoDetectionState() {
@@ -177,7 +177,7 @@ export class BaseContentScript {
     }
 
     /**
-     * Initialize event handling properties
+     * Initializes properties for event handling and buffering.
      * @private
      */
     _initializeEventHandling() {
@@ -189,7 +189,7 @@ export class BaseContentScript {
     }
 
     /**
-     * Initialize navigation state
+     * Initializes state related to navigation and URL tracking.
      * @private
      */
     _initializeNavigationState() {
@@ -198,7 +198,7 @@ export class BaseContentScript {
     }
 
     /**
-     * Initialize managers
+     * Initializes manager instances for intervals and observers.
      * @private
      */
     _initializeManagers() {
@@ -207,14 +207,13 @@ export class BaseContentScript {
     }
 
     /**
-     * Initialize cleanup tracking
+     * Initializes properties for tracking cleanup state.
      * @private
      */
     _initializeCleanupTracking() {
         this.isCleanedUp = false;
         this.passiveVideoObserver = null;
         
-        // Initialize AbortController with fallback for environments that don't support it
         try {
             this.abortController = new AbortController();
         } catch (error) {
@@ -224,8 +223,7 @@ export class BaseContentScript {
     }
 
     /**
-     * Initialize Chrome message handling
-     * Sets up extensible message handler registry with action-based routing
+     * Initializes the Chrome message handling system.
      * @private
      */
     _initializeMessageHandling() {
@@ -236,82 +234,75 @@ export class BaseContentScript {
     }
 
     /**
-     * Setup common message handlers for all platforms
-     * Registers extensible message handlers with action-based routing for common functionality
+     * Sets up common message handlers for all platforms.
      * @private
      */
     _setupCommonMessageHandlers() {
-        // Define common handlers with their configurations
         const commonHandlers = [
             {
                 action: 'toggleSubtitles',
                 handler: this.handleToggleSubtitles.bind(this),
                 requiresUtilities: true,
-                description: 'Toggle subtitle display on/off and manage platform initialization'
+                description: 'Toggle subtitle display and manage platform initialization.'
             },
             {
                 action: 'configChanged',
                 handler: this.handleConfigChanged.bind(this),
                 requiresUtilities: true,
-                description: 'Handle configuration changes and apply them immediately'
+                description: 'Handle and apply configuration changes immediately.'
             },
             {
                 action: 'LOGGING_LEVEL_CHANGED',
                 handler: this.handleLoggingLevelChanged.bind(this),
                 requiresUtilities: false,
-                description: 'Update logging level for content script logger'
+                description: 'Update logging level for the content script logger.'
             }
         ];
 
-        // Register all handlers
         commonHandlers.forEach(({ action, handler, requiresUtilities, description }) => {
             this.registerMessageHandler(action, handler, { requiresUtilities, description });
         });
     }
 
     /**
-     * Attach Chrome message listener
+     * Attaches the listener for incoming Chrome messages.
      * @private
      */
     _attachChromeMessageListener() {
-        // Only attach listener if Chrome API is available (not in test environment)
         if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
-            chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-                return this.handleChromeMessage(request, sender, sendResponse);
-            });
-            this.logWithFallback('debug', 'Chrome message listener attached');
+            chrome.runtime.onMessage.addListener(this.handleChromeMessage.bind(this));
+            this.logWithFallback('debug', 'Chrome message listener attached.');
         } else {
-            this.logWithFallback('debug', 'Chrome API not available, skipping message listener attachment');
+            this.logWithFallback('debug', 'Chrome API not available, skipping message listener attachment.');
         }
     }
 
     /**
-     * Register a message handler for a specific action/type
-     * Supports extensible message handler registry with action-based routing
-     * @param {string} action - The action or type to handle
-     * @param {Function} handler - The handler function that takes (request, sendResponse) and returns boolean for async handling
-     * @param {Object} options - Optional configuration for the handler
-     * @param {boolean} options.requiresUtilities - Whether handler requires utilities to be loaded (default: true)
-     * @param {string} options.description - Description of what this handler does
+     * Registers a message handler for a specific action.
+     * @param {string} action - The action to handle.
+     * @param {Function} handler - The handler function `(request, sendResponse) => boolean`.
+     * @param {Object} [options] - Optional configuration.
+     * @param {boolean} [options.requiresUtilities=true] - Whether the handler requires utilities to be loaded.
+     * @param {string} [options.description] - A description of the handler.
      */
     registerMessageHandler(action, handler, options = {}) {
         if (typeof action !== 'string' || !action.trim()) {
-            throw new Error('Action must be a non-empty string');
+            throw new Error('Action must be a non-empty string.');
         }
         
         if (typeof handler !== 'function') {
-            throw new Error('Handler must be a function');
+            throw new Error('Handler must be a function.');
         }
 
         const handlerConfig = {
             handler,
-            requiresUtilities: options.requiresUtilities !== false, // Default to true
+            requiresUtilities: options.requiresUtilities !== false,
             description: options.description || `Handler for ${action}`,
             registeredAt: new Date().toISOString()
         };
 
         this.messageHandlers.set(action, handlerConfig);
-        this.logWithFallback('debug', 'Registered message handler', { 
+        this.logWithFallback('debug', 'Registered message handler.', { 
             action, 
             requiresUtilities: handlerConfig.requiresUtilities,
             description: handlerConfig.description
@@ -319,62 +310,56 @@ export class BaseContentScript {
     }
 
     /**
-     * Unregister a message handler
-     * @param {string} action - The action or type to unregister
-     * @returns {boolean} Whether a handler was actually removed
+     * Unregisters a message handler for a specific action.
+     * @param {string} action - The action to unregister.
+     * @returns {boolean} `true` if a handler was removed, otherwise `false`.
      */
     unregisterMessageHandler(action) {
         const removed = this.messageHandlers.delete(action);
         if (removed) {
-            this.logWithFallback('debug', 'Unregistered message handler', { action });
+            this.logWithFallback('debug', 'Unregistered message handler.', { action });
         } else {
-            this.logWithFallback('warn', 'Attempted to unregister non-existent message handler', { action });
+            this.logWithFallback('warn', 'Attempted to unregister non-existent message handler.', { action });
         }
         return removed;
     }
 
     /**
-     * Get information about registered message handlers
-     * @returns {Array<Object>} Array of handler information
+     * Gets information about all registered message handlers.
+     * @returns {Array<Object>} An array of handler information objects.
      */
     getRegisteredHandlers() {
-        const handlers = [];
-        for (const [action, config] of this.messageHandlers.entries()) {
-            handlers.push({
-                action,
-                requiresUtilities: config.requiresUtilities,
-                description: config.description,
-                registeredAt: config.registeredAt
-            });
-        }
-        return handlers;
+        return Array.from(this.messageHandlers.entries()).map(([action, config]) => ({
+            action,
+            requiresUtilities: config.requiresUtilities,
+            description: config.description,
+            registeredAt: config.registeredAt
+        }));
     }
 
     /**
-     * Check if a message handler is registered for a specific action
-     * @param {string} action - The action to check
-     * @returns {boolean} Whether a handler is registered
+     * Checks if a message handler is registered for a specific action.
+     * @param {string} action - The action to check.
+     * @returns {boolean} `true` if a handler is registered, otherwise `false`.
      */
     hasMessageHandler(action) {
         return this.messageHandlers.has(action);
     }
 
     /**
-     * Register platform-specific message handlers
-     * This method should be called by subclasses to register their own message handlers
+     * Registers platform-specific message handlers.
+     * Subclasses can override this method to register their own handlers.
      * @protected
      */
     registerPlatformMessageHandlers() {
-        // Default implementation does nothing
-        // Subclasses can override this to register platform-specific handlers
-        this.logWithFallback('debug', 'No platform-specific message handlers registered');
+        this.logWithFallback('debug', 'No platform-specific message handlers to register.');
     }
 
     /**
-     * Initialize fallback console logging until Logger is loaded
-     * @param {string} level - Log level (error, warn, info, debug)
-     * @param {string} message - Log message
-     * @param {Object} data - Additional data to log
+     * Logs a message, falling back to `console.log` if the logger is not yet initialized.
+     * @param {string} level - The log level ('error', 'warn', 'info', 'debug').
+     * @param {string} message - The log message.
+     * @param {Object} [data={}] - Additional data to log.
      */
     logWithFallback(level, message, data = {}) {
         if (this.contentLogger) {
@@ -411,37 +396,34 @@ export class BaseContentScript {
     // ========================================
 
     /**
-     * Get the platform name (e.g., 'netflix', 'disneyplus')
+     * Get the platform name (e.g., 'netflix', 'disneyplus').
      * @abstract
-     * @returns {string} Platform name
+     * @returns {string} The platform name.
      */
     getPlatformName() {
         throw new Error('getPlatformName() must be implemented by subclass');
     }
 
     /**
-     * Get the platform class constructor
+     * Get the platform class constructor name.
      * @abstract
-     * @returns {Function} Platform class constructor
+     * @returns {string} The platform class constructor name.
      */
     getPlatformClass() {
         throw new Error('getPlatformClass() must be implemented by subclass');
     }
 
     /**
-     * Get the inject script configuration
+     * Get the inject script configuration.
      * @abstract
-     * @returns {Object} Inject script configuration
-     * @returns {string} returns.filename - Path to inject script
-     * @returns {string} returns.tagId - DOM element ID for script tag
-     * @returns {string} returns.eventId - Custom event ID for communication
+     * @returns {{filename: string, tagId: string, eventId: string}} The inject script configuration.
      */
     getInjectScriptConfig() {
         throw new Error('getInjectScriptConfig() must be implemented by subclass');
     }
 
     /**
-     * Setup platform-specific navigation detection
+     * Set up platform-specific navigation detection.
      * @abstract
      */
     setupNavigationDetection() {
@@ -449,7 +431,7 @@ export class BaseContentScript {
     }
 
     /**
-     * Check for URL changes (platform-specific implementation)
+     * Check for URL changes with platform-specific logic.
      * @abstract
      */
     checkForUrlChange() {
@@ -457,11 +439,11 @@ export class BaseContentScript {
     }
 
     /**
-     * Handle platform-specific Chrome messages
+     * Handle platform-specific Chrome messages.
      * @abstract
-     * @param {Object} request - Chrome message request
-     * @param {Function} sendResponse - Response callback
-     * @returns {boolean} Whether response is handled asynchronously
+     * @param {Object} request - The Chrome message request.
+     * @param {Function} sendResponse - The callback to send a response.
+     * @returns {boolean} `true` if the response is sent asynchronously, otherwise `false`.
      */
     handlePlatformSpecificMessage(request, sendResponse) { // eslint-disable-line no-unused-vars
         throw new Error('handlePlatformSpecificMessage() must be implemented by subclass');
@@ -472,78 +454,38 @@ export class BaseContentScript {
     // ========================================
 
     /**
-     * Main initialization method - template method pattern
-     * Orchestrates the complete initialization flow
+     * Main initialization method that orchestrates the entire setup process.
+     * This is a template method and should not be overridden by subclasses.
+     * @returns {Promise<boolean>} A promise that resolves to `true` if initialization is successful, otherwise `false`.
      */
     async initialize() {
         try {
             this.logWithFallback('info', 'Starting content script initialization');
 
-            // Step 1: Initialize core modules
-            this.logWithFallback('debug', 'Step 1: Initializing core modules');
-            const coreSuccess = await this.initializeCore();
-            if (!coreSuccess) {
-                this.logWithFallback('error', 'Initialization failed at Step 1: initializeCore');
+            if (!await this.initializeCore()) {
+                this.logWithFallback('error', 'Initialization failed at core module setup.');
                 return false;
             }
-            this.logWithFallback('debug', 'Step 1: Core modules initialized successfully');
 
-            // Step 2: Initialize configuration
-            this.logWithFallback('debug', 'Step 2: Initializing configuration');
-            const configSuccess = await this.initializeConfiguration();
-            if (!configSuccess) {
-                this.logWithFallback('error', 'Initialization failed at Step 2: initializeConfiguration');
+            if (!await this.initializeConfiguration()) {
+                this.logWithFallback('error', 'Initialization failed at configuration setup.');
                 return false;
             }
-            this.logWithFallback('debug', 'Step 2: Configuration initialized successfully');
 
-            // Step 3: Initialize event handling
-            this.logWithFallback('debug', 'Step 3: Initializing event handling');
-            const eventSuccess = await this.initializeEventHandling();
-            if (!eventSuccess) {
-                this.logWithFallback('error', 'Initialization failed at Step 3: initializeEventHandling');
+            if (!await this.initializeEventHandling()) {
+                this.logWithFallback('error', 'Initialization failed at event handling setup.');
                 return false;
             }
-            this.logWithFallback('debug', 'Step 3: Event handling initialized successfully');
 
-            // Step 4: Initialize observers
-            this.logWithFallback('debug', 'Step 4: Initializing observers');
-            const observerSuccess = await this.initializeObservers();
-            if (!observerSuccess) {
-                this.logWithFallback('error', 'Initialization failed at Step 4: initializeObservers');
+            if (!await this.initializeObservers()) {
+                this.logWithFallback('error', 'Initialization failed at observer setup.');
                 return false;
             }
-            this.logWithFallback('debug', 'Step 4: Observers initialized successfully');
 
             this.logWithFallback('info', 'Content script initialization completed successfully');
             return true;
-
         } catch (error) {
-            this.logWithFallback('error', 'Error during initialization', { 
-                error: error.message,
-                stack: error.stack,
-                name: error.name
-            });
-            return false;
-        }
-    }
-
-    /**
-     * Initialize core modules and services
-     * @returns {Promise<boolean>} Success status
-     */
-    async initializeCore() {
-        try {
-            this.logWithFallback('debug', 'Loading required modules...');
-            const modulesLoaded = await this.loadModules();
-            if (!modulesLoaded) {
-                this.logWithFallback('error', 'Failed to load required modules');
-                return false;
-            }
-            this.logWithFallback('debug', 'All required modules loaded successfully');
-            return true;
-        } catch (error) {
-            this.logWithFallback('error', 'Error in initializeCore', {
+            this.logWithFallback('error', 'An unexpected error occurred during initialization.', { 
                 error: error.message,
                 stack: error.stack
             });
@@ -552,24 +494,46 @@ export class BaseContentScript {
     }
 
     /**
-     * Initialize configuration and listeners
-     * @returns {Promise<boolean>} Success status
+     * Initializes core modules and services.
+     * @returns {Promise<boolean>} `true` on success, `false` on failure.
+     */
+    async initializeCore() {
+        try {
+            this.logWithFallback('debug', 'Loading required modules...');
+            if (!await this.loadModules()) {
+                this.logWithFallback('error', 'Failed to load required modules.');
+                return false;
+            }
+            this.logWithFallback('debug', 'All required modules loaded successfully.');
+            return true;
+        } catch (error) {
+            this.logWithFallback('error', 'Error initializing core modules.', {
+                error: error.message,
+                stack: error.stack
+            });
+            return false;
+        }
+    }
+
+    /**
+     * Initializes configuration and sets up listeners for changes.
+     * @returns {Promise<boolean>} `true` on success, `false` on failure.
      */
     async initializeConfiguration() {
         try {
             this.logWithFallback('debug', 'Loading configuration from configService...');
             this.currentConfig = await this.configService.getAll();
             this._normalizeConfiguration();
-            this.logWithFallback('info', 'Loaded initial configuration', {
+            this.logWithFallback('info', 'Loaded initial configuration.', {
                 config: this.currentConfig
             });
             
             this.logWithFallback('debug', 'Setting up configuration listeners...');
             this.setupConfigurationListeners();
-            this.logWithFallback('debug', 'Configuration listeners set up successfully');
+            this.logWithFallback('debug', 'Configuration listeners set up successfully.');
             return true;
         } catch (error) {
-            this.logWithFallback('error', 'Error in initializeConfiguration', {
+            this.logWithFallback('error', 'Error initializing configuration.', {
                 error: error.message,
                 stack: error.stack
             });
@@ -578,25 +542,24 @@ export class BaseContentScript {
     }
 
     /**
-     * Initialize event handling and platform
-     * @returns {Promise<boolean>} Success status
+     * Initializes event handling and the platform-specific logic.
+     * @returns {Promise<boolean>} `true` on success, `false` on failure.
      */
     async initializeEventHandling() {
         try {
             this.logWithFallback('debug', 'Setting up early event handling...');
             this.setupEarlyEventHandling();
-            this.logWithFallback('debug', 'Early event handling set up successfully');
+            this.logWithFallback('debug', 'Early event handling set up successfully.');
 
             if (this.currentConfig.subtitlesEnabled) {
                 this.logWithFallback('debug', 'Subtitles enabled, initializing platform...');
                 await this.initializePlatform();
-                this.logWithFallback('debug', 'Platform initialization completed');
             } else {
-                this.logWithFallback('debug', 'Subtitles disabled, skipping platform initialization');
+                this.logWithFallback('debug', 'Subtitles disabled, skipping platform initialization.');
             }
             return true;
         } catch (error) {
-            this.logWithFallback('error', 'Error in initializeEventHandling', {
+            this.logWithFallback('error', 'Error initializing event handling.', {
                 error: error.message,
                 stack: error.stack
             });
@@ -605,26 +568,26 @@ export class BaseContentScript {
     }
 
     /**
-     * Initialize observers and cleanup handlers
-     * @returns {Promise<boolean>} Success status
+     * Initializes observers and cleanup handlers.
+     * @returns {Promise<boolean>} `true` on success, `false` on failure.
      */
     async initializeObservers() {
         try {
             this.logWithFallback('debug', 'Setting up navigation detection...');
             this.setupNavigationDetection();
-            this.logWithFallback('debug', 'Navigation detection set up successfully');
+            this.logWithFallback('debug', 'Navigation detection set up successfully.');
 
             this.logWithFallback('debug', 'Setting up DOM observation...');
             this.setupDOMObservation();
-            this.logWithFallback('debug', 'DOM observation set up successfully');
+            this.logWithFallback('debug', 'DOM observation set up successfully.');
 
             this.logWithFallback('debug', 'Setting up cleanup handlers...');
             this.setupCleanupHandlers();
-            this.logWithFallback('debug', 'Cleanup handlers set up successfully');
+            this.logWithFallback('debug', 'Cleanup handlers set up successfully.');
 
             return true;
         } catch (error) {
-            this.logWithFallback('error', 'Error in initializeObservers', {
+            this.logWithFallback('error', 'Error initializing observers.', {
                 error: error.message,
                 stack: error.stack
             });
@@ -633,91 +596,65 @@ export class BaseContentScript {
     }
 
     /**
-     * Load required modules dynamically
-     * @returns {Promise<boolean>} Success status
+     * Loads required modules dynamically.
+     * @returns {Promise<boolean>} `true` on success, `false` on failure.
      */
     async loadModules() {
         try {
-            this.logWithFallback('debug', 'Loading subtitle utilities...');
             await this._loadSubtitleUtilities();
-            this.logWithFallback('debug', 'Subtitle utilities loaded successfully');
-
-            this.logWithFallback('debug', 'Loading platform class...');
             await this._loadPlatformClass();
-            this.logWithFallback('debug', 'Platform class loaded successfully');
-
-            this.logWithFallback('debug', 'Loading config service...');
             await this._loadConfigService();
-            this.logWithFallback('debug', 'Config service loaded successfully');
-
-            this.logWithFallback('debug', 'Loading and initializing logger...');
             await this._loadAndInitializeLogger();
-            this.logWithFallback('debug', 'Logger loaded and initialized successfully');
-
             return true;
         } catch (error) {
-            this.logWithFallback('error', 'Error loading modules', { 
+            this.logWithFallback('error', 'Error loading modules.', { 
                 error: error.message,
-                stack: error.stack,
-                name: error.name
+                stack: error.stack
             });
             return false;
         }
     }
 
     /**
-     * Load subtitle utilities module
+     * Loads the subtitle utilities module.
      * @private
      */
     async _loadSubtitleUtilities() {
         try {
             const utilsUrl = chrome.runtime.getURL('content_scripts/shared/subtitleUtilities.js');
-            this.logWithFallback('debug', 'Loading subtitle utilities from:', { url: utilsUrl });
+            this.logWithFallback('debug', 'Loading subtitle utilities.', { url: utilsUrl });
             const utilsModule = await import(utilsUrl);
             this.subtitleUtils = utilsModule;
-            this.logWithFallback('debug', 'Subtitle utilities module loaded successfully');
         } catch (error) {
-            this.logWithFallback('error', 'Failed to load subtitle utilities', {
-                error: error.message,
-                stack: error.stack
+            this.logWithFallback('error', 'Failed to load subtitle utilities.', {
+                error: error.message
             });
             throw error;
         }
     }
 
     /**
-     * Load platform-specific class
+     * Loads the platform-specific class.
      * @private
      */
     async _loadPlatformClass() {
         try {
             const platformName = this.getPlatformName();
             const fileName = this._getPlatformFileName(platformName);
-            const className = this._getPlatformClassName(platformName);
+            const className = this.getPlatformClass();
             const platformUrl = chrome.runtime.getURL(`video_platforms/${fileName}`);
             
-            this.logWithFallback('debug', 'Loading platform class', {
-                platformName,
-                fileName,
-                className,
-                url: platformUrl
-            });
+            this.logWithFallback('debug', 'Loading platform class.', { platformName, fileName, className, url: platformUrl });
             
             const platformModule = await import(platformUrl);
             this.PlatformClass = platformModule[className];
             
             if (!this.PlatformClass) {
-                throw new Error(`Platform class '${className}' not found in module`);
+                throw new Error(`Platform class '${className}' not found in module.`);
             }
-            
-            this.logWithFallback('debug', 'Platform class loaded successfully', {
-                className,
-                hasClass: !!this.PlatformClass
-            });
         } catch (error) {
-            this.logWithFallback('error', 'Failed to load platform class', {
+            this.logWithFallback('error', 'Failed to load platform class.', {
                 error: error.message,
-                stack: error.stack,
                 platformName: this.getPlatformName()
             });
             throw error;
@@ -725,100 +662,78 @@ export class BaseContentScript {
     }
 
     /**
-     * Get platform file name from platform name
+     * Gets the platform file name from the platform name.
      * @private
-     * @param {string} platformName - Platform name
-     * @returns {string} File name
+     * @param {string} platformName - The name of the platform.
+     * @returns {string} The corresponding file name.
      */
     _getPlatformFileName(platformName) {
-        // Handle special case for Disney+ where the file is disneyPlusPlatform.js
-        if (platformName === 'disneyplus') {
-            return 'disneyPlusPlatform.js';
-        }
-        if (platformName === 'netflix') {
-            return 'netflixPlatform.js';
-        }
-        // Default case: capitalize first letter and add Platform.js
+        if (platformName === 'disneyplus') return 'disneyPlusPlatform.js';
+        if (platformName === 'netflix') return 'netflixPlatform.js';
         return `${platformName.charAt(0).toUpperCase()}${platformName.slice(1)}Platform.js`;
     }
 
     /**
-     * Get platform class name from platform name
+     * Gets the platform class name from the platform name.
      * @private
-     * @param {string} platformName - Platform name
-     * @returns {string} Class name
+     * @param {string} platformName - The name of the platform.
+     * @returns {string} The corresponding class name.
      */
     _getPlatformClassName(platformName) {
-        // Handle special case for Disney+ where the class is DisneyPlusPlatform
-        if (platformName === 'disneyplus') {
-            return 'DisneyPlusPlatform';
-        }
-        if (platformName === 'netflix') {
-            return 'NetflixPlatform';
-        }
-        // Default case: capitalize first letter and add Platform
-        return `${platformName.charAt(0).toUpperCase()}${platformName.slice(1)}Platform`;
+        return this.getPlatformClass();
     }
 
     /**
-     * Load configuration service
+     * Loads the configuration service.
      * @private
      */
     async _loadConfigService() {
         try {
             const configUrl = chrome.runtime.getURL('services/configService.js');
-            this.logWithFallback('debug', 'Loading config service from:', { url: configUrl });
+            this.logWithFallback('debug', 'Loading config service.', { url: configUrl });
             const configModule = await import(configUrl);
             this.configService = configModule.configService;
             
             if (!this.configService) {
-                throw new Error('configService not found in module');
+                throw new Error('configService not found in module.');
             }
-            
-            this.logWithFallback('debug', 'Config service loaded successfully');
         } catch (error) {
-            this.logWithFallback('error', 'Failed to load config service', {
-                error: error.message,
-                stack: error.stack
+            this.logWithFallback('error', 'Failed to load config service.', {
+                error: error.message
             });
             throw error;
         }
     }
 
     /**
-     * Load and initialize logger
+     * Loads and initializes the logger.
      * @private
      */
     async _loadAndInitializeLogger() {
         try {
             const loggerUrl = chrome.runtime.getURL('utils/logger.js');
-            this.logWithFallback('debug', 'Loading logger from:', { url: loggerUrl });
+            this.logWithFallback('debug', 'Loading logger.', { url: loggerUrl });
             const loggerModule = await import(loggerUrl);
             const Logger = loggerModule.default;
             
             if (!Logger) {
-                throw new Error('Logger not found in module');
+                throw new Error('Logger not found in module.');
             }
             
-            this.logWithFallback('debug', 'Creating logger instance with prefix:', { prefix: this.logPrefix });
             this.contentLogger = Logger.create(this.logPrefix);
-            
-            this.logWithFallback('debug', 'Initializing logger level...');
             await this._initializeLoggerLevel(Logger);
-            this.logWithFallback('debug', 'Logger initialized successfully');
         } catch (error) {
-            this.logWithFallback('error', 'Failed to load and initialize logger', {
-                error: error.message,
-                stack: error.stack
+            this.logWithFallback('error', 'Failed to load and initialize logger.', {
+                error: error.message
             });
             throw error;
         }
     }
 
     /**
-     * Initialize logger level from configuration
+     * Initializes the logger level from configuration.
      * @private
-     * @param {Object} Logger - Logger class
+     * @param {Object} Logger - The Logger class.
      */
     async _initializeLoggerLevel(Logger) {
         try {
@@ -1760,17 +1675,12 @@ export class BaseContentScript {
             
             this.subtitleUtils.setSubtitlesActive(request.enabled);
 
-            if (!request.enabled) {
-                return this._disableSubtitles(sendResponse, request.enabled);
-            } else {
-                return this._enableSubtitles(sendResponse, request.enabled);
-            }
+            return request.enabled 
+                ? this._enableSubtitles(sendResponse, request.enabled)
+                : this._disableSubtitles(sendResponse, request.enabled);
         } catch (error) {
             this.logWithFallback('error', 'Error in handleToggleSubtitles', { error: error.message });
-            sendResponse({
-                success: false,
-                error: error.message
-            });
+            sendResponse({ success: false, error: error.message });
             return false;
         }
     }
@@ -1785,24 +1695,13 @@ export class BaseContentScript {
         try {
             this.logWithFallback('debug', 'Handling config changed', { changes: request.changes });
 
-            if (
-                request.changes &&
-                this.activePlatform &&
-                this.subtitleUtils.subtitlesActive
-            ) {
-                // Update local config with the changes for immediate effect
+            if (request.changes && this.activePlatform && this.subtitleUtils.subtitlesActive) {
                 Object.assign(this.currentConfig, request.changes);
                 
-                // Handle backward compatibility for useNativeSubtitles -> useOfficialTranslations
-                if (request.changes.useNativeSubtitles !== undefined && 
-                    request.changes.useOfficialTranslations === undefined) {
+                if (request.changes.useNativeSubtitles !== undefined && request.changes.useOfficialTranslations === undefined) {
                     this.currentConfig.useOfficialTranslations = request.changes.useNativeSubtitles;
-                    this.logWithFallback('debug', 'Normalized useOfficialTranslations from immediate change', {
-                        value: this.currentConfig.useOfficialTranslations
-                    });
                 }
 
-                // Apply the changes immediately for instant visual feedback
                 this.subtitleUtils.applySubtitleStyling(this.currentConfig);
                 const videoElement = this.activePlatform.getVideoElement();
                 if (videoElement) {
@@ -1814,17 +1713,14 @@ export class BaseContentScript {
                     );
                 }
                 this.logWithFallback('info', 'Applied immediate config changes', {
-                    changes: request.changes,
+                    changes: request.changes
                 });
             }
             sendResponse({ success: true });
             return false;
         } catch (error) {
             this.logWithFallback('error', 'Error in handleConfigChanged', { error: error.message });
-            sendResponse({
-                success: false,
-                error: error.message
-            });
+            sendResponse({ success: false, error: error.message });
             return false;
         }
     }
@@ -1857,10 +1753,7 @@ export class BaseContentScript {
             return false;
         } catch (error) {
             this.logWithFallback('error', 'Error in handleLoggingLevelChanged', { error: error.message });
-            sendResponse({
-                success: false,
-                error: error.message
-            });
+            sendResponse({ success: false, error: error.message });
             return false;
         }
     }
@@ -1882,13 +1775,10 @@ export class BaseContentScript {
         );
         if (this.activePlatform) {
             this.activePlatform.cleanup();
+            this.activePlatform = null;
         }
-        this.activePlatform = null;
         this.platformReady = false;
-        sendResponse({
-            success: true,
-            subtitlesEnabled: enabled,
-        });
+        sendResponse({ success: true, subtitlesEnabled: enabled });
         return false;
     }
 
@@ -1902,36 +1792,18 @@ export class BaseContentScript {
     _enableSubtitles(sendResponse, enabled) {
         if (!this.activePlatform) {
             this.initializePlatform()
-                .then(() => {
-                    sendResponse({
-                        success: true,
-                        subtitlesEnabled: enabled,
-                    });
-                })
+                .then(() => sendResponse({ success: true, subtitlesEnabled: enabled }))
                 .catch((error) => {
-                    this.logWithFallback(
-                        'error',
-                        'Error in platform initialization',
-                        { error: error.message }
-                    );
-                    sendResponse({
-                        success: false,
-                        error: error.message,
-                    });
+                    this.logWithFallback('error', 'Error in platform initialization', { error: error.message });
+                    sendResponse({ success: false, error: error.message });
                 });
-            return true; // Async response
-        } else if (this.activePlatform.isPlayerPageActive()) {
-            this.startVideoElementDetection();
-            sendResponse({
-                success: true,
-                subtitlesEnabled: enabled,
-            });
-        } else {
-            sendResponse({
-                success: true,
-                subtitlesEnabled: enabled,
-            });
+            return true;
         }
+        
+        if (this.activePlatform.isPlayerPageActive()) {
+            this.startVideoElementDetection();
+        }
+        sendResponse({ success: true, subtitlesEnabled: enabled });
         return false;
     }
 

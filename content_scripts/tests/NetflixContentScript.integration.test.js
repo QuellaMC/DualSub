@@ -75,7 +75,7 @@ describe('NetflixContentScript Integration Tests', () => {
                 success: true,
                 handled: false,
                 platform: 'netflix',
-                message: 'No platform-specific handling required'
+                message: 'No platform-specific handling required.'
             });
         });
 
@@ -97,7 +97,7 @@ describe('NetflixContentScript Integration Tests', () => {
                 success: true,
                 handled: false,
                 platform: 'netflix',
-                message: 'No platform-specific handling required'
+                message: 'No platform-specific handling required.'
             });
         });
 
@@ -122,7 +122,7 @@ describe('NetflixContentScript Integration Tests', () => {
                 success: true,
                 handled: false,
                 platform: 'netflix',
-                message: 'No platform-specific handling required'
+                message: 'No platform-specific handling required.'
             });
 
             // Should log debug information

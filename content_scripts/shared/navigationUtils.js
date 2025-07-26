@@ -1,10 +1,8 @@
 /**
- * NavigationUtils - Comprehensive navigation detection utilities for streaming platforms
- * 
- * This module provides robust navigation detection capabilities extracted from Netflix's
- * comprehensive implementation, making them available to all platforms. It handles
- * complex SPA routing, history API interception, and multiple detection strategies.
- * 
+ * Provides comprehensive navigation detection utilities for streaming platforms,
+ * handling complex SPA routing, history API interception, and multiple detection
+ * strategies to ensure robust navigation event handling.
+ *
  * @author DualSub Extension
  * @version 1.0.0
  */
@@ -12,44 +10,24 @@
 import { NavigationLogger } from './loggingUtils.js';
 
 /**
- * NavigationDetectionManager - Manages comprehensive navigation detection for streaming platforms
- * 
- * This class provides multiple detection strategies including:
- * - History API interception (pushState/replaceState)
- * - Browser navigation events (popstate, hashchange)
- * - Interval-based URL checking
- * - Focus and visibility events
- * - Extension context validation
- * 
- * @example
- * ```javascript
- * const navigationManager = new NavigationDetectionManager('netflix', {
- *     useHistoryAPI: true,
- *     usePopstateEvents: true,
- *     useIntervalChecking: true,
- *     intervalMs: 1000,
- *     onUrlChange: (oldUrl, newUrl) => console.log('URL changed:', oldUrl, '->', newUrl),
- *     onPageTransition: (wasPlayerPage, isPlayerPage) => console.log('Page transition:', wasPlayerPage, '->', isPlayerPage)
- * });
- * 
- * navigationManager.setupComprehensiveNavigation();
- * ```
+ * Manages comprehensive navigation detection for streaming platforms, using a
+ * combination of strategies to reliably detect URL changes in SPAs.
  */
 export class NavigationDetectionManager {
     /**
-     * Creates a new NavigationDetectionManager instance
-     * @param {string} platform - Platform name (e.g., 'netflix', 'disneyplus')
-     * @param {Object} options - Configuration options
-     * @param {boolean} [options.useHistoryAPI=true] - Enable History API interception
-     * @param {boolean} [options.usePopstateEvents=true] - Enable popstate event listeners
-     * @param {boolean} [options.useIntervalChecking=true] - Enable interval-based URL checking
-     * @param {number} [options.intervalMs=1000] - Interval for URL checking in milliseconds
-     * @param {boolean} [options.useFocusEvents=true] - Enable focus and visibility event listeners
-     * @param {Function} [options.onUrlChange] - Callback for URL changes (oldUrl, newUrl)
-     * @param {Function} [options.onPageTransition] - Callback for page transitions (wasPlayerPage, isPlayerPage)
-     * @param {Function} [options.isPlayerPage] - Function to determine if current page is a player page
-     * @param {Function} [options.logger] - Logger function for debugging
-     * @param {boolean} [options.enableNavigationLogging=true] - Enable enhanced navigation logging
+     * Creates a new `NavigationDetectionManager` instance.
+     * @param {string} platform - The platform name (e.g., 'netflix', 'disneyplus').
+     * @param {Object} [options={}] - Configuration options for the manager.
+     * @param {boolean} [options.useHistoryAPI=true] - Whether to use History API interception.
+     * @param {boolean} [options.usePopstateEvents=true] - Whether to use popstate event listeners.
+     * @param {boolean} [options.useIntervalChecking=true] - Whether to use interval-based URL checking.
+     * @param {number} [options.intervalMs=1000] - The interval for URL checking in milliseconds.
+     * @param {boolean} [options.useFocusEvents=true] - Whether to use focus and visibility event listeners.
+     * @param {Function} [options.onUrlChange] - A callback for URL changes, receiving `(oldUrl, newUrl)`.
+     * @param {Function} [options.onPageTransition] - A callback for page transitions, receiving `(wasPlayerPage, isPlayerPage)`.
+     * @param {Function} [options.isPlayerPage] - A function to determine if the current page is a player page.
+     * @param {Function} [options.logger] - A logger function for debugging.
+     * @param {boolean} [options.enableNavigationLogging=true] - Whether to enable enhanced navigation logging.
      */
     constructor(platform, options = {}) {
         this.platform = platform;
@@ -93,50 +71,40 @@ export class NavigationDetectionManager {
     }
 
     /**
-     * Set up comprehensive navigation detection using all configured strategies
-     * This method combines Netflix's most robust detection mechanisms
+     * Sets up comprehensive navigation detection using all configured strategies.
      */
     setupComprehensiveNavigation() {
         if (this.isSetup) {
-            this._log('warn', 'Navigation detection already set up, skipping');
+            this._log('warn', 'Navigation detection is already set up; skipping.');
             return;
         }
 
-        this._log('info', 'Setting up comprehensive navigation detection', {
+        this._log('info', 'Setting up comprehensive navigation detection.', {
             platform: this.platform,
             options: this.options
         });
 
-        // Create AbortController for event listener cleanup
         this.abortController = new AbortController();
 
-        // Method 1: Interval-based URL checking (most reliable fallback)
         if (this.options.useIntervalChecking) {
             this._setupIntervalBasedDetection();
         }
-
-        // Method 2: History API interception (for programmatic navigation)
         if (this.options.useHistoryAPI) {
             this._setupHistoryAPIInterception();
         }
-
-        // Method 3: Browser navigation events
         if (this.options.usePopstateEvents) {
             this._setupBrowserNavigationEvents();
         }
-
-        // Method 4: Focus and visibility events
         if (this.options.useFocusEvents) {
             this._setupFocusAndVisibilityEvents();
         }
 
         this.isSetup = true;
-        this._log('info', 'Comprehensive navigation detection set up successfully');
+        this._log('info', 'Comprehensive navigation detection has been set up successfully.');
     }
 
     /**
-     * Check for URL changes with platform-agnostic logic
-     * Enhanced URL change detection with extension context error handling
+     * Checks for URL changes and triggers appropriate callbacks.
      */
     checkForUrlChange() {
         try {
@@ -181,9 +149,8 @@ export class NavigationDetectionManager {
                 }
             }
         } catch (error) {
-            this._log('error', 'Error in URL change detection', { error: error.message });
+            this._log('error', 'Error occurred during URL change detection.', { error: error.message });
             
-            // Log navigation diagnostic
             if (this.navigationLogger) {
                 this.navigationLogger.logNavigationDiagnostic('URL change detection error', {
                     error: error.message,
@@ -198,11 +165,11 @@ export class NavigationDetectionManager {
     }
 
     /**
-     * Log initialization sequence step
-     * @param {string} initializationId - Unique identifier for initialization sequence
-     * @param {string} step - Step name
-     * @param {string} status - Step status ('started', 'completed', 'failed')
-     * @param {Object} [stepData] - Step-specific data
+     * Logs a step in the initialization sequence.
+     * @param {string} initializationId - A unique identifier for the initialization sequence.
+     * @param {string} step - The name of the step.
+     * @param {string} status - The status of the step ('started', 'completed', 'failed').
+     * @param {Object} [stepData={}] - Additional data specific to the step.
      */
     logInitializationStep(initializationId, step, status, stepData = {}) {
         if (this.navigationLogger) {
@@ -211,9 +178,9 @@ export class NavigationDetectionManager {
     }
 
     /**
-     * Log player ready detection events
-     * @param {string} event - Event type
-     * @param {Object} [eventData] - Event-specific data
+     * Logs events related to player ready detection.
+     * @param {string} event - The type of the event.
+     * @param {Object} [eventData={}] - Additional data specific to the event.
      */
     logPlayerReadyDetection(event, eventData = {}) {
         if (this.navigationLogger) {
@@ -222,10 +189,10 @@ export class NavigationDetectionManager {
     }
 
     /**
-     * Log navigation diagnostic information
-     * @param {string} issue - Issue description
-     * @param {Object} [diagnosticData] - Diagnostic data
-     * @param {string} [severity='warn'] - Log severity
+     * Logs diagnostic information for navigation issues.
+     * @param {string} issue - A description of the issue.
+     * @param {Object} [diagnosticData={}] - Additional diagnostic data.
+     * @param {string} [severity='warn'] - The severity of the log.
      */
     logNavigationDiagnostic(issue, diagnosticData = {}, severity = 'warn') {
         if (this.navigationLogger) {
@@ -234,8 +201,8 @@ export class NavigationDetectionManager {
     }
 
     /**
-     * Get navigation performance report
-     * @returns {Object} Performance report
+     * Gets a report on navigation performance.
+     * @returns {Object|null} A performance report object, or `null` if logging is disabled.
      */
     getPerformanceReport() {
         if (this.navigationLogger) {
@@ -245,24 +212,21 @@ export class NavigationDetectionManager {
     }
 
     /**
-     * Clean up all navigation detection resources
+     * Cleans up all resources used for navigation detection.
      */
     cleanup() {
-        this._log('info', 'Cleaning up navigation detection');
+        this._log('info', 'Cleaning up navigation detection resources.');
 
-        // Clear interval
         if (this.intervalId) {
             clearInterval(this.intervalId);
             this.intervalId = null;
         }
 
-        // Abort all event listeners
         if (this.abortController) {
             this.abortController.abort();
             this.abortController = null;
         }
 
-        // Restore original history methods
         if (this._originalHistoryMethods) {
             history.pushState = this._originalHistoryMethods.pushState;
             history.replaceState = this._originalHistoryMethods.replaceState;
@@ -270,7 +234,7 @@ export class NavigationDetectionManager {
         }
 
         this.isSetup = false;
-        this._log('info', 'Navigation detection cleanup completed');
+        this._log('info', 'Navigation detection cleanup is complete.');
     }
 
     // ========================================
@@ -278,44 +242,41 @@ export class NavigationDetectionManager {
     // ========================================
 
     /**
-     * Setup interval-based URL change detection
+     * Sets up interval-based URL change detection.
      * @private
      */
     _setupIntervalBasedDetection() {
         this.intervalId = setInterval(this.checkForUrlChange, this.options.intervalMs);
-        this._log('debug', 'Interval-based URL detection set up', {
+        this._log('debug', 'Interval-based URL detection has been set up.', {
             intervalMs: this.options.intervalMs
         });
     }
 
     /**
-     * Setup History API interception for programmatic navigation
+     * Sets up History API interception for programmatic navigation.
      * @private
      */
     _setupHistoryAPIInterception() {
-        // Store original methods
         this._originalHistoryMethods = {
             pushState: history.pushState,
             replaceState: history.replaceState
         };
 
-        // Intercept pushState
         history.pushState = (...args) => {
             this._originalHistoryMethods.pushState.apply(history, args);
             setTimeout(this._handleHistoryChange, 100);
         };
 
-        // Intercept replaceState
         history.replaceState = (...args) => {
             this._originalHistoryMethods.replaceState.apply(history, args);
             setTimeout(this._handleHistoryChange, 100);
         };
 
-        this._log('debug', 'History API interception set up');
+        this._log('debug', 'History API interception has been set up.');
     }
 
     /**
-     * Setup browser navigation event listeners
+     * Sets up browser navigation event listeners.
      * @private
      */
     _setupBrowserNavigationEvents() {
@@ -331,12 +292,12 @@ export class NavigationDetectionManager {
                 signal: this.abortController.signal 
             });
             
-            this._log('debug', `Added ${name} event listener for navigation detection`);
+            this._log('debug', `Added ${name} event listener for navigation detection.`);
         });
     }
 
     /**
-     * Setup focus and visibility event listeners
+     * Sets up focus and visibility event listeners.
      * @private
      */
     _setupFocusAndVisibilityEvents() {
@@ -345,17 +306,17 @@ export class NavigationDetectionManager {
         window.addEventListener('focus', this._handleFocusEvent, options);
         document.addEventListener('visibilitychange', this._handleFocusEvent, options);
 
-        this._log('debug', 'Added focus and visibility event listeners for navigation detection');
+        this._log('debug', 'Added focus and visibility event listeners for navigation detection.');
     }
 
     /**
-     * Handle history API changes
+     * Handles changes triggered by the History API.
      * @private
      */
     _handleHistoryChange() {
         const eventTime = Date.now();
         
-        this._log('debug', 'History API change detected', {
+        this._log('debug', 'History API change detected.', {
             eventTime,
             currentUrl: window.location.href,
             pathname: window.location.pathname
@@ -379,13 +340,13 @@ export class NavigationDetectionManager {
     }
 
     /**
-     * Handle navigation events
+     * Handles navigation events like `popstate` and `hashchange`.
      * @private
      */
     _handleNavigationEvent() {
         const eventTime = Date.now();
         
-        this._log('debug', 'Browser navigation event detected', {
+        this._log('debug', 'Browser navigation event detected.', {
             eventTime,
             currentUrl: window.location.href,
             pathname: window.location.pathname
@@ -408,13 +369,13 @@ export class NavigationDetectionManager {
     }
 
     /**
-     * Handle focus events
+     * Handles focus and visibility change events.
      * @private
      */
     _handleFocusEvent() {
         const eventTime = Date.now();
         
-        this._log('debug', 'Focus/visibility event detected', {
+        this._log('debug', 'Focus/visibility event detected.', {
             eventTime,
             visibilityState: document.visibilityState,
             hasFocus: document.hasFocus()
@@ -439,22 +400,22 @@ export class NavigationDetectionManager {
     }
 
     /**
-     * Handle extension context errors
+     * Handles errors related to an invalidated extension context.
      * @private
-     * @param {Error} error - The error that occurred
+     * @param {Error} error - The error that occurred.
      */
     _handleExtensionContextError(error) {
-        if (error.message && error.message.includes('Extension context invalidated')) {
+        if (error.message?.includes('Extension context invalidated')) {
             this.cleanup();
-            this._log('info', 'Stopped navigation detection due to extension context invalidation');
+            this._log('info', 'Stopped navigation detection due to extension context invalidation.');
         }
     }
 
     /**
-     * Determine if a pathname represents a player page
+     * Determines if a given pathname represents a player page.
      * @private
-     * @param {string} pathname - The pathname to check
-     * @returns {boolean} Whether the pathname is a player page
+     * @param {string} pathname - The pathname to check.
+     * @returns {boolean} `true` if the pathname is a player page, otherwise `false`.
      */
     _isPlayerPage(pathname) {
         if (this.options.isPlayerPage) {
@@ -473,11 +434,11 @@ export class NavigationDetectionManager {
     }
 
     /**
-     * Log messages with fallback
+     * Logs messages with a fallback to the console.
      * @private
-     * @param {string} level - Log level
-     * @param {string} message - Log message
-     * @param {Object} [data] - Additional data
+     * @param {string} level - The log level.
+     * @param {string} message - The log message.
+     * @param {Object} [data] - Additional data to log.
      */
     _log(level, message, data = {}) {
         if (this.options.logger) {
@@ -489,35 +450,19 @@ export class NavigationDetectionManager {
 }
 
 /**
- * NavigationEventHandler - Handles page transitions and navigation events
- * 
- * This class provides utilities for handling the results of navigation detection,
- * including page transition logic, cleanup, and reinitialization.
- * 
- * @example
- * ```javascript
- * const eventHandler = new NavigationEventHandler('netflix', {
- *     onEnterPlayerPage: () => console.log('Entered player page'),
- *     onLeavePlayerPage: () => console.log('Left player page'),
- *     logger: myLogger
- * });
- * 
- * // Use with NavigationDetectionManager
- * const navigationManager = new NavigationDetectionManager('netflix', {
- *     onPageTransition: eventHandler.handlePageTransition.bind(eventHandler)
- * });
- * ```
+ * Handles page transitions and navigation events, providing callbacks for entering
+ * and leaving player pages, as well as for general URL changes.
  */
 export class NavigationEventHandler {
     /**
-     * Creates a new NavigationEventHandler instance
-     * @param {string} platform - Platform name
-     * @param {Object} options - Configuration options
-     * @param {Function} [options.onEnterPlayerPage] - Callback when entering player page
-     * @param {Function} [options.onLeavePlayerPage] - Callback when leaving player page
-     * @param {Function} [options.onUrlChange] - Callback for any URL change
-     * @param {Function} [options.logger] - Logger function
-     * @param {boolean} [options.enableNavigationLogging=true] - Enable enhanced navigation logging
+     * Creates a new `NavigationEventHandler` instance.
+     * @param {string} platform - The platform name.
+     * @param {Object} [options={}] - Configuration options.
+     * @param {Function} [options.onEnterPlayerPage] - A callback for when the user enters a player page.
+     * @param {Function} [options.onLeavePlayerPage] - A callback for when the user leaves a player page.
+     * @param {Function} [options.onUrlChange] - A callback for any URL change.
+     * @param {Function} [options.logger] - A logger function.
+     * @param {boolean} [options.enableNavigationLogging=true] - Whether to enable enhanced navigation logging.
      */
     constructor(platform, options = {}) {
         this.platform = platform;
@@ -548,9 +493,9 @@ export class NavigationEventHandler {
     }
 
     /**
-     * Handle page transitions between player and non-player pages
-     * @param {boolean} wasOnPlayerPage - Whether we were on a player page
-     * @param {boolean} isOnPlayerPage - Whether we are now on a player page
+     * Handles page transitions between player and non-player pages.
+     * @param {boolean} wasOnPlayerPage - Whether the previous page was a player page.
+     * @param {boolean} isOnPlayerPage - Whether the current page is a player page.
      */
     handlePageTransition(wasOnPlayerPage, isOnPlayerPage) {
         const transitionTime = Date.now();
@@ -562,7 +507,7 @@ export class NavigationEventHandler {
         this.transitionState.lastTransitionTime = transitionTime;
         this.transitionState.transitionCount++;
 
-        this._log('info', 'Handling page transition', {
+        this._log('info', 'Handling page transition.', {
             wasOnPlayerPage,
             isOnPlayerPage,
             platform: this.platform,
@@ -575,7 +520,7 @@ export class NavigationEventHandler {
         if (wasOnPlayerPage && !isOnPlayerPage) {
             this.transitionState.playerPageExits++;
             
-            this._log('info', 'Leaving player page, triggering cleanup', {
+            this._log('info', 'Leaving player page, triggering cleanup.', {
                 playerPageExits: this.transitionState.playerPageExits,
                 currentUrl: window.location.href
             });
@@ -633,7 +578,7 @@ export class NavigationEventHandler {
         if (!wasOnPlayerPage && isOnPlayerPage) {
             this.transitionState.playerPageEntries++;
             
-            this._log('info', 'Entering player page, triggering initialization', {
+            this._log('info', 'Entering player page, triggering initialization.', {
                 playerPageEntries: this.transitionState.playerPageEntries,
                 currentUrl: window.location.href
             });
@@ -689,12 +634,12 @@ export class NavigationEventHandler {
     }
 
     /**
-     * Handle URL changes
-     * @param {string} oldUrl - Previous URL
-     * @param {string} newUrl - New URL
+     * Handles URL changes.
+     * @param {string} oldUrl - The previous URL.
+     * @param {string} newUrl - The new URL.
      */
     handleUrlChange(oldUrl, newUrl) {
-        this._log('debug', 'Handling URL change', {
+        this._log('debug', 'Handling URL change.', {
             from: oldUrl,
             to: newUrl,
             platform: this.platform
@@ -706,11 +651,11 @@ export class NavigationEventHandler {
     }
 
     /**
-     * Log messages with fallback
+     * Logs messages with a fallback to the console.
      * @private
-     * @param {string} level - Log level
-     * @param {string} message - Log message
-     * @param {Object} [data] - Additional data
+     * @param {string} level - The log level.
+     * @param {string} message - The log message.
+     * @param {Object} [data] - Additional data to log.
      */
     _log(level, message, data = {}) {
         if (this.options.logger) {
@@ -722,8 +667,7 @@ export class NavigationEventHandler {
 }
 
 /**
- * Platform-specific navigation configurations
- * These provide default settings optimized for each platform
+ * Provides platform-specific navigation configurations with optimized default settings.
  */
 export const PLATFORM_NAVIGATION_CONFIGS = {
     netflix: {
@@ -736,7 +680,7 @@ export const PLATFORM_NAVIGATION_CONFIGS = {
     },
     
     disneyplus: {
-        intervalMs: 500, // More frequent checking for Disney+
+        intervalMs: 500,
         useHistoryAPI: true,
         usePopstateEvents: true,
         useIntervalChecking: true,
@@ -746,20 +690,10 @@ export const PLATFORM_NAVIGATION_CONFIGS = {
 };
 
 /**
- * Create a pre-configured NavigationDetectionManager for a specific platform
- * @param {string} platform - Platform name ('netflix', 'disneyplus', etc.)
- * @param {Object} [customOptions] - Custom options to override defaults
- * @returns {NavigationDetectionManager} Configured navigation manager
- * 
- * @example
- * ```javascript
- * const navigationManager = createPlatformNavigationManager('netflix', {
- *     onUrlChange: (oldUrl, newUrl) => console.log('URL changed'),
- *     logger: myLogger
- * });
- * 
- * navigationManager.setupComprehensiveNavigation();
- * ```
+ * Creates a pre-configured `NavigationDetectionManager` for a specific platform.
+ * @param {string} platform - The platform name (e.g., 'netflix', 'disneyplus').
+ * @param {Object} [customOptions={}] - Custom options to override the platform defaults.
+ * @returns {NavigationDetectionManager} A configured `NavigationDetectionManager` instance.
  */
 export function createPlatformNavigationManager(platform, customOptions = {}) {
     const platformConfig = PLATFORM_NAVIGATION_CONFIGS[platform.toLowerCase()] || {};

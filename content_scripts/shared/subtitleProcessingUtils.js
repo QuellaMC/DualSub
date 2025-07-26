@@ -1,47 +1,26 @@
 /**
- * SubtitleProcessingUtils - Comprehensive subtitle processing utilities for streaming platforms
- * 
- * This module provides dual subtitle processing capabilities, official translation parsing,
- * and subtitle display management. It handles both API-based translations and platform
- * official translations for dual subtitle display.
- * 
+ * This module provides comprehensive subtitle processing utilities for streaming platforms,
+ * including dual subtitle management, official translation parsing, and display logic.
+ *
  * @author DualSub Extension
  * @version 1.0.0
  */
 
 /**
- * SubtitleProcessingManager - Manages dual subtitle processing and display
- * 
- * This class handles the core subtitle processing logic including:
- * - Dual subtitle display (original + translated)
- * - Official platform translation parsing
- * - API translation integration
- * - Subtitle timing and synchronization
- * - Display mode switching
- * 
- * @example
- * ```javascript
- * const processor = new SubtitleProcessingManager('netflix', {
- *     useOfficialTranslations: true,
- *     translationProvider: 'google',
- *     displayMode: 'dual',
- *     logger: myLogger
- * });
- * 
- * await processor.processSubtitleData(subtitleData);
- * ```
+ * Manages dual subtitle processing and display, handling both official and API-based
+ * translations, timing synchronization, and display mode switching.
  */
 export class SubtitleProcessingManager {
     /**
-     * Creates a new SubtitleProcessingManager instance
-     * @param {string} platform - Platform name (e.g., 'netflix', 'disneyplus')
-     * @param {Object} config - Configuration object
-     * @param {boolean} [config.useOfficialTranslations=false] - Use platform's official translations
-     * @param {string} [config.translationProvider='google'] - Translation provider for API translations
-     * @param {string} [config.displayMode='dual'] - Display mode ('dual', 'translated-only', 'original-only')
-     * @param {string} [config.targetLanguage='en'] - Target language for translations
-     * @param {number} [config.timeOffset=0] - Time offset for subtitle synchronization
-     * @param {Function} [config.logger] - Logger function
+     * Creates a new `SubtitleProcessingManager` instance.
+     * @param {string} platform - The platform name (e.g., 'netflix').
+     * @param {Object} [config={}] - Configuration for the manager.
+     * @param {boolean} [config.useOfficialTranslations=false] - Whether to use official translations.
+     * @param {string} [config.translationProvider='google'] - The translation provider for API translations.
+     * @param {string} [config.displayMode='dual'] - The display mode ('dual', 'translated-only', 'original-only').
+     * @param {string} [config.targetLanguage='en'] - The target language for translations.
+     * @param {number} [config.timeOffset=0] - A time offset for subtitle synchronization.
+     * @param {Function} [config.logger] - A logger function.
      */
     constructor(platform, config = {}) {
         this.platform = platform;
@@ -80,7 +59,7 @@ export class SubtitleProcessingManager {
         this.processSubtitleData = this.processSubtitleData.bind(this);
         this.parseOfficialTranslations = this.parseOfficialTranslations.bind(this);
         
-        this._logSubtitleProcessing('info', 'SubtitleProcessingManager initialized', {
+        this._logSubtitleProcessing('info', 'SubtitleProcessingManager initialized.', {
             platform: this.platform,
             config: {
                 useOfficialTranslations: this.config.useOfficialTranslations,
@@ -93,18 +72,14 @@ export class SubtitleProcessingManager {
     }
 
     /**
-     * Process subtitle data and determine display strategy
-     * @param {Object} subtitleData - Raw subtitle data from platform
-     * @param {string} subtitleData.videoId - Video identifier
-     * @param {Array} subtitleData.originalCues - Original language subtitle cues
-     * @param {Array} [subtitleData.translatedCues] - Platform's translated subtitle cues (if available)
-     * @param {Object} [subtitleData.metadata] - Additional metadata
-     * @returns {Promise<Object>} Processed subtitle result
+     * Processes raw subtitle data to determine the appropriate display strategy.
+     * @param {Object} subtitleData - The raw subtitle data from the platform.
+     * @returns {Promise<Object>} A promise that resolves to the processed subtitle result.
      */
     async processSubtitleData(subtitleData) {
         const processingStartTime = performance.now();
         
-        this._logSubtitleProcessing('info', 'Starting subtitle data processing', {
+        this._logSubtitleProcessing('info', 'Starting subtitle data processing.', {
             videoId: subtitleData.videoId,
             hasOriginal: !!subtitleData.originalCues,
             hasTranslated: !!subtitleData.translatedCues,
@@ -118,15 +93,12 @@ export class SubtitleProcessingManager {
         });
 
         try {
-            // Update current video ID
             this.currentVideoId = subtitleData.videoId;
 
-            // Determine subtitle source strategy
             const shouldUseOfficial = this.config.useOfficialTranslations && 
-                                    subtitleData.translatedCues && 
-                                    subtitleData.translatedCues.length > 0;
+                                    subtitleData.translatedCues?.length > 0;
 
-            this._logSubtitleProcessing('info', 'Subtitle source detection completed', {
+            this._logSubtitleProcessing('info', 'Subtitle source detection completed.', {
                 videoId: subtitleData.videoId,
                 shouldUseOfficial,
                 officialTranslationsAvailable: !!(subtitleData.translatedCues?.length),
@@ -135,7 +107,6 @@ export class SubtitleProcessingManager {
             });
 
             let processedResult;
-
             if (shouldUseOfficial) {
                 this.performanceMetrics.officialTranslationAttempts++;
                 processedResult = await this._processWithOfficialTranslations(subtitleData);
@@ -146,15 +117,13 @@ export class SubtitleProcessingManager {
                 this.performanceMetrics.apiTranslationSuccesses++;
             }
 
-            // Update subtitle queue
             this._updateSubtitleQueue(processedResult.cues);
 
-            // Calculate processing time
             const processingTime = performance.now() - processingStartTime;
             this.performanceMetrics.totalProcessingTime += processingTime;
             this.performanceMetrics.processedSubtitleCount++;
 
-            this._logSubtitleProcessing('info', 'Subtitle processing completed successfully', {
+            this._logSubtitleProcessing('info', 'Subtitle processing completed successfully.', {
                 videoId: subtitleData.videoId,
                 cueCount: processedResult.cues.length,
                 source: shouldUseOfficial ? 'official' : 'api',
@@ -177,7 +146,7 @@ export class SubtitleProcessingManager {
         } catch (error) {
             const processingTime = performance.now() - processingStartTime;
             
-            this._logSubtitleProcessing('error', 'Error processing subtitle data', {
+            this._logSubtitleProcessing('error', 'Error processing subtitle data.', {
                 error: error.message,
                 stack: error.stack,
                 videoId: subtitleData.videoId,
@@ -196,15 +165,15 @@ export class SubtitleProcessingManager {
     }
 
     /**
-     * Parse official translations from platform-specific data
-     * @param {Object} platformData - Platform-specific subtitle data
-     * @param {string} platform - Platform name for format-specific parsing
-     * @returns {Promise<Array>} Parsed subtitle cues
+     * Parses official translations from platform-specific data formats.
+     * @param {Object} platformData - The platform-specific subtitle data.
+     * @param {string} [platform=this.platform] - The platform name for format-specific parsing.
+     * @returns {Promise<Array>} A promise that resolves to an array of parsed subtitle cues.
      */
     async parseOfficialTranslations(platformData, platform = this.platform) {
         const parseStartTime = performance.now();
         
-        this._logSubtitleProcessing('info', 'Starting official translation parsing', {
+        this._logSubtitleProcessing('info', 'Starting official translation parsing.', {
             platform,
             dataType: typeof platformData,
             dataSize: platformData ? JSON.stringify(platformData).length : 0,
@@ -218,22 +187,22 @@ export class SubtitleProcessingManager {
             
             switch (platform.toLowerCase()) {
                 case 'netflix':
-                    this._logSubtitleProcessing('debug', 'Using Netflix-specific parsing logic');
+                    this._logSubtitleProcessing('debug', 'Using Netflix-specific parsing logic.');
                     parsedCues = await this._parseNetflixOfficialTranslations(platformData);
                     break;
                 case 'disneyplus':
-                    this._logSubtitleProcessing('debug', 'Using Disney+ specific parsing logic');
+                    this._logSubtitleProcessing('debug', 'Using Disney+ specific parsing logic.');
                     parsedCues = await this._parseDisneyPlusOfficialTranslations(platformData);
                     break;
                 default:
-                    this._logSubtitleProcessing('debug', 'Using generic parsing logic', { platform });
+                    this._logSubtitleProcessing('debug', 'Using generic parsing logic.', { platform });
                     parsedCues = await this._parseGenericOfficialTranslations(platformData);
                     break;
             }
 
             const parseTime = performance.now() - parseStartTime;
             
-            this._logSubtitleProcessing('info', 'Official translation parsing completed', {
+            this._logSubtitleProcessing('info', 'Official translation parsing completed.', {
                 platform,
                 success: true,
                 parsedCueCount: parsedCues.length,
@@ -255,7 +224,7 @@ export class SubtitleProcessingManager {
         } catch (error) {
             const parseTime = performance.now() - parseStartTime;
             
-            this._logSubtitleProcessing('error', 'Error parsing official translations', {
+            this._logSubtitleProcessing('error', 'Error parsing official translations.', {
                 error: error.message,
                 stack: error.stack,
                 platform,
@@ -270,14 +239,13 @@ export class SubtitleProcessingManager {
     }
 
     /**
-     * Update subtitle mode (official vs API translations)
-     * @param {boolean} useOfficial - Whether to use official translations
-     * @returns {Promise<void>}
+     * Updates the subtitle mode between official and API translations.
+     * @param {boolean} useOfficial - `true` to use official translations, `false` for API.
      */
     async updateSubtitleMode(useOfficial) {
         const modeChangeTime = Date.now();
         
-        this._logSubtitleProcessing('info', 'Updating subtitle mode', {
+        this._logSubtitleProcessing('info', 'Updating subtitle mode.', {
             from: this.config.useOfficialTranslations,
             to: useOfficial,
             modeChangeTime,
@@ -289,11 +257,9 @@ export class SubtitleProcessingManager {
         const previousMode = this.config.useOfficialTranslations;
         this.config.useOfficialTranslations = useOfficial;
         
-        // Clear translation cache when switching modes
         const cacheCleared = this.translationCache.size;
         this.translationCache.clear();
         
-        // Reset performance metrics for the new mode
         if (previousMode !== useOfficial) {
             this.performanceMetrics.officialTranslationAttempts = 0;
             this.performanceMetrics.officialTranslationSuccesses = 0;
@@ -301,7 +267,7 @@ export class SubtitleProcessingManager {
             this.performanceMetrics.apiTranslationSuccesses = 0;
         }
         
-        this._logSubtitleProcessing('info', 'Subtitle mode updated successfully', {
+        this._logSubtitleProcessing('info', 'Subtitle mode updated successfully.', {
             newMode: useOfficial ? 'official' : 'api',
             previousMode: previousMode ? 'official' : 'api',
             cacheCleared,
@@ -312,19 +278,19 @@ export class SubtitleProcessingManager {
     }
 
     /**
-     * Get current subtitle queue
-     * @returns {Array} Current subtitle cues
+     * Gets the current subtitle queue.
+     * @returns {Array} An array of the current subtitle cues.
      */
     getSubtitleQueue() {
         return [...this.subtitleQueue];
     }
 
     /**
-     * Clear subtitle queue
+     * Clears the subtitle queue.
      */
     clearSubtitleQueue() {
         this.subtitleQueue = [];
-        this._log('debug', 'Subtitle queue cleared');
+        this._log('debug', 'Subtitle queue cleared.');
     }
 
     // ========================================
@@ -332,29 +298,28 @@ export class SubtitleProcessingManager {
     // ========================================
 
     /**
-     * Process subtitles using official platform translations
+     * Processes subtitles using official platform translations.
      * @private
-     * @param {Object} subtitleData - Subtitle data
-     * @returns {Promise<Object>} Processing result
+     * @param {Object} subtitleData - The subtitle data.
+     * @returns {Promise<Object>} A promise that resolves to the processing result.
      */
     async _processWithOfficialTranslations(subtitleData) {
         const processStartTime = performance.now();
         
-        this._logSubtitleProcessing('info', 'Processing with official translations', {
+        this._logSubtitleProcessing('info', 'Processing with official translations.', {
             videoId: subtitleData.videoId,
             originalCueCount: subtitleData.originalCues?.length || 0,
             translatedCueCount: subtitleData.translatedCues?.length || 0
         });
 
         try {
-            // Normalize cues with detailed logging
-            this._logSubtitleProcessing('debug', 'Normalizing original cues');
+            this._logSubtitleProcessing('debug', 'Normalizing original cues.');
             const originalCues = this._normalizeCues(subtitleData.originalCues, 'original');
             
-            this._logSubtitleProcessing('debug', 'Normalizing translated cues');
+            this._logSubtitleProcessing('debug', 'Normalizing translated cues.');
             const translatedCues = this._normalizeCues(subtitleData.translatedCues, 'translated');
 
-            this._logSubtitleProcessing('info', 'Cue normalization completed', {
+            this._logSubtitleProcessing('info', 'Cue normalization completed.', {
                 originalInput: subtitleData.originalCues?.length || 0,
                 originalNormalized: originalCues.length,
                 originalFiltered: (subtitleData.originalCues?.length || 0) - originalCues.length,
@@ -363,8 +328,7 @@ export class SubtitleProcessingManager {
                 translatedFiltered: (subtitleData.translatedCues?.length || 0) - translatedCues.length
             });
 
-            // Create dual subtitle cues by matching timing
-            this._logSubtitleProcessing('debug', 'Creating dual subtitle cues with official translations');
+            this._logSubtitleProcessing('debug', 'Creating dual subtitle cues with official translations.');
             const dualCues = this._createDualSubtitleCues(originalCues, translatedCues, true);
 
             const processTime = performance.now() - processStartTime;
@@ -377,7 +341,7 @@ export class SubtitleProcessingManager {
                 dualCount: dualCues.length
             };
 
-            this._logSubtitleProcessing('info', 'Official translation processing completed', {
+            this._logSubtitleProcessing('info', 'Official translation processing completed.', {
                 ...result,
                 processTime: `${processTime.toFixed(2)}ms`,
                 matchingRate: originalCues.length > 0 
@@ -393,7 +357,7 @@ export class SubtitleProcessingManager {
         } catch (error) {
             const processTime = performance.now() - processStartTime;
             
-            this._logSubtitleProcessing('error', 'Error processing with official translations', {
+            this._logSubtitleProcessing('error', 'Error processing with official translations.', {
                 error: error.message,
                 stack: error.stack,
                 processTime: `${processTime.toFixed(2)}ms`,
@@ -410,15 +374,15 @@ export class SubtitleProcessingManager {
     }
 
     /**
-     * Process subtitles using API translations
+     * Processes subtitles using API-based translations.
      * @private
-     * @param {Object} subtitleData - Subtitle data
-     * @returns {Promise<Object>} Processing result
+     * @param {Object} subtitleData - The subtitle data.
+     * @returns {Promise<Object>} A promise that resolves to the processing result.
      */
     async _processWithAPITranslations(subtitleData) {
         const processStartTime = performance.now();
         
-        this._logSubtitleProcessing('info', 'Processing with API translations', {
+        this._logSubtitleProcessing('info', 'Processing with API translations.', {
             videoId: subtitleData.videoId,
             originalCueCount: subtitleData.originalCues?.length || 0,
             translationProvider: this.config.translationProvider,
@@ -426,23 +390,21 @@ export class SubtitleProcessingManager {
         });
 
         try {
-            // Normalize original cues
-            this._logSubtitleProcessing('debug', 'Normalizing original cues for API translation');
+            this._logSubtitleProcessing('debug', 'Normalizing original cues for API translation.');
             const originalCues = this._normalizeCues(subtitleData.originalCues, 'original');
             
-            this._logSubtitleProcessing('info', 'Original cue normalization completed', {
+            this._logSubtitleProcessing('info', 'Original cue normalization completed.', {
                 originalInput: subtitleData.originalCues?.length || 0,
                 originalNormalized: originalCues.length,
                 originalFiltered: (subtitleData.originalCues?.length || 0) - originalCues.length
             });
 
-            // Translate original cues using API
-            this._logSubtitleProcessing('debug', 'Starting API translation process');
+            this._logSubtitleProcessing('debug', 'Starting API translation process.');
             const translationStartTime = performance.now();
             const translatedCues = await this._translateCuesWithAPI(originalCues);
             const translationTime = performance.now() - translationStartTime;
 
-            this._logSubtitleProcessing('info', 'API translation completed', {
+            this._logSubtitleProcessing('info', 'API translation completed.', {
                 originalCueCount: originalCues.length,
                 translatedCueCount: translatedCues.length,
                 translationTime: `${translationTime.toFixed(2)}ms`,
@@ -452,8 +414,7 @@ export class SubtitleProcessingManager {
                 provider: this.config.translationProvider
             });
 
-            // Create dual subtitle cues
-            this._logSubtitleProcessing('debug', 'Creating dual subtitle cues with API translations');
+            this._logSubtitleProcessing('debug', 'Creating dual subtitle cues with API translations.');
             const dualCues = this._createDualSubtitleCues(originalCues, translatedCues, false);
 
             const processTime = performance.now() - processStartTime;
@@ -466,7 +427,7 @@ export class SubtitleProcessingManager {
                 dualCount: dualCues.length
             };
 
-            this._logSubtitleProcessing('info', 'API translation processing completed', {
+            this._logSubtitleProcessing('info', 'API translation processing completed.', {
                 ...result,
                 processTime: `${processTime.toFixed(2)}ms`,
                 translationTime: `${translationTime.toFixed(2)}ms`,
@@ -482,7 +443,7 @@ export class SubtitleProcessingManager {
         } catch (error) {
             const processTime = performance.now() - processStartTime;
             
-            this._logSubtitleProcessing('error', 'Error processing with API translations', {
+            this._logSubtitleProcessing('error', 'Error processing with API translations.', {
                 error: error.message,
                 stack: error.stack,
                 processTime: `${processTime.toFixed(2)}ms`,
@@ -499,11 +460,11 @@ export class SubtitleProcessingManager {
     }
 
     /**
-     * Normalize subtitle cues to standard format
+     * Normalizes subtitle cues to a standard format.
      * @private
-     * @param {Array} cues - Raw subtitle cues
-     * @param {string} type - Cue type ('original' or 'translated')
-     * @returns {Array} Normalized cues
+     * @param {Array} cues - The raw subtitle cues.
+     * @param {string} type - The cue type ('original' or 'translated').
+     * @returns {Array} The normalized cues.
      */
     _normalizeCues(cues, type) {
         if (!Array.isArray(cues)) {
@@ -522,12 +483,12 @@ export class SubtitleProcessingManager {
     }
 
     /**
-     * Create dual subtitle cues by matching original and translated cues
+     * Creates dual subtitle cues by matching original and translated cues.
      * @private
-     * @param {Array} originalCues - Original language cues
-     * @param {Array} translatedCues - Translated cues
-     * @param {boolean} useNativeTarget - Whether using platform's native translations
-     * @returns {Array} Dual subtitle cues
+     * @param {Array} originalCues - The original language cues.
+     * @param {Array} translatedCues - The translated cues.
+     * @param {boolean} useNativeTarget - Whether the translations are from the platform.
+     * @returns {Array} An array of dual subtitle cues.
      */
     _createDualSubtitleCues(originalCues, translatedCues, useNativeTarget) {
         const dualCues = [];
@@ -575,11 +536,11 @@ export class SubtitleProcessingManager {
     }
 
     /**
-     * Find the best overlapping translated cue for an original cue
+     * Finds the best overlapping translated cue for an original cue.
      * @private
-     * @param {Object} originalCue - Original cue to match
-     * @param {Array} translatedCues - Available translated cues
-     * @returns {Object|null} Best matching translated cue
+     * @param {Object} originalCue - The original cue to match.
+     * @param {Array} translatedCues - The available translated cues.
+     * @returns {Object|null} The best matching translated cue, or `null`.
      */
     _findBestOverlappingCue(originalCue, translatedCues) {
         let bestCue = null;
@@ -596,19 +557,18 @@ export class SubtitleProcessingManager {
             }
         });
 
-        return maxOverlap > 0.1 ? bestCue : null; // Minimum 0.1 second overlap
+        return maxOverlap > 0.1 ? bestCue : null;
     }
 
     /**
-     * Translate cues using API translation service
+     * Translates cues using an API translation service.
      * @private
-     * @param {Array} originalCues - Original cues to translate
-     * @returns {Promise<Array>} Translated cues
+     * @param {Array} originalCues - The original cues to translate.
+     * @returns {Promise<Array>} A promise that resolves to the translated cues.
      */
     async _translateCuesWithAPI(originalCues) {
-        // This would integrate with the existing translation service
-        // For now, return placeholder implementation
-        this._log('info', 'Translating cues with API', {
+        // TODO: Implement actual translation service integration.
+        this._log('info', 'Translating cues with API.', {
             provider: this.config.translationProvider,
             cueCount: originalCues.length
         });
@@ -622,9 +582,9 @@ export class SubtitleProcessingManager {
     }
 
     /**
-     * Update the subtitle queue with new cues
+     * Updates the subtitle queue with new cues.
      * @private
-     * @param {Array} newCues - New subtitle cues
+     * @param {Array} newCues - The new subtitle cues to add.
      */
     _updateSubtitleQueue(newCues) {
         // Clear existing cues for this video
@@ -638,7 +598,7 @@ export class SubtitleProcessingManager {
         // Sort by start time
         this.subtitleQueue.sort((a, b) => a.start - b.start);
 
-        this._log('debug', 'Subtitle queue updated', {
+        this._log('debug', 'Subtitle queue updated.', {
             videoId: this.currentVideoId,
             totalCues: this.subtitleQueue.length,
             newCues: newCues.length
@@ -650,13 +610,13 @@ export class SubtitleProcessingManager {
     // ========================================
 
     /**
-     * Parse Netflix official translations
+     * Parses official Netflix translations.
      * @private
-     * @param {Object} platformData - Netflix subtitle data
-     * @returns {Promise<Array>} Parsed cues
+     * @param {Object} platformData - The Netflix subtitle data.
+     * @returns {Promise<Array>} A promise that resolves to the parsed cues.
      */
     async _parseNetflixOfficialTranslations(platformData) {
-        this._logSubtitleProcessing('debug', 'Starting Netflix official translation parsing', {
+        this._logSubtitleProcessing('debug', 'Starting Netflix official translation parsing.', {
             hasData: !!platformData,
             dataType: typeof platformData,
             hasEvents: !!(platformData?.events),
@@ -664,8 +624,7 @@ export class SubtitleProcessingManager {
         });
         
         try {
-            // Netflix-specific parsing logic
-            if (platformData && platformData.events && Array.isArray(platformData.events)) {
+            if (platformData?.events && Array.isArray(platformData.events)) {
                 const parsedCues = platformData.events
                     .filter(event => event && typeof event === 'object')
                     .map((event, index) => {
@@ -675,9 +634,8 @@ export class SubtitleProcessingManager {
                             text: event.text || ''
                         };
                         
-                        // Log parsing issues for individual events
                         if (!event.startMs || !event.endMs) {
-                            this._logSubtitleProcessing('warn', 'Netflix event missing timing data', {
+                            this._logSubtitleProcessing('warn', 'Netflix event missing timing data.', {
                                 eventIndex: index,
                                 event: {
                                     hasStartMs: !!event.startMs,
@@ -690,7 +648,7 @@ export class SubtitleProcessingManager {
                         }
                         
                         if (!event.text || event.text.trim() === '') {
-                            this._logSubtitleProcessing('warn', 'Netflix event missing text content', {
+                            this._logSubtitleProcessing('warn', 'Netflix event missing text content.', {
                                 eventIndex: index,
                                 timing: `${event.startMs}ms - ${event.endMs}ms`
                             });
@@ -700,7 +658,7 @@ export class SubtitleProcessingManager {
                     })
                     .filter(cue => cue.text.trim() !== '' && cue.start < cue.end);
 
-                this._logSubtitleProcessing('info', 'Netflix official translation parsing completed', {
+                this._logSubtitleProcessing('info', 'Netflix official translation parsing completed.', {
                     originalEventCount: platformData.events.length,
                     parsedCueCount: parsedCues.length,
                     filteredOut: platformData.events.length - parsedCues.length,
@@ -713,7 +671,7 @@ export class SubtitleProcessingManager {
 
                 return parsedCues;
             } else {
-                this._logSubtitleProcessing('warn', 'Netflix platform data invalid or missing events', {
+                this._logSubtitleProcessing('warn', 'Netflix platform data is invalid or missing events.', {
                     hasData: !!platformData,
                     dataKeys: platformData ? Object.keys(platformData) : null,
                     hasEvents: !!(platformData?.events),
@@ -722,7 +680,7 @@ export class SubtitleProcessingManager {
                 return [];
             }
         } catch (error) {
-            this._logSubtitleProcessing('error', 'Error in Netflix official translation parsing', {
+            this._logSubtitleProcessing('error', 'Error in Netflix official translation parsing.', {
                 error: error.message,
                 stack: error.stack,
                 platformDataType: typeof platformData,
@@ -733,13 +691,13 @@ export class SubtitleProcessingManager {
     }
 
     /**
-     * Parse Disney+ official translations
+     * Parses official Disney+ translations.
      * @private
-     * @param {Object} platformData - Disney+ subtitle data
-     * @returns {Promise<Array>} Parsed cues
+     * @param {Object} platformData - The Disney+ subtitle data.
+     * @returns {Promise<Array>} A promise that resolves to the parsed cues.
      */
     async _parseDisneyPlusOfficialTranslations(platformData) {
-        this._logSubtitleProcessing('debug', 'Starting Disney+ official translation parsing', {
+        this._logSubtitleProcessing('debug', 'Starting Disney+ official translation parsing.', {
             hasData: !!platformData,
             dataType: typeof platformData,
             isArray: Array.isArray(platformData),
@@ -747,8 +705,7 @@ export class SubtitleProcessingManager {
         });
         
         try {
-            // Disney+-specific parsing logic
-            if (platformData && Array.isArray(platformData)) {
+            if (Array.isArray(platformData)) {
                 const parsedCues = platformData
                     .filter(item => item && typeof item === 'object')
                     .map((item, index) => {
@@ -756,9 +713,8 @@ export class SubtitleProcessingManager {
                         const endTime = this._parseTimeToSeconds(item.end);
                         const text = item.text || '';
                         
-                        // Log parsing issues for individual items
                         if (isNaN(startTime) || isNaN(endTime)) {
-                            this._logSubtitleProcessing('warn', 'Disney+ item has invalid timing', {
+                            this._logSubtitleProcessing('warn', 'Disney+ item has invalid timing.', {
                                 itemIndex: index,
                                 originalStart: item.start,
                                 originalEnd: item.end,
@@ -768,7 +724,7 @@ export class SubtitleProcessingManager {
                         }
                         
                         if (!text || text.trim() === '') {
-                            this._logSubtitleProcessing('warn', 'Disney+ item missing text content', {
+                            this._logSubtitleProcessing('warn', 'Disney+ item missing text content.', {
                                 itemIndex: index,
                                 timing: `${startTime}s - ${endTime}s`,
                                 hasText: !!item.text,
@@ -784,7 +740,7 @@ export class SubtitleProcessingManager {
                     })
                     .filter(cue => cue.text.trim() !== '' && !isNaN(cue.start) && !isNaN(cue.end) && cue.start < cue.end);
 
-                this._logSubtitleProcessing('info', 'Disney+ official translation parsing completed', {
+                this._logSubtitleProcessing('info', 'Disney+ official translation parsing completed.', {
                     originalItemCount: platformData.length,
                     parsedCueCount: parsedCues.length,
                     filteredOut: platformData.length - parsedCues.length,
@@ -802,7 +758,7 @@ export class SubtitleProcessingManager {
 
                 return parsedCues;
             } else {
-                this._logSubtitleProcessing('warn', 'Disney+ platform data invalid or not an array', {
+                this._logSubtitleProcessing('warn', 'Disney+ platform data is invalid or not an array.', {
                     hasData: !!platformData,
                     dataType: typeof platformData,
                     isArray: Array.isArray(platformData),
@@ -811,7 +767,7 @@ export class SubtitleProcessingManager {
                 return [];
             }
         } catch (error) {
-            this._logSubtitleProcessing('error', 'Error in Disney+ official translation parsing', {
+            this._logSubtitleProcessing('error', 'Error in Disney+ official translation parsing.', {
                 error: error.message,
                 stack: error.stack,
                 platformDataType: typeof platformData,
@@ -823,15 +779,14 @@ export class SubtitleProcessingManager {
     }
 
     /**
-     * Parse generic official translations
+     * Parses generic official translations.
      * @private
-     * @param {Object} platformData - Generic subtitle data
-     * @returns {Promise<Array>} Parsed cues
+     * @param {Object} platformData - The generic subtitle data.
+     * @returns {Promise<Array>} A promise that resolves to the parsed cues.
      */
     async _parseGenericOfficialTranslations(platformData) {
-        this._log('debug', 'Parsing generic official translations');
+        this._log('debug', 'Parsing generic official translations.');
         
-        // Generic parsing logic for unknown platforms
         if (Array.isArray(platformData)) {
             return platformData.map(item => ({
                 start: this._parseTimeToSeconds(item.start || item.startTime),
@@ -848,10 +803,10 @@ export class SubtitleProcessingManager {
     // ========================================
 
     /**
-     * Parse time value to seconds
+     * Parses a time value into seconds.
      * @private
-     * @param {string|number} time - Time value
-     * @returns {number} Time in seconds
+     * @param {string|number} time - The time value to parse.
+     * @returns {number} The time in seconds.
      */
     _parseTimeToSeconds(time) {
         if (typeof time === 'number') {
@@ -883,10 +838,10 @@ export class SubtitleProcessingManager {
     }
 
     /**
-     * Sanitize subtitle text
+     * Sanitizes subtitle text by removing HTML tags and extra whitespace.
      * @private
-     * @param {string} text - Raw text
-     * @returns {string} Sanitized text
+     * @param {string} text - The raw text to sanitize.
+     * @returns {string} The sanitized text.
      */
     _sanitizeText(text) {
         if (!text) return '';
@@ -899,11 +854,11 @@ export class SubtitleProcessingManager {
     }
 
     /**
-     * Log messages with fallback
+     * Logs messages with a fallback to the console.
      * @private
-     * @param {string} level - Log level
-     * @param {string} message - Log message
-     * @param {Object} [data] - Additional data
+     * @param {string} level - The log level.
+     * @param {string} message - The log message.
+     * @param {Object} [data] - Additional data to log.
      */
     _log(level, message, data = {}) {
         if (this.config.logger) {
@@ -914,11 +869,11 @@ export class SubtitleProcessingManager {
     }
 
     /**
-     * Enhanced logging specifically for subtitle processing with detailed context
+     * A specialized logging function for subtitle processing with detailed context.
      * @private
-     * @param {string} level - Log level
-     * @param {string} message - Log message
-     * @param {Object} [data] - Additional data
+     * @param {string} level - The log level.
+     * @param {string} message - The log message.
+     * @param {Object} [data] - Additional data to log.
      */
     _logSubtitleProcessing(level, message, data = {}) {
         const enhancedData = {
@@ -947,10 +902,10 @@ export class SubtitleProcessingManager {
     }
 
     /**
-     * Log subtitle display attempts and results
-     * @param {boolean} success - Whether display was successful
-     * @param {Object} displayData - Display attempt data
-     * @param {Error} [error] - Error if display failed
+     * Logs subtitle display attempts and their results.
+     * @param {boolean} success - Whether the display was successful.
+     * @param {Object} [displayData={}] - Data related to the display attempt.
+     * @param {Error|null} [error=null] - The error if the display failed.
      */
     logDisplayAttempt(success, displayData = {}, error = null) {
         this.performanceMetrics.displayAttempts++;
@@ -987,30 +942,27 @@ export class SubtitleProcessingManager {
 }
 
 /**
- * SubtitleSourceManager - Manages subtitle source detection and switching
- * 
- * This class handles the logic for determining whether to use official platform
- * translations or API translations, and provides seamless switching between modes.
+ * Manages subtitle source detection and switching between official and API translations.
  */
 export class SubtitleSourceManager {
     /**
-     * Creates a new SubtitleSourceManager instance
-     * @param {string} platform - Platform name
-     * @param {Object} config - Configuration object
+     * Creates a new `SubtitleSourceManager` instance.
+     * @param {string} platform - The platform name.
+     * @param {Object} [config={}] - Configuration for the manager.
      */
     constructor(platform, config = {}) {
         this.platform = platform;
         this.config = config;
-        this.currentSource = 'api'; // 'api' or 'official'
+        this.currentSource = 'api';
     }
 
     /**
-     * Determine the appropriate subtitle source
-     * @param {Object} availableSources - Available subtitle sources
-     * @param {boolean} availableSources.hasOfficial - Whether official translations are available
-     * @param {boolean} availableSources.hasAPI - Whether API translation is available
-     * @param {boolean} userPreference - User's preference for official translations
-     * @returns {string} Chosen source ('official' or 'api')
+     * Determines the appropriate subtitle source based on availability and user preference.
+     * @param {Object} availableSources - The available subtitle sources.
+     * @param {boolean} availableSources.hasOfficial - Whether official translations are available.
+     * @param {boolean} availableSources.hasAPI - Whether API translation is available.
+     * @param {boolean} userPreference - The user's preference for official translations.
+     * @returns {string} The chosen source ('official', 'api', or 'none').
      */
     determineSubtitleSource(availableSources, userPreference) {
         if (userPreference && availableSources.hasOfficial) {
@@ -1034,18 +986,18 @@ export class SubtitleSourceManager {
     }
 
     /**
-     * Get current subtitle source
-     * @returns {string} Current source
+     * Gets the current subtitle source.
+     * @returns {string} The current source ('official', 'api', or 'none').
      */
     getCurrentSource() {
         return this.currentSource;
     }
 
     /**
-     * Check if official translations should be used
-     * @param {Object} config - Current configuration
-     * @param {Object} availability - Translation availability
-     * @returns {boolean} Whether to use official translations
+     * Checks if official translations should be used.
+     * @param {Object} config - The current configuration.
+     * @param {Object} availability - The translation availability.
+     * @returns {boolean} `true` if official translations should be used.
      */
     shouldUseOfficialTranslations(config, availability) {
         return config.useOfficialTranslations && 
@@ -1055,13 +1007,13 @@ export class SubtitleSourceManager {
 }
 
 /**
- * Utility functions for subtitle processing
+ * Utility functions for subtitle processing.
  */
 
 /**
- * Format subtitle text for display
- * @param {string} text - Raw subtitle text
- * @returns {string} Formatted text
+ * Formats subtitle text for safe display in HTML.
+ * @param {string} text - The raw subtitle text.
+ * @returns {string} The formatted text.
  */
 export function formatSubtitleTextForDisplay(text) {
     if (!text) return '';
@@ -1074,9 +1026,9 @@ export function formatSubtitleTextForDisplay(text) {
 }
 
 /**
- * Parse VTT subtitle format
- * @param {string} vttString - VTT format string
- * @returns {Array} Parsed subtitle cues
+ * Parses a VTT (Web Video Text Tracks) format string into an array of subtitle cues.
+ * @param {string} vttString - The VTT formatted string.
+ * @returns {Array} An array of parsed subtitle cues.
  */
 export function parseVTT(vttString) {
     if (!vttString || !vttString.trim().toUpperCase().startsWith('WEBVTT')) {
@@ -1132,9 +1084,9 @@ export function parseVTT(vttString) {
 }
 
 /**
- * Parse timestamp to seconds
- * @param {string} timestamp - Timestamp string
- * @returns {number} Time in seconds
+ * Parses a timestamp string into seconds.
+ * @param {string} timestamp - The timestamp string (e.g., '00:01:23.456').
+ * @returns {number} The time in seconds.
  */
 export function parseTimestampToSeconds(timestamp) {
     const parts = timestamp.split(':');

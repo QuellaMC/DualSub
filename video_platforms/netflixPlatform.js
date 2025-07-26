@@ -358,6 +358,10 @@ export class NetflixPlatform extends VideoPlatform {
                                         targetLanguage: response.targetLanguage,
                                         useNativeTarget: response.useNativeTarget || false,
                                         availableLanguages: response.availableLanguages,
+                                        selectedLanguage: {
+                                            displayName: response.sourceLanguage,
+                                            normalizedCode: response.sourceLanguage
+                                        }
                                     };
 
                                     this.logger.debug('Netflix subtitle data prepared for dual display', {

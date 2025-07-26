@@ -127,7 +127,7 @@ describe('VideoElementDetector', () => {
             
             const result = detector.startDetection();
 
-            expect(mockLogger).toHaveBeenCalledWith('warn', '[VideoElementDetector:netflix] Video detection already in progress', {});
+            expect(mockLogger).toHaveBeenCalledWith('warn', '[VideoElementDetector:netflix] Video detection is already in progress.', {});
             expect(result).resolves.toBeNull();
         });
     });
@@ -261,7 +261,7 @@ describe('DOMManipulator', () => {
             const container = manipulator.createSubtitleContainer(null);
             
             expect(container).toBeNull();
-            expect(mockLogger).toHaveBeenCalledWith('error', '[DOMManipulator:netflix] Cannot create subtitle container: video element is null', {});
+            expect(mockLogger).toHaveBeenCalledWith('error', '[DOMManipulator:netflix] Cannot create subtitle container: video element is null.', {});
         });
     });
 
@@ -312,7 +312,7 @@ describe('DOMManipulator', () => {
             const style2 = manipulator.injectCSS(css, 'test-styles');
 
             expect(style1).toBe(style2);
-            expect(mockLogger).toHaveBeenCalledWith('debug', '[DOMManipulator:netflix] CSS already injected', { styleId: 'test-styles' });
+            expect(mockLogger).toHaveBeenCalledWith('debug', '[DOMManipulator:netflix] CSS has already been injected.', { styleId: 'test-styles' });
         });
     });
 
@@ -436,7 +436,7 @@ describe('PlayerReadyDetector', () => {
             
             const result = detector.waitForPlayerReady();
 
-            expect(mockLogger).toHaveBeenCalledWith('warn', '[PlayerReadyDetector:netflix] Player ready detection already in progress', {});
+            expect(mockLogger).toHaveBeenCalledWith('warn', '[PlayerReadyDetector:netflix] Player ready detection is already in progress.', {});
             expect(result).resolves.toBe(false);
         });
     });

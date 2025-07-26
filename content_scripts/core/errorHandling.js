@@ -1,9 +1,10 @@
 /**
- * Custom Error Classes and Error Handling Utilities
+ * Provides custom error classes and centralized error handling utilities for the content script.
  */
 
 /**
- * Base error class for content script errors
+ * A base error class for all content script-related errors, providing consistent
+ * error information including a code and additional context.
  */
 export class ContentScriptError extends Error {
     constructor(message, code, context = {}) {
@@ -19,6 +20,10 @@ export class ContentScriptError extends Error {
         }
     }
 
+    /**
+     * Converts the error to a JSON-serializable object.
+     * @returns {Object} A plain object representing the error.
+     */
     toJSON() {
         return {
             name: this.name,
@@ -32,7 +37,7 @@ export class ContentScriptError extends Error {
 }
 
 /**
- * Platform initialization errors
+ * Represents an error that occurs during the initialization of a platform.
  */
 export class PlatformInitializationError extends ContentScriptError {
     constructor(message, context = {}) {
@@ -41,7 +46,7 @@ export class PlatformInitializationError extends ContentScriptError {
 }
 
 /**
- * Module loading errors
+ * Represents an error that occurs while loading a module.
  */
 export class ModuleLoadingError extends ContentScriptError {
     constructor(message, moduleName, context = {}) {
@@ -50,7 +55,7 @@ export class ModuleLoadingError extends ContentScriptError {
 }
 
 /**
- * Configuration errors
+ * Represents an error related to configuration.
  */
 export class ConfigurationError extends ContentScriptError {
     constructor(message, configKey, context = {}) {
@@ -59,7 +64,7 @@ export class ConfigurationError extends ContentScriptError {
 }
 
 /**
- * Video detection errors
+ * Represents an error that occurs during video element detection.
  */
 export class VideoDetectionError extends ContentScriptError {
     constructor(message, context = {}) {
@@ -68,19 +73,24 @@ export class VideoDetectionError extends ContentScriptError {
 }
 
 /**
- * Error handler utility class
+ * A utility class for handling and tracking errors throughout the content script.
  */
 export class ErrorHandler {
+    /**
+     * Creates a new `ErrorHandler` instance.
+     * @param {Function} [logger=console.error] - The function to use for logging errors.
+     */
     constructor(logger = console.error) {
         this.logger = logger;
         this.errorCounts = new Map();
     }
 
     /**
-     * Handle and log error with context
-     * @param {Error} error - Error to handle
-     * @param {Object} context - Additional context
-     * @param {boolean} shouldThrow - Whether to re-throw the error
+     * Handles and logs an error with additional context.
+     * @param {Error} error - The error to handle.
+     * @param {Object} [context={}] - Additional context to include with the error log.
+     * @param {boolean} [shouldThrow=false] - Whether to re-throw the error after handling.
+     * @returns {Object} An object containing detailed information about the handled error.
      */
     handle(error, context = {}, shouldThrow = false) {
         const errorKey = `${error.name}:${error.message}`;
@@ -106,10 +116,10 @@ export class ErrorHandler {
     }
 
     /**
-     * Wrap async function with error handling
-     * @param {Function} fn - Async function to wrap
-     * @param {Object} defaultContext - Default context for errors
-     * @returns {Function} Wrapped function
+     * Wraps an async function with error handling.
+     * @param {Function} fn - The async function to wrap.
+     * @param {Object} [defaultContext={}] - Default context to apply if an error occurs.
+     * @returns {Function} The wrapped async function.
      */
     wrapAsync(fn, defaultContext = {}) {
         return async (...args) => {
@@ -123,19 +133,19 @@ export class ErrorHandler {
     }
 
     /**
-     * Create error with context
-     * @param {string} message - Error message
-     * @param {string} code - Error code
-     * @param {Object} context - Error context
-     * @returns {ContentScriptError}
+     * Creates a `ContentScriptError` with the specified details.
+     * @param {string} message - The error message.
+     * @param {string} code - The error code.
+     * @param {Object} [context={}] - Additional context for the error.
+     * @returns {ContentScriptError} A new `ContentScriptError` instance.
      */
     createError(message, code, context = {}) {
         return new ContentScriptError(message, code, context);
     }
 
     /**
-     * Get error statistics
-     * @returns {Object} Error statistics
+     * Gets statistics about the errors that have been handled.
+     * @returns {Object} An object containing error statistics.
      */
     getStats() {
         const errors = Array.from(this.errorCounts.entries()).map(([key, count]) => {
@@ -151,7 +161,7 @@ export class ErrorHandler {
     }
 
     /**
-     * Clear error statistics
+     * Clears all tracked error statistics.
      */
     clearStats() {
         this.errorCounts.clear();
@@ -159,16 +169,16 @@ export class ErrorHandler {
 }
 
 /**
- * Global error handler instance
+ * A global instance of the `ErrorHandler` for convenience.
  */
 export const globalErrorHandler = new ErrorHandler();
 
 /**
- * Utility function to safely execute async operations
- * @param {Function} operation - Async operation
- * @param {any} fallbackValue - Value to return on error
- * @param {Object} context - Error context
- * @returns {Promise<any>} Operation result or fallback value
+ * Safely executes an async operation and returns a fallback value on error.
+ * @param {Function} operation - The async operation to execute.
+ * @param {*} [fallbackValue=null] - The value to return if the operation fails.
+ * @param {Object} [context={}] - Additional context for error logging.
+ * @returns {Promise<*>} A promise that resolves with the operation's result or the fallback value.
  */
 export async function safeAsync(operation, fallbackValue = null, context = {}) {
     try {

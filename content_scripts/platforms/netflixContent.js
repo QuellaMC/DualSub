@@ -1,24 +1,24 @@
 /**
- * Netflix Content Script Entry Point
- * 
- * This file serves as the entry point for the Netflix content script.
- * It instantiates and initializes the NetflixContentScript class.
- * 
+ * Entry point for the Netflix content script.
+ *
+ * This script initializes and runs the Netflix-specific content script,
+ * which is responsible for all platform-specific interactions.
+ *
  * @author DualSub Extension
  * @version 1.0.0
  */
 
 (async () => {
+    console.log('[NetflixContent] Script loading and initializing.');
     try {
         const { NetflixContentScript } = await import('./NetflixContentScript.js');
         const netflixContentScript = new NetflixContentScript();
-        const success = await netflixContentScript.initialize();
-        if (success) {
-            console.log('[NetflixContent] Content script initialized successfully');
+        if (await netflixContentScript.initialize()) {
+            console.log('[NetflixContent] Content script initialized successfully.');
         } else {
-            console.error('[NetflixContent] Content script initialization failed');
+            console.error('[NetflixContent] Content script initialization failed.');
         }
     } catch (error) {
-        console.error('[NetflixContent] Error during initialization:', error);
+        console.error('[NetflixContent] An error occurred during initialization:', error);
     }
 })();

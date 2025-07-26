@@ -1,5 +1,6 @@
 /**
- * Resource Manager for tracking and cleaning up resources
+ * Manages resources that require explicit cleanup, such as event listeners or observers,
+ * to prevent memory leaks.
  */
 export class ResourceManager {
     constructor(logger = console.log) {
@@ -9,14 +10,14 @@ export class ResourceManager {
     }
 
     /**
-     * Register a resource for cleanup
-     * @param {string} name - Resource identifier
-     * @param {any} resource - Resource instance
-     * @param {Function} cleanupFn - Cleanup function
+     * Registers a resource to be cleaned up later.
+     * @param {string} name - A unique identifier for the resource.
+     * @param {*} resource - The resource instance to be managed.
+     * @param {Function} cleanupFn - The function to call to clean up the resource.
      */
     register(name, resource, cleanupFn) {
         if (this.isCleanedUp) {
-            this.logger('warn', 'Attempting to register resource after cleanup', { name });
+            this.logger('warn', 'Attempted to register a resource after cleanup.', { name });
             return;
         }
 
@@ -26,13 +27,13 @@ export class ResourceManager {
             registeredAt: Date.now()
         });
 
-        this.logger('debug', 'Resource registered', { name, type: typeof resource });
+        this.logger('debug', 'Resource registered.', { name, type: typeof resource });
     }
 
     /**
-     * Unregister and cleanup a specific resource
-     * @param {string} name - Resource identifier
-     * @returns {boolean} Whether resource was found and cleaned up
+     * Unregisters and cleans up a specific resource by its identifier.
+     * @param {string} name - The identifier of the resource to unregister.
+     * @returns {boolean} `true` if the resource was found and cleaned up, otherwise `false`.
      */
     unregister(name) {
         const resourceInfo = this.resources.get(name);
@@ -45,18 +46,18 @@ export class ResourceManager {
                 resourceInfo.cleanup(resourceInfo.resource);
             }
             this.resources.delete(name);
-            this.logger('debug', 'Resource unregistered', { name });
+            this.logger('debug', 'Resource unregistered.', { name });
             return true;
         } catch (error) {
-            this.logger('error', 'Error cleaning up resource', { name, error: error.message });
+            this.logger('error', 'Error cleaning up resource.', { name, error: error.message });
             return false;
         }
     }
 
     /**
-     * Get a registered resource
-     * @param {string} name - Resource identifier
-     * @returns {any} Resource instance or null
+     * Retrieves a registered resource by its identifier.
+     * @param {string} name - The identifier of the resource to retrieve.
+     * @returns {*} The resource instance, or `null` if not found.
      */
     get(name) {
         const resourceInfo = this.resources.get(name);
@@ -64,32 +65,32 @@ export class ResourceManager {
     }
 
     /**
-     * Check if a resource is registered
-     * @param {string} name - Resource identifier
-     * @returns {boolean}
+     * Checks if a resource is registered.
+     * @param {string} name - The identifier of the resource to check.
+     * @returns {boolean} `true` if the resource is registered, otherwise `false`.
      */
     has(name) {
         return this.resources.has(name);
     }
 
     /**
-     * Get all registered resource names
-     * @returns {string[]}
+     * Gets the names of all registered resources.
+     * @returns {string[]} An array of resource identifiers.
      */
     getResourceNames() {
         return Array.from(this.resources.keys());
     }
 
     /**
-     * Cleanup all registered resources
+     * Cleans up all registered resources.
      */
     cleanupAll() {
         if (this.isCleanedUp) {
-            this.logger('debug', 'Resource manager already cleaned up');
+            this.logger('debug', 'Resource manager has already been cleaned up.');
             return;
         }
 
-        const resourceNames = Array.from(this.resources.keys());
+        const resourceNames = this.getResourceNames();
         let cleanedCount = 0;
         let errorCount = 0;
 
@@ -101,13 +102,13 @@ export class ResourceManager {
                     errorCount++;
                 }
             } catch (error) {
-                this.logger('error', 'Unexpected error during resource cleanup', { name, error: error.message });
+                this.logger('error', 'Unexpected error during resource cleanup.', { name, error: error.message });
                 errorCount++;
             }
         }
 
         this.isCleanedUp = true;
-        this.logger('info', 'Resource manager cleanup completed', { 
+        this.logger('info', 'Resource manager cleanup completed.', { 
             cleaned: cleanedCount, 
             errors: errorCount,
             total: resourceNames.length 
@@ -115,8 +116,8 @@ export class ResourceManager {
     }
 
     /**
-     * Get resource statistics
-     * @returns {Object} Resource statistics
+     * Gets statistics about the managed resources.
+     * @returns {Object} An object containing resource statistics.
      */
     getStats() {
         const now = Date.now();

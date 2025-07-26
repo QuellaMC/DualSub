@@ -109,7 +109,7 @@ describe('NavigationDetectionManager', () => {
             expect(setupFocusSpy).toHaveBeenCalled();
             expect(navigationManager.isSetup).toBe(true);
             expect(navigationManager.abortController).toBeInstanceOf(AbortController);
-            expect(mockLogger).toHaveBeenCalledWith('info', '[NavigationDetection:netflix] Setting up comprehensive navigation detection', expect.any(Object));
+            expect(mockLogger).toHaveBeenCalledWith('info', '[NavigationDetection:netflix] Setting up comprehensive navigation detection.', expect.any(Object));
         });
 
         test('should skip setup if already configured', () => {
@@ -119,7 +119,7 @@ describe('NavigationDetectionManager', () => {
             navigationManager.setupComprehensiveNavigation();
 
             expect(setupIntervalSpy).not.toHaveBeenCalled();
-            expect(mockLogger).toHaveBeenCalledWith('warn', '[NavigationDetection:netflix] Navigation detection already set up, skipping', {});
+            expect(mockLogger).toHaveBeenCalledWith('warn', '[NavigationDetection:netflix] Navigation detection is already set up; skipping.', {});
         });
 
         test('should respect disabled detection methods', () => {
@@ -406,7 +406,7 @@ describe('NavigationDetectionManager', () => {
         test('should log cleanup completion', () => {
             navigationManager.cleanup();
             
-            expect(mockLogger).toHaveBeenCalledWith('info', '[NavigationDetection:netflix] Navigation detection cleanup completed', {});
+            expect(mockLogger).toHaveBeenCalledWith('info', '[NavigationDetection:netflix] Navigation detection cleanup is complete.', {});
         });
     });
 
@@ -494,8 +494,8 @@ describe('NavigationEventHandler', () => {
         test('should log page transitions', () => {
             eventHandler.handlePageTransition(false, true);
             
-            expect(mockLogger).toHaveBeenCalledWith('info', '[NavigationEventHandler:netflix] Handling page transition', expect.any(Object));
-            expect(mockLogger).toHaveBeenCalledWith('info', '[NavigationEventHandler:netflix] Entering player page, triggering initialization', expect.any(Object));
+            expect(mockLogger).toHaveBeenCalledWith('info', '[NavigationEventHandler:netflix] Handling page transition.', expect.any(Object));
+            expect(mockLogger).toHaveBeenCalledWith('info', '[NavigationEventHandler:netflix] Entering player page, triggering initialization.', expect.any(Object));
         });
     });
 
@@ -515,7 +515,7 @@ describe('NavigationEventHandler', () => {
             
             eventHandler.handleUrlChange(oldUrl, newUrl);
             
-            expect(mockLogger).toHaveBeenCalledWith('debug', '[NavigationEventHandler:netflix] Handling URL change', expect.any(Object));
+            expect(mockLogger).toHaveBeenCalledWith('debug', '[NavigationEventHandler:netflix] Handling URL change.', expect.any(Object));
         });
     });
 });

@@ -1,45 +1,26 @@
 /**
- * DOMUtils - Shared DOM manipulation and video element detection utilities
- * 
- * This module provides robust DOM utilities for video element detection,
- * DOM manipulation helpers, and player ready detection with configurable
- * retry logic. These utilities are extracted from platform-specific
- * implementations to be shared across all platforms.
- * 
+ * Provides shared DOM manipulation and video element detection utilities,
+ * designed to be reusable across different streaming platforms.
+ *
  * @author DualSub Extension
  * @version 1.0.0
  */
 
 /**
- * VideoElementDetector - Detects and manages video elements on streaming platforms
- * 
- * This class provides comprehensive video element detection with multiple
- * strategies, retry logic, and platform-specific selectors.
- * 
- * @example
- * ```javascript
- * const detector = new VideoElementDetector('netflix', {
- *     selectors: ['video', '.video-player video'],
- *     maxRetries: 30,
- *     retryInterval: 1000,
- *     onVideoFound: (video) => console.log('Video found:', video),
- *     logger: myLogger
- * });
- * 
- * detector.startDetection();
- * ```
+ * Detects and manages video elements on streaming platforms, providing
+ * comprehensive detection with multiple strategies, retry logic, and platform-specific selectors.
  */
 export class VideoElementDetector {
     /**
-     * Creates a new VideoElementDetector instance
-     * @param {string} platform - Platform name (e.g., 'netflix', 'disneyplus')
-     * @param {Object} options - Configuration options
-     * @param {string[]} [options.selectors] - CSS selectors for video elements
-     * @param {number} [options.maxRetries=30] - Maximum detection attempts
-     * @param {number} [options.retryInterval=1000] - Interval between attempts in ms
-     * @param {Function} [options.onVideoFound] - Callback when video is found
-     * @param {Function} [options.onDetectionFailed] - Callback when detection fails
-     * @param {Function} [options.logger] - Logger function
+     * Creates a new `VideoElementDetector` instance.
+     * @param {string} platform - The platform name (e.g., 'netflix', 'disneyplus').
+     * @param {Object} [options={}] - Configuration options.
+     * @param {string[]} [options.selectors] - CSS selectors for video elements.
+     * @param {number} [options.maxRetries=30] - The maximum number of detection attempts.
+     * @param {number} [options.retryInterval=1000] - The interval between attempts in milliseconds.
+     * @param {Function} [options.onVideoFound] - A callback executed when the video is found.
+     * @param {Function} [options.onDetectionFailed] - A callback executed when detection fails.
+     * @param {Function} [options.logger] - A logger function.
      */
     constructor(platform, options = {}) {
         this.platform = platform;
@@ -64,16 +45,16 @@ export class VideoElementDetector {
     }
 
     /**
-     * Start video element detection
-     * @returns {Promise<HTMLVideoElement|null>} Promise that resolves with video element or null
+     * Starts the video element detection process.
+     * @returns {Promise<HTMLVideoElement|null>} A promise that resolves with the video element or `null`.
      */
     async startDetection() {
         if (this.isDetecting) {
-            this._log('warn', 'Video detection already in progress');
-            return this.currentVideo;
+            this._log('warn', 'Video detection is already in progress.');
+            return Promise.resolve(this.currentVideo);
         }
 
-        this._log('info', 'Starting video element detection', {
+        this._log('info', 'Starting video element detection.', {
             platform: this.platform,
             selectors: this.options.selectors,
             maxRetries: this.options.maxRetries
@@ -113,7 +94,7 @@ export class VideoElementDetector {
     }
 
     /**
-     * Stop video element detection
+     * Stops the video element detection process.
      */
     stopDetection() {
         if (this.detectionInterval) {
@@ -122,21 +103,21 @@ export class VideoElementDetector {
         }
         
         this.isDetecting = false;
-        this._log('info', 'Video element detection stopped');
+        this._log('info', 'Video element detection stopped.');
     }
 
     /**
-     * Get the currently detected video element
-     * @returns {HTMLVideoElement|null} Current video element or null
+     * Gets the currently detected video element.
+     * @returns {HTMLVideoElement|null} The current video element, or `null` if not found.
      */
     getCurrentVideo() {
         return this.currentVideo;
     }
 
     /**
-     * Check if a video element is ready for subtitle processing
-     * @param {HTMLVideoElement} video - Video element to check
-     * @returns {boolean} Whether the video is ready
+     * Checks if a video element is ready for subtitle processing.
+     * @param {HTMLVideoElement} video - The video element to check.
+     * @returns {boolean} `true` if the video is ready, otherwise `false`.
      */
     isVideoReady(video) {
         if (!video) return false;
@@ -150,26 +131,26 @@ export class VideoElementDetector {
     }
 
     /**
-     * Wait for video element to be ready
-     * @param {HTMLVideoElement} video - Video element to wait for
-     * @param {number} [timeout=10000] - Timeout in milliseconds
-     * @returns {Promise<boolean>} Promise that resolves when video is ready
+     * Waits for a video element to be ready.
+     * @param {HTMLVideoElement} video - The video element to wait for.
+     * @param {number} [timeout=10000] - The timeout in milliseconds.
+     * @returns {Promise<boolean>} A promise that resolves to `true` if the video becomes ready.
      */
     async waitForVideoReady(video, timeout = 10000) {
-        if (!video) return false;
+        if (!video) return Promise.resolve(false);
 
         return new Promise((resolve) => {
             const startTime = Date.now();
             
             const checkReady = () => {
                 if (this.isVideoReady(video)) {
-                    this._log('info', 'Video is ready for subtitle processing');
+                    this._log('info', 'Video is ready for subtitle processing.');
                     resolve(true);
                     return;
                 }
 
                 if (Date.now() - startTime > timeout) {
-                    this._log('warn', 'Video ready timeout exceeded', { timeout });
+                    this._log('warn', 'Video ready timeout exceeded.', { timeout });
                     resolve(false);
                     return;
                 }
@@ -182,9 +163,9 @@ export class VideoElementDetector {
     }
 
     /**
-     * Detect video element using configured selectors
+     * Detects a video element using the configured selectors.
      * @private
-     * @returns {HTMLVideoElement|null} Found video element or null
+     * @returns {HTMLVideoElement|null} The found video element, or `null`.
      */
     _detectVideo() {
         for (const selector of this.options.selectors) {
@@ -193,7 +174,7 @@ export class VideoElementDetector {
                 
                 for (const video of videos) {
                     if (this._isValidVideo(video)) {
-                        this._log('debug', 'Video element found', {
+                        this._log('debug', 'Video element found.', {
                             selector,
                             videoSrc: video.src || 'no src',
                             readyState: video.readyState
@@ -202,7 +183,7 @@ export class VideoElementDetector {
                     }
                 }
             } catch (error) {
-                this._log('error', 'Error querying video selector', {
+                this._log('error', 'Error querying video selector.', {
                     selector,
                     error: error.message
                 });
@@ -213,10 +194,10 @@ export class VideoElementDetector {
     }
 
     /**
-     * Validate if a video element is suitable for subtitle processing
+     * Validates if a video element is suitable for subtitle processing.
      * @private
-     * @param {HTMLVideoElement} video - Video element to validate
-     * @returns {boolean} Whether the video is valid
+     * @param {HTMLVideoElement} video - The video element to validate.
+     * @returns {boolean} `true` if the video is valid, otherwise `false`.
      */
     _isValidVideo(video) {
         if (!video || video.tagName !== 'VIDEO') return false;
@@ -232,9 +213,9 @@ export class VideoElementDetector {
     }
 
     /**
-     * Handle video found event
+     * Handles the video found event.
      * @private
-     * @param {HTMLVideoElement} video - Found video element
+     * @param {HTMLVideoElement} video - The found video element.
      */
     _onVideoFound(video) {
         this.currentVideo = video;
@@ -245,7 +226,7 @@ export class VideoElementDetector {
             this.detectionInterval = null;
         }
 
-        this._log('info', 'Video element detected successfully', {
+        this._log('info', 'Video element detected successfully.', {
             videoSrc: video.src || 'no src',
             readyState: video.readyState,
             dimensions: `${video.videoWidth}x${video.videoHeight}`
@@ -257,7 +238,7 @@ export class VideoElementDetector {
     }
 
     /**
-     * Handle detection failed event
+     * Handles the detection failed event.
      * @private
      */
     _onDetectionFailed() {
@@ -268,7 +249,7 @@ export class VideoElementDetector {
             this.detectionInterval = null;
         }
 
-        this._log('error', 'Video element detection failed', {
+        this._log('error', 'Video element detection failed.', {
             maxRetries: this.options.maxRetries,
             selectors: this.options.selectors
         });
@@ -279,10 +260,10 @@ export class VideoElementDetector {
     }
 
     /**
-     * Get default selectors for a platform
+     * Gets the default selectors for a given platform.
      * @private
-     * @param {string} platform - Platform name
-     * @returns {string[]} Default selectors
+     * @param {string} platform - The platform name.
+     * @returns {string[]} An array of default CSS selectors.
      */
     _getDefaultSelectors(platform) {
         const defaultSelectors = {
@@ -304,11 +285,11 @@ export class VideoElementDetector {
     }
 
     /**
-     * Log messages with fallback
+     * Logs messages with a fallback to the console.
      * @private
-     * @param {string} level - Log level
-     * @param {string} message - Log message
-     * @param {Object} [data] - Additional data
+     * @param {string} level - The log level.
+     * @param {string} message - The log message.
+     * @param {Object} [data] - Additional data to log.
      */
     _log(level, message, data = {}) {
         if (this.options.logger) {
@@ -320,30 +301,17 @@ export class VideoElementDetector {
 }
 
 /**
- * DOMManipulator - Provides DOM manipulation utilities for subtitle containers
- * 
- * This class handles creation, management, and cleanup of DOM elements
- * needed for subtitle display across different platforms.
- * 
- * @example
- * ```javascript
- * const manipulator = new DOMManipulator('netflix', {
- *     containerClass: 'dualsub-container',
- *     logger: myLogger
- * });
- * 
- * const container = manipulator.createSubtitleContainer(videoElement);
- * manipulator.injectCSS('.dualsub-subtitle { color: white; }');
- * ```
+ * Provides DOM manipulation utilities for creating and managing subtitle containers
+ * across different platforms.
  */
 export class DOMManipulator {
     /**
-     * Creates a new DOMManipulator instance
-     * @param {string} platform - Platform name
-     * @param {Object} options - Configuration options
-     * @param {string} [options.containerClass='dualsub-container'] - CSS class for subtitle containers
-     * @param {string} [options.containerPrefix='dualsub'] - Prefix for generated IDs
-     * @param {Function} [options.logger] - Logger function
+     * Creates a new `DOMManipulator` instance.
+     * @param {string} platform - The platform name.
+     * @param {Object} [options={}] - Configuration options.
+     * @param {string} [options.containerClass='dualsub-container'] - The CSS class for subtitle containers.
+     * @param {string} [options.containerPrefix='dualsub'] - A prefix for generated element IDs.
+     * @param {Function} [options.logger] - A logger function.
      */
     constructor(platform, options = {}) {
         this.platform = platform;
@@ -360,16 +328,16 @@ export class DOMManipulator {
     }
 
     /**
-     * Create a subtitle container element
-     * @param {HTMLVideoElement} videoElement - Video element to attach container to
-     * @param {Object} [options] - Container options
-     * @param {string} [options.position='bottom'] - Container position ('top', 'bottom')
-     * @param {string} [options.id] - Custom container ID
-     * @returns {HTMLElement|null} Created container element
+     * Creates a subtitle container element and attaches it to the DOM.
+     * @param {HTMLVideoElement} videoElement - The video element to attach the container to.
+     * @param {Object} [options={}] - Container options.
+     * @param {string} [options.position='bottom'] - The container's position ('top' or 'bottom').
+     * @param {string} [options.id] - A custom ID for the container.
+     * @returns {HTMLElement|null} The created container element, or `null` on failure.
      */
     createSubtitleContainer(videoElement, options = {}) {
         if (!videoElement) {
-            this._log('error', 'Cannot create subtitle container: video element is null');
+            this._log('error', 'Cannot create subtitle container: video element is null.');
             return null;
         }
 
@@ -382,7 +350,7 @@ export class DOMManipulator {
             // Find or create parent container
             const parentContainer = this._findOrCreateParentContainer(videoElement);
             if (!parentContainer) {
-                this._log('error', 'Could not find or create parent container');
+                this._log('error', 'Could not find or create a parent container.');
                 return null;
             }
 
@@ -400,7 +368,7 @@ export class DOMManipulator {
             // Track for cleanup
             this.createdElements.add(container);
             
-            this._log('info', 'Subtitle container created', {
+            this._log('info', 'Subtitle container created.', {
                 id,
                 position,
                 parentContainer: parentContainer.tagName
@@ -408,7 +376,7 @@ export class DOMManipulator {
 
             return container;
         } catch (error) {
-            this._log('error', 'Error creating subtitle container', {
+            this._log('error', 'Error creating subtitle container.', {
                 error: error.message,
                 position
             });
@@ -417,9 +385,9 @@ export class DOMManipulator {
     }
 
     /**
-     * Remove a subtitle container
-     * @param {HTMLElement|string} container - Container element or ID to remove
-     * @returns {boolean} Whether removal was successful
+     * Removes a subtitle container from the DOM.
+     * @param {HTMLElement|string} container - The container element or its ID to remove.
+     * @returns {boolean} `true` if the removal was successful, otherwise `false`.
      */
     removeSubtitleContainer(container) {
         try {
@@ -428,21 +396,21 @@ export class DOMManipulator {
                 : container;
 
             if (!element) {
-                this._log('warn', 'Container not found for removal', { container });
+                this._log('warn', 'Container not found for removal.', { container });
                 return false;
             }
 
             element.remove();
             this.createdElements.delete(element);
             
-            this._log('info', 'Subtitle container removed', {
+            this._log('info', 'Subtitle container removed.', {
                 id: element.id,
                 className: element.className
             });
 
             return true;
         } catch (error) {
-            this._log('error', 'Error removing subtitle container', {
+            this._log('error', 'Error removing subtitle container.', {
                 error: error.message,
                 container
             });
@@ -451,10 +419,10 @@ export class DOMManipulator {
     }
 
     /**
-     * Inject CSS styles into the document
-     * @param {string} css - CSS styles to inject
-     * @param {string} [id] - Optional ID for the style element
-     * @returns {HTMLStyleElement|null} Created style element
+     * Injects CSS styles into the document head.
+     * @param {string} css - The CSS styles to inject.
+     * @param {string} [id=null] - An optional ID for the style element.
+     * @returns {HTMLStyleElement|null} The created style element, or `null` on failure.
      */
     injectCSS(css, id = null) {
         try {
@@ -462,7 +430,7 @@ export class DOMManipulator {
             
             // Check if style already exists
             if (document.getElementById(styleId)) {
-                this._log('debug', 'CSS already injected', { styleId });
+                this._log('debug', 'CSS has already been injected.', { styleId });
                 return document.getElementById(styleId);
             }
 
@@ -473,14 +441,14 @@ export class DOMManipulator {
             document.head.appendChild(style);
             this.injectedStyles.add(style);
             
-            this._log('info', 'CSS injected successfully', {
+            this._log('info', 'CSS injected successfully.', {
                 styleId,
                 cssLength: css.length
             });
 
             return style;
         } catch (error) {
-            this._log('error', 'Error injecting CSS', {
+            this._log('error', 'Error injecting CSS.', {
                 error: error.message,
                 cssLength: css?.length || 0
             });
@@ -489,9 +457,9 @@ export class DOMManipulator {
     }
 
     /**
-     * Find the best parent container for subtitle elements
-     * @param {HTMLVideoElement} videoElement - Video element
-     * @returns {HTMLElement|null} Parent container element
+     * Finds the best-suited parent container for subtitle elements.
+     * @param {HTMLVideoElement} videoElement - The video element.
+     * @returns {HTMLElement|null} The parent container element, or `null` if not found.
      */
     findSubtitleParent(videoElement) {
         if (!videoElement) return null;
@@ -503,7 +471,7 @@ export class DOMManipulator {
             try {
                 const parent = videoElement.closest(selector);
                 if (parent) {
-                    this._log('debug', 'Found subtitle parent', {
+                    this._log('debug', 'Found subtitle parent.', {
                         selector,
                         parentTag: parent.tagName,
                         parentClass: parent.className
@@ -511,7 +479,7 @@ export class DOMManipulator {
                     return parent;
                 }
             } catch (error) {
-                this._log('debug', 'Error checking parent selector', {
+                this._log('debug', 'Error checking parent selector.', {
                     selector,
                     error: error.message
                 });
@@ -523,7 +491,7 @@ export class DOMManipulator {
     }
 
     /**
-     * Clean up all created elements and styles
+     * Cleans up all created elements and injected styles.
      */
     cleanup() {
         let cleanedCount = 0;
@@ -536,7 +504,7 @@ export class DOMManipulator {
                     cleanedCount++;
                 }
             } catch (error) {
-                this._log('warn', 'Error removing element during cleanup', {
+                this._log('warn', 'Error removing element during cleanup.', {
                     error: error.message,
                     elementId: element.id
                 });
@@ -552,7 +520,7 @@ export class DOMManipulator {
                     cleanedCount++;
                 }
             } catch (error) {
-                this._log('warn', 'Error removing style during cleanup', {
+                this._log('warn', 'Error removing style during cleanup.', {
                     error: error.message,
                     styleId: style.id
                 });
@@ -560,16 +528,16 @@ export class DOMManipulator {
         }
         this.injectedStyles.clear();
 
-        this._log('info', 'DOM cleanup completed', {
+        this._log('info', 'DOM cleanup completed.', {
             elementsRemoved: cleanedCount
         });
     }
 
     /**
-     * Find or create parent container for subtitles
+     * Finds or creates a parent container for subtitles.
      * @private
-     * @param {HTMLVideoElement} videoElement - Video element
-     * @returns {HTMLElement|null} Parent container
+     * @param {HTMLVideoElement} videoElement - The video element.
+     * @returns {HTMLElement|null} The parent container.
      */
     _findOrCreateParentContainer(videoElement) {
         // Try to find existing parent
@@ -593,10 +561,10 @@ export class DOMManipulator {
     }
 
     /**
-     * Apply styles to subtitle container
+     * Applies styles to the subtitle container.
      * @private
-     * @param {HTMLElement} container - Container element
-     * @param {string} position - Container position
+     * @param {HTMLElement} container - The container element.
+     * @param {string} position - The container's position ('top' or 'bottom').
      */
     _applyContainerStyles(container, position) {
         const baseStyles = {
@@ -619,9 +587,9 @@ export class DOMManipulator {
     }
 
     /**
-     * Get platform-specific parent selectors
+     * Gets platform-specific parent selectors.
      * @private
-     * @returns {string[]} Parent selectors
+     * @returns {string[]} An array of parent selectors.
      */
     _getParentSelectors() {
         const selectors = {
@@ -643,11 +611,11 @@ export class DOMManipulator {
     }
 
     /**
-     * Log messages with fallback
+     * Logs messages with a fallback to the console.
      * @private
-     * @param {string} level - Log level
-     * @param {string} message - Log message
-     * @param {Object} [data] - Additional data
+     * @param {string} level - The log level.
+     * @param {string} message - The log message.
+     * @param {Object} [data] - Additional data to log.
      */
     _log(level, message, data = {}) {
         if (this.options.logger) {
@@ -659,34 +627,19 @@ export class DOMManipulator {
 }
 
 /**
- * PlayerReadyDetector - Detects when video player is ready for subtitle processing
- * 
- * This class provides robust player ready detection with multiple strategies
- * and configurable retry logic, ensuring subtitle systems initialize at the
- * optimal time.
- * 
- * @example
- * ```javascript
- * const detector = new PlayerReadyDetector('netflix', {
- *     maxRetries: 20,
- *     retryInterval: 500,
- *     onPlayerReady: () => console.log('Player is ready!'),
- *     logger: myLogger
- * });
- * 
- * detector.waitForPlayerReady();
- * ```
+ * Detects when a video player is ready for subtitle processing, using robust
+ * detection with multiple strategies and configurable retry logic.
  */
 export class PlayerReadyDetector {
     /**
-     * Creates a new PlayerReadyDetector instance
-     * @param {string} platform - Platform name
-     * @param {Object} options - Configuration options
-     * @param {number} [options.maxRetries=20] - Maximum detection attempts
-     * @param {number} [options.retryInterval=500] - Interval between attempts in ms
-     * @param {Function} [options.onPlayerReady] - Callback when player is ready
-     * @param {Function} [options.onDetectionTimeout] - Callback when detection times out
-     * @param {Function} [options.logger] - Logger function
+     * Creates a new `PlayerReadyDetector` instance.
+     * @param {string} platform - The platform name.
+     * @param {Object} [options={}] - Configuration options.
+     * @param {number} [options.maxRetries=20] - The maximum number of detection attempts.
+     * @param {number} [options.retryInterval=500] - The interval between attempts in milliseconds.
+     * @param {Function} [options.onPlayerReady] - A callback executed when the player is ready.
+     * @param {Function} [options.onDetectionTimeout] - A callback executed when detection times out.
+     * @param {Function} [options.logger] - A logger function.
      */
     constructor(platform, options = {}) {
         this.platform = platform;
@@ -704,16 +657,16 @@ export class PlayerReadyDetector {
     }
 
     /**
-     * Wait for player to be ready
-     * @returns {Promise<boolean>} Promise that resolves when player is ready
+     * Waits for the player to be ready.
+     * @returns {Promise<boolean>} A promise that resolves to `true` if the player becomes ready.
      */
     async waitForPlayerReady() {
         if (this.isDetecting) {
-            this._log('warn', 'Player ready detection already in progress');
+            this._log('warn', 'Player ready detection is already in progress.');
             return false;
         }
 
-        this._log('info', 'Starting player ready detection', {
+        this._log('info', 'Starting player ready detection.', {
             platform: this.platform,
             maxRetries: this.options.maxRetries
         });
@@ -750,9 +703,9 @@ export class PlayerReadyDetector {
     }
 
     /**
-     * Check if player is ready using platform-specific logic
+     * Checks if the player is ready using platform-specific logic.
      * @private
-     * @returns {boolean} Whether player is ready
+     * @returns {boolean} `true` if the player is ready, otherwise `false`.
      */
     _isPlayerReady() {
         // Check for video element
@@ -767,9 +720,9 @@ export class PlayerReadyDetector {
     }
 
     /**
-     * Platform-specific readiness checks
+     * Performs platform-specific readiness checks.
      * @private
-     * @returns {boolean} Whether platform-specific conditions are met
+     * @returns {boolean} `true` if platform-specific conditions are met.
      */
     _platformSpecificReadyCheck() {
         switch (this.platform.toLowerCase()) {
@@ -778,14 +731,14 @@ export class PlayerReadyDetector {
             case 'disneyplus':
                 return this._isDisneyPlusReady();
             default:
-                return true; // Generic check passed
+                return true;
         }
     }
 
     /**
-     * Netflix-specific readiness check
+     * A Netflix-specific readiness check.
      * @private
-     * @returns {boolean} Whether Netflix player is ready
+     * @returns {boolean} `true` if the Netflix player is ready.
      */
     _isNetflixReady() {
         // Check for Netflix player elements
@@ -798,9 +751,9 @@ export class PlayerReadyDetector {
     }
 
     /**
-     * Disney+ specific readiness check
+     * A Disney+-specific readiness check.
      * @private
-     * @returns {boolean} Whether Disney+ player is ready
+     * @returns {boolean} `true` if the Disney+ player is ready.
      */
     _isDisneyPlusReady() {
         // Check for Disney+ player elements
@@ -813,13 +766,13 @@ export class PlayerReadyDetector {
     }
 
     /**
-     * Handle player ready event
+     * Handles the player ready event.
      * @private
      */
     _onPlayerReady() {
         this.isDetecting = false;
         
-        this._log('info', 'Player is ready for subtitle processing', {
+        this._log('info', 'Player is ready for subtitle processing.', {
             retryCount: this.retryCount
         });
 
@@ -829,13 +782,13 @@ export class PlayerReadyDetector {
     }
 
     /**
-     * Handle detection timeout event
+     * Handles the detection timeout event.
      * @private
      */
     _onDetectionTimeout() {
         this.isDetecting = false;
         
-        this._log('warn', 'Player ready detection timed out', {
+        this._log('warn', 'Player ready detection timed out.', {
             maxRetries: this.options.maxRetries,
             totalTime: this.options.maxRetries * this.options.retryInterval
         });
@@ -846,11 +799,11 @@ export class PlayerReadyDetector {
     }
 
     /**
-     * Log messages with fallback
+     * Logs messages with a fallback to the console.
      * @private
-     * @param {string} level - Log level
-     * @param {string} message - Log message
-     * @param {Object} [data] - Additional data
+     * @param {string} level - The log level.
+     * @param {string} message - The log message.
+     * @param {Object} [data] - Additional data to log.
      */
     _log(level, message, data = {}) {
         if (this.options.logger) {
@@ -862,7 +815,7 @@ export class PlayerReadyDetector {
 }
 
 /**
- * Platform-specific DOM configurations
+ * Provides platform-specific DOM configurations.
  */
 export const PLATFORM_DOM_CONFIGS = {
     netflix: {
@@ -901,10 +854,10 @@ export const PLATFORM_DOM_CONFIGS = {
 };
 
 /**
- * Create a pre-configured VideoElementDetector for a specific platform
- * @param {string} platform - Platform name
- * @param {Object} [customOptions] - Custom options to override defaults
- * @returns {VideoElementDetector} Configured video detector
+ * Creates a pre-configured `VideoElementDetector` for a specific platform.
+ * @param {string} platform - The platform name.
+ * @param {Object} [customOptions={}] - Custom options to override the defaults.
+ * @returns {VideoElementDetector} A configured `VideoElementDetector` instance.
  */
 export function createPlatformVideoDetector(platform, customOptions = {}) {
     const platformConfig = PLATFORM_DOM_CONFIGS[platform.toLowerCase()] || {};
@@ -919,10 +872,10 @@ export function createPlatformVideoDetector(platform, customOptions = {}) {
 }
 
 /**
- * Create a pre-configured DOMManipulator for a specific platform
- * @param {string} platform - Platform name
- * @param {Object} [customOptions] - Custom options to override defaults
- * @returns {DOMManipulator} Configured DOM manipulator
+ * Creates a pre-configured `DOMManipulator` for a specific platform.
+ * @param {string} platform - The platform name.
+ * @param {Object} [customOptions={}] - Custom options to override the defaults.
+ * @returns {DOMManipulator} A configured `DOMManipulator` instance.
  */
 export function createPlatformDOMManipulator(platform, customOptions = {}) {
     const options = {

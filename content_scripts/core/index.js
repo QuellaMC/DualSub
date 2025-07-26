@@ -1,8 +1,8 @@
 /**
- * Core Content Script Utilities - Main Export
- * 
- * Central export point for all core content script functionality.
- * 
+ * This module serves as the central export point for all core content script
+ * functionality, providing a unified interface for accessing common utilities,
+ * constants, error handling, and base classes.
+ *
  * @author DualSub Extension
  * @version 1.0.0
  */

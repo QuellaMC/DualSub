@@ -10,32 +10,31 @@
 import { DEFAULT_PLATFORM_CONFIGS } from './constants.js';
 
 /**
- * Platform configuration factory
+ * Factory for creating and managing platform-specific configurations.
  */
 export class PlatformConfigFactory {
     static #registeredPlatforms = new Map();
 
     /**
-     * Register a platform configuration
-     * @param {string} platformName - Platform name
-     * @param {Object} config - Platform configuration
+     * Registers a new platform configuration or overrides an existing one.
+     * @param {string} platformName - The name of the platform.
+     * @param {Object} config - The platform-specific configuration object.
      */
     static register(platformName, config) {
         this.#registeredPlatforms.set(platformName, config);
     }
 
     /**
-     * Create platform configuration by name
-     * @param {string} platformName - Platform name
-     * @returns {Object|null} Platform configuration or null
+     * Creates a platform configuration by its name.
+     * It first checks for a custom registered platform, then falls back to default configurations.
+     * @param {string} platformName - The name of the platform.
+     * @returns {Object|null} A copy of the platform configuration, or null if not found.
      */
     static create(platformName) {
-        // Check registered platforms first
         if (this.#registeredPlatforms.has(platformName)) {
             return { ...this.#registeredPlatforms.get(platformName) };
         }
 
-        // Fall back to default configurations
         if (DEFAULT_PLATFORM_CONFIGS[platformName]) {
             return { ...DEFAULT_PLATFORM_CONFIGS[platformName] };
         }
@@ -44,20 +43,18 @@ export class PlatformConfigFactory {
     }
 
     /**
-     * Create platform configuration by URL
-     * @param {string} url - URL to match against
-     * @returns {Object|null} Platform configuration or null
+     * Creates a platform configuration by matching a URL against registered URL patterns.
+     * @param {string} [url=window.location.href] - The URL to match.
+     * @returns {Object|null} A copy of the matched platform configuration, or null if no match is found.
      */
     static createByUrl(url = window.location.href) {
-        // Check registered platforms first
-        for (const [name, config] of this.#registeredPlatforms) {
+        for (const [, config] of this.#registeredPlatforms) {
             if (this.#matchesUrlPatterns(url, config.navigation?.urlPatterns || [])) {
                 return { ...config };
             }
         }
 
-        // Check default configurations
-        for (const [name, config] of Object.entries(DEFAULT_PLATFORM_CONFIGS)) {
+        for (const [, config] of Object.entries(DEFAULT_PLATFORM_CONFIGS)) {
             if (this.#matchesUrlPatterns(url, config.navigation.urlPatterns)) {
                 return { ...config };
             }
@@ -67,20 +64,19 @@ export class PlatformConfigFactory {
     }
 
     /**
-     * Get all registered platform names
-     * @returns {string[]} Array of platform names
+     * Gets a list of all registered platform names, including defaults.
+     * @returns {string[]} An array of platform names.
      */
     static getRegisteredPlatforms() {
-        return [
-            ...Array.from(this.#registeredPlatforms.keys()),
-            ...Object.keys(DEFAULT_PLATFORM_CONFIGS)
-        ];
+        const defaultPlatforms = Object.keys(DEFAULT_PLATFORM_CONFIGS);
+        const customPlatforms = Array.from(this.#registeredPlatforms.keys());
+        return [...new Set([...customPlatforms, ...defaultPlatforms])];
     }
 
     /**
-     * Check if platform is supported
-     * @param {string} platformName - Platform name
-     * @returns {boolean} Whether platform is supported
+     * Checks if a platform is supported (either as a default or custom registration).
+     * @param {string} platformName - The name of the platform.
+     * @returns {boolean} `true` if the platform is supported, otherwise `false`.
      */
     static isSupported(platformName) {
         return this.#registeredPlatforms.has(platformName) || 
@@ -88,49 +84,45 @@ export class PlatformConfigFactory {
     }
 
     /**
-     * Validate platform configuration
-     * @param {Object} config - Configuration to validate
-     * @returns {Object} Validation result
+     * Validates a platform configuration object.
+     * @param {Object} config - The configuration object to validate.
+     * @returns {{isValid: boolean, errors: string[], warnings: string[]}} The validation result.
      */
     static validate(config) {
         const errors = [];
         const warnings = [];
 
-        // Required fields
         const requiredFields = ['name', 'injectScript', 'navigation', 'videoDetection'];
-        for (const field of requiredFields) {
+        requiredFields.forEach(field => {
             if (!config[field]) {
                 errors.push(`Missing required field: ${field}`);
             }
-        }
+        });
 
-        // Validate injectScript
         if (config.injectScript) {
             const requiredInjectFields = ['filename', 'tagId', 'eventId'];
-            for (const field of requiredInjectFields) {
+            requiredInjectFields.forEach(field => {
                 if (!config.injectScript[field]) {
                     errors.push(`Missing required injectScript field: ${field}`);
                 }
-            }
+            });
         }
 
-        // Validate navigation
         if (config.navigation) {
-            if (!config.navigation.urlPatterns || !Array.isArray(config.navigation.urlPatterns)) {
-                warnings.push('navigation.urlPatterns must be an array');
+            if (!Array.isArray(config.navigation.urlPatterns)) {
+                warnings.push('navigation.urlPatterns must be an array.');
             }
             if (typeof config.navigation.spaHandling !== 'boolean') {
-                warnings.push('navigation.spaHandling should be a boolean');
+                warnings.push('navigation.spaHandling should be a boolean.');
             }
         }
 
-        // Validate videoDetection
         if (config.videoDetection) {
             if (typeof config.videoDetection.maxRetries !== 'number') {
-                warnings.push('videoDetection.maxRetries should be a number');
+                warnings.push('videoDetection.maxRetries should be a number.');
             }
             if (typeof config.videoDetection.retryInterval !== 'number') {
-                warnings.push('videoDetection.retryInterval should be a number');
+                warnings.push('videoDetection.retryInterval should be a number.');
             }
         }
 
@@ -142,37 +134,39 @@ export class PlatformConfigFactory {
     }
 
     /**
-     * Create configuration builder for custom platforms
-     * @param {string} platformName - Platform name
-     * @returns {PlatformConfigBuilder} Configuration builder
+     * Creates a configuration builder instance for creating custom platform configurations.
+     * @param {string} platformName - The name of the platform for the new configuration.
+     * @returns {PlatformConfigBuilder} A new `PlatformConfigBuilder` instance.
      */
     static builder(platformName) {
         return new PlatformConfigBuilder(platformName);
     }
 
     /**
-     * Check if URL matches any of the patterns
+     * Checks if a URL matches any of the provided patterns.
      * @private
-     * @param {string} url - URL to check
-     * @param {string[]} patterns - URL patterns to match
-     * @returns {boolean} Whether URL matches any pattern
+     * @param {string} url - The URL to check.
+     * @param {string[]} patterns - An array of URL patterns (strings or regex-like strings).
+     * @returns {boolean} `true` if the URL matches any pattern, otherwise `false`.
      */
     static #matchesUrlPatterns(url, patterns) {
         return patterns.some(pattern => {
             if (pattern.startsWith('/') && pattern.endsWith('/')) {
-                // Regex pattern
-                const regex = new RegExp(pattern.slice(1, -1));
-                return regex.test(url);
-            } else {
-                // Simple string match
-                return url.includes(pattern);
+                try {
+                    const regex = new RegExp(pattern.slice(1, -1));
+                    return regex.test(url);
+                } catch (e) {
+                    console.error('Invalid regex pattern:', pattern);
+                    return false;
+                }
             }
+            return url.includes(pattern);
         });
     }
 }
 
 /**
- * Builder pattern for creating platform configurations
+ * Provides a builder pattern for creating platform configurations fluently.
  */
 export class PlatformConfigBuilder {
     constructor(name) {
@@ -192,11 +186,11 @@ export class PlatformConfigBuilder {
     }
 
     /**
-     * Set injection script configuration
-     * @param {string} filename - Script filename
-     * @param {string} tagId - Script tag ID
-     * @param {string} eventId - Event ID
-     * @returns {PlatformConfigBuilder} Builder instance
+     * Sets the injection script configuration.
+     * @param {string} filename - The path to the script file.
+     * @param {string} tagId - The ID for the script tag.
+     * @param {string} eventId - The event ID for communication.
+     * @returns {PlatformConfigBuilder} The builder instance for chaining.
      */
     withInjectScript(filename, tagId, eventId) {
         this.config.injectScript = { filename, tagId, eventId };
@@ -204,11 +198,11 @@ export class PlatformConfigBuilder {
     }
 
     /**
-     * Set navigation configuration
-     * @param {string[]} urlPatterns - URL patterns
-     * @param {boolean} spaHandling - Whether SPA handling is needed
-     * @param {number} checkInterval - Check interval in ms
-     * @returns {PlatformConfigBuilder} Builder instance
+     * Sets the navigation configuration.
+     * @param {string[]} urlPatterns - An array of URL patterns to identify the platform.
+     * @param {boolean} [spaHandling=false] - Whether the platform uses complex SPA routing.
+     * @param {number} [checkInterval=2000] - The interval in milliseconds for URL checks.
+     * @returns {PlatformConfigBuilder} The builder instance for chaining.
      */
     withNavigation(urlPatterns, spaHandling = false, checkInterval = 2000) {
         this.config.navigation = { urlPatterns, spaHandling, checkInterval };
@@ -216,10 +210,10 @@ export class PlatformConfigBuilder {
     }
 
     /**
-     * Set video detection configuration
-     * @param {number} maxRetries - Maximum retries
-     * @param {number} retryInterval - Retry interval in ms
-     * @returns {PlatformConfigBuilder} Builder instance
+     * Sets the video detection configuration.
+     * @param {number} [maxRetries=30] - The maximum number of retry attempts.
+     * @param {number} [retryInterval=1000] - The interval in milliseconds between retries.
+     * @returns {PlatformConfigBuilder} The builder instance for chaining.
      */
     withVideoDetection(maxRetries = 30, retryInterval = 1000) {
         this.config.videoDetection = { maxRetries, retryInterval };
@@ -227,9 +221,9 @@ export class PlatformConfigBuilder {
     }
 
     /**
-     * Set log prefix
-     * @param {string} logPrefix - Log prefix
-     * @returns {PlatformConfigBuilder} Builder instance
+     * Sets the log prefix for platform-specific logs.
+     * @param {string} logPrefix - The prefix for log messages.
+     * @returns {PlatformConfigBuilder} The builder instance for chaining.
      */
     withLogPrefix(logPrefix) {
         this.config.logPrefix = logPrefix;
@@ -237,8 +231,9 @@ export class PlatformConfigBuilder {
     }
 
     /**
-     * Build the configuration
-     * @returns {Object} Platform configuration
+     * Builds and validates the final configuration object.
+     * @returns {Object} The complete and validated platform configuration.
+     * @throws {Error} If the configuration is invalid.
      */
     build() {
         const validation = PlatformConfigFactory.validate(this.config);

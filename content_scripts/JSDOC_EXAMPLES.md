@@ -1,6 +1,9 @@
 # JSDoc Documentation Examples
 
-This document provides comprehensive JSDoc documentation examples for implementing platform-specific content scripts using the BaseContentScript architecture.
+This document provides comprehensive JSDoc documentation examples for implementing
+platform-specific content scripts using the `BaseContentScript` architecture.
+These examples are designed to serve as a reference for developers contributing to
+the extension.
 
 ## Table of Contents
 
@@ -96,7 +99,7 @@ This document provides comprehensive JSDoc documentation examples for implementi
  */
 export class ExampleContentScript extends BaseContentScript {
     /**
-     * Creates a new ExampleContentScript instance
+     * Creates a new `ExampleContentScript` instance.
      * 
      * Initializes the Example platform-specific content script with default configuration
      * and sets up the injection parameters required for Example platform integration.
@@ -740,8 +743,9 @@ getInjectScriptConfig() {
 /**
  * Player state changed event
  * 
- * Fired when the video player state changes (play, pause, seek, etc.).
- * This event helps synchronize subtitle display with player state.
+ * Fired when the video player state changes (e.g., play, pause, seek).
+ * This event is essential for synchronizing the subtitle display with the player's
+ * current state and ensuring a seamless user experience.
  * 
  * @event ExampleContentScript#playerStateChanged
  * @type {CustomEvent}

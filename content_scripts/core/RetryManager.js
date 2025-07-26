@@ -1,18 +1,25 @@
 /**
- * Retry Manager for handling initialization retries with exponential backoff
+ * Manages operations that require retry logic, implementing an exponential backoff strategy
+ * to handle transient failures gracefully.
  */
 export class RetryManager {
+    /**
+     * Creates a new `RetryManager` instance.
+     * @param {number} [maxRetries=3] - The maximum number of retry attempts.
+     * @param {number} [baseDelay=1000] - The base delay in milliseconds for exponential backoff.
+     */
     constructor(maxRetries = 3, baseDelay = 1000) {
         this.maxRetries = maxRetries;
         this.baseDelay = baseDelay;
     }
 
     /**
-     * Execute operation with retry logic
-     * @param {Function} operation - Async operation to retry
-     * @param {Object} context - Context for logging
-     * @param {Function} logger - Logger function
-     * @returns {Promise<any>} Operation result
+     * Executes an asynchronous operation with a retry mechanism.
+     * @param {Function} operation - The asynchronous operation to execute.
+     * @param {Object} [context={}] - Additional context for logging.
+     * @param {Function} [logger=console.log] - The logger function to use for status updates.
+     * @returns {Promise<*>} A promise that resolves with the operation's result.
+     * @throws Will throw the last error encountered if all retry attempts fail.
      */
     async executeWithRetry(operation, context = {}, logger = console.log) {
         let lastError;
@@ -39,9 +46,9 @@ export class RetryManager {
     }
 
     /**
-     * Delay utility
-     * @param {number} ms - Milliseconds to delay
-     * @returns {Promise<void>}
+     * A utility function to create a delay.
+     * @param {number} ms - The delay duration in milliseconds.
+     * @returns {Promise<void>} A promise that resolves after the specified delay.
      */
     delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));

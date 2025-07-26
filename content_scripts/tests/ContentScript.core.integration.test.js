@@ -195,7 +195,7 @@ describe('Core Content Script Integration Tests', () => {
 
             // Should log setup completion
             expect(testEnv.mocks.logger.info).toHaveBeenCalledWith(
-                'Enhanced Netflix navigation detection set up',
+                'Enhanced Netflix navigation detection is set up.',
                 expect.any(Object)
             );
         });
@@ -326,7 +326,7 @@ describe('Core Content Script Integration Tests', () => {
 
             // Should log setup completion
             expect(testEnv.mocks.logger.info).toHaveBeenCalledWith(
-                'Enhanced Disney+ navigation detection set up',
+                'Enhanced Disney+ navigation detection is set up.',
                 expect.any(Object)
             );
         });

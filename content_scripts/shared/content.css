@@ -1,30 +1,39 @@
-/* disneyplus-dualsub-chrome-extension/content_scripts/content.css */
-/* This file is referenced in manifest.json to be injected into Disney+ pages */
-/* Styles for the subtitle container and individual subtitle elements */
+/**
+ * DualSub Content Script Styles
+ *
+ * This file provides the base styles for the subtitle container and individual subtitle elements.
+ * It is injected into streaming platform pages as defined in the manifest.json.
+ * Most dynamic styles (e.g., position, font-size) are managed by the content script logic.
+ */
 
-#disneyplus-dual-subtitle-container {
-    /* Styles like position, z-index, pointer-events, text-align, width, and transform are primarily managed by content.js */
+#dualsub-subtitle-container {
+    /* Base container styles are primarily managed by the content script (e.g., position, z-index). */
 }
 
-#disneyplus-original-subtitle,
-#disneyplus-translated-subtitle {
-    /* Common base styles. Specifics like colors, padding, font-size, etc., are largely set by content.js */
-    line-height: 1.4; /* Improves readability of multi-line subtitles */
-    display: inline-block; /* Allows background to fit text width */
-    max-width: 100%; /* Ensure it doesn't overflow the container */
-    box-sizing: border-box; /* Padding included in width/height */
-    word-wrap: break-word; /* Break long words if necessary */
+#dualsub-original-subtitle,
+#dualsub-translated-subtitle {
+    /* 
+     * Common base styles for both original and translated subtitles. 
+     * Specific styling such as colors, padding, and font-size are controlled by the content script.
+     */
+    line-height: 1.4;        /* Improves readability for multi-line subtitles. */
+    display: inline-block;   /* Ensures the background fits the text width. */
+    max-width: 100%;         /* Prevents the subtitle from overflowing its container. */
+    box-sizing: border-box;  /* Includes padding and border in the element's total width and height. */
+    word-wrap: break-word;   /* Breaks long words to prevent overflow. */
 }
 
-/* Example of how you could override specific styles here if preferred over JS */
-/*
-#disneyplus-original-subtitle {
-    color: white;
-    font-size: 20px; 
-}
-
-#disneyplus-translated-subtitle {
-    color: cyan;
-    font-size: 18px;
-}
-*/
+/* 
+ * Example of how specific styles could be overridden directly in CSS.
+ * This is generally handled by the content script to allow for user configuration.
+ *
+ * #dualsub-original-subtitle {
+ *     color: white;
+ *     font-size: 20px;
+ * }
+ *
+ * #dualsub-translated-subtitle {
+ *     color: cyan;
+ *     font-size: 18px;
+ * }
+ */

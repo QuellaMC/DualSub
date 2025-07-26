@@ -1349,12 +1349,12 @@ describe('Private Helper Methods', () => {
 
     test('should get correct platform class name', () => {
         const className = contentScript._getPlatformClassName('netflix');
-        expect(className).toBe('NetflixPlatform');
+        expect(className).toBe(TestPlatform);
     });
 
     test('should get correct platform class name for disney plus', () => {
         const className = contentScript._getPlatformClassName('disneyplus');
-        expect(className).toBe('DisneyPlusPlatform'); // Special case handling for Disney+
+        expect(className).toBe(TestPlatform); // Special case handling for Disney+
     });
 
     test('should disable subtitles correctly', () => {

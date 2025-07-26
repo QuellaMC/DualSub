@@ -1,40 +1,25 @@
 /**
- * EventUtils - Shared event listener management and cleanup utilities
- * 
- * This module provides robust event handling utilities with automatic cleanup,
- * event listener management, and error recovery mechanisms. These utilities
- * ensure proper resource management and prevent memory leaks in content scripts.
- * 
+ * Provides shared event listener management and cleanup utilities, designed to be
+ * reusable across different streaming platforms. This module includes robust event
+ * handling with automatic cleanup, debouncing, and custom event dispatching to
+ * prevent memory leaks and improve performance.
+ *
  * @author DualSub Extension
  * @version 1.0.0
  */
 
 /**
- * EventListenerManager - Manages event listeners with automatic cleanup
- * 
- * This class provides centralized event listener management with automatic
- * cleanup, error handling, and support for AbortController-based cleanup.
- * 
- * @example
- * ```javascript
- * const eventManager = new EventListenerManager('netflix', {
- *     logger: myLogger
- * });
- * 
- * eventManager.addEventListener(videoElement, 'play', handlePlay);
- * eventManager.addEventListener(document, 'keydown', handleKeydown, { passive: true });
- * 
- * // Cleanup all listeners
- * eventManager.cleanup();
- * ```
+ * Manages event listeners with automatic cleanup to prevent memory leaks.
+ * This class provides centralized event listener management with support for
+ * AbortController-based cleanup for modern, efficient resource management.
  */
 export class EventListenerManager {
     /**
-     * Creates a new EventListenerManager instance
-     * @param {string} platform - Platform name for logging
-     * @param {Object} options - Configuration options
-     * @param {Function} [options.logger] - Logger function
-     * @param {boolean} [options.useAbortController=true] - Use AbortController for cleanup
+     * Creates a new `EventListenerManager` instance.
+     * @param {string} platform - The platform name for logging purposes.
+     * @param {Object} [options={}] - Configuration options.
+     * @param {Function} [options.logger] - A logger function.
+     * @param {boolean} [options.useAbortController=true] - Whether to use `AbortController` for cleanup.
      */
     constructor(platform, options = {}) {
         this.platform = platform;
@@ -56,12 +41,12 @@ export class EventListenerManager {
     }
 
     /**
-     * Add an event listener with automatic tracking
-     * @param {EventTarget} target - Event target (element, document, window, etc.)
-     * @param {string} type - Event type
-     * @param {Function} listener - Event listener function
-     * @param {Object|boolean} [options] - Event listener options
-     * @returns {string} Listener ID for manual removal
+     * Adds an event listener with automatic tracking for cleanup.
+     * @param {EventTarget} target - The event target (e.g., element, `document`, `window`).
+     * @param {string} type - The event type (e.g., 'click', 'keydown').
+     * @param {Function} listener - The event listener function.
+     * @param {Object|boolean} [options={}] - Event listener options.
+     * @returns {string|null} A unique listener ID for manual removal, or `null` on failure.
      */
     addEventListener(target, type, listener, options = {}) {
         if (!target || typeof listener !== 'function') {
@@ -104,7 +89,7 @@ export class EventListenerManager {
 
             return listenerId;
         } catch (error) {
-            this._log('error', 'Error adding event listener', {
+            this._log('error', 'Error adding event listener.', {
                 error: error.message,
                 eventType: type,
                 targetType: this._getTargetType(target)
@@ -114,14 +99,14 @@ export class EventListenerManager {
     }
 
     /**
-     * Remove a specific event listener
-     * @param {string} listenerId - Listener ID returned by addEventListener
-     * @returns {boolean} Whether removal was successful
+     * Removes a specific event listener by its ID.
+     * @param {string} listenerId - The ID of the listener to remove.
+     * @returns {boolean} `true` if the removal was successful, otherwise `false`.
      */
     removeEventListener(listenerId) {
         const listenerInfo = this.listeners.get(listenerId);
         if (!listenerInfo) {
-            this._log('warn', 'Listener not found for removal', { listenerId });
+            this._log('warn', 'Listener not found for removal.', { listenerId });
             return false;
         }
 
@@ -130,7 +115,7 @@ export class EventListenerManager {
             target.removeEventListener(type, listener);
             this.listeners.delete(listenerId);
 
-            this._log('debug', 'Event listener removed', {
+            this._log('debug', 'Event listener removed.', {
                 listenerId,
                 eventType: type,
                 remainingListeners: this.listeners.size
@@ -138,7 +123,7 @@ export class EventListenerManager {
 
             return true;
         } catch (error) {
-            this._log('error', 'Error removing event listener', {
+            this._log('error', 'Error removing event listener.', {
                 error: error.message,
                 listenerId
             });
@@ -147,9 +132,9 @@ export class EventListenerManager {
     }
 
     /**
-     * Remove all event listeners for a specific target
-     * @param {EventTarget} target - Event target
-     * @returns {number} Number of listeners removed
+     * Removes all event listeners for a specific target.
+     * @param {EventTarget} target - The event target.
+     * @returns {number} The number of listeners that were removed.
      */
     removeListenersForTarget(target) {
         let removedCount = 0;
@@ -162,7 +147,7 @@ export class EventListenerManager {
             }
         }
 
-        this._log('info', 'Removed listeners for target', {
+        this._log('info', 'Removed listeners for target.', {
             targetType: this._getTargetType(target),
             removedCount
         });
@@ -171,9 +156,9 @@ export class EventListenerManager {
     }
 
     /**
-     * Remove all event listeners of a specific type
-     * @param {string} eventType - Event type
-     * @returns {number} Number of listeners removed
+     * Removes all event listeners of a specific type.
+     * @param {string} eventType - The event type.
+     * @returns {number} The number of listeners that were removed.
      */
     removeListenersByType(eventType) {
         let removedCount = 0;
@@ -186,7 +171,7 @@ export class EventListenerManager {
             }
         }
 
-        this._log('info', 'Removed listeners by type', {
+        this._log('info', 'Removed listeners by type.', {
             eventType,
             removedCount
         });
@@ -195,8 +180,8 @@ export class EventListenerManager {
     }
 
     /**
-     * Get information about all active listeners
-     * @returns {Object[]} Array of listener information objects
+     * Gets information about all active listeners.
+     * @returns {Object[]} An array of listener information objects.
      */
     getActiveListeners() {
         return Array.from(this.listeners.entries()).map(([id, info]) => ({
@@ -209,25 +194,25 @@ export class EventListenerManager {
     }
 
     /**
-     * Check if a specific listener is active
-     * @param {string} listenerId - Listener ID
-     * @returns {boolean} Whether the listener is active
+     * Checks if a specific listener is active.
+     * @param {string} listenerId - The ID of the listener to check.
+     * @returns {boolean} `true` if the listener is active, otherwise `false`.
      */
     hasListener(listenerId) {
         return this.listeners.has(listenerId);
     }
 
     /**
-     * Get the number of active listeners
-     * @returns {number} Number of active listeners
+     * Gets the number of active listeners.
+     * @returns {number} The number of active listeners.
      */
     getListenerCount() {
         return this.listeners.size;
     }
 
     /**
-     * Clean up all event listeners
-     * @returns {number} Number of listeners cleaned up
+     * Cleans up all registered event listeners.
+     * @returns {number} The number of listeners that were cleaned up.
      */
     cleanup() {
         const initialCount = this.listeners.size;
@@ -236,9 +221,9 @@ export class EventListenerManager {
         if (this.abortController) {
             try {
                 this.abortController.abort();
-                this._log('info', 'Aborted all listeners via AbortController');
+                this._log('info', 'Aborted all listeners via AbortController.');
             } catch (error) {
-                this._log('warn', 'Error aborting listeners', { error: error.message });
+                this._log('warn', 'Error aborting listeners.', { error: error.message });
             }
         }
 
@@ -254,7 +239,7 @@ export class EventListenerManager {
                     target.removeEventListener(type, listener);
                     manuallyRemoved++;
                 } catch (error) {
-                    this._log('warn', 'Error manually removing listener', {
+                    this._log('warn', 'Error manually removing listener.', {
                         listenerId,
                         error: error.message
                     });
@@ -266,7 +251,7 @@ export class EventListenerManager {
         this.listeners.clear();
         this.abortController = null;
 
-        this._log('info', 'Event listener cleanup completed', {
+        this._log('info', 'Event listener cleanup completed.', {
             initialCount,
             manuallyRemoved,
             abortControllerUsed: !!this.abortController
@@ -276,27 +261,25 @@ export class EventListenerManager {
     }
 
     /**
-     * Generate a unique listener ID
+     * Generates a unique listener ID.
      * @private
-     * @returns {string} Unique listener ID
+     * @returns {string} A unique listener ID.
      */
     _generateListenerId() {
         return `${this.platform}-listener-${++this.listenerCount}-${Date.now()}`;
     }
 
     /**
-     * Prepare event options with AbortController signal if available
+     * Prepares event options, adding an `AbortController` signal if available.
      * @private
-     * @param {Object|boolean} options - Original options
-     * @returns {Object} Prepared options
+     * @param {Object|boolean} options - The original event listener options.
+     * @returns {Object} The prepared options.
      */
     _prepareEventOptions(options) {
-        // Handle boolean options (for passive/capture)
         if (typeof options === 'boolean') {
             options = { capture: options };
         }
 
-        // Add AbortController signal if available and not already specified
         if (this.abortController && !options.signal) {
             options = { ...options, signal: this.abortController.signal };
         }
@@ -305,19 +288,19 @@ export class EventListenerManager {
     }
 
     /**
-     * Wrap listener function with error handling and logging
+     * Wraps a listener function with error handling and logging.
      * @private
-     * @param {Function} listener - Original listener function
-     * @param {string} eventType - Event type
-     * @param {string} listenerId - Listener ID
-     * @returns {Function} Wrapped listener function
+     * @param {Function} listener - The original listener function.
+     * @param {string} eventType - The event type.
+     * @param {string} listenerId - The listener ID.
+     * @returns {Function} The wrapped listener function.
      */
     _wrapListener(listener, eventType, listenerId) {
         return (event) => {
             try {
                 listener(event);
             } catch (error) {
-                this._log('error', 'Error in event listener', {
+                this._log('error', 'Error in event listener.', {
                     listenerId,
                     eventType,
                     error: error.message,
@@ -328,10 +311,10 @@ export class EventListenerManager {
     }
 
     /**
-     * Get a descriptive type for an event target
+     * Gets a descriptive type for an event target.
      * @private
-     * @param {EventTarget} target - Event target
-     * @returns {string} Target type description
+     * @param {EventTarget} target - The event target.
+     * @returns {string} A description of the target type.
      */
     _getTargetType(target) {
         if (!target) return 'null';
@@ -344,11 +327,11 @@ export class EventListenerManager {
     }
 
     /**
-     * Log messages with fallback
+     * Logs messages with a fallback to the console.
      * @private
-     * @param {string} level - Log level
-     * @param {string} message - Log message
-     * @param {Object} [data] - Additional data
+     * @param {string} level - The log level.
+     * @param {string} message - The log message.
+     * @param {Object} [data] - Additional data to log.
      */
     _log(level, message, data = {}) {
         if (this.options.logger) {
@@ -360,27 +343,14 @@ export class EventListenerManager {
 }
 
 /**
- * EventDebouncer - Debounces event handlers to prevent excessive calls
- * 
- * This class provides event debouncing functionality to limit the rate
- * of event handler execution, useful for scroll, resize, and input events.
- * 
- * @example
- * ```javascript
- * const debouncer = new EventDebouncer();
- * 
- * const debouncedHandler = debouncer.debounce(handleScroll, 100);
- * window.addEventListener('scroll', debouncedHandler);
- * 
- * // Cleanup
- * debouncer.cleanup();
- * ```
+ * Debounces event handlers to prevent excessive calls, which is useful for events
+ * like scroll, resize, and input that can fire rapidly.
  */
 export class EventDebouncer {
     /**
-     * Creates a new EventDebouncer instance
-     * @param {Object} options - Configuration options
-     * @param {Function} [options.logger] - Logger function
+     * Creates a new `EventDebouncer` instance.
+     * @param {Object} [options={}] - Configuration options.
+     * @param {Function} [options.logger] - A logger function.
      */
     constructor(options = {}) {
         this.options = {
@@ -393,12 +363,12 @@ export class EventDebouncer {
     }
 
     /**
-     * Create a debounced version of a function
-     * @param {Function} func - Function to debounce
-     * @param {number} delay - Delay in milliseconds
-     * @param {Object} [options] - Debounce options
-     * @param {boolean} [options.immediate=false] - Execute immediately on first call
-     * @returns {Function} Debounced function
+     * Creates a debounced version of a function that delays its execution.
+     * @param {Function} func - The function to debounce.
+     * @param {number} delay - The delay in milliseconds.
+     * @param {Object} [options={}] - Debounce options.
+     * @param {boolean} [options.immediate=false] - `true` to execute immediately on the first call.
+     * @returns {Function} The debounced function.
      */
     debounce(func, delay, options = {}) {
         if (typeof func !== 'function') {
@@ -430,7 +400,7 @@ export class EventDebouncer {
                     try {
                         func.apply(this, args);
                     } catch (error) {
-                        this._log('error', 'Error in debounced function', {
+                        this._log('error', 'Error in debounced function.', {
                             error: error.message,
                             delay
                         });
@@ -446,7 +416,7 @@ export class EventDebouncer {
                     lastCallTime = now;
                     func.apply(this, args);
                 } catch (error) {
-                    this._log('error', 'Error in immediate debounced function', {
+                    this._log('error', 'Error in immediate debounced function.', {
                         error: error.message,
                         delay
                     });
@@ -472,7 +442,7 @@ export class EventDebouncer {
                 try {
                     func.apply(this, arguments);
                 } catch (error) {
-                    this._log('error', 'Error in flushed debounced function', {
+                    this._log('error', 'Error in flushed debounced function.', {
                         error: error.message,
                         delay
                     });
@@ -484,10 +454,10 @@ export class EventDebouncer {
     }
 
     /**
-     * Create a throttled version of a function
-     * @param {Function} func - Function to throttle
-     * @param {number} delay - Minimum delay between calls in milliseconds
-     * @returns {Function} Throttled function
+     * Creates a throttled version of a function that limits its execution rate.
+     * @param {Function} func - The function to throttle.
+     * @param {number} delay - The minimum delay between calls in milliseconds.
+     * @returns {Function} The throttled function.
      */
     throttle(func, delay) {
         if (typeof func !== 'function') {
@@ -508,7 +478,7 @@ export class EventDebouncer {
                 try {
                     func.apply(this, args);
                 } catch (error) {
-                    this._log('error', 'Error in throttled function', {
+                    this._log('error', 'Error in throttled function.', {
                         error: error.message,
                         delay
                     });
@@ -523,7 +493,7 @@ export class EventDebouncer {
                     try {
                         func.apply(this, args);
                     } catch (error) {
-                        this._log('error', 'Error in delayed throttled function', {
+                        this._log('error', 'Error in delayed throttled function.', {
                             error: error.message,
                             delay
                         });
@@ -547,8 +517,8 @@ export class EventDebouncer {
     }
 
     /**
-     * Clean up all active timeouts
-     * @returns {number} Number of timeouts cleared
+     * Cleans up all active timeouts.
+     * @returns {number} The number of timeouts that were cleared.
      */
     cleanup() {
         let clearedCount = 0;
@@ -558,7 +528,7 @@ export class EventDebouncer {
                 clearTimeout(timeoutId);
                 clearedCount++;
             } catch (error) {
-                this._log('warn', 'Error clearing timeout', {
+                this._log('warn', 'Error clearing timeout.', {
                     timeoutId,
                     error: error.message
                 });
@@ -567,7 +537,7 @@ export class EventDebouncer {
 
         this.activeTimeouts.clear();
 
-        this._log('info', 'EventDebouncer cleanup completed', {
+        this._log('info', 'EventDebouncer cleanup completed.', {
             clearedTimeouts: clearedCount
         });
 
@@ -575,11 +545,11 @@ export class EventDebouncer {
     }
 
     /**
-     * Log messages with fallback
+     * Logs messages with a fallback to the console.
      * @private
-     * @param {string} level - Log level
-     * @param {string} message - Log message
-     * @param {Object} [data] - Additional data
+     * @param {string} level - The log level.
+     * @param {string} message - The log message.
+     * @param {Object} [data] - Additional data to log.
      */
     _log(level, message, data = {}) {
         if (this.options.logger) {
@@ -591,28 +561,15 @@ export class EventDebouncer {
 }
 
 /**
- * CustomEventDispatcher - Dispatches and manages custom events
- * 
- * This class provides a centralized custom event system for communication
- * between different parts of the content script system.
- * 
- * @example
- * ```javascript
- * const dispatcher = new CustomEventDispatcher('netflix');
- * 
- * // Listen for custom events
- * dispatcher.addEventListener('subtitle-found', handleSubtitleFound);
- * 
- * // Dispatch custom events
- * dispatcher.dispatchEvent('subtitle-found', { subtitleData: data });
- * ```
+ * Dispatches and manages custom events, providing a centralized system for
+ * communication between different parts of the content script.
  */
 export class CustomEventDispatcher {
     /**
-     * Creates a new CustomEventDispatcher instance
-     * @param {string} platform - Platform name for event namespacing
-     * @param {Object} options - Configuration options
-     * @param {Function} [options.logger] - Logger function
+     * Creates a new `CustomEventDispatcher` instance.
+     * @param {string} platform - The platform name for event namespacing.
+     * @param {Object} [options={}] - Configuration options.
+     * @param {Function} [options.logger] - A logger function.
      */
     constructor(platform, options = {}) {
         this.platform = platform;
@@ -628,12 +585,12 @@ export class CustomEventDispatcher {
     }
 
     /**
-     * Add an event listener for custom events
-     * @param {string} eventType - Event type
-     * @param {Function} listener - Event listener function
-     * @param {Object} [options] - Listener options
-     * @param {boolean} [options.once=false] - Remove listener after first call
-     * @returns {string} Listener ID for removal
+     * Adds an event listener for custom events.
+     * @param {string} eventType - The event type to listen for.
+     * @param {Function} listener - The event listener function.
+     * @param {Object} [options={}] - Listener options.
+     * @param {boolean} [options.once=false] - `true` to remove the listener after its first execution.
+     * @returns {string|null} A unique listener ID for removal, or `null` on failure.
      */
     addEventListener(eventType, listener, options = {}) {
         if (typeof listener !== 'function') {
@@ -656,7 +613,7 @@ export class CustomEventDispatcher {
                     this.removeEventListener(eventType, listenerId);
                 }
             } catch (error) {
-                this._log('error', 'Error in custom event listener', {
+                this._log('error', 'Error in custom event listener.', {
                     eventType,
                     listenerId,
                     error: error.message
@@ -671,7 +628,7 @@ export class CustomEventDispatcher {
             addedAt: Date.now()
         });
 
-        this._log('debug', 'Custom event listener added', {
+        this._log('debug', 'Custom event listener added.', {
             eventType,
             listenerId,
             once,
@@ -682,15 +639,15 @@ export class CustomEventDispatcher {
     }
 
     /**
-     * Remove a custom event listener
-     * @param {string} eventType - Event type
-     * @param {string} listenerId - Listener ID
-     * @returns {boolean} Whether removal was successful
+     * Removes a custom event listener.
+     * @param {string} eventType - The event type.
+     * @param {string} listenerId - The ID of the listener to remove.
+     * @returns {boolean} `true` if the removal was successful, otherwise `false`.
      */
     removeEventListener(eventType, listenerId) {
         const typeListeners = this.eventListeners.get(eventType);
         if (!typeListeners || !typeListeners.has(listenerId)) {
-            this._log('warn', 'Custom event listener not found', { eventType, listenerId });
+            this._log('warn', 'Custom event listener not found.', { eventType, listenerId });
             return false;
         }
 
@@ -701,7 +658,7 @@ export class CustomEventDispatcher {
             this.eventListeners.delete(eventType);
         }
 
-        this._log('debug', 'Custom event listener removed', {
+        this._log('debug', 'Custom event listener removed.', {
             eventType,
             listenerId,
             remainingListeners: typeListeners.size
@@ -711,19 +668,19 @@ export class CustomEventDispatcher {
     }
 
     /**
-     * Dispatch a custom event to all listeners
-     * @param {string} eventType - Event type
-     * @param {*} eventData - Event data to pass to listeners
-     * @param {Object} [options] - Dispatch options
-     * @param {boolean} [options.async=false] - Dispatch asynchronously
-     * @returns {number} Number of listeners notified
+     * Dispatches a custom event to all registered listeners.
+     * @param {string} eventType - The event type.
+     * @param {*} [eventData=null] - The event data to pass to listeners.
+     * @param {Object} [options={}] - Dispatch options.
+     * @param {boolean} [options.async=false] - `true` to dispatch asynchronously.
+     * @returns {number} The number of listeners that were notified.
      */
     dispatchEvent(eventType, eventData = null, options = {}) {
         const { async = false } = options;
         const typeListeners = this.eventListeners.get(eventType);
         
         if (!typeListeners || typeListeners.size === 0) {
-            this._log('debug', 'No listeners for custom event', { eventType });
+            this._log('debug', 'No listeners for custom event.', { eventType });
             return 0;
         }
 
@@ -739,7 +696,7 @@ export class CustomEventDispatcher {
                     listenerInfo.listener(eventData);
                     notifiedCount++;
                 } catch (error) {
-                    this._log('error', 'Error notifying custom event listener', {
+                    this._log('error', 'Error notifying custom event listener.', {
                         eventType,
                         error: error.message
                     });
@@ -753,7 +710,7 @@ export class CustomEventDispatcher {
             notifyListeners();
         }
 
-        this._log('debug', 'Custom event dispatched', {
+        this._log('debug', 'Custom event dispatched.', {
             eventType,
             listenersNotified: notifiedCount,
             async
@@ -763,9 +720,9 @@ export class CustomEventDispatcher {
     }
 
     /**
-     * Get all listeners for an event type
-     * @param {string} eventType - Event type
-     * @returns {Object[]} Array of listener information
+     * Gets all listeners for a specific event type.
+     * @param {string} eventType - The event type.
+     * @returns {Object[]} An array of listener information.
      */
     getListeners(eventType) {
         const typeListeners = this.eventListeners.get(eventType);
@@ -781,10 +738,10 @@ export class CustomEventDispatcher {
     }
 
     /**
-     * Get event history
-     * @param {string} [eventType] - Filter by event type
-     * @param {number} [limit] - Limit number of results
-     * @returns {Object[]} Array of historical events
+     * Gets the event history.
+     * @param {string} [eventType=null] - Filters the history by event type.
+     * @param {number} [limit=null] - Limits the number of results.
+     * @returns {Object[]} An array of historical events.
      */
     getEventHistory(eventType = null, limit = null) {
         let history = this.eventHistory;
@@ -801,8 +758,8 @@ export class CustomEventDispatcher {
     }
 
     /**
-     * Clear event history
-     * @param {string} [eventType] - Clear only specific event type
+     * Clears the event history.
+     * @param {string} [eventType=null] - Clears only a specific event type from the history.
      */
     clearHistory(eventType = null) {
         if (eventType) {
@@ -811,12 +768,12 @@ export class CustomEventDispatcher {
             this.eventHistory = [];
         }
 
-        this._log('info', 'Event history cleared', { eventType });
+        this._log('info', 'Event history cleared.', { eventType });
     }
 
     /**
-     * Clean up all event listeners and history
-     * @returns {number} Number of listeners removed
+     * Cleans up all event listeners and clears the event history.
+     * @returns {number} The number of listeners that were removed.
      */
     cleanup() {
         let totalListeners = 0;
@@ -828,7 +785,7 @@ export class CustomEventDispatcher {
         this.eventListeners.clear();
         this.eventHistory = [];
 
-        this._log('info', 'CustomEventDispatcher cleanup completed', {
+        this._log('info', 'CustomEventDispatcher cleanup completed.', {
             listenersRemoved: totalListeners
         });
 
@@ -836,10 +793,10 @@ export class CustomEventDispatcher {
     }
 
     /**
-     * Add event to history
+     * Adds an event to the history.
      * @private
-     * @param {string} eventType - Event type
-     * @param {*} eventData - Event data
+     * @param {string} eventType - The event type.
+     * @param {*} eventData - The event data.
      */
     _addToHistory(eventType, eventData) {
         this.eventHistory.push({
@@ -856,11 +813,11 @@ export class CustomEventDispatcher {
     }
 
     /**
-     * Log messages with fallback
+     * Logs messages with a fallback to the console.
      * @private
-     * @param {string} level - Log level
-     * @param {string} message - Log message
-     * @param {Object} [data] - Additional data
+     * @param {string} level - The log level.
+     * @param {string} message - The log message.
+     * @param {Object} [data] - Additional data to log.
      */
     _log(level, message, data = {}) {
         if (this.options.logger) {
@@ -872,10 +829,10 @@ export class CustomEventDispatcher {
 }
 
 /**
- * Create a pre-configured EventListenerManager for a specific platform
- * @param {string} platform - Platform name
- * @param {Object} [customOptions] - Custom options to override defaults
- * @returns {EventListenerManager} Configured event manager
+ * Creates a pre-configured `EventListenerManager` for a specific platform.
+ * @param {string} platform - The platform name.
+ * @param {Object} [customOptions={}] - Custom options to override the defaults.
+ * @returns {EventListenerManager} A configured `EventListenerManager` instance.
  */
 export function createPlatformEventManager(platform, customOptions = {}) {
     const options = {
@@ -887,19 +844,19 @@ export function createPlatformEventManager(platform, customOptions = {}) {
 }
 
 /**
- * Create a shared EventDebouncer instance
- * @param {Object} [options] - Configuration options
- * @returns {EventDebouncer} Event debouncer instance
+ * Creates a shared `EventDebouncer` instance.
+ * @param {Object} [options={}] - Configuration options.
+ * @returns {EventDebouncer} An `EventDebouncer` instance.
  */
 export function createEventDebouncer(options = {}) {
     return new EventDebouncer(options);
 }
 
 /**
- * Create a platform-specific CustomEventDispatcher
- * @param {string} platform - Platform name
- * @param {Object} [customOptions] - Custom options to override defaults
- * @returns {CustomEventDispatcher} Configured event dispatcher
+ * Creates a platform-specific `CustomEventDispatcher`.
+ * @param {string} platform - The platform name.
+ * @param {Object} [customOptions={}] - Custom options to override the defaults.
+ * @returns {CustomEventDispatcher} A configured `CustomEventDispatcher` instance.
  */
 export function createPlatformEventDispatcher(platform, customOptions = {}) {
     return new CustomEventDispatcher(platform, customOptions);

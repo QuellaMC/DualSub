@@ -53,6 +53,7 @@
                 "content_scripts/shared/platformConfig.js",
                 "content_scripts/core/BaseContentScript.js",
                 "content_scripts/core/utils.js",
+                "content_scripts/core/constants.js",
                 "content_scripts/platforms/DisneyPlusContentScript.js",
                 "utils/languageNormalization.js",
                 "injected_scripts/netflixInject.js",

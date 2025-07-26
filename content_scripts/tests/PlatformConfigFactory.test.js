@@ -156,7 +156,7 @@ describe('PlatformConfigFactory', () => {
             const validation = PlatformConfigFactory.validate(config);
             
             expect(validation.warnings.length).toBeGreaterThan(0);
-            expect(validation.warnings).toContain('navigation.urlPatterns must be an array');
+            expect(validation.warnings).toContain('navigation.urlPatterns must be an array.');
         });
     });
 

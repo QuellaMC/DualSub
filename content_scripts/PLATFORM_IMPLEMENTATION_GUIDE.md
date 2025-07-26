@@ -1,10 +1,13 @@
 # Platform Implementation Guide
 
-This guide provides step-by-step instructions for implementing a new streaming platform content script using the BaseContentScript architecture.
+This guide provides a step-by-step walkthrough for implementing a new streaming
+platform content script using the `BaseContentScript` architecture. Following these
+steps will ensure that the new platform integrates correctly with the existing
+framework and leverages the shared functionality.
 
 ## Overview
 
-Adding a new platform involves:
+Adding a new platform involves the following key steps:
 1. Creating a platform-specific content script class
 2. Implementing required abstract methods
 3. Creating an entry point file
@@ -14,6 +17,10 @@ Adding a new platform involves:
 ## Step 1: Create Platform Content Script Class
 
 Create a new file: `content_scripts/platforms/{PlatformName}ContentScript.js`
+
+- **Location**: `content_scripts/platforms/`
+- **Purpose**: To provide platform-specific implementations of the abstract methods
+  defined in `BaseContentScript`.
 
 ### Basic Template
 
@@ -843,3 +850,10 @@ If you encounter issues:
 3. Run tests to identify specific problems
 4. Check browser console for error messages
 5. Use the extension's debug logging features
+
+## See Also
+
+- [ARCHITECTURE.md](./ARCHITECTURE.md) - For a high-level overview of the content script architecture.
+- [API_REFERENCE.md](./API_REFERENCE.md) - For a detailed API reference of `BaseContentScript` and related classes.
+- [EXAMPLES.md](./EXAMPLES.md) - For practical code examples of the architecture in use.
+- [JSDOC_EXAMPLES.md](./JSDOC_EXAMPLES.md) - For JSDoc documentation examples.

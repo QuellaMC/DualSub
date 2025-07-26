@@ -161,7 +161,7 @@ describe('DisneyPlusContentScript Comprehensive Tests', () => {
             expect(disneyPlusScript._initializeOnPageEnter).not.toHaveBeenCalled();
             expect(disneyPlusScript.logWithFallback).toHaveBeenCalledWith(
                 'info',
-                'Leaving player page, cleaning up platform'
+                'Leaving player page, cleaning up platform.'
             );
         });
 
@@ -172,7 +172,7 @@ describe('DisneyPlusContentScript Comprehensive Tests', () => {
             expect(disneyPlusScript._initializeOnPageEnter).toHaveBeenCalled();
             expect(disneyPlusScript.logWithFallback).toHaveBeenCalledWith(
                 'info',
-                'Entering player page, preparing for initialization'
+                'Entering player page, preparing for initialization.'
             );
         });
     });

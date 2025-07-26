@@ -1,26 +1,22 @@
 /**
- * Comprehensive Logging Utilities for DualSub Extension
- * 
- * This module provides specialized logging utilities for different aspects of the extension:
- * - Navigation event logging
- * - Subtitle processing diagnostics
- * - Performance monitoring
- * - Error tracking and diagnostics
- * 
+ * Provides comprehensive logging utilities for the DualSub Extension, including
+ * specialized loggers for navigation events, subtitle processing diagnostics,
+ * and performance monitoring.
+ *
  * @author DualSub Extension
  * @version 1.0.0
  */
 
 /**
- * NavigationLogger - Specialized logger for navigation events and initialization sequences
+ * A specialized logger for navigation events and initialization sequences.
  */
 export class NavigationLogger {
     /**
-     * Creates a new NavigationLogger instance
-     * @param {string} platform - Platform name (e.g., 'netflix', 'disneyplus')
-     * @param {Object} config - Configuration object
-     * @param {Function} [config.logger] - Base logger function
-     * @param {boolean} [config.enablePerformanceTracking=true] - Enable performance tracking
+     * Creates a new `NavigationLogger` instance.
+     * @param {string} platform - The platform name (e.g., 'netflix', 'disneyplus').
+     * @param {Object} [config={}] - Configuration for the logger.
+     * @param {Function} [config.logger] - The base logger function to use.
+     * @param {boolean} [config.enablePerformanceTracking=true] - Whether to enable performance tracking.
      */
     constructor(platform, config = {}) {
         this.platform = platform;
@@ -57,10 +53,10 @@ export class NavigationLogger {
     }
 
     /**
-     * Log navigation detection events with URL changes and timing
-     * @param {string} fromUrl - Previous URL
-     * @param {string} toUrl - New URL
-     * @param {Object} [additionalData] - Additional context data
+     * Logs navigation detection events, including URL changes and timing information.
+     * @param {string} fromUrl - The previous URL.
+     * @param {string} toUrl - The new URL.
+     * @param {Object} [additionalData={}] - Additional context to include in the log.
      */
     logNavigationDetection(fromUrl, toUrl, additionalData = {}) {
         const navigationTime = Date.now();
@@ -103,11 +99,11 @@ export class NavigationLogger {
     }
 
     /**
-     * Log initialization sequence with step-by-step progress
-     * @param {string} initializationId - Unique identifier for this initialization sequence
-     * @param {string} step - Current step name
-     * @param {string} status - Step status ('started', 'completed', 'failed')
-     * @param {Object} [stepData] - Step-specific data
+     * Logs the progress of an initialization sequence, step by step.
+     * @param {string} initializationId - A unique identifier for the initialization sequence.
+     * @param {string} step - The name of the current step.
+     * @param {string} status - The status of the step ('started', 'completed', 'failed').
+     * @param {Object} [stepData={}] - Additional data specific to the step.
      */
     logInitializationStep(initializationId, step, status, stepData = {}) {
         const stepTime = Date.now();
@@ -189,9 +185,9 @@ export class NavigationLogger {
     }
 
     /**
-     * Log player ready detection and subtitle system setup
-     * @param {string} event - Event type ('detection_started', 'player_ready', 'detection_timeout', 'setup_complete')
-     * @param {Object} [eventData] - Event-specific data
+     * Logs events related to player ready detection and subtitle system setup.
+     * @param {string} event - The type of event (e.g., 'detection_started', 'player_ready').
+     * @param {Object} [eventData={}] - Additional data specific to the event.
      */
     logPlayerReadyDetection(event, eventData = {}) {
         const eventTime = Date.now();
@@ -233,10 +229,10 @@ export class NavigationLogger {
     }
 
     /**
-     * Log diagnostic information for troubleshooting navigation issues
-     * @param {string} issue - Issue description
-     * @param {Object} diagnosticData - Diagnostic information
-     * @param {string} [severity='warn'] - Log severity level
+     * Logs diagnostic information for troubleshooting navigation issues.
+     * @param {string} issue - A description of the issue.
+     * @param {Object} [diagnosticData={}] - Additional diagnostic information.
+     * @param {string} [severity='warn'] - The severity level of the log.
      */
     logNavigationDiagnostic(issue, diagnosticData = {}, severity = 'warn') {
         this._logNavigation(severity, `Navigation diagnostic: ${issue}`, {
@@ -277,8 +273,8 @@ export class NavigationLogger {
     }
 
     /**
-     * Get comprehensive navigation performance report
-     * @returns {Object} Performance report
+     * Gets a comprehensive performance report for navigation events.
+     * @returns {Object} A performance report object.
      */
     getPerformanceReport() {
         const report = {
@@ -312,12 +308,12 @@ export class NavigationLogger {
             }
         };
 
-        this._logNavigation('info', 'Navigation performance report generated', { report });
+        this._logNavigation('info', 'Navigation performance report generated.', { report });
         return report;
     }
 
     /**
-     * Reset performance metrics
+     * Resets all performance metrics to their initial state.
      */
     resetMetrics() {
         this.performanceMetrics = {
@@ -333,7 +329,7 @@ export class NavigationLogger {
         this.initializationSteps.clear();
         this.currentInitializationId = null;
         
-        this._logNavigation('info', 'Performance metrics reset');
+        this._logNavigation('info', 'Performance metrics have been reset.');
     }
 
     // ========================================
@@ -341,11 +337,11 @@ export class NavigationLogger {
     // ========================================
 
     /**
-     * Enhanced logging specifically for navigation events
+     * A specialized logging function for navigation events.
      * @private
-     * @param {string} level - Log level
-     * @param {string} message - Log message
-     * @param {Object} [data] - Additional data
+     * @param {string} level - The log level.
+     * @param {string} message - The log message.
+     * @param {Object} [data={}] - Additional data to log.
      */
     _logNavigation(level, message, data = {}) {
         const enhancedData = {
@@ -369,10 +365,10 @@ export class NavigationLogger {
     }
 
     /**
-     * Extract pathname from URL
+     * Extracts the pathname from a URL.
      * @private
-     * @param {string} url - URL to extract path from
-     * @returns {string} Pathname
+     * @param {string} url - The URL to extract the path from.
+     * @returns {string} The pathname.
      */
     _extractPath(url) {
         try {
@@ -383,10 +379,10 @@ export class NavigationLogger {
     }
 
     /**
-     * Check if URL is a player page
+     * Checks if a URL corresponds to a player page.
      * @private
-     * @param {string} url - URL to check
-     * @returns {boolean} Whether URL is a player page
+     * @param {string} url - The URL to check.
+     * @returns {boolean} `true` if the URL is for a player page, otherwise `false`.
      */
     _isPlayerPage(url) {
         if (!url) return false;
@@ -406,13 +402,13 @@ export class NavigationLogger {
 }
 
 /**
- * SubtitleDiagnostics - Comprehensive diagnostic logging for subtitle functionality
+ * Provides comprehensive diagnostic logging for subtitle functionality.
  */
 export class SubtitleDiagnostics {
     /**
-     * Creates a new SubtitleDiagnostics instance
-     * @param {string} platform - Platform name
-     * @param {Object} config - Configuration object
+     * Creates a new `SubtitleDiagnostics` instance.
+     * @param {string} platform - The platform name.
+     * @param {Object} [config={}] - Configuration for the logger.
      */
     constructor(platform, config = {}) {
         this.platform = platform;
@@ -433,9 +429,9 @@ export class SubtitleDiagnostics {
     }
 
     /**
-     * Log subtitle detection with source information
-     * @param {string} source - Subtitle source ('official', 'api', 'none')
-     * @param {Object} detectionData - Detection data
+     * Logs subtitle detection events with source information.
+     * @param {string} source - The source of the subtitles ('official', 'api', 'none').
+     * @param {Object} [detectionData={}] - Additional data about the detection.
      */
     logSubtitleDetection(source, detectionData = {}) {
         const detection = {
@@ -461,10 +457,10 @@ export class SubtitleDiagnostics {
     }
 
     /**
-     * Log subtitle display attempts and results with error details
-     * @param {boolean} success - Whether display was successful
-     * @param {Object} displayData - Display attempt data
-     * @param {Error} [error] - Error if display failed
+     * Logs subtitle display attempts and their results, including any errors.
+     * @param {boolean} success - Whether the display was successful.
+     * @param {Object} [displayData={}] - Data related to the display attempt.
+     * @param {Error|null} [error=null] - The error if the display failed.
      */
     logDisplayAttempt(success, displayData = {}, error = null) {
         const attempt = {
@@ -509,10 +505,10 @@ export class SubtitleDiagnostics {
     }
 
     /**
-     * Log performance timing for initialization and processing
-     * @param {string} operation - Operation name
-     * @param {number} duration - Duration in milliseconds
-     * @param {Object} [operationData] - Operation-specific data
+     * Logs performance timing for subtitle-related operations.
+     * @param {string} operation - The name of the operation being timed.
+     * @param {number} duration - The duration of the operation in milliseconds.
+     * @param {Object} [operationData={}] - Additional data specific to the operation.
      */
     logPerformanceTiming(operation, duration, operationData = {}) {
         const timing = {
@@ -542,8 +538,8 @@ export class SubtitleDiagnostics {
     }
 
     /**
-     * Generate comprehensive diagnostic report
-     * @returns {Object} Diagnostic report
+     * Generates a comprehensive diagnostic report for subtitle functionality.
+     * @returns {Object} A diagnostic report object.
      */
     generateDiagnosticReport() {
         const now = Date.now();
@@ -578,7 +574,7 @@ export class SubtitleDiagnostics {
             recommendations: this._generateRecommendations()
         };
 
-        this._logDiagnostic('info', 'Diagnostic report generated', { report });
+        this._logDiagnostic('info', 'Diagnostic report generated.', { report });
         return report;
     }
 
@@ -587,11 +583,11 @@ export class SubtitleDiagnostics {
     // ========================================
 
     /**
-     * Enhanced logging for diagnostic information
+     * A specialized logging function for diagnostic information.
      * @private
-     * @param {string} level - Log level
-     * @param {string} message - Log message
-     * @param {Object} [data] - Additional data
+     * @param {string} level - The log level.
+     * @param {string} message - The log message.
+     * @param {Object} [data={}] - Additional data to log.
      */
     _logDiagnostic(level, message, data = {}) {
         const enhancedData = {
@@ -609,10 +605,10 @@ export class SubtitleDiagnostics {
     }
 
     /**
-     * Update performance baseline metrics
+     * Updates the performance baseline metrics.
      * @private
-     * @param {string} operation - Operation name
-     * @param {number} duration - Duration in milliseconds
+     * @param {string} operation - The name of the operation.
+     * @param {number} duration - The duration of the operation in milliseconds.
      */
     _updatePerformanceBaseline(operation, duration) {
         const operationTimings = this.diagnosticHistory
@@ -638,10 +634,10 @@ export class SubtitleDiagnostics {
     }
 
     /**
-     * Get average duration for specific operation
+     * Gets the average duration for a specific operation.
      * @private
-     * @param {string} operation - Operation name
-     * @returns {string} Average duration
+     * @param {string} operation - The name of the operation.
+     * @returns {string} The average duration as a formatted string.
      */
     _getAverageForOperation(operation) {
         const operationTimings = this.diagnosticHistory
@@ -655,11 +651,11 @@ export class SubtitleDiagnostics {
     }
 
     /**
-     * Get performance rating for operation
+     * Gets a performance rating for an operation based on its duration.
      * @private
-     * @param {string} operation - Operation name
-     * @param {number} duration - Current duration
-     * @returns {string} Performance rating
+     * @param {string} operation - The name of the operation.
+     * @param {number} duration - The duration of the operation.
+     * @returns {string} A performance rating ('excellent', 'good', 'acceptable', 'poor').
      */
     _getPerformanceRating(operation, duration) {
         const average = this.diagnosticHistory
@@ -677,10 +673,10 @@ export class SubtitleDiagnostics {
     }
 
     /**
-     * Analyze recent performance trends
+     * Analyzes recent performance trends.
      * @private
-     * @param {Array} recentHistory - Recent diagnostic history
-     * @returns {Object} Performance analysis
+     * @param {Array} recentHistory - The recent diagnostic history.
+     * @returns {Object} A performance analysis object.
      */
     _analyzeRecentPerformance(recentHistory) {
         const recentDisplays = recentHistory.filter(e => e.type === 'display_attempt');
@@ -696,10 +692,10 @@ export class SubtitleDiagnostics {
     }
 
     /**
-     * Calculate performance trend
+     * Calculates the performance trend based on display attempts.
      * @private
-     * @param {Array} attempts - Display attempts
-     * @returns {string} Trend description
+     * @param {Array} attempts - An array of display attempts.
+     * @returns {string} A description of the trend ('improving', 'declining', 'stable').
      */
     _calculateTrend(attempts) {
         if (attempts.length < 2) return 'insufficient_data';
@@ -719,9 +715,9 @@ export class SubtitleDiagnostics {
     }
 
     /**
-     * Generate recommendations based on diagnostic data
+     * Generates recommendations based on the collected diagnostic data.
      * @private
-     * @returns {Array} Array of recommendations
+     * @returns {Array} An array of recommendation objects.
      */
     _generateRecommendations() {
         const recommendations = [];
@@ -764,20 +760,20 @@ export class SubtitleDiagnostics {
 }
 
 /**
- * Create a navigation logger instance for a platform
- * @param {string} platform - Platform name
- * @param {Object} config - Configuration object
- * @returns {NavigationLogger} Navigation logger instance
+ * Creates a navigation logger instance for a specific platform.
+ * @param {string} platform - The platform name.
+ * @param {Object} [config={}] - Configuration for the logger.
+ * @returns {NavigationLogger} A new `NavigationLogger` instance.
  */
 export function createNavigationLogger(platform, config = {}) {
     return new NavigationLogger(platform, config);
 }
 
 /**
- * Create a subtitle diagnostics instance for a platform
- * @param {string} platform - Platform name
- * @param {Object} config - Configuration object
- * @returns {SubtitleDiagnostics} Subtitle diagnostics instance
+ * Creates a subtitle diagnostics instance for a specific platform.
+ * @param {string} platform - The platform name.
+ * @param {Object} [config={}] - Configuration for the logger.
+ * @returns {SubtitleDiagnostics} A new `SubtitleDiagnostics` instance.
  */
 export function createSubtitleDiagnostics(platform, config = {}) {
     return new SubtitleDiagnostics(platform, config);

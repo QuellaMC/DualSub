@@ -402,7 +402,7 @@ describe('Content Script Integration Tests', () => {
 
                 // Verify logging (with data parameter)
                 expect(testEnv.mocks.logger.info).toHaveBeenCalledWith(
-                    'URL change detected',
+                    'URL change detected.',
                     expect.any(Object)
                 );
             });
@@ -426,7 +426,7 @@ describe('Content Script Integration Tests', () => {
 
                 // Verify logging (with data parameter)
                 expect(testEnv.mocks.logger.info).toHaveBeenCalledWith(
-                    'Leaving player page, cleaning up platform',
+                    'Leaving player page, cleaning up platform.',
                     expect.any(Object)
                 );
             });

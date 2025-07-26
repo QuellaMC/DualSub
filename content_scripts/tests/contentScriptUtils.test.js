@@ -19,9 +19,9 @@ import {
     detectPlatform,
     isExtensionContextValid,
     safeChromeApiCall,
-    IntervalManager,
-    DEFAULT_PLATFORM_CONFIGS
+    IntervalManager
 } from '../core/utils.js';
+import { DEFAULT_PLATFORM_CONFIGS } from '../core/constants.js';
 import { TestHelpers } from '../../test-utils/test-helpers.js';
 
 describe('Content Script Utilities', () => {

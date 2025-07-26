@@ -1,17 +1,17 @@
 /**
- * Content Script Constants
- * 
  * Centralized constants for content script configuration and platform settings.
- * 
+ * This file consolidates settings for video detection, navigation, initialization,
+ * and platform-specific configurations to ensure consistency and ease of maintenance.
+ *
  * @author DualSub Extension
  * @version 1.0.0
  */
 
 /**
- * Common constants extracted from existing content scripts
+ * Common constants shared across all platform content scripts.
  */
 export const COMMON_CONSTANTS = {
-    // Video detection settings
+    // Video and Player Detection
     MAX_VIDEO_DETECTION_RETRIES: 30,
     VIDEO_DETECTION_INTERVAL: 1000,
     VIDEO_DETECTION_MAX_INTERVAL: 5000,
@@ -20,31 +20,25 @@ export const COMMON_CONSTANTS = {
     MAX_FIND_PROGRESS_BAR_RETRIES: 20,
     FIND_PROGRESS_BAR_INTERVAL: 500,
     
-    // Navigation detection settings
+    // Navigation and Initialization
     URL_CHECK_INTERVAL: 2000,
     NAVIGATION_DELAY: 100,
-    
-    // Initialization delays
     PLATFORM_INIT_DELAY: 1000,
     REINIT_DELAY: 1500,
     
-    // Platform initialization settings
+    // Retry and Timeout Settings
     PLATFORM_INIT_MAX_RETRIES: 3,
     PLATFORM_INIT_RETRY_DELAY: 1000,
     PLATFORM_INIT_TIMEOUT: 10000,
-    
-    // Cleanup settings
     CLEANUP_TIMEOUT: 5000,
     
-    // Logging settings
+    // Logging and Configuration
     TIME_UPDATE_LOG_INTERVAL: 30,
-    
-    // UI-only configuration settings (don't trigger functional changes)
     UI_ONLY_SETTINGS: ['appearanceAccordionOpen']
 };
 
 /**
- * Platform-specific constants extracted from existing content scripts
+ * Platform-specific constants for injection and identification.
  */
 export const PLATFORM_CONSTANTS = {
     netflix: {
@@ -66,7 +60,7 @@ export const PLATFORM_CONSTANTS = {
 };
 
 /**
- * Default platform configurations
+ * Default configurations for each supported platform.
  */
 export const DEFAULT_PLATFORM_CONFIGS = {
     netflix: {

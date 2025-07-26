@@ -493,7 +493,7 @@ describe('Backward Compatibility Integration Tests', () => {
 
             // Verify logging matches original pattern (with data parameter)
             expect(testEnv.mocks.logger.info).toHaveBeenCalledWith(
-                'URL change detected',
+                'URL change detected.',
                 expect.any(Object)
             );
 

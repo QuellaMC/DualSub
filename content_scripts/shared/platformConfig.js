@@ -1,45 +1,22 @@
 /**
- * PlatformConfig - Platform configuration management for streaming platforms
- * 
  * This module provides a centralized system for managing platform-specific
  * configurations, making it easy to add new platforms and customize behavior
  * for different streaming services.
- * 
+ *
  * @author DualSub Extension
  * @version 1.0.0
  */
 
 /**
- * PlatformConfigManager - Manages platform-specific configurations
- * 
- * This class provides a registry system for platform configurations,
- * allowing easy registration of new platforms and retrieval of
- * platform-specific settings.
- * 
- * @example
- * ```javascript
- * // Register a new platform
- * PlatformConfigManager.registerPlatform('hulu', {
- *     name: 'hulu',
- *     displayName: 'Hulu',
- *     urlPatterns: ['*.hulu.com'],
- *     playerPagePattern: '/watch/',
- *     navigationConfig: {
- *         intervalMs: 800,
- *         useHistoryAPI: true
- *     }
- * });
- * 
- * // Get platform configuration
- * const config = PlatformConfigManager.getConfig('hulu');
- * ```
+ * Manages platform-specific configurations, providing a registry for easy
+ * registration and retrieval of settings.
  */
 export class PlatformConfigManager {
     static _platforms = new Map();
     static _initialized = false;
 
     /**
-     * Initialize the platform registry with default platforms
+     * Initializes the platform registry with default platforms.
      */
     static initialize() {
         if (this._initialized) {
@@ -52,40 +29,31 @@ export class PlatformConfigManager {
     }
 
     /**
-     * Register a new platform configuration
-     * @param {string} name - Platform name (lowercase identifier)
-     * @param {Object} config - Platform configuration
-     * @param {string} config.name - Platform identifier
-     * @param {string} config.displayName - Human-readable platform name
-     * @param {string[]} config.urlPatterns - URL patterns for platform detection
-     * @param {string|Function} config.playerPagePattern - Pattern or function to detect player pages
-     * @param {Object} [config.navigationConfig] - Navigation detection configuration
-     * @param {Object} [config.subtitleConfig] - Subtitle processing configuration
-     * @param {Object} [config.injectionConfig] - Script injection configuration
-     * @param {Object} [config.videoDetectionConfig] - Video element detection configuration
-     * @param {Object} [config.platformSpecific] - Platform-specific settings
+     * Registers a new platform configuration.
+     * @param {string} name - The platform name (e.g., 'netflix').
+     * @param {Object} config - The platform configuration object.
      */
     static registerPlatform(name, config) {
         const normalizedName = name.toLowerCase();
         
-        // Validate required fields
-        this._validatePlatformConfig(config);
-        
-        // Merge with defaults
-        const fullConfig = this._mergeWithDefaults(config);
-        
-        this._platforms.set(normalizedName, fullConfig);
-        
-        console.log(`[PlatformConfig] Registered platform: ${normalizedName}`, {
-            displayName: fullConfig.displayName,
-            urlPatterns: fullConfig.urlPatterns
-        });
+        try {
+            this._validatePlatformConfig(config);
+            const fullConfig = this._mergeWithDefaults(config);
+            this._platforms.set(normalizedName, fullConfig);
+            
+            console.log(`[PlatformConfig] Registered platform: ${normalizedName}`, {
+                displayName: fullConfig.displayName,
+                urlPatterns: fullConfig.urlPatterns
+            });
+        } catch (error) {
+            console.error(`[PlatformConfig] Failed to register platform '${name}':`, error.message);
+        }
     }
 
     /**
-     * Get platform configuration by name
-     * @param {string} name - Platform name
-     * @returns {Object|null} Platform configuration or null if not found
+     * Gets the configuration for a specific platform.
+     * @param {string} name - The name of the platform.
+     * @returns {Object|null} The platform configuration, or `null` if not found.
      */
     static getConfig(name) {
         this.initialize();
@@ -94,8 +62,8 @@ export class PlatformConfigManager {
     }
 
     /**
-     * Get all registered platforms
-     * @returns {Map} Map of platform configurations
+     * Gets all registered platform configurations.
+     * @returns {Map<string, Object>} A map of platform configurations.
      */
     static getAllPlatforms() {
         this.initialize();
@@ -103,9 +71,9 @@ export class PlatformConfigManager {
     }
 
     /**
-     * Check if a platform is registered
-     * @param {string} name - Platform name
-     * @returns {boolean} Whether the platform is registered
+     * Checks if a platform is registered.
+     * @param {string} name - The name of the platform.
+     * @returns {boolean} `true` if the platform is registered, otherwise `false`.
      */
     static isPlatformRegistered(name) {
         this.initialize();
@@ -113,9 +81,9 @@ export class PlatformConfigManager {
     }
 
     /**
-     * Detect platform from URL
-     * @param {string} url - URL to check
-     * @returns {Object|null} Platform configuration if detected
+     * Detects the platform from a given URL.
+     * @param {string} url - The URL to check.
+     * @returns {Object|null} The configuration of the detected platform, or `null`.
      */
     static detectPlatformFromUrl(url) {
         this.initialize();
@@ -130,9 +98,9 @@ export class PlatformConfigManager {
     }
 
     /**
-     * Get platform-specific navigation configuration
-     * @param {string} name - Platform name
-     * @returns {Object} Navigation configuration
+     * Gets the navigation configuration for a specific platform.
+     * @param {string} name - The name of the platform.
+     * @returns {Object} The navigation configuration.
      */
     static getNavigationConfig(name) {
         const config = this.getConfig(name);
@@ -140,9 +108,9 @@ export class PlatformConfigManager {
     }
 
     /**
-     * Get platform-specific subtitle configuration
-     * @param {string} name - Platform name
-     * @returns {Object} Subtitle configuration
+     * Gets the subtitle configuration for a specific platform.
+     * @param {string} name - The name of the platform.
+     * @returns {Object} The subtitle configuration.
      */
     static getSubtitleConfig(name) {
         const config = this.getConfig(name);
@@ -150,9 +118,9 @@ export class PlatformConfigManager {
     }
 
     /**
-     * Get platform-specific injection configuration
-     * @param {string} name - Platform name
-     * @returns {Object} Injection configuration
+     * Gets the script injection configuration for a specific platform.
+     * @param {string} name - The name of the platform.
+     * @returns {Object} The injection configuration.
      */
     static getInjectionConfig(name) {
         const config = this.getConfig(name);
@@ -164,7 +132,7 @@ export class PlatformConfigManager {
     // ========================================
 
     /**
-     * Register default platforms
+     * Registers the default platform configurations.
      * @private
      */
     static _registerDefaultPlatforms() {
@@ -255,9 +223,9 @@ export class PlatformConfigManager {
     }
 
     /**
-     * Validate platform configuration
+     * Validates a platform configuration object.
      * @private
-     * @param {Object} config - Configuration to validate
+     * @param {Object} config - The configuration to validate.
      */
     static _validatePlatformConfig(config) {
         const required = ['name', 'displayName', 'urlPatterns'];
@@ -268,16 +236,19 @@ export class PlatformConfigManager {
             }
         }
 
-        if (!Array.isArray(config.urlPatterns) || config.urlPatterns.length === 0) {
-            throw new Error('Platform configuration must have at least one URL pattern');
+        if (config.urlPatterns && !Array.isArray(config.urlPatterns)) {
+            throw new Error('urlPatterns must be an array');
+        }
+        if (config.urlPatterns && config.urlPatterns.length === 0) {
+            throw new Error('urlPatterns must contain at least one pattern');
         }
     }
 
     /**
-     * Merge configuration with defaults
+     * Merges a platform configuration with default values.
      * @private
-     * @param {Object} config - User configuration
-     * @returns {Object} Merged configuration
+     * @param {Object} config - The user-provided configuration.
+     * @returns {Object} The merged configuration.
      */
     static _mergeWithDefaults(config) {
         const defaults = {
@@ -316,11 +287,11 @@ export class PlatformConfigManager {
     }
 
     /**
-     * Check if URL matches platform patterns
+     * Checks if a URL matches the patterns for a platform.
      * @private
-     * @param {string} url - URL to check
-     * @param {string[]} patterns - URL patterns
-     * @returns {boolean} Whether URL matches
+     * @param {string} url - The URL to check.
+     * @param {string[]} patterns - The URL patterns to match against.
+     * @returns {boolean} `true` if the URL matches, otherwise `false`.
      */
     static _urlMatchesPlatform(url, patterns) {
         return patterns.some(pattern => {
@@ -335,9 +306,9 @@ export class PlatformConfigManager {
     }
 
     /**
-     * Get default navigation configuration
+     * Gets the default navigation configuration.
      * @private
-     * @returns {Object} Default navigation config
+     * @returns {Object} The default navigation configuration.
      */
     static _getDefaultNavigationConfig() {
         return {
@@ -351,9 +322,9 @@ export class PlatformConfigManager {
     }
 
     /**
-     * Get default subtitle configuration
+     * Gets the default subtitle configuration.
      * @private
-     * @returns {Object} Default subtitle config
+     * @returns {Object} The default subtitle configuration.
      */
     static _getDefaultSubtitleConfig() {
         return {
@@ -366,9 +337,9 @@ export class PlatformConfigManager {
     }
 
     /**
-     * Get default injection configuration
+     * Gets the default script injection configuration.
      * @private
-     * @returns {Object} Default injection config
+     * @returns {Object} The default injection configuration.
      */
     static _getDefaultInjectionConfig() {
         return {
@@ -381,9 +352,9 @@ export class PlatformConfigManager {
     }
 
     /**
-     * Get default video detection configuration
+     * Gets the default video detection configuration.
      * @private
-     * @returns {Object} Default video detection config
+     * @returns {Object} The default video detection configuration.
      */
     static _getDefaultVideoDetectionConfig() {
         return {
@@ -395,23 +366,20 @@ export class PlatformConfigManager {
 }
 
 /**
- * PlatformDetector - Utility class for detecting current platform
- * 
- * This class provides methods to detect which streaming platform
- * the user is currently on and retrieve the appropriate configuration.
+ * A utility class for detecting the current platform.
  */
 export class PlatformDetector {
     /**
-     * Detect current platform from window location
-     * @returns {Object|null} Platform configuration if detected
+     * Detects the current platform from the window's location.
+     * @returns {Object|null} The configuration of the detected platform, or `null`.
      */
     static detectCurrentPlatform() {
         return PlatformConfigManager.detectPlatformFromUrl(window.location.href);
     }
 
     /**
-     * Check if current page is a player page for the detected platform
-     * @returns {boolean} Whether current page is a player page
+     * Checks if the current page is a player page for the detected platform.
+     * @returns {boolean} `true` if the current page is a player page, otherwise `false`.
      */
     static isCurrentPagePlayerPage() {
         const platform = this.detectCurrentPlatform();
@@ -431,8 +399,8 @@ export class PlatformDetector {
     }
 
     /**
-     * Get platform name from current URL
-     * @returns {string|null} Platform name or null if not detected
+     * Gets the name of the current platform from the URL.
+     * @returns {string|null} The platform name, or `null` if not detected.
      */
     static getCurrentPlatformName() {
         const platform = this.detectCurrentPlatform();
@@ -441,11 +409,11 @@ export class PlatformDetector {
 }
 
 /**
- * Platform configuration templates for easy platform addition
+ * Provides templates for creating platform configurations.
  */
 export const PLATFORM_TEMPLATES = {
     /**
-     * Basic streaming platform template
+     * A template for basic streaming platforms.
      */
     basicStreaming: {
         navigationConfig: {
@@ -467,7 +435,7 @@ export const PLATFORM_TEMPLATES = {
     },
 
     /**
-     * Complex SPA streaming platform template
+     * A template for complex SPA-based streaming platforms.
      */
     complexSPA: {
         navigationConfig: {
@@ -491,26 +459,10 @@ export const PLATFORM_TEMPLATES = {
 };
 
 /**
- * Utility functions for platform configuration
- */
-
-/**
- * Create a platform configuration from a template
- * @param {string} templateName - Template name from PLATFORM_TEMPLATES
- * @param {Object} overrides - Configuration overrides
- * @returns {Object} Platform configuration
- * 
- * @example
- * ```javascript
- * const huluConfig = createPlatformFromTemplate('basicStreaming', {
- *     name: 'hulu',
- *     displayName: 'Hulu',
- *     urlPatterns: ['*.hulu.com'],
- *     playerPagePattern: '/watch/'
- * });
- * 
- * PlatformConfigManager.registerPlatform('hulu', huluConfig);
- * ```
+ * Creates a platform configuration from a template.
+ * @param {string} templateName - The name of the template to use.
+ * @param {Object} overrides - Configuration properties to override the template defaults.
+ * @returns {Object} A new platform configuration object.
  */
 export function createPlatformFromTemplate(templateName, overrides) {
     const template = PLATFORM_TEMPLATES[templateName];
@@ -542,17 +494,9 @@ export function createPlatformFromTemplate(templateName, overrides) {
 }
 
 /**
- * Validate that a platform configuration is complete
- * @param {Object} config - Platform configuration to validate
- * @returns {Object} Validation result
- * 
- * @example
- * ```javascript
- * const validation = validatePlatformConfig(myConfig);
- * if (!validation.isValid) {
- *     console.error('Configuration errors:', validation.errors);
- * }
- * ```
+ * Validates that a platform configuration is complete and correctly structured.
+ * @param {Object} config - The platform configuration to validate.
+ * @returns {{isValid: boolean, errors: string[], warnings: string[]}} The validation result.
  */
 export function validatePlatformConfig(config) {
     const errors = [];

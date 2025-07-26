@@ -1,102 +1,47 @@
 /**
- * Content Script Utilities
- * 
- * Shared utility functions for content scripts including video detection,
+ * Provides shared utility functions for content scripts, including video detection,
  * event handling, configuration processing, and navigation helpers.
- * 
+ *
  * @author DualSub Extension
  * @version 1.0.0
  */
 
-// Common constants used across content scripts
-export const COMMON_CONSTANTS = {
-    // Video detection
-    MAX_VIDEO_DETECTION_RETRIES: 30,
-    VIDEO_DETECTION_INTERVAL: 1000,
-
-    // Progress bar detection settings
-    MAX_FIND_PROGRESS_BAR_RETRIES: 20,
-    FIND_PROGRESS_BAR_INTERVAL: 500,
-
-    // Navigation detection
-    URL_CHECK_INTERVAL: 2000,
-    NAVIGATION_DELAY: 100,
-
-    // Script injection
-    INJECT_RETRY_DELAY: 100,
-    MAX_INJECT_RETRIES: 3,
-
-    // Initialization delays
-    PLATFORM_INIT_DELAY: 1000,
-    PLATFORM_INIT_MAX_RETRIES: 3,
-    PLATFORM_INIT_RETRY_DELAY: 2000,
-    PLATFORM_INIT_TIMEOUT: 10000,
-    
-    // Cleanup timeouts
-    CLEANUP_TIMEOUT: 5000,
-    REINIT_DELAY: 1500,
-
-    // Platform initialization settings
-    PLATFORM_INIT_MAX_RETRIES: 3,
-    PLATFORM_INIT_RETRY_DELAY: 1000,
-    PLATFORM_INIT_TIMEOUT: 10000,
-
-    // Logging settings
-    TIME_UPDATE_LOG_INTERVAL: 30,
-
-    // Cleanup settings
-    CLEANUP_TIMEOUT: 5000,
-
-    // UI-only configuration settings
-    UI_ONLY_SETTINGS: ['appearanceAccordionOpen'],
-
-    // Event buffer settings
-    EVENT_BUFFER_MAX_SIZE: 100,
-    EVENT_BUFFER_MAX_AGE: 30000, // 30 seconds
-
-    // Event types
-    EVENT_TYPES: {
-        INJECT_SCRIPT_READY: 'INJECT_SCRIPT_READY',
-        SUBTITLE_DATA_FOUND: 'SUBTITLE_DATA_FOUND'
-    }
-};
+import { COMMON_CONSTANTS, DEFAULT_PLATFORM_CONFIGS } from './constants.js';
 
 /**
- * Platform configuration interface
  * @typedef {Object} PlatformConfig
- * @property {string} name - Platform name ('netflix' | 'disneyplus')
- * @property {Object} injectScript - Injection configuration
- * @property {string} injectScript.filename - Path to inject script
- * @property {string} injectScript.tagId - DOM element ID for script tag
- * @property {string} injectScript.eventId - Custom event ID for communication
- * @property {Object} navigation - Navigation configuration
- * @property {string[]} navigation.urlPatterns - URL patterns for platform detection
- * @property {boolean} navigation.spaHandling - Whether complex SPA handling is needed
- * @property {number} navigation.checkInterval - URL change check interval
- * @property {string} navigation.playerUrlPattern - URL pattern for player pages
- * @property {Object} videoDetection - Video detection configuration
- * @property {number} videoDetection.maxRetries - Max video detection attempts
- * @property {number} videoDetection.retryInterval - Retry interval in ms
- * @property {string} logPrefix - Log prefix for the platform
+ * @property {string} name - The platform name (e.g., 'netflix', 'disneyplus').
+ * @property {Object} injectScript - Configuration for the injected script.
+ * @property {string} injectScript.filename - The path to the inject script.
+ * @property {string} injectScript.tagId - The DOM element ID for the script tag.
+ * @property {string} injectScript.eventId - The custom event ID for communication.
+ * @property {Object} navigation - Configuration for navigation detection.
+ * @property {string[]} navigation.urlPatterns - URL patterns to detect the platform.
+ * @property {boolean} navigation.spaHandling - Whether complex SPA handling is needed.
+ * @property {number} navigation.checkInterval - The interval for URL change checks.
+ * @property {string} navigation.playerUrlPattern - The URL pattern for player pages.
+ * @property {Object} videoDetection - Configuration for video detection.
+ * @property {number} videoDetection.maxRetries - The maximum number of video detection attempts.
+ * @property {number} videoDetection.retryInterval - The retry interval in milliseconds.
+ * @property {string} logPrefix - The log prefix for the platform.
  */
 
 /**
- * Message handler interface
  * @typedef {Object} MessageHandler
- * @property {string} action - Action name
- * @property {Function} handler - Handler function
- * @property {boolean} requiresUtilities - Whether utilities are required
+ * @property {string} action - The name of the action.
+ * @property {Function} handler - The handler function.
+ * @property {boolean} requiresUtilities - Whether the handler requires utilities to be loaded.
  */
 
 /**
- * Video detection helper - attempts to find video element with retry logic
- * @param {Function} getVideoElement - Function to get video element
- * @param {number} maxRetries - Maximum retry attempts
- * @param {number} retryInterval - Retry interval in milliseconds
- * @param {Function} onSuccess - Success callback
- * @param {Function} onFailure - Failure callback
- * @param {Function} logger - Logger function
- * @returns {number} Interval ID for cleanup
+ * Attempts to find a video element with a retry mechanism.
+ * @param {Function} getVideoElement - A function that returns the video element.
+ * @param {number} [maxRetries=30] - The maximum number of retry attempts.
+ * @param {number} [retryInterval=1000] - The interval between retries in milliseconds.
+ * @param {Function} [onSuccess=()=>{}] - The callback for a successful detection.
+ * @param {Function} [onFailure=()=>{}] - The callback for a failed detection.
+ * @param {Function} [logger=console.log] - The logger function.
+ * @returns {number|null} The interval ID for cleanup, or null if found immediately.
  */
 export function startVideoDetection(
     getVideoElement,
@@ -184,16 +129,16 @@ export function detectUrlChange(currentUrl, onUrlChange = () => { }, logger = co
 }
 
 /**
- * Enhanced navigation detection setup for SPA applications
- * @param {Function} onNavigate - Callback for navigation events
- * @param {Object} options - Configuration options
- * @param {boolean} options.enableHistoryAPI - Enable history API interception
- * @param {boolean} options.enablePopstate - Enable popstate event listening
- * @param {boolean} options.enableHashChange - Enable hashchange event listening
- * @param {boolean} options.enableFocusCheck - Enable focus event checking
- * @param {number} options.intervalCheck - Interval for URL checking (0 to disable)
- * @param {Function} logger - Logger function
- * @returns {Function} Cleanup function
+ * Sets up enhanced navigation detection for Single Page Applications (SPAs).
+ * @param {Function} onNavigate - The callback to execute on navigation events.
+ * @param {Object} [options={}] - Configuration options.
+ * @param {boolean} [options.enableHistoryAPI=true] - Enable history API interception.
+ * @param {boolean} [options.enablePopstate=true] - Enable popstate event listening.
+ * @param {boolean} [options.enableHashChange=true] - Enable hashchange event listening.
+ * @param {boolean} [options.enableFocusCheck=true] - Enable focus event checking.
+ * @param {number} [options.intervalCheck=COMMON_CONSTANTS.URL_CHECK_INTERVAL] - The interval for URL checking.
+ * @param {Function} [logger=logWithFallback] - The logger function.
+ * @returns {Function} A cleanup function to remove all event listeners.
  */
 export function setupNavigationDetection(
     onNavigate,
@@ -358,8 +303,8 @@ function createCleanupFunction(cleanupFunctions, logger) {
 }
 
 /**
- * Check if current page is a player page
- * @param {string} playerUrlPattern - Pattern to match player URLs
+ * Checks if the current page is a video player page.
+ * @param {string} playerUrlPattern - The pattern to match player URLs
  * @param {string} url - URL to check (defaults to current URL)
  * @returns {boolean} Whether current page is a player page
  */
@@ -368,7 +313,7 @@ export function isPlayerPage(playerUrlPattern, url = window.location.pathname) {
 }
 
 /**
- * Safe script injection helper
+ * Injects a script into the page.
  * @param {string} scriptSrc - Script source URL
  * @param {string} scriptId - Script element ID
  * @param {Function} onLoad - Load success callback
@@ -423,7 +368,7 @@ export function injectScript(
 }
 
 /**
- * Enhanced event buffer manager for handling early events with memory management
+ * A buffer for managing early events with memory management.
  */
 export class EventBuffer {
     constructor(logger = console.log, maxSize = 100, maxAge = 30000) {
@@ -436,8 +381,8 @@ export class EventBuffer {
     }
 
     /**
-     * Add event to buffer with size and age management
-     * @param {Object} eventData - Event data to buffer
+     * Adds an event to the buffer with size and age management.
+     * @param {Object} eventData - The event data to buffer.
      */
     add(eventData) {
         // Add timestamp if not present
@@ -461,8 +406,8 @@ export class EventBuffer {
     }
 
     /**
-     * Process all buffered events with enhanced error handling
-     * @param {Function} processor - Function to process each event
+     * Processes all buffered events.
+     * @param {Function} processor - The function to process each event.
      */
     processAll(processor) {
         if (this.isProcessing || this.buffer.length === 0) {
@@ -513,7 +458,7 @@ export class EventBuffer {
     }
 
     /**
-     * Clear all buffered events
+     * Clears all buffered events.
      */
     clear() {
         const count = this.buffer.length;
@@ -522,16 +467,16 @@ export class EventBuffer {
     }
 
     /**
-     * Get buffer size
-     * @returns {number} Number of buffered events
+     * Gets the current size of the buffer.
+     * @returns {number} The number of buffered events.
      */
     size() {
         return this.buffer.length;
     }
 
     /**
-     * Get buffer statistics
-     * @returns {Object} Buffer statistics
+     * Gets statistics about the buffer.
+     * @returns {Object} An object containing buffer statistics.
      */
     getStats() {
         const now = Date.now();
@@ -549,7 +494,7 @@ export class EventBuffer {
     }
 
     /**
-     * Clean old events from buffer using more efficient approach
+     * Cleans old events from buffer using more efficient approach
      * @private
      */
     _cleanOldEvents() {
@@ -572,8 +517,8 @@ export class EventBuffer {
     }
 
     /**
-     * Check if buffer needs maintenance
-     * @returns {boolean} Whether maintenance is needed
+     * Checks if the buffer needs maintenance.
+     * @returns {boolean} `true` if maintenance is needed, otherwise `false`.
      */
     needsMaintenance() {
         const stats = this.getStats();
@@ -581,7 +526,7 @@ export class EventBuffer {
     }
 
     /**
-     * Perform buffer maintenance
+     * Performs maintenance on the buffer by cleaning old and oversized events.
      */
     performMaintenance() {
         this._cleanOldEvents();
@@ -599,11 +544,11 @@ export class EventBuffer {
 }
 
 /**
- * Configuration change processor
- * @param {Object} oldConfig - Previous configuration
- * @param {Object} newConfig - New configuration
- * @param {string[]} uiOnlySettings - Settings that don't affect functionality
- * @returns {Object} Analysis of configuration changes
+ * Analyzes configuration changes between two config objects.
+ * @param {Object} oldConfig - The previous configuration.
+ * @param {Object} newConfig - The new configuration.
+ * @param {string[]} [uiOnlySettings=[]] - A list of settings that only affect the UI.
+ * @returns {Object} An analysis of the configuration changes.
  */
 export function analyzeConfigChanges(oldConfig, newConfig, uiOnlySettings = []) {
     const changes = {};
@@ -637,8 +582,8 @@ export function analyzeConfigChanges(oldConfig, newConfig, uiOnlySettings = []) 
 }
 
 /**
- * DOM ready helper - ensures DOM is ready before executing callback
- * @param {Function} callback - Function to execute when DOM is ready
+ * Executes a callback when the DOM is ready.
+ * @param {Function} callback - The function to execute.
  */
 export function onDOMReady(callback) {
     if (document.readyState === 'loading') {
@@ -650,7 +595,7 @@ export function onDOMReady(callback) {
 }
 
 /**
- * Element cache for performance optimization with automatic cleanup
+ * A cache for DOM elements to optimize performance, with automatic cleanup.
  */
 class ElementCache {
     constructor(maxSize = 100, ttl = 300000) { // 5 minutes TTL
@@ -742,13 +687,13 @@ function validateInputs(params, schema) {
 }
 
 /**
- * Safe element query with retry mechanism and caching
- * @param {string} selector - CSS selector
- * @param {number} maxRetries - Maximum retry attempts
- * @param {number} retryInterval - Retry interval in milliseconds
- * @param {Element} context - Context element (default: document)
- * @param {boolean} useCache - Whether to use element caching
- * @returns {Promise<Element|null>} Found element or null
+ * Safely queries for an element with a retry mechanism and caching.
+ * @param {string} selector - The CSS selector for the element.
+ * @param {number} [maxRetries=10] - The maximum number of retry attempts.
+ * @param {number} [retryInterval=500] - The interval between retries in milliseconds.
+ * @param {Element} [context=document] - The context element to search within.
+ * @param {boolean} [useCache=false] - Whether to use element caching.
+ * @returns {Promise<Element|null>} A promise that resolves to the found element or `null`.
  */
 export async function waitForElement(
     selector,
@@ -804,8 +749,8 @@ export async function waitForElement(
 }
 
 /**
- * Clear element cache
- * @param {string} selector - Specific selector to clear, or null for all
+ * Clears the element cache.
+ * @param {string|null} [selector=null] - A specific selector to clear from the cache, or `null` to clear all.
  */
 export function clearElementCache(selector = null) {
     if (selector) {
@@ -820,10 +765,10 @@ export function clearElementCache(selector = null) {
 }
 
 /**
- * Debounce function to limit function execution frequency
- * @param {Function} func - Function to debounce
- * @param {number} delay - Delay in milliseconds
- * @returns {Function} Debounced function
+ * Debounces a function to limit its execution frequency.
+ * @param {Function} func - The function to debounce.
+ * @param {number} delay - The delay in milliseconds.
+ * @returns {Function} The debounced function.
  */
 export function debounce(func, delay) {
     let timeoutId;
@@ -834,10 +779,10 @@ export function debounce(func, delay) {
 }
 
 /**
- * Throttle function to limit function execution frequency
- * @param {Function} func - Function to throttle
- * @param {number} limit - Time limit in milliseconds
- * @returns {Function} Throttled function
+ * Throttles a function to limit its execution frequency.
+ * @param {Function} func - The function to throttle.
+ * @param {number} limit - The time limit in milliseconds.
+ * @returns {Function} The throttled function.
  */
 export function throttle(func, limit) {
     let inThrottle;
@@ -851,10 +796,10 @@ export function throttle(func, limit) {
 }
 
 /**
- * Platform detection helper
- * @param {string} url - URL to check
- * @param {Object} platformPatterns - Platform URL patterns
- * @returns {string|null} Detected platform name or null
+ * Detects the platform from a given URL based on a set of patterns.
+ * @param {string} url - The URL to check.
+ * @param {Object} platformPatterns - An object where keys are platform names and values are URL patterns.
+ * @returns {string|null} The name of the detected platform, or `null` if no match is found.
  */
 export function detectPlatform(url, platformPatterns) {
     for (const [platform, patterns] of Object.entries(platformPatterns)) {
@@ -868,12 +813,12 @@ export function detectPlatform(url, platformPatterns) {
 }
 
 /**
- * Video element setup helper that integrates with subtitleUtilities
- * @param {Object} activePlatform - Platform instance
- * @param {Object} subtitleUtils - Subtitle utilities instance
- * @param {Object} config - Configuration object
- * @param {string} logPrefix - Log prefix
- * @returns {boolean} Whether setup was successful
+ * A helper function for setting up a video element with subtitle utilities.
+ * @param {Object} activePlatform - The active platform instance.
+ * @param {Object} subtitleUtils - The subtitle utilities instance.
+ * @param {Object} config - The configuration object.
+ * @param {string} logPrefix - The log prefix.
+ * @returns {boolean} `true` if the setup was successful, otherwise `false`.
  */
 export function attemptVideoSetup(activePlatform, subtitleUtils, config, logPrefix) {
     if (!activePlatform || !subtitleUtils || !config) {
@@ -913,11 +858,11 @@ export function attemptVideoSetup(activePlatform, subtitleUtils, config, logPref
 }
 
 /**
- * Configuration change analyzer that uses common UI-only settings
- * @param {Object} oldConfig - Previous configuration
- * @param {Object} newConfig - New configuration
- * @returns {Object} Analysis of configuration changes
- * @deprecated Use analyzeConfigChanges directly with COMMON_CONSTANTS.UI_ONLY_SETTINGS
+ * Analyzes configuration changes.
+ * @param {Object} oldConfig - The previous configuration.
+ * @param {Object} newConfig - The new configuration.
+ * @returns {Object} An analysis of the configuration changes.
+ * @deprecated Use `analyzeConfigChanges` directly with `COMMON_CONSTANTS.UI_ONLY_SETTINGS`.
  */
 export function analyzeConfigurationChanges(oldConfig, newConfig) {
     console.warn('analyzeConfigurationChanges is deprecated. Use analyzeConfigChanges directly.');
@@ -925,11 +870,11 @@ export function analyzeConfigurationChanges(oldConfig, newConfig) {
 }
 
 /**
- * Early event listener setup helper
- * @param {string} eventId - Event ID to listen for
- * @param {Function} eventHandler - Event handler function
- * @param {Function} logger - Logger function
- * @returns {Function} Cleanup function
+ * Sets up an early event listener.
+ * @param {string} eventId - The ID of the event to listen for.
+ * @param {Function} eventHandler - The event handler function.
+ * @param {Function} [logger=logWithFallback] - The logger function.
+ * @returns {Function} A cleanup function to remove the listener.
  */
 export function setupEarlyEventListener(eventId, eventHandler, logger = logWithFallback) {
     let listenerAttached = false;
@@ -957,11 +902,11 @@ export function setupEarlyEventListener(eventId, eventHandler, logger = logWithF
 }
 
 /**
- * DOM mutation observer setup for video element changes
- * @param {Function} onVideoChange - Callback when video element changes
- * @param {Object} context - Context with platform and utilities
- * @param {Function} logger - Logger function
- * @returns {MutationObserver} Observer instance
+ * Sets up a DOM mutation observer for video element changes.
+ * @param {Function} onVideoChange - The callback to execute when the video element changes.
+ * @param {Object} context - The context with the platform and utilities.
+ * @param {Function} [logger=logWithFallback] - The logger function.
+ * @returns {MutationObserver} The observer instance.
  */
 export function setupVideoElementObserver(onVideoChange, context, logger = logWithFallback) {
     const observer = new MutationObserver((mutationsList) => {
@@ -1000,9 +945,9 @@ export function setupVideoElementObserver(onVideoChange, context, logger = logWi
 }
 
 /**
- * Cleanup helper for content script resources
- * @param {Object} context - Context object with resources to cleanup
- * @param {Function} logger - Logger function
+ * A helper function for cleaning up content script resources.
+ * @param {Object} context - The context object with resources to clean up.
+ * @param {Function} [logger=logWithFallback] - The logger function.
  */
 export function cleanupContentScriptResources(context, logger = logWithFallback) {
     try {
@@ -1053,9 +998,9 @@ export function cleanupContentScriptResources(context, logger = logWithFallback)
 }
 
 /**
- * Extension context invalidation handler
- * @param {Function} onInvalidation - Callback when context is invalidated
- * @param {Function} logger - Logger function
+ * Handles extension context invalidation.
+ * @param {Function} onInvalidation - The callback to execute when the context is invalidated.
+ * @param {Function} [logger=logWithFallback] - The logger function.
  */
 export function handleExtensionContextInvalidation(onInvalidation, logger = logWithFallback) {
     // Listen for extension context invalidation
@@ -1073,7 +1018,7 @@ export function handleExtensionContextInvalidation(onInvalidation, logger = logW
 }
 
 /**
- * Platform Configuration Factory
+ * A factory for platform configurations.
  */
 export class PlatformConfigFactory {
     static getConfig(name) {
@@ -1111,20 +1056,20 @@ export class PlatformConfigFactory {
 }
 
 /**
- * Get platform configuration by name
- * @deprecated Use PlatformConfigFactory.getConfig() instead
- * @param {string} name - Platform name
- * @returns {Object|null} Platform configuration or null
+ * Gets the platform configuration by name.
+ * @param {string} name - The name of the platform.
+ * @returns {Object|null} The platform configuration, or `null` if not found.
+ * @deprecated Use `PlatformConfigFactory.getConfig()` instead.
  */
 export function getPlatformConfig(name) {
     return DEFAULT_PLATFORM_CONFIGS[name] || null;
 }
 
 /**
- * Get platform configuration by URL
- * @deprecated Use PlatformConfigFactory.getConfigByUrl() instead
- * @param {string} url - URL to check
- * @returns {Object|null} Platform configuration or null
+ * Gets the platform configuration by URL.
+ * @param {string} [url=window.location.href] - The URL to check.
+ * @returns {Object|null} The platform configuration, or `null` if not found.
+ * @deprecated Use `PlatformConfigFactory.getConfigByUrl()` instead.
  */
 export function getPlatformConfigByUrl(url = window.location.href) {
     for (const [platformName, config] of Object.entries(DEFAULT_PLATFORM_CONFIGS)) {
@@ -1138,9 +1083,9 @@ export function getPlatformConfigByUrl(url = window.location.href) {
 }
 
 /**
- * Create a standardized content script context object
- * @param {string} name - Platform name
- * @returns {Object} Context object with common properties
+ * Creates a standardized content script context object.
+ * @param {string} name - The name of the platform.
+ * @returns {Object} A context object with common properties.
  */
 export function createContentScriptContext(name) {
     const config = getPlatformConfig(name);
@@ -1188,8 +1133,8 @@ export function createContentScriptContext(name) {
 }
 
 /**
- * Extension context validation helper
- * @returns {boolean} Whether extension context is valid
+ * Checks if the extension context is valid.
+ * @returns {boolean} `true` if the context is valid, otherwise `false`.
  */
 export function isExtensionContextValid() {
     try {
@@ -1200,11 +1145,11 @@ export function isExtensionContextValid() {
 }
 
 /**
- * Safe Chrome API call wrapper with context validation
- * @param {Function} apiCall - Chrome API function to call
- * @param {Array} args - Arguments to pass to the API call
- * @param {Function} onSuccess - Success callback
- * @param {Function} onError - Error callback
+ * A safe wrapper for Chrome API calls with context validation.
+ * @param {Function} apiCall - The Chrome API function to call.
+ * @param {Array} [args=[]] - The arguments to pass to the API call.
+ * @param {Function} [onSuccess=()=>{}] - The success callback.
+ * @param {Function} [onError=()=>{}] - The error callback.
  */
 export function safeChromeApiCall(apiCall, args = [], onSuccess = () => {}, onError = () => {}) {
     if (!isExtensionContextValid()) {
@@ -1232,11 +1177,11 @@ export function safeChromeApiCall(apiCall, args = [], onSuccess = () => {}, onEr
 }
 
 /**
- * Fallback logging helper for when logger is not yet initialized
- * @param {string} level - Log level (info, warn, error, debug)
- * @param {string} message - Log message
- * @param {Object} data - Additional data to log
- * @param {string} prefix - Log prefix
+ * A fallback logging helper for when the logger is not yet initialized.
+ * @param {string} level - The log level ('info', 'warn', 'error', 'debug').
+ * @param {string} message - The log message.
+ * @param {Object} [data={}] - Additional data to log.
+ * @param {string} [prefix='ContentScript'] - The log prefix.
  */
 export function logWithFallback(level, message, data = {}, prefix = 'ContentScript') {
     console.log(
@@ -1246,10 +1191,10 @@ export function logWithFallback(level, message, data = {}, prefix = 'ContentScri
 }
 
 /**
- * Module loader helper with error handling
- * @param {string} modulePath - Path to module to load
- * @param {Function} logger - Logger function
- * @returns {Promise<Object|null>} Loaded module or null on error
+ * A helper for loading modules with error handling.
+ * @param {string} modulePath - The path to the module to load.
+ * @param {Function} [logger=logWithFallback] - The logger function.
+ * @returns {Promise<Object|null>} A promise that resolves to the loaded module, or `null` on error.
  */
 export async function loadModule(modulePath, logger = logWithFallback) {
     try {
@@ -1263,11 +1208,11 @@ export async function loadModule(modulePath, logger = logWithFallback) {
 }
 
 /**
- * Initialize logger with configuration
- * @param {string} logPrefix - Prefix for log messages
- * @param {Object} configService - Configuration service instance
- * @param {Object} Logger - Logger class
- * @returns {Promise<Object>} Initialized logger instance
+ * Initializes a logger with the specified configuration.
+ * @param {string} logPrefix - The prefix for log messages.
+ * @param {Object} configService - The configuration service instance.
+ * @param {Object} Logger - The Logger class.
+ * @returns {Promise<Object>} A promise that resolves to the initialized logger instance.
  */
 export async function initializeLogger(logPrefix, configService, Logger) {
     const logger = Logger.create(logPrefix);
@@ -1285,9 +1230,9 @@ export async function initializeLogger(logPrefix, configService, Logger) {
 }
 
 /**
- * Wait for DOM to be ready with optional timeout
- * @param {number} timeout - Timeout in milliseconds (default: 10000)
- * @returns {Promise<void>} Resolves when DOM is ready
+ * Waits for the DOM to be ready.
+ * @param {number} [timeout=10000] - The timeout in milliseconds.
+ * @returns {Promise<void>} A promise that resolves when the DOM is ready.
  */
 export function waitForDOMReady(timeout = 10000) {
     return new Promise((resolve, reject) => {
@@ -1311,13 +1256,13 @@ export function waitForDOMReady(timeout = 10000) {
 }
 
 /**
- * Enhanced script injection with retry mechanism
- * @param {string} scriptSrc - Script source URL
- * @param {string} scriptId - Script element ID
- * @param {number} maxRetries - Maximum retry attempts
- * @param {number} retryDelay - Delay between retries in ms
- * @param {Function} logger - Logger function
- * @returns {Promise<boolean>} Whether injection was successful
+ * Injects a script with a retry mechanism.
+ * @param {string} scriptSrc - The source URL of the script.
+ * @param {string} scriptId - The ID for the script element.
+ * @param {number} [maxRetries=3] - The maximum number of retry attempts.
+ * @param {number} [retryDelay=10] - The delay between retries in milliseconds.
+ * @param {Function} [logger=logWithFallback] - The logger function.
+ * @returns {Promise<boolean>} A promise that resolves to `true` if the injection was successful.
  */
 export function injectScriptWithRetry(
     scriptSrc,
@@ -1386,10 +1331,10 @@ export function injectScriptWithRetry(
 }
 
 /**
- * Safe Chrome API call wrapper with Promise support
- * @param {Function} apiCall - Chrome API function to call
- * @param {Array} args - Arguments for the API call
- * @returns {Promise<*>} Promise that resolves with the API result
+ * A safe wrapper for Chrome API calls with Promise support.
+ * @param {Function} apiCall - The Chrome API function to call.
+ * @param {...*} args - The arguments for the API call.
+ * @returns {Promise<*>} A promise that resolves with the API result.
  */
 export function chromeApiCall(apiCall, ...args) {
     return new Promise((resolve, reject) => {
@@ -1408,11 +1353,11 @@ export function chromeApiCall(apiCall, ...args) {
 }
 
 /**
- * Enhanced module loader with dependency injection
- * @param {string} modulePath - Path to module to load
- * @param {Object} dependencies - Dependencies to inject
- * @param {Function} logger - Logger function
- * @returns {Promise<Object|null>} Loaded module or null on error
+ * A module loader with dependency injection.
+ * @param {string} modulePath - The path to the module to load.
+ * @param {Object} [dependencies={}] - The dependencies to inject.
+ * @param {Function} [logger=logWithFallback] - The logger function.
+ * @returns {Promise<Object|null>} A promise that resolves to the loaded module, or `null` on error.
  */
 export async function loadModuleWithDependencies(modulePath, dependencies = {}, logger = logWithFallback) {
     try {
@@ -1434,7 +1379,7 @@ export async function loadModuleWithDependencies(modulePath, dependencies = {}, 
 
 
 /**
- * Memory-safe interval manager with automatic cleanup and monitoring
+ * A memory-safe interval manager with automatic cleanup and monitoring.
  */
 export class IntervalManager {
     constructor() {
@@ -1444,14 +1389,14 @@ export class IntervalManager {
     }
 
     /**
-     * Set an interval with automatic cleanup
-     * @param {string} name - Interval name for reference
-     * @param {Function} callback - Function to execute
-     * @param {number} delay - Delay in milliseconds
-     * @param {Object} options - Additional options
-     * @param {number} options.maxExecutions - Maximum number of executions (optional)
-     * @param {number} options.timeout - Auto-clear after timeout (optional)
-     * @returns {boolean} Whether interval was set successfully
+     * Sets an interval with automatic cleanup.
+     * @param {string} name - A name for the interval for reference.
+     * @param {Function} callback - The function to execute.
+     * @param {number} delay - The delay in milliseconds.
+     * @param {Object} [options={}] - Additional options.
+     * @param {number} [options.maxExecutions] - The maximum number of executions.
+     * @param {number} [options.timeout] - An auto-clear timeout.
+     * @returns {boolean} `true` if the interval was set successfully.
      */
     set(name, callback, delay, options = {}) {
         // Prevent too many intervals
@@ -1509,8 +1454,8 @@ export class IntervalManager {
     }
 
     /**
-     * Clear a specific interval
-     * @param {string} name - Interval name
+     * Clears a specific interval.
+     * @param {string} name - The name of the interval.
      */
     clear(name) {
         const intervalInfo = this.intervals.get(name);
@@ -1521,7 +1466,7 @@ export class IntervalManager {
     }
 
     /**
-     * Clear all intervals
+     * Clears all managed intervals.
      */
     clearAll() {
         for (const [name, intervalInfo] of this.intervals) {
@@ -1531,16 +1476,16 @@ export class IntervalManager {
     }
 
     /**
-     * Get active interval count
-     * @returns {number} Number of active intervals
+     * Gets the number of active intervals.
+     * @returns {number} The number of active intervals.
      */
     count() {
         return this.intervals.size;
     }
 
     /**
-     * Get interval statistics
-     * @returns {Object} Statistics about active intervals
+     * Gets statistics about the active intervals.
+     * @returns {Object} An object containing statistics.
      */
     getStats() {
         const now = Date.now();
@@ -1557,9 +1502,9 @@ export class IntervalManager {
     }
 
     /**
-     * Clean up stale intervals (older than specified age)
-     * @param {number} maxAge - Maximum age in milliseconds
-     * @returns {number} Number of intervals cleared
+     * Cleans up stale intervals that are older than the specified age.
+     * @param {number} [maxAge=300000] - The maximum age in milliseconds.
+     * @returns {number} The number of intervals that were cleared.
      */
     cleanupStale(maxAge = 300000) { // 5 minutes default
         const now = Date.now();
@@ -1576,18 +1521,18 @@ export class IntervalManager {
     }
 
     /**
-     * Check if interval exists
-     * @param {string} name - Interval name
-     * @returns {boolean} Whether interval exists
+     * Checks if an interval exists.
+     * @param {string} name - The name of the interval.
+     * @returns {boolean} `true` if the interval exists.
      */
     has(name) {
         return this.intervals.has(name);
     }
 
     /**
-     * Get interval information
-     * @param {string} name - Interval name
-     * @returns {Object|null} Interval information or null
+     * Gets information about a specific interval.
+     * @param {string} name - The name of the interval.
+     * @returns {Object|null} An object with interval information, or `null`.
      */
     getInfo(name) {
         const intervalInfo = this.intervals.get(name);
@@ -1605,7 +1550,7 @@ export class IntervalManager {
 }
 
 /**
- * Message handler registry for Chrome extension messages
+ * A registry for Chrome extension message handlers.
  */
 export class MessageHandlerRegistry {
     constructor(logger = logWithFallback) {
@@ -1614,10 +1559,10 @@ export class MessageHandlerRegistry {
     }
 
     /**
-     * Register a message handler
-     * @param {string} action - Action name
-     * @param {Function} handler - Handler function
-     * @param {boolean} requiresUtilities - Whether utilities are required
+     * Registers a message handler.
+     * @param {string} action - The name of the action.
+     * @param {Function} handler - The handler function.
+     * @param {boolean} [requiresUtilities=false] - Whether utilities are required.
      */
     register(action, handler, requiresUtilities = false) {
         this.handlers.set(action, {
@@ -1628,12 +1573,12 @@ export class MessageHandlerRegistry {
     }
 
     /**
-     * Handle incoming Chrome message
-     * @param {Object} request - Chrome message request
-     * @param {Object} sender - Message sender
-     * @param {Function} sendResponse - Response callback
-     * @param {Object} context - Context object with utilities
-     * @returns {boolean} Whether response is async
+     * Handles an incoming Chrome message.
+     * @param {Object} request - The Chrome message request.
+     * @param {Object} sender - The message sender.
+     * @param {Function} sendResponse - The response callback.
+     * @param {Object} [context={}] - The context object with utilities.
+     * @returns {boolean} `true` if the response is asynchronous.
      */
     handle(request, sender, sendResponse, context = {}) {
         const action = request.action || request.type;
@@ -1684,15 +1629,15 @@ export class MessageHandlerRegistry {
     }
 
     /**
-     * Get all registered actions
-     * @returns {string[]} Array of registered action names
+     * Gets all registered actions.
+     * @returns {string[]} An array of registered action names.
      */
     getActions() {
         return Array.from(this.handlers.keys());
     }
 
     /**
-     * Clear all handlers
+     * Clears all registered handlers.
      */
     clear() {
         this.handlers.clear();
@@ -1701,7 +1646,7 @@ export class MessageHandlerRegistry {
 }
 
 /**
- * Message handler for logging level changes
+ * A message handler for logging level changes.
  */
 export class LoggingLevelHandler {
     constructor(logger = logWithFallback) {
@@ -1725,7 +1670,7 @@ export class LoggingLevelHandler {
 }
 
 /**
- * Message handler for subtitle toggle operations
+ * A message handler for subtitle toggle operations.
  */
 export class SubtitleToggleHandler {
     constructor(logger = logWithFallback) {
@@ -1793,7 +1738,7 @@ export class SubtitleToggleHandler {
 }
 
 /**
- * Message handler for configuration changes
+ * A message handler for configuration changes.
  */
 export class ConfigChangeHandler {
     constructor(logger = logWithFallback) {
@@ -1826,78 +1771,10 @@ export class ConfigChangeHandler {
 }
 
 /**
- * Factory for creating common message handlers
+ * A factory for creating common message handlers.
  */
 export const createCommonMessageHandlers = (logger = logWithFallback) => ({
     LOGGING_LEVEL_CHANGED: new LoggingLevelHandler(logger),
     toggleSubtitles: new SubtitleToggleHandler(logger),
     configChanged: new ConfigChangeHandler(logger)
 });
-
-
-
-/**
- * Platform-specific constants extracted from existing content scripts
- */
-export const PLATFORM_CONSTANTS = {
-    netflix: {
-        INJECT_SCRIPT_FILENAME: 'injected_scripts/netflixInject.js',
-        INJECT_SCRIPT_TAG_ID: 'netflix-dualsub-injector-script-tag',
-        INJECT_EVENT_ID: 'netflix-dualsub-injector-event',
-        URL_PATTERNS: ['netflix.com'],
-        PLAYER_URL_PATTERN: '/watch/',
-        LOG_PREFIX: 'NetflixContent'
-    },
-    disneyplus: {
-        INJECT_SCRIPT_FILENAME: 'injected_scripts/disneyPlusInject.js',
-        INJECT_SCRIPT_TAG_ID: 'disneyplus-dualsub-injector-script-tag',
-        INJECT_EVENT_ID: 'disneyplus-dualsub-injector-event',
-        URL_PATTERNS: ['disneyplus.com'],
-        PLAYER_URL_PATTERN: '/video/',
-        LOG_PREFIX: 'DisneyPlusContent'
-    }
-};
-
-/**
- * Default platform configurations
- */
-export const DEFAULT_PLATFORM_CONFIGS = {
-    netflix: {
-        name: 'netflix',
-        injectScript: {
-            filename: PLATFORM_CONSTANTS.netflix.INJECT_SCRIPT_FILENAME,
-            tagId: PLATFORM_CONSTANTS.netflix.INJECT_SCRIPT_TAG_ID,
-            eventId: PLATFORM_CONSTANTS.netflix.INJECT_EVENT_ID
-        },
-        navigation: {
-            urlPatterns: PLATFORM_CONSTANTS.netflix.URL_PATTERNS,
-            spaHandling: true,
-            checkInterval: COMMON_CONSTANTS.URL_CHECK_INTERVAL,
-            playerUrlPattern: PLATFORM_CONSTANTS.netflix.PLAYER_URL_PATTERN
-        },
-        videoDetection: {
-            maxRetries: COMMON_CONSTANTS.MAX_VIDEO_DETECTION_RETRIES,
-            retryInterval: COMMON_CONSTANTS.VIDEO_DETECTION_INTERVAL
-        },
-        logPrefix: PLATFORM_CONSTANTS.netflix.LOG_PREFIX
-    },
-    disneyplus: {
-        name: 'disneyplus',
-        injectScript: {
-            filename: PLATFORM_CONSTANTS.disneyplus.INJECT_SCRIPT_FILENAME,
-            tagId: PLATFORM_CONSTANTS.disneyplus.INJECT_SCRIPT_TAG_ID,
-            eventId: PLATFORM_CONSTANTS.disneyplus.INJECT_EVENT_ID
-        },
-        navigation: {
-            urlPatterns: PLATFORM_CONSTANTS.disneyplus.URL_PATTERNS,
-            spaHandling: false,
-            checkInterval: COMMON_CONSTANTS.URL_CHECK_INTERVAL,
-            playerUrlPattern: PLATFORM_CONSTANTS.disneyplus.PLAYER_URL_PATTERN
-        },
-        videoDetection: {
-            maxRetries: COMMON_CONSTANTS.MAX_VIDEO_DETECTION_RETRIES,
-            retryInterval: COMMON_CONSTANTS.VIDEO_DETECTION_INTERVAL
-        },
-        logPrefix: PLATFORM_CONSTANTS.disneyplus.LOG_PREFIX
-    }
-};

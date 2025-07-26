@@ -75,7 +75,7 @@ describe('DisneyPlusContentScript Integration Tests', () => {
                 success: true,
                 handled: false,
                 platform: 'disneyplus',
-                message: 'No platform-specific handling required'
+                message: 'No platform-specific handling required.'
             });
         });
 
@@ -97,7 +97,7 @@ describe('DisneyPlusContentScript Integration Tests', () => {
                 success: true,
                 handled: false,
                 platform: 'disneyplus',
-                message: 'No platform-specific handling required'
+                message: 'No platform-specific handling required.'
             });
         });
 
@@ -122,7 +122,7 @@ describe('DisneyPlusContentScript Integration Tests', () => {
                 success: true,
                 handled: false,
                 platform: 'disneyplus',
-                message: 'No platform-specific handling required'
+                message: 'No platform-specific handling required.'
             });
 
             // Should log debug information
@@ -309,7 +309,7 @@ describe('DisneyPlusContentScript Integration Tests', () => {
                 success: true,
                 handled: false,
                 platform: 'disneyplus',
-                message: 'No platform-specific handling required'
+                message: 'No platform-specific handling required.'
             });
         });
 
@@ -330,7 +330,7 @@ describe('DisneyPlusContentScript Integration Tests', () => {
                 success: true,
                 handled: false,
                 platform: 'disneyplus',
-                message: 'No platform-specific handling required'
+                message: 'No platform-specific handling required.'
             });
 
             // Should log Disney+ specific navigation
@@ -363,7 +363,7 @@ describe('DisneyPlusContentScript Integration Tests', () => {
                 success: true,
                 handled: false,
                 platform: 'disneyplus',
-                message: 'No platform-specific handling required'
+                message: 'No platform-specific handling required.'
             });
         });
     });

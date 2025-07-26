@@ -1,199 +1,214 @@
 # Content Scripts Architecture
 
+This document provides a detailed overview of the content script architecture,
+outlining its design principles, class hierarchy, initialization flow, and key systems.
+
 ## Design Principles
 
-The content script architecture is built on several key design principles:
+The content script architecture is built on several core design principles to ensure
+robustness, maintainability, and extensibility:
 
-1. **Template Method Pattern**: BaseContentScript defines the algorithm structure, subclasses implement specific steps
-2. **Dependency Injection**: Modules are loaded dynamically for better testability
-3. **Event-Driven Architecture**: Extensible message handling with action-based routing
-4. **Resource Management**: Comprehensive cleanup and memory management
-5. **Error Recovery**: Graceful degradation and retry mechanisms
+1.  **Template Method Pattern**: `BaseContentScript` defines the high-level algorithm structure, allowing subclasses to implement platform-specific details without altering the overall workflow.
+2.  **Dependency Injection**: Modules are loaded dynamically, promoting loose coupling and enhancing testability by allowing dependencies to be mocked.
+3.  **Event-Driven Architecture**: An extensible message handling system with action-based routing allows for flexible and decoupled communication.
+4.  **Resource Management**: A comprehensive cleanup system and memory management practices prevent resource leaks and ensure stability.
+5.  **Error Recovery**: Graceful degradation and retry mechanisms provide resilience against transient failures and unexpected platform changes.
 
 ## Class Hierarchy
 
+The class hierarchy is designed to maximize code reuse while providing a clear structure
+for platform-specific implementations:
+
 ```
 BaseContentScript (abstract)
-├── Common functionality (80% of code)
-├── Abstract methods for platform-specific behavior
-├── Template methods for initialization flow
-└── Extensible message handling system
+├── Provides common functionality (~80% of the code).
+├── Defines abstract methods for platform-specific behavior.
+├── Implements template methods for the initialization flow.
+└── Includes an extensible message handling system.
 
 NetflixContentScript extends BaseContentScript
-├── Netflix-specific configurations
-├── Enhanced SPA navigation detection
-└── Netflix injection parameters
+├── Implements Netflix-specific configurations.
+├── Provides enhanced SPA navigation detection.
+└── Defines Netflix-specific injection parameters.
 
 DisneyPlusContentScript extends BaseContentScript
-├── Disney+ specific configurations
-├── Standard navigation detection
-└── Disney+ injection parameters
+├── Implements Disney+-specific configurations.
+├── Uses standard navigation detection strategies.
+└── Defines Disney+-specific injection parameters.
 ```
 
 ## Initialization Flow
 
-The initialization follows a strict template method pattern:
+The initialization process follows a strict template method pattern, ensuring a consistent
+and predictable setup sequence across all platforms:
 
 ```javascript
 async initialize() {
-    // Step 1: Initialize core modules
-    await this.initializeCore()
+    // Step 1: Initialize core modules and services.
+    await this.initializeCore();
         └── loadModules()
             ├── _loadSubtitleUtilities()
             ├── _loadPlatformClass()
             ├── _loadConfigService()
             └── _loadAndInitializeLogger()
 
-    // Step 2: Initialize configuration
-    await this.initializeConfiguration()
-        ├── Load configuration from configService
-        ├── Normalize configuration
-        └── Setup configuration listeners
+    // Step 2: Initialize configuration and listeners.
+    await this.initializeConfiguration();
+        ├── Load configuration from configService.
+        ├── Normalize configuration for consistency.
+        └── Set up listeners for configuration changes.
 
-    // Step 3: Initialize event handling
-    await this.initializeEventHandling()
-        ├── Setup early event handling
-        └── Initialize platform (if subtitles enabled)
+    // Step 3: Initialize event handling and the platform.
+    await this.initializeEventHandling();
+        ├── Set up early event handling for buffering.
+        └── Initialize the platform if subtitles are enabled.
 
-    // Step 4: Initialize observers
-    await this.initializeObservers()
-        ├── Setup navigation detection (platform-specific)
-        ├── Setup DOM observation
-        └── Setup cleanup handlers
+    // Step 4: Initialize observers and cleanup handlers.
+    await this.initializeObservers();
+        ├── Set up platform-specific navigation detection.
+        ├── Set up DOM observation for dynamic content.
+        └── Set up cleanup handlers for resource management.
 }
 ```
 
 ## Abstract Method Contracts
 
-Platform-specific classes must implement these abstract methods:
+Platform-specific classes are required to implement the following abstract methods to
+ensure they adhere to the contract defined by `BaseContentScript`.
 
 ### Required Methods
 
 ```javascript
 /**
- * Get the platform name (e.g., 'netflix', 'disneyplus')
- * @returns {string} Platform name
+ * Gets the platform name (e.g., 'netflix', 'disneyplus').
+ * @returns {string} The platform name.
  */
 getPlatformName()
 
 /**
- * Get the platform class constructor name
- * @returns {string} Platform class name (e.g., 'NetflixPlatform')
+ * Gets the platform class constructor name.
+ * @returns {string} The platform class name (e.g., 'NetflixPlatform').
  */
 getPlatformClass()
 
 /**
- * Get the inject script configuration
- * @returns {Object} Inject script configuration
+ * Gets the inject script configuration.
+ * @returns {Object} The inject script configuration.
  */
 getInjectScriptConfig()
 
 /**
- * Setup platform-specific navigation detection
+ * Sets up platform-specific navigation detection.
  */
 setupNavigationDetection()
 
 /**
- * Check for URL changes (platform-specific implementation)
+ * Checks for URL changes with platform-specific logic.
  */
 checkForUrlChange()
 
 /**
- * Handle platform-specific Chrome messages
- * @param {Object} request - Chrome message request
- * @param {Function} sendResponse - Response callback
- * @returns {boolean} Whether response is handled asynchronously
+ * Handles platform-specific Chrome messages.
+ * @param {Object} request - The Chrome message request.
+ * @param {Function} sendResponse - The callback to send a response.
+ * @returns {boolean} `true` if the response is sent asynchronously.
  */
 handlePlatformSpecificMessage(request, sendResponse)
 ```
 
 ## Message Handling System
 
-The architecture includes an extensible message handling system:
+The architecture includes an extensible message handling system that allows for
+decoupled communication and easy addition of new message types.
 
 ### Message Handler Registry
 
 ```javascript
-// Register a message handler
-registerMessageHandler(action, handler, options)
+// Register a new message handler.
+registerMessageHandler(action, handler, options);
 
-// Common handlers are automatically registered:
-// - 'toggleSubtitles': Toggle subtitle display
-// - 'configChanged': Handle configuration changes
-// - 'LOGGING_LEVEL_CHANGED': Update logging level
+// Common handlers are automatically registered for all platforms:
+// - 'toggleSubtitles': Toggles the subtitle display.
+// - 'configChanged': Handles dynamic configuration changes.
+// - 'LOGGING_LEVEL_CHANGED': Updates the logging level.
 ```
 
 ### Handler Configuration
 
 ```javascript
 const handlerConfig = {
-    handler: Function,              // Handler function
-    requiresUtilities: boolean,     // Whether utilities must be loaded
-    description: string,            // Handler description
-    registeredAt: string           // Registration timestamp
-}
+    handler: Function,          // The function to execute for the message.
+    requiresUtilities: boolean, // `true` if utilities must be loaded.
+    description: string,        // A description of the handler's purpose.
+    registeredAt: string        // The timestamp of registration.
+};
 ```
 
 ## Navigation Detection Strategies
 
-Different platforms require different navigation detection approaches:
+Different platforms require different navigation detection strategies due to their
+unique SPA implementations.
 
 ### Netflix (Complex SPA)
-- Interval-based URL checking (fallback)
-- History API interception (pushState/replaceState)
-- Browser navigation events (popstate, hashchange)
-- Focus and visibility events
-- Enhanced page transition handling
+-   Interval-based URL checking as a reliable fallback.
+-   History API interception (`pushState`/`replaceState`) for programmatic navigation.
+-   Browser navigation events (`popstate`, `hashchange`) for user-initiated navigation.
+-   Focus and visibility events to detect changes when the tab becomes active.
+-   Enhanced page transition handling for complex routing logic.
 
 ### Disney+ (Standard SPA)
-- Similar to Netflix but with simpler URL patterns
-- Player page detection for multiple URL patterns
-- Standard page transition handling
+-   Similar strategies to Netflix but with simpler URL patterns.
+-   Player page detection for multiple URL variations.
+-   Standard page transition handling.
 
 ## Resource Management
 
 ### Cleanup System
 
-The architecture includes comprehensive resource management:
+The architecture includes a comprehensive resource management system to prevent
+memory leaks and ensure stability.
 
 ```javascript
-// AbortController for event listener cleanup
-this.abortController = new AbortController()
+// An AbortController is used for cleaning up event listeners.
+this.abortController = new AbortController();
 
-// Interval management
-this.intervalManager = new IntervalManager()
+// An IntervalManager tracks and cleans up all intervals.
+this.intervalManager = new IntervalManager();
 
-// Event listener tracking
-this.eventListenerCleanupFunctions = []
-this.domObserverCleanupFunctions = []
+// Arrays for tracking cleanup functions for event listeners and DOM observers.
+this.eventListenerCleanupFunctions = [];
+this.domObserverCleanupFunctions = [];
 ```
 
 ### Memory Management
 
-- Automatic cleanup on page navigation
-- Proper disposal of event listeners
-- Resource pooling for repeated operations
-- Weak references where appropriate
+-   Automatic cleanup of resources on page navigation.
+-   Proper disposal of all registered event listeners.
+-   Resource pooling for frequently used objects.
+-   Use of weak references where appropriate to avoid memory leaks.
 
 ## Error Handling
 
 ### Graceful Degradation
 
-1. **Module Loading Failures**: Fallback to console logging
-2. **Platform Initialization Errors**: Clean up and retry with backoff
-3. **Video Detection Timeouts**: Continue with limited functionality
-4. **Navigation Detection Failures**: Fall back to interval-based checking
-5. **Extension Context Invalidation**: Clean up all listeners
+The system is designed to handle errors gracefully and degrade functionality
+without crashing the extension.
+
+1.  **Module Loading Failures**: Falls back to console logging if the logger fails to load.
+2.  **Platform Initialization Errors**: Cleans up and retries with an exponential backoff.
+3.  **Video Detection Timeouts**: Continues with limited functionality if the video element is not found.
+4.  **Navigation Detection Failures**: Falls back to interval-based checking.
+5.  **Extension Context Invalidation**: Cleans up all listeners and stops operations.
 
 ### Retry Mechanisms
 
 ```javascript
-// Platform initialization with retry
+// Platform initialization is performed with a configurable retry mechanism.
 const retryConfig = {
     maxRetries: 3,
     retryDelay: 1000,
     backoffMultiplier: 2
-}
+};
 ```
 
 ## Configuration System
@@ -201,27 +216,27 @@ const retryConfig = {
 ### Configuration Loading
 
 ```javascript
-// Load configuration from configService
-this.currentConfig = await this.configService.getAll()
+// Load the full configuration from the configService.
+this.currentConfig = await this.configService.getAll();
 
-// Normalize configuration
-this._normalizeConfiguration()
+// Normalize the configuration to handle backward compatibility.
+this._normalizeConfiguration();
 
-// Setup change listeners
-this.setupConfigurationListeners()
+// Set up listeners to handle dynamic configuration changes.
+this.setupConfigurationListeners();
 ```
 
 ### Platform-Specific Overrides
 
 ```javascript
-// Netflix-specific configuration
+// Netflix-specific configuration overrides.
 getNetflixSpecificConfig() {
     return {
         maxVideoDetectionRetries: 40,
         videoDetectionInterval: 1000,
         urlChangeCheckInterval: 2000,
         pageTransitionDelay: 1500
-    }
+    };
 }
 ```
 
@@ -229,25 +244,27 @@ getNetflixSpecificConfig() {
 
 ### Event Buffering
 
-Early events are buffered until platform initialization:
+Early events, such as subtitle data, are buffered until the platform is fully
+initialized and ready to process them.
 
 ```javascript
-this.eventBuffer = new EventBuffer(logger)
+this.eventBuffer = new EventBuffer(logger);
 
-// Buffer events before platform is ready
-this.eventBuffer.add(eventData)
+// Buffer events that arrive before the platform is ready.
+this.eventBuffer.add(eventData);
 
-// Process buffered events after initialization
-this.eventBuffer.processAll(handler)
+// Process all buffered events after initialization.
+this.eventBuffer.processAll(handler);
 ```
 
 ### Event Listener Management
 
 ```javascript
-// Add event listener with cleanup tracking
-const options = this.abortController ? 
-    { signal: this.abortController.signal } : {}
-window.addEventListener('event', handler, options)
+// Add event listeners with automatic cleanup tracking via AbortController.
+const options = this.abortController 
+    ? { signal: this.abortController.signal } 
+    : {};
+window.addEventListener('event', handler, options);
 ```
 
 ## Testing Architecture
@@ -255,109 +272,113 @@ window.addEventListener('event', handler, options)
 ### Test Structure
 
 ```javascript
-// Unit tests for BaseContentScript
+// Unit tests for BaseContentScript.
 BaseContentScript.test.js
-├── Mock platform-specific methods
-├── Test common functionality
-├── Verify template method execution
-└── Test error handling
+├── Mocks platform-specific methods to test common functionality.
+├── Verifies the execution of the template methods.
+└── Tests error handling and graceful degradation.
 
-// Platform-specific tests
+// Platform-specific integration tests.
 NetflixContentScript.test.js
-├── Test concrete implementations
-├── Verify platform configurations
-├── Test navigation detection
-└── Mock Chrome APIs
+├── Tests concrete implementations of abstract methods.
+├── Verifies platform-specific configurations.
+├── Tests navigation detection and SPA routing.
+└── Mocks Chrome APIs to simulate the extension environment.
 ```
 
 ### Mock Infrastructure
 
-- `test-utils/chrome-api-mock.js`: Chrome API mocking
-- `test-utils/test-helpers.js`: Centralized mock management
-- `test-utils/logger-mock.js`: Logger mocking
-- `test-utils/test-fixtures.js`: Standardized test data
+-   `test-utils/chrome-api-mock.js`: Provides mocks for the Chrome extension APIs.
+-   `test-utils/test-helpers.js`: Offers centralized mock management and test environment setup.
+-   `test-utils/logger-mock.js`: Provides a mock for the logger.
+-   `test-utils/test-fixtures.js`: Contains standardized test data and fixtures.
 
 ## Performance Considerations
 
 ### Initialization Optimization
 
-- Lazy loading of non-critical modules
-- Parallel module loading where possible
-- Efficient video element detection
-- Minimal DOM manipulation during setup
+-   Lazy loading of non-critical modules to speed up initial load.
+-   Parallel loading of modules where possible.
+-   Efficient video element detection algorithms.
+-   Minimal DOM manipulation during the setup phase.
 
 ### Runtime Performance
 
-- Debounced event handlers
-- Efficient navigation detection
-- Optimized subtitle update cycles
-- Minimal memory allocations in hot paths
+-   Debounced event handlers for high-frequency events.
+-   Optimized navigation detection strategies to reduce overhead.
+-   Efficient subtitle update cycles to minimize re-renders.
+-   Minimal memory allocations in performance-critical code paths.
 
 ### Memory Management
 
-- Proper cleanup of event listeners
-- Weak references for circular references
-- Resource pooling for repeated operations
-- Garbage collection friendly patterns
+-   Proper cleanup of all event listeners and observers.
+-   Use of weak references to prevent circular dependencies.
+-   Resource pooling for frequently created objects.
+-   Garbage collection-friendly coding patterns.
 
 ## Extension Points
 
 ### Adding New Platforms
 
-1. Extend BaseContentScript
-2. Implement abstract methods
-3. Add platform-specific configuration
-4. Create entry point
-5. Update manifest.json
+1.  Extend `BaseContentScript` to create a new platform-specific class.
+2.  Implement all required abstract methods.
+3.  Add any platform-specific configuration overrides.
+4.  Create an entry point file for the new platform.
+5.  Update `manifest.json` to include the new content script.
 
 ### Adding New Message Types
 
 ```javascript
-// Register custom message handler
+// Register a custom message handler in the platform-specific class.
 this.registerMessageHandler('customAction', this.handleCustomAction.bind(this), {
     requiresUtilities: true,
-    description: 'Handle custom platform action'
-})
+    description: 'Handles a custom platform-specific action.'
+});
 ```
 
 ### Adding New Utilities
 
 ```javascript
-// Add to shared utilities
-content_scripts/shared/customUtils.js
+// Create a new utility module in `content_scripts/shared/`.
+// content_scripts/shared/customUtils.js
 
-// Import in BaseContentScript or platform classes
-import { customUtility } from '../shared/customUtils.js'
+// Import and use the utility in `BaseContentScript` or platform-specific classes.
+import { customUtility } from '../shared/customUtils.js';
 ```
 
 ## Migration Strategy
 
 ### Backward Compatibility
 
-- Maintain existing Chrome message API
-- Preserve all current functionality
-- Keep identical user experience
-- Maintain configuration compatibility
+-   Maintains the existing Chrome message API to ensure compatibility with popup and options pages.
+-   Preserves all current functionality and user experience.
+-   Maintains compatibility with existing configuration formats.
 
 ### Rollback Plan
 
-- Keep original files as `.backup`
-- Feature flags for gradual rollout
-- Comprehensive testing before deployment
-- Quick rollback mechanism
+-   Original files are kept as `.backup` for easy rollback.
+-   Feature flags can be used for a gradual rollout.
+-   Comprehensive testing is performed before deployment.
+-   A quick rollback mechanism is in place if issues are discovered.
 
 ## Security Considerations
 
 ### Content Script Isolation
 
-- Proper module loading with Chrome extension URLs
-- Secure message passing between contexts
-- Input validation for all external data
-- Safe DOM manipulation practices
+-   Proper module loading using Chrome extension URLs to prevent cross-site scripting.
+-   Secure message passing between different extension contexts.
+-   Input validation for all external data and messages.
+-   Safe DOM manipulation practices to avoid vulnerabilities.
 
 ### Extension Context Management
 
-- Handle extension context invalidation gracefully
-- Proper cleanup on context loss
-- Secure communication with background script
-- Validate all Chrome API calls
+-   Graceful handling of extension context invalidation.
+-   Proper cleanup of all resources when the context is lost.
+-   Secure communication with the background script.
+-   Validation of all Chrome API calls.
+
+## See Also
+
+-   [API_REFERENCE.md](./API_REFERENCE.md) - For a detailed API reference.
+-   [PLATFORM_IMPLEMENTATION_GUIDE.md](./PLATFORM_IMPLEMENTATION_GUIDE.md) - For a guide on adding new platforms.
+-   [EXAMPLES.md](./EXAMPLES.md) - For practical implementation examples.

@@ -1,25 +1,17 @@
 /**
- * Result Pattern Implementation
- * 
- * Provides a functional approach to error handling without throwing exceptions.
- * Useful for operations that can fail and need to return both success/failure state
- * and associated data or error information.
- * 
- * @author DualSub Extension
- * @version 1.0.0
- */
-
-/**
- * Result class for functional error handling
- * @template T, E
+ * Implements the Result pattern, providing a functional approach to error handling
+ * that avoids throwing exceptions. This is particularly useful for operations that can
+ * fail and need to clearly communicate success or failure along with associated data or errors.
+ *
+ * @template T The type of the success value.
+ * @template E The type of the error value.
  */
 export class Result {
     /**
-     * Create a new Result instance
      * @private
-     * @param {boolean} isSuccess - Whether the result is successful
-     * @param {T} value - The success value
-     * @param {E} error - The error value
+     * @param {boolean} isSuccess - Indicates if the result is a success.
+     * @param {T} value - The success value.
+     * @param {E} error - The error value.
      */
     constructor(isSuccess, value, error) {
         this._isSuccess = isSuccess;
@@ -28,79 +20,79 @@ export class Result {
     }
 
     /**
-     * Create a successful result
+     * Creates a successful result.
      * @template T
-     * @param {T} value - The success value
-     * @returns {Result<T, never>} Success result
+     * @param {T} value - The success value.
+     * @returns {Result<T, never>} A `Result` object representing success.
      */
     static success(value) {
         return new Result(true, value, null);
     }
 
     /**
-     * Create a failed result
+     * Creates a failed result.
      * @template E
-     * @param {E} error - The error value
-     * @returns {Result<never, E>} Error result
+     * @param {E} error - The error value.
+     * @returns {Result<never, E>} A `Result` object representing failure.
      */
     static failure(error) {
         return new Result(false, null, error);
     }
 
     /**
-     * Check if result is successful
-     * @returns {boolean} Whether result is successful
+     * Checks if the result is successful.
+     * @returns {boolean} `true` if the result is a success, otherwise `false`.
      */
     isSuccess() {
         return this._isSuccess;
     }
 
     /**
-     * Check if result is a failure
-     * @returns {boolean} Whether result is a failure
+     * Checks if the result is a failure.
+     * @returns {boolean} `true` if the result is a failure, otherwise `false`.
      */
     isFailure() {
         return !this._isSuccess;
     }
 
     /**
-     * Get the success value
-     * @returns {T} The success value
-     * @throws {Error} If result is a failure
+     * Gets the success value.
+     * @returns {T} The success value.
+     * @throws {Error} If the result is a failure.
      */
     getValue() {
         if (!this._isSuccess) {
-            throw new Error('Cannot get value from failed result');
+            throw new Error('Cannot get value from a failed result.');
         }
         return this._value;
     }
 
     /**
-     * Get the error value
-     * @returns {E} The error value
-     * @throws {Error} If result is successful
+     * Gets the error value.
+     * @returns {E} The error value.
+     * @throws {Error} If the result is successful.
      */
     getError() {
         if (this._isSuccess) {
-            throw new Error('Cannot get error from successful result');
+            throw new Error('Cannot get error from a successful result.');
         }
         return this._error;
     }
 
     /**
-     * Get value or return default
-     * @param {T} defaultValue - Default value to return if failed
-     * @returns {T} The value or default
+     * Gets the success value or a default value if the result is a failure.
+     * @param {T} defaultValue - The default value to return on failure.
+     * @returns {T} The success value or the default value.
      */
     getValueOr(defaultValue) {
         return this._isSuccess ? this._value : defaultValue;
     }
 
     /**
-     * Map the success value to a new value
+     * Maps the success value to a new value.
      * @template U
-     * @param {function(T): U} mapper - Function to map the value
-     * @returns {Result<U, E>} New result with mapped value
+     * @param {function(T): U} mapper - The function to map the success value.
+     * @returns {Result<U, E>} A new `Result` with the mapped value or the original error.
      */
     map(mapper) {
         if (!this._isSuccess) {
@@ -114,10 +106,10 @@ export class Result {
     }
 
     /**
-     * Map the error value to a new error
+     * Maps the error value to a new error.
      * @template F
-     * @param {function(E): F} mapper - Function to map the error
-     * @returns {Result<T, F>} New result with mapped error
+     * @param {function(E): F} mapper - The function to map the error value.
+     * @returns {Result<T, F>} A new `Result` with the mapped error or the original value.
      */
     mapError(mapper) {
         if (this._isSuccess) {
@@ -131,10 +123,10 @@ export class Result {
     }
 
     /**
-     * Chain operations that return Results
+     * Chains operations that return a `Result`.
      * @template U
-     * @param {function(T): Result<U, E>} mapper - Function that returns a Result
-     * @returns {Result<U, E>} The chained result
+     * @param {function(T): Result<U, E>} mapper - The function that returns a new `Result`.
+     * @returns {Result<U, E>} The result of the chained operation.
      */
     flatMap(mapper) {
         if (!this._isSuccess) {
@@ -148,9 +140,9 @@ export class Result {
     }
 
     /**
-     * Execute a function if result is successful
-     * @param {function(T): void} callback - Function to execute
-     * @returns {Result<T, E>} This result for chaining
+     * Executes a callback if the result is successful.
+     * @param {function(T): void} callback - The function to execute on success.
+     * @returns {Result<T, E>} The original `Result` instance for chaining.
      */
     onSuccess(callback) {
         if (this._isSuccess) {
@@ -160,9 +152,9 @@ export class Result {
     }
 
     /**
-     * Execute a function if result is a failure
-     * @param {function(E): void} callback - Function to execute
-     * @returns {Result<T, E>} This result for chaining
+     * Executes a callback if the result is a failure.
+     * @param {function(E): void} callback - The function to execute on failure.
+     * @returns {Result<T, E>} The original `Result` instance for chaining.
      */
     onFailure(callback) {
         if (!this._isSuccess) {
@@ -172,8 +164,8 @@ export class Result {
     }
 
     /**
-     * Convert to JSON representation
-     * @returns {Object} JSON representation
+     * Converts the `Result` to a JSON representation.
+     * @returns {{isSuccess: boolean, value: T|undefined, error: E|undefined}} A JSON-serializable object.
      */
     toJSON() {
         return {
@@ -184,10 +176,10 @@ export class Result {
     }
 
     /**
-     * Create Result from a promise
+     * Creates a `Result` from a promise.
      * @template T
-     * @param {Promise<T>} promise - Promise to convert
-     * @returns {Promise<Result<T, Error>>} Result wrapped promise
+     * @param {Promise<T>} promise - The promise to convert.
+     * @returns {Promise<Result<T, Error>>} A promise that resolves to a `Result`.
      */
     static async fromPromise(promise) {
         try {
@@ -199,10 +191,10 @@ export class Result {
     }
 
     /**
-     * Create Result from a function that might throw
+     * Creates a `Result` from a function that might throw an error.
      * @template T
-     * @param {function(): T} fn - Function to execute
-     * @returns {Result<T, Error>} Result of function execution
+     * @param {function(): T} fn - The function to execute.
+     * @returns {Result<T, Error>} The `Result` of the function execution.
      */
     static fromThrowing(fn) {
         try {
