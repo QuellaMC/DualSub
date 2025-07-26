@@ -26,7 +26,7 @@ export class EventListenerManager {
         this.options = {
             logger: null,
             useAbortController: true,
-            ...options
+            ...options,
         };
 
         // Event listener tracking
@@ -35,7 +35,10 @@ export class EventListenerManager {
         this.listenerCount = 0;
 
         // Initialize AbortController if supported and enabled
-        if (this.options.useAbortController && typeof AbortController !== 'undefined') {
+        if (
+            this.options.useAbortController &&
+            typeof AbortController !== 'undefined'
+        ) {
             this.abortController = new AbortController();
         }
     }
@@ -53,23 +56,27 @@ export class EventListenerManager {
             this._log('error', 'Invalid addEventListener parameters', {
                 hasTarget: !!target,
                 listenerType: typeof listener,
-                eventType: type
+                eventType: type,
             });
             return null;
         }
 
         try {
             const listenerId = this._generateListenerId();
-            
+
             // Prepare options with AbortController signal if available
             const eventOptions = this._prepareEventOptions(options);
-            
+
             // Wrap listener for error handling and logging
-            const wrappedListener = this._wrapListener(listener, type, listenerId);
-            
+            const wrappedListener = this._wrapListener(
+                listener,
+                type,
+                listenerId
+            );
+
             // Add event listener
             target.addEventListener(type, wrappedListener, eventOptions);
-            
+
             // Track listener for cleanup
             this.listeners.set(listenerId, {
                 target,
@@ -77,14 +84,14 @@ export class EventListenerManager {
                 listener: wrappedListener,
                 originalListener: listener,
                 options: eventOptions,
-                addedAt: Date.now()
+                addedAt: Date.now(),
             });
 
             this._log('debug', 'Event listener added', {
                 listenerId,
                 eventType: type,
                 targetType: this._getTargetType(target),
-                totalListeners: this.listeners.size
+                totalListeners: this.listeners.size,
             });
 
             return listenerId;
@@ -92,7 +99,7 @@ export class EventListenerManager {
             this._log('error', 'Error adding event listener.', {
                 error: error.message,
                 eventType: type,
-                targetType: this._getTargetType(target)
+                targetType: this._getTargetType(target),
             });
             return null;
         }
@@ -106,7 +113,9 @@ export class EventListenerManager {
     removeEventListener(listenerId) {
         const listenerInfo = this.listeners.get(listenerId);
         if (!listenerInfo) {
-            this._log('warn', 'Listener not found for removal.', { listenerId });
+            this._log('warn', 'Listener not found for removal.', {
+                listenerId,
+            });
             return false;
         }
 
@@ -118,14 +127,14 @@ export class EventListenerManager {
             this._log('debug', 'Event listener removed.', {
                 listenerId,
                 eventType: type,
-                remainingListeners: this.listeners.size
+                remainingListeners: this.listeners.size,
             });
 
             return true;
         } catch (error) {
             this._log('error', 'Error removing event listener.', {
                 error: error.message,
-                listenerId
+                listenerId,
             });
             return false;
         }
@@ -138,7 +147,7 @@ export class EventListenerManager {
      */
     removeListenersForTarget(target) {
         let removedCount = 0;
-        
+
         for (const [listenerId, listenerInfo] of this.listeners) {
             if (listenerInfo.target === target) {
                 if (this.removeEventListener(listenerId)) {
@@ -149,7 +158,7 @@ export class EventListenerManager {
 
         this._log('info', 'Removed listeners for target.', {
             targetType: this._getTargetType(target),
-            removedCount
+            removedCount,
         });
 
         return removedCount;
@@ -162,7 +171,7 @@ export class EventListenerManager {
      */
     removeListenersByType(eventType) {
         let removedCount = 0;
-        
+
         for (const [listenerId, listenerInfo] of this.listeners) {
             if (listenerInfo.type === eventType) {
                 if (this.removeEventListener(listenerId)) {
@@ -173,7 +182,7 @@ export class EventListenerManager {
 
         this._log('info', 'Removed listeners by type.', {
             eventType,
-            removedCount
+            removedCount,
         });
 
         return removedCount;
@@ -189,7 +198,7 @@ export class EventListenerManager {
             type: info.type,
             targetType: this._getTargetType(info.target),
             addedAt: info.addedAt,
-            age: Date.now() - info.addedAt
+            age: Date.now() - info.addedAt,
         }));
     }
 
@@ -223,7 +232,9 @@ export class EventListenerManager {
                 this.abortController.abort();
                 this._log('info', 'Aborted all listeners via AbortController.');
             } catch (error) {
-                this._log('warn', 'Error aborting listeners.', { error: error.message });
+                this._log('warn', 'Error aborting listeners.', {
+                    error: error.message,
+                });
             }
         }
 
@@ -241,7 +252,7 @@ export class EventListenerManager {
                 } catch (error) {
                     this._log('warn', 'Error manually removing listener.', {
                         listenerId,
-                        error: error.message
+                        error: error.message,
                     });
                 }
             }
@@ -254,7 +265,7 @@ export class EventListenerManager {
         this._log('info', 'Event listener cleanup completed.', {
             initialCount,
             manuallyRemoved,
-            abortControllerUsed: !!this.abortController
+            abortControllerUsed: !!this.abortController,
         });
 
         return initialCount;
@@ -304,7 +315,7 @@ export class EventListenerManager {
                     listenerId,
                     eventType,
                     error: error.message,
-                    stack: error.stack
+                    stack: error.stack,
                 });
             }
         };
@@ -335,9 +346,16 @@ export class EventListenerManager {
      */
     _log(level, message, data = {}) {
         if (this.options.logger) {
-            this.options.logger(level, `[EventListenerManager:${this.platform}] ${message}`, data);
+            this.options.logger(
+                level,
+                `[EventListenerManager:${this.platform}] ${message}`,
+                data
+            );
         } else {
-            console.log(`[EventListenerManager:${this.platform}] [${level.toUpperCase()}] ${message}`, data);
+            console.log(
+                `[EventListenerManager:${this.platform}] [${level.toUpperCase()}] ${message}`,
+                data
+            );
         }
     }
 }
@@ -355,7 +373,7 @@ export class EventDebouncer {
     constructor(options = {}) {
         this.options = {
             logger: null,
-            ...options
+            ...options,
         };
 
         // Track active timeouts for cleanup
@@ -393,14 +411,14 @@ export class EventDebouncer {
             timeoutId = setTimeout(() => {
                 this.activeTimeouts.delete(timeoutId);
                 timeoutId = null;
-                
+
                 if (!immediate) {
                     try {
                         func.apply(this, args);
                     } catch (error) {
                         this._log('error', 'Error in debounced function.', {
                             error: error.message,
-                            delay
+                            delay,
                         });
                     }
                 }
@@ -413,10 +431,14 @@ export class EventDebouncer {
                 try {
                     func.apply(this, args);
                 } catch (error) {
-                    this._log('error', 'Error in immediate debounced function.', {
-                        error: error.message,
-                        delay
-                    });
+                    this._log(
+                        'error',
+                        'Error in immediate debounced function.',
+                        {
+                            error: error.message,
+                            delay,
+                        }
+                    );
                 }
             }
         };
@@ -441,7 +463,7 @@ export class EventDebouncer {
                 } catch (error) {
                     this._log('error', 'Error in flushed debounced function.', {
                         error: error.message,
-                        delay
+                        delay,
                     });
                 }
             }
@@ -477,7 +499,7 @@ export class EventDebouncer {
                 } catch (error) {
                     this._log('error', 'Error in throttled function.', {
                         error: error.message,
-                        delay
+                        delay,
                     });
                 }
             } else if (!timeoutId) {
@@ -490,10 +512,14 @@ export class EventDebouncer {
                     try {
                         func.apply(this, args);
                     } catch (error) {
-                        this._log('error', 'Error in delayed throttled function.', {
-                            error: error.message,
-                            delay
-                        });
+                        this._log(
+                            'error',
+                            'Error in delayed throttled function.',
+                            {
+                                error: error.message,
+                                delay,
+                            }
+                        );
                     }
                 }, remainingDelay);
 
@@ -527,7 +553,7 @@ export class EventDebouncer {
             } catch (error) {
                 this._log('warn', 'Error clearing timeout.', {
                     timeoutId,
-                    error: error.message
+                    error: error.message,
                 });
             }
         }
@@ -535,7 +561,7 @@ export class EventDebouncer {
         this.activeTimeouts.clear();
 
         this._log('info', 'EventDebouncer cleanup completed.', {
-            clearedTimeouts: clearedCount
+            clearedTimeouts: clearedCount,
         });
 
         return clearedCount;
@@ -552,7 +578,10 @@ export class EventDebouncer {
         if (this.options.logger) {
             this.options.logger(level, `[EventDebouncer] ${message}`, data);
         } else {
-            console.log(`[EventDebouncer] [${level.toUpperCase()}] ${message}`, data);
+            console.log(
+                `[EventDebouncer] [${level.toUpperCase()}] ${message}`,
+                data
+            );
         }
     }
 }
@@ -572,7 +601,7 @@ export class CustomEventDispatcher {
         this.platform = platform;
         this.options = {
             logger: null,
-            ...options
+            ...options,
         };
 
         // Event listeners storage
@@ -591,7 +620,9 @@ export class CustomEventDispatcher {
      */
     addEventListener(eventType, listener, options = {}) {
         if (typeof listener !== 'function') {
-            this._log('error', 'Event listener must be a function', { eventType });
+            this._log('error', 'Event listener must be a function', {
+                eventType,
+            });
             return null;
         }
 
@@ -605,7 +636,7 @@ export class CustomEventDispatcher {
         const wrappedListener = (eventData) => {
             try {
                 listener(eventData);
-                
+
                 if (once) {
                     this.removeEventListener(eventType, listenerId);
                 }
@@ -613,7 +644,7 @@ export class CustomEventDispatcher {
                 this._log('error', 'Error in custom event listener.', {
                     eventType,
                     listenerId,
-                    error: error.message
+                    error: error.message,
                 });
             }
         };
@@ -622,14 +653,14 @@ export class CustomEventDispatcher {
             listener: wrappedListener,
             originalListener: listener,
             once,
-            addedAt: Date.now()
+            addedAt: Date.now(),
         });
 
         this._log('debug', 'Custom event listener added.', {
             eventType,
             listenerId,
             once,
-            totalListeners: this.eventListeners.get(eventType).size
+            totalListeners: this.eventListeners.get(eventType).size,
         });
 
         return listenerId;
@@ -644,12 +675,15 @@ export class CustomEventDispatcher {
     removeEventListener(eventType, listenerId) {
         const typeListeners = this.eventListeners.get(eventType);
         if (!typeListeners || !typeListeners.has(listenerId)) {
-            this._log('warn', 'Custom event listener not found.', { eventType, listenerId });
+            this._log('warn', 'Custom event listener not found.', {
+                eventType,
+                listenerId,
+            });
             return false;
         }
 
         typeListeners.delete(listenerId);
-        
+
         // Clean up empty event type maps
         if (typeListeners.size === 0) {
             this.eventListeners.delete(eventType);
@@ -658,7 +692,7 @@ export class CustomEventDispatcher {
         this._log('debug', 'Custom event listener removed.', {
             eventType,
             listenerId,
-            remainingListeners: typeListeners.size
+            remainingListeners: typeListeners.size,
         });
 
         return true;
@@ -675,7 +709,7 @@ export class CustomEventDispatcher {
     dispatchEvent(eventType, eventData = null, options = {}) {
         const { async = false } = options;
         const typeListeners = this.eventListeners.get(eventType);
-        
+
         if (!typeListeners || typeListeners.size === 0) {
             this._log('debug', 'No listeners for custom event.', { eventType });
             return 0;
@@ -693,10 +727,14 @@ export class CustomEventDispatcher {
                     listenerInfo.listener(eventData);
                     notifiedCount++;
                 } catch (error) {
-                    this._log('error', 'Error notifying custom event listener.', {
-                        eventType,
-                        error: error.message
-                    });
+                    this._log(
+                        'error',
+                        'Error notifying custom event listener.',
+                        {
+                            eventType,
+                            error: error.message,
+                        }
+                    );
                 }
             }
         };
@@ -710,7 +748,7 @@ export class CustomEventDispatcher {
         this._log('debug', 'Custom event dispatched.', {
             eventType,
             listenersNotified: notifiedCount,
-            async
+            async,
         });
 
         return notifiedCount;
@@ -730,7 +768,7 @@ export class CustomEventDispatcher {
             eventType,
             once: info.once,
             addedAt: info.addedAt,
-            age: Date.now() - info.addedAt
+            age: Date.now() - info.addedAt,
         }));
     }
 
@@ -744,7 +782,7 @@ export class CustomEventDispatcher {
         let history = this.eventHistory;
 
         if (eventType) {
-            history = history.filter(event => event.type === eventType);
+            history = history.filter((event) => event.type === eventType);
         }
 
         if (limit && limit > 0) {
@@ -760,7 +798,9 @@ export class CustomEventDispatcher {
      */
     clearHistory(eventType = null) {
         if (eventType) {
-            this.eventHistory = this.eventHistory.filter(event => event.type !== eventType);
+            this.eventHistory = this.eventHistory.filter(
+                (event) => event.type !== eventType
+            );
         } else {
             this.eventHistory = [];
         }
@@ -774,7 +814,7 @@ export class CustomEventDispatcher {
      */
     cleanup() {
         let totalListeners = 0;
-        
+
         for (const typeListeners of this.eventListeners.values()) {
             totalListeners += typeListeners.size;
         }
@@ -783,7 +823,7 @@ export class CustomEventDispatcher {
         this.eventHistory = [];
 
         this._log('info', 'CustomEventDispatcher cleanup completed.', {
-            listenersRemoved: totalListeners
+            listenersRemoved: totalListeners,
         });
 
         return totalListeners;
@@ -800,7 +840,7 @@ export class CustomEventDispatcher {
             type: eventType,
             data: eventData,
             timestamp: Date.now(),
-            platform: this.platform
+            platform: this.platform,
         });
 
         // Limit history size
@@ -818,9 +858,16 @@ export class CustomEventDispatcher {
      */
     _log(level, message, data = {}) {
         if (this.options.logger) {
-            this.options.logger(level, `[CustomEventDispatcher:${this.platform}] ${message}`, data);
+            this.options.logger(
+                level,
+                `[CustomEventDispatcher:${this.platform}] ${message}`,
+                data
+            );
         } else {
-            console.log(`[CustomEventDispatcher:${this.platform}] [${level.toUpperCase()}] ${message}`, data);
+            console.log(
+                `[CustomEventDispatcher:${this.platform}] [${level.toUpperCase()}] ${message}`,
+                data
+            );
         }
     }
 }
@@ -834,9 +881,9 @@ export class CustomEventDispatcher {
 export function createPlatformEventManager(platform, customOptions = {}) {
     const options = {
         useAbortController: true,
-        ...customOptions
+        ...customOptions,
     };
-    
+
     return new EventListenerManager(platform, options);
 }
 

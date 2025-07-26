@@ -22,28 +22,32 @@ export const configSchema = {
     },
     translationBatchSize: { defaultValue: 3, type: Number, scope: 'sync' },
     translationDelay: { defaultValue: 150, type: Number, scope: 'sync' },
-    
+
     // DeepL API Settings
     deeplApiKey: { defaultValue: '', type: String, scope: 'sync' },
     deeplApiPlan: { defaultValue: 'free', type: String, scope: 'sync' },
 
     // OpenAI-compatible API Settings (for Gemini and other compatible endpoints)
     openaiCompatibleApiKey: { defaultValue: '', type: String, scope: 'sync' },
-    openaiCompatibleBaseUrl: { 
-        defaultValue: 'https://generativelanguage.googleapis.com/v1beta/openai', 
-        type: String, 
-        scope: 'sync' 
+    openaiCompatibleBaseUrl: {
+        defaultValue: 'https://generativelanguage.googleapis.com/v1beta/openai',
+        type: String,
+        scope: 'sync',
     },
-    openaiCompatibleModel: { 
-        defaultValue: 'gemini-1.5-flash', 
-        type: String, 
-        scope: 'sync' 
+    openaiCompatibleModel: {
+        defaultValue: 'gemini-1.5-flash',
+        type: String,
+        scope: 'sync',
     },
 
     // --- Subtitle Settings (from popup.js & background.js defaults) ---
     subtitlesEnabled: { defaultValue: true, type: Boolean, scope: 'sync' },
     useNativeSubtitles: { defaultValue: true, type: Boolean, scope: 'sync' },
-    useOfficialTranslations: { defaultValue: true, type: Boolean, scope: 'sync' }, // New unified setting
+    useOfficialTranslations: {
+        defaultValue: true,
+        type: Boolean,
+        scope: 'sync',
+    }, // New unified setting
     targetLanguage: { defaultValue: 'zh-CN', type: String, scope: 'sync' },
     originalLanguage: { defaultValue: 'en', type: String, scope: 'sync' },
     subtitleTimeOffset: { defaultValue: 0.3, type: Number, scope: 'sync' },

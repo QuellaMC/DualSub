@@ -25,7 +25,7 @@ export class NetflixContentScript extends BaseContentScript {
         this.injectConfig = {
             filename: 'injected_scripts/netflixInject.js',
             tagId: 'netflix-dualsub-injector-script-tag',
-            eventId: 'netflix-dualsub-injector-event'
+            eventId: 'netflix-dualsub-injector-event',
         };
         this.urlPatterns = ['*.netflix.com'];
     }
@@ -58,12 +58,18 @@ export class NetflixContentScript extends BaseContentScript {
      * Sets up Netflix-specific navigation detection.
      */
     setupNavigationDetection() {
-        this.logWithFallback('info', 'Setting up Netflix-specific navigation detection.');
+        this.logWithFallback(
+            'info',
+            'Setting up Netflix-specific navigation detection.'
+        );
         this._setupIntervalBasedDetection();
         this._setupHistoryAPIInterception();
         this._setupBrowserNavigationEvents();
         this._setupFocusAndVisibilityEvents();
-        this.logWithFallback('info', 'Enhanced Netflix navigation detection is set up.');
+        this.logWithFallback(
+            'info',
+            'Enhanced Netflix navigation detection is set up.'
+        );
     }
 
     /**
@@ -74,13 +80,17 @@ export class NetflixContentScript extends BaseContentScript {
             const newUrl = window.location.href;
             const newPathname = window.location.pathname;
 
-            if (newUrl !== this.currentUrl || newPathname !== this.lastKnownPathname) {
+            if (
+                newUrl !== this.currentUrl ||
+                newPathname !== this.lastKnownPathname
+            ) {
                 this.logWithFallback('info', 'URL change detected.', {
                     from: this.currentUrl,
                     to: newUrl,
                 });
 
-                const wasOnPlayerPage = this.lastKnownPathname.includes('/watch/');
+                const wasOnPlayerPage =
+                    this.lastKnownPathname.includes('/watch/');
                 const isOnPlayerPage = newPathname.includes('/watch/');
 
                 this.currentUrl = newUrl;
@@ -89,7 +99,9 @@ export class NetflixContentScript extends BaseContentScript {
                 this._handlePageTransition(wasOnPlayerPage, isOnPlayerPage);
             }
         } catch (error) {
-            this.logWithFallback('error', 'Error in URL change detection.', { error });
+            this.logWithFallback('error', 'Error in URL change detection.', {
+                error,
+            });
             this._handleExtensionContextError(error);
         }
     }
@@ -103,49 +115,61 @@ export class NetflixContentScript extends BaseContentScript {
     handlePlatformSpecificMessage(request, sendResponse) {
         try {
             const action = request.action || request.type;
-            
-            this.logWithFallback('debug', 'Processing Netflix-specific message.', {
-                action,
-                hasRequest: !!request,
-                requestKeys: Object.keys(request || {})
-            });
+
+            this.logWithFallback(
+                'debug',
+                'Processing Netflix-specific message.',
+                {
+                    action,
+                    hasRequest: !!request,
+                    requestKeys: Object.keys(request || {}),
+                }
+            );
 
             switch (action) {
                 default:
-                    this.logWithFallback('debug', 'No Netflix-specific handling required.', {
-                        action,
-                        message: 'Delegating to default handling.'
-                    });
-                    
-                    sendResponse({ 
-                        success: true, 
+                    this.logWithFallback(
+                        'debug',
+                        'No Netflix-specific handling required.',
+                        {
+                            action,
+                            message: 'Delegating to default handling.',
+                        }
+                    );
+
+                    sendResponse({
+                        success: true,
                         handled: false,
                         platform: 'netflix',
-                        message: 'No platform-specific handling required.'
+                        message: 'No platform-specific handling required.',
                     });
                     return false;
             }
         } catch (error) {
-            const action = request ? (request.action || request.type) : 'unknown';
-            
-            this.logWithFallback('error', 'Error in Netflix-specific message handling.', {
-                error: error.message,
-                stack: error.stack,
-                action
-            });
-            
+            const action = request ? request.action || request.type : 'unknown';
+
+            this.logWithFallback(
+                'error',
+                'Error in Netflix-specific message handling.',
+                {
+                    error: error.message,
+                    stack: error.stack,
+                    action,
+                }
+            );
+
             try {
                 if (typeof sendResponse === 'function') {
                     sendResponse({
                         success: false,
                         error: error.message,
-                        platform: 'netflix'
+                        platform: 'netflix',
                     });
                 }
             } catch (responseError) {
                 this.logWithFallback('error', 'Error sending error response.', {
                     originalError: error.message,
-                    responseError: responseError.message
+                    responseError: responseError.message,
                 });
             }
             return false;
@@ -162,16 +186,16 @@ export class NetflixContentScript extends BaseContentScript {
     _handleNetflixSpecificAction(request, sendResponse) {
         this.logWithFallback('info', 'Handling Netflix-specific action.', {
             action: request.action,
-            data: request.data
+            data: request.data,
         });
-        
+
         sendResponse({
             success: true,
             platform: 'netflix',
             action: request.action,
-            result: 'Netflix-specific action completed.'
+            result: 'Netflix-specific action completed.',
         });
-        
+
         return false;
     }
 
@@ -207,7 +231,7 @@ export class NetflixContentScript extends BaseContentScript {
 
         this._originalHistoryMethods = {
             pushState: originalPushState,
-            replaceState: originalReplaceState
+            replaceState: originalReplaceState,
         };
     }
 
@@ -218,16 +242,22 @@ export class NetflixContentScript extends BaseContentScript {
     _setupBrowserNavigationEvents() {
         const events = [
             { name: 'popstate', delay: 100 },
-            { name: 'hashchange', delay: 100 }
+            { name: 'hashchange', delay: 100 },
         ];
 
         events.forEach(({ name, delay }) => {
-            const handler = () => setTimeout(() => this.checkForUrlChange(), delay);
-            
-            const options = this.abortController ? { signal: this.abortController.signal } : {};
+            const handler = () =>
+                setTimeout(() => this.checkForUrlChange(), delay);
+
+            const options = this.abortController
+                ? { signal: this.abortController.signal }
+                : {};
             window.addEventListener(name, handler, options);
-            
-            this.logWithFallback('debug', `Added ${name} event listener for navigation detection.`);
+
+            this.logWithFallback(
+                'debug',
+                `Added ${name} event listener for navigation detection.`
+            );
         });
     }
 
@@ -236,13 +266,19 @@ export class NetflixContentScript extends BaseContentScript {
      * @private
      */
     _setupFocusAndVisibilityEvents() {
-        const focusHandler = () => setTimeout(() => this.checkForUrlChange(), 100);
-        
-        const options = this.abortController ? { signal: this.abortController.signal } : {};
+        const focusHandler = () =>
+            setTimeout(() => this.checkForUrlChange(), 100);
+
+        const options = this.abortController
+            ? { signal: this.abortController.signal }
+            : {};
         window.addEventListener('focus', focusHandler, options);
         document.addEventListener('visibilitychange', focusHandler, options);
 
-        this.logWithFallback('debug', 'Added focus and visibility event listeners for navigation detection.');
+        this.logWithFallback(
+            'debug',
+            'Added focus and visibility event listeners for navigation detection.'
+        );
     }
 
     /**
@@ -253,10 +289,16 @@ export class NetflixContentScript extends BaseContentScript {
      */
     _handlePageTransition(wasOnPlayerPage, isOnPlayerPage) {
         if (wasOnPlayerPage && !isOnPlayerPage) {
-            this.logWithFallback('info', 'Leaving player page, cleaning up platform.');
+            this.logWithFallback(
+                'info',
+                'Leaving player page, cleaning up platform.'
+            );
             this._cleanupOnPageLeave();
         } else if (isOnPlayerPage && !wasOnPlayerPage) {
-            this.logWithFallback('info', 'Entering player page, preparing for initialization.');
+            this.logWithFallback(
+                'info',
+                'Entering player page, preparing for initialization.'
+            );
             this._initializeOnPageEnter();
         }
     }
@@ -267,15 +309,21 @@ export class NetflixContentScript extends BaseContentScript {
      */
     _cleanupOnPageLeave() {
         this.stopVideoElementDetection();
-        
-        if (this.activePlatform && typeof this.activePlatform.cleanup === 'function') {
+
+        if (
+            this.activePlatform &&
+            typeof this.activePlatform.cleanup === 'function'
+        ) {
             this.activePlatform.cleanup();
         }
 
-        if (this.subtitleUtils && typeof this.subtitleUtils.clearSubtitleDOM === 'function') {
+        if (
+            this.subtitleUtils &&
+            typeof this.subtitleUtils.clearSubtitleDOM === 'function'
+        ) {
             this.subtitleUtils.clearSubtitleDOM();
         }
-        
+
         this.activePlatform = null;
         this.platformReady = false;
         this.eventBuffer.clear();
@@ -291,11 +339,18 @@ export class NetflixContentScript extends BaseContentScript {
         setTimeout(async () => {
             try {
                 if (this.currentConfig?.subtitlesEnabled) {
-                    this.logWithFallback('info', 'Subtitles enabled, initializing platform.');
+                    this.logWithFallback(
+                        'info',
+                        'Subtitles enabled, initializing platform.'
+                    );
                     await this.initializePlatform();
                 }
             } catch (error) {
-                this.logWithFallback('error', 'Error during URL change initialization.', { error });
+                this.logWithFallback(
+                    'error',
+                    'Error during URL change initialization.',
+                    { error }
+                );
             }
         }, 1500);
     }
@@ -306,7 +361,9 @@ export class NetflixContentScript extends BaseContentScript {
      */
     _reinjectScript() {
         try {
-            const existingScript = document.getElementById(this.injectConfig.tagId);
+            const existingScript = document.getElementById(
+                this.injectConfig.tagId
+            );
             if (existingScript) {
                 existingScript.remove();
             }
@@ -318,11 +375,22 @@ export class NetflixContentScript extends BaseContentScript {
             const target = document.head || document.documentElement;
             if (target) {
                 target.appendChild(script);
-                script.onload = () => this.logWithFallback('info', 'Script re-injected successfully.');
-                script.onerror = (e) => this.logWithFallback('error', 'Failed to re-inject script.', { error: e });
+                script.onload = () =>
+                    this.logWithFallback(
+                        'info',
+                        'Script re-injected successfully.'
+                    );
+                script.onerror = (e) =>
+                    this.logWithFallback(
+                        'error',
+                        'Failed to re-inject script.',
+                        { error: e }
+                    );
             }
         } catch (error) {
-            this.logWithFallback('error', 'Error during script re-injection.', { error });
+            this.logWithFallback('error', 'Error during script re-injection.', {
+                error,
+            });
         }
     }
 
@@ -334,7 +402,10 @@ export class NetflixContentScript extends BaseContentScript {
     _handleExtensionContextError(error) {
         if (error.message?.includes('Extension context invalidated')) {
             this.intervalManager.clear('urlChangeCheck');
-            this.logWithFallback('info', 'Stopped URL change detection due to extension context invalidation.');
+            this.logWithFallback(
+                'info',
+                'Stopped URL change detection due to extension context invalidation.'
+            );
         }
     }
 
@@ -370,7 +441,8 @@ export class NetflixContentScript extends BaseContentScript {
         try {
             if (this._originalHistoryMethods) {
                 history.pushState = this._originalHistoryMethods.pushState;
-                history.replaceState = this._originalHistoryMethods.replaceState;
+                history.replaceState =
+                    this._originalHistoryMethods.replaceState;
                 this._originalHistoryMethods = null;
             }
 
@@ -378,7 +450,11 @@ export class NetflixContentScript extends BaseContentScript {
 
             this.logWithFallback('info', 'Netflix-specific cleanup completed.');
         } catch (error) {
-            this.logWithFallback('error', 'Error during Netflix-specific cleanup.', { error });
+            this.logWithFallback(
+                'error',
+                'Error during Netflix-specific cleanup.',
+                { error }
+            );
             throw error;
         }
     }
@@ -394,7 +470,7 @@ export class NetflixContentScript extends BaseContentScript {
             urlChangeCheckInterval: 2000,
             pageTransitionDelay: 1500,
             injectRetryDelay: 10,
-            injectMaxRetries: 100
+            injectMaxRetries: 100,
         };
     }
 
@@ -405,13 +481,13 @@ export class NetflixContentScript extends BaseContentScript {
      */
     applyNetflixConfigOverrides(baseConfig) {
         const netflixConfig = this.getNetflixSpecificConfig();
-        
+
         return {
             ...baseConfig,
             ...netflixConfig,
             platformName: this.getPlatformName(),
             injectConfig: this.getInjectScriptConfig(),
-            urlPatterns: this.getUrlPatterns()
+            urlPatterns: this.getUrlPatterns(),
         };
     }
 }

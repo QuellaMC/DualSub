@@ -2,13 +2,16 @@
  * Tests for PlatformConfigFactory
  */
 
-import { PlatformConfigFactory, PlatformConfigBuilder } from '../core/PlatformConfigFactory.js';
+import {
+    PlatformConfigFactory,
+    PlatformConfigBuilder,
+} from '../core/PlatformConfigFactory.js';
 import { DEFAULT_PLATFORM_CONFIGS } from '../core/constants.js';
 
 describe('PlatformConfigFactory', () => {
     beforeEach(() => {
         // Clear any registered platforms before each test
-        PlatformConfigFactory.getRegisteredPlatforms().forEach(name => {
+        PlatformConfigFactory.getRegisteredPlatforms().forEach((name) => {
             if (!DEFAULT_PLATFORM_CONFIGS[name]) {
                 // Remove custom registered platforms
                 PlatformConfigFactory.register(name, null);
@@ -21,14 +24,18 @@ describe('PlatformConfigFactory', () => {
             const config = PlatformConfigFactory.create('netflix');
             expect(config).toBeDefined();
             expect(config.name).toBe('netflix');
-            expect(config.injectScript.filename).toBe('injected_scripts/netflixInject.js');
+            expect(config.injectScript.filename).toBe(
+                'injected_scripts/netflixInject.js'
+            );
         });
 
         test('should create Disney+ configuration', () => {
             const config = PlatformConfigFactory.create('disneyplus');
             expect(config).toBeDefined();
             expect(config.name).toBe('disneyplus');
-            expect(config.injectScript.filename).toBe('injected_scripts/disneyPlusInject.js');
+            expect(config.injectScript.filename).toBe(
+                'injected_scripts/disneyPlusInject.js'
+            );
         });
 
         test('should return null for unknown platform', () => {
@@ -39,10 +46,10 @@ describe('PlatformConfigFactory', () => {
         test('should return copy of configuration (not reference)', () => {
             const config1 = PlatformConfigFactory.create('netflix');
             const config2 = PlatformConfigFactory.create('netflix');
-            
+
             expect(config1).not.toBe(config2);
             expect(config1).toEqual(config2);
-            
+
             config1.name = 'modified';
             expect(config2.name).toBe('netflix');
         });
@@ -50,19 +57,25 @@ describe('PlatformConfigFactory', () => {
 
     describe('createByUrl', () => {
         test('should detect Netflix by URL', () => {
-            const config = PlatformConfigFactory.createByUrl('https://www.netflix.com/watch/123');
+            const config = PlatformConfigFactory.createByUrl(
+                'https://www.netflix.com/watch/123'
+            );
             expect(config).toBeDefined();
             expect(config.name).toBe('netflix');
         });
 
         test('should detect Disney+ by URL', () => {
-            const config = PlatformConfigFactory.createByUrl('https://www.disneyplus.com/video/123');
+            const config = PlatformConfigFactory.createByUrl(
+                'https://www.disneyplus.com/video/123'
+            );
             expect(config).toBeDefined();
             expect(config.name).toBe('disneyplus');
         });
 
         test('should return null for unsupported URL', () => {
-            const config = PlatformConfigFactory.createByUrl('https://www.youtube.com/watch?v=123');
+            const config = PlatformConfigFactory.createByUrl(
+                'https://www.youtube.com/watch?v=123'
+            );
             expect(config).toBeNull();
         });
 
@@ -70,7 +83,9 @@ describe('PlatformConfigFactory', () => {
             // Since mocking window.location is problematic in JSDOM,
             // we'll test the default parameter behavior by calling without arguments
             // and checking that it doesn't throw an error
-            const config = PlatformConfigFactory.createByUrl('https://www.netflix.com/browse');
+            const config = PlatformConfigFactory.createByUrl(
+                'https://www.netflix.com/browse'
+            );
             expect(config).toBeDefined();
             expect(config.name).toBe('netflix');
         });
@@ -80,28 +95,44 @@ describe('PlatformConfigFactory', () => {
         test('should register custom platform', () => {
             const customConfig = {
                 name: 'custom',
-                injectScript: { filename: 'custom.js', tagId: 'custom-tag', eventId: 'custom-event' },
-                navigation: { urlPatterns: ['custom.com'], spaHandling: false, checkInterval: 1000 },
-                videoDetection: { maxRetries: 10, retryInterval: 500 }
+                injectScript: {
+                    filename: 'custom.js',
+                    tagId: 'custom-tag',
+                    eventId: 'custom-event',
+                },
+                navigation: {
+                    urlPatterns: ['custom.com'],
+                    spaHandling: false,
+                    checkInterval: 1000,
+                },
+                videoDetection: { maxRetries: 10, retryInterval: 500 },
             };
 
             PlatformConfigFactory.register('custom', customConfig);
             const config = PlatformConfigFactory.create('custom');
-            
+
             expect(config).toEqual(customConfig);
         });
 
         test('should override default platform with custom registration', () => {
             const customNetflix = {
                 name: 'netflix',
-                injectScript: { filename: 'custom-netflix.js', tagId: 'custom-tag', eventId: 'custom-event' },
-                navigation: { urlPatterns: ['netflix.com'], spaHandling: false, checkInterval: 500 },
-                videoDetection: { maxRetries: 5, retryInterval: 200 }
+                injectScript: {
+                    filename: 'custom-netflix.js',
+                    tagId: 'custom-tag',
+                    eventId: 'custom-event',
+                },
+                navigation: {
+                    urlPatterns: ['netflix.com'],
+                    spaHandling: false,
+                    checkInterval: 500,
+                },
+                videoDetection: { maxRetries: 5, retryInterval: 200 },
             };
 
             PlatformConfigFactory.register('netflix', customNetflix);
             const config = PlatformConfigFactory.create('netflix');
-            
+
             expect(config.injectScript.filename).toBe('custom-netflix.js');
             expect(config.videoDetection.maxRetries).toBe(5);
         });
@@ -111,52 +142,79 @@ describe('PlatformConfigFactory', () => {
         test('should validate complete configuration', () => {
             const config = PlatformConfigFactory.create('netflix');
             const validation = PlatformConfigFactory.validate(config);
-            
+
             expect(validation.isValid).toBe(true);
             expect(validation.errors).toHaveLength(0);
         });
 
         test('should detect missing required fields', () => {
             const incompleteConfig = {
-                name: 'test'
+                name: 'test',
                 // Missing injectScript, navigation, videoDetection
             };
-            
+
             const validation = PlatformConfigFactory.validate(incompleteConfig);
-            
+
             expect(validation.isValid).toBe(false);
-            expect(validation.errors).toContain('Missing required field: injectScript');
-            expect(validation.errors).toContain('Missing required field: navigation');
-            expect(validation.errors).toContain('Missing required field: videoDetection');
+            expect(validation.errors).toContain(
+                'Missing required field: injectScript'
+            );
+            expect(validation.errors).toContain(
+                'Missing required field: navigation'
+            );
+            expect(validation.errors).toContain(
+                'Missing required field: videoDetection'
+            );
         });
 
         test('should detect missing injectScript fields', () => {
             const config = {
                 name: 'test',
                 injectScript: { filename: 'test.js' }, // Missing tagId and eventId
-                navigation: { urlPatterns: ['test.com'], spaHandling: false, checkInterval: 1000 },
-                videoDetection: { maxRetries: 10, retryInterval: 500 }
+                navigation: {
+                    urlPatterns: ['test.com'],
+                    spaHandling: false,
+                    checkInterval: 1000,
+                },
+                videoDetection: { maxRetries: 10, retryInterval: 500 },
             };
-            
+
             const validation = PlatformConfigFactory.validate(config);
-            
+
             expect(validation.isValid).toBe(false);
-            expect(validation.errors).toContain('Missing required injectScript field: tagId');
-            expect(validation.errors).toContain('Missing required injectScript field: eventId');
+            expect(validation.errors).toContain(
+                'Missing required injectScript field: tagId'
+            );
+            expect(validation.errors).toContain(
+                'Missing required injectScript field: eventId'
+            );
         });
 
         test('should generate warnings for type mismatches', () => {
             const config = {
                 name: 'test',
-                injectScript: { filename: 'test.js', tagId: 'test-tag', eventId: 'test-event' },
-                navigation: { urlPatterns: 'not-array', spaHandling: 'not-boolean', checkInterval: 1000 },
-                videoDetection: { maxRetries: 'not-number', retryInterval: 'not-number' }
+                injectScript: {
+                    filename: 'test.js',
+                    tagId: 'test-tag',
+                    eventId: 'test-event',
+                },
+                navigation: {
+                    urlPatterns: 'not-array',
+                    spaHandling: 'not-boolean',
+                    checkInterval: 1000,
+                },
+                videoDetection: {
+                    maxRetries: 'not-number',
+                    retryInterval: 'not-number',
+                },
             };
-            
+
             const validation = PlatformConfigFactory.validate(config);
-            
+
             expect(validation.warnings.length).toBeGreaterThan(0);
-            expect(validation.warnings).toContain('navigation.urlPatterns must be an array.');
+            expect(validation.warnings).toContain(
+                'navigation.urlPatterns must be an array.'
+            );
         });
     });
 
@@ -209,8 +267,7 @@ describe('PlatformConfigBuilder', () => {
 
     test('should throw error for invalid configuration', () => {
         expect(() => {
-            new PlatformConfigBuilder('test')
-                .build(); // Missing required fields
+            new PlatformConfigBuilder('test').build(); // Missing required fields
         }).toThrow('Invalid platform configuration');
     });
 

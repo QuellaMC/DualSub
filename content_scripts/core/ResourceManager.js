@@ -17,17 +17,24 @@ export class ResourceManager {
      */
     register(name, resource, cleanupFn) {
         if (this.isCleanedUp) {
-            this.logger('warn', 'Attempted to register a resource after cleanup.', { name });
+            this.logger(
+                'warn',
+                'Attempted to register a resource after cleanup.',
+                { name }
+            );
             return;
         }
 
         this.resources.set(name, {
             resource,
             cleanup: cleanupFn,
-            registeredAt: Date.now()
+            registeredAt: Date.now(),
         });
 
-        this.logger('debug', 'Resource registered.', { name, type: typeof resource });
+        this.logger('debug', 'Resource registered.', {
+            name,
+            type: typeof resource,
+        });
     }
 
     /**
@@ -49,7 +56,10 @@ export class ResourceManager {
             this.logger('debug', 'Resource unregistered.', { name });
             return true;
         } catch (error) {
-            this.logger('error', 'Error cleaning up resource.', { name, error: error.message });
+            this.logger('error', 'Error cleaning up resource.', {
+                name,
+                error: error.message,
+            });
             return false;
         }
     }
@@ -86,7 +96,10 @@ export class ResourceManager {
      */
     cleanupAll() {
         if (this.isCleanedUp) {
-            this.logger('debug', 'Resource manager has already been cleaned up.');
+            this.logger(
+                'debug',
+                'Resource manager has already been cleaned up.'
+            );
             return;
         }
 
@@ -102,16 +115,20 @@ export class ResourceManager {
                     errorCount++;
                 }
             } catch (error) {
-                this.logger('error', 'Unexpected error during resource cleanup.', { name, error: error.message });
+                this.logger(
+                    'error',
+                    'Unexpected error during resource cleanup.',
+                    { name, error: error.message }
+                );
                 errorCount++;
             }
         }
 
         this.isCleanedUp = true;
-        this.logger('info', 'Resource manager cleanup completed.', { 
-            cleaned: cleanedCount, 
+        this.logger('info', 'Resource manager cleanup completed.', {
+            cleaned: cleanedCount,
             errors: errorCount,
-            total: resourceNames.length 
+            total: resourceNames.length,
         });
     }
 
@@ -121,17 +138,19 @@ export class ResourceManager {
      */
     getStats() {
         const now = Date.now();
-        const resources = Array.from(this.resources.entries()).map(([name, info]) => ({
-            name,
-            type: typeof info.resource,
-            age: now - info.registeredAt,
-            hasCleanup: typeof info.cleanup === 'function'
-        }));
+        const resources = Array.from(this.resources.entries()).map(
+            ([name, info]) => ({
+                name,
+                type: typeof info.resource,
+                age: now - info.registeredAt,
+                hasCleanup: typeof info.cleanup === 'function',
+            })
+        );
 
         return {
             total: this.resources.size,
             isCleanedUp: this.isCleanedUp,
-            resources
+            resources,
         };
     }
 }

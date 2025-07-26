@@ -1,33 +1,20 @@
 /**
  * BaseContentScript Comprehensive Tests
- * 
+ *
  * Comprehensive tests for the abstract BaseContentScript class functionality including:
  * - Abstract method enforcement and template method pattern execution
  * - Module loading, platform initialization, configuration management
  * - Event handling, Chrome message processing, and error handling
  * - Mock platform-specific methods and verify common functionality behavior
- * 
+ *
  */
 
-import {
-    jest
-} from '@jest/globals';
-import {
-    BaseContentScript
-} from '../core/BaseContentScript.js';
-import {
-    EventBuffer,
-    IntervalManager
-} from '../core/utils.js';
-import {
-    TestHelpers
-} from '../../test-utils/test-helpers.js';
-import {
-    mockChromeApi
-} from '../../test-utils/chrome-api-mock.js';
-import {
-    createLoggerMock
-} from '../../test-utils/logger-mock.js';
+import { jest } from '@jest/globals';
+import { BaseContentScript } from '../core/BaseContentScript.js';
+import { EventBuffer, IntervalManager } from '../core/utils.js';
+import { TestHelpers } from '../../test-utils/test-helpers.js';
+import { mockChromeApi } from '../../test-utils/chrome-api-mock.js';
+import { createLoggerMock } from '../../test-utils/logger-mock.js';
 
 /**
  * Test implementation of BaseContentScript for testing abstract functionality
@@ -52,7 +39,7 @@ class TestContentScript extends BaseContentScript {
         return {
             filename: 'injected_scripts/testInject.js',
             tagId: 'test-inject-script',
-            eventId: 'test-subtitle-event'
+            eventId: 'test-subtitle-event',
         };
     }
 
@@ -69,7 +56,7 @@ class TestContentScript extends BaseContentScript {
         sendResponse({
             success: true,
             platform: 'test',
-            action: request.action
+            action: request.action,
         });
         return false; // Synchronous response
     }
@@ -134,7 +121,7 @@ class TestEnvironmentBuilder {
             setupChrome: true,
             setupLogger: true,
             setupTestHelpers: true,
-            createContentScript: true
+            createContentScript: true,
         };
         this.customMocks = {};
     }
@@ -147,7 +134,7 @@ class TestEnvironmentBuilder {
     withCustomMocks(mocks) {
         this.customMocks = {
             ...this.customMocks,
-            ...mocks
+            ...mocks,
         };
         return this;
     }
@@ -183,7 +170,9 @@ class TestEnvironmentBuilder {
             global.chrome.runtime = {};
         }
 
-        global.chrome.runtime.getURL = jest.fn((path) => `chrome-extension://test/${path}`);
+        global.chrome.runtime.getURL = jest.fn(
+            (path) => `chrome-extension://test/${path}`
+        );
         return mockChrome;
     }
 }
@@ -201,7 +190,7 @@ class MockFactory {
             updateSubtitles: jest.fn(),
             applySubtitleStyling: jest.fn(),
             subtitlesActive: true,
-            ...overrides
+            ...overrides,
         };
     }
 
@@ -210,15 +199,19 @@ class MockFactory {
             getAll: jest.fn().mockResolvedValue({}),
             get: jest.fn().mockResolvedValue('INFO'),
             onChanged: jest.fn(),
-            ...overrides
+            ...overrides,
         };
     }
 
     static createModulesMock(overrides = {}) {
         return {
-            subtitleUtils: this.createSubtitleUtilsMock(overrides.subtitleUtils),
-            configService: this.createConfigServiceMock(overrides.configService),
-            platformClass: overrides.platformClass || TestPlatform
+            subtitleUtils: this.createSubtitleUtilsMock(
+                overrides.subtitleUtils
+            ),
+            configService: this.createConfigServiceMock(
+                overrides.configService
+            ),
+            platformClass: overrides.platformClass || TestPlatform,
         };
     }
 }
@@ -272,12 +265,26 @@ describe('BaseContentScript', () => {
 
             const incomplete = new IncompleteContentScript();
 
-            expect(() => incomplete.getPlatformName()).toThrow('getPlatformName() must be implemented by subclass');
-            expect(() => incomplete.getPlatformClass()).toThrow('getPlatformClass() must be implemented by subclass');
-            expect(() => incomplete.getInjectScriptConfig()).toThrow('getInjectScriptConfig() must be implemented by subclass');
-            expect(() => incomplete.setupNavigationDetection()).toThrow('setupNavigationDetection() must be implemented by subclass');
-            expect(() => incomplete.checkForUrlChange()).toThrow('checkForUrlChange() must be implemented by subclass');
-            expect(() => incomplete.handlePlatformSpecificMessage({}, jest.fn())).toThrow('handlePlatformSpecificMessage() must be implemented by subclass');
+            expect(() => incomplete.getPlatformName()).toThrow(
+                'getPlatformName() must be implemented by subclass'
+            );
+            expect(() => incomplete.getPlatformClass()).toThrow(
+                'getPlatformClass() must be implemented by subclass'
+            );
+            expect(() => incomplete.getInjectScriptConfig()).toThrow(
+                'getInjectScriptConfig() must be implemented by subclass'
+            );
+            expect(() => incomplete.setupNavigationDetection()).toThrow(
+                'setupNavigationDetection() must be implemented by subclass'
+            );
+            expect(() => incomplete.checkForUrlChange()).toThrow(
+                'checkForUrlChange() must be implemented by subclass'
+            );
+            expect(() =>
+                incomplete.handlePlatformSpecificMessage({}, jest.fn())
+            ).toThrow(
+                'handlePlatformSpecificMessage() must be implemented by subclass'
+            );
         });
 
         test('should throw error for partially implemented abstract methods', () => {
@@ -299,10 +306,20 @@ describe('BaseContentScript', () => {
 
             expect(() => partial.getPlatformName()).not.toThrow();
             expect(() => partial.getPlatformClass()).not.toThrow();
-            expect(() => partial.getInjectScriptConfig()).toThrow('getInjectScriptConfig() must be implemented by subclass');
-            expect(() => partial.setupNavigationDetection()).toThrow('setupNavigationDetection() must be implemented by subclass');
-            expect(() => partial.checkForUrlChange()).toThrow('checkForUrlChange() must be implemented by subclass');
-            expect(() => partial.handlePlatformSpecificMessage({}, jest.fn())).toThrow('handlePlatformSpecificMessage() must be implemented by subclass');
+            expect(() => partial.getInjectScriptConfig()).toThrow(
+                'getInjectScriptConfig() must be implemented by subclass'
+            );
+            expect(() => partial.setupNavigationDetection()).toThrow(
+                'setupNavigationDetection() must be implemented by subclass'
+            );
+            expect(() => partial.checkForUrlChange()).toThrow(
+                'checkForUrlChange() must be implemented by subclass'
+            );
+            expect(() =>
+                partial.handlePlatformSpecificMessage({}, jest.fn())
+            ).toThrow(
+                'handlePlatformSpecificMessage() must be implemented by subclass'
+            );
         });
 
         test('concrete implementation should implement all abstract methods correctly', () => {
@@ -311,11 +328,15 @@ describe('BaseContentScript', () => {
             expect(contentScript.getInjectScriptConfig()).toEqual({
                 filename: 'injected_scripts/testInject.js',
                 tagId: 'test-inject-script',
-                eventId: 'test-subtitle-event'
+                eventId: 'test-subtitle-event',
             });
-            expect(() => contentScript.setupNavigationDetection()).not.toThrow();
+            expect(() =>
+                contentScript.setupNavigationDetection()
+            ).not.toThrow();
             expect(() => contentScript.checkForUrlChange()).not.toThrow();
-            expect(() => contentScript.handlePlatformSpecificMessage({}, jest.fn())).not.toThrow();
+            expect(() =>
+                contentScript.handlePlatformSpecificMessage({}, jest.fn())
+            ).not.toThrow();
         });
 
         test('should validate abstract method return types and signatures', () => {
@@ -341,10 +362,13 @@ describe('BaseContentScript', () => {
 
             // Validate message handler signature
             const mockRequest = {
-                action: 'test'
+                action: 'test',
             };
             const mockSendResponse = jest.fn();
-            const result = contentScript.handlePlatformSpecificMessage(mockRequest, mockSendResponse);
+            const result = contentScript.handlePlatformSpecificMessage(
+                mockRequest,
+                mockSendResponse
+            );
             expect(typeof result).toBe('boolean');
         });
     });
@@ -353,17 +377,21 @@ describe('BaseContentScript', () => {
         test('should load all required modules successfully', async () => {
             // Mock the individual loading methods instead of dynamic imports
             const mockSubtitleUtils = {
-                setSubtitlesActive: jest.fn()
+                setSubtitlesActive: jest.fn(),
             };
             const mockConfigService = {
                 getAll: jest.fn().mockResolvedValue({}),
-                onChanged: jest.fn()
+                onChanged: jest.fn(),
             };
 
-            contentScript._loadSubtitleUtilities = jest.fn().mockResolvedValue();
+            contentScript._loadSubtitleUtilities = jest
+                .fn()
+                .mockResolvedValue();
             contentScript._loadPlatformClass = jest.fn().mockResolvedValue();
             contentScript._loadConfigService = jest.fn().mockResolvedValue();
-            contentScript._loadAndInitializeLogger = jest.fn().mockResolvedValue();
+            contentScript._loadAndInitializeLogger = jest
+                .fn()
+                .mockResolvedValue();
 
             // Set the properties that would be set by the loading methods
             contentScript.subtitleUtils = mockSubtitleUtils;
@@ -382,11 +410,15 @@ describe('BaseContentScript', () => {
 
         test('should handle module loading errors gracefully', async () => {
             // Mock import failure
-            jest.doMock('chrome-extension://test/content_scripts/shared/subtitleUtilities.js', () => {
-                throw new Error('Module not found');
-            }, {
-                virtual: true
-            });
+            jest.doMock(
+                'chrome-extension://test/content_scripts/shared/subtitleUtilities.js',
+                () => {
+                    throw new Error('Module not found');
+                },
+                {
+                    virtual: true,
+                }
+            );
 
             const result = await contentScript.loadModules();
 
@@ -400,22 +432,30 @@ describe('BaseContentScript', () => {
             const executionOrder = [];
 
             // Mock all template method steps to track execution order
-            contentScript.initializeCore = jest.fn().mockImplementation(async () => {
-                executionOrder.push('initializeCore');
-                return true;
-            });
-            contentScript.initializeConfiguration = jest.fn().mockImplementation(async () => {
-                executionOrder.push('initializeConfiguration');
-                return true;
-            });
-            contentScript.initializeEventHandling = jest.fn().mockImplementation(async () => {
-                executionOrder.push('initializeEventHandling');
-                return true;
-            });
-            contentScript.initializeObservers = jest.fn().mockImplementation(async () => {
-                executionOrder.push('initializeObservers');
-                return true;
-            });
+            contentScript.initializeCore = jest
+                .fn()
+                .mockImplementation(async () => {
+                    executionOrder.push('initializeCore');
+                    return true;
+                });
+            contentScript.initializeConfiguration = jest
+                .fn()
+                .mockImplementation(async () => {
+                    executionOrder.push('initializeConfiguration');
+                    return true;
+                });
+            contentScript.initializeEventHandling = jest
+                .fn()
+                .mockImplementation(async () => {
+                    executionOrder.push('initializeEventHandling');
+                    return true;
+                });
+            contentScript.initializeObservers = jest
+                .fn()
+                .mockImplementation(async () => {
+                    executionOrder.push('initializeObservers');
+                    return true;
+                });
 
             const result = await contentScript.initialize();
 
@@ -424,39 +464,49 @@ describe('BaseContentScript', () => {
                 'initializeCore',
                 'initializeConfiguration',
                 'initializeEventHandling',
-                'initializeObservers'
+                'initializeObservers',
             ]);
         });
 
         test('should stop template method execution on first failure', async () => {
             const executionOrder = [];
 
-            contentScript.initializeCore = jest.fn().mockImplementation(async () => {
-                executionOrder.push('initializeCore');
-                return true;
-            });
-            contentScript.initializeConfiguration = jest.fn().mockImplementation(async () => {
-                executionOrder.push('initializeConfiguration');
-                return false; // Fail here
-            });
-            contentScript.initializeEventHandling = jest.fn().mockImplementation(async () => {
-                executionOrder.push('initializeEventHandling');
-                return true;
-            });
-            contentScript.initializeObservers = jest.fn().mockImplementation(async () => {
-                executionOrder.push('initializeObservers');
-                return true;
-            });
+            contentScript.initializeCore = jest
+                .fn()
+                .mockImplementation(async () => {
+                    executionOrder.push('initializeCore');
+                    return true;
+                });
+            contentScript.initializeConfiguration = jest
+                .fn()
+                .mockImplementation(async () => {
+                    executionOrder.push('initializeConfiguration');
+                    return false; // Fail here
+                });
+            contentScript.initializeEventHandling = jest
+                .fn()
+                .mockImplementation(async () => {
+                    executionOrder.push('initializeEventHandling');
+                    return true;
+                });
+            contentScript.initializeObservers = jest
+                .fn()
+                .mockImplementation(async () => {
+                    executionOrder.push('initializeObservers');
+                    return true;
+                });
 
             const result = await contentScript.initialize();
 
             expect(result).toBe(false);
             expect(executionOrder).toEqual([
                 'initializeCore',
-                'initializeConfiguration'
+                'initializeConfiguration',
                 // Should stop here, not execute remaining steps
             ]);
-            expect(contentScript.initializeEventHandling).not.toHaveBeenCalled();
+            expect(
+                contentScript.initializeEventHandling
+            ).not.toHaveBeenCalled();
             expect(contentScript.initializeObservers).not.toHaveBeenCalled();
         });
 
@@ -472,10 +522,10 @@ describe('BaseContentScript', () => {
         test('should execute initializeConfiguration template method correctly', async () => {
             const mockConfig = {
                 subtitlesEnabled: true,
-                theme: 'dark'
+                theme: 'dark',
             };
             contentScript.configService = {
-                getAll: jest.fn().mockResolvedValue(mockConfig)
+                getAll: jest.fn().mockResolvedValue(mockConfig),
             };
             contentScript.setupConfigurationListeners = jest.fn();
 
@@ -484,12 +534,14 @@ describe('BaseContentScript', () => {
             expect(result).toBe(true);
             expect(contentScript.configService.getAll).toHaveBeenCalled();
             expect(contentScript.currentConfig).toEqual(mockConfig);
-            expect(contentScript.setupConfigurationListeners).toHaveBeenCalled();
+            expect(
+                contentScript.setupConfigurationListeners
+            ).toHaveBeenCalled();
         });
 
         test('should execute initializeEventHandling template method correctly', async () => {
             const mockConfig = {
-                subtitlesEnabled: true
+                subtitlesEnabled: true,
             };
             contentScript.currentConfig = mockConfig;
             contentScript.setupEarlyEventHandling = jest.fn();
@@ -504,7 +556,7 @@ describe('BaseContentScript', () => {
 
         test('should skip platform initialization when subtitles disabled', async () => {
             const mockConfig = {
-                subtitlesEnabled: false
+                subtitlesEnabled: false,
             };
             contentScript.currentConfig = mockConfig;
             contentScript.setupEarlyEventHandling = jest.fn();
@@ -531,7 +583,9 @@ describe('BaseContentScript', () => {
         });
 
         test('should handle template method exceptions gracefully', async () => {
-            contentScript.initializeCore = jest.fn().mockRejectedValue(new Error('Core initialization failed'));
+            contentScript.initializeCore = jest
+                .fn()
+                .mockRejectedValue(new Error('Core initialization failed'));
 
             const result = await contentScript.initialize();
 
@@ -541,14 +595,26 @@ describe('BaseContentScript', () => {
         test('should log template method execution progress', async () => {
             contentScript.contentLogger = mockLogger;
             contentScript.initializeCore = jest.fn().mockResolvedValue(true);
-            contentScript.initializeConfiguration = jest.fn().mockResolvedValue(true);
-            contentScript.initializeEventHandling = jest.fn().mockResolvedValue(true);
-            contentScript.initializeObservers = jest.fn().mockResolvedValue(true);
+            contentScript.initializeConfiguration = jest
+                .fn()
+                .mockResolvedValue(true);
+            contentScript.initializeEventHandling = jest
+                .fn()
+                .mockResolvedValue(true);
+            contentScript.initializeObservers = jest
+                .fn()
+                .mockResolvedValue(true);
 
             await contentScript.initialize();
 
-            expect(mockLogger.info).toHaveBeenCalledWith('Starting content script initialization', {});
-            expect(mockLogger.info).toHaveBeenCalledWith('Content script initialization completed successfully', {});
+            expect(mockLogger.info).toHaveBeenCalledWith(
+                'Starting content script initialization',
+                {}
+            );
+            expect(mockLogger.info).toHaveBeenCalledWith(
+                'Content script initialization completed successfully',
+                {}
+            );
         });
     });
 
@@ -557,8 +623,8 @@ describe('BaseContentScript', () => {
             const mockEvent = {
                 detail: {
                     type: 'SUBTITLE_DATA_FOUND',
-                    data: 'test subtitle data'
-                }
+                    data: 'test subtitle data',
+                },
             };
 
             contentScript.platformReady = false;
@@ -571,8 +637,8 @@ describe('BaseContentScript', () => {
             const mockEvent = {
                 detail: {
                     type: 'SUBTITLE_DATA_FOUND',
-                    data: 'test subtitle data'
-                }
+                    data: 'test subtitle data',
+                },
             };
 
             // Buffer event first
@@ -581,20 +647,22 @@ describe('BaseContentScript', () => {
 
             // Setup platform and make it ready
             contentScript.activePlatform = {
-                handleInjectorEvents: jest.fn()
+                handleInjectorEvents: jest.fn(),
             };
             contentScript.platformReady = true;
 
             // Process buffered events
             contentScript.processBufferedEvents();
 
-            expect(contentScript.activePlatform.handleInjectorEvents).toHaveBeenCalledWith({
+            expect(
+                contentScript.activePlatform.handleInjectorEvents
+            ).toHaveBeenCalledWith({
                 detail: expect.objectContaining({
                     type: mockEvent.detail.type,
                     data: mockEvent.detail.data,
                     timestamp: expect.any(Number),
-                    pageUrl: expect.any(String)
-                })
+                    pageUrl: expect.any(String),
+                }),
             });
             expect(contentScript.eventBuffer.size()).toBe(0);
         });
@@ -603,20 +671,22 @@ describe('BaseContentScript', () => {
             const invalidEvents = [
                 null,
                 {
-                    detail: null
+                    detail: null,
                 },
                 {
-                    detail: {}
+                    detail: {},
                 },
                 {
                     detail: {
-                        type: null
-                    }
-                }
+                        type: null,
+                    },
+                },
             ];
 
-            invalidEvents.forEach(event => {
-                expect(() => contentScript.handleEarlyInjectorEvents(event)).not.toThrow();
+            invalidEvents.forEach((event) => {
+                expect(() =>
+                    contentScript.handleEarlyInjectorEvents(event)
+                ).not.toThrow();
             });
         });
     });
@@ -624,26 +694,30 @@ describe('BaseContentScript', () => {
     describe('Chrome Message Handling', () => {
         beforeEach(() => {
             contentScript.subtitleUtils = {
-                setSubtitlesActive: jest.fn()
+                setSubtitlesActive: jest.fn(),
             };
             contentScript.configService = {
-                getAll: jest.fn()
+                getAll: jest.fn(),
             };
         });
 
         test('should handle logging level changes', () => {
             const request = {
                 type: 'LOGGING_LEVEL_CHANGED',
-                level: 'debug'
+                level: 'debug',
             };
             const sendResponse = jest.fn();
             contentScript.contentLogger = mockLogger;
 
-            const result = contentScript.handleChromeMessage(request, {}, sendResponse);
+            const result = contentScript.handleChromeMessage(
+                request,
+                {},
+                sendResponse
+            );
 
             expect(mockLogger.updateLevel).toHaveBeenCalledWith('debug');
             expect(sendResponse).toHaveBeenCalledWith({
-                success: true
+                success: true,
             });
             expect(result).toBe(false);
         });
@@ -651,17 +725,26 @@ describe('BaseContentScript', () => {
         test('should handle toggle subtitles message', () => {
             const request = {
                 action: 'toggleSubtitles',
-                enabled: false
+                enabled: false,
             };
             const sendResponse = jest.fn();
 
             contentScript._disableSubtitles = jest.fn().mockReturnValue(false);
             contentScript.subtitleUtils.setSubtitlesActive = jest.fn();
 
-            const result = contentScript.handleChromeMessage(request, {}, sendResponse);
+            const result = contentScript.handleChromeMessage(
+                request,
+                {},
+                sendResponse
+            );
 
-            expect(contentScript.subtitleUtils.setSubtitlesActive).toHaveBeenCalledWith(false);
-            expect(contentScript._disableSubtitles).toHaveBeenCalledWith(sendResponse, false);
+            expect(
+                contentScript.subtitleUtils.setSubtitlesActive
+            ).toHaveBeenCalledWith(false);
+            expect(contentScript._disableSubtitles).toHaveBeenCalledWith(
+                sendResponse,
+                false
+            );
             expect(result).toBe(false);
         });
 
@@ -669,15 +752,19 @@ describe('BaseContentScript', () => {
             const request = {
                 action: 'configChanged',
                 changes: {
-                    theme: 'dark'
-                }
+                    theme: 'dark',
+                },
             };
             const sendResponse = jest.fn();
 
-            const result = contentScript.handleChromeMessage(request, {}, sendResponse);
+            const result = contentScript.handleChromeMessage(
+                request,
+                {},
+                sendResponse
+            );
 
             expect(sendResponse).toHaveBeenCalledWith({
-                success: true
+                success: true,
             });
             expect(result).toBe(false);
         });
@@ -685,16 +772,20 @@ describe('BaseContentScript', () => {
         test('should delegate unknown messages to platform-specific handler', () => {
             const request = {
                 action: 'customAction',
-                data: 'test'
+                data: 'test',
             };
             const sendResponse = jest.fn();
 
-            const result = contentScript.handleChromeMessage(request, {}, sendResponse);
+            const result = contentScript.handleChromeMessage(
+                request,
+                {},
+                sendResponse
+            );
 
             expect(sendResponse).toHaveBeenCalledWith({
                 success: true,
                 platform: 'test',
-                action: 'customAction'
+                action: 'customAction',
             });
             expect(result).toBe(false);
         });
@@ -703,15 +794,19 @@ describe('BaseContentScript', () => {
             contentScript.subtitleUtils = null;
             const request = {
                 action: 'toggleSubtitles',
-                enabled: true
+                enabled: true,
             };
             const sendResponse = jest.fn();
 
-            const result = contentScript.handleChromeMessage(request, {}, sendResponse);
+            const result = contentScript.handleChromeMessage(
+                request,
+                {},
+                sendResponse
+            );
 
             expect(sendResponse).toHaveBeenCalledWith({
                 success: false,
-                error: 'Utilities not loaded'
+                error: 'Utilities not loaded',
             });
             expect(result).toBe(true);
         });
@@ -720,7 +815,7 @@ describe('BaseContentScript', () => {
     describe('Video Element Detection', () => {
         test('should start video detection with retry mechanism', () => {
             contentScript.activePlatform = {
-                getVideoElement: jest.fn().mockReturnValue(null)
+                getVideoElement: jest.fn().mockReturnValue(null),
             };
             contentScript.subtitleUtils = {};
             contentScript.currentConfig = {};
@@ -740,85 +835,101 @@ describe('BaseContentScript', () => {
         test('should stop detection when video element is found', () => {
             const mockVideo = document.createElement('video');
             contentScript.activePlatform = {
-                getVideoElement: jest.fn().mockReturnValue(mockVideo)
+                getVideoElement: jest.fn().mockReturnValue(mockVideo),
             };
             contentScript.subtitleUtils = {
                 ensureSubtitleContainer: jest.fn(),
                 subtitlesActive: true,
                 showSubtitleContainer: jest.fn(),
                 updateSubtitles: jest.fn(),
-                hideSubtitleContainer: jest.fn()
+                hideSubtitleContainer: jest.fn(),
             };
             contentScript.currentConfig = {};
 
             const result = contentScript.attemptVideoSetup();
 
             expect(result).toBe(true);
-            expect(contentScript.subtitleUtils.ensureSubtitleContainer).toHaveBeenCalled();
+            expect(
+                contentScript.subtitleUtils.ensureSubtitleContainer
+            ).toHaveBeenCalled();
         });
     });
 
     describe('Configuration Management', () => {
         test('should setup configuration listeners', () => {
             const mockConfigService = {
-                onChanged: jest.fn()
+                onChanged: jest.fn(),
             };
             contentScript.configService = mockConfigService;
 
             contentScript.setupConfigurationListeners();
 
-            expect(mockConfigService.onChanged).toHaveBeenCalledWith(expect.any(Function));
+            expect(mockConfigService.onChanged).toHaveBeenCalledWith(
+                expect.any(Function)
+            );
         });
 
         test('should apply configuration changes', () => {
             const changes = {
-                subtitleFontSize: '2.5'
+                subtitleFontSize: '2.5',
             };
             contentScript.activePlatform = {
                 getVideoElement: jest.fn().mockReturnValue({
-                    currentTime: 10
-                })
+                    currentTime: 10,
+                }),
             };
             contentScript.subtitleUtils = {
                 subtitlesActive: true,
                 applySubtitleStyling: jest.fn(),
-                updateSubtitles: jest.fn()
+                updateSubtitles: jest.fn(),
             };
             contentScript.currentConfig = {
-                subtitleFontSize: '2.0'
+                subtitleFontSize: '2.0',
             };
 
             contentScript.applyConfigurationChanges(changes);
 
-            expect(contentScript.subtitleUtils.applySubtitleStyling).toHaveBeenCalledWith(
-                contentScript.currentConfig
-            );
-            expect(contentScript.subtitleUtils.updateSubtitles).toHaveBeenCalled();
+            expect(
+                contentScript.subtitleUtils.applySubtitleStyling
+            ).toHaveBeenCalledWith(contentScript.currentConfig);
+            expect(
+                contentScript.subtitleUtils.updateSubtitles
+            ).toHaveBeenCalled();
         });
 
         test('should not apply changes for UI-only settings', () => {
             const changes = {
-                appearanceAccordionOpen: true
+                appearanceAccordionOpen: true,
             };
             contentScript.activePlatform = {};
             contentScript.subtitleUtils = {
                 subtitlesActive: true,
-                applySubtitleStyling: jest.fn()
+                applySubtitleStyling: jest.fn(),
             };
 
             contentScript.applyConfigurationChanges(changes);
 
-            expect(contentScript.subtitleUtils.applySubtitleStyling).not.toHaveBeenCalled();
+            expect(
+                contentScript.subtitleUtils.applySubtitleStyling
+            ).not.toHaveBeenCalled();
         });
     });
 
     describe('Comprehensive Error Handling', () => {
         describe('Module Loading Error Scenarios', () => {
             test('should handle subtitle utilities loading failure', async () => {
-                contentScript._loadSubtitleUtilities = jest.fn().mockRejectedValue(new Error('Subtitle utils failed'));
-                contentScript._loadPlatformClass = jest.fn().mockResolvedValue();
-                contentScript._loadConfigService = jest.fn().mockResolvedValue();
-                contentScript._loadAndInitializeLogger = jest.fn().mockResolvedValue();
+                contentScript._loadSubtitleUtilities = jest
+                    .fn()
+                    .mockRejectedValue(new Error('Subtitle utils failed'));
+                contentScript._loadPlatformClass = jest
+                    .fn()
+                    .mockResolvedValue();
+                contentScript._loadConfigService = jest
+                    .fn()
+                    .mockResolvedValue();
+                contentScript._loadAndInitializeLogger = jest
+                    .fn()
+                    .mockResolvedValue();
 
                 const result = await contentScript.loadModules();
 
@@ -827,10 +938,18 @@ describe('BaseContentScript', () => {
             });
 
             test('should handle platform class loading failure', async () => {
-                contentScript._loadSubtitleUtilities = jest.fn().mockResolvedValue();
-                contentScript._loadPlatformClass = jest.fn().mockRejectedValue(new Error('Platform class failed'));
-                contentScript._loadConfigService = jest.fn().mockResolvedValue();
-                contentScript._loadAndInitializeLogger = jest.fn().mockResolvedValue();
+                contentScript._loadSubtitleUtilities = jest
+                    .fn()
+                    .mockResolvedValue();
+                contentScript._loadPlatformClass = jest
+                    .fn()
+                    .mockRejectedValue(new Error('Platform class failed'));
+                contentScript._loadConfigService = jest
+                    .fn()
+                    .mockResolvedValue();
+                contentScript._loadAndInitializeLogger = jest
+                    .fn()
+                    .mockResolvedValue();
 
                 const result = await contentScript.loadModules();
 
@@ -839,10 +958,18 @@ describe('BaseContentScript', () => {
             });
 
             test('should handle config service loading failure', async () => {
-                contentScript._loadSubtitleUtilities = jest.fn().mockResolvedValue();
-                contentScript._loadPlatformClass = jest.fn().mockResolvedValue();
-                contentScript._loadConfigService = jest.fn().mockRejectedValue(new Error('Config service failed'));
-                contentScript._loadAndInitializeLogger = jest.fn().mockResolvedValue();
+                contentScript._loadSubtitleUtilities = jest
+                    .fn()
+                    .mockResolvedValue();
+                contentScript._loadPlatformClass = jest
+                    .fn()
+                    .mockResolvedValue();
+                contentScript._loadConfigService = jest
+                    .fn()
+                    .mockRejectedValue(new Error('Config service failed'));
+                contentScript._loadAndInitializeLogger = jest
+                    .fn()
+                    .mockResolvedValue();
 
                 const result = await contentScript.loadModules();
 
@@ -851,10 +978,18 @@ describe('BaseContentScript', () => {
             });
 
             test('should handle logger initialization failure', async () => {
-                contentScript._loadSubtitleUtilities = jest.fn().mockResolvedValue();
-                contentScript._loadPlatformClass = jest.fn().mockResolvedValue();
-                contentScript._loadConfigService = jest.fn().mockResolvedValue();
-                contentScript._loadAndInitializeLogger = jest.fn().mockRejectedValue(new Error('Logger failed'));
+                contentScript._loadSubtitleUtilities = jest
+                    .fn()
+                    .mockResolvedValue();
+                contentScript._loadPlatformClass = jest
+                    .fn()
+                    .mockResolvedValue();
+                contentScript._loadConfigService = jest
+                    .fn()
+                    .mockResolvedValue();
+                contentScript._loadAndInitializeLogger = jest
+                    .fn()
+                    .mockRejectedValue(new Error('Logger failed'));
 
                 const result = await contentScript.loadModules();
 
@@ -870,14 +1005,16 @@ describe('BaseContentScript', () => {
                 contentScript.PlatformClass = mockModules.platformClass;
                 contentScript.configService = mockModules.configService;
                 contentScript.currentConfig = {
-                    subtitlesEnabled: true
+                    subtitlesEnabled: true,
                 };
             });
 
             test('should handle platform instantiation failure', async () => {
-                contentScript.PlatformClass = jest.fn().mockImplementation(() => {
-                    throw new Error('Platform instantiation failed');
-                });
+                contentScript.PlatformClass = jest
+                    .fn()
+                    .mockImplementation(() => {
+                        throw new Error('Platform instantiation failed');
+                    });
 
                 const result = await contentScript.initializePlatform();
 
@@ -888,13 +1025,16 @@ describe('BaseContentScript', () => {
             test('should handle platform initialization timeout', async () => {
                 const mockPlatform = {
                     isPlayerPageActive: jest.fn().mockReturnValue(true),
-                    initialize: jest.fn().mockImplementation(() =>
-                        new Promise(resolve => setTimeout(resolve, 15000)) // Long delay
+                    initialize: jest.fn().mockImplementation(
+                        () =>
+                            new Promise((resolve) => setTimeout(resolve, 15000)) // Long delay
                     ),
-                    handleNativeSubtitles: jest.fn()
+                    handleNativeSubtitles: jest.fn(),
                 };
 
-                contentScript.PlatformClass = jest.fn().mockReturnValue(mockPlatform);
+                contentScript.PlatformClass = jest
+                    .fn()
+                    .mockReturnValue(mockPlatform);
                 contentScript.currentConfig.platformInitTimeout = 100; // Short timeout
 
                 const result = await contentScript.initializePlatform();
@@ -904,15 +1044,19 @@ describe('BaseContentScript', () => {
 
             test('should retry platform initialization on failure', async () => {
                 let attemptCount = 0;
-                contentScript.PlatformClass = jest.fn().mockImplementation(() => {
-                    attemptCount++;
-                    if (attemptCount < 3) {
-                        throw new Error('Temporary failure');
-                    }
-                    return {
-                        isPlayerPageActive: jest.fn().mockReturnValue(false)
-                    };
-                });
+                contentScript.PlatformClass = jest
+                    .fn()
+                    .mockImplementation(() => {
+                        attemptCount++;
+                        if (attemptCount < 3) {
+                            throw new Error('Temporary failure');
+                        }
+                        return {
+                            isPlayerPageActive: jest
+                                .fn()
+                                .mockReturnValue(false),
+                        };
+                    });
 
                 const result = await contentScript.initializePlatform();
 
@@ -922,45 +1066,51 @@ describe('BaseContentScript', () => {
         });
 
         describe('Message Handling Error Scenarios', () => {
-                    test('should handle message handler throwing error', () => {
-            const errorHandler = jest.fn().mockImplementation(() => {
-                throw new Error('Handler error');
+            test('should handle message handler throwing error', () => {
+                const errorHandler = jest.fn().mockImplementation(() => {
+                    throw new Error('Handler error');
+                });
+
+                // Set up required utilities to pass the utilities check
+                contentScript.subtitleUtils = mockModules.subtitleUtils;
+                contentScript.configService = mockModules.configService;
+
+                contentScript.registerMessageHandler(
+                    'errorAction',
+                    errorHandler
+                );
+                const sendResponse = jest.fn();
+
+                const result = contentScript.handleChromeMessage(
+                    {
+                        action: 'errorAction',
+                    },
+                    {},
+                    sendResponse
+                );
+
+                expect(sendResponse).toHaveBeenCalledWith({
+                    success: false,
+                    error: expect.stringContaining('Handler error'),
+                });
+                expect(result).toBe(false);
             });
 
-            // Set up required utilities to pass the utilities check
-            contentScript.subtitleUtils = mockModules.subtitleUtils;
-            contentScript.configService = mockModules.configService;
-            
-            contentScript.registerMessageHandler('errorAction', errorHandler);
-            const sendResponse = jest.fn();
+            test('should handle invalid message format', () => {
+                const sendResponse = jest.fn();
 
-            const result = contentScript.handleChromeMessage({
-                    action: 'errorAction'
-                }, {},
-                sendResponse
-            );
+                const result = contentScript.handleChromeMessage(
+                    null,
+                    {},
+                    sendResponse
+                );
 
-            expect(sendResponse).toHaveBeenCalledWith({
-                success: false,
-                error: expect.stringContaining('Handler error')
+                expect(sendResponse).toHaveBeenCalledWith({
+                    success: false,
+                    error: expect.any(String),
+                });
+                expect(result).toBe(false);
             });
-            expect(result).toBe(false);
-        });
-
-                    test('should handle invalid message format', () => {
-            const sendResponse = jest.fn();
-
-            const result = contentScript.handleChromeMessage(
-                null, {},
-                sendResponse
-            );
-
-            expect(sendResponse).toHaveBeenCalledWith({
-                success: false,
-                error: expect.any(String)
-            });
-            expect(result).toBe(false);
-        });
         });
     });
 
@@ -992,7 +1142,7 @@ describe('BaseContentScript', () => {
             for (let i = 0; i < 10; i++) {
                 buffer.add({
                     type: 'test',
-                    data: i
+                    data: i,
                 });
             }
 
@@ -1006,10 +1156,16 @@ describe('BaseContentScript', () => {
         });
 
         test('should handle config service loading failure', async () => {
-            contentScript._loadSubtitleUtilities = jest.fn().mockResolvedValue();
+            contentScript._loadSubtitleUtilities = jest
+                .fn()
+                .mockResolvedValue();
             contentScript._loadPlatformClass = jest.fn().mockResolvedValue();
-            contentScript._loadConfigService = jest.fn().mockRejectedValue(new Error('Config service failed'));
-            contentScript._loadAndInitializeLogger = jest.fn().mockResolvedValue();
+            contentScript._loadConfigService = jest
+                .fn()
+                .mockRejectedValue(new Error('Config service failed'));
+            contentScript._loadAndInitializeLogger = jest
+                .fn()
+                .mockResolvedValue();
 
             const result = await contentScript.loadModules();
 
@@ -1018,10 +1174,14 @@ describe('BaseContentScript', () => {
         });
 
         test('should handle logger initialization failure', async () => {
-            contentScript._loadSubtitleUtilities = jest.fn().mockResolvedValue();
+            contentScript._loadSubtitleUtilities = jest
+                .fn()
+                .mockResolvedValue();
             contentScript._loadPlatformClass = jest.fn().mockResolvedValue();
             contentScript._loadConfigService = jest.fn().mockResolvedValue();
-            contentScript._loadAndInitializeLogger = jest.fn().mockRejectedValue(new Error('Logger failed'));
+            contentScript._loadAndInitializeLogger = jest
+                .fn()
+                .mockRejectedValue(new Error('Logger failed'));
 
             const result = await contentScript.loadModules();
 
@@ -1030,10 +1190,18 @@ describe('BaseContentScript', () => {
         });
 
         test('should handle multiple module loading failures', async () => {
-            contentScript._loadSubtitleUtilities = jest.fn().mockRejectedValue(new Error('Subtitle utils failed'));
-            contentScript._loadPlatformClass = jest.fn().mockRejectedValue(new Error('Platform class failed'));
-            contentScript._loadConfigService = jest.fn().mockRejectedValue(new Error('Config service failed'));
-            contentScript._loadAndInitializeLogger = jest.fn().mockRejectedValue(new Error('Logger failed'));
+            contentScript._loadSubtitleUtilities = jest
+                .fn()
+                .mockRejectedValue(new Error('Subtitle utils failed'));
+            contentScript._loadPlatformClass = jest
+                .fn()
+                .mockRejectedValue(new Error('Platform class failed'));
+            contentScript._loadConfigService = jest
+                .fn()
+                .mockRejectedValue(new Error('Config service failed'));
+            contentScript._loadAndInitializeLogger = jest
+                .fn()
+                .mockRejectedValue(new Error('Logger failed'));
 
             const result = await contentScript.loadModules();
 
@@ -1051,16 +1219,16 @@ describe('BaseContentScript', () => {
             // Setup valid modules for platform initialization tests
             contentScript.PlatformClass = contentScript.getPlatformClass();
             contentScript.subtitleUtils = {
-                setSubtitlesActive: jest.fn()
+                setSubtitlesActive: jest.fn(),
             };
             contentScript.configService = {
-                getAll: jest.fn()
+                getAll: jest.fn(),
             };
             contentScript.currentConfig = {
                 subtitlesEnabled: true,
                 platformInitMaxRetries: 3,
                 platformInitRetryDelay: 1000,
-                platformInitTimeout: 5000
+                platformInitTimeout: 5000,
             };
             contentScript.contentLogger = mockLogger;
         });
@@ -1083,7 +1251,7 @@ describe('BaseContentScript', () => {
             contentScript.currentConfig.platformInitTimeout = 100; // Short timeout
             contentScript.PlatformClass = class SlowPlatform {
                 initialize() {
-                    return new Promise(resolve => setTimeout(resolve, 200)); // Longer than timeout
+                    return new Promise((resolve) => setTimeout(resolve, 200)); // Longer than timeout
                 }
                 isPlayerPageActive() {
                     return true;
@@ -1100,18 +1268,20 @@ describe('BaseContentScript', () => {
             let attemptCount = 0;
 
             // Mock the _createPlatformInstance method to control retry behavior
-            contentScript._createPlatformInstance = jest.fn().mockImplementation(async () => {
-                attemptCount++;
-                if (attemptCount < 3) {
-                    throw new Error(`Attempt ${attemptCount} failed`);
-                }
-                return {
-                    initialize: jest.fn().mockResolvedValue(),
-                    isPlayerPageActive: jest.fn().mockReturnValue(true),
-                    handleNativeSubtitles: jest.fn(),
-                    cleanup: jest.fn()
-                };
-            });
+            contentScript._createPlatformInstance = jest
+                .fn()
+                .mockImplementation(async () => {
+                    attemptCount++;
+                    if (attemptCount < 3) {
+                        throw new Error(`Attempt ${attemptCount} failed`);
+                    }
+                    return {
+                        initialize: jest.fn().mockResolvedValue(),
+                        isPlayerPageActive: jest.fn().mockReturnValue(true),
+                        handleNativeSubtitles: jest.fn(),
+                        cleanup: jest.fn(),
+                    };
+                });
 
             contentScript.currentConfig.platformInitMaxRetries = 3;
             contentScript.currentConfig.platformInitRetryDelay = 10;
@@ -1143,11 +1313,11 @@ describe('BaseContentScript', () => {
 
         test('should clean up partial initialization on failure', async () => {
             contentScript.activePlatform = {
-                cleanup: jest.fn()
+                cleanup: jest.fn(),
             };
             contentScript.stopVideoElementDetection = jest.fn();
             contentScript.eventBuffer = {
-                clear: jest.fn()
+                clear: jest.fn(),
             };
 
             contentScript.PlatformClass = class FailingPlatform {
@@ -1167,8 +1337,10 @@ describe('BaseContentScript', () => {
         test('should handle config service getAll failure', async () => {
             // Mock configService to simulate failure
             const configServiceMock = {
-                getAll: jest.fn().mockRejectedValue(new Error('Config load failed')),
-                onChanged: jest.fn()
+                getAll: jest
+                    .fn()
+                    .mockRejectedValue(new Error('Config load failed')),
+                onChanged: jest.fn(),
             };
 
             contentScript.configService = configServiceMock;
@@ -1182,23 +1354,31 @@ describe('BaseContentScript', () => {
             const mockConfigService = {
                 onChanged: jest.fn().mockImplementation((callback) => {
                     // Simulate error in callback
-                    setTimeout(() => callback({
-                        invalidChange: 'test'
-                    }), 0);
-                })
+                    setTimeout(
+                        () =>
+                            callback({
+                                invalidChange: 'test',
+                            }),
+                        0
+                    );
+                }),
             };
             contentScript.configService = mockConfigService;
 
-            expect(() => contentScript.setupConfigurationListeners()).not.toThrow();
+            expect(() =>
+                contentScript.setupConfigurationListeners()
+            ).not.toThrow();
         });
 
         test('should handle invalid configuration changes', () => {
             contentScript.activePlatform = null; // No platform
             contentScript.subtitleUtils = null; // No utils
 
-            expect(() => contentScript.applyConfigurationChanges({
-                theme: 'dark'
-            })).not.toThrow();
+            expect(() =>
+                contentScript.applyConfigurationChanges({
+                    theme: 'dark',
+                })
+            ).not.toThrow();
         });
     });
 
@@ -1209,23 +1389,25 @@ describe('BaseContentScript', () => {
                 undefined,
                 {},
                 {
-                    detail: null
+                    detail: null,
                 },
                 {
                     detail: {
-                        type: null
-                    }
+                        type: null,
+                    },
                 },
                 {
                     detail: {
                         type: '',
-                        data: null
-                    }
-                }
+                        data: null,
+                    },
+                },
             ];
 
-            malformedEvents.forEach(event => {
-                expect(() => contentScript.handleEarlyInjectorEvents(event)).not.toThrow();
+            malformedEvents.forEach((event) => {
+                expect(() =>
+                    contentScript.handleEarlyInjectorEvents(event)
+                ).not.toThrow();
             });
         });
 
@@ -1235,8 +1417,8 @@ describe('BaseContentScript', () => {
                 contentScript.handleEarlyInjectorEvents({
                     detail: {
                         type: 'TEST_EVENT',
-                        data: `event_${i}`
-                    }
+                        data: `event_${i}`,
+                    },
                 });
             }
 
@@ -1247,7 +1429,7 @@ describe('BaseContentScript', () => {
             contentScript.activePlatform = {
                 handleInjectorEvents: jest.fn().mockImplementation(() => {
                     throw new Error('Event processing failed');
-                })
+                }),
             };
             contentScript.platformReady = true;
 
@@ -1255,8 +1437,8 @@ describe('BaseContentScript', () => {
             contentScript.handleEarlyInjectorEvents({
                 detail: {
                     type: 'TEST_EVENT',
-                    data: 'test'
-                }
+                    data: 'test',
+                },
             });
 
             expect(() => contentScript.processBufferedEvents()).not.toThrow();
@@ -1272,16 +1454,24 @@ describe('BaseContentScript', () => {
             const testScript = new TestContentScript();
 
             // Should not throw when Chrome API is unavailable
-            expect(() => testScript._attachChromeMessageListener()).not.toThrow();
+            expect(() =>
+                testScript._attachChromeMessageListener()
+            ).not.toThrow();
 
             // Restore Chrome API
             global.chrome = originalChrome;
         });
 
         test('should handle message handler registration errors', () => {
-            expect(() => contentScript.registerMessageHandler('', jest.fn())).toThrow('Action must be a non-empty string');
-            expect(() => contentScript.registerMessageHandler('test', null)).toThrow('Handler must be a function');
-            expect(() => contentScript.registerMessageHandler('test', 'not a function')).toThrow('Handler must be a function');
+            expect(() =>
+                contentScript.registerMessageHandler('', jest.fn())
+            ).toThrow('Action must be a non-empty string');
+            expect(() =>
+                contentScript.registerMessageHandler('test', null)
+            ).toThrow('Handler must be a function');
+            expect(() =>
+                contentScript.registerMessageHandler('test', 'not a function')
+            ).toThrow('Handler must be a function');
         });
 
         test('should handle message processing errors gracefully', () => {
@@ -1290,28 +1480,32 @@ describe('BaseContentScript', () => {
             });
 
             const request = {
-                action: 'errorAction'
+                action: 'errorAction',
             };
             const sendResponse = jest.fn();
 
-            expect(() => contentScript.handleChromeMessage(request, {}, sendResponse)).not.toThrow();
+            expect(() =>
+                contentScript.handleChromeMessage(request, {}, sendResponse)
+            ).not.toThrow();
         });
     });
 
     describe('Cleanup Error Scenarios', () => {
         test('should handle cleanup errors gracefully', async () => {
             contentScript.activePlatform = {
-                cleanup: jest.fn().mockRejectedValue(new Error('Cleanup failed'))
+                cleanup: jest
+                    .fn()
+                    .mockRejectedValue(new Error('Cleanup failed')),
             };
             contentScript.pageObserver = {
                 disconnect: jest.fn().mockImplementation(() => {
                     throw new Error('Observer disconnect failed');
-                })
+                }),
             };
             contentScript.subtitleUtils = {
                 clearSubtitleDOM: jest.fn().mockImplementation(() => {
                     throw new Error('DOM cleanup failed');
-                })
+                }),
             };
 
             await expect(contentScript.cleanup()).resolves.not.toThrow();
@@ -1326,7 +1520,10 @@ describe('BaseContentScript', () => {
             const logSpy = jest.spyOn(contentScript, 'logWithFallback');
             await contentScript.cleanup();
 
-            expect(logSpy).toHaveBeenCalledWith('debug', 'Cleanup already performed, skipping');
+            expect(logSpy).toHaveBeenCalledWith(
+                'debug',
+                'Cleanup already performed, skipping'
+            );
         });
     });
 });
@@ -1362,30 +1559,32 @@ describe('Private Helper Methods', () => {
         contentScript.stopVideoElementDetection = jest.fn();
         contentScript.subtitleUtils = {
             hideSubtitleContainer: jest.fn(),
-            clearSubtitlesDisplayAndQueue: jest.fn()
+            clearSubtitlesDisplayAndQueue: jest.fn(),
         };
         const mockPlatform = {
-            cleanup: jest.fn()
+            cleanup: jest.fn(),
         };
         contentScript.activePlatform = mockPlatform;
 
         contentScript._disableSubtitles(sendResponse, false);
 
         expect(contentScript.stopVideoElementDetection).toHaveBeenCalled();
-        expect(contentScript.subtitleUtils.hideSubtitleContainer).toHaveBeenCalled();
+        expect(
+            contentScript.subtitleUtils.hideSubtitleContainer
+        ).toHaveBeenCalled();
         expect(mockPlatform.cleanup).toHaveBeenCalled();
         expect(contentScript.activePlatform).toBeNull();
         expect(contentScript.platformReady).toBe(false);
         expect(sendResponse).toHaveBeenCalledWith({
             success: true,
-            subtitlesEnabled: false
+            subtitlesEnabled: false,
         });
     });
 
     test('should enable subtitles when platform exists', () => {
         const sendResponse = jest.fn();
         contentScript.activePlatform = {
-            isPlayerPageActive: jest.fn().mockReturnValue(true)
+            isPlayerPageActive: jest.fn().mockReturnValue(true),
         };
         contentScript.startVideoElementDetection = jest.fn();
 
@@ -1394,7 +1593,7 @@ describe('Private Helper Methods', () => {
         expect(contentScript.startVideoElementDetection).toHaveBeenCalled();
         expect(sendResponse).toHaveBeenCalledWith({
             success: true,
-            subtitlesEnabled: true
+            subtitlesEnabled: true,
         });
         expect(result).toBe(false);
     });
@@ -1419,16 +1618,16 @@ describe('Cleanup', () => {
     test('should clean up all resources', async () => {
         contentScript.videoDetectionIntervalId = 123;
         const mockPageObserver = {
-            disconnect: jest.fn()
+            disconnect: jest.fn(),
         };
         const mockActivePlatform = {
-            cleanup: jest.fn()
+            cleanup: jest.fn(),
         };
         const mockSubtitleUtils = {
-            clearSubtitleDOM: jest.fn()
+            clearSubtitleDOM: jest.fn(),
         };
         const mockIntervalManager = {
-            clearAll: jest.fn()
+            clearAll: jest.fn(),
         };
 
         contentScript.pageObserver = mockPageObserver;
@@ -1454,7 +1653,10 @@ describe('Cleanup', () => {
 
         await contentScript.cleanup();
 
-        expect(spy).toHaveBeenCalledWith('debug', 'Cleanup already performed, skipping');
+        expect(spy).toHaveBeenCalledWith(
+            'debug',
+            'Cleanup already performed, skipping'
+        );
         expect(spy).toHaveBeenCalledTimes(1); // Only the skip message should be logged
     });
 });
@@ -1481,11 +1683,11 @@ describe('Logging', () => {
         contentScript.contentLogger = mockLogger;
 
         contentScript.logWithFallback('info', 'test message', {
-            data: 'test'
+            data: 'test',
         });
 
         expect(mockLogger.info).toHaveBeenCalledWith('test message', {
-            data: 'test'
+            data: 'test',
         });
     });
 
@@ -1495,7 +1697,8 @@ describe('Logging', () => {
         contentScript.logWithFallback('warn', 'test warning');
 
         expect(consoleSpy).toHaveBeenCalledWith(
-            '[TestContent] [WARN] test warning', {}
+            '[TestContent] [WARN] test warning',
+            {}
         );
 
         consoleSpy.mockRestore();
@@ -1546,17 +1749,19 @@ describe('Platform-Specific Method Mocking and Common Functionality Verification
                     return {
                         filename: 'injected_scripts/netflixInject.js',
                         tagId: 'netflix-inject-script',
-                        eventId: 'NETFLIX_SUBTITLE_EVENT'
+                        eventId: 'NETFLIX_SUBTITLE_EVENT',
                     };
                 }
                 setupNavigationDetection() {
-                    /* Netflix-specific navigation */ }
+                    /* Netflix-specific navigation */
+                }
                 checkForUrlChange() {
-                    /* Netflix URL change logic */ }
+                    /* Netflix URL change logic */
+                }
                 handlePlatformSpecificMessage(request, sendResponse) {
                     sendResponse({
                         success: true,
-                        platform: 'netflix'
+                        platform: 'netflix',
                     });
                     return false;
                 }
@@ -1588,17 +1793,19 @@ describe('Platform-Specific Method Mocking and Common Functionality Verification
                     return {
                         filename: 'injected_scripts/disneyPlusInject.js',
                         tagId: 'disneyplus-inject-script',
-                        eventId: 'DISNEYPLUS_SUBTITLE_EVENT'
+                        eventId: 'DISNEYPLUS_SUBTITLE_EVENT',
                     };
                 }
                 setupNavigationDetection() {
-                    /* Disney+ navigation */ }
+                    /* Disney+ navigation */
+                }
                 checkForUrlChange() {
-                    /* Disney+ URL change logic */ }
+                    /* Disney+ URL change logic */
+                }
                 handlePlatformSpecificMessage(request, sendResponse) {
                     sendResponse({
                         success: true,
-                        platform: 'disneyplus'
+                        platform: 'disneyplus',
                     });
                     return false;
                 }
@@ -1611,8 +1818,12 @@ describe('Platform-Specific Method Mocking and Common Functionality Verification
             expect(netflixScript.getPlatformName()).toBe('netflix');
             expect(disneyScript.getPlatformName()).toBe('disneyplus');
 
-            expect(netflixScript.getInjectScriptConfig().eventId).toBe('NETFLIX_SUBTITLE_EVENT');
-            expect(disneyScript.getInjectScriptConfig().eventId).toBe('DISNEYPLUS_SUBTITLE_EVENT');
+            expect(netflixScript.getInjectScriptConfig().eventId).toBe(
+                'NETFLIX_SUBTITLE_EVENT'
+            );
+            expect(disneyScript.getInjectScriptConfig().eventId).toBe(
+                'DISNEYPLUS_SUBTITLE_EVENT'
+            );
 
             // Verify common functionality works for both
             expect(netflixScript.eventBuffer).toBeInstanceOf(EventBuffer);
@@ -1627,36 +1838,37 @@ describe('Platform-Specific Method Mocking and Common Functionality Verification
             // Test platform-specific message handling
             const netflixRequest = {
                 action: 'netflix-specific',
-                data: 'test'
+                data: 'test',
             };
-            contentScript.handlePlatformSpecificMessage(netflixRequest, mockSendResponse);
+            contentScript.handlePlatformSpecificMessage(
+                netflixRequest,
+                mockSendResponse
+            );
 
             expect(mockSendResponse).toHaveBeenCalledWith({
                 success: true,
                 platform: 'test',
-                action: 'netflix-specific'
+                action: 'netflix-specific',
             });
         });
 
         test('should verify common functionality behavior across platforms', () => {
-            const platforms = [{
+            const platforms = [
+                {
                     name: 'netflix',
-                    eventId: 'NETFLIX_EVENT'
+                    eventId: 'NETFLIX_EVENT',
                 },
                 {
                     name: 'disneyplus',
-                    eventId: 'DISNEYPLUS_EVENT'
+                    eventId: 'DISNEYPLUS_EVENT',
                 },
                 {
                     name: 'test',
-                    eventId: 'TEST_EVENT'
-                }
+                    eventId: 'TEST_EVENT',
+                },
             ];
 
-            platforms.forEach(({
-                name,
-                eventId
-            }) => {
+            platforms.forEach(({ name, eventId }) => {
                 class MockPlatformScript extends BaseContentScript {
                     constructor() {
                         super(`${name}Mock`);
@@ -1671,14 +1883,14 @@ describe('Platform-Specific Method Mocking and Common Functionality Verification
                         return {
                             filename: 'test.js',
                             tagId: 'test',
-                            eventId
+                            eventId,
                         };
                     }
                     setupNavigationDetection() {}
                     checkForUrlChange() {}
                     handlePlatformSpecificMessage(req, res) {
                         res({
-                            platform: name
+                            platform: name,
                         });
                         return false;
                     }
@@ -1700,46 +1912,55 @@ describe('Platform-Specific Method Mocking and Common Functionality Verification
     describe('Common Functionality Verification', () => {
         test('should maintain consistent message handler registry across platforms', () => {
             // Verify common message handlers are registered
-            expect(contentScript.hasMessageHandler('toggleSubtitles')).toBe(true);
+            expect(contentScript.hasMessageHandler('toggleSubtitles')).toBe(
+                true
+            );
             expect(contentScript.hasMessageHandler('configChanged')).toBe(true);
-            expect(contentScript.hasMessageHandler('LOGGING_LEVEL_CHANGED')).toBe(true);
+            expect(
+                contentScript.hasMessageHandler('LOGGING_LEVEL_CHANGED')
+            ).toBe(true);
 
             // Verify handler information
             const handlers = contentScript.getRegisteredHandlers();
             expect(handlers).toHaveLength(3);
 
-            const toggleHandler = handlers.find(h => h.action === 'toggleSubtitles');
+            const toggleHandler = handlers.find(
+                (h) => h.action === 'toggleSubtitles'
+            );
             expect(toggleHandler).toBeDefined();
             expect(toggleHandler.requiresUtilities).toBe(true);
-            expect(toggleHandler.description).toContain('Toggle subtitle display');
+            expect(toggleHandler.description).toContain(
+                'Toggle subtitle display'
+            );
         });
 
         test('should handle event buffering consistently across platforms', () => {
-            const testEvents = [{
+            const testEvents = [
+                {
                     detail: {
                         type: 'SUBTITLE_DATA_FOUND',
-                        data: 'test1'
-                    }
+                        data: 'test1',
+                    },
                 },
                 {
                     detail: {
                         type: 'SUBTITLE_DATA_FOUND',
-                        data: 'test2'
-                    }
+                        data: 'test2',
+                    },
                 },
                 {
                     detail: {
                         type: 'SUBTITLE_DATA_FOUND',
-                        data: 'test3'
-                    }
-                }
+                        data: 'test3',
+                    },
+                },
             ];
 
             // Ensure platform is not ready
             contentScript.platformReady = false;
 
             // Buffer events when platform not ready
-            testEvents.forEach(event => {
+            testEvents.forEach((event) => {
                 contentScript.handleEarlyInjectorEvents(event);
             });
 
@@ -1748,7 +1969,7 @@ describe('Platform-Specific Method Mocking and Common Functionality Verification
 
             // Setup mock platform
             const mockPlatform = {
-                handleInjectorEvents: jest.fn()
+                handleInjectorEvents: jest.fn(),
             };
             contentScript.activePlatform = mockPlatform;
             contentScript.platformReady = true;
@@ -1764,27 +1985,29 @@ describe('Platform-Specific Method Mocking and Common Functionality Verification
         test('should handle video element detection consistently', () => {
             const mockVideo = document.createElement('video');
             const mockPlatform = {
-                getVideoElement: jest.fn().mockReturnValue(mockVideo)
+                getVideoElement: jest.fn().mockReturnValue(mockVideo),
             };
             const mockSubtitleUtils = {
                 ensureSubtitleContainer: jest.fn(),
                 subtitlesActive: true,
                 showSubtitleContainer: jest.fn(),
                 updateSubtitles: jest.fn(),
-                hideSubtitleContainer: jest.fn()
+                hideSubtitleContainer: jest.fn(),
             };
 
             contentScript.activePlatform = mockPlatform;
             contentScript.subtitleUtils = mockSubtitleUtils;
             contentScript.currentConfig = {
-                subtitlesEnabled: true
+                subtitlesEnabled: true,
             };
 
             const result = contentScript.attemptVideoSetup();
 
             expect(result).toBe(true);
             expect(mockPlatform.getVideoElement).toHaveBeenCalled();
-            expect(mockSubtitleUtils.ensureSubtitleContainer).toHaveBeenCalled();
+            expect(
+                mockSubtitleUtils.ensureSubtitleContainer
+            ).toHaveBeenCalled();
             expect(mockSubtitleUtils.showSubtitleContainer).toHaveBeenCalled();
         });
 
@@ -1793,9 +2016,9 @@ describe('Platform-Specific Method Mocking and Common Functionality Verification
                 getAll: jest.fn().mockResolvedValue({
                     theme: 'dark',
                     language: 'en',
-                    useOfficialTranslations: true
+                    useOfficialTranslations: true,
                 }),
-                onChanged: jest.fn()
+                onChanged: jest.fn(),
             };
             contentScript.configService = mockConfigService;
 
@@ -1805,23 +2028,25 @@ describe('Platform-Specific Method Mocking and Common Functionality Verification
             expect(contentScript.currentConfig).toEqual({
                 theme: 'dark',
                 language: 'en',
-                useOfficialTranslations: true
+                useOfficialTranslations: true,
             });
-            expect(mockConfigService.onChanged).toHaveBeenCalledWith(expect.any(Function));
+            expect(mockConfigService.onChanged).toHaveBeenCalledWith(
+                expect.any(Function)
+            );
         });
 
         test('should handle cleanup consistently across platforms', async () => {
             const mockPlatform = {
-                cleanup: jest.fn()
+                cleanup: jest.fn(),
             };
             const mockObserver = {
-                disconnect: jest.fn()
+                disconnect: jest.fn(),
             };
             const mockSubtitleUtils = {
-                clearSubtitleDOM: jest.fn()
+                clearSubtitleDOM: jest.fn(),
             };
             const mockIntervalManager = {
-                clearAll: jest.fn()
+                clearAll: jest.fn(),
             };
 
             contentScript.activePlatform = mockPlatform;
@@ -1845,16 +2070,22 @@ describe('Platform-Specific Method Mocking and Common Functionality Verification
 
     describe('Platform-Specific Method Integration', () => {
         test('should integrate platform-specific methods into common workflow', async () => {
-            const setupNavigationSpy = jest.spyOn(contentScript, 'setupNavigationDetection');
-            const checkUrlChangeSpy = jest.spyOn(contentScript, 'checkForUrlChange');
+            const setupNavigationSpy = jest.spyOn(
+                contentScript,
+                'setupNavigationDetection'
+            );
+            const checkUrlChangeSpy = jest.spyOn(
+                contentScript,
+                'checkForUrlChange'
+            );
 
             // Mock successful initialization
             contentScript.loadModules = jest.fn().mockResolvedValue(true);
             contentScript.configService = {
                 getAll: jest.fn().mockResolvedValue({
-                    subtitlesEnabled: false
+                    subtitlesEnabled: false,
                 }),
-                onChanged: jest.fn()
+                onChanged: jest.fn(),
             };
             contentScript.setupConfigurationListeners = jest.fn();
             contentScript.setupEarlyEventHandling = jest.fn();
@@ -1876,16 +2107,16 @@ describe('Platform-Specific Method Mocking and Common Functionality Verification
                 isPlayerPageActive: jest.fn().mockReturnValue(true),
                 initialize: jest.fn().mockResolvedValue(),
                 handleNativeSubtitles: jest.fn(),
-                cleanup: jest.fn()
+                cleanup: jest.fn(),
             }));
 
             contentScript.PlatformClass = mockPlatformClass;
             contentScript.subtitleUtils = {
-                setSubtitlesActive: jest.fn()
+                setSubtitlesActive: jest.fn(),
             };
             contentScript.configService = {};
             contentScript.currentConfig = {
-                subtitlesEnabled: true
+                subtitlesEnabled: true,
             };
             contentScript.startVideoElementDetection = jest.fn();
             contentScript.processBufferedEvents = jest.fn();

@@ -23,7 +23,7 @@ function normalizeBaseUrl(url) {
     logger.debug('Base URL normalized', {
         originalUrl: url,
         normalizedUrl: normalized,
-        hadTrailingSlash: url !== normalized
+        hadTrailingSlash: url !== normalized,
     });
 
     return normalized;
@@ -41,12 +41,14 @@ function normalizeModelName(model, baseUrl) {
     }
 
     if (baseUrl && baseUrl.includes('generativelanguage.googleapis.com')) {
-        const normalized = model.startsWith('models/') ? model.substring(7) : model;
+        const normalized = model.startsWith('models/')
+            ? model.substring(7)
+            : model;
 
         logger.debug('Model name normalized for Gemini', {
             originalModel: model,
             normalizedModel: normalized,
-            hadModelsPrefix: model.startsWith('models/')
+            hadModelsPrefix: model.startsWith('models/'),
         });
 
         return normalized;
@@ -61,23 +63,23 @@ function normalizeModelName(model, baseUrl) {
  */
 async function getConfig() {
     logger.debug('Retrieving configuration via configService');
-    
+
     const config = await configService.getMultiple([
         'openaiCompatibleApiKey',
-        'openaiCompatibleBaseUrl', 
-        'openaiCompatibleModel'
+        'openaiCompatibleBaseUrl',
+        'openaiCompatibleModel',
     ]);
 
     const result = {
         apiKey: config.openaiCompatibleApiKey,
         baseUrl: config.openaiCompatibleBaseUrl,
-        model: config.openaiCompatibleModel
+        model: config.openaiCompatibleModel,
     };
 
     logger.debug('Configuration retrieved successfully via configService', {
         hasApiKey: !!result.apiKey,
         baseUrl: result.baseUrl,
-        model: result.model
+        model: result.model,
     });
 
     return result;
@@ -116,39 +118,50 @@ export async function translate(text, sourceLang, targetLang) {
 
     // Get configuration from storage
     const config = await getConfig();
-    
+
     // Enhanced logging for configuration debugging
     logger.debug('Configuration retrieved for translation', {
         hasApiKey: !!config.apiKey,
         apiKeyLength: config.apiKey ? config.apiKey.length : 0,
         baseUrl: config.baseUrl,
         model: config.model,
-        isDefaultBaseUrl: config.baseUrl === 'https://generativelanguage.googleapis.com/v1beta/openai'
+        isDefaultBaseUrl:
+            config.baseUrl ===
+            'https://generativelanguage.googleapis.com/v1beta/openai',
     });
-    
+
     if (!config.apiKey) {
-        const error = new Error('OpenAI-compatible API key not configured. Please set your API key in the extension options.');
+        const error = new Error(
+            'OpenAI-compatible API key not configured. Please set your API key in the extension options.'
+        );
         logger.error('API key not configured', error, {
             hasBaseUrl: !!config.baseUrl,
             hasModel: !!config.model,
-            configDetails: JSON.stringify(config, null, 2)
+            configDetails: JSON.stringify(config, null, 2),
         });
         throw error;
     }
-    
+
     // Validate API key format for Gemini
-    if (config.baseUrl?.includes('generativelanguage.googleapis.com') && 
-        (!config.apiKey.startsWith(GEMINI_API_KEY_PREFIX) || config.apiKey.length < GEMINI_API_KEY_MIN_LENGTH)) {
-        const error = new Error(`Invalid Google Gemini API key format. Gemini API keys should start with "${GEMINI_API_KEY_PREFIX}" and be at least ${GEMINI_API_KEY_MIN_LENGTH} characters long.`);
+    if (
+        config.baseUrl?.includes('generativelanguage.googleapis.com') &&
+        (!config.apiKey.startsWith(GEMINI_API_KEY_PREFIX) ||
+            config.apiKey.length < GEMINI_API_KEY_MIN_LENGTH)
+    ) {
+        const error = new Error(
+            `Invalid Google Gemini API key format. Gemini API keys should start with "${GEMINI_API_KEY_PREFIX}" and be at least ${GEMINI_API_KEY_MIN_LENGTH} characters long.`
+        );
         logger.error('Invalid Gemini API key format detected', error, {
             apiKeyPrefix: config.apiKey.substring(0, 4),
-            apiKeyLength: config.apiKey.length
+            apiKeyLength: config.apiKey.length,
         });
         throw error;
     }
-    
+
     // Normalize baseUrl to remove trailing slashes/backslashes
-    const normalizedBaseUrl = normalizeBaseUrl(config.baseUrl) || 'https://generativelanguage.googleapis.com/v1beta/openai';
+    const normalizedBaseUrl =
+        normalizeBaseUrl(config.baseUrl) ||
+        'https://generativelanguage.googleapis.com/v1beta/openai';
     const rawModel = config.model || 'gemini-1.5-flash';
     const model = normalizeModelName(rawModel, normalizedBaseUrl);
     const OPENAI_COMPATIBLE_URL = `${normalizedBaseUrl}/chat/completions`;
@@ -159,37 +172,39 @@ export async function translate(text, sourceLang, targetLang) {
         normalizedModel: model,
         endpointUrl: OPENAI_COMPATIBLE_URL,
         originalBaseUrl: config.baseUrl,
-        isGeminiEndpoint: normalizedBaseUrl.includes('generativelanguage.googleapis.com'),
-        modelNormalized: rawModel !== model
+        isGeminiEndpoint: normalizedBaseUrl.includes(
+            'generativelanguage.googleapis.com'
+        ),
+        modelNormalized: rawModel !== model,
     });
 
     // Map language codes to full language names for better model understanding
     const languageNameMap = {
-        'en': 'English',
-        'es': 'Spanish',
-        'fr': 'French',
-        'de': 'German',
-        'it': 'Italian',
-        'pt': 'Portuguese',
-        'ru': 'Russian',
-        'ja': 'Japanese',
-        'ko': 'Korean',
-        'zh': 'Chinese',
+        en: 'English',
+        es: 'Spanish',
+        fr: 'French',
+        de: 'German',
+        it: 'Italian',
+        pt: 'Portuguese',
+        ru: 'Russian',
+        ja: 'Japanese',
+        ko: 'Korean',
+        zh: 'Chinese',
         'zh-CN': 'Chinese (Simplified)',
         'zh-TW': 'Chinese (Traditional)',
-        'ar': 'Arabic',
-        'hi': 'Hindi',
-        'th': 'Thai',
-        'vi': 'Vietnamese',
-        'nl': 'Dutch',
-        'sv': 'Swedish',
-        'da': 'Danish',
-        'no': 'Norwegian',
-        'fi': 'Finnish',
-        'pl': 'Polish',
-        'tr': 'Turkish',
-        'he': 'Hebrew',
-        'auto': 'auto-detected language'
+        ar: 'Arabic',
+        hi: 'Hindi',
+        th: 'Thai',
+        vi: 'Vietnamese',
+        nl: 'Dutch',
+        sv: 'Swedish',
+        da: 'Danish',
+        no: 'Norwegian',
+        fi: 'Finnish',
+        pl: 'Polish',
+        tr: 'Turkish',
+        he: 'Hebrew',
+        auto: 'auto-detected language',
     };
 
     const sourceLangName = languageNameMap[sourceLang] || sourceLang;
@@ -197,20 +212,20 @@ export async function translate(text, sourceLang, targetLang) {
 
     // Create the prompt for translation
     const systemPrompt = `You are a professional translator. Translate the given text accurately from ${sourceLangName} to ${targetLangName}. Only return the translated text without any additional comments, explanations, or formatting.`;
-    
+
     const userPrompt = text;
 
     const requestBody = {
         model: model,
         messages: [
             {
-                role: "system",
-                content: systemPrompt
+                role: 'system',
+                content: systemPrompt,
             },
             {
-                role: "user",
-                content: userPrompt
-            }
+                role: 'user',
+                content: userPrompt,
+            },
         ],
         temperature: 0.1, // Low temperature for consistent translations
         max_tokens: Math.min(MAX_TOKENS, text.length * TOKEN_MULTIPLIER), // Reasonable max tokens based on input length and multiplier
@@ -223,23 +238,23 @@ export async function translate(text, sourceLang, targetLang) {
             maxTokens: requestBody.max_tokens,
             messageCount: requestBody.messages.length,
             endpointUrl: OPENAI_COMPATIBLE_URL,
-            requestSize: JSON.stringify(requestBody).length
+            requestSize: JSON.stringify(requestBody).length,
         });
 
         const response = await fetch(OPENAI_COMPATIBLE_URL, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${config.apiKey}`
+                Authorization: `Bearer ${config.apiKey}`,
             },
-            body: JSON.stringify(requestBody)
+            body: JSON.stringify(requestBody),
         });
 
         logger.debug('API response received', {
             status: response.status,
             statusText: response.statusText,
             contentType: response.headers.get('content-type'),
-            responseSize: response.headers.get('content-length')
+            responseSize: response.headers.get('content-length'),
         });
 
         if (!response.ok) {
@@ -247,54 +262,101 @@ export async function translate(text, sourceLang, targetLang) {
             logger.error('OpenAI-Compatible API HTTP error', null, {
                 status: response.status,
                 statusText: response.statusText,
-                responsePreview: errorText.substring(0, ERROR_TEXT_PREVIEW_LENGTH),
+                responsePreview: errorText.substring(
+                    0,
+                    ERROR_TEXT_PREVIEW_LENGTH
+                ),
                 endpointUrl: OPENAI_COMPATIBLE_URL,
                 fullErrorText: errorText,
                 requestModel: model,
-                isGeminiEndpoint: normalizedBaseUrl.includes('generativelanguage.googleapis.com')
+                isGeminiEndpoint: normalizedBaseUrl.includes(
+                    'generativelanguage.googleapis.com'
+                ),
             });
-            
+
             // Enhanced error messages for common issues
             if (response.status === 401) {
-                if (normalizedBaseUrl.includes('generativelanguage.googleapis.com')) {
-                    throw new Error('API authentication failed. Please check your Google API key and ensure the Generative Language API is enabled in your Google Cloud project.');
+                if (
+                    normalizedBaseUrl.includes(
+                        'generativelanguage.googleapis.com'
+                    )
+                ) {
+                    throw new Error(
+                        'API authentication failed. Please check your Google API key and ensure the Generative Language API is enabled in your Google Cloud project.'
+                    );
                 }
-                throw new Error('Translation API authentication failed. Please check your API key.');
+                throw new Error(
+                    'Translation API authentication failed. Please check your API key.'
+                );
             } else if (response.status === 429) {
-                throw new Error('Translation API rate limit exceeded. Please try again later or check your quota limits.');
+                throw new Error(
+                    'Translation API rate limit exceeded. Please try again later or check your quota limits.'
+                );
             } else if (response.status === 403) {
-                if (normalizedBaseUrl.includes('generativelanguage.googleapis.com')) {
-                    throw new Error('API access forbidden. Please verify your API key has proper permissions and the Generative Language API is enabled.');
+                if (
+                    normalizedBaseUrl.includes(
+                        'generativelanguage.googleapis.com'
+                    )
+                ) {
+                    throw new Error(
+                        'API access forbidden. Please verify your API key has proper permissions and the Generative Language API is enabled.'
+                    );
                 }
-                throw new Error('Translation API access forbidden. Please check your API permissions.');
+                throw new Error(
+                    'Translation API access forbidden. Please check your API permissions.'
+                );
             } else if (response.status === 404) {
-                if (normalizedBaseUrl.includes('generativelanguage.googleapis.com')) {
-                    throw new Error(`API endpoint not found. The OpenAI-compatible endpoint may not be available. Try using the correct base URL: https://generativelanguage.googleapis.com/v1beta/openai (without trailing slash)`);
+                if (
+                    normalizedBaseUrl.includes(
+                        'generativelanguage.googleapis.com'
+                    )
+                ) {
+                    throw new Error(
+                        `API endpoint not found. The OpenAI-compatible endpoint may not be available. Try using the correct base URL: https://generativelanguage.googleapis.com/v1beta/openai (without trailing slash)`
+                    );
                 }
-                throw new Error(`Translation API endpoint not found. Please verify the base URL: ${normalizedBaseUrl}`);
+                throw new Error(
+                    `Translation API endpoint not found. Please verify the base URL: ${normalizedBaseUrl}`
+                );
             } else if (response.status >= 500) {
-                if (normalizedBaseUrl.includes('generativelanguage.googleapis.com')) {
-                    throw new Error(`API server error (${response.status}). The OpenAI-compatible endpoint may be experiencing issues. You might want to check Google's service status or try again later.`);
+                if (
+                    normalizedBaseUrl.includes(
+                        'generativelanguage.googleapis.com'
+                    )
+                ) {
+                    throw new Error(
+                        `API server error (${response.status}). The OpenAI-compatible endpoint may be experiencing issues. You might want to check Google's service status or try again later.`
+                    );
                 }
-                throw new Error(`Translation API server error (${response.status}). The service may be temporarily unavailable.`);
+                throw new Error(
+                    `Translation API server error (${response.status}). The service may be temporarily unavailable.`
+                );
             }
-            
-            throw new Error(`Translation API HTTP error ${response.status}: ${errorText.substring(0, ERROR_TEXT_TRUNCATION_LIMIT)}`);
+
+            throw new Error(
+                `Translation API HTTP error ${response.status}: ${errorText.substring(0, ERROR_TEXT_TRUNCATION_LIMIT)}`
+            );
         }
 
         const data = await response.json();
-        
+
         logger.debug('API response parsed', {
             hasChoices: !!data?.choices,
             choicesLength: data?.choices?.length || 0,
             hasUsage: !!data?.usage,
             tokensUsed: data?.usage?.total_tokens || 'unknown',
-            responseStructure: Object.keys(data)
+            responseStructure: Object.keys(data),
         });
-        
-        if (data && data.choices && data.choices.length > 0 && data.choices[0].message && data.choices[0].message.content) {
+
+        if (
+            data &&
+            data.choices &&
+            data.choices.length > 0 &&
+            data.choices[0].message &&
+            data.choices[0].message.content
+        ) {
             const translatedText = data.choices[0].message.content.trim();
-            
+
             // Basic validation to ensure we got a translation
             if (translatedText && translatedText.length > 0) {
                 logger.info('Translation completed successfully', {
@@ -303,16 +365,18 @@ export async function translate(text, sourceLang, targetLang) {
                     model: model,
                     tokensUsed: data.usage?.total_tokens || 'unknown',
                     originalPreview: text.substring(0, 30),
-                    translatedPreview: translatedText.substring(0, 30)
+                    translatedPreview: translatedText.substring(0, 30),
                 });
                 return translatedText;
             } else {
                 logger.error('Empty translation received', null, {
                     responseData: data,
                     originalText: text.substring(0, 100),
-                    fullResponse: JSON.stringify(data)
+                    fullResponse: JSON.stringify(data),
                 });
-                throw new Error('Translation Error: Empty response from translation service.');
+                throw new Error(
+                    'Translation Error: Empty response from translation service.'
+                );
             }
         } else {
             logger.error(
@@ -323,7 +387,7 @@ export async function translate(text, sourceLang, targetLang) {
                     hasChoices: !!data?.choices,
                     choicesLength: data?.choices?.length || 0,
                     fullResponse: JSON.stringify(data),
-                    expectedStructure: 'data.choices[0].message.content'
+                    expectedStructure: 'data.choices[0].message.content',
                 }
             );
             throw new Error(
@@ -341,25 +405,30 @@ export async function translate(text, sourceLang, targetLang) {
             textPreview: text?.substring(0, 50),
             endpointUrl: OPENAI_COMPATIBLE_URL,
             model: model,
-            isNetworkError: error.name === 'TypeError' && error.message.includes('fetch'),
+            isNetworkError:
+                error.name === 'TypeError' && error.message.includes('fetch'),
             configSnapshot: {
                 hasApiKey: !!config.apiKey,
                 baseUrl: config.baseUrl,
-                model: config.model
-            }
+                model: config.model,
+            },
         });
-        
+
         // Provide more specific error messages for common network issues
         if (error.name === 'TypeError' && error.message.includes('fetch')) {
-            throw new Error('Translation Error: Network connection failed. Please check your internet connection and verify the API endpoint URL.');
+            throw new Error(
+                'Translation Error: Network connection failed. Please check your internet connection and verify the API endpoint URL.'
+            );
         }
-        
+
         // Check for CORS issues
         if (error.message.includes('CORS')) {
-            throw new Error('Translation Error: CORS policy violation. This may indicate an incorrect API endpoint URL.');
+            throw new Error(
+                'Translation Error: CORS policy violation. This may indicate an incorrect API endpoint URL.'
+            );
         }
-        
+
         // Re-throw the error to be caught by the caller
         throw error;
     }
-} 
+}

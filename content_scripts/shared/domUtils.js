@@ -31,7 +31,7 @@ export class VideoElementDetector {
             onVideoFound: null,
             onDetectionFailed: null,
             logger: null,
-            ...options
+            ...options,
         };
 
         // Detection state
@@ -57,7 +57,7 @@ export class VideoElementDetector {
         this._log('info', 'Starting video element detection.', {
             platform: this.platform,
             selectors: this.options.selectors,
-            maxRetries: this.options.maxRetries
+            maxRetries: this.options.maxRetries,
         });
 
         this.isDetecting = true;
@@ -66,7 +66,7 @@ export class VideoElementDetector {
         return new Promise((resolve) => {
             const attemptDetection = () => {
                 const video = this._detectVideo();
-                
+
                 if (video) {
                     this._onVideoFound(video);
                     resolve(video);
@@ -74,7 +74,7 @@ export class VideoElementDetector {
                 }
 
                 this.retryCount++;
-                
+
                 if (this.retryCount >= this.options.maxRetries) {
                     this._onDetectionFailed();
                     resolve(null);
@@ -83,10 +83,13 @@ export class VideoElementDetector {
 
                 this._log('debug', 'Video not found, retrying', {
                     attempt: this.retryCount,
-                    maxRetries: this.options.maxRetries
+                    maxRetries: this.options.maxRetries,
                 });
 
-                this.detectionInterval = setTimeout(attemptDetection, this.options.retryInterval);
+                this.detectionInterval = setTimeout(
+                    attemptDetection,
+                    this.options.retryInterval
+                );
             };
 
             attemptDetection();
@@ -101,7 +104,7 @@ export class VideoElementDetector {
             clearTimeout(this.detectionInterval);
             this.detectionInterval = null;
         }
-        
+
         this.isDetecting = false;
         this._log('info', 'Video element detection stopped.');
     }
@@ -141,16 +144,21 @@ export class VideoElementDetector {
 
         return new Promise((resolve) => {
             const startTime = Date.now();
-            
+
             const checkReady = () => {
                 if (this.isVideoReady(video)) {
-                    this._log('info', 'Video is ready for subtitle processing.');
+                    this._log(
+                        'info',
+                        'Video is ready for subtitle processing.'
+                    );
                     resolve(true);
                     return;
                 }
 
                 if (Date.now() - startTime > timeout) {
-                    this._log('warn', 'Video ready timeout exceeded.', { timeout });
+                    this._log('warn', 'Video ready timeout exceeded.', {
+                        timeout,
+                    });
                     resolve(false);
                     return;
                 }
@@ -171,13 +179,13 @@ export class VideoElementDetector {
         for (const selector of this.options.selectors) {
             try {
                 const videos = document.querySelectorAll(selector);
-                
+
                 for (const video of videos) {
                     if (this._isValidVideo(video)) {
                         this._log('debug', 'Video element found.', {
                             selector,
                             videoSrc: video.src || 'no src',
-                            readyState: video.readyState
+                            readyState: video.readyState,
                         });
                         return video;
                     }
@@ -185,7 +193,7 @@ export class VideoElementDetector {
             } catch (error) {
                 this._log('error', 'Error querying video selector.', {
                     selector,
-                    error: error.message
+                    error: error.message,
                 });
             }
         }
@@ -220,7 +228,7 @@ export class VideoElementDetector {
     _onVideoFound(video) {
         this.currentVideo = video;
         this.isDetecting = false;
-        
+
         if (this.detectionInterval) {
             clearTimeout(this.detectionInterval);
             this.detectionInterval = null;
@@ -229,7 +237,7 @@ export class VideoElementDetector {
         this._log('info', 'Video element detected successfully.', {
             videoSrc: video.src || 'no src',
             readyState: video.readyState,
-            dimensions: `${video.videoWidth}x${video.videoHeight}`
+            dimensions: `${video.videoWidth}x${video.videoHeight}`,
         });
 
         if (this.options.onVideoFound) {
@@ -243,7 +251,7 @@ export class VideoElementDetector {
      */
     _onDetectionFailed() {
         this.isDetecting = false;
-        
+
         if (this.detectionInterval) {
             clearTimeout(this.detectionInterval);
             this.detectionInterval = null;
@@ -251,7 +259,7 @@ export class VideoElementDetector {
 
         this._log('error', 'Video element detection failed.', {
             maxRetries: this.options.maxRetries,
-            selectors: this.options.selectors
+            selectors: this.options.selectors,
         });
 
         if (this.options.onDetectionFailed) {
@@ -271,14 +279,14 @@ export class VideoElementDetector {
                 'video',
                 '.watch-video video',
                 '.nfp-video-player video',
-                '[data-uia="video-canvas"] video'
+                '[data-uia="video-canvas"] video',
             ],
             disneyplus: [
                 'video',
                 '.btm-media-client-element video',
                 '.video-player video',
-                '[data-testid="video-player"] video'
-            ]
+                '[data-testid="video-player"] video',
+            ],
         };
 
         return defaultSelectors[platform.toLowerCase()] || ['video'];
@@ -293,9 +301,16 @@ export class VideoElementDetector {
      */
     _log(level, message, data = {}) {
         if (this.options.logger) {
-            this.options.logger(level, `[VideoElementDetector:${this.platform}] ${message}`, data);
+            this.options.logger(
+                level,
+                `[VideoElementDetector:${this.platform}] ${message}`,
+                data
+            );
         } else {
-            console.log(`[VideoElementDetector:${this.platform}] [${level.toUpperCase()}] ${message}`, data);
+            console.log(
+                `[VideoElementDetector:${this.platform}] [${level.toUpperCase()}] ${message}`,
+                data
+            );
         }
     }
 }
@@ -319,7 +334,7 @@ export class DOMManipulator {
             containerClass: 'dualsub-container',
             containerPrefix: 'dualsub',
             logger: null,
-            ...options
+            ...options,
         };
 
         // Track created elements for cleanup
@@ -337,20 +352,27 @@ export class DOMManipulator {
      */
     createSubtitleContainer(videoElement, options = {}) {
         if (!videoElement) {
-            this._log('error', 'Cannot create subtitle container: video element is null.');
+            this._log(
+                'error',
+                'Cannot create subtitle container: video element is null.'
+            );
             return null;
         }
 
         const {
             position = 'bottom',
-            id = `${this.options.containerPrefix}-${position}-${Date.now()}`
+            id = `${this.options.containerPrefix}-${position}-${Date.now()}`,
         } = options;
 
         try {
             // Find or create parent container
-            const parentContainer = this._findOrCreateParentContainer(videoElement);
+            const parentContainer =
+                this._findOrCreateParentContainer(videoElement);
             if (!parentContainer) {
-                this._log('error', 'Could not find or create a parent container.');
+                this._log(
+                    'error',
+                    'Could not find or create a parent container.'
+                );
                 return null;
             }
 
@@ -358,27 +380,27 @@ export class DOMManipulator {
             const container = document.createElement('div');
             container.id = id;
             container.className = `${this.options.containerClass} ${this.options.containerClass}--${position}`;
-            
+
             // Set container styles
             this._applyContainerStyles(container, position);
-            
+
             // Append to parent
             parentContainer.appendChild(container);
-            
+
             // Track for cleanup
             this.createdElements.add(container);
-            
+
             this._log('info', 'Subtitle container created.', {
                 id,
                 position,
-                parentContainer: parentContainer.tagName
+                parentContainer: parentContainer.tagName,
             });
 
             return container;
         } catch (error) {
             this._log('error', 'Error creating subtitle container.', {
                 error: error.message,
-                position
+                position,
             });
             return null;
         }
@@ -391,28 +413,31 @@ export class DOMManipulator {
      */
     removeSubtitleContainer(container) {
         try {
-            const element = typeof container === 'string' 
-                ? document.getElementById(container)
-                : container;
+            const element =
+                typeof container === 'string'
+                    ? document.getElementById(container)
+                    : container;
 
             if (!element) {
-                this._log('warn', 'Container not found for removal.', { container });
+                this._log('warn', 'Container not found for removal.', {
+                    container,
+                });
                 return false;
             }
 
             element.remove();
             this.createdElements.delete(element);
-            
+
             this._log('info', 'Subtitle container removed.', {
                 id: element.id,
-                className: element.className
+                className: element.className,
             });
 
             return true;
         } catch (error) {
             this._log('error', 'Error removing subtitle container.', {
                 error: error.message,
-                container
+                container,
             });
             return false;
         }
@@ -426,31 +451,34 @@ export class DOMManipulator {
      */
     injectCSS(css, id = null) {
         try {
-            const styleId = id || `${this.options.containerPrefix}-styles-${Date.now()}`;
-            
+            const styleId =
+                id || `${this.options.containerPrefix}-styles-${Date.now()}`;
+
             // Check if style already exists
             if (document.getElementById(styleId)) {
-                this._log('debug', 'CSS has already been injected.', { styleId });
+                this._log('debug', 'CSS has already been injected.', {
+                    styleId,
+                });
                 return document.getElementById(styleId);
             }
 
             const style = document.createElement('style');
             style.id = styleId;
             style.textContent = css;
-            
+
             document.head.appendChild(style);
             this.injectedStyles.add(style);
-            
+
             this._log('info', 'CSS injected successfully.', {
                 styleId,
-                cssLength: css.length
+                cssLength: css.length,
             });
 
             return style;
         } catch (error) {
             this._log('error', 'Error injecting CSS.', {
                 error: error.message,
-                cssLength: css?.length || 0
+                cssLength: css?.length || 0,
             });
             return null;
         }
@@ -466,7 +494,7 @@ export class DOMManipulator {
 
         // Platform-specific parent selectors
         const parentSelectors = this._getParentSelectors();
-        
+
         for (const selector of parentSelectors) {
             try {
                 const parent = videoElement.closest(selector);
@@ -474,14 +502,14 @@ export class DOMManipulator {
                     this._log('debug', 'Found subtitle parent.', {
                         selector,
                         parentTag: parent.tagName,
-                        parentClass: parent.className
+                        parentClass: parent.className,
                     });
                     return parent;
                 }
             } catch (error) {
                 this._log('debug', 'Error checking parent selector.', {
                     selector,
-                    error: error.message
+                    error: error.message,
                 });
             }
         }
@@ -506,7 +534,7 @@ export class DOMManipulator {
             } catch (error) {
                 this._log('warn', 'Error removing element during cleanup.', {
                     error: error.message,
-                    elementId: element.id
+                    elementId: element.id,
                 });
             }
         }
@@ -522,14 +550,14 @@ export class DOMManipulator {
             } catch (error) {
                 this._log('warn', 'Error removing style during cleanup.', {
                     error: error.message,
-                    styleId: style.id
+                    styleId: style.id,
                 });
             }
         }
         this.injectedStyles.clear();
 
         this._log('info', 'DOM cleanup completed.', {
-            elementsRemoved: cleanedCount
+            elementsRemoved: cleanedCount,
         });
     }
 
@@ -573,16 +601,16 @@ export class DOMManipulator {
             right: '0',
             zIndex: '9999',
             pointerEvents: 'none',
-            textAlign: 'center'
+            textAlign: 'center',
         };
 
         const positionStyles = {
             top: { top: '10px' },
-            bottom: { bottom: '10px' }
+            bottom: { bottom: '10px' },
         };
 
         const styles = { ...baseStyles, ...positionStyles[position] };
-        
+
         Object.assign(container.style, styles);
     }
 
@@ -597,17 +625,22 @@ export class DOMManipulator {
                 '.watch-video',
                 '.nfp-video-player',
                 '[data-uia="video-canvas"]',
-                '.VideoContainer'
+                '.VideoContainer',
             ],
             disneyplus: [
                 '.btm-media-client-element',
                 '.video-player',
                 '[data-testid="video-player"]',
-                '.media-container'
-            ]
+                '.media-container',
+            ],
         };
 
-        return selectors[this.platform.toLowerCase()] || ['.video-container', '.player-container'];
+        return (
+            selectors[this.platform.toLowerCase()] || [
+                '.video-container',
+                '.player-container',
+            ]
+        );
     }
 
     /**
@@ -619,9 +652,16 @@ export class DOMManipulator {
      */
     _log(level, message, data = {}) {
         if (this.options.logger) {
-            this.options.logger(level, `[DOMManipulator:${this.platform}] ${message}`, data);
+            this.options.logger(
+                level,
+                `[DOMManipulator:${this.platform}] ${message}`,
+                data
+            );
         } else {
-            console.log(`[DOMManipulator:${this.platform}] [${level.toUpperCase()}] ${message}`, data);
+            console.log(
+                `[DOMManipulator:${this.platform}] [${level.toUpperCase()}] ${message}`,
+                data
+            );
         }
     }
 }
@@ -649,7 +689,7 @@ export class PlayerReadyDetector {
             onPlayerReady: null,
             onDetectionTimeout: null,
             logger: null,
-            ...options
+            ...options,
         };
 
         this.isDetecting = false;
@@ -668,7 +708,7 @@ export class PlayerReadyDetector {
 
         this._log('info', 'Starting player ready detection.', {
             platform: this.platform,
-            maxRetries: this.options.maxRetries
+            maxRetries: this.options.maxRetries,
         });
 
         this.isDetecting = true;
@@ -683,7 +723,7 @@ export class PlayerReadyDetector {
                 }
 
                 this.retryCount++;
-                
+
                 if (this.retryCount >= this.options.maxRetries) {
                     this._onDetectionTimeout();
                     resolve(false);
@@ -692,7 +732,7 @@ export class PlayerReadyDetector {
 
                 this._log('debug', 'Player not ready, retrying', {
                     attempt: this.retryCount,
-                    maxRetries: this.options.maxRetries
+                    maxRetries: this.options.maxRetries,
                 });
 
                 setTimeout(checkReady, this.options.retryInterval);
@@ -742,11 +782,15 @@ export class PlayerReadyDetector {
      */
     _isNetflixReady() {
         // Check for Netflix player elements
-        const playerContainer = document.querySelector('.watch-video, .nfp-video-player');
+        const playerContainer = document.querySelector(
+            '.watch-video, .nfp-video-player'
+        );
         if (!playerContainer) return false;
 
         // Check for subtitle track elements (indicates player is fully loaded)
-        const subtitleElements = document.querySelectorAll('.player-timedtext, .timedtext');
+        const subtitleElements = document.querySelectorAll(
+            '.player-timedtext, .timedtext'
+        );
         return subtitleElements.length > 0;
     }
 
@@ -757,7 +801,9 @@ export class PlayerReadyDetector {
      */
     _isDisneyPlusReady() {
         // Check for Disney+ player elements
-        const playerContainer = document.querySelector('.btm-media-client-element, .video-player');
+        const playerContainer = document.querySelector(
+            '.btm-media-client-element, .video-player'
+        );
         if (!playerContainer) return false;
 
         // Check for control elements (indicates player is interactive)
@@ -771,9 +817,9 @@ export class PlayerReadyDetector {
      */
     _onPlayerReady() {
         this.isDetecting = false;
-        
+
         this._log('info', 'Player is ready for subtitle processing.', {
-            retryCount: this.retryCount
+            retryCount: this.retryCount,
         });
 
         if (this.options.onPlayerReady) {
@@ -787,10 +833,10 @@ export class PlayerReadyDetector {
      */
     _onDetectionTimeout() {
         this.isDetecting = false;
-        
+
         this._log('warn', 'Player ready detection timed out.', {
             maxRetries: this.options.maxRetries,
-            totalTime: this.options.maxRetries * this.options.retryInterval
+            totalTime: this.options.maxRetries * this.options.retryInterval,
         });
 
         if (this.options.onDetectionTimeout) {
@@ -807,9 +853,16 @@ export class PlayerReadyDetector {
      */
     _log(level, message, data = {}) {
         if (this.options.logger) {
-            this.options.logger(level, `[PlayerReadyDetector:${this.platform}] ${message}`, data);
+            this.options.logger(
+                level,
+                `[PlayerReadyDetector:${this.platform}] ${message}`,
+                data
+            );
         } else {
-            console.log(`[PlayerReadyDetector:${this.platform}] [${level.toUpperCase()}] ${message}`, data);
+            console.log(
+                `[PlayerReadyDetector:${this.platform}] [${level.toUpperCase()}] ${message}`,
+                data
+            );
         }
     }
 }
@@ -823,34 +876,34 @@ export const PLATFORM_DOM_CONFIGS = {
             'video',
             '.watch-video video',
             '.nfp-video-player video',
-            '[data-uia="video-canvas"] video'
+            '[data-uia="video-canvas"] video',
         ],
         parentSelectors: [
             '.watch-video',
             '.nfp-video-player',
             '[data-uia="video-canvas"]',
-            '.VideoContainer'
+            '.VideoContainer',
         ],
         maxRetries: 40,
-        retryInterval: 1000
+        retryInterval: 1000,
     },
-    
+
     disneyplus: {
         videoSelectors: [
             'video',
             '.btm-media-client-element video',
             '.video-player video',
-            '[data-testid="video-player"] video'
+            '[data-testid="video-player"] video',
         ],
         parentSelectors: [
             '.btm-media-client-element',
             '.video-player',
             '[data-testid="video-player"]',
-            '.media-container'
+            '.media-container',
         ],
         maxRetries: 30,
-        retryInterval: 500
-    }
+        retryInterval: 500,
+    },
 };
 
 /**
@@ -865,9 +918,9 @@ export function createPlatformVideoDetector(platform, customOptions = {}) {
         selectors: platformConfig.videoSelectors,
         maxRetries: platformConfig.maxRetries,
         retryInterval: platformConfig.retryInterval,
-        ...customOptions
+        ...customOptions,
     };
-    
+
     return new VideoElementDetector(platform, options);
 }
 
@@ -881,8 +934,8 @@ export function createPlatformDOMManipulator(platform, customOptions = {}) {
     const options = {
         containerClass: `dualsub-${platform.toLowerCase()}-container`,
         containerPrefix: `dualsub-${platform.toLowerCase()}`,
-        ...customOptions
+        ...customOptions,
     };
-    
+
     return new DOMManipulator(platform, options);
 }

@@ -15,26 +15,26 @@ export const COMMON_CONSTANTS = {
     MAX_VIDEO_DETECTION_RETRIES: 30,
     VIDEO_DETECTION_INTERVAL: 1000,
     VIDEO_DETECTION_MAX_INTERVAL: 5000,
-    
+
     // Progress bar detection settings
     MAX_FIND_PROGRESS_BAR_RETRIES: 20,
     FIND_PROGRESS_BAR_INTERVAL: 500,
-    
+
     // Navigation and Initialization
     URL_CHECK_INTERVAL: 2000,
     NAVIGATION_DELAY: 100,
     PLATFORM_INIT_DELAY: 1000,
     REINIT_DELAY: 1500,
-    
+
     // Retry and Timeout Settings
     PLATFORM_INIT_MAX_RETRIES: 3,
     PLATFORM_INIT_RETRY_DELAY: 1000,
     PLATFORM_INIT_TIMEOUT: 10000,
     CLEANUP_TIMEOUT: 5000,
-    
+
     // Logging and Configuration
     TIME_UPDATE_LOG_INTERVAL: 30,
-    UI_ONLY_SETTINGS: ['appearanceAccordionOpen']
+    UI_ONLY_SETTINGS: ['appearanceAccordionOpen'],
 };
 
 /**
@@ -47,7 +47,7 @@ export const PLATFORM_CONSTANTS = {
         INJECT_EVENT_ID: 'netflix-dualsub-injector-event',
         URL_PATTERNS: ['netflix.com'],
         PLAYER_URL_PATTERN: '/watch/',
-        LOG_PREFIX: 'NetflixContent'
+        LOG_PREFIX: 'NetflixContent',
     },
     disneyplus: {
         INJECT_SCRIPT_FILENAME: 'injected_scripts/disneyPlusInject.js',
@@ -55,8 +55,8 @@ export const PLATFORM_CONSTANTS = {
         INJECT_EVENT_ID: 'disneyplus-dualsub-injector-event',
         URL_PATTERNS: ['disneyplus.com'],
         PLAYER_URL_PATTERN: '/video/',
-        LOG_PREFIX: 'DisneyPlusContent'
-    }
+        LOG_PREFIX: 'DisneyPlusContent',
+    },
 };
 
 /**
@@ -68,37 +68,37 @@ export const DEFAULT_PLATFORM_CONFIGS = {
         injectScript: {
             filename: PLATFORM_CONSTANTS.netflix.INJECT_SCRIPT_FILENAME,
             tagId: PLATFORM_CONSTANTS.netflix.INJECT_SCRIPT_TAG_ID,
-            eventId: PLATFORM_CONSTANTS.netflix.INJECT_EVENT_ID
+            eventId: PLATFORM_CONSTANTS.netflix.INJECT_EVENT_ID,
         },
         navigation: {
             urlPatterns: PLATFORM_CONSTANTS.netflix.URL_PATTERNS,
             spaHandling: true,
             checkInterval: COMMON_CONSTANTS.URL_CHECK_INTERVAL,
-            playerUrlPattern: PLATFORM_CONSTANTS.netflix.PLAYER_URL_PATTERN
+            playerUrlPattern: PLATFORM_CONSTANTS.netflix.PLAYER_URL_PATTERN,
         },
         videoDetection: {
             maxRetries: COMMON_CONSTANTS.MAX_VIDEO_DETECTION_RETRIES,
-            retryInterval: COMMON_CONSTANTS.VIDEO_DETECTION_INTERVAL
+            retryInterval: COMMON_CONSTANTS.VIDEO_DETECTION_INTERVAL,
         },
-        logPrefix: PLATFORM_CONSTANTS.netflix.LOG_PREFIX
+        logPrefix: PLATFORM_CONSTANTS.netflix.LOG_PREFIX,
     },
     disneyplus: {
         name: 'disneyplus',
         injectScript: {
             filename: PLATFORM_CONSTANTS.disneyplus.INJECT_SCRIPT_FILENAME,
             tagId: PLATFORM_CONSTANTS.disneyplus.INJECT_SCRIPT_TAG_ID,
-            eventId: PLATFORM_CONSTANTS.disneyplus.INJECT_EVENT_ID
+            eventId: PLATFORM_CONSTANTS.disneyplus.INJECT_EVENT_ID,
         },
         navigation: {
             urlPatterns: PLATFORM_CONSTANTS.disneyplus.URL_PATTERNS,
             spaHandling: false,
             checkInterval: COMMON_CONSTANTS.URL_CHECK_INTERVAL,
-            playerUrlPattern: PLATFORM_CONSTANTS.disneyplus.PLAYER_URL_PATTERN
+            playerUrlPattern: PLATFORM_CONSTANTS.disneyplus.PLAYER_URL_PATTERN,
         },
         videoDetection: {
             maxRetries: COMMON_CONSTANTS.MAX_VIDEO_DETECTION_RETRIES,
-            retryInterval: COMMON_CONSTANTS.VIDEO_DETECTION_INTERVAL
+            retryInterval: COMMON_CONSTANTS.VIDEO_DETECTION_INTERVAL,
         },
-        logPrefix: PLATFORM_CONSTANTS.disneyplus.LOG_PREFIX
-    }
+        logPrefix: PLATFORM_CONSTANTS.disneyplus.LOG_PREFIX,
+    },
 };

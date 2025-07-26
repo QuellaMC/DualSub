@@ -23,7 +23,7 @@ export class NavigationLogger {
         this.config = {
             logger: null,
             enablePerformanceTracking: true,
-            ...config
+            ...config,
         };
 
         // Navigation state tracking
@@ -33,7 +33,7 @@ export class NavigationLogger {
             lastNavigationTime: null,
             navigationCount: 0,
             playerPageEntries: 0,
-            playerPageExits: 0
+            playerPageExits: 0,
         };
 
         // Performance tracking
@@ -44,7 +44,7 @@ export class NavigationLogger {
             navigationDetectionTimes: [],
             playerReadyTimes: [],
             averageNavigationTime: 0,
-            averagePlayerReadyTime: 0
+            averagePlayerReadyTime: 0,
         };
 
         // Initialization sequence tracking
@@ -60,8 +60,8 @@ export class NavigationLogger {
      */
     logNavigationDetection(fromUrl, toUrl, additionalData = {}) {
         const navigationTime = Date.now();
-        const timeSinceLastNavigation = this.navigationState.lastNavigationTime 
-            ? navigationTime - this.navigationState.lastNavigationTime 
+        const timeSinceLastNavigation = this.navigationState.lastNavigationTime
+            ? navigationTime - this.navigationState.lastNavigationTime
             : 0;
 
         // Update navigation state
@@ -71,11 +71,18 @@ export class NavigationLogger {
         this.navigationState.navigationCount++;
 
         // Track navigation timing
-        if (this.config.enablePerformanceTracking && timeSinceLastNavigation > 0) {
-            this.performanceMetrics.navigationDetectionTimes.push(timeSinceLastNavigation);
-            this.performanceMetrics.averageNavigationTime = 
-                this.performanceMetrics.navigationDetectionTimes.reduce((a, b) => a + b, 0) / 
-                this.performanceMetrics.navigationDetectionTimes.length;
+        if (
+            this.config.enablePerformanceTracking &&
+            timeSinceLastNavigation > 0
+        ) {
+            this.performanceMetrics.navigationDetectionTimes.push(
+                timeSinceLastNavigation
+            );
+            this.performanceMetrics.averageNavigationTime =
+                this.performanceMetrics.navigationDetectionTimes.reduce(
+                    (a, b) => a + b,
+                    0
+                ) / this.performanceMetrics.navigationDetectionTimes.length;
         }
 
         this._logNavigation('info', 'Navigation detected', {
@@ -83,18 +90,26 @@ export class NavigationLogger {
                 from: fromUrl,
                 to: toUrl,
                 navigationTime,
-                timeSinceLastNavigation: timeSinceLastNavigation > 0 ? `${timeSinceLastNavigation}ms` : 'first navigation',
+                timeSinceLastNavigation:
+                    timeSinceLastNavigation > 0
+                        ? `${timeSinceLastNavigation}ms`
+                        : 'first navigation',
                 navigationCount: this.navigationState.navigationCount,
                 urlChanged: fromUrl !== toUrl,
-                pathChanged: this._extractPath(fromUrl) !== this._extractPath(toUrl),
+                pathChanged:
+                    this._extractPath(fromUrl) !== this._extractPath(toUrl),
                 isPlayerPage: this._isPlayerPage(toUrl),
-                wasPlayerPage: this._isPlayerPage(fromUrl)
+                wasPlayerPage: this._isPlayerPage(fromUrl),
             },
-            performance: this.config.enablePerformanceTracking ? {
-                averageNavigationTime: `${this.performanceMetrics.averageNavigationTime.toFixed(2)}ms`,
-                totalNavigations: this.performanceMetrics.navigationDetectionTimes.length
-            } : null,
-            ...additionalData
+            performance: this.config.enablePerformanceTracking
+                ? {
+                      averageNavigationTime: `${this.performanceMetrics.averageNavigationTime.toFixed(2)}ms`,
+                      totalNavigations:
+                          this.performanceMetrics.navigationDetectionTimes
+                              .length,
+                  }
+                : null,
+            ...additionalData,
         });
     }
 
@@ -107,7 +122,7 @@ export class NavigationLogger {
      */
     logInitializationStep(initializationId, step, status, stepData = {}) {
         const stepTime = Date.now();
-        
+
         // Initialize tracking for new initialization sequence
         if (!this.initializationSteps.has(initializationId)) {
             this.initializationSteps.set(initializationId, {
@@ -115,14 +130,14 @@ export class NavigationLogger {
                 steps: [],
                 currentStep: null,
                 completed: false,
-                failed: false
+                failed: false,
             });
             this.currentInitializationId = initializationId;
             this.performanceMetrics.initializationStartTime = stepTime;
         }
 
         const initSequence = this.initializationSteps.get(initializationId);
-        
+
         // Update step tracking
         if (status === 'started') {
             initSequence.currentStep = step;
@@ -132,11 +147,13 @@ export class NavigationLogger {
                 endTime: null,
                 duration: null,
                 status: 'in_progress',
-                data: stepData
+                data: stepData,
             });
         } else {
             // Find and update the step
-            const stepIndex = initSequence.steps.findIndex(s => s.name === step && s.status === 'in_progress');
+            const stepIndex = initSequence.steps.findIndex(
+                (s) => s.name === step && s.status === 'in_progress'
+            );
             if (stepIndex >= 0) {
                 const stepRecord = initSequence.steps[stepIndex];
                 stepRecord.endTime = stepTime;
@@ -150,7 +167,8 @@ export class NavigationLogger {
         if (status === 'completed' && step === 'final_validation') {
             initSequence.completed = true;
             this.performanceMetrics.initializationEndTime = stepTime;
-            this.performanceMetrics.totalInitializationTime = stepTime - initSequence.startTime;
+            this.performanceMetrics.totalInitializationTime =
+                stepTime - initSequence.startTime;
         } else if (status === 'failed') {
             initSequence.failed = true;
             initSequence.failedStep = step;
@@ -162,25 +180,33 @@ export class NavigationLogger {
                 step,
                 status,
                 stepTime,
-                stepDuration: status !== 'started' && initSequence.steps.length > 0 
-                    ? `${initSequence.steps[initSequence.steps.findIndex(s => s.name === step)]?.duration || 0}ms`
-                    : null,
+                stepDuration:
+                    status !== 'started' && initSequence.steps.length > 0
+                        ? `${initSequence.steps[initSequence.steps.findIndex((s) => s.name === step)]?.duration || 0}ms`
+                        : null,
                 totalSteps: initSequence.steps.length,
-                completedSteps: initSequence.steps.filter(s => s.status === 'completed').length,
-                failedSteps: initSequence.steps.filter(s => s.status === 'failed').length,
+                completedSteps: initSequence.steps.filter(
+                    (s) => s.status === 'completed'
+                ).length,
+                failedSteps: initSequence.steps.filter(
+                    (s) => s.status === 'failed'
+                ).length,
                 currentStep: initSequence.currentStep,
                 isComplete: initSequence.completed,
-                hasFailed: initSequence.failed
+                hasFailed: initSequence.failed,
             },
             stepData,
-            performance: this.config.enablePerformanceTracking ? {
-                totalInitTime: initSequence.completed 
-                    ? `${this.performanceMetrics.totalInitializationTime}ms`
-                    : `${stepTime - initSequence.startTime}ms (ongoing)`,
-                averageStepTime: initSequence.steps.length > 0
-                    ? `${(initSequence.steps.reduce((sum, s) => sum + (s.duration || 0), 0) / initSequence.steps.length).toFixed(2)}ms`
-                    : '0ms'
-            } : null
+            performance: this.config.enablePerformanceTracking
+                ? {
+                      totalInitTime: initSequence.completed
+                          ? `${this.performanceMetrics.totalInitializationTime}ms`
+                          : `${stepTime - initSequence.startTime}ms (ongoing)`,
+                      averageStepTime:
+                          initSequence.steps.length > 0
+                              ? `${(initSequence.steps.reduce((sum, s) => sum + (s.duration || 0), 0) / initSequence.steps.length).toFixed(2)}ms`
+                              : '0ms',
+                  }
+                : null,
         });
     }
 
@@ -191,40 +217,47 @@ export class NavigationLogger {
      */
     logPlayerReadyDetection(event, eventData = {}) {
         const eventTime = Date.now();
-        
+
         // Track player ready timing
         if (event === 'detection_started') {
             this.playerReadyStartTime = eventTime;
         } else if (event === 'player_ready' && this.playerReadyStartTime) {
             const readyTime = eventTime - this.playerReadyStartTime;
             this.performanceMetrics.playerReadyTimes.push(readyTime);
-            this.performanceMetrics.averagePlayerReadyTime = 
-                this.performanceMetrics.playerReadyTimes.reduce((a, b) => a + b, 0) / 
-                this.performanceMetrics.playerReadyTimes.length;
+            this.performanceMetrics.averagePlayerReadyTime =
+                this.performanceMetrics.playerReadyTimes.reduce(
+                    (a, b) => a + b,
+                    0
+                ) / this.performanceMetrics.playerReadyTimes.length;
         }
 
         this._logNavigation('info', `Player ready detection: ${event}`, {
             playerReady: {
                 event,
                 eventTime,
-                detectionDuration: this.playerReadyStartTime 
+                detectionDuration: this.playerReadyStartTime
                     ? `${eventTime - this.playerReadyStartTime}ms`
                     : null,
                 isTimeout: event === 'detection_timeout',
                 isReady: event === 'player_ready',
-                setupComplete: event === 'setup_complete'
+                setupComplete: event === 'setup_complete',
             },
             eventData,
-            performance: this.config.enablePerformanceTracking ? {
-                averagePlayerReadyTime: `${this.performanceMetrics.averagePlayerReadyTime.toFixed(2)}ms`,
-                totalDetections: this.performanceMetrics.playerReadyTimes.length,
-                fastestDetection: this.performanceMetrics.playerReadyTimes.length > 0
-                    ? `${Math.min(...this.performanceMetrics.playerReadyTimes)}ms`
-                    : null,
-                slowestDetection: this.performanceMetrics.playerReadyTimes.length > 0
-                    ? `${Math.max(...this.performanceMetrics.playerReadyTimes)}ms`
-                    : null
-            } : null
+            performance: this.config.enablePerformanceTracking
+                ? {
+                      averagePlayerReadyTime: `${this.performanceMetrics.averagePlayerReadyTime.toFixed(2)}ms`,
+                      totalDetections:
+                          this.performanceMetrics.playerReadyTimes.length,
+                      fastestDetection:
+                          this.performanceMetrics.playerReadyTimes.length > 0
+                              ? `${Math.min(...this.performanceMetrics.playerReadyTimes)}ms`
+                              : null,
+                      slowestDetection:
+                          this.performanceMetrics.playerReadyTimes.length > 0
+                              ? `${Math.max(...this.performanceMetrics.playerReadyTimes)}ms`
+                              : null,
+                  }
+                : null,
         });
     }
 
@@ -243,14 +276,14 @@ export class NavigationLogger {
                     url: window.location.href,
                     pathname: window.location.pathname,
                     readyState: document.readyState,
-                    visibilityState: document.visibilityState
+                    visibilityState: document.visibilityState,
                 },
                 navigationState: this.navigationState,
                 extensionContext: {
                     hasChrome: typeof chrome !== 'undefined',
                     hasRuntime: typeof chrome?.runtime !== 'undefined',
-                    runtimeId: chrome?.runtime?.id || null
-                }
+                    runtimeId: chrome?.runtime?.id || null,
+                },
             },
             diagnosticData,
             troubleshooting: {
@@ -259,16 +292,16 @@ export class NavigationLogger {
                     'DOM not ready during navigation',
                     'Player element not found',
                     'Event listeners not attached',
-                    'Timing issues with SPA navigation'
+                    'Timing issues with SPA navigation',
                 ],
                 suggestedActions: [
                     'Check extension context validity',
                     'Verify DOM ready state',
                     'Retry initialization with delay',
                     'Re-attach event listeners',
-                    'Validate player element existence'
-                ]
-            }
+                    'Validate player element existence',
+                ],
+            },
         });
     }
 
@@ -285,30 +318,46 @@ export class NavigationLogger {
                 playerPageEntries: this.navigationState.playerPageEntries,
                 playerPageExits: this.navigationState.playerPageExits,
                 averageNavigationTime: `${this.performanceMetrics.averageNavigationTime.toFixed(2)}ms`,
-                navigationTimeRange: this.performanceMetrics.navigationDetectionTimes.length > 0 ? {
-                    fastest: `${Math.min(...this.performanceMetrics.navigationDetectionTimes)}ms`,
-                    slowest: `${Math.max(...this.performanceMetrics.navigationDetectionTimes)}ms`
-                } : null
+                navigationTimeRange:
+                    this.performanceMetrics.navigationDetectionTimes.length > 0
+                        ? {
+                              fastest: `${Math.min(...this.performanceMetrics.navigationDetectionTimes)}ms`,
+                              slowest: `${Math.max(...this.performanceMetrics.navigationDetectionTimes)}ms`,
+                          }
+                        : null,
             },
             initializationMetrics: {
                 totalInitializations: this.initializationSteps.size,
-                completedInitializations: Array.from(this.initializationSteps.values()).filter(init => init.completed).length,
-                failedInitializations: Array.from(this.initializationSteps.values()).filter(init => init.failed).length,
-                averageInitializationTime: this.performanceMetrics.totalInitializationTime > 0 
-                    ? `${this.performanceMetrics.totalInitializationTime}ms`
-                    : 'N/A'
+                completedInitializations: Array.from(
+                    this.initializationSteps.values()
+                ).filter((init) => init.completed).length,
+                failedInitializations: Array.from(
+                    this.initializationSteps.values()
+                ).filter((init) => init.failed).length,
+                averageInitializationTime:
+                    this.performanceMetrics.totalInitializationTime > 0
+                        ? `${this.performanceMetrics.totalInitializationTime}ms`
+                        : 'N/A',
             },
             playerReadyMetrics: {
-                totalDetections: this.performanceMetrics.playerReadyTimes.length,
+                totalDetections:
+                    this.performanceMetrics.playerReadyTimes.length,
                 averageReadyTime: `${this.performanceMetrics.averagePlayerReadyTime.toFixed(2)}ms`,
-                readyTimeRange: this.performanceMetrics.playerReadyTimes.length > 0 ? {
-                    fastest: `${Math.min(...this.performanceMetrics.playerReadyTimes)}ms`,
-                    slowest: `${Math.max(...this.performanceMetrics.playerReadyTimes)}ms`
-                } : null
-            }
+                readyTimeRange:
+                    this.performanceMetrics.playerReadyTimes.length > 0
+                        ? {
+                              fastest: `${Math.min(...this.performanceMetrics.playerReadyTimes)}ms`,
+                              slowest: `${Math.max(...this.performanceMetrics.playerReadyTimes)}ms`,
+                          }
+                        : null,
+            },
         };
 
-        this._logNavigation('info', 'Navigation performance report generated.', { report });
+        this._logNavigation(
+            'info',
+            'Navigation performance report generated.',
+            { report }
+        );
         return report;
     }
 
@@ -323,12 +372,12 @@ export class NavigationLogger {
             navigationDetectionTimes: [],
             playerReadyTimes: [],
             averageNavigationTime: 0,
-            averagePlayerReadyTime: 0
+            averagePlayerReadyTime: 0,
         };
-        
+
         this.initializationSteps.clear();
         this.currentInitializationId = null;
-        
+
         this._logNavigation('info', 'Performance metrics have been reset.');
     }
 
@@ -353,14 +402,21 @@ export class NavigationLogger {
                 url: window.location.href,
                 pathname: window.location.pathname,
                 readyState: document.readyState,
-                visibilityState: document.visibilityState
-            }
+                visibilityState: document.visibilityState,
+            },
         };
 
         if (this.config.logger) {
-            this.config.logger(level, `[NavigationLogger:${this.platform}] ${message}`, enhancedData);
+            this.config.logger(
+                level,
+                `[NavigationLogger:${this.platform}] ${message}`,
+                enhancedData
+            );
         } else {
-            console.log(`[NavigationLogger:${this.platform}] [${level.toUpperCase()}] ${message}`, enhancedData);
+            console.log(
+                `[NavigationLogger:${this.platform}] [${level.toUpperCase()}] ${message}`,
+                enhancedData
+            );
         }
     }
 
@@ -386,17 +442,25 @@ export class NavigationLogger {
      */
     _isPlayerPage(url) {
         if (!url) return false;
-        
+
         const pathname = this._extractPath(url);
-        
+
         // Platform-specific player page detection
         switch (this.platform.toLowerCase()) {
             case 'netflix':
                 return pathname.includes('/watch/');
             case 'disneyplus':
-                return pathname.includes('/video/') || pathname.includes('/movies/') || pathname.includes('/series/');
+                return (
+                    pathname.includes('/video/') ||
+                    pathname.includes('/movies/') ||
+                    pathname.includes('/series/')
+                );
             default:
-                return pathname.includes('/watch') || pathname.includes('/video') || pathname.includes('/player');
+                return (
+                    pathname.includes('/watch') ||
+                    pathname.includes('/video') ||
+                    pathname.includes('/player')
+                );
         }
     }
 }
@@ -415,7 +479,7 @@ export class SubtitleDiagnostics {
         this.config = {
             logger: null,
             enableDetailedLogging: true,
-            ...config
+            ...config,
         };
 
         // Diagnostic state
@@ -424,7 +488,7 @@ export class SubtitleDiagnostics {
         this.performanceBaseline = {
             averageProcessingTime: 0,
             averageDisplayTime: 0,
-            successRate: 0
+            successRate: 0,
         };
     }
 
@@ -438,12 +502,12 @@ export class SubtitleDiagnostics {
             timestamp: Date.now(),
             source,
             platform: this.platform,
-            ...detectionData
+            ...detectionData,
         };
 
         this.diagnosticHistory.push({
             type: 'detection',
-            ...detection
+            ...detection,
         });
 
         this._logDiagnostic('info', `Subtitle source detected: ${source}`, {
@@ -451,8 +515,8 @@ export class SubtitleDiagnostics {
             availability: {
                 hasOfficial: detectionData.hasOfficial || false,
                 hasAPI: detectionData.hasAPI || false,
-                userPreference: detectionData.userPreference || null
-            }
+                userPreference: detectionData.userPreference || null,
+            },
         });
     }
 
@@ -467,7 +531,7 @@ export class SubtitleDiagnostics {
             timestamp: Date.now(),
             success,
             platform: this.platform,
-            ...displayData
+            ...displayData,
         };
 
         let errorKey;
@@ -475,32 +539,39 @@ export class SubtitleDiagnostics {
             attempt.error = {
                 message: error.message,
                 stack: error.stack,
-                name: error.name
+                name: error.name,
             };
 
             errorKey = `${error.name}:${error.message}`;
-            this.errorPatterns.set(errorKey, (this.errorPatterns.get(errorKey) || 0) + 1);
+            this.errorPatterns.set(
+                errorKey,
+                (this.errorPatterns.get(errorKey) || 0) + 1
+            );
         }
 
         this.diagnosticHistory.push({
             type: 'display_attempt',
-            ...attempt
+            ...attempt,
         });
 
         const logLevel = success ? 'info' : 'error';
-        const message = success ? 'Subtitle display successful' : 'Subtitle display failed';
+        const message = success
+            ? 'Subtitle display successful'
+            : 'Subtitle display failed';
 
         this._logDiagnostic(logLevel, message, {
             attempt,
-            errorPatterns: error ? {
-                currentError: errorKey,
-                occurrenceCount: this.errorPatterns.get(errorKey),
-                totalUniqueErrors: this.errorPatterns.size,
-                mostCommonErrors: Array.from(this.errorPatterns.entries())
-                    .sort(([,a], [,b]) => b - a)
-                    .slice(0, 3)
-                    .map(([pattern, count]) => ({ pattern, count }))
-            } : null
+            errorPatterns: error
+                ? {
+                      currentError: errorKey,
+                      occurrenceCount: this.errorPatterns.get(errorKey),
+                      totalUniqueErrors: this.errorPatterns.size,
+                      mostCommonErrors: Array.from(this.errorPatterns.entries())
+                          .sort(([, a], [, b]) => b - a)
+                          .slice(0, 3)
+                          .map(([pattern, count]) => ({ pattern, count })),
+                  }
+                : null,
         });
     }
 
@@ -516,12 +587,12 @@ export class SubtitleDiagnostics {
             operation,
             duration,
             platform: this.platform,
-            ...operationData
+            ...operationData,
         };
 
         this.diagnosticHistory.push({
             type: 'performance_timing',
-            ...timing
+            ...timing,
         });
 
         // Update performance baseline
@@ -532,8 +603,11 @@ export class SubtitleDiagnostics {
             baseline: {
                 currentDuration: `${duration}ms`,
                 averageForOperation: this._getAverageForOperation(operation),
-                performanceRating: this._getPerformanceRating(operation, duration)
-            }
+                performanceRating: this._getPerformanceRating(
+                    operation,
+                    duration
+                ),
+            },
         });
     }
 
@@ -543,7 +617,9 @@ export class SubtitleDiagnostics {
      */
     generateDiagnosticReport() {
         const now = Date.now();
-        const recentHistory = this.diagnosticHistory.filter(entry => now - entry.timestamp < 300000); // Last 5 minutes
+        const recentHistory = this.diagnosticHistory.filter(
+            (entry) => now - entry.timestamp < 300000
+        ); // Last 5 minutes
 
         const report = {
             platform: this.platform,
@@ -551,27 +627,50 @@ export class SubtitleDiagnostics {
             summary: {
                 totalEvents: this.diagnosticHistory.length,
                 recentEvents: recentHistory.length,
-                detectionEvents: this.diagnosticHistory.filter(e => e.type === 'detection').length,
-                displayAttempts: this.diagnosticHistory.filter(e => e.type === 'display_attempt').length,
-                successfulDisplays: this.diagnosticHistory.filter(e => e.type === 'display_attempt' && e.success).length,
-                failedDisplays: this.diagnosticHistory.filter(e => e.type === 'display_attempt' && !e.success).length,
-                performanceEvents: this.diagnosticHistory.filter(e => e.type === 'performance_timing').length
+                detectionEvents: this.diagnosticHistory.filter(
+                    (e) => e.type === 'detection'
+                ).length,
+                displayAttempts: this.diagnosticHistory.filter(
+                    (e) => e.type === 'display_attempt'
+                ).length,
+                successfulDisplays: this.diagnosticHistory.filter(
+                    (e) => e.type === 'display_attempt' && e.success
+                ).length,
+                failedDisplays: this.diagnosticHistory.filter(
+                    (e) => e.type === 'display_attempt' && !e.success
+                ).length,
+                performanceEvents: this.diagnosticHistory.filter(
+                    (e) => e.type === 'performance_timing'
+                ).length,
             },
             errorAnalysis: {
                 uniqueErrorPatterns: this.errorPatterns.size,
-                totalErrors: Array.from(this.errorPatterns.values()).reduce((sum, count) => sum + count, 0),
+                totalErrors: Array.from(this.errorPatterns.values()).reduce(
+                    (sum, count) => sum + count,
+                    0
+                ),
                 topErrors: Array.from(this.errorPatterns.entries())
-                    .sort(([,a], [,b]) => b - a)
+                    .sort(([, a], [, b]) => b - a)
                     .slice(0, 5)
-                    .map(([pattern, count]) => ({ pattern, count, percentage: ((count / this.diagnosticHistory.length) * 100).toFixed(2) + '%' }))
+                    .map(([pattern, count]) => ({
+                        pattern,
+                        count,
+                        percentage:
+                            (
+                                (count / this.diagnosticHistory.length) *
+                                100
+                            ).toFixed(2) + '%',
+                    })),
             },
             performanceAnalysis: {
-                averageProcessingTime: this.performanceBaseline.averageProcessingTime,
+                averageProcessingTime:
+                    this.performanceBaseline.averageProcessingTime,
                 averageDisplayTime: this.performanceBaseline.averageDisplayTime,
                 successRate: this.performanceBaseline.successRate,
-                recentPerformance: this._analyzeRecentPerformance(recentHistory)
+                recentPerformance:
+                    this._analyzeRecentPerformance(recentHistory),
             },
-            recommendations: this._generateRecommendations()
+            recommendations: this._generateRecommendations(),
         };
 
         this._logDiagnostic('info', 'Diagnostic report generated.', { report });
@@ -594,13 +693,20 @@ export class SubtitleDiagnostics {
             ...data,
             timestamp: new Date().toISOString(),
             platform: this.platform,
-            logType: 'diagnostic'
+            logType: 'diagnostic',
         };
 
         if (this.config.logger) {
-            this.config.logger(level, `[SubtitleDiagnostics:${this.platform}] ${message}`, enhancedData);
+            this.config.logger(
+                level,
+                `[SubtitleDiagnostics:${this.platform}] ${message}`,
+                enhancedData
+            );
         } else {
-            console.log(`[SubtitleDiagnostics:${this.platform}] [${level.toUpperCase()}] ${message}`, enhancedData);
+            console.log(
+                `[SubtitleDiagnostics:${this.platform}] [${level.toUpperCase()}] ${message}`,
+                enhancedData
+            );
         }
     }
 
@@ -612,12 +718,17 @@ export class SubtitleDiagnostics {
      */
     _updatePerformanceBaseline(operation, duration) {
         const operationTimings = this.diagnosticHistory
-            .filter(e => e.type === 'performance_timing' && e.operation === operation)
-            .map(e => e.duration);
+            .filter(
+                (e) =>
+                    e.type === 'performance_timing' && e.operation === operation
+            )
+            .map((e) => e.duration);
 
         if (operationTimings.length > 0) {
-            const average = operationTimings.reduce((sum, d) => sum + d, 0) / operationTimings.length;
-            
+            const average =
+                operationTimings.reduce((sum, d) => sum + d, 0) /
+                operationTimings.length;
+
             if (operation.includes('processing')) {
                 this.performanceBaseline.averageProcessingTime = average;
             } else if (operation.includes('display')) {
@@ -626,11 +737,14 @@ export class SubtitleDiagnostics {
         }
 
         // Update success rate
-        const displayAttempts = this.diagnosticHistory.filter(e => e.type === 'display_attempt');
-        const successfulAttempts = displayAttempts.filter(e => e.success);
-        this.performanceBaseline.successRate = displayAttempts.length > 0 
-            ? (successfulAttempts.length / displayAttempts.length) * 100
-            : 0;
+        const displayAttempts = this.diagnosticHistory.filter(
+            (e) => e.type === 'display_attempt'
+        );
+        const successfulAttempts = displayAttempts.filter((e) => e.success);
+        this.performanceBaseline.successRate =
+            displayAttempts.length > 0
+                ? (successfulAttempts.length / displayAttempts.length) * 100
+                : 0;
     }
 
     /**
@@ -641,12 +755,17 @@ export class SubtitleDiagnostics {
      */
     _getAverageForOperation(operation) {
         const operationTimings = this.diagnosticHistory
-            .filter(e => e.type === 'performance_timing' && e.operation === operation)
-            .map(e => e.duration);
+            .filter(
+                (e) =>
+                    e.type === 'performance_timing' && e.operation === operation
+            )
+            .map((e) => e.duration);
 
         if (operationTimings.length === 0) return 'N/A';
 
-        const average = operationTimings.reduce((sum, d) => sum + d, 0) / operationTimings.length;
+        const average =
+            operationTimings.reduce((sum, d) => sum + d, 0) /
+            operationTimings.length;
         return `${average.toFixed(2)}ms`;
     }
 
@@ -659,12 +778,15 @@ export class SubtitleDiagnostics {
      */
     _getPerformanceRating(operation, duration) {
         const average = this.diagnosticHistory
-            .filter(e => e.type === 'performance_timing' && e.operation === operation)
-            .map(e => e.duration)
+            .filter(
+                (e) =>
+                    e.type === 'performance_timing' && e.operation === operation
+            )
+            .map((e) => e.duration)
             .reduce((sum, d, _, arr) => sum + d / arr.length, 0);
 
         if (average === 0) return 'baseline';
-        
+
         const ratio = duration / average;
         if (ratio < 0.8) return 'excellent';
         if (ratio < 1.2) return 'good';
@@ -679,15 +801,18 @@ export class SubtitleDiagnostics {
      * @returns {Object} A performance analysis object.
      */
     _analyzeRecentPerformance(recentHistory) {
-        const recentDisplays = recentHistory.filter(e => e.type === 'display_attempt');
-        const recentSuccesses = recentDisplays.filter(e => e.success);
-        
+        const recentDisplays = recentHistory.filter(
+            (e) => e.type === 'display_attempt'
+        );
+        const recentSuccesses = recentDisplays.filter((e) => e.success);
+
         return {
-            recentSuccessRate: recentDisplays.length > 0 
-                ? `${((recentSuccesses.length / recentDisplays.length) * 100).toFixed(1)}%`
-                : 'N/A',
+            recentSuccessRate:
+                recentDisplays.length > 0
+                    ? `${((recentSuccesses.length / recentDisplays.length) * 100).toFixed(1)}%`
+                    : 'N/A',
             recentAttempts: recentDisplays.length,
-            trend: this._calculateTrend(recentDisplays)
+            trend: this._calculateTrend(recentDisplays),
         };
     }
 
@@ -699,16 +824,18 @@ export class SubtitleDiagnostics {
      */
     _calculateTrend(attempts) {
         if (attempts.length < 2) return 'insufficient_data';
-        
+
         const midpoint = Math.floor(attempts.length / 2);
         const firstHalf = attempts.slice(0, midpoint);
         const secondHalf = attempts.slice(midpoint);
-        
-        const firstHalfSuccess = firstHalf.filter(a => a.success).length / firstHalf.length;
-        const secondHalfSuccess = secondHalf.filter(a => a.success).length / secondHalf.length;
-        
+
+        const firstHalfSuccess =
+            firstHalf.filter((a) => a.success).length / firstHalf.length;
+        const secondHalfSuccess =
+            secondHalf.filter((a) => a.success).length / secondHalf.length;
+
         const difference = secondHalfSuccess - firstHalfSuccess;
-        
+
         if (difference > 0.1) return 'improving';
         if (difference < -0.1) return 'declining';
         return 'stable';
@@ -721,40 +848,44 @@ export class SubtitleDiagnostics {
      */
     _generateRecommendations() {
         const recommendations = [];
-        
+
         // Success rate recommendations
         if (this.performanceBaseline.successRate < 80) {
             recommendations.push({
                 type: 'success_rate',
                 priority: 'high',
                 message: 'Low subtitle display success rate detected',
-                suggestion: 'Review error patterns and implement additional error handling'
+                suggestion:
+                    'Review error patterns and implement additional error handling',
             });
         }
-        
+
         // Performance recommendations
         if (this.performanceBaseline.averageProcessingTime > 1000) {
             recommendations.push({
                 type: 'performance',
                 priority: 'medium',
                 message: 'Slow subtitle processing detected',
-                suggestion: 'Consider optimizing subtitle parsing and translation logic'
+                suggestion:
+                    'Consider optimizing subtitle parsing and translation logic',
             });
         }
-        
+
         // Error pattern recommendations
-        const topError = Array.from(this.errorPatterns.entries())
-            .sort(([,a], [,b]) => b - a)[0];
-        
+        const topError = Array.from(this.errorPatterns.entries()).sort(
+            ([, a], [, b]) => b - a
+        )[0];
+
         if (topError && topError[1] > 5) {
             recommendations.push({
                 type: 'error_pattern',
                 priority: 'high',
                 message: `Recurring error pattern detected: ${topError[0]}`,
-                suggestion: 'Implement specific handling for this error pattern'
+                suggestion:
+                    'Implement specific handling for this error pattern',
             });
         }
-        
+
         return recommendations;
     }
 }

@@ -329,7 +329,7 @@ describe('NetflixPlatform Logging Integration', () => {
             chromeApiMock.storage.sync.get.mockImplementation(
                 (keys, callback) => {
                     callback({
-                        useOfficialTranslations: true
+                        useOfficialTranslations: true,
                     });
                 }
             );
@@ -386,7 +386,7 @@ describe('NetflixPlatform Logging Integration', () => {
             chromeApiMock.storage.sync.get.mockImplementation(
                 (keys, callback) => {
                     callback({
-                        useOfficialTranslations: true
+                        useOfficialTranslations: true,
                     });
                 }
             );

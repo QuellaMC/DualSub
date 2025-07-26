@@ -16,7 +16,7 @@ The abstract base class that provides common functionality for all platform cont
  * @param {string} logPrefix - The log prefix for this content script (e.g., 'NetflixContent').
  * @throws {Error} If instantiated directly, as this is an abstract class.
  */
-constructor(logPrefix)
+constructor(logPrefix);
 ```
 
 ### Abstract Methods
@@ -32,7 +32,7 @@ These methods must be implemented by all subclasses to provide platform-specific
  * @returns {string} The platform name.
  * @throws {Error} If not implemented by the subclass.
  */
-getPlatformName()
+getPlatformName();
 ```
 
 #### getPlatformClass()
@@ -44,7 +44,7 @@ getPlatformName()
  * @returns {string} The platform class name (e.g., 'NetflixPlatform').
  * @throws {Error} If not implemented by the subclass.
  */
-getPlatformClass()
+getPlatformClass();
 ```
 
 #### getInjectScriptConfig()
@@ -59,7 +59,7 @@ getPlatformClass()
  * @property {string} eventId - The custom event ID for communication.
  * @throws {Error} If not implemented by the subclass.
  */
-getInjectScriptConfig()
+getInjectScriptConfig();
 ```
 
 #### setupNavigationDetection()
@@ -70,7 +70,7 @@ getInjectScriptConfig()
  * @abstract
  * @throws {Error} If not implemented by the subclass.
  */
-setupNavigationDetection()
+setupNavigationDetection();
 ```
 
 #### checkForUrlChange()
@@ -81,7 +81,7 @@ setupNavigationDetection()
  * @abstract
  * @throws {Error} If not implemented by the subclass.
  */
-checkForUrlChange()
+checkForUrlChange();
 ```
 
 #### handlePlatformSpecificMessage()
@@ -95,7 +95,7 @@ checkForUrlChange()
  * @returns {boolean} `true` if the response is sent asynchronously.
  * @throws {Error} If not implemented by the subclass.
  */
-handlePlatformSpecificMessage(request, sendResponse)
+handlePlatformSpecificMessage(request, sendResponse);
 ```
 
 ### Template Methods
@@ -192,7 +192,7 @@ async initializePlatform(retryCount = 0)
  * @param {string} [options.description] - A description of the handler.
  * @throws {Error} If the action is not a string or the handler is not a function.
  */
-registerMessageHandler(action, handler, options = {})
+registerMessageHandler(action, handler, (options = {}));
 ```
 
 #### unregisterMessageHandler()
@@ -203,7 +203,7 @@ registerMessageHandler(action, handler, options = {})
  * @param {string} action - The action or type to unregister.
  * @returns {boolean} `true` if a handler was removed.
  */
-unregisterMessageHandler(action)
+unregisterMessageHandler(action);
 ```
 
 #### hasMessageHandler()
@@ -214,7 +214,7 @@ unregisterMessageHandler(action)
  * @param {string} action - The action to check.
  * @returns {boolean} `true` if a handler is registered.
  */
-hasMessageHandler(action)
+hasMessageHandler(action);
 ```
 
 #### getRegisteredHandlers()
@@ -224,7 +224,7 @@ hasMessageHandler(action)
  * Gets information about all registered message handlers.
  * @returns {Array<Object>} An array of handler information objects.
  */
-getRegisteredHandlers()
+getRegisteredHandlers();
 ```
 
 #### handleChromeMessage()
@@ -237,7 +237,7 @@ getRegisteredHandlers()
  * @param {Function} sendResponse - The callback to send a response.
  * @returns {boolean} `true` if the response is sent asynchronously.
  */
-handleChromeMessage(request, sender, sendResponse)
+handleChromeMessage(request, sender, sendResponse);
 ```
 
 ### Common Message Handlers
@@ -277,7 +277,7 @@ async handleConfigChanged(request, sendResponse)
  * @param {Function} sendResponse - The callback to send a response.
  * @returns {boolean} `true` if the response is sent asynchronously.
  */
-handleLoggingLevelChanged(request, sendResponse)
+handleLoggingLevelChanged(request, sendResponse);
 ```
 
 ### Utility Methods
@@ -291,7 +291,7 @@ handleLoggingLevelChanged(request, sendResponse)
  * @param {string} message - The log message.
  * @param {Object} [data] - Additional data to log.
  */
-logWithFallback(level, message, data = {})
+logWithFallback(level, message, (data = {}));
 ```
 
 ### Cleanup Methods
@@ -311,36 +311,36 @@ async cleanup()
 #### Core Properties
 
 ```javascript
-this.logPrefix;        // String: The log prefix for this instance.
-this.contentLogger;    // Object: The logger instance (null until loaded).
-this.activePlatform;   // Object: The active platform instance.
-this.currentConfig;    // Object: The current configuration.
+this.logPrefix; // String: The log prefix for this instance.
+this.contentLogger; // Object: The logger instance (null until loaded).
+this.activePlatform; // Object: The active platform instance.
+this.currentConfig; // Object: The current configuration.
 ```
 
 #### Module References
 
 ```javascript
-this.subtitleUtils;    // Object: The subtitle utilities module.
-this.PlatformClass;    // Function: The platform class constructor.
-this.configService;    // Object: The configuration service instance.
+this.subtitleUtils; // Object: The subtitle utilities module.
+this.PlatformClass; // Function: The platform class constructor.
+this.configService; // Object: The configuration service instance.
 ```
 
 #### State Properties
 
 ```javascript
-this.platformReady;      // Boolean: `true` if the platform is ready.
-this.isCleanedUp;      // Boolean: `true` if cleanup has been performed.
-this.currentUrl;       // String: The current page URL.
+this.platformReady; // Boolean: `true` if the platform is ready.
+this.isCleanedUp; // Boolean: `true` if cleanup has been performed.
+this.currentUrl; // String: The current page URL.
 this.lastKnownPathname; // String: The last known pathname.
 ```
 
 #### Management Objects
 
 ```javascript
-this.eventBuffer;      // EventBuffer: Buffers early events.
-this.intervalManager;  // IntervalManager: Manages intervals.
-this.messageHandlers;  // Map: Registered message handlers.
-this.abortController;  // AbortController: Manages event listener cleanup.
+this.eventBuffer; // EventBuffer: Buffers early events.
+this.intervalManager; // IntervalManager: Manages intervals.
+this.messageHandlers; // Map: Registered message handlers.
+this.abortController; // AbortController: Manages event listener cleanup.
 ```
 
 ## NetflixContentScript
@@ -353,7 +353,7 @@ A Netflix-specific implementation that extends `BaseContentScript`.
 /**
  * Creates a new `NetflixContentScript` instance.
  */
-constructor()
+constructor();
 ```
 
 ### Abstract Method Implementations
@@ -365,7 +365,7 @@ constructor()
  * Gets the platform name.
  * @returns {string} Always returns 'netflix'.
  */
-getPlatformName()
+getPlatformName();
 ```
 
 #### getPlatformClass()
@@ -375,7 +375,7 @@ getPlatformName()
  * Gets the platform class constructor name.
  * @returns {string} Always returns 'NetflixPlatform'.
  */
-getPlatformClass()
+getPlatformClass();
 ```
 
 #### getInjectScriptConfig()
@@ -385,7 +385,7 @@ getPlatformClass()
  * Gets the inject script configuration for Netflix.
  * @returns {Object} The Netflix injection configuration.
  */
-getInjectScriptConfig()
+getInjectScriptConfig();
 ```
 
 #### setupNavigationDetection()
@@ -395,7 +395,7 @@ getInjectScriptConfig()
  * Sets up Netflix-specific navigation detection, using multiple strategies
  * for complex SPA routing.
  */
-setupNavigationDetection()
+setupNavigationDetection();
 ```
 
 #### checkForUrlChange()
@@ -405,7 +405,7 @@ setupNavigationDetection()
  * Checks for URL changes with Netflix-specific logic, including enhanced
  * detection with extension context error handling.
  */
-checkForUrlChange()
+checkForUrlChange();
 ```
 
 #### handlePlatformSpecificMessage()
@@ -417,7 +417,7 @@ checkForUrlChange()
  * @param {Function} sendResponse - The callback to send a response.
  * @returns {boolean} `true` if the response is sent asynchronously.
  */
-handlePlatformSpecificMessage(request, sendResponse)
+handlePlatformSpecificMessage(request, sendResponse);
 ```
 
 ### Netflix-Specific Methods
@@ -429,7 +429,7 @@ handlePlatformSpecificMessage(request, sendResponse)
  * Checks if the current page is a Netflix platform page.
  * @returns {boolean} `true` if on a Netflix page.
  */
-isPlatformActive()
+isPlatformActive();
 ```
 
 #### isPlayerPageActive()
@@ -439,7 +439,7 @@ isPlatformActive()
  * Checks if the current page is a Netflix player page.
  * @returns {boolean} `true` if on a Netflix player page.
  */
-isPlayerPageActive()
+isPlayerPageActive();
 ```
 
 #### getUrlPatterns()
@@ -449,7 +449,7 @@ isPlayerPageActive()
  * Gets Netflix-specific URL patterns for platform detection.
  * @returns {string[]} An array of URL patterns.
  */
-getUrlPatterns()
+getUrlPatterns();
 ```
 
 #### getNetflixSpecificConfig()
@@ -459,7 +459,7 @@ getUrlPatterns()
  * Gets Netflix-specific configuration defaults.
  * @returns {Object} The Netflix-specific configuration.
  */
-getNetflixSpecificConfig()
+getNetflixSpecificConfig();
 ```
 
 #### applyNetflixConfigOverrides()
@@ -470,14 +470,14 @@ getNetflixSpecificConfig()
  * @param {Object} baseConfig - The base configuration.
  * @returns {Object} The configuration with Netflix-specific overrides.
  */
-applyNetflixConfigOverrides(baseConfig)
+applyNetflixConfigOverrides(baseConfig);
 ```
 
 ### Netflix-Specific Properties
 
 ```javascript
 this.injectConfig; // Object: The Netflix injection configuration.
-this.urlPatterns;  // Array: Netflix URL patterns.
+this.urlPatterns; // Array: Netflix URL patterns.
 ```
 
 ## DisneyPlusContentScript
@@ -490,7 +490,7 @@ A Disney+-specific implementation that extends `BaseContentScript`.
 /**
  * Creates a new `DisneyPlusContentScript` instance.
  */
-constructor()
+constructor();
 ```
 
 ### Abstract Method Implementations
@@ -502,7 +502,7 @@ constructor()
  * Gets the platform name.
  * @returns {string} Always returns 'disneyplus'.
  */
-getPlatformName()
+getPlatformName();
 ```
 
 #### getPlatformClass()
@@ -512,7 +512,7 @@ getPlatformName()
  * Gets the platform class constructor name.
  * @returns {string} Always returns 'DisneyPlusPlatform'.
  */
-getPlatformClass()
+getPlatformClass();
 ```
 
 #### getInjectScriptConfig()
@@ -522,7 +522,7 @@ getPlatformClass()
  * Gets the inject script configuration for Disney+.
  * @returns {Object} The Disney+ injection configuration.
  */
-getInjectScriptConfig()
+getInjectScriptConfig();
 ```
 
 #### setupNavigationDetection()
@@ -531,7 +531,7 @@ getInjectScriptConfig()
 /**
  * Sets up Disney+-specific navigation detection using standard strategies.
  */
-setupNavigationDetection()
+setupNavigationDetection();
 ```
 
 #### checkForUrlChange()
@@ -541,7 +541,7 @@ setupNavigationDetection()
  * Checks for URL changes with Disney+-specific logic, including enhanced
  * detection with extension context error handling.
  */
-checkForUrlChange()
+checkForUrlChange();
 ```
 
 #### handlePlatformSpecificMessage()
@@ -553,7 +553,7 @@ checkForUrlChange()
  * @param {Function} sendResponse - The callback to send a response.
  * @returns {boolean} `true` if the response is sent asynchronously.
  */
-handlePlatformSpecificMessage(request, sendResponse)
+handlePlatformSpecificMessage(request, sendResponse);
 ```
 
 ### Disney+ Specific Methods
@@ -565,7 +565,7 @@ handlePlatformSpecificMessage(request, sendResponse)
  * Gets Disney+-specific configuration defaults.
  * @returns {Object} The Disney+-specific configuration.
  */
-getDisneyPlusSpecificConfig()
+getDisneyPlusSpecificConfig();
 ```
 
 #### applyDisneyPlusConfigOverrides()
@@ -576,14 +576,14 @@ getDisneyPlusSpecificConfig()
  * @param {Object} baseConfig - The base configuration.
  * @returns {Object} The configuration with Disney+-specific overrides.
  */
-applyDisneyPlusConfigOverrides(baseConfig)
+applyDisneyPlusConfigOverrides(baseConfig);
 ```
 
 ### Disney+ Specific Properties
 
 ```javascript
 this.injectConfig; // Object: The Disney+ injection configuration.
-this.urlPatterns;  // Array: Disney+ URL patterns.
+this.urlPatterns; // Array: Disney+ URL patterns.
 ```
 
 ## Utility Classes
@@ -628,7 +628,7 @@ const COMMON_CONSTANTS = {
     PLATFORM_INIT_MAX_RETRIES: 3,
     PLATFORM_INIT_RETRY_DELAY: 1000,
     CONFIG_CHANGE_DEBOUNCE_DELAY: 100,
-    MESSAGE_HANDLER_TIMEOUT: 5000
+    MESSAGE_HANDLER_TIMEOUT: 5000,
 };
 ```
 

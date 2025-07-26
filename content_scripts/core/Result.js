@@ -171,7 +171,7 @@ export class Result {
         return {
             isSuccess: this._isSuccess,
             value: this._isSuccess ? this._value : undefined,
-            error: !this._isSuccess ? this._error : undefined
+            error: !this._isSuccess ? this._error : undefined,
         };
     }
 

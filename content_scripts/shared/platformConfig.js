@@ -35,18 +35,24 @@ export class PlatformConfigManager {
      */
     static registerPlatform(name, config) {
         const normalizedName = name.toLowerCase();
-        
+
         try {
             this._validatePlatformConfig(config);
             const fullConfig = this._mergeWithDefaults(config);
             this._platforms.set(normalizedName, fullConfig);
-            
-            console.log(`[PlatformConfig] Registered platform: ${normalizedName}`, {
-                displayName: fullConfig.displayName,
-                urlPatterns: fullConfig.urlPatterns
-            });
+
+            console.log(
+                `[PlatformConfig] Registered platform: ${normalizedName}`,
+                {
+                    displayName: fullConfig.displayName,
+                    urlPatterns: fullConfig.urlPatterns,
+                }
+            );
         } catch (error) {
-            console.error(`[PlatformConfig] Failed to register platform '${name}':`, error.message);
+            console.error(
+                `[PlatformConfig] Failed to register platform '${name}':`,
+                error.message
+            );
         }
     }
 
@@ -87,13 +93,13 @@ export class PlatformConfigManager {
      */
     static detectPlatformFromUrl(url) {
         this.initialize();
-        
+
         for (const [name, config] of this._platforms) {
             if (this._urlMatchesPlatform(url, config.urlPatterns)) {
                 return { name, ...config };
             }
         }
-        
+
         return null;
     }
 
@@ -104,7 +110,9 @@ export class PlatformConfigManager {
      */
     static getNavigationConfig(name) {
         const config = this.getConfig(name);
-        return config ? config.navigationConfig : this._getDefaultNavigationConfig();
+        return config
+            ? config.navigationConfig
+            : this._getDefaultNavigationConfig();
     }
 
     /**
@@ -114,7 +122,9 @@ export class PlatformConfigManager {
      */
     static getSubtitleConfig(name) {
         const config = this.getConfig(name);
-        return config ? config.subtitleConfig : this._getDefaultSubtitleConfig();
+        return config
+            ? config.subtitleConfig
+            : this._getDefaultSubtitleConfig();
     }
 
     /**
@@ -124,7 +134,9 @@ export class PlatformConfigManager {
      */
     static getInjectionConfig(name) {
         const config = this.getConfig(name);
-        return config ? config.injectionConfig : this._getDefaultInjectionConfig();
+        return config
+            ? config.injectionConfig
+            : this._getDefaultInjectionConfig();
     }
 
     // ========================================
@@ -148,32 +160,32 @@ export class PlatformConfigManager {
                 usePopstateEvents: true,
                 useIntervalChecking: true,
                 useFocusEvents: true,
-                pageTransitionDelay: 1500
+                pageTransitionDelay: 1500,
             },
             subtitleConfig: {
                 supportsOfficialTranslations: true,
                 maxVideoDetectionRetries: 40,
                 videoDetectionInterval: 1000,
                 timeOffset: 0,
-                supportedFormats: ['vtt', 'ttml', 'json']
+                supportedFormats: ['vtt', 'ttml', 'json'],
             },
             injectionConfig: {
                 filename: 'injected_scripts/netflixInject.js',
                 tagId: 'netflix-dualsub-injector-script-tag',
                 eventId: 'netflix-dualsub-injector-event',
                 retryDelay: 10,
-                maxRetries: 100
+                maxRetries: 100,
             },
             videoDetectionConfig: {
                 selectors: ['video'],
                 containerSelectors: ['.watch-video', '.nfp'],
-                progressBarSelectors: ['[role="slider"][aria-label*="seek"]']
+                progressBarSelectors: ['[role="slider"][aria-label*="seek"]'],
             },
             platformSpecific: {
                 requiresEnhancedNavigation: true,
                 complexSPARouting: true,
-                hasOfficialSubtitleAPI: true
-            }
+                hasOfficialSubtitleAPI: true,
+            },
         });
 
         // Disney+ configuration
@@ -182,9 +194,11 @@ export class PlatformConfigManager {
             displayName: 'Disney+',
             urlPatterns: ['*.disneyplus.com'],
             playerPagePattern: (pathname) => {
-                return pathname.includes('/video/') || 
-                       pathname.includes('/movies/') || 
-                       pathname.includes('/series/');
+                return (
+                    pathname.includes('/video/') ||
+                    pathname.includes('/movies/') ||
+                    pathname.includes('/series/')
+                );
             },
             navigationConfig: {
                 intervalMs: 500, // More frequent for Disney+
@@ -192,33 +206,36 @@ export class PlatformConfigManager {
                 usePopstateEvents: true,
                 useIntervalChecking: true,
                 useFocusEvents: true,
-                pageTransitionDelay: 1000
+                pageTransitionDelay: 1000,
             },
             subtitleConfig: {
                 supportsOfficialTranslations: false, // Disney+ doesn't provide official translations yet
                 maxVideoDetectionRetries: 30,
                 videoDetectionInterval: 800,
                 timeOffset: 0,
-                supportedFormats: ['vtt', 'webvtt']
+                supportedFormats: ['vtt', 'webvtt'],
             },
             injectionConfig: {
                 filename: 'injected_scripts/disneyPlusInject.js',
                 tagId: 'disneyplus-dualsub-injector-script-tag',
                 eventId: 'disneyplus-dualsub-injector-event',
                 retryDelay: 15,
-                maxRetries: 80
+                maxRetries: 80,
             },
             videoDetectionConfig: {
                 selectors: ['video'],
-                containerSelectors: ['.btm-media-overlays-container', '.video-player-container'],
-                progressBarSelectors: ['[role="slider"]', '.scrubber-bar']
+                containerSelectors: [
+                    '.btm-media-overlays-container',
+                    '.video-player-container',
+                ],
+                progressBarSelectors: ['[role="slider"]', '.scrubber-bar'],
             },
             platformSpecific: {
                 requiresEnhancedNavigation: true,
                 complexSPARouting: true,
                 hasNavigationIssues: true,
-                needsPlayerReadyDetection: true
-            }
+                needsPlayerReadyDetection: true,
+            },
         });
     }
 
@@ -229,10 +246,12 @@ export class PlatformConfigManager {
      */
     static _validatePlatformConfig(config) {
         const required = ['name', 'displayName', 'urlPatterns'];
-        
+
         for (const field of required) {
             if (!config[field]) {
-                throw new Error(`Platform configuration missing required field: ${field}`);
+                throw new Error(
+                    `Platform configuration missing required field: ${field}`
+                );
             }
         }
 
@@ -256,7 +275,7 @@ export class PlatformConfigManager {
             subtitleConfig: this._getDefaultSubtitleConfig(),
             injectionConfig: this._getDefaultInjectionConfig(),
             videoDetectionConfig: this._getDefaultVideoDetectionConfig(),
-            platformSpecific: {}
+            platformSpecific: {},
         };
 
         return {
@@ -265,24 +284,24 @@ export class PlatformConfigManager {
             // Deep merge nested objects
             navigationConfig: {
                 ...defaults.navigationConfig,
-                ...(config.navigationConfig || {})
+                ...(config.navigationConfig || {}),
             },
             subtitleConfig: {
                 ...defaults.subtitleConfig,
-                ...(config.subtitleConfig || {})
+                ...(config.subtitleConfig || {}),
             },
             injectionConfig: {
                 ...defaults.injectionConfig,
-                ...(config.injectionConfig || {})
+                ...(config.injectionConfig || {}),
             },
             videoDetectionConfig: {
                 ...defaults.videoDetectionConfig,
-                ...(config.videoDetectionConfig || {})
+                ...(config.videoDetectionConfig || {}),
             },
             platformSpecific: {
                 ...defaults.platformSpecific,
-                ...(config.platformSpecific || {})
-            }
+                ...(config.platformSpecific || {}),
+            },
         };
     }
 
@@ -294,12 +313,12 @@ export class PlatformConfigManager {
      * @returns {boolean} `true` if the URL matches, otherwise `false`.
      */
     static _urlMatchesPlatform(url, patterns) {
-        return patterns.some(pattern => {
+        return patterns.some((pattern) => {
             // Convert glob pattern to regex
             const regexPattern = pattern
                 .replace(/\./g, '\\.')
                 .replace(/\*/g, '.*');
-            
+
             const regex = new RegExp(regexPattern, 'i');
             return regex.test(url);
         });
@@ -317,7 +336,7 @@ export class PlatformConfigManager {
             usePopstateEvents: true,
             useIntervalChecking: true,
             useFocusEvents: true,
-            pageTransitionDelay: 1000
+            pageTransitionDelay: 1000,
         };
     }
 
@@ -332,7 +351,7 @@ export class PlatformConfigManager {
             maxVideoDetectionRetries: 30,
             videoDetectionInterval: 1000,
             timeOffset: 0,
-            supportedFormats: ['vtt', 'webvtt']
+            supportedFormats: ['vtt', 'webvtt'],
         };
     }
 
@@ -347,7 +366,7 @@ export class PlatformConfigManager {
             tagId: null,
             eventId: null,
             retryDelay: 10,
-            maxRetries: 50
+            maxRetries: 50,
         };
     }
 
@@ -360,7 +379,7 @@ export class PlatformConfigManager {
         return {
             selectors: ['video'],
             containerSelectors: ['.video-container', '.player-container'],
-            progressBarSelectors: ['[role="slider"]']
+            progressBarSelectors: ['[role="slider"]'],
         };
     }
 }
@@ -374,7 +393,9 @@ export class PlatformDetector {
      * @returns {Object|null} The configuration of the detected platform, or `null`.
      */
     static detectCurrentPlatform() {
-        return PlatformConfigManager.detectPlatformFromUrl(window.location.href);
+        return PlatformConfigManager.detectPlatformFromUrl(
+            window.location.href
+        );
     }
 
     /**
@@ -388,7 +409,7 @@ export class PlatformDetector {
         }
 
         const pathname = window.location.pathname;
-        
+
         if (typeof platform.playerPagePattern === 'function') {
             return platform.playerPagePattern(pathname);
         } else if (typeof platform.playerPagePattern === 'string') {
@@ -421,17 +442,17 @@ export const PLATFORM_TEMPLATES = {
             useHistoryAPI: true,
             usePopstateEvents: true,
             useIntervalChecking: true,
-            useFocusEvents: true
+            useFocusEvents: true,
         },
         subtitleConfig: {
             supportsOfficialTranslations: false,
             maxVideoDetectionRetries: 30,
-            videoDetectionInterval: 1000
+            videoDetectionInterval: 1000,
         },
         videoDetectionConfig: {
             selectors: ['video'],
-            containerSelectors: ['.video-container', '.player-container']
-        }
+            containerSelectors: ['.video-container', '.player-container'],
+        },
     },
 
     /**
@@ -444,18 +465,18 @@ export const PLATFORM_TEMPLATES = {
             usePopstateEvents: true,
             useIntervalChecking: true,
             useFocusEvents: true,
-            pageTransitionDelay: 1500
+            pageTransitionDelay: 1500,
         },
         subtitleConfig: {
             supportsOfficialTranslations: false,
             maxVideoDetectionRetries: 40,
-            videoDetectionInterval: 800
+            videoDetectionInterval: 800,
         },
         platformSpecific: {
             requiresEnhancedNavigation: true,
-            complexSPARouting: true
-        }
-    }
+            complexSPARouting: true,
+        },
+    },
 };
 
 /**
@@ -476,20 +497,20 @@ export function createPlatformFromTemplate(templateName, overrides) {
         // Deep merge nested objects
         navigationConfig: {
             ...template.navigationConfig,
-            ...(overrides.navigationConfig || {})
+            ...(overrides.navigationConfig || {}),
         },
         subtitleConfig: {
             ...template.subtitleConfig,
-            ...(overrides.subtitleConfig || {})
+            ...(overrides.subtitleConfig || {}),
         },
         videoDetectionConfig: {
             ...template.videoDetectionConfig,
-            ...(overrides.videoDetectionConfig || {})
+            ...(overrides.videoDetectionConfig || {}),
         },
         platformSpecific: {
             ...template.platformSpecific,
-            ...(overrides.platformSpecific || {})
-        }
+            ...(overrides.platformSpecific || {}),
+        },
     };
 }
 
@@ -504,7 +525,7 @@ export function validatePlatformConfig(config) {
 
     // Required fields
     const required = ['name', 'displayName', 'urlPatterns'];
-    required.forEach(field => {
+    required.forEach((field) => {
         if (!config[field]) {
             errors.push(`Missing required field: ${field}`);
         }
@@ -518,9 +539,11 @@ export function validatePlatformConfig(config) {
     }
 
     // Player page pattern validation
-    if (config.playerPagePattern && 
-        typeof config.playerPagePattern !== 'string' && 
-        typeof config.playerPagePattern !== 'function') {
+    if (
+        config.playerPagePattern &&
+        typeof config.playerPagePattern !== 'string' &&
+        typeof config.playerPagePattern !== 'function'
+    ) {
         errors.push('playerPagePattern must be a string or function');
     }
 
@@ -538,7 +561,7 @@ export function validatePlatformConfig(config) {
     return {
         isValid: errors.length === 0,
         errors,
-        warnings
+        warnings,
     };
 }
 

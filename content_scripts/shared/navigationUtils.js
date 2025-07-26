@@ -42,13 +42,13 @@ export class NavigationDetectionManager {
             isPlayerPage: null,
             logger: null,
             enableNavigationLogging: true,
-            ...options
+            ...options,
         };
 
         // Navigation state
         this.currentUrl = window.location.href;
         this.lastKnownPathname = window.location.pathname;
-        
+
         // Cleanup tracking
         this.intervalId = null;
         this.abortController = null;
@@ -59,7 +59,7 @@ export class NavigationDetectionManager {
         if (this.options.enableNavigationLogging) {
             this.navigationLogger = new NavigationLogger(platform, {
                 logger: this.options.logger,
-                enablePerformanceTracking: true
+                enablePerformanceTracking: true,
             });
         }
 
@@ -75,13 +75,16 @@ export class NavigationDetectionManager {
      */
     setupComprehensiveNavigation() {
         if (this.isSetup) {
-            this._log('warn', 'Navigation detection is already set up; skipping.');
+            this._log(
+                'warn',
+                'Navigation detection is already set up; skipping.'
+            );
             return;
         }
 
         this._log('info', 'Setting up comprehensive navigation detection.', {
             platform: this.platform,
-            options: this.options
+            options: this.options,
         });
 
         this.abortController = new AbortController();
@@ -100,7 +103,10 @@ export class NavigationDetectionManager {
         }
 
         this.isSetup = true;
-        this._log('info', 'Comprehensive navigation detection has been set up successfully.');
+        this._log(
+            'info',
+            'Comprehensive navigation detection has been set up successfully.'
+        );
     }
 
     /**
@@ -111,28 +117,37 @@ export class NavigationDetectionManager {
             const newUrl = window.location.href;
             const newPathname = window.location.pathname;
 
-            if (newUrl !== this.currentUrl || newPathname !== this.lastKnownPathname) {
+            if (
+                newUrl !== this.currentUrl ||
+                newPathname !== this.lastKnownPathname
+            ) {
                 const oldUrl = this.currentUrl;
-                const wasOnPlayerPage = this._isPlayerPage(this.lastKnownPathname);
+                const wasOnPlayerPage = this._isPlayerPage(
+                    this.lastKnownPathname
+                );
                 const isOnPlayerPage = this._isPlayerPage(newPathname);
 
                 // Enhanced navigation logging
                 if (this.navigationLogger) {
-                    this.navigationLogger.logNavigationDetection(oldUrl, newUrl, {
-                        detectionMethod: 'url_check',
-                        fromPathname: this.lastKnownPathname,
-                        toPathname: newPathname,
-                        wasOnPlayerPage,
-                        isOnPlayerPage,
-                        pageTransition: wasOnPlayerPage !== isOnPlayerPage
-                    });
+                    this.navigationLogger.logNavigationDetection(
+                        oldUrl,
+                        newUrl,
+                        {
+                            detectionMethod: 'url_check',
+                            fromPathname: this.lastKnownPathname,
+                            toPathname: newPathname,
+                            wasOnPlayerPage,
+                            isOnPlayerPage,
+                            pageTransition: wasOnPlayerPage !== isOnPlayerPage,
+                        }
+                    );
                 }
 
                 this._log('info', 'URL change detected', {
                     from: this.currentUrl,
                     to: newUrl,
                     fromPathname: this.lastKnownPathname,
-                    toPathname: newPathname
+                    toPathname: newPathname,
                 });
 
                 // Update state
@@ -144,22 +159,34 @@ export class NavigationDetectionManager {
                     this.options.onUrlChange(oldUrl, newUrl);
                 }
 
-                if (this.options.onPageTransition && wasOnPlayerPage !== isOnPlayerPage) {
-                    this.options.onPageTransition(wasOnPlayerPage, isOnPlayerPage);
+                if (
+                    this.options.onPageTransition &&
+                    wasOnPlayerPage !== isOnPlayerPage
+                ) {
+                    this.options.onPageTransition(
+                        wasOnPlayerPage,
+                        isOnPlayerPage
+                    );
                 }
             }
         } catch (error) {
-            this._log('error', 'Error occurred during URL change detection.', { error: error.message });
-            
+            this._log('error', 'Error occurred during URL change detection.', {
+                error: error.message,
+            });
+
             if (this.navigationLogger) {
-                this.navigationLogger.logNavigationDiagnostic('URL change detection error', {
-                    error: error.message,
-                    stack: error.stack,
-                    currentUrl: this.currentUrl,
-                    attemptedUrl: window.location.href
-                }, 'error');
+                this.navigationLogger.logNavigationDiagnostic(
+                    'URL change detection error',
+                    {
+                        error: error.message,
+                        stack: error.stack,
+                        currentUrl: this.currentUrl,
+                        attemptedUrl: window.location.href,
+                    },
+                    'error'
+                );
             }
-            
+
             this._handleExtensionContextError(error);
         }
     }
@@ -173,7 +200,12 @@ export class NavigationDetectionManager {
      */
     logInitializationStep(initializationId, step, status, stepData = {}) {
         if (this.navigationLogger) {
-            this.navigationLogger.logInitializationStep(initializationId, step, status, stepData);
+            this.navigationLogger.logInitializationStep(
+                initializationId,
+                step,
+                status,
+                stepData
+            );
         }
     }
 
@@ -196,7 +228,11 @@ export class NavigationDetectionManager {
      */
     logNavigationDiagnostic(issue, diagnosticData = {}, severity = 'warn') {
         if (this.navigationLogger) {
-            this.navigationLogger.logNavigationDiagnostic(issue, diagnosticData, severity);
+            this.navigationLogger.logNavigationDiagnostic(
+                issue,
+                diagnosticData,
+                severity
+            );
         }
     }
 
@@ -246,9 +282,12 @@ export class NavigationDetectionManager {
      * @private
      */
     _setupIntervalBasedDetection() {
-        this.intervalId = setInterval(this.checkForUrlChange, this.options.intervalMs);
+        this.intervalId = setInterval(
+            this.checkForUrlChange,
+            this.options.intervalMs
+        );
         this._log('debug', 'Interval-based URL detection has been set up.', {
-            intervalMs: this.options.intervalMs
+            intervalMs: this.options.intervalMs,
         });
     }
 
@@ -259,7 +298,7 @@ export class NavigationDetectionManager {
     _setupHistoryAPIInterception() {
         this._originalHistoryMethods = {
             pushState: history.pushState,
-            replaceState: history.replaceState
+            replaceState: history.replaceState,
         };
 
         history.pushState = (...args) => {
@@ -282,17 +321,21 @@ export class NavigationDetectionManager {
     _setupBrowserNavigationEvents() {
         const events = [
             { name: 'popstate', delay: 100 },
-            { name: 'hashchange', delay: 100 }
+            { name: 'hashchange', delay: 100 },
         ];
 
         events.forEach(({ name, delay }) => {
-            const handler = () => setTimeout(this._handleNavigationEvent, delay);
-            
-            window.addEventListener(name, handler, { 
-                signal: this.abortController.signal 
+            const handler = () =>
+                setTimeout(this._handleNavigationEvent, delay);
+
+            window.addEventListener(name, handler, {
+                signal: this.abortController.signal,
             });
-            
-            this._log('debug', `Added ${name} event listener for navigation detection.`);
+
+            this._log(
+                'debug',
+                `Added ${name} event listener for navigation detection.`
+            );
         });
     }
 
@@ -302,11 +345,18 @@ export class NavigationDetectionManager {
      */
     _setupFocusAndVisibilityEvents() {
         const options = { signal: this.abortController.signal };
-        
-        window.addEventListener('focus', this._handleFocusEvent, options);
-        document.addEventListener('visibilitychange', this._handleFocusEvent, options);
 
-        this._log('debug', 'Added focus and visibility event listeners for navigation detection.');
+        window.addEventListener('focus', this._handleFocusEvent, options);
+        document.addEventListener(
+            'visibilitychange',
+            this._handleFocusEvent,
+            options
+        );
+
+        this._log(
+            'debug',
+            'Added focus and visibility event listeners for navigation detection.'
+        );
     }
 
     /**
@@ -315,11 +365,11 @@ export class NavigationDetectionManager {
      */
     _handleHistoryChange() {
         const eventTime = Date.now();
-        
+
         this._log('debug', 'History API change detected.', {
             eventTime,
             currentUrl: window.location.href,
-            pathname: window.location.pathname
+            pathname: window.location.pathname,
         });
 
         // Enhanced logging for history changes
@@ -331,7 +381,7 @@ export class NavigationDetectionManager {
                     detectionMethod: 'history_api',
                     eventTime,
                     historyState: history.state,
-                    trigger: 'programmatic_navigation'
+                    trigger: 'programmatic_navigation',
                 }
             );
         }
@@ -345,11 +395,11 @@ export class NavigationDetectionManager {
      */
     _handleNavigationEvent() {
         const eventTime = Date.now();
-        
+
         this._log('debug', 'Browser navigation event detected.', {
             eventTime,
             currentUrl: window.location.href,
-            pathname: window.location.pathname
+            pathname: window.location.pathname,
         });
 
         // Enhanced logging for browser navigation events
@@ -360,7 +410,7 @@ export class NavigationDetectionManager {
                 {
                     detectionMethod: 'browser_event',
                     eventTime,
-                    trigger: 'user_navigation'
+                    trigger: 'user_navigation',
                 }
             );
         }
@@ -374,11 +424,11 @@ export class NavigationDetectionManager {
      */
     _handleFocusEvent() {
         const eventTime = Date.now();
-        
+
         this._log('debug', 'Focus/visibility event detected.', {
             eventTime,
             visibilityState: document.visibilityState,
-            hasFocus: document.hasFocus()
+            hasFocus: document.hasFocus(),
         });
 
         // Enhanced logging for focus events
@@ -391,7 +441,7 @@ export class NavigationDetectionManager {
                     eventTime,
                     visibilityState: document.visibilityState,
                     hasFocus: document.hasFocus(),
-                    trigger: 'focus_change'
+                    trigger: 'focus_change',
                 }
             );
         }
@@ -407,7 +457,10 @@ export class NavigationDetectionManager {
     _handleExtensionContextError(error) {
         if (error.message?.includes('Extension context invalidated')) {
             this.cleanup();
-            this._log('info', 'Stopped navigation detection due to extension context invalidation.');
+            this._log(
+                'info',
+                'Stopped navigation detection due to extension context invalidation.'
+            );
         }
     }
 
@@ -427,9 +480,15 @@ export class NavigationDetectionManager {
             case 'netflix':
                 return pathname.includes('/watch/');
             case 'disneyplus':
-                return pathname.includes('/video/') || pathname.includes('/movies/') || pathname.includes('/series/');
+                return (
+                    pathname.includes('/video/') ||
+                    pathname.includes('/movies/') ||
+                    pathname.includes('/series/')
+                );
             default:
-                return pathname.includes('/watch/') || pathname.includes('/video/');
+                return (
+                    pathname.includes('/watch/') || pathname.includes('/video/')
+                );
         }
     }
 
@@ -442,9 +501,16 @@ export class NavigationDetectionManager {
      */
     _log(level, message, data = {}) {
         if (this.options.logger) {
-            this.options.logger(level, `[NavigationDetection:${this.platform}] ${message}`, data);
+            this.options.logger(
+                level,
+                `[NavigationDetection:${this.platform}] ${message}`,
+                data
+            );
         } else {
-            console.log(`[NavigationDetection:${this.platform}] [${level.toUpperCase()}] ${message}`, data);
+            console.log(
+                `[NavigationDetection:${this.platform}] [${level.toUpperCase()}] ${message}`,
+                data
+            );
         }
     }
 }
@@ -472,14 +538,14 @@ export class NavigationEventHandler {
             onUrlChange: null,
             logger: null,
             enableNavigationLogging: true,
-            ...options
+            ...options,
         };
 
         // Enhanced navigation logging
         if (this.options.enableNavigationLogging) {
             this.navigationLogger = new NavigationLogger(platform, {
                 logger: this.options.logger,
-                enablePerformanceTracking: true
+                enablePerformanceTracking: true,
             });
         }
 
@@ -488,7 +554,7 @@ export class NavigationEventHandler {
             lastTransitionTime: null,
             transitionCount: 0,
             playerPageEntries: 0,
-            playerPageExits: 0
+            playerPageExits: 0,
         };
     }
 
@@ -499,8 +565,8 @@ export class NavigationEventHandler {
      */
     handlePageTransition(wasOnPlayerPage, isOnPlayerPage) {
         const transitionTime = Date.now();
-        const timeSinceLastTransition = this.transitionState.lastTransitionTime 
-            ? transitionTime - this.transitionState.lastTransitionTime 
+        const timeSinceLastTransition = this.transitionState.lastTransitionTime
+            ? transitionTime - this.transitionState.lastTransitionTime
             : 0;
 
         // Update transition state
@@ -512,17 +578,20 @@ export class NavigationEventHandler {
             isOnPlayerPage,
             platform: this.platform,
             transitionTime,
-            timeSinceLastTransition: timeSinceLastTransition > 0 ? `${timeSinceLastTransition}ms` : 'first transition',
-            transitionCount: this.transitionState.transitionCount
+            timeSinceLastTransition:
+                timeSinceLastTransition > 0
+                    ? `${timeSinceLastTransition}ms`
+                    : 'first transition',
+            transitionCount: this.transitionState.transitionCount,
         });
 
         // Clean up when leaving a player page
         if (wasOnPlayerPage && !isOnPlayerPage) {
             this.transitionState.playerPageExits++;
-            
+
             this._log('info', 'Leaving player page, triggering cleanup.', {
                 playerPageExits: this.transitionState.playerPageExits,
-                currentUrl: window.location.href
+                currentUrl: window.location.href,
             });
 
             // Enhanced logging for page exit
@@ -534,7 +603,7 @@ export class NavigationEventHandler {
                     {
                         exitTime: transitionTime,
                         totalExits: this.transitionState.playerPageExits,
-                        timeSinceLastTransition
+                        timeSinceLastTransition,
                     }
                 );
             }
@@ -542,7 +611,7 @@ export class NavigationEventHandler {
             if (this.options.onLeavePlayerPage) {
                 try {
                     this.options.onLeavePlayerPage();
-                    
+
                     // Log successful cleanup
                     if (this.navigationLogger) {
                         this.navigationLogger.logInitializationStep(
@@ -553,10 +622,14 @@ export class NavigationEventHandler {
                         );
                     }
                 } catch (error) {
-                    this._log('error', 'Error during player page exit cleanup', {
-                        error: error.message,
-                        stack: error.stack
-                    });
+                    this._log(
+                        'error',
+                        'Error during player page exit cleanup',
+                        {
+                            error: error.message,
+                            stack: error.stack,
+                        }
+                    );
 
                     // Log cleanup failure
                     if (this.navigationLogger) {
@@ -564,9 +637,9 @@ export class NavigationEventHandler {
                             `transition-${transitionTime}`,
                             'player_page_exit',
                             'failed',
-                            { 
+                            {
                                 cleanupSuccessful: false,
-                                error: error.message 
+                                error: error.message,
                             }
                         );
                     }
@@ -577,11 +650,15 @@ export class NavigationEventHandler {
         // Initialize when entering a player page
         if (!wasOnPlayerPage && isOnPlayerPage) {
             this.transitionState.playerPageEntries++;
-            
-            this._log('info', 'Entering player page, triggering initialization.', {
-                playerPageEntries: this.transitionState.playerPageEntries,
-                currentUrl: window.location.href
-            });
+
+            this._log(
+                'info',
+                'Entering player page, triggering initialization.',
+                {
+                    playerPageEntries: this.transitionState.playerPageEntries,
+                    currentUrl: window.location.href,
+                }
+            );
 
             // Enhanced logging for page entry
             if (this.navigationLogger) {
@@ -592,7 +669,7 @@ export class NavigationEventHandler {
                     {
                         entryTime: transitionTime,
                         totalEntries: this.transitionState.playerPageEntries,
-                        timeSinceLastTransition
+                        timeSinceLastTransition,
                     }
                 );
             }
@@ -600,7 +677,7 @@ export class NavigationEventHandler {
             if (this.options.onEnterPlayerPage) {
                 try {
                     this.options.onEnterPlayerPage();
-                    
+
                     // Log successful initialization
                     if (this.navigationLogger) {
                         this.navigationLogger.logInitializationStep(
@@ -611,10 +688,14 @@ export class NavigationEventHandler {
                         );
                     }
                 } catch (error) {
-                    this._log('error', 'Error during player page entry initialization', {
-                        error: error.message,
-                        stack: error.stack
-                    });
+                    this._log(
+                        'error',
+                        'Error during player page entry initialization',
+                        {
+                            error: error.message,
+                            stack: error.stack,
+                        }
+                    );
 
                     // Log initialization failure
                     if (this.navigationLogger) {
@@ -622,9 +703,9 @@ export class NavigationEventHandler {
                             `transition-${transitionTime}`,
                             'player_page_entry',
                             'failed',
-                            { 
+                            {
                                 initializationTriggered: false,
-                                error: error.message 
+                                error: error.message,
                             }
                         );
                     }
@@ -642,7 +723,7 @@ export class NavigationEventHandler {
         this._log('debug', 'Handling URL change.', {
             from: oldUrl,
             to: newUrl,
-            platform: this.platform
+            platform: this.platform,
         });
 
         if (this.options.onUrlChange) {
@@ -659,9 +740,16 @@ export class NavigationEventHandler {
      */
     _log(level, message, data = {}) {
         if (this.options.logger) {
-            this.options.logger(level, `[NavigationEventHandler:${this.platform}] ${message}`, data);
+            this.options.logger(
+                level,
+                `[NavigationEventHandler:${this.platform}] ${message}`,
+                data
+            );
         } else {
-            console.log(`[NavigationEventHandler:${this.platform}] [${level.toUpperCase()}] ${message}`, data);
+            console.log(
+                `[NavigationEventHandler:${this.platform}] [${level.toUpperCase()}] ${message}`,
+                data
+            );
         }
     }
 }
@@ -676,17 +764,20 @@ export const PLATFORM_NAVIGATION_CONFIGS = {
         usePopstateEvents: true,
         useIntervalChecking: true,
         useFocusEvents: true,
-        isPlayerPage: (pathname) => pathname.includes('/watch/')
+        isPlayerPage: (pathname) => pathname.includes('/watch/'),
     },
-    
+
     disneyplus: {
         intervalMs: 500,
         useHistoryAPI: true,
         usePopstateEvents: true,
         useIntervalChecking: true,
         useFocusEvents: true,
-        isPlayerPage: (pathname) => pathname.includes('/video/') || pathname.includes('/movies/') || pathname.includes('/series/')
-    }
+        isPlayerPage: (pathname) =>
+            pathname.includes('/video/') ||
+            pathname.includes('/movies/') ||
+            pathname.includes('/series/'),
+    },
 };
 
 /**
@@ -696,8 +787,9 @@ export const PLATFORM_NAVIGATION_CONFIGS = {
  * @returns {NavigationDetectionManager} A configured `NavigationDetectionManager` instance.
  */
 export function createPlatformNavigationManager(platform, customOptions = {}) {
-    const platformConfig = PLATFORM_NAVIGATION_CONFIGS[platform.toLowerCase()] || {};
+    const platformConfig =
+        PLATFORM_NAVIGATION_CONFIGS[platform.toLowerCase()] || {};
     const options = { ...platformConfig, ...customOptions };
-    
+
     return new NavigationDetectionManager(platform, options);
 }

@@ -11,14 +11,23 @@
 (async () => {
     console.log('[DisneyPlusContent] Script loading and initializing.');
     try {
-        const { DisneyPlusContentScript } = await import('./DisneyPlusContentScript.js');
+        const { DisneyPlusContentScript } = await import(
+            './DisneyPlusContentScript.js'
+        );
         const disneyPlusContentScript = new DisneyPlusContentScript();
         if (await disneyPlusContentScript.initialize()) {
-            console.log('[DisneyPlusContent] Content script initialized successfully.');
+            console.log(
+                '[DisneyPlusContent] Content script initialized successfully.'
+            );
         } else {
-            console.error('[DisneyPlusContent] Content script initialization failed.');
+            console.error(
+                '[DisneyPlusContent] Content script initialization failed.'
+            );
         }
     } catch (error) {
-        console.error('[DisneyPlusContent] An error occurred during initialization:', error);
+        console.error(
+            '[DisneyPlusContent] An error occurred during initialization:',
+            error
+        );
     }
 })();

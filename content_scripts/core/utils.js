@@ -47,8 +47,8 @@ export function startVideoDetection(
     getVideoElement,
     maxRetries = 30,
     retryInterval = 1000,
-    onSuccess = () => { },
-    onFailure = () => { },
+    onSuccess = () => {},
+    onFailure = () => {},
     logger = console.log
 ) {
     // Input validation
@@ -106,7 +106,11 @@ export function startVideoDetection(
  * @param {Function} logger - Logger function
  * @returns {string} New URL if changed, null otherwise
  */
-export function detectUrlChange(currentUrl, onUrlChange = () => { }, logger = console.log) {
+export function detectUrlChange(
+    currentUrl,
+    onUrlChange = () => {},
+    logger = console.log
+) {
     try {
         const newUrl = window.location.href;
         const newPathname = window.location.pathname;
@@ -121,7 +125,10 @@ export function detectUrlChange(currentUrl, onUrlChange = () => { }, logger = co
     } catch (urlError) {
         logger('Error in URL change detection', urlError);
         // If we get an extension context error, return special value to stop detection
-        if (urlError.message && urlError.message.includes('Extension context invalidated')) {
+        if (
+            urlError.message &&
+            urlError.message.includes('Extension context invalidated')
+        ) {
             return 'CONTEXT_INVALIDATED';
         }
         return null;
@@ -151,13 +158,18 @@ export function setupNavigationDetection(
         enableHashChange: true,
         enableFocusCheck: true,
         intervalCheck: COMMON_CONSTANTS.URL_CHECK_INTERVAL,
-        ...options
+        ...options,
     };
 
     const cleanupFunctions = [];
     let currentUrl = window.location.href;
 
-    const handleNavigation = createNavigationHandler(currentUrl, onNavigate, logger, cleanupFunctions);
+    const handleNavigation = createNavigationHandler(
+        currentUrl,
+        onNavigate,
+        logger,
+        cleanupFunctions
+    );
 
     // Setup different detection methods
     if (config.enableHistoryAPI) {
@@ -177,7 +189,13 @@ export function setupNavigationDetection(
     }
 
     if (config.intervalCheck > 0) {
-        setupIntervalDetection(config.intervalCheck, currentUrl, onNavigate, logger, cleanupFunctions);
+        setupIntervalDetection(
+            config.intervalCheck,
+            currentUrl,
+            onNavigate,
+            logger,
+            cleanupFunctions
+        );
     }
 
     const cleanup = createCleanupFunction(cleanupFunctions, logger);
@@ -190,7 +208,12 @@ export function setupNavigationDetection(
  * Create navigation handler with context invalidation support
  * @private
  */
-function createNavigationHandler(currentUrl, onNavigate, logger, cleanupFunctions) {
+function createNavigationHandler(
+    currentUrl,
+    onNavigate,
+    logger,
+    cleanupFunctions
+) {
     return () => {
         setTimeout(() => {
             const newUrl = detectUrlChange(currentUrl, onNavigate, logger);
@@ -268,7 +291,13 @@ function setupFocusDetection(handleNavigation, cleanupFunctions) {
  * Setup interval-based detection
  * @private
  */
-function setupIntervalDetection(intervalCheck, currentUrl, onNavigate, logger, cleanupFunctions) {
+function setupIntervalDetection(
+    intervalCheck,
+    currentUrl,
+    onNavigate,
+    logger,
+    cleanupFunctions
+) {
     const intervalId = setInterval(() => {
         const newUrl = detectUrlChange(currentUrl, onNavigate, logger);
         if (newUrl && newUrl !== 'CONTEXT_INVALIDATED') {
@@ -291,7 +320,7 @@ function setupIntervalDetection(intervalCheck, currentUrl, onNavigate, logger, c
  */
 function createCleanupFunction(cleanupFunctions, logger) {
     return () => {
-        cleanupFunctions.forEach(fn => {
+        cleanupFunctions.forEach((fn) => {
             try {
                 fn();
             } catch (error) {
@@ -325,8 +354,8 @@ export function isPlayerPage(playerUrlPattern, url = window.location.pathname) {
 export function injectScript(
     scriptSrc,
     scriptId,
-    onLoad = () => { },
-    onError = () => { },
+    onLoad = () => {},
+    onError = () => {},
     logger = console.log,
     isModule = false
 ) {
@@ -395,14 +424,18 @@ export class EventBuffer {
 
         // Check buffer size limit
         if (this.buffer.length >= this.maxSize) {
-            this.logger(`Event buffer size limit (${this.maxSize}) reached, removing oldest events`);
+            this.logger(
+                `Event buffer size limit (${this.maxSize}) reached, removing oldest events`
+            );
             // Remove oldest 25% of events to make room
             const removeCount = Math.floor(this.maxSize * 0.25);
             this.buffer.splice(0, removeCount);
         }
 
         this.buffer.push(eventData);
-        this.logger(`Event buffered. Buffer size: ${this.buffer.length}/${this.maxSize}`);
+        this.logger(
+            `Event buffered. Buffer size: ${this.buffer.length}/${this.maxSize}`
+        );
     }
 
     /**
@@ -415,10 +448,10 @@ export class EventBuffer {
         }
 
         this.isProcessing = true;
-        
+
         // Clean old events before processing
         this._cleanOldEvents();
-        
+
         const events = [...this.buffer];
         this.buffer = [];
 
@@ -432,7 +465,10 @@ export class EventBuffer {
             try {
                 // Validate event data
                 if (!eventData || typeof eventData !== 'object') {
-                    this.logger(`Skipping invalid event at index ${index}:`, eventData);
+                    this.logger(
+                        `Skipping invalid event at index ${index}:`,
+                        eventData
+                    );
                     skippedCount++;
                     return;
                 }
@@ -440,7 +476,9 @@ export class EventBuffer {
                 // Check if event is still relevant (not too old)
                 const eventAge = Date.now() - (eventData.timestamp || 0);
                 if (eventAge > this.maxAge) {
-                    this.logger(`Skipping stale event at index ${index}, age: ${eventAge}ms`);
+                    this.logger(
+                        `Skipping stale event at index ${index}, age: ${eventAge}ms`
+                    );
                     skippedCount++;
                     return;
                 }
@@ -453,7 +491,9 @@ export class EventBuffer {
             }
         });
 
-        this.logger(`Event processing completed: ${processedCount} processed, ${skippedCount} skipped, ${errorCount} errors`);
+        this.logger(
+            `Event processing completed: ${processedCount} processed, ${skippedCount} skipped, ${errorCount} errors`
+        );
         this.isProcessing = false;
     }
 
@@ -480,16 +520,19 @@ export class EventBuffer {
      */
     getStats() {
         const now = Date.now();
-        const ages = this.buffer.map(event => now - (event.timestamp || 0));
-        
+        const ages = this.buffer.map((event) => now - (event.timestamp || 0));
+
         return {
             size: this.buffer.length,
             maxSize: this.maxSize,
             maxAge: this.maxAge,
             oldestEventAge: ages.length > 0 ? Math.max(...ages) : 0,
             newestEventAge: ages.length > 0 ? Math.min(...ages) : 0,
-            averageAge: ages.length > 0 ? ages.reduce((sum, age) => sum + age, 0) / ages.length : 0,
-            bufferAge: now - this.createdAt
+            averageAge:
+                ages.length > 0
+                    ? ages.reduce((sum, age) => sum + age, 0) / ages.length
+                    : 0,
+            bufferAge: now - this.createdAt,
         };
     }
 
@@ -500,7 +543,7 @@ export class EventBuffer {
     _cleanOldEvents() {
         const now = Date.now();
         const originalSize = this.buffer.length;
-        
+
         // Use reverse iteration to avoid index shifting issues
         for (let i = this.buffer.length - 1; i >= 0; i--) {
             const event = this.buffer[i];
@@ -522,7 +565,10 @@ export class EventBuffer {
      */
     needsMaintenance() {
         const stats = this.getStats();
-        return stats.size > this.maxSize * 0.8 || stats.oldestEventAge > this.maxAge * 0.8;
+        return (
+            stats.size > this.maxSize * 0.8 ||
+            stats.oldestEventAge > this.maxAge * 0.8
+        );
     }
 
     /**
@@ -530,14 +576,16 @@ export class EventBuffer {
      */
     performMaintenance() {
         this._cleanOldEvents();
-        
+
         // If still too large, remove oldest events
         if (this.buffer.length > this.maxSize * 0.8) {
             const targetSize = Math.floor(this.maxSize * 0.6);
             const removeCount = this.buffer.length - targetSize;
             if (removeCount > 0) {
                 this.buffer.splice(0, removeCount);
-                this.logger(`Maintenance: removed ${removeCount} oldest events, buffer size now: ${this.buffer.length}`);
+                this.logger(
+                    `Maintenance: removed ${removeCount} oldest events, buffer size now: ${this.buffer.length}`
+                );
             }
         }
     }
@@ -550,7 +598,11 @@ export class EventBuffer {
  * @param {string[]} [uiOnlySettings=[]] - A list of settings that only affect the UI.
  * @returns {Object} An analysis of the configuration changes.
  */
-export function analyzeConfigChanges(oldConfig, newConfig, uiOnlySettings = []) {
+export function analyzeConfigChanges(
+    oldConfig,
+    newConfig,
+    uiOnlySettings = []
+) {
     const changes = {};
     const functionalChanges = {};
     const uiOnlyChanges = {};
@@ -560,7 +612,7 @@ export function analyzeConfigChanges(oldConfig, newConfig, uiOnlySettings = []) 
         if (oldConfig[key] !== newConfig[key]) {
             changes[key] = {
                 old: oldConfig[key],
-                new: newConfig[key]
+                new: newConfig[key],
             };
 
             if (uiOnlySettings.includes(key)) {
@@ -577,7 +629,7 @@ export function analyzeConfigChanges(oldConfig, newConfig, uiOnlySettings = []) 
         hasUiOnlyChanges: Object.keys(uiOnlyChanges).length > 0,
         changes,
         functionalChanges,
-        uiOnlyChanges
+        uiOnlyChanges,
     };
 }
 
@@ -598,7 +650,8 @@ export function onDOMReady(callback) {
  * A cache for DOM elements to optimize performance, with automatic cleanup.
  */
 class ElementCache {
-    constructor(maxSize = 100, ttl = 300000) { // 5 minutes TTL
+    constructor(maxSize = 100, ttl = 300000) {
+        // 5 minutes TTL
         this.cache = new Map();
         this.maxSize = maxSize;
         this.ttl = ttl;
@@ -618,7 +671,7 @@ class ElementCache {
         }
 
         this.cache.set(key, element);
-        
+
         // Set TTL timer
         const timer = setTimeout(() => {
             this.delete(key);
@@ -663,23 +716,29 @@ const elementCache = new ElementCache();
 function validateInputs(params, schema) {
     for (const [key, rules] of Object.entries(schema)) {
         const value = params[key];
-        
+
         if (rules.required && (value === undefined || value === null)) {
             throw new Error(`${key} is required`);
         }
-        
+
         if (value !== undefined && rules.type && typeof value !== rules.type) {
-            throw new TypeError(`${key} must be of type ${rules.type}, got ${typeof value}`);
+            throw new TypeError(
+                `${key} must be of type ${rules.type}, got ${typeof value}`
+            );
         }
-        
+
         if (rules.min !== undefined && value < rules.min) {
-            throw new RangeError(`${key} must be >= ${rules.min}, got ${value}`);
+            throw new RangeError(
+                `${key} must be >= ${rules.min}, got ${value}`
+            );
         }
-        
+
         if (rules.max !== undefined && value > rules.max) {
-            throw new RangeError(`${key} must be <= ${rules.max}, got ${value}`);
+            throw new RangeError(
+                `${key} must be <= ${rules.max}, got ${value}`
+            );
         }
-        
+
         if (rules.validator && !rules.validator(value)) {
             throw new Error(`${key} failed custom validation`);
         }
@@ -703,12 +762,15 @@ export async function waitForElement(
     useCache = false
 ) {
     // Input validation
-    validateInputs({ selector, maxRetries, retryInterval }, {
-        selector: { required: true, type: 'string' },
-        maxRetries: { required: true, type: 'number', min: 1 },
-        retryInterval: { required: true, type: 'number', min: 0 }
-    });
-    
+    validateInputs(
+        { selector, maxRetries, retryInterval },
+        {
+            selector: { required: true, type: 'string' },
+            maxRetries: { required: true, type: 'number', min: 1 },
+            retryInterval: { required: true, type: 'number', min: 0 },
+        }
+    );
+
     const cacheKey = `${selector}:${context === document ? 'document' : 'context'}`;
 
     // Check cache first if enabled
@@ -790,7 +852,7 @@ export function throttle(func, limit) {
         if (!inThrottle) {
             func.apply(this, args);
             inThrottle = true;
-            setTimeout(() => inThrottle = false, limit);
+            setTimeout(() => (inThrottle = false), limit);
         }
     };
 }
@@ -820,7 +882,12 @@ export function detectPlatform(url, platformPatterns) {
  * @param {string} logPrefix - The log prefix.
  * @returns {boolean} `true` if the setup was successful, otherwise `false`.
  */
-export function attemptVideoSetup(activePlatform, subtitleUtils, config, logPrefix) {
+export function attemptVideoSetup(
+    activePlatform,
+    subtitleUtils,
+    config,
+    logPrefix
+) {
     if (!activePlatform || !subtitleUtils || !config) {
         return false;
     }
@@ -830,16 +897,31 @@ export function attemptVideoSetup(activePlatform, subtitleUtils, config, logPref
         return false; // Video not ready yet
     }
 
-    logWithFallback('info', 'Video element found! Setting up subtitle container and listeners', {}, logPrefix);
-    logWithFallback('debug', 'Current subtitlesActive state', {
-        subtitlesActive: subtitleUtils.subtitlesActive
-    }, logPrefix);
+    logWithFallback(
+        'info',
+        'Video element found! Setting up subtitle container and listeners',
+        {},
+        logPrefix
+    );
+    logWithFallback(
+        'debug',
+        'Current subtitlesActive state',
+        {
+            subtitlesActive: subtitleUtils.subtitlesActive,
+        },
+        logPrefix
+    );
 
     // Ensure container and timeupdate listener
     subtitleUtils.ensureSubtitleContainer(activePlatform, config, logPrefix);
 
     if (subtitleUtils.subtitlesActive) {
-        logWithFallback('info', 'Subtitles are active, showing container and setting up listeners', {}, logPrefix);
+        logWithFallback(
+            'info',
+            'Subtitles are active, showing container and setting up listeners',
+            {},
+            logPrefix
+        );
         subtitleUtils.showSubtitleContainer();
         if (videoElement.currentTime > 0) {
             subtitleUtils.updateSubtitles(
@@ -850,7 +932,12 @@ export function attemptVideoSetup(activePlatform, subtitleUtils, config, logPref
             );
         }
     } else {
-        logWithFallback('info', 'Subtitles are not active, hiding container', {}, logPrefix);
+        logWithFallback(
+            'info',
+            'Subtitles are not active, hiding container',
+            {},
+            logPrefix
+        );
         subtitleUtils.hideSubtitleContainer();
     }
 
@@ -865,8 +952,14 @@ export function attemptVideoSetup(activePlatform, subtitleUtils, config, logPref
  * @deprecated Use `analyzeConfigChanges` directly with `COMMON_CONSTANTS.UI_ONLY_SETTINGS`.
  */
 export function analyzeConfigurationChanges(oldConfig, newConfig) {
-    console.warn('analyzeConfigurationChanges is deprecated. Use analyzeConfigChanges directly.');
-    return analyzeConfigChanges(oldConfig, newConfig, COMMON_CONSTANTS.UI_ONLY_SETTINGS);
+    console.warn(
+        'analyzeConfigurationChanges is deprecated. Use analyzeConfigChanges directly.'
+    );
+    return analyzeConfigChanges(
+        oldConfig,
+        newConfig,
+        COMMON_CONSTANTS.UI_ONLY_SETTINGS
+    );
 }
 
 /**
@@ -876,7 +969,11 @@ export function analyzeConfigurationChanges(oldConfig, newConfig) {
  * @param {Function} [logger=logWithFallback] - The logger function.
  * @returns {Function} A cleanup function to remove the listener.
  */
-export function setupEarlyEventListener(eventId, eventHandler, logger = logWithFallback) {
+export function setupEarlyEventListener(
+    eventId,
+    eventHandler,
+    logger = logWithFallback
+) {
     let listenerAttached = false;
 
     const attachListener = () => {
@@ -908,19 +1005,31 @@ export function setupEarlyEventListener(eventId, eventHandler, logger = logWithF
  * @param {Function} [logger=logWithFallback] - The logger function.
  * @returns {MutationObserver} The observer instance.
  */
-export function setupVideoElementObserver(onVideoChange, context, logger = logWithFallback) {
+export function setupVideoElementObserver(
+    onVideoChange,
+    context,
+    logger = logWithFallback
+) {
     const observer = new MutationObserver((mutationsList) => {
         if (!context.subtitleUtils) return; // Utilities not loaded yet
 
         for (let mutation of mutationsList) {
             if (mutation.type === 'childList') {
-                const videoElementNow = context.activePlatform?.getVideoElement();
+                const videoElementNow =
+                    context.activePlatform?.getVideoElement();
                 const currentDOMVideoElement = document.querySelector(
                     'video[data-listener-attached="true"]'
                 );
 
-                if (videoElementNow && (!currentDOMVideoElement || currentDOMVideoElement !== videoElementNow)) {
-                    logger('debug', 'Video element appearance or change detected');
+                if (
+                    videoElementNow &&
+                    (!currentDOMVideoElement ||
+                        currentDOMVideoElement !== videoElementNow)
+                ) {
+                    logger(
+                        'debug',
+                        'Video element appearance or change detected'
+                    );
                     onVideoChange(videoElementNow, 'appeared');
                 } else if (currentDOMVideoElement && !videoElementNow) {
                     logger('debug', 'Video element removal detected');
@@ -949,7 +1058,10 @@ export function setupVideoElementObserver(onVideoChange, context, logger = logWi
  * @param {Object} context - The context object with resources to clean up.
  * @param {Function} [logger=logWithFallback] - The logger function.
  */
-export function cleanupContentScriptResources(context, logger = logWithFallback) {
+export function cleanupContentScriptResources(
+    context,
+    logger = logWithFallback
+) {
     try {
         // Stop intervals
         if (context.intervalManager) {
@@ -1002,7 +1114,10 @@ export function cleanupContentScriptResources(context, logger = logWithFallback)
  * @param {Function} onInvalidation - The callback to execute when the context is invalidated.
  * @param {Function} [logger=logWithFallback] - The logger function.
  */
-export function handleExtensionContextInvalidation(onInvalidation, logger = logWithFallback) {
+export function handleExtensionContextInvalidation(
+    onInvalidation,
+    logger = logWithFallback
+) {
     // Listen for extension context invalidation
     chrome.runtime.onConnect.addListener((port) => {
         port.onDisconnect.addListener(() => {
@@ -1030,7 +1145,9 @@ export class PlatformConfigFactory {
     }
 
     static getConfigByUrl(url = window.location.href) {
-        for (const [platformName, config] of Object.entries(DEFAULT_PLATFORM_CONFIGS)) {
+        for (const [platformName, config] of Object.entries(
+            DEFAULT_PLATFORM_CONFIGS
+        )) {
             for (const pattern of config.navigation.urlPatterns) {
                 if (url.includes(pattern)) {
                     return { ...config }; // Return a copy
@@ -1045,7 +1162,13 @@ export class PlatformConfigFactory {
     }
 
     static validateConfig(config) {
-        const required = ['name', 'injectScript', 'navigation', 'videoDetection', 'logPrefix'];
+        const required = [
+            'name',
+            'injectScript',
+            'navigation',
+            'videoDetection',
+            'logPrefix',
+        ];
         for (const field of required) {
             if (!config[field]) {
                 throw new Error(`Missing required config field: ${field}`);
@@ -1072,7 +1195,9 @@ export function getPlatformConfig(name) {
  * @deprecated Use `PlatformConfigFactory.getConfigByUrl()` instead.
  */
 export function getPlatformConfigByUrl(url = window.location.href) {
-    for (const [platformName, config] of Object.entries(DEFAULT_PLATFORM_CONFIGS)) {
+    for (const [platformName, config] of Object.entries(
+        DEFAULT_PLATFORM_CONFIGS
+    )) {
         for (const pattern of config.navigation.urlPatterns) {
             if (url.includes(pattern)) {
                 return config;
@@ -1120,7 +1245,7 @@ export function createContentScriptContext(name) {
 
         cleanup: function () {
             cleanupContentScriptResources(this);
-            this.cleanupFunctions.forEach(fn => {
+            this.cleanupFunctions.forEach((fn) => {
                 try {
                     fn();
                 } catch (cleanupError) {
@@ -1128,7 +1253,7 @@ export function createContentScriptContext(name) {
                 }
             });
             this.cleanupFunctions.length = 0;
-        }
+        },
     };
 }
 
@@ -1151,7 +1276,12 @@ export function isExtensionContextValid() {
  * @param {Function} [onSuccess=()=>{}] - The success callback.
  * @param {Function} [onError=()=>{}] - The error callback.
  */
-export function safeChromeApiCall(apiCall, args = [], onSuccess = () => {}, onError = () => {}) {
+export function safeChromeApiCall(
+    apiCall,
+    args = [],
+    onSuccess = () => {},
+    onError = () => {}
+) {
     if (!isExtensionContextValid()) {
         onError(new Error('Extension context is invalid'));
         return;
@@ -1159,13 +1289,15 @@ export function safeChromeApiCall(apiCall, args = [], onSuccess = () => {}, onEr
 
     try {
         const result = apiCall(...args);
-        
+
         // Check for Chrome runtime lastError
         if (chrome.runtime && chrome.runtime.lastError) {
-            onError(new Error(`Runtime error: ${chrome.runtime.lastError.message}`));
+            onError(
+                new Error(`Runtime error: ${chrome.runtime.lastError.message}`)
+            );
             return;
         }
-        
+
         onSuccess(result);
     } catch (error) {
         if (error.message?.includes('Extension context invalidated')) {
@@ -1183,11 +1315,13 @@ export function safeChromeApiCall(apiCall, args = [], onSuccess = () => {}, onEr
  * @param {Object} [data={}] - Additional data to log.
  * @param {string} [prefix='ContentScript'] - The log prefix.
  */
-export function logWithFallback(level, message, data = {}, prefix = 'ContentScript') {
-    console.log(
-        `[${prefix}] [${level.toUpperCase()}] ${message}`,
-        data
-    );
+export function logWithFallback(
+    level,
+    message,
+    data = {},
+    prefix = 'ContentScript'
+) {
+    console.log(`[${prefix}] [${level.toUpperCase()}] ${message}`, data);
 }
 
 /**
@@ -1223,7 +1357,10 @@ export async function initializeLogger(logPrefix, configService, Logger) {
         logger.info('Logger initialized', { level: loggingLevel });
     } catch (error) {
         logger.updateLevel(Logger.LEVELS.INFO);
-        logger.warn('Failed to load logging level from config, using INFO level', error);
+        logger.warn(
+            'Failed to load logging level from config, using INFO level',
+            error
+        );
     }
 
     return logger;
@@ -1295,7 +1432,11 @@ export function injectScriptWithRetry(
                 };
 
                 script.onerror = (error) => {
-                    logger('error', `Failed to load script ${scriptId} (attempt ${attempts})`, { error });
+                    logger(
+                        'error',
+                        `Failed to load script ${scriptId} (attempt ${attempts})`,
+                        { error }
+                    );
 
                     if (attempts < maxRetries) {
                         setTimeout(attemptInject, retryDelay);
@@ -1311,12 +1452,19 @@ export function injectScriptWithRetry(
                     if (attempts < maxRetries) {
                         setTimeout(attemptInject, retryDelay);
                     } else {
-                        logger('error', 'No target element found for script injection');
+                        logger(
+                            'error',
+                            'No target element found for script injection'
+                        );
                         resolve(false);
                     }
                 }
             } catch (error) {
-                logger('error', `Error during script injection (attempt ${attempts})`, { error });
+                logger(
+                    'error',
+                    `Error during script injection (attempt ${attempts})`,
+                    { error }
+                );
 
                 if (attempts < maxRetries) {
                     setTimeout(attemptInject, retryDelay);
@@ -1359,7 +1507,11 @@ export function chromeApiCall(apiCall, ...args) {
  * @param {Function} [logger=logWithFallback] - The logger function.
  * @returns {Promise<Object|null>} A promise that resolves to the loaded module, or `null` on error.
  */
-export async function loadModuleWithDependencies(modulePath, dependencies = {}, logger = logWithFallback) {
+export async function loadModuleWithDependencies(
+    modulePath,
+    dependencies = {},
+    logger = logWithFallback
+) {
     try {
         const module = await import(chrome.runtime.getURL(modulePath));
 
@@ -1400,7 +1552,9 @@ export class ModuleLoader {
             this.logger('info', `Module loaded successfully: ${modulePath}`);
             return module;
         } catch (error) {
-            this.logger('error', `Failed to load module: ${modulePath}`, { error });
+            this.logger('error', `Failed to load module: ${modulePath}`, {
+                error,
+            });
             return null;
         }
     }
@@ -1429,7 +1583,9 @@ export class IntervalManager {
     set(name, callback, delay, options = {}) {
         // Prevent too many intervals
         if (this.intervals.size >= this.maxIntervals) {
-            console.warn(`IntervalManager: Maximum intervals (${this.maxIntervals}) reached`);
+            console.warn(
+                `IntervalManager: Maximum intervals (${this.maxIntervals}) reached`
+            );
             return false;
         }
 
@@ -1438,12 +1594,12 @@ export class IntervalManager {
         try {
             let executionCount = 0;
             const { maxExecutions, timeout } = options;
-            
+
             const wrappedCallback = () => {
                 try {
                     callback();
                     executionCount++;
-                    
+
                     // Auto-clear after max executions
                     if (maxExecutions && executionCount >= maxExecutions) {
                         this.clear(name);
@@ -1455,16 +1611,16 @@ export class IntervalManager {
             };
 
             const intervalId = setInterval(wrappedCallback, delay);
-            
+
             const intervalInfo = {
                 id: intervalId,
                 createdAt: Date.now(),
                 delay,
                 executionCount: 0,
                 maxExecutions,
-                timeout
+                timeout,
             };
-            
+
             this.intervals.set(name, intervalInfo);
 
             // Auto-clear after timeout
@@ -1518,14 +1674,22 @@ export class IntervalManager {
     getStats() {
         const now = Date.now();
         const intervals = Array.from(this.intervals.values());
-        
+
         return {
             count: this.intervals.size,
             maxIntervals: this.maxIntervals,
-            oldestInterval: intervals.length > 0 ? Math.min(...intervals.map(i => i.createdAt)) : null,
-            averageAge: intervals.length > 0 ? 
-                intervals.reduce((sum, i) => sum + (now - i.createdAt), 0) / intervals.length : 0,
-            managerAge: now - this.createdAt
+            oldestInterval:
+                intervals.length > 0
+                    ? Math.min(...intervals.map((i) => i.createdAt))
+                    : null,
+            averageAge:
+                intervals.length > 0
+                    ? intervals.reduce(
+                          (sum, i) => sum + (now - i.createdAt),
+                          0
+                      ) / intervals.length
+                    : 0,
+            managerAge: now - this.createdAt,
         };
     }
 
@@ -1534,17 +1698,18 @@ export class IntervalManager {
      * @param {number} [maxAge=300000] - The maximum age in milliseconds.
      * @returns {number} The number of intervals that were cleared.
      */
-    cleanupStale(maxAge = 300000) { // 5 minutes default
+    cleanupStale(maxAge = 300000) {
+        // 5 minutes default
         const now = Date.now();
         let cleared = 0;
-        
+
         for (const [name, intervalInfo] of this.intervals) {
             if (now - intervalInfo.createdAt > maxAge) {
                 this.clear(name);
                 cleared++;
             }
         }
-        
+
         return cleared;
     }
 
@@ -1565,14 +1730,14 @@ export class IntervalManager {
     getInfo(name) {
         const intervalInfo = this.intervals.get(name);
         if (!intervalInfo) return null;
-        
+
         return {
             name,
             delay: intervalInfo.delay,
             age: Date.now() - intervalInfo.createdAt,
             executionCount: intervalInfo.executionCount,
             maxExecutions: intervalInfo.maxExecutions,
-            timeout: intervalInfo.timeout
+            timeout: intervalInfo.timeout,
         };
     }
 }
@@ -1595,7 +1760,7 @@ export class MessageHandlerRegistry {
     register(action, handler, requiresUtilities = false) {
         this.handlers.set(action, {
             handler,
-            requiresUtilities
+            requiresUtilities,
         });
         this.logger('info', `Message handler registered: ${action}`);
     }
@@ -1627,7 +1792,10 @@ export class MessageHandlerRegistry {
         const { handler, requiresUtilities } = handlerInfo;
 
         // Check if utilities are required but not available
-        if (requiresUtilities && (!context.subtitleUtils || !context.configService)) {
+        if (
+            requiresUtilities &&
+            (!context.subtitleUtils || !context.configService)
+        ) {
             this.logger('error', `Utilities not loaded for action: ${action}`);
             sendResponse({ success: false, error: 'Utilities not loaded' });
             return false;
@@ -1639,9 +1807,13 @@ export class MessageHandlerRegistry {
             // If handler returns a promise, handle it
             if (result && typeof result.then === 'function') {
                 result
-                    .then(response => sendResponse(response))
-                    .catch(error => {
-                        this.logger('error', `Handler error for action ${action}`, { error });
+                    .then((response) => sendResponse(response))
+                    .catch((error) => {
+                        this.logger(
+                            'error',
+                            `Handler error for action ${action}`,
+                            { error }
+                        );
                         sendResponse({ success: false, error: error.message });
                     });
                 return true; // Async response
@@ -1650,7 +1822,9 @@ export class MessageHandlerRegistry {
             // If handler returns true, it will send response asynchronously
             return result === true;
         } catch (error) {
-            this.logger('error', `Handler error for action ${action}`, { error });
+            this.logger('error', `Handler error for action ${action}`, {
+                error,
+            });
             sendResponse({ success: false, error: error.message });
             return false;
         }
@@ -1684,13 +1858,20 @@ export class LoggingLevelHandler {
     handle(request, sendResponse, context) {
         if (context.contentLogger) {
             context.contentLogger.updateLevel(request.level);
-            context.contentLogger.info('Logging level updated from background script', {
-                newLevel: request.level
-            });
+            context.contentLogger.info(
+                'Logging level updated from background script',
+                {
+                    newLevel: request.level,
+                }
+            );
         } else {
-            this.logger('info', 'Logging level change received but logger not initialized yet', {
-                level: request.level
-            });
+            this.logger(
+                'info',
+                'Logging level change received but logger not initialized yet',
+                {
+                    level: request.level,
+                }
+            );
         }
         sendResponse({ success: true });
         return false;
@@ -1709,7 +1890,9 @@ export class SubtitleToggleHandler {
         const { subtitleUtils, activePlatform } = context;
 
         subtitleUtils.setSubtitlesActive(request.enabled);
-        this.logger('info', 'Subtitle active state changed', { enabled: request.enabled });
+        this.logger('info', 'Subtitle active state changed', {
+            enabled: request.enabled,
+        });
 
         if (!request.enabled) {
             return this.#disableSubtitles(context, sendResponse, request);
@@ -1726,7 +1909,11 @@ export class SubtitleToggleHandler {
         }
 
         subtitleUtils.hideSubtitleContainer();
-        subtitleUtils.clearSubtitlesDisplayAndQueue(activePlatform, true, context.logPrefix);
+        subtitleUtils.clearSubtitlesDisplayAndQueue(
+            activePlatform,
+            true,
+            context.logPrefix
+        );
 
         if (activePlatform) {
             activePlatform.cleanup();
@@ -1743,12 +1930,20 @@ export class SubtitleToggleHandler {
 
         if (!activePlatform) {
             if (context.initializePlatform) {
-                context.initializePlatform()
+                context
+                    .initializePlatform()
                     .then(() => {
-                        sendResponse({ success: true, subtitlesEnabled: request.enabled });
+                        sendResponse({
+                            success: true,
+                            subtitlesEnabled: request.enabled,
+                        });
                     })
                     .catch((error) => {
-                        this.logger('error', 'Error in platform initialization', { error });
+                        this.logger(
+                            'error',
+                            'Error in platform initialization',
+                            { error }
+                        );
                         sendResponse({ success: false, error: error.message });
                     });
                 return true; // Async response
@@ -1776,7 +1971,11 @@ export class ConfigChangeHandler {
     handle(request, sendResponse, context) {
         const { subtitleUtils, activePlatform, currentConfig } = context;
 
-        if (request.changes && activePlatform && subtitleUtils.subtitlesActive) {
+        if (
+            request.changes &&
+            activePlatform &&
+            subtitleUtils.subtitlesActive
+        ) {
             // Update local config with the changes for immediate effect
             Object.assign(currentConfig, request.changes);
 
@@ -1791,7 +1990,9 @@ export class ConfigChangeHandler {
                     context.logPrefix
                 );
             }
-            this.logger('info', 'Applied immediate config changes', { changes: request.changes });
+            this.logger('info', 'Applied immediate config changes', {
+                changes: request.changes,
+            });
         }
         sendResponse({ success: true });
         return false;
@@ -1804,5 +2005,5 @@ export class ConfigChangeHandler {
 export const createCommonMessageHandlers = (logger = logWithFallback) => ({
     LOGGING_LEVEL_CHANGED: new LoggingLevelHandler(logger),
     toggleSubtitles: new SubtitleToggleHandler(logger),
-    configChanged: new ConfigChangeHandler(logger)
+    configChanged: new ConfigChangeHandler(logger),
 });

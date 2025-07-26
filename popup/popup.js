@@ -128,9 +128,10 @@ document.addEventListener('DOMContentLoaded', function () {
             // Populate UI with loaded settings
             enableSubtitlesToggle.checked = settings.subtitlesEnabled;
             // Use useOfficialTranslations if available, fallback to useNativeSubtitles for backward compatibility
-            useNativeSubtitlesToggle.checked = settings.useOfficialTranslations !== undefined 
-                ? settings.useOfficialTranslations 
-                : settings.useNativeSubtitles;
+            useNativeSubtitlesToggle.checked =
+                settings.useOfficialTranslations !== undefined
+                    ? settings.useOfficialTranslations
+                    : settings.useNativeSubtitles;
             subtitleTimeOffsetInput.value = settings.subtitleTimeOffset;
 
             const fontSize = settings.subtitleFontSize;
@@ -235,7 +236,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // Set both settings for backward compatibility during transition
             await configService.set('useNativeSubtitles', useOfficial);
             await configService.set('useOfficialTranslations', useOfficial);
-            
+
             const statusKey = useOfficial
                 ? 'statusSmartTranslationEnabled'
                 : 'statusSmartTranslationDisabled';
@@ -247,9 +248,9 @@ document.addEventListener('DOMContentLoaded', function () {
             showStatus(statusText);
 
             // Send immediate update for instant visual feedback and proper cleanup
-            sendImmediateConfigUpdate({ 
+            sendImmediateConfigUpdate({
                 useNativeSubtitles: useOfficial,
-                useOfficialTranslations: useOfficial 
+                useOfficialTranslations: useOfficial,
             });
         } catch (error) {
             popupLogger.error('Error toggling official subtitles', error, {
