@@ -143,6 +143,7 @@ describe('configSchema', () => {
                 'deeplApiPlan',
                 'subtitlesEnabled',
                 'useNativeSubtitles',
+                'useOfficialTranslations',
                 'targetLanguage',
                 'originalLanguage',
                 'subtitleTimeOffset',
@@ -173,7 +174,7 @@ describe('configSchema', () => {
             expect(localKeys.length).toBe(2);
 
             // Sync scope should contain all other settings including loggingLevel
-            expect(syncKeys.length).toBeGreaterThan(10);
+            expect(syncKeys.length).toBe(18);
             expect(syncKeys).toContain('uiLanguage');
             expect(syncKeys).toContain('subtitlesEnabled');
             expect(syncKeys).toContain('loggingLevel');

@@ -28,6 +28,7 @@ export const configSchema = {
     // --- Subtitle Settings (from popup.js & background.js defaults) ---
     subtitlesEnabled: { defaultValue: true, type: Boolean, scope: 'sync' },
     useNativeSubtitles: { defaultValue: true, type: Boolean, scope: 'sync' },
+    useOfficialTranslations: { defaultValue: true, type: Boolean, scope: 'sync' }, // New unified setting
     targetLanguage: { defaultValue: 'zh-CN', type: String, scope: 'sync' },
     originalLanguage: { defaultValue: 'en', type: String, scope: 'sync' },
     subtitleTimeOffset: { defaultValue: 0.3, type: Number, scope: 'sync' },

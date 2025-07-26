@@ -1423,7 +1423,11 @@ export async function processSubtitleQueue(
     if (!activePlatform || !subtitlesActive) return;
 
     const videoElement = activePlatform.getVideoElement();
-    if (!videoElement) return;
+    if (!videoElement) {
+        // If video element is not ready, retry after a short delay
+        setTimeout(() => processSubtitleQueue(activePlatform, config, logPrefix), 200);
+        return;
+    }
 
     const platformVideoId = activePlatform.getCurrentVideoId();
     if (!platformVideoId) return;

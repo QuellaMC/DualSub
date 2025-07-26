@@ -446,8 +446,13 @@ async function processNetflixSubtitleData(
     data,
     targetLanguage = 'zh-CN',
     originalLanguage = 'en',
-    useNativeSubtitles = true
+    useNativeSubtitles = true,
+    useOfficialTranslations = undefined
 ) {
+    // Normalize the official translations setting
+    const useOfficialSubtitles = useOfficialTranslations !== undefined 
+        ? useOfficialTranslations 
+        : useNativeSubtitles;
     if (!data || !data.tracks) {
         throw new Error('Invalid Netflix subtitle data provided');
     }
@@ -546,7 +551,7 @@ async function processNetflixSubtitleData(
     let useNativeTarget = false;
 
     // Step 1: Try to find native target language if enabled
-    if (useNativeSubtitles && targetLanguage) {
+    if (useOfficialSubtitles && targetLanguage) {
         targetLanguageInfo = getBestTrackForLanguage(
             validTracks,
             targetLanguage
@@ -573,7 +578,7 @@ async function processNetflixSubtitleData(
         }
     } else {
         backgroundLogger.info(
-            'Native subtitles disabled or no target language specified, will use translation mode'
+            'Official subtitles disabled or no target language specified, will use translation mode'
         );
     }
 
@@ -1091,11 +1096,17 @@ async function fetchAndProcessSubtitleUrl(
     });
 
     // Get user settings for smart subtitle logic
-    const settings = await chrome.storage.sync.get(['useNativeSubtitles']);
-    const useNativeSubtitles = settings.useNativeSubtitles !== false; // Default to true
+    const settings = await chrome.storage.sync.get(['useNativeSubtitles', 'useOfficialTranslations']);
+    const useOfficialTranslations = settings.useOfficialTranslations !== undefined 
+        ? settings.useOfficialTranslations 
+        : (settings.useNativeSubtitles !== false); // Default to true, with backward compatibility
+    const useNativeSubtitles = useOfficialTranslations; // For backward compatibility in this function
 
     backgroundLogger.debug('Smart subtitle settings', {
-        useNativeSubtitles,
+        useOfficialTranslations,
+        useNativeSubtitles, // For backward compatibility logging
+        targetLanguage,
+        originalLanguage,
     });
 
     let useNativeTarget = false;
@@ -1379,13 +1390,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                     targetLanguage,
                     originalLanguage,
                     useNativeSubtitles,
+                    useOfficialTranslations,
                 } = message;
 
                 processNetflixSubtitleData(
                     data,
                     targetLanguage,
                     originalLanguage,
-                    useNativeSubtitles
+                    useNativeSubtitles,
+                    useOfficialTranslations
                 )
                     .then((result) => {
                         sendResponse({

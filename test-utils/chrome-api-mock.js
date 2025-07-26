@@ -161,6 +161,17 @@ class ChromeRuntimeMock {
     }));
 
     /**
+     * Mock implementation of chrome.runtime.getURL
+     * Simply returns the provided path so that tests depending on the
+     * resolved URL do not fail. In real extension context this would
+     * prepend the extension root URL, but that is unnecessary for unit tests.
+     *
+     * @param {string} path - Relative path passed to getURL
+     * @returns {string} Same path for test purposes
+     */
+    getURL = jest.fn((path = '') => path);
+
+    /**
      * Reset runtime mock to clean state
      */
     reset() {

@@ -374,6 +374,7 @@ export function isPlayerPage(playerUrlPattern, url = window.location.pathname) {
  * @param {Function} onLoad - Load success callback
  * @param {Function} onError - Load error callback
  * @param {Function} logger - Logger function
+ * @param {boolean} isModule - Whether the script should be treated as a module
  * @returns {boolean} Whether injection was attempted
  */
 export function injectScript(
@@ -381,7 +382,8 @@ export function injectScript(
     scriptId,
     onLoad = () => { },
     onError = () => { },
-    logger = console.log
+    logger = console.log,
+    isModule = false
 ) {
     // Check if script already exists
     if (document.getElementById(scriptId)) {
@@ -393,6 +395,9 @@ export function injectScript(
         const script = document.createElement('script');
         script.src = scriptSrc;
         script.id = scriptId;
+        if (isModule) {
+            script.type = 'module';
+        }
         script.onload = () => {
             logger(`Script ${scriptId} loaded successfully`);
             onLoad();

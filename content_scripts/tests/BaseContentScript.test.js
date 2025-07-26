@@ -593,7 +593,7 @@ describe('BaseContentScript', () => {
                     type: mockEvent.detail.type,
                     data: mockEvent.detail.data,
                     timestamp: expect.any(Number),
-                    url: expect.any(String)
+                    pageUrl: expect.any(String)
                 })
             });
             expect(contentScript.eventBuffer.size()).toBe(0);
@@ -1165,12 +1165,17 @@ describe('BaseContentScript', () => {
 
     describe('Configuration Error Scenarios', () => {
         test('should handle config service getAll failure', async () => {
-            contentScript.configService = {
-                getAll: jest.fn().mockRejectedValue(new Error('Config load failed'))
+            // Mock configService to simulate failure
+            const configServiceMock = {
+                getAll: jest.fn().mockRejectedValue(new Error('Config load failed')),
+                onChanged: jest.fn()
             };
 
-            // Should throw the error since there's no error handling in initializeConfiguration
-            await expect(contentScript.initializeConfiguration()).rejects.toThrow('Config load failed');
+            contentScript.configService = configServiceMock;
+
+            // initializeConfiguration should catch the error and return false
+            const result = await contentScript.initializeConfiguration();
+            expect(result).toBe(false);
         });
 
         test('should handle config change listener errors', () => {
@@ -1349,7 +1354,7 @@ describe('Private Helper Methods', () => {
 
     test('should get correct platform class name for disney plus', () => {
         const className = contentScript._getPlatformClassName('disneyplus');
-        expect(className).toBe('DisneyplusPlatform'); // The method capitalizes the first letter only
+        expect(className).toBe('DisneyPlusPlatform'); // Special case handling for Disney+
     });
 
     test('should disable subtitles correctly', () => {
@@ -1787,7 +1792,8 @@ describe('Platform-Specific Method Mocking and Common Functionality Verification
             const mockConfigService = {
                 getAll: jest.fn().mockResolvedValue({
                     theme: 'dark',
-                    language: 'en'
+                    language: 'en',
+                    useOfficialTranslations: true
                 }),
                 onChanged: jest.fn()
             };
@@ -1798,7 +1804,8 @@ describe('Platform-Specific Method Mocking and Common Functionality Verification
             expect(mockConfigService.getAll).toHaveBeenCalled();
             expect(contentScript.currentConfig).toEqual({
                 theme: 'dark',
-                language: 'en'
+                language: 'en',
+                useOfficialTranslations: true
             });
             expect(mockConfigService.onChanged).toHaveBeenCalledWith(expect.any(Function));
         });

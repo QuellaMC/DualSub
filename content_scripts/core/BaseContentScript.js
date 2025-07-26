@@ -8,9 +8,110 @@
  * Platform-specific content scripts should extend this class and implement the
  * abstract methods to provide platform-specific behavior.
  * 
+ * ## Architecture Overview
+ * 
+ * The BaseContentScript follows the Template Method Pattern, where the base class
+ * defines the algorithm structure and subclasses implement specific steps. This
+ * ensures consistent behavior across all platforms while allowing customization.
+ * 
+ * ## Key Features
+ * 
+ * - **Module Loading**: Dynamic loading of required modules with error handling
+ * - **Platform Lifecycle**: Standardized initialization and cleanup patterns
+ * - **Message Handling**: Extensible Chrome message handling with action-based routing
+ * - **Navigation Detection**: Platform-specific navigation detection strategies
+ * - **Configuration Management**: Real-time configuration updates and validation
+ * - **Error Recovery**: Comprehensive error handling with retry mechanisms
+ * - **Resource Management**: Automatic cleanup and memory management
+ * 
+ * ## Usage Example
+ * 
+ * ```javascript
+ * import { BaseContentScript } from '../core/BaseContentScript.js';
+ * 
+ * export class MyPlatformContentScript extends BaseContentScript {
+ *     constructor() {
+ *         super('MyPlatformContent');
+ *     }
+ * 
+ *     // Implement required abstract methods
+ *     getPlatformName() { return 'myplatform'; }
+ *     getPlatformClass() { return 'MyPlatformPlatform'; }
+ *     getInjectScriptConfig() { return { ... }; }
+ *     setupNavigationDetection() { ... }
+ *     checkForUrlChange() { ... }
+ *     handlePlatformSpecificMessage(request, sendResponse) { ... }
+ * }
+ * 
+ * // Initialize the content script
+ * const contentScript = new MyPlatformContentScript();
+ * await contentScript.initialize();
+ * ```
+ * 
+ * ## Abstract Methods
+ * 
+ * Subclasses must implement these abstract methods:
+ * - `getPlatformName()`: Return platform identifier (e.g., 'netflix')
+ * - `getPlatformClass()`: Return platform class name (e.g., 'NetflixPlatform')
+ * - `getInjectScriptConfig()`: Return injection script configuration
+ * - `setupNavigationDetection()`: Setup platform-specific navigation detection
+ * - `checkForUrlChange()`: Handle URL changes with platform-specific logic
+ * - `handlePlatformSpecificMessage()`: Handle platform-specific Chrome messages
+ * 
+ * ## Template Methods
+ * 
+ * These methods orchestrate the initialization flow and should not be overridden:
+ * - `initialize()`: Main initialization method
+ * - `initializeCore()`: Core module initialization
+ * - `initializeConfiguration()`: Configuration setup
+ * - `initializeEventHandling()`: Event handling setup
+ * - `initializeObservers()`: Observer setup
+ * 
  * @abstract
  * @author DualSub Extension
  * @version 1.0.0
+ * @since 1.0.0
+ * 
+ * @example
+ * // Basic platform implementation
+ * class ExampleContentScript extends BaseContentScript {
+ *     constructor() {
+ *         super('ExampleContent');
+ *     }
+ * 
+ *     getPlatformName() {
+ *         return 'example';
+ *     }
+ * 
+ *     getPlatformClass() {
+ *         return 'ExamplePlatform';
+ *     }
+ * 
+ *     getInjectScriptConfig() {
+ *         return {
+ *             filename: 'injected_scripts/exampleInject.js',
+ *             tagId: 'example-dualsub-injector-script-tag',
+ *             eventId: 'example-dualsub-injector-event'
+ *         };
+ *     }
+ * 
+ *     setupNavigationDetection() {
+ *         this.intervalManager.set('urlChangeCheck', () => this.checkForUrlChange(), 1000);
+ *     }
+ * 
+ *     checkForUrlChange() {
+ *         const newUrl = window.location.href;
+ *         if (newUrl !== this.currentUrl) {
+ *             this.currentUrl = newUrl;
+ *             // Handle URL change logic
+ *         }
+ *     }
+ * 
+ *     handlePlatformSpecificMessage(request, sendResponse) {
+ *         sendResponse({ success: true, handled: false });
+ *         return false;
+ *     }
+ * }
  */
 
 import {
@@ -112,7 +213,14 @@ export class BaseContentScript {
     _initializeCleanupTracking() {
         this.isCleanedUp = false;
         this.passiveVideoObserver = null;
-        this.abortController = new AbortController();
+        
+        // Initialize AbortController with fallback for environments that don't support it
+        try {
+            this.abortController = new AbortController();
+        } catch (error) {
+            this.logWithFallback('warn', 'AbortController not available, using fallback cleanup', { error });
+            this.abortController = null;
+        }
     }
 
     /**
@@ -371,21 +479,51 @@ export class BaseContentScript {
         try {
             this.logWithFallback('info', 'Starting content script initialization');
 
-            const success = await this.initializeCore() &&
-                await this.initializeConfiguration() &&
-                await this.initializeEventHandling() &&
-                await this.initializeObservers();
-
-            if (!success) {
-                this.logWithFallback('error', 'Initialization failed at one of the core steps');
+            // Step 1: Initialize core modules
+            this.logWithFallback('debug', 'Step 1: Initializing core modules');
+            const coreSuccess = await this.initializeCore();
+            if (!coreSuccess) {
+                this.logWithFallback('error', 'Initialization failed at Step 1: initializeCore');
                 return false;
             }
+            this.logWithFallback('debug', 'Step 1: Core modules initialized successfully');
+
+            // Step 2: Initialize configuration
+            this.logWithFallback('debug', 'Step 2: Initializing configuration');
+            const configSuccess = await this.initializeConfiguration();
+            if (!configSuccess) {
+                this.logWithFallback('error', 'Initialization failed at Step 2: initializeConfiguration');
+                return false;
+            }
+            this.logWithFallback('debug', 'Step 2: Configuration initialized successfully');
+
+            // Step 3: Initialize event handling
+            this.logWithFallback('debug', 'Step 3: Initializing event handling');
+            const eventSuccess = await this.initializeEventHandling();
+            if (!eventSuccess) {
+                this.logWithFallback('error', 'Initialization failed at Step 3: initializeEventHandling');
+                return false;
+            }
+            this.logWithFallback('debug', 'Step 3: Event handling initialized successfully');
+
+            // Step 4: Initialize observers
+            this.logWithFallback('debug', 'Step 4: Initializing observers');
+            const observerSuccess = await this.initializeObservers();
+            if (!observerSuccess) {
+                this.logWithFallback('error', 'Initialization failed at Step 4: initializeObservers');
+                return false;
+            }
+            this.logWithFallback('debug', 'Step 4: Observers initialized successfully');
 
             this.logWithFallback('info', 'Content script initialization completed successfully');
             return true;
 
         } catch (error) {
-            this.logWithFallback('error', 'Error during initialization', { error });
+            this.logWithFallback('error', 'Error during initialization', { 
+                error: error.message,
+                stack: error.stack,
+                name: error.name
+            });
             return false;
         }
     }
@@ -395,12 +533,22 @@ export class BaseContentScript {
      * @returns {Promise<boolean>} Success status
      */
     async initializeCore() {
-        const modulesLoaded = await this.loadModules();
-        if (!modulesLoaded) {
-            this.logWithFallback('error', 'Failed to load required modules');
+        try {
+            this.logWithFallback('debug', 'Loading required modules...');
+            const modulesLoaded = await this.loadModules();
+            if (!modulesLoaded) {
+                this.logWithFallback('error', 'Failed to load required modules');
+                return false;
+            }
+            this.logWithFallback('debug', 'All required modules loaded successfully');
+            return true;
+        } catch (error) {
+            this.logWithFallback('error', 'Error in initializeCore', {
+                error: error.message,
+                stack: error.stack
+            });
             return false;
         }
-        return true;
     }
 
     /**
@@ -408,12 +556,25 @@ export class BaseContentScript {
      * @returns {Promise<boolean>} Success status
      */
     async initializeConfiguration() {
-        this.currentConfig = await this.configService.getAll();
-        this.logWithFallback('info', 'Loaded initial configuration', {
-            config: this.currentConfig
-        });
-        this.setupConfigurationListeners();
-        return true;
+        try {
+            this.logWithFallback('debug', 'Loading configuration from configService...');
+            this.currentConfig = await this.configService.getAll();
+            this._normalizeConfiguration();
+            this.logWithFallback('info', 'Loaded initial configuration', {
+                config: this.currentConfig
+            });
+            
+            this.logWithFallback('debug', 'Setting up configuration listeners...');
+            this.setupConfigurationListeners();
+            this.logWithFallback('debug', 'Configuration listeners set up successfully');
+            return true;
+        } catch (error) {
+            this.logWithFallback('error', 'Error in initializeConfiguration', {
+                error: error.message,
+                stack: error.stack
+            });
+            return false;
+        }
     }
 
     /**
@@ -421,12 +582,26 @@ export class BaseContentScript {
      * @returns {Promise<boolean>} Success status
      */
     async initializeEventHandling() {
-        this.setupEarlyEventHandling();
+        try {
+            this.logWithFallback('debug', 'Setting up early event handling...');
+            this.setupEarlyEventHandling();
+            this.logWithFallback('debug', 'Early event handling set up successfully');
 
-        if (this.currentConfig.subtitlesEnabled) {
-            await this.initializePlatform();
+            if (this.currentConfig.subtitlesEnabled) {
+                this.logWithFallback('debug', 'Subtitles enabled, initializing platform...');
+                await this.initializePlatform();
+                this.logWithFallback('debug', 'Platform initialization completed');
+            } else {
+                this.logWithFallback('debug', 'Subtitles disabled, skipping platform initialization');
+            }
+            return true;
+        } catch (error) {
+            this.logWithFallback('error', 'Error in initializeEventHandling', {
+                error: error.message,
+                stack: error.stack
+            });
+            return false;
         }
-        return true;
     }
 
     /**
@@ -434,10 +609,27 @@ export class BaseContentScript {
      * @returns {Promise<boolean>} Success status
      */
     async initializeObservers() {
-        this.setupNavigationDetection();
-        this.setupDOMObservation();
-        this.setupCleanupHandlers();
-        return true;
+        try {
+            this.logWithFallback('debug', 'Setting up navigation detection...');
+            this.setupNavigationDetection();
+            this.logWithFallback('debug', 'Navigation detection set up successfully');
+
+            this.logWithFallback('debug', 'Setting up DOM observation...');
+            this.setupDOMObservation();
+            this.logWithFallback('debug', 'DOM observation set up successfully');
+
+            this.logWithFallback('debug', 'Setting up cleanup handlers...');
+            this.setupCleanupHandlers();
+            this.logWithFallback('debug', 'Cleanup handlers set up successfully');
+
+            return true;
+        } catch (error) {
+            this.logWithFallback('error', 'Error in initializeObservers', {
+                error: error.message,
+                stack: error.stack
+            });
+            return false;
+        }
     }
 
     /**
@@ -446,13 +638,29 @@ export class BaseContentScript {
      */
     async loadModules() {
         try {
+            this.logWithFallback('debug', 'Loading subtitle utilities...');
             await this._loadSubtitleUtilities();
+            this.logWithFallback('debug', 'Subtitle utilities loaded successfully');
+
+            this.logWithFallback('debug', 'Loading platform class...');
             await this._loadPlatformClass();
+            this.logWithFallback('debug', 'Platform class loaded successfully');
+
+            this.logWithFallback('debug', 'Loading config service...');
             await this._loadConfigService();
+            this.logWithFallback('debug', 'Config service loaded successfully');
+
+            this.logWithFallback('debug', 'Loading and initializing logger...');
             await this._loadAndInitializeLogger();
+            this.logWithFallback('debug', 'Logger loaded and initialized successfully');
+
             return true;
         } catch (error) {
-            this.logWithFallback('error', 'Error loading modules', { error });
+            this.logWithFallback('error', 'Error loading modules', { 
+                error: error.message,
+                stack: error.stack,
+                name: error.name
+            });
             return false;
         }
     }
@@ -462,10 +670,19 @@ export class BaseContentScript {
      * @private
      */
     async _loadSubtitleUtilities() {
-        const utilsModule = await import(
-            chrome.runtime.getURL('content_scripts/shared/subtitleUtilities.js')
-        );
-        this.subtitleUtils = utilsModule;
+        try {
+            const utilsUrl = chrome.runtime.getURL('content_scripts/shared/subtitleUtilities.js');
+            this.logWithFallback('debug', 'Loading subtitle utilities from:', { url: utilsUrl });
+            const utilsModule = await import(utilsUrl);
+            this.subtitleUtils = utilsModule;
+            this.logWithFallback('debug', 'Subtitle utilities module loaded successfully');
+        } catch (error) {
+            this.logWithFallback('error', 'Failed to load subtitle utilities', {
+                error: error.message,
+                stack: error.stack
+            });
+            throw error;
+        }
     }
 
     /**
@@ -473,12 +690,56 @@ export class BaseContentScript {
      * @private
      */
     async _loadPlatformClass() {
-        const platformName = this.getPlatformName();
-        const platformModule = await import(
-            chrome.runtime.getURL(`video_platforms/${platformName}Platform.js`)
-        );
-        const className = this._getPlatformClassName(platformName);
-        this.PlatformClass = platformModule[className];
+        try {
+            const platformName = this.getPlatformName();
+            const fileName = this._getPlatformFileName(platformName);
+            const className = this._getPlatformClassName(platformName);
+            const platformUrl = chrome.runtime.getURL(`video_platforms/${fileName}`);
+            
+            this.logWithFallback('debug', 'Loading platform class', {
+                platformName,
+                fileName,
+                className,
+                url: platformUrl
+            });
+            
+            const platformModule = await import(platformUrl);
+            this.PlatformClass = platformModule[className];
+            
+            if (!this.PlatformClass) {
+                throw new Error(`Platform class '${className}' not found in module`);
+            }
+            
+            this.logWithFallback('debug', 'Platform class loaded successfully', {
+                className,
+                hasClass: !!this.PlatformClass
+            });
+        } catch (error) {
+            this.logWithFallback('error', 'Failed to load platform class', {
+                error: error.message,
+                stack: error.stack,
+                platformName: this.getPlatformName()
+            });
+            throw error;
+        }
+    }
+
+    /**
+     * Get platform file name from platform name
+     * @private
+     * @param {string} platformName - Platform name
+     * @returns {string} File name
+     */
+    _getPlatformFileName(platformName) {
+        // Handle special case for Disney+ where the file is disneyPlusPlatform.js
+        if (platformName === 'disneyplus') {
+            return 'disneyPlusPlatform.js';
+        }
+        if (platformName === 'netflix') {
+            return 'netflixPlatform.js';
+        }
+        // Default case: capitalize first letter and add Platform.js
+        return `${platformName.charAt(0).toUpperCase()}${platformName.slice(1)}Platform.js`;
     }
 
     /**
@@ -488,6 +749,14 @@ export class BaseContentScript {
      * @returns {string} Class name
      */
     _getPlatformClassName(platformName) {
+        // Handle special case for Disney+ where the class is DisneyPlusPlatform
+        if (platformName === 'disneyplus') {
+            return 'DisneyPlusPlatform';
+        }
+        if (platformName === 'netflix') {
+            return 'NetflixPlatform';
+        }
+        // Default case: capitalize first letter and add Platform
         return `${platformName.charAt(0).toUpperCase()}${platformName.slice(1)}Platform`;
     }
 
@@ -496,10 +765,24 @@ export class BaseContentScript {
      * @private
      */
     async _loadConfigService() {
-        const configModule = await import(
-            chrome.runtime.getURL('services/configService.js')
-        );
-        this.configService = configModule.configService;
+        try {
+            const configUrl = chrome.runtime.getURL('services/configService.js');
+            this.logWithFallback('debug', 'Loading config service from:', { url: configUrl });
+            const configModule = await import(configUrl);
+            this.configService = configModule.configService;
+            
+            if (!this.configService) {
+                throw new Error('configService not found in module');
+            }
+            
+            this.logWithFallback('debug', 'Config service loaded successfully');
+        } catch (error) {
+            this.logWithFallback('error', 'Failed to load config service', {
+                error: error.message,
+                stack: error.stack
+            });
+            throw error;
+        }
     }
 
     /**
@@ -507,13 +790,29 @@ export class BaseContentScript {
      * @private
      */
     async _loadAndInitializeLogger() {
-        const loggerModule = await import(
-            chrome.runtime.getURL('utils/logger.js')
-        );
-        const Logger = loggerModule.default;
-        this.contentLogger = Logger.create(this.logPrefix);
-
-        await this._initializeLoggerLevel(Logger);
+        try {
+            const loggerUrl = chrome.runtime.getURL('utils/logger.js');
+            this.logWithFallback('debug', 'Loading logger from:', { url: loggerUrl });
+            const loggerModule = await import(loggerUrl);
+            const Logger = loggerModule.default;
+            
+            if (!Logger) {
+                throw new Error('Logger not found in module');
+            }
+            
+            this.logWithFallback('debug', 'Creating logger instance with prefix:', { prefix: this.logPrefix });
+            this.contentLogger = Logger.create(this.logPrefix);
+            
+            this.logWithFallback('debug', 'Initializing logger level...');
+            await this._initializeLoggerLevel(Logger);
+            this.logWithFallback('debug', 'Logger initialized successfully');
+        } catch (error) {
+            this.logWithFallback('error', 'Failed to load and initialize logger', {
+                error: error.message,
+                stack: error.stack
+            });
+            throw error;
+        }
     }
 
     /**
@@ -889,12 +1188,40 @@ export class BaseContentScript {
     // ========================================
 
     /**
+     * Normalize configuration to handle backward compatibility
+     * @private
+     */
+    _normalizeConfiguration() {
+        // Handle transition from useNativeSubtitles to useOfficialTranslations
+        if (this.currentConfig.useOfficialTranslations === undefined && 
+            this.currentConfig.useNativeSubtitles !== undefined) {
+            this.currentConfig.useOfficialTranslations = this.currentConfig.useNativeSubtitles;
+            this.logWithFallback('debug', 'Normalized useOfficialTranslations from useNativeSubtitles', {
+                value: this.currentConfig.useOfficialTranslations
+            });
+        }
+        
+        // Ensure useOfficialTranslations has a default value
+        if (this.currentConfig.useOfficialTranslations === undefined) {
+            this.currentConfig.useOfficialTranslations = true; // Default to true
+            this.logWithFallback('debug', 'Set default useOfficialTranslations value', {
+                value: this.currentConfig.useOfficialTranslations
+            });
+        }
+    }
+
+    /**
      * Setup configuration change listeners
      */
     setupConfigurationListeners() {
         this.configService.onChanged(async (changes) => {
             this.logWithFallback('info', 'Config changed, updating', { changes });
             const newConfig = await this.configService.getAll();
+            
+            // Normalize the new configuration
+            const oldConfig = this.currentConfig;
+            this.currentConfig = newConfig;
+            this._normalizeConfiguration();
 
             // Update existing object properties while preserving the reference
             Object.keys(this.currentConfig).forEach((key) => delete this.currentConfig[key]);
@@ -985,10 +1312,13 @@ export class BaseContentScript {
             }
 
             // Enhanced event processing with timestamp and validation
+            // Preserve original data fields (including url) and add extra contextual
+            // information without overwriting them.  Use a separate property
+            // `pageUrl` so the subtitle URL remains intact.
             const eventData = {
                 ...data,
                 timestamp: Date.now(),
-                url: window.location.href
+                pageUrl: window.location.href
             };
 
             if (data.type === 'INJECT_SCRIPT_READY') {
@@ -998,7 +1328,7 @@ export class BaseContentScript {
                     this.logWithFallback('debug', 'Clearing stale buffered events on script reload');
                     this.eventBuffer.clear();
                 }
-            } else if (data.type === 'SUBTITLE_DATA_FOUND') {
+            } else if (data.type === 'SUBTITLE_DATA_FOUND' || data.type === 'SUBTITLE_URL_FOUND') {
                 // Enhanced buffering with size limits to prevent memory issues
                 if (this.eventBuffer.size() >= 100) {
                     this.logWithFallback('warn', 'Event buffer size limit reached, clearing old events');
@@ -1055,7 +1385,7 @@ export class BaseContentScript {
                     return;
                 }
 
-                if (eventData.type === 'SUBTITLE_DATA_FOUND') {
+                if (eventData.type === 'SUBTITLE_DATA_FOUND' || eventData.type === 'SUBTITLE_URL_FOUND') {
                     this.activePlatform.handleInjectorEvents({ detail: eventData });
                     this.logWithFallback('debug', 'Processed buffered subtitle event', { index });
                 }
@@ -1089,7 +1419,8 @@ export class BaseContentScript {
                 // Retry after a short delay
                 setTimeout(() => this.injectScriptEarly(), 100);
             },
-            (msg) => this.logWithFallback('debug', msg)
+            (msg) => this.logWithFallback('debug', msg),
+            true // Treat as a module
         );
     }
 
@@ -1461,6 +1792,15 @@ export class BaseContentScript {
             ) {
                 // Update local config with the changes for immediate effect
                 Object.assign(this.currentConfig, request.changes);
+                
+                // Handle backward compatibility for useNativeSubtitles -> useOfficialTranslations
+                if (request.changes.useNativeSubtitles !== undefined && 
+                    request.changes.useOfficialTranslations === undefined) {
+                    this.currentConfig.useOfficialTranslations = request.changes.useNativeSubtitles;
+                    this.logWithFallback('debug', 'Normalized useOfficialTranslations from immediate change', {
+                        value: this.currentConfig.useOfficialTranslations
+                    });
+                }
 
                 // Apply the changes immediately for instant visual feedback
                 this.subtitleUtils.applySubtitleStyling(this.currentConfig);
@@ -1641,37 +1981,31 @@ export class BaseContentScript {
 
         this.logWithFallback('info', 'Starting comprehensive content script cleanup');
 
-        try {
-            // Mark as cleaning up to prevent concurrent cleanup calls
-            this.isCleanedUp = true;
+        // Mark as cleaning up to prevent concurrent cleanup calls
+        this.isCleanedUp = true;
 
-            // 1. Stop all detection and monitoring activities
-            await this._stopAllDetectionActivities();
+        // 1. Stop all detection and monitoring activities
+        await this._stopAllDetectionActivities();
 
-            // 2. Clean up platform resources
-            await this._cleanupPlatformResources();
+        // 2. Clean up platform resources
+        await this._cleanupPlatformResources();
 
-            // 3. Clean up DOM and UI resources
-            await this._cleanupDOMResources();
+        // 3. Clean up DOM and UI resources
+        await this._cleanupDOMResources();
 
-            // 4. Clean up event handling and listeners
-            await this._cleanupEventHandling();
+        // 4. Clean up event handling and listeners
+        await this._cleanupEventHandling();
 
-            // 5. Clean up intervals and timers
-            await this._cleanupTimersAndIntervals();
+        // 5. Clean up intervals and timers
+        await this._cleanupTimersAndIntervals();
 
-            // 6. Clean up observers and watchers
-            await this._cleanupObservers();
+        // 6. Clean up observers and watchers
+        await this._cleanupObservers();
 
-            // 7. Reset internal state
-            this._resetInternalState();
+        // 7. Reset internal state
+        this._resetInternalState();
 
-            this.logWithFallback('info', 'Content script cleanup completed successfully');
-
-        } catch (error) {
-            this.logWithFallback('error', 'Error during cleanup process', { error });
-            // Continue with cleanup even if some parts fail
-        }
+        this.logWithFallback('info', 'Content script cleanup completed successfully');
     }
 
     /**
@@ -1825,6 +2159,7 @@ export class BaseContentScript {
             this.logWithFallback('debug', 'Timers and intervals cleaned up');
         } catch (error) {
             this.logWithFallback('warn', 'Error cleaning up timers and intervals', { error });
+            throw error;
         }
     }
 

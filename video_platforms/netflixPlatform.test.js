@@ -328,7 +328,9 @@ describe('NetflixPlatform Logging Integration', () => {
         test('should log successful VTT processing', () => {
             chromeApiMock.storage.sync.get.mockImplementation(
                 (keys, callback) => {
-                    callback({});
+                    callback({
+                        useOfficialTranslations: true
+                    });
                 }
             );
 
@@ -371,7 +373,7 @@ describe('NetflixPlatform Logging Integration', () => {
             platform.handleInjectorEvents(mockEvent);
 
             expect(mockLogger.info).toHaveBeenCalledWith(
-                'VTT processed successfully',
+                'Netflix VTT processed successfully',
                 expect.objectContaining({
                     videoId: '12345',
                     sourceLanguage: 'en',
@@ -383,7 +385,9 @@ describe('NetflixPlatform Logging Integration', () => {
         test('should log background processing errors', () => {
             chromeApiMock.storage.sync.get.mockImplementation(
                 (keys, callback) => {
-                    callback({});
+                    callback({
+                        useOfficialTranslations: true
+                    });
                 }
             );
 
@@ -424,7 +428,7 @@ describe('NetflixPlatform Logging Integration', () => {
             platform.handleInjectorEvents(mockEvent);
 
             expect(mockLogger.error).toHaveBeenCalledWith(
-                'Background failed to process VTT',
+                'Netflix background failed to process VTT',
                 null,
                 expect.objectContaining({
                     error: 'Translation failed',
