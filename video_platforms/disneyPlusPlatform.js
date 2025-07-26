@@ -221,6 +221,12 @@ export class DisneyPlusPlatform extends VideoPlatform {
         }
     }
 
+    // Add a public wrapper so that BaseContentScript can safely invoke this method
+    handleInjectorEvents(e) {
+        // Simply delegate to the private implementation to maintain existing logic
+        this._handleInjectorEvents(e);
+    }
+
     getVideoElement() {
         return document.querySelector('video');
     }

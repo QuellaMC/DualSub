@@ -1,0 +1,39 @@
+/**
+ * DualSub Content Script Styles
+ *
+ * This file provides the base styles for the subtitle container and individual subtitle elements.
+ * It is injected into streaming platform pages as defined in the manifest.json.
+ * Most dynamic styles (e.g., position, font-size) are managed by the content script logic.
+ */
+
+#dualsub-subtitle-container {
+    /* Base container styles are primarily managed by the content script (e.g., position, z-index). */
+}
+
+#dualsub-original-subtitle,
+#dualsub-translated-subtitle {
+    /* 
+     * Common base styles for both original and translated subtitles. 
+     * Specific styling such as colors, padding, and font-size are controlled by the content script.
+     */
+    line-height: 1.4;        /* Improves readability for multi-line subtitles. */
+    display: inline-block;   /* Ensures the background fits the text width. */
+    max-width: 100%;         /* Prevents the subtitle from overflowing its container. */
+    box-sizing: border-box;  /* Includes padding and border in the element's total width and height. */
+    word-wrap: break-word;   /* Breaks long words to prevent overflow. */
+}
+
+/* 
+ * Example of how specific styles could be overridden directly in CSS.
+ * This is generally handled by the content script to allow for user configuration.
+ *
+ * #dualsub-original-subtitle {
+ *     color: white;
+ *     font-size: 20px;
+ * }
+ *
+ * #dualsub-translated-subtitle {
+ *     color: cyan;
+ *     font-size: 18px;
+ * }
+ */

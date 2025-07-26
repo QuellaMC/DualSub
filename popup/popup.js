@@ -127,7 +127,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // Populate UI with loaded settings
             enableSubtitlesToggle.checked = settings.subtitlesEnabled;
-            useNativeSubtitlesToggle.checked = settings.useNativeSubtitles;
+            // Use useOfficialTranslations if available, fallback to useNativeSubtitles for backward compatibility
+            useNativeSubtitlesToggle.checked = settings.useOfficialTranslations !== undefined 
+                ? settings.useOfficialTranslations 
+                : settings.useNativeSubtitles;
             subtitleTimeOffsetInput.value = settings.subtitleTimeOffset;
 
             const fontSize = settings.subtitleFontSize;
@@ -228,27 +231,33 @@ document.addEventListener('DOMContentLoaded', function () {
 
     useNativeSubtitlesToggle.addEventListener('change', async function () {
         try {
-            const useNative = this.checked;
-            await configService.set('useNativeSubtitles', useNative);
-            const statusKey = useNative
+            const useOfficial = this.checked;
+            // Set both settings for backward compatibility during transition
+            await configService.set('useNativeSubtitles', useOfficial);
+            await configService.set('useOfficialTranslations', useOfficial);
+            
+            const statusKey = useOfficial
                 ? 'statusSmartTranslationEnabled'
                 : 'statusSmartTranslationDisabled';
             const statusText =
                 loadedTranslations[statusKey]?.message ||
-                (useNative
-                    ? 'Smart translation enabled.'
-                    : 'Smart translation disabled.');
+                (useOfficial
+                    ? 'Official subtitles enabled.'
+                    : 'Official subtitles disabled.');
             showStatus(statusText);
 
             // Send immediate update for instant visual feedback and proper cleanup
-            sendImmediateConfigUpdate({ useNativeSubtitles: useNative });
+            sendImmediateConfigUpdate({ 
+                useNativeSubtitles: useOfficial,
+                useOfficialTranslations: useOfficial 
+            });
         } catch (error) {
-            popupLogger.error('Error toggling native subtitles', error, {
-                useNative: this.checked,
+            popupLogger.error('Error toggling official subtitles', error, {
+                useOfficial: this.checked,
                 component: 'useNativeSubtitlesToggle',
             });
             showStatus(
-                'Failed to update smart translation setting. Please try again.'
+                'Failed to update official subtitles setting. Please try again.'
             );
         }
     });

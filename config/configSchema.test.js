@@ -146,6 +146,7 @@ describe('configSchema', () => {
                 'openaiCompatibleModel',
                 'subtitlesEnabled',
                 'useNativeSubtitles',
+                'useOfficialTranslations',
                 'targetLanguage',
                 'originalLanguage',
                 'subtitleTimeOffset',
@@ -174,6 +175,7 @@ describe('configSchema', () => {
                 expect.arrayContaining(['appearanceAccordionOpen', 'debugMode'])
             );
             expect(localKeys.length).toBe(2);
+
 
             // Sync scope should contain all other settings including loggingLevel and OpenAI settings
             expect(syncKeys.length).toBeGreaterThan(10);

@@ -21,15 +21,17 @@
     "content_scripts": [
         {
             "matches": ["*://*.disneyplus.com/*"],
-            "js": ["content_scripts/disneyPlusContent.js"],
-            "css": ["content_scripts/content.css"],
-            "run_at": "document_start"
+            "js": ["content_scripts/platforms/disneyPlusContent.js"],
+            "css": ["content_scripts/shared/content.css"],
+            "run_at": "document_start",
+            "type": "module"
         },
         {
             "matches": ["*://*.netflix.com/*"],
-            "js": ["content_scripts/netflixContent.js"],
-            "css": ["content_scripts/content.css"],
-            "run_at": "document_start"
+            "js": ["content_scripts/platforms/netflixContent.js"],
+            "css": ["content_scripts/shared/content.css"],
+            "run_at": "document_start",
+            "type": "module"
         }
     ],
     "web_accessible_resources": [
@@ -42,24 +44,26 @@
                 "injected_scripts/disneyPlusInject.js",
                 "video_platforms/disneyPlusPlatform.js",
                 "video_platforms/platform_interface.js",
-                "content_scripts/subtitleUtilities.js",
-                "utils/languageNormalization.js"
-            ],
-            "matches": ["*://*.disneyplus.com/*"]
-        },
-        {
-            "resources": [
-                "config/configSchema.js",
-                "services/configService.js",
-                "services/configServiceErrorHandler.js",
-                "utils/logger.js",
+                "content_scripts/shared/subtitleUtilities.js",
+                "content_scripts/shared/navigationUtils.js",
+                "content_scripts/shared/domUtils.js",
+                "content_scripts/shared/eventUtils.js",
+                "content_scripts/shared/subtitleProcessingUtils.js",
+                "content_scripts/shared/loggingUtils.js",
+                "content_scripts/shared/platformConfig.js",
+                "content_scripts/core/BaseContentScript.js",
+                "content_scripts/core/utils.js",
+                "content_scripts/core/constants.js",
+                "content_scripts/platforms/DisneyPlusContentScript.js",
+                "utils/languageNormalization.js",
                 "injected_scripts/netflixInject.js",
                 "video_platforms/netflixPlatform.js",
-                "video_platforms/platform_interface.js",
-                "content_scripts/subtitleUtilities.js",
-                "utils/languageNormalization.js"
+                "content_scripts/platforms/NetflixContentScript.js"
             ],
-            "matches": ["*://*.netflix.com/*"]
+            "matches": [
+                "*://*.disneyplus.com/*",
+                "*://*.netflix.com/*"
+            ]
         }
     ],
     "action": {

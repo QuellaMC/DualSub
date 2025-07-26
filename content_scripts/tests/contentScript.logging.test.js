@@ -177,7 +177,7 @@ describe('Content Script Logging Integration', () => {
         );
 
         jest.doMock(
-            'chrome-extension://test/content_scripts/subtitleUtilities.js',
+            'chrome-extension://test/content_scripts/shared/subtitleUtilities.js',
             () => mockSubtitleUtils,
             { virtual: true }
         );
