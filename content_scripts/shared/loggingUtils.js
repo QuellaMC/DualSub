@@ -470,6 +470,7 @@ export class SubtitleDiagnostics {
             ...displayData
         };
 
+        let errorKey;
         if (error) {
             attempt.error = {
                 message: error.message,
@@ -477,8 +478,7 @@ export class SubtitleDiagnostics {
                 name: error.name
             };
 
-            // Track error patterns
-            const errorKey = `${error.name}:${error.message}`;
+            errorKey = `${error.name}:${error.message}`;
             this.errorPatterns.set(errorKey, (this.errorPatterns.get(errorKey) || 0) + 1);
         }
 

@@ -117,10 +117,10 @@
 import {
     EventBuffer,
     IntervalManager,
-    analyzeConfigChanges,
     injectScript,
     isExtensionContextValid,
-    safeChromeApiCall
+    ModuleLoader,
+    MessageHandlerRegistry
 } from './utils.js';
 import { COMMON_CONSTANTS } from './constants.js';
 
@@ -759,12 +759,7 @@ export class BaseContentScript {
      * @returns {Promise<boolean>} Success status
      */
     async initializePlatform(retryCount = 0) {
-        if (!isExtensionContextValid()) {
-            this.logWithFallback('warn', 'Aborting platform initialization: Extension context is invalid.');
-            this.cleanup();
-            return false;
-        }
-
+        
         const initializationContext = this._createInitializationContext(retryCount);
         
         if (!this._validateInitializationPrerequisites()) {
@@ -797,12 +792,12 @@ export class BaseContentScript {
     }
 
     /**
-     * Validate all prerequisites for initialization
+     * Validate essential prerequisites for initialization (only platform class).
      * @private
      * @returns {boolean} Whether prerequisites are met
      */
     _validateInitializationPrerequisites() {
-        return this._validateModulesLoaded() && this._validatePlatformPrerequisites();
+        return this._validateModulesLoaded();
     }
 
     /**
@@ -1830,7 +1825,7 @@ export class BaseContentScript {
      */
     setupCleanupHandlers() {
         // Setup Chrome message handler
-        this.setupChromeMessageHandler();
+        this._attachChromeMessageListener();
 
         // Handle extension context invalidation
         window.addEventListener('beforeunload', () => {
@@ -2142,244 +2137,6 @@ export class BaseContentScript {
         } catch (error) {
             this.logWithFallback('warn', 'Error resetting internal state', { error });
         }
-    }
-
-    // ========================================
-    // VIDEO ELEMENT DETECTION
-    // ========================================
-
-    /**
-     * Start video element detection with retry mechanism
-     */
-    startVideoElementDetection() {
-        this.logWithFallback('info', 'Starting video element detection');
-        this.videoDetectionRetries = 0;
-
-        // Clear any existing detection interval
-        if (this.videoDetectionIntervalId) {
-            clearInterval(this.videoDetectionIntervalId);
-            this.videoDetectionIntervalId = null;
-        }
-
-        // Try immediately first
-        if (this.attemptVideoSetup()) {
-            return; // Success, no need for interval
-        }
-
-        // Start retry mechanism
-        this.videoDetectionIntervalId = setInterval(() => {
-            this.videoDetectionRetries++;
-            this.logWithFallback('debug', 'Video detection attempt', {
-                attempt: this.videoDetectionRetries,
-                maxAttempts: this.maxVideoDetectionRetries,
-            });
-
-            if (this.attemptVideoSetup()) {
-                // Success! Clear the interval
-                clearInterval(this.videoDetectionIntervalId);
-                this.videoDetectionIntervalId = null;
-                this.logWithFallback('info', 'Video element found and setup completed', {
-                    attempts: this.videoDetectionRetries,
-                });
-            } else if (this.videoDetectionRetries >= this.maxVideoDetectionRetries) {
-                // Give up after max retries
-                clearInterval(this.videoDetectionIntervalId);
-                this.videoDetectionIntervalId = null;
-                this.logWithFallback(
-                    'warn',
-                    'Could not find video element after max attempts. Giving up',
-                    {
-                        maxAttempts: this.maxVideoDetectionRetries,
-                    }
-                );
-            }
-        }, this.videoDetectionInterval);
-    }
-
-    /**
-     * Attempt to setup video element and subtitle container
-     * @returns {boolean} Success status
-     */
-    attemptVideoSetup() {
-        if (!this.activePlatform || !this.subtitleUtils || !this.currentConfig) {
-            return false;
-        }
-
-        const videoElement = this.activePlatform.getVideoElement();
-        if (!videoElement) {
-            return false; // Video not ready yet
-        }
-
-        this.logWithFallback(
-            'info',
-            'Video element found! Setting up subtitle container and listeners'
-        );
-        this.logWithFallback('debug', 'Current subtitlesActive state', {
-            subtitlesActive: this.subtitleUtils.subtitlesActive,
-        });
-
-        // Ensure container and timeupdate listener
-        this.subtitleUtils.ensureSubtitleContainer(
-            this.activePlatform,
-            this.currentConfig,
-            this.logPrefix
-        );
-
-        if (this.subtitleUtils.subtitlesActive) {
-            this.logWithFallback(
-                'info',
-                'Subtitles are active, showing container and setting up listeners'
-            );
-            this.subtitleUtils.showSubtitleContainer();
-            if (videoElement.currentTime > 0) {
-                this.subtitleUtils.updateSubtitles(
-                    videoElement.currentTime,
-                    this.activePlatform,
-                    this.currentConfig,
-                    this.logPrefix
-                );
-            }
-        } else {
-            this.logWithFallback('info', 'Subtitles are not active, hiding container');
-            this.subtitleUtils.hideSubtitleContainer();
-        }
-
-        return true; // Success
-    }
-
-    /**
-     * Stop video element detection
-     */
-    stopVideoElementDetection() {
-        if (this.videoDetectionIntervalId) {
-            clearInterval(this.videoDetectionIntervalId);
-            this.videoDetectionIntervalId = null;
-            this.logWithFallback('info', 'Video element detection stopped');
-        }
-    }
-
-    // ========================================
-    // DOM OBSERVATION
-    // ========================================
-
-    /**
-     * Setup DOM mutation observer for dynamic content changes
-     */
-    setupDOMObservation() {
-        this.pageObserver = new MutationObserver((mutationsList) => {
-            if (!this.subtitleUtils) return; // Utilities not loaded yet
-
-            // Check for URL changes in case other detection methods missed it
-            setTimeout(() => this.checkForUrlChange(), 100);
-
-            if (!this.activePlatform && this.subtitleUtils.subtitlesActive) {
-                this.logWithFallback(
-                    'info',
-                    'PageObserver detected DOM changes. Attempting to initialize platform'
-                );
-                this.initializePlatform();
-                return;
-            }
-
-            if (!this.activePlatform) return;
-
-            for (let mutation of mutationsList) {
-                if (mutation.type === 'childList') {
-                    const videoElementNow = this.activePlatform.getVideoElement();
-                    const currentDOMVideoElement = document.querySelector(
-                        'video[data-listener-attached="true"]'
-                    );
-
-                    if (
-                        videoElementNow &&
-                        (!currentDOMVideoElement ||
-                            currentDOMVideoElement !== videoElementNow)
-                    ) {
-                        this.logWithFallback(
-                            'debug',
-                            'PageObserver detected video element appearance or change'
-                        );
-                        if (
-                            this.subtitleUtils.subtitlesActive &&
-                            this.platformReady &&
-                            this.activePlatform
-                        ) {
-                            this.logWithFallback(
-                                'debug',
-                                'Platform is ready, re-ensuring container/listeners'
-                            );
-                            this.subtitleUtils.ensureSubtitleContainer(
-                                this.activePlatform,
-                                this.currentConfig,
-                                this.logPrefix
-                            );
-                        }
-                    } else if (currentDOMVideoElement && !videoElementNow) {
-                        this.logWithFallback(
-                            'debug',
-                            'PageObserver detected video element removal'
-                        );
-                        this.subtitleUtils.hideSubtitleContainer();
-                        if (this.subtitleUtils.clearSubtitleDOM) {
-                            this.subtitleUtils.clearSubtitleDOM();
-                        }
-                    }
-                }
-            }
-        });
-
-        // Ensure document.body exists before observing
-        if (document.body) {
-            this.pageObserver.observe(document.body, { childList: true, subtree: true });
-        } else {
-            // Wait for body to be available
-            const waitForBody = () => {
-                if (document.body) {
-                    this.pageObserver.observe(document.body, {
-                        childList: true,
-                        subtree: true,
-                    });
-                    this.logWithFallback(
-                        'info',
-                        'Page observer started after body became available'
-                    );
-                } else {
-                    setTimeout(waitForBody, 100);
-                }
-            };
-            waitForBody();
-        }
-    }
-
-    // ========================================
-    // CHROME MESSAGE HANDLING
-    // ========================================
-
-
-
-    // ========================================
-    // CLEANUP AND MEMORY MANAGEMENT
-    // ========================================
-
-    /**
-     * Setup cleanup handlers to prevent memory leaks
-     */
-    setupCleanupHandlers() {
-        // Listen for extension context invalidation
-        chrome.runtime.onConnect.addListener((port) => {
-            port.onDisconnect.addListener(() => {
-                if (chrome.runtime.lastError) {
-                    this.logWithFallback(
-                        'info',
-                        'Extension context invalidated, cleaning up'
-                    );
-                    this.cleanup();
-                }
-            });
-        });
-
-        // Handle page unload
-        window.addEventListener('beforeunload', () => this.cleanup());
     }
 
 }

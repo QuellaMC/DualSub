@@ -275,16 +275,6 @@ export class NetflixContentScript extends BaseContentScript {
         this.activePlatform = null;
         this.platformReady = false;
         this.eventBuffer.clear();
-
-        try {
-            const script = document.createElement('script');
-            script.textContent = 'window.netflixDualSubInjectorLoaded = false;';
-            (document.head || document.documentElement).appendChild(script);
-            script.remove(); // The script executes instantly, so we can clean it up immediately.
-            this.logWithFallback('info', 'Injected script to reset injector guard flag.');
-        } catch (e) {
-            this.logWithFallback('error', 'Failed to inject script to reset injector flag.', { error: e.message });
-        }
     }
 
     /**

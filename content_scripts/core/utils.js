@@ -1376,7 +1376,35 @@ export async function loadModuleWithDependencies(modulePath, dependencies = {}, 
     }
 }
 
+/**
+ * A simple module loader for dynamic imports with logging.
+ * @class ModuleLoader
+ */
+export class ModuleLoader {
+    /**
+     * Creates a new ModuleLoader.
+     * @param {Function} logger - A logger function.
+     */
+    constructor(logger = logWithFallback) {
+        this.logger = logger;
+    }
 
+    /**
+     * Dynamically loads a module and logs success or failure.
+     * @param {string} modulePath - The path to the module.
+     * @returns {Promise<Object|null>} The imported module, or null on error.
+     */
+    async load(modulePath) {
+        try {
+            const module = await import(chrome.runtime.getURL(modulePath));
+            this.logger('info', `Module loaded successfully: ${modulePath}`);
+            return module;
+        } catch (error) {
+            this.logger('error', `Failed to load module: ${modulePath}`, { error });
+            return null;
+        }
+    }
+}
 
 /**
  * A memory-safe interval manager with automatic cleanup and monitoring.

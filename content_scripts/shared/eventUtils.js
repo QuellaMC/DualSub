@@ -378,7 +378,6 @@ export class EventDebouncer {
 
         const { immediate = false } = options;
         let timeoutId = null;
-        let lastCallTime = 0;
 
         const debouncedFunction = (...args) => {
             const now = Date.now();
@@ -394,7 +393,6 @@ export class EventDebouncer {
             timeoutId = setTimeout(() => {
                 this.activeTimeouts.delete(timeoutId);
                 timeoutId = null;
-                lastCallTime = Date.now();
                 
                 if (!immediate) {
                     try {
@@ -413,7 +411,6 @@ export class EventDebouncer {
             // Execute immediately if configured
             if (callNow) {
                 try {
-                    lastCallTime = now;
                     func.apply(this, args);
                 } catch (error) {
                     this._log('error', 'Error in immediate debounced function.', {

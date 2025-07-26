@@ -80,7 +80,7 @@ export class PlatformConfigFactory {
      */
     static isSupported(platformName) {
         return this.#registeredPlatforms.has(platformName) || 
-               DEFAULT_PLATFORM_CONFIGS.hasOwnProperty(platformName);
+               Object.prototype.hasOwnProperty.call(DEFAULT_PLATFORM_CONFIGS, platformName);
     }
 
     /**
@@ -155,8 +155,8 @@ export class PlatformConfigFactory {
                 try {
                     const regex = new RegExp(pattern.slice(1, -1));
                     return regex.test(url);
-                } catch (e) {
-                    console.error('Invalid regex pattern:', pattern);
+                } catch (error) {
+                    console.error('Invalid regex pattern:', pattern, error);
                     return false;
                 }
             }
