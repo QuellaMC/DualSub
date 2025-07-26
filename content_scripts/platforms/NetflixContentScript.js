@@ -271,6 +271,10 @@ export class NetflixContentScript extends BaseContentScript {
         if (this.activePlatform && typeof this.activePlatform.cleanup === 'function') {
             this.activePlatform.cleanup();
         }
+
+        if (this.subtitleUtils && typeof this.subtitleUtils.clearSubtitleDOM === 'function') {
+            this.subtitleUtils.clearSubtitleDOM();
+        }
         
         this.activePlatform = null;
         this.platformReady = false;

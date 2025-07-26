@@ -1017,6 +1017,8 @@ export function clearSubtitleDOM() {
         videoElement.removeAttribute('data-listener-attached');
     }
 
+    timeUpdateListener = null; 
+
     if (progressBarObserver) {
         progressBarObserver.disconnect();
         progressBarObserver = null;
