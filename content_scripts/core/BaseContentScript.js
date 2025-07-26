@@ -487,7 +487,6 @@ export class BaseContentScript {
      * @returns {boolean} `true` if the response is sent asynchronously, otherwise `false`.
      */
     handlePlatformSpecificMessage(request, sendResponse) {
-         
         throw new Error(
             'handlePlatformSpecificMessage() must be implemented by subclass'
         );
