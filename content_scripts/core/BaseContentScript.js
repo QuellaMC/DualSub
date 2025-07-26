@@ -759,6 +759,12 @@ export class BaseContentScript {
      * @returns {Promise<boolean>} Success status
      */
     async initializePlatform(retryCount = 0) {
+        if (!isExtensionContextValid()) {
+            this.logWithFallback('warn', 'Aborting platform initialization: Extension context is invalid.');
+            this.cleanup();
+            return false;
+        }
+
         const initializationContext = this._createInitializationContext(retryCount);
         
         if (!this._validateInitializationPrerequisites()) {
@@ -926,6 +932,12 @@ export class BaseContentScript {
      * @returns {Promise<boolean>} Success status
      */
     async _handleInitializationError(error, context) {
+        if (error.message?.includes('Extension context invalidated')) {
+            this.logWithFallback('warn', 'Extension context invalidated during platform initialization. Aborting and cleaning up.');
+            await this.cleanup();
+            return false;
+        }
+
         this.logWithFallback('error', 'Error initializing platform', {
             error: error.message,
             attempt: context.attempt,

@@ -252,12 +252,10 @@ export class NetflixContentScript extends BaseContentScript {
      * @param {boolean} isOnPlayerPage - Whether the current page is a player page.
      */
     _handlePageTransition(wasOnPlayerPage, isOnPlayerPage) {
-        if (wasOnPlayerPage && this.activePlatform) {
+        if (wasOnPlayerPage && !isOnPlayerPage) {
             this.logWithFallback('info', 'Leaving player page, cleaning up platform.');
             this._cleanupOnPageLeave();
-        }
-
-        if (isOnPlayerPage && !wasOnPlayerPage) {
+        } else if (isOnPlayerPage && !wasOnPlayerPage) {
             this.logWithFallback('info', 'Entering player page, preparing for initialization.');
             this._initializeOnPageEnter();
         }
@@ -277,6 +275,16 @@ export class NetflixContentScript extends BaseContentScript {
         this.activePlatform = null;
         this.platformReady = false;
         this.eventBuffer.clear();
+
+        try {
+            const script = document.createElement('script');
+            script.textContent = 'window.netflixDualSubInjectorLoaded = false;';
+            (document.head || document.documentElement).appendChild(script);
+            script.remove(); // The script executes instantly, so we can clean it up immediately.
+            this.logWithFallback('info', 'Injected script to reset injector guard flag.');
+        } catch (e) {
+            this.logWithFallback('error', 'Failed to inject script to reset injector flag.', { error: e.message });
+        }
     }
 
     /**
