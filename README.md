@@ -1,102 +1,343 @@
-# Dual Subtitles Chrome Extension
+# DualSub - Dual Language Subtitles for Streaming
 
-![](https://img.shields.io/github/v/release/QuellaMC/DualSub.svg) ![](https://img.shields.io/github/last-commit/QuellaMC/DualSub.svg)
+![Version](https://img.shields.io/github/v/release/QuellaMC/DualSub.svg)
+![Last Commit](https://img.shields.io/github/last-commit/QuellaMC/DualSub.svg)
+![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)
+![Manifest](https://img.shields.io/badge/Manifest-v3-blue.svg)
 
-## Description
+**DualSub** is a powerful Chrome extension that enhances your streaming experience by displaying dual language subtitles simultaneously. Perfect for language learning, accessibility, or simply enjoying content in multiple languages at once.
 
-Dual Subtitles enhances your streaming experience by displaying two sets of subtitles simultaneously. This allows you to, for example, view subtitles in their original language alongside a translation in your preferred language. The extension offers customization options for subtitle appearance, timing, and translation preferences.
+## 📋 Table of Contents
 
-## Features
+- [Features](#-features)
+- [Supported Platforms](#-supported-platforms)
+- [Translation Providers](#-translation-providers)
+- [Installation](#-installation)
+- [Quick Start](#-quick-start)
+- [Configuration](#-configuration)
+- [Development Setup](#-development-setup)
+- [Architecture](#-architecture)
+- [Contributing](#-contributing)
+- [Testing](#-testing)
+- [License](#-license)
+- [Changelog](#-changelog)
 
-- **Dual Subtitles:** Display original and translated subtitles at the same time.
-- **Customizable Target Language:** Choose from a wide range of languages for the second subtitle track.
-- **Timing Adjustment:** Fine-tune subtitle synchronization with a time offset option.
-- **Layout Customization:**
-    - **Display Order:** Choose whether original or translated subtitles appear on top/first.
-    - **Orientation:** Stack subtitles vertically (Top/Bottom) or display them side-by-side (Left/Right).
-- **Appearance Settings:**
-    - **Font Size:** Adjust the subtitle text size.
-    - **Subtitle Gap:** Control the spacing between the two subtitle tracks (for vertical layout).
-- **Translation Performance:**
-    - **Batch Size:** Configure the number of subtitle segments translated at once.
-    - **Translation Delay:** Set a delay between translation requests to manage API rate limits.
-- **Enable/Disable:** Easily toggle the dual subtitle functionality.
+## ✨ Features
 
-## How It Works
+### Core Functionality
+- **🎬 Dual Subtitle Display**: Show original and translated subtitles simultaneously
+- **🌐 Multi-Platform Support**: Works on Netflix and Disney+ with platform-specific optimizations
+- **🔄 Multiple Translation Providers**: Choose from Google, Microsoft, DeepL, and OpenAI-compatible services
+- **🎯 Smart Translation**: Automatic fallback between providers and intelligent batching
 
-The extension injects scripts into Disney+ pages to capture and process subtitle information.
+### Customization Options
+- **📐 Flexible Layouts**: Vertical (top/bottom) or horizontal (left/right) subtitle arrangements
+- **🎨 Appearance Control**: Adjustable font sizes, spacing, and display order
+- **⏱️ Timing Precision**: Fine-tune subtitle synchronization with offset controls
+- **🌍 Multi-Language UI**: Interface available in 6 languages (EN, ES, JA, KO, ZH-CN, ZH-TW)
 
-1. The `inject.js` script intercepts network requests to find the master subtitle playlist URL (M3U8) and the video ID from the page.
-2. This information is sent to the `background.js` script.
-3. `background.js` fetches and parses the M3U8 playlist to extract individual VTT (subtitle segment) URLs. It then fetches and combines these VTT segments into a single VTT string.
-4. The `content.js` script receives the combined VTT content. It parses the VTT cues and, based on the video's current time and user settings, displays the original subtitle.
-5. For the second subtitle, `content.js` sends batches of original subtitle text to `background.js` for translation using the Google Translate API.
-6. The translated text is then sent back to `content.js` and displayed alongside the original subtitle, according to the user's layout preferences.
-7. A popup menu (`popup.html`, `popup.js`, `popup.css`) allows users to configure various settings, which are saved and applied to the subtitle display.
+### Advanced Features
+- **⚙️ Performance Tuning**: Configurable batch sizes and request delays for optimal performance
+- **🔧 Advanced Options**: Comprehensive settings page with provider-specific configurations
+- **📊 Logging System**: Detailed debugging with configurable log levels
+- **🔄 Official Subtitle Integration**: Use platform's native subtitles when available (Netflix)
 
-## Installation
+## 🎯 Supported Platforms
 
-1. Download or clone this repository.
-2. Open Google Chrome and navigate to `chrome://extensions`.
-3. Enable "Developer mode" using the toggle switch in the top-right corner.
-4. Click on the "Load unpacked" button.
-5. Select the `disneyplus-dualsub-chrome-extension` directory from your local files.
-6. The extension should now be installed and active.
+| Platform | Status | Features |
+|----------|--------|----------|
+| **Netflix** | ✅ Full Support | Official subtitle integration, SPA navigation detection |
+| **Disney+** | ✅ Full Support | M3U8 playlist parsing, video detection |
 
-## Configuration
+### Platform-Specific Features
+- **Netflix**: Enhanced SPA navigation detection, official translation support
+- **Disney+**: Advanced M3U8 subtitle extraction, multiple URL pattern support
 
-You can configure the extension by clicking on its icon in the Chrome toolbar. The following settings are available:
+## 🔄 Translation Providers
 
-- **Enable Subtitles:** Toggle the dual subtitle feature on or off.
-- **Translate to:** Select your desired target language for the second subtitle.
-- **Time Offset (sec):** Adjust subtitle timing. Negative values make subtitles appear earlier, positive values later.
-- **Display Order:** Choose which subtitle (original or translation) appears first or on top.
-- **Layout Orientation:** Display subtitles stacked vertically (Top / Bottom) or side-by-side (Left / Right).
-- **Subtitle Size:** Adjust the size of the subtitle text.
-- **Subtitle Gap:** Adjust the gap between the original and translated subtitles (when using Top/Bottom layout).
-- **Translation Batch Size:** Number of subtitle segments to translate in each batch.
-- **Translation Delay (ms):** Delay between translation requests.
+| Provider | Type | Quality | Setup Required | Notes |
+|----------|------|---------|----------------|-------|
+| **DeepL Free** | Free | ⭐⭐⭐⭐⭐ | None | Recommended default, high quality |
+| **Google Translate** | Free | ⭐⭐⭐⭐ | None | Fast, wide language support |
+| **Microsoft Translate** | Free | ⭐⭐⭐⭐ | None | Good performance, reliable |
+| **DeepL API** | Paid | ⭐⭐⭐⭐⭐ | API Key | Highest quality, usage limits |
+| **OpenAI Compatible** | Paid | ⭐⭐⭐⭐⭐ | API Key | Supports Gemini models |
 
-## Permissions
+### Provider Features
+- **Automatic Fallback**: Seamlessly switches between providers if one fails
+- **Rate Limiting**: Intelligent request management to avoid API limits
+- **Batch Processing**: Optimized translation of multiple subtitle segments
 
-This extension requires the following permissions:
+## 📦 Installation
 
-- `storage`: To save user settings.
-- `scripting`: To inject scripts into Disney+ pages.
-- `activeTab`: To interact with the currently active Disney+ tab.
-- Host permissions for `*://*.disneyplus.com/*` (to operate on Disney+ pages) and `https://translate.googleapis.com/*` (for translations).
+### Option 1: Manual Installation (Recommended for Development)
 
-## License
+1. **Download the Extension**
+   ```bash
+   git clone https://github.com/QuellaMC/DualSub.git
+   cd DualSub
+   ```
+
+2. **Install Dependencies** (for development)
+   ```bash
+   npm install
+   ```
+
+3. **Load in Chrome**
+   - Open Chrome and navigate to `chrome://extensions`
+   - Enable "Developer mode" (toggle in top-right corner)
+   - Click "Load unpacked"
+   - Select the `DualSub` directory
+
+4. **Verify Installation**
+   - The DualSub icon should appear in your Chrome toolbar
+   - Visit Netflix or Disney+ to test functionality
+
+### Option 2: Chrome Web Store (Coming Soon)
+*The extension will be available on the Chrome Web Store in a future release.*
+
+## 🚀 Quick Start
+
+1. **Install the Extension** following the instructions above
+2. **Visit a Supported Platform** (Netflix or Disney+)
+3. **Start Playing a Video** with subtitles enabled
+4. **Click the DualSub Icon** in your toolbar to open settings
+5. **Enable Dual Subtitles** and select your target language
+6. **Enjoy!** Original and translated subtitles will appear simultaneously
+
+### First-Time Setup Tips
+- Start with **DeepL Free** provider (default) for best quality
+- Use **Top/Bottom layout** for easier reading
+- Adjust **font size** and **gap** for optimal viewing
+- Enable **hide official subtitles** to avoid overlap
+
+## ⚙️ Configuration
+
+### Popup Settings (Quick Access)
+Click the DualSub icon in your toolbar to access:
+
+- **🔄 Enable/Disable**: Toggle dual subtitle functionality
+- **🌐 Translation Provider**: Choose your preferred translation service
+- **🎯 Target Language**: Select translation language from 50+ options
+- **📐 Layout Options**: Top/Bottom or Left/Right arrangement
+- **🎨 Appearance**: Font size, spacing, and display order
+- **⏱️ Timing**: Subtitle offset adjustment (±10 seconds)
+
+### Advanced Options Page
+Access via popup → "Advanced Settings" for:
+
+#### General Settings
+- **🌍 UI Language**: Choose interface language (EN, ES, JA, KO, ZH-CN, ZH-TW)
+- **👁️ Hide Official Subtitles**: Remove platform's native subtitles
+- **📊 Logging Level**: Control debug information (Off/Error/Warn/Info/Debug)
+
+#### Translation Settings
+- **🔧 Provider Configuration**: API keys for premium services
+- **⚡ Performance Tuning**: Batch size (1-10) and request delay (50-1000ms)
+- **🔄 Provider Testing**: Test API connections before use
+
+#### Provider-Specific Settings
+- **DeepL API**: API key and plan selection (Free/Pro)
+- **OpenAI Compatible**: API key, base URL, and model configuration
+
+### Configuration Examples
+
+**For Language Learning:**
+```
+Provider: DeepL Free
+Layout: Top/Bottom
+Display Order: Original First
+Font Size: Large
+```
+
+**For Performance:**
+```
+Batch Size: 5
+Request Delay: 100ms
+Provider: Google Translate
+```
+
+## 🛠️ Development Setup
+
+### Prerequisites
+- **Node.js** 18+ and npm
+- **Google Chrome** with Developer mode enabled
+- **Git** for version control
+
+### Setup Instructions
+
+1. **Clone and Install**
+   ```bash
+   git clone https://github.com/QuellaMC/DualSub.git
+   cd DualSub
+   npm install
+   ```
+
+2. **Development Commands**
+   ```bash
+   # Code formatting
+   npm run format
+
+   # Linting
+   npm run lint
+   npm run lint:fix
+
+   # Testing
+   npm test
+   npm run test:watch
+   ```
+
+3. **Load Extension for Testing**
+   - Follow manual installation steps above
+   - Reload extension after making changes
+
+### Project Structure
+```
+DualSub/
+├── content_scripts/     # Platform-specific content scripts
+├── translation_providers/ # Translation service implementations
+├── services/           # Core services (config, logging)
+├── popup/             # Extension popup interface
+├── options/           # Advanced settings page
+├── utils/             # Shared utilities
+├── test-utils/        # Testing infrastructure
+├── _locales/          # Internationalization files
+└── icons/             # Extension icons
+```
+
+## 🏗️ Architecture
+
+DualSub uses a modern, modular architecture built on several key design patterns:
+
+### Core Architecture
+- **📐 Template Method Pattern**: `BaseContentScript` provides common functionality with platform-specific implementations
+- **🔌 Dependency Injection**: Dynamic module loading for better testability and loose coupling
+- **📡 Event-Driven Design**: Extensible message handling with action-based routing
+- **🧹 Resource Management**: Comprehensive cleanup system preventing memory leaks
+
+### Key Components
+- **Content Scripts**: Platform-specific implementations extending `BaseContentScript`
+- **Translation Providers**: Modular translation services with automatic fallback
+- **Configuration Service**: Centralized settings management with validation
+- **Logging System**: Cross-context logging with configurable levels
+
+For detailed technical documentation, see:
+- [Architecture Overview](content_scripts/ARCHITECTURE.md)
+- [API Reference](content_scripts/API_REFERENCE.md)
+- [Platform Implementation Guide](content_scripts/PLATFORM_IMPLEMENTATION_GUIDE.md)
+
+## 🤝 Contributing
+
+We welcome contributions! Please follow these guidelines:
+
+### Code Standards
+- **ESLint + Prettier**: Code must pass linting and formatting checks
+- **ES Modules**: Use modern JavaScript module syntax
+- **Testing**: All new features require comprehensive tests
+- **Documentation**: Update relevant documentation for changes
+
+### Development Workflow
+1. **Fork** the repository
+2. **Create** a feature branch (`git checkout -b feature/amazing-feature`)
+3. **Write** tests for your changes
+4. **Ensure** all tests pass (`npm test`)
+5. **Format** code (`npm run format`)
+6. **Lint** code (`npm run lint:fix`)
+7. **Commit** changes (`git commit -m 'Add amazing feature'`)
+8. **Push** to branch (`git push origin feature/amazing-feature`)
+9. **Open** a Pull Request
+
+### Adding New Features
+
+#### New Translation Providers
+1. Create provider in `translation_providers/` directory
+2. Implement `async function translate(text, sourceLang, targetLang)`
+3. Add to `background.js` providers object
+4. Update `popup/popup.js` and `options/options.js`
+5. Add comprehensive tests
+
+#### New Streaming Platforms
+1. Extend `BaseContentScript` class
+2. Implement required abstract methods
+3. Create platform-specific configuration
+4. Update `manifest.json` content scripts
+5. Add platform tests
+
+### Code Review Process
+- All submissions require review
+- Tests must pass CI/CD pipeline
+- Documentation must be updated
+- Breaking changes require discussion
+
+## 🧪 Testing
+
+DualSub includes a comprehensive testing framework:
+
+### Running Tests
+```bash
+# Run all tests
+npm test
+
+# Watch mode for development
+npm run test:watch
+
+# Run specific test file
+npm test -- background.test.js
+
+# Run tests with coverage
+npm test -- --coverage
+```
+
+### Test Structure
+- **Unit Tests**: Individual component testing
+- **Integration Tests**: Cross-component functionality
+- **Mock Infrastructure**: Chrome API and DOM mocking
+- **Test Utilities**: Shared testing helpers and fixtures
+
+### Testing Guidelines
+- **Coverage**: Aim for >80% code coverage
+- **Isolation**: Tests should not depend on each other
+- **Mocking**: Use provided mocks for Chrome APIs
+- **Assertions**: Clear, descriptive test assertions
+
+## 📄 License
 
 This project is licensed under the **Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License (CC BY-NC-SA 4.0)**.
 
-Shield: [![CC BY-NC-SA 4.0][cc-by-nc-sa-shield]][cc-by-nc-sa]
+[![CC BY-NC-SA 4.0](https://licensebuttons.net/l/by-nc-sa/4.0/88x31.png)](http://creativecommons.org/licenses/by-nc-sa/4.0/)
 
-This work is licensed under a
-[Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License][cc-by-nc-sa].
+### License Summary
+- ✅ **Share**: Copy and redistribute the material
+- ✅ **Adapt**: Remix, transform, and build upon the material
+- ❌ **Commercial Use**: Not permitted
+- 📝 **Attribution**: Must give appropriate credit
+- 🔄 **ShareAlike**: Must distribute under same license
 
-[![CC BY-NC-SA 4.0][cc-by-nc-sa-image]][cc-by-nc-sa]
+For full license terms, see [LICENSE](LICENSE) file.
 
-[cc-by-nc-sa]: http://creativecommons.org/licenses/by-nc-sa/4.0/
-[cc-by-nc-sa-image]: https://licensebuttons.net/l/by-nc-sa/4.0/88x31.png
-[cc-by-nc-sa-shield]: https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg
+## 📋 Changelog
+
+### Version 1.4.0 (Current)
+- ✨ Added Netflix support with official subtitle integration
+- 🔄 Implemented multiple translation providers with fallback
+- 🌐 Added multi-language UI support (6 languages)
+- ⚙️ Introduced advanced options page
+- 🏗️ Refactored architecture with Template Method pattern
+- 🧪 Added comprehensive testing framework
+- 📊 Implemented configurable logging system
+- 🔧 Enhanced configuration management
+
+### Previous Versions
+*For detailed version history, see [GitHub Releases](https://github.com/QuellaMC/DualSub/releases)*
 
 ---
 
-_Disclaimer: This extension is not officially affiliated with Disney+._
+## 📞 Support & Community
 
-## Adding New Translation Providers
+- **🐛 Bug Reports**: [GitHub Issues](https://github.com/QuellaMC/DualSub/issues)
+- **💡 Feature Requests**: [GitHub Discussions](https://github.com/QuellaMC/DualSub/discussions)
+- **📖 Documentation**: [Wiki](https://github.com/QuellaMC/DualSub/wiki)
 
-This extension is designed to support multiple translation service providers. If you want to add a new translation provider, please follow these steps:
+---
 
-1.  **Understand the Interface**: Familiarize yourself with the required structure for a translation provider module by reading the interface definition located in `translation_providers/README.md`.
-2.  **Implement Your Provider**:
-    - Create a new JavaScript file for your provider within the `translation_providers/` directory (e.g., `myNewProvider.js`).
-    - You can use `translation_providers/deeplTranslate_example.js` as a starting template for your implementation.
-    - Ensure your module exports an `async function translate(text, sourceLang, targetLang)` that adheres to the defined interface.
-3.  **Register Your Provider**:
-    - In `background.js`, import your new provider module and add it to the `translationProviders` object. This object maps a unique provider ID (e.g., 'myNewProvider') to its display name and `translate` function.
-    - In `popup/popup.js`, add your new provider's ID and display name to the `availableProviders` object. This will make it visible in the extension's settings popup.
-4.  **Test Thoroughly**: Ensure your new provider works correctly and handles errors gracefully.
-
-By following these guidelines, you can extend the translation capabilities of this extension.
+**⚠️ Disclaimer**: This extension is not officially affiliated with Netflix, Disney+, or any streaming platform. All trademarks belong to their respective owners.
