@@ -25,18 +25,21 @@
 ## ✨ Features
 
 ### Core Functionality
+
 - **🎬 Dual Subtitle Display**: Show original and translated subtitles simultaneously
 - **🌐 Multi-Platform Support**: Works on Netflix and Disney+ with platform-specific optimizations
 - **🔄 Multiple Translation Providers**: Choose from Google, Microsoft, DeepL, and OpenAI-compatible services
 - **🎯 Smart Translation**: Automatic fallback between providers and intelligent batching
 
 ### Customization Options
+
 - **📐 Flexible Layouts**: Vertical (top/bottom) or horizontal (left/right) subtitle arrangements
 - **🎨 Appearance Control**: Adjustable font sizes, spacing, and display order
 - **⏱️ Timing Precision**: Fine-tune subtitle synchronization with offset controls
 - **🌍 Multi-Language UI**: Interface available in 6 languages (EN, ES, JA, KO, ZH-CN, ZH-TW)
 
 ### Advanced Features
+
 - **⚙️ Performance Tuning**: Configurable batch sizes and request delays for optimal performance
 - **🔧 Advanced Options**: Comprehensive settings page with provider-specific configurations
 - **📊 Logging System**: Detailed debugging with configurable log levels
@@ -44,26 +47,28 @@
 
 ## 🎯 Supported Platforms
 
-| Platform | Status | Features |
-|----------|--------|----------|
+| Platform    | Status          | Features                                                |
+| ----------- | --------------- | ------------------------------------------------------- |
 | **Netflix** | ✅ Full Support | Official subtitle integration, SPA navigation detection |
-| **Disney+** | ✅ Full Support | M3U8 playlist parsing, video detection |
+| **Disney+** | ✅ Full Support | M3U8 playlist parsing, video detection                  |
 
 ### Platform-Specific Features
+
 - **Netflix**: Enhanced SPA navigation detection, official translation support
 - **Disney+**: Advanced M3U8 subtitle extraction, multiple URL pattern support
 
 ## 🔄 Translation Providers
 
-| Provider | Type | Quality | Setup Required | Notes |
-|----------|------|---------|----------------|-------|
-| **DeepL Free** | Free | ⭐⭐⭐⭐⭐ | None | Recommended default, high quality |
-| **Google Translate** | Free | ⭐⭐⭐⭐ | None | Fast, wide language support |
-| **Microsoft Translate** | Free | ⭐⭐⭐⭐ | None | Good performance, reliable |
-| **DeepL API** | Paid | ⭐⭐⭐⭐⭐ | API Key | Highest quality, usage limits |
-| **OpenAI Compatible** | Paid | ⭐⭐⭐⭐⭐ | API Key | Supports Gemini models |
+| Provider                | Type | Quality    | Setup Required | Notes                             |
+| ----------------------- | ---- | ---------- | -------------- | --------------------------------- |
+| **DeepL Free**          | Free | ⭐⭐⭐⭐⭐ | None           | Recommended default, high quality |
+| **Google Translate**    | Free | ⭐⭐⭐⭐   | None           | Fast, wide language support       |
+| **Microsoft Translate** | Free | ⭐⭐⭐⭐   | None           | Good performance, reliable        |
+| **DeepL API**           | Paid | ⭐⭐⭐⭐⭐ | API Key        | Highest quality, usage limits     |
+| **OpenAI Compatible**   | Paid | ⭐⭐⭐⭐⭐ | API Key        | Supports Gemini models            |
 
 ### Provider Features
+
 - **Automatic Fallback**: Seamlessly switches between providers if one fails
 - **Rate Limiting**: Intelligent request management to avoid API limits
 - **Batch Processing**: Optimized translation of multiple subtitle segments
@@ -73,28 +78,31 @@
 ### Option 1: Manual Installation (Recommended for Development)
 
 1. **Download the Extension**
-   ```bash
-   git clone https://github.com/QuellaMC/DualSub.git
-   cd DualSub
-   ```
+
+    ```bash
+    git clone https://github.com/QuellaMC/DualSub.git
+    cd DualSub
+    ```
 
 2. **Install Dependencies** (for development)
-   ```bash
-   npm install
-   ```
+
+    ```bash
+    npm install
+    ```
 
 3. **Load in Chrome**
-   - Open Chrome and navigate to `chrome://extensions`
-   - Enable "Developer mode" (toggle in top-right corner)
-   - Click "Load unpacked"
-   - Select the `DualSub` directory
+    - Open Chrome and navigate to `chrome://extensions`
+    - Enable "Developer mode" (toggle in top-right corner)
+    - Click "Load unpacked"
+    - Select the `DualSub` directory
 
 4. **Verify Installation**
-   - The DualSub icon should appear in your Chrome toolbar
-   - Visit Netflix or Disney+ to test functionality
+    - The DualSub icon should appear in your Chrome toolbar
+    - Visit Netflix or Disney+ to test functionality
 
 ### Option 2: Chrome Web Store (Coming Soon)
-*The extension will be available on the Chrome Web Store in a future release.*
+
+_The extension will be available on the Chrome Web Store in a future release._
 
 ## 🚀 Quick Start
 
@@ -106,6 +114,7 @@
 6. **Enjoy!** Original and translated subtitles will appear simultaneously
 
 ### First-Time Setup Tips
+
 - Start with **DeepL Free** provider (default) for best quality
 - Use **Top/Bottom layout** for easier reading
 - Adjust **font size** and **gap** for optimal viewing
@@ -114,6 +123,7 @@
 ## ⚙️ Configuration
 
 ### Popup Settings (Quick Access)
+
 Click the DualSub icon in your toolbar to access:
 
 - **🔄 Enable/Disable**: Toggle dual subtitle functionality
@@ -124,25 +134,30 @@ Click the DualSub icon in your toolbar to access:
 - **⏱️ Timing**: Subtitle offset adjustment (±10 seconds)
 
 ### Advanced Options Page
+
 Access via popup → "Advanced Settings" for:
 
 #### General Settings
+
 - **🌍 UI Language**: Choose interface language (EN, ES, JA, KO, ZH-CN, ZH-TW)
 - **👁️ Hide Official Subtitles**: Remove platform's native subtitles
 - **📊 Logging Level**: Control debug information (Off/Error/Warn/Info/Debug)
 
 #### Translation Settings
+
 - **🔧 Provider Configuration**: API keys for premium services
 - **⚡ Performance Tuning**: Batch size (1-10) and request delay (50-1000ms)
 - **🔄 Provider Testing**: Test API connections before use
 
 #### Provider-Specific Settings
+
 - **DeepL API**: API key and plan selection (Free/Pro)
 - **OpenAI Compatible**: API key, base URL, and model configuration
 
 ### Configuration Examples
 
 **For Language Learning:**
+
 ```
 Provider: DeepL Free
 Layout: Top/Bottom
@@ -151,6 +166,7 @@ Font Size: Large
 ```
 
 **For Performance:**
+
 ```
 Batch Size: 5
 Request Delay: 100ms
@@ -160,6 +176,7 @@ Provider: Google Translate
 ## 🛠️ Development Setup
 
 ### Prerequisites
+
 - **Node.js** 18+ and npm
 - **Google Chrome** with Developer mode enabled
 - **Git** for version control
@@ -167,31 +184,34 @@ Provider: Google Translate
 ### Setup Instructions
 
 1. **Clone and Install**
-   ```bash
-   git clone https://github.com/QuellaMC/DualSub.git
-   cd DualSub
-   npm install
-   ```
+
+    ```bash
+    git clone https://github.com/QuellaMC/DualSub.git
+    cd DualSub
+    npm install
+    ```
 
 2. **Development Commands**
-   ```bash
-   # Code formatting
-   npm run format
 
-   # Linting
-   npm run lint
-   npm run lint:fix
+    ```bash
+    # Code formatting
+    npm run format
 
-   # Testing
-   npm test
-   npm run test:watch
-   ```
+    # Linting
+    npm run lint
+    npm run lint:fix
+
+    # Testing
+    npm test
+    npm run test:watch
+    ```
 
 3. **Load Extension for Testing**
-   - Follow manual installation steps above
-   - Reload extension after making changes
+    - Follow manual installation steps above
+    - Reload extension after making changes
 
 ### Project Structure
+
 ```
 DualSub/
 ├── content_scripts/     # Platform-specific content scripts
@@ -210,18 +230,21 @@ DualSub/
 DualSub uses a modern, modular architecture built on several key design patterns:
 
 ### Core Architecture
+
 - **📐 Template Method Pattern**: `BaseContentScript` provides common functionality with platform-specific implementations
 - **🔌 Dependency Injection**: Dynamic module loading for better testability and loose coupling
 - **📡 Event-Driven Design**: Extensible message handling with action-based routing
 - **🧹 Resource Management**: Comprehensive cleanup system preventing memory leaks
 
 ### Key Components
+
 - **Content Scripts**: Platform-specific implementations extending `BaseContentScript`
 - **Translation Providers**: Modular translation services with automatic fallback
 - **Configuration Service**: Centralized settings management with validation
 - **Logging System**: Cross-context logging with configurable levels
 
 For detailed technical documentation, see:
+
 - [Architecture Overview](content_scripts/ARCHITECTURE.md)
 - [API Reference](content_scripts/API_REFERENCE.md)
 - [Platform Implementation Guide](content_scripts/PLATFORM_IMPLEMENTATION_GUIDE.md)
@@ -231,12 +254,14 @@ For detailed technical documentation, see:
 We welcome contributions! Please follow these guidelines:
 
 ### Code Standards
+
 - **ESLint + Prettier**: Code must pass linting and formatting checks
 - **ES Modules**: Use modern JavaScript module syntax
 - **Testing**: All new features require comprehensive tests
 - **Documentation**: Update relevant documentation for changes
 
 ### Development Workflow
+
 1. **Fork** the repository
 2. **Create** a feature branch (`git checkout -b feature/amazing-feature`)
 3. **Write** tests for your changes
@@ -250,6 +275,7 @@ We welcome contributions! Please follow these guidelines:
 ### Adding New Features
 
 #### New Translation Providers
+
 1. Create provider in `translation_providers/` directory
 2. Implement `async function translate(text, sourceLang, targetLang)`
 3. Add to `background.js` providers object
@@ -257,6 +283,7 @@ We welcome contributions! Please follow these guidelines:
 5. Add comprehensive tests
 
 #### New Streaming Platforms
+
 1. Extend `BaseContentScript` class
 2. Implement required abstract methods
 3. Create platform-specific configuration
@@ -264,6 +291,7 @@ We welcome contributions! Please follow these guidelines:
 5. Add platform tests
 
 ### Code Review Process
+
 - All submissions require review
 - Tests must pass CI/CD pipeline
 - Documentation must be updated
@@ -274,6 +302,7 @@ We welcome contributions! Please follow these guidelines:
 DualSub includes a comprehensive testing framework:
 
 ### Running Tests
+
 ```bash
 # Run all tests
 npm test
@@ -289,12 +318,14 @@ npm test -- --coverage
 ```
 
 ### Test Structure
+
 - **Unit Tests**: Individual component testing
 - **Integration Tests**: Cross-component functionality
 - **Mock Infrastructure**: Chrome API and DOM mocking
 - **Test Utilities**: Shared testing helpers and fixtures
 
 ### Testing Guidelines
+
 - **Coverage**: Aim for >80% code coverage
 - **Isolation**: Tests should not depend on each other
 - **Mocking**: Use provided mocks for Chrome APIs
@@ -307,6 +338,7 @@ This project is licensed under the **Creative Commons Attribution-NonCommercial-
 [![CC BY-NC-SA 4.0](https://licensebuttons.net/l/by-nc-sa/4.0/88x31.png)](http://creativecommons.org/licenses/by-nc-sa/4.0/)
 
 ### License Summary
+
 - ✅ **Share**: Copy and redistribute the material
 - ✅ **Adapt**: Remix, transform, and build upon the material
 - ❌ **Commercial Use**: Not permitted
@@ -318,6 +350,7 @@ For full license terms, see [LICENSE](LICENSE) file.
 ## 📋 Changelog
 
 ### Version 1.4.0 (Current)
+
 - ✨ Added Netflix support with official subtitle integration
 - 🔄 Implemented multiple translation providers with fallback
 - 🌐 Added multi-language UI support (6 languages)
@@ -328,7 +361,8 @@ For full license terms, see [LICENSE](LICENSE) file.
 - 🔧 Enhanced configuration management
 
 ### Previous Versions
-*For detailed version history, see [GitHub Releases](https://github.com/QuellaMC/DualSub/releases)*
+
+_For detailed version history, see [GitHub Releases](https://github.com/QuellaMC/DualSub/releases)_
 
 ---
 
