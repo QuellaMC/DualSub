@@ -1,3 +1,7 @@
+// Import modular background services
+import './background/index.js';
+
+// Backward compatibility imports
 import { translate as googleTranslate } from './translation_providers/googleTranslate.js';
 import { translate as microsoftTranslateEdgeAuth } from './translation_providers/microsoftTranslateEdgeAuth.js';
 import { translate as deeplTranslate } from './translation_providers/deeplTranslate.js';
@@ -9,7 +13,8 @@ import Logger from './utils/logger.js';
 // Initialize background logger with ConfigService integration
 const backgroundLogger = Logger.create('Background', configService);
 
-backgroundLogger.info('Dual Subtitles background script loaded');
+backgroundLogger.info('Dual Subtitles background script loaded (legacy compatibility mode)');
+backgroundLogger.info('Modular background services are now handling core functionality');
 
 const translationProviders = {
     google: {
