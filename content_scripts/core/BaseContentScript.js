@@ -1344,18 +1344,10 @@ export class BaseContentScript {
             });
             const newConfig = await this.configService.getAll();
 
-            // Normalize the new configuration
-            const oldConfig = this.currentConfig;
-            this.currentConfig = newConfig;
-            this._normalizeConfiguration();
-
-            // Update existing object properties while preserving the reference
-            Object.keys(this.currentConfig).forEach(
-                (key) => delete this.currentConfig[key]
-            );
             Object.assign(this.currentConfig, newConfig);
 
-            // Apply configuration changes
+            this._normalizeConfiguration();
+
             this.applyConfigurationChanges(changes);
         });
     }
