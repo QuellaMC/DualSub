@@ -19,7 +19,7 @@ async function testRateLimiting() {
         microsoft: { passed: false, details: {} },
         deepl: { passed: false, details: {} },
         deepl_free: { passed: false, details: {} },
-        openai: { passed: false, details: {} }
+        openai: { passed: false, details: {} },
     };
 
     try {
@@ -44,9 +44,9 @@ async function testRateLimiting() {
         // Test mandatory delays
         logger.info('Testing mandatory delays...');
         const delayResults = await testMandatoryDelays();
-        
+
         // Combine results
-        Object.keys(testResults).forEach(provider => {
+        Object.keys(testResults).forEach((provider) => {
             if (delayResults[provider]) {
                 testResults[provider].delayTest = delayResults[provider];
             }
@@ -54,7 +54,6 @@ async function testRateLimiting() {
 
         // Print results
         printTestResults(testResults);
-
     } catch (error) {
         logger.error('Rate limiting test failed', error);
     }
@@ -66,7 +65,7 @@ async function testRateLimiting() {
 async function testGoogleRateLimit() {
     const testText = 'Hello world! This is a test message.';
     const textBytes = new TextEncoder().encode(testText).length;
-    
+
     try {
         // Check initial rate limit status
         const initialStatus = translationProviders.getRateLimitStatus();
@@ -74,7 +73,10 @@ async function testGoogleRateLimit() {
 
         // Test rate limit check
         const canTranslate = translationProviders.checkRateLimit(testText);
-        logger.info('Google rate limit check result', { canTranslate, textBytes });
+        logger.info('Google rate limit check result', {
+            canTranslate,
+            textBytes,
+        });
 
         return {
             passed: true,
@@ -82,8 +84,8 @@ async function testGoogleRateLimit() {
                 initialStatus,
                 canTranslate,
                 textBytes,
-                rateLimitType: 'bytes_per_window'
-            }
+                rateLimitType: 'bytes_per_window',
+            },
         };
     } catch (error) {
         logger.error('Google rate limit test failed', error);
@@ -97,7 +99,7 @@ async function testGoogleRateLimit() {
 async function testMicrosoftRateLimit() {
     const testText = 'This is a test for Microsoft Translate character limits.';
     const textChars = testText.length;
-    
+
     try {
         // Check initial rate limit status
         const initialStatus = translationProviders.getRateLimitStatus();
@@ -105,7 +107,10 @@ async function testMicrosoftRateLimit() {
 
         // Test rate limit check
         const canTranslate = translationProviders.checkRateLimit(testText);
-        logger.info('Microsoft rate limit check result', { canTranslate, textChars });
+        logger.info('Microsoft rate limit check result', {
+            canTranslate,
+            textChars,
+        });
 
         return {
             passed: true,
@@ -113,8 +118,8 @@ async function testMicrosoftRateLimit() {
                 initialStatus,
                 canTranslate,
                 textChars,
-                rateLimitType: 'characters_sliding_window'
-            }
+                rateLimitType: 'characters_sliding_window',
+            },
         };
     } catch (error) {
         logger.error('Microsoft rate limit test failed', error);
@@ -127,7 +132,7 @@ async function testMicrosoftRateLimit() {
  */
 async function testDeepLFreeRateLimit() {
     const testText = 'Testing DeepL Free rate limiting.';
-    
+
     try {
         // Check initial rate limit status
         const initialStatus = translationProviders.getRateLimitStatus();
@@ -142,8 +147,8 @@ async function testDeepLFreeRateLimit() {
             details: {
                 initialStatus,
                 canTranslate,
-                rateLimitType: 'requests_per_hour'
-            }
+                rateLimitType: 'requests_per_hour',
+            },
         };
     } catch (error) {
         logger.error('DeepL Free rate limit test failed', error);
@@ -155,7 +160,12 @@ async function testDeepLFreeRateLimit() {
  * Test mandatory delays for all providers
  */
 async function testMandatoryDelays() {
-    const providers = ['google', 'microsoft_edge_auth', 'deepl_free', 'openai_compatible'];
+    const providers = [
+        'google',
+        'microsoft_edge_auth',
+        'deepl_free',
+        'openai_compatible',
+    ];
     const results = {};
 
     for (const providerId of providers) {
@@ -172,14 +182,19 @@ async function testMandatoryDelays() {
                 passed: true,
                 expectedDelay,
                 actualDelay,
-                withinTolerance: Math.abs(actualDelay - expectedDelay) <= 50 // 50ms tolerance
+                withinTolerance: Math.abs(actualDelay - expectedDelay) <= 50, // 50ms tolerance
             };
 
-            logger.info(`Mandatory delay test for ${providerId}`, results[providerId]);
-
+            logger.info(
+                `Mandatory delay test for ${providerId}`,
+                results[providerId]
+            );
         } catch (error) {
             results[providerId] = { passed: false, error: error.message };
-            logger.error(`Mandatory delay test failed for ${providerId}`, error);
+            logger.error(
+                `Mandatory delay test failed for ${providerId}`,
+                error
+            );
         }
     }
 
@@ -191,29 +206,37 @@ async function testMandatoryDelays() {
  */
 function printTestResults(results) {
     logger.info('=== Rate Limiting Test Results ===');
-    
+
     let allPassed = true;
     Object.entries(results).forEach(([provider, result]) => {
         const status = result.passed ? '✅ PASSED' : '❌ FAILED';
         logger.info(`${provider}: ${status}`);
-        
+
         if (result.details) {
-            logger.info(`  Rate limit type: ${result.details.rateLimitType || 'N/A'}`);
-            logger.info(`  Can translate: ${result.details.canTranslate || 'N/A'}`);
+            logger.info(
+                `  Rate limit type: ${result.details.rateLimitType || 'N/A'}`
+            );
+            logger.info(
+                `  Can translate: ${result.details.canTranslate || 'N/A'}`
+            );
         }
-        
+
         if (result.delayTest) {
             const delayStatus = result.delayTest.passed ? '✅' : '❌';
-            logger.info(`  Delay test: ${delayStatus} (Expected: ${result.delayTest.expectedDelay}ms, Actual: ${result.delayTest.actualDelay}ms)`);
+            logger.info(
+                `  Delay test: ${delayStatus} (Expected: ${result.delayTest.expectedDelay}ms, Actual: ${result.delayTest.actualDelay}ms)`
+            );
         }
-        
+
         if (!result.passed) {
             allPassed = false;
             logger.error(`  Error: ${result.error}`);
         }
     });
 
-    logger.info(`\n=== Overall Result: ${allPassed ? '✅ ALL TESTS PASSED' : '❌ SOME TESTS FAILED'} ===`);
+    logger.info(
+        `\n=== Overall Result: ${allPassed ? '✅ ALL TESTS PASSED' : '❌ SOME TESTS FAILED'} ===`
+    );
 }
 
 // Export for use in other test files

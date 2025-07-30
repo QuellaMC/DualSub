@@ -239,7 +239,9 @@
         "message": "권장: 3-5개 세그먼트 (기본값: 4)"
     },
 
-    "deeplTestNeedsTesting": { "message": "⚠️ DeepL API 키 테스트가 필요합니다." },
+    "deeplTestNeedsTesting": {
+        "message": "⚠️ DeepL API 키 테스트가 필요합니다."
+    },
 
     "cardProviderDelayTitle": { "message": "제공업체별 요청 지연" },
     "cardProviderDelayDesc": {

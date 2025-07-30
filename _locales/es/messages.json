@@ -213,7 +213,9 @@
     "batchingEnabledHelp": {
         "message": "Agrupa múltiples segmentos de subtítulos en solicitudes de traducción únicas"
     },
-    "useProviderDefaultsLabel": { "message": "Usar Configuración Optimizada del Proveedor:" },
+    "useProviderDefaultsLabel": {
+        "message": "Usar Configuración Optimizada del Proveedor:"
+    },
     "useProviderDefaultsHelp": {
         "message": "Usar automáticamente tamaños de lote óptimos para cada proveedor de traducción"
     },
@@ -230,7 +232,9 @@
         "message": "Número de lotes de traducción a procesar simultáneamente"
     },
 
-    "cardProviderBatchTitle": { "message": "Tamaños de Lote Específicos del Proveedor" },
+    "cardProviderBatchTitle": {
+        "message": "Tamaños de Lote Específicos del Proveedor"
+    },
     "cardProviderBatchDesc": {
         "message": "Configure tamaños de lote óptimos para cada proveedor de traducción. Estas configuraciones se usan cuando \"Usar Configuración Optimizada del Proveedor\" está habilitado."
     },
@@ -246,14 +250,20 @@
     "deeplBatchSizeHelp": {
         "message": "Recomendado: 2-3 segmentos (predeterminado: 3)"
     },
-    "microsoftBatchSizeLabel": { "message": "Tamaño de Lote Microsoft Translate:" },
+    "microsoftBatchSizeLabel": {
+        "message": "Tamaño de Lote Microsoft Translate:"
+    },
     "microsoftBatchSizeHelp": {
         "message": "Recomendado: 3-5 segmentos (predeterminado: 4)"
     },
 
-    "deeplTestNeedsTesting": { "message": "⚠️ La clave API de DeepL necesita ser probada." },
+    "deeplTestNeedsTesting": {
+        "message": "⚠️ La clave API de DeepL necesita ser probada."
+    },
 
-    "cardProviderDelayTitle": { "message": "Retrasos de Solicitud Específicos del Proveedor" },
+    "cardProviderDelayTitle": {
+        "message": "Retrasos de Solicitud Específicos del Proveedor"
+    },
     "cardProviderDelayDesc": {
         "message": "Configure retrasos obligatorios entre solicitudes de traducción para prevenir bloqueos de cuenta. Estos retrasos se aplican incluso cuando el procesamiento por lotes está habilitado."
     },
@@ -261,7 +271,9 @@
     "openaieDelayHelp": {
         "message": "Retraso mínimo entre solicitudes (predeterminado: 100ms)"
     },
-    "googleDelayLabel": { "message": "Retraso de Solicitud Google Translate (ms):" },
+    "googleDelayLabel": {
+        "message": "Retraso de Solicitud Google Translate (ms):"
+    },
     "googleDelayHelp": {
         "message": "Retraso requerido para prevenir bloqueos temporales (predeterminado: 1500ms)"
     },
@@ -269,11 +281,15 @@
     "deeplDelayHelp": {
         "message": "Retraso para solicitudes de API DeepL (predeterminado: 500ms)"
     },
-    "deeplFreeDelayLabel": { "message": "Retraso de Solicitud DeepL Gratuito (ms):" },
+    "deeplFreeDelayLabel": {
+        "message": "Retraso de Solicitud DeepL Gratuito (ms):"
+    },
     "deeplFreeDelayHelp": {
         "message": "Retraso conservador para nivel gratuito (predeterminado: 2000ms)"
     },
-    "microsoftDelayLabel": { "message": "Retraso de Solicitud Microsoft Translate (ms):" },
+    "microsoftDelayLabel": {
+        "message": "Retraso de Solicitud Microsoft Translate (ms):"
+    },
     "microsoftDelayHelp": {
         "message": "Retraso para respetar límites de caracteres (predeterminado: 800ms)"
     }

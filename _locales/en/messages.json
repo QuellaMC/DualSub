@@ -198,7 +198,9 @@
     "batchingEnabledHelp": {
         "message": "Groups multiple subtitle segments into single translation requests"
     },
-    "useProviderDefaultsLabel": { "message": "Use Provider-Optimized Settings:" },
+    "useProviderDefaultsLabel": {
+        "message": "Use Provider-Optimized Settings:"
+    },
     "useProviderDefaultsHelp": {
         "message": "Automatically use optimal batch sizes for each translation provider"
     },
@@ -256,7 +258,9 @@
     "deeplFreeDelayHelp": {
         "message": "Conservative delay for free tier (default: 2000ms)"
     },
-    "microsoftDelayLabel": { "message": "Microsoft Translate Request Delay (ms):" },
+    "microsoftDelayLabel": {
+        "message": "Microsoft Translate Request Delay (ms):"
+    },
     "microsoftDelayHelp": {
         "message": "Delay to respect character limits (default: 800ms)"
     }

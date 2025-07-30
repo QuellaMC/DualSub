@@ -1,9 +1,9 @@
 /**
  * TTML to VTT Parser
- * 
+ *
  * Converts Netflix TTML subtitle format to WebVTT format.
  * Handles region layouts, timing, and text formatting.
- * 
+ *
  * @author DualSub Extension
  * @version 2.0.0
  */
@@ -56,7 +56,10 @@ class TTMLParser {
 
             // Step 4: Sort by position and merge into final cues
             this.logger.debug('Step 4: Sorting by position and merging');
-            const finalCues = this.createFinalCues(groupedByTime, regionLayouts);
+            const finalCues = this.createFinalCues(
+                groupedByTime,
+                regionLayouts
+            );
             this.logger.debug('Created final merged cues', {
                 finalCueCount: finalCues.length,
             });
@@ -68,9 +71,10 @@ class TTMLParser {
             this.logger.info('TTML to VTT conversion complete', {
                 finalCueCount: finalCues.length,
                 vttLength: vtt.length,
-                timeRange: finalCues.length > 0
-                    ? `${this.convertTtmlTimeToVtt(finalCues[0].begin)} to ${this.convertTtmlTimeToVtt(finalCues[finalCues.length - 1].end)}`
-                    : 'N/A',
+                timeRange:
+                    finalCues.length > 0
+                        ? `${this.convertTtmlTimeToVtt(finalCues[0].begin)} to ${this.convertTtmlTimeToVtt(finalCues[finalCues.length - 1].end)}`
+                        : 'N/A',
             });
 
             return vtt;
@@ -89,7 +93,8 @@ class TTMLParser {
      */
     parseRegionLayouts(ttmlText) {
         const regionLayouts = new Map();
-        const regionRegex = /<region\s+xml:id="([^"]+)"[^>]*\s+tts:origin="([^"]+)"/gi;
+        const regionRegex =
+            /<region\s+xml:id="([^"]+)"[^>]*\s+tts:origin="([^"]+)"/gi;
         let regionMatch;
         let regionCount = 0;
 
@@ -119,7 +124,8 @@ class TTMLParser {
      */
     parsePElements(ttmlText) {
         const intermediateCues = [];
-        const pElementRegex = /<p[^>]*\s+begin="([^"]+)"[^>]*\s+end="([^"]+)"[^>]*\s+region="([^"]+)"[^>]*>([\s\S]*?)<\/p>/gi;
+        const pElementRegex =
+            /<p[^>]*\s+begin="([^"]+)"[^>]*\s+end="([^"]+)"[^>]*\s+region="([^"]+)"[^>]*>([\s\S]*?)<\/p>/gi;
         let pMatch;
         let pElementCount = 0;
 
@@ -147,7 +153,8 @@ class TTMLParser {
                     begin,
                     end,
                     region,
-                    textPreview: text.substring(0, 50) + (text.length > 50 ? '...' : ''),
+                    textPreview:
+                        text.substring(0, 50) + (text.length > 50 ? '...' : ''),
                 });
             }
         }
@@ -162,7 +169,7 @@ class TTMLParser {
      */
     groupCuesByTime(intermediateCues) {
         const groupedByTime = new Map();
-        
+
         for (const cue of intermediateCues) {
             const key = `${cue.begin}-${cue.end}`;
             if (!groupedByTime.has(key)) {
@@ -187,8 +194,14 @@ class TTMLParser {
         for (const [key, group] of groupedByTime.entries()) {
             // Sort the group based on region position (top-to-bottom, then left-to-right)
             group.sort((a, b) => {
-                const regionA = regionLayouts.get(a.region) || { y: 999, x: 999 };
-                const regionB = regionLayouts.get(b.region) || { y: 999, x: 999 };
+                const regionA = regionLayouts.get(a.region) || {
+                    y: 999,
+                    x: 999,
+                };
+                const regionB = regionLayouts.get(b.region) || {
+                    y: 999,
+                    x: 999,
+                };
 
                 // Primary sort: Y-coordinate (top to bottom)
                 if (regionA.y < regionB.y) return -1;
@@ -218,7 +231,9 @@ class TTMLParser {
             if (mergedCount <= 3) {
                 this.logger.debug('Merged cues', {
                     groupSize: group.length,
-                    textPreview: mergedText.substring(0, 80) + (mergedText.length > 80 ? '...' : ''),
+                    textPreview:
+                        mergedText.substring(0, 80) +
+                        (mergedText.length > 80 ? '...' : ''),
                 });
             }
         }
@@ -251,7 +266,9 @@ class TTMLParser {
                     cueNumber: vttCueCount,
                     startTime,
                     endTime,
-                    textPreview: cue.text.substring(0, 60) + (cue.text.length > 60 ? '...' : ''),
+                    textPreview:
+                        cue.text.substring(0, 60) +
+                        (cue.text.length > 60 ? '...' : ''),
                 });
             }
         }

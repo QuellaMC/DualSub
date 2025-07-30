@@ -241,7 +241,9 @@
         "message": "推奨：3-5セグメント（デフォルト：4）"
     },
 
-    "deeplTestNeedsTesting": { "message": "⚠️ DeepL APIキーのテストが必要です。" },
+    "deeplTestNeedsTesting": {
+        "message": "⚠️ DeepL APIキーのテストが必要です。"
+    },
 
     "cardProviderDelayTitle": { "message": "プロバイダー固有のリクエスト遅延" },
     "cardProviderDelayDesc": {
