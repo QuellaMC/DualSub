@@ -111,6 +111,7 @@
 
     "testDeepLButton": { "message": "Test DeepL Connection" },
     "deeplApiKeyError": { "message": "Please enter your DeepL API key first." },
+    "deeplTestNeedsTesting": { "message": "⚠️ DeepL API key needs testing." },
     "testingButton": { "message": "Testing..." },
     "testingConnection": { "message": "Testing DeepL connection..." },
     "deeplTestSuccess": {
@@ -187,5 +188,76 @@
     "loggingLevelError": { "message": "Error Only" },
     "loggingLevelWarn": { "message": "Warnings & Errors" },
     "loggingLevelInfo": { "message": "Info & Above" },
-    "loggingLevelDebug": { "message": "Debug (All)" }
+    "loggingLevelDebug": { "message": "Debug (All)" },
+
+    "cardBatchTranslationTitle": { "message": "Batch Translation" },
+    "cardBatchTranslationDesc": {
+        "message": "Batch translation processes multiple subtitle segments together, reducing API calls by 80-90% and improving performance. Configure optimal settings for your preferred translation provider."
+    },
+    "batchingEnabledLabel": { "message": "Enable Batch Translation:" },
+    "batchingEnabledHelp": {
+        "message": "Groups multiple subtitle segments into single translation requests"
+    },
+    "useProviderDefaultsLabel": { "message": "Use Provider-Optimized Settings:" },
+    "useProviderDefaultsHelp": {
+        "message": "Automatically use optimal batch sizes for each translation provider"
+    },
+    "globalBatchSizeLabel": { "message": "Global Batch Size:" },
+    "globalBatchSizeHelp": {
+        "message": "Number of subtitle segments to process together (1-15)"
+    },
+    "smartBatchingLabel": { "message": "Smart Batch Optimization:" },
+    "smartBatchingHelp": {
+        "message": "Prioritizes subtitle segments based on playback position"
+    },
+    "maxConcurrentBatchesLabel": { "message": "Maximum Concurrent Batches:" },
+    "maxConcurrentBatchesHelp": {
+        "message": "Number of translation batches to process simultaneously"
+    },
+
+    "cardProviderBatchTitle": { "message": "Provider-Specific Batch Sizes" },
+    "cardProviderBatchDesc": {
+        "message": "Configure optimal batch sizes for each translation provider. These settings are used when \"Use Provider-Optimized Settings\" is enabled."
+    },
+    "openaieBatchSizeLabel": { "message": "OpenAI Batch Size:" },
+    "openaieBatchSizeHelp": {
+        "message": "Recommended: 5-10 segments (default: 8)"
+    },
+    "googleBatchSizeLabel": { "message": "Google Translate Batch Size:" },
+    "googleBatchSizeHelp": {
+        "message": "Recommended: 3-5 segments (default: 4)"
+    },
+    "deeplBatchSizeLabel": { "message": "DeepL Batch Size:" },
+    "deeplBatchSizeHelp": {
+        "message": "Recommended: 2-3 segments (default: 3)"
+    },
+    "microsoftBatchSizeLabel": { "message": "Microsoft Translate Batch Size:" },
+    "microsoftBatchSizeHelp": {
+        "message": "Recommended: 3-5 segments (default: 4)"
+    },
+
+    "cardProviderDelayTitle": { "message": "Provider-Specific Request Delays" },
+    "cardProviderDelayDesc": {
+        "message": "Configure mandatory delays between translation requests to prevent account lockouts. These delays are applied even when batch processing is enabled."
+    },
+    "openaieDelayLabel": { "message": "OpenAI Request Delay (ms):" },
+    "openaieDelayHelp": {
+        "message": "Minimum delay between requests (default: 100ms)"
+    },
+    "googleDelayLabel": { "message": "Google Translate Request Delay (ms):" },
+    "googleDelayHelp": {
+        "message": "Required delay to prevent temporary lockouts (default: 1500ms)"
+    },
+    "deeplDelayLabel": { "message": "DeepL API Request Delay (ms):" },
+    "deeplDelayHelp": {
+        "message": "Delay for DeepL API requests (default: 500ms)"
+    },
+    "deeplFreeDelayLabel": { "message": "DeepL Free Request Delay (ms):" },
+    "deeplFreeDelayHelp": {
+        "message": "Conservative delay for free tier (default: 2000ms)"
+    },
+    "microsoftDelayLabel": { "message": "Microsoft Translate Request Delay (ms):" },
+    "microsoftDelayHelp": {
+        "message": "Delay to respect character limits (default: 800ms)"
+    }
 }

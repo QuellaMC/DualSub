@@ -268,28 +268,14 @@ export class VideoElementDetector {
     }
 
     /**
-     * Gets the default selectors for a given platform.
+     * Gets the default selectors for a given platform using consolidated configuration.
      * @private
      * @param {string} platform - The platform name.
      * @returns {string[]} An array of default CSS selectors.
      */
     _getDefaultSelectors(platform) {
-        const defaultSelectors = {
-            netflix: [
-                'video',
-                '.watch-video video',
-                '.nfp-video-player video',
-                '[data-uia="video-canvas"] video',
-            ],
-            disneyplus: [
-                'video',
-                '.btm-media-client-element video',
-                '.video-player video',
-                '[data-testid="video-player"] video',
-            ],
-        };
-
-        return defaultSelectors[platform.toLowerCase()] || ['video'];
+        const platformConfig = PLATFORM_DOM_CONFIGS[platform.toLowerCase()];
+        return platformConfig ? platformConfig.videoSelectors : ['video'];
     }
 
     /**

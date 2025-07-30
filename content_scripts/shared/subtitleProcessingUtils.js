@@ -6,6 +6,9 @@
  * @version 1.0.0
  */
 
+// Import consolidated utility functions
+import { parseTimestampToSeconds, sanitizeSubtitleText } from './subtitleUtilities.js';
+
 /**
  * Manages dual subtitle processing and display, handling both official and API-based
  * translations, timing synchronization, and display mode switching.
@@ -1070,54 +1073,39 @@ export class SubtitleProcessingManager {
     // ========================================
 
     /**
-     * Parses a time value into seconds.
+     * Parses a time value into seconds using the consolidated utility function.
      * @private
      * @param {string|number} time - The time value to parse.
      * @returns {number} The time in seconds.
      */
     _parseTimeToSeconds(time) {
+        // Handle numeric input directly
         if (typeof time === 'number') {
             return time;
         }
 
+        // For string input, use the consolidated parseTimestampToSeconds function
         if (typeof time === 'string') {
-            // Handle various time formats
-            if (time.includes(':')) {
-                const parts = time.split(':');
-                let seconds = 0;
-
-                if (parts.length === 3) {
-                    seconds += parseInt(parts[0], 10) * 3600; // hours
-                    seconds += parseInt(parts[1], 10) * 60; // minutes
-                    seconds += parseFloat(parts[2].replace(',', '.')); // seconds
-                } else if (parts.length === 2) {
-                    seconds += parseInt(parts[0], 10) * 60; // minutes
-                    seconds += parseFloat(parts[1].replace(',', '.')); // seconds
-                }
-
-                return isNaN(seconds) ? 0 : seconds;
-            } else {
+            // Handle simple numeric strings
+            if (!time.includes(':')) {
                 return parseFloat(time) || 0;
             }
+
+            // Use consolidated function for timestamp format
+            return parseTimestampToSeconds(time);
         }
 
         return 0;
     }
 
     /**
-     * Sanitizes subtitle text by removing HTML tags and extra whitespace.
+     * Sanitizes subtitle text using the consolidated utility function.
      * @private
      * @param {string} text - The raw text to sanitize.
      * @returns {string} The sanitized text.
      */
     _sanitizeText(text) {
-        if (!text) return '';
-
-        return text
-            .replace(/<br\s*\/?>/gi, ' ')
-            .replace(/<[^>]*>/g, '')
-            .replace(/\s+/g, ' ')
-            .trim();
+        return sanitizeSubtitleText(text);
     }
 
     /**
@@ -1300,104 +1288,9 @@ export class SubtitleSourceManager {
 
 /**
  * Utility functions for subtitle processing.
+ *
+ * Note: parseVTT, formatSubtitleTextForDisplay, and parseTimestampToSeconds
+ * functions have been consolidated to content_scripts/shared/subtitleUtilities.js
+ * to eliminate code duplication. Import these functions from subtitleUtilities.js
+ * if needed in other modules.
  */
-
-/**
- * Formats subtitle text for safe display in HTML.
- * @param {string} text - The raw subtitle text.
- * @returns {string} The formatted text.
- */
-export function formatSubtitleTextForDisplay(text) {
-    if (!text) return '';
-
-    return text
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .trim();
-}
-
-/**
- * Parses a VTT (Web Video Text Tracks) format string into an array of subtitle cues.
- * @param {string} vttString - The VTT formatted string.
- * @returns {Array} An array of parsed subtitle cues.
- */
-export function parseVTT(vttString) {
-    if (!vttString || !vttString.trim().toUpperCase().startsWith('WEBVTT')) {
-        return [];
-    }
-
-    const cues = [];
-    const cueBlocks = vttString
-        .split(/\r?\n\r?\n/)
-        .filter((block) => block.trim() !== '');
-
-    for (const block of cueBlocks) {
-        if (!block.includes('-->')) {
-            continue;
-        }
-
-        const lines = block.split(/\r?\n/);
-        let timestampLine = '';
-        let textLines = [];
-
-        if (lines[0].includes('-->')) {
-            timestampLine = lines[0];
-            textLines = lines.slice(1);
-        } else if (lines.length > 1 && lines[1].includes('-->')) {
-            timestampLine = lines[1];
-            textLines = lines.slice(2);
-        } else {
-            continue;
-        }
-
-        const timeParts = timestampLine.split(' --> ');
-        if (timeParts.length < 2) continue;
-
-        const startTimeStr = timeParts[0].trim();
-        const endTimeStr = timeParts[1].split(' ')[0].trim();
-
-        const start = parseTimestampToSeconds(startTimeStr);
-        const end = parseTimestampToSeconds(endTimeStr);
-
-        const text = textLines
-            .join(' ')
-            .replace(/<br\s*\/?>/gi, ' ')
-            .replace(/<[^>]*>/g, '')
-            .replace(/\s+/g, ' ')
-            .trim();
-
-        if (text && !isNaN(start) && !isNaN(end)) {
-            cues.push({ start, end, text });
-        }
-    }
-
-    return cues;
-}
-
-/**
- * Parses a timestamp string into seconds.
- * @param {string} timestamp - The timestamp string (e.g., '00:01:23.456').
- * @returns {number} The time in seconds.
- */
-export function parseTimestampToSeconds(timestamp) {
-    const parts = timestamp.split(':');
-    let seconds = 0;
-
-    try {
-        if (parts.length === 3) {
-            seconds += parseInt(parts[0], 10) * 3600;
-            seconds += parseInt(parts[1], 10) * 60;
-            seconds += parseFloat(parts[2].replace(',', '.'));
-        } else if (parts.length === 2) {
-            seconds += parseInt(parts[0], 10) * 60;
-            seconds += parseFloat(parts[1].replace(',', '.'));
-        } else if (parts.length === 1) {
-            seconds += parseFloat(parts[0].replace(',', '.'));
-        }
-
-        return isNaN(seconds) ? 0 : seconds;
-    } catch {
-        return 0;
-    }
-}

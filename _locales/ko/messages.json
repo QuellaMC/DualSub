@@ -191,5 +191,78 @@
     "loggingLevelError": { "message": "오류만" },
     "loggingLevelWarn": { "message": "경고 및 오류" },
     "loggingLevelInfo": { "message": "정보 이상" },
-    "loggingLevelDebug": { "message": "디버그 (모두)" }
+    "loggingLevelDebug": { "message": "디버그 (모두)" },
+
+    "cardBatchTranslationTitle": { "message": "배치 번역" },
+    "cardBatchTranslationDesc": {
+        "message": "배치 번역은 여러 자막 세그먼트를 함께 처리하여 API 호출을 80-90% 줄이고 성능을 향상시킵니다. 선호하는 번역 제공업체에 대한 최적 설정을 구성하세요."
+    },
+    "batchingEnabledLabel": { "message": "배치 번역 활성화:" },
+    "batchingEnabledHelp": {
+        "message": "여러 자막 세그먼트를 단일 번역 요청으로 그룹화합니다"
+    },
+    "useProviderDefaultsLabel": { "message": "제공업체 최적화 설정 사용:" },
+    "useProviderDefaultsHelp": {
+        "message": "각 번역 제공업체에 대해 최적의 배치 크기를 자동으로 사용합니다"
+    },
+    "globalBatchSizeLabel": { "message": "전역 배치 크기:" },
+    "globalBatchSizeHelp": {
+        "message": "함께 처리할 자막 세그먼트 수 (1-15)"
+    },
+    "smartBatchingLabel": { "message": "스마트 배치 최적화:" },
+    "smartBatchingHelp": {
+        "message": "재생 위치를 기반으로 자막 세그먼트의 우선순위를 정합니다"
+    },
+    "maxConcurrentBatchesLabel": { "message": "최대 동시 배치 수:" },
+    "maxConcurrentBatchesHelp": {
+        "message": "동시에 처리할 번역 배치 수"
+    },
+
+    "cardProviderBatchTitle": { "message": "제공업체별 배치 크기" },
+    "cardProviderBatchDesc": {
+        "message": "각 번역 제공업체에 대한 최적 배치 크기를 구성합니다. 이 설정은 \"제공업체 최적화 설정 사용\"이 활성화된 경우에 사용됩니다."
+    },
+    "openaieBatchSizeLabel": { "message": "OpenAI 배치 크기:" },
+    "openaieBatchSizeHelp": {
+        "message": "권장: 5-10개 세그먼트 (기본값: 8)"
+    },
+    "googleBatchSizeLabel": { "message": "Google 번역 배치 크기:" },
+    "googleBatchSizeHelp": {
+        "message": "권장: 3-5개 세그먼트 (기본값: 4)"
+    },
+    "deeplBatchSizeLabel": { "message": "DeepL 배치 크기:" },
+    "deeplBatchSizeHelp": {
+        "message": "권장: 2-3개 세그먼트 (기본값: 3)"
+    },
+    "microsoftBatchSizeLabel": { "message": "Microsoft 번역 배치 크기:" },
+    "microsoftBatchSizeHelp": {
+        "message": "권장: 3-5개 세그먼트 (기본값: 4)"
+    },
+
+    "deeplTestNeedsTesting": { "message": "⚠️ DeepL API 키 테스트가 필요합니다." },
+
+    "cardProviderDelayTitle": { "message": "제공업체별 요청 지연" },
+    "cardProviderDelayDesc": {
+        "message": "계정 잠금을 방지하기 위해 번역 요청 간의 필수 지연을 구성합니다. 이러한 지연은 배치 처리가 활성화된 경우에도 적용됩니다."
+    },
+    "openaieDelayLabel": { "message": "OpenAI 요청 지연 (ms):" },
+    "openaieDelayHelp": {
+        "message": "요청 간 최소 지연 (기본값: 100ms)"
+    },
+    "googleDelayLabel": { "message": "Google 번역 요청 지연 (ms):" },
+    "googleDelayHelp": {
+        "message": "임시 잠금을 방지하기 위한 필수 지연 (기본값: 1500ms)"
+    },
+    "deeplDelayLabel": { "message": "DeepL API 요청 지연 (ms):" },
+    "deeplDelayHelp": {
+        "message": "DeepL API 요청 지연 (기본값: 500ms)"
+    },
+    "deeplFreeDelayLabel": { "message": "DeepL 무료 요청 지연 (ms):" },
+    "deeplFreeDelayHelp": {
+        "message": "무료 계층을 위한 보수적 지연 (기본값: 2000ms)"
+    },
+    "microsoftDelayLabel": { "message": "Microsoft 번역 요청 지연 (ms):" },
+    "microsoftDelayHelp": {
+        "message": "문자 제한을 준수하기 위한 지연 (기본값: 800ms)"
+    }
 }

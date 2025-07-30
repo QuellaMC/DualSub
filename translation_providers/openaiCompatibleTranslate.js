@@ -432,3 +432,331 @@ export async function translate(text, sourceLang, targetLang) {
         throw error;
     }
 }
+
+/**
+ * Translates multiple texts in a single batch request using OpenAI-compatible API
+ * @param {Array<string>} texts Array of texts to translate
+ * @param {string} sourceLang The source language code (e.g., 'auto', 'en')
+ * @param {string} targetLang The target language code (e.g., 'es', 'zh-CN')
+ * @param {string} delimiter Delimiter to separate texts (default: '|SUBTITLE_BREAK|')
+ * @returns {Promise<Array<string>>} A Promise that resolves with array of translated texts
+ * @throws {Error} If the batch translation API request or processing fails
+ */
+export async function translateBatch(texts, sourceLang, targetLang, delimiter = '|SUBTITLE_BREAK|') {
+    logger.info('Batch translation request initiated', {
+        sourceLang,
+        targetLang,
+        textCount: texts.length,
+        delimiter,
+        totalLength: texts.reduce((sum, text) => sum + (text?.length || 0), 0)
+    });
+
+    if (!Array.isArray(texts) || texts.length === 0) {
+        throw new Error('Invalid texts array for batch translation');
+    }
+
+    // For single text, use regular translate function
+    if (texts.length === 1) {
+        const result = await translate(texts[0], sourceLang, targetLang);
+        return [result];
+    }
+
+    try {
+        // Get configuration
+        const config = await getConfig();
+
+        if (!config.apiKey) {
+            throw new Error('OpenAI-compatible API key not configured for batch translation');
+        }
+
+        // Prepare batch request
+        const combinedText = texts.join(delimiter);
+        const normalizedBaseUrl = normalizeBaseUrl(config.baseUrl) ||
+            'https://generativelanguage.googleapis.com/v1beta/openai';
+        const model = normalizeModelName(config.model || 'gemini-1.5-flash', normalizedBaseUrl);
+        const OPENAI_COMPATIBLE_URL = `${normalizedBaseUrl}/chat/completions`;
+
+        logger.debug('Batch translation configuration prepared', {
+            textCount: texts.length,
+            combinedLength: combinedText.length,
+            model,
+            endpointUrl: OPENAI_COMPATIBLE_URL
+        });
+
+        // Create batch translation prompt
+        const prompt = createBatchTranslationPrompt(combinedText, sourceLang, targetLang, delimiter);
+
+        const requestBody = {
+            model: model,
+            messages: [
+                {
+                    role: 'user',
+                    content: prompt,
+                },
+            ],
+            temperature: 0.3,
+            max_tokens: Math.min(4000, combinedText.length * 2), // Estimate response length
+        };
+
+        logger.debug('Sending batch translation request', {
+            model,
+            promptLength: prompt.length,
+            maxTokens: requestBody.max_tokens,
+            textCount: texts.length
+        });
+
+        const response = await fetch(OPENAI_COMPATIBLE_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${config.apiKey}`,
+            },
+            body: JSON.stringify(requestBody),
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            const error = new Error(
+                `Batch translation API request failed: ${response.status} ${response.statusText}. Response: ${errorText}`
+            );
+            logger.error('Batch translation API request failed', error, {
+                status: response.status,
+                statusText: response.statusText,
+                responseText: errorText.substring(0, 500),
+                textCount: texts.length
+            });
+            throw error;
+        }
+
+        const data = await response.json();
+
+        if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+            const error = new Error('Invalid batch translation response structure');
+            logger.error('Invalid batch translation response', error, {
+                hasChoices: !!data.choices,
+                choicesLength: data.choices?.length || 0,
+                responseStructure: JSON.stringify(data, null, 2).substring(0, 500)
+            });
+            throw error;
+        }
+
+        const translatedContent = data.choices[0].message.content;
+
+        // Parse batch response
+        const translatedTexts = parseBatchTranslationResponse(translatedContent, delimiter, texts.length);
+
+        logger.info('Batch translation completed successfully', {
+            originalCount: texts.length,
+            translatedCount: translatedTexts.length,
+            tokensUsed: data.usage?.total_tokens || 'unknown'
+        });
+
+        return translatedTexts;
+
+    } catch (error) {
+        logger.error('Batch translation failed, falling back to individual translations', error, {
+            textCount: texts.length,
+            errorType: error.constructor.name
+        });
+
+        // Fallback to individual translations
+        return await fallbackToIndividualTranslations(texts, sourceLang, targetLang);
+    }
+}
+
+/**
+ * Get human-readable language name from language code
+ * @param {string} langCode Language code
+ * @returns {string} Human-readable language name
+ */
+function getLanguageName(langCode) {
+    const languageMap = {
+        'auto': 'auto-detected language',
+        'en': 'English',
+        'es': 'Spanish',
+        'fr': 'French',
+        'de': 'German',
+        'it': 'Italian',
+        'pt': 'Portuguese',
+        'ru': 'Russian',
+        'ja': 'Japanese',
+        'ko': 'Korean',
+        'zh': 'Chinese',
+        'zh-CN': 'Chinese (Simplified)',
+        'zh-TW': 'Chinese (Traditional)',
+        'ar': 'Arabic',
+        'hi': 'Hindi',
+        'th': 'Thai',
+        'vi': 'Vietnamese',
+        'nl': 'Dutch',
+        'sv': 'Swedish',
+        'da': 'Danish',
+        'no': 'Norwegian',
+        'fi': 'Finnish',
+        'pl': 'Polish',
+        'cs': 'Czech',
+        'hu': 'Hungarian',
+        'ro': 'Romanian',
+        'bg': 'Bulgarian',
+        'hr': 'Croatian',
+        'sk': 'Slovak',
+        'sl': 'Slovenian',
+        'et': 'Estonian',
+        'lv': 'Latvian',
+        'lt': 'Lithuanian',
+        'uk': 'Ukrainian',
+        'be': 'Belarusian',
+        'mk': 'Macedonian',
+        'sq': 'Albanian',
+        'sr': 'Serbian',
+        'bs': 'Bosnian',
+        'mt': 'Maltese',
+        'is': 'Icelandic',
+        'ga': 'Irish',
+        'cy': 'Welsh',
+        'eu': 'Basque',
+        'ca': 'Catalan',
+        'gl': 'Galician',
+        'tr': 'Turkish',
+        'he': 'Hebrew',
+        'fa': 'Persian',
+        'ur': 'Urdu',
+        'bn': 'Bengali',
+        'ta': 'Tamil',
+        'te': 'Telugu',
+        'ml': 'Malayalam',
+        'kn': 'Kannada',
+        'gu': 'Gujarati',
+        'pa': 'Punjabi',
+        'mr': 'Marathi',
+        'ne': 'Nepali',
+        'si': 'Sinhala',
+        'my': 'Myanmar',
+        'km': 'Khmer',
+        'lo': 'Lao',
+        'ka': 'Georgian',
+        'am': 'Amharic',
+        'sw': 'Swahili',
+        'zu': 'Zulu',
+        'af': 'Afrikaans',
+        'xh': 'Xhosa',
+        'st': 'Sesotho',
+        'tn': 'Setswana',
+        'ss': 'Siswati',
+        've': 'Venda',
+        'ts': 'Tsonga',
+        'nr': 'Ndebele'
+    };
+
+    return languageMap[langCode] || langCode;
+}
+
+/**
+ * Create batch translation prompt
+ * @param {string} combinedText Combined text with delimiters
+ * @param {string} sourceLang Source language
+ * @param {string} targetLang Target language
+ * @param {string} delimiter Delimiter used
+ * @returns {string} Translation prompt
+ */
+function createBatchTranslationPrompt(combinedText, sourceLang, targetLang, delimiter) {
+    const sourceLanguageName = getLanguageName(sourceLang);
+    const targetLanguageName = getLanguageName(targetLang);
+
+    return `Translate the following subtitle texts from ${sourceLanguageName} to ${targetLanguageName}.
+
+The texts are separated by "${delimiter}". Please translate each text segment individually and return the translations in the same order, separated by the same delimiter "${delimiter}".
+
+Important instructions:
+1. Maintain the exact same number of text segments in your response
+2. Preserve the meaning and context of each subtitle
+3. Keep the translations natural and appropriate for subtitles
+4. Do not add any additional text or explanations
+5. Use "${delimiter}" to separate each translated segment
+
+Text to translate:
+${combinedText}
+
+Translated text:`;
+}
+
+/**
+ * Parse batch translation response
+ * @param {string} response API response content
+ * @param {string} delimiter Delimiter used
+ * @param {number} expectedCount Expected number of translations
+ * @returns {Array<string>} Array of translated texts
+ */
+function parseBatchTranslationResponse(response, delimiter, expectedCount) {
+    if (!response || typeof response !== 'string') {
+        throw new Error('Invalid batch translation response content');
+    }
+
+    // Split by delimiter and clean up
+    const translations = response
+        .split(delimiter)
+        .map(text => text.trim())
+        .filter(text => text.length > 0);
+
+    logger.debug('Parsed batch translation response', {
+        expectedCount,
+        actualCount: translations.length,
+        delimiter,
+        responseLength: response.length
+    });
+
+    // Validate count
+    if (translations.length !== expectedCount) {
+        logger.warn('Batch translation count mismatch', {
+            expected: expectedCount,
+            actual: translations.length,
+            response: response.substring(0, 200)
+        });
+
+        // Pad with empty strings if we got fewer translations
+        while (translations.length < expectedCount) {
+            translations.push('');
+        }
+
+        // Trim if we got more translations
+        if (translations.length > expectedCount) {
+            translations.splice(expectedCount);
+        }
+    }
+
+    return translations;
+}
+
+/**
+ * Fallback to individual translations when batch fails
+ * @param {Array<string>} texts Texts to translate
+ * @param {string} sourceLang Source language
+ * @param {string} targetLang Target language
+ * @returns {Promise<Array<string>>} Array of translated texts
+ */
+async function fallbackToIndividualTranslations(texts, sourceLang, targetLang) {
+    logger.info('Processing individual translations as fallback', {
+        textCount: texts.length
+    });
+
+    const results = [];
+    for (let i = 0; i < texts.length; i++) {
+        try {
+            const translated = await translate(texts[i], sourceLang, targetLang);
+            results.push(translated);
+
+            // Add small delay between requests to avoid rate limiting
+            if (i < texts.length - 1) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+        } catch (error) {
+            logger.error('Individual translation failed in fallback', error, {
+                textIndex: i,
+                text: texts[i].substring(0, 50)
+            });
+            results.push(texts[i]); // Use original text as fallback
+        }
+    }
+
+    return results;
+}

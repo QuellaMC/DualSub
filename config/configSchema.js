@@ -22,6 +22,25 @@ export const configSchema = {
     },
     translationBatchSize: { defaultValue: 3, type: Number, scope: 'sync' },
     translationDelay: { defaultValue: 150, type: Number, scope: 'sync' },
+    maxConcurrentBatches: { defaultValue: 2, type: Number, scope: 'sync' },
+    smartBatching: { defaultValue: true, type: Boolean, scope: 'sync' },
+    batchProcessingDelay: { defaultValue: 100, type: Number, scope: 'sync' },
+    globalBatchSize: { defaultValue: 5, type: Number, scope: 'sync' },
+    batchingEnabled: { defaultValue: true, type: Boolean, scope: 'sync' },
+    useProviderDefaults: { defaultValue: true, type: Boolean, scope: 'sync' },
+
+    // Provider-specific batch sizes
+    openaieBatchSize: { defaultValue: 8, type: Number, scope: 'sync' },
+    googleBatchSize: { defaultValue: 4, type: Number, scope: 'sync' },
+    deeplBatchSize: { defaultValue: 3, type: Number, scope: 'sync' },
+    microsoftBatchSize: { defaultValue: 4, type: Number, scope: 'sync' },
+
+    // Provider-specific delay settings (in milliseconds)
+    openaieDelay: { defaultValue: 100, type: Number, scope: 'sync' },
+    googleDelay: { defaultValue: 1500, type: Number, scope: 'sync' },
+    deeplDelay: { defaultValue: 500, type: Number, scope: 'sync' },
+    deeplFreeDelay: { defaultValue: 2000, type: Number, scope: 'sync' },
+    microsoftDelay: { defaultValue: 800, type: Number, scope: 'sync' },
 
     // DeepL API Settings
     deeplApiKey: { defaultValue: '', type: String, scope: 'sync' },

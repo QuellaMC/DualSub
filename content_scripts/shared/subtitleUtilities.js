@@ -200,7 +200,7 @@ export function parseVTT(vttString) {
             .replace(/\s+/g, ' ')
             .trim();
 
-        if (text && !isNaN(start) && !isNaN(end)) {
+        if (text && !Number.isNaN(start) && !Number.isNaN(end)) {
             cues.push({ start, end, text });
         }
     }
@@ -223,7 +223,7 @@ export function parseTimestampToSeconds(timestamp) {
         } else {
             return 0;
         }
-        if (isNaN(seconds)) return 0;
+        if (Number.isNaN(seconds)) return 0;
     } catch (e) {
         logWithFallback('error', 'Error parsing timestamp.', {
             timestamp,
@@ -707,12 +707,12 @@ function attemptToSetupProgressBarObserver(
                         const { duration: videoDuration } = currentVideoElem;
 
                         if (
-                            !isNaN(valuenow) &&
-                            !isNaN(valuemax) &&
+                            !Number.isNaN(valuenow) &&
+                            !Number.isNaN(valuemax) &&
                             valuemax > 0
                         ) {
                             const calculatedTime =
-                                !isNaN(videoDuration) && videoDuration > 0
+                                !Number.isNaN(videoDuration) && videoDuration > 0
                                     ? (valuenow / valuemax) * videoDuration
                                     : valuenow;
 
@@ -757,7 +757,7 @@ export function updateSubtitles(
     config,
     logPrefix = 'SubtitleUtils'
 ) {
-    if (typeof rawCurrentTime !== 'number' || isNaN(rawCurrentTime)) {
+    if (typeof rawCurrentTime !== 'number' || Number.isNaN(rawCurrentTime)) {
         return;
     }
 
@@ -811,8 +811,8 @@ export function updateSubtitles(
         if (
             typeof cue.start !== 'number' ||
             typeof cue.end !== 'number' ||
-            isNaN(cue.start) ||
-            isNaN(cue.end)
+            Number.isNaN(cue.start) ||
+            Number.isNaN(cue.end)
         ) {
             continue;
         }
@@ -1315,6 +1315,18 @@ export function handleSubtitleDataFound(
                     { logPrefix }
                 );
             }
+
+            // Trigger immediate subtitle display update for native target mode
+            logWithFallback('debug', 'Triggering subtitle display update for native mode', {
+                logPrefix,
+                queueLength: subtitleQueue.length
+            });
+
+            // Get current video time and update display
+            const videoElement = activePlatform?.getVideoElement?.();
+            if (videoElement && !Number.isNaN(videoElement.currentTime)) {
+                updateSubtitles(videoElement.currentTime, activePlatform, config, logPrefix);
+            }
         } else {
             parsedOriginalCues.forEach((originalCue) => {
                 subtitleQueue.push({
@@ -1342,6 +1354,20 @@ export function handleSubtitleDataFound(
 
         if (!useNativeTarget && parsedOriginalCues.length > 0) {
             processSubtitleQueue(activePlatform, config, logPrefix);
+        }
+
+        // Ensure subtitle display is updated regardless of mode
+        logWithFallback('debug', 'Ensuring subtitle display is updated', {
+            logPrefix,
+            useNativeTarget,
+            queueLength: subtitleQueue.length,
+            subtitlesActive
+        });
+
+        // Trigger immediate display update
+        const videoElement = activePlatform?.getVideoElement?.();
+        if (videoElement && !Number.isNaN(videoElement.currentTime) && subtitlesActive) {
+            updateSubtitles(videoElement.currentTime, activePlatform, config, logPrefix);
         }
     } else {
         logWithFallback('warn', 'VTT parsing yielded no cues for videoId.', {
@@ -1418,9 +1444,9 @@ export async function processSubtitleQueue(
                 const valuemax = parseFloat(maxStr);
                 const { duration: videoDuration } = videoElement;
 
-                if (!isNaN(valuenow) && !isNaN(valuemax) && valuemax > 0) {
+                if (!Number.isNaN(valuenow) && !Number.isNaN(valuemax) && valuemax > 0) {
                     timeSource =
-                        !isNaN(videoDuration) && videoDuration > 0
+                        !Number.isNaN(videoDuration) && videoDuration > 0
                             ? (valuenow / valuemax) * videoDuration
                             : valuenow;
                 }

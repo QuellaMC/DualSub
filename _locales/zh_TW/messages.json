@@ -163,5 +163,78 @@
     "loggingLevelError": { "message": "僅錯誤" },
     "loggingLevelWarn": { "message": "警告和錯誤" },
     "loggingLevelInfo": { "message": "資訊及以上" },
-    "loggingLevelDebug": { "message": "除錯（全部）" }
+    "loggingLevelDebug": { "message": "除錯（全部）" },
+
+    "cardBatchTranslationTitle": { "message": "批次翻譯" },
+    "cardBatchTranslationDesc": {
+        "message": "批次翻譯將多個字幕片段一起處理，減少 80-90% 的 API 呼叫並提高效能。為您偏好的翻譯提供商設定最佳設定。"
+    },
+    "batchingEnabledLabel": { "message": "啟用批次翻譯：" },
+    "batchingEnabledHelp": {
+        "message": "將多個字幕片段組合成單一翻譯請求"
+    },
+    "useProviderDefaultsLabel": { "message": "使用提供商最佳化設定：" },
+    "useProviderDefaultsHelp": {
+        "message": "自動為每個翻譯提供商使用最佳批次大小"
+    },
+    "globalBatchSizeLabel": { "message": "全域批次大小：" },
+    "globalBatchSizeHelp": {
+        "message": "一起處理的字幕片段數量（1-15）"
+    },
+    "smartBatchingLabel": { "message": "智慧批次最佳化：" },
+    "smartBatchingHelp": {
+        "message": "根據播放位置優先處理字幕片段"
+    },
+    "maxConcurrentBatchesLabel": { "message": "最大並行批次：" },
+    "maxConcurrentBatchesHelp": {
+        "message": "同時處理的翻譯批次數量"
+    },
+
+    "cardProviderBatchTitle": { "message": "提供商特定批次大小" },
+    "cardProviderBatchDesc": {
+        "message": "為每個翻譯提供商設定最佳批次大小。這些設定在啟用「使用提供商最佳化設定」時使用。"
+    },
+    "openaieBatchSizeLabel": { "message": "OpenAI 批次大小：" },
+    "openaieBatchSizeHelp": {
+        "message": "建議：5-10 個片段（預設：8）"
+    },
+    "googleBatchSizeLabel": { "message": "Google 翻譯批次大小：" },
+    "googleBatchSizeHelp": {
+        "message": "建議：3-5 個片段（預設：4）"
+    },
+    "deeplBatchSizeLabel": { "message": "DeepL 批次大小：" },
+    "deeplBatchSizeHelp": {
+        "message": "建議：2-3 個片段（預設：3）"
+    },
+    "microsoftBatchSizeLabel": { "message": "Microsoft 翻譯批次大小：" },
+    "microsoftBatchSizeHelp": {
+        "message": "建議：3-5 個片段（預設：4）"
+    },
+
+    "deeplTestNeedsTesting": { "message": "⚠️ DeepL API 金鑰需要測試。" },
+
+    "cardProviderDelayTitle": { "message": "提供商特定請求延遲" },
+    "cardProviderDelayDesc": {
+        "message": "設定翻譯請求之間的強制延遲以防止帳戶鎖定。即使啟用批次處理，這些延遲也會套用。"
+    },
+    "openaieDelayLabel": { "message": "OpenAI 請求延遲 (ms)：" },
+    "openaieDelayHelp": {
+        "message": "請求之間的最小延遲（預設：100ms）"
+    },
+    "googleDelayLabel": { "message": "Google 翻譯請求延遲 (ms)：" },
+    "googleDelayHelp": {
+        "message": "防止臨時鎖定所需的延遲（預設：1500ms）"
+    },
+    "deeplDelayLabel": { "message": "DeepL API 請求延遲 (ms)：" },
+    "deeplDelayHelp": {
+        "message": "DeepL API 請求的延遲（預設：500ms）"
+    },
+    "deeplFreeDelayLabel": { "message": "DeepL 免費請求延遲 (ms)：" },
+    "deeplFreeDelayHelp": {
+        "message": "免費層的保守延遲（預設：2000ms）"
+    },
+    "microsoftDelayLabel": { "message": "Microsoft 翻譯請求延遲 (ms)：" },
+    "microsoftDelayHelp": {
+        "message": "尊重字元限制的延遲（預設：800ms）"
+    }
 }
