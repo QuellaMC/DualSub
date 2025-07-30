@@ -1621,6 +1621,19 @@ export class BaseContentScript {
      * @param {Object} subtitleData - Subtitle data from platform
      */
     handleSubtitleDataFound(subtitleData) {
+        this.logWithFallback('info', 'Subtitle data found callback triggered', {
+            hasSubtitleData: !!subtitleData,
+            videoId: subtitleData?.videoId,
+            hasVttText: !!subtitleData?.vttText,
+            hasTargetVttText: !!subtitleData?.targetVttText,
+            useNativeTarget: subtitleData?.useNativeTarget,
+            sourceLanguage: subtitleData?.sourceLanguage,
+            targetLanguage: subtitleData?.targetLanguage,
+            hasSubtitleUtils: !!this.subtitleUtils,
+            hasActivePlatform: !!this.activePlatform,
+            subtitlesActive: this.subtitleUtils?.subtitlesActive
+        });
+
         if (this.subtitleUtils && this.subtitleUtils.handleSubtitleDataFound) {
             this.subtitleUtils.handleSubtitleDataFound(
                 subtitleData,
@@ -1628,6 +1641,12 @@ export class BaseContentScript {
                 this.currentConfig,
                 this.logPrefix
             );
+        } else {
+            this.logWithFallback('error', 'Cannot handle subtitle data - missing dependencies', {
+                hasSubtitleUtils: !!this.subtitleUtils,
+                hasHandleMethod: !!(this.subtitleUtils?.handleSubtitleDataFound),
+                hasActivePlatform: !!this.activePlatform
+            });
         }
     }
 

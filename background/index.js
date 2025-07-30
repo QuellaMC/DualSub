@@ -10,9 +10,12 @@
 
 import { translationProviders } from './services/translationService.js';
 import { subtitleService } from './services/subtitleService.js';
+import { batchTranslationQueue } from './services/batchTranslationQueue.js';
 import { loggingManager } from './utils/loggingManager.js';
 import { messageHandler } from './handlers/messageHandler.js';
 import { configService } from '../services/configService.js';
+import { serviceRegistry } from './services/serviceInterfaces.js';
+import { performanceMonitor } from './utils/performanceMonitor.js';
 import Logger from '../utils/logger.js';
 
 // Initialize background logger with ConfigService integration
@@ -38,10 +41,23 @@ async function initializeServices() {
         // Initialize subtitle service
         await subtitleService.initialize();
         backgroundLogger.info('Subtitle service initialized');
-        
+
+        // Initialize batch translation queue
+        await batchTranslationQueue.initialize();
+        backgroundLogger.info('Batch translation queue initialized');
+
         // Initialize message handler
         messageHandler.initialize();
         backgroundLogger.info('Message handler initialized');
+
+        // Register services in service registry
+        serviceRegistry.register('translation', translationProviders, ['config', 'logging']);
+        serviceRegistry.register('subtitle', subtitleService, ['translation', 'logging']);
+        serviceRegistry.register('batchQueue', batchTranslationQueue, ['translation', 'config']);
+        serviceRegistry.register('logging', loggingManager, ['config']);
+        serviceRegistry.register('config', configService, []);
+        serviceRegistry.register('messageHandler', messageHandler, ['translation', 'subtitle']);
+        backgroundLogger.info('Services registered in service registry');
 
         // Inject services into message handler
         messageHandler.setServices(translationProviders, subtitleService);
@@ -51,8 +67,22 @@ async function initializeServices() {
         configService.initializeDefaults();
         backgroundLogger.info('Configuration defaults initialized');
 
+        // Validate service dependencies
+        const serviceNames = serviceRegistry.getServiceNames();
+        const dependencyValidation = serviceNames.map(name => ({
+            service: name,
+            valid: serviceRegistry.validateDependencies(name)
+        }));
+        backgroundLogger.info('Service dependency validation completed', {
+            services: dependencyValidation
+        });
+
+        // Start performance monitoring
+        performanceMonitor.startMonitoring();
+        backgroundLogger.info('Performance monitoring started');
+
         backgroundLogger.info('All background services initialized successfully');
-        
+
     } catch (error) {
         backgroundLogger.error('Failed to initialize background services', error);
         throw error;

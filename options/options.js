@@ -62,6 +62,23 @@ document.addEventListener('DOMContentLoaded', function () {
         'translationDelayValue'
     );
 
+    // Batch Translation Settings
+    const batchingEnabledCheckbox = document.getElementById('batchingEnabled');
+    const useProviderDefaultsCheckbox = document.getElementById('useProviderDefaults');
+    const globalBatchSizeInput = document.getElementById('globalBatchSize');
+    const maxConcurrentBatchesInput = document.getElementById('maxConcurrentBatches');
+    const smartBatchingCheckbox = document.getElementById('smartBatching');
+
+    // Provider-specific batch sizes
+    const openaieBatchSizeInput = document.getElementById('openaieBatchSize');
+    const googleBatchSizeInput = document.getElementById('googleBatchSize');
+    const deeplBatchSizeInput = document.getElementById('deeplBatchSize');
+    const microsoftBatchSizeInput = document.getElementById('microsoftBatchSize');
+
+    // Batch settings containers
+    const globalBatchSizeSetting = document.getElementById('globalBatchSizeSetting');
+    const providerBatchSettings = document.getElementById('providerBatchSettings');
+
     // Provider Settings
     const deeplApiKeyInput = document.getElementById('deeplApiKey');
     const deeplApiPlanSelect = document.getElementById('deeplApiPlan');
@@ -388,6 +405,41 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
+    const updateBatchSettingsVisibility = function () {
+        const batchingEnabled = batchingEnabledCheckbox.checked;
+        const useProviderDefaults = useProviderDefaultsCheckbox.checked;
+
+        // Show/hide batch settings based on whether batching is enabled
+        const batchSettings = document.querySelectorAll('#globalBatchSizeSetting, #providerBatchSettings, .setting:has(#maxConcurrentBatches), .setting:has(#smartBatching), .setting:has(#useProviderDefaults)');
+        batchSettings.forEach(setting => {
+            if (setting) {
+                // Use 'grid' for settings rows, 'block' for the card, and 'none' to hide.
+                const displayValue = batchingEnabled ?
+                    (setting.id === 'providerBatchSettings' ? 'block' : 'grid') :
+                    'none';
+                setting.style.display = displayValue;
+            }
+        });
+
+        // Show/hide global vs provider-specific batch size settings
+        if (batchingEnabled) {
+            if (globalBatchSizeSetting) {
+                // globalBatchSizeSetting is a grid item
+                globalBatchSizeSetting.style.display = useProviderDefaults ? 'none' : 'grid';
+            }
+            if (providerBatchSettings) {
+                // providerBatchSettings is a setting-card, so use block
+                providerBatchSettings.style.display = useProviderDefaults ? 'block' : 'none';
+            }
+        }
+
+        optionsLogger.debug('Batch settings visibility updated', {
+            batchingEnabled,
+            useProviderDefaults,
+            component: 'updateBatchSettingsVisibility'
+        });
+    };
+
     const loadAndApplyLanguage = async function () {
         const settings = await configService.getMultiple([
             'uiLanguage',
@@ -425,6 +477,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 translationDelay,
                 deeplApiKey,
                 deeplApiPlan,
+                // Batch translation settings
+                batchingEnabled,
+                useProviderDefaults,
+                globalBatchSize,
+                maxConcurrentBatches,
+                smartBatching,
+                openaieBatchSize,
+                googleBatchSize,
+                deeplBatchSize,
+                microsoftBatchSize,
             } = settings;
 
             uiLanguageSelect.value = uiLanguage;
@@ -445,6 +507,22 @@ document.addEventListener('DOMContentLoaded', function () {
             // Providers
             deeplApiKeyInput.value = deeplApiKey;
             deeplApiPlanSelect.value = deeplApiPlan;
+
+            // Batch Translation Settings
+            batchingEnabledCheckbox.checked = batchingEnabled;
+            useProviderDefaultsCheckbox.checked = useProviderDefaults;
+            globalBatchSizeInput.value = globalBatchSize;
+            maxConcurrentBatchesInput.value = maxConcurrentBatches;
+            smartBatchingCheckbox.checked = smartBatching;
+
+            // Provider-specific batch sizes
+            openaieBatchSizeInput.value = openaieBatchSize;
+            googleBatchSizeInput.value = googleBatchSize;
+            deeplBatchSizeInput.value = deeplBatchSize;
+            microsoftBatchSizeInput.value = microsoftBatchSize;
+
+            // Update batch settings visibility
+            updateBatchSettingsVisibility();
 
             // Update provider settings visibility - now we're sure all DOM elements are set
             updateProviderSettings();
@@ -537,6 +615,88 @@ document.addEventListener('DOMContentLoaded', function () {
             );
         });
 
+    // Batch Translation Settings Event Listeners
+    batchingEnabledCheckbox.addEventListener('change', async function() {
+        await saveSetting('batchingEnabled', this.checked);
+        updateBatchSettingsVisibility();
+        optionsLogger.info(`Batch translation enabled: ${this.checked}`, {
+            batchingEnabled: this.checked,
+            component: 'batchingEnabledCheckbox'
+        });
+    });
+
+    useProviderDefaultsCheckbox.addEventListener('change', async function() {
+        await saveSetting('useProviderDefaults', this.checked);
+        updateBatchSettingsVisibility();
+        optionsLogger.info(`Use provider defaults: ${this.checked}`, {
+            useProviderDefaults: this.checked,
+            component: 'useProviderDefaultsCheckbox'
+        });
+    });
+
+    globalBatchSizeInput.addEventListener('change', async function() {
+        const value = parseInt(this.value);
+        await saveSetting('globalBatchSize', value);
+        optionsLogger.info(`Global batch size changed: ${value}`, {
+            globalBatchSize: value,
+            component: 'globalBatchSizeInput'
+        });
+    });
+
+    maxConcurrentBatchesInput.addEventListener('change', async function() {
+        const value = parseInt(this.value);
+        await saveSetting('maxConcurrentBatches', value);
+        optionsLogger.info(`Max concurrent batches changed: ${value}`, {
+            maxConcurrentBatches: value,
+            component: 'maxConcurrentBatchesInput'
+        });
+    });
+
+    smartBatchingCheckbox.addEventListener('change', async function() {
+        await saveSetting('smartBatching', this.checked);
+        optionsLogger.info(`Smart batching enabled: ${this.checked}`, {
+            smartBatching: this.checked,
+            component: 'smartBatchingCheckbox'
+        });
+    });
+
+    // Provider-specific batch size event listeners
+    openaieBatchSizeInput.addEventListener('change', async function() {
+        const value = parseInt(this.value);
+        await saveSetting('openaieBatchSize', value);
+        optionsLogger.info(`OpenAI batch size changed: ${value}`, {
+            openaieBatchSize: value,
+            component: 'openaieBatchSizeInput'
+        });
+    });
+
+    googleBatchSizeInput.addEventListener('change', async function() {
+        const value = parseInt(this.value);
+        await saveSetting('googleBatchSize', value);
+        optionsLogger.info(`Google batch size changed: ${value}`, {
+            googleBatchSize: value,
+            component: 'googleBatchSizeInput'
+        });
+    });
+
+    deeplBatchSizeInput.addEventListener('change', async function() {
+        const value = parseInt(this.value);
+        await saveSetting('deeplBatchSize', value);
+        optionsLogger.info(`DeepL batch size changed: ${value}`, {
+            deeplBatchSize: value,
+            component: 'deeplBatchSizeInput'
+        });
+    });
+
+    microsoftBatchSizeInput.addEventListener('change', async function() {
+        const value = parseInt(this.value);
+        await saveSetting('microsoftBatchSize', value);
+        optionsLogger.info(`Microsoft batch size changed: ${value}`, {
+            microsoftBatchSize: value,
+            component: 'microsoftBatchSizeInput'
+        });
+    });
+
     // DeepL specific settings
     deeplApiKeyInput.addEventListener(
         'change',
@@ -588,14 +748,14 @@ document.addEventListener('DOMContentLoaded', function () {
         .getElementById('translationBatchSize')
         .addEventListener('change', async function () {
             await saveSetting('translationBatchSize', parseInt(this.value));
-            translationBatchSizeValue.textContent = this.value;
+            if(translationBatchSizeValue) translationBatchSizeValue.textContent = this.value;
         });
 
     document
         .getElementById('translationDelay')
         .addEventListener('change', async function () {
             await saveSetting('translationDelay', parseInt(this.value));
-            translationDelayValue.textContent = `${this.value}ms`;
+            if(translationDelayValue) translationDelayValue.textContent = `${this.value}ms`;
         });
 
     init();

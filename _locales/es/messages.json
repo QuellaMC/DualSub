@@ -203,5 +203,51 @@
     "loggingLevelError": { "message": "Solo Errores" },
     "loggingLevelWarn": { "message": "Advertencias y Errores" },
     "loggingLevelInfo": { "message": "Info y Superior" },
-    "loggingLevelDebug": { "message": "Debug (Todo)" }
+    "loggingLevelDebug": { "message": "Debug (Todo)" },
+
+    "cardBatchTranslationTitle": { "message": "Traducción por Lotes" },
+    "cardBatchTranslationDesc": {
+        "message": "La traducción por lotes procesa múltiples segmentos de subtítulos juntos, reduciendo las llamadas a la API en un 80-90% y mejorando el rendimiento. Configure los ajustes óptimos para su proveedor de traducción preferido."
+    },
+    "batchingEnabledLabel": { "message": "Habilitar Traducción por Lotes:" },
+    "batchingEnabledHelp": {
+        "message": "Agrupa múltiples segmentos de subtítulos en solicitudes de traducción únicas"
+    },
+    "useProviderDefaultsLabel": { "message": "Usar Configuración Optimizada del Proveedor:" },
+    "useProviderDefaultsHelp": {
+        "message": "Usar automáticamente tamaños de lote óptimos para cada proveedor de traducción"
+    },
+    "globalBatchSizeLabel": { "message": "Tamaño de Lote Global:" },
+    "globalBatchSizeHelp": {
+        "message": "Número de segmentos de subtítulos a procesar juntos (1-15)"
+    },
+    "smartBatchingLabel": { "message": "Optimización Inteligente de Lotes:" },
+    "smartBatchingHelp": {
+        "message": "Prioriza segmentos de subtítulos basándose en la posición de reproducción"
+    },
+    "maxConcurrentBatchesLabel": { "message": "Máximo de Lotes Concurrentes:" },
+    "maxConcurrentBatchesHelp": {
+        "message": "Número de lotes de traducción a procesar simultáneamente"
+    },
+
+    "cardProviderBatchTitle": { "message": "Tamaños de Lote Específicos del Proveedor" },
+    "cardProviderBatchDesc": {
+        "message": "Configure tamaños de lote óptimos para cada proveedor de traducción. Estas configuraciones se usan cuando \"Usar Configuración Optimizada del Proveedor\" está habilitado."
+    },
+    "openaieBatchSizeLabel": { "message": "Tamaño de Lote OpenAI:" },
+    "openaieBatchSizeHelp": {
+        "message": "Recomendado: 5-10 segmentos (predeterminado: 8)"
+    },
+    "googleBatchSizeLabel": { "message": "Tamaño de Lote Google Translate:" },
+    "googleBatchSizeHelp": {
+        "message": "Recomendado: 3-5 segmentos (predeterminado: 4)"
+    },
+    "deeplBatchSizeLabel": { "message": "Tamaño de Lote DeepL:" },
+    "deeplBatchSizeHelp": {
+        "message": "Recomendado: 2-3 segmentos (predeterminado: 3)"
+    },
+    "microsoftBatchSizeLabel": { "message": "Tamaño de Lote Microsoft Translate:" },
+    "microsoftBatchSizeHelp": {
+        "message": "Recomendado: 3-5 segmentos (predeterminado: 4)"
+    }
 }

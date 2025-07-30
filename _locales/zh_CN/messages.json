@@ -160,5 +160,51 @@
     "loggingLevelError": { "message": "仅错误" },
     "loggingLevelWarn": { "message": "警告和错误" },
     "loggingLevelInfo": { "message": "信息及以上" },
-    "loggingLevelDebug": { "message": "调试（全部）" }
+    "loggingLevelDebug": { "message": "调试（全部）" },
+
+    "cardBatchTranslationTitle": { "message": "批量翻译" },
+    "cardBatchTranslationDesc": {
+        "message": "批量翻译将多个字幕片段一起处理，减少 80-90% 的 API 调用并提高性能。为您首选的翻译提供商配置最佳设置。"
+    },
+    "batchingEnabledLabel": { "message": "启用批量翻译：" },
+    "batchingEnabledHelp": {
+        "message": "将多个字幕片段组合成单个翻译请求"
+    },
+    "useProviderDefaultsLabel": { "message": "使用提供商优化设置：" },
+    "useProviderDefaultsHelp": {
+        "message": "自动为每个翻译提供商使用最佳批量大小"
+    },
+    "globalBatchSizeLabel": { "message": "全局批量大小：" },
+    "globalBatchSizeHelp": {
+        "message": "一起处理的字幕片段数量（1-15）"
+    },
+    "smartBatchingLabel": { "message": "智能批量优化：" },
+    "smartBatchingHelp": {
+        "message": "根据播放位置优先处理字幕片段"
+    },
+    "maxConcurrentBatchesLabel": { "message": "最大并发批次：" },
+    "maxConcurrentBatchesHelp": {
+        "message": "同时处理的翻译批次数量"
+    },
+
+    "cardProviderBatchTitle": { "message": "提供商特定批量大小" },
+    "cardProviderBatchDesc": {
+        "message": "为每个翻译提供商配置最佳批量大小。这些设置在启用\"使用提供商优化设置\"时使用。"
+    },
+    "openaieBatchSizeLabel": { "message": "OpenAI 批量大小：" },
+    "openaieBatchSizeHelp": {
+        "message": "推荐：5-10 个片段（默认：8）"
+    },
+    "googleBatchSizeLabel": { "message": "谷歌翻译批量大小：" },
+    "googleBatchSizeHelp": {
+        "message": "推荐：3-5 个片段（默认：4）"
+    },
+    "deeplBatchSizeLabel": { "message": "DeepL 批量大小：" },
+    "deeplBatchSizeHelp": {
+        "message": "推荐：2-3 个片段（默认：3）"
+    },
+    "microsoftBatchSizeLabel": { "message": "微软翻译批量大小：" },
+    "microsoftBatchSizeHelp": {
+        "message": "推荐：3-5 个片段（默认：4）"
+    }
 }

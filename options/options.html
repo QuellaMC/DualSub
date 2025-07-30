@@ -154,21 +154,13 @@
                                 data-i18n="batchSizeLabel"
                                 >Batch Size:</label
                             >
-                            <div
-                                style="
-                                    display: flex;
-                                    align-items: center;
-                                    gap: 10px;
-                                "
-                            >
-                                <input
-                                    type="number"
-                                    id="translationBatchSize"
-                                    min="1"
-                                    max="10"
-                                    value="3"
-                                />
-                            </div>
+                            <input
+                                type="number"
+                                id="translationBatchSize"
+                                min="1"
+                                max="10"
+                                value="3"
+                            />
                         </div>
 
                         <div class="setting">
@@ -177,22 +169,232 @@
                                 data-i18n="requestDelayLabel"
                                 >Request Delay (ms):</label
                             >
-                            <div
-                                style="
-                                    display: flex;
-                                    align-items: center;
-                                    gap: 10px;
-                                "
-                            >
-                                <input
-                                    type="number"
-                                    id="translationDelay"
-                                    min="0"
-                                    max="5000"
-                                    step="50"
-                                    value="150"
-                                />
+                            <input
+                                type="number"
+                                id="translationDelay"
+                                min="0"
+                                max="5000"
+                                step="50"
+                                value="150"
+                            />
+                        </div>
+                    </div>
+
+                    <div class="setting-card">
+                        <h3 data-i18n="cardBatchTranslationTitle">Batch Translation</h3>
+                        <p data-i18n="cardBatchTranslationDesc">
+                            Batch translation processes multiple subtitle segments together,
+                            reducing API calls by 80-90% and improving performance. Configure
+                            optimal settings for your preferred translation provider.
+                        </p>
+
+                        <div class="setting setting-with-help">
+                            <div class="setting-content">
+                                <label
+                                    for="batchingEnabled"
+                                    data-i18n="batchingEnabledLabel"
+                                    >Enable Batch Translation:</label
+                                >
+                                <div class="setting-help" data-i18n="batchingEnabledHelp">
+                                    Groups multiple subtitle segments into single translation requests
+                                </div>
                             </div>
+                            <div class="toggle-switch">
+                                <input
+                                    type="checkbox"
+                                    id="batchingEnabled"
+                                    class="toggle-input"
+                                />
+                                <label
+                                    for="batchingEnabled"
+                                    class="toggle-label"
+                                >
+                                    <span class="toggle-inner"></span>
+                                    <span class="toggle-switch-handle"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="setting setting-with-help">
+                            <div class="setting-content">
+                                <label
+                                    for="useProviderDefaults"
+                                    data-i18n="useProviderDefaultsLabel"
+                                    >Use Provider-Optimized Settings:</label
+                                >
+                                <div class="setting-help" data-i18n="useProviderDefaultsHelp">
+                                    Automatically use optimal batch sizes for each translation provider
+                                </div>
+                            </div>
+                            <div class="toggle-switch">
+                                <input
+                                    type="checkbox"
+                                    id="useProviderDefaults"
+                                    class="toggle-input"
+                                />
+                                <label
+                                    for="useProviderDefaults"
+                                    class="toggle-label"
+                                >
+                                    <span class="toggle-inner"></span>
+                                    <span class="toggle-switch-handle"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="setting setting-with-help" id="globalBatchSizeSetting">
+                            <div class="setting-content">
+                                <label
+                                    for="globalBatchSize"
+                                    data-i18n="globalBatchSizeLabel"
+                                    >Global Batch Size:</label
+                                >
+                                <div class="setting-help" data-i18n="globalBatchSizeHelp">
+                                    Number of subtitle segments to process together (1-15)
+                                </div>
+                            </div>
+                            <input
+                                type="number"
+                                id="globalBatchSize"
+                                min="1"
+                                max="15"
+                                value="5"
+                            />
+                        </div>
+
+                        <div class="setting setting-with-help">
+                            <div class="setting-content">
+                                <label
+                                    for="smartBatching"
+                                    data-i18n="smartBatchingLabel"
+                                    >Smart Batch Optimization:</label
+                                >
+                                <div class="setting-help" data-i18n="smartBatchingHelp">
+                                    Prioritizes subtitle segments based on playback position
+                                </div>
+                            </div>
+                            <div class="toggle-switch">
+                                <input
+                                    type="checkbox"
+                                    id="smartBatching"
+                                    class="toggle-input"
+                                />
+                                <label
+                                    for="smartBatching"
+                                    class="toggle-label"
+                                >
+                                    <span class="toggle-inner"></span>
+                                    <span class="toggle-switch-handle"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="setting setting-with-help">
+                            <div class="setting-content">
+                                <label
+                                    for="maxConcurrentBatches"
+                                    data-i18n="maxConcurrentBatchesLabel"
+                                    >Maximum Concurrent Batches:</label
+                                >
+                                <div class="setting-help" data-i18n="maxConcurrentBatchesHelp">
+                                    Number of translation batches to process simultaneously
+                                </div>
+                            </div>
+                            <input
+                                type="number"
+                                id="maxConcurrentBatches"
+                                min="1"
+                                max="5"
+                                value="2"
+                            />
+                        </div>
+                    </div>
+
+                    <div class="setting-card" id="providerBatchSettings">
+                        <h3 data-i18n="cardProviderBatchTitle">Provider-Specific Batch Sizes</h3>
+                        <p data-i18n="cardProviderBatchDesc">
+                            Configure optimal batch sizes for each translation provider.
+                            These settings are used when "Use Provider-Optimized Settings" is enabled.
+                        </p>
+
+                        <div class="setting setting-with-help">
+                            <div class="setting-content">
+                                <label
+                                    for="openaieBatchSize"
+                                    data-i18n="openaieBatchSizeLabel"
+                                    >OpenAI Batch Size:</label
+                                >
+                                <div class="setting-help" data-i18n="openaieBatchSizeHelp">
+                                    Recommended: 5-10 segments (default: 8)
+                                </div>
+                            </div>
+                            <input
+                                type="number"
+                                id="openaieBatchSize"
+                                min="1"
+                                max="15"
+                                value="8"
+                            />
+                        </div>
+
+                        <div class="setting setting-with-help">
+                            <div class="setting-content">
+                                <label
+                                    for="googleBatchSize"
+                                    data-i18n="googleBatchSizeLabel"
+                                    >Google Translate Batch Size:</label
+                                >
+                                <div class="setting-help" data-i18n="googleBatchSizeHelp">
+                                    Recommended: 3-5 segments (default: 4)
+                                </div>
+                            </div>
+                            <input
+                                type="number"
+                                id="googleBatchSize"
+                                min="1"
+                                max="10"
+                                value="4"
+                            />
+                        </div>
+
+                        <div class="setting setting-with-help">
+                            <div class="setting-content">
+                                <label
+                                    for="deeplBatchSize"
+                                    data-i18n="deeplBatchSizeLabel"
+                                    >DeepL Batch Size:</label
+                                >
+                                <div class="setting-help" data-i18n="deeplBatchSizeHelp">
+                                    Recommended: 2-3 segments (default: 3)
+                                </div>
+                            </div>
+                            <input
+                                type="number"
+                                id="deeplBatchSize"
+                                min="1"
+                                max="8"
+                                value="3"
+                            />
+                        </div>
+
+                        <div class="setting setting-with-help">
+                            <div class="setting-content">
+                                <label
+                                    for="microsoftBatchSize"
+                                    data-i18n="microsoftBatchSizeLabel"
+                                    >Microsoft Translate Batch Size:</label
+                                >
+                                <div class="setting-help" data-i18n="microsoftBatchSizeHelp">
+                                    Recommended: 3-5 segments (default: 4)
+                                </div>
+                            </div>
+                            <input
+                                type="number"
+                                id="microsoftBatchSize"
+                                min="1"
+                                max="10"
+                                value="4"
+                            />
                         </div>
                     </div>
                 </section>

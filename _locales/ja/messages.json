@@ -193,5 +193,51 @@
     "loggingLevelError": { "message": "エラーのみ" },
     "loggingLevelWarn": { "message": "警告とエラー" },
     "loggingLevelInfo": { "message": "情報以上" },
-    "loggingLevelDebug": { "message": "デバッグ（すべて）" }
+    "loggingLevelDebug": { "message": "デバッグ（すべて）" },
+
+    "cardBatchTranslationTitle": { "message": "バッチ翻訳" },
+    "cardBatchTranslationDesc": {
+        "message": "バッチ翻訳は複数の字幕セグメントを一緒に処理し、API呼び出しを80-90%削減してパフォーマンスを向上させます。お好みの翻訳プロバイダーに最適な設定を構成してください。"
+    },
+    "batchingEnabledLabel": { "message": "バッチ翻訳を有効にする：" },
+    "batchingEnabledHelp": {
+        "message": "複数の字幕セグメントを単一の翻訳リクエストにグループ化します"
+    },
+    "useProviderDefaultsLabel": { "message": "プロバイダー最適化設定を使用：" },
+    "useProviderDefaultsHelp": {
+        "message": "各翻訳プロバイダーに最適なバッチサイズを自動的に使用します"
+    },
+    "globalBatchSizeLabel": { "message": "グローバルバッチサイズ：" },
+    "globalBatchSizeHelp": {
+        "message": "一緒に処理する字幕セグメントの数（1-15）"
+    },
+    "smartBatchingLabel": { "message": "スマートバッチ最適化：" },
+    "smartBatchingHelp": {
+        "message": "再生位置に基づいて字幕セグメントを優先処理します"
+    },
+    "maxConcurrentBatchesLabel": { "message": "最大同時バッチ数：" },
+    "maxConcurrentBatchesHelp": {
+        "message": "同時に処理する翻訳バッチの数"
+    },
+
+    "cardProviderBatchTitle": { "message": "プロバイダー固有のバッチサイズ" },
+    "cardProviderBatchDesc": {
+        "message": "各翻訳プロバイダーに最適なバッチサイズを設定します。これらの設定は「プロバイダー最適化設定を使用」が有効な場合に使用されます。"
+    },
+    "openaieBatchSizeLabel": { "message": "OpenAIバッチサイズ：" },
+    "openaieBatchSizeHelp": {
+        "message": "推奨：5-10セグメント（デフォルト：8）"
+    },
+    "googleBatchSizeLabel": { "message": "Google翻訳バッチサイズ：" },
+    "googleBatchSizeHelp": {
+        "message": "推奨：3-5セグメント（デフォルト：4）"
+    },
+    "deeplBatchSizeLabel": { "message": "DeepLバッチサイズ：" },
+    "deeplBatchSizeHelp": {
+        "message": "推奨：2-3セグメント（デフォルト：3）"
+    },
+    "microsoftBatchSizeLabel": { "message": "Microsoft翻訳バッチサイズ：" },
+    "microsoftBatchSizeHelp": {
+        "message": "推奨：3-5セグメント（デフォルト：4）"
+    }
 }

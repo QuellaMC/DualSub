@@ -153,15 +153,19 @@ body {
     font-size: 14px;
 }
 
-.setting {
-    display: flex;
+/* New Grid Layout for Settings */
+.setting,
+.setting-with-help {
+    display: grid;
+    grid-template-columns: 1fr minmax(250px, 35%);
+    gap: 20px;
     align-items: center;
-    justify-content: space-between;
     padding: 15px 0;
     border-top: 1px solid var(--border-color);
 }
 
-.setting:first-of-type {
+.setting:first-of-type,
+.setting-with-help:first-of-type {
     border-top: none;
     padding-top: 0;
 }
@@ -169,13 +173,55 @@ body {
 .setting label {
     font-weight: 500;
     flex-shrink: 0;
-    margin-right: 20px;
+}
+
+.setting-help {
+    color: var(--secondary-text-color);
+    font-size: 12px;
+    margin-top: 4px;
+    margin-left: 8px;
+    font-style: italic;
+    line-height: 1.3;
+}
+
+.setting .setting-help {
+    margin-left: 0;
+    margin-top: 8px;
+    display: block;
+}
+
+.setting-content {
+    flex: 1;
+    /* No margin-right needed with gap */
+}
+
+.setting-content label {
+    font-weight: 500;
+    display: block;
+    margin-bottom: 6px;
+    color: var(--text-color);
+}
+
+.setting-content .setting-help {
+    color: var(--secondary-text-color);
+    font-size: 12px;
+    line-height: 1.4;
+    margin: 0;
+    background-color: var(--input-bg);
+    font-style: normal;
+}
+
+/* Align controls (toggles and inputs) to center vertically */
+.setting-with-help .toggle-switch,
+.setting-with-help input[type='number'] {
+    align-self: center;
 }
 
 /* Apple-style Toggle Switch */
 .toggle-switch {
     position: relative;
     display: inline-block;
+    justify-self: end; /* Align toggle to the right of the grid cell */
 }
 
 .toggle-input {
@@ -230,7 +276,8 @@ select,
 input[type='text'],
 input[type='password'],
 input[type='number'] {
-    width: 250px;
+    width: 100%; /* Changed from 250px */
+    box-sizing: border-box; /* Added for consistent sizing */
     padding: 8px 12px;
     border-radius: 6px;
     border: 1px solid var(--input-border);
@@ -287,7 +334,7 @@ input:focus {
 .slider-container {
     display: flex;
     align-items: center;
-    width: 250px;
+    width: 100%; /* Changed from 250px */
 }
 
 input[type='range'] {
@@ -361,13 +408,19 @@ input[type='range']::-moz-range-thumb {
     .content {
         padding: 20px;
     }
-    .setting {
-        flex-direction: column;
-        align-items: flex-start;
+    
+    /* Updated Grid layout for mobile */
+    .setting,
+    .setting-with-help {
+        grid-template-columns: 1fr;
+        gap: 10px;
     }
-    .setting label {
-        margin-bottom: 10px;
+
+    .toggle-switch {
+        justify-self: start; /* Align toggle to left on mobile */
     }
+
+    /* This rule ensures all controls are full-width on mobile */
     select,
     input,
     .slider-container {

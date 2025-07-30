@@ -11,6 +11,7 @@
  */
 
 import { loggingManager } from '../utils/loggingManager.js';
+import { ServiceProtocol, TranslationError, SubtitleProcessingError } from '../services/serviceInterfaces.js';
 
 class MessageHandler {
     constructor() {
@@ -63,13 +64,19 @@ class MessageHandler {
         switch (message.action) {
             case 'translate':
                 return this.handleTranslateMessage(message, sendResponse);
-            
+
+            case 'translateBatch':
+                return this.handleTranslateBatchMessage(message, sendResponse);
+
+            case 'checkBatchSupport':
+                return this.handleCheckBatchSupportMessage(message, sendResponse);
+
             case 'fetchVTT':
                 return this.handleFetchVTTMessage(message, sendResponse);
-            
+
             case 'changeProvider':
                 return this.handleChangeProviderMessage(message, sendResponse);
-            
+
             default:
                 this.logger.warn('Unknown message action', { action: message.action });
                 return false;
@@ -77,13 +84,28 @@ class MessageHandler {
     }
 
     /**
-     * Handle translation requests
+     * Handle translation requests using service protocol
      */
     handleTranslateMessage(message, sendResponse) {
+        const request = ServiceProtocol.createRequest(
+            'translation',
+            'translate',
+            {
+                text: message.text,
+                sourceLang: 'auto',
+                targetLang: message.targetLang,
+                options: {
+                    cueStart: message.cueStart,
+                    cueVideoId: message.cueVideoId
+                }
+            }
+        );
+
         if (!this.translationService) {
-            this.logger.error('Translation service not available');
+            const error = new TranslationError('Translation service not initialized');
+            const response = ServiceProtocol.createResponse(request, null, error);
             sendResponse({
-                error: 'Translation service not initialized',
+                ...response,
                 originalText: message.text,
                 cueStart: message.cueStart,
                 cueVideoId: message.cueVideoId,
@@ -92,13 +114,21 @@ class MessageHandler {
         }
 
         const { text, targetLang, cueStart, cueVideoId } = message;
-        
+
         this.translationService
             .translate(text, 'auto', targetLang)
             .then((translatedText) => {
-                sendResponse({
+                const response = ServiceProtocol.createResponse(request, {
                     translatedText,
                     originalText: text,
+                    sourceLanguage: 'auto',
+                    targetLanguage: targetLang,
+                    cached: false, // TODO: Get from service
+                    processingTime: Date.now() - request.metadata.timestamp
+                });
+
+                sendResponse({
+                    ...response.result,
                     cueStart,
                     cueVideoId,
                 });
@@ -108,17 +138,121 @@ class MessageHandler {
                     text: text.substring(0, 50),
                     targetLang,
                 });
+
+                const translationError = new TranslationError(
+                    'Translation failed',
+                    { originalError: error.message, provider: this.translationService.getCurrentProvider()?.id }
+                );
+                const response = ServiceProtocol.createResponse(request, null, translationError);
+
                 sendResponse({
-                    error: 'Translation failed',
-                    errorType: 'TRANSLATION_API_ERROR',
-                    details: error.message || 'Unknown translation error',
+                    error: response.error.message,
+                    errorType: response.error.type,
+                    details: response.error.details,
                     originalText: text,
                     cueStart,
                     cueVideoId,
                 });
             });
-        
+
         return true; // Async response
+    }
+
+    /**
+     * Handle batch translation requests
+     */
+    handleTranslateBatchMessage(message, sendResponse) {
+        const request = ServiceProtocol.createRequest(
+            'translation',
+            'translateBatch',
+            {
+                texts: message.texts,
+                sourceLang: 'auto',
+                targetLang: message.targetLang,
+                delimiter: message.delimiter,
+                options: {
+                    batchId: message.batchId,
+                    cueMetadata: message.cueMetadata
+                }
+            }
+        );
+
+        if (!this.translationService) {
+            const error = new TranslationError('Translation service not initialized');
+            const response = ServiceProtocol.createResponse(request, null, error);
+            sendResponse({
+                ...response,
+                batchId: message.batchId
+            });
+            return true;
+        }
+
+        this.translationService
+            .translateBatch(message.texts, 'auto', message.targetLang, {
+                delimiter: message.delimiter,
+                batchId: message.batchId
+            })
+            .then((translations) => {
+                const response = ServiceProtocol.createResponse(request, {
+                    translations,
+                    batchId: message.batchId,
+                    originalTexts: message.texts,
+                    processingTime: Date.now() - request.metadata.timestamp
+                });
+
+                sendResponse({
+                    success: true,
+                    translations,
+                    batchId: message.batchId,
+                    processingTime: response.metadata.processingTime
+                });
+            })
+            .catch((error) => {
+                this.logger.error('Batch translation failed', error, {
+                    batchId: message.batchId,
+                    textCount: message.texts?.length || 0
+                });
+
+                const translationError = new TranslationError(
+                    'Batch translation failed',
+                    {
+                        originalError: error.message,
+                        batchId: message.batchId,
+                        provider: this.translationService.getCurrentProvider()?.id
+                    }
+                );
+                const response = ServiceProtocol.createResponse(request, null, translationError);
+
+                sendResponse({
+                    success: false,
+                    error: response.error.message,
+                    errorType: response.error.type,
+                    batchId: message.batchId
+                });
+            });
+
+        return true; // Async response
+    }
+
+    /**
+     * Handle batch support check requests
+     */
+    handleCheckBatchSupportMessage(message, sendResponse) {
+        if (!this.translationService) {
+            sendResponse({ supportsBatch: false });
+            return true;
+        }
+
+        const supportsBatch = this.translationService.currentProviderSupportsBatch();
+        const provider = this.translationService.getCurrentProvider();
+
+        sendResponse({
+            supportsBatch,
+            provider: provider?.name || 'Unknown',
+            providerId: this.translationService.currentProviderId
+        });
+
+        return true;
     }
 
     /**
@@ -145,7 +279,7 @@ class MessageHandler {
     }
 
     /**
-     * Handle Netflix-specific VTT requests
+     * Handle Netflix-specific VTT requests using service protocol
      */
     handleNetflixVTTRequest(message, sendResponse) {
         const {
@@ -157,6 +291,19 @@ class MessageHandler {
             useOfficialTranslations,
         } = message;
 
+        const request = ServiceProtocol.createRequest(
+            'subtitle',
+            'processNetflixSubtitles',
+            {
+                data,
+                targetLanguage,
+                originalLanguage,
+                useNativeSubtitles,
+                useOfficialTranslations
+            },
+            { videoId }
+        );
+
         this.subtitleService
             .processNetflixSubtitles(
                 data,
@@ -166,25 +313,29 @@ class MessageHandler {
                 useOfficialTranslations
             )
             .then((result) => {
+                const response = ServiceProtocol.createResponse(request, result);
                 sendResponse({
                     success: true,
-                    vttText: result.vttText,
-                    targetVttText: result.targetVttText,
+                    ...result,
                     videoId,
-                    url: result.url,
-                    sourceLanguage: result.sourceLanguage,
-                    targetLanguage: result.targetLanguage,
-                    useNativeTarget: result.useNativeTarget,
-                    availableLanguages: result.availableLanguages,
+                    processingTime: response.metadata.processingTime
                 });
             })
             .catch((error) => {
                 this.logger.error('Netflix VTT processing failed', error, {
                     videoId,
                 });
+
+                const subtitleError = new SubtitleProcessingError(
+                    `Netflix VTT Processing Error: ${error.message}`,
+                    { platform: 'netflix', videoId }
+                );
+                const response = ServiceProtocol.createResponse(request, null, subtitleError);
+
                 sendResponse({
                     success: false,
-                    error: `Netflix VTT Processing Error: ${error.message}`,
+                    error: response.error.message,
+                    errorType: response.error.type,
                     videoId,
                 });
             });

@@ -1315,6 +1315,18 @@ export function handleSubtitleDataFound(
                     { logPrefix }
                 );
             }
+
+            // Trigger immediate subtitle display update for native target mode
+            logWithFallback('debug', 'Triggering subtitle display update for native mode', {
+                logPrefix,
+                queueLength: subtitleQueue.length
+            });
+
+            // Get current video time and update display
+            const videoElement = activePlatform?.getVideoElement?.();
+            if (videoElement && !isNaN(videoElement.currentTime)) {
+                updateSubtitles(videoElement.currentTime, activePlatform, config, logPrefix);
+            }
         } else {
             parsedOriginalCues.forEach((originalCue) => {
                 subtitleQueue.push({
@@ -1342,6 +1354,20 @@ export function handleSubtitleDataFound(
 
         if (!useNativeTarget && parsedOriginalCues.length > 0) {
             processSubtitleQueue(activePlatform, config, logPrefix);
+        }
+
+        // Ensure subtitle display is updated regardless of mode
+        logWithFallback('debug', 'Ensuring subtitle display is updated', {
+            logPrefix,
+            useNativeTarget,
+            queueLength: subtitleQueue.length,
+            subtitlesActive
+        });
+
+        // Trigger immediate display update
+        const videoElement = activePlatform?.getVideoElement?.();
+        if (videoElement && !isNaN(videoElement.currentTime) && subtitlesActive) {
+            updateSubtitles(videoElement.currentTime, activePlatform, config, logPrefix);
         }
     } else {
         logWithFallback('warn', 'VTT parsing yielded no cues for videoId.', {
