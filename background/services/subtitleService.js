@@ -353,7 +353,7 @@ class SubtitleService {
             this.logger.debug('Getting available languages', { platform });
 
             switch (platform) {
-                case 'netflix':
+                case 'netflix': {
                     if (!data || !data.tracks) {
                         return [];
                     }
@@ -361,6 +361,7 @@ class SubtitleService {
                         data, 'en-US', 'zh-CN' // Default languages for extraction
                     );
                     return availableLanguages;
+                }
 
                 case 'disneyplus':
                 case 'generic':

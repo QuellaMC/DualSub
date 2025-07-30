@@ -12,6 +12,7 @@
 import { sharedUtilityIntegration } from './utils/sharedUtilityIntegration.js';
 import { universalBatchProcessor } from './services/universalBatchProcessor.js';
 import { translationProviders } from './services/translationService.js';
+import { configService } from './services/configService.js';
 
 // Test data
 const testVTT = `WEBVTT
