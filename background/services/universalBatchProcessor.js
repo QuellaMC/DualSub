@@ -156,15 +156,18 @@ class UniversalBatchProcessor {
 
         const providerConfig = PROVIDER_BATCH_CONFIGS[providerId];
         if (!providerConfig) {
-            return this.config.globalBatchSize;
+            return Math.max(1, this.config.globalBatchSize);
         }
 
         if (this.config.useProviderDefaults) {
-            return providerConfig.defaultBatchSize;
+            return Math.max(1, providerConfig.defaultBatchSize);
         }
 
         // Use global setting but respect provider max
-        return Math.min(this.config.globalBatchSize, providerConfig.maxBatchSize);
+        const effectiveSize = Math.min(this.config.globalBatchSize, providerConfig.maxBatchSize);
+
+        // Ensure batch size is at least 1
+        return Math.max(1, effectiveSize);
     }
 
     /**

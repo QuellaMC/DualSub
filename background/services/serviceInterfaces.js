@@ -179,7 +179,9 @@ export class ServiceProtocol {
             } : null,
             metadata: {
                 timestamp: Date.now(),
-                processingTime: Date.now() - request.metadata.timestamp
+                processingTime: request.metadata && typeof request.metadata.timestamp === 'number'
+                    ? Date.now() - request.metadata.timestamp
+                    : 0
             }
         };
     }

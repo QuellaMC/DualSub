@@ -177,8 +177,12 @@ class SubtitleService {
             };
         }
 
-        // Check if it's M3U8 playlist
-        if (!masterPlaylistText.trim().startsWith('#EXTM3U')) {
+        // Check if it's M3U8 playlist - ignore leading whitespace and comments
+        const trimmedContent = masterPlaylistText.trim();
+        const lines = trimmedContent.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+        const firstNonCommentLine = lines.find(line => !line.startsWith('#') || line.startsWith('#EXTM3U'));
+
+        if (!firstNonCommentLine || !firstNonCommentLine.startsWith('#EXTM3U')) {
             throw new Error('Content is not a recognized M3U8 playlist or VTT file.');
         }
 
@@ -295,7 +299,8 @@ class SubtitleService {
             });
 
             if (!this.supportedPlatforms.has(platform)) {
-                throw new Error(`Unsupported platform: ${platform}`);
+                const supported = Array.from(this.supportedPlatforms).join(', ');
+                throw new Error(`Unsupported platform: ${platform}. Supported platforms are: ${supported}`);
             }
 
             let result;

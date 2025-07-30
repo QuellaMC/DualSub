@@ -96,6 +96,8 @@ class TranslationService {
         };
         this.isInitialized = false;
         this.translationCache = new Map();
+        this.cacheMaxSize = 1000; // Maximum cache entries
+        this.cacheAccessOrder = []; // For LRU eviction
         this.rateLimitTracker = new Map();
         this.characterTracker = new Map(); // For character-based rate limiting
         this.lastRequestTime = new Map(); // For mandatory delays
@@ -209,10 +211,13 @@ class TranslationService {
         try {
             // Check cache first
             const cacheKey = this.generateCacheKey(text, sourceLang, targetLang);
-            if (!options.skipCache && this.translationCache.has(cacheKey)) {
-                this.performanceMetrics.cacheHits++;
-                this.logger.debug('Translation cache hit', { cacheKey });
-                return this.translationCache.get(cacheKey);
+            if (!options.skipCache) {
+                const cachedResult = this.getCacheItem(cacheKey);
+                if (cachedResult !== undefined) {
+                    this.performanceMetrics.cacheHits++;
+                    this.logger.debug('Translation cache hit', { cacheKey });
+                    return cachedResult;
+                }
             }
 
             // Check rate limits
@@ -240,7 +245,7 @@ class TranslationService {
             const translatedText = await selectedProvider.translate(text, sourceLang, targetLang);
 
             // Cache the result
-            this.translationCache.set(cacheKey, translatedText);
+            this.setCacheItem(cacheKey, translatedText);
 
             // Update rate limit tracker
             this.updateRateLimitTracker(text);
@@ -341,6 +346,51 @@ class TranslationService {
             hash = hash & hash; // Convert to 32-bit integer
         }
         return hash.toString(36);
+    }
+
+    /**
+     * Add item to cache with LRU eviction policy
+     * @param {string} key - Cache key
+     * @param {string} value - Cache value
+     */
+    setCacheItem(key, value) {
+        // Remove existing entry if present
+        if (this.translationCache.has(key)) {
+            const index = this.cacheAccessOrder.indexOf(key);
+            if (index > -1) {
+                this.cacheAccessOrder.splice(index, 1);
+            }
+        }
+
+        // Add to cache and access order
+        this.translationCache.set(key, value);
+        this.cacheAccessOrder.push(key);
+
+        // Evict oldest entries if cache is full
+        while (this.translationCache.size > this.cacheMaxSize) {
+            const oldestKey = this.cacheAccessOrder.shift();
+            this.translationCache.delete(oldestKey);
+        }
+    }
+
+    /**
+     * Get item from cache and update access order
+     * @param {string} key - Cache key
+     * @returns {string|undefined} Cache value
+     */
+    getCacheItem(key) {
+        if (!this.translationCache.has(key)) {
+            return undefined;
+        }
+
+        // Update access order
+        const index = this.cacheAccessOrder.indexOf(key);
+        if (index > -1) {
+            this.cacheAccessOrder.splice(index, 1);
+            this.cacheAccessOrder.push(key);
+        }
+
+        return this.translationCache.get(key);
     }
 
     /**
@@ -817,6 +867,9 @@ class TranslationService {
         try {
             if (!Array.isArray(texts) || texts.length === 0) {
                 throw new Error('Invalid texts array for batch translation');
+            }
+            if (texts.every(text => typeof text === 'string' && text.trim() === '')) {
+                throw new Error('Texts array contains only empty strings');
             }
 
             this.logger.info('Batch translation request', {

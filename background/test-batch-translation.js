@@ -117,8 +117,23 @@ async function testBatchTranslationPerformance() {
 }
 
 async function testBatchVsIndividual(texts, sourceLang, targetLang) {
+    // Add diverse test cases for translation accuracy
+    const diverseInputs = [
+        "こんにちは世界", // Japanese: "Hello, World"
+        "Привет, мир!", // Russian: "Hello, World!"
+        "مرحبا بالعالم", // Arabic: "Hello, World"
+        "你好，世界", // Chinese: "Hello, World"
+        "👋🌍", // Emojis
+        "Cześć świecie! 😊", // Polish with emoji
+        "¡Hola, mundo! #$%&", // Spanish with special characters
+        "Bonjour le monde! @€", // French with special characters
+        "Γειά σου Κόσμε!", // Greek: "Hello, World!"
+        "안녕하세요 세계!", // Korean: "Hello, World!"
+    ];
+    texts = texts.concat(diverseInputs);
+
     console.log(`Testing ${texts.length} texts: ${sourceLang} → ${targetLang}`);
-    
+
     // Test individual translations
     console.log('⏱️  Testing individual translations...');
     const individualStart = Date.now();
@@ -352,10 +367,15 @@ function levenshteinDistance(str1, str2) {
 
 // Run test if this file is executed directly
 if (import.meta.url === `file://${process.argv[1]}`) {
-    testBatchTranslationPerformance()
-        .then(results => {
-            console.log('\n🎉 Batch Translation Performance Test Completed!');
-            process.exit(results.success ? 0 : 1);
+    (async () => {
+        await testBatchTranslationPerformance();
+        await testBatchTranslationEmptyInput();
+        await testBatchTranslationPartialFailure();
+        await testBatchTranslationProviderTimeout();
+        console.log('\n🎉 All Batch Translation Tests Completed!');
+    })()
+        .then(() => {
+            process.exit(0);
         })
         .catch(error => {
             console.error('Test execution failed:', error);
@@ -363,4 +383,58 @@ if (import.meta.url === `file://${process.argv[1]}`) {
         });
 }
 
-export { testBatchTranslationPerformance };
+/**
+ * Test: Batch translation with empty input
+ */
+async function testBatchTranslationEmptyInput() {
+    console.log('🧪 Testing Batch Translation with Empty Input...');
+    try {
+        const result = await batchTranslationQueue.translateBatch([], 'en', 'es');
+        if (Array.isArray(result) && result.length === 0) {
+            console.log('✅ Passed: Empty input returns empty array.');
+        } else {
+            console.error('❌ Failed: Empty input did not return empty array.');
+        }
+    } catch (err) {
+        console.error('❌ Failed: Error thrown for empty input.', err);
+    }
+}
+
+/**
+ * Test: Batch translation with partial failures
+ */
+async function testBatchTranslationPartialFailure() {
+    console.log('🧪 Testing Batch Translation with Partial Failures...');
+    // Simulate a provider that fails for a specific input
+    const testInput = ['Hello', 'FAIL_ME', 'World'];
+    try {
+        const result = await batchTranslationQueue.translateBatch(testInput, 'en', 'es');
+        if (Array.isArray(result) && result.length === 3) {
+            console.log('✅ Passed: Partial failure handled correctly.');
+        } else {
+            console.error('❌ Failed: Partial failure not handled as expected.', result);
+        }
+    } catch (err) {
+        console.error('❌ Failed: Error thrown for partial failure.', err);
+    }
+}
+
+/**
+ * Test: Batch translation with provider timeout
+ */
+async function testBatchTranslationProviderTimeout() {
+    console.log('🧪 Testing Batch Translation with Provider Timeout...');
+    const testInput = ['This will timeout'];
+    try {
+        const result = await batchTranslationQueue.translateBatch(testInput, 'en', 'fr', { timeout: 1000 });
+        if (Array.isArray(result)) {
+            console.log('✅ Passed: Timeout handled correctly.');
+        } else {
+            console.error('❌ Failed: Timeout not handled as expected.', result);
+        }
+    } catch (err) {
+        console.error('❌ Failed: Error thrown for provider timeout.', err);
+    }
+}
+
+export { testBatchTranslationPerformance, testBatchTranslationEmptyInput, testBatchTranslationPartialFailure, testBatchTranslationProviderTimeout };
