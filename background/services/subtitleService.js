@@ -13,6 +13,7 @@ import { vttParser } from '../parsers/vttParser.js';
 import { netflixParser } from '../parsers/netflixParser.js';
 import { normalizeLanguageCode } from '../../utils/languageNormalization.js';
 import { errorHandler, SubtitleProcessingError } from '../utils/errorHandler.js';
+import { configService } from '../../services/configService.js';
 
 class SubtitleService {
     constructor() {
@@ -190,7 +191,7 @@ class SubtitleService {
         });
 
         // Step 3: Get user settings for smart subtitle logic
-        const settings = await configService.get(['useNativeSubtitles', 'useOfficialTranslations']);
+        const settings = await configService.getMultiple(['useNativeSubtitles', 'useOfficialTranslations']);
         const useOfficialTranslations = settings.useOfficialTranslations !== undefined
             ? settings.useOfficialTranslations
             : settings.useNativeSubtitles !== false;
