@@ -712,7 +712,8 @@ function attemptToSetupProgressBarObserver(
                             valuemax > 0
                         ) {
                             const calculatedTime =
-                                !Number.isNaN(videoDuration) && videoDuration > 0
+                                !Number.isNaN(videoDuration) &&
+                                videoDuration > 0
                                     ? (valuenow / valuemax) * videoDuration
                                     : valuenow;
 
@@ -1317,15 +1318,24 @@ export function handleSubtitleDataFound(
             }
 
             // Trigger immediate subtitle display update for native target mode
-            logWithFallback('debug', 'Triggering subtitle display update for native mode', {
-                logPrefix,
-                queueLength: subtitleQueue.length
-            });
+            logWithFallback(
+                'debug',
+                'Triggering subtitle display update for native mode',
+                {
+                    logPrefix,
+                    queueLength: subtitleQueue.length,
+                }
+            );
 
             // Get current video time and update display
             const videoElement = activePlatform?.getVideoElement?.();
             if (videoElement && !Number.isNaN(videoElement.currentTime)) {
-                updateSubtitles(videoElement.currentTime, activePlatform, config, logPrefix);
+                updateSubtitles(
+                    videoElement.currentTime,
+                    activePlatform,
+                    config,
+                    logPrefix
+                );
             }
         } else {
             parsedOriginalCues.forEach((originalCue) => {
@@ -1361,13 +1371,22 @@ export function handleSubtitleDataFound(
             logPrefix,
             useNativeTarget,
             queueLength: subtitleQueue.length,
-            subtitlesActive
+            subtitlesActive,
         });
 
         // Trigger immediate display update
         const videoElement = activePlatform?.getVideoElement?.();
-        if (videoElement && !Number.isNaN(videoElement.currentTime) && subtitlesActive) {
-            updateSubtitles(videoElement.currentTime, activePlatform, config, logPrefix);
+        if (
+            videoElement &&
+            !Number.isNaN(videoElement.currentTime) &&
+            subtitlesActive
+        ) {
+            updateSubtitles(
+                videoElement.currentTime,
+                activePlatform,
+                config,
+                logPrefix
+            );
         }
     } else {
         logWithFallback('warn', 'VTT parsing yielded no cues for videoId.', {
@@ -1444,7 +1463,11 @@ export async function processSubtitleQueue(
                 const valuemax = parseFloat(maxStr);
                 const { duration: videoDuration } = videoElement;
 
-                if (!Number.isNaN(valuenow) && !Number.isNaN(valuemax) && valuemax > 0) {
+                if (
+                    !Number.isNaN(valuenow) &&
+                    !Number.isNaN(valuemax) &&
+                    valuemax > 0
+                ) {
                     timeSource =
                         !Number.isNaN(videoDuration) && videoDuration > 0
                             ? (valuenow / valuemax) * videoDuration

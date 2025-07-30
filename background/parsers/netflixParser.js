@@ -1,11 +1,11 @@
 /**
  * Netflix Subtitle Parser
- * 
+ *
  * Integrates with SubtitleProcessingManager from shared utilities
  * and adds Netflix-specific subtitle data processing.
- * 
+ *
  * Reuses existing Netflix parsing logic and track selection.
- * 
+ *
  * @author DualSub Extension
  * @version 2.0.0
  */
@@ -29,7 +29,7 @@ class NetflixParser {
         // Netflix processing will use simplified ServiceWorker-compatible methods
         this.config = {
             useOfficialTranslations: config.useOfficialTranslations || false,
-            ...config
+            ...config,
         };
         this.logger.debug('Netflix parser initialized in ServiceWorker mode');
     }
@@ -62,16 +62,18 @@ class NetflixParser {
         // Initialize if not already done
         if (!this.subtitleManager) {
             this.initialize({
-                useOfficialTranslations: useOfficialTranslations !== undefined 
-                    ? useOfficialTranslations 
-                    : useNativeSubtitles
+                useOfficialTranslations:
+                    useOfficialTranslations !== undefined
+                        ? useOfficialTranslations
+                        : useNativeSubtitles,
             });
         }
 
         // Normalize the official translations setting
-        const useOfficialSubtitles = useOfficialTranslations !== undefined
-            ? useOfficialTranslations
-            : useNativeSubtitles;
+        const useOfficialSubtitles =
+            useOfficialTranslations !== undefined
+                ? useOfficialTranslations
+                : useNativeSubtitles;
 
         if (!data || !data.tracks) {
             throw new Error('Invalid Netflix subtitle data provided');
@@ -79,8 +81,12 @@ class NetflixParser {
 
         try {
             // Extract available languages and tracks
-            const { availableLanguages, originalTrack, targetTrack } = 
-                this.extractNetflixTracks(data, originalLanguage, targetLanguage);
+            const { availableLanguages, originalTrack, targetTrack } =
+                this.extractNetflixTracks(
+                    data,
+                    originalLanguage,
+                    targetLanguage
+                );
 
             this.logger.debug('Netflix tracks extracted', {
                 availableLanguageCount: availableLanguages.length,
@@ -98,8 +104,10 @@ class NetflixParser {
                     trackType: originalTrack.trackType,
                 });
 
-                const originalSubtitleText = await this.fetchNetflixSubtitleContent(originalTrack);
-                originalVttText = ttmlParser.convertTtmlToVtt(originalSubtitleText);
+                const originalSubtitleText =
+                    await this.fetchNetflixSubtitleContent(originalTrack);
+                originalVttText =
+                    ttmlParser.convertTtmlToVtt(originalSubtitleText);
                 sourceLanguage = normalizeLanguageCode(originalTrack.language);
             }
 
@@ -113,11 +121,14 @@ class NetflixParser {
                     trackType: targetTrack.trackType,
                 });
 
-                const targetSubtitleText = await this.fetchNetflixSubtitleContent(targetTrack);
+                const targetSubtitleText =
+                    await this.fetchNetflixSubtitleContent(targetTrack);
                 targetVttText = ttmlParser.convertTtmlToVtt(targetSubtitleText);
                 useNativeTarget = true;
             } else if (originalVttText) {
-                this.logger.debug('Will use API translation for target language');
+                this.logger.debug(
+                    'Will use API translation for target language'
+                );
                 // API translation will be handled by the translation service
                 targetVttText = originalVttText; // Placeholder - will be translated
                 useNativeTarget = false;
@@ -143,14 +154,13 @@ class NetflixParser {
             });
 
             return result;
-
         } catch (error) {
             this.logger.error('Netflix subtitle processing failed', error, {
                 targetLanguage,
                 originalLanguage,
                 trackCount: data.tracks.length,
                 errorMessage: error.message,
-                errorStack: error.stack
+                errorStack: error.stack,
             });
 
             // Return a fallback response instead of throwing to prevent the entire pipeline from failing
@@ -162,7 +172,7 @@ class NetflixParser {
                 useNativeTarget: false,
                 availableLanguages: [],
                 url: null,
-                error: error.message
+                error: error.message,
             };
         }
     }
@@ -204,19 +214,29 @@ class NetflixParser {
         const normalizedOriginal = normalizeLanguageCode(originalLanguage);
         const normalizedTarget = normalizeLanguageCode(targetLanguage);
 
-        const originalTrack = this.getBestTrackForLanguage(validTracks, normalizedOriginal);
-        const targetTrack = this.getBestTrackForLanguage(validTracks, normalizedTarget);
+        const originalTrack = this.getBestTrackForLanguage(
+            validTracks,
+            normalizedOriginal
+        );
+        const targetTrack = this.getBestTrackForLanguage(
+            validTracks,
+            normalizedTarget
+        );
 
         return {
             availableLanguages,
-            originalTrack: originalTrack ? {
-                ...originalTrack,
-                downloadUrl: this.extractDownloadUrl(originalTrack)
-            } : null,
-            targetTrack: targetTrack ? {
-                ...targetTrack,
-                downloadUrl: this.extractDownloadUrl(targetTrack)
-            } : null,
+            originalTrack: originalTrack
+                ? {
+                      ...originalTrack,
+                      downloadUrl: this.extractDownloadUrl(originalTrack),
+                  }
+                : null,
+            targetTrack: targetTrack
+                ? {
+                      ...targetTrack,
+                      downloadUrl: this.extractDownloadUrl(targetTrack),
+                  }
+                : null,
         };
     }
 
@@ -267,7 +287,7 @@ class NetflixParser {
             hasTtDownloadables: !!track?.ttDownloadables,
             hasRawTrack: !!track?.rawTrack,
             trackLanguage: track?.language,
-            trackKeys: track ? Object.keys(track) : []
+            trackKeys: track ? Object.keys(track) : [],
         });
 
         if (
@@ -277,12 +297,12 @@ class NetflixParser {
         ) {
             downloadables = track.ttDownloadables;
             this.logger.debug('Using track.ttDownloadables', {
-                formats: Object.keys(downloadables)
+                formats: Object.keys(downloadables),
             });
         } else if (track.rawTrack?.ttDownloadables) {
             downloadables = track.rawTrack.ttDownloadables;
             this.logger.debug('Using track.rawTrack.ttDownloadables', {
-                formats: Object.keys(downloadables)
+                formats: Object.keys(downloadables),
             });
         }
 
@@ -290,7 +310,7 @@ class NetflixParser {
             const formats = Object.keys(downloadables);
             this.logger.debug('Processing downloadable formats', {
                 formats,
-                formatCount: formats.length
+                formatCount: formats.length,
             });
 
             for (const format of formats) {
@@ -301,17 +321,33 @@ class NetflixParser {
                     hasUrls: !!formatData?.urls,
                     hasDownloadUrls: !!formatData?.downloadUrls,
                     urlsLength: formatData?.urls?.length || 0,
-                    downloadUrlsLength: formatData?.downloadUrls?.length || 0
+                    downloadUrlsLength: formatData?.downloadUrls?.length || 0,
                 });
 
                 // Check for both 'urls' and 'downloadUrls' to handle different Netflix data structures
-                if (formatData && formatData.urls && formatData.urls.length > 0) {
+                if (
+                    formatData &&
+                    formatData.urls &&
+                    formatData.urls.length > 0
+                ) {
                     const url = formatData.urls[0].url || formatData.urls[0];
-                    this.logger.debug('Found URL in urls array', { format, url: url.substring(0, 100) + '...' });
+                    this.logger.debug('Found URL in urls array', {
+                        format,
+                        url: url.substring(0, 100) + '...',
+                    });
                     return url;
-                } else if (formatData && formatData.downloadUrls && formatData.downloadUrls.length > 0) {
-                    const url = formatData.downloadUrls[0].url || formatData.downloadUrls[0];
-                    this.logger.debug('Found URL in downloadUrls array', { format, url: url.substring(0, 100) + '...' });
+                } else if (
+                    formatData &&
+                    formatData.downloadUrls &&
+                    formatData.downloadUrls.length > 0
+                ) {
+                    const url =
+                        formatData.downloadUrls[0].url ||
+                        formatData.downloadUrls[0];
+                    this.logger.debug('Found URL in downloadUrls array', {
+                        format,
+                        url: url.substring(0, 100) + '...',
+                    });
                     return url;
                 }
             }
@@ -319,7 +355,7 @@ class NetflixParser {
 
         this.logger.warn('No download URL found for track', {
             hasDownloadables: !!downloadables,
-            trackLanguage: track?.language
+            trackLanguage: track?.language,
         });
         return null;
     }
@@ -342,10 +378,12 @@ class NetflixParser {
         try {
             const response = await fetch(track.downloadUrl);
             if (!response.ok) {
-                throw new Error(`HTTP error ${response.status} for ${track.downloadUrl}`);
+                throw new Error(
+                    `HTTP error ${response.status} for ${track.downloadUrl}`
+                );
             }
             const content = await response.text();
-            
+
             this.logger.debug('Netflix subtitle content fetched', {
                 contentLength: content.length,
                 language: track.language,
@@ -353,10 +391,14 @@ class NetflixParser {
 
             return content;
         } catch (error) {
-            this.logger.error('Failed to fetch Netflix subtitle content', error, {
-                url: track.downloadUrl,
-                language: track.language,
-            });
+            this.logger.error(
+                'Failed to fetch Netflix subtitle content',
+                error,
+                {
+                    url: track.downloadUrl,
+                    language: track.language,
+                }
+            );
             throw error;
         }
     }

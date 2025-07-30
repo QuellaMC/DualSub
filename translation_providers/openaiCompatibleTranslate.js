@@ -442,13 +442,18 @@ export async function translate(text, sourceLang, targetLang) {
  * @returns {Promise<Array<string>>} A Promise that resolves with array of translated texts
  * @throws {Error} If the batch translation API request or processing fails
  */
-export async function translateBatch(texts, sourceLang, targetLang, delimiter = '|SUBTITLE_BREAK|') {
+export async function translateBatch(
+    texts,
+    sourceLang,
+    targetLang,
+    delimiter = '|SUBTITLE_BREAK|'
+) {
     logger.info('Batch translation request initiated', {
         sourceLang,
         targetLang,
         textCount: texts.length,
         delimiter,
-        totalLength: texts.reduce((sum, text) => sum + (text?.length || 0), 0)
+        totalLength: texts.reduce((sum, text) => sum + (text?.length || 0), 0),
     });
 
     if (!Array.isArray(texts) || texts.length === 0) {
@@ -466,25 +471,36 @@ export async function translateBatch(texts, sourceLang, targetLang, delimiter = 
         const config = await getConfig();
 
         if (!config.apiKey) {
-            throw new Error('OpenAI-compatible API key not configured for batch translation');
+            throw new Error(
+                'OpenAI-compatible API key not configured for batch translation'
+            );
         }
 
         // Prepare batch request
         const combinedText = texts.join(delimiter);
-        const normalizedBaseUrl = normalizeBaseUrl(config.baseUrl) ||
+        const normalizedBaseUrl =
+            normalizeBaseUrl(config.baseUrl) ||
             'https://generativelanguage.googleapis.com/v1beta/openai';
-        const model = normalizeModelName(config.model || 'gemini-1.5-flash', normalizedBaseUrl);
+        const model = normalizeModelName(
+            config.model || 'gemini-1.5-flash',
+            normalizedBaseUrl
+        );
         const OPENAI_COMPATIBLE_URL = `${normalizedBaseUrl}/chat/completions`;
 
         logger.debug('Batch translation configuration prepared', {
             textCount: texts.length,
             combinedLength: combinedText.length,
             model,
-            endpointUrl: OPENAI_COMPATIBLE_URL
+            endpointUrl: OPENAI_COMPATIBLE_URL,
         });
 
         // Create batch translation prompt
-        const prompt = createBatchTranslationPrompt(combinedText, sourceLang, targetLang, delimiter);
+        const prompt = createBatchTranslationPrompt(
+            combinedText,
+            sourceLang,
+            targetLang,
+            delimiter
+        );
 
         const requestBody = {
             model: model,
@@ -502,7 +518,7 @@ export async function translateBatch(texts, sourceLang, targetLang, delimiter = 
             model,
             promptLength: prompt.length,
             maxTokens: requestBody.max_tokens,
-            textCount: texts.length
+            textCount: texts.length,
         });
 
         const response = await fetch(OPENAI_COMPATIBLE_URL, {
@@ -523,7 +539,7 @@ export async function translateBatch(texts, sourceLang, targetLang, delimiter = 
                 status: response.status,
                 statusText: response.statusText,
                 responseText: errorText.substring(0, 500),
-                textCount: texts.length
+                textCount: texts.length,
             });
             throw error;
         }
@@ -531,11 +547,16 @@ export async function translateBatch(texts, sourceLang, targetLang, delimiter = 
         const data = await response.json();
 
         if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-            const error = new Error('Invalid batch translation response structure');
+            const error = new Error(
+                'Invalid batch translation response structure'
+            );
             logger.error('Invalid batch translation response', error, {
                 hasChoices: !!data.choices,
                 choicesLength: data.choices?.length || 0,
-                responseStructure: JSON.stringify(data, null, 2).substring(0, 500)
+                responseStructure: JSON.stringify(data, null, 2).substring(
+                    0,
+                    500
+                ),
             });
             throw error;
         }
@@ -543,24 +564,35 @@ export async function translateBatch(texts, sourceLang, targetLang, delimiter = 
         const translatedContent = data.choices[0].message.content;
 
         // Parse batch response
-        const translatedTexts = parseBatchTranslationResponse(translatedContent, delimiter, texts.length);
+        const translatedTexts = parseBatchTranslationResponse(
+            translatedContent,
+            delimiter,
+            texts.length
+        );
 
         logger.info('Batch translation completed successfully', {
             originalCount: texts.length,
             translatedCount: translatedTexts.length,
-            tokensUsed: data.usage?.total_tokens || 'unknown'
+            tokensUsed: data.usage?.total_tokens || 'unknown',
         });
 
         return translatedTexts;
-
     } catch (error) {
-        logger.error('Batch translation failed, falling back to individual translations', error, {
-            textCount: texts.length,
-            errorType: error.constructor.name
-        });
+        logger.error(
+            'Batch translation failed, falling back to individual translations',
+            error,
+            {
+                textCount: texts.length,
+                errorType: error.constructor.name,
+            }
+        );
 
         // Fallback to individual translations
-        return await fallbackToIndividualTranslations(texts, sourceLang, targetLang);
+        return await fallbackToIndividualTranslations(
+            texts,
+            sourceLang,
+            targetLang
+        );
     }
 }
 
@@ -571,81 +603,81 @@ export async function translateBatch(texts, sourceLang, targetLang, delimiter = 
  */
 function getLanguageName(langCode) {
     const languageMap = {
-        'auto': 'auto-detected language',
-        'en': 'English',
-        'es': 'Spanish',
-        'fr': 'French',
-        'de': 'German',
-        'it': 'Italian',
-        'pt': 'Portuguese',
-        'ru': 'Russian',
-        'ja': 'Japanese',
-        'ko': 'Korean',
-        'zh': 'Chinese',
+        auto: 'auto-detected language',
+        en: 'English',
+        es: 'Spanish',
+        fr: 'French',
+        de: 'German',
+        it: 'Italian',
+        pt: 'Portuguese',
+        ru: 'Russian',
+        ja: 'Japanese',
+        ko: 'Korean',
+        zh: 'Chinese',
         'zh-CN': 'Chinese (Simplified)',
         'zh-TW': 'Chinese (Traditional)',
-        'ar': 'Arabic',
-        'hi': 'Hindi',
-        'th': 'Thai',
-        'vi': 'Vietnamese',
-        'nl': 'Dutch',
-        'sv': 'Swedish',
-        'da': 'Danish',
-        'no': 'Norwegian',
-        'fi': 'Finnish',
-        'pl': 'Polish',
-        'cs': 'Czech',
-        'hu': 'Hungarian',
-        'ro': 'Romanian',
-        'bg': 'Bulgarian',
-        'hr': 'Croatian',
-        'sk': 'Slovak',
-        'sl': 'Slovenian',
-        'et': 'Estonian',
-        'lv': 'Latvian',
-        'lt': 'Lithuanian',
-        'uk': 'Ukrainian',
-        'be': 'Belarusian',
-        'mk': 'Macedonian',
-        'sq': 'Albanian',
-        'sr': 'Serbian',
-        'bs': 'Bosnian',
-        'mt': 'Maltese',
-        'is': 'Icelandic',
-        'ga': 'Irish',
-        'cy': 'Welsh',
-        'eu': 'Basque',
-        'ca': 'Catalan',
-        'gl': 'Galician',
-        'tr': 'Turkish',
-        'he': 'Hebrew',
-        'fa': 'Persian',
-        'ur': 'Urdu',
-        'bn': 'Bengali',
-        'ta': 'Tamil',
-        'te': 'Telugu',
-        'ml': 'Malayalam',
-        'kn': 'Kannada',
-        'gu': 'Gujarati',
-        'pa': 'Punjabi',
-        'mr': 'Marathi',
-        'ne': 'Nepali',
-        'si': 'Sinhala',
-        'my': 'Myanmar',
-        'km': 'Khmer',
-        'lo': 'Lao',
-        'ka': 'Georgian',
-        'am': 'Amharic',
-        'sw': 'Swahili',
-        'zu': 'Zulu',
-        'af': 'Afrikaans',
-        'xh': 'Xhosa',
-        'st': 'Sesotho',
-        'tn': 'Setswana',
-        'ss': 'Siswati',
-        've': 'Venda',
-        'ts': 'Tsonga',
-        'nr': 'Ndebele'
+        ar: 'Arabic',
+        hi: 'Hindi',
+        th: 'Thai',
+        vi: 'Vietnamese',
+        nl: 'Dutch',
+        sv: 'Swedish',
+        da: 'Danish',
+        no: 'Norwegian',
+        fi: 'Finnish',
+        pl: 'Polish',
+        cs: 'Czech',
+        hu: 'Hungarian',
+        ro: 'Romanian',
+        bg: 'Bulgarian',
+        hr: 'Croatian',
+        sk: 'Slovak',
+        sl: 'Slovenian',
+        et: 'Estonian',
+        lv: 'Latvian',
+        lt: 'Lithuanian',
+        uk: 'Ukrainian',
+        be: 'Belarusian',
+        mk: 'Macedonian',
+        sq: 'Albanian',
+        sr: 'Serbian',
+        bs: 'Bosnian',
+        mt: 'Maltese',
+        is: 'Icelandic',
+        ga: 'Irish',
+        cy: 'Welsh',
+        eu: 'Basque',
+        ca: 'Catalan',
+        gl: 'Galician',
+        tr: 'Turkish',
+        he: 'Hebrew',
+        fa: 'Persian',
+        ur: 'Urdu',
+        bn: 'Bengali',
+        ta: 'Tamil',
+        te: 'Telugu',
+        ml: 'Malayalam',
+        kn: 'Kannada',
+        gu: 'Gujarati',
+        pa: 'Punjabi',
+        mr: 'Marathi',
+        ne: 'Nepali',
+        si: 'Sinhala',
+        my: 'Myanmar',
+        km: 'Khmer',
+        lo: 'Lao',
+        ka: 'Georgian',
+        am: 'Amharic',
+        sw: 'Swahili',
+        zu: 'Zulu',
+        af: 'Afrikaans',
+        xh: 'Xhosa',
+        st: 'Sesotho',
+        tn: 'Setswana',
+        ss: 'Siswati',
+        ve: 'Venda',
+        ts: 'Tsonga',
+        nr: 'Ndebele',
     };
 
     return languageMap[langCode] || langCode;
@@ -659,7 +691,12 @@ function getLanguageName(langCode) {
  * @param {string} delimiter Delimiter used
  * @returns {string} Translation prompt
  */
-function createBatchTranslationPrompt(combinedText, sourceLang, targetLang, delimiter) {
+function createBatchTranslationPrompt(
+    combinedText,
+    sourceLang,
+    targetLang,
+    delimiter
+) {
     const sourceLanguageName = getLanguageName(sourceLang);
     const targetLanguageName = getLanguageName(targetLang);
 
@@ -695,14 +732,14 @@ function parseBatchTranslationResponse(response, delimiter, expectedCount) {
     // Split by delimiter and clean up
     const translations = response
         .split(delimiter)
-        .map(text => text.trim())
-        .filter(text => text.length > 0);
+        .map((text) => text.trim())
+        .filter((text) => text.length > 0);
 
     logger.debug('Parsed batch translation response', {
         expectedCount,
         actualCount: translations.length,
         delimiter,
-        responseLength: response.length
+        responseLength: response.length,
     });
 
     // Validate count
@@ -710,7 +747,7 @@ function parseBatchTranslationResponse(response, delimiter, expectedCount) {
         logger.warn('Batch translation count mismatch', {
             expected: expectedCount,
             actual: translations.length,
-            response: response.substring(0, 200)
+            response: response.substring(0, 200),
         });
 
         // Pad with empty strings if we got fewer translations
@@ -736,23 +773,27 @@ function parseBatchTranslationResponse(response, delimiter, expectedCount) {
  */
 async function fallbackToIndividualTranslations(texts, sourceLang, targetLang) {
     logger.info('Processing individual translations as fallback', {
-        textCount: texts.length
+        textCount: texts.length,
     });
 
     const results = [];
     for (let i = 0; i < texts.length; i++) {
         try {
-            const translated = await translate(texts[i], sourceLang, targetLang);
+            const translated = await translate(
+                texts[i],
+                sourceLang,
+                targetLang
+            );
             results.push(translated);
 
             // Add small delay between requests to avoid rate limiting
             if (i < texts.length - 1) {
-                await new Promise(resolve => setTimeout(resolve, 100));
+                await new Promise((resolve) => setTimeout(resolve, 100));
             }
         } catch (error) {
             logger.error('Individual translation failed in fallback', error, {
                 textIndex: i,
-                text: texts[i].substring(0, 50)
+                text: texts[i].substring(0, 50),
             });
             results.push(texts[i]); // Use original text as fallback
         }

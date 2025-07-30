@@ -408,7 +408,7 @@ input[type='range']::-moz-range-thumb {
     .content {
         padding: 20px;
     }
-    
+
     /* Updated Grid layout for mobile */
     .setting,
     .setting-with-help {
@@ -498,29 +498,29 @@ input[type='range']::-moz-range-thumb {
 
 /* Ensure text color is applied specifically to DeepL test button */
 .deepl-test-setting #testDeepLButton.btn-sparkle .text {
-    color: #AAAAAA !important;
+    color: #aaaaaa !important;
 }
 
 /* Additional specificity for button text color */
 #testDeepLButton.btn-sparkle .text {
-    color: #AAAAAA !important;
+    color: #aaaaaa !important;
 }
 
 /* Override any inherited text color */
 #testDeepLButton.btn-sparkle span.text {
-    color: #AAAAAA !important;
+    color: #aaaaaa !important;
 }
 
 /* Most specific rule for button text */
 button#testDeepLButton.btn-sparkle span.text {
-    color: #AAAAAA !important;
+    color: #aaaaaa !important;
     font-weight: 600;
 }
 
 /* Ensure all text in the button is the correct color */
 button#testDeepLButton.btn-sparkle,
 button#testDeepLButton.btn-sparkle * {
-    color: #AAAAAA !important;
+    color: #aaaaaa !important;
 }
 
 .test-result.success {
@@ -609,17 +609,17 @@ button#testDeepLButton.btn-sparkle * {
     justify-content: center;
     align-items: center;
     gap: 8px;
-    background: #1C1A1C;
+    background: #1c1a1c;
     cursor: pointer;
     transition: all 450ms ease-in-out;
     font-family: var(--font-family);
     width: auto;
     height: auto;
-    color: #AAAAAA !important; /* Ensure button text color */
+    color: #aaaaaa !important; /* Ensure button text color */
 }
 
 .btn-sparkle .sparkle {
-    fill: #AAAAAA;
+    fill: #aaaaaa;
     transition: all 800ms ease;
     width: 18px;
     height: 18px;
@@ -627,16 +627,17 @@ button#testDeepLButton.btn-sparkle * {
 
 .btn-sparkle .text {
     font-weight: 600;
-    color: #AAAAAA !important;
+    color: #aaaaaa !important;
     font-size: 14px;
 }
 
 .btn-sparkle:hover {
-    background: linear-gradient(0deg, #A47CF3, #683FEA);
-    box-shadow: inset 0px 1px 0px 0px rgba(255, 255, 255, 0.4),
-    inset 0px -4px 0px 0px rgba(0, 0, 0, 0.2),
-    0px 0px 0px 4px rgba(255, 255, 255, 0.2),
-    0px 0px 180px 0px #9917FF;
+    background: linear-gradient(0deg, #a47cf3, #683fea);
+    box-shadow:
+        inset 0px 1px 0px 0px rgba(255, 255, 255, 0.4),
+        inset 0px -4px 0px 0px rgba(0, 0, 0, 0.2),
+        0px 0px 0px 4px rgba(255, 255, 255, 0.2),
+        0px 0px 180px 0px #9917ff;
     transform: translateY(-2px);
 }
 
@@ -670,8 +671,9 @@ button#testDeepLButton.btn-sparkle:hover span.text {
 
 .btn-sparkle:active {
     transform: translateY(0);
-    box-shadow: inset 0px 1px 0px 0px rgba(255, 255, 255, 0.2),
-    inset 0px -2px 0px 0px rgba(0, 0, 0, 0.1),
-    0px 0px 0px 2px rgba(255, 255, 255, 0.1),
-    0px 0px 90px 0px #9917FF;
+    box-shadow:
+        inset 0px 1px 0px 0px rgba(255, 255, 255, 0.2),
+        inset 0px -2px 0px 0px rgba(0, 0, 0, 0.1),
+        0px 0px 0px 2px rgba(255, 255, 255, 0.1),
+        0px 0px 90px 0px #9917ff;
 }

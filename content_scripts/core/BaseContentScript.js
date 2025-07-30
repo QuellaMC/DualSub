@@ -1623,7 +1623,7 @@ export class BaseContentScript {
             targetLanguage: subtitleData?.targetLanguage,
             hasSubtitleUtils: !!this.subtitleUtils,
             hasActivePlatform: !!this.activePlatform,
-            subtitlesActive: this.subtitleUtils?.subtitlesActive
+            subtitlesActive: this.subtitleUtils?.subtitlesActive,
         });
 
         if (this.subtitleUtils && this.subtitleUtils.handleSubtitleDataFound) {
@@ -1634,11 +1634,16 @@ export class BaseContentScript {
                 this.logPrefix
             );
         } else {
-            this.logWithFallback('error', 'Cannot handle subtitle data - missing dependencies', {
-                hasSubtitleUtils: !!this.subtitleUtils,
-                hasHandleMethod: !!(this.subtitleUtils?.handleSubtitleDataFound),
-                hasActivePlatform: !!this.activePlatform
-            });
+            this.logWithFallback(
+                'error',
+                'Cannot handle subtitle data - missing dependencies',
+                {
+                    hasSubtitleUtils: !!this.subtitleUtils,
+                    hasHandleMethod:
+                        !!this.subtitleUtils?.handleSubtitleDataFound,
+                    hasActivePlatform: !!this.activePlatform,
+                }
+            );
         }
     }
 

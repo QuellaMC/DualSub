@@ -1,17 +1,21 @@
 /**
  * Message Handler for Background Services
- * 
+ *
  * Handles all chrome.runtime.onMessage communication between
  * content scripts and background services.
- * 
+ *
  * Maintains exact same API interface as original background.js
- * 
+ *
  * @author DualSub Extension
  * @version 2.0.0
  */
 
 import { loggingManager } from '../utils/loggingManager.js';
-import { ServiceProtocol, TranslationError, SubtitleProcessingError } from '../services/serviceInterfaces.js';
+import {
+    ServiceProtocol,
+    TranslationError,
+    SubtitleProcessingError,
+} from '../services/serviceInterfaces.js';
 
 class MessageHandler {
     constructor() {
@@ -30,10 +34,10 @@ class MessageHandler {
         }
 
         this.logger = loggingManager.createLogger('MessageHandler');
-        
+
         // Set up message listener
         chrome.runtime.onMessage.addListener(this.handleMessage.bind(this));
-        
+
         this.logger.info('Message handler initialized');
         this.isInitialized = true;
     }
@@ -58,7 +62,7 @@ class MessageHandler {
         this.logger.debug('Received message', {
             action: message.action,
             source: message.source,
-            tabId: sender.tab?.id
+            tabId: sender.tab?.id,
         });
 
         switch (message.action) {
@@ -69,7 +73,10 @@ class MessageHandler {
                 return this.handleTranslateBatchMessage(message, sendResponse);
 
             case 'checkBatchSupport':
-                return this.handleCheckBatchSupportMessage(message, sendResponse);
+                return this.handleCheckBatchSupportMessage(
+                    message,
+                    sendResponse
+                );
 
             case 'fetchVTT':
                 return this.handleFetchVTTMessage(message, sendResponse);
@@ -78,7 +85,9 @@ class MessageHandler {
                 return this.handleChangeProviderMessage(message, sendResponse);
 
             default:
-                this.logger.warn('Unknown message action', { action: message.action });
+                this.logger.warn('Unknown message action', {
+                    action: message.action,
+                });
                 return false;
         }
     }
@@ -96,14 +105,20 @@ class MessageHandler {
                 targetLang: message.targetLang,
                 options: {
                     cueStart: message.cueStart,
-                    cueVideoId: message.cueVideoId
-                }
+                    cueVideoId: message.cueVideoId,
+                },
             }
         );
 
         if (!this.translationService) {
-            const error = new TranslationError('Translation service not initialized');
-            const response = ServiceProtocol.createResponse(request, null, error);
+            const error = new TranslationError(
+                'Translation service not initialized'
+            );
+            const response = ServiceProtocol.createResponse(
+                request,
+                null,
+                error
+            );
             sendResponse({
                 ...response,
                 originalText: message.text,
@@ -124,7 +139,7 @@ class MessageHandler {
                     sourceLanguage: 'auto',
                     targetLanguage: targetLang,
                     cached: false, // TODO: Get from service
-                    processingTime: Date.now() - request.metadata.timestamp
+                    processingTime: Date.now() - request.metadata.timestamp,
                 });
 
                 sendResponse({
@@ -141,9 +156,17 @@ class MessageHandler {
 
                 const translationError = new TranslationError(
                     'Translation failed',
-                    { originalError: error.message, provider: this.translationService.getCurrentProvider()?.id }
+                    {
+                        originalError: error.message,
+                        provider:
+                            this.translationService.getCurrentProvider()?.id,
+                    }
                 );
-                const response = ServiceProtocol.createResponse(request, null, translationError);
+                const response = ServiceProtocol.createResponse(
+                    request,
+                    null,
+                    translationError
+                );
 
                 sendResponse({
                     error: response.error.message,
@@ -172,17 +195,23 @@ class MessageHandler {
                 delimiter: message.delimiter,
                 options: {
                     batchId: message.batchId,
-                    cueMetadata: message.cueMetadata
-                }
+                    cueMetadata: message.cueMetadata,
+                },
             }
         );
 
         if (!this.translationService) {
-            const error = new TranslationError('Translation service not initialized');
-            const response = ServiceProtocol.createResponse(request, null, error);
+            const error = new TranslationError(
+                'Translation service not initialized'
+            );
+            const response = ServiceProtocol.createResponse(
+                request,
+                null,
+                error
+            );
             sendResponse({
                 ...response,
-                batchId: message.batchId
+                batchId: message.batchId,
             });
             return true;
         }
@@ -190,27 +219,27 @@ class MessageHandler {
         this.translationService
             .translateBatch(message.texts, 'auto', message.targetLang, {
                 delimiter: message.delimiter,
-                batchId: message.batchId
+                batchId: message.batchId,
             })
             .then((translations) => {
                 const response = ServiceProtocol.createResponse(request, {
                     translations,
                     batchId: message.batchId,
                     originalTexts: message.texts,
-                    processingTime: Date.now() - request.metadata.timestamp
+                    processingTime: Date.now() - request.metadata.timestamp,
                 });
 
                 sendResponse({
                     success: true,
                     translations,
                     batchId: message.batchId,
-                    processingTime: response.metadata.processingTime
+                    processingTime: response.metadata.processingTime,
                 });
             })
             .catch((error) => {
                 this.logger.error('Batch translation failed', error, {
                     batchId: message.batchId,
-                    textCount: message.texts?.length || 0
+                    textCount: message.texts?.length || 0,
                 });
 
                 const translationError = new TranslationError(
@@ -218,16 +247,21 @@ class MessageHandler {
                     {
                         originalError: error.message,
                         batchId: message.batchId,
-                        provider: this.translationService.getCurrentProvider()?.id
+                        provider:
+                            this.translationService.getCurrentProvider()?.id,
                     }
                 );
-                const response = ServiceProtocol.createResponse(request, null, translationError);
+                const response = ServiceProtocol.createResponse(
+                    request,
+                    null,
+                    translationError
+                );
 
                 sendResponse({
                     success: false,
                     error: response.error.message,
                     errorType: response.error.type,
-                    batchId: message.batchId
+                    batchId: message.batchId,
                 });
             });
 
@@ -243,13 +277,14 @@ class MessageHandler {
             return true;
         }
 
-        const supportsBatch = this.translationService.currentProviderSupportsBatch();
+        const supportsBatch =
+            this.translationService.currentProviderSupportsBatch();
         const provider = this.translationService.getCurrentProvider();
 
         sendResponse({
             supportsBatch,
             provider: provider?.name || 'Unknown',
-            providerId: this.translationService.currentProviderId
+            providerId: this.translationService.currentProviderId,
         });
 
         return true;
@@ -274,7 +309,7 @@ class MessageHandler {
         } else {
             this.handleGenericVTTRequest(message, sendResponse);
         }
-        
+
         return true; // Async response
     }
 
@@ -299,7 +334,7 @@ class MessageHandler {
                 targetLanguage,
                 originalLanguage,
                 useNativeSubtitles,
-                useOfficialTranslations
+                useOfficialTranslations,
             },
             { videoId }
         );
@@ -313,12 +348,15 @@ class MessageHandler {
                 useOfficialTranslations
             )
             .then((result) => {
-                const response = ServiceProtocol.createResponse(request, result);
+                const response = ServiceProtocol.createResponse(
+                    request,
+                    result
+                );
                 sendResponse({
                     success: true,
                     ...result,
                     videoId,
-                    processingTime: response.metadata.processingTime
+                    processingTime: response.metadata.processingTime,
                 });
             })
             .catch((error) => {
@@ -330,7 +368,11 @@ class MessageHandler {
                     `Netflix VTT Processing Error: ${error.message}`,
                     { platform: 'netflix', videoId }
                 );
-                const response = ServiceProtocol.createResponse(request, null, subtitleError);
+                const response = ServiceProtocol.createResponse(
+                    request,
+                    null,
+                    subtitleError
+                );
 
                 sendResponse({
                     success: false,
@@ -389,7 +431,7 @@ class MessageHandler {
         }
 
         const { providerId } = message;
-        
+
         this.translationService
             .changeProvider(providerId)
             .then((result) => {
@@ -399,13 +441,15 @@ class MessageHandler {
                 });
             })
             .catch((error) => {
-                this.logger.error('Provider change failed', error, { providerId });
+                this.logger.error('Provider change failed', error, {
+                    providerId,
+                });
                 sendResponse({
                     success: false,
                     message: error.message || 'Failed to change provider',
                 });
             });
-        
+
         return true; // Async response
     }
 }

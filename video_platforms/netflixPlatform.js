@@ -387,11 +387,18 @@ export class NetflixPlatform extends VideoPlatform {
                                 }
 
                                 if (this.onSubtitleUrlFoundCallback) {
-                                    this.logger.info('Netflix subtitle callback is available, preparing data', {
-                                        hasCallback: !!this.onSubtitleUrlFoundCallback,
-                                        callbackType: typeof this.onSubtitleUrlFoundCallback,
-                                        videoId: response.videoId
-                                    });
+                                    this.logger.info(
+                                        'Netflix subtitle callback is available, preparing data',
+                                        {
+                                            hasCallback:
+                                                !!this
+                                                    .onSubtitleUrlFoundCallback,
+                                            callbackType:
+                                                typeof this
+                                                    .onSubtitleUrlFoundCallback,
+                                            videoId: response.videoId,
+                                        }
+                                    );
 
                                     // Enhanced logging for subtitle processing pipeline
                                     const subtitleData = {
@@ -436,25 +443,42 @@ export class NetflixPlatform extends VideoPlatform {
                                     );
 
                                     // The callback expects a 'SubtitleData' object, as defined in subtitleUtilities.js
-                                    this.logger.info('Calling Netflix subtitle callback with data', {
-                                        videoId: subtitleData.videoId,
-                                        hasVttText: !!subtitleData.vttText,
-                                        hasTargetVttText: !!subtitleData.targetVttText,
-                                        useNativeTarget: subtitleData.useNativeTarget,
-                                        vttTextLength: subtitleData.vttText?.length || 0,
-                                        targetVttTextLength: subtitleData.targetVttText?.length || 0
-                                    });
+                                    this.logger.info(
+                                        'Calling Netflix subtitle callback with data',
+                                        {
+                                            videoId: subtitleData.videoId,
+                                            hasVttText: !!subtitleData.vttText,
+                                            hasTargetVttText:
+                                                !!subtitleData.targetVttText,
+                                            useNativeTarget:
+                                                subtitleData.useNativeTarget,
+                                            vttTextLength:
+                                                subtitleData.vttText?.length ||
+                                                0,
+                                            targetVttTextLength:
+                                                subtitleData.targetVttText
+                                                    ?.length || 0,
+                                        }
+                                    );
 
                                     this.onSubtitleUrlFoundCallback(
                                         subtitleData
                                     );
 
-                                    this.logger.debug('Netflix subtitle callback completed');
+                                    this.logger.debug(
+                                        'Netflix subtitle callback completed'
+                                    );
                                 } else {
-                                    this.logger.error('Netflix subtitle callback is not available', {
-                                        hasCallback: !!this.onSubtitleUrlFoundCallback,
-                                        callbackValue: this.onSubtitleUrlFoundCallback
-                                    });
+                                    this.logger.error(
+                                        'Netflix subtitle callback is not available',
+                                        {
+                                            hasCallback:
+                                                !!this
+                                                    .onSubtitleUrlFoundCallback,
+                                            callbackValue:
+                                                this.onSubtitleUrlFoundCallback,
+                                        }
+                                    );
                                 }
                             } else if (response && !response.success) {
                                 // Enhanced error logging for debugging official translation functionality

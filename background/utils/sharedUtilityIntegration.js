@@ -1,10 +1,10 @@
 /**
  * Shared Utility Integration Helper
- * 
+ *
  * Centralizes imports and provides optimized access to shared utilities
  * from content_scripts/shared. Ensures consistent integration patterns
  * and eliminates duplicate imports.
- * 
+ *
  * @author DualSub Extension
  * @version 2.0.0
  */
@@ -33,7 +33,7 @@ function parseVTTServiceWorker(vttString) {
         const line = lines[i].trim();
 
         if (line.includes('-->')) {
-            const [startTime, endTime] = line.split('-->').map(t => t.trim());
+            const [startTime, endTime] = line.split('-->').map((t) => t.trim());
             const start = parseTimestampToSecondsServiceWorker(startTime);
             const end = parseTimestampToSecondsServiceWorker(endTime);
 
@@ -49,7 +49,7 @@ function parseVTTServiceWorker(vttString) {
                 cues.push({
                     start,
                     end,
-                    text: textLines.join(' ')
+                    text: textLines.join(' '),
                 });
             }
         }
@@ -69,7 +69,9 @@ function parseTimestampToSecondsServiceWorker(timestamp) {
         const minutes = parseInt(parts[1], 10);
         const secondsParts = parts[2].split('.');
         const seconds = parseInt(secondsParts[0], 10);
-        const milliseconds = secondsParts[1] ? parseInt(secondsParts[1].padEnd(3, '0'), 10) : 0;
+        const milliseconds = secondsParts[1]
+            ? parseInt(secondsParts[1].padEnd(3, '0'), 10)
+            : 0;
 
         return hours * 3600 + minutes * 60 + seconds + milliseconds / 1000;
     }
@@ -109,7 +111,7 @@ class SharedUtilityIntegration {
             timestampParseCalls: 0,
             timestampParseTime: 0,
             cacheHits: 0,
-            cacheMisses: 0
+            cacheMisses: 0,
         };
     }
 
@@ -121,7 +123,7 @@ class SharedUtilityIntegration {
      */
     parseVTT(vttString, options = {}) {
         const startTime = Date.now();
-        
+
         // Check cache if enabled
         if (options.enableCache !== false) {
             const cacheKey = this.generateCacheKey('parseVTT', vttString);
@@ -150,14 +152,14 @@ class SharedUtilityIntegration {
             this.logger.debug('VTT parsing completed', {
                 cueCount: result.length,
                 processingTime,
-                cached: false
+                cached: false,
             });
 
             return result;
         } catch (error) {
             this.logger.error('VTT parsing failed', error, {
                 contentLength: vttString.length,
-                contentPreview: vttString.substring(0, 100)
+                contentPreview: vttString.substring(0, 100),
             });
             throw error;
         }
@@ -171,7 +173,7 @@ class SharedUtilityIntegration {
      */
     parseTimestampToSeconds(timestamp, options = {}) {
         const startTime = Date.now();
-        
+
         // Check cache if enabled
         if (options.enableCache !== false) {
             const cacheKey = this.generateCacheKey('timestamp', timestamp);
@@ -214,7 +216,7 @@ class SharedUtilityIntegration {
             return formatSubtitleTextServiceWorker(text);
         } catch (error) {
             this.logger.error('Text formatting failed', error, {
-                text: text.substring(0, 50)
+                text: text.substring(0, 50),
             });
             return text; // Fallback to original text
         }
@@ -238,7 +240,7 @@ class SharedUtilityIntegration {
         const str = `${type}:${content}`;
         for (let i = 0; i < str.length; i++) {
             const char = str.charCodeAt(i);
-            hash = ((hash << 5) - hash) + char;
+            hash = (hash << 5) - hash + char;
             hash = hash & hash; // Convert to 32-bit integer
         }
         return `${type}_${hash.toString(36)}`;
@@ -251,16 +253,26 @@ class SharedUtilityIntegration {
     getPerformanceMetrics() {
         return {
             ...this.performanceMetrics,
-            averageParseVTTTime: this.performanceMetrics.parseVTTCalls > 0 
-                ? this.performanceMetrics.parseVTTTime / this.performanceMetrics.parseVTTCalls 
-                : 0,
-            averageTimestampParseTime: this.performanceMetrics.timestampParseCalls > 0 
-                ? this.performanceMetrics.timestampParseTime / this.performanceMetrics.timestampParseCalls 
-                : 0,
-            cacheHitRate: (this.performanceMetrics.cacheHits + this.performanceMetrics.cacheMisses) > 0
-                ? (this.performanceMetrics.cacheHits / (this.performanceMetrics.cacheHits + this.performanceMetrics.cacheMisses)) * 100
-                : 0,
-            cacheSize: this.cache.size
+            averageParseVTTTime:
+                this.performanceMetrics.parseVTTCalls > 0
+                    ? this.performanceMetrics.parseVTTTime /
+                      this.performanceMetrics.parseVTTCalls
+                    : 0,
+            averageTimestampParseTime:
+                this.performanceMetrics.timestampParseCalls > 0
+                    ? this.performanceMetrics.timestampParseTime /
+                      this.performanceMetrics.timestampParseCalls
+                    : 0,
+            cacheHitRate:
+                this.performanceMetrics.cacheHits +
+                    this.performanceMetrics.cacheMisses >
+                0
+                    ? (this.performanceMetrics.cacheHits /
+                          (this.performanceMetrics.cacheHits +
+                              this.performanceMetrics.cacheMisses)) *
+                      100
+                    : 0,
+            cacheSize: this.cache.size,
         };
     }
 
@@ -281,9 +293,15 @@ class SharedUtilityIntegration {
             size: this.cache.size,
             hits: this.performanceMetrics.cacheHits,
             misses: this.performanceMetrics.cacheMisses,
-            hitRate: this.performanceMetrics.cacheHits + this.performanceMetrics.cacheMisses > 0
-                ? (this.performanceMetrics.cacheHits / (this.performanceMetrics.cacheHits + this.performanceMetrics.cacheMisses)) * 100
-                : 0
+            hitRate:
+                this.performanceMetrics.cacheHits +
+                    this.performanceMetrics.cacheMisses >
+                0
+                    ? (this.performanceMetrics.cacheHits /
+                          (this.performanceMetrics.cacheHits +
+                              this.performanceMetrics.cacheMisses)) *
+                      100
+                    : 0,
         };
     }
 }
@@ -295,5 +313,5 @@ export const sharedUtilityIntegration = new SharedUtilityIntegration();
 export {
     parseVTTServiceWorker as parseVTT,
     parseTimestampToSecondsServiceWorker as parseTimestampToSeconds,
-    formatSubtitleTextServiceWorker as formatSubtitleTextForDisplay
+    formatSubtitleTextServiceWorker as formatSubtitleTextForDisplay,
 };

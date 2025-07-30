@@ -1,16 +1,16 @@
 /**
  * Service Interface Definitions
- * 
+ *
  * Defines clear interfaces and contracts between services to ensure
  * proper separation of concerns and data flow.
- * 
+ *
  * @author DualSub Extension
  * @version 2.0.0
  */
 
 /**
  * Translation Service Interface
- * 
+ *
  * Handles all translation-related operations including provider management,
  * caching, rate limiting, and batch processing preparation.
  */
@@ -63,7 +63,7 @@ export class ITranslationService {
 
 /**
  * Subtitle Service Interface
- * 
+ *
  * Handles subtitle fetching, processing, and platform-specific coordination.
  * Coordinates with parser modules and manages subtitle workflows.
  */
@@ -85,7 +85,13 @@ export class ISubtitleService {
      * @param {boolean} useOfficialTranslations - Whether to use official translations
      * @returns {Promise<Object>} Processed subtitle result
      */
-    async processNetflixSubtitles(data, targetLanguage, originalLanguage, useNativeSubtitles, useOfficialTranslations) {
+    async processNetflixSubtitles(
+        data,
+        targetLanguage,
+        originalLanguage,
+        useNativeSubtitles,
+        useOfficialTranslations
+    ) {
         throw new Error('Method must be implemented');
     }
 
@@ -132,7 +138,7 @@ export class ISubtitleService {
 
 /**
  * Service Communication Protocol
- * 
+ *
  * Defines the standard message format and response structure
  * for communication between services and external components.
  */
@@ -153,8 +159,8 @@ export class ServiceProtocol {
             metadata: {
                 timestamp: Date.now(),
                 requestId: this.generateRequestId(),
-                ...metadata
-            }
+                ...metadata,
+            },
         };
     }
 
@@ -172,17 +178,21 @@ export class ServiceProtocol {
             method: request.method,
             success: !error,
             result,
-            error: error ? {
-                message: error.message,
-                type: error.constructor.name,
-                stack: error.stack
-            } : null,
+            error: error
+                ? {
+                      message: error.message,
+                      type: error.constructor.name,
+                      stack: error.stack,
+                  }
+                : null,
             metadata: {
                 timestamp: Date.now(),
-                processingTime: request.metadata && typeof request.metadata.timestamp === 'number'
-                    ? Date.now() - request.metadata.timestamp
-                    : 0
-            }
+                processingTime:
+                    request.metadata &&
+                    typeof request.metadata.timestamp === 'number'
+                        ? Date.now() - request.metadata.timestamp
+                        : 0,
+            },
         };
     }
 
@@ -197,7 +207,7 @@ export class ServiceProtocol {
 
 /**
  * Service Error Types
- * 
+ *
  * Standard error types for service operations
  */
 export class ServiceError extends Error {
@@ -233,7 +243,7 @@ export class RateLimitError extends ServiceError {
 
 /**
  * Service Data Flow Contracts
- * 
+ *
  * Defines the expected data structures for service interactions
  */
 export const DataContracts = {
@@ -242,23 +252,23 @@ export const DataContracts = {
         text: 'string',
         sourceLang: 'string',
         targetLang: 'string',
-        options: 'object?'
+        options: 'object?',
     },
-    
+
     TranslationResponse: {
         translatedText: 'string',
         originalText: 'string',
         sourceLanguage: 'string',
         targetLanguage: 'string',
         cached: 'boolean',
-        processingTime: 'number'
+        processingTime: 'number',
     },
 
     // Subtitle processing request/response
     SubtitleRequest: {
         platform: 'string',
         data: 'object',
-        options: 'object?'
+        options: 'object?',
     },
 
     SubtitleResponse: {
@@ -268,13 +278,13 @@ export const DataContracts = {
         targetLanguage: 'string',
         useNativeTarget: 'boolean',
         availableLanguages: 'array',
-        url: 'string?'
+        url: 'string?',
     },
 
     // Netflix-specific data
     NetflixSubtitleData: {
         tracks: 'array',
-        videoId: 'string?'
+        videoId: 'string?',
     },
 
     // Performance metrics
@@ -283,13 +293,13 @@ export const DataContracts = {
         averageProcessingTime: 'number',
         cacheHits: 'number',
         errors: 'number',
-        errorRate: 'number'
-    }
+        errorRate: 'number',
+    },
 };
 
 /**
  * Service Registry
- * 
+ *
  * Central registry for service discovery and dependency injection
  */
 export class ServiceRegistry {
@@ -342,7 +352,7 @@ export class ServiceRegistry {
      */
     validateDependencies(name) {
         const deps = this.dependencies.get(name) || [];
-        return deps.every(dep => this.services.has(dep));
+        return deps.every((dep) => this.services.has(dep));
     }
 }
 
