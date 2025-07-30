@@ -145,6 +145,17 @@ describe('configSchema', () => {
                 'globalBatchSize',
                 'batchingEnabled',
                 'useProviderDefaults',
+                // Provider-specific batch sizes
+                'openaieBatchSize',
+                'googleBatchSize',
+                'deeplBatchSize',
+                'microsoftBatchSize',
+                // Provider-specific delay settings
+                'openaieDelay',
+                'googleDelay',
+                'deeplDelay',
+                'deeplFreeDelay',
+                'microsoftDelay',
                 'deeplApiKey',
                 'deeplApiPlan',
                 'openaiCompatibleApiKey',

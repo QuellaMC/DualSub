@@ -209,5 +209,32 @@
     "microsoftBatchSizeLabel": { "message": "Microsoft 翻譯批次大小：" },
     "microsoftBatchSizeHelp": {
         "message": "建議：3-5 個片段（預設：4）"
+    },
+
+    "deeplTestNeedsTesting": { "message": "⚠️ DeepL API 金鑰需要測試。" },
+
+    "cardProviderDelayTitle": { "message": "提供商特定請求延遲" },
+    "cardProviderDelayDesc": {
+        "message": "設定翻譯請求之間的強制延遲以防止帳戶鎖定。即使啟用批次處理，這些延遲也會套用。"
+    },
+    "openaieDelayLabel": { "message": "OpenAI 請求延遲 (ms)：" },
+    "openaieDelayHelp": {
+        "message": "請求之間的最小延遲（預設：100ms）"
+    },
+    "googleDelayLabel": { "message": "Google 翻譯請求延遲 (ms)：" },
+    "googleDelayHelp": {
+        "message": "防止臨時鎖定所需的延遲（預設：1500ms）"
+    },
+    "deeplDelayLabel": { "message": "DeepL API 請求延遲 (ms)：" },
+    "deeplDelayHelp": {
+        "message": "DeepL API 請求的延遲（預設：500ms）"
+    },
+    "deeplFreeDelayLabel": { "message": "DeepL 免費請求延遲 (ms)：" },
+    "deeplFreeDelayHelp": {
+        "message": "免費層的保守延遲（預設：2000ms）"
+    },
+    "microsoftDelayLabel": { "message": "Microsoft 翻譯請求延遲 (ms)：" },
+    "microsoftDelayHelp": {
+        "message": "尊重字元限制的延遲（預設：800ms）"
     }
 }

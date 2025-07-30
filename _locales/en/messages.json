@@ -111,6 +111,7 @@
 
     "testDeepLButton": { "message": "Test DeepL Connection" },
     "deeplApiKeyError": { "message": "Please enter your DeepL API key first." },
+    "deeplTestNeedsTesting": { "message": "⚠️ DeepL API key needs testing." },
     "testingButton": { "message": "Testing..." },
     "testingConnection": { "message": "Testing DeepL connection..." },
     "deeplTestSuccess": {
@@ -233,5 +234,30 @@
     "microsoftBatchSizeLabel": { "message": "Microsoft Translate Batch Size:" },
     "microsoftBatchSizeHelp": {
         "message": "Recommended: 3-5 segments (default: 4)"
+    },
+
+    "cardProviderDelayTitle": { "message": "Provider-Specific Request Delays" },
+    "cardProviderDelayDesc": {
+        "message": "Configure mandatory delays between translation requests to prevent account lockouts. These delays are applied even when batch processing is enabled."
+    },
+    "openaieDelayLabel": { "message": "OpenAI Request Delay (ms):" },
+    "openaieDelayHelp": {
+        "message": "Minimum delay between requests (default: 100ms)"
+    },
+    "googleDelayLabel": { "message": "Google Translate Request Delay (ms):" },
+    "googleDelayHelp": {
+        "message": "Required delay to prevent temporary lockouts (default: 1500ms)"
+    },
+    "deeplDelayLabel": { "message": "DeepL API Request Delay (ms):" },
+    "deeplDelayHelp": {
+        "message": "Delay for DeepL API requests (default: 500ms)"
+    },
+    "deeplFreeDelayLabel": { "message": "DeepL Free Request Delay (ms):" },
+    "deeplFreeDelayHelp": {
+        "message": "Conservative delay for free tier (default: 2000ms)"
+    },
+    "microsoftDelayLabel": { "message": "Microsoft Translate Request Delay (ms):" },
+    "microsoftDelayHelp": {
+        "message": "Delay to respect character limits (default: 800ms)"
     }
 }

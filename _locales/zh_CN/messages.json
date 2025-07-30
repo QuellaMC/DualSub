@@ -206,5 +206,32 @@
     "microsoftBatchSizeLabel": { "message": "微软翻译批量大小：" },
     "microsoftBatchSizeHelp": {
         "message": "推荐：3-5 个片段（默认：4）"
+    },
+
+    "deeplTestNeedsTesting": { "message": "⚠️ DeepL API 密钥需要测试。" },
+
+    "cardProviderDelayTitle": { "message": "提供商特定请求延迟" },
+    "cardProviderDelayDesc": {
+        "message": "配置翻译请求之间的强制延迟以防止账户锁定。即使启用批量处理，这些延迟也会应用。"
+    },
+    "openaieDelayLabel": { "message": "OpenAI 请求延迟 (ms)：" },
+    "openaieDelayHelp": {
+        "message": "请求之间的最小延迟（默认：100ms）"
+    },
+    "googleDelayLabel": { "message": "谷歌翻译请求延迟 (ms)：" },
+    "googleDelayHelp": {
+        "message": "防止临时锁定所需的延迟（默认：1500ms）"
+    },
+    "deeplDelayLabel": { "message": "DeepL API 请求延迟 (ms)：" },
+    "deeplDelayHelp": {
+        "message": "DeepL API 请求的延迟（默认：500ms）"
+    },
+    "deeplFreeDelayLabel": { "message": "DeepL 免费请求延迟 (ms)：" },
+    "deeplFreeDelayHelp": {
+        "message": "免费层的保守延迟（默认：2000ms）"
+    },
+    "microsoftDelayLabel": { "message": "微软翻译请求延迟 (ms)：" },
+    "microsoftDelayHelp": {
+        "message": "尊重字符限制的延迟（默认：800ms）"
     }
 }

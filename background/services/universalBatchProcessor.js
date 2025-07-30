@@ -21,35 +21,45 @@ const PROVIDER_BATCH_CONFIGS = {
         maxBatchSize: 15,
         delimiter: '|SUBTITLE_BREAK|',
         supportsBatch: true,
-        batchMethod: 'delimiter'
+        batchMethod: 'delimiter',
+        mandatoryDelay: 100, // 100ms between requests
+        batchDelay: 50 // Shorter delay for batch processing
     },
     google: {
         defaultBatchSize: 4,
         maxBatchSize: 8,
         delimiter: '\n---SUBTITLE---\n',
         supportsBatch: false, // Will use simulated batch
-        batchMethod: 'simulated'
+        batchMethod: 'simulated',
+        mandatoryDelay: 1500, // 1.5 seconds between requests (Google's requirement)
+        batchDelay: 1500 // Same delay for batch processing to prevent lockouts
     },
     deepl: {
         defaultBatchSize: 3,
         maxBatchSize: 6,
         delimiter: '\n[SUBTITLE]\n',
         supportsBatch: false, // Will use simulated batch
-        batchMethod: 'simulated'
+        batchMethod: 'simulated',
+        mandatoryDelay: 500, // 500ms between requests
+        batchDelay: 500 // Same delay for batch processing
     },
     deepl_free: {
         defaultBatchSize: 2,
         maxBatchSize: 4,
         delimiter: '\n[SUBTITLE]\n',
         supportsBatch: false, // Will use simulated batch
-        batchMethod: 'simulated'
+        batchMethod: 'simulated',
+        mandatoryDelay: 2000, // 2 seconds between requests (more conservative for free tier)
+        batchDelay: 2000 // Same delay for batch processing
     },
     microsoft_edge_auth: {
         defaultBatchSize: 4,
         maxBatchSize: 8,
         delimiter: '\n||SUBTITLE||\n',
         supportsBatch: false, // Will use simulated batch
-        batchMethod: 'simulated'
+        batchMethod: 'simulated',
+        mandatoryDelay: 800, // 800ms between requests (Microsoft's requirement)
+        batchDelay: 800 // Same delay for batch processing
     }
 };
 
@@ -490,7 +500,19 @@ class UniversalBatchProcessor {
      */
     async processIndividualBatch(texts, sourceLang, targetLang, translationService, options = {}) {
         const results = [];
-        const delay = options.batchDelay || 50; // Shorter delay for batch processing
+        const providerId = translationService.currentProviderId;
+        const providerConfig = this.getProviderBatchConfig(providerId);
+
+        // Use provider-specific batch delay or fallback to configured delay
+        const providerDelay = providerConfig.batchDelay || providerConfig.mandatoryDelay || 50;
+        const delay = options.batchDelay || providerDelay;
+
+        this.logger.debug('Processing individual batch with provider-specific delays', {
+            provider: providerId,
+            textCount: texts.length,
+            providerDelay,
+            finalDelay: delay
+        });
 
         for (let i = 0; i < texts.length; i++) {
             try {
@@ -501,7 +523,8 @@ class UniversalBatchProcessor {
                 });
                 results.push(translated);
 
-                // Add small delay between requests
+                // Add delay between requests to prevent account lockouts
+                // Note: translate() method already applies mandatory delay, but we add extra delay for batch safety
                 if (i < texts.length - 1 && delay > 0) {
                     await new Promise(resolve => setTimeout(resolve, delay));
                 }

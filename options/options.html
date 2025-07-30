@@ -397,6 +397,119 @@
                             />
                         </div>
                     </div>
+
+                    <div class="setting-card" id="providerDelaySettings">
+                        <h3 data-i18n="cardProviderDelayTitle">Provider-Specific Request Delays</h3>
+                        <p data-i18n="cardProviderDelayDesc">
+                            Configure mandatory delays between translation requests to prevent account lockouts.
+                            These delays are applied even when batch processing is enabled.
+                        </p>
+
+                        <div class="setting setting-with-help">
+                            <div class="setting-content">
+                                <label
+                                    for="openaieDelay"
+                                    data-i18n="openaieDelayLabel"
+                                    >OpenAI Request Delay (ms):</label
+                                >
+                                <div class="setting-help" data-i18n="openaieDelayHelp">
+                                    Minimum delay between requests (default: 100ms)
+                                </div>
+                            </div>
+                            <input
+                                type="number"
+                                id="openaieDelay"
+                                min="50"
+                                max="5000"
+                                step="50"
+                                value="100"
+                            />
+                        </div>
+
+                        <div class="setting setting-with-help">
+                            <div class="setting-content">
+                                <label
+                                    for="googleDelay"
+                                    data-i18n="googleDelayLabel"
+                                    >Google Translate Request Delay (ms):</label
+                                >
+                                <div class="setting-help" data-i18n="googleDelayHelp">
+                                    Required delay to prevent temporary lockouts (default: 1500ms)
+                                </div>
+                            </div>
+                            <input
+                                type="number"
+                                id="googleDelay"
+                                min="1000"
+                                max="10000"
+                                step="100"
+                                value="1500"
+                            />
+                        </div>
+
+                        <div class="setting setting-with-help">
+                            <div class="setting-content">
+                                <label
+                                    for="deeplDelay"
+                                    data-i18n="deeplDelayLabel"
+                                    >DeepL API Request Delay (ms):</label
+                                >
+                                <div class="setting-help" data-i18n="deeplDelayHelp">
+                                    Delay for DeepL API requests (default: 500ms)
+                                </div>
+                            </div>
+                            <input
+                                type="number"
+                                id="deeplDelay"
+                                min="200"
+                                max="5000"
+                                step="100"
+                                value="500"
+                            />
+                        </div>
+
+                        <div class="setting setting-with-help">
+                            <div class="setting-content">
+                                <label
+                                    for="deeplFreeDelay"
+                                    data-i18n="deeplFreeDelayLabel"
+                                    >DeepL Free Request Delay (ms):</label
+                                >
+                                <div class="setting-help" data-i18n="deeplFreeDelayHelp">
+                                    Conservative delay for free tier (default: 2000ms)
+                                </div>
+                            </div>
+                            <input
+                                type="number"
+                                id="deeplFreeDelay"
+                                min="1000"
+                                max="10000"
+                                step="100"
+                                value="2000"
+                            />
+                        </div>
+
+                        <div class="setting setting-with-help">
+                            <div class="setting-content">
+                                <label
+                                    for="microsoftDelay"
+                                    data-i18n="microsoftDelayLabel"
+                                    >Microsoft Translate Request Delay (ms):</label
+                                >
+                                <div class="setting-help" data-i18n="microsoftDelayHelp">
+                                    Delay to respect character limits (default: 800ms)
+                                </div>
+                            </div>
+                            <input
+                                type="number"
+                                id="microsoftDelay"
+                                min="500"
+                                max="5000"
+                                step="100"
+                                value="800"
+                            />
+                        </div>
+                    </div>
                 </section>
                 <section id="providers" class="hidden">
                     <h2 data-i18n="sectionProviders">Provider Settings</h2>
@@ -588,20 +701,21 @@
                                 </option>
                             </select>
                         </div>
-                        <div class="setting">
-                            <button
-                                id="testDeepLButton"
-                                type="button"
-                                class="btn btn-primary"
-                                data-i18n="testDeepLButton"
-                            >
-                                Test DeepL Connection
-                            </button>
+                        <div class="setting deepl-test-setting">
                             <div
                                 id="deeplTestResult"
                                 class="test-result"
                                 aria-live="polite"
-                            ></div>
+                                data-i18n="deeplTestInvalidKey"
+                            >❌ DeepL API key is invalid or has been rejected.</div>
+                            <button
+                                id="testDeepLButton"
+                                type="button"
+                                class="btn-sparkle"
+                                data-i18n="testDeepLButton"
+                            >
+                                <span class="text">Test DeepL Connection</span>
+                            </button>
                         </div>
                         <div class="provider-info">
                             <div class="info-item">

@@ -75,6 +75,13 @@ document.addEventListener('DOMContentLoaded', function () {
     const deeplBatchSizeInput = document.getElementById('deeplBatchSize');
     const microsoftBatchSizeInput = document.getElementById('microsoftBatchSize');
 
+    // Provider-specific delay settings
+    const openaieDelayInput = document.getElementById('openaieDelay');
+    const googleDelayInput = document.getElementById('googleDelay');
+    const deeplDelayInput = document.getElementById('deeplDelay');
+    const deeplFreeDelayInput = document.getElementById('deeplFreeDelay');
+    const microsoftDelayInput = document.getElementById('microsoftDelay');
+
     // Batch settings containers
     const globalBatchSizeSetting = document.getElementById('globalBatchSizeSetting');
     const providerBatchSettings = document.getElementById('providerBatchSettings');
@@ -487,6 +494,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 googleBatchSize,
                 deeplBatchSize,
                 microsoftBatchSize,
+                // Provider-specific delays
+                openaieDelay,
+                googleDelay,
+                deeplDelay,
+                deeplFreeDelay,
+                microsoftDelay,
             } = settings;
 
             uiLanguageSelect.value = uiLanguage;
@@ -520,6 +533,13 @@ document.addEventListener('DOMContentLoaded', function () {
             googleBatchSizeInput.value = googleBatchSize;
             deeplBatchSizeInput.value = deeplBatchSize;
             microsoftBatchSizeInput.value = microsoftBatchSize;
+
+            // Provider-specific delays
+            openaieDelayInput.value = openaieDelay;
+            googleDelayInput.value = googleDelay;
+            deeplDelayInput.value = deeplDelay;
+            deeplFreeDelayInput.value = deeplFreeDelay;
+            microsoftDelayInput.value = microsoftDelay;
 
             // Update batch settings visibility
             updateBatchSettingsVisibility();
@@ -697,15 +717,107 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
+    // Provider-specific delay event listeners
+    openaieDelayInput.addEventListener('change', async function() {
+        const value = parseInt(this.value);
+        await saveSetting('openaieDelay', value);
+        optionsLogger.info(`OpenAI delay changed: ${value}ms`, {
+            openaieDelay: value,
+            component: 'openaieDelayInput'
+        });
+    });
+
+    googleDelayInput.addEventListener('change', async function() {
+        const value = parseInt(this.value);
+        await saveSetting('googleDelay', value);
+        optionsLogger.info(`Google delay changed: ${value}ms`, {
+            googleDelay: value,
+            component: 'googleDelayInput'
+        });
+    });
+
+    deeplDelayInput.addEventListener('change', async function() {
+        const value = parseInt(this.value);
+        await saveSetting('deeplDelay', value);
+        optionsLogger.info(`DeepL delay changed: ${value}ms`, {
+            deeplDelay: value,
+            component: 'deeplDelayInput'
+        });
+    });
+
+    deeplFreeDelayInput.addEventListener('change', async function() {
+        const value = parseInt(this.value);
+        await saveSetting('deeplFreeDelay', value);
+        optionsLogger.info(`DeepL Free delay changed: ${value}ms`, {
+            deeplFreeDelay: value,
+            component: 'deeplFreeDelayInput'
+        });
+    });
+
+    microsoftDelayInput.addEventListener('change', async function() {
+        const value = parseInt(this.value);
+        await saveSetting('microsoftDelay', value);
+        optionsLogger.info(`Microsoft delay changed: ${value}ms`, {
+            microsoftDelay: value,
+            component: 'microsoftDelayInput'
+        });
+    });
+
     // DeepL specific settings
-    deeplApiKeyInput.addEventListener(
-        'change',
-        async () => await saveSetting('deeplApiKey', deeplApiKeyInput.value)
-    );
+    deeplApiKeyInput.addEventListener('change', async function() {
+        await saveSetting('deeplApiKey', deeplApiKeyInput.value);
+
+        // Update test status when API key changes
+        if (deeplApiKeyInput.value.trim()) {
+            // Show "needs testing" status when key is entered
+            showTestResult(
+                getLocalizedText(
+                    'deeplTestNeedsTesting',
+                    '⚠️ DeepL API key needs testing.'
+                ),
+                'warning'
+            );
+        } else {
+            // Show "no key" status when key is empty
+            showTestResult(
+                getLocalizedText(
+                    'deeplApiKeyError',
+                    'Please enter your DeepL API key first.'
+                ),
+                'error'
+            );
+        }
+    });
     deeplApiPlanSelect.addEventListener(
         'change',
         async () => await saveSetting('deeplApiPlan', deeplApiPlanSelect.value)
     );
+
+    // Initialize DeepL test result with default status
+    const initializeDeepLTestStatus = function() {
+        // Check if API key is already entered
+        const currentApiKey = deeplApiKeyInput.value.trim();
+
+        if (currentApiKey) {
+            // Show "needs testing" status when key is present
+            showTestResult(
+                getLocalizedText(
+                    'deeplTestNeedsTesting',
+                    '⚠️ DeepL API key needs testing.'
+                ),
+                'warning'
+            );
+        } else {
+            // Show "no key" status when key is empty
+            showTestResult(
+                getLocalizedText(
+                    'deeplApiKeyError',
+                    'Please enter your DeepL API key first.'
+                ),
+                'error'
+            );
+        }
+    };
 
     // 安全地添加 DeepL 测试按钮的事件监听器
     // 检查 DeepLAPI 是否可用，如果不可用则禁用按钮并显示错误
@@ -715,6 +827,8 @@ document.addEventListener('DOMContentLoaded', function () {
         typeof window.DeepLAPI.testDeepLConnection === 'function'
     ) {
         testDeepLButton.addEventListener('click', testDeepLConnection);
+        // Initialize with default status
+        initializeDeepLTestStatus();
     } else {
         optionsLogger.error(
             'DeepLAPI is not available. Disabling testDeepLButton.',

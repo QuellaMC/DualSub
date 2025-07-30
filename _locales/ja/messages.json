@@ -239,5 +239,32 @@
     "microsoftBatchSizeLabel": { "message": "Microsoft翻訳バッチサイズ：" },
     "microsoftBatchSizeHelp": {
         "message": "推奨：3-5セグメント（デフォルト：4）"
+    },
+
+    "deeplTestNeedsTesting": { "message": "⚠️ DeepL APIキーのテストが必要です。" },
+
+    "cardProviderDelayTitle": { "message": "プロバイダー固有のリクエスト遅延" },
+    "cardProviderDelayDesc": {
+        "message": "アカウントロックアウトを防ぐため、翻訳リクエスト間の必須遅延を設定します。これらの遅延はバッチ処理が有効な場合でも適用されます。"
+    },
+    "openaieDelayLabel": { "message": "OpenAIリクエスト遅延 (ms):" },
+    "openaieDelayHelp": {
+        "message": "リクエスト間の最小遅延（デフォルト：100ms）"
+    },
+    "googleDelayLabel": { "message": "Google翻訳リクエスト遅延 (ms):" },
+    "googleDelayHelp": {
+        "message": "一時的なロックアウトを防ぐために必要な遅延（デフォルト：1500ms）"
+    },
+    "deeplDelayLabel": { "message": "DeepL APIリクエスト遅延 (ms):" },
+    "deeplDelayHelp": {
+        "message": "DeepL APIリクエストの遅延（デフォルト：500ms）"
+    },
+    "deeplFreeDelayLabel": { "message": "DeepL無料リクエスト遅延 (ms):" },
+    "deeplFreeDelayHelp": {
+        "message": "無料プランの保守的な遅延（デフォルト：2000ms）"
+    },
+    "microsoftDelayLabel": { "message": "Microsoft翻訳リクエスト遅延 (ms):" },
+    "microsoftDelayHelp": {
+        "message": "文字制限を尊重するための遅延（デフォルト：800ms）"
     }
 }

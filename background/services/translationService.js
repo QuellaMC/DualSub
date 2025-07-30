@@ -28,28 +28,50 @@ class TranslationService {
                 name: 'Google Translate (Free)',
                 translate: googleTranslate,
                 supportsBatch: false,
-                rateLimit: { requests: 100, window: 3600000 }, // 100 requests per hour
+                rateLimit: {
+                    type: 'bytes_per_window',
+                    bytes: 4500,
+                    window: 6500, // 6.5 seconds
+                    mandatoryDelay: 1500 // 1.5 seconds between requests
+                },
                 category: 'free'
             },
             microsoft_edge_auth: {
                 name: 'Microsoft Translate (Free)',
                 translate: microsoftTranslateEdgeAuth,
                 supportsBatch: false,
-                rateLimit: { requests: 50, window: 3600000 }, // 50 requests per hour
+                rateLimit: {
+                    type: 'characters_sliding_window',
+                    characters: 33300,
+                    window: 60000, // 1 minute
+                    maxCharacters: 2000000, // 2M chars per hour
+                    maxWindow: 3600000, // 1 hour
+                    mandatoryDelay: 800 // 800ms between requests
+                },
                 category: 'free'
             },
             deepl: {
                 name: 'DeepL Translate (API Key Required)',
                 translate: deeplTranslate,
                 supportsBatch: false,
-                rateLimit: { requests: 500000, window: 2592000000 }, // 500k chars per month
+                rateLimit: {
+                    type: 'characters_per_month',
+                    characters: 500000,
+                    window: 2592000000, // 30 days
+                    mandatoryDelay: 500 // 500ms between requests
+                },
                 category: 'api_key'
             },
             deepl_free: {
                 name: 'DeepL Translate (Free)',
                 translate: deeplTranslateFree,
                 supportsBatch: false,
-                rateLimit: { requests: 20, window: 3600000 }, // 20 requests per hour
+                rateLimit: {
+                    type: 'requests_per_hour',
+                    requests: 20,
+                    window: 3600000, // 1 hour
+                    mandatoryDelay: 2000 // 2 seconds between requests
+                },
                 category: 'free'
             },
             openai_compatible: {
@@ -57,7 +79,12 @@ class TranslationService {
                 translate: openaiCompatibleTranslate,
                 translateBatch: openaiCompatibleTranslateBatch,
                 supportsBatch: true,
-                rateLimit: { requests: 3500, window: 60000 }, // 3500 requests per minute
+                rateLimit: {
+                    type: 'requests_per_minute',
+                    requests: 3500,
+                    window: 60000, // 1 minute
+                    mandatoryDelay: 100 // 100ms between requests
+                },
                 category: 'api_key',
                 batchOptimizations: {
                     maxBatchSize: 10,
@@ -70,6 +97,8 @@ class TranslationService {
         this.isInitialized = false;
         this.translationCache = new Map();
         this.rateLimitTracker = new Map();
+        this.characterTracker = new Map(); // For character-based rate limiting
+        this.lastRequestTime = new Map(); // For mandatory delays
         this.performanceMetrics = {
             totalTranslations: 0,
             cacheHits: 0,
@@ -187,7 +216,7 @@ class TranslationService {
             }
 
             // Check rate limits
-            if (!options.skipRateLimit && !this.checkRateLimit()) {
+            if (!options.skipRateLimit && !this.checkRateLimit(text)) {
                 this.performanceMetrics.rateLimitHits++;
                 const rateLimitError = new RateLimitError('Rate limit exceeded for current provider', {
                     provider: this.currentProviderId,
@@ -195,6 +224,9 @@ class TranslationService {
                 });
                 throw rateLimitError;
             }
+
+            // Apply mandatory delay before translation
+            await this.applyMandatoryDelay();
 
             const selectedProvider = this.providers[this.currentProviderId];
             if (!selectedProvider?.translate) {
@@ -211,7 +243,7 @@ class TranslationService {
             this.translationCache.set(cacheKey, translatedText);
 
             // Update rate limit tracker
-            this.updateRateLimitTracker();
+            this.updateRateLimitTracker(text);
 
             // Update performance metrics
             const responseTime = Date.now() - startTime;
@@ -313,14 +345,129 @@ class TranslationService {
 
     /**
      * Check if current provider is within rate limits
+     * @param {string} text - Text to be translated (for character/byte counting)
      * @returns {boolean} True if within limits
      */
-    checkRateLimit() {
+    checkRateLimit(text = '') {
         const provider = this.providers[this.currentProviderId];
         if (!provider.rateLimit) return true;
 
+        const rateLimit = provider.rateLimit;
         const now = Date.now();
-        const windowStart = now - provider.rateLimit.window;
+
+        switch (rateLimit.type) {
+            case 'bytes_per_window':
+                return this.checkBytesPerWindow(text, rateLimit, now);
+
+            case 'characters_sliding_window':
+                return this.checkCharactersSlidingWindow(text, rateLimit, now);
+
+            case 'characters_per_month':
+                return this.checkCharactersPerMonth(text, rateLimit, now);
+
+            case 'requests_per_hour':
+            case 'requests_per_minute':
+            default:
+                return this.checkRequestsPerWindow(rateLimit, now);
+        }
+    }
+
+    /**
+     * Check bytes per window rate limit (Google Translate)
+     * @param {string} text - Text to translate
+     * @param {Object} rateLimit - Rate limit configuration
+     * @param {number} now - Current timestamp
+     * @returns {boolean} True if within limits
+     */
+    checkBytesPerWindow(text, rateLimit, now) {
+        const windowStart = now - rateLimit.window;
+
+        if (!this.characterTracker.has(this.currentProviderId)) {
+            this.characterTracker.set(this.currentProviderId, []);
+        }
+
+        const requests = this.characterTracker.get(this.currentProviderId);
+
+        // Remove old requests outside the window
+        const recentRequests = requests.filter(req => req.timestamp > windowStart);
+        this.characterTracker.set(this.currentProviderId, recentRequests);
+
+        // Calculate total bytes in current window
+        const totalBytes = recentRequests.reduce((sum, req) => sum + req.bytes, 0);
+        const textBytes = new TextEncoder().encode(text).length;
+
+        return (totalBytes + textBytes) <= rateLimit.bytes;
+    }
+
+    /**
+     * Check characters sliding window rate limit (Microsoft Translate)
+     * @param {string} text - Text to translate
+     * @param {Object} rateLimit - Rate limit configuration
+     * @param {number} now - Current timestamp
+     * @returns {boolean} True if within limits
+     */
+    checkCharactersSlidingWindow(text, rateLimit, now) {
+        const shortWindowStart = now - rateLimit.window;
+        const longWindowStart = now - rateLimit.maxWindow;
+
+        if (!this.characterTracker.has(this.currentProviderId)) {
+            this.characterTracker.set(this.currentProviderId, []);
+        }
+
+        const requests = this.characterTracker.get(this.currentProviderId);
+
+        // Remove old requests outside the long window
+        const recentRequests = requests.filter(req => req.timestamp > longWindowStart);
+        this.characterTracker.set(this.currentProviderId, recentRequests);
+
+        // Check short window (1 minute)
+        const shortWindowRequests = recentRequests.filter(req => req.timestamp > shortWindowStart);
+        const shortWindowChars = shortWindowRequests.reduce((sum, req) => sum + req.characters, 0);
+
+        // Check long window (1 hour)
+        const longWindowChars = recentRequests.reduce((sum, req) => sum + req.characters, 0);
+
+        const textChars = text.length;
+
+        return (shortWindowChars + textChars) <= rateLimit.characters &&
+               (longWindowChars + textChars) <= rateLimit.maxCharacters;
+    }
+
+    /**
+     * Check characters per month rate limit (DeepL)
+     * @param {string} text - Text to translate
+     * @param {Object} rateLimit - Rate limit configuration
+     * @param {number} now - Current timestamp
+     * @returns {boolean} True if within limits
+     */
+    checkCharactersPerMonth(text, rateLimit, now) {
+        const windowStart = now - rateLimit.window;
+
+        if (!this.characterTracker.has(this.currentProviderId)) {
+            this.characterTracker.set(this.currentProviderId, []);
+        }
+
+        const requests = this.characterTracker.get(this.currentProviderId);
+
+        // Remove old requests outside the window
+        const recentRequests = requests.filter(req => req.timestamp > windowStart);
+        this.characterTracker.set(this.currentProviderId, recentRequests);
+
+        // Calculate total characters in current window
+        const totalChars = recentRequests.reduce((sum, req) => sum + req.characters, 0);
+        const textChars = text.length;
+
+        return (totalChars + textChars) <= rateLimit.characters;
+    }
+
+    /**
+     * Check requests per window rate limit (OpenAI, DeepL Free)
+     * @param {Object} rateLimit - Rate limit configuration
+     * @param {number} now - Current timestamp
+     * @returns {boolean} True if within limits
+     */
+    checkRequestsPerWindow(rateLimit, now) {
+        const windowStart = now - rateLimit.window;
 
         if (!this.rateLimitTracker.has(this.currentProviderId)) {
             this.rateLimitTracker.set(this.currentProviderId, []);
@@ -332,18 +479,70 @@ class TranslationService {
         const recentRequests = requests.filter(timestamp => timestamp > windowStart);
         this.rateLimitTracker.set(this.currentProviderId, recentRequests);
 
-        return recentRequests.length < provider.rateLimit.requests;
+        return recentRequests.length < rateLimit.requests;
+    }
+
+    /**
+     * Apply mandatory delay before translation
+     * @returns {Promise<void>}
+     */
+    async applyMandatoryDelay() {
+        const provider = this.providers[this.currentProviderId];
+        if (!provider.rateLimit?.mandatoryDelay) return;
+
+        const now = Date.now();
+        const lastRequest = this.lastRequestTime.get(this.currentProviderId) || 0;
+        const timeSinceLastRequest = now - lastRequest;
+        const requiredDelay = provider.rateLimit.mandatoryDelay;
+
+        if (timeSinceLastRequest < requiredDelay) {
+            const delayNeeded = requiredDelay - timeSinceLastRequest;
+            this.logger.debug('Applying mandatory delay', {
+                provider: this.currentProviderId,
+                delayNeeded,
+                requiredDelay,
+                timeSinceLastRequest
+            });
+            await new Promise(resolve => setTimeout(resolve, delayNeeded));
+        }
+
+        this.lastRequestTime.set(this.currentProviderId, Date.now());
     }
 
     /**
      * Update rate limit tracker
+     * @param {string} text - Text that was translated
      */
-    updateRateLimitTracker() {
+    updateRateLimitTracker(text = '') {
         const now = Date.now();
+        const provider = this.providers[this.currentProviderId];
+
+        if (!provider.rateLimit) return;
+
+        // Always update request tracker
         if (!this.rateLimitTracker.has(this.currentProviderId)) {
             this.rateLimitTracker.set(this.currentProviderId, []);
         }
         this.rateLimitTracker.get(this.currentProviderId).push(now);
+
+        // Update character/byte tracker for relevant providers
+        const rateLimit = provider.rateLimit;
+        if (rateLimit.type === 'bytes_per_window' ||
+            rateLimit.type === 'characters_sliding_window' ||
+            rateLimit.type === 'characters_per_month') {
+
+            if (!this.characterTracker.has(this.currentProviderId)) {
+                this.characterTracker.set(this.currentProviderId, []);
+            }
+
+            const entry = {
+                timestamp: now,
+                characters: text.length,
+                bytes: new TextEncoder().encode(text).length
+            };
+
+            this.characterTracker.get(this.currentProviderId).push(entry);
+        }
     }
 
     /**
@@ -485,17 +684,115 @@ class TranslationService {
             return { hasLimit: false };
         }
 
+        const rateLimit = provider.rateLimit;
         const now = Date.now();
-        const windowStart = now - provider.rateLimit.window;
+
+        switch (rateLimit.type) {
+            case 'bytes_per_window':
+                return this.getBytesRateLimitStatus(rateLimit, now);
+
+            case 'characters_sliding_window':
+                return this.getCharactersSlidingWindowStatus(rateLimit, now);
+
+            case 'characters_per_month':
+                return this.getCharactersPerMonthStatus(rateLimit, now);
+
+            case 'requests_per_hour':
+            case 'requests_per_minute':
+            default:
+                return this.getRequestsRateLimitStatus(rateLimit, now);
+        }
+    }
+
+    /**
+     * Get bytes rate limit status
+     */
+    getBytesRateLimitStatus(rateLimit, now) {
+        const windowStart = now - rateLimit.window;
+        const requests = this.characterTracker.get(this.currentProviderId) || [];
+        const recentRequests = requests.filter(req => req.timestamp > windowStart);
+        const totalBytes = recentRequests.reduce((sum, req) => sum + req.bytes, 0);
+
+        return {
+            hasLimit: true,
+            type: 'bytes',
+            limit: rateLimit.bytes,
+            used: totalBytes,
+            remaining: rateLimit.bytes - totalBytes,
+            resetTime: windowStart + rateLimit.window,
+            mandatoryDelay: rateLimit.mandatoryDelay
+        };
+    }
+
+    /**
+     * Get characters sliding window status
+     */
+    getCharactersSlidingWindowStatus(rateLimit, now) {
+        const shortWindowStart = now - rateLimit.window;
+        const longWindowStart = now - rateLimit.maxWindow;
+        const requests = this.characterTracker.get(this.currentProviderId) || [];
+
+        const shortWindowRequests = requests.filter(req => req.timestamp > shortWindowStart);
+        const longWindowRequests = requests.filter(req => req.timestamp > longWindowStart);
+
+        const shortWindowChars = shortWindowRequests.reduce((sum, req) => sum + req.characters, 0);
+        const longWindowChars = longWindowRequests.reduce((sum, req) => sum + req.characters, 0);
+
+        return {
+            hasLimit: true,
+            type: 'characters_sliding',
+            shortWindow: {
+                limit: rateLimit.characters,
+                used: shortWindowChars,
+                remaining: rateLimit.characters - shortWindowChars,
+                resetTime: shortWindowStart + rateLimit.window
+            },
+            longWindow: {
+                limit: rateLimit.maxCharacters,
+                used: longWindowChars,
+                remaining: rateLimit.maxCharacters - longWindowChars,
+                resetTime: longWindowStart + rateLimit.maxWindow
+            },
+            mandatoryDelay: rateLimit.mandatoryDelay
+        };
+    }
+
+    /**
+     * Get characters per month status
+     */
+    getCharactersPerMonthStatus(rateLimit, now) {
+        const windowStart = now - rateLimit.window;
+        const requests = this.characterTracker.get(this.currentProviderId) || [];
+        const recentRequests = requests.filter(req => req.timestamp > windowStart);
+        const totalChars = recentRequests.reduce((sum, req) => sum + req.characters, 0);
+
+        return {
+            hasLimit: true,
+            type: 'characters',
+            limit: rateLimit.characters,
+            used: totalChars,
+            remaining: rateLimit.characters - totalChars,
+            resetTime: windowStart + rateLimit.window,
+            mandatoryDelay: rateLimit.mandatoryDelay
+        };
+    }
+
+    /**
+     * Get requests rate limit status
+     */
+    getRequestsRateLimitStatus(rateLimit, now) {
+        const windowStart = now - rateLimit.window;
         const requests = this.rateLimitTracker.get(this.currentProviderId) || [];
         const recentRequests = requests.filter(timestamp => timestamp > windowStart);
 
         return {
             hasLimit: true,
-            limit: provider.rateLimit.requests,
+            type: 'requests',
+            limit: rateLimit.requests,
             used: recentRequests.length,
-            remaining: provider.rateLimit.requests - recentRequests.length,
-            resetTime: windowStart + provider.rateLimit.window
+            remaining: rateLimit.requests - recentRequests.length,
+            resetTime: windowStart + rateLimit.window,
+            mandatoryDelay: rateLimit.mandatoryDelay
         };
     }
 
@@ -542,18 +839,22 @@ class TranslationService {
             }
 
             // Check rate limits for batch request
-            if (!options.skipRateLimit && !this.checkRateLimit()) {
+            const combinedText = texts.join(' '); // Approximate text for rate limiting
+            if (!options.skipRateLimit && !this.checkRateLimit(combinedText)) {
                 this.performanceMetrics.rateLimitHits++;
 
                 // Implement exponential backoff if supported
                 if (selectedProvider.batchOptimizations?.exponentialBackoff) {
                     await this.exponentialBackoff();
                     // Retry after backoff
-                    if (!this.checkRateLimit()) {
+                    if (!this.checkRateLimit(combinedText)) {
                         throw new Error('Rate limit exceeded after exponential backoff');
                     }
                 }
             }
+
+            // Apply mandatory delay before batch translation
+            await this.applyMandatoryDelay();
 
             // Apply provider-specific optimizations
             const optimizedTexts = this.applyBatchOptimizations(texts, selectedProvider);
@@ -567,7 +868,7 @@ class TranslationService {
             );
 
             // Update rate limit tracker
-            this.updateRateLimitTracker();
+            this.updateRateLimitTracker(combinedText);
 
             // Update performance metrics
             const responseTime = Date.now() - startTime;
@@ -618,7 +919,20 @@ class TranslationService {
      */
     async translateIndividually(texts, sourceLang, targetLang, options = {}) {
         const results = [];
-        const delay = options.individualDelay || 100; // Default 100ms delay between requests
+        const provider = this.providers[this.currentProviderId];
+
+        // Use provider-specific mandatory delay or fallback to configured delay
+        const mandatoryDelay = provider.rateLimit?.mandatoryDelay || 0;
+        const configuredDelay = options.individualDelay || 100;
+        const delay = Math.max(mandatoryDelay, configuredDelay);
+
+        this.logger.debug('Starting individual translations with delays', {
+            provider: this.currentProviderId,
+            textCount: texts.length,
+            mandatoryDelay,
+            configuredDelay,
+            finalDelay: delay
+        });
 
         for (let i = 0; i < texts.length; i++) {
             try {
@@ -628,7 +942,8 @@ class TranslationService {
                 });
                 results.push(translated);
 
-                // Add delay between requests to avoid rate limiting
+                // Add delay between requests to avoid rate limiting and account lockouts
+                // Note: translate() method already applies mandatory delay, but we add extra delay for safety
                 if (i < texts.length - 1 && delay > 0) {
                     await new Promise(resolve => setTimeout(resolve, delay));
                 }

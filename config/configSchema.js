@@ -35,6 +35,13 @@ export const configSchema = {
     deeplBatchSize: { defaultValue: 3, type: Number, scope: 'sync' },
     microsoftBatchSize: { defaultValue: 4, type: Number, scope: 'sync' },
 
+    // Provider-specific delay settings (in milliseconds)
+    openaieDelay: { defaultValue: 100, type: Number, scope: 'sync' },
+    googleDelay: { defaultValue: 1500, type: Number, scope: 'sync' },
+    deeplDelay: { defaultValue: 500, type: Number, scope: 'sync' },
+    deeplFreeDelay: { defaultValue: 2000, type: Number, scope: 'sync' },
+    microsoftDelay: { defaultValue: 800, type: Number, scope: 'sync' },
+
     // DeepL API Settings
     deeplApiKey: { defaultValue: '', type: String, scope: 'sync' },
     deeplApiPlan: { defaultValue: 'free', type: String, scope: 'sync' },

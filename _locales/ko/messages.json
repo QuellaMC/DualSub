@@ -237,5 +237,32 @@
     "microsoftBatchSizeLabel": { "message": "Microsoft 번역 배치 크기:" },
     "microsoftBatchSizeHelp": {
         "message": "권장: 3-5개 세그먼트 (기본값: 4)"
+    },
+
+    "deeplTestNeedsTesting": { "message": "⚠️ DeepL API 키 테스트가 필요합니다." },
+
+    "cardProviderDelayTitle": { "message": "제공업체별 요청 지연" },
+    "cardProviderDelayDesc": {
+        "message": "계정 잠금을 방지하기 위해 번역 요청 간의 필수 지연을 구성합니다. 이러한 지연은 배치 처리가 활성화된 경우에도 적용됩니다."
+    },
+    "openaieDelayLabel": { "message": "OpenAI 요청 지연 (ms):" },
+    "openaieDelayHelp": {
+        "message": "요청 간 최소 지연 (기본값: 100ms)"
+    },
+    "googleDelayLabel": { "message": "Google 번역 요청 지연 (ms):" },
+    "googleDelayHelp": {
+        "message": "임시 잠금을 방지하기 위한 필수 지연 (기본값: 1500ms)"
+    },
+    "deeplDelayLabel": { "message": "DeepL API 요청 지연 (ms):" },
+    "deeplDelayHelp": {
+        "message": "DeepL API 요청 지연 (기본값: 500ms)"
+    },
+    "deeplFreeDelayLabel": { "message": "DeepL 무료 요청 지연 (ms):" },
+    "deeplFreeDelayHelp": {
+        "message": "무료 계층을 위한 보수적 지연 (기본값: 2000ms)"
+    },
+    "microsoftDelayLabel": { "message": "Microsoft 번역 요청 지연 (ms):" },
+    "microsoftDelayHelp": {
+        "message": "문자 제한을 준수하기 위한 지연 (기본값: 800ms)"
     }
 }
