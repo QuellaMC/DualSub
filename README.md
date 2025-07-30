@@ -1,5 +1,7 @@
 # DualSub - Dual Language Subtitles for Streaming
 
+[中文版 | Chinese Version](README_zh.md)
+
 ![Version](https://img.shields.io/github/v/release/QuellaMC/DualSub.svg)
 ![Last Commit](https://img.shields.io/github/last-commit/QuellaMC/DualSub.svg)
 ![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)
@@ -349,7 +351,14 @@ For full license terms, see [LICENSE](LICENSE) file.
 
 ## 📋 Changelog
 
-### Version 1.4.0 (Current)
+### Version 1.5.0 (Current)
+
+- 🚀 Implemented universal batch translation system for improved performance
+- ⚡ Added provider-specific batch size optimization (80-90% reduction in API calls)
+- 🔧 Enhanced translation efficiency with intelligent batching and delimiter approach
+- 📊 Improved subtitle processing with configurable batch sizes and concurrent processing
+
+### Version 1.4.0
 
 - ✨ Added Netflix support with official subtitle integration
 - 🔄 Implemented multiple translation providers with fallback
