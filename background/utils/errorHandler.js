@@ -35,6 +35,11 @@ export const ErrorCategory = {
 };
 
 /**
+ * Time conversion constants
+ */
+const MILLISECONDS_TO_SECONDS = 1000;
+
+/**
  * Comprehensive Error Handler
  */
 class ErrorHandler {
@@ -243,7 +248,7 @@ class ErrorHandler {
 
         // Add recovery information
         if (errorInfo.recovery?.shouldRetry) {
-            message += ` Retrying automatically in ${Math.ceil(errorInfo.recovery.retryDelay / 1000)} seconds.`;
+            message += ` Retrying automatically in ${Math.ceil(errorInfo.recovery.retryDelay / MILLISECONDS_TO_SECONDS)} seconds.`;
         }
 
         return message;

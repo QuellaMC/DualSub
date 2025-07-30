@@ -869,7 +869,7 @@ document.addEventListener('DOMContentLoaded', function () {
         .getElementById('translationDelay')
         .addEventListener('change', async function () {
             await saveSetting('translationDelay', parseInt(this.value));
-            if(translationDelayValue) translationDelayValue.textContent = `${this.value}ms`;
+            if (translationDelayValue) translationDelayValue.textContent = `${this.value}ms`;
         });
 
     init();

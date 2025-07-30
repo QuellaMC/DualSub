@@ -13,7 +13,7 @@ import { configService } from '../../services/configService.js';
 import { performanceMonitor } from '../utils/performanceMonitor.js';
 
 /**
- * Provider-specific batch configuration
+ * Provider-specific batch configuration (delays will be loaded from config)
  */
 const PROVIDER_BATCH_CONFIGS = {
     openai_compatible: {
@@ -22,8 +22,7 @@ const PROVIDER_BATCH_CONFIGS = {
         delimiter: '|SUBTITLE_BREAK|',
         supportsBatch: true,
         batchMethod: 'delimiter',
-        mandatoryDelay: 100, // 100ms between requests
-        batchDelay: 50 // Shorter delay for batch processing
+        delayConfigKey: 'openaieDelay' // Reference to config key for delay
     },
     google: {
         defaultBatchSize: 4,
@@ -31,8 +30,7 @@ const PROVIDER_BATCH_CONFIGS = {
         delimiter: '\n---SUBTITLE---\n',
         supportsBatch: false, // Will use simulated batch
         batchMethod: 'simulated',
-        mandatoryDelay: 1500, // 1.5 seconds between requests (Google's requirement)
-        batchDelay: 1500 // Same delay for batch processing to prevent lockouts
+        delayConfigKey: 'googleDelay' // Reference to config key for delay
     },
     deepl: {
         defaultBatchSize: 3,
@@ -40,8 +38,7 @@ const PROVIDER_BATCH_CONFIGS = {
         delimiter: '\n[SUBTITLE]\n',
         supportsBatch: false, // Will use simulated batch
         batchMethod: 'simulated',
-        mandatoryDelay: 500, // 500ms between requests
-        batchDelay: 500 // Same delay for batch processing
+        delayConfigKey: 'deeplDelay' // Reference to config key for delay
     },
     deepl_free: {
         defaultBatchSize: 2,
@@ -49,8 +46,7 @@ const PROVIDER_BATCH_CONFIGS = {
         delimiter: '\n[SUBTITLE]\n',
         supportsBatch: false, // Will use simulated batch
         batchMethod: 'simulated',
-        mandatoryDelay: 2000, // 2 seconds between requests (more conservative for free tier)
-        batchDelay: 2000 // Same delay for batch processing
+        delayConfigKey: 'deeplFreeDelay' // Reference to config key for delay
     },
     microsoft_edge_auth: {
         defaultBatchSize: 4,
@@ -58,8 +54,7 @@ const PROVIDER_BATCH_CONFIGS = {
         delimiter: '\n||SUBTITLE||\n',
         supportsBatch: false, // Will use simulated batch
         batchMethod: 'simulated',
-        mandatoryDelay: 800, // 800ms between requests (Microsoft's requirement)
-        batchDelay: 800 // Same delay for batch processing
+        delayConfigKey: 'microsoftDelay' // Reference to config key for delay
     }
 };
 
@@ -363,17 +358,39 @@ class UniversalBatchProcessor {
     }
 
     /**
+     * Get provider delay from configuration
+     * @param {string} providerId - Provider identifier
+     * @returns {number} Provider delay in milliseconds
+     */
+    getProviderDelay(providerId) {
+        const providerConfig = PROVIDER_BATCH_CONFIGS[providerId];
+        if (providerConfig && providerConfig.delayConfigKey) {
+            return this.config[providerConfig.delayConfigKey] || 100;
+        }
+        return this.config.translationDelay || 100;
+    }
+
+    /**
      * Get provider batch configuration
      * @param {string} providerId - Provider identifier
      * @returns {Object} Provider batch configuration
      */
     getProviderBatchConfig(providerId) {
-        return PROVIDER_BATCH_CONFIGS[providerId] || {
+        const baseConfig = PROVIDER_BATCH_CONFIGS[providerId] || {
             defaultBatchSize: this.config.globalBatchSize,
             maxBatchSize: this.config.globalBatchSize,
             delimiter: '\n---\n',
             supportsBatch: false,
-            batchMethod: 'simulated'
+            batchMethod: 'simulated',
+            delayConfigKey: 'translationDelay'
+        };
+
+        // Add dynamic delay values from configuration
+        const delay = this.getProviderDelay(providerId);
+        return {
+            ...baseConfig,
+            mandatoryDelay: delay,
+            batchDelay: delay
         };
     }
 

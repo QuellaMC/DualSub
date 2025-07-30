@@ -271,11 +271,8 @@ class PerformanceMonitor {
         // Clear old timers
         this.clearOldTimers();
 
-        // Suggest garbage collection
-        if (typeof global !== 'undefined' && global.gc) {
-            global.gc();
-            this.logger.debug('Manual garbage collection triggered');
-        }
+        // Perform additional memory cleanup if necessary
+        this.logger.debug('Memory optimization completed without manual garbage collection');
     }
 
     /**
