@@ -541,6 +541,16 @@ button#testDeepLButton.btn-sparkle * {
     border: 1px solid rgba(255, 204, 0, 0.2);
 }
 
+.model-selection {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.model-selection button {
+    align-self: flex-end;
+}
+
 .test-result.info {
     background-color: rgba(0, 122, 255, 0.1);
     color: var(--link-color);
@@ -641,9 +651,17 @@ button#testDeepLButton.btn-sparkle * {
     transform: translateY(-2px);
 }
 
+
+.btn-sparkle.no-sparkle:hover {
+    background: #1c1a1c;
+    box-shadow: none;
+    transform: translateY(-1px);
+}
+
 .btn-sparkle:hover .text {
     color: white !important;
 }
+
 
 /* Specific hover rules for DeepL test button */
 #testDeepLButton.btn-sparkle:hover .text,

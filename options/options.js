@@ -1,5 +1,6 @@
 import { configService } from '../services/configService.js';
 import Logger from '../utils/logger.js';
+import { fetchAvailableModels } from '../translation_providers/openaiCompatibleTranslate.js';
 
 document.addEventListener('DOMContentLoaded', function () {
     // Initialize options logger
@@ -101,6 +102,13 @@ document.addEventListener('DOMContentLoaded', function () {
     const testDeepLButton = document.getElementById('testDeepLButton');
     const deeplTestResult = document.getElementById('deeplTestResult');
 
+    const openaiCompatibleApiKeyInput = document.getElementById('openaiCompatibleApiKey');
+    const openaiCompatibleBaseUrlInput = document.getElementById('openaiCompatibleBaseUrl');
+    const openaiCompatibleModelSelect = document.getElementById('openaiCompatibleModel');
+    const testOpenAIButton = document.getElementById('testOpenAIButton');
+    const fetchOpenAIModelsButton = document.getElementById('fetchOpenAIModelsButton');
+    const openaiTestResult = document.getElementById('openaiTestResult');
+
     // About
     const extensionVersionSpan = document.getElementById('extensionVersion');
 
@@ -113,6 +121,7 @@ document.addEventListener('DOMContentLoaded', function () {
         microsoft_edge_auth: 'providerMicrosoftName',
         deepl: 'providerDeepLName',
         deepl_free: 'providerDeepLFreeName',
+        openai_compatible: 'providerOpenAICompatibleName',
     };
 
     // Helper functions first (no dependencies)
@@ -216,15 +225,11 @@ document.addEventListener('DOMContentLoaded', function () {
         return message;
     };
 
-    const showTestResult = function (message, type) {
-        deeplTestResult.style.display = 'block';
-        deeplTestResult.textContent = message;
-
-        // Remove previous type classes
-        deeplTestResult.classList.remove('success', 'error', 'warning', 'info');
-
-        // Add current type class
-        deeplTestResult.classList.add(type);
+    const showTestResult = function (element, message, type) {
+        element.style.display = 'block';
+        element.textContent = message;
+        element.classList.remove('success', 'error', 'warning', 'info');
+        element.classList.add(type);
     };
 
     // Test DeepL Connection
@@ -236,6 +241,7 @@ document.addEventListener('DOMContentLoaded', function () {
             typeof window.DeepLAPI.testDeepLConnection !== 'function'
         ) {
             showTestResult(
+                deeplTestResult,
                 getLocalizedText(
                     'deeplApiNotLoadedError',
                     '❌ DeepL API script is not available. Please refresh the page.'
@@ -250,6 +256,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (!apiKey) {
             showTestResult(
+                deeplTestResult,
                 getLocalizedText(
                     'deeplApiKeyError',
                     'Please enter your DeepL API key first.'
@@ -265,6 +272,7 @@ document.addEventListener('DOMContentLoaded', function () {
             'Testing...'
         );
         showTestResult(
+            deeplTestResult,
             getLocalizedText(
                 'testingConnection',
                 'Testing DeepL connection...'
@@ -281,6 +289,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (result.success) {
                 showTestResult(
+                    deeplTestResult,
                     getLocalizedText(
                         'deeplTestSuccessSimple',
                         '✅ DeepL API test successful!'
@@ -341,7 +350,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 const errorType =
                     result.error === 'UNEXPECTED_FORMAT' ? 'warning' : 'error';
-                showTestResult(fallbackMessage, errorType);
+                showTestResult(deeplTestResult, fallbackMessage, errorType);
             }
         } catch (error) {
             optionsLogger.error('DeepL test error', error, {
@@ -350,6 +359,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 component: 'testDeepLConnection',
             });
             showTestResult(
+                deeplTestResult,
                 getLocalizedText(
                     'deeplTestGenericError',
                     '❌ Test failed: %s',
@@ -363,6 +373,57 @@ document.addEventListener('DOMContentLoaded', function () {
                 'testDeepLButton',
                 'Test DeepL Connection'
             );
+        }
+    };
+
+    const testOpenAIConnection = async function () {
+        const apiKey = openaiCompatibleApiKeyInput.value.trim();
+        const baseUrl = openaiCompatibleBaseUrlInput.value.trim();
+
+        if (!apiKey) {
+            showTestResult(openaiTestResult, 'Please enter an API key.', 'error');
+            return;
+        }
+
+        testOpenAIButton.disabled = true;
+        showTestResult(openaiTestResult, 'Testing connection...', 'info');
+
+        try {
+            await fetchAvailableModels(apiKey, baseUrl);
+            showTestResult(openaiTestResult, 'Connection successful!', 'success');
+        } catch (error) {
+            showTestResult(openaiTestResult, `Connection failed: ${error.message}`, 'error');
+        } finally {
+            testOpenAIButton.disabled = false;
+        }
+    };
+
+    const fetchOpenAIModels = async function () {
+        const apiKey = openaiCompatibleApiKeyInput.value.trim();
+        const baseUrl = openaiCompatibleBaseUrlInput.value.trim();
+
+        if (!apiKey) {
+            showTestResult(openaiTestResult, 'Please enter an API key to fetch models.', 'error');
+            return;
+        }
+
+        fetchOpenAIModelsButton.disabled = true;
+        showTestResult(openaiTestResult, 'Fetching models...', 'info');
+
+        try {
+            const models = await fetchAvailableModels(apiKey, baseUrl);
+            openaiCompatibleModelSelect.innerHTML = '';
+            models.forEach(model => {
+                const option = document.createElement('option');
+                option.value = model;
+                option.textContent = model;
+                openaiCompatibleModelSelect.appendChild(option);
+            });
+            showTestResult(openaiTestResult, 'Models fetched successfully.', 'success');
+        } catch (error) {
+            showTestResult(openaiTestResult, `Failed to fetch models: ${error.message}`, 'error');
+        } finally {
+            fetchOpenAIModelsButton.disabled = false;
         }
     };
 
@@ -394,11 +455,15 @@ document.addEventListener('DOMContentLoaded', function () {
         const microsoftCard = document.getElementById('microsoftProviderCard');
         const deeplCard = document.getElementById('deeplProviderCard');
         const deeplFreeCard = document.getElementById('deeplFreeProviderCard');
+        const openaiCompatibleCard = document.getElementById('openaiCompatibleProviderCard');
+
 
         googleCard.style.display = 'none';
         microsoftCard.style.display = 'none';
         deeplCard.style.display = 'none';
         deeplFreeCard.style.display = 'none';
+        openaiCompatibleCard.style.display = 'none';
+
 
         // Show the selected provider card
         switch (selectedProvider) {
@@ -413,6 +478,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 break;
             case 'deepl_free':
                 deeplFreeCard.style.display = 'block';
+                break;
+            case 'openai_compatible':
+                openaiCompatibleCard.style.display = 'block';
                 break;
             default:
                 // Show DeepL Free as default
@@ -501,6 +569,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 translationDelay,
                 deeplApiKey,
                 deeplApiPlan,
+                openaiCompatibleApiKey,
+                openaiCompatibleBaseUrl,
+                openaiCompatibleModel,
                 // Batch translation settings
                 batchingEnabled,
                 useProviderDefaults,
@@ -537,6 +608,16 @@ document.addEventListener('DOMContentLoaded', function () {
             // Providers
             deeplApiKeyInput.value = deeplApiKey;
             deeplApiPlanSelect.value = deeplApiPlan;
+            openaiCompatibleApiKeyInput.value = openaiCompatibleApiKey;
+            openaiCompatibleBaseUrlInput.value = openaiCompatibleBaseUrl;
+            
+            // Populate models dropdown
+            const option = document.createElement('option');
+            option.value = openaiCompatibleModel;
+            option.textContent = openaiCompatibleModel;
+            openaiCompatibleModelSelect.appendChild(option);
+            openaiCompatibleModelSelect.value = openaiCompatibleModel;
+
 
             // Batch Translation Settings
             batchingEnabledCheckbox.checked = batchingEnabled;
@@ -788,6 +869,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (deeplApiKeyInput.value.trim()) {
             // Show "needs testing" status when key is entered
             showTestResult(
+                deeplTestResult,
                 getLocalizedText(
                     'deeplTestNeedsTesting',
                     '⚠️ DeepL API key needs testing.'
@@ -797,6 +879,7 @@ document.addEventListener('DOMContentLoaded', function () {
         } else {
             // Show "no key" status when key is empty
             showTestResult(
+                deeplTestResult,
                 getLocalizedText(
                     'deeplApiKeyError',
                     'Please enter your DeepL API key first.'
@@ -810,6 +893,20 @@ document.addEventListener('DOMContentLoaded', function () {
         async () => await saveSetting('deeplApiPlan', deeplApiPlanSelect.value)
     );
 
+    // OpenAI Compatible specific settings
+    openaiCompatibleApiKeyInput.addEventListener('change', async function () {
+        await saveSetting('openaiCompatibleApiKey', this.value);
+    });
+    openaiCompatibleBaseUrlInput.addEventListener('change', async function () {
+        await saveSetting('openaiCompatibleBaseUrl', this.value);
+    });
+    openaiCompatibleModelSelect.addEventListener('change', async function () {
+        await saveSetting('openaiCompatibleModel', this.value);
+    });
+    testOpenAIButton.addEventListener('click', testOpenAIConnection);
+    fetchOpenAIModelsButton.addEventListener('click', fetchOpenAIModels);
+
+
     // Initialize DeepL test result with default status
     const initializeDeepLTestStatus = function () {
         // Check if API key is already entered
@@ -818,6 +915,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (currentApiKey) {
             // Show "needs testing" status when key is present
             showTestResult(
+                deeplTestResult,
                 getLocalizedText(
                     'deeplTestNeedsTesting',
                     '⚠️ DeepL API key needs testing.'
@@ -827,6 +925,7 @@ document.addEventListener('DOMContentLoaded', function () {
         } else {
             // Show "no key" status when key is empty
             showTestResult(
+                deeplTestResult,
                 getLocalizedText(
                     'deeplApiKeyError',
                     'Please enter your DeepL API key first.'
@@ -865,6 +964,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // 为按钮添加点击处理，显示错误信息
         testDeepLButton.addEventListener('click', () => {
             showTestResult(
+                deeplTestResult,
                 getLocalizedText(
                     'deeplApiNotLoadedError',
                     '❌ DeepL API script is not available. Please refresh the page.'
