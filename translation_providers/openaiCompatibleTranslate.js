@@ -426,41 +426,44 @@ export async function translate(text, sourceLang, targetLang) {
                 );
             }
         } else if (
-            data &&
-            data.output &&
-            Array.isArray(data.output) &&
-            data.output.length > 0 &&
-            data.output[0].type === 'message' &&
-            data.output[0].content &&
-            Array.isArray(data.output[0].content) &&
-            data.output[0].content.length > 0 &&
-            data.output[0].content[0].type === 'output_text' &&
-            typeof data.output[0].content[0].text === 'string'
+            data?.output?.[0]?.content &&
+            Array.isArray(data.output[0].content)
         ) {
-            const translatedText = data.output[0].content[0].text.trim();
-            logger.info('Parsed translation from OpenAI "Responses" API format.', {
-                responseObjectId: data.id,
-                status: data.status,
-            });
-            if (translatedText && translatedText.length > 0) {
-                logger.info('Translation completed successfully', {
-                    originalLength: text.length,
-                    translatedLength: translatedText.length,
-                    model: model,
-                    tokensUsed: data.usage?.total_tokens || 'unknown',
-                    originalPreview: text.substring(0, 30),
-                    translatedPreview: translatedText.substring(0, 30),
-                });
-                return translatedText;
-            } else {
-                logger.error('Empty translation received', null, {
-                    responseData: data,
-                    originalText: text.substring(0, 100),
-                    fullResponse: JSON.stringify(data),
-                });
-                throw new Error(
-                    'Translation Error: Empty response from translation service.'
+            // Flexible parsing for 'output' format
+            const contentArray = data.output[0].content;
+            const textBlock = contentArray.find(
+                (item) => item && typeof item.text === 'string'
+            );
+
+            if (textBlock) {
+                const translatedText = textBlock.text.trim();
+                logger.info(
+                    'Parsed translation from OpenAI "Responses" API format (flexible).',
+                    {
+                        responseObjectId: data.id,
+                        status: data.status,
+                    }
                 );
+                if (translatedText.length > 0) {
+                    logger.info('Translation completed successfully', {
+                        originalLength: text.length,
+                        translatedLength: translatedText.length,
+                        model: model,
+                        tokensUsed: data.usage?.total_tokens || 'unknown',
+                        originalPreview: text.substring(0, 30),
+                        translatedPreview: translatedText.substring(0, 30),
+                    });
+                    return translatedText;
+                } else {
+                    logger.error('Empty translation received', null, {
+                        responseData: data,
+                        originalText: text.substring(0, 100),
+                        fullResponse: JSON.stringify(data),
+                    });
+                    throw new Error(
+                        'Translation Error: Empty response from translation service.'
+                    );
+                }
             }
         }
         
