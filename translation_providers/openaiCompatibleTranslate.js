@@ -289,7 +289,7 @@ export async function translate(text, sourceLang, targetLang) {
             },
         ],
         temperature: 0.1, // Low temperature for consistent translations
-        max_tokens: 100000000 // Increased token allocation
+        max_tokens: 10000 // Increased token allocation
     };
 
     const headers = {
@@ -453,7 +453,7 @@ export async function translate(text, sourceLang, targetLang) {
                 });
                 return translatedText;
             } else {
-                 logger.error('Empty translation received', null, {
+                logger.error('Empty translation received', null, {
                     responseData: data,
                     originalText: text.substring(0, 100),
                     fullResponse: JSON.stringify(data),
