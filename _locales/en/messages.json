@@ -178,6 +178,14 @@
     "providerMicrosoftName": { "message": "Microsoft Translate (Free)" },
     "providerDeepLName": { "message": "DeepL (API Key Required)" },
     "providerDeepLFreeName": { "message": "DeepL Translate (Free)" },
+    "providerOpenAICompatibleName": { "message": "OpenAI Compatible (API Key Required)" },
+    "cardOpenAICompatibleTitle": { "message": "OpenAI Compatible (API Key Required)" },
+    "cardOpenAICompatibleDesc": { "message": "Enter your API key and settings for OpenAI-compatible services like Gemini." },
+    "baseUrlLabel": { "message": "Base URL:" },
+    "modelLabel": { "message": "Model:" },
+    "featureCustomizable": { "message": "Customizable endpoint and model" },
+    "fetchModelsButton": { "message": "Fetch Models" },
+    "testConnectionButton": { "message": "Test Connection" },
 
     "cardLoggingLevelTitle": { "message": "Logging Level" },
     "cardLoggingLevelDesc": {
