@@ -439,11 +439,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
         try {
             const models = await fetchAvailableModels(apiKey, baseUrl);
-            openaiCompatibleModelSelect.innerHTML = '';
 
-            // Add a default option if no model is currently selected
-            const currentModel = openaiCompatibleModelSelect.value;
+            // Get the currently saved model from storage instead of DOM to preserve user selection
+            const savedModel = await configService.get('openaiCompatibleModel');
+
+            openaiCompatibleModelSelect.innerHTML = '';
             let hasCurrentModel = false;
+            let modelToSelect = null;
 
             models.forEach(model => {
                 const option = document.createElement('option');
@@ -451,15 +453,28 @@ document.addEventListener('DOMContentLoaded', function () {
                 option.textContent = model;
                 openaiCompatibleModelSelect.appendChild(option);
 
-                if (model === currentModel) {
+                if (model === savedModel) {
                     hasCurrentModel = true;
+                    modelToSelect = model;
                 }
             });
 
-            // If current model is not in the list and we have models, select the first one
-            if (!hasCurrentModel && models.length > 0) {
-                openaiCompatibleModelSelect.value = models[0];
-                await saveSetting('openaiCompatibleModel', models[0]);
+            // Determine which model to select
+            if (hasCurrentModel) {
+                // User's previously selected model is available, keep it
+                modelToSelect = savedModel;
+            } else if (models.length > 0) {
+                // User's model not available or no model was selected, use first available
+                modelToSelect = models[0];
+            }
+
+            // Update DOM and save selection if we have a model to select
+            if (modelToSelect) {
+                openaiCompatibleModelSelect.value = modelToSelect;
+                // Only save if the model changed to avoid unnecessary storage writes
+                if (modelToSelect !== savedModel) {
+                    await saveSetting('openaiCompatibleModel', modelToSelect);
+                }
             }
 
             showTestResult(
