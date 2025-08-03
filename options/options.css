@@ -434,6 +434,11 @@ input[type='range']::-moz-range-thumb {
         align-self: center;
     }
 
+    .openai-test-setting #testOpenAIButton {
+        margin-left: 0;
+        align-self: center;
+    }
+
     /* Mobile adjustments for sparkle button */
     .btn-sparkle {
         padding: 10px 16px;
@@ -494,6 +499,7 @@ input[type='range']::-moz-range-thumb {
     flex-shrink: 0;
     margin: 0;
     white-space: nowrap;
+    min-width: 140px; /* Consistent button width across localizations */
 }
 
 /* Special layout for OpenAI test section - matches DeepL pattern */
@@ -521,6 +527,7 @@ input[type='range']::-moz-range-thumb {
     flex-shrink: 0;
     margin: 0;
     white-space: nowrap;
+    min-width: 140px; /* Consistent button width across localizations */
 }
 
 /* Ensure text color is applied specifically to DeepL test button */
