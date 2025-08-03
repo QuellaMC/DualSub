@@ -734,6 +734,90 @@
                         </div>
                     </div>
 
+                    <!-- OpenAI Compatible Card -->
+                    <div
+                        class="setting-card"
+                        id="openaiCompatibleProviderCard"
+                        style="display: none"
+                    >
+                        <h3 data-i18n="cardOpenAICompatibleTitle">
+                            OpenAI Compatible (API Key Required)
+                        </h3>
+                        <p data-i18n="cardOpenAICompatibleDesc">
+                            Enter your API key and settings for OpenAI-compatible services like Gemini.
+                        </p>
+                        <div class="setting">
+                            <label for="openaiCompatibleApiKey" data-i18n="apiKeyLabel"
+                                >API Key:</label
+                            >
+                            <input
+                                type="password"
+                                id="openaiCompatibleApiKey"
+                                placeholder="Enter your OpenAI-compatible API key"
+                            />
+                        </div>
+                        <div class="setting">
+                            <label for="openaiCompatibleBaseUrl" data-i18n="baseUrlLabel"
+                                >Base URL:</label
+                            >
+                            <input
+                                type="text"
+                                id="openaiCompatibleBaseUrl"
+                                placeholder="e.g., https://api.openai.com/v1"
+                            />
+                        </div>
+                        <div class="setting">
+                            <label for="openaiCompatibleModel" data-i18n="modelLabel"
+                                >Model:</label
+                            >
+                            <div class="model-selection">
+                                <select id="openaiCompatibleModel">
+                                </select>
+                                <button
+                                id="fetchOpenAIModelsButton"
+                                type="button"
+                                class="btn-sparkle no-sparkle"
+                                data-i18n="fetchModelsButton"
+                            >
+                                <span class="text">Fetch Models</span>
+                            </button>
+                            </div>
+                        </div>
+                        <div class="setting test-setting">
+                            <div
+                                id="openaiTestResult"
+                                class="test-result"
+                                aria-live="polite"
+                            ></div>
+                            <button
+                                id="testOpenAIButton"
+                                type="button"
+                                class="btn-sparkle"
+                                data-i18n="testConnectionButton"
+                            >
+                                <span class="text">Test Connection</span>
+                            </button>
+                        </div>
+                        <div class="provider-info">
+                            <div class="info-item">
+                                <strong data-i18n="providerFeatures"
+                                    >Features:</strong
+                                >
+                                <ul>
+                                    <li data-i18n="featureCustomizable">
+                                        Customizable endpoint and model
+                                    </li>
+                                    <li data-i18n="featureApiKeyRequired">
+                                        API key required
+                                    </li>
+                                    <li data-i18n="featureWideLanguageSupport">
+                                        Wide language support
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- DeepL Card -->
                     <div
                         class="setting-card"
