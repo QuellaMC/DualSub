@@ -2,6 +2,15 @@ import { configService } from '../services/configService.js';
 import Logger from '../utils/logger.js';
 import { fetchAvailableModels } from '../translation_providers/openaiCompatibleTranslate.js';
 
+// Simple debounce utility function
+function debounce(func, delay) {
+    let timeoutId;
+    return function (...args) {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => func.apply(this, args), delay);
+    };
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     // Initialize options logger
     const optionsLogger = Logger.create('Options', configService);
@@ -106,7 +115,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const openaiCompatibleBaseUrlInput = document.getElementById('openaiCompatibleBaseUrl');
     const openaiCompatibleModelSelect = document.getElementById('openaiCompatibleModel');
     const testOpenAIButton = document.getElementById('testOpenAIButton');
-    const fetchOpenAIModelsButton = document.getElementById('fetchOpenAIModelsButton');
     const openaiTestResult = document.getElementById('openaiTestResult');
 
     // About
@@ -381,49 +389,105 @@ document.addEventListener('DOMContentLoaded', function () {
         const baseUrl = openaiCompatibleBaseUrlInput.value.trim();
 
         if (!apiKey) {
-            showTestResult(openaiTestResult, 'Please enter an API key.', 'error');
+            showTestResult(
+                openaiTestResult,
+                getLocalizedText('openaiApiKeyError', 'Please enter an API key first.'),
+                'error'
+            );
             return;
         }
 
         testOpenAIButton.disabled = true;
-        showTestResult(openaiTestResult, 'Testing connection...', 'info');
+        showTestResult(
+            openaiTestResult,
+            getLocalizedText('openaiTestingConnection', 'Testing connection...'),
+            'info'
+        );
 
         try {
             await fetchAvailableModels(apiKey, baseUrl);
-            showTestResult(openaiTestResult, 'Connection successful!', 'success');
+            showTestResult(
+                openaiTestResult,
+                getLocalizedText('openaiConnectionSuccessful', 'Connection successful!'),
+                'success'
+            );
         } catch (error) {
-            showTestResult(openaiTestResult, `Connection failed: ${error.message}`, 'error');
+            showTestResult(
+                openaiTestResult,
+                getLocalizedText('openaiConnectionFailed', 'Connection failed: %s', error.message),
+                'error'
+            );
         } finally {
             testOpenAIButton.disabled = false;
         }
     };
 
-    const fetchOpenAIModels = async function () {
+    const fetchOpenAIModelsAutomatically = async function () {
         const apiKey = openaiCompatibleApiKeyInput.value.trim();
         const baseUrl = openaiCompatibleBaseUrlInput.value.trim();
 
         if (!apiKey) {
-            showTestResult(openaiTestResult, 'Please enter an API key to fetch models.', 'error');
+            // Don't show error for automatic fetching when no API key
             return;
         }
 
-        fetchOpenAIModelsButton.disabled = true;
-        showTestResult(openaiTestResult, 'Fetching models...', 'info');
+        showTestResult(
+            openaiTestResult,
+            getLocalizedText('openaieFetchingModels', 'Fetching models...'),
+            'info'
+        );
 
         try {
             const models = await fetchAvailableModels(apiKey, baseUrl);
+
+            // Get the currently saved model from storage instead of DOM to preserve user selection
+            const savedModel = await configService.get('openaiCompatibleModel');
+
             openaiCompatibleModelSelect.innerHTML = '';
+            let hasCurrentModel = false;
+            let modelToSelect = null;
+
             models.forEach(model => {
                 const option = document.createElement('option');
                 option.value = model;
                 option.textContent = model;
                 openaiCompatibleModelSelect.appendChild(option);
+
+                if (model === savedModel) {
+                    hasCurrentModel = true;
+                    modelToSelect = model;
+                }
             });
-            showTestResult(openaiTestResult, 'Models fetched successfully.', 'success');
+
+            // Determine which model to select
+            if (hasCurrentModel) {
+                // User's previously selected model is available, keep it
+                modelToSelect = savedModel;
+            } else if (models.length > 0) {
+                // User's model not available or no model was selected, use first available
+                modelToSelect = models[0];
+            }
+
+            // Update DOM and save selection if we have a model to select
+            if (modelToSelect) {
+                openaiCompatibleModelSelect.value = modelToSelect;
+                // Only save if the model changed to avoid unnecessary storage writes
+                if (modelToSelect !== savedModel) {
+                    await saveSetting('openaiCompatibleModel', modelToSelect);
+                }
+            }
+
+            showTestResult(
+                openaiTestResult,
+                getLocalizedText('openaiModelsFetchedSuccessfully', 'Models fetched successfully.'),
+                'success'
+            );
         } catch (error) {
-            showTestResult(openaiTestResult, `Failed to fetch models: ${error.message}`, 'error');
-        } finally {
-            fetchOpenAIModelsButton.disabled = false;
+            showTestResult(
+                openaiTestResult,
+                getLocalizedText('openaiFailedToFetchModels', 'Failed to fetch models: %s', error.message),
+                'error'
+            );
         }
     };
 
@@ -481,6 +545,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 break;
             case 'openai_compatible':
                 openaiCompatibleCard.style.display = 'block';
+                // Auto-fetch models when OpenAI provider is selected and credentials are configured
+                // This ensures the model list is always up-to-date when users visit the settings
+                initializeOpenAITestStatus();
                 break;
             default:
                 // Show DeepL Free as default
@@ -893,6 +960,9 @@ document.addEventListener('DOMContentLoaded', function () {
         async () => await saveSetting('deeplApiPlan', deeplApiPlanSelect.value)
     );
 
+    // Create debounced function for automatic model fetching
+    const debouncedFetchModels = debounce(fetchOpenAIModelsAutomatically, 1000);
+
     // OpenAI Compatible specific settings
     openaiCompatibleApiKeyInput.addEventListener('change', async function () {
         await saveSetting('openaiCompatibleApiKey', this.value);
@@ -903,8 +973,36 @@ document.addEventListener('DOMContentLoaded', function () {
     openaiCompatibleModelSelect.addEventListener('change', async function () {
         await saveSetting('openaiCompatibleModel', this.value);
     });
+
+    // Add input event listeners for automatic model fetching with debouncing
+    openaiCompatibleApiKeyInput.addEventListener('input', function () {
+        const apiKey = this.value.trim();
+        if (apiKey) {
+            showTestResult(
+                openaiTestResult,
+                getLocalizedText('openaiApiKeyNeedsTesting', '⚠️ API key needs testing.'),
+                'warning'
+            );
+            debouncedFetchModels();
+        } else {
+            showTestResult(
+                openaiTestResult,
+                getLocalizedText('openaiApiKeyError', 'Please enter your API key first.'),
+                'error'
+            );
+            // Clear models when no API key
+            openaiCompatibleModelSelect.innerHTML = '';
+        }
+    });
+
+    openaiCompatibleBaseUrlInput.addEventListener('input', function () {
+        const apiKey = openaiCompatibleApiKeyInput.value.trim();
+        if (apiKey) {
+            debouncedFetchModels();
+        }
+    });
+
     testOpenAIButton.addEventListener('click', testOpenAIConnection);
-    fetchOpenAIModelsButton.addEventListener('click', fetchOpenAIModels);
 
 
     // Initialize DeepL test result with default status
@@ -930,6 +1028,30 @@ document.addEventListener('DOMContentLoaded', function () {
                     'deeplApiKeyError',
                     'Please enter your DeepL API key first.'
                 ),
+                'error'
+            );
+        }
+    };
+
+    // Initialize OpenAI test result with default status
+    const initializeOpenAITestStatus = function () {
+        const currentApiKey = openaiCompatibleApiKeyInput.value.trim();
+
+        if (currentApiKey) {
+            // Show "needs testing" status when key is present
+            showTestResult(
+                openaiTestResult,
+                getLocalizedText('openaiTestNeedsTesting', '⚠️ OpenAI-compatible API key needs testing.'),
+                'warning'
+            );
+            // Automatically fetch models when API key is present
+            // This provides a better UX by ensuring models are always up-to-date when visiting settings
+            fetchOpenAIModelsAutomatically();
+        } else {
+            // Show "no key" status when key is empty
+            showTestResult(
+                openaiTestResult,
+                getLocalizedText('openaiApiKeyError', 'Please enter your API key first.'),
                 'error'
             );
         }

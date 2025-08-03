@@ -186,6 +186,17 @@
     "featureCustomizable": { "message": "Customizable endpoint and model" },
     "fetchModelsButton": { "message": "Fetch Models" },
     "testConnectionButton": { "message": "Test Connection" },
+    "openaiApiKeyPlaceholder": { "message": "Enter your OpenAI-compatible API key" },
+    "openaiBaseUrlPlaceholder": { "message": "e.g., https://api.openai.com/v1" },
+    "openaiApiKeyError": { "message": "Please enter your API key first." },
+    "openaiApiKeyNeedsTesting": { "message": "⚠️ API key needs testing." },
+    "openaiTestNeedsTesting": { "message": "⚠️ OpenAI-compatible API key needs testing." },
+    "openaiTestingConnection": { "message": "Testing connection..." },
+    "openaiConnectionSuccessful": { "message": "Connection successful!" },
+    "openaiConnectionFailed": { "message": "Connection failed: %s" },
+    "openaieFetchingModels": { "message": "Fetching models..." },
+    "openaiModelsFetchedSuccessfully": { "message": "Models fetched successfully." },
+    "openaiFailedToFetchModels": { "message": "Failed to fetch models: %s" },
 
     "cardLoggingLevelTitle": { "message": "Logging Level" },
     "cardLoggingLevelDesc": {
