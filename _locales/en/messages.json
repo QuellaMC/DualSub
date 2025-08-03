@@ -186,7 +186,6 @@
     "featureCustomizable": { "message": "Customizable endpoint and model" },
     "fetchModelsButton": { "message": "Fetch Models" },
     "testConnectionButton": { "message": "Test Connection" },
-
     "openaiApiKeyPlaceholder": { "message": "Enter your OpenAI-compatible API key" },
     "openaiBaseUrlPlaceholder": { "message": "e.g., https://api.openai.com/v1" },
     "openaiApiKeyError": { "message": "Please enter your API key first." },
