@@ -389,18 +389,34 @@ document.addEventListener('DOMContentLoaded', function () {
         const baseUrl = openaiCompatibleBaseUrlInput.value.trim();
 
         if (!apiKey) {
-            showTestResult(openaiTestResult, 'Please enter an API key.', 'error');
+            showTestResult(
+                openaiTestResult,
+                getLocalizedText('openaiApiKeyError', 'Please enter an API key first.'),
+                'error'
+            );
             return;
         }
 
         testOpenAIButton.disabled = true;
-        showTestResult(openaiTestResult, 'Testing connection...', 'info');
+        showTestResult(
+            openaiTestResult,
+            getLocalizedText('openaiTestingConnection', 'Testing connection...'),
+            'info'
+        );
 
         try {
             await fetchAvailableModels(apiKey, baseUrl);
-            showTestResult(openaiTestResult, 'Connection successful!', 'success');
+            showTestResult(
+                openaiTestResult,
+                getLocalizedText('openaiConnectionSuccessful', 'Connection successful!'),
+                'success'
+            );
         } catch (error) {
-            showTestResult(openaiTestResult, `Connection failed: ${error.message}`, 'error');
+            showTestResult(
+                openaiTestResult,
+                getLocalizedText('openaiConnectionFailed', 'Connection failed: %s', error.message),
+                'error'
+            );
         } finally {
             testOpenAIButton.disabled = false;
         }
@@ -415,7 +431,11 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        showTestResult(openaiTestResult, 'Fetching models...', 'info');
+        showTestResult(
+            openaiTestResult,
+            getLocalizedText('openaieFetchingModels', 'Fetching models...'),
+            'info'
+        );
 
         try {
             const models = await fetchAvailableModels(apiKey, baseUrl);
@@ -442,9 +462,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 await saveSetting('openaiCompatibleModel', models[0]);
             }
 
-            showTestResult(openaiTestResult, 'Models fetched successfully.', 'success');
+            showTestResult(
+                openaiTestResult,
+                getLocalizedText('openaiModelsFetchedSuccessfully', 'Models fetched successfully.'),
+                'success'
+            );
         } catch (error) {
-            showTestResult(openaiTestResult, `Failed to fetch models: ${error.message}`, 'error');
+            showTestResult(
+                openaiTestResult,
+                getLocalizedText('openaiFailedToFetchModels', 'Failed to fetch models: %s', error.message),
+                'error'
+            );
         }
     };
 
@@ -932,10 +960,18 @@ document.addEventListener('DOMContentLoaded', function () {
     openaiCompatibleApiKeyInput.addEventListener('input', function () {
         const apiKey = this.value.trim();
         if (apiKey) {
-            showTestResult(openaiTestResult, '⚠️ API key needs testing.', 'warning');
+            showTestResult(
+                openaiTestResult,
+                getLocalizedText('openaiApiKeyNeedsTesting', '⚠️ API key needs testing.'),
+                'warning'
+            );
             debouncedFetchModels();
         } else {
-            showTestResult(openaiTestResult, 'Please enter your API key first.', 'error');
+            showTestResult(
+                openaiTestResult,
+                getLocalizedText('openaiApiKeyError', 'Please enter your API key first.'),
+                'error'
+            );
             // Clear models when no API key
             openaiCompatibleModelSelect.innerHTML = '';
         }
@@ -982,13 +1018,12 @@ document.addEventListener('DOMContentLoaded', function () {
     // Initialize OpenAI test result with default status
     const initializeOpenAITestStatus = function () {
         const currentApiKey = openaiCompatibleApiKeyInput.value.trim();
-        const currentBaseUrl = openaiCompatibleBaseUrlInput.value.trim();
 
         if (currentApiKey) {
             // Show "needs testing" status when key is present
             showTestResult(
                 openaiTestResult,
-                '⚠️ OpenAI-compatible API key needs testing.',
+                getLocalizedText('openaiTestNeedsTesting', '⚠️ OpenAI-compatible API key needs testing.'),
                 'warning'
             );
             // Automatically fetch models when API key is present
@@ -997,7 +1032,7 @@ document.addEventListener('DOMContentLoaded', function () {
             // Show "no key" status when key is empty
             showTestResult(
                 openaiTestResult,
-                'Please enter your API key first.',
+                getLocalizedText('openaiApiKeyError', 'Please enter your API key first.'),
                 'error'
             );
         }
