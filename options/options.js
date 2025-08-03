@@ -530,6 +530,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 break;
             case 'openai_compatible':
                 openaiCompatibleCard.style.display = 'block';
+                // Auto-fetch models when OpenAI provider is selected and credentials are configured
+                // This ensures the model list is always up-to-date when users visit the settings
+                initializeOpenAITestStatus();
                 break;
             default:
                 // Show DeepL Free as default
@@ -1027,6 +1030,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 'warning'
             );
             // Automatically fetch models when API key is present
+            // This provides a better UX by ensuring models are always up-to-date when visiting settings
             fetchOpenAIModelsAutomatically();
         } else {
             // Show "no key" status when key is empty
@@ -1076,9 +1080,6 @@ document.addEventListener('DOMContentLoaded', function () {
             );
         });
     }
-
-    // Initialize OpenAI test status
-    initializeOpenAITestStatus();
 
     // Performance settings
     document
