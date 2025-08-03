@@ -496,6 +496,33 @@ input[type='range']::-moz-range-thumb {
     white-space: nowrap;
 }
 
+/* Special layout for OpenAI test section - matches DeepL pattern */
+.openai-test-setting {
+    display: flex !important;
+    align-items: center;
+    gap: 20px;
+    justify-content: space-between;
+    grid-template-columns: none !important;
+    padding: 20px 0;
+    border-top: 1px solid var(--border-color);
+}
+
+.openai-test-setting .test-result {
+    display: block;
+    margin: 0;
+    flex: 1;
+    padding: 12px 16px;
+    font-size: 14px;
+    max-width: 400px;
+    min-height: auto;
+}
+
+.openai-test-setting #testOpenAIButton {
+    flex-shrink: 0;
+    margin: 0;
+    white-space: nowrap;
+}
+
 /* Ensure text color is applied specifically to DeepL test button */
 .deepl-test-setting #testDeepLButton.btn-sparkle .text {
     color: #aaaaaa !important;

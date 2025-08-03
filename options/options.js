@@ -2,6 +2,15 @@ import { configService } from '../services/configService.js';
 import Logger from '../utils/logger.js';
 import { fetchAvailableModels } from '../translation_providers/openaiCompatibleTranslate.js';
 
+// Simple debounce utility function
+function debounce(func, delay) {
+    let timeoutId;
+    return function (...args) {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => func.apply(this, args), delay);
+    };
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     // Initialize options logger
     const optionsLogger = Logger.create('Options', configService);
@@ -106,7 +115,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const openaiCompatibleBaseUrlInput = document.getElementById('openaiCompatibleBaseUrl');
     const openaiCompatibleModelSelect = document.getElementById('openaiCompatibleModel');
     const testOpenAIButton = document.getElementById('testOpenAIButton');
-    const fetchOpenAIModelsButton = document.getElementById('fetchOpenAIModelsButton');
     const openaiTestResult = document.getElementById('openaiTestResult');
 
     // About
@@ -398,32 +406,45 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
-    const fetchOpenAIModels = async function () {
+    const fetchOpenAIModelsAutomatically = async function () {
         const apiKey = openaiCompatibleApiKeyInput.value.trim();
         const baseUrl = openaiCompatibleBaseUrlInput.value.trim();
 
         if (!apiKey) {
-            showTestResult(openaiTestResult, 'Please enter an API key to fetch models.', 'error');
+            // Don't show error for automatic fetching when no API key
             return;
         }
 
-        fetchOpenAIModelsButton.disabled = true;
         showTestResult(openaiTestResult, 'Fetching models...', 'info');
 
         try {
             const models = await fetchAvailableModels(apiKey, baseUrl);
             openaiCompatibleModelSelect.innerHTML = '';
+
+            // Add a default option if no model is currently selected
+            const currentModel = openaiCompatibleModelSelect.value;
+            let hasCurrentModel = false;
+
             models.forEach(model => {
                 const option = document.createElement('option');
                 option.value = model;
                 option.textContent = model;
                 openaiCompatibleModelSelect.appendChild(option);
+
+                if (model === currentModel) {
+                    hasCurrentModel = true;
+                }
             });
+
+            // If current model is not in the list and we have models, select the first one
+            if (!hasCurrentModel && models.length > 0) {
+                openaiCompatibleModelSelect.value = models[0];
+                await saveSetting('openaiCompatibleModel', models[0]);
+            }
+
             showTestResult(openaiTestResult, 'Models fetched successfully.', 'success');
         } catch (error) {
             showTestResult(openaiTestResult, `Failed to fetch models: ${error.message}`, 'error');
-        } finally {
-            fetchOpenAIModelsButton.disabled = false;
         }
     };
 
@@ -893,6 +914,9 @@ document.addEventListener('DOMContentLoaded', function () {
         async () => await saveSetting('deeplApiPlan', deeplApiPlanSelect.value)
     );
 
+    // Create debounced function for automatic model fetching
+    const debouncedFetchModels = debounce(fetchOpenAIModelsAutomatically, 1000);
+
     // OpenAI Compatible specific settings
     openaiCompatibleApiKeyInput.addEventListener('change', async function () {
         await saveSetting('openaiCompatibleApiKey', this.value);
@@ -903,8 +927,28 @@ document.addEventListener('DOMContentLoaded', function () {
     openaiCompatibleModelSelect.addEventListener('change', async function () {
         await saveSetting('openaiCompatibleModel', this.value);
     });
+
+    // Add input event listeners for automatic model fetching with debouncing
+    openaiCompatibleApiKeyInput.addEventListener('input', function () {
+        const apiKey = this.value.trim();
+        if (apiKey) {
+            showTestResult(openaiTestResult, '⚠️ API key needs testing.', 'warning');
+            debouncedFetchModels();
+        } else {
+            showTestResult(openaiTestResult, 'Please enter your API key first.', 'error');
+            // Clear models when no API key
+            openaiCompatibleModelSelect.innerHTML = '';
+        }
+    });
+
+    openaiCompatibleBaseUrlInput.addEventListener('input', function () {
+        const apiKey = openaiCompatibleApiKeyInput.value.trim();
+        if (apiKey) {
+            debouncedFetchModels();
+        }
+    });
+
     testOpenAIButton.addEventListener('click', testOpenAIConnection);
-    fetchOpenAIModelsButton.addEventListener('click', fetchOpenAIModels);
 
 
     // Initialize DeepL test result with default status
@@ -930,6 +974,30 @@ document.addEventListener('DOMContentLoaded', function () {
                     'deeplApiKeyError',
                     'Please enter your DeepL API key first.'
                 ),
+                'error'
+            );
+        }
+    };
+
+    // Initialize OpenAI test result with default status
+    const initializeOpenAITestStatus = function () {
+        const currentApiKey = openaiCompatibleApiKeyInput.value.trim();
+        const currentBaseUrl = openaiCompatibleBaseUrlInput.value.trim();
+
+        if (currentApiKey) {
+            // Show "needs testing" status when key is present
+            showTestResult(
+                openaiTestResult,
+                '⚠️ OpenAI-compatible API key needs testing.',
+                'warning'
+            );
+            // Automatically fetch models when API key is present
+            fetchOpenAIModelsAutomatically();
+        } else {
+            // Show "no key" status when key is empty
+            showTestResult(
+                openaiTestResult,
+                'Please enter your API key first.',
                 'error'
             );
         }
@@ -973,6 +1041,9 @@ document.addEventListener('DOMContentLoaded', function () {
             );
         });
     }
+
+    // Initialize OpenAI test status
+    initializeOpenAITestStatus();
 
     // Performance settings
     document
