@@ -11,6 +11,7 @@
 import { translationProviders } from './services/translationService.js';
 import { subtitleService } from './services/subtitleService.js';
 import { batchTranslationQueue } from './services/batchTranslationQueue.js';
+import { aiContextService } from './services/aiContextService.js';
 import { loggingManager } from './utils/loggingManager.js';
 import { messageHandler } from './handlers/messageHandler.js';
 import { configService } from '../services/configService.js';
@@ -48,33 +49,26 @@ async function initializeServices() {
         await batchTranslationQueue.initialize();
         backgroundLogger.info('Batch translation queue initialized');
 
+        // Initialize AI context service
+        await aiContextService.initialize();
+        backgroundLogger.info('AI context service initialized');
+
         // Initialize message handler
         messageHandler.initialize();
         backgroundLogger.info('Message handler initialized');
 
         // Register services in service registry
-        serviceRegistry.register('translation', translationProviders, [
-            'config',
-            'logging',
-        ]);
-        serviceRegistry.register('subtitle', subtitleService, [
-            'translation',
-            'logging',
-        ]);
-        serviceRegistry.register('batchQueue', batchTranslationQueue, [
-            'translation',
-            'config',
-        ]);
+        serviceRegistry.register('translation', translationProviders, ['config', 'logging']);
+        serviceRegistry.register('subtitle', subtitleService, ['translation', 'logging']);
+        serviceRegistry.register('batchQueue', batchTranslationQueue, ['translation', 'config']);
+        serviceRegistry.register('aiContext', aiContextService, ['config', 'logging']);
         serviceRegistry.register('logging', loggingManager, ['config']);
         serviceRegistry.register('config', configService, []);
-        serviceRegistry.register('messageHandler', messageHandler, [
-            'translation',
-            'subtitle',
-        ]);
+        serviceRegistry.register('messageHandler', messageHandler, ['translation', 'subtitle', 'aiContext']);
         backgroundLogger.info('Services registered in service registry');
 
         // Inject services into message handler
-        messageHandler.setServices(translationProviders, subtitleService);
+        messageHandler.setServices(translationProviders, subtitleService, aiContextService);
         backgroundLogger.info('Services injected into message handler');
 
         // Initialize default settings using the configuration service

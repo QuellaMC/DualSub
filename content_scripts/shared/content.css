@@ -6,14 +6,22 @@
  * Most dynamic styles (e.g., position, font-size) are managed by the content script logic.
  */
 
-#dualsub-subtitle-container {
+#dualsub-subtitle-container,
+#netflix-dual-subtitle-container,
+#disneyplus-dual-subtitle-container {
     /* Base container styles are primarily managed by the content script (e.g., position, z-index). */
+    /* Legacy platform-specific IDs maintained for backward compatibility */
 }
 
 #dualsub-original-subtitle,
-#dualsub-translated-subtitle {
-    /* 
-     * Common base styles for both original and translated subtitles. 
+#dualsub-translated-subtitle,
+#netflix-original-subtitle,
+#netflix-translated-subtitle,
+#disneyplus-original-subtitle,
+#disneyplus-translated-subtitle {
+    /*
+     * Common base styles for both original and translated subtitles.
+     * Universal IDs are now primary, platform-specific IDs maintained for backward compatibility.
      * Specific styling such as colors, padding, and font-size are controlled by the content script.
      */
     line-height: 1.4; /* Improves readability for multi-line subtitles. */
@@ -21,9 +29,152 @@
     max-width: 100%; /* Prevents the subtitle from overflowing its container. */
     box-sizing: border-box; /* Includes padding and border in the element's total width and height. */
     word-wrap: break-word; /* Breaks long words to prevent overflow. */
+    margin-bottom: 0 !important; /* Ensure consistent spacing across platforms */
 }
 
-/* 
+/*
+ * Interactive Subtitle Styles
+ * Styles for clickable words and context interaction features
+ */
+
+.dualsub-interactive-word {
+    position: relative;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: all 0.2s ease;
+    padding: 1px 2px;
+    margin: 0 1px;
+    display: inline;
+    text-decoration: none;
+    outline: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+.dualsub-interactive-word:hover,
+.dualsub-interactive-word--hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.3);
+    transform: translateY(-1px);
+}
+
+.dualsub-interactive-word:focus {
+    background-color: rgba(255, 255, 255, 0.25);
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.5);
+    outline: none;
+}
+
+.dualsub-interactive-word:active {
+    transform: translateY(0);
+    background-color: rgba(255, 255, 255, 0.3);
+}
+
+.dualsub-interactive-word--loading {
+    background-color: rgba(255, 255, 255, 0.15);
+    animation: dualsub-pulse 1.5s ease-in-out infinite;
+    cursor: wait;
+}
+
+@keyframes dualsub-pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.6;
+    }
+}
+
+/*
+ * Universal interactive styles with backward compatibility
+ */
+
+#dualsub-original-subtitle .dualsub-interactive-word:hover,
+#dualsub-original-subtitle .dualsub-interactive-word--hover,
+#disneyplus-original-subtitle .dualsub-interactive-word:hover,
+#disneyplus-original-subtitle .dualsub-interactive-word--hover,
+#netflix-original-subtitle .dualsub-interactive-word:hover,
+#netflix-original-subtitle .dualsub-interactive-word--hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.4);
+}
+
+#dualsub-translated-subtitle .dualsub-interactive-word:hover,
+#dualsub-translated-subtitle .dualsub-interactive-word--hover,
+#disneyplus-translated-subtitle .dualsub-interactive-word:hover,
+#disneyplus-translated-subtitle .dualsub-interactive-word--hover,
+#netflix-translated-subtitle .dualsub-interactive-word:hover,
+#netflix-translated-subtitle .dualsub-interactive-word--hover {
+    background-color: rgba(0, 255, 255, 0.2);
+    box-shadow: 0 0 0 1px rgba(0, 255, 255, 0.4);
+}
+
+/*
+ * Accessibility improvements for interactive elements
+ */
+
+.dualsub-interactive-word[aria-pressed="true"] {
+    background-color: rgba(255, 255, 255, 0.3);
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.6);
+}
+
+/*
+ * Reduced motion support
+ */
+
+@media (prefers-reduced-motion: reduce) {
+    .dualsub-interactive-word {
+        transition: none;
+    }
+
+    .dualsub-interactive-word:hover,
+    .dualsub-interactive-word--hover {
+        transform: none;
+    }
+
+    .dualsub-interactive-word--loading {
+        animation: none;
+        opacity: 0.7;
+    }
+}
+
+/*
+ * High contrast mode support
+ */
+
+@media (prefers-contrast: high) {
+    .dualsub-interactive-word:hover,
+    .dualsub-interactive-word--hover {
+        background-color: rgba(255, 255, 255, 0.4);
+        box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.8);
+    }
+
+    .dualsub-interactive-word:focus {
+        box-shadow: 0 0 0 3px rgba(255, 255, 255, 1);
+    }
+}
+
+/*
+ * Mobile and touch device optimizations
+ */
+
+@media (hover: none) and (pointer: coarse) {
+    .dualsub-interactive-word {
+        padding: 3px 4px;
+        margin: 0 2px;
+        min-height: 24px;
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .dualsub-interactive-word:hover,
+    .dualsub-interactive-word--hover {
+        transform: none;
+    }
+}
+
+/*
  * Example of how specific styles could be overridden directly in CSS.
  * This is generally handled by the content script to allow for user configuration.
  *

@@ -1,4 +1,3 @@
-// config/configSchema.js
 /**
  * The single source of truth for all extension settings.
  * - defaultValue: The value for a fresh installation.
@@ -89,6 +88,55 @@ export const configSchema = {
         type: Boolean,
         scope: 'local',
     }, // UI state, doesn't need to sync
+
+    // --- AI Context Settings ---
+    // Feature toggle
+    aiContextEnabled: { defaultValue: false, type: Boolean, scope: 'sync' },
+
+    // Provider selection
+    aiContextProvider: { defaultValue: 'openai', type: String, scope: 'sync' },
+
+    // Context types to enable
+    aiContextTypes: {
+        defaultValue: ['cultural', 'historical', 'linguistic'],
+        type: Array,
+        scope: 'sync'
+    },
+
+
+
+    // OpenAI Context API Settings
+    openaiApiKey: { defaultValue: '', type: String, scope: 'sync' },
+    openaiBaseUrl: { defaultValue: 'https://api.openai.com', type: String, scope: 'sync' },
+    openaiModel: { defaultValue: 'gpt-3.5-turbo', type: String, scope: 'sync' },
+
+    // Google Gemini Context API Settings
+    geminiApiKey: { defaultValue: '', type: String, scope: 'sync' },
+    geminiModel: { defaultValue: 'gemini-1.5-flash', type: String, scope: 'sync' },
+
+    // Context analysis settings
+    aiContextTimeout: { defaultValue: 30000, type: Number, scope: 'sync' }, // 30 seconds
+    aiContextCacheEnabled: { defaultValue: true, type: Boolean, scope: 'sync' },
+    aiContextCacheTTL: { defaultValue: 3600000, type: Number, scope: 'sync' }, // 1 hour
+    aiContextMaxCacheSize: { defaultValue: 200, type: Number, scope: 'sync' },
+
+    // Rate limiting settings
+    aiContextRateLimit: { defaultValue: 60, type: Number, scope: 'sync' }, // requests per minute
+    aiContextBurstLimit: { defaultValue: 10, type: Number, scope: 'sync' }, // burst protection
+    aiContextMandatoryDelay: { defaultValue: 1000, type: Number, scope: 'sync' }, // ms between requests
+
+    // UI preferences
+    contextModalPosition: { defaultValue: 'center', type: String, scope: 'sync' }, // center, top, bottom
+    contextModalSize: { defaultValue: 'medium', type: String, scope: 'sync' }, // small, medium, large
+    contextAutoClose: { defaultValue: false, type: Boolean, scope: 'sync' },
+    contextAutoCloseDelay: { defaultValue: 10000, type: Number, scope: 'sync' }, // 10 seconds
+
+
+
+    // Advanced settings
+    aiContextRetryAttempts: { defaultValue: 3, type: Number, scope: 'sync' },
+    aiContextRetryDelay: { defaultValue: 2000, type: Number, scope: 'sync' },
+    aiContextDebugMode: { defaultValue: false, type: Boolean, scope: 'local' },
 
     // --- Debug Settings (local storage for immediate availability) ---
     debugMode: { defaultValue: false, type: Boolean, scope: 'local' }, // Debug logging mode

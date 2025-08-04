@@ -9,6 +9,14 @@
 // Logger instance for subtitle utilities
 let utilsLogger = null;
 
+// Interactive subtitle functionality
+let interactiveSubtitlesEnabled = false;
+let interactiveModulesLoaded = false;
+
+// Debounce mechanism for subtitle content change events
+let contentChangeDebounceTimeout = null;
+const CONTENT_CHANGE_DEBOUNCE_DELAY = 50; // 50ms debounce
+
 // Initialize fallback console logging until Logger is loaded
 function logWithFallback(level, message, data = {}) {
     if (utilsLogger) {
@@ -19,6 +27,35 @@ function logWithFallback(level, message, data = {}) {
             data
         );
     }
+}
+
+/**
+ * Dispatch subtitle content change event with debouncing to prevent rapid-fire events
+ * @param {string} type - Subtitle type ('original' or 'translated')
+ * @param {string} oldContent - Previous content
+ * @param {string} newContent - New content
+ * @param {HTMLElement} element - Subtitle element
+ */
+function dispatchContentChangeDebounced(type, oldContent, newContent, element) {
+    if (contentChangeDebounceTimeout) {
+        clearTimeout(contentChangeDebounceTimeout);
+    }
+    contentChangeDebounceTimeout = setTimeout(() => {
+        document.dispatchEvent(new CustomEvent('dualsub-subtitle-content-changing', {
+            detail: {
+                type,
+                oldContent,
+                newContent,
+                element
+            }
+        }));
+
+        logWithFallback('debug', 'Debounced subtitle content change event dispatched', {
+            type,
+            oldContentLength: oldContent.length,
+            newContentLength: newContent.length
+        });
+    }, CONTENT_CHANGE_DEBOUNCE_DELAY);
 }
 
 // Initialize logger when available
@@ -54,8 +91,127 @@ export async function initializeLogger() {
     }
 }
 
-// Auto-initialize logger
+export let dualsubUiRoot = null;
+
 initializeLogger();
+
+/**
+ * Creates or retrieves the main root container for all DualSub UI elements.
+ * This container will be moved around the DOM to handle fullscreen transitions.
+ * @returns {HTMLElement} The UI root container
+ */
+export function getOrCreateUiRoot() {
+    if (dualsubUiRoot && document.body.contains(dualsubUiRoot)) {
+        return dualsubUiRoot;
+    }
+    dualsubUiRoot = document.createElement('div');
+    dualsubUiRoot.id = 'dualsub-ui-root';
+    dualsubUiRoot.style.pointerEvents = 'none'; // Container should not intercept clicks
+    dualsubUiRoot.style.position = 'fixed'; // Fixed positioning for consistent viewport reference
+    dualsubUiRoot.style.top = '0';
+    dualsubUiRoot.style.left = '0';
+    dualsubUiRoot.style.width = '100%';
+    dualsubUiRoot.style.height = '100%';
+    dualsubUiRoot.style.zIndex = '9999'; // Above modal overlay (9998) but below modal content (10000)
+
+    document.body.appendChild(dualsubUiRoot);
+    return dualsubUiRoot;
+}
+
+/**
+ * Updates subtitle container position based on platform and fullscreen state
+ * @param {Object} activePlatform - The active platform instance
+ */
+export function updateSubtitlePosition(activePlatform) {
+    if (!subtitleContainer) return;
+
+    // Recalculate position based on current container parent
+    const videoPlayerParent = activePlatform?.getPlayerContainerElement?.();
+    if (videoPlayerParent && getComputedStyle(videoPlayerParent).position === 'static') {
+        videoPlayerParent.style.position = 'relative';
+    }
+
+    logWithFallback('debug', 'Updated subtitle position for container transition');
+}
+
+/**
+ * Initialize interactive subtitle functionality
+ * @param {Object} config - Configuration options
+ */
+export async function initializeInteractiveSubtitleFeatures(config = {}) {
+    if (interactiveModulesLoaded) {
+        return;
+    }
+
+    try {
+        // Get absolute URLs for interactive modules (legacy AI context modals removed)
+        const formatterUrl = chrome.runtime.getURL('content_scripts/shared/interactiveSubtitleFormatter.js');
+        const selectionUrl = chrome.runtime.getURL('content_scripts/shared/textSelectionHandler.js');
+        const loadingUrl = chrome.runtime.getURL('content_scripts/shared/contextLoadingStates.js');
+
+        // Dynamically import interactive modules (legacy AI context system removed)
+        const [
+            { initializeInteractiveSubtitles, formatInteractiveSubtitleText, attachInteractiveEventListeners, setInteractiveEnabled },
+            { initializeTextSelection },
+            { initializeLoadingStates }
+        ] = await Promise.all([
+            import(formatterUrl),
+            import(selectionUrl),
+            import(loadingUrl)
+        ]);
+
+        // Initialize all interactive components with enabled state
+        const interactiveConfig = {
+            ...config,
+            enabled: true, // Explicitly enable interactive features
+            clickableWords: true,
+            highlightOnHover: true
+        };
+
+        initializeInteractiveSubtitles(interactiveConfig);
+        initializeTextSelection(config.textSelection || {});
+        initializeLoadingStates(config.loadingStates || {});
+
+        // Note: AI Context features are now handled by the new modular system
+        // in content_scripts/aicontext/ and initialized by platform content scripts
+
+        // Store references for later use
+        window.dualsub_formatInteractiveSubtitleText = formatInteractiveSubtitleText;
+        window.dualsub_attachInteractiveEventListeners = attachInteractiveEventListeners;
+        window.dualsub_setInteractiveEnabled = setInteractiveEnabled;
+
+        interactiveModulesLoaded = true;
+        interactiveSubtitlesEnabled = true; // Always enable when modules are loaded
+
+        logWithFallback('info', 'Interactive subtitle features initialized', {
+            enabled: interactiveSubtitlesEnabled,
+            config
+        });
+
+    } catch (error) {
+        logWithFallback('error', 'Failed to initialize interactive subtitle features', {
+            error: error.message,
+            stack: error.stack,
+            name: error.name,
+            config: config
+        });
+        throw error; // Re-throw to help with debugging
+    }
+}
+
+/**
+ * Enable or disable interactive subtitle functionality
+ * @param {boolean} enabled - Whether to enable interactive features
+ */
+export function setInteractiveSubtitlesEnabled(enabled) {
+    interactiveSubtitlesEnabled = enabled;
+
+    if (interactiveModulesLoaded && window.dualsub_setInteractiveEnabled) {
+        window.dualsub_setInteractiveEnabled(enabled);
+    }
+
+    logWithFallback('info', 'Interactive subtitles toggled', { enabled });
+}
 
 logWithFallback('info', 'Subtitle utilities module loaded');
 const localizedErrorMessages = {
@@ -144,12 +300,49 @@ export function setSubtitlesActive(active) {
     subtitlesActive = active;
 }
 
-export function formatSubtitleTextForDisplay(text) {
+export function formatSubtitleTextForDisplay(text, options = {}) {
     if (!text) return '';
-    return text
+
+    // Basic HTML escaping
+    let formattedText = text
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
+
+    // Add interactive elements if enabled and modules are loaded
+    if (interactiveSubtitlesEnabled && interactiveModulesLoaded && window.dualsub_formatInteractiveSubtitleText) {
+        try {
+            const originalLength = formattedText.length;
+            formattedText = window.dualsub_formatInteractiveSubtitleText(formattedText, options);
+            const hasInteractiveSpans = formattedText.includes('dualsub-interactive-word');
+
+            logWithFallback('debug', 'Interactive text formatting applied', {
+                originalLength,
+                formattedLength: formattedText.length,
+                hasInteractiveSpans,
+                subtitleType: options.subtitleType,
+                sampleText: text.substring(0, 30),
+                formattedSample: formattedText.substring(0, 100)
+            });
+        } catch (error) {
+            logWithFallback('error', 'Failed to format interactive subtitle text', {
+                error: error.message,
+                stack: error.stack,
+                text: text.substring(0, 50)
+            });
+
+        }
+    } else {
+        logWithFallback('debug', 'Interactive formatting skipped', {
+            interactiveSubtitlesEnabled,
+            interactiveModulesLoaded,
+            formatFunctionAvailable: !!window.dualsub_formatInteractiveSubtitleText,
+            subtitleType: options.subtitleType,
+            text: text.substring(0, 30)
+        });
+    }
+
+    return formattedText;
 }
 
 export function parseVTT(vttString) {
@@ -274,6 +467,12 @@ export function applySubtitleStyling(config) {
 
     const elements = [originalSubtitleElement, translatedSubtitleElement];
     elements.forEach((el) => {
+        // Preserve existing colors and background from platform-specific styling
+        const existingColor = el.style.color;
+        const existingBackground = el.style.backgroundColor;
+        const existingTextShadow = el.style.textShadow;
+        const existingBorderRadius = el.style.borderRadius;
+
         Object.assign(el.style, {
             padding: '0.2em 0.5em',
             lineHeight: '1.3',
@@ -287,8 +486,83 @@ export function applySubtitleStyling(config) {
             width: 'auto',
             textAlign: 'center',
             boxSizing: 'border-box',
+            // Ensure interactive elements are clickable
+            pointerEvents: 'auto',
+            userSelect: 'text',
+            cursor: 'default',
+            zIndex: '10001' // Higher than modal to ensure clickability
         });
+
+        // Force consistent margins with !important to override any external CSS
+        el.style.setProperty('margin-bottom', '0', 'important');
+        el.style.setProperty('margin-top', '0', 'important');
+
+        // Restore platform-specific styling
+        if (existingColor) el.style.color = existingColor;
+        if (existingBackground) el.style.backgroundColor = existingBackground;
+        if (existingTextShadow) el.style.textShadow = existingTextShadow;
+        if (existingBorderRadius) el.style.borderRadius = existingBorderRadius;
     });
+
+    // Inject CSS for interactive elements if not already present
+    if (!document.getElementById('dualsub-interactive-css')) {
+        const style = document.createElement('style');
+        style.id = 'dualsub-interactive-css';
+        style.textContent = `
+            .dualsub-interactive-word {
+                cursor: pointer !important;
+                pointer-events: auto !important;
+                user-select: none !important; /* Prevent text selection, allow only word clicking */
+                display: inline !important;
+                position: relative !important;
+                z-index: 10001 !important; /* Higher than modal to ensure clickability */
+                box-sizing: border-box !important; /* Ensure borders don't affect layout */
+                margin: 0 !important; /* Remove any margins that might affect spacing */
+                padding: 0 !important; /* Remove any padding that might affect spacing */
+            }
+
+            /* Prevent text selection on original subtitle containers */
+            [id*="original"]:not([id*="translated"]) {
+                user-select: none !important; /* Disable text selection on original subtitles */
+                -webkit-user-select: none !important;
+                -moz-user-select: none !important;
+                -ms-user-select: none !important;
+            }
+
+            .dualsub-interactive-word:hover {
+                background-color: rgba(255, 255, 0, 0.3) !important;
+                border-radius: 2px !important;
+            }
+
+            .dualsub-interactive-word:active {
+                background-color: rgba(255, 255, 0, 0.5) !important;
+            }
+
+            /* Selected word state - use outline instead of border to avoid layout impact */
+            .dualsub-interactive-word.dualsub-word-selected {
+                background-color: rgba(0, 123, 255, 0.3) !important;
+                outline: 1px solid rgba(0, 123, 255, 0.6) !important;
+                outline-offset: -1px !important; /* Keep outline inside the element */
+                border-radius: 3px !important;
+                box-shadow: 0 0 3px rgba(0, 123, 255, 0.4) !important;
+            }
+
+            /* Ensure translated subtitles are clearly non-interactive but maintain full brightness */
+            [id*="translated"] .dualsub-interactive-word {
+                cursor: default !important;
+                pointer-events: none !important;
+                /* Removed opacity reduction - translated subtitles should maintain full brightness */
+            }
+
+            /* Translated subtitles maintain full brightness - no opacity reduction */
+            [id*="translated"] {
+                /* Removed opacity reduction - translated subtitles should be fully visible */
+            }
+        `;
+        document.head.appendChild(style);
+
+        logWithFallback('debug', 'Interactive CSS injected', {});
+    }
 
     Object.assign(subtitleContainer.style, {
         flexDirection: config.subtitleLayoutOrientation,
@@ -416,31 +690,30 @@ export function ensureSubtitleContainer(
     }
 
     if (subtitleContainer && document.body.contains(subtitleContainer)) {
-        const videoPlayerParent = activePlatform.getPlayerContainerElement();
-        if (
-            videoPlayerParent &&
-            subtitleContainer.parentElement !== videoPlayerParent
-        ) {
-            if (getComputedStyle(videoPlayerParent).position === 'static') {
-                videoPlayerParent.style.position = 'relative';
-            }
-            videoPlayerParent.appendChild(subtitleContainer);
+        // Ensure subtitle container is always in UI root for unified container system
+        const uiRoot = getOrCreateUiRoot();
+        if (subtitleContainer.parentElement !== uiRoot) {
+            uiRoot.appendChild(subtitleContainer);
         }
+
         applySubtitleStyling(config);
         if (subtitlesActive) showSubtitleContainer();
         else hideSubtitleContainer();
         return true;
     }
 
+    // Create unified subtitle container with universal IDs
     subtitleContainer = document.createElement('div');
-    subtitleContainer.id = 'disneyplus-dual-subtitle-container';
-    subtitleContainer.className = 'disneyplus-subtitle-viewer-container';
+    subtitleContainer.id = 'dualsub-subtitle-container';
+    subtitleContainer.className = 'dualsub-subtitle-viewer-container';
+
+    // Apply unified container styling
     Object.assign(subtitleContainer.style, {
         position: 'absolute',
-        bottom: '12%',
+        bottom: '10%',
         left: '50%',
         transform: 'translateX(-50%)',
-        zIndex: '2147483647',
+        zIndex: '9999',
         pointerEvents: 'none',
         width: '94%',
         maxWidth: 'none',
@@ -450,63 +723,36 @@ export function ensureSubtitleContainer(
         justifyContent: 'center',
     });
 
+    // Create subtitle elements with universal IDs
     originalSubtitleElement = document.createElement('div');
-    originalSubtitleElement.id = 'disneyplus-original-subtitle';
+    originalSubtitleElement.id = 'dualsub-original-subtitle';
+
+    translatedSubtitleElement = document.createElement('div');
+    translatedSubtitleElement.id = 'dualsub-translated-subtitle';
+
     Object.assign(originalSubtitleElement.style, {
         color: 'white',
         backgroundColor: 'rgba(0, 0, 0, 0.6)',
-        padding: '0.2em 0.5em',
-        fontSize: `${config.subtitleFontSize}vw`,
         textShadow: '1px 1px 2px black, 0 0 3px black',
         borderRadius: '4px',
-        lineHeight: '1.3',
-        display: 'inline-block',
-        width: 'auto',
-        maxWidth: '100%',
-        boxSizing: 'border-box',
-        whiteSpace: 'normal',
-        overflow: 'visible',
-        textOverflow: 'clip',
-        textAlign: 'center',
     });
 
-    translatedSubtitleElement = document.createElement('div');
-    translatedSubtitleElement.id = 'disneyplus-translated-subtitle';
     Object.assign(translatedSubtitleElement.style, {
         color: '#00FFFF',
         backgroundColor: 'rgba(0, 0, 0, 0.6)',
-        padding: '0.2em 0.5em',
-        fontSize: `${config.subtitleFontSize}vw`,
         textShadow: '1px 1px 2px black, 0 0 3px black',
         borderRadius: '4px',
-        lineHeight: '1.3',
-        display: 'inline-block',
-        width: 'auto',
-        maxWidth: '100%',
-        boxSizing: 'border-box',
-        whiteSpace: 'normal',
-        overflow: 'visible',
-        textOverflow: 'clip',
-        textAlign: 'center',
     });
 
     subtitleContainer.appendChild(originalSubtitleElement);
     subtitleContainer.appendChild(translatedSubtitleElement);
 
-    const videoPlayerParent = activePlatform.getPlayerContainerElement();
-    if (videoPlayerParent) {
-        if (getComputedStyle(videoPlayerParent).position === 'static') {
-            videoPlayerParent.style.position = 'relative';
-        }
-        videoPlayerParent.appendChild(subtitleContainer);
-    } else {
-        document.body.appendChild(subtitleContainer);
-        logWithFallback(
-            'warn',
-            'Subtitle container appended to body (platform video parent not found).',
-            { logPrefix }
-        );
-    }
+    // Append to UI root container for fullscreen compatibility
+    const uiRoot = getOrCreateUiRoot();
+    uiRoot.appendChild(subtitleContainer);
+
+    // Update subtitle position based on platform
+    updateSubtitlePosition(activePlatform);
 
     applySubtitleStyling(config);
 
@@ -949,10 +1195,26 @@ export function updateSubtitles(
             translatedActiveCue?.useNativeTarget ||
             false;
 
+        // Ensure interactive features are enabled BEFORE formatting text
+        if (interactiveSubtitlesEnabled && interactiveModulesLoaded && window.dualsub_setInteractiveEnabled) {
+            window.dualsub_setInteractiveEnabled(true);
+            logWithFallback('debug', 'Interactive features enabled before text formatting', {
+                logPrefix
+            });
+        }
+
         const originalTextFormatted =
-            formatSubtitleTextForDisplay(originalText);
+            formatSubtitleTextForDisplay(originalText, {
+                sourceLanguage: config.sourceLanguage || 'unknown',
+                targetLanguage: config.targetLanguage || 'unknown',
+                subtitleType: 'original'
+            });
         const translatedTextFormatted =
-            formatSubtitleTextForDisplay(translatedText);
+            formatSubtitleTextForDisplay(translatedText, {
+                sourceLanguage: config.sourceLanguage || 'unknown',
+                targetLanguage: config.targetLanguage || 'unknown',
+                subtitleType: 'translated'
+            });
 
         let contentChanged = false;
 
@@ -976,6 +1238,14 @@ export function updateSubtitles(
                 if (
                     originalSubtitleElement.innerHTML !== originalTextFormatted
                 ) {
+                    // Notify AI Context modal about subtitle content change (debounced)
+                    dispatchContentChangeDebounced(
+                        'original',
+                        originalSubtitleElement.innerHTML,
+                        originalTextFormatted,
+                        originalSubtitleElement
+                    );
+
                     originalSubtitleElement.innerHTML = originalTextFormatted;
                     contentChanged = true;
                     if (currentWholeSecond !== lastLoggedTimeSec) {
@@ -1094,6 +1364,38 @@ export function updateSubtitles(
 
         if (contentChanged) {
             applySubtitleStyling(config);
+
+            // Attach interactive event listeners if enabled
+            if (interactiveSubtitlesEnabled && interactiveModulesLoaded && window.dualsub_attachInteractiveEventListeners) {
+                try {
+                    if (originalText.trim() && originalSubtitleElement.style.display !== 'none') {
+                        window.dualsub_attachInteractiveEventListeners(originalSubtitleElement, {
+                            sourceLanguage: config.sourceLanguage || 'unknown',
+                            targetLanguage: config.targetLanguage || 'unknown',
+                            subtitleType: 'original'
+                        });
+
+                        logWithFallback('debug', 'Interactive listeners attached to original subtitle only', {
+                            originalElementId: originalSubtitleElement.id,
+                            logPrefix
+                        });
+                    }
+                } catch (error) {
+                    logWithFallback('error', 'Failed to attach interactive event listeners', {
+                        error: error.message,
+                        stack: error.stack,
+                        name: error.name,
+                        logPrefix,
+                        interactiveEnabled: interactiveSubtitlesEnabled,
+                        modulesLoaded: interactiveModulesLoaded,
+                        functionAvailable: !!window.dualsub_attachInteractiveEventListeners,
+                        originalElementExists: !!originalSubtitleElement,
+                        translatedElementExists: !!translatedSubtitleElement,
+                        originalText: originalText?.substring(0, 50),
+                        translatedText: translatedText?.substring(0, 50)
+                    });
+                }
+            }
         }
     } else {
         if (originalSubtitleElement.innerHTML)
@@ -1126,7 +1428,6 @@ export function clearSubtitlesDisplayAndQueue(
         });
     }
 
-    // Clear subtitle display elements
     if (originalSubtitleElement) originalSubtitleElement.innerHTML = '';
     if (translatedSubtitleElement) translatedSubtitleElement.innerHTML = '';
 
@@ -1136,7 +1437,7 @@ export function clearSubtitlesDisplayAndQueue(
         try {
             gc();
         } catch (e) {
-            // gc() not available, ignore
+
         }
     }
 }
@@ -1424,7 +1725,7 @@ export async function processSubtitleQueue(
 
     const videoElement = activePlatform.getVideoElement();
     if (!videoElement) {
-        // If video element is not ready, retry after a short delay
+
         setTimeout(
             () => processSubtitleQueue(activePlatform, config, logPrefix),
             200

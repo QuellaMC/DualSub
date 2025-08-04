@@ -11,13 +11,39 @@ const INJECT_EVENT_ID = 'netflix-dualsub-injector-event'; // Must match netflixI
 export class NetflixPlatform extends VideoPlatform {
     constructor() {
         super();
-        this.logger = Logger.create('NetflixPlatform', configService);
+
+        this.chromeApiAvailable = !!(chrome && chrome.runtime && chrome.storage);
+
+        try {
+            this.logger = Logger.create('NetflixPlatform', configService);
+        } catch (error) {
+            this.logger = {
+                debug: (...args) => console.debug('[NetflixPlatform]', ...args),
+                info: (...args) => console.info('[NetflixPlatform]', ...args),
+                warn: (...args) => console.warn('[NetflixPlatform]', ...args),
+                error: (...args) => console.error('[NetflixPlatform]', ...args),
+                updateLevel: () => Promise.resolve()
+            };
+            this.logger.warn('Failed to create proper logger, using fallback', { error: error.message });
+        }
+
         this.currentVideoId = null;
         this.onSubtitleUrlFoundCallback = null;
         this.onVideoIdChangeCallback = null;
         this.lastKnownVttUrlForVideoId = {}; // To prevent reprocessing the same subtitle data
         this.eventListener = null; // To hold the bound event listener for later removal
-        this.initializeLogger();
+
+        this.initializeLogger().catch(error => {
+            this.logger.warn('Logger initialization failed, continuing with defaults', { error: error.message });
+        });
+    }
+
+    /**
+     * Gets the platform name.
+     * @returns {string} The platform name, 'netflix'.
+     */
+    getPlatformName() {
+        return 'netflix';
     }
 
     /**
@@ -25,13 +51,17 @@ export class NetflixPlatform extends VideoPlatform {
      */
     async initializeLogger() {
         try {
-            await this.logger.updateLevel();
+            if (this.chromeApiAvailable && this.logger.updateLevel) {
+                await this.logger.updateLevel();
+                this.logger.debug('Logger level updated successfully');
+            } else {
+                this.logger.warn('Chrome API not available or logger.updateLevel missing, using default logging level');
+            }
         } catch (error) {
-            // Logger initialization shouldn't block platform initialization
-            console.warn(
-                'NetflixPlatform: Failed to initialize logger level:',
-                error
-            );
+            this.logger.warn('Failed to initialize logger level, continuing with defaults', {
+                error: error.message,
+                chromeApiAvailable: this.chromeApiAvailable
+            });
         }
     }
 
@@ -50,12 +80,9 @@ export class NetflixPlatform extends VideoPlatform {
         this.onSubtitleUrlFoundCallback = onSubtitleUrlFound;
         this.onVideoIdChangeCallback = onVideoIdChange;
 
-        // The inject script should already be loaded by early injection in netflixContent.js
-        // Just ensure our event listener is attached
         this.eventListener = this.handleInjectorEvents.bind(this);
         document.addEventListener(INJECT_EVENT_ID, this.eventListener);
 
-        // Set up storage listener for subtitle settings
         const netflixSubtitleSelectors = [
             '.player-timedtext',
             '.watch-video--bottom-controls-container .timedtext-text-container',
@@ -632,9 +659,20 @@ export class NetflixPlatform extends VideoPlatform {
         let styleElement = document.getElementById(cssId);
 
         if (!styleElement) {
-            styleElement = document.createElement('style');
-            styleElement.id = cssId;
-            document.head.appendChild(styleElement);
+            // Validate that document.head exists before appending
+            if (!document.head || !(document.head instanceof Node)) {
+                console.warn('[NetflixPlatform] document.head not available, cannot inject CSS');
+                return;
+            }
+
+            try {
+                styleElement = document.createElement('style');
+                styleElement.id = cssId;
+                document.head.appendChild(styleElement);
+            } catch (error) {
+                console.error('[NetflixPlatform] Failed to inject CSS:', error);
+                return;
+            }
         }
 
         // CSS rules that will be applied when hiding is enabled
@@ -665,44 +703,63 @@ export class NetflixPlatform extends VideoPlatform {
             this.subtitleObserver.disconnect();
         }
 
-        // Set up mutation observer to catch dynamically created subtitle elements
-        this.subtitleObserver = new MutationObserver((mutations) => {
-            let foundNewSubtitles = false;
+        // Validate that document.body exists before setting up observer
+        if (!document.body || !(document.body instanceof Node)) {
+            console.warn('[NetflixPlatform] document.body not available, retrying in 100ms');
+            setTimeout(() => {
+                this.setupSubtitleMutationObserver();
+            }, 100);
+            return;
+        }
 
-            mutations.forEach((mutation) => {
-                if (mutation.type === 'childList') {
-                    mutation.addedNodes.forEach((node) => {
-                        if (node.nodeType === Node.ELEMENT_NODE) {
-                            // Check if the added node or its children contain subtitle elements
-                            if (
-                                node.classList?.contains('player-timedtext') ||
-                                node.classList?.contains(
-                                    'player-timedtext-text-container'
-                                ) ||
-                                node.querySelector?.(
-                                    '.player-timedtext, .player-timedtext-text-container'
-                                )
-                            ) {
-                                foundNewSubtitles = true;
+        try {
+            // Set up mutation observer to catch dynamically created subtitle elements
+            this.subtitleObserver = new MutationObserver((mutations) => {
+                let foundNewSubtitles = false;
+
+                mutations.forEach((mutation) => {
+                    if (mutation.type === 'childList') {
+                        mutation.addedNodes.forEach((node) => {
+                            if (node.nodeType === Node.ELEMENT_NODE) {
+                                // Check if the added node or its children contain subtitle elements
+                                if (
+                                    node.classList?.contains('player-timedtext') ||
+                                    node.classList?.contains(
+                                        'player-timedtext-text-container'
+                                    ) ||
+                                    node.querySelector?.(
+                                        '.player-timedtext, .player-timedtext-text-container'
+                                    )
+                                ) {
+                                    foundNewSubtitles = true;
+                                }
                             }
-                        }
-                    });
+                        });
+                    }
+                });
+
+                if (foundNewSubtitles) {
+                    // Reapply hiding rules after a short delay
+                    setTimeout(() => {
+                        this.applyCurrentSubtitleSetting();
+                    }, 100);
                 }
             });
 
-            if (foundNewSubtitles) {
-                // Reapply hiding rules after a short delay
-                setTimeout(() => {
-                    this.applyCurrentSubtitleSetting();
-                }, 100);
-            }
-        });
+            // Start observing the document body for changes
+            this.subtitleObserver.observe(document.body, {
+                childList: true,
+                subtree: true,
+            });
 
-        // Start observing the document body for changes
-        this.subtitleObserver.observe(document.body, {
-            childList: true,
-            subtree: true,
-        });
+            console.log('[NetflixPlatform] Subtitle mutation observer set up successfully');
+        } catch (error) {
+            console.error('[NetflixPlatform] Failed to set up subtitle mutation observer:', error);
+            // Retry after a delay
+            setTimeout(() => {
+                this.setupSubtitleMutationObserver();
+            }, 500);
+        }
     }
 
     applyCurrentSubtitleSetting() {

@@ -117,6 +117,31 @@ document.addEventListener('DOMContentLoaded', function () {
     const testOpenAIButton = document.getElementById('testOpenAIButton');
     const openaiTestResult = document.getElementById('openaiTestResult');
 
+    // AI Context Settings
+    const aiContextEnabledCheckbox = document.getElementById('aiContextEnabled');
+    const aiContextProviderSelect = document.getElementById('aiContextProvider');
+    const openaiApiKeyInput = document.getElementById('openaiApiKey');
+    const openaiBaseUrlInput = document.getElementById('openaiBaseUrl');
+    const openaiModelSelect = document.getElementById('openaiModel');
+    const geminiApiKeyInput = document.getElementById('geminiApiKey');
+    const geminiModelSelect = document.getElementById('geminiModel');
+    const contextTypeCulturalCheckbox = document.getElementById('contextTypeCultural');
+    const contextTypeHistoricalCheckbox = document.getElementById('contextTypeHistorical');
+    const contextTypeLinguisticCheckbox = document.getElementById('contextTypeLinguistic');
+
+    const aiContextTimeoutInput = document.getElementById('aiContextTimeout');
+    const aiContextRateLimitInput = document.getElementById('aiContextRateLimit');
+    const aiContextCacheEnabledCheckbox = document.getElementById('aiContextCacheEnabled');
+    const aiContextRetryAttemptsInput = document.getElementById('aiContextRetryAttempts');
+
+    // AI Context provider settings containers
+    const openaiContextSettings = document.getElementById('openaiContextSettings');
+    const geminiContextSettings = document.getElementById('geminiContextSettings');
+    const aiContextProviderCard = document.getElementById('aiContextProviderCard');
+    const aiContextTypesCard = document.getElementById('aiContextTypesCard');
+
+    const aiContextAdvancedCard = document.getElementById('aiContextAdvancedCard');
+
     // About
     const extensionVersionSpan = document.getElementById('extensionVersion');
 
@@ -242,7 +267,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Test DeepL Connection
     const testDeepLConnection = async function () {
-        // 运行时再次检查 DeepLAPI 是否可用
         if (
             typeof window.DeepLAPI === 'undefined' ||
             !window.DeepLAPI ||
@@ -599,6 +623,146 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     };
 
+    const updateAIContextSettings = async function () {
+        const aiContextEnabled = aiContextEnabledCheckbox?.checked || false;
+        const selectedProvider = aiContextProviderSelect?.value || 'openai';
+
+        // Show/hide AI context settings based on feature toggle
+        const aiContextCards = [
+            aiContextProviderCard,
+            aiContextTypesCard,
+            aiContextAdvancedCard
+        ];
+
+        aiContextCards.forEach(card => {
+            if (card) {
+                card.style.display = aiContextEnabled ? 'block' : 'none';
+            }
+        });
+
+        // Show/hide provider-specific settings
+        if (aiContextEnabled) {
+            if (openaiContextSettings) {
+                openaiContextSettings.style.display = selectedProvider === 'openai' ? 'block' : 'none';
+            }
+            if (geminiContextSettings) {
+                geminiContextSettings.style.display = selectedProvider === 'gemini' ? 'block' : 'none';
+            }
+
+            // Update model dropdown for the selected provider
+            await updateModelDropdown(selectedProvider);
+        } else {
+            if (openaiContextSettings) openaiContextSettings.style.display = 'none';
+            if (geminiContextSettings) geminiContextSettings.style.display = 'none';
+        }
+
+        optionsLogger.debug('AI Context settings visibility updated', {
+            aiContextEnabled,
+            selectedProvider,
+            component: 'updateAIContextSettings'
+        });
+    };
+
+    /**
+     * Update model dropdown based on selected provider
+     * @param {string} providerId - The provider ID
+     */
+    const updateModelDropdown = async function(providerId) {
+        try {
+            // Get available models from the background service
+            const response = await chrome.runtime.sendMessage({
+                action: 'getAvailableModels',
+                providerId: providerId
+            });
+
+            if (!response.success) {
+                optionsLogger.error('Failed to get available models', {
+                    providerId,
+                    error: response.error
+                });
+                return;
+            }
+
+            // Get the appropriate model select element
+            let modelSelect = null;
+            if (providerId === 'openai' && openaiModelSelect) {
+                modelSelect = openaiModelSelect;
+            } else if (providerId === 'gemini' && geminiModelSelect) {
+                modelSelect = geminiModelSelect;
+            }
+
+            if (!modelSelect) {
+                optionsLogger.warn('Model select element not found', { providerId });
+                return;
+            }
+
+            // Clear existing options
+            modelSelect.innerHTML = '';
+
+            // Populate with new options
+            response.models.forEach(model => {
+                const option = document.createElement('option');
+                option.value = model.id;
+                option.textContent = model.name;
+                if (model.description) {
+                    option.title = model.description;
+                }
+                if (model.recommended) {
+                    option.textContent += ' (Recommended)';
+                }
+                modelSelect.appendChild(option);
+            });
+
+            // Get and set default model
+            const defaultResponse = await chrome.runtime.sendMessage({
+                action: 'getDefaultModel',
+                providerId: providerId
+            });
+
+            if (defaultResponse.success && defaultResponse.defaultModel) {
+                modelSelect.value = defaultResponse.defaultModel;
+            }
+
+            optionsLogger.debug('Model dropdown updated', {
+                providerId,
+                modelCount: response.models.length,
+                defaultModel: defaultResponse.defaultModel
+            });
+
+        } catch (error) {
+            optionsLogger.error('Error updating model dropdown', error, { providerId });
+        }
+    };
+
+    const updateAIContextTypes = function () {
+        const contextTypes = [];
+        if (contextTypeCulturalCheckbox?.checked) contextTypes.push('cultural');
+        if (contextTypeHistoricalCheckbox?.checked) contextTypes.push('historical');
+        if (contextTypeLinguisticCheckbox?.checked) contextTypes.push('linguistic');
+
+        saveSetting('aiContextTypes', contextTypes);
+
+        optionsLogger.debug('AI Context types updated', {
+            contextTypes,
+            component: 'updateAIContextTypes'
+        });
+    };
+
+    const togglePasswordVisibility = function (inputId) {
+        const input = document.getElementById(inputId);
+        const button = document.querySelector(`[data-target="${inputId}"]`);
+
+        if (input && button) {
+            if (input.type === 'password') {
+                input.type = 'text';
+                button.textContent = '🙈';
+            } else {
+                input.type = 'password';
+                button.textContent = '👁️';
+            }
+        }
+    };
+
     const loadAndApplyLanguage = async function () {
         const settings = await configService.getMultiple([
             'uiLanguage',
@@ -655,6 +819,20 @@ document.addEventListener('DOMContentLoaded', function () {
                 deeplDelay,
                 deeplFreeDelay,
                 microsoftDelay,
+                // AI Context settings
+                aiContextEnabled,
+                aiContextProvider,
+                aiContextTypes,
+                openaiApiKey,
+                openaiBaseUrl,
+                openaiModel,
+                geminiApiKey,
+                geminiModel,
+
+                aiContextTimeout,
+                aiContextRateLimit,
+                aiContextCacheEnabled,
+                aiContextRetryAttempts,
             } = settings;
 
             uiLanguageSelect.value = uiLanguage;
@@ -706,11 +884,35 @@ document.addEventListener('DOMContentLoaded', function () {
             deeplFreeDelayInput.value = deeplFreeDelay;
             microsoftDelayInput.value = microsoftDelay;
 
+            // AI Context Settings
+            if (aiContextEnabledCheckbox) aiContextEnabledCheckbox.checked = aiContextEnabled;
+            if (aiContextProviderSelect) aiContextProviderSelect.value = aiContextProvider;
+            if (openaiApiKeyInput) openaiApiKeyInput.value = openaiApiKey;
+            if (openaiBaseUrlInput) openaiBaseUrlInput.value = openaiBaseUrl;
+            if (openaiModelSelect) openaiModelSelect.value = openaiModel;
+            if (geminiApiKeyInput) geminiApiKeyInput.value = geminiApiKey;
+            if (geminiModelSelect) geminiModelSelect.value = geminiModel;
+
+            if (aiContextTimeoutInput) aiContextTimeoutInput.value = aiContextTimeout;
+            if (aiContextRateLimitInput) aiContextRateLimitInput.value = aiContextRateLimit;
+            if (aiContextCacheEnabledCheckbox) aiContextCacheEnabledCheckbox.checked = aiContextCacheEnabled;
+            if (aiContextRetryAttemptsInput) aiContextRetryAttemptsInput.value = aiContextRetryAttempts;
+
+            // AI Context Types (array handling)
+            if (aiContextTypes && Array.isArray(aiContextTypes)) {
+                if (contextTypeCulturalCheckbox) contextTypeCulturalCheckbox.checked = aiContextTypes.includes('cultural');
+                if (contextTypeHistoricalCheckbox) contextTypeHistoricalCheckbox.checked = aiContextTypes.includes('historical');
+                if (contextTypeLinguisticCheckbox) contextTypeLinguisticCheckbox.checked = aiContextTypes.includes('linguistic');
+            }
+
             // Update batch settings visibility
             updateBatchSettingsVisibility();
 
             // Update provider settings visibility - now we're sure all DOM elements are set
             updateProviderSettings();
+
+            // Update AI context settings visibility
+            updateAIContextSettings();
         } catch (error) {
             optionsLogger.error('Error loading settings', error, {
                 component: 'loadSettings',
@@ -1057,8 +1259,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
-    // 安全地添加 DeepL 测试按钮的事件监听器
-    // 检查 DeepLAPI 是否可用，如果不可用则禁用按钮并显示错误
     if (
         typeof window.DeepLAPI !== 'undefined' &&
         window.DeepLAPI &&
@@ -1112,6 +1312,121 @@ document.addEventListener('DOMContentLoaded', function () {
             if (translationDelayValue)
                 translationDelayValue.textContent = `${this.value}ms`;
         });
+
+    // AI Context Event Listeners
+    if (aiContextEnabledCheckbox) {
+        aiContextEnabledCheckbox.addEventListener('change', async function () {
+            await saveSetting('aiContextEnabled', this.checked);
+            updateAIContextSettings();
+            optionsLogger.info(`AI Context enabled changed to: ${this.checked}`, {
+                aiContextEnabled: this.checked,
+                component: 'aiContextEnabledCheckbox',
+            });
+        });
+    }
+
+    if (aiContextProviderSelect) {
+        aiContextProviderSelect.addEventListener('change', async function () {
+            await saveSetting('aiContextProvider', this.value);
+            await updateAIContextSettings();
+            optionsLogger.info(`AI Context provider changed to: ${this.value}`, {
+                aiContextProvider: this.value,
+                component: 'aiContextProviderSelect',
+            });
+        });
+    }
+
+    // AI Context Provider Settings
+    if (openaiApiKeyInput) {
+        openaiApiKeyInput.addEventListener('change', async function () {
+            await saveSetting('openaiApiKey', this.value);
+        });
+    }
+
+    if (openaiBaseUrlInput) {
+        openaiBaseUrlInput.addEventListener('change', async function () {
+            await saveSetting('openaiBaseUrl', this.value);
+        });
+    }
+
+    if (openaiModelSelect) {
+        openaiModelSelect.addEventListener('change', async function () {
+            await saveSetting('openaiModel', this.value);
+        });
+    }
+
+    if (geminiApiKeyInput) {
+        geminiApiKeyInput.addEventListener('change', async function () {
+            await saveSetting('geminiApiKey', this.value);
+        });
+    }
+
+    if (geminiModelSelect) {
+        geminiModelSelect.addEventListener('change', async function () {
+            await saveSetting('geminiModel', this.value);
+        });
+    }
+
+    // AI Context Types
+    [contextTypeCulturalCheckbox, contextTypeHistoricalCheckbox, contextTypeLinguisticCheckbox].forEach(checkbox => {
+        if (checkbox) {
+            checkbox.addEventListener('change', updateAIContextTypes);
+        }
+    });
+
+
+
+
+
+    // Advanced Settings
+    if (aiContextTimeoutInput) {
+        aiContextTimeoutInput.addEventListener('change', async function () {
+            await saveSetting('aiContextTimeout', parseInt(this.value));
+        });
+    }
+
+    if (aiContextRateLimitInput) {
+        aiContextRateLimitInput.addEventListener('change', async function () {
+            await saveSetting('aiContextRateLimit', parseInt(this.value));
+        });
+    }
+
+    if (aiContextCacheEnabledCheckbox) {
+        aiContextCacheEnabledCheckbox.addEventListener('change', async function () {
+            await saveSetting('aiContextCacheEnabled', this.checked);
+        });
+    }
+
+    if (aiContextRetryAttemptsInput) {
+        aiContextRetryAttemptsInput.addEventListener('change', async function () {
+            await saveSetting('aiContextRetryAttempts', parseInt(this.value));
+        });
+    }
+
+    // Password toggle buttons
+    document.querySelectorAll('.toggle-password').forEach(button => {
+        button.addEventListener('click', function () {
+            const targetId = this.getAttribute('data-target');
+            togglePasswordVisibility(targetId);
+        });
+    });
+
+    // Collapsible sections
+    document.querySelectorAll('.collapse-toggle').forEach(button => {
+        button.addEventListener('click', function () {
+            const targetId = this.getAttribute('data-target');
+            const content = document.getElementById(targetId);
+            const icon = this.querySelector('.collapse-icon');
+
+            if (content) {
+                const isCollapsed = content.style.display === 'none' || !content.style.display;
+                content.style.display = isCollapsed ? 'block' : 'none';
+                if (icon) {
+                    icon.textContent = isCollapsed ? '▲' : '▼';
+                }
+            }
+        });
+    });
 
     init();
 });
