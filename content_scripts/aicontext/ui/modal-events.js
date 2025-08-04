@@ -1498,67 +1498,6 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}
     }
 
     /**
-     * Disable word removal during processing (EXACT legacy behavior)
-     * @private
-     */
-    _disableWordRemoval() {
-        const selectedWordsElement = document.getElementById('dualsub-selected-words');
-        if (selectedWordsElement) {
-            // Add disabled styling to the selected words container (Issue #4)
-            selectedWordsElement.classList.add('dualsub-processing-disabled');
-
-            // Create global click blocker to prevent any clicks during processing
-            const globalClickBlocker = (e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                this.core._log('debug', 'Word removal blocked during processing via global click blocker');
-            };
-
-            // Store the blocker for later removal
-            selectedWordsElement._globalClickBlocker = globalClickBlocker;
-
-            // Add the blocker in capture phase to intercept before other handlers
-            selectedWordsElement.addEventListener('click', globalClickBlocker, true);
-        }
-
-        this.core._log('debug', 'Word removal disabled during processing with global click blocker');
-    }
-
-    /**
-     * Re-enable word removal after processing (EXACT legacy behavior)
-     * @private
-     */
-    _enableWordRemoval() {
-        const selectedWordsElement = document.getElementById('dualsub-selected-words');
-        if (selectedWordsElement) {
-            // Remove disabled styling from the selected words container (Issue #4)
-            selectedWordsElement.classList.remove('dualsub-processing-disabled');
-
-            // Remove the global click blocker
-            if (selectedWordsElement._globalClickBlocker) {
-                selectedWordsElement.removeEventListener('click', selectedWordsElement._globalClickBlocker, true);
-                delete selectedWordsElement._globalClickBlocker;
-            }
-
-            // Re-create the word elements with proper handlers by calling updateSelectionDisplay
-            // This ensures clean state without any lingering disabled handlers
-            this.ui.updateSelectionDisplay();
-        }
-
-        this.core._log('debug', 'Word removal re-enabled after processing');
-    }
-
-    /**
-     * Get localized message (helper for compatibility)
-     * @param {string} key - Message key
-     * @returns {string} Localized message
-     * @private
-     */
-    _getLocalizedMessage(key) {
-        return this.ui._getLocalizedMessage(key);
-    }
-
-    /**
      * Remove all event listeners
      */
     removeEventListeners() {

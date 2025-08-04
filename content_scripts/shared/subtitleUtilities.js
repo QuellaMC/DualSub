@@ -146,17 +146,14 @@ export async function initializeInteractiveSubtitleFeatures(config = {}) {
     try {
         // Get absolute URLs for interactive modules (legacy AI context modals removed)
         const formatterUrl = chrome.runtime.getURL('content_scripts/shared/interactiveSubtitleFormatter.js');
-        const selectionUrl = chrome.runtime.getURL('content_scripts/shared/textSelectionHandler.js');
         const loadingUrl = chrome.runtime.getURL('content_scripts/shared/contextLoadingStates.js');
 
         // Dynamically import interactive modules (legacy AI context system removed)
         const [
             { initializeInteractiveSubtitles, formatInteractiveSubtitleText, attachInteractiveEventListeners, setInteractiveEnabled },
-            { initializeTextSelection },
             { initializeLoadingStates }
         ] = await Promise.all([
             import(formatterUrl),
-            import(selectionUrl),
             import(loadingUrl)
         ]);
 
@@ -169,7 +166,6 @@ export async function initializeInteractiveSubtitleFeatures(config = {}) {
         };
 
         initializeInteractiveSubtitles(interactiveConfig);
-        initializeTextSelection(config.textSelection || {});
         initializeLoadingStates(config.loadingStates || {});
 
         // Note: AI Context features are now handled by the new modular system
@@ -1437,7 +1433,7 @@ export function clearSubtitlesDisplayAndQueue(
         try {
             gc();
         } catch (e) {
-
+            // Ignore errors
         }
     }
 }

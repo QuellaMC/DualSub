@@ -69,7 +69,6 @@
                 "content_scripts/aicontext/utils/platformDetector.js",
                 "content_scripts/aicontext/utils/migrationVerification.js",
                 "content_scripts/aicontext/utils/selectionPersistence.js",
-                "content_scripts/shared/textSelectionHandler.js",
                 "content_scripts/shared/contextLoadingStates.js",
                 "content_scripts/core/BaseContentScript.js",
                 "content_scripts/core/utils.js",

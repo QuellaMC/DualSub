@@ -1134,7 +1134,6 @@ export class BaseContentScript {
                 'aiContextTypes',
                 'aiContextTimeout',
                 'aiContextRetryAttempts',
-                'aiContextUserConsent'
             ];
 
             const config = {};
@@ -1172,7 +1171,7 @@ export class BaseContentScript {
             aiContextTypes: ['cultural', 'historical', 'linguistic'],
             aiContextTimeout: 30000,
             aiContextRetryAttempts: 3,
-            aiContextUserConsent: false
+            aiContextUserConsent: true
         };
     }
 

@@ -246,7 +246,6 @@ describe('Configuration & Settings Integration', () => {
                 'openaiApiKey',
                 'geminiApiKey',
                 'aiContextTimeout',
-                'aiContextUserConsent'
             ];
 
             // In a real test, you would import and check the config schema
