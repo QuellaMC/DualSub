@@ -290,11 +290,85 @@ export function applySubtitleStyling(config) {
         });
     });
 
+    // Inject CSS for interactive elements if not already present
+    if (!document.getElementById('dualsub-interactive-css')) {
+        const style = document.createElement('style');
+        style.id = 'dualsub-interactive-css';
+        style.textContent = `
+            .dualsub-interactive-word {
+                cursor: pointer !important;
+                pointer-events: auto !important;
+                user-select: none !important; /* Prevent text selection, allow only word clicking */
+                display: inline !important;
+                position: relative !important;
+                z-index: 10001 !important; /* Higher than modal to ensure clickability */
+                box-sizing: border-box !important; /* Ensure borders don't affect layout */
+                margin: 0 !important; /* Remove any margins that might affect spacing */
+                padding: 0 !important; /* Remove any padding that might affect spacing */
+            }
+
+            /* Prevent text selection on original subtitle containers */
+            [id*="original"]:not([id*="translated"]) {
+                user-select: none !important; /* Disable text selection on original subtitles */
+                -webkit-user-select: none !important;
+                -moz-user-select: none !important;
+                -ms-user-select: none !important;
+            }
+
+            .dualsub-interactive-word:hover {
+                background-color: rgba(255, 255, 0, 0.3) !important;
+                border-radius: 2px !important;
+            }
+
+            .dualsub-interactive-word:active {
+                background-color: rgba(255, 255, 0, 0.5) !important;
+            }
+
+            /* Selected word state - use outline instead of border to avoid layout impact */
+            .dualsub-interactive-word.dualsub-word-selected {
+                background-color: rgba(0, 123, 255, 0.3) !important;
+                outline: 1px solid rgba(0, 123, 255, 0.6) !important;
+                outline-offset: -1px !important; /* Keep outline inside the element */
+                border-radius: 3px !important;
+                box-shadow: 0 0 3px rgba(0, 123, 255, 0.4) !important;
+            }
+
+            /* Ensure translated subtitles are clearly non-interactive but maintain full brightness */
+            [id*="translated"] .dualsub-interactive-word {
+                cursor: default !important;
+                pointer-events: none !important;
+                /* Removed opacity reduction - translated subtitles should maintain full brightness */
+            }
+
+            /* Translated subtitles maintain full brightness - no opacity reduction */
+            [id*="translated"] {
+                /* Removed opacity reduction - translated subtitles should be fully visible */
+            }
+        `;
+        document.head.appendChild(style);
+
+        logWithFallback('debug', 'Interactive CSS injected', {});
+    }
+
+    // This calculation correctly handles the intended config range of 0.1 to 9.9.
+    const rawPosition = config.subtitleVerticalPosition || 5.0;
+
+    // Clamp the input to the expected 0.1 to 9.9 range for safety.
+    const verticalPosition = Math.max(0.1, Math.min(9.9, rawPosition));
+
+    // Normalize the 0.1-9.9 range to a 0.0-1.0 scale using the formula:
+    // (value - min) / (max - min)
+    const normalizedPosition = (verticalPosition - 0.1) / (9.9 - 0.1);
+
+    // Map the normalized 0.0-1.0 scale to the desired 5%-50% CSS 'bottom' range.
+    const bottomPercentage = 5 + (normalizedPosition * 45);
+
     Object.assign(subtitleContainer.style, {
         flexDirection: config.subtitleLayoutOrientation,
         width: '94%',
         justifyContent: 'center',
         alignItems: 'center',
+        bottom: `${bottomPercentage}%`,
     });
 
     while (subtitleContainer.firstChild) {
@@ -437,7 +511,6 @@ export function ensureSubtitleContainer(
     subtitleContainer.className = 'disneyplus-subtitle-viewer-container';
     Object.assign(subtitleContainer.style, {
         position: 'absolute',
-        bottom: '12%',
         left: '50%',
         transform: 'translateX(-50%)',
         zIndex: '2147483647',

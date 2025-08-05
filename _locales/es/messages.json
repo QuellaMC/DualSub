@@ -20,6 +20,7 @@
     "layoutLabel": { "message": "Diseño:" },
     "fontSizeLabel": { "message": "Tamaño de Fuente:" },
     "verticalGapLabel": { "message": "Espaciado Vertical:" },
+    "subtitleVerticalPositionLabel": { "message": "Posición Vertical:" },
     "timeOffsetLabel": { "message": "Desfase de Tiempo(s):" },
     "displayOrderOriginalFirst": { "message": "Original Primero" },
     "displayOrderTranslationFirst": { "message": "Traducción Primero" },
@@ -54,6 +55,7 @@
     },
     "statusFontSize": { "message": "Tamaño de fuente: " },
     "statusVerticalGap": { "message": "Espaciado vertical: " },
+    "statusVerticalPosition": { "message": "Posición vertical: " },
     "statusInvalidOffset": { "message": "Desfase inválido, revirtiendo." },
     "statusSettingNotApplied": {
         "message": "Configuración no aplicada. Recargar página."

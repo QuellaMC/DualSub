@@ -18,6 +18,7 @@
     "layoutLabel": { "message": "レイアウト：" },
     "fontSizeLabel": { "message": "フォントサイズ：" },
     "verticalGapLabel": { "message": "垂直間隔：" },
+    "subtitleVerticalPositionLabel": { "message": "垂直位置：" },
     "timeOffsetLabel": { "message": "時間オフセット（秒）：" },
     "displayOrderOriginalFirst": { "message": "原文を上に" },
     "displayOrderTranslationFirst": { "message": "翻訳を上に" },
@@ -50,6 +51,7 @@
     },
     "statusFontSize": { "message": "フォントサイズ：" },
     "statusVerticalGap": { "message": "垂直間隔：" },
+    "statusVerticalPosition": { "message": "垂直位置：" },
     "statusInvalidOffset": {
         "message": "無効なオフセットです。元に戻します。"
     },
