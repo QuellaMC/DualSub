@@ -49,7 +49,7 @@ export class AIContextModalCore {
         this.isAnalyzing = false;
         this.currentRequest = null; // EXACT legacy property for request tracking
 
-        // Retry state for malformed JSON responses
+        // Retry state for invalid analysis responses
         this.retryState = {
             isRetrying: false,
             currentAttempt: 0,
@@ -400,12 +400,6 @@ export class AIContextModalCore {
             this._resetRetryState();
         }
 
-        if (analyzing) {
-            this._dispatchEvent(EVENT_TYPES.ANALYSIS_START, {
-                selectedWords: Array.from(this.selectedWords),
-                selectedText: this.selectedText
-            });
-        }
     }
 
     /**
@@ -546,7 +540,7 @@ export class AIContextModalCore {
     }
 
     /**
-     * Check if retry is possible for malformed JSON responses
+     * Check if retry is possible for invalid analysis responses
      * @returns {boolean} True if retry is possible
      */
     canRetryAnalysis() {

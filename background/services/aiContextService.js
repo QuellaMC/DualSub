@@ -81,14 +81,37 @@ class AIContextService {
                 this.rateLimiterManager.getLimiter(providerId, provider.rateLimit);
             }
 
+            // Load provider configuration from storage
             const config = await configService.getAll();
-            if (config.aiContextProvider && this.providers[config.aiContextProvider]) {
-                this.currentProviderId = config.aiContextProvider;
+            const savedProvider = config.aiContextProvider;
+
+            this.logger.debug('Loading AI Context provider configuration', {
+                defaultProvider: this.currentProviderId,
+                savedProvider,
+                availableProviders: Object.keys(this.providers)
+            });
+
+            if (savedProvider && this.providers[savedProvider]) {
+                this.currentProviderId = savedProvider;
+                this.logger.info('Using saved provider configuration', {
+                    provider: this.currentProviderId,
+                    providerName: this.providers[this.currentProviderId].name
+                });
+            } else if (savedProvider) {
+                this.logger.warn('Saved provider not available, using default', {
+                    savedProvider,
+                    defaultProvider: this.currentProviderId,
+                    availableProviders: Object.keys(this.providers)
+                });
             }
+
+            // Set up configuration change listener
+            this._setupConfigurationListener();
 
             this.isInitialized = true;
             this.logger.info('AI Context Service initialized successfully', {
                 currentProvider: this.currentProviderId,
+                providerName: this.providers[this.currentProviderId].name,
                 availableProviders: Object.keys(this.providers)
             });
 
@@ -121,24 +144,60 @@ class AIContextService {
         if (!this.providers[providerId]) {
             this.logger.error('Attempted to switch to unknown context provider', null, {
                 providerId,
+                availableProviders: Object.keys(this.providers)
             });
             throw new Error(`Unknown context provider: ${providerId}`);
         }
 
+        const previousProvider = this.currentProviderId;
         this.currentProviderId = providerId;
-        
+
+        // Save to configuration
         await configService.set('aiContextProvider', providerId);
-        
+
         const providerName = this.providers[providerId].name;
-        this.logger.info('Context provider changed', {
-            providerId,
+        this.logger.info('Context provider changed successfully', {
+            previousProvider,
+            newProvider: providerId,
             providerName,
         });
 
         return {
             success: true,
             message: `Context provider changed to ${providerName}`,
+            previousProvider,
+            newProvider: providerId
         };
+    }
+
+    /**
+     * Reload provider configuration from storage
+     * @returns {Promise<void>}
+     */
+    async reloadProviderConfig() {
+        try {
+            const config = await configService.getAll();
+            const savedProvider = config.aiContextProvider;
+
+            this.logger.debug('Reloading provider configuration', {
+                currentProvider: this.currentProviderId,
+                savedProvider,
+                availableProviders: Object.keys(this.providers)
+            });
+
+            if (savedProvider && this.providers[savedProvider] && savedProvider !== this.currentProviderId) {
+                const previousProvider = this.currentProviderId;
+                this.currentProviderId = savedProvider;
+
+                this.logger.info('Provider configuration reloaded', {
+                    previousProvider,
+                    newProvider: this.currentProviderId,
+                    providerName: this.providers[this.currentProviderId].name
+                });
+            }
+        } catch (error) {
+            this.logger.error('Failed to reload provider configuration', error);
+        }
     }
 
     /**
@@ -208,8 +267,9 @@ class AIContextService {
 
         text = text.trim();
 
-        this.logger.info('Context analysis request', {
+        this.logger.info('Context analysis request received', {
             provider: this.currentProviderId,
+            providerName: this.providers[this.currentProviderId].name,
             contextType,
             textLength: text.length,
             sourceLanguage: metadata.sourceLanguage,
@@ -255,7 +315,7 @@ class AIContextService {
             });
 
             // Cache successful results
-            if (result.success) {
+            if (result.success && result.shouldCache !== false) {
                 this.cache.set(cacheKey, result);
                 this.logger.debug('Result cached successfully', { cacheKey });
             }
@@ -378,6 +438,37 @@ class AIContextService {
         } catch (error) {
             this.logger.error('Failed to get default model', error, { providerId: targetProviderId });
             return null;
+        }
+    }
+
+    /**
+     * Set up configuration change listener to automatically update provider
+     * @private
+     */
+    _setupConfigurationListener() {
+        // Listen for configuration changes
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
+            chrome.storage.onChanged.addListener((changes, areaName) => {
+                if (changes.aiContextProvider && areaName === 'sync') {
+                    const newProvider = changes.aiContextProvider.newValue;
+                    const oldProvider = changes.aiContextProvider.oldValue;
+
+                    this.logger.debug('AI Context provider configuration changed', {
+                        oldProvider,
+                        newProvider,
+                        currentProvider: this.currentProviderId
+                    });
+
+                    if (newProvider && this.providers[newProvider] && newProvider !== this.currentProviderId) {
+                        this.currentProviderId = newProvider;
+                        this.logger.info('AI Context provider automatically updated from configuration change', {
+                            oldProvider,
+                            newProvider,
+                            providerName: this.providers[newProvider].name
+                        });
+                    }
+                }
+            });
         }
     }
 

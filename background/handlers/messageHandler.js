@@ -100,6 +100,9 @@ class MessageHandler {
             case 'getDefaultModel':
                 return this.handleGetDefaultModelMessage(message, sendResponse);
 
+            case 'reloadContextProviderConfig':
+                return this.handleReloadContextProviderConfigMessage(message, sendResponse);
+
             case 'ping':
                 return this.handlePingMessage(message, sendResponse);
 
@@ -476,14 +479,15 @@ class MessageHandler {
      * Handle AI context analysis requests
      */
     handleAnalyzeContextMessage(message, sendResponse) {
-        const { text, contextType = 'all', metadata = {}, targetLanguage, language: sourceLanguage } = message;
+        const { text, contextType = 'all', metadata = {}, targetLanguage, language: sourceLanguage, requestId } = message;
 
         this.logger.debug('Received context analysis message', {
             messageKeys: Object.keys(message),
             textLength: text?.length || 0,
             contextType,
             hasMetadata: Object.keys(metadata).length > 0,
-            hasAiContextService: !!this.aiContextService
+            hasAiContextService: !!this.aiContextService,
+            requestId
         });
 
         if (!this.aiContextService) {
@@ -491,7 +495,8 @@ class MessageHandler {
                 success: false,
                 error: 'AI Context service not available',
                 contextType,
-                originalText: text
+                originalText: text,
+                requestId
             };
             this.logger.error('AI Context service not available', errorResponse);
             sendResponse(errorResponse);
@@ -529,7 +534,10 @@ class MessageHandler {
                 const response = {
                     success: result.success,
                     result: result, // Pass the entire result object
-                    error: result.error
+                    error: result.error,
+                    shouldRetry: result.shouldRetry,
+                    shouldCache: result.shouldCache,
+                    requestId
                 };
 
                 this.logger.debug('Sending response to content script', {
@@ -552,7 +560,8 @@ class MessageHandler {
                 const errorResponse = {
                     success: false,
                     error: error.message || 'Context analysis failed',
-                    result: null
+                    result: null,
+                    requestId
                 };
 
                 this.logger.debug('Sending error response to content script', errorResponse);
@@ -693,6 +702,41 @@ class MessageHandler {
         }
 
         return true;
+    }
+
+    /**
+     * Handle reload context provider configuration requests
+     */
+    handleReloadContextProviderConfigMessage(message, sendResponse) {
+        if (!this.aiContextService) {
+            sendResponse({
+                success: false,
+                error: 'AI Context service not available'
+            });
+            return true;
+        }
+
+        this.logger.debug('Processing reload context provider config request');
+
+        this.aiContextService
+            .reloadProviderConfig()
+            .then(() => {
+                const status = this.aiContextService.getStatus();
+                sendResponse({
+                    success: true,
+                    message: 'Provider configuration reloaded successfully',
+                    currentProvider: status.currentProvider
+                });
+            })
+            .catch((error) => {
+                this.logger.error('Failed to reload provider configuration', error);
+                sendResponse({
+                    success: false,
+                    error: error.message || 'Failed to reload provider configuration'
+                });
+            });
+
+        return true; // Async response
     }
 
     /**

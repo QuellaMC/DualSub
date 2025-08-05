@@ -771,7 +771,7 @@ export class AIContextModalEvents {
      * @private
      */
     _handleAnalysisResult(event) {
-        const { requestId, result, success, error } = event.detail;
+        const { requestId, result, success, error, shouldRetry } = event.detail;
 
         this.core._log('debug', 'Received analysis result event', {
             requestId,
@@ -814,19 +814,6 @@ export class AIContextModalEvents {
         });
 
         if (success && result) {
-            // Validate JSON structure and handle malformed responses
-            const validationResult = this._validateAnalysisResult(result);
-            if (!validationResult.isValid) {
-                this.core._log('warn', 'Analysis validation failed', {
-                    requestId,
-                    errorType: validationResult.errorType,
-                    error: validationResult.error,
-                    resultPreview: JSON.stringify(result, null, 2).substring(0, 500)
-                });
-                this._handleMalformedJsonResponse(requestId, result, validationResult.error);
-                return;
-            }
-
             // Display analysis results (EXACT legacy logic)
             let html = '';
 
@@ -907,6 +894,8 @@ export class AIContextModalEvents {
                 `;
                 this._handleAnalysisComplete(noContentHtml);
             }
+        } else if (shouldRetry) {
+            this._handleInvalidAnalysisResponse(requestId, result, error || 'Invalid analysis result');
         } else {
             // Display error (EXACT legacy behavior)
             this.core._log('error', 'Analysis failed', {
@@ -924,15 +913,13 @@ export class AIContextModalEvents {
                 <div class="dualsub-error">
                     <h4>${errorTitle}</h4>
                     <p>${errorMessage}</p>
-                    <details style="margin-top: 10px;">
+                    <details open>
                         <summary>Debug Information</summary>
-                        <pre style="font-size: 12px; background: #f5f5f5; padding: 10px; border-radius: 4px; margin-top: 5px;">
-Success: ${success}
+                        <pre>Success: ${success}
 Has Result: ${!!result}
 Error Type: ${typeof error}
 Error: ${JSON.stringify(error, null, 2)}
-Result: ${result ? JSON.stringify(result, null, 2) : 'null'}
-                        </pre>
+Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
                     </details>
                 </div>
             `;
@@ -1531,161 +1518,14 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}
     }
 
     /**
-     * Validate analysis result for malformed JSON responses
-     * @param {Object} result - Analysis result to validate
-     * @returns {Object} Validation result with isValid flag and error details
-     * @private
-     */
-    _validateAnalysisResult(result) {
-        try {
-            // Check if result has basic required structure
-            if (!result || typeof result !== 'object') {
-                return {
-                    isValid: false,
-                    error: 'Result is not an object',
-                    errorType: 'invalid_structure'
-                };
-            }
-
-            // Check if analysis field exists
-            if (!result.analysis) {
-                return {
-                    isValid: false,
-                    error: 'Missing analysis field',
-                    errorType: 'missing_analysis'
-                };
-            }
-
-            // Enhanced validation for structured analysis
-            if (result.isStructured) {
-                // Case 1: Analysis is a string (should be parsed JSON)
-                if (typeof result.analysis === 'string') {
-                    // Check if it contains JSON code block markers
-                    if (result.analysis.includes('```json') || result.analysis.includes('```')) {
-                        this.core._log('warn', 'JSON code block detected in analysis string - malformed response', {
-                            analysisPreview: result.analysis.substring(0, 300)
-                        });
-
-                        return {
-                            isValid: false,
-                            error: 'Analysis contains JSON code block instead of parsed JSON object',
-                            errorType: 'json_code_block',
-                            rawResponse: result.analysis
-                        };
-                    }
-
-                    // Try to parse as JSON
-                    try {
-                        const parsedAnalysis = JSON.parse(result.analysis);
-                        // Validate the parsed JSON has expected structure
-                        if (!this._validateParsedAnalysisStructure(parsedAnalysis)) {
-                            return {
-                                isValid: false,
-                                error: 'Parsed JSON missing expected analysis fields',
-                                errorType: 'invalid_parsed_structure',
-                                parsedContent: parsedAnalysis
-                            };
-                        }
-                    } catch (jsonError) {
-                        this.core._log('warn', 'Malformed JSON detected in structured analysis', {
-                            error: jsonError.message,
-                            analysisPreview: result.analysis?.substring(0, 200)
-                        });
-
-                        return {
-                            isValid: false,
-                            error: `Malformed JSON: ${jsonError.message}`,
-                            errorType: 'malformed_json',
-                            originalError: jsonError,
-                            rawResponse: result.analysis
-                        };
-                    }
-                }
-                // Case 2: Analysis is an object (already parsed)
-                else if (typeof result.analysis === 'object') {
-                    if (!this._validateParsedAnalysisStructure(result.analysis)) {
-                        return {
-                            isValid: false,
-                            error: 'Analysis object missing expected fields',
-                            errorType: 'invalid_object_structure',
-                            availableFields: Object.keys(result.analysis)
-                        };
-                    }
-                }
-                // Case 3: Analysis is neither string nor object
-                else {
-                    return {
-                        isValid: false,
-                        error: 'Analysis field is neither string nor object',
-                        errorType: 'invalid_analysis_type',
-                        analysisType: typeof result.analysis
-                    };
-                }
-            }
-
-            return { isValid: true };
-
-        } catch (error) {
-            this.core._log('error', 'Error during analysis result validation', {
-                error: error.message,
-                result: result
-            });
-
-            return {
-                isValid: false,
-                error: `Validation error: ${error.message}`,
-                errorType: 'validation_error',
-                originalError: error
-            };
-        }
-    }
-
-    /**
-     * Validate parsed analysis structure has expected fields
-     * @param {Object} analysisObj - Parsed analysis object
-     * @returns {boolean} True if structure is valid
-     * @private
-     */
-    _validateParsedAnalysisStructure(analysisObj) {
-        if (!analysisObj || typeof analysisObj !== 'object') {
-            return false;
-        }
-
-        // Check for expected top-level fields in comprehensive analysis
-        const expectedFields = [
-            'definition',
-            'cultural_analysis', 'cultural',
-            'historical_analysis', 'historical',
-            'linguistic_analysis', 'linguistic',
-            'practical_usage', 'usage',
-            'learning_tips', 'tips',
-            'related_expressions', 'related',
-            'key_insights', 'insights'
-        ];
-
-        // Must have at least 3 of the expected fields for a valid comprehensive analysis
-        const foundFields = expectedFields.filter(field => analysisObj[field]);
-        const hasValidStructure = foundFields.length >= 3;
-
-        this.core._log('debug', 'Validating parsed analysis structure', {
-            expectedFields,
-            foundFields,
-            hasValidStructure,
-            availableFields: Object.keys(analysisObj)
-        });
-
-        return hasValidStructure;
-    }
-
-    /**
-     * Handle malformed JSON response with retry logic
+     * Handle invalid analysis response with retry logic
      * @param {string} requestId - Request ID
      * @param {Object} result - Malformed result
      * @param {string} error - Error description
      * @private
      */
-    _handleMalformedJsonResponse(requestId, result, error) {
-        this.core._log('warn', 'Malformed JSON response detected', {
+    _handleInvalidAnalysisResponse(requestId, result, error) {
+        this.core._log('warn', 'Invalid analysis response detected', {
             requestId,
             error,
             resultPreview: JSON.stringify(result, null, 2).substring(0, 300),
@@ -1702,9 +1542,9 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}
     }
 
     /**
-     * Initiate retry for malformed JSON response
+     * Initiate retry for invalid analysis response
      * @param {string} requestId - Request ID
-     * @param {Object} result - Malformed result (unused but kept for consistency)
+     * @param {Object} result - invalid result (unused but kept for consistency)
      * @param {string} error - Error description
      * @private
      */
@@ -1851,7 +1691,7 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}
     /**
      * Handle final retry failure when all retries are exhausted
      * @param {string} requestId - Request ID (unused but kept for consistency)
-     * @param {Object} result - Malformed result
+     * @param {Object} result - invalid result
      * @param {string} error - Error description
      * @private
      */
@@ -1870,12 +1710,8 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}
         const closeButtonText = this._getLocalizedMessage('aiContextClose') || 'Close';
 
         // Get appropriate error message based on error type
-        let errorMessage;
-        if (error.includes('JSON code block')) {
-            errorMessage = this._getLocalizedMessage('aiContextJsonCodeBlock') || 'The AI service returned unprocessed JSON code instead of structured data. This indicates a formatting error in the response.';
-        } else {
-            errorMessage = this._getLocalizedMessage('aiContextMalformedResponse') || 'The AI service returned an invalid response format. This may be due to temporary service issues.';
-        }
+        const errorMessage = this._getLocalizedMessage('aiContextMalformedResponse') ||
+            'The AI service returned an invalid response format. This may be due to temporary service issues.';
 
         const errorHtml = `
             <div class="dualsub-error">
@@ -1893,14 +1729,12 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}
                         ${closeButtonText}
                     </button>
                 </div>
-                <details style="margin-top: 15px;">
+                <details open>
                     <summary>Debug Information</summary>
-                    <pre style="font-size: 12px; background: #f5f5f5; padding: 10px; border-radius: 4px; margin-top: 5px; max-height: 200px; overflow-y: auto;">
-Error Type: Malformed JSON Response
+                    <pre>Error Type: Invalid Analysis Response
 Retry Attempts: ${this.core.retryState.currentAttempt}
 Last Error: ${error}
-Result Preview: ${JSON.stringify(result, null, 2).substring(0, 500)}
-                    </pre>
+Result Preview: ${JSON.stringify(result, null, 2).substring(0, 500)}</pre>
                 </details>
             </div>
         `;

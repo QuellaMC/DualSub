@@ -253,9 +253,6 @@ export class AIContextManager {
             document.addEventListener('dualsub-analyze-selection', contextAnalysisListener);
             this.eventListeners.set('dualsub-analyze-selection', contextAnalysisListener);
 
-            // Listen for new AI context events
-            document.addEventListener(EVENT_TYPES.ANALYSIS_START, this._handleAnalysisRequest);
-            this.eventListeners.set(EVENT_TYPES.ANALYSIS_START, this._handleAnalysisRequest);
 
             // Listen for modal state changes
             document.addEventListener(EVENT_TYPES.MODAL_STATE_CHANGE, this._handleModalStateChange);
@@ -335,9 +332,23 @@ export class AIContextManager {
     }
 
     async _handleAnalysisRequest(event) {
+        const detail = event.detail;
+        // Extract text from either direct text field or selection object
+        const text = detail.text || detail.selection?.text;
+        const requestId = detail.requestId || `analysis-${Date.now()}`;
+
         try {
-            const detail = event.detail;
             this._log('debug', 'Handling analysis request', detail);
+
+            // Skip if no valid text is available
+            if (!text || typeof text !== 'string' || text.trim() === '') {
+                this._log('warn', 'Skipping analysis request - no valid text', {
+                    hasDetailText: !!detail.text,
+                    hasSelectionText: !!detail.selection?.text,
+                    text: text?.substring(0, 50)
+                });
+                return;
+            }
 
             this.metrics.analysisCount++;
             this.metrics.lastActivity = Date.now();
@@ -345,41 +356,43 @@ export class AIContextManager {
             // Send request to background script for AI analysis
             const response = await chrome.runtime.sendMessage({
                 action: 'analyzeContext',
-                text: detail.text,
+                text: text,
                 contextTypes: detail.contextTypes || ['cultural', 'historical', 'linguistic'],
                 language: detail.language,
                 targetLanguage: detail.targetLanguage,
                 platform: this.platform,
-                requestId: detail.requestId
+                requestId: requestId
             });
 
             this._log('debug', 'Received response from background script', {
                 success: response.success,
                 hasResult: !!response.result,
                 hasError: !!response.error,
-                requestId: detail.requestId
+                requestId: requestId
             });
 
             // Dispatch result event (both new and legacy formats)
             document.dispatchEvent(new CustomEvent('dualsub-context-result', {
                 detail: {
-                    requestId: detail.requestId,
+                    requestId: requestId,
                     result: response.result,
                     success: response.success,
-                    error: response.error
+                    error: response.error,
+                    shouldRetry: response.shouldRetry
                 }
             }));
 
             // Dispatch new event format
             if (response.success) {
                 this._dispatchEvent(EVENT_TYPES.ANALYSIS_COMPLETE, {
-                    requestId: detail.requestId,
+                    requestId: requestId,
                     result: response.result
                 });
             } else {
                 this._dispatchEvent(EVENT_TYPES.ANALYSIS_ERROR, {
-                    requestId: detail.requestId,
-                    error: response.error
+                    requestId: requestId,
+                    error: response.error,
+                    shouldRetry: response.shouldRetry
                 });
             }
 
@@ -393,13 +406,13 @@ export class AIContextManager {
             // Dispatch error events
             document.dispatchEvent(new CustomEvent('dualsub-context-error', {
                 detail: {
-                    requestId: event.detail.requestId,
+                    requestId: requestId,
                     error: error.message
                 }
             }));
 
             this._dispatchEvent(EVENT_TYPES.ANALYSIS_ERROR, {
-                requestId: event.detail.requestId,
+                requestId: requestId,
                 error: error.message
             });
         }

@@ -713,20 +713,56 @@ document.addEventListener('DOMContentLoaded', function () {
                 modelSelect.appendChild(option);
             });
 
-            // Get and set default model
-            const defaultResponse = await chrome.runtime.sendMessage({
-                action: 'getDefaultModel',
-                providerId: providerId
-            });
+            // Get the user's saved model preference for this provider
+            let savedModel = null;
+            if (providerId === 'openai') {
+                savedModel = await configService.get('openaiModel');
+            } else if (providerId === 'gemini') {
+                savedModel = await configService.get('geminiModel');
+            }
 
-            if (defaultResponse.success && defaultResponse.defaultModel) {
-                modelSelect.value = defaultResponse.defaultModel;
+            // Check if the saved model is available in the current model list
+            const availableModelIds = response.models.map(model => model.id);
+            const isValidSavedModel = savedModel && availableModelIds.includes(savedModel);
+
+            if (isValidSavedModel) {
+                // Use the user's saved preference
+                modelSelect.value = savedModel;
+                optionsLogger.debug('Using saved model preference', {
+                    providerId,
+                    savedModel
+                });
+            } else {
+                // Fall back to provider's default model
+                const defaultResponse = await chrome.runtime.sendMessage({
+                    action: 'getDefaultModel',
+                    providerId: providerId
+                });
+
+                if (defaultResponse.success && defaultResponse.defaultModel) {
+                    modelSelect.value = defaultResponse.defaultModel;
+
+                    // Save the default model as the user's preference if no valid saved model exists
+                    if (providerId === 'openai') {
+                        await saveSetting('openaiModel', defaultResponse.defaultModel);
+                    } else if (providerId === 'gemini') {
+                        await saveSetting('geminiModel', defaultResponse.defaultModel);
+                    }
+
+                    optionsLogger.debug('Using provider default model', {
+                        providerId,
+                        defaultModel: defaultResponse.defaultModel,
+                        reason: isValidSavedModel ? 'saved_model_invalid' : 'no_saved_model'
+                    });
+                }
             }
 
             optionsLogger.debug('Model dropdown updated', {
                 providerId,
                 modelCount: response.models.length,
-                defaultModel: defaultResponse.defaultModel
+                selectedModel: modelSelect.value,
+                savedModel: savedModel,
+                isValidSavedModel: isValidSavedModel
             });
 
         } catch (error) {
@@ -892,6 +928,14 @@ document.addEventListener('DOMContentLoaded', function () {
             if (openaiModelSelect) openaiModelSelect.value = openaiModel;
             if (geminiApiKeyInput) geminiApiKeyInput.value = geminiApiKey;
             if (geminiModelSelect) geminiModelSelect.value = geminiModel;
+
+            // Debug logging for AI Context provider
+            optionsLogger.debug('AI Context settings loaded', {
+                aiContextEnabled,
+                aiContextProvider,
+                providerSelectValue: aiContextProviderSelect?.value,
+                component: 'loadSettings'
+            });
 
             if (aiContextTimeoutInput) aiContextTimeoutInput.value = aiContextTimeout;
             if (aiContextRateLimitInput) aiContextRateLimitInput.value = aiContextRateLimit;
@@ -1329,6 +1373,17 @@ document.addEventListener('DOMContentLoaded', function () {
         aiContextProviderSelect.addEventListener('change', async function () {
             await saveSetting('aiContextProvider', this.value);
             await updateAIContextSettings();
+
+            // Notify background script to reload provider configuration
+            try {
+                await chrome.runtime.sendMessage({
+                    action: 'reloadContextProviderConfig'
+                });
+                optionsLogger.debug('Background script notified of provider change');
+            } catch (error) {
+                optionsLogger.warn('Failed to notify background script of provider change', error);
+            }
+
             optionsLogger.info(`AI Context provider changed to: ${this.value}`, {
                 aiContextProvider: this.value,
                 component: 'aiContextProviderSelect',

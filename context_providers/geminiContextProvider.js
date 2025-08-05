@@ -10,6 +10,7 @@
 
 import Logger from '../utils/logger.js';
 import { configService } from '../services/configService.js';
+import { getContextSchema, getGeminiSchema, validateAgainstSchema } from './contextSchemas.js';
 
 const logger = Logger.create('GeminiContextProvider');
 
@@ -276,6 +277,8 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
 
         // Create context-specific prompt
         const prompt = createContextPrompt(text, contextType, metadata);
+        const jsonSchema = getContextSchema(contextType);
+        const geminiSchema = getGeminiSchema(contextType);
 
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiApiKey}`;
 
@@ -289,7 +292,9 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
                 temperature: 0.3,
                 topP: 0.95,
                 maxOutputTokens: 80000,
-                stopSequences: []
+                stopSequences: [],
+                responseMimeType: 'application/json',
+                responseSchema: geminiSchema
             },
             safetySettings: [
                 {
@@ -361,30 +366,42 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
 
         const rawResponse = candidate.content.parts[0].text.trim();
 
-        // Try to parse JSON response, fallback to plain text if parsing fails
         let structuredAnalysis;
-        let isStructured = false;
 
         try {
-            // Clean up the response to extract JSON
-            const jsonMatch = rawResponse.match(/\{[\s\S]*\}/);
-            if (jsonMatch) {
-                structuredAnalysis = JSON.parse(jsonMatch[0]);
-                isStructured = true;
-                logger.debug('Successfully parsed structured JSON response');
-            } else {
-                throw new Error('No JSON structure found in response');
+            structuredAnalysis = JSON.parse(rawResponse);
+            if (!validateAgainstSchema(jsonSchema, structuredAnalysis)) {
+                logger.warn('Schema validation failed', { rawResponsePreview: rawResponse.substring(0, 200) });
+                return {
+                    success: false,
+                    error: 'Schema validation failed',
+                    contextType,
+                    originalText: text,
+                    metadata,
+                    shouldRetry: true,
+                    shouldCache: false,
+                    finishReason: candidate.finishReason,
+                    safetyRatings: candidate.safetyRatings
+                };
             }
         } catch (error) {
-            logger.warn('Failed to parse JSON response, using plain text', { error: error.message });
-            structuredAnalysis = rawResponse;
-            isStructured = false;
+            logger.warn('Failed to parse JSON response', { error: error.message, rawResponsePreview: rawResponse.substring(0, 200) });
+            return {
+                success: false,
+                error: 'Malformed JSON response',
+                contextType,
+                originalText: text,
+                metadata,
+                shouldRetry: true,
+                shouldCache: false,
+                finishReason: candidate.finishReason,
+                safetyRatings: candidate.safetyRatings
+            };
         }
 
         logger.info('Gemini context analysis completed successfully', {
             contextType,
             responseLength: rawResponse.length,
-            isStructured,
             finishReason: candidate.finishReason
         });
 
@@ -392,11 +409,12 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
             success: true,
             contextType,
             analysis: structuredAnalysis,
-            isStructured,
+            isStructured: true,
             originalText: text,
             metadata,
             finishReason: candidate.finishReason,
-            safetyRatings: candidate.safetyRatings
+            safetyRatings: candidate.safetyRatings,
+            shouldCache: true
         };
 
         logger.debug('Gemini provider returning result', {

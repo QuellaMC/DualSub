@@ -10,6 +10,7 @@
 
 import Logger from '../utils/logger.js';
 import { configService } from '../services/configService.js';
+import { getContextSchema, CONTEXT_SCHEMA_NAME, validateAgainstSchema } from './contextSchemas.js';
 
 const logger = Logger.create('OpenAIContextProvider');
 
@@ -18,28 +19,28 @@ const logger = Logger.create('OpenAIContextProvider');
  */
 export const OPENAI_MODELS = [
     {
-        id: 'gpt-4.1-nano',
+        id: 'gpt-4.1-nano-2025-04-14',
         name: 'GPT-4.1 Nano',
         description: 'Cost-effective for most context analysis tasks',
         contextWindow: 8192,
         recommended: false
     },
     {
-        id: 'gpt-4.1-mini',
+        id: 'gpt-4.1-mini-2025-04-14',
         name: 'GPT-4.1 Mini',
         description: 'High-quality analysis with better cultural understanding',
         contextWindow: 128000,
         recommended: true
     },
     {
-        id: 'gpt-4o-mini',
+        id: 'gpt-4o-mini-2024-07-18',
         name: 'GPT-4o Mini',
         description: 'Optimized for speed and efficiency',
         contextWindow: 128000,
         recommended: false
     },
     {
-        id: 'gpt-4o',
+        id: 'gpt-4o-2024-08-06',
         name: 'GPT-4o',
         description: 'Optimized for speed and efficiency',
         contextWindow: 128000,
@@ -320,7 +321,7 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
         const {
             openaiApiKey,
             openaiBaseUrl = 'https://api.openai.com',
-            openaiModel = 'gpt-3.5-turbo',
+            openaiModel = 'gpt-4.1-mini-2025-04-14',
             aiContextTimeout = 30000
         } = config;
 
@@ -333,6 +334,7 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
         const apiUrl = `${normalizedBaseUrl}/chat/completions`;
 
         const prompt = createContextPrompt(text, contextType, metadata);
+        const jsonSchema = getContextSchema(contextType);
 
         const requestBody = {
             model: normalizedModel,
@@ -346,9 +348,14 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
                     content: prompt
                 }
             ],
-            max_tokens: 80000, // Increased from 300 to 600 for more detailed responses
-            temperature: 0.3,
-            top_p: 0.95
+            response_format: {
+                type: 'json_schema',
+                json_schema: {
+                    name: CONTEXT_SCHEMA_NAME,
+                    schema: jsonSchema,
+                    strict: true
+                },
+            }
         };
 
         logger.debug('Making context analysis request', {
@@ -380,7 +387,7 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
                 statusText: response.statusText,
                 errorText: errorText.substring(0, 500)
             });
-            throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+            throw new Error(`API request failed: ${response.status} ${response.statusText} - ${errorText.substring(0, 500)}`);
         }
 
         const data = await response.json();
@@ -392,30 +399,39 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
 
         const rawResponse = data.choices[0].message.content.trim();
 
-        // Try to parse JSON response, fallback to plain text if parsing fails
         let structuredAnalysis;
-        let isStructured = false;
+        let isStructured = true;
 
         try {
-            // Clean up the response to extract JSON
-            const jsonMatch = rawResponse.match(/\{[\s\S]*\}/);
-            if (jsonMatch) {
-                structuredAnalysis = JSON.parse(jsonMatch[0]);
-                isStructured = true;
-                logger.debug('Successfully parsed structured JSON response');
-            } else {
-                throw new Error('No JSON structure found in response');
+            structuredAnalysis = JSON.parse(rawResponse);
+            if (!validateAgainstSchema(jsonSchema, structuredAnalysis)) {
+                logger.warn('Schema validation failed', { rawResponsePreview: rawResponse.substring(0, 200) });
+                return {
+                    success: false,
+                    error: 'Schema validation failed',
+                    contextType,
+                    originalText: text,
+                    metadata,
+                    shouldRetry: true,
+                    shouldCache: false
+                };
             }
         } catch (error) {
-            logger.warn('Failed to parse JSON response, using plain text', { error: error.message });
-            structuredAnalysis = rawResponse;
-            isStructured = false;
+            logger.warn('Failed to parse JSON response', { error: error.message, rawResponsePreview: rawResponse.substring(0, 200) });
+            return {
+                success: false,
+                error: 'Malformed JSON response',
+                contextType,
+                originalText: text,
+                metadata,
+                shouldRetry: true,
+                shouldCache: false
+            };
         }
 
         logger.info('Context analysis completed successfully', {
             contextType,
             responseLength: rawResponse.length,
-            isStructured,
             tokensUsed: data.usage?.total_tokens || 'unknown'
         });
 
@@ -423,10 +439,11 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
             success: true,
             contextType,
             analysis: structuredAnalysis,
-            isStructured,
+            isStructured: true,
             originalText: text,
             metadata,
-            usage: data.usage
+            usage: data.usage,
+            shouldCache: true
         };
 
     } catch (error) {

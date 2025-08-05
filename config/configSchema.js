@@ -108,7 +108,7 @@ export const configSchema = {
     // OpenAI Context API Settings
     openaiApiKey: { defaultValue: '', type: String, scope: 'sync' },
     openaiBaseUrl: { defaultValue: 'https://api.openai.com', type: String, scope: 'sync' },
-    openaiModel: { defaultValue: 'gpt-3.5-turbo', type: String, scope: 'sync' },
+    openaiModel: { defaultValue: 'gpt-4.1-mini', type: String, scope: 'sync' },
 
     // Google Gemini Context API Settings
     geminiApiKey: { defaultValue: '', type: String, scope: 'sync' },

@@ -649,6 +649,14 @@
     overflow-y: auto;
     max-height: 100%;
     padding: 10px;
+    /* Hide scrollbar while maintaining scroll functionality */
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* Internet Explorer 10+ */
+}
+
+/* Hide scrollbar for WebKit browsers (Chrome, Safari, Edge) */
+.dualsub-analysis-results::-webkit-scrollbar {
+    display: none;
 }
 
 /* EXACT legacy analysis results styling */
@@ -706,18 +714,109 @@
    ======================================== */
 
 .dualsub-error {
-    text-align: center;
-    padding: 20px;
+    background: linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%);
+    border: 1px solid #feb2b2;
+    border-radius: 12px;
+    padding: 24px;
+    margin: 16px;
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.1);
+    text-align: left;
 }
 
 .dualsub-error h4 {
-    color: #dc3545;
+    color: #c53030;
+    font-size: 18px;
+    font-weight: 600;
     margin: 0 0 12px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dualsub-error h4::before {
+    content: "⚠️";
+    font-size: 20px;
 }
 
 .dualsub-error p {
-    color: #6c757d;
+    color: #744210;
+    font-size: 15px;
     margin: 0 0 16px 0;
+    line-height: 1.5;
+}
+
+.dualsub-error details {
+    margin-top: 16px !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 8px !important;
+    overflow: hidden !important;
+    background: #ffffff !important;
+}
+
+.dualsub-error summary {
+    background: #f7fafc !important;
+    padding: 12px 16px !important;
+    cursor: pointer !important;
+    font-weight: 500 !important;
+    color: #2d3748 !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+    transition: background-color 0.2s ease !important;
+    user-select: none !important;
+    margin: 0 !important;
+    font-size: 14px !important;
+    line-height: 1.4 !important;
+    list-style: none !important;
+    outline: none !important;
+    border: none !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+}
+
+.dualsub-error summary:hover {
+    background: #edf2f7 !important;
+}
+
+.dualsub-error summary:focus {
+    background: #edf2f7 !important;
+    outline: 2px solid #007bff !important;
+    outline-offset: -2px !important;
+}
+
+.dualsub-error summary::marker,
+.dualsub-error summary::-webkit-details-marker {
+    display: none !important;
+}
+
+.dualsub-error summary::before {
+    content: "▶" !important;
+    display: inline-block !important;
+    margin-right: 8px !important;
+    transition: transform 0.2s ease !important;
+    color: #718096 !important;
+    font-size: 12px !important;
+}
+
+.dualsub-error details[open] summary::before {
+    transform: rotate(90deg) !important;
+}
+
+.dualsub-error pre {
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace !important;
+    font-size: 13px !important;
+    line-height: 1.4 !important;
+    background: #1a202c !important;
+    color: #e2e8f0 !important;
+    padding: 16px !important;
+    margin: 0 !important;
+    overflow-x: auto !important;
+    white-space: pre-wrap !important;
+    word-break: break-word !important;
+    border-radius: 0 !important;
+    max-height: none !important;
+    overflow-y: visible !important;
+}
+
+.dualsub-error pre::selection {
+    background: #4a5568 !important;
 }
 
 /* ========================================
@@ -925,5 +1024,49 @@
 
     .dualsub-analysis-text strong {
         color: #e2e8f0;
+    }
+
+    /* Dark mode error states */
+    .dualsub-error {
+        background: linear-gradient(135deg, #2d1b1b 0%, #4a2525 100%) !important;
+        border: 1px solid #744d4d !important;
+        box-shadow: 0 4px 12px rgba(220, 53, 69, 0.2) !important;
+    }
+
+    .dualsub-error h4 {
+        color: #fc8181 !important;
+    }
+
+    .dualsub-error p {
+        color: #e2e8f0 !important;
+    }
+
+    .dualsub-error details {
+        border: 1px solid #4a5568 !important;
+        background: #2d3748 !important;
+    }
+
+    .dualsub-error summary {
+        background: #4a5568 !important;
+        color: #e2e8f0 !important;
+        border-bottom: 1px solid #718096 !important;
+    }
+
+    .dualsub-error summary:hover,
+    .dualsub-error summary:focus {
+        background: #718096 !important;
+    }
+
+    .dualsub-error summary:focus {
+        outline: 2px solid #3182ce !important;
+    }
+
+    .dualsub-error summary::before {
+        color: #a0aec0 !important;
+    }
+
+    .dualsub-error pre {
+        background: #1a202c !important;
+        color: #e2e8f0 !important;
     }
 }
