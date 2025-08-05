@@ -123,6 +123,9 @@ class MessageHandler {
             case 'ping':
                 return this.handlePingMessage(message, sendResponse);
 
+            case 'checkBackgroundReady':
+                return this.handleCheckBackgroundReadyMessage(message, sendResponse);
+
             default:
                 this.logger.warn('Unknown message action', {
                     action: message.action,
@@ -675,6 +678,21 @@ class MessageHandler {
                 success: false,
                 error: 'AI Context service not available',
                 models: [],
+                needsRetry: true,
+            });
+            return true;
+        }
+
+        // Check if AI context service is fully initialized
+        if (!this.aiContextService.isInitialized) {
+            this.logger.debug('AI Context service not yet initialized, deferring request', {
+                providerId,
+            });
+            sendResponse({
+                success: false,
+                error: 'AI Context service is still initializing',
+                models: [],
+                needsRetry: true,
             });
             return true;
         }
@@ -699,6 +717,7 @@ class MessageHandler {
                 success: false,
                 error: error.message || 'Failed to get available models',
                 models: [],
+                needsRetry: false,
             });
         }
 
@@ -716,6 +735,21 @@ class MessageHandler {
                 success: false,
                 error: 'AI Context service not available',
                 defaultModel: null,
+                needsRetry: true,
+            });
+            return true;
+        }
+
+        // Check if AI context service is fully initialized
+        if (!this.aiContextService.isInitialized) {
+            this.logger.debug('AI Context service not yet initialized, deferring request', {
+                providerId,
+            });
+            sendResponse({
+                success: false,
+                error: 'AI Context service is still initializing',
+                defaultModel: null,
+                needsRetry: true,
             });
             return true;
         }
@@ -741,6 +775,7 @@ class MessageHandler {
                 success: false,
                 error: error.message || 'Failed to get default model',
                 defaultModel: null,
+                needsRetry: false,
             });
         }
 
@@ -801,6 +836,36 @@ class MessageHandler {
             timestamp: Date.now(),
             originalTimestamp: message.timestamp,
             message: 'pong',
+        });
+
+        return true;
+    }
+
+    /**
+     * Handle background readiness check requests
+     */
+    handleCheckBackgroundReadyMessage(message, sendResponse) {
+        this.logger.debug('Received background readiness check', {
+            timestamp: Date.now(),
+        });
+
+        const isReady = !!(
+            this.translationService &&
+            this.subtitleService &&
+            this.aiContextService &&
+            this.aiContextService.isInitialized
+        );
+
+        sendResponse({
+            success: true,
+            ready: isReady,
+            timestamp: Date.now(),
+            services: {
+                translation: !!this.translationService,
+                subtitle: !!this.subtitleService,
+                aiContext: !!this.aiContextService,
+                aiContextInitialized: this.aiContextService?.isInitialized || false,
+            },
         });
 
         return true;

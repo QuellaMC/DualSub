@@ -699,6 +699,10 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             // Update model dropdown for the selected provider
+            optionsLogger.debug('Loading models for AI context provider', {
+                selectedProvider,
+                aiContextEnabled,
+            });
             await updateModelDropdown(selectedProvider);
         } else {
             if (openaiContextSettings)
@@ -715,11 +719,66 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     /**
+     * Check if background script is ready
+     * @returns {Promise<boolean>} True if background script is ready
+     */
+    const checkBackgroundReady = async function () {
+        try {
+            const response = await chrome.runtime.sendMessage({
+                action: 'checkBackgroundReady',
+            });
+            return response.success && response.ready;
+        } catch (error) {
+            optionsLogger.debug('Background readiness check failed', error);
+            return false;
+        }
+    };
+
+    /**
+     * Wait for background script to be ready with retry logic
+     * @param {number} maxRetries - Maximum number of retries
+     * @param {number} delay - Delay between retries in milliseconds
+     * @returns {Promise<boolean>} True if background script becomes ready
+     */
+    const waitForBackgroundReady = async function (maxRetries = 10, delay = 500) {
+        for (let i = 0; i < maxRetries; i++) {
+            if (await checkBackgroundReady()) {
+                optionsLogger.debug('Background script is ready', { attempt: i + 1 });
+                return true;
+            }
+            optionsLogger.debug('Background script not ready, retrying...', {
+                attempt: i + 1,
+                maxRetries
+            });
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+        optionsLogger.warn('Background script did not become ready within timeout', {
+            maxRetries,
+            totalWaitTime: maxRetries * delay
+        });
+        return false;
+    };
+
+    /**
      * Update model dropdown based on selected provider
      * @param {string} providerId - The provider ID
+     * @param {number} retryCount - Current retry count (for internal use)
      */
-    const updateModelDropdown = async function (providerId) {
+    const updateModelDropdown = async function (providerId, retryCount = 0) {
+        const maxRetries = 3;
+
         try {
+            // First, ensure background script is ready
+            if (retryCount === 0) {
+                const isReady = await waitForBackgroundReady();
+                if (!isReady) {
+                    optionsLogger.error('Background script not ready, skipping model loading', {
+                        providerId,
+                    });
+                    return;
+                }
+            }
+
             // Get available models from the background service
             const response = await chrome.runtime.sendMessage({
                 action: 'getAvailableModels',
@@ -727,9 +786,25 @@ document.addEventListener('DOMContentLoaded', function () {
             });
 
             if (!response.success) {
+                // Check if we should retry
+                if (response.needsRetry && retryCount < maxRetries) {
+                    optionsLogger.debug('Model loading failed, retrying...', {
+                        providerId,
+                        error: response.error,
+                        retryCount: retryCount + 1,
+                        maxRetries,
+                    });
+
+                    // Wait a bit before retrying
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    return updateModelDropdown(providerId, retryCount + 1);
+                }
+
                 optionsLogger.error('Failed to get available models', {
                     providerId,
                     error: response.error,
+                    retryCount,
+                    maxRetries,
                 });
                 return;
             }
@@ -816,6 +891,16 @@ document.addEventListener('DOMContentLoaded', function () {
                             ? 'saved_model_invalid'
                             : 'no_saved_model',
                     });
+                } else if (defaultResponse.needsRetry && retryCount < maxRetries) {
+                    // If default model request also needs retry, retry the entire function
+                    optionsLogger.debug('Default model request failed, retrying entire model loading...', {
+                        providerId,
+                        error: defaultResponse.error,
+                        retryCount: retryCount + 1,
+                    });
+
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    return updateModelDropdown(providerId, retryCount + 1);
                 }
             }
 
@@ -1042,9 +1127,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Initialize
     const init = async function () {
+        optionsLogger.info('Initializing options page');
         setVersion();
         await loadAndApplyLanguage(); // Load language first
+        optionsLogger.debug('Language loaded, now loading settings');
         await loadSettings(); // Then load settings which will restore the selected provider
+        optionsLogger.info('Options page initialization complete');
     };
 
     // Navigation logic
