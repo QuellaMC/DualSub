@@ -32,6 +32,11 @@
                                 >Providers</a
                             >
                         </li>
+                        <li>
+                            <a href="#ai-context" data-i18n="navAIContext"
+                                >AI Context</a
+                            >
+                        </li>
                         <li><a href="#about" data-i18n="navAbout">About</a></li>
                     </ul>
                 </nav>
@@ -884,6 +889,158 @@
                                         Usage limits apply
                                     </li>
                                 </ul>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                <section id="ai-context" class="hidden">
+                    <h2 data-i18n="sectionAIContext">AI Context Assistant</h2>
+
+                    <!-- Feature Toggle -->
+                    <div class="setting-card">
+                        <h3 data-i18n="cardAIContextToggleTitle">Enable AI Context Analysis</h3>
+                        <p data-i18n="cardAIContextToggleDesc">
+                            Enable AI-powered cultural, historical, and linguistic context analysis for subtitle text.
+                            Click on words or phrases in subtitles to get detailed explanations.
+                        </p>
+                        <div class="setting">
+                            <label for="aiContextEnabled" data-i18n="aiContextEnabledLabel">Enable AI Context:</label>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="aiContextEnabled" class="toggle-input" />
+                                <label for="aiContextEnabled" class="toggle-label">
+                                    <span class="toggle-inner"></span>
+                                    <span class="toggle-switch-handle"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Provider Selection -->
+                    <div class="setting-card" id="aiContextProviderCard">
+                        <h3 data-i18n="cardAIContextProviderTitle">AI Provider</h3>
+                        <p data-i18n="cardAIContextProviderDesc">
+                            Choose the AI service provider for context analysis. Different providers may offer
+                            varying quality and response times.
+                        </p>
+                        <div class="setting">
+                            <label for="aiContextProvider" data-i18n="aiContextProviderLabel">Provider:</label>
+                            <select id="aiContextProvider">
+                                <option value="openai">OpenAI GPT</option>
+                                <option value="gemini">Google Gemini</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- OpenAI Settings -->
+                    <div class="setting-card" id="openaiContextSettings">
+                        <h3 data-i18n="cardOpenAIContextTitle">OpenAI Configuration</h3>
+                        <p data-i18n="cardOpenAIContextDesc">
+                            Configure your OpenAI API settings for context analysis. You need a valid OpenAI API key.
+                        </p>
+                        <div class="setting">
+                            <label for="openaiApiKey" data-i18n="openaiApiKeyLabel">API Key:</label>
+                            <input type="password" id="openaiApiKey" placeholder="sk-..." />
+                        </div>
+                        <div class="setting">
+                            <label for="openaiBaseUrl" data-i18n="openaiBaseUrlLabel">Base URL:</label>
+                            <input type="url" id="openaiBaseUrl" placeholder="https://api.openai.com/v1" />
+                        </div>
+                        <div class="setting">
+                            <label for="openaiModel" data-i18n="openaiModelLabel">Model:</label>
+                            <select id="openaiModel">
+                                <!-- Models will be populated dynamically -->
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Gemini Settings -->
+                    <div class="setting-card" id="geminiContextSettings">
+                        <h3 data-i18n="cardGeminiContextTitle">Google Gemini Configuration</h3>
+                        <p data-i18n="cardGeminiContextDesc">
+                            Configure your Google Gemini API settings for context analysis. You need a valid Gemini API key.
+                        </p>
+                        <div class="setting">
+                            <label for="geminiApiKey" data-i18n="geminiApiKeyLabel">API Key:</label>
+                            <input type="password" id="geminiApiKey" placeholder="AIza..." />
+                        </div>
+                        <div class="setting">
+                            <label for="geminiModel" data-i18n="geminiModelLabel">Model:</label>
+                            <select id="geminiModel">
+                                <!-- Models will be populated dynamically -->
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Context Types -->
+                    <div class="setting-card" id="aiContextTypesCard">
+                        <h3 data-i18n="cardAIContextTypesTitle">Context Types</h3>
+                        <p data-i18n="cardAIContextTypesDesc">
+                            Enable the types of context analysis you want to use. You can enable multiple types.
+                        </p>
+                        <div class="setting">
+                            <label for="contextTypeCultural" data-i18n="contextTypeCulturalLabel">Cultural Context:</label>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="contextTypeCultural" class="toggle-input" value="cultural" />
+                                <label for="contextTypeCultural" class="toggle-label">
+                                    <span class="toggle-inner"></span>
+                                    <span class="toggle-switch-handle"></span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="setting">
+                            <label for="contextTypeHistorical" data-i18n="contextTypeHistoricalLabel">Historical Context:</label>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="contextTypeHistorical" class="toggle-input" value="historical" />
+                                <label for="contextTypeHistorical" class="toggle-label">
+                                    <span class="toggle-inner"></span>
+                                    <span class="toggle-switch-handle"></span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="setting">
+                            <label for="contextTypeLinguistic" data-i18n="contextTypeLinguisticLabel">Linguistic Context:</label>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="contextTypeLinguistic" class="toggle-input" value="linguistic" />
+                                <label for="contextTypeLinguistic" class="toggle-label">
+                                    <span class="toggle-inner"></span>
+                                    <span class="toggle-switch-handle"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+
+
+
+                    <!-- Advanced Settings -->
+                    <div class="setting-card collapsible" id="aiContextAdvancedCard">
+                        <h3 data-i18n="cardAIContextAdvancedTitle">Advanced Settings</h3>
+                        <button class="collapse-toggle" data-target="aiContextAdvancedContent">
+                            <span data-i18n="showAdvancedSettings">Show Advanced Settings</span>
+                            <span class="collapse-icon">▼</span>
+                        </button>
+                        <div class="collapse-content" id="aiContextAdvancedContent">
+                            <div class="setting">
+                                <label for="aiContextTimeout" data-i18n="aiContextTimeoutLabel">Request Timeout (ms):</label>
+                                <input type="number" id="aiContextTimeout" min="5000" max="60000" step="1000" />
+                            </div>
+                            <div class="setting">
+                                <label for="aiContextRateLimit" data-i18n="aiContextRateLimitLabel">Rate Limit (requests/min):</label>
+                                <input type="number" id="aiContextRateLimit" min="10" max="300" step="10" />
+                            </div>
+                            <div class="setting">
+                                <label for="aiContextCacheEnabled" data-i18n="aiContextCacheEnabledLabel">Enable Caching:</label>
+                                <div class="toggle-switch">
+                                    <input type="checkbox" id="aiContextCacheEnabled" class="toggle-input" />
+                                    <label for="aiContextCacheEnabled" class="toggle-label">
+                                        <span class="toggle-inner"></span>
+                                        <span class="toggle-switch-handle"></span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="setting">
+                                <label for="aiContextRetryAttempts" data-i18n="aiContextRetryAttemptsLabel">Retry Attempts:</label>
+                                <input type="number" id="aiContextRetryAttempts" min="1" max="5" step="1" />
                             </div>
                         </div>
                     </div>

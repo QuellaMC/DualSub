@@ -166,10 +166,8 @@ export class VideoPlatform {
      * @param {string[]} selectors - Array of CSS selectors for subtitle containers
      */
     setupNativeSubtitleSettingsListener(selectors) {
-        // Store selectors for later use
         this.subtitleSelectors = selectors;
 
-        // Listen for storage changes
         this.storageListener = (changes, areaName) => {
             if (areaName === 'sync' && changes.hideOfficialSubtitles) {
                 const newValue = changes.hideOfficialSubtitles.newValue;
@@ -182,7 +180,17 @@ export class VideoPlatform {
             }
         };
 
-        chrome.storage.onChanged.addListener(this.storageListener);
+        if (chrome && chrome.storage && chrome.storage.onChanged && chrome.storage.onChanged.addListener) {
+            chrome.storage.onChanged.addListener(this.storageListener);
+            this.logger?.debug('Storage change listener added successfully');
+        } else {
+            this.logger?.warn('Chrome storage onChanged API not available, skipping listener setup', {
+                chromeAvailable: !!chrome,
+                storageAvailable: !!(chrome && chrome.storage),
+                onChangedAvailable: !!(chrome && chrome.storage && chrome.storage.onChanged),
+                addListenerAvailable: !!(chrome && chrome.storage && chrome.storage.onChanged && chrome.storage.onChanged.addListener)
+            });
+        }
     }
 
     /**
@@ -201,7 +209,13 @@ export class VideoPlatform {
      */
     cleanupNativeSubtitleSettingsListener() {
         if (this.storageListener) {
-            chrome.storage.onChanged.removeListener(this.storageListener);
+            // Check if chrome.storage.onChanged is available before removing listener
+            if (chrome && chrome.storage && chrome.storage.onChanged && chrome.storage.onChanged.removeListener) {
+                chrome.storage.onChanged.removeListener(this.storageListener);
+                this.logger?.debug('Storage change listener removed successfully');
+            } else {
+                this.logger?.warn('Chrome storage onChanged API not available for cleanup');
+            }
             this.storageListener = null;
             this.subtitleSelectors = null;
         }

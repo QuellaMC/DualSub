@@ -153,6 +153,12 @@ export class DisneyPlusContentScript extends BaseContentScript {
             );
 
             switch (action) {
+                case 'toggleInteractiveSubtitles':
+                    return this._handleToggleInteractiveSubtitles(request, sendResponse);
+
+                case 'updateContextPreferences':
+                    return this._handleUpdateContextPreferences(request, sendResponse);
+
                 default:
                     this.logWithFallback(
                         'debug',
@@ -411,6 +417,17 @@ export class DisneyPlusContentScript extends BaseContentScript {
                 this._originalHistoryMethods = null;
             }
 
+            // Cleanup AI Context Manager
+            if (this.aiContextManager) {
+                try {
+                    await this.aiContextManager.destroy();
+                    this.aiContextManager = null;
+                    this.logWithFallback('debug', 'AI Context Manager destroyed');
+                } catch (error) {
+                    this.logWithFallback('error', 'Error destroying AI Context Manager', error);
+                }
+            }
+
             await super.cleanup();
 
             this.logWithFallback('info', 'Disney+ specific cleanup completed.');
@@ -455,5 +472,125 @@ export class DisneyPlusContentScript extends BaseContentScript {
             injectConfig: this.getInjectScriptConfig(),
             urlPatterns: this.urlPatterns,
         };
+    }
+
+
+
+    /**
+     * Handle interactive subtitles toggle
+     * @param {Object} request - Message request
+     * @param {Function} sendResponse - Response callback
+     * @returns {boolean} True if async response
+     */
+    _handleToggleInteractiveSubtitles(request, sendResponse) {
+        const { enabled } = request;
+
+        this.logWithFallback('info', 'Toggling interactive subtitles for Disney+', {
+            enabled
+        });
+
+        try {
+            this._toggleInteractiveSubtitles(enabled);
+            sendResponse({
+                success: true,
+                platform: 'disneyplus',
+                interactiveEnabled: enabled
+            });
+        } catch (error) {
+            this.logWithFallback('error', 'Failed to toggle interactive subtitles', {
+                error: error.message
+            });
+            sendResponse({
+                success: false,
+                platform: 'disneyplus',
+                error: error.message
+            });
+        }
+
+        return false; // Sync response
+    }
+
+    /**
+     * Handle context preferences update
+     * @param {Object} request - Message request
+     * @param {Function} sendResponse - Response callback
+     * @returns {boolean} True if async response
+     */
+    _handleUpdateContextPreferences(request, sendResponse) {
+        const { preferences } = request;
+
+        this.logWithFallback('info', 'Updating context preferences for Disney+', {
+            preferences
+        });
+
+        this._updateContextPreferences(preferences)
+            .then((result) => {
+                sendResponse({
+                    success: true,
+                    platform: 'disneyplus',
+                    updated: result.updated,
+                    preferences: result.preferences
+                });
+            })
+            .catch((error) => {
+                this.logWithFallback('error', 'Failed to update context preferences', {
+                    error: error.message
+                });
+                sendResponse({
+                    success: false,
+                    platform: 'disneyplus',
+                    error: error.message
+                });
+            });
+
+        return true; // Async response
+    }
+
+
+
+
+
+    /**
+     * Toggle interactive subtitles functionality
+     * @param {boolean} enabled - Whether to enable interactive subtitles
+     */
+    _toggleInteractiveSubtitles(enabled) {
+        if (this.subtitleUtils?.setInteractiveSubtitlesEnabled) {
+            this.subtitleUtils.setInteractiveSubtitlesEnabled(enabled);
+            this.logWithFallback('info', 'Interactive subtitles toggled for Disney+', {
+                enabled
+            });
+        } else {
+            this.logWithFallback('warn', 'Subtitle utilities not available for interactive toggle');
+        }
+    }
+
+    /**
+     * Update context preferences
+     * @param {Object} preferences - New context preferences
+     * @returns {Promise<Object>} Update result
+     */
+    async _updateContextPreferences(preferences) {
+        try {
+            // Update interactive subtitle configuration if available
+            if (this.subtitleUtils?.updateInteractiveConfig) {
+                this.subtitleUtils.updateInteractiveConfig(preferences);
+            }
+
+            this.logWithFallback('info', 'Context preferences updated for Disney+', {
+                preferences
+            });
+
+            return {
+                updated: true,
+                preferences
+            };
+
+        } catch (error) {
+            this.logWithFallback('error', 'Failed to update context preferences', {
+                error: error.message
+            });
+            throw error;
+        }
     }
 }

@@ -11,17 +11,14 @@
  */
 
 import { loggingManager } from '../utils/loggingManager.js';
-import {
-    ServiceProtocol,
-    TranslationError,
-    SubtitleProcessingError,
-} from '../services/serviceInterfaces.js';
+import { ServiceProtocol, TranslationError, SubtitleProcessingError, AIContextError } from '../services/serviceInterfaces.js';
 
 class MessageHandler {
     constructor() {
         this.logger = null;
         this.translationService = null;
         this.subtitleService = null;
+        this.aiContextService = null;
         this.isInitialized = false;
     }
 
@@ -35,7 +32,6 @@ class MessageHandler {
 
         this.logger = loggingManager.createLogger('MessageHandler');
 
-        // Set up message listener
         chrome.runtime.onMessage.addListener(this.handleMessage.bind(this));
 
         this.logger.info('Message handler initialized');
@@ -45,10 +41,15 @@ class MessageHandler {
     /**
      * Set service dependencies (will be injected after services are created)
      */
-    setServices(translationService, subtitleService) {
+    setServices(translationService, subtitleService, aiContextService = null) {
         this.translationService = translationService;
         this.subtitleService = subtitleService;
-        this.logger.debug('Services injected into message handler');
+        this.aiContextService = aiContextService;
+        this.logger.debug('Services injected into message handler', {
+            hasTranslation: !!translationService,
+            hasSubtitle: !!subtitleService,
+            hasAIContext: !!aiContextService
+        });
     }
 
     /**
@@ -83,6 +84,27 @@ class MessageHandler {
 
             case 'changeProvider':
                 return this.handleChangeProviderMessage(message, sendResponse);
+
+            case 'analyzeContext':
+                return this.handleAnalyzeContextMessage(message, sendResponse);
+
+            case 'changeContextProvider':
+                return this.handleChangeContextProviderMessage(message, sendResponse);
+
+            case 'getContextStatus':
+                return this.handleGetContextStatusMessage(message, sendResponse);
+
+            case 'getAvailableModels':
+                return this.handleGetAvailableModelsMessage(message, sendResponse);
+
+            case 'getDefaultModel':
+                return this.handleGetDefaultModelMessage(message, sendResponse);
+
+            case 'reloadContextProviderConfig':
+                return this.handleReloadContextProviderConfigMessage(message, sendResponse);
+
+            case 'ping':
+                return this.handlePingMessage(message, sendResponse);
 
             default:
                 this.logger.warn('Unknown message action', {
@@ -451,6 +473,289 @@ class MessageHandler {
             });
 
         return true; // Async response
+    }
+
+    /**
+     * Handle AI context analysis requests
+     */
+    handleAnalyzeContextMessage(message, sendResponse) {
+        const { text, contextType = 'all', metadata = {}, targetLanguage, language: sourceLanguage, requestId } = message;
+
+        this.logger.debug('Received context analysis message', {
+            messageKeys: Object.keys(message),
+            textLength: text?.length || 0,
+            contextType,
+            hasMetadata: Object.keys(metadata).length > 0,
+            hasAiContextService: !!this.aiContextService,
+            requestId
+        });
+
+        if (!this.aiContextService) {
+            const errorResponse = {
+                success: false,
+                error: 'AI Context service not available',
+                contextType,
+                originalText: text,
+                requestId
+            };
+            this.logger.error('AI Context service not available', errorResponse);
+            sendResponse(errorResponse);
+            return true;
+        }
+
+        // Include target language in metadata for AI providers
+        const enhancedMetadata = {
+            ...metadata,
+            targetLanguage: targetLanguage || 'en', // Default to English if not provided
+            sourceLanguage: sourceLanguage || 'auto' // Pass source language to AI providers
+        };
+
+        this.logger.debug('Processing context analysis request', {
+            textLength: text?.length || 0,
+            contextType,
+            metadata: enhancedMetadata,
+            sourceLanguage: enhancedMetadata.sourceLanguage,
+            targetLanguage: enhancedMetadata.targetLanguage
+        });
+
+        this.aiContextService
+            .analyzeContext(text, contextType, enhancedMetadata)
+            .then((result) => {
+                this.logger.debug('AI Context service returned result', {
+                    success: result.success,
+                    hasAnalysis: !!result.analysis,
+                    hasResult: !!result.result,
+                    hasError: !!result.error,
+                    resultKeys: Object.keys(result),
+                    contextType: result.contextType
+                });
+
+
+                const response = {
+                    success: result.success,
+                    result: result, // Pass the entire result object
+                    error: result.error,
+                    shouldRetry: result.shouldRetry,
+                    shouldCache: result.shouldCache,
+                    requestId
+                };
+
+                this.logger.debug('Sending response to content script', {
+                    responseSuccess: response.success,
+                    hasResponseResult: !!response.result,
+                    hasResponseError: !!response.error,
+                    responseKeys: Object.keys(response)
+                });
+
+                sendResponse(response);
+            })
+            .catch((error) => {
+                this.logger.error('Context analysis failed', error, {
+                    textLength: text?.length || 0,
+                    contextType,
+                    errorMessage: error.message,
+                    errorStack: error.stack
+                });
+
+                const errorResponse = {
+                    success: false,
+                    error: error.message || 'Context analysis failed',
+                    result: null,
+                    requestId
+                };
+
+                this.logger.debug('Sending error response to content script', errorResponse);
+                sendResponse(errorResponse);
+            });
+
+        return true; // Async response
+    }
+
+    /**
+     * Handle context provider change requests
+     */
+    handleChangeContextProviderMessage(message, sendResponse) {
+        const { providerId } = message;
+
+        if (!this.aiContextService) {
+            sendResponse({
+                success: false,
+                message: 'AI Context service not available'
+            });
+            return true;
+        }
+
+        this.logger.debug('Processing context provider change', { providerId });
+
+        this.aiContextService
+            .changeProvider(providerId)
+            .then((result) => {
+                sendResponse(result);
+            })
+            .catch((error) => {
+                this.logger.error('Context provider change failed', error, { providerId });
+                sendResponse({
+                    success: false,
+                    message: error.message || 'Failed to change context provider'
+                });
+            });
+
+        return true; // Async response
+    }
+
+    /**
+     * Handle context service status requests
+     */
+    handleGetContextStatusMessage(message, sendResponse) {
+        if (!this.aiContextService) {
+            sendResponse({
+                success: false,
+                error: 'AI Context service not available'
+            });
+            return true;
+        }
+
+        try {
+            const status = this.aiContextService.getStatus();
+            sendResponse({
+                success: true,
+                status
+            });
+        } catch (error) {
+            this.logger.error('Failed to get context status', error);
+            sendResponse({
+                success: false,
+                error: error.message || 'Failed to get context status'
+            });
+        }
+
+        return true;
+    }
+
+    /**
+     * Handle get available models requests
+     */
+    handleGetAvailableModelsMessage(message, sendResponse) {
+        const { providerId } = message;
+
+        if (!this.aiContextService) {
+            sendResponse({
+                success: false,
+                error: 'AI Context service not available',
+                models: []
+            });
+            return true;
+        }
+
+        this.logger.debug('Processing get available models request', { providerId });
+
+        try {
+            const models = this.aiContextService.getAvailableModels(providerId);
+            sendResponse({
+                success: true,
+                models,
+                providerId: providerId || this.aiContextService.currentProviderId
+            });
+        } catch (error) {
+            this.logger.error('Failed to get available models', error, { providerId });
+            sendResponse({
+                success: false,
+                error: error.message || 'Failed to get available models',
+                models: []
+            });
+        }
+
+        return true;
+    }
+
+    /**
+     * Handle get default model requests
+     */
+    handleGetDefaultModelMessage(message, sendResponse) {
+        const { providerId } = message;
+
+        if (!this.aiContextService) {
+            sendResponse({
+                success: false,
+                error: 'AI Context service not available',
+                defaultModel: null
+            });
+            return true;
+        }
+
+        this.logger.debug('Processing get default model request', { providerId });
+
+        try {
+            const defaultModel = this.aiContextService.getDefaultModel(providerId);
+            sendResponse({
+                success: true,
+                defaultModel,
+                providerId: providerId || this.aiContextService.currentProviderId
+            });
+        } catch (error) {
+            this.logger.error('Failed to get default model', error, { providerId });
+            sendResponse({
+                success: false,
+                error: error.message || 'Failed to get default model',
+                defaultModel: null
+            });
+        }
+
+        return true;
+    }
+
+    /**
+     * Handle reload context provider configuration requests
+     */
+    handleReloadContextProviderConfigMessage(message, sendResponse) {
+        if (!this.aiContextService) {
+            sendResponse({
+                success: false,
+                error: 'AI Context service not available'
+            });
+            return true;
+        }
+
+        this.logger.debug('Processing reload context provider config request');
+
+        this.aiContextService
+            .reloadProviderConfig()
+            .then(() => {
+                const status = this.aiContextService.getStatus();
+                sendResponse({
+                    success: true,
+                    message: 'Provider configuration reloaded successfully',
+                    currentProvider: status.currentProvider
+                });
+            })
+            .catch((error) => {
+                this.logger.error('Failed to reload provider configuration', error);
+                sendResponse({
+                    success: false,
+                    error: error.message || 'Failed to reload provider configuration'
+                });
+            });
+
+        return true; // Async response
+    }
+
+    /**
+     * Handle ping requests for connection testing (Issue #1: Fixed provider connection)
+     */
+    handlePingMessage(message, sendResponse) {
+        this.logger.debug('Received ping message', {
+            timestamp: message.timestamp,
+            source: message.source
+        });
+
+        sendResponse({
+            success: true,
+            timestamp: Date.now(),
+            originalTimestamp: message.timestamp,
+            message: 'pong'
+        });
+
+        return true;
     }
 }
 

@@ -25,12 +25,19 @@ export class DisneyPlusPlatform extends VideoPlatform {
         try {
             await this.logger.updateLevel();
         } catch (error) {
-            // Logger initialization shouldn't block platform initialization
             console.warn(
                 'DisneyPlusPlatform: Failed to initialize logger level:',
                 error
             );
         }
+    }
+
+    /**
+     * Gets the platform name.
+     * @returns {string} The platform name, 'disneyplus'.
+     */
+    getPlatformName() {
+        return 'disneyplus';
     }
 
     isPlatformActive() {
@@ -51,11 +58,9 @@ export class DisneyPlusPlatform extends VideoPlatform {
         this.onSubtitleUrlFoundCallback = onSubtitleUrlFound;
         this.onVideoIdChangeCallback = onVideoIdChange;
 
-        // Store the bound listener to be able to remove it later
         this.eventListener = this._handleInjectorEvents.bind(this);
         document.addEventListener(INJECT_EVENT_ID, this.eventListener);
 
-        // Set up storage listener for subtitle settings
         const disneyPlusSubtitleSelectors = [
             '.TimedTextOverlay',
             '.hive-subtitle-renderer-wrapper',
@@ -221,9 +226,7 @@ export class DisneyPlusPlatform extends VideoPlatform {
         }
     }
 
-    // Add a public wrapper so that BaseContentScript can safely invoke this method
     handleInjectorEvents(e) {
-        // Simply delegate to the private implementation to maintain existing logic
         this._handleInjectorEvents(e);
     }
 
@@ -263,10 +266,7 @@ export class DisneyPlusPlatform extends VideoPlatform {
             '.hive-subtitle-renderer-cue-window',
         ];
 
-        // Use the utility method from the base class
         this.handleNativeSubtitlesWithSetting(disneyPlusSubtitleSelectors);
-
-        // Also set up monitoring system like Netflix
         this.setupDisneyPlusSubtitleMonitoring();
     }
 
@@ -284,9 +284,20 @@ export class DisneyPlusPlatform extends VideoPlatform {
         let styleElement = document.getElementById(cssId);
 
         if (!styleElement) {
-            styleElement = document.createElement('style');
-            styleElement.id = cssId;
-            document.head.appendChild(styleElement);
+            // Validate that document.head exists before appending
+            if (!document.head || !(document.head instanceof Node)) {
+                console.warn('[DisneyPlusPlatform] document.head not available, cannot inject CSS');
+                return;
+            }
+
+            try {
+                styleElement = document.createElement('style');
+                styleElement.id = cssId;
+                document.head.appendChild(styleElement);
+            } catch (error) {
+                console.error('[DisneyPlusPlatform] Failed to inject CSS:', error);
+                return;
+            }
         }
 
         // CSS rules that will be applied when hiding is enabled
@@ -322,44 +333,63 @@ export class DisneyPlusPlatform extends VideoPlatform {
             this.subtitleObserver.disconnect();
         }
 
-        // Set up mutation observer to catch dynamically created subtitle elements
-        this.subtitleObserver = new MutationObserver((mutations) => {
-            let foundNewSubtitles = false;
+        // Validate that document.body exists before setting up observer
+        if (!document.body || !(document.body instanceof Node)) {
+            console.warn('[DisneyPlusPlatform] document.body not available, retrying in 100ms');
+            setTimeout(() => {
+                this.setupSubtitleMutationObserver();
+            }, 100);
+            return;
+        }
 
-            mutations.forEach((mutation) => {
-                if (mutation.type === 'childList') {
-                    mutation.addedNodes.forEach((node) => {
-                        if (node.nodeType === Node.ELEMENT_NODE) {
-                            // Check if the added node or its children contain subtitle elements
-                            if (
-                                node.classList?.contains('TimedTextOverlay') ||
-                                node.classList?.contains(
-                                    'hive-subtitle-renderer-wrapper'
-                                ) ||
-                                node.querySelector?.(
-                                    '.TimedTextOverlay, .hive-subtitle-renderer-wrapper'
-                                )
-                            ) {
-                                foundNewSubtitles = true;
+        try {
+            // Set up mutation observer to catch dynamically created subtitle elements
+            this.subtitleObserver = new MutationObserver((mutations) => {
+                let foundNewSubtitles = false;
+
+                mutations.forEach((mutation) => {
+                    if (mutation.type === 'childList') {
+                        mutation.addedNodes.forEach((node) => {
+                            if (node.nodeType === Node.ELEMENT_NODE) {
+                                // Check if the added node or its children contain subtitle elements
+                                if (
+                                    node.classList?.contains('TimedTextOverlay') ||
+                                    node.classList?.contains(
+                                        'hive-subtitle-renderer-wrapper'
+                                    ) ||
+                                    node.querySelector?.(
+                                        '.TimedTextOverlay, .hive-subtitle-renderer-wrapper'
+                                    )
+                                ) {
+                                    foundNewSubtitles = true;
+                                }
                             }
-                        }
-                    });
+                        });
+                    }
+                });
+
+                if (foundNewSubtitles) {
+                    // Reapply hiding rules after a short delay
+                    setTimeout(() => {
+                        this.applyCurrentSubtitleSetting();
+                    }, 100);
                 }
             });
 
-            if (foundNewSubtitles) {
-                // Reapply hiding rules after a short delay
-                setTimeout(() => {
-                    this.applyCurrentSubtitleSetting();
-                }, 100);
-            }
-        });
+            // Start observing the document body for changes
+            this.subtitleObserver.observe(document.body, {
+                childList: true,
+                subtree: true,
+            });
 
-        // Start observing the document body for changes
-        this.subtitleObserver.observe(document.body, {
-            childList: true,
-            subtree: true,
-        });
+            console.log('[DisneyPlusPlatform] Subtitle mutation observer set up successfully');
+        } catch (error) {
+            console.error('[DisneyPlusPlatform] Failed to set up subtitle mutation observer:', error);
+            // Retry after a delay
+            setTimeout(() => {
+                this.setupSubtitleMutationObserver();
+            }, 500);
+        }
     }
 
     applyCurrentSubtitleSetting() {
@@ -390,10 +420,8 @@ export class DisneyPlusPlatform extends VideoPlatform {
             this.logger.debug('Event listener removed');
         }
 
-        // Clean up storage listener for subtitle settings
         this.cleanupNativeSubtitleSettingsListener();
 
-        // Clean up mutation observer
         if (this.subtitleObserver) {
             this.subtitleObserver.disconnect();
             this.subtitleObserver = null;

@@ -356,5 +356,105 @@ export class ServiceRegistry {
     }
 }
 
+/**
+ * AI Context Service Interface
+ *
+ * Handles AI-powered cultural, historical, and linguistic context analysis
+ * for subtitle text with provider management and caching.
+ */
+export class IAIContextService {
+    /**
+     * Initialize the AI context service
+     * @returns {Promise<void>}
+     */
+    async initialize() {
+        throw new Error('Method must be implemented');
+    }
+
+    /**
+     * Analyze text for cultural, historical, and linguistic context
+     * @param {string} text - Text to analyze
+     * @param {string} contextType - Type of context ('cultural', 'historical', 'linguistic', 'all')
+     * @param {Object} metadata - Additional context metadata
+     * @returns {Promise<Object>} Context analysis result
+     */
+    async analyzeContext(text, contextType = 'all', metadata = {}) {
+        throw new Error('Method must be implemented');
+    }
+
+    /**
+     * Change context provider
+     * @param {string} providerId - New provider ID
+     * @returns {Promise<Object>} Result object
+     */
+    async changeProvider(providerId) {
+        throw new Error('Method must be implemented');
+    }
+
+    /**
+     * Get available context providers
+     * @returns {Array<Object>} Available providers with their capabilities
+     */
+    getAvailableProviders() {
+        throw new Error('Method must be implemented');
+    }
+
+    /**
+     * Clear the context cache
+     */
+    clearCache() {
+        throw new Error('Method must be implemented');
+    }
+
+    /**
+     * Get service status
+     * @returns {Object} Service status information
+     */
+    getStatus() {
+        throw new Error('Method must be implemented');
+    }
+}
+
+/**
+ * AI Context Error Classes
+ */
+export class AIContextError extends Error {
+    constructor(message, originalError = null, provider = null) {
+        super(message);
+        this.name = 'AIContextError';
+        this.category = 'ai_context';
+        this.severity = 'medium';
+        this.originalError = originalError;
+        this.provider = provider;
+        this.timestamp = Date.now();
+    }
+}
+
+export class ContextProviderError extends AIContextError {
+    constructor(message, provider = null, statusCode = null) {
+        super(message, null, provider);
+        this.name = 'ContextProviderError';
+        this.statusCode = statusCode;
+    }
+}
+
+export class ContextRateLimitError extends AIContextError {
+    constructor(message, retryAfter = null, provider = null) {
+        super(message, null, provider);
+        this.name = 'ContextRateLimitError';
+        this.category = 'rate_limit';
+        this.retryAfter = retryAfter;
+    }
+}
+
+export class ContextCacheError extends AIContextError {
+    constructor(message, cacheKey = null) {
+        super(message);
+        this.name = 'ContextCacheError';
+        this.severity = 'low';
+        this.cacheKey = cacheKey;
+    }
+}
+
 // Export singleton registry
 export const serviceRegistry = new ServiceRegistry();
