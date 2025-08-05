@@ -14,7 +14,7 @@ let interactiveSubtitlesEnabled = false;
 let interactiveModulesLoaded = false;
 
 // Debounce mechanism for subtitle content change events
-let contentChangeDebounceTimeout = null;
+const contentChangeDebounceTimeouts = new Map();
 const CONTENT_CHANGE_DEBOUNCE_DELAY = 50; // 50ms debounce
 
 // Initialize fallback console logging until Logger is loaded
@@ -37,10 +37,11 @@ function logWithFallback(level, message, data = {}) {
  * @param {HTMLElement} element - Subtitle element
  */
 function dispatchContentChangeDebounced(type, oldContent, newContent, element) {
-    if (contentChangeDebounceTimeout) {
-        clearTimeout(contentChangeDebounceTimeout);
+    const existingTimeout = contentChangeDebounceTimeouts.get(element);
+    if (existingTimeout) {
+        clearTimeout(existingTimeout);
     }
-    contentChangeDebounceTimeout = setTimeout(() => {
+    const timeoutId = setTimeout(() => {
         document.dispatchEvent(new CustomEvent('dualsub-subtitle-content-changing', {
             detail: {
                 type,
@@ -55,7 +56,13 @@ function dispatchContentChangeDebounced(type, oldContent, newContent, element) {
             oldContentLength: oldContent.length,
             newContentLength: newContent.length
         });
+
+        // Clean up the timeout from the map
+        contentChangeDebounceTimeouts.delete(element);
     }, CONTENT_CHANGE_DEBOUNCE_DELAY);
+
+    // Store the timeout for this element
+    contentChangeDebounceTimeouts.set(element, timeoutId);
 }
 
 // Initialize logger when available
