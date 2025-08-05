@@ -392,6 +392,30 @@ class ConfigService {
     }
 
     /**
+     * Checks if Chrome storage API is available for the specified area
+     * @param {string} area - 'sync' or 'local'
+     * @param {string} operation - The operation being performed (for error messages)
+     * @param {object} logContext - Additional context for logging
+     * @returns {boolean} True if available, false otherwise
+     * @private
+     */
+    _checkChromeStorageAvailability(area, operation, logContext = {}) {
+        if (!chrome || !chrome.storage || !chrome.storage[area]) {
+            const error = new Error(`Chrome storage API not available for ${operation} operation (area: ${area})`);
+            this.logger.error(`Chrome storage API unavailable for ${operation}`, error, {
+                area,
+                operation,
+                ...logContext,
+                chromeAvailable: !!chrome,
+                storageAvailable: !!(chrome && chrome.storage),
+                areaAvailable: !!(chrome && chrome.storage && chrome.storage[area])
+            });
+            return false;
+        }
+        return true;
+    }
+
+    /**
      * Internal method to get data from a specific storage area
      * @param {string} area - 'sync' or 'local'
      * @param {string[]} keys - Array of keys to retrieve
@@ -403,17 +427,10 @@ class ConfigService {
         const startTime = Date.now();
 
         // Check if chrome.storage is available
-        if (!chrome || !chrome.storage || !chrome.storage[area]) {
-            const error = new Error(`Chrome storage API not available (area: ${area})`);
-            this.logger.error('Chrome storage API unavailable', error, {
-                area,
-                keys: normalizedKeys,
-                context,
-                chromeAvailable: !!chrome,
-                storageAvailable: !!(chrome && chrome.storage),
-                areaAvailable: !!(chrome && chrome.storage && chrome.storage[area])
-            });
-
+        if (!this._checkChromeStorageAvailability(area, 'get', {
+            keys: normalizedKeys,
+            context
+        })) {
             return {};
         }
 
@@ -499,18 +516,11 @@ class ConfigService {
         const startTime = Date.now();
 
         // Check if chrome.storage is available
-        if (!chrome || !chrome.storage || !chrome.storage[area]) {
-            const error = new Error(`Chrome storage API not available for set operation (area: ${area})`);
-            this.logger.error('Chrome storage API unavailable for set', error, {
-                area,
-                keys,
-                itemCount: keys.length,
-                context,
-                chromeAvailable: !!chrome,
-                storageAvailable: !!(chrome && chrome.storage),
-                areaAvailable: !!(chrome && chrome.storage && chrome.storage[area])
-            });
-
+        if (!this._checkChromeStorageAvailability(area, 'set', {
+            keys,
+            itemCount: keys.length,
+            context
+        })) {
             return;
         }
 
@@ -603,6 +613,15 @@ class ConfigService {
     async removeFromStorage(area, keys, context = {}) {
         const normalizedKeys = Array.isArray(keys) ? keys : [keys];
         const startTime = Date.now();
+
+        // Check if chrome.storage is available
+        if (!this._checkChromeStorageAvailability(area, 'remove', {
+            keys: normalizedKeys,
+            keyCount: normalizedKeys.length,
+            context
+        })) {
+            return;
+        }
 
         this.logger.debug(`Starting remove operation`, {
             area,
