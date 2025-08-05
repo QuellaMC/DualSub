@@ -4,6 +4,31 @@
  * - type: The expected data type (for validation).
  * - scope: 'sync' for settings that sync across devices, 'local' for device-specific settings.
  */
+
+/**
+ * Detect browser language for UI language default
+ * @returns {string} Detected browser language code
+ */
+function detectBrowserLanguage() {
+    // Check if we're in a browser environment
+    if (typeof navigator === 'undefined') {
+        return 'en'; // Fallback for non-browser environments (like tests)
+    }
+
+    const lang = (
+        navigator.language ||
+        navigator.userLanguage ||
+        'en'
+    ).toLowerCase();
+
+    if (lang.startsWith('zh-cn')) return 'zh-CN';
+    if (lang.startsWith('zh-tw')) return 'zh-TW';
+    if (lang.startsWith('zh')) return 'zh-CN';
+    if (lang.startsWith('es')) return 'es';
+    if (lang.startsWith('ja')) return 'ja';
+    if (lang.startsWith('ko')) return 'ko';
+    return 'en';
+}
 export const configSchema = {
     // --- General Settings (from options.js) ---
     uiLanguage: { defaultValue: 'en', type: String, scope: 'sync' },
@@ -194,6 +219,11 @@ export function validateSetting(key, value) {
  * @returns {any} The default value or undefined if key doesn't exist
  */
 export function getDefaultValue(key) {
+    // Special case: automatically detect browser language for UI language
+    if (key === 'uiLanguage') {
+        return detectBrowserLanguage();
+    }
+
     return configSchema[key]?.defaultValue;
 }
 
