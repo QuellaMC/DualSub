@@ -1,9 +1,9 @@
 /**
  * API Key Manager
- * 
+ *
  * Provides secure storage and management for API keys used by the AI Context
  * feature. Implements basic obfuscation and validation for API keys.
- * 
+ *
  * @author DualSub Extension
  * @version 1.0.0
  */
@@ -19,7 +19,7 @@ const logger = Logger.create('APIKeyManager');
 const API_KEY_PATTERNS = {
     openai: /^sk-[a-zA-Z0-9]{48,}$/,
     gemini: /^AIza[a-zA-Z0-9_-]{35,}$/,
-    deepl: /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}:fx$/
+    deepl: /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}:fx$/,
 };
 
 /**
@@ -28,32 +28,36 @@ const API_KEY_PATTERNS = {
 class APIKeyObfuscator {
     static obfuscate(key) {
         if (!key || typeof key !== 'string') return '';
-        
+
         // Simple XOR with a fixed key (not secure, just obfuscation)
         const obfuscationKey = 'DualSubAIContext2024';
         let result = '';
-        
+
         for (let i = 0; i < key.length; i++) {
-            const charCode = key.charCodeAt(i) ^ obfuscationKey.charCodeAt(i % obfuscationKey.length);
+            const charCode =
+                key.charCodeAt(i) ^
+                obfuscationKey.charCodeAt(i % obfuscationKey.length);
             result += String.fromCharCode(charCode);
         }
-        
+
         return btoa(result); // Base64 encode
     }
-    
+
     static deobfuscate(obfuscatedKey) {
         if (!obfuscatedKey || typeof obfuscatedKey !== 'string') return '';
-        
+
         try {
             const decoded = atob(obfuscatedKey); // Base64 decode
             const obfuscationKey = 'DualSubAIContext2024';
             let result = '';
-            
+
             for (let i = 0; i < decoded.length; i++) {
-                const charCode = decoded.charCodeAt(i) ^ obfuscationKey.charCodeAt(i % obfuscationKey.length);
+                const charCode =
+                    decoded.charCodeAt(i) ^
+                    obfuscationKey.charCodeAt(i % obfuscationKey.length);
                 result += String.fromCharCode(charCode);
             }
-            
+
             return result;
         } catch (error) {
             logger.error('Failed to deobfuscate API key', error);
@@ -86,28 +90,29 @@ export class APIKeyManager {
             // Validate API key format
             const isValid = this.validateAPIKeyFormat(provider, apiKey);
             if (!isValid) {
-                throw new Error(`Invalid API key format for provider: ${provider}`);
+                throw new Error(
+                    `Invalid API key format for provider: ${provider}`
+                );
             }
 
             const obfuscatedKey = APIKeyObfuscator.obfuscate(apiKey);
             const configKey = `${provider}ApiKey`;
             await configService.set(configKey, obfuscatedKey);
-            
+
             this.cache.set(provider, apiKey);
             this.validationCache.set(provider, true);
 
             logger.info('API key stored successfully', {
                 provider,
                 keyLength: apiKey.length,
-                keyPrefix: apiKey.substring(0, 8) + '...'
+                keyPrefix: apiKey.substring(0, 8) + '...',
             });
 
             return true;
-
         } catch (error) {
             logger.error('Failed to store API key', error, {
                 provider,
-                keyLength: apiKey?.length || 0
+                keyLength: apiKey?.length || 0,
             });
             return false;
         }
@@ -127,14 +132,14 @@ export class APIKeyManager {
             // Get from configuration
             const configKey = `${provider}ApiKey`;
             const obfuscatedKey = await configService.get(configKey);
-            
+
             if (!obfuscatedKey) {
                 return '';
             }
 
             // Deobfuscate the key
             const apiKey = APIKeyObfuscator.deobfuscate(obfuscatedKey);
-            
+
             // Validate and cache
             if (apiKey && this.validateAPIKeyFormat(provider, apiKey)) {
                 this.cache.set(provider, apiKey);
@@ -144,11 +149,10 @@ export class APIKeyManager {
 
             logger.warn('Retrieved API key failed validation', {
                 provider,
-                hasKey: !!apiKey
+                hasKey: !!apiKey,
             });
 
             return '';
-
         } catch (error) {
             logger.error('Failed to retrieve API key', error, { provider });
             return '';
@@ -168,13 +172,15 @@ export class APIKeyManager {
             }
 
             const apiKey = await this.getAPIKey(provider);
-            const isValid = !!apiKey && this.validateAPIKeyFormat(provider, apiKey);
-            
+            const isValid =
+                !!apiKey && this.validateAPIKeyFormat(provider, apiKey);
+
             this.validationCache.set(provider, isValid);
             return isValid;
-
         } catch (error) {
-            logger.error('Failed to check API key validity', error, { provider });
+            logger.error('Failed to check API key validity', error, {
+                provider,
+            });
             return false;
         }
     }
@@ -188,14 +194,13 @@ export class APIKeyManager {
         try {
             const configKey = `${provider}ApiKey`;
             await configService.set(configKey, '');
-            
+
             // Clear cache
             this.cache.delete(provider);
             this.validationCache.delete(provider);
 
             logger.info('API key removed', { provider });
             return true;
-
         } catch (error) {
             logger.error('Failed to remove API key', error, { provider });
             return false;
@@ -255,18 +260,18 @@ export class APIKeyManager {
             try {
                 const hasKey = await this.hasValidAPIKey(provider);
                 const apiKey = hasKey ? await this.getAPIKey(provider) : '';
-                
+
                 status[provider] = {
                     hasValidKey: hasKey,
                     keyMask: hasKey ? this.maskAPIKey(apiKey) : '',
-                    keyLength: apiKey.length
+                    keyLength: apiKey.length,
                 };
             } catch (error) {
                 status[provider] = {
                     hasValidKey: false,
                     keyMask: '',
                     keyLength: 0,
-                    error: error.message
+                    error: error.message,
                 };
             }
         }
@@ -291,12 +296,12 @@ export class APIKeyManager {
      */
     async testAPIKey(provider, apiKey = null) {
         try {
-            const keyToTest = apiKey || await this.getAPIKey(provider);
-            
+            const keyToTest = apiKey || (await this.getAPIKey(provider));
+
             if (!keyToTest) {
                 return {
                     success: false,
-                    error: 'No API key provided or stored'
+                    error: 'No API key provided or stored',
                 };
             }
 
@@ -304,7 +309,7 @@ export class APIKeyManager {
             if (!this.validateAPIKeyFormat(provider, keyToTest)) {
                 return {
                     success: false,
-                    error: 'Invalid API key format'
+                    error: 'Invalid API key format',
                 };
             }
 
@@ -314,14 +319,13 @@ export class APIKeyManager {
                 success: true,
                 message: 'API key format is valid',
                 provider,
-                keyMask: this.maskAPIKey(keyToTest)
+                keyMask: this.maskAPIKey(keyToTest),
             };
-
         } catch (error) {
             logger.error('API key test failed', error, { provider });
             return {
                 success: false,
-                error: error.message
+                error: error.message,
             };
         }
     }

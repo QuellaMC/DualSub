@@ -155,9 +155,13 @@
     "providerMicrosoftName": { "message": "Microsoft 翻譯（免費）" },
     "providerDeepLName": { "message": "DeepL（需要 API 金鑰）" },
     "providerDeepLFreeName": { "message": "DeepL 翻譯（免費）" },
-    "providerOpenAICompatibleName": { "message": "OpenAI 相容（需要 API 金鑰）" },
+    "providerOpenAICompatibleName": {
+        "message": "OpenAI 相容（需要 API 金鑰）"
+    },
     "cardOpenAICompatibleTitle": { "message": "OpenAI 相容（需要 API 金鑰）" },
-    "cardOpenAICompatibleDesc": { "message": "輸入您的 API 金鑰和設定，用於 Gemini 等 OpenAI 相容服務。" },
+    "cardOpenAICompatibleDesc": {
+        "message": "輸入您的 API 金鑰和設定，用於 Gemini 等 OpenAI 相容服務。"
+    },
     "baseUrlLabel": { "message": "基礎 URL：" },
     "modelLabel": { "message": "模型：" },
     "featureCustomizable": { "message": "可自訂端點和模型" },
@@ -165,10 +169,14 @@
     "testConnectionButton": { "message": "測試連線" },
 
     "openaiApiKeyPlaceholder": { "message": "輸入您的 OpenAI 相容 API 金鑰" },
-    "openaiBaseUrlPlaceholder": { "message": "例如：https://api.openai.com/v1" },
+    "openaiBaseUrlPlaceholder": {
+        "message": "例如：https://api.openai.com/v1"
+    },
     "openaiApiKeyError": { "message": "請先輸入您的 API 金鑰。" },
     "openaiApiKeyNeedsTesting": { "message": "⚠️ API 金鑰需要測試。" },
-    "openaiTestNeedsTesting": { "message": "⚠️ OpenAI 相容 API 金鑰需要測試。" },
+    "openaiTestNeedsTesting": {
+        "message": "⚠️ OpenAI 相容 API 金鑰需要測試。"
+    },
     "openaiTestingConnection": { "message": "正在測試連線..." },
     "openaiConnectionSuccessful": { "message": "連線成功！" },
     "openaiConnectionFailed": { "message": "連線失敗：%s" },
@@ -296,8 +304,12 @@
     "aiContextRetrying": { "message": "分析失敗，正在重新生成..." },
     "aiContextRetryNotification": { "message": "分析失敗，正在重試..." },
     "aiContextRetryButton": { "message": "重試" },
-    "aiContextMalformedResponse": { "message": "AI 服務返回了無效的回應格式。這可能是由於臨時服務問題。" },
-    "aiContextJsonCodeBlock": { "message": "AI 服務返回了未處理的 JSON 代碼而不是結構化數據。這表明回應中存在格式錯誤。" },
+    "aiContextMalformedResponse": {
+        "message": "AI 服務返回了無效的回應格式。這可能是由於臨時服務問題。"
+    },
+    "aiContextJsonCodeBlock": {
+        "message": "AI 服務返回了未處理的 JSON 代碼而不是結構化數據。這表明回應中存在格式錯誤。"
+    },
     "aiContextCulturalContext": { "message": "文化背景:" },
     "aiContextSocialUsage": { "message": "社會用法:" },
     "aiContextRegionalNotes": { "message": "地區特色:" },
@@ -318,22 +330,32 @@
     "navAIContext": { "message": "AI 上下文" },
     "sectionAIContext": { "message": "AI 上下文助手" },
     "cardAIContextToggleTitle": { "message": "啟用 AI 上下文分析" },
-    "cardAIContextToggleDesc": { "message": "為字幕文字啟用 AI 驅動的文化、歷史和語言學上下文分析。點擊字幕中的單詞或短語以獲得詳細解釋。" },
+    "cardAIContextToggleDesc": {
+        "message": "為字幕文字啟用 AI 驅動的文化、歷史和語言學上下文分析。點擊字幕中的單詞或短語以獲得詳細解釋。"
+    },
     "aiContextEnabledLabel": { "message": "啟用 AI 上下文：" },
     "cardAIContextProviderTitle": { "message": "AI 提供商" },
-    "cardAIContextProviderDesc": { "message": "選擇用於上下文分析的 AI 服務提供商。不同的提供商可能提供不同的品質和回應時間。" },
+    "cardAIContextProviderDesc": {
+        "message": "選擇用於上下文分析的 AI 服務提供商。不同的提供商可能提供不同的品質和回應時間。"
+    },
     "aiContextProviderLabel": { "message": "提供商：" },
     "cardOpenAIContextTitle": { "message": "OpenAI 設定" },
-    "cardOpenAIContextDesc": { "message": "設定用於上下文分析的 OpenAI API 設定。您需要一個有效的 OpenAI API 金鑰。" },
+    "cardOpenAIContextDesc": {
+        "message": "設定用於上下文分析的 OpenAI API 設定。您需要一個有效的 OpenAI API 金鑰。"
+    },
     "openaiApiKeyLabel": { "message": "API 金鑰：" },
     "openaiBaseUrlLabel": { "message": "基礎 URL：" },
     "openaiModelLabel": { "message": "模型：" },
     "cardGeminiContextTitle": { "message": "Google Gemini 設定" },
-    "cardGeminiContextDesc": { "message": "設定用於上下文分析的 Google Gemini API 設定。您需要一個有效的 Gemini API 金鑰。" },
+    "cardGeminiContextDesc": {
+        "message": "設定用於上下文分析的 Google Gemini API 設定。您需要一個有效的 Gemini API 金鑰。"
+    },
     "geminiApiKeyLabel": { "message": "API 金鑰：" },
     "geminiModelLabel": { "message": "模型：" },
     "cardAIContextTypesTitle": { "message": "上下文類型" },
-    "cardAIContextTypesDesc": { "message": "啟用您想要使用的上下文分析類型。您可以啟用多種類型。" },
+    "cardAIContextTypesDesc": {
+        "message": "啟用您想要使用的上下文分析類型。您可以啟用多種類型。"
+    },
     "contextTypeCulturalLabel": { "message": "文化上下文：" },
     "contextTypeCulturalHelp": { "message": "分析文化參考、習語和社會背景" },
     "contextTypeHistoricalLabel": { "message": "歷史上下文：" },
@@ -341,19 +363,31 @@
     "contextTypeLinguisticLabel": { "message": "語言學分析：" },
     "contextTypeLinguisticHelp": { "message": "解釋語法、詞源和語言結構" },
     "cardAIContextInteractiveTitle": { "message": "互動功能" },
-    "cardAIContextInteractiveDesc": { "message": "設定如何與字幕互動以觸發上下文分析。" },
+    "cardAIContextInteractiveDesc": {
+        "message": "設定如何與字幕互動以觸發上下文分析。"
+    },
     "interactiveSubtitlesEnabledLabel": { "message": "啟用互動式字幕：" },
-    "interactiveSubtitlesEnabledHelp": { "message": "使字幕單詞可點擊以進行上下文分析" },
+    "interactiveSubtitlesEnabledHelp": {
+        "message": "使字幕單詞可點擊以進行上下文分析"
+    },
     "contextOnClickLabel": { "message": "點擊時顯示上下文：" },
     "contextOnClickHelp": { "message": "點擊單詞時顯示上下文分析" },
     "contextOnSelectionLabel": { "message": "選擇時顯示上下文：" },
     "contextOnSelectionHelp": { "message": "選擇文字時顯示上下文分析" },
     "cardAIContextPrivacyTitle": { "message": "隱私和資料" },
-    "cardAIContextPrivacyDesc": { "message": "控制在上下文分析期間如何處理您的資料。" },
-    "aiContextUserConsentLabel": { "message": "我同意將字幕文字傳送給 AI 提供商進行分析：" },
-    "aiContextUserConsentHelp": { "message": "AI 上下文分析功能正常運作所必需" },
+    "cardAIContextPrivacyDesc": {
+        "message": "控制在上下文分析期間如何處理您的資料。"
+    },
+    "aiContextUserConsentLabel": {
+        "message": "我同意將字幕文字傳送給 AI 提供商進行分析："
+    },
+    "aiContextUserConsentHelp": {
+        "message": "AI 上下文分析功能正常運作所必需"
+    },
     "aiContextDataSharingLabel": { "message": "允許匿名使用分析：" },
-    "aiContextDataSharingHelp": { "message": "透過分享匿名使用資料幫助改進服務" },
+    "aiContextDataSharingHelp": {
+        "message": "透過分享匿名使用資料幫助改進服務"
+    },
     "cardAIContextAdvancedTitle": { "message": "進階設定" },
     "aiContextTimeoutLabel": { "message": "請求逾時 (ms)：" },
     "aiContextTimeoutHelp": { "message": "等待 AI 回應的最長時間" },

@@ -115,7 +115,11 @@ class NetflixParser {
             let targetVttText = '';
             let useNativeTarget = false;
 
-            if (targetTrack && targetTrack.downloadUrl && useOfficialSubtitles) {
+            if (
+                targetTrack &&
+                targetTrack.downloadUrl &&
+                useOfficialSubtitles
+            ) {
                 this.logger.debug('Processing target track (official)', {
                     language: targetTrack.language,
                     trackType: targetTrack.trackType,

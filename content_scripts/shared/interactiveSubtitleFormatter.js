@@ -1,9 +1,9 @@
 /**
  * Interactive Subtitle Formatter
- * 
+ *
  * Enhances subtitle text with clickable elements for AI context analysis.
  * Provides word/phrase selection, visual feedback, and context interaction.
- * 
+ *
  * @author DualSub Extension
  * @version 1.0.0
  */
@@ -11,18 +11,26 @@
 // Robust logging function that's always available
 const logWithFallback = (() => {
     let currentLogger = (level, message, data) => {
-        console.log(`[InteractiveFormatter] [${level.toUpperCase()}] ${message}`, data || {});
+        console.log(
+            `[InteractiveFormatter] [${level.toUpperCase()}] ${message}`,
+            data || {}
+        );
     };
 
     const logWrapper = (level, message, data) => {
         try {
             currentLogger(level, message, data);
         } catch (error) {
-            console.log(`[InteractiveFormatter] [${level.toUpperCase()}] ${message}`, data || {});
+            console.log(
+                `[InteractiveFormatter] [${level.toUpperCase()}] ${message}`,
+                data || {}
+            );
         }
     };
 
-    console.log('[InteractiveFormatter] Using fallback logging (enhanced logging not available)');
+    console.log(
+        '[InteractiveFormatter] Using fallback logging (enhanced logging not available)'
+    );
 
     return logWrapper;
 })();
@@ -37,7 +45,7 @@ const INTERACTIVE_CONFIG = {
     minWordLength: 1, // Allow single character words for better phrase support
     excludeWords: [], // Include all words for phrase analysis (including function words)
     contextTypes: ['cultural', 'historical', 'linguistic'],
-    debounceDelay: 300
+    debounceDelay: 300,
 };
 
 /**
@@ -48,7 +56,7 @@ const interactiveState = {
     currentSelection: null,
     pendingRequests: new Map(),
     contextModal: null,
-    lastClickTime: 0
+    lastClickTime: 0,
 };
 
 /**
@@ -58,10 +66,10 @@ const interactiveState = {
 export function initializeInteractiveSubtitles(config = {}) {
     Object.assign(INTERACTIVE_CONFIG, config);
     interactiveState.isEnabled = INTERACTIVE_CONFIG.enabled;
-    
+
     logWithFallback('info', 'Interactive subtitles initialized', {
         enabled: interactiveState.isEnabled,
-        config: INTERACTIVE_CONFIG
+        config: INTERACTIVE_CONFIG,
     });
 }
 
@@ -72,7 +80,7 @@ export function initializeInteractiveSubtitles(config = {}) {
 export function setInteractiveEnabled(enabled) {
     interactiveState.isEnabled = enabled;
     INTERACTIVE_CONFIG.enabled = enabled;
-    
+
     logWithFallback('info', 'Interactive subtitles toggled', { enabled });
 }
 
@@ -84,7 +92,11 @@ export function setInteractiveEnabled(enabled) {
  */
 export function formatInteractiveSubtitleText(text, options = {}) {
     if (!text || typeof text !== 'string') {
-        logWithFallback('debug', 'formatInteractiveSubtitleText: empty or invalid text', { text });
+        logWithFallback(
+            'debug',
+            'formatInteractiveSubtitleText: empty or invalid text',
+            { text }
+        );
         return '';
     }
 
@@ -106,13 +118,13 @@ export function formatInteractiveSubtitleText(text, options = {}) {
             wrappedLength: formattedText.length,
             hasSpans: formattedText.includes('dualsub-interactive-word'),
             sampleOriginal: originalText.substring(0, 30),
-            sampleWrapped: formattedText.substring(0, 100)
+            sampleWrapped: formattedText.substring(0, 100),
         });
     } else {
         logWithFallback('debug', 'Interactive wrapping skipped', {
             isEnabled: interactiveState.isEnabled,
             clickableWords: INTERACTIVE_CONFIG.clickableWords,
-            config: INTERACTIVE_CONFIG
+            config: INTERACTIVE_CONFIG,
         });
     }
 
@@ -136,13 +148,14 @@ function wrapWordsForInteraction(text, options = {}) {
     // - Japanese Katakana: [\u30a0-\u30ff]+
     // - Korean: [\uac00-\ud7af]+
     // - Numbers: \d+
-    const wordPattern = /([a-zA-Z]+(?:'[a-zA-Z]+)*|[\u4e00-\u9fff]+|[\u3040-\u309f]+|[\u30a0-\u30ff]+|[\uac00-\ud7af]+|\d+)/g;
+    const wordPattern =
+        /([a-zA-Z]+(?:'[a-zA-Z]+)*|[\u4e00-\u9fff]+|[\u3040-\u309f]+|[\u30a0-\u30ff]+|[\uac00-\ud7af]+|\d+)/g;
 
     logWithFallback('debug', 'Processing text for interactive words', {
         originalText: text,
         sourceLanguage,
         targetLanguage,
-        textLength: text.length
+        textLength: text.length,
     });
 
     let processedCount = 0;
@@ -164,7 +177,7 @@ function wrapWordsForInteraction(text, options = {}) {
         return createInteractiveWordSpan(word, {
             sourceLanguage,
             targetLanguage,
-            originalText: text
+            originalText: text,
         });
     });
 
@@ -172,7 +185,7 @@ function wrapWordsForInteraction(text, options = {}) {
         originalLength: text.length,
         resultLength: result.length,
         wordsProcessed: processedCount,
-        hasSpans: result.includes('dualsub-interactive-word')
+        hasSpans: result.includes('dualsub-interactive-word'),
     });
 
     return result;
@@ -186,7 +199,7 @@ function wrapWordsForInteraction(text, options = {}) {
  */
 function createInteractiveWordSpan(word, metadata) {
     const spanId = `interactive-word-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
-    
+
     return `<span class="dualsub-interactive-word" id="${spanId}" data-word="${word}" data-source-lang="${metadata.sourceLanguage}" data-target-lang="${metadata.targetLanguage}" data-context="${encodeURIComponent(metadata.originalText)}" tabindex="0" role="button" aria-label="Click for context analysis of '${word}'" title="Click for cultural, historical, or linguistic context">${word}</span>`;
 }
 
@@ -200,7 +213,7 @@ export function attachInteractiveEventListeners(subtitleElement, options = {}) {
         if (!subtitleElement || !interactiveState.isEnabled) {
             logWithFallback('debug', 'Skipping interactive event listeners', {
                 hasElement: !!subtitleElement,
-                isEnabled: interactiveState.isEnabled
+                isEnabled: interactiveState.isEnabled,
             });
             return;
         }
@@ -223,16 +236,32 @@ export function attachInteractiveEventListeners(subtitleElement, options = {}) {
         removeInteractiveEventListeners(subtitleElement);
 
         // Add click event listener for interactive words
-        subtitleElement.addEventListener('click', handleInteractiveWordClick, true);
+        subtitleElement.addEventListener(
+            'click',
+            handleInteractiveWordClick,
+            true
+        );
 
         // Add hover effects if enabled
         if (INTERACTIVE_CONFIG.highlightOnHover) {
-            subtitleElement.addEventListener('mouseenter', handleInteractiveWordHover, true);
-            subtitleElement.addEventListener('mouseleave', handleInteractiveWordLeave, true);
+            subtitleElement.addEventListener(
+                'mouseenter',
+                handleInteractiveWordHover,
+                true
+            );
+            subtitleElement.addEventListener(
+                'mouseleave',
+                handleInteractiveWordLeave,
+                true
+            );
         }
 
         // Add keyboard support
-        subtitleElement.addEventListener('keydown', handleInteractiveWordKeydown, true);
+        subtitleElement.addEventListener(
+            'keydown',
+            handleInteractiveWordKeydown,
+            true
+        );
 
         // Mark as having interactive listeners
         subtitleElement.setAttribute('data-interactive-listeners', 'true');
@@ -240,7 +269,7 @@ export function attachInteractiveEventListeners(subtitleElement, options = {}) {
         logWithFallback('debug', 'Interactive event listeners attached', {
             elementId: subtitleElement.id,
             hasHover: INTERACTIVE_CONFIG.highlightOnHover,
-            options
+            options,
         });
     } catch (error) {
         logWithFallback('error', 'Error in attachInteractiveEventListeners', {
@@ -249,7 +278,7 @@ export function attachInteractiveEventListeners(subtitleElement, options = {}) {
             name: error.name,
             elementId: subtitleElement?.id,
             isEnabled: interactiveState.isEnabled,
-            config: INTERACTIVE_CONFIG
+            config: INTERACTIVE_CONFIG,
         });
         throw error; // Re-throw to propagate the error
     }
@@ -264,15 +293,31 @@ export function removeInteractiveEventListeners(subtitleElement) {
         return;
     }
 
-    subtitleElement.removeEventListener('click', handleInteractiveWordClick, true);
-    subtitleElement.removeEventListener('mouseenter', handleInteractiveWordHover, true);
-    subtitleElement.removeEventListener('mouseleave', handleInteractiveWordLeave, true);
-    subtitleElement.removeEventListener('keydown', handleInteractiveWordKeydown, true);
+    subtitleElement.removeEventListener(
+        'click',
+        handleInteractiveWordClick,
+        true
+    );
+    subtitleElement.removeEventListener(
+        'mouseenter',
+        handleInteractiveWordHover,
+        true
+    );
+    subtitleElement.removeEventListener(
+        'mouseleave',
+        handleInteractiveWordLeave,
+        true
+    );
+    subtitleElement.removeEventListener(
+        'keydown',
+        handleInteractiveWordKeydown,
+        true
+    );
 
     subtitleElement.removeAttribute('data-interactive-listeners');
 
     logWithFallback('debug', 'Interactive event listeners removed', {
-        elementId: subtitleElement.id
+        elementId: subtitleElement.id,
     });
 }
 
@@ -309,10 +354,14 @@ function getSubtitleTypeFromElement(element) {
     }
 
     // Default to original if we can't determine
-    logWithFallback('warn', 'Could not determine subtitle type, defaulting to original', {
-        elementId: element.id,
-        elementClass: element.className
-    });
+    logWithFallback(
+        'warn',
+        'Could not determine subtitle type, defaulting to original',
+        {
+            elementId: element.id,
+            elementClass: element.className,
+        }
+    );
     return 'original';
 }
 
@@ -332,7 +381,10 @@ function handleInteractiveWordClick(event) {
 
     // Debounce rapid clicks
     const now = Date.now();
-    if (now - interactiveState.lastClickTime < INTERACTIVE_CONFIG.debounceDelay) {
+    if (
+        now - interactiveState.lastClickTime <
+        INTERACTIVE_CONFIG.debounceDelay
+    ) {
         return;
     }
     interactiveState.lastClickTime = now;
@@ -340,12 +392,14 @@ function handleInteractiveWordClick(event) {
     const word = target.getAttribute('data-word');
     const sourceLanguage = target.getAttribute('data-source-lang');
     const targetLanguage = target.getAttribute('data-target-lang');
-    const context = decodeURIComponent(target.getAttribute('data-context') || '');
+    const context = decodeURIComponent(
+        target.getAttribute('data-context') || ''
+    );
 
     logWithFallback('info', 'Interactive word clicked', {
         word,
         sourceLanguage,
-        targetLanguage
+        targetLanguage,
     });
 
     // Check if video is paused for enhanced selection mode
@@ -357,7 +411,7 @@ function handleInteractiveWordClick(event) {
         isVideoPaused,
         hasVideoElement: !!videoElement,
         targetElement: target.tagName,
-        targetClass: target.className
+        targetClass: target.className,
     });
 
     if (isVideoPaused) {
@@ -368,32 +422,42 @@ function handleInteractiveWordClick(event) {
         logWithFallback('info', 'Dispatching word selection event', {
             word,
             subtitleType,
-            isVideoPaused
+            isVideoPaused,
         });
 
-        document.dispatchEvent(new CustomEvent('dualsub-word-selected', {
-            detail: {
+        document.dispatchEvent(
+            new CustomEvent('dualsub-word-selected', {
+                detail: {
+                    word,
+                    element: target,
+                    sourceLanguage,
+                    targetLanguage,
+                    context,
+                    subtitleType,
+                },
+            })
+        );
+
+        logWithFallback(
+            'debug',
+            'Word selection event dispatched (video paused)',
+            {
                 word,
-                element: target,
-                sourceLanguage,
-                targetLanguage,
-                context,
-                subtitleType
+                subtitleType,
             }
-        }));
-
-        logWithFallback('debug', 'Word selection event dispatched (video paused)', {
-            word,
-            subtitleType
-        });
+        );
     } else {
         // Video is playing - no action taken
         // Context analysis can only be initiated through the modal when video is paused
-        logWithFallback('debug', 'Word click ignored - video is playing. Pause video to select words for analysis.', {
-            word,
-            sourceLanguage,
-            targetLanguage
-        });
+        logWithFallback(
+            'debug',
+            'Word click ignored - video is playing. Pause video to select words for analysis.',
+            {
+                word,
+                sourceLanguage,
+                targetLanguage,
+            }
+        );
     }
 }
 
@@ -403,7 +467,7 @@ function handleInteractiveWordClick(event) {
  */
 function handleInteractiveWordHover(event) {
     const target = event.target;
-    
+
     if (!target.classList.contains('dualsub-interactive-word')) {
         return;
     }
@@ -417,7 +481,7 @@ function handleInteractiveWordHover(event) {
  */
 function handleInteractiveWordLeave(event) {
     const target = event.target;
-    
+
     if (!target.classList.contains('dualsub-interactive-word')) {
         return;
     }
@@ -431,7 +495,7 @@ function handleInteractiveWordLeave(event) {
  */
 function handleInteractiveWordKeydown(event) {
     const target = event.target;
-    
+
     if (!target.classList.contains('dualsub-interactive-word')) {
         return;
     }
@@ -450,17 +514,19 @@ function handleInteractiveWordKeydown(event) {
  */
 async function requestContextAnalysis(text, metadata = {}) {
     const requestId = `context-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
-    
+
     try {
         // Add visual feedback
         if (metadata.clickedElement) {
-            metadata.clickedElement.classList.add('dualsub-interactive-word--loading');
+            metadata.clickedElement.classList.add(
+                'dualsub-interactive-word--loading'
+            );
         }
 
         logWithFallback('debug', 'Requesting context analysis', {
             requestId,
             text,
-            metadata
+            metadata,
         });
 
         // Send message to background script for context analysis
@@ -471,26 +537,30 @@ async function requestContextAnalysis(text, metadata = {}) {
             metadata: {
                 sourceLanguage: metadata.sourceLanguage,
                 targetLanguage: metadata.targetLanguage,
-                surroundingContext: metadata.surroundingContext
-            }
+                surroundingContext: metadata.surroundingContext,
+            },
         });
 
         if (response && response.success) {
             showContextModal(response, metadata);
         } else {
-            showContextError(response?.error || 'Context analysis failed', metadata);
+            showContextError(
+                response?.error || 'Context analysis failed',
+                metadata
+            );
         }
-
     } catch (error) {
         logWithFallback('error', 'Context analysis request failed', {
             requestId,
-            error: error.message
+            error: error.message,
         });
         showContextError(error.message, metadata);
     } finally {
         // Remove loading state
         if (metadata.clickedElement) {
-            metadata.clickedElement.classList.remove('dualsub-interactive-word--loading');
+            metadata.clickedElement.classList.remove(
+                'dualsub-interactive-word--loading'
+            );
         }
     }
 }
@@ -504,16 +574,18 @@ function showContextModal(contextResult, metadata) {
     // This will be implemented in the context modal component
     logWithFallback('info', 'Showing context modal', {
         contextType: contextResult.contextType,
-        hasAnalysis: !!contextResult.analysis
+        hasAnalysis: !!contextResult.analysis,
     });
 
     // Dispatch custom event for modal display
-    document.dispatchEvent(new CustomEvent('dualsub-show-context', {
-        detail: {
-            contextResult,
-            metadata
-        }
-    }));
+    document.dispatchEvent(
+        new CustomEvent('dualsub-show-context', {
+            detail: {
+                contextResult,
+                metadata,
+            },
+        })
+    );
 }
 
 /**
@@ -525,12 +597,14 @@ function showContextError(error, metadata) {
     logWithFallback('warn', 'Context analysis error', { error });
 
     // Dispatch custom event for error display
-    document.dispatchEvent(new CustomEvent('dualsub-context-error', {
-        detail: {
-            error,
-            metadata
-        }
-    }));
+    document.dispatchEvent(
+        new CustomEvent('dualsub-context-error', {
+            detail: {
+                error,
+                metadata,
+            },
+        })
+    );
 }
 
 /**
@@ -548,8 +622,8 @@ export function getInteractiveConfig() {
 export function updateInteractiveConfig(newConfig) {
     Object.assign(INTERACTIVE_CONFIG, newConfig);
     interactiveState.isEnabled = INTERACTIVE_CONFIG.enabled;
-    
+
     logWithFallback('info', 'Interactive subtitle configuration updated', {
-        config: INTERACTIVE_CONFIG
+        config: INTERACTIVE_CONFIG,
     });
 }

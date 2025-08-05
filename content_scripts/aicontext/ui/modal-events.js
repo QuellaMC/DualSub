@@ -1,9 +1,9 @@
 /**
  * AI Context Modal - Events Module
- * 
+ *
  * Event handling and user interactions functionality.
  * Handles modal events, user interactions, and external event coordination.
- * 
+ *
  * @author DualSub Extension - UI Systems Engineer
  * @version 2.0.0
  */
@@ -66,19 +66,26 @@ export class AIContextModalEvents {
      */
     _setupModalControlEvents() {
         // Close button (check both modal element and content element)
-        const closeBtn = this.core.element.querySelector('#dualsub-modal-close') ||
-                         this.core.contentElement?.querySelector('#dualsub-modal-close') ||
-                         document.getElementById('dualsub-modal-close');
+        const closeBtn =
+            this.core.element.querySelector('#dualsub-modal-close') ||
+            this.core.contentElement?.querySelector('#dualsub-modal-close') ||
+            document.getElementById('dualsub-modal-close');
         if (closeBtn) {
             const closeHandler = () => this._handleCloseModal();
             closeBtn.addEventListener('click', closeHandler);
-            this.boundHandlers.set('close-click', { element: closeBtn, handler: closeHandler });
+            this.boundHandlers.set('close-click', {
+                element: closeBtn,
+                handler: closeHandler,
+            });
         }
 
         // Handle modal overlay clicks - block all clicks and close on overlay click (EXACT legacy behavior)
         const overlayHandler = (e) => this._handleOverlayClick(e);
         this.core.element.addEventListener('click', overlayHandler);
-        this.boundHandlers.set('overlay-click', { element: this.core.element, handler: overlayHandler });
+        this.boundHandlers.set('overlay-click', {
+            element: this.core.element,
+            handler: overlayHandler,
+        });
 
         // Additional click blocking for the overlay specifically (EXACT legacy behavior)
         const mousedownHandler = (e) => {
@@ -86,12 +93,18 @@ export class AIContextModalEvents {
             e.stopPropagation();
         };
         this.core.element.addEventListener('mousedown', mousedownHandler);
-        this.boundHandlers.set('overlay-mousedown', { element: this.core.element, handler: mousedownHandler });
+        this.boundHandlers.set('overlay-mousedown', {
+            element: this.core.element,
+            handler: mousedownHandler,
+        });
 
         // Global click blocking when modal is visible (Issue #2)
         const globalClickBlocker = (e) => this._handleGlobalClick(e);
         document.addEventListener('click', globalClickBlocker, true); // Use capture phase
-        this.boundHandlers.set('global-click', { element: document, handler: globalClickBlocker });
+        this.boundHandlers.set('global-click', {
+            element: document,
+            handler: globalClickBlocker,
+        });
     }
 
     /**
@@ -100,13 +113,19 @@ export class AIContextModalEvents {
      */
     _setupSelectionEvents() {
         // Delegate word chip events to the selected words container (check multiple locations)
-        const wordsContainer = this.core.element.querySelector('#dualsub-selected-words') ||
-                              this.core.contentElement?.querySelector('#dualsub-selected-words') ||
-                              document.getElementById('dualsub-selected-words');
+        const wordsContainer =
+            this.core.element.querySelector('#dualsub-selected-words') ||
+            this.core.contentElement?.querySelector(
+                '#dualsub-selected-words'
+            ) ||
+            document.getElementById('dualsub-selected-words');
         if (wordsContainer) {
             const wordsHandler = (e) => this._handleWordChipClick(e);
             wordsContainer.addEventListener('click', wordsHandler);
-            this.boundHandlers.set('words-click', { element: wordsContainer, handler: wordsHandler });
+            this.boundHandlers.set('words-click', {
+                element: wordsContainer,
+                handler: wordsHandler,
+            });
         }
     }
 
@@ -116,14 +135,20 @@ export class AIContextModalEvents {
      */
     _setupAnalysisEvents() {
         // Start analysis button (check multiple locations)
-        const startBtn = this.core.element.querySelector('#dualsub-start-analysis') ||
-                         this.core.contentElement?.querySelector('#dualsub-start-analysis') ||
-                         document.getElementById('dualsub-start-analysis');
+        const startBtn =
+            this.core.element.querySelector('#dualsub-start-analysis') ||
+            this.core.contentElement?.querySelector(
+                '#dualsub-start-analysis'
+            ) ||
+            document.getElementById('dualsub-start-analysis');
         if (startBtn) {
             // Check if we already have a handler for this element to prevent duplicates
             const existingHandler = this.boundHandlers.get('start-analysis');
             if (existingHandler && existingHandler.element === startBtn) {
-                this.core._log('debug', 'Start analysis button already has event listener, skipping');
+                this.core._log(
+                    'debug',
+                    'Start analysis button already has event listener, skipping'
+                );
                 return;
             }
 
@@ -133,27 +158,40 @@ export class AIContextModalEvents {
                 this._handleStartAnalysis();
             };
             startBtn.addEventListener('click', startHandler);
-            this.boundHandlers.set('start-analysis', { element: startBtn, handler: startHandler });
+            this.boundHandlers.set('start-analysis', {
+                element: startBtn,
+                handler: startHandler,
+            });
         }
 
         // Pause analysis button (check multiple locations)
-        const pauseBtn = this.core.element.querySelector('#dualsub-pause-analysis') ||
-                         this.core.contentElement?.querySelector('#dualsub-pause-analysis') ||
-                         document.getElementById('dualsub-pause-analysis');
+        const pauseBtn =
+            this.core.element.querySelector('#dualsub-pause-analysis') ||
+            this.core.contentElement?.querySelector(
+                '#dualsub-pause-analysis'
+            ) ||
+            document.getElementById('dualsub-pause-analysis');
         if (pauseBtn) {
             const pauseHandler = () => this._handlePauseAnalysis();
             pauseBtn.addEventListener('click', pauseHandler);
-            this.boundHandlers.set('pause-analysis', { element: pauseBtn, handler: pauseHandler });
+            this.boundHandlers.set('pause-analysis', {
+                element: pauseBtn,
+                handler: pauseHandler,
+            });
         }
 
         // New analysis button (check multiple locations)
-        const newBtn = this.core.element.querySelector('#dualsub-new-analysis') ||
-                      this.core.contentElement?.querySelector('#dualsub-new-analysis') ||
-                      document.getElementById('dualsub-new-analysis');
+        const newBtn =
+            this.core.element.querySelector('#dualsub-new-analysis') ||
+            this.core.contentElement?.querySelector('#dualsub-new-analysis') ||
+            document.getElementById('dualsub-new-analysis');
         if (newBtn) {
             const newHandler = () => this._handleNewAnalysis();
             newBtn.addEventListener('click', newHandler);
-            this.boundHandlers.set('new-analysis', { element: newBtn, handler: newHandler });
+            this.boundHandlers.set('new-analysis', {
+                element: newBtn,
+                handler: newHandler,
+            });
         }
     }
 
@@ -163,19 +201,40 @@ export class AIContextModalEvents {
      */
     _setupExternalEvents() {
         // Listen for word selection events from subtitle interactions
-        const wordSelectionHandler = (event) => this._handleWordSelectionEvent(event);
-        document.addEventListener('dualsub-word-selected', wordSelectionHandler);
-        this.boundHandlers.set('word-selection', { element: document, handler: wordSelectionHandler });
+        const wordSelectionHandler = (event) =>
+            this._handleWordSelectionEvent(event);
+        document.addEventListener(
+            'dualsub-word-selected',
+            wordSelectionHandler
+        );
+        this.boundHandlers.set('word-selection', {
+            element: document,
+            handler: wordSelectionHandler,
+        });
 
         // Listen for analysis requests
-        const analysisRequestHandler = (event) => this._handleAnalysisRequest(event);
-        document.addEventListener('dualsub-analyze-selection', analysisRequestHandler);
-        this.boundHandlers.set('analysis-request', { element: document, handler: analysisRequestHandler });
+        const analysisRequestHandler = (event) =>
+            this._handleAnalysisRequest(event);
+        document.addEventListener(
+            'dualsub-analyze-selection',
+            analysisRequestHandler
+        );
+        this.boundHandlers.set('analysis-request', {
+            element: document,
+            handler: analysisRequestHandler,
+        });
 
         // Listen for analysis results (EXACT legacy behavior)
-        const analysisResultHandler = (event) => this._handleAnalysisResult(event);
-        document.addEventListener('dualsub-context-result', analysisResultHandler);
-        this.boundHandlers.set('analysis-result', { element: document, handler: analysisResultHandler });
+        const analysisResultHandler = (event) =>
+            this._handleAnalysisResult(event);
+        document.addEventListener(
+            'dualsub-context-result',
+            analysisResultHandler
+        );
+        this.boundHandlers.set('analysis-result', {
+            element: document,
+            handler: analysisResultHandler,
+        });
     }
 
     /**
@@ -185,7 +244,10 @@ export class AIContextModalEvents {
     _setupKeyboardEvents() {
         const keyHandler = (e) => this._handleKeyPress(e);
         document.addEventListener('keydown', keyHandler);
-        this.boundHandlers.set('keydown', { element: document, handler: keyHandler });
+        this.boundHandlers.set('keydown', {
+            element: document,
+            handler: keyHandler,
+        });
     }
 
     /**
@@ -226,9 +288,11 @@ export class AIContextModalEvents {
         event.preventDefault();
 
         // Close modal only if clicking directly on the overlay (EXACT legacy behavior)
-        if (event.target.classList.contains('dualsub-modal-overlay') ||
-            event.target.classList.contains('dualsub-context-modal')) {
-        this._handleCloseModal();
+        if (
+            event.target.classList.contains('dualsub-modal-overlay') ||
+            event.target.classList.contains('dualsub-context-modal')
+        ) {
+            this._handleCloseModal();
         }
     }
 
@@ -244,7 +308,9 @@ export class AIContextModalEvents {
         }
 
         // Allow clicks within the modal content (check both old and new locations)
-        const modalContent = this.core.element?.querySelector('.dualsub-modal-content') || this.core.contentElement;
+        const modalContent =
+            this.core.element?.querySelector('.dualsub-modal-content') ||
+            this.core.contentElement;
         if (modalContent && modalContent.contains(event.target)) {
             return;
         }
@@ -254,7 +320,7 @@ export class AIContextModalEvents {
             this.core._log('debug', 'Allowing interactive word click', {
                 word: event.target.getAttribute('data-word'),
                 target: event.target.tagName,
-                targetClass: event.target.className
+                targetClass: event.target.className,
             });
             return;
         }
@@ -265,7 +331,7 @@ export class AIContextModalEvents {
 
         this.core._log('debug', 'Global click blocked while modal is visible', {
             target: event.target.tagName,
-            targetClass: event.target.className
+            targetClass: event.target.className,
         });
     }
 
@@ -283,27 +349,45 @@ export class AIContextModalEvents {
             if (word) {
                 // Block word removal during processing (EXACT legacy behavior)
                 if (this.core.isAnalyzing) {
-                    this.core._log('debug', 'Word removal blocked - analysis in progress', { word });
+                    this.core._log(
+                        'debug',
+                        'Word removal blocked - analysis in progress',
+                        { word }
+                    );
                     return;
                 }
 
-                this.core._log('debug', 'Word removal requested (position-based)', {
-                    word,
-                    positionKey,
-                    totalPositions: this.core.selectedWordPositions.size
-                });
+                this.core._log(
+                    'debug',
+                    'Word removal requested (position-based)',
+                    {
+                        word,
+                        positionKey,
+                        totalPositions: this.core.selectedWordPositions.size,
+                    }
+                );
 
                 // Use position-based removal if position key is available (Issue #2)
                 if (positionKey) {
-                    const positionData = this.core.selectedWordPositions.get(positionKey);
+                    const positionData =
+                        this.core.selectedWordPositions.get(positionKey);
                     if (positionData) {
-                        this.core.removeWordFromSelection(word, positionData.position);
-                    } else {
-                        this.core._log('warn', 'Position data not found for removal', {
+                        this.core.removeWordFromSelection(
                             word,
-                            positionKey,
-                            availableKeys: Array.from(this.core.selectedWordPositions.keys())
-                        });
+                            positionData.position
+                        );
+                    } else {
+                        this.core._log(
+                            'warn',
+                            'Position data not found for removal',
+                            {
+                                word,
+                                positionKey,
+                                availableKeys: Array.from(
+                                    this.core.selectedWordPositions.keys()
+                                ),
+                            }
+                        );
                         // Fallback to removing all instances of the word
                         this.core.removeWordFromSelection(word);
                     }
@@ -324,9 +408,12 @@ export class AIContextModalEvents {
                 if (this.core.selectedWordPositions.size === 0) {
                     // Ensure visual state is properly cleared before closing
                     this._syncWordSelectionVisuals();
-                    this.core._dispatchEvent(EVENT_TYPES.MODAL_CLOSE_REQUESTED, {
-                        reason: 'no-words-selected'
-                    });
+                    this.core._dispatchEvent(
+                        EVENT_TYPES.MODAL_CLOSE_REQUESTED,
+                        {
+                            reason: 'no-words-selected',
+                        }
+                    );
                 }
             }
         }
@@ -339,11 +426,19 @@ export class AIContextModalEvents {
     async _handleStartAnalysis() {
         // Debouncing protection against duplicate clicks
         const currentTime = Date.now();
-        if (currentTime - this.lastAnalysisClickTime < this.analysisClickDebounceMs) {
-            this.core._log('debug', 'Analysis click ignored due to debouncing', {
-                timeSinceLastClick: currentTime - this.lastAnalysisClickTime,
-                debounceMs: this.analysisClickDebounceMs
-            });
+        if (
+            currentTime - this.lastAnalysisClickTime <
+            this.analysisClickDebounceMs
+        ) {
+            this.core._log(
+                'debug',
+                'Analysis click ignored due to debouncing',
+                {
+                    timeSinceLastClick:
+                        currentTime - this.lastAnalysisClickTime,
+                    debounceMs: this.analysisClickDebounceMs,
+                }
+            );
             return;
         }
         this.lastAnalysisClickTime = currentTime;
@@ -366,11 +461,17 @@ export class AIContextModalEvents {
         this._disableWordInteractions();
 
         // Update analysis button to processing state with pause functionality (EXACT legacy behavior)
-        const analysisButton = document.getElementById('dualsub-start-analysis');
+        const analysisButton = document.getElementById(
+            'dualsub-start-analysis'
+        );
         if (analysisButton) {
-            analysisButton.textContent = this._getLocalizedMessage('aiContextPauseAnalysis');
+            analysisButton.textContent = this._getLocalizedMessage(
+                'aiContextPauseAnalysis'
+            );
             analysisButton.className = 'dualsub-analysis-button processing';
-            analysisButton.title = this._getLocalizedMessage('aiContextPauseAnalysisTitle');
+            analysisButton.title = this._getLocalizedMessage(
+                'aiContextPauseAnalysisTitle'
+            );
             analysisButton.disabled = false; // Keep enabled for pause functionality
 
             // Remove existing event listeners and add pause functionality
@@ -390,7 +491,10 @@ export class AIContextModalEvents {
             newButton.addEventListener('click', pauseHandler);
 
             // Store the pause handler for cleanup
-            this.boundHandlers.set('pause-analysis-active', { element: newButton, handler: pauseHandler });
+            this.boundHandlers.set('pause-analysis-active', {
+                element: newButton,
+                handler: pauseHandler,
+            });
         }
 
         this.ui.showProcessingState();
@@ -401,7 +505,10 @@ export class AIContextModalEvents {
 
         try {
             // Try to get language preferences from storage (Issue #1: Use correct storage keys)
-            const result = await chrome.storage.sync.get(['targetLanguage', 'originalLanguage']);
+            const result = await chrome.storage.sync.get([
+                'targetLanguage',
+                'originalLanguage',
+            ]);
             if (result.targetLanguage) {
                 targetLanguage = result.targetLanguage;
             }
@@ -412,39 +519,45 @@ export class AIContextModalEvents {
             this.core._log('debug', 'Language preferences retrieved', {
                 sourceLanguage,
                 targetLanguage,
-                selectedText: this.core.selectedText
+                selectedText: this.core.selectedText,
             });
         } catch (error) {
-            this.core._log('warn', 'Failed to get language preferences, using defaults', {
-                error: error.message,
-                sourceLanguage,
-                targetLanguage,
-                selectedText: this.core.selectedText
-            });
+            this.core._log(
+                'warn',
+                'Failed to get language preferences, using defaults',
+                {
+                    error: error.message,
+                    sourceLanguage,
+                    targetLanguage,
+                    selectedText: this.core.selectedText,
+                }
+            );
         }
 
         // Send analysis request (EXACT legacy behavior)
         const requestId = `analysis-${Date.now()}`;
         this.core.currentRequest = requestId;
 
-        document.dispatchEvent(new CustomEvent('dualsub-analyze-selection', {
-            detail: {
-                requestId,
-                text: this.core.selectedText,
-                contextTypes: ['cultural', 'historical', 'linguistic'],
-                language: sourceLanguage, // Pass actual source language instead of 'auto'
-                targetLanguage: targetLanguage, // Pass user's preferred target language
-                selection: {
+        document.dispatchEvent(
+            new CustomEvent('dualsub-analyze-selection', {
+                detail: {
+                    requestId,
                     text: this.core.selectedText,
-                    words: Array.from(this.core.selectedWords)
-                }
-            }
-        }));
+                    contextTypes: ['cultural', 'historical', 'linguistic'],
+                    language: sourceLanguage, // Pass actual source language instead of 'auto'
+                    targetLanguage: targetLanguage, // Pass user's preferred target language
+                    selection: {
+                        text: this.core.selectedText,
+                        words: Array.from(this.core.selectedWords),
+                    },
+                },
+            })
+        );
 
         this.core._log('info', 'Context analysis started', {
             text: this.core.selectedText,
             selectedWordsCount: this.core.selectedWords.size,
-            requestId
+            requestId,
         });
     }
 
@@ -475,7 +588,7 @@ export class AIContextModalEvents {
      */
     _handleNewAnalysis() {
         this.core._log('info', 'New analysis requested');
-        
+
         this.core.clearSelection();
         this.core.analysisResult = null;
         this.core.setState(MODAL_STATES.SELECTION);
@@ -505,30 +618,41 @@ export class AIContextModalEvents {
             position: effectivePosition,
             subtitleType,
             currentMode: this.core.currentMode,
-            isLegacyFormat: !action && !position
+            isLegacyFormat: !action && !position,
         });
 
         // Block word selection during processing (legacy compatibility)
         if (this.core.isAnalyzing) {
-            this.core._log('debug', 'Word selection blocked - analysis in progress', {
-                word,
-                subtitleType
-            });
+            this.core._log(
+                'debug',
+                'Word selection blocked - analysis in progress',
+                {
+                    word,
+                    subtitleType,
+                }
+            );
             return;
         }
 
         // Only allow selection from original subtitles (legacy compatibility)
         if (subtitleType && subtitleType !== 'original') {
-            this.core._log('debug', 'Word selection ignored - not from original subtitle', { subtitleType });
+            this.core._log(
+                'debug',
+                'Word selection ignored - not from original subtitle',
+                { subtitleType }
+            );
             return;
         }
 
         // Show modal if not visible (matches legacy behavior)
         if (!this.core.isVisible) {
-            this.core._log('debug', 'Showing modal for word selection', { word, subtitleType });
+            this.core._log('debug', 'Showing modal for word selection', {
+                word,
+                subtitleType,
+            });
             this.core._dispatchEvent(EVENT_TYPES.MODAL_SHOW_REQUESTED, {
                 mode: 'selection',
-                trigger: 'word-selection'
+                trigger: 'word-selection',
             });
         }
 
@@ -543,7 +667,7 @@ export class AIContextModalEvents {
             elementId: element?.id,
             element: element,
             subtitleType: subtitleType,
-            wordIndex: this._getWordIndex(element)
+            wordIndex: this._getWordIndex(element),
         };
 
         // Handle word selection
@@ -566,7 +690,7 @@ export class AIContextModalEvents {
         // Hide modal if no words are selected (legacy compatibility)
         if (this.core.selectedWords.size === 0) {
             this.core._dispatchEvent(EVENT_TYPES.MODAL_CLOSE_REQUESTED, {
-                reason: 'no-words-selected'
+                reason: 'no-words-selected',
             });
         }
     }
@@ -582,15 +706,19 @@ export class AIContextModalEvents {
         // Only add words from selection if we don't already have a selection
         // This prevents duplicates when analysis is started from the modal itself
         if (selection && selection.text && this.core.selectedWords.size === 0) {
-            const words = selection.text.split(/\s+/).filter(word => word.length > 0);
-            words.forEach(word => this.core.addWordToSelection(word, selection.metadata));
+            const words = selection.text
+                .split(/\s+/)
+                .filter((word) => word.length > 0);
+            words.forEach((word) =>
+                this.core.addWordToSelection(word, selection.metadata)
+            );
         }
 
         // Show modal if not visible
         if (!this.core.isVisible) {
             this.core._dispatchEvent(EVENT_TYPES.MODAL_SHOW_REQUESTED, {
                 mode: 'selection',
-                trigger: 'analysis-request'
+                trigger: 'analysis-request',
             });
         }
 
@@ -613,7 +741,10 @@ export class AIContextModalEvents {
             case 'Enter':
                 if (event.ctrlKey || event.metaKey) {
                     event.preventDefault();
-                    if (this.core.selectedWords.size > 0 && !this.core.isAnalyzing) {
+                    if (
+                        this.core.selectedWords.size > 0 &&
+                        !this.core.isAnalyzing
+                    ) {
                         // Use the same debouncing mechanism as button clicks
                         this._handleStartAnalysis();
                     }
@@ -631,14 +762,21 @@ export class AIContextModalEvents {
     _captureOriginalSentenceStructure(wordElement) {
         try {
             // Find the subtitle container
-            const subtitleContainer = wordElement.closest('[id*="subtitle"], .dualsub-subtitle-container, .subtitle-container');
+            const subtitleContainer = wordElement.closest(
+                '[id*="subtitle"], .dualsub-subtitle-container, .subtitle-container'
+            );
             if (!subtitleContainer) {
-                this.core._log('warn', 'Could not find subtitle container for word ordering');
+                this.core._log(
+                    'warn',
+                    'Could not find subtitle container for word ordering'
+                );
                 return;
             }
 
             // Get all interactive words in the subtitle
-            const interactiveWords = subtitleContainer.querySelectorAll('.dualsub-interactive-word');
+            const interactiveWords = subtitleContainer.querySelectorAll(
+                '.dualsub-interactive-word'
+            );
             this.core.originalSentenceWords = [];
             this.core.wordPositions.clear();
 
@@ -652,13 +790,16 @@ export class AIContextModalEvents {
 
             this.core._log('debug', 'Captured original sentence structure', {
                 totalWords: this.core.originalSentenceWords.length,
-                words: this.core.originalSentenceWords
+                words: this.core.originalSentenceWords,
             });
-
         } catch (error) {
-            this.core._log('error', 'Failed to capture original sentence structure', {
-                error: error.message
-            });
+            this.core._log(
+                'error',
+                'Failed to capture original sentence structure',
+                {
+                    error: error.message,
+                }
+            );
         }
     }
 
@@ -672,11 +813,15 @@ export class AIContextModalEvents {
         // This method is kept for legacy compatibility but delegates to the core
         this.core._updateSelectedText();
 
-        this.core._log('debug', 'Updated selected text with position order (delegated to core)', {
-            selectedPositions: this.core.selectedWordPositions.size,
-            orderKeys: this.core.selectedWordsOrder,
-            selectedText: this.core.selectedText
-        });
+        this.core._log(
+            'debug',
+            'Updated selected text with position order (delegated to core)',
+            {
+                selectedPositions: this.core.selectedWordPositions.size,
+                orderKeys: this.core.selectedWordsOrder,
+                selectedText: this.core.selectedText,
+            }
+        );
     }
 
     /**
@@ -686,7 +831,9 @@ export class AIContextModalEvents {
      */
     _syncWordSelectionVisuals() {
         // Find all interactive words in original subtitles
-        const interactiveWords = document.querySelectorAll('.dualsub-interactive-word');
+        const interactiveWords = document.querySelectorAll(
+            '.dualsub-interactive-word'
+        );
 
         interactiveWords.forEach((wordElement, index) => {
             const word = wordElement.getAttribute('data-word');
@@ -697,12 +844,16 @@ export class AIContextModalEvents {
                     index: index,
                     element: wordElement,
                     subtitleType: this._getSubtitleType(wordElement),
-                    wordIndex: this._getWordIndex(wordElement)
+                    wordIndex: this._getWordIndex(wordElement),
                 };
-                const positionKey = this.core._createPositionKey(word, position);
+                const positionKey = this.core._createPositionKey(
+                    word,
+                    position
+                );
 
                 // Check if this specific position is selected
-                const isSelected = this.core.selectedWordPositions.has(positionKey);
+                const isSelected =
+                    this.core.selectedWordPositions.has(positionKey);
 
                 if (isSelected) {
                     wordElement.classList.add('dualsub-word-selected');
@@ -717,7 +868,7 @@ export class AIContextModalEvents {
                     isSelected,
                     elementId: wordElement.id,
                     index,
-                    subtitleType: position.subtitleType
+                    subtitleType: position.subtitleType,
                 });
             }
         });
@@ -737,12 +888,16 @@ export class AIContextModalEvents {
      * @private
      */
     _getSubtitleType(wordElement) {
-        const container = wordElement.closest('[id*="subtitle"], .dualsub-subtitle-container');
+        const container = wordElement.closest(
+            '[id*="subtitle"], .dualsub-subtitle-container'
+        );
         if (container) {
             if (container.id.includes('original')) return 'original';
             if (container.id.includes('translated')) return 'translated';
-            if (container.classList.contains('dualsub-original-subtitle')) return 'original';
-            if (container.classList.contains('dualsub-translated-subtitle')) return 'translated';
+            if (container.classList.contains('dualsub-original-subtitle'))
+                return 'original';
+            if (container.classList.contains('dualsub-translated-subtitle'))
+                return 'translated';
         }
         return 'original'; // Default to original
     }
@@ -756,9 +911,13 @@ export class AIContextModalEvents {
     _getWordIndex(wordElement) {
         if (!wordElement) return 0;
 
-        const container = wordElement.closest('[id*="subtitle"], .dualsub-subtitle-container');
+        const container = wordElement.closest(
+            '[id*="subtitle"], .dualsub-subtitle-container'
+        );
         if (container) {
-            const allWords = container.querySelectorAll('.dualsub-interactive-word');
+            const allWords = container.querySelectorAll(
+                '.dualsub-interactive-word'
+            );
             return Array.from(allWords).indexOf(wordElement);
         }
 
@@ -781,13 +940,13 @@ export class AIContextModalEvents {
             hasError: !!error,
             error,
             eventDetailKeys: Object.keys(event.detail),
-            resultKeys: result ? Object.keys(result) : null
+            resultKeys: result ? Object.keys(result) : null,
         });
 
         if (requestId !== this.core.currentRequest) {
             this.core._log('debug', 'Ignoring result - request ID mismatch', {
                 receivedId: requestId,
-                expectedId: this.core.currentRequest
+                expectedId: this.core.currentRequest,
             });
             return; // Not our request
         }
@@ -800,7 +959,9 @@ export class AIContextModalEvents {
         // Reset analysis button (EXACT legacy behavior)
         this._resetAnalysisButton();
 
-        const analysisContent = document.getElementById('dualsub-analysis-content');
+        const analysisContent = document.getElementById(
+            'dualsub-analysis-content'
+        );
         if (!analysisContent) {
             this.core._log('error', 'Analysis content element not found');
             return;
@@ -810,7 +971,7 @@ export class AIContextModalEvents {
             success,
             hasResult: !!result,
             hasError: !!error,
-            error
+            error,
         });
 
         if (success && result) {
@@ -821,7 +982,7 @@ export class AIContextModalEvents {
                 result,
                 hasAnalysis: !!result.analysis,
                 hasCultural: !!result.cultural,
-                contextType: result.contextType
+                contextType: result.contextType,
             });
 
             // Handle the actual data structure returned by context providers
@@ -830,12 +991,21 @@ export class AIContextModalEvents {
                     isStructured: result.isStructured,
                     analysisType: typeof result.analysis,
                     contextType: result.contextType,
-                    analysisKeys: typeof result.analysis === 'object' ? Object.keys(result.analysis) : null
+                    analysisKeys:
+                        typeof result.analysis === 'object'
+                            ? Object.keys(result.analysis)
+                            : null,
                 });
 
                 // Check if we have structured JSON data
-                if (result.isStructured && typeof result.analysis === 'object') {
-                    html += this._formatStructuredAnalysis(result.analysis, result.contextType);
+                if (
+                    result.isStructured &&
+                    typeof result.analysis === 'object'
+                ) {
+                    html += this._formatStructuredAnalysis(
+                        result.analysis,
+                        result.contextType
+                    );
                 } else {
                     // Single analysis text (fallback for plain text responses)
                     html += `<div class="dualsub-analysis-section">
@@ -870,22 +1040,38 @@ export class AIContextModalEvents {
             if (html) {
                 // Only use the dedicated results pipeline (EXACT legacy behavior)
                 this._handleAnalysisComplete(html);
-                this.core._log('info', 'Analysis results displayed successfully', {
-                    resultLength: result.analysis?.length || 0,
-                    contextType: result.contextType
-                });
+                this.core._log(
+                    'info',
+                    'Analysis results displayed successfully',
+                    {
+                        resultLength: result.analysis?.length || 0,
+                        contextType: result.contextType,
+                    }
+                );
                 // Give layout a moment to settle and then recalc height in case content changed size
                 setTimeout(() => {
-                    if (this.animations && typeof this.animations._applyDynamicModalHeight === 'function') {
+                    if (
+                        this.animations &&
+                        typeof this.animations._applyDynamicModalHeight ===
+                            'function'
+                    ) {
                         this.animations._applyDynamicModalHeight();
                     } else {
-                        this.core._log('warn', 'Animations module not available for height recalculation');
+                        this.core._log(
+                            'warn',
+                            'Animations module not available for height recalculation'
+                        );
                     }
                 }, 50);
             } else {
-                this.core._log('warn', 'No analysis content to display', { result });
-                const noContentTitle = this._getLocalizedMessage('aiContextNoContent');
-                const noContentMessage = this._getLocalizedMessage('aiContextNoContentMessage');
+                this.core._log('warn', 'No analysis content to display', {
+                    result,
+                });
+                const noContentTitle =
+                    this._getLocalizedMessage('aiContextNoContent');
+                const noContentMessage = this._getLocalizedMessage(
+                    'aiContextNoContentMessage'
+                );
                 const noContentHtml = `
                     <div class="dualsub-error">
                         <h4>${noContentTitle}</h4>
@@ -895,7 +1081,11 @@ export class AIContextModalEvents {
                 this._handleAnalysisComplete(noContentHtml);
             }
         } else if (shouldRetry) {
-            this._handleInvalidAnalysisResponse(requestId, result, error || 'Invalid analysis result');
+            this._handleInvalidAnalysisResponse(
+                requestId,
+                result,
+                error || 'Invalid analysis result'
+            );
         } else {
             // Display error (EXACT legacy behavior)
             this.core._log('error', 'Analysis failed', {
@@ -904,11 +1094,14 @@ export class AIContextModalEvents {
                 hasResult: !!result,
                 result,
                 errorType: typeof error,
-                errorMessage: error?.message || error
+                errorMessage: error?.message || error,
             });
 
-            const errorMessage = error?.message || error || 'An error occurred during analysis';
-            const errorTitle = this._getLocalizedMessage('aiContextAnalysisFailed');
+            const errorMessage =
+                error?.message || error || 'An error occurred during analysis';
+            const errorTitle = this._getLocalizedMessage(
+                'aiContextAnalysisFailed'
+            );
             const errorHtml = `
                 <div class="dualsub-error">
                     <h4>${errorTitle}</h4>
@@ -1001,19 +1194,27 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
         const markdownHtml = this._parseMarkdownToHtml(text);
 
         // If Markdown parsing produced meaningful HTML, use it
-        if (markdownHtml && markdownHtml !== text && markdownHtml.includes('<')) {
+        if (
+            markdownHtml &&
+            markdownHtml !== text &&
+            markdownHtml.includes('<')
+        ) {
             this.core._log('debug', 'Using Markdown-formatted analysis text', {
                 originalLength: text.length,
                 formattedLength: markdownHtml.length,
-                hasMarkdownElements: true
+                hasMarkdownElements: true,
             });
             return markdownHtml;
         }
 
         // Fallback to legacy formatting for plain text
-        this.core._log('debug', 'Using legacy text formatting (no Markdown detected)', {
-            originalLength: text.length
-        });
+        this.core._log(
+            'debug',
+            'Using legacy text formatting (no Markdown detected)',
+            {
+                originalLength: text.length,
+            }
+        );
         return text
             .replace(/\n\n/g, '</p><p>')
             .replace(/\n/g, '<br>')
@@ -1029,11 +1230,16 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
      */
     _getContextTypeTitle(contextType) {
         switch (contextType) {
-            case 'cultural': return this._getLocalizedContextType('cultural');
-            case 'historical': return this._getLocalizedContextType('historical');
-            case 'linguistic': return this._getLocalizedContextType('linguistic');
-            case 'all': return this._getLocalizedContextType('comprehensive');
-            default: return 'Context';
+            case 'cultural':
+                return this._getLocalizedContextType('cultural');
+            case 'historical':
+                return this._getLocalizedContextType('historical');
+            case 'linguistic':
+                return this._getLocalizedContextType('linguistic');
+            case 'all':
+                return this._getLocalizedContextType('comprehensive');
+            default:
+                return 'Context';
         }
     }
 
@@ -1059,7 +1265,10 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
                     </div>`;
                 }
             }
-            return html || this._formatAnalysisText(JSON.stringify(content, null, 2));
+            return (
+                html ||
+                this._formatAnalysisText(JSON.stringify(content, null, 2))
+            );
         }
 
         return '';
@@ -1075,7 +1284,8 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
         let html = '';
 
         if (analysis.cultural_context || analysis.cultural_analysis) {
-            const cultural = analysis.cultural_context || analysis.cultural_analysis;
+            const cultural =
+                analysis.cultural_context || analysis.cultural_analysis;
             html += `<div class="dualsub-analysis-section">
                 <h4>${this._getLocalizedSectionHeader('aiContextCultural')}</h4>
                 <div class="dualsub-analysis-text">${this._formatObjectContent(cultural)}</div>
@@ -1104,7 +1314,8 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
         let html = '';
 
         if (analysis.historical_context || analysis.historical_analysis) {
-            const historical = analysis.historical_context || analysis.historical_analysis;
+            const historical =
+                analysis.historical_context || analysis.historical_analysis;
             html += `<div class="dualsub-analysis-section">
                 <h4>${this._getLocalizedSectionHeader('aiContextHistorical')}</h4>
                 <div class="dualsub-analysis-text">${this._formatObjectContent(historical)}</div>
@@ -1133,7 +1344,8 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
         let html = '';
 
         if (analysis.etymology || analysis.linguistic_analysis) {
-            const linguistic = analysis.etymology || analysis.linguistic_analysis;
+            const linguistic =
+                analysis.etymology || analysis.linguistic_analysis;
             html += `<div class="dualsub-analysis-section">
                 <h4>${this._getLocalizedSectionHeader('aiContextLinguistic')}</h4>
                 <div class="dualsub-analysis-text">${this._formatObjectContent(linguistic)}</div>
@@ -1239,7 +1451,11 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
         html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
         html = html.replace(/\*(.*?)\*/g, (_, content) => {
             // Remove italic markers but don't apply italic formatting for better font compatibility
-            this.core._log('debug', 'Removing italic formatting for better cross-language compatibility', { content });
+            this.core._log(
+                'debug',
+                'Removing italic formatting for better cross-language compatibility',
+                { content }
+            );
             return content; // Just return the text without italic formatting
         });
 
@@ -1262,7 +1478,10 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
         });
 
         // Links
-        html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+        html = html.replace(
+            /\[([^\]]+)\]\(([^)]+)\)/g,
+            '<a href="$2" target="_blank">$1</a>'
+        );
 
         // Blockquotes
         html = html.replace(/^> (.*$)/gm, '<blockquote>$1</blockquote>');
@@ -1285,13 +1504,11 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
             hasHeaders: html.includes('<h'),
             hasLists: html.includes('<li>'),
             hasBold: html.includes('<strong>'),
-            hasItalic: html.includes('<em>')
+            hasItalic: html.includes('<em>'),
         });
 
         return html;
     }
-
-
 
     /**
      * Get localized context type (EXACT legacy behavior)
@@ -1302,10 +1519,10 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
     _getLocalizedContextType(type) {
         // Simplified - would need full localization system
         const types = {
-            'cultural': 'Cultural',
-            'historical': 'Historical',
-            'linguistic': 'Linguistic',
-            'comprehensive': 'Comprehensive'
+            cultural: 'Cultural',
+            historical: 'Historical',
+            linguistic: 'Linguistic',
+            comprehensive: 'Comprehensive',
         };
         return types[type] || type;
     }
@@ -1318,44 +1535,45 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
      */
     _getLocalizedFieldName(fieldName) {
         // Normalize field name for mapping
-        const normalizedField = fieldName.toLowerCase()
+        const normalizedField = fieldName
+            .toLowerCase()
             .replace(/[_\s]+/g, '')
             .replace(/&/g, '');
 
         // Map common field names to localization keys
         const fieldMappings = {
-            'culturalcontext': 'aiContextCulturalContext',
-            'cultural': 'aiContextCulturalContext',
-            'socialusage': 'aiContextSocialUsage',
-            'social': 'aiContextSocialUsage',
-            'regionalnotes': 'aiContextRegionalNotes',
-            'regional': 'aiContextRegionalNotes',
-            'origins': 'aiContextOrigins',
-            'origin': 'aiContextOrigins',
-            'historicalcontext': 'aiContextHistoricalContext',
-            'historical': 'aiContextHistoricalContext',
-            'historicalsignificance': 'aiContextHistoricalSignificance',
-            'evolution': 'aiContextEvolution',
-            'linguisticanalysis': 'aiContextLinguisticAnalysis',
-            'linguistic': 'aiContextLinguisticAnalysis',
-            'etymology': 'aiContextEtymology',
-            'grammarsemantics': 'aiContextGrammarSemantics',
-            'grammar': 'aiContextGrammarSemantics',
-            'grammarnotes': 'aiContextGrammarNotes',
-            'semantics': 'aiContextGrammarSemantics',
-            'translationnotes': 'aiContextTranslationNotes',
-            'usageexamples': 'aiContextUsageExamples',
-            'usage': 'aiContextUsageExamples',
-            'examples': 'aiContextUsageExamples',
-            'learningtips': 'aiContextLearningTips',
-            'learning': 'aiContextLearningTips',
-            'tips': 'aiContextLearningTips',
-            'relatedexpressions': 'aiContextRelatedExpressions',
-            'related': 'aiContextRelatedExpressions',
-            'expressions': 'aiContextRelatedExpressions',
-            'keyinsights': 'aiContextKeyInsights',
-            'insights': 'aiContextKeyInsights',
-            'key': 'aiContextKeyInsights'
+            culturalcontext: 'aiContextCulturalContext',
+            cultural: 'aiContextCulturalContext',
+            socialusage: 'aiContextSocialUsage',
+            social: 'aiContextSocialUsage',
+            regionalnotes: 'aiContextRegionalNotes',
+            regional: 'aiContextRegionalNotes',
+            origins: 'aiContextOrigins',
+            origin: 'aiContextOrigins',
+            historicalcontext: 'aiContextHistoricalContext',
+            historical: 'aiContextHistoricalContext',
+            historicalsignificance: 'aiContextHistoricalSignificance',
+            evolution: 'aiContextEvolution',
+            linguisticanalysis: 'aiContextLinguisticAnalysis',
+            linguistic: 'aiContextLinguisticAnalysis',
+            etymology: 'aiContextEtymology',
+            grammarsemantics: 'aiContextGrammarSemantics',
+            grammar: 'aiContextGrammarSemantics',
+            grammarnotes: 'aiContextGrammarNotes',
+            semantics: 'aiContextGrammarSemantics',
+            translationnotes: 'aiContextTranslationNotes',
+            usageexamples: 'aiContextUsageExamples',
+            usage: 'aiContextUsageExamples',
+            examples: 'aiContextUsageExamples',
+            learningtips: 'aiContextLearningTips',
+            learning: 'aiContextLearningTips',
+            tips: 'aiContextLearningTips',
+            relatedexpressions: 'aiContextRelatedExpressions',
+            related: 'aiContextRelatedExpressions',
+            expressions: 'aiContextRelatedExpressions',
+            keyinsights: 'aiContextKeyInsights',
+            insights: 'aiContextKeyInsights',
+            key: 'aiContextKeyInsights',
         };
 
         const messageKey = fieldMappings[normalizedField];
@@ -1367,7 +1585,11 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
         }
 
         // Fallback: capitalize first letter and add colon
-        return fieldName.charAt(0).toUpperCase() + fieldName.slice(1).replace(/_/g, ' ') + ':';
+        return (
+            fieldName.charAt(0).toUpperCase() +
+            fieldName.slice(1).replace(/_/g, ' ') +
+            ':'
+        );
     }
 
     /**
@@ -1405,11 +1627,17 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
      * @private
      */
     _resetAnalysisButton() {
-        const analysisButton = document.getElementById('dualsub-start-analysis');
+        const analysisButton = document.getElementById(
+            'dualsub-start-analysis'
+        );
         if (analysisButton) {
-            analysisButton.textContent = this._getLocalizedMessage('aiContextStartAnalysis');
+            analysisButton.textContent = this._getLocalizedMessage(
+                'aiContextStartAnalysis'
+            );
             analysisButton.className = 'dualsub-analysis-button';
-            analysisButton.title = this._getLocalizedMessage('aiContextStartAnalysis');
+            analysisButton.title = this._getLocalizedMessage(
+                'aiContextStartAnalysis'
+            );
             analysisButton.disabled = this.core.selectedWords.size === 0;
 
             // Remove pause handler and restore start analysis handler
@@ -1429,7 +1657,10 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
             newButton.addEventListener('click', startHandler);
 
             // Update boundHandlers to point to the new button element
-            this.boundHandlers.set('start-analysis', { element: newButton, handler: startHandler });
+            this.boundHandlers.set('start-analysis', {
+                element: newButton,
+                handler: startHandler,
+            });
         }
     }
 
@@ -1438,7 +1669,9 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
      * @private
      */
     _disableWordRemoval() {
-        const selectedWordsElement = document.getElementById('dualsub-selected-words');
+        const selectedWordsElement = document.getElementById(
+            'dualsub-selected-words'
+        );
         if (selectedWordsElement) {
             // Add disabled styling to the selected words container (Issue #4)
             selectedWordsElement.classList.add('dualsub-processing-disabled');
@@ -1447,17 +1680,27 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
             const globalClickBlocker = (e) => {
                 e.stopPropagation();
                 e.preventDefault();
-                this.core._log('debug', 'Word removal blocked during processing via global click blocker');
+                this.core._log(
+                    'debug',
+                    'Word removal blocked during processing via global click blocker'
+                );
             };
 
             // Store the blocker for later removal
             selectedWordsElement._globalClickBlocker = globalClickBlocker;
 
             // Add the blocker in capture phase to intercept before other handlers
-            selectedWordsElement.addEventListener('click', globalClickBlocker, true);
+            selectedWordsElement.addEventListener(
+                'click',
+                globalClickBlocker,
+                true
+            );
         }
 
-        this.core._log('debug', 'Word removal disabled during processing with global click blocker');
+        this.core._log(
+            'debug',
+            'Word removal disabled during processing with global click blocker'
+        );
     }
 
     /**
@@ -1465,14 +1708,22 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
      * @private
      */
     _enableWordRemoval() {
-        const selectedWordsElement = document.getElementById('dualsub-selected-words');
+        const selectedWordsElement = document.getElementById(
+            'dualsub-selected-words'
+        );
         if (selectedWordsElement) {
             // Remove disabled styling from the selected words container (Issue #4)
-            selectedWordsElement.classList.remove('dualsub-processing-disabled');
+            selectedWordsElement.classList.remove(
+                'dualsub-processing-disabled'
+            );
 
             // Remove the global click blocker
             if (selectedWordsElement._globalClickBlocker) {
-                selectedWordsElement.removeEventListener('click', selectedWordsElement._globalClickBlocker, true);
+                selectedWordsElement.removeEventListener(
+                    'click',
+                    selectedWordsElement._globalClickBlocker,
+                    true
+                );
                 delete selectedWordsElement._globalClickBlocker;
             }
 
@@ -1509,7 +1760,10 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
                     }
                 }
             } catch (error) {
-                this.core._log('warn', 'Failed to remove event listener', { key, error: error.message });
+                this.core._log('warn', 'Failed to remove event listener', {
+                    key,
+                    error: error.message,
+                });
             }
         }
 
@@ -1530,7 +1784,7 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
             error,
             resultPreview: JSON.stringify(result, null, 2).substring(0, 300),
             retryAttempt: this.core.retryState.currentAttempt,
-            canRetry: this.core.canRetryAnalysis()
+            canRetry: this.core.canRetryAnalysis(),
         });
 
         // Check if we can retry
@@ -1550,11 +1804,14 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
      */
     _initiateRetry(requestId, result, error) {
         // Prepare retry state
-        this.core.prepareRetry({
-            requestId,
-            selectedText: this.core.selectedText,
-            selectedWords: Array.from(this.core.selectedWords)
-        }, error);
+        this.core.prepareRetry(
+            {
+                requestId,
+                selectedText: this.core.selectedText,
+                selectedWords: Array.from(this.core.selectedWords),
+            },
+            error
+        );
 
         // Update UI to show retry state
         this._updateProcessingStateForRetry();
@@ -1563,7 +1820,10 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
         this._showRetryNotification();
 
         // Retry after a brief delay (exponential backoff)
-        const retryDelay = Math.min(1000 * Math.pow(2, this.core.retryState.currentAttempt - 1), 5000);
+        const retryDelay = Math.min(
+            1000 * Math.pow(2, this.core.retryState.currentAttempt - 1),
+            5000
+        );
 
         setTimeout(() => {
             this._executeRetry();
@@ -1575,16 +1835,19 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
      * @private
      */
     _updateProcessingStateForRetry() {
-        const processingText = document.querySelector('.dualsub-processing-text');
+        const processingText = document.querySelector(
+            '.dualsub-processing-text'
+        );
         if (processingText) {
-            const retryMessage = this._getLocalizedMessage('aiContextRetrying') ||
-                                `Analysis failed, regenerating... (${this.core.retryState.currentAttempt}/${this.core.retryState.maxRetries})`;
+            const retryMessage =
+                this._getLocalizedMessage('aiContextRetrying') ||
+                `Analysis failed, regenerating... (${this.core.retryState.currentAttempt}/${this.core.retryState.maxRetries})`;
             processingText.textContent = retryMessage;
         }
 
         this.core._log('info', 'Updated UI for retry attempt', {
             attempt: this.core.retryState.currentAttempt,
-            maxRetries: this.core.retryState.maxRetries
+            maxRetries: this.core.retryState.maxRetries,
         });
     }
 
@@ -1610,8 +1873,9 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
             animation: slideInRight 0.3s ease-out;
         `;
 
-        const retryNotificationText = this._getLocalizedMessage('aiContextRetryNotification') ||
-                                     'Analysis failed, retrying...';
+        const retryNotificationText =
+            this._getLocalizedMessage('aiContextRetryNotification') ||
+            'Analysis failed, retrying...';
         notification.textContent = retryNotificationText;
 
         // Add animation styles
@@ -1629,7 +1893,8 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
         // Remove notification after 3 seconds
         setTimeout(() => {
             if (notification.parentNode) {
-                notification.style.animation = 'slideInRight 0.3s ease-out reverse';
+                notification.style.animation =
+                    'slideInRight 0.3s ease-out reverse';
                 setTimeout(() => {
                     if (notification.parentNode) {
                         notification.parentNode.removeChild(notification);
@@ -1651,9 +1916,13 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
         }
 
         // Reset processing text to analyzing
-        const processingText = document.querySelector('.dualsub-processing-text');
+        const processingText = document.querySelector(
+            '.dualsub-processing-text'
+        );
         if (processingText) {
-            const analyzingMessage = this._getLocalizedMessage('aiContextAnalyzing') || 'Analyzing...';
+            const analyzingMessage =
+                this._getLocalizedMessage('aiContextAnalyzing') ||
+                'Analyzing...';
             processingText.textContent = analyzingMessage;
         }
 
@@ -1671,20 +1940,22 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
         this.core.currentRequest = requestId;
 
         // Dispatch analysis event
-        document.dispatchEvent(new CustomEvent('dualsub-analyze-selection', {
-            detail: {
-                text: selectedText,
-                requestId: requestId,
-                contextTypes: ['cultural', 'historical', 'linguistic'],
-                language: 'auto',
-                targetLanguage: 'auto'
-            }
-        }));
+        document.dispatchEvent(
+            new CustomEvent('dualsub-analyze-selection', {
+                detail: {
+                    text: selectedText,
+                    requestId: requestId,
+                    contextTypes: ['cultural', 'historical', 'linguistic'],
+                    language: 'auto',
+                    targetLanguage: 'auto',
+                },
+            })
+        );
 
         this.core._log('info', 'Dispatched retry analysis request', {
             requestId,
             selectedText,
-            retryAttempt: this.core.retryState.currentAttempt
+            retryAttempt: this.core.retryState.currentAttempt,
         });
     }
 
@@ -1705,12 +1976,17 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
         // Reset analysis button
         this._resetAnalysisButton();
 
-        const errorTitle = this._getLocalizedMessage('aiContextAnalysisFailed') || 'Analysis Failed';
-        const retryButtonText = this._getLocalizedMessage('aiContextRetryButton') || 'Try Again';
-        const closeButtonText = this._getLocalizedMessage('aiContextClose') || 'Close';
+        const errorTitle =
+            this._getLocalizedMessage('aiContextAnalysisFailed') ||
+            'Analysis Failed';
+        const retryButtonText =
+            this._getLocalizedMessage('aiContextRetryButton') || 'Try Again';
+        const closeButtonText =
+            this._getLocalizedMessage('aiContextClose') || 'Close';
 
         // Get appropriate error message based on error type
-        const errorMessage = this._getLocalizedMessage('aiContextMalformedResponse') ||
+        const errorMessage =
+            this._getLocalizedMessage('aiContextMalformedResponse') ||
             'The AI service returned an invalid response format. This may be due to temporary service issues.';
 
         const errorHtml = `
@@ -1742,9 +2018,13 @@ Result Preview: ${JSON.stringify(result, null, 2).substring(0, 500)}</pre>
         this._handleAnalysisComplete(errorHtml);
 
         // Add event listener for manual retry
-        document.addEventListener('dualsub-retry-analysis', () => {
-            this.core._resetRetryState();
-            this._handleStartAnalysis();
-        }, { once: true });
+        document.addEventListener(
+            'dualsub-retry-analysis',
+            () => {
+                this.core._resetRetryState();
+                this._handleStartAnalysis();
+            },
+            { once: true }
+        );
     }
 }

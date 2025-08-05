@@ -1,16 +1,20 @@
 /**
  * OpenAI Context Provider
- * 
+ *
  * Provides AI-powered cultural, historical, and linguistic context analysis
  * using OpenAI's GPT models through OpenAI-compatible endpoints.
- * 
+ *
  * @author DualSub Extension
  * @version 1.0.0
  */
 
 import Logger from '../utils/logger.js';
 import { configService } from '../services/configService.js';
-import { getContextSchema, CONTEXT_SCHEMA_NAME, validateAgainstSchema } from './contextSchemas.js';
+import {
+    getContextSchema,
+    CONTEXT_SCHEMA_NAME,
+    validateAgainstSchema,
+} from './contextSchemas.js';
 
 const logger = Logger.create('OpenAIContextProvider');
 
@@ -23,29 +27,29 @@ export const OPENAI_MODELS = [
         name: 'GPT-4.1 Nano',
         description: 'Cost-effective for most context analysis tasks',
         contextWindow: 8192,
-        recommended: false
+        recommended: false,
     },
     {
         id: 'gpt-4.1-mini-2025-04-14',
         name: 'GPT-4.1 Mini',
         description: 'High-quality analysis with better cultural understanding',
         contextWindow: 128000,
-        recommended: true
+        recommended: true,
     },
     {
         id: 'gpt-4o-mini-2024-07-18',
         name: 'GPT-4o Mini',
         description: 'Optimized for speed and efficiency',
         contextWindow: 128000,
-        recommended: false
+        recommended: false,
     },
     {
         id: 'gpt-4o-2024-08-06',
         name: 'GPT-4o',
         description: 'Optimized for speed and efficiency',
         contextWindow: 128000,
-        recommended: false
-    }
+        recommended: false,
+    },
 ];
 
 /**
@@ -61,7 +65,7 @@ export function getAvailableModels() {
  * @returns {string} Default model ID
  */
 export function getDefaultModel() {
-    const recommended = OPENAI_MODELS.find(model => model.recommended);
+    const recommended = OPENAI_MODELS.find((model) => model.recommended);
     return recommended ? recommended.id : OPENAI_MODELS[0].id;
 }
 
@@ -120,33 +124,35 @@ function normalizeModelName(model, baseUrl) {
  */
 function getLanguageName(langCode) {
     const languageNames = {
-        'en': 'English',
-        'es': 'Spanish',
-        'fr': 'French',
-        'de': 'German',
-        'it': 'Italian',
-        'pt': 'Portuguese',
-        'ru': 'Russian',
-        'ja': 'Japanese',
-        'ko': 'Korean',
+        en: 'English',
+        es: 'Spanish',
+        fr: 'French',
+        de: 'German',
+        it: 'Italian',
+        pt: 'Portuguese',
+        ru: 'Russian',
+        ja: 'Japanese',
+        ko: 'Korean',
         'zh-CN': 'Chinese (Simplified)',
         'zh-TW': 'Chinese (Traditional)',
-        'ar': 'Arabic',
-        'hi': 'Hindi',
-        'th': 'Thai',
-        'vi': 'Vietnamese',
-        'nl': 'Dutch',
-        'sv': 'Swedish',
-        'da': 'Danish',
-        'no': 'Norwegian',
-        'fi': 'Finnish',
-        'pl': 'Polish',
-        'cs': 'Czech',
-        'hu': 'Hungarian',
-        'tr': 'Turkish',
-        'he': 'Hebrew'
+        ar: 'Arabic',
+        hi: 'Hindi',
+        th: 'Thai',
+        vi: 'Vietnamese',
+        nl: 'Dutch',
+        sv: 'Swedish',
+        da: 'Danish',
+        no: 'Norwegian',
+        fi: 'Finnish',
+        pl: 'Polish',
+        cs: 'Czech',
+        hu: 'Hungarian',
+        tr: 'Turkish',
+        he: 'Hebrew',
     };
-    return languageNames[langCode] || (langCode === 'auto' ? 'Unknown' : langCode);
+    return (
+        languageNames[langCode] || (langCode === 'auto' ? 'Unknown' : langCode)
+    );
 }
 
 /**
@@ -157,7 +163,11 @@ function getLanguageName(langCode) {
  * @returns {string} Formatted prompt for the AI model
  */
 function createContextPrompt(text, contextType, metadata = {}) {
-    const { sourceLanguage = 'unknown', targetLanguage = 'unknown', surroundingContext = '' } = metadata;
+    const {
+        sourceLanguage = 'unknown',
+        targetLanguage = 'unknown',
+        surroundingContext = '',
+    } = metadata;
 
     // Get language name for the target language code
     const targetLanguageName = getLanguageName(targetLanguage);
@@ -183,7 +193,9 @@ Provide a clear, educational explanation that helps ${targetLanguageName} speake
 
     switch (contextType) {
         case 'cultural':
-            return baseContext + `
+            return (
+                baseContext +
+                `
 Provide a comprehensive cultural analysis of this ${sourceLanguageName} text in the following JSON structure:
 {
   "definition": "Clear definition or meaning of this ${sourceLanguageName} expression",
@@ -203,10 +215,13 @@ Provide a comprehensive cultural analysis of this ${sourceLanguageName} text in 
   "sensitivities": "Cultural sensitivities ${targetLanguageName} speakers should know about this ${sourceLanguageName} expression"
 }
 
-Respond ONLY with valid JSON in this exact structure. All text content within the JSON must be written in ${targetLanguageName} but analyze the ${sourceLanguageName} content.`;
+Respond ONLY with valid JSON in this exact structure. All text content within the JSON must be written in ${targetLanguageName} but analyze the ${sourceLanguageName} content.`
+            );
 
         case 'historical':
-            return baseContext + `
+            return (
+                baseContext +
+                `
 Provide a detailed historical analysis of this ${sourceLanguageName} text in the following JSON structure:
 {
   "definition": "Clear definition or meaning of this ${sourceLanguageName} expression",
@@ -226,10 +241,13 @@ Provide a detailed historical analysis of this ${sourceLanguageName} text in the
   "learning_context": "How understanding ${sourceLanguageName} history helps ${targetLanguageName} speakers learn this expression"
 }
 
-Respond ONLY with valid JSON in this exact structure. All text content within the JSON must be written in ${targetLanguageName} but analyze the ${sourceLanguageName} historical context.`;
+Respond ONLY with valid JSON in this exact structure. All text content within the JSON must be written in ${targetLanguageName} but analyze the ${sourceLanguageName} historical context.`
+            );
 
         case 'linguistic':
-            return baseContext + `
+            return (
+                baseContext +
+                `
 Provide an in-depth linguistic analysis of this ${sourceLanguageName} text in the following JSON structure:
 {
   "definition": "Clear definition or meaning of this ${sourceLanguageName} expression",
@@ -252,10 +270,13 @@ Provide an in-depth linguistic analysis of this ${sourceLanguageName} text in th
   "learning_tips": "Specific tips for ${targetLanguageName} speakers to master this ${sourceLanguageName} expression linguistically"
 }
 
-Respond ONLY with valid JSON in this exact structure. All text content within the JSON must be written in ${targetLanguageName} but analyze the ${sourceLanguageName} linguistic aspects.`;
+Respond ONLY with valid JSON in this exact structure. All text content within the JSON must be written in ${targetLanguageName} but analyze the ${sourceLanguageName} linguistic aspects.`
+            );
 
         default:
-            return baseContext + `
+            return (
+                baseContext +
+                `
 Provide a comprehensive analysis of this ${sourceLanguageName} text covering cultural, historical, and linguistic aspects in the following JSON structure:
 {
   "definition": "Clear definition or meaning of this ${sourceLanguageName} expression",
@@ -284,7 +305,8 @@ Provide a comprehensive analysis of this ${sourceLanguageName} text covering cul
   "key_insights": "Most important things for ${targetLanguageName} speakers to understand about this ${sourceLanguageName} expression"
 }
 
-Respond ONLY with valid JSON in this exact structure. All text content within the JSON must be written in ${targetLanguageName} but analyze the ${sourceLanguageName} content.`;
+Respond ONLY with valid JSON in this exact structure. All text content within the JSON must be written in ${targetLanguageName} but analyze the ${sourceLanguageName} content.`
+            );
     }
 }
 
@@ -312,7 +334,7 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
             success: false,
             error: 'Invalid text provided',
             contextType,
-            text: text || ''
+            text: text || '',
         };
     }
 
@@ -322,7 +344,7 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
             openaiApiKey,
             openaiBaseUrl = 'https://api.openai.com',
             openaiModel = 'gpt-4.1-mini-2025-04-14',
-            aiContextTimeout = 30000
+            aiContextTimeout = 30000,
         } = config;
 
         if (!openaiApiKey) {
@@ -330,7 +352,10 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
         }
 
         const normalizedBaseUrl = normalizeBaseUrl(openaiBaseUrl);
-        const normalizedModel = normalizeModelName(openaiModel, normalizedBaseUrl);
+        const normalizedModel = normalizeModelName(
+            openaiModel,
+            normalizedBaseUrl
+        );
         const apiUrl = `${normalizedBaseUrl}/chat/completions`;
 
         const prompt = createContextPrompt(text, contextType, metadata);
@@ -341,41 +366,45 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
             messages: [
                 {
                     role: 'system',
-                    content: 'You are an expert cultural, historical, and linguistic analyst specializing in helping language learners understand nuanced context. Provide comprehensive yet concise explanations that include specific details, examples, and actionable insights. Focus on practical understanding that enhances language learning and cultural awareness.'
+                    content:
+                        'You are an expert cultural, historical, and linguistic analyst specializing in helping language learners understand nuanced context. Provide comprehensive yet concise explanations that include specific details, examples, and actionable insights. Focus on practical understanding that enhances language learning and cultural awareness.',
                 },
                 {
                     role: 'user',
-                    content: prompt
-                }
+                    content: prompt,
+                },
             ],
             response_format: {
                 type: 'json_schema',
                 json_schema: {
                     name: CONTEXT_SCHEMA_NAME,
                     schema: jsonSchema,
-                    strict: true
+                    strict: true,
                 },
-            }
+            },
         };
 
         logger.debug('Making context analysis request', {
             apiUrl,
             model: normalizedModel,
             contextType,
-            promptLength: prompt.length
+            promptLength: prompt.length,
         });
 
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), aiContextTimeout);
+        const timeoutId = setTimeout(
+            () => controller.abort(),
+            aiContextTimeout
+        );
 
         const response = await fetch(apiUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${openaiApiKey}`,
+                Authorization: `Bearer ${openaiApiKey}`,
             },
             body: JSON.stringify(requestBody),
-            signal: controller.signal
+            signal: controller.signal,
         });
 
         clearTimeout(timeoutId);
@@ -385,15 +414,19 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
             logger.error('Context analysis API request failed', {
                 status: response.status,
                 statusText: response.statusText,
-                errorText: errorText.substring(0, 500)
+                errorText: errorText.substring(0, 500),
             });
-            throw new Error(`API request failed: ${response.status} ${response.statusText} - ${errorText.substring(0, 500)}`);
+            throw new Error(
+                `API request failed: ${response.status} ${response.statusText} - ${errorText.substring(0, 500)}`
+            );
         }
 
         const data = await response.json();
 
         if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-            logger.error('Invalid response format from context analysis API', { data });
+            logger.error('Invalid response format from context analysis API', {
+                data,
+            });
             throw new Error('Invalid response format from API');
         }
 
@@ -405,7 +438,9 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
         try {
             structuredAnalysis = JSON.parse(rawResponse);
             if (!validateAgainstSchema(jsonSchema, structuredAnalysis)) {
-                logger.warn('Schema validation failed', { rawResponsePreview: rawResponse.substring(0, 200) });
+                logger.warn('Schema validation failed', {
+                    rawResponsePreview: rawResponse.substring(0, 200),
+                });
                 return {
                     success: false,
                     error: 'Schema validation failed',
@@ -413,11 +448,14 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
                     originalText: text,
                     metadata,
                     shouldRetry: true,
-                    shouldCache: false
+                    shouldCache: false,
                 };
             }
         } catch (error) {
-            logger.warn('Failed to parse JSON response', { error: error.message, rawResponsePreview: rawResponse.substring(0, 200) });
+            logger.warn('Failed to parse JSON response', {
+                error: error.message,
+                rawResponsePreview: rawResponse.substring(0, 200),
+            });
             return {
                 success: false,
                 error: 'Malformed JSON response',
@@ -425,14 +463,14 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
                 originalText: text,
                 metadata,
                 shouldRetry: true,
-                shouldCache: false
+                shouldCache: false,
             };
         }
 
         logger.info('Context analysis completed successfully', {
             contextType,
             responseLength: rawResponse.length,
-            tokensUsed: data.usage?.total_tokens || 'unknown'
+            tokensUsed: data.usage?.total_tokens || 'unknown',
         });
 
         return {
@@ -443,14 +481,13 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
             originalText: text,
             metadata,
             usage: data.usage,
-            shouldCache: true
+            shouldCache: true,
         };
-
     } catch (error) {
         logger.error('Context analysis failed', error, {
             textLength: text?.length || 0,
             contextType,
-            errorMessage: error.message
+            errorMessage: error.message,
         });
 
         return {
@@ -458,7 +495,7 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
             error: error.message,
             contextType,
             originalText: text,
-            metadata
+            metadata,
         };
     }
 }
@@ -470,7 +507,7 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
  */
 export async function analyzeBatchContext(requests) {
     logger.info('Batch context analysis initiated', {
-        requestCount: requests.length
+        requestCount: requests.length,
     });
 
     // For now, process sequentially to avoid rate limits
@@ -487,7 +524,7 @@ export async function analyzeBatchContext(requests) {
 
     logger.info('Batch context analysis completed', {
         requestCount: requests.length,
-        successCount: results.filter(r => r.success).length
+        successCount: results.filter((r) => r.success).length,
     });
 
     return results;

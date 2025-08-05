@@ -1,10 +1,10 @@
 /**
  * AI Context Analysis System - Main Entry Point
- * 
+ *
  * Centralized modular architecture for AI-powered context analysis
  * in browser extension environments. Provides unified interface for
  * platform-agnostic AI context features.
- * 
+ *
  * @author DualSub Extension - Modularization Architect
  * @version 2.0.0
  * @since 2024-08-02
@@ -22,13 +22,14 @@ import { AIContextModal } from './ui/modal.js';
 // Event Handlers
 import { TextSelectionHandler } from './handlers/textSelection.js';
 
-export {
-    AIContextModal,
-    TextSelectionHandler
-};
+export { AIContextModal, TextSelectionHandler };
 
 // Configuration and Constants
-export { AI_CONTEXT_CONFIG, MODAL_STATES, EVENT_TYPES } from './core/constants.js';
+export {
+    AI_CONTEXT_CONFIG,
+    MODAL_STATES,
+    EVENT_TYPES,
+} from './core/constants.js';
 
 /**
  * Initialize the complete AI Context system
@@ -49,26 +50,26 @@ export async function initializeAIContext(platform, config = {}) {
  */
 export async function setupAIContextForPlatform(options = {}) {
     const { platform, config, enabledFeatures = [] } = options;
-    
+
     const manager = await initializeAIContext(platform, config);
-    
+
     const components = {
         manager,
         modal: manager.getModal(),
         provider: manager.getProvider(),
-        textHandler: manager.getTextHandler()
+        textHandler: manager.getTextHandler(),
     };
-    
+
     // Enable requested features
     for (const feature of enabledFeatures) {
         await manager.enableFeature(feature);
     }
-    
+
     return {
         success: true,
         platform,
         components,
-        features: manager.getEnabledFeatures()
+        features: manager.getEnabledFeatures(),
     };
 }
 
@@ -85,7 +86,7 @@ export function getSystemStatus() {
             core: 'AIContextManager',
             ui: 'AIContextModal',
             providers: 'AIContextProvider',
-            handlers: ['TextSelectionHandler']
-        }
+            handlers: ['TextSelectionHandler'],
+        },
     };
 }

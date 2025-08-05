@@ -1,10 +1,10 @@
 /**
  * AI Context Provider - Unified AI Communication Interface
- * 
+ *
  * Decoupled AI provider interface that standardizes communication with
  * external AI systems. Handles request routing, response processing,
  * and error management across different AI providers.
- * 
+ *
  * @author DualSub Extension - AI Integration Strategist
  * @version 2.0.0
  */
@@ -22,7 +22,7 @@ export class AIContextProvider {
             maxRetries: 3,
             retryDelay: 1000,
             batchSize: 5,
-            ...config
+            ...config,
         };
 
         this.activeRequests = new Map();
@@ -40,7 +40,7 @@ export class AIContextProvider {
             successCount: 0,
             errorCount: 0,
             averageResponseTime: 0,
-            totalResponseTime: 0
+            totalResponseTime: 0,
         };
 
         // Request tracking
@@ -67,10 +67,9 @@ export class AIContextProvider {
             this.initialized = true;
             this._log('info', 'AI Context Provider initialized successfully', {
                 currentProvider: this.currentProvider,
-                availableProviders: this.availableProviders
+                availableProviders: this.availableProviders,
             });
             return true;
-
         } catch (error) {
             this._log('error', 'Failed to initialize provider', error);
             return false;
@@ -88,12 +87,14 @@ export class AIContextProvider {
             throw new Error('Provider not initialized');
         }
 
-        const requestId = options.requestId || `req-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+        const requestId =
+            options.requestId ||
+            `req-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
 
         this._log('info', 'Starting context analysis', {
             text: text.substring(0, 100) + (text.length > 100 ? '...' : ''),
             requestId,
-            options
+            options,
         });
 
         // Track request start time
@@ -105,25 +106,33 @@ export class AIContextProvider {
             const requestData = {
                 action: 'analyzeContext',
                 text,
-                contextTypes: options.contextTypes || ['cultural', 'historical', 'linguistic'],
+                contextTypes: options.contextTypes || [
+                    'cultural',
+                    'historical',
+                    'linguistic',
+                ],
                 language: options.language || 'auto',
                 targetLanguage: options.targetLanguage || 'en',
                 platform: options.platform || 'unknown',
-                requestId
+                requestId,
             };
 
             // Add to active requests
             this.activeRequests.set(requestId, {
                 startTime: Date.now(),
                 text,
-                options
+                options,
             });
 
             // Send request to background script with timeout
-            const response = await this._sendRequestWithTimeout(requestData, this.config.timeout);
+            const response = await this._sendRequestWithTimeout(
+                requestData,
+                this.config.timeout
+            );
 
             // Calculate response time
-            const responseTime = Date.now() - this.requestStartTimes.get(requestId);
+            const responseTime =
+                Date.now() - this.requestStartTimes.get(requestId);
             this._updateMetrics(responseTime, true);
 
             // Clean up tracking
@@ -133,14 +142,14 @@ export class AIContextProvider {
             this._log('info', 'Context analysis completed', {
                 requestId,
                 responseTime,
-                success: response.success
+                success: response.success,
             });
 
             return response;
-
         } catch (error) {
             // Calculate response time even for errors
-            const responseTime = Date.now() - this.requestStartTimes.get(requestId);
+            const responseTime =
+                Date.now() - this.requestStartTimes.get(requestId);
             this._updateMetrics(responseTime, false);
 
             // Clean up tracking
@@ -150,13 +159,13 @@ export class AIContextProvider {
             this._log('error', 'Context analysis failed', {
                 requestId,
                 error: error.message,
-                responseTime
+                responseTime,
             });
 
             return {
                 success: false,
                 error: error.message,
-                requestId
+                requestId,
             };
         }
     }
@@ -171,7 +180,9 @@ export class AIContextProvider {
 
         const request = this.activeRequests.get(requestId);
         if (!request) {
-            this._log('warn', 'Request not found for cancellation', { requestId });
+            this._log('warn', 'Request not found for cancellation', {
+                requestId,
+            });
             return false;
         }
 
@@ -199,7 +210,7 @@ export class AIContextProvider {
 
         this._log('info', 'Starting batch analysis', {
             count: texts.length,
-            batchSize: this.config.batchSize
+            batchSize: this.config.batchSize,
         });
 
         const results = [];
@@ -211,7 +222,7 @@ export class AIContextProvider {
             const batchPromises = batch.map((text, index) =>
                 this.analyzeContext(text, {
                     ...options,
-                    requestId: `batch-${Date.now()}-${i + index}`
+                    requestId: `batch-${Date.now()}-${i + index}`,
                 })
             );
 
@@ -221,13 +232,13 @@ export class AIContextProvider {
             } catch (error) {
                 this._log('error', 'Batch analysis failed', {
                     batchIndex: Math.floor(i / batchSize),
-                    error: error.message
+                    error: error.message,
                 });
                 // Add error results for failed batch
                 batch.forEach(() => {
                     results.push({
                         success: false,
-                        error: error.message
+                        error: error.message,
                     });
                 });
             }
@@ -235,7 +246,7 @@ export class AIContextProvider {
 
         this._log('info', 'Batch analysis completed', {
             total: texts.length,
-            successful: results.filter(r => r.success).length
+            successful: results.filter((r) => r.success).length,
         });
 
         return results;
@@ -251,7 +262,7 @@ export class AIContextProvider {
             currentProvider: this.currentProvider,
             availableProviders: this.availableProviders,
             activeRequests: this.activeRequests.size,
-            metrics: { ...this.metrics }
+            metrics: { ...this.metrics },
         };
     }
 
@@ -261,19 +272,18 @@ export class AIContextProvider {
     async destroy() {
         try {
             this._log('info', 'Destroying AI Context Provider');
-            
+
             // Cancel all active requests
             for (const requestId of this.activeRequests.keys()) {
                 this.cancelRequest(requestId);
             }
-            
+
             // Reset state
             this.initialized = false;
             this.activeRequests.clear();
             this.requestQueue = [];
-            
+
             this._log('info', 'AI Context Provider destroyed');
-            
         } catch (error) {
             this._log('error', 'Error destroying provider', error);
         }
@@ -290,7 +300,7 @@ export class AIContextProvider {
 
         this._log('debug', 'Provider discovery completed', {
             available: this.availableProviders,
-            current: this.currentProvider
+            current: this.currentProvider,
         });
     }
 
@@ -301,12 +311,12 @@ export class AIContextProvider {
         this.rateLimiter = {
             requests: [],
             maxRequests: this.config.RATE_LIMIT?.REQUESTS_PER_MINUTE || 60,
-            windowMs: 60000 // 1 minute
+            windowMs: 60000, // 1 minute
         };
 
         this._log('debug', 'Rate limiting setup completed', {
             maxRequests: this.rateLimiter.maxRequests,
-            windowMs: this.rateLimiter.windowMs
+            windowMs: this.rateLimiter.windowMs,
         });
     }
 
@@ -314,7 +324,7 @@ export class AIContextProvider {
         try {
             const response = await chrome.runtime.sendMessage({
                 action: 'ping',
-                timestamp: Date.now()
+                timestamp: Date.now(),
             });
 
             if (response && response.success) {
@@ -334,12 +344,13 @@ export class AIContextProvider {
                 reject(new Error(`Request timeout after ${timeout}ms`));
             }, timeout);
 
-            chrome.runtime.sendMessage(requestData)
-                .then(response => {
+            chrome.runtime
+                .sendMessage(requestData)
+                .then((response) => {
                     clearTimeout(timeoutId);
                     resolve(response);
                 })
-                .catch(error => {
+                .catch((error) => {
                     clearTimeout(timeoutId);
                     reject(error);
                 });
@@ -348,7 +359,8 @@ export class AIContextProvider {
 
     _updateMetrics(responseTime, success) {
         this.metrics.totalResponseTime += responseTime;
-        this.metrics.averageResponseTime = this.metrics.totalResponseTime / this.metrics.requestCount;
+        this.metrics.averageResponseTime =
+            this.metrics.totalResponseTime / this.metrics.requestCount;
 
         if (success) {
             this.metrics.successCount++;
@@ -367,7 +379,7 @@ export class AIContextProvider {
 
         // Remove old requests outside the window
         this.rateLimiter.requests = this.rateLimiter.requests.filter(
-            timestamp => timestamp > windowStart
+            (timestamp) => timestamp > windowStart
         );
 
         // Check if we're under the limit
@@ -386,9 +398,9 @@ export class AIContextProvider {
             initialized: this.initialized,
             activeRequests: this.activeRequests.size,
             timestamp: new Date().toISOString(),
-            ...data
+            ...data,
         };
-        
+
         console[level](`[AIContext:Provider] ${message}`, logData);
     }
 }

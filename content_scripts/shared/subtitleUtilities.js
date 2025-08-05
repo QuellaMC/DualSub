@@ -42,20 +42,26 @@ function dispatchContentChangeDebounced(type, oldContent, newContent, element) {
         clearTimeout(existingTimeout);
     }
     const timeoutId = setTimeout(() => {
-        document.dispatchEvent(new CustomEvent('dualsub-subtitle-content-changing', {
-            detail: {
-                type,
-                oldContent,
-                newContent,
-                element
-            }
-        }));
+        document.dispatchEvent(
+            new CustomEvent('dualsub-subtitle-content-changing', {
+                detail: {
+                    type,
+                    oldContent,
+                    newContent,
+                    element,
+                },
+            })
+        );
 
-        logWithFallback('debug', 'Debounced subtitle content change event dispatched', {
-            type,
-            oldContentLength: oldContent.length,
-            newContentLength: newContent.length
-        });
+        logWithFallback(
+            'debug',
+            'Debounced subtitle content change event dispatched',
+            {
+                type,
+                oldContentLength: oldContent.length,
+                newContentLength: newContent.length,
+            }
+        );
 
         // Clean up the timeout from the map
         contentChangeDebounceTimeouts.delete(element);
@@ -134,11 +140,17 @@ export function updateSubtitlePosition(activePlatform) {
 
     // Recalculate position based on current container parent
     const videoPlayerParent = activePlatform?.getPlayerContainerElement?.();
-    if (videoPlayerParent && getComputedStyle(videoPlayerParent).position === 'static') {
+    if (
+        videoPlayerParent &&
+        getComputedStyle(videoPlayerParent).position === 'static'
+    ) {
         videoPlayerParent.style.position = 'relative';
     }
 
-    logWithFallback('debug', 'Updated subtitle position for container transition');
+    logWithFallback(
+        'debug',
+        'Updated subtitle position for container transition'
+    );
 }
 
 /**
@@ -152,24 +164,30 @@ export async function initializeInteractiveSubtitleFeatures(config = {}) {
 
     try {
         // Get absolute URLs for interactive modules (legacy AI context modals removed)
-        const formatterUrl = chrome.runtime.getURL('content_scripts/shared/interactiveSubtitleFormatter.js');
-        const loadingUrl = chrome.runtime.getURL('content_scripts/shared/contextLoadingStates.js');
+        const formatterUrl = chrome.runtime.getURL(
+            'content_scripts/shared/interactiveSubtitleFormatter.js'
+        );
+        const loadingUrl = chrome.runtime.getURL(
+            'content_scripts/shared/contextLoadingStates.js'
+        );
 
         // Dynamically import interactive modules (legacy AI context system removed)
         const [
-            { initializeInteractiveSubtitles, formatInteractiveSubtitleText, attachInteractiveEventListeners, setInteractiveEnabled },
-            { initializeLoadingStates }
-        ] = await Promise.all([
-            import(formatterUrl),
-            import(loadingUrl)
-        ]);
+            {
+                initializeInteractiveSubtitles,
+                formatInteractiveSubtitleText,
+                attachInteractiveEventListeners,
+                setInteractiveEnabled,
+            },
+            { initializeLoadingStates },
+        ] = await Promise.all([import(formatterUrl), import(loadingUrl)]);
 
         // Initialize all interactive components with enabled state
         const interactiveConfig = {
             ...config,
             enabled: true, // Explicitly enable interactive features
             clickableWords: true,
-            highlightOnHover: true
+            highlightOnHover: true,
         };
 
         initializeInteractiveSubtitles(interactiveConfig);
@@ -179,8 +197,10 @@ export async function initializeInteractiveSubtitleFeatures(config = {}) {
         // in content_scripts/aicontext/ and initialized by platform content scripts
 
         // Store references for later use
-        window.dualsub_formatInteractiveSubtitleText = formatInteractiveSubtitleText;
-        window.dualsub_attachInteractiveEventListeners = attachInteractiveEventListeners;
+        window.dualsub_formatInteractiveSubtitleText =
+            formatInteractiveSubtitleText;
+        window.dualsub_attachInteractiveEventListeners =
+            attachInteractiveEventListeners;
         window.dualsub_setInteractiveEnabled = setInteractiveEnabled;
 
         interactiveModulesLoaded = true;
@@ -188,16 +208,19 @@ export async function initializeInteractiveSubtitleFeatures(config = {}) {
 
         logWithFallback('info', 'Interactive subtitle features initialized', {
             enabled: interactiveSubtitlesEnabled,
-            config
+            config,
         });
-
     } catch (error) {
-        logWithFallback('error', 'Failed to initialize interactive subtitle features', {
-            error: error.message,
-            stack: error.stack,
-            name: error.name,
-            config: config
-        });
+        logWithFallback(
+            'error',
+            'Failed to initialize interactive subtitle features',
+            {
+                error: error.message,
+                stack: error.stack,
+                name: error.name,
+                config: config,
+            }
+        );
         throw error; // Re-throw to help with debugging
     }
 }
@@ -313,11 +336,20 @@ export function formatSubtitleTextForDisplay(text, options = {}) {
         .replace(/>/g, '&gt;');
 
     // Add interactive elements if enabled and modules are loaded
-    if (interactiveSubtitlesEnabled && interactiveModulesLoaded && window.dualsub_formatInteractiveSubtitleText) {
+    if (
+        interactiveSubtitlesEnabled &&
+        interactiveModulesLoaded &&
+        window.dualsub_formatInteractiveSubtitleText
+    ) {
         try {
             const originalLength = formattedText.length;
-            formattedText = window.dualsub_formatInteractiveSubtitleText(formattedText, options);
-            const hasInteractiveSpans = formattedText.includes('dualsub-interactive-word');
+            formattedText = window.dualsub_formatInteractiveSubtitleText(
+                formattedText,
+                options
+            );
+            const hasInteractiveSpans = formattedText.includes(
+                'dualsub-interactive-word'
+            );
 
             logWithFallback('debug', 'Interactive text formatting applied', {
                 originalLength,
@@ -325,23 +357,27 @@ export function formatSubtitleTextForDisplay(text, options = {}) {
                 hasInteractiveSpans,
                 subtitleType: options.subtitleType,
                 sampleText: text.substring(0, 30),
-                formattedSample: formattedText.substring(0, 100)
+                formattedSample: formattedText.substring(0, 100),
             });
         } catch (error) {
-            logWithFallback('error', 'Failed to format interactive subtitle text', {
-                error: error.message,
-                stack: error.stack,
-                text: text.substring(0, 50)
-            });
-
+            logWithFallback(
+                'error',
+                'Failed to format interactive subtitle text',
+                {
+                    error: error.message,
+                    stack: error.stack,
+                    text: text.substring(0, 50),
+                }
+            );
         }
     } else {
         logWithFallback('debug', 'Interactive formatting skipped', {
             interactiveSubtitlesEnabled,
             interactiveModulesLoaded,
-            formatFunctionAvailable: !!window.dualsub_formatInteractiveSubtitleText,
+            formatFunctionAvailable:
+                !!window.dualsub_formatInteractiveSubtitleText,
             subtitleType: options.subtitleType,
-            text: text.substring(0, 30)
+            text: text.substring(0, 30),
         });
     }
 
@@ -493,7 +529,7 @@ export function applySubtitleStyling(config) {
             pointerEvents: 'auto',
             userSelect: 'text',
             cursor: 'default',
-            zIndex: '10001' // Higher than modal to ensure clickability
+            zIndex: '10001', // Higher than modal to ensure clickability
         });
 
         // Force consistent margins with !important to override any external CSS
@@ -578,7 +614,7 @@ export function applySubtitleStyling(config) {
     const normalizedPosition = (verticalPosition - 0.1) / (9.9 - 0.1);
 
     // Map the normalized 0.0-1.0 scale to the desired 5%-50% CSS 'bottom' range.
-    const bottomPercentage = 5 + (normalizedPosition * 45);
+    const bottomPercentage = 5 + normalizedPosition * 45;
 
     Object.assign(subtitleContainer.style, {
         flexDirection: config.subtitleLayoutOrientation,
@@ -609,7 +645,11 @@ export function applySubtitleStyling(config) {
         secondElement.style.maxWidth = '100%';
         // Add base margin (0.5em) plus the gap setting for more noticeable effect
         const verticalGap = 0.1 + (config.subtitleGap || 0);
-        firstElement.style.setProperty('margin-bottom', `${verticalGap}em`, 'important');
+        firstElement.style.setProperty(
+            'margin-bottom',
+            `${verticalGap}em`,
+            'important'
+        );
         // Clear any horizontal margins for vertical layout
         firstElement.style.setProperty('margin-right', '0', 'important');
         secondElement.style.setProperty('margin-right', '0', 'important');
@@ -1222,25 +1262,37 @@ export function updateSubtitles(
             false;
 
         // Ensure interactive features are enabled BEFORE formatting text
-        if (interactiveSubtitlesEnabled && interactiveModulesLoaded && window.dualsub_setInteractiveEnabled) {
+        if (
+            interactiveSubtitlesEnabled &&
+            interactiveModulesLoaded &&
+            window.dualsub_setInteractiveEnabled
+        ) {
             window.dualsub_setInteractiveEnabled(true);
-            logWithFallback('debug', 'Interactive features enabled before text formatting', {
-                logPrefix
-            });
+            logWithFallback(
+                'debug',
+                'Interactive features enabled before text formatting',
+                {
+                    logPrefix,
+                }
+            );
         }
 
-        const originalTextFormatted =
-            formatSubtitleTextForDisplay(originalText, {
+        const originalTextFormatted = formatSubtitleTextForDisplay(
+            originalText,
+            {
                 sourceLanguage: config.sourceLanguage || 'unknown',
                 targetLanguage: config.targetLanguage || 'unknown',
-                subtitleType: 'original'
-            });
-        const translatedTextFormatted =
-            formatSubtitleTextForDisplay(translatedText, {
+                subtitleType: 'original',
+            }
+        );
+        const translatedTextFormatted = formatSubtitleTextForDisplay(
+            translatedText,
+            {
                 sourceLanguage: config.sourceLanguage || 'unknown',
                 targetLanguage: config.targetLanguage || 'unknown',
-                subtitleType: 'translated'
-            });
+                subtitleType: 'translated',
+            }
+        );
 
         let contentChanged = false;
 
@@ -1392,34 +1444,56 @@ export function updateSubtitles(
             applySubtitleStyling(config);
 
             // Attach interactive event listeners if enabled
-            if (interactiveSubtitlesEnabled && interactiveModulesLoaded && window.dualsub_attachInteractiveEventListeners) {
+            if (
+                interactiveSubtitlesEnabled &&
+                interactiveModulesLoaded &&
+                window.dualsub_attachInteractiveEventListeners
+            ) {
                 try {
-                    if (originalText.trim() && originalSubtitleElement.style.display !== 'none') {
-                        window.dualsub_attachInteractiveEventListeners(originalSubtitleElement, {
-                            sourceLanguage: config.sourceLanguage || 'unknown',
-                            targetLanguage: config.targetLanguage || 'unknown',
-                            subtitleType: 'original'
-                        });
+                    if (
+                        originalText.trim() &&
+                        originalSubtitleElement.style.display !== 'none'
+                    ) {
+                        window.dualsub_attachInteractiveEventListeners(
+                            originalSubtitleElement,
+                            {
+                                sourceLanguage:
+                                    config.sourceLanguage || 'unknown',
+                                targetLanguage:
+                                    config.targetLanguage || 'unknown',
+                                subtitleType: 'original',
+                            }
+                        );
 
-                        logWithFallback('debug', 'Interactive listeners attached to original subtitle only', {
-                            originalElementId: originalSubtitleElement.id,
-                            logPrefix
-                        });
+                        logWithFallback(
+                            'debug',
+                            'Interactive listeners attached to original subtitle only',
+                            {
+                                originalElementId: originalSubtitleElement.id,
+                                logPrefix,
+                            }
+                        );
                     }
                 } catch (error) {
-                    logWithFallback('error', 'Failed to attach interactive event listeners', {
-                        error: error.message,
-                        stack: error.stack,
-                        name: error.name,
-                        logPrefix,
-                        interactiveEnabled: interactiveSubtitlesEnabled,
-                        modulesLoaded: interactiveModulesLoaded,
-                        functionAvailable: !!window.dualsub_attachInteractiveEventListeners,
-                        originalElementExists: !!originalSubtitleElement,
-                        translatedElementExists: !!translatedSubtitleElement,
-                        originalText: originalText?.substring(0, 50),
-                        translatedText: translatedText?.substring(0, 50)
-                    });
+                    logWithFallback(
+                        'error',
+                        'Failed to attach interactive event listeners',
+                        {
+                            error: error.message,
+                            stack: error.stack,
+                            name: error.name,
+                            logPrefix,
+                            interactiveEnabled: interactiveSubtitlesEnabled,
+                            modulesLoaded: interactiveModulesLoaded,
+                            functionAvailable:
+                                !!window.dualsub_attachInteractiveEventListeners,
+                            originalElementExists: !!originalSubtitleElement,
+                            translatedElementExists:
+                                !!translatedSubtitleElement,
+                            originalText: originalText?.substring(0, 50),
+                            translatedText: translatedText?.substring(0, 50),
+                        }
+                    );
                 }
             }
         }
@@ -1751,7 +1825,6 @@ export async function processSubtitleQueue(
 
     const videoElement = activePlatform.getVideoElement();
     if (!videoElement) {
-
         setTimeout(
             () => processSubtitleQueue(activePlatform, config, logPrefix),
             200

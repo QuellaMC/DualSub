@@ -286,7 +286,9 @@ export class DisneyPlusPlatform extends VideoPlatform {
         if (!styleElement) {
             // Validate that document.head exists before appending
             if (!document.head || !(document.head instanceof Node)) {
-                console.warn('[DisneyPlusPlatform] document.head not available, cannot inject CSS');
+                console.warn(
+                    '[DisneyPlusPlatform] document.head not available, cannot inject CSS'
+                );
                 return;
             }
 
@@ -295,7 +297,10 @@ export class DisneyPlusPlatform extends VideoPlatform {
                 styleElement.id = cssId;
                 document.head.appendChild(styleElement);
             } catch (error) {
-                console.error('[DisneyPlusPlatform] Failed to inject CSS:', error);
+                console.error(
+                    '[DisneyPlusPlatform] Failed to inject CSS:',
+                    error
+                );
                 return;
             }
         }
@@ -335,7 +340,9 @@ export class DisneyPlusPlatform extends VideoPlatform {
 
         // Validate that document.body exists before setting up observer
         if (!document.body || !(document.body instanceof Node)) {
-            console.warn('[DisneyPlusPlatform] document.body not available, retrying in 100ms');
+            console.warn(
+                '[DisneyPlusPlatform] document.body not available, retrying in 100ms'
+            );
             setTimeout(() => {
                 this.setupSubtitleMutationObserver();
             }, 100);
@@ -353,7 +360,9 @@ export class DisneyPlusPlatform extends VideoPlatform {
                             if (node.nodeType === Node.ELEMENT_NODE) {
                                 // Check if the added node or its children contain subtitle elements
                                 if (
-                                    node.classList?.contains('TimedTextOverlay') ||
+                                    node.classList?.contains(
+                                        'TimedTextOverlay'
+                                    ) ||
                                     node.classList?.contains(
                                         'hive-subtitle-renderer-wrapper'
                                     ) ||
@@ -382,9 +391,14 @@ export class DisneyPlusPlatform extends VideoPlatform {
                 subtree: true,
             });
 
-            console.log('[DisneyPlusPlatform] Subtitle mutation observer set up successfully');
+            console.log(
+                '[DisneyPlusPlatform] Subtitle mutation observer set up successfully'
+            );
         } catch (error) {
-            console.error('[DisneyPlusPlatform] Failed to set up subtitle mutation observer:', error);
+            console.error(
+                '[DisneyPlusPlatform] Failed to set up subtitle mutation observer:',
+                error
+            );
             // Retry after a delay
             setTimeout(() => {
                 this.setupSubtitleMutationObserver();

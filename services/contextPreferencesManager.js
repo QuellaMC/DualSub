@@ -1,9 +1,9 @@
 /**
  * Context Preferences Manager
- * 
+ *
  * Manages granular user preferences for AI context analysis types,
  * interaction methods, and display options for the cultural context assistant.
- * 
+ *
  * @author DualSub Extension
  * @version 1.0.0
  */
@@ -20,27 +20,38 @@ export const CONTEXT_TYPES = {
     cultural: {
         id: 'cultural',
         name: 'Cultural Context',
-        description: 'Idioms, slang, cultural references, and conversational subtext',
-        examples: ['break a leg', 'spill the tea', 'it\'s raining cats and dogs'],
+        description:
+            'Idioms, slang, cultural references, and conversational subtext',
+        examples: [
+            'break a leg',
+            'spill the tea',
+            "it's raining cats and dogs",
+        ],
         defaultEnabled: true,
-        priority: 1
+        priority: 1,
     },
     historical: {
         id: 'historical',
         name: 'Historical Context',
-        description: 'Historical figures, events, time periods, and background information',
-        examples: ['World War II references', 'Renaissance period', 'Ancient Rome'],
+        description:
+            'Historical figures, events, time periods, and background information',
+        examples: [
+            'World War II references',
+            'Renaissance period',
+            'Ancient Rome',
+        ],
         defaultEnabled: true,
-        priority: 2
+        priority: 2,
     },
     linguistic: {
         id: 'linguistic',
         name: 'Linguistic Context',
-        description: 'Etymology, grammar patterns, language evolution, and translation nuances',
+        description:
+            'Etymology, grammar patterns, language evolution, and translation nuances',
         examples: ['word origins', 'false friends', 'grammatical structures'],
         defaultEnabled: true,
-        priority: 3
-    }
+        priority: 3,
+    },
 };
 
 /**
@@ -51,20 +62,21 @@ export const INTERACTION_METHODS = {
         id: 'click',
         name: 'Click to Analyze',
         description: 'Click on individual words to get context analysis',
-        defaultEnabled: true
+        defaultEnabled: true,
     },
     selection: {
         id: 'selection',
         name: 'Text Selection',
         description: 'Select text phrases to analyze multiple words together',
-        defaultEnabled: true
+        defaultEnabled: true,
     },
     hover: {
         id: 'hover',
         name: 'Hover Preview',
-        description: 'Show brief context on hover (requires click for full analysis)',
-        defaultEnabled: false
-    }
+        description:
+            'Show brief context on hover (requires click for full analysis)',
+        defaultEnabled: false,
+    },
 };
 
 /**
@@ -75,18 +87,18 @@ export const DISPLAY_PREFERENCES = {
         center: 'Center of screen',
         top: 'Top of screen',
         bottom: 'Bottom of screen',
-        cursor: 'Near cursor position'
+        cursor: 'Near cursor position',
     },
     size: {
         small: 'Compact view',
         medium: 'Standard view',
-        large: 'Detailed view'
+        large: 'Detailed view',
     },
     theme: {
         auto: 'Match system theme',
         light: 'Light theme',
-        dark: 'Dark theme'
-    }
+        dark: 'Dark theme',
+    },
 };
 
 /**
@@ -108,37 +120,38 @@ export class ContextPreferencesManager {
             enabledContextTypes: Object.keys(CONTEXT_TYPES),
             contextTypePriority: Object.values(CONTEXT_TYPES)
                 .sort((a, b) => a.priority - b.priority)
-                .map(type => type.id),
-            
+                .map((type) => type.id),
+
             // Interaction methods
-            enabledInteractionMethods: Object.keys(INTERACTION_METHODS)
-                .filter(method => INTERACTION_METHODS[method].defaultEnabled),
-            
+            enabledInteractionMethods: Object.keys(INTERACTION_METHODS).filter(
+                (method) => INTERACTION_METHODS[method].defaultEnabled
+            ),
+
             // Display preferences
             modalPosition: 'center',
             modalSize: 'medium',
             modalTheme: 'auto',
             autoClose: false,
             autoCloseDelay: 10000,
-            
+
             // Advanced preferences
             showExamples: true,
             showConfidence: false,
             enableKeyboardShortcuts: true,
             enableSoundFeedback: false,
-            
+
             // Language-specific preferences
             languageSpecificSettings: {},
-            
+
             // Performance preferences
             enableCaching: true,
             maxCacheAge: 3600000, // 1 hour
             enablePrefetch: false,
-            
+
             // Accessibility preferences
             highContrast: false,
             reducedMotion: false,
-            screenReaderOptimized: false
+            screenReaderOptimized: false,
         };
     }
 
@@ -156,20 +169,31 @@ export class ContextPreferencesManager {
                 'contextModalPosition',
                 'contextModalSize',
                 'contextAutoClose',
-                'contextAutoCloseDelay'
+                'contextAutoCloseDelay',
             ];
 
             const settings = await configService.getMultiple(configKeys);
-            
+
             // Merge with defaults
             const preferences = {
                 ...this.defaultPreferences,
-                enabledContextTypes: settings.aiContextTypes || this.defaultPreferences.enabledContextTypes,
-                enabledInteractionMethods: this.getEnabledInteractionMethods(settings),
-                modalPosition: settings.contextModalPosition || this.defaultPreferences.modalPosition,
-                modalSize: settings.contextModalSize || this.defaultPreferences.modalSize,
-                autoClose: settings.contextAutoClose || this.defaultPreferences.autoClose,
-                autoCloseDelay: settings.contextAutoCloseDelay || this.defaultPreferences.autoCloseDelay
+                enabledContextTypes:
+                    settings.aiContextTypes ||
+                    this.defaultPreferences.enabledContextTypes,
+                enabledInteractionMethods:
+                    this.getEnabledInteractionMethods(settings),
+                modalPosition:
+                    settings.contextModalPosition ||
+                    this.defaultPreferences.modalPosition,
+                modalSize:
+                    settings.contextModalSize ||
+                    this.defaultPreferences.modalSize,
+                autoClose:
+                    settings.contextAutoClose ||
+                    this.defaultPreferences.autoClose,
+                autoCloseDelay:
+                    settings.contextAutoCloseDelay ||
+                    this.defaultPreferences.autoCloseDelay,
             };
 
             // Cache preferences
@@ -177,11 +201,11 @@ export class ContextPreferencesManager {
 
             logger.debug('Preferences loaded', {
                 enabledContextTypes: preferences.enabledContextTypes.length,
-                enabledInteractionMethods: preferences.enabledInteractionMethods.length
+                enabledInteractionMethods:
+                    preferences.enabledInteractionMethods.length,
             });
 
             return preferences;
-
         } catch (error) {
             logger.error('Failed to load preferences', error);
             return this.defaultPreferences;
@@ -201,23 +225,24 @@ export class ContextPreferencesManager {
                 contextModalSize: preferences.modalSize,
                 contextAutoClose: preferences.autoClose,
                 contextAutoCloseDelay: preferences.autoCloseDelay,
-                contextOnClick: preferences.enabledInteractionMethods.includes('click'),
-                contextOnSelection: preferences.enabledInteractionMethods.includes('selection')
+                contextOnClick:
+                    preferences.enabledInteractionMethods.includes('click'),
+                contextOnSelection:
+                    preferences.enabledInteractionMethods.includes('selection'),
             };
 
             await configService.setMultiple(updates);
-            
+
             // Update cache
             this.preferencesCache.set('current', preferences);
 
             logger.info('Preferences saved', {
                 enabledContextTypes: preferences.enabledContextTypes,
                 modalPosition: preferences.modalPosition,
-                modalSize: preferences.modalSize
+                modalSize: preferences.modalSize,
             });
 
             return true;
-
         } catch (error) {
             logger.error('Failed to save preferences', error);
             return false;
@@ -244,7 +269,9 @@ export class ContextPreferencesManager {
             const preferences = await this.getPreferences();
             return preferences.enabledContextTypes.includes(contextType);
         } catch (error) {
-            logger.error('Failed to check context type status', error, { contextType });
+            logger.error('Failed to check context type status', error, {
+                contextType,
+            });
             return CONTEXT_TYPES[contextType]?.defaultEnabled || false;
         }
     }
@@ -259,7 +286,9 @@ export class ContextPreferencesManager {
             const preferences = await this.getPreferences();
             return preferences.enabledInteractionMethods.includes(method);
         } catch (error) {
-            logger.error('Failed to check interaction method status', error, { method });
+            logger.error('Failed to check interaction method status', error, {
+                method,
+            });
             return INTERACTION_METHODS[method]?.defaultEnabled || false;
         }
     }
@@ -300,26 +329,30 @@ export class ContextPreferencesManager {
     async toggleContextType(contextType) {
         try {
             const preferences = await this.getPreferences();
-            const isEnabled = preferences.enabledContextTypes.includes(contextType);
-            
+            const isEnabled =
+                preferences.enabledContextTypes.includes(contextType);
+
             if (isEnabled) {
-                preferences.enabledContextTypes = preferences.enabledContextTypes
-                    .filter(type => type !== contextType);
+                preferences.enabledContextTypes =
+                    preferences.enabledContextTypes.filter(
+                        (type) => type !== contextType
+                    );
             } else {
                 preferences.enabledContextTypes.push(contextType);
             }
 
             await this.savePreferences(preferences);
-            
+
             logger.info('Context type toggled', {
                 contextType,
-                newStatus: !isEnabled
+                newStatus: !isEnabled,
             });
 
             return !isEnabled;
-
         } catch (error) {
-            logger.error('Failed to toggle context type', error, { contextType });
+            logger.error('Failed to toggle context type', error, {
+                contextType,
+            });
             return false;
         }
     }
@@ -334,7 +367,9 @@ export class ContextPreferencesManager {
             const preferences = await this.getPreferences();
             return preferences.languageSpecificSettings[languageCode] || {};
         } catch (error) {
-            logger.error('Failed to get language preferences', error, { languageCode });
+            logger.error('Failed to get language preferences', error, {
+                languageCode,
+            });
             return {};
         }
     }
@@ -351,7 +386,9 @@ export class ContextPreferencesManager {
             preferences.languageSpecificSettings[languageCode] = languagePrefs;
             return await this.savePreferences(preferences);
         } catch (error) {
-            logger.error('Failed to set language preferences', error, { languageCode });
+            logger.error('Failed to set language preferences', error, {
+                languageCode,
+            });
             return false;
         }
     }
@@ -364,12 +401,12 @@ export class ContextPreferencesManager {
         try {
             const defaultPrefs = this.getDefaultPreferences();
             const success = await this.savePreferences(defaultPrefs);
-            
+
             if (success) {
                 this.preferencesCache.clear();
                 logger.info('Preferences reset to defaults');
             }
-            
+
             return success;
         } catch (error) {
             logger.error('Failed to reset preferences', error);
@@ -387,7 +424,7 @@ export class ContextPreferencesManager {
             return {
                 version: '1.0.0',
                 exportDate: new Date().toISOString(),
-                preferences
+                preferences,
             };
         } catch (error) {
             logger.error('Failed to export preferences', error);
@@ -408,18 +445,18 @@ export class ContextPreferencesManager {
 
             const preferences = {
                 ...this.defaultPreferences,
-                ...exportedData.preferences
+                ...exportedData.preferences,
             };
 
             const success = await this.savePreferences(preferences);
-            
+
             if (success) {
                 logger.info('Preferences imported successfully', {
                     version: exportedData.version,
-                    exportDate: exportedData.exportDate
+                    exportDate: exportedData.exportDate,
                 });
             }
-            
+
             return success;
         } catch (error) {
             logger.error('Failed to import preferences', error);
@@ -434,23 +471,32 @@ export class ContextPreferencesManager {
     async getPreferencesSummary() {
         try {
             const preferences = await this.getPreferences();
-            
+
             return {
                 contextTypes: {
                     enabled: preferences.enabledContextTypes.length,
                     total: Object.keys(CONTEXT_TYPES).length,
-                    list: preferences.enabledContextTypes.map(id => CONTEXT_TYPES[id]?.name || id)
+                    list: preferences.enabledContextTypes.map(
+                        (id) => CONTEXT_TYPES[id]?.name || id
+                    ),
                 },
                 interactionMethods: {
                     enabled: preferences.enabledInteractionMethods.length,
                     total: Object.keys(INTERACTION_METHODS).length,
-                    list: preferences.enabledInteractionMethods.map(id => INTERACTION_METHODS[id]?.name || id)
+                    list: preferences.enabledInteractionMethods.map(
+                        (id) => INTERACTION_METHODS[id]?.name || id
+                    ),
                 },
                 display: {
-                    position: DISPLAY_PREFERENCES.position[preferences.modalPosition] || preferences.modalPosition,
-                    size: DISPLAY_PREFERENCES.size[preferences.modalSize] || preferences.modalSize,
-                    autoClose: preferences.autoClose
-                }
+                    position:
+                        DISPLAY_PREFERENCES.position[
+                            preferences.modalPosition
+                        ] || preferences.modalPosition,
+                    size:
+                        DISPLAY_PREFERENCES.size[preferences.modalSize] ||
+                        preferences.modalSize,
+                    autoClose: preferences.autoClose,
+                },
             };
         } catch (error) {
             logger.error('Failed to get preferences summary', error);

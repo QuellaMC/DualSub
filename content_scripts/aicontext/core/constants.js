@@ -1,9 +1,9 @@
 /**
  * AI Context System Constants and Configuration
- * 
+ *
  * Centralized configuration and constants for the modular AI context system.
  * Defines system-wide defaults, event types, modal states, and platform-specific settings.
- * 
+ *
  * @author DualSub Extension - Modularization Architect
  * @version 2.0.0
  */
@@ -17,51 +17,51 @@ export const AI_CONTEXT_CONFIG = {
     MAX_TEXT_LENGTH: 500,
     MIN_TEXT_LENGTH: 2,
     CACHE_TTL: 300000, // 5 minutes
-    
+
     // Analysis types
     CONTEXT_TYPES: {
         CULTURAL: 'cultural',
         HISTORICAL: 'historical',
         LINGUISTIC: 'linguistic',
-        COMPREHENSIVE: 'comprehensive'
+        COMPREHENSIVE: 'comprehensive',
     },
-    
+
     // Platform-specific settings
     PLATFORMS: {
         NETFLIX: {
             name: 'netflix',
             selectors: {
                 subtitleContainer: '.player-timedtext',
-                videoPlayer: '.NFPlayer'
+                videoPlayer: '.NFPlayer',
             },
             features: {
                 interactiveSubtitles: true,
                 contextModal: true,
-                textSelection: true
-            }
+                textSelection: true,
+            },
         },
         DISNEYPLUS: {
             name: 'disneyplus',
             selectors: {
                 subtitleContainer: '.dss-subtitle-renderer',
-                videoPlayer: '.btm-media-client-element'
+                videoPlayer: '.btm-media-client-element',
             },
             features: {
                 interactiveSubtitles: true,
                 contextModal: true,
-                textSelection: true
-            }
-        }
+                textSelection: true,
+            },
+        },
     },
-    
+
     // Feature flags
     FEATURES: {
         INTERACTIVE_SUBTITLES: 'interactiveSubtitles',
         CONTEXT_MODAL: 'contextModal',
         TEXT_SELECTION: 'textSelection',
         LOADING_STATES: 'loadingStates',
-        CONTEXT_CACHE: 'contextCache'
-    }
+        CONTEXT_CACHE: 'contextCache',
+    },
 };
 
 /**
@@ -73,7 +73,7 @@ export const MODAL_STATES = {
     ANALYZING: 'analyzing',
     DISPLAYING: 'displaying',
     ERROR: 'error',
-    PAUSED: 'paused'
+    PAUSED: 'paused',
 };
 
 /**
@@ -83,12 +83,12 @@ export const EVENT_TYPES = {
     // Core system events
     SYSTEM_INITIALIZED: 'aicontext:system:initialized',
     SYSTEM_ERROR: 'aicontext:system:error',
-    
+
     // Modal events
     MODAL_SHOW: 'aicontext:modal:show',
     MODAL_HIDE: 'aicontext:modal:hide',
     MODAL_STATE_CHANGE: 'aicontext:modal:stateChange',
-    
+
     // Analysis events
     ANALYSIS_START: 'aicontext:analysis:start',
     ANALYSIS_COMPLETE: 'aicontext:analysis:complete',
@@ -108,21 +108,19 @@ export const EVENT_TYPES = {
     WORD_REMOVED: 'aicontext:word:removed',
     SELECTION_CLEARED: 'aicontext:selection:cleared',
     STATE_CHANGE: 'aicontext:state:change',
-    
+
     // Text selection events
     TEXT_SELECTED: 'aicontext:text:selected',
     TEXT_DESELECTED: 'aicontext:text:deselected',
     WORD_CLICKED: 'aicontext:word:clicked',
-    
+
     // Legacy event compatibility
     LEGACY_ANALYZE_SELECTION: 'dualsub-analyze-selection',
     LEGACY_WORD_SELECTED: 'dualsub-word-selected',
     LEGACY_CONTEXT_RESULT: 'dualsub-context-result',
     LEGACY_SHOW_CONTEXT: 'dualsub-show-context',
-    LEGACY_CONTEXT_ERROR: 'dualsub-context-error'
+    LEGACY_CONTEXT_ERROR: 'dualsub-context-error',
 };
-
-
 
 /**
  * Performance and Monitoring Constants
@@ -138,8 +136,8 @@ export const PERFORMANCE_CONFIG = {
         ERROR: 0,
         WARN: 1,
         INFO: 2,
-        DEBUG: 3
-    }
+        DEBUG: 3,
+    },
 };
 
 /**
@@ -153,22 +151,22 @@ export const UI_CONFIG = {
         Z_INDEX: 10000,
         ANIMATION_DURATION: 300,
         SELECTION_STATE_AGE_THRESHOLD: 30000, // 30 seconds for page visibility changes
-        SELECTION_STATE_REFRESH_THRESHOLD: 120000 // 2 minutes max age for refresh
+        SELECTION_STATE_REFRESH_THRESHOLD: 120000, // 2 minutes max age for refresh
     },
-    
+
     // Text selection highlighting
     SELECTION: {
         HIGHLIGHT_CLASS: 'aicontext-selected',
         HOVER_CLASS: 'aicontext-hover',
-        PROCESSING_CLASS: 'aicontext-processing'
+        PROCESSING_CLASS: 'aicontext-processing',
     },
-    
+
     // Loading states
     LOADING: {
         SPINNER_SIZE: '24px',
         PROGRESS_BAR_HEIGHT: '4px',
-        FADE_DURATION: 200
-    }
+        FADE_DURATION: 200,
+    },
 };
 
 /**
@@ -179,16 +177,16 @@ export const PROVIDER_CONFIG = {
     DEFAULT_TIMEOUT: 30000,
     MAX_RETRIES: 3,
     RETRY_DELAY: 1000,
-    
+
     // Batch processing
     BATCH_SIZE: 5,
     BATCH_TIMEOUT: 45000,
-    
+
     // Rate limiting
     RATE_LIMIT: {
         REQUESTS_PER_MINUTE: 60,
-        BURST_LIMIT: 10
-    }
+        BURST_LIMIT: 10,
+    },
 };
 
 /**
@@ -199,11 +197,11 @@ export const DEV_CONFIG = {
     ENABLE_VERBOSE_LOGGING: false,
     ENABLE_PERFORMANCE_MONITORING: true,
     ENABLE_ERROR_BOUNDARIES: true,
-    
+
     // Test mode settings
     MOCK_AI_RESPONSES: false,
     SIMULATE_NETWORK_DELAY: false,
-    FORCE_ERROR_CONDITIONS: false
+    FORCE_ERROR_CONDITIONS: false,
 };
 
 /**
@@ -224,29 +222,31 @@ export function getPlatformConfig(platform) {
 export function validateConfig(config) {
     const errors = [];
     const warnings = [];
-    
+
     // Required fields validation
     if (!config.platform) {
         errors.push('Platform is required');
     }
-    
+
     // Platform support validation
     if (config.platform && !getPlatformConfig(config.platform)) {
         errors.push(`Platform '${config.platform}' is not supported`);
     }
-    
+
     // Feature validation
     if (config.features) {
         const validFeatures = Object.values(AI_CONTEXT_CONFIG.FEATURES);
-        const invalidFeatures = config.features.filter(f => !validFeatures.includes(f));
+        const invalidFeatures = config.features.filter(
+            (f) => !validFeatures.includes(f)
+        );
         if (invalidFeatures.length > 0) {
             warnings.push(`Unknown features: ${invalidFeatures.join(', ')}`);
         }
     }
-    
+
     return {
         valid: errors.length === 0,
         errors,
-        warnings
+        warnings,
     };
 }

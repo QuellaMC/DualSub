@@ -1,9 +1,9 @@
 /**
  * Context Loading States and Error Handling
- * 
+ *
  * Provides loading indicators, error states, and graceful fallbacks
  * for AI context analysis requests with user-friendly feedback.
- * 
+ *
  * @author DualSub Extension
  * @version 1.0.0
  */
@@ -12,7 +12,10 @@
 const logWithFallback = (() => {
     // Default fallback implementation
     let currentLogger = (level, message, data) => {
-        console.log(`[LoadingStates] [${level.toUpperCase()}] ${message}`, data || {});
+        console.log(
+            `[LoadingStates] [${level.toUpperCase()}] ${message}`,
+            data || {}
+        );
     };
 
     // Return a wrapper function that always calls the current logger
@@ -21,11 +24,16 @@ const logWithFallback = (() => {
             currentLogger(level, message, data);
         } catch (error) {
             // Ultimate fallback if even the logger fails
-            console.log(`[LoadingStates] [${level.toUpperCase()}] ${message}`, data || {});
+            console.log(
+                `[LoadingStates] [${level.toUpperCase()}] ${message}`,
+                data || {}
+            );
         }
     };
 
-    console.log('[LoadingStates] Using fallback logging (enhanced logging not available)');
+    console.log(
+        '[LoadingStates] Using fallback logging (enhanced logging not available)'
+    );
 
     return logWrapper;
 })();
@@ -38,7 +46,7 @@ const LOADING_CONFIG = {
     hideLoadingAfter: 30000, // Hide loading after 30 seconds (timeout)
     retryDelay: 2000, // Delay between retry attempts
     maxRetries: 3, // Maximum number of retries
-    animationDuration: 200 // Animation duration in ms
+    animationDuration: 200, // Animation duration in ms
 };
 
 /**
@@ -48,7 +56,7 @@ const loadingState = {
     activeRequests: new Map(),
     loadingElements: new Map(),
     errorElements: new Map(),
-    retryAttempts: new Map()
+    retryAttempts: new Map(),
 };
 
 /**
@@ -58,12 +66,14 @@ const loadingState = {
 export function initializeLoadingStates(config = {}) {
     Object.assign(LOADING_CONFIG, config);
 
-
-
-    logWithFallback('info', 'Context loading states initialized (full-screen overlays disabled)', {
-        config: LOADING_CONFIG,
-        note: 'Full-screen loading overlays disabled - modal-only processing UI'
-    });
+    logWithFallback(
+        'info',
+        'Context loading states initialized (full-screen overlays disabled)',
+        {
+            config: LOADING_CONFIG,
+            note: 'Full-screen loading overlays disabled - modal-only processing UI',
+        }
+    );
 }
 
 /**
@@ -73,13 +83,13 @@ export function initializeLoadingStates(config = {}) {
 function handleAnalysisStart(event) {
     const { selection } = event.detail;
     const requestId = generateRequestId(selection);
-    
+
     // Start loading state
     startLoading(requestId, selection);
-    
+
     logWithFallback('debug', 'Context analysis started', {
         requestId,
-        text: selection.text
+        text: selection.text,
     });
 }
 
@@ -90,13 +100,13 @@ function handleAnalysisStart(event) {
 function handleAnalysisSuccess(event) {
     const { contextResult } = event.detail;
     const requestId = generateRequestId({ text: contextResult.originalText });
-    
+
     // Stop loading state
     stopLoading(requestId, true);
-    
+
     logWithFallback('debug', 'Context analysis succeeded', {
         requestId,
-        contextType: contextResult.contextType
+        contextType: contextResult.contextType,
     });
 }
 
@@ -106,15 +116,17 @@ function handleAnalysisSuccess(event) {
  */
 function handleAnalysisError(event) {
     const { error, metadata } = event.detail;
-    const requestId = generateRequestId({ text: metadata?.selectedText || 'unknown' });
-    
+    const requestId = generateRequestId({
+        text: metadata?.selectedText || 'unknown',
+    });
+
     // Stop loading and show error
     stopLoading(requestId, false);
     showError(requestId, error, metadata);
-    
+
     logWithFallback('warn', 'Context analysis failed', {
         requestId,
-        error
+        error,
     });
 }
 
@@ -126,27 +138,27 @@ function handleAnalysisError(event) {
 function startLoading(requestId, selection) {
     // Clear any existing error state
     clearError(requestId);
-    
+
     // Set up loading timeout
     const loadingTimeout = setTimeout(() => {
         showLoadingIndicator(requestId, selection);
     }, LOADING_CONFIG.showLoadingAfter);
-    
+
     // Set up request timeout
     const requestTimeout = setTimeout(() => {
         handleRequestTimeout(requestId, selection);
     }, LOADING_CONFIG.hideLoadingAfter);
-    
+
     loadingState.activeRequests.set(requestId, {
         selection,
         loadingTimeout,
         requestTimeout,
-        startTime: Date.now()
+        startTime: Date.now(),
     });
-    
+
     logWithFallback('debug', 'Loading state started', {
         requestId,
-        text: selection.text
+        text: selection.text,
     });
 }
 
@@ -157,28 +169,28 @@ function startLoading(requestId, selection) {
  */
 function stopLoading(requestId, success) {
     const request = loadingState.activeRequests.get(requestId);
-    
+
     if (request) {
         // Clear timeouts
         clearTimeout(request.loadingTimeout);
         clearTimeout(request.requestTimeout);
-        
+
         // Remove from active requests
         loadingState.activeRequests.delete(requestId);
-        
+
         // Hide loading indicator
         hideLoadingIndicator(requestId);
-        
+
         // Clear retry attempts on success
         if (success) {
             loadingState.retryAttempts.delete(requestId);
         }
-        
+
         const duration = Date.now() - request.startTime;
         logWithFallback('debug', 'Loading state stopped', {
             requestId,
             success,
-            duration
+            duration,
         });
     }
 }
@@ -191,16 +203,16 @@ function stopLoading(requestId, success) {
 function showLoadingIndicator(requestId, selection) {
     // Create loading element
     const loadingElement = createLoadingElement(requestId, selection);
-    
+
     if (loadingElement) {
         document.body.appendChild(loadingElement);
         loadingState.loadingElements.set(requestId, loadingElement);
-        
+
         // Animate in
         requestAnimationFrame(() => {
             loadingElement.classList.add('dualsub-loading--visible');
         });
-        
+
         logWithFallback('debug', 'Loading indicator shown', { requestId });
     }
 }
@@ -211,17 +223,17 @@ function showLoadingIndicator(requestId, selection) {
  */
 function hideLoadingIndicator(requestId) {
     const loadingElement = loadingState.loadingElements.get(requestId);
-    
+
     if (loadingElement) {
         loadingElement.classList.remove('dualsub-loading--visible');
-        
+
         setTimeout(() => {
             if (loadingElement.parentNode) {
                 loadingElement.parentNode.removeChild(loadingElement);
             }
             loadingState.loadingElements.delete(requestId);
         }, LOADING_CONFIG.animationDuration);
-        
+
         logWithFallback('debug', 'Loading indicator hidden', { requestId });
     }
 }
@@ -235,24 +247,24 @@ function hideLoadingIndicator(requestId) {
 function showError(requestId, error, metadata = {}) {
     // Clear any existing error
     clearError(requestId);
-    
+
     // Create error element
     const errorElement = createErrorElement(requestId, error, metadata);
-    
+
     if (errorElement) {
         document.body.appendChild(errorElement);
         loadingState.errorElements.set(requestId, errorElement);
-        
+
         // Animate in
         requestAnimationFrame(() => {
             errorElement.classList.add('dualsub-error--visible');
         });
-        
+
         // Auto-hide after delay
         setTimeout(() => {
             hideError(requestId);
         }, 5000);
-        
+
         logWithFallback('debug', 'Error state shown', { requestId, error });
     }
 }
@@ -263,17 +275,17 @@ function showError(requestId, error, metadata = {}) {
  */
 function hideError(requestId) {
     const errorElement = loadingState.errorElements.get(requestId);
-    
+
     if (errorElement) {
         errorElement.classList.remove('dualsub-error--visible');
-        
+
         setTimeout(() => {
             if (errorElement.parentNode) {
                 errorElement.parentNode.removeChild(errorElement);
             }
             loadingState.errorElements.delete(requestId);
         }, LOADING_CONFIG.animationDuration);
-        
+
         logWithFallback('debug', 'Error state hidden', { requestId });
     }
 }
@@ -293,36 +305,35 @@ function clearError(requestId) {
  */
 function handleRequestTimeout(requestId, selection) {
     const retryCount = loadingState.retryAttempts.get(requestId) || 0;
-    
+
     if (retryCount < LOADING_CONFIG.maxRetries) {
         // Attempt retry
         loadingState.retryAttempts.set(requestId, retryCount + 1);
-        
+
         logWithFallback('info', 'Retrying context analysis', {
             requestId,
             attempt: retryCount + 1,
-            maxRetries: LOADING_CONFIG.maxRetries
+            maxRetries: LOADING_CONFIG.maxRetries,
         });
-        
+
         // Stop current loading
         stopLoading(requestId, false);
-        
+
         // Retry after delay
         setTimeout(() => {
             retryAnalysis(selection);
         }, LOADING_CONFIG.retryDelay);
-        
     } else {
         // Max retries reached
         stopLoading(requestId, false);
         showError(requestId, 'Request timed out. Please try again.', {
             selectedText: selection.text,
-            retryCount
+            retryCount,
         });
-        
+
         logWithFallback('warn', 'Context analysis timeout after retries', {
             requestId,
-            retryCount
+            retryCount,
         });
     }
 }
@@ -333,9 +344,11 @@ function handleRequestTimeout(requestId, selection) {
  */
 function retryAnalysis(selection) {
     // Dispatch retry event
-    document.dispatchEvent(new CustomEvent('dualsub-analyze-selection', {
-        detail: { selection }
-    }));
+    document.dispatchEvent(
+        new CustomEvent('dualsub-analyze-selection', {
+            detail: { selection },
+        })
+    );
 }
 
 /**
@@ -349,7 +362,7 @@ function createLoadingElement(requestId, selection) {
     element.className = 'dualsub-loading';
     element.id = `dualsub-loading-${requestId}`;
     element.style.cssText = getLoadingStyles();
-    
+
     element.innerHTML = `
         <div class="dualsub-loading__backdrop"></div>
         <div class="dualsub-loading__content">
@@ -360,7 +373,7 @@ function createLoadingElement(requestId, selection) {
             </div>
         </div>
     `;
-    
+
     return element;
 }
 
@@ -376,10 +389,10 @@ function createErrorElement(requestId, error, metadata) {
     element.className = 'dualsub-error';
     element.id = `dualsub-error-${requestId}`;
     element.style.cssText = getErrorStyles();
-    
+
     const retryCount = loadingState.retryAttempts.get(requestId) || 0;
     const canRetry = retryCount < LOADING_CONFIG.maxRetries;
-    
+
     element.innerHTML = `
         <div class="dualsub-error__content">
             <div class="dualsub-error__icon">⚠️</div>
@@ -391,11 +404,11 @@ function createErrorElement(requestId, error, metadata) {
             <button class="dualsub-error__close" aria-label="Close">×</button>
         </div>
     `;
-    
+
     // Add event listeners
     const closeButton = element.querySelector('.dualsub-error__close');
     closeButton.addEventListener('click', () => hideError(requestId));
-    
+
     if (canRetry) {
         const retryButton = element.querySelector('.dualsub-error__retry');
         retryButton.addEventListener('click', () => {
@@ -405,7 +418,7 @@ function createErrorElement(requestId, error, metadata) {
             }
         });
     }
-    
+
     return element;
 }
 
@@ -608,7 +621,7 @@ export function getLoadingState() {
         activeRequests: loadingState.activeRequests.size,
         loadingElements: loadingState.loadingElements.size,
         errorElements: loadingState.errorElements.size,
-        retryAttempts: Object.fromEntries(loadingState.retryAttempts)
+        retryAttempts: Object.fromEntries(loadingState.retryAttempts),
     };
 }
 
@@ -620,14 +633,14 @@ export function clearAllStates() {
     for (const [requestId] of loadingState.activeRequests) {
         stopLoading(requestId, false);
     }
-    
+
     // Clear all error states
     for (const [requestId] of loadingState.errorElements) {
         hideError(requestId);
     }
-    
+
     // Clear retry attempts
     loadingState.retryAttempts.clear();
-    
+
     logWithFallback('info', 'All loading and error states cleared');
 }

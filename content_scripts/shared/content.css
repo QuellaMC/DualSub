@@ -78,7 +78,8 @@
 }
 
 @keyframes dualsub-pulse {
-    0%, 100% {
+    0%,
+    100% {
         opacity: 1;
     }
     50% {
@@ -114,7 +115,7 @@
  * Accessibility improvements for interactive elements
  */
 
-.dualsub-interactive-word[aria-pressed="true"] {
+.dualsub-interactive-word[aria-pressed='true'] {
     background-color: rgba(255, 255, 255, 0.3);
     box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.6);
 }

@@ -1,9 +1,9 @@
 /**
  * AI Context Modal - Unified Modal Component
- * 
- * Modular modal implementation maintaining identical visual styling and functionality 
+ *
+ * Modular modal implementation maintaining identical visual styling and functionality
  * to legacy contextAnalysisModal.js with improved maintainability through separation of concerns.
- * 
+ *
  * @author DualSub Extension - UI Systems Engineer
  * @version 2.0.0
  */
@@ -19,7 +19,7 @@ import { AIContextModalAnimations } from './modal-animations.js';
  *
  * Modular implementation maintaining identical functionality to legacy modal:
  * - Core: State management and lifecycle
- * - UI: DOM creation and visual updates  
+ * - UI: DOM creation and visual updates
  * - Events: User interactions and external events
  * - Animations: Show/hide transitions and visual effects
  *
@@ -50,25 +50,29 @@ export class AIContextModal {
      */
     async initialize() {
         this.core._log('info', 'Initializing AI Context Modal');
-        
+
         // Initialize core
         await this.core.initialize();
-        
+
         // Initialize UI module (Issue #2: Fixed internationalization race condition)
         this.ui = new AIContextModalUI(this.core);
         await this.ui.initialize(); // Initialize language first
         await this.ui.createModalElement();
-        
+
         // Initialize animations module first
         this.animations = new AIContextModalAnimations(this.core, this.ui);
 
         // Initialize events module with animations reference
-        this.events = new AIContextModalEvents(this.core, this.ui, this.animations);
+        this.events = new AIContextModalEvents(
+            this.core,
+            this.ui,
+            this.animations
+        );
         await this.events.setupEventListeners();
 
         // Ensure events module has animations reference (backup)
         this.events.setAnimations(this.animations);
-        
+
         // Setup event coordination between modules
         this._setupModuleCoordination();
 
@@ -100,7 +104,10 @@ export class AIContextModal {
                 this.showSelectionMode();
             }
         };
-        document.addEventListener('aicontext:modal:showRequested', showRequestHandler);
+        document.addEventListener(
+            'aicontext:modal:showRequested',
+            showRequestHandler
+        );
         this.coordinationHandlers.set('show-request', showRequestHandler);
 
         // Listen for modal close requests from events module
@@ -108,7 +115,10 @@ export class AIContextModal {
             this.core._log('debug', 'Modal close requested');
             this.hide();
         };
-        document.addEventListener('aicontext:modal:closeRequested', closeRequestHandler);
+        document.addEventListener(
+            'aicontext:modal:closeRequested',
+            closeRequestHandler
+        );
         this.coordinationHandlers.set('close-request', closeRequestHandler);
 
         this.core._log('debug', 'Module coordination setup complete');
@@ -157,7 +167,10 @@ export class AIContextModal {
      * @returns {boolean} Success status
      */
     showAnalysisResult(analysisResult, metadata = {}) {
-        this.core._log('info', 'Showing analysis result', { analysisResult, metadata });
+        this.core._log('info', 'Showing analysis result', {
+            analysisResult,
+            metadata,
+        });
 
         if (!this.core.element) {
             this.core._log('error', 'Modal not initialized');
@@ -348,7 +361,9 @@ export class AIContextModal {
         if (this.core.element) {
             this.core.element.style.display = 'none';
             this.core.element.style.pointerEvents = 'none';
-            this.core.element.classList.remove('dualsub-context-modal--visible');
+            this.core.element.classList.remove(
+                'dualsub-context-modal--visible'
+            );
         }
 
         // Ensure overlay is hidden
@@ -371,7 +386,7 @@ export class AIContextModal {
             overlayHidden: this.core.overlayElement?.style.display === 'none',
             contentHidden: this.core.contentElement?.style.display === 'none',
             coreVisible: this.core.isVisible,
-            coreState: this.core.state
+            coreState: this.core.state,
         });
     }
 
@@ -386,10 +401,16 @@ export class AIContextModal {
 
         // Cleanup coordination event listeners
         if (this.coordinationHandlers.has('show-request')) {
-            document.removeEventListener('aicontext:modal:showRequested', this.coordinationHandlers.get('show-request'));
+            document.removeEventListener(
+                'aicontext:modal:showRequested',
+                this.coordinationHandlers.get('show-request')
+            );
         }
         if (this.coordinationHandlers.has('close-request')) {
-            document.removeEventListener('aicontext:modal:closeRequested', this.coordinationHandlers.get('close-request'));
+            document.removeEventListener(
+                'aicontext:modal:closeRequested',
+                this.coordinationHandlers.get('close-request')
+            );
         }
         this.coordinationHandlers.clear();
 

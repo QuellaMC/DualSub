@@ -106,7 +106,11 @@ export const configSchema = {
     },
     subtitleFontSize: { defaultValue: 1.1, type: Number, scope: 'sync' },
     subtitleGap: { defaultValue: 0.3, type: Number, scope: 'sync' },
-    subtitleVerticalPosition: { defaultValue: 2.8, type: Number, scope: 'sync' },
+    subtitleVerticalPosition: {
+        defaultValue: 2.8,
+        type: Number,
+        scope: 'sync',
+    },
 
     // --- UI State Settings (local storage for better performance) ---
     appearanceAccordionOpen: {
@@ -126,19 +130,25 @@ export const configSchema = {
     aiContextTypes: {
         defaultValue: ['cultural', 'historical', 'linguistic'],
         type: Array,
-        scope: 'sync'
+        scope: 'sync',
     },
-
-
 
     // OpenAI Context API Settings
     openaiApiKey: { defaultValue: '', type: String, scope: 'sync' },
-    openaiBaseUrl: { defaultValue: 'https://api.openai.com', type: String, scope: 'sync' },
+    openaiBaseUrl: {
+        defaultValue: 'https://api.openai.com',
+        type: String,
+        scope: 'sync',
+    },
     openaiModel: { defaultValue: 'gpt-4.1-mini', type: String, scope: 'sync' },
 
     // Google Gemini Context API Settings
     geminiApiKey: { defaultValue: '', type: String, scope: 'sync' },
-    geminiModel: { defaultValue: 'gemini-1.5-flash', type: String, scope: 'sync' },
+    geminiModel: {
+        defaultValue: 'gemini-1.5-flash',
+        type: String,
+        scope: 'sync',
+    },
 
     // Context analysis settings
     aiContextTimeout: { defaultValue: 30000, type: Number, scope: 'sync' }, // 30 seconds
@@ -149,15 +159,21 @@ export const configSchema = {
     // Rate limiting settings
     aiContextRateLimit: { defaultValue: 60, type: Number, scope: 'sync' }, // requests per minute
     aiContextBurstLimit: { defaultValue: 10, type: Number, scope: 'sync' }, // burst protection
-    aiContextMandatoryDelay: { defaultValue: 1000, type: Number, scope: 'sync' }, // ms between requests
+    aiContextMandatoryDelay: {
+        defaultValue: 1000,
+        type: Number,
+        scope: 'sync',
+    }, // ms between requests
 
     // UI preferences
-    contextModalPosition: { defaultValue: 'center', type: String, scope: 'sync' }, // center, top, bottom
+    contextModalPosition: {
+        defaultValue: 'center',
+        type: String,
+        scope: 'sync',
+    }, // center, top, bottom
     contextModalSize: { defaultValue: 'medium', type: String, scope: 'sync' }, // small, medium, large
     contextAutoClose: { defaultValue: false, type: Boolean, scope: 'sync' },
     contextAutoCloseDelay: { defaultValue: 10000, type: Number, scope: 'sync' }, // 10 seconds
-
-
 
     // Advanced settings
     aiContextRetryAttempts: { defaultValue: 3, type: Number, scope: 'sync' },

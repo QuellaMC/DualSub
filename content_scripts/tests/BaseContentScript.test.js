@@ -536,7 +536,7 @@ describe('BaseContentScript', () => {
             if (!global.chrome.storage) {
                 global.chrome.storage = {
                     sync: { get: jest.fn(), set: jest.fn() },
-                    local: { get: jest.fn(), set: jest.fn() }
+                    local: { get: jest.fn(), set: jest.fn() },
                 };
             }
 
@@ -1134,7 +1134,8 @@ describe('BaseContentScript', () => {
             const buffer = new EventBuffer(console.log, 5, 1000);
 
             // Add events and test memory management
-            for (let i = 0; i < 3; i++) { // Reduced from 10 to 3 for speed
+            for (let i = 0; i < 3; i++) {
+                // Reduced from 10 to 3 for speed
                 buffer.add({
                     type: 'test',
                     data: i,
@@ -1396,7 +1397,8 @@ describe('BaseContentScript', () => {
 
         test('should handle event buffer overflow', () => {
             // Fill event buffer beyond capacity
-            for (let i = 0; i < 50; i++) { // Reduced from 1000 to 50 for speed
+            for (let i = 0; i < 50; i++) {
+                // Reduced from 1000 to 50 for speed
                 contentScript.handleEarlyInjectorEvents({
                     detail: {
                         type: 'TEST_EVENT',

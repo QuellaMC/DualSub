@@ -58,17 +58,37 @@ async function initializeServices() {
         backgroundLogger.info('Message handler initialized');
 
         // Register services in service registry
-        serviceRegistry.register('translation', translationProviders, ['config', 'logging']);
-        serviceRegistry.register('subtitle', subtitleService, ['translation', 'logging']);
-        serviceRegistry.register('batchQueue', batchTranslationQueue, ['translation', 'config']);
-        serviceRegistry.register('aiContext', aiContextService, ['config', 'logging']);
+        serviceRegistry.register('translation', translationProviders, [
+            'config',
+            'logging',
+        ]);
+        serviceRegistry.register('subtitle', subtitleService, [
+            'translation',
+            'logging',
+        ]);
+        serviceRegistry.register('batchQueue', batchTranslationQueue, [
+            'translation',
+            'config',
+        ]);
+        serviceRegistry.register('aiContext', aiContextService, [
+            'config',
+            'logging',
+        ]);
         serviceRegistry.register('logging', loggingManager, ['config']);
         serviceRegistry.register('config', configService, []);
-        serviceRegistry.register('messageHandler', messageHandler, ['translation', 'subtitle', 'aiContext']);
+        serviceRegistry.register('messageHandler', messageHandler, [
+            'translation',
+            'subtitle',
+            'aiContext',
+        ]);
         backgroundLogger.info('Services registered in service registry');
 
         // Inject services into message handler
-        messageHandler.setServices(translationProviders, subtitleService, aiContextService);
+        messageHandler.setServices(
+            translationProviders,
+            subtitleService,
+            aiContextService
+        );
         backgroundLogger.info('Services injected into message handler');
 
         // Initialize default settings using the configuration service

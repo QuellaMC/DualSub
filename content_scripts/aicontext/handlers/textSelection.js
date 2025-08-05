@@ -1,9 +1,9 @@
 /**
  * Text Selection Handler - Modular Text Selection Management
- * 
+ *
  * Isolated text selection handling with event delegation and smart boundary detection.
  * Replaces and enhances the functionality from textSelectionHandler.js.
- * 
+ *
  * @author DualSub Extension - Platform Integration Specialist
  * @version 2.0.0
  */
@@ -23,7 +23,7 @@ export class TextSelectionHandler {
             debounceDelay: 150,
             contextRadius: 50,
             autoAnalysis: true, // Enable automatic text selection analysis
-            ...config
+            ...config,
         };
 
         this.initialized = false;
@@ -35,7 +35,7 @@ export class TextSelectionHandler {
             isSelecting: false,
             selectionStart: 0,
             selectionEnd: 0,
-            lastSelection: null
+            lastSelection: null,
         };
 
         this.eventHandlers = new Map();
@@ -47,7 +47,7 @@ export class TextSelectionHandler {
             '.dss-subtitle-renderer', // Disney+
             '[data-testid="subtitle"]',
             '.subtitle',
-            '.caption'
+            '.caption',
         ];
 
         // Bind methods
@@ -66,7 +66,9 @@ export class TextSelectionHandler {
      */
     async initialize(platform) {
         try {
-            this._log('info', 'Initializing Text Selection Handler', { platform });
+            this._log('info', 'Initializing Text Selection Handler', {
+                platform,
+            });
 
             // Get platform-specific selectors
             this.platformSelectors = this._getPlatformSelectors(platform);
@@ -78,15 +80,22 @@ export class TextSelectionHandler {
             this._setupWordInteractionListeners();
 
             this.initialized = true;
-            this._log('info', 'Text Selection Handler initialized successfully', {
-                platform,
-                autoAnalysis: this.config.autoAnalysis,
-                selectors: this.platformSelectors
-            });
+            this._log(
+                'info',
+                'Text Selection Handler initialized successfully',
+                {
+                    platform,
+                    autoAnalysis: this.config.autoAnalysis,
+                    selectors: this.platformSelectors,
+                }
+            );
             return true;
-
         } catch (error) {
-            this._log('error', 'Failed to initialize text selection handler', error);
+            this._log(
+                'error',
+                'Failed to initialize text selection handler',
+                error
+            );
             return false;
         }
     }
@@ -142,16 +151,16 @@ export class TextSelectionHandler {
         this._log('debug', 'Word clicked', { word, position });
 
         // Dispatch word selection event
-        document.dispatchEvent(new CustomEvent('dualsub-word-selected', {
-            detail: {
-                word,
-                position,
-                action: 'toggle',
-                element: target
-            }
-        }));
-
-
+        document.dispatchEvent(
+            new CustomEvent('dualsub-word-selected', {
+                detail: {
+                    word,
+                    position,
+                    action: 'toggle',
+                    element: target,
+                },
+            })
+        );
     }
 
     /**
@@ -202,8 +211,8 @@ export class TextSelectionHandler {
                 timestamp: Date.now(),
                 platform: metadata.platform,
                 language: metadata.language,
-                ...metadata
-            }
+                ...metadata,
+            },
         };
 
         this.currentSelection = enhancedSelection;
@@ -211,7 +220,7 @@ export class TextSelectionHandler {
 
         this._log('info', 'Selection processed', {
             text: enhancedSelection.text,
-            hasMetadata: !!enhancedSelection.metadata
+            hasMetadata: !!enhancedSelection.metadata,
         });
 
         return enhancedSelection;
@@ -223,33 +232,37 @@ export class TextSelectionHandler {
     async destroy() {
         try {
             this._log('info', 'Destroying Text Selection Handler');
-            
+
             // Remove event listeners
             this.eventHandlers.forEach((handler, event) => {
                 document.removeEventListener(event, handler);
             });
             this.eventHandlers.clear();
-            
+
             // Clear timers
             if (this.debounceTimer) {
                 clearTimeout(this.debounceTimer);
             }
-            
+
             // Reset state
             this.initialized = false;
             this.currentSelection = null;
-            
+
             this._log('info', 'Text Selection Handler destroyed');
-            
         } catch (error) {
-            this._log('error', 'Error destroying text selection handler', error);
+            this._log(
+                'error',
+                'Error destroying text selection handler',
+                error
+            );
         }
     }
 
     // Private methods
-    
+
     _getPlatformSelectors(platform) {
-        const platformConfig = AI_CONTEXT_CONFIG.PLATFORMS[platform.toUpperCase()];
+        const platformConfig =
+            AI_CONTEXT_CONFIG.PLATFORMS[platform.toUpperCase()];
         return platformConfig ? platformConfig.selectors : null;
     }
 
@@ -260,15 +273,24 @@ export class TextSelectionHandler {
         if (this.config.autoAnalysis) {
             document.addEventListener('mouseup', this._handleMouseUp);
             document.addEventListener('keyup', this._handleKeyUp);
-            document.addEventListener('selectionchange', this._handleSelectionChange);
+            document.addEventListener(
+                'selectionchange',
+                this._handleSelectionChange
+            );
 
             this.eventHandlers.set('mouseup', this._handleMouseUp);
             this.eventHandlers.set('keyup', this._handleKeyUp);
-            this.eventHandlers.set('selectionchange', this._handleSelectionChange);
+            this.eventHandlers.set(
+                'selectionchange',
+                this._handleSelectionChange
+            );
 
             this._log('debug', 'Automatic selection listeners enabled');
         } else {
-            this._log('debug', 'Automatic selection listeners disabled (modal-only workflow)');
+            this._log(
+                'debug',
+                'Automatic selection listeners disabled (modal-only workflow)'
+            );
         }
     }
 
@@ -281,8 +303,14 @@ export class TextSelectionHandler {
         const wordInteractionListener = (event) => {
             this._setWordInteractionsEnabled(event.detail.enabled);
         };
-        document.addEventListener('dualsub-word-interactions-enabled', wordInteractionListener);
-        this.eventHandlers.set('dualsub-word-interactions-enabled', wordInteractionListener);
+        document.addEventListener(
+            'dualsub-word-interactions-enabled',
+            wordInteractionListener
+        );
+        this.eventHandlers.set(
+            'dualsub-word-interactions-enabled',
+            wordInteractionListener
+        );
     }
 
     // Event handlers
@@ -303,9 +331,13 @@ export class TextSelectionHandler {
 
     _handleKeyUp(event) {
         // Handle keyboard-based text selection
-        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight' ||
-            event.key === 'Shift' || event.ctrlKey || event.metaKey) {
-
+        if (
+            event.key === 'ArrowLeft' ||
+            event.key === 'ArrowRight' ||
+            event.key === 'Shift' ||
+            event.ctrlKey ||
+            event.metaKey
+        ) {
             setTimeout(() => {
                 const selection = window.getSelection();
                 if (selection && selection.toString().trim()) {
@@ -342,12 +374,14 @@ export class TextSelectionHandler {
         const selectedText = selection.toString().trim();
 
         // Validate selection length
-        if (selectedText.length < this.config.minSelectionLength ||
-            selectedText.length > this.config.maxSelectionLength) {
+        if (
+            selectedText.length < this.config.minSelectionLength ||
+            selectedText.length > this.config.maxSelectionLength
+        ) {
             this._log('debug', 'Selection length out of bounds', {
                 length: selectedText.length,
                 min: this.config.minSelectionLength,
-                max: this.config.maxSelectionLength
+                max: this.config.maxSelectionLength,
             });
             return;
         }
@@ -362,7 +396,7 @@ export class TextSelectionHandler {
             this._log('info', 'Text selection processed', {
                 selectedText: enhancedSelection.text,
                 hasContext: !!enhancedSelection.context,
-                source: event.type
+                source: event.type,
             });
 
             // Trigger context analysis
@@ -392,9 +426,8 @@ export class TextSelectionHandler {
                 context,
                 metadata,
                 range,
-                timestamp: Date.now()
+                timestamp: Date.now(),
             };
-
         } catch (error) {
             this._log('error', 'Failed to enhance selection', error);
             return null;
@@ -409,27 +442,36 @@ export class TextSelectionHandler {
         const startOffset = textContent.indexOf(selectedText);
         const endOffset = startOffset + selectedText.length;
 
-        const contextStart = Math.max(0, startOffset - this.config.contextRadius);
-        const contextEnd = Math.min(textContent.length, endOffset + this.config.contextRadius);
+        const contextStart = Math.max(
+            0,
+            startOffset - this.config.contextRadius
+        );
+        const contextEnd = Math.min(
+            textContent.length,
+            endOffset + this.config.contextRadius
+        );
 
         return {
             before: textContent.substring(contextStart, startOffset),
             selected: selectedText,
             after: textContent.substring(endOffset, contextEnd),
-            full: textContent.substring(contextStart, contextEnd)
+            full: textContent.substring(contextStart, contextEnd),
         };
     }
 
     _extractSelectionMetadata(range) {
         const container = range.commonAncestorContainer;
-        const element = container.nodeType === Node.TEXT_NODE ? container.parentElement : container;
+        const element =
+            container.nodeType === Node.TEXT_NODE
+                ? container.parentElement
+                : container;
 
         return {
             platform: this._detectPlatform(element),
             language: this._detectLanguage(element),
             subtitleType: this._detectSubtitleType(element),
             elementClasses: element.className,
-            elementId: element.id
+            elementId: element.id,
         };
     }
 
@@ -452,7 +494,10 @@ export class TextSelectionHandler {
             start--;
         }
 
-        while (end < fullContext.length && !this._isWordBoundary(fullContext[end])) {
+        while (
+            end < fullContext.length &&
+            !this._isWordBoundary(fullContext[end])
+        ) {
             end++;
         }
 
@@ -473,7 +518,7 @@ export class TextSelectionHandler {
         this._log('debug', 'Selection boundaries optimized', {
             original: selectedText,
             optimized: optimizedText,
-            expanded: optimizedText !== selectedText
+            expanded: optimizedText !== selectedText,
         });
 
         return optimizedText;
@@ -515,22 +560,25 @@ export class TextSelectionHandler {
 
     _detectSubtitleType(element) {
         if (element.classList.contains('dualsub-original')) return 'original';
-        if (element.classList.contains('dualsub-translated')) return 'translated';
+        if (element.classList.contains('dualsub-translated'))
+            return 'translated';
         return 'unknown';
     }
 
     _requestContextForSelection(selection, event) {
         // Dispatch custom event for context analysis
-        document.dispatchEvent(new CustomEvent('dualsub-analyze-selection', {
-            detail: {
-                selection,
-                event: {
-                    type: event.type,
-                    clientX: event.clientX,
-                    clientY: event.clientY
-                }
-            }
-        }));
+        document.dispatchEvent(
+            new CustomEvent('dualsub-analyze-selection', {
+                detail: {
+                    selection,
+                    event: {
+                        type: event.type,
+                        clientX: event.clientX,
+                        clientY: event.clientY,
+                    },
+                },
+            })
+        );
     }
 
     _updateSelectionState(selection) {
@@ -549,21 +597,26 @@ export class TextSelectionHandler {
 
     _isSelectionInSubtitles(range) {
         const container = range.commonAncestorContainer;
-        const element = container.nodeType === Node.TEXT_NODE ? container.parentElement : container;
+        const element =
+            container.nodeType === Node.TEXT_NODE
+                ? container.parentElement
+                : container;
 
-        return this.subtitleSelectors.some(selector => {
+        return this.subtitleSelectors.some((selector) => {
             return element.closest(selector) !== null;
         });
     }
 
     _isSubtitleElement(element) {
-        return this.subtitleSelectors.some(selector => {
+        return this.subtitleSelectors.some((selector) => {
             return element.closest(selector) !== null;
         });
     }
 
     _setWordInteractionsEnabled(enabled) {
-        this._log('debug', 'Word interactions enabled state changed', { enabled });
+        this._log('debug', 'Word interactions enabled state changed', {
+            enabled,
+        });
         // This could be used to enable/disable word click handling
     }
 
@@ -573,7 +626,7 @@ export class TextSelectionHandler {
             initialized: this.initialized,
             hasSelection: !!this.currentSelection,
             timestamp: new Date().toISOString(),
-            ...data
+            ...data,
         };
 
         console[level](`[AIContext:TextSelection] ${message}`, logData);

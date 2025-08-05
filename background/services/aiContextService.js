@@ -1,9 +1,9 @@
 /**
  * AI Context Service
- * 
+ *
  * Manages AI-powered cultural, historical, and linguistic context analysis
  * for subtitle text. Follows the same architectural patterns as the translation service.
- * 
+ *
  * @author DualSub Extension
  * @version 1.0.0
  */
@@ -11,12 +11,12 @@
 import {
     analyzeContext as openaiAnalyzeContext,
     getAvailableModels as getOpenAIModels,
-    getDefaultModel as getOpenAIDefaultModel
+    getDefaultModel as getOpenAIDefaultModel,
 } from '../../context_providers/openaiContextProvider.js';
 import {
     analyzeContext as geminiAnalyzeContext,
     getAvailableModels as getGeminiModels,
-    getDefaultModel as getGeminiDefaultModel
+    getDefaultModel as getGeminiDefaultModel,
 } from '../../context_providers/geminiContextProvider.js';
 import { configService } from '../../services/configService.js';
 import { loggingManager } from '../utils/loggingManager.js';
@@ -38,10 +38,10 @@ class AIContextService {
                     type: 'requests_per_minute',
                     requests: 60,
                     window: 60000, // 1 minute
-                    mandatoryDelay: 1000 // 1 second between requests
+                    mandatoryDelay: 1000, // 1 second between requests
                 },
                 category: 'api_key',
-                contextTypes: ['cultural', 'historical', 'linguistic', 'all']
+                contextTypes: ['cultural', 'historical', 'linguistic', 'all'],
             },
             gemini: {
                 name: 'Google Gemini (API Key Required)',
@@ -53,17 +53,17 @@ class AIContextService {
                     type: 'requests_per_minute',
                     requests: 60,
                     window: 60000, // 1 minute
-                    mandatoryDelay: 1000 // 1 second between requests
+                    mandatoryDelay: 1000, // 1 second between requests
                 },
                 category: 'api_key',
-                contextTypes: ['cultural', 'historical', 'linguistic', 'all']
-            }
+                contextTypes: ['cultural', 'historical', 'linguistic', 'all'],
+            },
         };
 
         this.cache = new ContextCache({
             maxSize: 200,
             defaultTTL: 3600000, // 1 hour
-            cleanupInterval: 300000 // 5 minutes
+            cleanupInterval: 300000, // 5 minutes
         });
         this.rateLimiterManager = new ContextRateLimiterManager();
         this.isInitialized = false;
@@ -77,8 +77,13 @@ class AIContextService {
         try {
             this.logger = loggingManager.createLogger('AIContextService');
 
-            for (const [providerId, provider] of Object.entries(this.providers)) {
-                this.rateLimiterManager.getLimiter(providerId, provider.rateLimit);
+            for (const [providerId, provider] of Object.entries(
+                this.providers
+            )) {
+                this.rateLimiterManager.getLimiter(
+                    providerId,
+                    provider.rateLimit
+                );
             }
 
             // Load provider configuration from storage
@@ -88,21 +93,24 @@ class AIContextService {
             this.logger.debug('Loading AI Context provider configuration', {
                 defaultProvider: this.currentProviderId,
                 savedProvider,
-                availableProviders: Object.keys(this.providers)
+                availableProviders: Object.keys(this.providers),
             });
 
             if (savedProvider && this.providers[savedProvider]) {
                 this.currentProviderId = savedProvider;
                 this.logger.info('Using saved provider configuration', {
                     provider: this.currentProviderId,
-                    providerName: this.providers[this.currentProviderId].name
+                    providerName: this.providers[this.currentProviderId].name,
                 });
             } else if (savedProvider) {
-                this.logger.warn('Saved provider not available, using default', {
-                    savedProvider,
-                    defaultProvider: this.currentProviderId,
-                    availableProviders: Object.keys(this.providers)
-                });
+                this.logger.warn(
+                    'Saved provider not available, using default',
+                    {
+                        savedProvider,
+                        defaultProvider: this.currentProviderId,
+                        availableProviders: Object.keys(this.providers),
+                    }
+                );
             }
 
             // Set up configuration change listener
@@ -112,11 +120,13 @@ class AIContextService {
             this.logger.info('AI Context Service initialized successfully', {
                 currentProvider: this.currentProviderId,
                 providerName: this.providers[this.currentProviderId].name,
-                availableProviders: Object.keys(this.providers)
+                availableProviders: Object.keys(this.providers),
             });
-
         } catch (error) {
-            this.logger?.error('AI Context Service initialization failed', error);
+            this.logger?.error(
+                'AI Context Service initialization failed',
+                error
+            );
             throw error;
         }
     }
@@ -131,7 +141,7 @@ class AIContextService {
             name: provider.name,
             category: provider.category,
             contextTypes: provider.contextTypes,
-            supportsBatch: provider.supportsBatch
+            supportsBatch: provider.supportsBatch,
         }));
     }
 
@@ -142,10 +152,14 @@ class AIContextService {
      */
     async changeProvider(providerId) {
         if (!this.providers[providerId]) {
-            this.logger.error('Attempted to switch to unknown context provider', null, {
-                providerId,
-                availableProviders: Object.keys(this.providers)
-            });
+            this.logger.error(
+                'Attempted to switch to unknown context provider',
+                null,
+                {
+                    providerId,
+                    availableProviders: Object.keys(this.providers),
+                }
+            );
             throw new Error(`Unknown context provider: ${providerId}`);
         }
 
@@ -166,7 +180,7 @@ class AIContextService {
             success: true,
             message: `Context provider changed to ${providerName}`,
             previousProvider,
-            newProvider: providerId
+            newProvider: providerId,
         };
     }
 
@@ -182,17 +196,21 @@ class AIContextService {
             this.logger.debug('Reloading provider configuration', {
                 currentProvider: this.currentProviderId,
                 savedProvider,
-                availableProviders: Object.keys(this.providers)
+                availableProviders: Object.keys(this.providers),
             });
 
-            if (savedProvider && this.providers[savedProvider] && savedProvider !== this.currentProviderId) {
+            if (
+                savedProvider &&
+                this.providers[savedProvider] &&
+                savedProvider !== this.currentProviderId
+            ) {
                 const previousProvider = this.currentProviderId;
                 this.currentProviderId = savedProvider;
 
                 this.logger.info('Provider configuration reloaded', {
                     previousProvider,
                     newProvider: this.currentProviderId,
-                    providerName: this.providers[this.currentProviderId].name
+                    providerName: this.providers[this.currentProviderId].name,
                 });
             }
         } catch (error) {
@@ -214,13 +232,17 @@ class AIContextService {
         }
 
         try {
-            await this.rateLimiterManager.checkLimit(providerId, contextType, provider.rateLimit);
+            await this.rateLimiterManager.checkLimit(
+                providerId,
+                contextType,
+                provider.rateLimit
+            );
             return true;
         } catch (error) {
             this.logger.warn('Rate limit check failed', {
                 providerId,
                 contextType,
-                error: error.message
+                error: error.message,
             });
             throw error;
         }
@@ -234,7 +256,12 @@ class AIContextService {
      * @returns {string} Cache key
      */
     generateCacheKey(text, contextType, metadata = {}) {
-        return this.cache.generateKey(text, contextType, this.currentProviderId, metadata);
+        return this.cache.generateKey(
+            text,
+            contextType,
+            this.currentProviderId,
+            metadata
+        );
     }
 
     /**
@@ -254,14 +281,14 @@ class AIContextService {
             this.logger.warn('Invalid text provided for context analysis', {
                 text: text?.substring(0, 50),
                 type: typeof text,
-                contextType
+                contextType,
             });
             return {
                 success: false,
                 error: 'Invalid or empty text provided for analysis',
                 contextType,
                 originalText: text || '',
-                metadata
+                metadata,
             };
         }
 
@@ -273,16 +300,18 @@ class AIContextService {
             contextType,
             textLength: text.length,
             sourceLanguage: metadata.sourceLanguage,
-            targetLanguage: metadata.targetLanguage
+            targetLanguage: metadata.targetLanguage,
         });
 
         const cacheKey = this.generateCacheKey(text, contextType, metadata);
         const cachedResult = this.cache.get(cacheKey);
         if (cachedResult) {
-            this.logger.debug('Returning cached context analysis', { cacheKey });
+            this.logger.debug('Returning cached context analysis', {
+                cacheKey,
+            });
             return {
                 ...cachedResult,
-                cached: true
+                cached: true,
             };
         }
 
@@ -296,10 +325,14 @@ class AIContextService {
                 providerName: provider.name,
                 contextType,
                 textLength: text.length,
-                hasMetadata: Object.keys(metadata).length > 0
+                hasMetadata: Object.keys(metadata).length > 0,
             });
 
-            const result = await provider.analyzeContext(text, contextType, metadata);
+            const result = await provider.analyzeContext(
+                text,
+                contextType,
+                metadata
+            );
 
             this.logger.debug('Provider returned result', {
                 provider: this.currentProviderId,
@@ -311,7 +344,7 @@ class AIContextService {
                 hasLinguistic: !!result.linguistic,
                 analysisLength: result.analysis?.length || 0,
                 resultKeys: Object.keys(result),
-                contextType: result.contextType
+                contextType: result.contextType,
             });
 
             // Cache successful results
@@ -326,22 +359,27 @@ class AIContextService {
                 success: result.success,
                 contextType,
                 cached: false,
-                hasResult: !!(result.analysis || result.result || result.cultural || result.historical || result.linguistic)
+                hasResult: !!(
+                    result.analysis ||
+                    result.result ||
+                    result.cultural ||
+                    result.historical ||
+                    result.linguistic
+                ),
             });
 
             this.logger.debug('Returning result to caller', {
                 success: result.success,
                 resultType: typeof result,
-                resultKeys: Object.keys(result)
+                resultKeys: Object.keys(result),
             });
 
             return result;
-
         } catch (error) {
             this.logger.error('Context analysis failed', error, {
                 provider: this.currentProviderId,
                 contextType,
-                textLength: text?.length || 0
+                textLength: text?.length || 0,
             });
 
             return {
@@ -349,7 +387,7 @@ class AIContextService {
                 error: error.message,
                 contextType,
                 originalText: text,
-                metadata
+                metadata,
             };
         }
     }
@@ -372,7 +410,7 @@ class AIContextService {
             currentProvider: this.currentProviderId,
             cache: this.cache.getStatus(),
             rateLimiters: this.rateLimiterManager.getAllStatus(),
-            availableProviders: Object.keys(this.providers)
+            availableProviders: Object.keys(this.providers),
         };
     }
 
@@ -383,7 +421,7 @@ class AIContextService {
     getCurrentProvider() {
         return {
             id: this.currentProviderId,
-            ...this.providers[this.currentProviderId]
+            ...this.providers[this.currentProviderId],
         };
     }
 
@@ -397,7 +435,9 @@ class AIContextService {
         const provider = this.providers[targetProviderId];
 
         if (!provider || !provider.getAvailableModels) {
-            this.logger.warn('Provider does not support model enumeration', { providerId: targetProviderId });
+            this.logger.warn('Provider does not support model enumeration', {
+                providerId: targetProviderId,
+            });
             return [];
         }
 
@@ -405,11 +445,13 @@ class AIContextService {
             const models = provider.getAvailableModels();
             this.logger.debug('Retrieved available models', {
                 providerId: targetProviderId,
-                modelCount: models.length
+                modelCount: models.length,
             });
             return models;
         } catch (error) {
-            this.logger.error('Failed to get available models', error, { providerId: targetProviderId });
+            this.logger.error('Failed to get available models', error, {
+                providerId: targetProviderId,
+            });
             return [];
         }
     }
@@ -424,7 +466,9 @@ class AIContextService {
         const provider = this.providers[targetProviderId];
 
         if (!provider || !provider.getDefaultModel) {
-            this.logger.warn('Provider does not support default model', { providerId: targetProviderId });
+            this.logger.warn('Provider does not support default model', {
+                providerId: targetProviderId,
+            });
             return null;
         }
 
@@ -432,11 +476,13 @@ class AIContextService {
             const defaultModel = provider.getDefaultModel();
             this.logger.debug('Retrieved default model', {
                 providerId: targetProviderId,
-                defaultModel
+                defaultModel,
             });
             return defaultModel;
         } catch (error) {
-            this.logger.error('Failed to get default model', error, { providerId: targetProviderId });
+            this.logger.error('Failed to get default model', error, {
+                providerId: targetProviderId,
+            });
             return null;
         }
     }
@@ -447,25 +493,39 @@ class AIContextService {
      */
     _setupConfigurationListener() {
         // Listen for configuration changes
-        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.onChanged) {
+        if (
+            typeof chrome !== 'undefined' &&
+            chrome.storage &&
+            chrome.storage.onChanged
+        ) {
             chrome.storage.onChanged.addListener((changes, areaName) => {
                 if (changes.aiContextProvider && areaName === 'sync') {
                     const newProvider = changes.aiContextProvider.newValue;
                     const oldProvider = changes.aiContextProvider.oldValue;
 
-                    this.logger.debug('AI Context provider configuration changed', {
-                        oldProvider,
-                        newProvider,
-                        currentProvider: this.currentProviderId
-                    });
-
-                    if (newProvider && this.providers[newProvider] && newProvider !== this.currentProviderId) {
-                        this.currentProviderId = newProvider;
-                        this.logger.info('AI Context provider automatically updated from configuration change', {
+                    this.logger.debug(
+                        'AI Context provider configuration changed',
+                        {
                             oldProvider,
                             newProvider,
-                            providerName: this.providers[newProvider].name
-                        });
+                            currentProvider: this.currentProviderId,
+                        }
+                    );
+
+                    if (
+                        newProvider &&
+                        this.providers[newProvider] &&
+                        newProvider !== this.currentProviderId
+                    ) {
+                        this.currentProviderId = newProvider;
+                        this.logger.info(
+                            'AI Context provider automatically updated from configuration change',
+                            {
+                                oldProvider,
+                                newProvider,
+                                providerName: this.providers[newProvider].name,
+                            }
+                        );
                     }
                 }
             });
