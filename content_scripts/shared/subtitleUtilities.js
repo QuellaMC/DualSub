@@ -567,11 +567,25 @@ export function applySubtitleStyling(config) {
         logWithFallback('debug', 'Interactive CSS injected', {});
     }
 
+    // This calculation correctly handles the intended config range of 0.1 to 9.9.
+    const rawPosition = config.subtitleVerticalPosition || 2.8;
+
+    // Clamp the input to the expected 0.1 to 9.9 range for safety.
+    const verticalPosition = Math.max(0.1, Math.min(9.9, rawPosition));
+
+    // Normalize the 0.1-9.9 range to a 0.0-1.0 scale using the formula:
+    // (value - min) / (max - min)
+    const normalizedPosition = (verticalPosition - 0.1) / (9.9 - 0.1);
+
+    // Map the normalized 0.0-1.0 scale to the desired 5%-50% CSS 'bottom' range.
+    const bottomPercentage = 5 + (normalizedPosition * 45);
+
     Object.assign(subtitleContainer.style, {
         flexDirection: config.subtitleLayoutOrientation,
         width: '94%',
         justifyContent: 'center',
         alignItems: 'center',
+        bottom: `${bottomPercentage}%`,
     });
 
     while (subtitleContainer.firstChild) {
@@ -593,16 +607,26 @@ export function applySubtitleStyling(config) {
     if (config.subtitleLayoutOrientation === 'column') {
         firstElement.style.maxWidth = '100%';
         secondElement.style.maxWidth = '100%';
-        firstElement.style.marginBottom = `${config.subtitleGap}em`;
+        // Add base margin (0.5em) plus the gap setting for more noticeable effect
+        const verticalGap = 0.1 + (config.subtitleGap || 0);
+        firstElement.style.setProperty('margin-bottom', `${verticalGap}em`, 'important');
+        // Clear any horizontal margins for vertical layout
+        firstElement.style.setProperty('margin-right', '0', 'important');
+        secondElement.style.setProperty('margin-right', '0', 'important');
     } else {
         firstElement.style.maxWidth = 'calc(50% - 1%)';
         secondElement.style.maxWidth = 'calc(50% - 1%)';
         firstElement.style.verticalAlign = 'top';
         secondElement.style.verticalAlign = 'top';
+        // Clear any vertical margins for horizontal layout
+        firstElement.style.setProperty('margin-bottom', '0', 'important');
+        secondElement.style.setProperty('margin-bottom', '0', 'important');
+        // Add base margin (0.5em) plus the gap setting for horizontal spacing
+        const horizontalGap = 0.5 + (config.subtitleGap || 0);
         (config.subtitleLayoutOrder === 'translation_top'
             ? translatedSubtitleElement
             : originalSubtitleElement
-        ).style.marginRight = '2%';
+        ).style.setProperty('margin-right', `${horizontalGap}em`, 'important');
     }
 }
 
@@ -713,7 +737,6 @@ export function ensureSubtitleContainer(
     // Apply unified container styling
     Object.assign(subtitleContainer.style, {
         position: 'absolute',
-        bottom: '10%',
         left: '50%',
         transform: 'translateX(-50%)',
         zIndex: '9999',

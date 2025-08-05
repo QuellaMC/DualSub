@@ -81,6 +81,7 @@ export const configSchema = {
     },
     subtitleFontSize: { defaultValue: 1.1, type: Number, scope: 'sync' },
     subtitleGap: { defaultValue: 0.3, type: Number, scope: 'sync' },
+    subtitleVerticalPosition: { defaultValue: 2.8, type: Number, scope: 'sync' },
 
     // --- UI State Settings (local storage for better performance) ---
     appearanceAccordionOpen: {

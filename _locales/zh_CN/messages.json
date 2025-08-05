@@ -16,6 +16,7 @@
     "layoutLabel": { "message": "布局：" },
     "fontSizeLabel": { "message": "字体大小：" },
     "verticalGapLabel": { "message": "垂直间距：" },
+    "subtitleVerticalPositionLabel": { "message": "垂直位置：" },
     "timeOffsetLabel": { "message": "时间偏移(秒)：" },
     "displayOrderOriginalFirst": { "message": "原文在上" },
     "displayOrderTranslationFirst": { "message": "译文在上" },
@@ -38,6 +39,7 @@
     "statusLayoutOrientationUpdated": { "message": "布局方向已更新。" },
     "statusFontSize": { "message": "字体大小：" },
     "statusVerticalGap": { "message": "垂直间距：" },
+    "statusVerticalPosition": { "message": "垂直位置：" },
     "statusInvalidOffset": { "message": "无效偏移，已还原。" },
     "statusSettingNotApplied": { "message": "设置未应用。请刷新页面。" },
 

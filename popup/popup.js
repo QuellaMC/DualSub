@@ -57,6 +57,8 @@ document.addEventListener('DOMContentLoaded', function () {
     );
     const subtitleGapInput = document.getElementById('subtitleGap');
     const subtitleGapValue = document.getElementById('subtitleGapValue');
+    const subtitleVerticalPositionInput = document.getElementById('subtitleVerticalPosition');
+    const subtitleVerticalPositionValue = document.getElementById('subtitleVerticalPositionValue');
     const statusMessage = document.getElementById('statusMessage');
     const openOptionsPageButton = document.getElementById('openOptionsPage');
     const openGithubLinkButton = document.getElementById('openGithubLink');
@@ -100,6 +102,11 @@ document.addEventListener('DOMContentLoaded', function () {
         sliderElement.style.backgroundSize = `${percentage}% 100%`;
     };
 
+    // Consolidated slider value formatting function
+    const formatSliderValue = (value) => {
+        return parseFloat(value).toFixed(1);
+    };
+
     const populateDropdown = (selectElement, options, currentValue) => {
         selectElement.innerHTML = ''; // Clear existing options
         for (const value in options) {
@@ -136,13 +143,18 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const fontSize = settings.subtitleFontSize;
             subtitleFontSizeInput.value = fontSize;
-            subtitleFontSizeValue.textContent = `${parseFloat(fontSize).toFixed(1)}vw`;
+            subtitleFontSizeValue.textContent = formatSliderValue(fontSize);
             updateSliderProgress(subtitleFontSizeInput);
 
             const gap = settings.subtitleGap;
             subtitleGapInput.value = gap;
-            subtitleGapValue.textContent = `${parseFloat(gap).toFixed(1)}em`;
+            subtitleGapValue.textContent = formatSliderValue(gap);
             updateSliderProgress(subtitleGapInput);
+
+            const verticalPosition = settings.subtitleVerticalPosition;
+            subtitleVerticalPositionInput.value = verticalPosition;
+            subtitleVerticalPositionValue.textContent = formatSliderValue(verticalPosition);
+            updateSliderProgress(subtitleVerticalPositionInput);
 
             appearanceAccordion.open = settings.appearanceAccordionOpen;
 
@@ -397,8 +409,12 @@ document.addEventListener('DOMContentLoaded', function () {
     );
 
     subtitleFontSizeInput.addEventListener('input', function () {
-        subtitleFontSizeValue.textContent = `${parseFloat(this.value).toFixed(1)}vw`;
+        subtitleFontSizeValue.textContent = formatSliderValue(this.value);
         updateSliderProgress(this);
+
+        // Send immediate update for real-time visual feedback
+        const fontSize = parseFloat(this.value);
+        sendImmediateConfigUpdate({ subtitleFontSize: fontSize });
     });
     subtitleFontSizeInput.addEventListener('change', async function () {
         try {
@@ -406,9 +422,9 @@ document.addEventListener('DOMContentLoaded', function () {
             await configService.set('subtitleFontSize', fontSize);
             const statusPrefix =
                 loadedTranslations['statusFontSize']?.message || 'Font size: ';
-            showStatus(`${statusPrefix}${fontSize.toFixed(1)}vw.`);
+            showStatus(`${statusPrefix}${formatSliderValue(fontSize)}vw.`);
 
-            // Send immediate update for instant visual feedback
+            // Send immediate update for instant visual feedback (redundant but ensures persistence)
             sendImmediateConfigUpdate({ subtitleFontSize: fontSize });
         } catch (error) {
             popupLogger.error('Error setting font size', error, {
@@ -420,8 +436,12 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     subtitleGapInput.addEventListener('input', function () {
-        subtitleGapValue.textContent = `${parseFloat(this.value).toFixed(1)}em`;
+        subtitleGapValue.textContent = formatSliderValue(this.value);
         updateSliderProgress(this);
+
+        // Send immediate update for real-time visual feedback
+        const gap = parseFloat(this.value);
+        sendImmediateConfigUpdate({ subtitleGap: gap });
     });
     subtitleGapInput.addEventListener('change', async function () {
         try {
@@ -430,7 +450,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const statusPrefix =
                 loadedTranslations['statusVerticalGap']?.message ||
                 'Vertical gap: ';
-            showStatus(`${statusPrefix}${gap.toFixed(1)}em.`);
+            showStatus(`${statusPrefix}${formatSliderValue(gap)}em.`);
 
             // Send immediate update for instant visual feedback
             sendImmediateConfigUpdate({ subtitleGap: gap });
@@ -440,6 +460,34 @@ document.addEventListener('DOMContentLoaded', function () {
                 component: 'subtitleGapInput',
             });
             showStatus('Failed to update subtitle gap. Please try again.');
+        }
+    });
+
+    subtitleVerticalPositionInput.addEventListener('input', function () {
+        subtitleVerticalPositionValue.textContent = formatSliderValue(this.value);
+        updateSliderProgress(this);
+
+        // Send immediate update for real-time visual feedback
+        const verticalPosition = parseFloat(this.value);
+        sendImmediateConfigUpdate({ subtitleVerticalPosition: verticalPosition });
+    });
+    subtitleVerticalPositionInput.addEventListener('change', async function () {
+        try {
+            const verticalPosition = parseFloat(this.value);
+            await configService.set('subtitleVerticalPosition', verticalPosition);
+            const statusPrefix =
+                loadedTranslations['statusVerticalPosition']?.message ||
+                'Vertical position: ';
+            showStatus(`${statusPrefix}${formatSliderValue(verticalPosition)}.`);
+
+            // Send immediate update for instant visual feedback
+            sendImmediateConfigUpdate({ subtitleVerticalPosition: verticalPosition });
+        } catch (error) {
+            popupLogger.error('Error setting subtitle vertical position', error, {
+                verticalPosition: parseFloat(this.value),
+                component: 'subtitleVerticalPositionInput',
+            });
+            showStatus('Failed to update vertical position. Please try again.');
         }
     });
 

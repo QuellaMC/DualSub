@@ -171,6 +171,7 @@ describe('configSchema', () => {
                 'subtitleLayoutOrientation',
                 'subtitleFontSize',
                 'subtitleGap',
+                'subtitleVerticalPosition',
                 'appearanceAccordionOpen',
                 'debugMode',
                 'loggingLevel',
@@ -180,7 +181,7 @@ describe('configSchema', () => {
             expect(actualSettings).toEqual(
                 expect.arrayContaining(expectedSettings)
             );
-            expect(actualSettings.length).toBe(60); // Updated for AI context settings
+            expect(actualSettings.length).toBe(61);
         });
 
         it('should have correct scope distribution', () => {

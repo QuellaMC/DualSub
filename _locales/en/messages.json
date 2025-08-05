@@ -20,6 +20,7 @@
     "layoutLabel": { "message": "Layout:" },
     "fontSizeLabel": { "message": "Font Size:" },
     "verticalGapLabel": { "message": "Vertical Gap:" },
+    "subtitleVerticalPositionLabel": { "message": "Vertical Position:" },
     "timeOffsetLabel": { "message": "Time Offset(s):" },
     "displayOrderOriginalFirst": { "message": "Original First" },
     "displayOrderTranslationFirst": { "message": "Translation First" },
@@ -48,6 +49,7 @@
     },
     "statusFontSize": { "message": "Font size: " },
     "statusVerticalGap": { "message": "Vertical gap: " },
+    "statusVerticalPosition": { "message": "Vertical position: " },
     "statusInvalidOffset": { "message": "Invalid offset, reverting." },
     "statusSettingNotApplied": {
         "message": "Setting not applied. Refresh page."

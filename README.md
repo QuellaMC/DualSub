@@ -38,6 +38,7 @@
 
 - **📐 Flexible Layouts**: Vertical (top/bottom) or horizontal (left/right) subtitle arrangements
 - **🎨 Appearance Control**: Adjustable font sizes, spacing, and display order
+- **📍 Vertical Positioning**: Precise control over subtitle placement on screen
 - **⏱️ Timing Precision**: Fine-tune subtitle synchronization with offset controls
 - **🌍 Multi-Language UI**: Interface available in 6 languages (EN, ES, JA, KO, ZH-CN, ZH-TW)
 
@@ -472,6 +473,13 @@ This project is licensed under the **Creative Commons Attribution-NonCommercial-
 For full license terms, see [LICENSE](LICENSE) file.
 
 ## 📋 Changelog
+
+
+### Version 2.1.0 (Current)
+
+- 📍 Added vertical position control for precise subtitle placement on screen
+- 🎨 Enhanced appearance customization with new positioning options
+- ⚙️ Improved user interface with vertical position slider control
 
 ### Version 2.0.0 (Current)
 
