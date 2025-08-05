@@ -568,7 +568,7 @@ export function applySubtitleStyling(config) {
     }
 
     // This calculation correctly handles the intended config range of 0.1 to 9.9.
-    const rawPosition = config.subtitleVerticalPosition || 5.0;
+    const rawPosition = config.subtitleVerticalPosition || 2.8;
 
     // Clamp the input to the expected 0.1 to 9.9 range for safety.
     const verticalPosition = Math.max(0.1, Math.min(9.9, rawPosition));
