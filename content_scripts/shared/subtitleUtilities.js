@@ -607,16 +607,26 @@ export function applySubtitleStyling(config) {
     if (config.subtitleLayoutOrientation === 'column') {
         firstElement.style.maxWidth = '100%';
         secondElement.style.maxWidth = '100%';
-        firstElement.style.marginBottom = `${config.subtitleGap}em`;
+        // Add base margin (0.5em) plus the gap setting for more noticeable effect
+        const verticalGap = 0.1 + (config.subtitleGap || 0);
+        firstElement.style.setProperty('margin-bottom', `${verticalGap}em`, 'important');
+        // Clear any horizontal margins for vertical layout
+        firstElement.style.setProperty('margin-right', '0', 'important');
+        secondElement.style.setProperty('margin-right', '0', 'important');
     } else {
         firstElement.style.maxWidth = 'calc(50% - 1%)';
         secondElement.style.maxWidth = 'calc(50% - 1%)';
         firstElement.style.verticalAlign = 'top';
         secondElement.style.verticalAlign = 'top';
+        // Clear any vertical margins for horizontal layout
+        firstElement.style.setProperty('margin-bottom', '0', 'important');
+        secondElement.style.setProperty('margin-bottom', '0', 'important');
+        // Add base margin (0.5em) plus the gap setting for horizontal spacing
+        const horizontalGap = 0.5 + (config.subtitleGap || 0);
         (config.subtitleLayoutOrder === 'translation_top'
             ? translatedSubtitleElement
             : originalSubtitleElement
-        ).style.marginRight = '2%';
+        ).style.setProperty('margin-right', `${horizontalGap}em`, 'important');
     }
 }
 
