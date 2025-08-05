@@ -14,7 +14,6 @@ import { TestHelpers } from '../test-utils/test-helpers.js';
 // We'll mock configService functions in the tests directly
 
 import { apiKeyManager } from './apiKeyManager.js';
-// Privacy manager removed in v2.0.0 - no longer needed for open-source extension
 import { contextPreferencesManager, CONTEXT_TYPES } from './contextPreferencesManager.js';
 import { configService } from './configService.js';
 
