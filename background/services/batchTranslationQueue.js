@@ -1,9 +1,9 @@
 /**
  * Batch Translation Queue Manager
- * 
+ *
  * Extends existing subtitle queue processing with batch translation capabilities.
  * Integrates with existing processSubtitleQueue() from shared utilities.
- * 
+ *
  * @author DualSub Extension
  * @version 2.0.0
  */
@@ -22,14 +22,14 @@ class BatchTranslationQueue {
             maxConcurrentBatches: 2,
             smartBatching: true,
             batchProcessingDelay: 100,
-            translationDelay: 150
+            translationDelay: 150,
         };
         this.performanceMetrics = {
             totalBatches: 0,
             totalCues: 0,
             averageBatchSize: 0,
             averageProcessingTime: 0,
-            apiCallReduction: 0
+            apiCallReduction: 0,
         };
     }
 
@@ -40,7 +40,7 @@ class BatchTranslationQueue {
         try {
             // Load configuration from configService
             await this.loadConfiguration();
-            
+
             // Listen for configuration changes
             configService.onChanged((changes) => {
                 this.handleConfigurationChange(changes);
@@ -48,10 +48,13 @@ class BatchTranslationQueue {
 
             this.logger.info('Batch translation queue initialized', {
                 config: this.config,
-                maxConcurrentBatches: this.config.maxConcurrentBatches
+                maxConcurrentBatches: this.config.maxConcurrentBatches,
             });
         } catch (error) {
-            this.logger.error('Failed to initialize batch translation queue', error);
+            this.logger.error(
+                'Failed to initialize batch translation queue',
+                error
+            );
             throw error;
         }
     }
@@ -61,15 +64,23 @@ class BatchTranslationQueue {
      */
     async loadConfiguration() {
         try {
-            this.config.batchSize = await configService.get('translationBatchSize') || 3;
-            this.config.maxConcurrentBatches = await configService.get('maxConcurrentBatches') || 2;
-            this.config.smartBatching = await configService.get('smartBatching') !== false;
-            this.config.batchProcessingDelay = await configService.get('batchProcessingDelay') || 100;
-            this.config.translationDelay = await configService.get('translationDelay') || 150;
+            this.config.batchSize =
+                (await configService.get('translationBatchSize')) || 3;
+            this.config.maxConcurrentBatches =
+                (await configService.get('maxConcurrentBatches')) || 2;
+            this.config.smartBatching =
+                (await configService.get('smartBatching')) !== false;
+            this.config.batchProcessingDelay =
+                (await configService.get('batchProcessingDelay')) || 100;
+            this.config.translationDelay =
+                (await configService.get('translationDelay')) || 150;
 
             this.logger.debug('Configuration loaded', { config: this.config });
         } catch (error) {
-            this.logger.warn('Failed to load configuration, using defaults', error);
+            this.logger.warn(
+                'Failed to load configuration, using defaults',
+                error
+            );
         }
     }
 
@@ -101,7 +112,9 @@ class BatchTranslationQueue {
         }
 
         if (configChanged) {
-            this.logger.info('Configuration updated', { newConfig: this.config });
+            this.logger.info('Configuration updated', {
+                newConfig: this.config,
+            });
         }
     }
 
@@ -117,15 +130,15 @@ class BatchTranslationQueue {
 
         this.logger.debug('Adding cues to batch queue', {
             cueCount: cues.length,
-            context
+            context,
         });
 
         // Add cues to pending queue with metadata
-        const enrichedCues = cues.map(cue => ({
+        const enrichedCues = cues.map((cue) => ({
             ...cue,
             addedAt: Date.now(),
             context,
-            priority: this.calculateCuePriority(cue, context)
+            priority: this.calculateCuePriority(cue, context),
         }));
 
         this.pendingCues.push(...enrichedCues);
@@ -152,11 +165,14 @@ class BatchTranslationQueue {
         const timeDiff = Math.abs(cue.start - currentTime);
 
         // Prioritize cues closer to current playback time
-        if (timeDiff < 5) { // Within 5 seconds
+        if (timeDiff < 5) {
+            // Within 5 seconds
             priority += 10;
-        } else if (timeDiff < 15) { // Within 15 seconds
+        } else if (timeDiff < 15) {
+            // Within 15 seconds
             priority += 5;
-        } else if (timeDiff < 30) { // Within 30 seconds
+        } else if (timeDiff < 30) {
+            // Within 30 seconds
             priority += 2;
         }
 
@@ -179,15 +195,21 @@ class BatchTranslationQueue {
         this.processingBatch = true;
 
         try {
-            while (this.pendingCues.length > 0 && this.activeBatches.size < this.config.maxConcurrentBatches) {
+            while (
+                this.pendingCues.length > 0 &&
+                this.activeBatches.size < this.config.maxConcurrentBatches
+            ) {
                 const batch = this.createBatch();
                 if (batch.length > 0) {
                     await this.processBatch(batch);
-                    
+
                     // Add delay between batches
                     if (this.config.batchProcessingDelay > 0) {
-                        await new Promise(resolve => 
-                            setTimeout(resolve, this.config.batchProcessingDelay)
+                        await new Promise((resolve) =>
+                            setTimeout(
+                                resolve,
+                                this.config.batchProcessingDelay
+                            )
                         );
                     }
                 }
@@ -214,13 +236,16 @@ class BatchTranslationQueue {
         }
 
         // Take up to batchSize cues
-        const batchSize = Math.min(this.config.batchSize, this.pendingCues.length);
+        const batchSize = Math.min(
+            this.config.batchSize,
+            this.pendingCues.length
+        );
         const batch = this.pendingCues.splice(0, batchSize);
 
         this.logger.debug('Created batch', {
             batchSize: batch.length,
             remainingCues: this.pendingCues.length,
-            smartBatching: this.config.smartBatching
+            smartBatching: this.config.smartBatching,
         });
 
         return batch;
@@ -237,19 +262,19 @@ class BatchTranslationQueue {
         this.activeBatches.set(batchId, {
             cues: batch,
             startTime,
-            status: 'processing'
+            status: 'processing',
         });
 
         try {
             this.logger.info('Processing batch', {
                 batchId,
                 cueCount: batch.length,
-                activeBatches: this.activeBatches.size
+                activeBatches: this.activeBatches.size,
             });
 
             // Check if provider supports batch processing
             const supportsBatch = await this.checkBatchSupport();
-            
+
             if (supportsBatch && batch.length > 1) {
                 await this.processBatchTranslation(batchId, batch);
             } else {
@@ -258,21 +283,26 @@ class BatchTranslationQueue {
 
             // Update performance metrics
             const processingTime = Date.now() - startTime;
-            this.updatePerformanceMetrics(batch.length, processingTime, supportsBatch);
+            this.updatePerformanceMetrics(
+                batch.length,
+                processingTime,
+                supportsBatch
+            );
 
             this.logger.info('Batch processing completed', {
                 batchId,
                 processingTime,
                 cueCount: batch.length,
-                method: supportsBatch ? 'batch' : 'individual'
+                method: supportsBatch ? 'batch' : 'individual',
             });
-
         } catch (error) {
             this.logger.error('Batch processing failed', error, { batchId });
-            
+
             // Fallback to individual processing
             if (batch.length > 1) {
-                this.logger.info('Falling back to individual processing', { batchId });
+                this.logger.info('Falling back to individual processing', {
+                    batchId,
+                });
                 await this.processIndividualTranslations(batchId, batch);
             }
         } finally {
@@ -307,14 +337,14 @@ class BatchTranslationQueue {
      * @param {Array} batch - Batch of cues
      */
     async processBatchTranslation(batchId, batch) {
-        const texts = batch.map(cue => cue.original);
+        const texts = batch.map((cue) => cue.original);
         const delimiter = '|SUBTITLE_BREAK|';
         const combinedText = texts.join(delimiter);
 
         this.logger.debug('Sending batch translation request', {
             batchId,
             textCount: texts.length,
-            combinedLength: combinedText.length
+            combinedLength: combinedText.length,
         });
 
         return new Promise((resolve, reject) => {
@@ -325,10 +355,10 @@ class BatchTranslationQueue {
                     delimiter: delimiter,
                     targetLang: batch[0].context.targetLanguage || 'zh-CN',
                     batchId: batchId,
-                    cueMetadata: batch.map(cue => ({
+                    cueMetadata: batch.map((cue) => ({
                         start: cue.start,
-                        videoId: cue.videoId
-                    }))
+                        videoId: cue.videoId,
+                    })),
                 },
                 (response) => {
                     if (chrome.runtime.lastError) {
@@ -336,7 +366,10 @@ class BatchTranslationQueue {
                     } else if (response?.error) {
                         reject(new Error(response.error));
                     } else if (response?.translations) {
-                        this.handleBatchTranslationResponse(batch, response.translations);
+                        this.handleBatchTranslationResponse(
+                            batch,
+                            response.translations
+                        );
                         resolve(response);
                     } else {
                         reject(new Error('Invalid batch translation response'));
@@ -354,7 +387,7 @@ class BatchTranslationQueue {
     async processIndividualTranslations(batchId, batch) {
         this.logger.debug('Processing individual translations', {
             batchId,
-            cueCount: batch.length
+            cueCount: batch.length,
         });
 
         for (const cue of batch) {
@@ -366,18 +399,22 @@ class BatchTranslationQueue {
                             text: cue.original,
                             targetLang: cue.context.targetLanguage || 'zh-CN',
                             cueStart: cue.start,
-                            cueVideoId: cue.videoId
+                            cueVideoId: cue.videoId,
                         },
                         (response) => {
                             if (chrome.runtime.lastError) {
-                                reject(new Error(chrome.runtime.lastError.message));
+                                reject(
+                                    new Error(chrome.runtime.lastError.message)
+                                );
                             } else if (response?.error) {
                                 reject(new Error(response.error));
                             } else if (response?.translatedText) {
                                 cue.translated = response.translatedText;
                                 resolve(response);
                             } else {
-                                reject(new Error('Invalid translation response'));
+                                reject(
+                                    new Error('Invalid translation response')
+                                );
                             }
                         }
                     );
@@ -385,14 +422,14 @@ class BatchTranslationQueue {
 
                 // Add delay between individual translations
                 if (this.config.translationDelay > 0) {
-                    await new Promise(resolve => 
+                    await new Promise((resolve) =>
                         setTimeout(resolve, this.config.translationDelay)
                     );
                 }
             } catch (error) {
                 this.logger.error('Individual translation failed', error, {
                     cueStart: cue.start,
-                    text: cue.original.substring(0, 50)
+                    text: cue.original.substring(0, 50),
                 });
             }
         }
@@ -407,7 +444,7 @@ class BatchTranslationQueue {
         if (translations.length !== batch.length) {
             this.logger.warn('Batch translation count mismatch', {
                 expectedCount: batch.length,
-                receivedCount: translations.length
+                receivedCount: translations.length,
             });
         }
 
@@ -425,17 +462,18 @@ class BatchTranslationQueue {
     updatePerformanceMetrics(cueCount, processingTime, usedBatch) {
         this.performanceMetrics.totalBatches++;
         this.performanceMetrics.totalCues += cueCount;
-        
+
         // Update average batch size
-        this.performanceMetrics.averageBatchSize = 
-            this.performanceMetrics.totalCues / this.performanceMetrics.totalBatches;
-        
+        this.performanceMetrics.averageBatchSize =
+            this.performanceMetrics.totalCues /
+            this.performanceMetrics.totalBatches;
+
         // Update average processing time
         const totalBatches = this.performanceMetrics.totalBatches;
         const currentAvg = this.performanceMetrics.averageProcessingTime;
-        this.performanceMetrics.averageProcessingTime = 
-            ((currentAvg * (totalBatches - 1)) + processingTime) / totalBatches;
-        
+        this.performanceMetrics.averageProcessingTime =
+            (currentAvg * (totalBatches - 1) + processingTime) / totalBatches;
+
         // Calculate API call reduction (batch vs individual)
         if (usedBatch && cueCount > 1) {
             const apiCallsSaved = cueCount - 1; // 1 batch call vs N individual calls
@@ -460,9 +498,12 @@ class BatchTranslationQueue {
             ...this.performanceMetrics,
             activeBatches: this.activeBatches.size,
             pendingCues: this.pendingCues.length,
-            apiCallReductionPercentage: this.performanceMetrics.totalCues > 0 
-                ? (this.performanceMetrics.apiCallReduction / this.performanceMetrics.totalCues) * 100 
-                : 0
+            apiCallReductionPercentage:
+                this.performanceMetrics.totalCues > 0
+                    ? (this.performanceMetrics.apiCallReduction /
+                          this.performanceMetrics.totalCues) *
+                      100
+                    : 0,
         };
     }
 

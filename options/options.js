@@ -1,5 +1,15 @@
 import { configService } from '../services/configService.js';
 import Logger from '../utils/logger.js';
+import { fetchAvailableModels } from '../translation_providers/openaiCompatibleTranslate.js';
+
+// Simple debounce utility function
+function debounce(func, delay) {
+    let timeoutId;
+    return function (...args) {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => func.apply(this, args), delay);
+    };
+}
 
 document.addEventListener('DOMContentLoaded', function () {
     // Initialize options logger
@@ -64,16 +74,21 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Batch Translation Settings
     const batchingEnabledCheckbox = document.getElementById('batchingEnabled');
-    const useProviderDefaultsCheckbox = document.getElementById('useProviderDefaults');
+    const useProviderDefaultsCheckbox = document.getElementById(
+        'useProviderDefaults'
+    );
     const globalBatchSizeInput = document.getElementById('globalBatchSize');
-    const maxConcurrentBatchesInput = document.getElementById('maxConcurrentBatches');
+    const maxConcurrentBatchesInput = document.getElementById(
+        'maxConcurrentBatches'
+    );
     const smartBatchingCheckbox = document.getElementById('smartBatching');
 
     // Provider-specific batch sizes
     const openaieBatchSizeInput = document.getElementById('openaieBatchSize');
     const googleBatchSizeInput = document.getElementById('googleBatchSize');
     const deeplBatchSizeInput = document.getElementById('deeplBatchSize');
-    const microsoftBatchSizeInput = document.getElementById('microsoftBatchSize');
+    const microsoftBatchSizeInput =
+        document.getElementById('microsoftBatchSize');
 
     // Provider-specific delay settings
     const openaieDelayInput = document.getElementById('openaieDelay');
@@ -83,14 +98,49 @@ document.addEventListener('DOMContentLoaded', function () {
     const microsoftDelayInput = document.getElementById('microsoftDelay');
 
     // Batch settings containers
-    const globalBatchSizeSetting = document.getElementById('globalBatchSizeSetting');
-    const providerBatchSettings = document.getElementById('providerBatchSettings');
+    const globalBatchSizeSetting = document.getElementById(
+        'globalBatchSizeSetting'
+    );
+    const providerBatchSettings = document.getElementById(
+        'providerBatchSettings'
+    );
 
     // Provider Settings
     const deeplApiKeyInput = document.getElementById('deeplApiKey');
     const deeplApiPlanSelect = document.getElementById('deeplApiPlan');
     const testDeepLButton = document.getElementById('testDeepLButton');
     const deeplTestResult = document.getElementById('deeplTestResult');
+
+    const openaiCompatibleApiKeyInput = document.getElementById('openaiCompatibleApiKey');
+    const openaiCompatibleBaseUrlInput = document.getElementById('openaiCompatibleBaseUrl');
+    const openaiCompatibleModelSelect = document.getElementById('openaiCompatibleModel');
+    const testOpenAIButton = document.getElementById('testOpenAIButton');
+    const openaiTestResult = document.getElementById('openaiTestResult');
+
+    // AI Context Settings
+    const aiContextEnabledCheckbox = document.getElementById('aiContextEnabled');
+    const aiContextProviderSelect = document.getElementById('aiContextProvider');
+    const openaiApiKeyInput = document.getElementById('openaiApiKey');
+    const openaiBaseUrlInput = document.getElementById('openaiBaseUrl');
+    const openaiModelSelect = document.getElementById('openaiModel');
+    const geminiApiKeyInput = document.getElementById('geminiApiKey');
+    const geminiModelSelect = document.getElementById('geminiModel');
+    const contextTypeCulturalCheckbox = document.getElementById('contextTypeCultural');
+    const contextTypeHistoricalCheckbox = document.getElementById('contextTypeHistorical');
+    const contextTypeLinguisticCheckbox = document.getElementById('contextTypeLinguistic');
+
+    const aiContextTimeoutInput = document.getElementById('aiContextTimeout');
+    const aiContextRateLimitInput = document.getElementById('aiContextRateLimit');
+    const aiContextCacheEnabledCheckbox = document.getElementById('aiContextCacheEnabled');
+    const aiContextRetryAttemptsInput = document.getElementById('aiContextRetryAttempts');
+
+    // AI Context provider settings containers
+    const openaiContextSettings = document.getElementById('openaiContextSettings');
+    const geminiContextSettings = document.getElementById('geminiContextSettings');
+    const aiContextProviderCard = document.getElementById('aiContextProviderCard');
+    const aiContextTypesCard = document.getElementById('aiContextTypesCard');
+
+    const aiContextAdvancedCard = document.getElementById('aiContextAdvancedCard');
 
     // About
     const extensionVersionSpan = document.getElementById('extensionVersion');
@@ -104,6 +154,7 @@ document.addEventListener('DOMContentLoaded', function () {
         microsoft_edge_auth: 'providerMicrosoftName',
         deepl: 'providerDeepLName',
         deepl_free: 'providerDeepLFreeName',
+        openai_compatible: 'providerOpenAICompatibleName',
     };
 
     // Helper functions first (no dependencies)
@@ -207,26 +258,22 @@ document.addEventListener('DOMContentLoaded', function () {
         return message;
     };
 
-    const showTestResult = function (message, type) {
-        deeplTestResult.style.display = 'block';
-        deeplTestResult.textContent = message;
-
-        // Remove previous type classes
-        deeplTestResult.classList.remove('success', 'error', 'warning', 'info');
-
-        // Add current type class
-        deeplTestResult.classList.add(type);
+    const showTestResult = function (element, message, type) {
+        element.style.display = 'block';
+        element.textContent = message;
+        element.classList.remove('success', 'error', 'warning', 'info');
+        element.classList.add(type);
     };
 
     // Test DeepL Connection
     const testDeepLConnection = async function () {
-        // 运行时再次检查 DeepLAPI 是否可用
         if (
             typeof window.DeepLAPI === 'undefined' ||
             !window.DeepLAPI ||
             typeof window.DeepLAPI.testDeepLConnection !== 'function'
         ) {
             showTestResult(
+                deeplTestResult,
                 getLocalizedText(
                     'deeplApiNotLoadedError',
                     '❌ DeepL API script is not available. Please refresh the page.'
@@ -241,6 +288,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (!apiKey) {
             showTestResult(
+                deeplTestResult,
                 getLocalizedText(
                     'deeplApiKeyError',
                     'Please enter your DeepL API key first.'
@@ -256,6 +304,7 @@ document.addEventListener('DOMContentLoaded', function () {
             'Testing...'
         );
         showTestResult(
+            deeplTestResult,
             getLocalizedText(
                 'testingConnection',
                 'Testing DeepL connection...'
@@ -272,6 +321,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (result.success) {
                 showTestResult(
+                    deeplTestResult,
                     getLocalizedText(
                         'deeplTestSuccessSimple',
                         '✅ DeepL API test successful!'
@@ -332,7 +382,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 const errorType =
                     result.error === 'UNEXPECTED_FORMAT' ? 'warning' : 'error';
-                showTestResult(fallbackMessage, errorType);
+                showTestResult(deeplTestResult, fallbackMessage, errorType);
             }
         } catch (error) {
             optionsLogger.error('DeepL test error', error, {
@@ -341,6 +391,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 component: 'testDeepLConnection',
             });
             showTestResult(
+                deeplTestResult,
                 getLocalizedText(
                     'deeplTestGenericError',
                     '❌ Test failed: %s',
@@ -353,6 +404,113 @@ document.addEventListener('DOMContentLoaded', function () {
             testDeepLButton.textContent = getLocalizedText(
                 'testDeepLButton',
                 'Test DeepL Connection'
+            );
+        }
+    };
+
+    const testOpenAIConnection = async function () {
+        const apiKey = openaiCompatibleApiKeyInput.value.trim();
+        const baseUrl = openaiCompatibleBaseUrlInput.value.trim();
+
+        if (!apiKey) {
+            showTestResult(
+                openaiTestResult,
+                getLocalizedText('openaiApiKeyError', 'Please enter an API key first.'),
+                'error'
+            );
+            return;
+        }
+
+        testOpenAIButton.disabled = true;
+        showTestResult(
+            openaiTestResult,
+            getLocalizedText('openaiTestingConnection', 'Testing connection...'),
+            'info'
+        );
+
+        try {
+            await fetchAvailableModels(apiKey, baseUrl);
+            showTestResult(
+                openaiTestResult,
+                getLocalizedText('openaiConnectionSuccessful', 'Connection successful!'),
+                'success'
+            );
+        } catch (error) {
+            showTestResult(
+                openaiTestResult,
+                getLocalizedText('openaiConnectionFailed', 'Connection failed: %s', error.message),
+                'error'
+            );
+        } finally {
+            testOpenAIButton.disabled = false;
+        }
+    };
+
+    const fetchOpenAIModelsAutomatically = async function () {
+        const apiKey = openaiCompatibleApiKeyInput.value.trim();
+        const baseUrl = openaiCompatibleBaseUrlInput.value.trim();
+
+        if (!apiKey) {
+            // Don't show error for automatic fetching when no API key
+            return;
+        }
+
+        showTestResult(
+            openaiTestResult,
+            getLocalizedText('openaieFetchingModels', 'Fetching models...'),
+            'info'
+        );
+
+        try {
+            const models = await fetchAvailableModels(apiKey, baseUrl);
+
+            // Get the currently saved model from storage instead of DOM to preserve user selection
+            const savedModel = await configService.get('openaiCompatibleModel');
+
+            openaiCompatibleModelSelect.innerHTML = '';
+            let hasCurrentModel = false;
+            let modelToSelect = null;
+
+            models.forEach(model => {
+                const option = document.createElement('option');
+                option.value = model;
+                option.textContent = model;
+                openaiCompatibleModelSelect.appendChild(option);
+
+                if (model === savedModel) {
+                    hasCurrentModel = true;
+                    modelToSelect = model;
+                }
+            });
+
+            // Determine which model to select
+            if (hasCurrentModel) {
+                // User's previously selected model is available, keep it
+                modelToSelect = savedModel;
+            } else if (models.length > 0) {
+                // User's model not available or no model was selected, use first available
+                modelToSelect = models[0];
+            }
+
+            // Update DOM and save selection if we have a model to select
+            if (modelToSelect) {
+                openaiCompatibleModelSelect.value = modelToSelect;
+                // Only save if the model changed to avoid unnecessary storage writes
+                if (modelToSelect !== savedModel) {
+                    await saveSetting('openaiCompatibleModel', modelToSelect);
+                }
+            }
+
+            showTestResult(
+                openaiTestResult,
+                getLocalizedText('openaiModelsFetchedSuccessfully', 'Models fetched successfully.'),
+                'success'
+            );
+        } catch (error) {
+            showTestResult(
+                openaiTestResult,
+                getLocalizedText('openaiFailedToFetchModels', 'Failed to fetch models: %s', error.message),
+                'error'
             );
         }
     };
@@ -385,11 +543,15 @@ document.addEventListener('DOMContentLoaded', function () {
         const microsoftCard = document.getElementById('microsoftProviderCard');
         const deeplCard = document.getElementById('deeplProviderCard');
         const deeplFreeCard = document.getElementById('deeplFreeProviderCard');
+        const openaiCompatibleCard = document.getElementById('openaiCompatibleProviderCard');
+
 
         googleCard.style.display = 'none';
         microsoftCard.style.display = 'none';
         deeplCard.style.display = 'none';
         deeplFreeCard.style.display = 'none';
+        openaiCompatibleCard.style.display = 'none';
+
 
         // Show the selected provider card
         switch (selectedProvider) {
@@ -405,6 +567,12 @@ document.addEventListener('DOMContentLoaded', function () {
             case 'deepl_free':
                 deeplFreeCard.style.display = 'block';
                 break;
+            case 'openai_compatible':
+                openaiCompatibleCard.style.display = 'block';
+                // Auto-fetch models when OpenAI provider is selected and credentials are configured
+                // This ensures the model list is always up-to-date when users visit the settings
+                initializeOpenAITestStatus();
+                break;
             default:
                 // Show DeepL Free as default
                 deeplFreeCard.style.display = 'block';
@@ -417,13 +585,17 @@ document.addEventListener('DOMContentLoaded', function () {
         const useProviderDefaults = useProviderDefaultsCheckbox.checked;
 
         // Show/hide batch settings based on whether batching is enabled
-        const batchSettings = document.querySelectorAll('#globalBatchSizeSetting, #providerBatchSettings, .setting:has(#maxConcurrentBatches), .setting:has(#smartBatching), .setting:has(#useProviderDefaults)');
-        batchSettings.forEach(setting => {
+        const batchSettings = document.querySelectorAll(
+            '#globalBatchSizeSetting, #providerBatchSettings, .setting:has(#maxConcurrentBatches), .setting:has(#smartBatching), .setting:has(#useProviderDefaults)'
+        );
+        batchSettings.forEach((setting) => {
             if (setting) {
                 // Use 'grid' for settings rows, 'block' for the card, and 'none' to hide.
-                const displayValue = batchingEnabled ?
-                    (setting.id === 'providerBatchSettings' ? 'block' : 'grid') :
-                    'none';
+                const displayValue = batchingEnabled
+                    ? setting.id === 'providerBatchSettings'
+                        ? 'block'
+                        : 'grid'
+                    : 'none';
                 setting.style.display = displayValue;
             }
         });
@@ -432,19 +604,199 @@ document.addEventListener('DOMContentLoaded', function () {
         if (batchingEnabled) {
             if (globalBatchSizeSetting) {
                 // globalBatchSizeSetting is a grid item
-                globalBatchSizeSetting.style.display = useProviderDefaults ? 'none' : 'grid';
+                globalBatchSizeSetting.style.display = useProviderDefaults
+                    ? 'none'
+                    : 'grid';
             }
             if (providerBatchSettings) {
                 // providerBatchSettings is a setting-card, so use block
-                providerBatchSettings.style.display = useProviderDefaults ? 'block' : 'none';
+                providerBatchSettings.style.display = useProviderDefaults
+                    ? 'block'
+                    : 'none';
             }
         }
 
         optionsLogger.debug('Batch settings visibility updated', {
             batchingEnabled,
             useProviderDefaults,
-            component: 'updateBatchSettingsVisibility'
+            component: 'updateBatchSettingsVisibility',
         });
+    };
+
+    const updateAIContextSettings = async function () {
+        const aiContextEnabled = aiContextEnabledCheckbox?.checked || false;
+        const selectedProvider = aiContextProviderSelect?.value || 'openai';
+
+        // Show/hide AI context settings based on feature toggle
+        const aiContextCards = [
+            aiContextProviderCard,
+            aiContextTypesCard,
+            aiContextAdvancedCard
+        ];
+
+        aiContextCards.forEach(card => {
+            if (card) {
+                card.style.display = aiContextEnabled ? 'block' : 'none';
+            }
+        });
+
+        // Show/hide provider-specific settings
+        if (aiContextEnabled) {
+            if (openaiContextSettings) {
+                openaiContextSettings.style.display = selectedProvider === 'openai' ? 'block' : 'none';
+            }
+            if (geminiContextSettings) {
+                geminiContextSettings.style.display = selectedProvider === 'gemini' ? 'block' : 'none';
+            }
+
+            // Update model dropdown for the selected provider
+            await updateModelDropdown(selectedProvider);
+        } else {
+            if (openaiContextSettings) openaiContextSettings.style.display = 'none';
+            if (geminiContextSettings) geminiContextSettings.style.display = 'none';
+        }
+
+        optionsLogger.debug('AI Context settings visibility updated', {
+            aiContextEnabled,
+            selectedProvider,
+            component: 'updateAIContextSettings'
+        });
+    };
+
+    /**
+     * Update model dropdown based on selected provider
+     * @param {string} providerId - The provider ID
+     */
+    const updateModelDropdown = async function(providerId) {
+        try {
+            // Get available models from the background service
+            const response = await chrome.runtime.sendMessage({
+                action: 'getAvailableModels',
+                providerId: providerId
+            });
+
+            if (!response.success) {
+                optionsLogger.error('Failed to get available models', {
+                    providerId,
+                    error: response.error
+                });
+                return;
+            }
+
+            // Get the appropriate model select element
+            let modelSelect = null;
+            if (providerId === 'openai' && openaiModelSelect) {
+                modelSelect = openaiModelSelect;
+            } else if (providerId === 'gemini' && geminiModelSelect) {
+                modelSelect = geminiModelSelect;
+            }
+
+            if (!modelSelect) {
+                optionsLogger.warn('Model select element not found', { providerId });
+                return;
+            }
+
+            // Clear existing options
+            modelSelect.innerHTML = '';
+
+            // Populate with new options
+            response.models.forEach(model => {
+                const option = document.createElement('option');
+                option.value = model.id;
+                option.textContent = model.name;
+                if (model.description) {
+                    option.title = model.description;
+                }
+                if (model.recommended) {
+                    option.textContent += ' (Recommended)';
+                }
+                modelSelect.appendChild(option);
+            });
+
+            // Get the user's saved model preference for this provider
+            let savedModel = null;
+            if (providerId === 'openai') {
+                savedModel = await configService.get('openaiModel');
+            } else if (providerId === 'gemini') {
+                savedModel = await configService.get('geminiModel');
+            }
+
+            // Check if the saved model is available in the current model list
+            const availableModelIds = response.models.map(model => model.id);
+            const isValidSavedModel = savedModel && availableModelIds.includes(savedModel);
+
+            if (isValidSavedModel) {
+                // Use the user's saved preference
+                modelSelect.value = savedModel;
+                optionsLogger.debug('Using saved model preference', {
+                    providerId,
+                    savedModel
+                });
+            } else {
+                // Fall back to provider's default model
+                const defaultResponse = await chrome.runtime.sendMessage({
+                    action: 'getDefaultModel',
+                    providerId: providerId
+                });
+
+                if (defaultResponse.success && defaultResponse.defaultModel) {
+                    modelSelect.value = defaultResponse.defaultModel;
+
+                    // Save the default model as the user's preference if no valid saved model exists
+                    if (providerId === 'openai') {
+                        await saveSetting('openaiModel', defaultResponse.defaultModel);
+                    } else if (providerId === 'gemini') {
+                        await saveSetting('geminiModel', defaultResponse.defaultModel);
+                    }
+
+                    optionsLogger.debug('Using provider default model', {
+                        providerId,
+                        defaultModel: defaultResponse.defaultModel,
+                        reason: isValidSavedModel ? 'saved_model_invalid' : 'no_saved_model'
+                    });
+                }
+            }
+
+            optionsLogger.debug('Model dropdown updated', {
+                providerId,
+                modelCount: response.models.length,
+                selectedModel: modelSelect.value,
+                savedModel: savedModel,
+                isValidSavedModel: isValidSavedModel
+            });
+
+        } catch (error) {
+            optionsLogger.error('Error updating model dropdown', error, { providerId });
+        }
+    };
+
+    const updateAIContextTypes = function () {
+        const contextTypes = [];
+        if (contextTypeCulturalCheckbox?.checked) contextTypes.push('cultural');
+        if (contextTypeHistoricalCheckbox?.checked) contextTypes.push('historical');
+        if (contextTypeLinguisticCheckbox?.checked) contextTypes.push('linguistic');
+
+        saveSetting('aiContextTypes', contextTypes);
+
+        optionsLogger.debug('AI Context types updated', {
+            contextTypes,
+            component: 'updateAIContextTypes'
+        });
+    };
+
+    const togglePasswordVisibility = function (inputId) {
+        const input = document.getElementById(inputId);
+        const button = document.querySelector(`[data-target="${inputId}"]`);
+
+        if (input && button) {
+            if (input.type === 'password') {
+                input.type = 'text';
+                button.textContent = '🙈';
+            } else {
+                input.type = 'password';
+                button.textContent = '👁️';
+            }
+        }
     };
 
     const loadAndApplyLanguage = async function () {
@@ -484,6 +836,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 translationDelay,
                 deeplApiKey,
                 deeplApiPlan,
+                openaiCompatibleApiKey,
+                openaiCompatibleBaseUrl,
+                openaiCompatibleModel,
                 // Batch translation settings
                 batchingEnabled,
                 useProviderDefaults,
@@ -500,6 +855,20 @@ document.addEventListener('DOMContentLoaded', function () {
                 deeplDelay,
                 deeplFreeDelay,
                 microsoftDelay,
+                // AI Context settings
+                aiContextEnabled,
+                aiContextProvider,
+                aiContextTypes,
+                openaiApiKey,
+                openaiBaseUrl,
+                openaiModel,
+                geminiApiKey,
+                geminiModel,
+
+                aiContextTimeout,
+                aiContextRateLimit,
+                aiContextCacheEnabled,
+                aiContextRetryAttempts,
             } = settings;
 
             uiLanguageSelect.value = uiLanguage;
@@ -520,6 +889,16 @@ document.addEventListener('DOMContentLoaded', function () {
             // Providers
             deeplApiKeyInput.value = deeplApiKey;
             deeplApiPlanSelect.value = deeplApiPlan;
+            openaiCompatibleApiKeyInput.value = openaiCompatibleApiKey;
+            openaiCompatibleBaseUrlInput.value = openaiCompatibleBaseUrl;
+            
+            // Populate models dropdown
+            const option = document.createElement('option');
+            option.value = openaiCompatibleModel;
+            option.textContent = openaiCompatibleModel;
+            openaiCompatibleModelSelect.appendChild(option);
+            openaiCompatibleModelSelect.value = openaiCompatibleModel;
+
 
             // Batch Translation Settings
             batchingEnabledCheckbox.checked = batchingEnabled;
@@ -541,11 +920,43 @@ document.addEventListener('DOMContentLoaded', function () {
             deeplFreeDelayInput.value = deeplFreeDelay;
             microsoftDelayInput.value = microsoftDelay;
 
+            // AI Context Settings
+            if (aiContextEnabledCheckbox) aiContextEnabledCheckbox.checked = aiContextEnabled;
+            if (aiContextProviderSelect) aiContextProviderSelect.value = aiContextProvider;
+            if (openaiApiKeyInput) openaiApiKeyInput.value = openaiApiKey;
+            if (openaiBaseUrlInput) openaiBaseUrlInput.value = openaiBaseUrl;
+            if (openaiModelSelect) openaiModelSelect.value = openaiModel;
+            if (geminiApiKeyInput) geminiApiKeyInput.value = geminiApiKey;
+            if (geminiModelSelect) geminiModelSelect.value = geminiModel;
+
+            // Debug logging for AI Context provider
+            optionsLogger.debug('AI Context settings loaded', {
+                aiContextEnabled,
+                aiContextProvider,
+                providerSelectValue: aiContextProviderSelect?.value,
+                component: 'loadSettings'
+            });
+
+            if (aiContextTimeoutInput) aiContextTimeoutInput.value = aiContextTimeout;
+            if (aiContextRateLimitInput) aiContextRateLimitInput.value = aiContextRateLimit;
+            if (aiContextCacheEnabledCheckbox) aiContextCacheEnabledCheckbox.checked = aiContextCacheEnabled;
+            if (aiContextRetryAttemptsInput) aiContextRetryAttemptsInput.value = aiContextRetryAttempts;
+
+            // AI Context Types (array handling)
+            if (aiContextTypes && Array.isArray(aiContextTypes)) {
+                if (contextTypeCulturalCheckbox) contextTypeCulturalCheckbox.checked = aiContextTypes.includes('cultural');
+                if (contextTypeHistoricalCheckbox) contextTypeHistoricalCheckbox.checked = aiContextTypes.includes('historical');
+                if (contextTypeLinguisticCheckbox) contextTypeLinguisticCheckbox.checked = aiContextTypes.includes('linguistic');
+            }
+
             // Update batch settings visibility
             updateBatchSettingsVisibility();
 
             // Update provider settings visibility - now we're sure all DOM elements are set
             updateProviderSettings();
+
+            // Update AI context settings visibility
+            updateAIContextSettings();
         } catch (error) {
             optionsLogger.error('Error loading settings', error, {
                 component: 'loadSettings',
@@ -636,141 +1047,142 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
     // Batch Translation Settings Event Listeners
-    batchingEnabledCheckbox.addEventListener('change', async function() {
+    batchingEnabledCheckbox.addEventListener('change', async function () {
         await saveSetting('batchingEnabled', this.checked);
         updateBatchSettingsVisibility();
         optionsLogger.info(`Batch translation enabled: ${this.checked}`, {
             batchingEnabled: this.checked,
-            component: 'batchingEnabledCheckbox'
+            component: 'batchingEnabledCheckbox',
         });
     });
 
-    useProviderDefaultsCheckbox.addEventListener('change', async function() {
+    useProviderDefaultsCheckbox.addEventListener('change', async function () {
         await saveSetting('useProviderDefaults', this.checked);
         updateBatchSettingsVisibility();
         optionsLogger.info(`Use provider defaults: ${this.checked}`, {
             useProviderDefaults: this.checked,
-            component: 'useProviderDefaultsCheckbox'
+            component: 'useProviderDefaultsCheckbox',
         });
     });
 
-    globalBatchSizeInput.addEventListener('change', async function() {
+    globalBatchSizeInput.addEventListener('change', async function () {
         const value = parseInt(this.value);
         await saveSetting('globalBatchSize', value);
         optionsLogger.info(`Global batch size changed: ${value}`, {
             globalBatchSize: value,
-            component: 'globalBatchSizeInput'
+            component: 'globalBatchSizeInput',
         });
     });
 
-    maxConcurrentBatchesInput.addEventListener('change', async function() {
+    maxConcurrentBatchesInput.addEventListener('change', async function () {
         const value = parseInt(this.value);
         await saveSetting('maxConcurrentBatches', value);
         optionsLogger.info(`Max concurrent batches changed: ${value}`, {
             maxConcurrentBatches: value,
-            component: 'maxConcurrentBatchesInput'
+            component: 'maxConcurrentBatchesInput',
         });
     });
 
-    smartBatchingCheckbox.addEventListener('change', async function() {
+    smartBatchingCheckbox.addEventListener('change', async function () {
         await saveSetting('smartBatching', this.checked);
         optionsLogger.info(`Smart batching enabled: ${this.checked}`, {
             smartBatching: this.checked,
-            component: 'smartBatchingCheckbox'
+            component: 'smartBatchingCheckbox',
         });
     });
 
     // Provider-specific batch size event listeners
-    openaieBatchSizeInput.addEventListener('change', async function() {
+    openaieBatchSizeInput.addEventListener('change', async function () {
         const value = parseInt(this.value);
         await saveSetting('openaieBatchSize', value);
         optionsLogger.info(`OpenAI batch size changed: ${value}`, {
             openaieBatchSize: value,
-            component: 'openaieBatchSizeInput'
+            component: 'openaieBatchSizeInput',
         });
     });
 
-    googleBatchSizeInput.addEventListener('change', async function() {
+    googleBatchSizeInput.addEventListener('change', async function () {
         const value = parseInt(this.value);
         await saveSetting('googleBatchSize', value);
         optionsLogger.info(`Google batch size changed: ${value}`, {
             googleBatchSize: value,
-            component: 'googleBatchSizeInput'
+            component: 'googleBatchSizeInput',
         });
     });
 
-    deeplBatchSizeInput.addEventListener('change', async function() {
+    deeplBatchSizeInput.addEventListener('change', async function () {
         const value = parseInt(this.value);
         await saveSetting('deeplBatchSize', value);
         optionsLogger.info(`DeepL batch size changed: ${value}`, {
             deeplBatchSize: value,
-            component: 'deeplBatchSizeInput'
+            component: 'deeplBatchSizeInput',
         });
     });
 
-    microsoftBatchSizeInput.addEventListener('change', async function() {
+    microsoftBatchSizeInput.addEventListener('change', async function () {
         const value = parseInt(this.value);
         await saveSetting('microsoftBatchSize', value);
         optionsLogger.info(`Microsoft batch size changed: ${value}`, {
             microsoftBatchSize: value,
-            component: 'microsoftBatchSizeInput'
+            component: 'microsoftBatchSizeInput',
         });
     });
 
     // Provider-specific delay event listeners
-    openaieDelayInput.addEventListener('change', async function() {
+    openaieDelayInput.addEventListener('change', async function () {
         const value = parseInt(this.value);
         await saveSetting('openaieDelay', value);
         optionsLogger.info(`OpenAI delay changed: ${value}ms`, {
             openaieDelay: value,
-            component: 'openaieDelayInput'
+            component: 'openaieDelayInput',
         });
     });
 
-    googleDelayInput.addEventListener('change', async function() {
+    googleDelayInput.addEventListener('change', async function () {
         const value = parseInt(this.value);
         await saveSetting('googleDelay', value);
         optionsLogger.info(`Google delay changed: ${value}ms`, {
             googleDelay: value,
-            component: 'googleDelayInput'
+            component: 'googleDelayInput',
         });
     });
 
-    deeplDelayInput.addEventListener('change', async function() {
+    deeplDelayInput.addEventListener('change', async function () {
         const value = parseInt(this.value);
         await saveSetting('deeplDelay', value);
         optionsLogger.info(`DeepL delay changed: ${value}ms`, {
             deeplDelay: value,
-            component: 'deeplDelayInput'
+            component: 'deeplDelayInput',
         });
     });
 
-    deeplFreeDelayInput.addEventListener('change', async function() {
+    deeplFreeDelayInput.addEventListener('change', async function () {
         const value = parseInt(this.value);
         await saveSetting('deeplFreeDelay', value);
         optionsLogger.info(`DeepL Free delay changed: ${value}ms`, {
             deeplFreeDelay: value,
-            component: 'deeplFreeDelayInput'
+            component: 'deeplFreeDelayInput',
         });
     });
 
-    microsoftDelayInput.addEventListener('change', async function() {
+    microsoftDelayInput.addEventListener('change', async function () {
         const value = parseInt(this.value);
         await saveSetting('microsoftDelay', value);
         optionsLogger.info(`Microsoft delay changed: ${value}ms`, {
             microsoftDelay: value,
-            component: 'microsoftDelayInput'
+            component: 'microsoftDelayInput',
         });
     });
 
     // DeepL specific settings
-    deeplApiKeyInput.addEventListener('change', async function() {
+    deeplApiKeyInput.addEventListener('change', async function () {
         await saveSetting('deeplApiKey', deeplApiKeyInput.value);
 
         // Update test status when API key changes
         if (deeplApiKeyInput.value.trim()) {
             // Show "needs testing" status when key is entered
             showTestResult(
+                deeplTestResult,
                 getLocalizedText(
                     'deeplTestNeedsTesting',
                     '⚠️ DeepL API key needs testing.'
@@ -780,6 +1192,7 @@ document.addEventListener('DOMContentLoaded', function () {
         } else {
             // Show "no key" status when key is empty
             showTestResult(
+                deeplTestResult,
                 getLocalizedText(
                     'deeplApiKeyError',
                     'Please enter your DeepL API key first.'
@@ -793,14 +1206,60 @@ document.addEventListener('DOMContentLoaded', function () {
         async () => await saveSetting('deeplApiPlan', deeplApiPlanSelect.value)
     );
 
+    // Create debounced function for automatic model fetching
+    const debouncedFetchModels = debounce(fetchOpenAIModelsAutomatically, 1000);
+
+    // OpenAI Compatible specific settings
+    openaiCompatibleApiKeyInput.addEventListener('change', async function () {
+        await saveSetting('openaiCompatibleApiKey', this.value);
+    });
+    openaiCompatibleBaseUrlInput.addEventListener('change', async function () {
+        await saveSetting('openaiCompatibleBaseUrl', this.value);
+    });
+    openaiCompatibleModelSelect.addEventListener('change', async function () {
+        await saveSetting('openaiCompatibleModel', this.value);
+    });
+
+    // Add input event listeners for automatic model fetching with debouncing
+    openaiCompatibleApiKeyInput.addEventListener('input', function () {
+        const apiKey = this.value.trim();
+        if (apiKey) {
+            showTestResult(
+                openaiTestResult,
+                getLocalizedText('openaiApiKeyNeedsTesting', '⚠️ API key needs testing.'),
+                'warning'
+            );
+            debouncedFetchModels();
+        } else {
+            showTestResult(
+                openaiTestResult,
+                getLocalizedText('openaiApiKeyError', 'Please enter your API key first.'),
+                'error'
+            );
+            // Clear models when no API key
+            openaiCompatibleModelSelect.innerHTML = '';
+        }
+    });
+
+    openaiCompatibleBaseUrlInput.addEventListener('input', function () {
+        const apiKey = openaiCompatibleApiKeyInput.value.trim();
+        if (apiKey) {
+            debouncedFetchModels();
+        }
+    });
+
+    testOpenAIButton.addEventListener('click', testOpenAIConnection);
+
+
     // Initialize DeepL test result with default status
-    const initializeDeepLTestStatus = function() {
+    const initializeDeepLTestStatus = function () {
         // Check if API key is already entered
         const currentApiKey = deeplApiKeyInput.value.trim();
 
         if (currentApiKey) {
             // Show "needs testing" status when key is present
             showTestResult(
+                deeplTestResult,
                 getLocalizedText(
                     'deeplTestNeedsTesting',
                     '⚠️ DeepL API key needs testing.'
@@ -810,6 +1269,7 @@ document.addEventListener('DOMContentLoaded', function () {
         } else {
             // Show "no key" status when key is empty
             showTestResult(
+                deeplTestResult,
                 getLocalizedText(
                     'deeplApiKeyError',
                     'Please enter your DeepL API key first.'
@@ -819,8 +1279,30 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     };
 
-    // 安全地添加 DeepL 测试按钮的事件监听器
-    // 检查 DeepLAPI 是否可用，如果不可用则禁用按钮并显示错误
+    // Initialize OpenAI test result with default status
+    const initializeOpenAITestStatus = function () {
+        const currentApiKey = openaiCompatibleApiKeyInput.value.trim();
+
+        if (currentApiKey) {
+            // Show "needs testing" status when key is present
+            showTestResult(
+                openaiTestResult,
+                getLocalizedText('openaiTestNeedsTesting', '⚠️ OpenAI-compatible API key needs testing.'),
+                'warning'
+            );
+            // Automatically fetch models when API key is present
+            // This provides a better UX by ensuring models are always up-to-date when visiting settings
+            fetchOpenAIModelsAutomatically();
+        } else {
+            // Show "no key" status when key is empty
+            showTestResult(
+                openaiTestResult,
+                getLocalizedText('openaiApiKeyError', 'Please enter your API key first.'),
+                'error'
+            );
+        }
+    };
+
     if (
         typeof window.DeepLAPI !== 'undefined' &&
         window.DeepLAPI &&
@@ -848,6 +1330,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // 为按钮添加点击处理，显示错误信息
         testDeepLButton.addEventListener('click', () => {
             showTestResult(
+                deeplTestResult,
                 getLocalizedText(
                     'deeplApiNotLoadedError',
                     '❌ DeepL API script is not available. Please refresh the page.'
@@ -862,15 +1345,143 @@ document.addEventListener('DOMContentLoaded', function () {
         .getElementById('translationBatchSize')
         .addEventListener('change', async function () {
             await saveSetting('translationBatchSize', parseInt(this.value));
-            if(translationBatchSizeValue) translationBatchSizeValue.textContent = this.value;
+            if (translationBatchSizeValue)
+                translationBatchSizeValue.textContent = this.value;
         });
 
     document
         .getElementById('translationDelay')
         .addEventListener('change', async function () {
             await saveSetting('translationDelay', parseInt(this.value));
-            if (translationDelayValue) translationDelayValue.textContent = `${this.value}ms`;
+            if (translationDelayValue)
+                translationDelayValue.textContent = `${this.value}ms`;
         });
+
+    // AI Context Event Listeners
+    if (aiContextEnabledCheckbox) {
+        aiContextEnabledCheckbox.addEventListener('change', async function () {
+            await saveSetting('aiContextEnabled', this.checked);
+            updateAIContextSettings();
+            optionsLogger.info(`AI Context enabled changed to: ${this.checked}`, {
+                aiContextEnabled: this.checked,
+                component: 'aiContextEnabledCheckbox',
+            });
+        });
+    }
+
+    if (aiContextProviderSelect) {
+        aiContextProviderSelect.addEventListener('change', async function () {
+            await saveSetting('aiContextProvider', this.value);
+            await updateAIContextSettings();
+
+            // Notify background script to reload provider configuration
+            try {
+                await chrome.runtime.sendMessage({
+                    action: 'reloadContextProviderConfig'
+                });
+                optionsLogger.debug('Background script notified of provider change');
+            } catch (error) {
+                optionsLogger.warn('Failed to notify background script of provider change', error);
+            }
+
+            optionsLogger.info(`AI Context provider changed to: ${this.value}`, {
+                aiContextProvider: this.value,
+                component: 'aiContextProviderSelect',
+            });
+        });
+    }
+
+    // AI Context Provider Settings
+    if (openaiApiKeyInput) {
+        openaiApiKeyInput.addEventListener('change', async function () {
+            await saveSetting('openaiApiKey', this.value);
+        });
+    }
+
+    if (openaiBaseUrlInput) {
+        openaiBaseUrlInput.addEventListener('change', async function () {
+            await saveSetting('openaiBaseUrl', this.value);
+        });
+    }
+
+    if (openaiModelSelect) {
+        openaiModelSelect.addEventListener('change', async function () {
+            await saveSetting('openaiModel', this.value);
+        });
+    }
+
+    if (geminiApiKeyInput) {
+        geminiApiKeyInput.addEventListener('change', async function () {
+            await saveSetting('geminiApiKey', this.value);
+        });
+    }
+
+    if (geminiModelSelect) {
+        geminiModelSelect.addEventListener('change', async function () {
+            await saveSetting('geminiModel', this.value);
+        });
+    }
+
+    // AI Context Types
+    [contextTypeCulturalCheckbox, contextTypeHistoricalCheckbox, contextTypeLinguisticCheckbox].forEach(checkbox => {
+        if (checkbox) {
+            checkbox.addEventListener('change', updateAIContextTypes);
+        }
+    });
+
+
+
+
+
+    // Advanced Settings
+    if (aiContextTimeoutInput) {
+        aiContextTimeoutInput.addEventListener('change', async function () {
+            await saveSetting('aiContextTimeout', parseInt(this.value));
+        });
+    }
+
+    if (aiContextRateLimitInput) {
+        aiContextRateLimitInput.addEventListener('change', async function () {
+            await saveSetting('aiContextRateLimit', parseInt(this.value));
+        });
+    }
+
+    if (aiContextCacheEnabledCheckbox) {
+        aiContextCacheEnabledCheckbox.addEventListener('change', async function () {
+            await saveSetting('aiContextCacheEnabled', this.checked);
+        });
+    }
+
+    if (aiContextRetryAttemptsInput) {
+        aiContextRetryAttemptsInput.addEventListener('change', async function () {
+            await saveSetting('aiContextRetryAttempts', parseInt(this.value));
+        });
+    }
+
+    // Password toggle buttons
+    document.querySelectorAll('.toggle-password').forEach(button => {
+        button.addEventListener('click', function () {
+            const targetId = this.getAttribute('data-target');
+            togglePasswordVisibility(targetId);
+        });
+    });
+
+    // Collapsible sections
+    document.querySelectorAll('.collapse-toggle').forEach(button => {
+        button.addEventListener('click', function () {
+            const targetId = this.getAttribute('data-target');
+            const content = document.getElementById(targetId);
+            const icon = this.querySelector('.collapse-icon');
+
+            if (content) {
+                const isCollapsed = content.style.display === 'none' || !content.style.display;
+                content.style.display = isCollapsed ? 'block' : 'none';
+                if (icon) {
+                    icon.textContent = isCollapsed ? '▲' : '▼';
+                }
+            }
+        });
+    });
 
     init();
 });

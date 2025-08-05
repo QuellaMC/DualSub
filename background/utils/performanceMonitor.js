@@ -1,9 +1,9 @@
 /**
  * Performance Monitoring and Optimization System
- * 
+ *
  * Monitors performance metrics, identifies bottlenecks, and provides
  * optimization recommendations for the background services.
- * 
+ *
  * @author DualSub Extension
  * @version 2.0.0
  */
@@ -17,7 +17,7 @@ export const MetricType = {
     TIMING: 'timing',
     MEMORY: 'memory',
     COUNTER: 'counter',
-    GAUGE: 'gauge'
+    GAUGE: 'gauge',
 };
 
 /**
@@ -30,7 +30,7 @@ export const PerformanceThresholds = {
     MEMORY_USAGE_WARNING: 50 * 1024 * 1024, // 50MB
     MEMORY_USAGE_CRITICAL: 100 * 1024 * 1024, // 100MB
     API_CALL_RATE_WARNING: 60, // calls per minute
-    ERROR_RATE_WARNING: 5 // errors per minute
+    ERROR_RATE_WARNING: 5, // errors per minute
 };
 
 /**
@@ -56,7 +56,7 @@ class PerformanceMonitor {
             enabled: true,
             maxSize: 1000,
             ttl: 300000, // 5 minutes
-            cleanupInterval: 60000 // 1 minute
+            cleanupInterval: 60000, // 1 minute
         });
 
         // Batch processing optimization
@@ -64,14 +64,14 @@ class PerformanceMonitor {
             enabled: true,
             maxBatchSize: 10,
             batchTimeout: 100, // ms
-            concurrentBatches: 2
+            concurrentBatches: 2,
         });
 
         // Memory optimization
         this.optimizations.set('memory', {
             enabled: true,
             gcThreshold: 50 * 1024 * 1024, // 50MB
-            gcInterval: 300000 // 5 minutes
+            gcInterval: 300000, // 5 minutes
         });
     }
 
@@ -85,7 +85,7 @@ class PerformanceMonitor {
         this.timers.set(timerId, {
             name,
             startTime: performance.now(),
-            context
+            context,
         });
         return timerId;
     }
@@ -103,7 +103,12 @@ class PerformanceMonitor {
         }
 
         const elapsedTime = performance.now() - timer.startTime;
-        this.recordMetric(timer.name, elapsedTime, MetricType.TIMING, timer.context);
+        this.recordMetric(
+            timer.name,
+            elapsedTime,
+            MetricType.TIMING,
+            timer.context
+        );
         this.timers.delete(timerId);
 
         // Check performance thresholds
@@ -128,7 +133,7 @@ class PerformanceMonitor {
                 count: 0,
                 min: Infinity,
                 max: -Infinity,
-                average: 0
+                average: 0,
             });
         }
 
@@ -152,7 +157,7 @@ class PerformanceMonitor {
             name,
             value,
             type,
-            average: metric.average
+            average: metric.average,
         });
     }
 
@@ -163,9 +168,9 @@ class PerformanceMonitor {
      */
     checkPerformanceThresholds(metricName, value) {
         const thresholds = {
-            'batch_processing': PerformanceThresholds.BATCH_PROCESSING_TIME,
-            'translation': PerformanceThresholds.TRANSLATION_TIME,
-            'subtitle_processing': PerformanceThresholds.SUBTITLE_PROCESSING_TIME
+            batch_processing: PerformanceThresholds.BATCH_PROCESSING_TIME,
+            translation: PerformanceThresholds.TRANSLATION_TIME,
+            subtitle_processing: PerformanceThresholds.SUBTITLE_PROCESSING_TIME,
         };
 
         const threshold = thresholds[metricName];
@@ -174,7 +179,7 @@ class PerformanceMonitor {
                 metric: metricName,
                 value,
                 threshold,
-                exceedBy: value - threshold
+                exceedBy: value - threshold,
             });
 
             // Suggest optimizations
@@ -190,19 +195,28 @@ class PerformanceMonitor {
     suggestOptimizations(metricName, value) {
         const suggestions = [];
 
-        if (metricName === 'batch_processing' && value > PerformanceThresholds.BATCH_PROCESSING_TIME) {
+        if (
+            metricName === 'batch_processing' &&
+            value > PerformanceThresholds.BATCH_PROCESSING_TIME
+        ) {
             suggestions.push('Consider reducing batch size');
             suggestions.push('Enable batch processing optimizations');
             suggestions.push('Check network latency');
         }
 
-        if (metricName === 'translation' && value > PerformanceThresholds.TRANSLATION_TIME) {
+        if (
+            metricName === 'translation' &&
+            value > PerformanceThresholds.TRANSLATION_TIME
+        ) {
             suggestions.push('Enable translation caching');
             suggestions.push('Consider switching to a faster provider');
             suggestions.push('Implement request timeout');
         }
 
-        if (metricName === 'subtitle_processing' && value > PerformanceThresholds.SUBTITLE_PROCESSING_TIME) {
+        if (
+            metricName === 'subtitle_processing' &&
+            value > PerformanceThresholds.SUBTITLE_PROCESSING_TIME
+        ) {
             suggestions.push('Enable subtitle caching');
             suggestions.push('Optimize VTT parsing');
             suggestions.push('Use shared utility integration');
@@ -212,7 +226,7 @@ class PerformanceMonitor {
             this.logger.info('Performance optimization suggestions', {
                 metric: metricName,
                 value,
-                suggestions
+                suggestions,
             });
         }
     }
@@ -227,7 +241,7 @@ class PerformanceMonitor {
                 used: performance.memory.usedJSHeapSize,
                 total: performance.memory.totalJSHeapSize,
                 limit: performance.memory.jsHeapSizeLimit,
-                timestamp: Date.now()
+                timestamp: Date.now(),
             };
         }
         return null;
@@ -247,14 +261,16 @@ class PerformanceMonitor {
             this.logger.error('Critical memory usage detected', {
                 used: memoryUsage.used,
                 total: memoryUsage.total,
-                percentage: (memoryUsage.used / memoryUsage.total) * 100
+                percentage: (memoryUsage.used / memoryUsage.total) * 100,
             });
             this.triggerMemoryOptimization();
-        } else if (memoryUsage.used > PerformanceThresholds.MEMORY_USAGE_WARNING) {
+        } else if (
+            memoryUsage.used > PerformanceThresholds.MEMORY_USAGE_WARNING
+        ) {
             this.logger.warn('High memory usage detected', {
                 used: memoryUsage.used,
                 total: memoryUsage.total,
-                percentage: (memoryUsage.used / memoryUsage.total) * 100
+                percentage: (memoryUsage.used / memoryUsage.total) * 100,
             });
         }
     }
@@ -272,7 +288,9 @@ class PerformanceMonitor {
         this.clearOldTimers();
 
         // Perform additional memory cleanup if necessary
-        this.logger.debug('Memory optimization completed without manual garbage collection');
+        this.logger.debug(
+            'Memory optimization completed without manual garbage collection'
+        );
     }
 
     /**
@@ -283,9 +301,13 @@ class PerformanceMonitor {
         let clearedCount = 0;
 
         for (const [name, metric] of this.metrics.entries()) {
-            const oldValues = metric.values.filter(v => v.timestamp < oneHourAgo);
+            const oldValues = metric.values.filter(
+                (v) => v.timestamp < oneHourAgo
+            );
             if (oldValues.length > 0) {
-                metric.values = metric.values.filter(v => v.timestamp >= oneHourAgo);
+                metric.values = metric.values.filter(
+                    (v) => v.timestamp >= oneHourAgo
+                );
                 clearedCount += oldValues.length;
             }
         }
@@ -320,7 +342,7 @@ class PerformanceMonitor {
             memoryUsage: this.getMemoryUsage(),
             metrics: {},
             activeTimers: this.timers.size,
-            optimizations: Object.fromEntries(this.optimizations)
+            optimizations: Object.fromEntries(this.optimizations),
         };
 
         // Summarize metrics
@@ -331,7 +353,7 @@ class PerformanceMonitor {
                 average: metric.average,
                 min: metric.min,
                 max: metric.max,
-                recent: metric.values.slice(-10).map(v => v.value)
+                recent: metric.values.slice(-10).map((v) => v.value),
             };
         }
 
@@ -347,12 +369,17 @@ class PerformanceMonitor {
         const summary = this.getPerformanceSummary();
 
         // Memory recommendations
-        if (summary.memoryUsage && summary.memoryUsage.used > PerformanceThresholds.MEMORY_USAGE_WARNING) {
+        if (
+            summary.memoryUsage &&
+            summary.memoryUsage.used >
+                PerformanceThresholds.MEMORY_USAGE_WARNING
+        ) {
             recommendations.push({
                 type: 'memory',
                 priority: 'high',
-                message: 'High memory usage detected. Consider enabling memory optimizations.',
-                action: 'Enable memory cleanup and reduce cache sizes'
+                message:
+                    'High memory usage detected. Consider enabling memory optimizations.',
+                action: 'Enable memory cleanup and reduce cache sizes',
             });
         }
 
@@ -363,7 +390,7 @@ class PerformanceMonitor {
                     type: 'performance',
                     priority: 'medium',
                     message: `${name} operations are slow (avg: ${metric.average.toFixed(2)}ms)`,
-                    action: 'Consider optimization strategies for this operation'
+                    action: 'Consider optimization strategies for this operation',
                 });
             }
         }
@@ -374,7 +401,7 @@ class PerformanceMonitor {
                 type: 'resource',
                 priority: 'medium',
                 message: `High number of active timers (${summary.activeTimers})`,
-                action: 'Review timer cleanup and consider timer pooling'
+                action: 'Review timer cleanup and consider timer pooling',
             });
         }
 

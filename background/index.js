@@ -1,9 +1,9 @@
 /**
  * Background Script Main Entry Point
- * 
+ *
  * Coordinates all background services and maintains backward compatibility
  * with existing background.js functionality.
- * 
+ *
  * @author DualSub Extension
  * @version 2.0.0
  */
@@ -11,6 +11,7 @@
 import { translationProviders } from './services/translationService.js';
 import { subtitleService } from './services/subtitleService.js';
 import { batchTranslationQueue } from './services/batchTranslationQueue.js';
+import { aiContextService } from './services/aiContextService.js';
 import { loggingManager } from './utils/loggingManager.js';
 import { messageHandler } from './handlers/messageHandler.js';
 import { configService } from '../services/configService.js';
@@ -21,7 +22,9 @@ import Logger from '../utils/logger.js';
 // Initialize background logger with ConfigService integration
 const backgroundLogger = Logger.create('Background', configService);
 
-backgroundLogger.info('Dual Subtitles background script loaded (modular version)');
+backgroundLogger.info(
+    'Dual Subtitles background script loaded (modular version)'
+);
 
 /**
  * Initialize all background services
@@ -29,15 +32,15 @@ backgroundLogger.info('Dual Subtitles background script loaded (modular version)
 async function initializeServices() {
     try {
         backgroundLogger.info('Initializing background services...');
-        
+
         // Initialize logging manager first
         await loggingManager.initialize();
         backgroundLogger.info('Logging manager initialized');
-        
+
         // Initialize translation service
         await translationProviders.initialize();
         backgroundLogger.info('Translation service initialized');
-        
+
         // Initialize subtitle service
         await subtitleService.initialize();
         backgroundLogger.info('Subtitle service initialized');
@@ -45,6 +48,10 @@ async function initializeServices() {
         // Initialize batch translation queue
         await batchTranslationQueue.initialize();
         backgroundLogger.info('Batch translation queue initialized');
+
+        // Initialize AI context service
+        await aiContextService.initialize();
+        backgroundLogger.info('AI context service initialized');
 
         // Initialize message handler
         messageHandler.initialize();
@@ -54,13 +61,14 @@ async function initializeServices() {
         serviceRegistry.register('translation', translationProviders, ['config', 'logging']);
         serviceRegistry.register('subtitle', subtitleService, ['translation', 'logging']);
         serviceRegistry.register('batchQueue', batchTranslationQueue, ['translation', 'config']);
+        serviceRegistry.register('aiContext', aiContextService, ['config', 'logging']);
         serviceRegistry.register('logging', loggingManager, ['config']);
         serviceRegistry.register('config', configService, []);
-        serviceRegistry.register('messageHandler', messageHandler, ['translation', 'subtitle']);
+        serviceRegistry.register('messageHandler', messageHandler, ['translation', 'subtitle', 'aiContext']);
         backgroundLogger.info('Services registered in service registry');
 
         // Inject services into message handler
-        messageHandler.setServices(translationProviders, subtitleService);
+        messageHandler.setServices(translationProviders, subtitleService, aiContextService);
         backgroundLogger.info('Services injected into message handler');
 
         // Initialize default settings using the configuration service
@@ -69,22 +77,26 @@ async function initializeServices() {
 
         // Validate service dependencies
         const serviceNames = serviceRegistry.getServiceNames();
-        const dependencyValidation = serviceNames.map(name => ({
+        const dependencyValidation = serviceNames.map((name) => ({
             service: name,
-            valid: serviceRegistry.validateDependencies(name)
+            valid: serviceRegistry.validateDependencies(name),
         }));
         backgroundLogger.info('Service dependency validation completed', {
-            services: dependencyValidation
+            services: dependencyValidation,
         });
 
         // Start performance monitoring
         performanceMonitor.startMonitoring();
         backgroundLogger.info('Performance monitoring started');
 
-        backgroundLogger.info('All background services initialized successfully');
-
+        backgroundLogger.info(
+            'All background services initialized successfully'
+        );
     } catch (error) {
-        backgroundLogger.error('Failed to initialize background services', error);
+        backgroundLogger.error(
+            'Failed to initialize background services',
+            error
+        );
         throw error;
     }
 }
@@ -96,7 +108,10 @@ async function initializeServices() {
     try {
         await initializeServices();
     } catch (error) {
-        console.error('Critical error during background script initialization:', error);
+        console.error(
+            'Critical error during background script initialization:',
+            error
+        );
     }
 })();
 
@@ -106,5 +121,5 @@ export {
     subtitleService,
     loggingManager,
     messageHandler,
-    backgroundLogger
+    backgroundLogger,
 };

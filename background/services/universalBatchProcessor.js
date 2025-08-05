@@ -1,9 +1,9 @@
 /**
  * Universal Batch Translation Processor
- * 
+ *
  * Provider-agnostic batch translation system that works with ALL translation providers.
  * Handles preprocessing (individual → batch) and postprocessing (batch → individual).
- * 
+ *
  * @author DualSub Extension
  * @version 2.0.0
  */
@@ -22,7 +22,7 @@ const PROVIDER_BATCH_CONFIGS = {
         delimiter: '|SUBTITLE_BREAK|',
         supportsBatch: true,
         batchMethod: 'delimiter',
-        delayConfigKey: 'openaieDelay' // Reference to config key for delay
+        delayConfigKey: 'openaieDelay', // Reference to config key for delay
     },
     google: {
         defaultBatchSize: 4,
@@ -30,7 +30,7 @@ const PROVIDER_BATCH_CONFIGS = {
         delimiter: '\n---SUBTITLE---\n',
         supportsBatch: false, // Will use simulated batch
         batchMethod: 'simulated',
-        delayConfigKey: 'googleDelay' // Reference to config key for delay
+        delayConfigKey: 'googleDelay', // Reference to config key for delay
     },
     deepl: {
         defaultBatchSize: 3,
@@ -38,7 +38,7 @@ const PROVIDER_BATCH_CONFIGS = {
         delimiter: '\n[SUBTITLE]\n',
         supportsBatch: false, // Will use simulated batch
         batchMethod: 'simulated',
-        delayConfigKey: 'deeplDelay' // Reference to config key for delay
+        delayConfigKey: 'deeplDelay', // Reference to config key for delay
     },
     deepl_free: {
         defaultBatchSize: 2,
@@ -46,7 +46,7 @@ const PROVIDER_BATCH_CONFIGS = {
         delimiter: '\n[SUBTITLE]\n',
         supportsBatch: false, // Will use simulated batch
         batchMethod: 'simulated',
-        delayConfigKey: 'deeplFreeDelay' // Reference to config key for delay
+        delayConfigKey: 'deeplFreeDelay', // Reference to config key for delay
     },
     microsoft_edge_auth: {
         defaultBatchSize: 4,
@@ -54,8 +54,8 @@ const PROVIDER_BATCH_CONFIGS = {
         delimiter: '\n||SUBTITLE||\n',
         supportsBatch: false, // Will use simulated batch
         batchMethod: 'simulated',
-        delayConfigKey: 'microsoftDelay' // Reference to config key for delay
-    }
+        delayConfigKey: 'microsoftDelay', // Reference to config key for delay
+    },
 };
 
 /**
@@ -67,13 +67,13 @@ class UniversalBatchProcessor {
         this.config = {
             globalBatchSize: 5,
             batchingEnabled: true,
-            useProviderDefaults: true
+            useProviderDefaults: true,
         };
         this.performanceMetrics = {
             totalBatches: 0,
             totalTexts: 0,
             apiCallsSaved: 0,
-            averageProcessingTime: 0
+            averageProcessingTime: 0,
         };
     }
 
@@ -84,7 +84,7 @@ class UniversalBatchProcessor {
         try {
             // Load configuration
             await this.loadConfiguration();
-            
+
             // Listen for configuration changes
             configService.onChanged((changes) => {
                 this.handleConfigurationChange(changes);
@@ -92,10 +92,13 @@ class UniversalBatchProcessor {
 
             this.logger.info('Universal batch processor initialized', {
                 config: this.config,
-                providerConfigs: Object.keys(PROVIDER_BATCH_CONFIGS).length
+                providerConfigs: Object.keys(PROVIDER_BATCH_CONFIGS).length,
             });
         } catch (error) {
-            this.logger.error('Failed to initialize universal batch processor', error);
+            this.logger.error(
+                'Failed to initialize universal batch processor',
+                error
+            );
             throw error;
         }
     }
@@ -105,13 +108,19 @@ class UniversalBatchProcessor {
      */
     async loadConfiguration() {
         try {
-            this.config.globalBatchSize = await configService.get('globalBatchSize') || 5;
-            this.config.batchingEnabled = await configService.get('batchingEnabled') !== false;
-            this.config.useProviderDefaults = await configService.get('useProviderDefaults') !== false;
+            this.config.globalBatchSize =
+                (await configService.get('globalBatchSize')) || 5;
+            this.config.batchingEnabled =
+                (await configService.get('batchingEnabled')) !== false;
+            this.config.useProviderDefaults =
+                (await configService.get('useProviderDefaults')) !== false;
 
             this.logger.debug('Configuration loaded', { config: this.config });
         } catch (error) {
-            this.logger.warn('Failed to load configuration, using defaults', error);
+            this.logger.warn(
+                'Failed to load configuration, using defaults',
+                error
+            );
         }
     }
 
@@ -135,7 +144,9 @@ class UniversalBatchProcessor {
         }
 
         if (configChanged) {
-            this.logger.info('Configuration updated', { newConfig: this.config });
+            this.logger.info('Configuration updated', {
+                newConfig: this.config,
+            });
         }
     }
 
@@ -159,7 +170,10 @@ class UniversalBatchProcessor {
         }
 
         // Use global setting but respect provider max
-        const effectiveSize = Math.min(this.config.globalBatchSize, providerConfig.maxBatchSize);
+        const effectiveSize = Math.min(
+            this.config.globalBatchSize,
+            providerConfig.maxBatchSize
+        );
 
         // Ensure batch size is at least 1
         return Math.max(1, effectiveSize);
@@ -184,27 +198,30 @@ class UniversalBatchProcessor {
     preprocessForBatch(texts, providerId) {
         const timerId = performanceMonitor.startTiming('batch_preprocessing', {
             provider: providerId,
-            textCount: texts.length
+            textCount: texts.length,
         });
 
         try {
             const batchSize = this.getEffectiveBatchSize(providerId);
             const providerConfig = PROVIDER_BATCH_CONFIGS[providerId] || {};
-            
+
             if (batchSize === 1 || texts.length === 1) {
                 // No batching needed
                 performanceMonitor.endTiming(timerId);
                 return {
-                    batches: texts.map(text => ({ texts: [text], combined: text })),
+                    batches: texts.map((text) => ({
+                        texts: [text],
+                        combined: text,
+                    })),
                     batchMethod: 'individual',
-                    delimiter: null
+                    delimiter: null,
                 };
             }
 
             const batches = [];
             for (let i = 0; i < texts.length; i += batchSize) {
                 const batchTexts = texts.slice(i, i + batchSize);
-                
+
                 if (providerConfig.supportsBatch && batchTexts.length > 1) {
                     // Native batch processing
                     const combined = batchTexts.join(providerConfig.delimiter);
@@ -212,7 +229,7 @@ class UniversalBatchProcessor {
                         texts: batchTexts,
                         combined,
                         delimiter: providerConfig.delimiter,
-                        method: 'native'
+                        method: 'native',
                     });
                 } else {
                     // Simulated batch (rapid individual requests)
@@ -220,7 +237,7 @@ class UniversalBatchProcessor {
                         texts: batchTexts,
                         combined: null,
                         delimiter: null,
-                        method: 'simulated'
+                        method: 'simulated',
                     });
                 }
             }
@@ -232,20 +249,19 @@ class UniversalBatchProcessor {
                 originalCount: texts.length,
                 batchCount: batches.length,
                 batchSize,
-                method: providerConfig.batchMethod || 'simulated'
+                method: providerConfig.batchMethod || 'simulated',
             });
 
             return {
                 batches,
                 batchMethod: providerConfig.batchMethod || 'simulated',
-                delimiter: providerConfig.delimiter
+                delimiter: providerConfig.delimiter,
             };
-
         } catch (error) {
             performanceMonitor.endTiming(timerId);
             this.logger.error('Batch preprocessing failed', error, {
                 provider: providerId,
-                textCount: texts.length
+                textCount: texts.length,
             });
             throw error;
         }
@@ -260,7 +276,7 @@ class UniversalBatchProcessor {
     postprocessBatchResults(batchResults, preprocessResult) {
         const timerId = performanceMonitor.startTiming('batch_postprocessing', {
             batchCount: batchResults.length,
-            method: preprocessResult.batchMethod
+            method: preprocessResult.batchMethod,
         });
 
         try {
@@ -273,8 +289,8 @@ class UniversalBatchProcessor {
                 if (batch.method === 'native' && batch.delimiter) {
                     // Split native batch result
                     const splitResults = this.splitBatchResult(
-                        batchResult, 
-                        batch.delimiter, 
+                        batchResult,
+                        batch.delimiter,
                         batch.texts.length
                     );
                     individualResults.push(...splitResults);
@@ -291,16 +307,18 @@ class UniversalBatchProcessor {
             performanceMonitor.endTiming(timerId);
 
             // Update performance metrics
-            this.updatePerformanceMetrics(preprocessResult.batches, individualResults);
+            this.updatePerformanceMetrics(
+                preprocessResult.batches,
+                individualResults
+            );
 
             this.logger.debug('Batch postprocessing completed', {
                 batchCount: batchResults.length,
                 individualCount: individualResults.length,
-                method: preprocessResult.batchMethod
+                method: preprocessResult.batchMethod,
             });
 
             return individualResults;
-
         } catch (error) {
             performanceMonitor.endTiming(timerId);
             this.logger.error('Batch postprocessing failed', error);
@@ -319,15 +337,15 @@ class UniversalBatchProcessor {
         if (!batchResult || typeof batchResult !== 'string') {
             this.logger.warn('Invalid batch result for splitting', {
                 resultType: typeof batchResult,
-                expectedCount
+                expectedCount,
             });
             return new Array(expectedCount).fill('');
         }
 
         const results = batchResult
             .split(delimiter)
-            .map(text => text.trim())
-            .filter(text => text.length > 0);
+            .map((text) => text.trim())
+            .filter((text) => text.length > 0);
 
         // Ensure we have the expected number of results
         while (results.length < expectedCount) {
@@ -354,7 +372,8 @@ class UniversalBatchProcessor {
         const totalTexts = results.length;
         const actualApiCalls = batches.length;
         const wouldBeApiCalls = totalTexts;
-        this.performanceMetrics.apiCallsSaved += (wouldBeApiCalls - actualApiCalls);
+        this.performanceMetrics.apiCallsSaved +=
+            wouldBeApiCalls - actualApiCalls;
     }
 
     /**
@@ -382,7 +401,7 @@ class UniversalBatchProcessor {
             delimiter: '\n---\n',
             supportsBatch: false,
             batchMethod: 'simulated',
-            delayConfigKey: 'translationDelay'
+            delayConfigKey: 'translationDelay',
         };
 
         // Add dynamic delay values from configuration
@@ -390,7 +409,7 @@ class UniversalBatchProcessor {
         return {
             ...baseConfig,
             mandatoryDelay: delay,
-            batchDelay: delay
+            batchDelay: delay,
         };
     }
 
@@ -409,9 +428,12 @@ class UniversalBatchProcessor {
     getPerformanceMetrics() {
         return {
             ...this.performanceMetrics,
-            apiCallReductionPercentage: this.performanceMetrics.totalTexts > 0
-                ? (this.performanceMetrics.apiCallsSaved / this.performanceMetrics.totalTexts) * 100
-                : 0
+            apiCallReductionPercentage:
+                this.performanceMetrics.totalTexts > 0
+                    ? (this.performanceMetrics.apiCallsSaved /
+                          this.performanceMetrics.totalTexts) *
+                      100
+                    : 0,
         };
     }
 
@@ -423,7 +445,7 @@ class UniversalBatchProcessor {
             totalBatches: 0,
             totalTexts: 0,
             apiCallsSaved: 0,
-            averageProcessingTime: 0
+            averageProcessingTime: 0,
         };
         this.logger.debug('Performance metrics reset');
     }
@@ -438,7 +460,14 @@ class UniversalBatchProcessor {
      * @param {Object} options - Processing options
      * @returns {Promise<Array<string>>} Translated texts
      */
-    async processTexts(texts, sourceLang, targetLang, providerId, translationService, options = {}) {
+    async processTexts(
+        texts,
+        sourceLang,
+        targetLang,
+        providerId,
+        translationService,
+        options = {}
+    ) {
         const startTime = Date.now();
 
         try {
@@ -446,7 +475,7 @@ class UniversalBatchProcessor {
                 provider: providerId,
                 textCount: texts.length,
                 sourceLang,
-                targetLang
+                targetLang,
             });
 
             // Preprocess texts into batches
@@ -468,22 +497,34 @@ class UniversalBatchProcessor {
                         batchResults.push(result);
                     } else {
                         // Fallback to individual processing
-                        const individualResults = await this.processIndividualBatch(
-                            batch.texts, sourceLang, targetLang, translationService, options
-                        );
+                        const individualResults =
+                            await this.processIndividualBatch(
+                                batch.texts,
+                                sourceLang,
+                                targetLang,
+                                translationService,
+                                options
+                            );
                         batchResults.push(individualResults);
                     }
                 } else {
                     // Use simulated batch (rapid individual requests)
                     const individualResults = await this.processIndividualBatch(
-                        batch.texts, sourceLang, targetLang, translationService, options
+                        batch.texts,
+                        sourceLang,
+                        targetLang,
+                        translationService,
+                        options
                     );
                     batchResults.push(individualResults);
                 }
             }
 
             // Postprocess batch results back to individual translations
-            const finalResults = this.postprocessBatchResults(batchResults, preprocessResult);
+            const finalResults = this.postprocessBatchResults(
+                batchResults,
+                preprocessResult
+            );
 
             const processingTime = Date.now() - startTime;
             this.logger.info('Universal batch processing completed', {
@@ -491,20 +532,23 @@ class UniversalBatchProcessor {
                 originalCount: texts.length,
                 translatedCount: finalResults.length,
                 processingTime,
-                batchMethod: preprocessResult.batchMethod
+                batchMethod: preprocessResult.batchMethod,
             });
 
             return finalResults;
-
         } catch (error) {
             this.logger.error('Universal batch processing failed', error, {
                 provider: providerId,
-                textCount: texts.length
+                textCount: texts.length,
             });
 
             // Fallback to individual translations
             return await this.processIndividualBatch(
-                texts, sourceLang, targetLang, translationService, options
+                texts,
+                sourceLang,
+                targetLang,
+                translationService,
+                options
             );
         }
     }
@@ -518,41 +562,60 @@ class UniversalBatchProcessor {
      * @param {Object} options - Translation options
      * @returns {Promise<Array<string>>} Translated texts
      */
-    async processIndividualBatch(texts, sourceLang, targetLang, translationService, options = {}) {
+    async processIndividualBatch(
+        texts,
+        sourceLang,
+        targetLang,
+        translationService,
+        options = {}
+    ) {
         const results = [];
         const providerId = translationService.currentProviderId;
         const providerConfig = this.getProviderBatchConfig(providerId);
 
         // Use provider-specific batch delay or fallback to configured delay
-        const providerDelay = providerConfig.batchDelay || providerConfig.mandatoryDelay || 50;
+        const providerDelay =
+            providerConfig.batchDelay || providerConfig.mandatoryDelay || 50;
         const delay = options.batchDelay || providerDelay;
 
-        this.logger.debug('Processing individual batch with provider-specific delays', {
-            provider: providerId,
-            textCount: texts.length,
-            providerDelay,
-            finalDelay: delay
-        });
+        this.logger.debug(
+            'Processing individual batch with provider-specific delays',
+            {
+                provider: providerId,
+                textCount: texts.length,
+                providerDelay,
+                finalDelay: delay,
+            }
+        );
 
         for (let i = 0; i < texts.length; i++) {
             try {
-                const translated = await translationService.translate(texts[i], sourceLang, targetLang, {
-                    ...options,
-                    skipCache: false,
-                    allowRetry: false // Avoid nested retries in batch
-                });
+                const translated = await translationService.translate(
+                    texts[i],
+                    sourceLang,
+                    targetLang,
+                    {
+                        ...options,
+                        skipCache: false,
+                        allowRetry: false, // Avoid nested retries in batch
+                    }
+                );
                 results.push(translated);
 
                 // Add delay between requests to prevent account lockouts
                 // Note: translate() method already applies mandatory delay, but we add extra delay for batch safety
                 if (i < texts.length - 1 && delay > 0) {
-                    await new Promise(resolve => setTimeout(resolve, delay));
+                    await new Promise((resolve) => setTimeout(resolve, delay));
                 }
             } catch (error) {
-                this.logger.error('Individual translation failed in batch', error, {
-                    textIndex: i,
-                    text: texts[i].substring(0, 50)
-                });
+                this.logger.error(
+                    'Individual translation failed in batch',
+                    error,
+                    {
+                        textIndex: i,
+                        text: texts[i].substring(0, 50),
+                    }
+                );
                 results.push(texts[i]); // Use original text as fallback
             }
         }

@@ -127,6 +127,12 @@ export class NetflixContentScript extends BaseContentScript {
             );
 
             switch (action) {
+                case 'toggleInteractiveSubtitles':
+                    return this._handleToggleInteractiveSubtitles(request, sendResponse);
+
+                case 'updateContextPreferences':
+                    return this._handleUpdateContextPreferences(request, sendResponse);
+
                 default:
                     this.logWithFallback(
                         'debug',
@@ -446,6 +452,16 @@ export class NetflixContentScript extends BaseContentScript {
                 this._originalHistoryMethods = null;
             }
 
+            if (this.aiContextManager) {
+                try {
+                    await this.aiContextManager.destroy();
+                    this.aiContextManager = null;
+                    this.logWithFallback('debug', 'AI Context Manager destroyed');
+                } catch (error) {
+                    this.logWithFallback('error', 'Error destroying AI Context Manager', error);
+                }
+            }
+
             await super.cleanup();
 
             this.logWithFallback('info', 'Netflix-specific cleanup completed.');
@@ -489,5 +505,124 @@ export class NetflixContentScript extends BaseContentScript {
             injectConfig: this.getInjectScriptConfig(),
             urlPatterns: this.getUrlPatterns(),
         };
+    }
+
+
+
+    /**
+     * Handle interactive subtitles toggle
+     * @param {Object} request - Message request
+     * @param {Function} sendResponse - Response callback
+     * @returns {boolean} True if async response
+     */
+    _handleToggleInteractiveSubtitles(request, sendResponse) {
+        const { enabled } = request;
+
+        this.logWithFallback('info', 'Toggling interactive subtitles for Netflix', {
+            enabled
+        });
+
+        try {
+            this._toggleInteractiveSubtitles(enabled);
+            sendResponse({
+                success: true,
+                platform: 'netflix',
+                interactiveEnabled: enabled
+            });
+        } catch (error) {
+            this.logWithFallback('error', 'Failed to toggle interactive subtitles', {
+                error: error.message
+            });
+            sendResponse({
+                success: false,
+                platform: 'netflix',
+                error: error.message
+            });
+        }
+
+        return false; // Sync response
+    }
+
+    /**
+     * Handle context preferences update
+     * @param {Object} request - Message request
+     * @param {Function} sendResponse - Response callback
+     * @returns {boolean} True if async response
+     */
+    _handleUpdateContextPreferences(request, sendResponse) {
+        const { preferences } = request;
+
+        this.logWithFallback('info', 'Updating context preferences for Netflix', {
+            preferences
+        });
+
+        this._updateContextPreferences(preferences)
+            .then((result) => {
+                sendResponse({
+                    success: true,
+                    platform: 'netflix',
+                    updated: result.updated,
+                    preferences: result.preferences
+                });
+            })
+            .catch((error) => {
+                this.logWithFallback('error', 'Failed to update context preferences', {
+                    error: error.message
+                });
+                sendResponse({
+                    success: false,
+                    platform: 'netflix',
+                    error: error.message
+                });
+            });
+
+        return true; // Async response
+    }
+
+
+
+
+
+    /**
+     * Toggle interactive subtitles functionality
+     * @param {boolean} enabled - Whether to enable interactive subtitles
+     */
+    _toggleInteractiveSubtitles(enabled) {
+        if (this.subtitleUtils?.setInteractiveSubtitlesEnabled) {
+            this.subtitleUtils.setInteractiveSubtitlesEnabled(enabled);
+            this.logWithFallback('info', 'Interactive subtitles toggled for Netflix', {
+                enabled
+            });
+        } else {
+            this.logWithFallback('warn', 'Subtitle utilities not available for interactive toggle');
+        }
+    }
+
+    /**
+     * Update context preferences
+     * @param {Object} preferences - New context preferences
+     * @returns {Promise<Object>} Update result
+     */
+    async _updateContextPreferences(preferences) {
+        try {
+            if (this.subtitleUtils?.updateInteractiveConfig) {
+                this.subtitleUtils.updateInteractiveConfig(preferences);
+            }
+
+            this.logWithFallback('info', 'Context preferences updated for Netflix', {
+                preferences
+            });
+
+            return {
+                updated: true,
+                preferences
+            };
+
+        } catch (error) {
+            this.logWithFallback('error', 'Failed to update context preferences', {
+                error: error.message
+            });
+            throw error;
+        }
     }
 }

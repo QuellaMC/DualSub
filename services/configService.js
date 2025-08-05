@@ -1,4 +1,3 @@
-// services/configService.js
 import {
     configSchema,
     getKeysByScope,
@@ -107,7 +106,6 @@ class ConfigService {
                         error,
                         keys: syncKeys,
                     });
-                    // Continue with empty object to set all defaults
                     syncItems = {};
                 }
             }
@@ -142,7 +140,6 @@ class ConfigService {
                         error,
                         keys: localKeys,
                     });
-                    // Continue with empty object to set all defaults
                     localItems = {};
                 }
             }
@@ -395,6 +392,30 @@ class ConfigService {
     }
 
     /**
+     * Checks if Chrome storage API is available for the specified area
+     * @param {string} area - 'sync' or 'local'
+     * @param {string} operation - The operation being performed (for error messages)
+     * @param {object} logContext - Additional context for logging
+     * @returns {boolean} True if available, false otherwise
+     * @private
+     */
+    _checkChromeStorageAvailability(area, operation, logContext = {}) {
+        if (!chrome || !chrome.storage || !chrome.storage[area]) {
+            const error = new Error(`Chrome storage API not available for ${operation} operation (area: ${area})`);
+            this.logger.error(`Chrome storage API unavailable for ${operation}`, error, {
+                area,
+                operation,
+                ...logContext,
+                chromeAvailable: !!chrome,
+                storageAvailable: !!(chrome && chrome.storage),
+                areaAvailable: !!(chrome && chrome.storage && chrome.storage[area])
+            });
+            return false;
+        }
+        return true;
+    }
+
+    /**
      * Internal method to get data from a specific storage area
      * @param {string} area - 'sync' or 'local'
      * @param {string[]} keys - Array of keys to retrieve
@@ -405,6 +426,14 @@ class ConfigService {
         const normalizedKeys = Array.isArray(keys) ? keys : [keys];
         const startTime = Date.now();
 
+        // Check if chrome.storage is available
+        if (!this._checkChromeStorageAvailability(area, 'get', {
+            keys: normalizedKeys,
+            context
+        })) {
+            return {};
+        }
+
         this.logger.debug(`Starting get operation`, {
             area,
             keys: normalizedKeys,
@@ -412,7 +441,8 @@ class ConfigService {
         });
 
         return new Promise((resolve, reject) => {
-            chrome.storage[area].get(keys, (items) => {
+            try {
+                chrome.storage[area].get(keys, (items) => {
                 const duration = Date.now() - startTime;
 
                 if (chrome.runtime.lastError) {
@@ -463,6 +493,14 @@ class ConfigService {
                     resolve(items);
                 }
             });
+            } catch (error) {
+                this.logger.error('Chrome storage access failed', error, {
+                    area,
+                    keys: normalizedKeys,
+                    context
+                });
+                resolve({});
+            }
         });
     }
 
@@ -477,6 +515,15 @@ class ConfigService {
         const keys = Object.keys(items);
         const startTime = Date.now();
 
+        // Check if chrome.storage is available
+        if (!this._checkChromeStorageAvailability(area, 'set', {
+            keys,
+            itemCount: keys.length,
+            context
+        })) {
+            return;
+        }
+
         this.logger.debug(`Starting set operation`, {
             area,
             keys,
@@ -485,7 +532,8 @@ class ConfigService {
         });
 
         return new Promise((resolve, reject) => {
-            chrome.storage[area].set(items, () => {
+            try {
+                chrome.storage[area].set(items, () => {
                 const duration = Date.now() - startTime;
 
                 if (chrome.runtime.lastError) {
@@ -543,6 +591,15 @@ class ConfigService {
                     resolve();
                 }
             });
+            } catch (error) {
+                this.logger.error('Chrome storage set operation failed', error, {
+                    area,
+                    keys,
+                    context
+                });
+                // Resolve silently to prevent cascading failures
+                resolve();
+            }
         });
     }
 
@@ -556,6 +613,15 @@ class ConfigService {
     async removeFromStorage(area, keys, context = {}) {
         const normalizedKeys = Array.isArray(keys) ? keys : [keys];
         const startTime = Date.now();
+
+        // Check if chrome.storage is available
+        if (!this._checkChromeStorageAvailability(area, 'remove', {
+            keys: normalizedKeys,
+            keyCount: normalizedKeys.length,
+            context
+        })) {
+            return;
+        }
 
         this.logger.debug(`Starting remove operation`, {
             area,

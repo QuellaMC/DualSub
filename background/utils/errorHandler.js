@@ -1,15 +1,20 @@
 /**
  * Comprehensive Error Handling System
- * 
+ *
  * Provides centralized error handling, classification, and recovery
  * mechanisms for the background services.
- * 
+ *
  * @author DualSub Extension
  * @version 2.0.0
  */
 
 import { loggingManager } from './loggingManager.js';
-import { ServiceError, TranslationError, SubtitleProcessingError, RateLimitError } from '../services/serviceInterfaces.js';
+import {
+    ServiceError,
+    TranslationError,
+    SubtitleProcessingError,
+    RateLimitError,
+} from '../services/serviceInterfaces.js';
 
 /**
  * Error severity levels
@@ -18,7 +23,7 @@ export const ErrorSeverity = {
     LOW: 'low',
     MEDIUM: 'medium',
     HIGH: 'high',
-    CRITICAL: 'critical'
+    CRITICAL: 'critical',
 };
 
 /**
@@ -31,7 +36,7 @@ export const ErrorCategory = {
     CONFIGURATION: 'configuration',
     RATE_LIMIT: 'rate_limit',
     VALIDATION: 'validation',
-    SYSTEM: 'system'
+    SYSTEM: 'system',
 };
 
 /**
@@ -49,7 +54,7 @@ class ErrorHandler {
             total: 0,
             byCategory: {},
             bySeverity: {},
-            recentErrors: []
+            recentErrors: [],
         };
         this.recoveryStrategies = new Map();
         this.setupRecoveryStrategies();
@@ -64,14 +69,14 @@ class ErrorHandler {
             maxRetries: 3,
             backoffMultiplier: 2,
             baseDelay: 1000,
-            strategy: 'exponential_backoff'
+            strategy: 'exponential_backoff',
         });
 
         // Translation error recovery
         this.recoveryStrategies.set(ErrorCategory.TRANSLATION, {
             maxRetries: 2,
             fallbackProviders: ['deepl_free', 'google'],
-            strategy: 'provider_fallback'
+            strategy: 'provider_fallback',
         });
 
         // Rate limit error recovery
@@ -79,13 +84,13 @@ class ErrorHandler {
             maxRetries: 1,
             backoffMultiplier: 2,
             baseDelay: 5000,
-            strategy: 'exponential_backoff'
+            strategy: 'exponential_backoff',
         });
 
         // Subtitle processing error recovery
         this.recoveryStrategies.set(ErrorCategory.SUBTITLE, {
             maxRetries: 2,
-            strategy: 'graceful_degradation'
+            strategy: 'graceful_degradation',
         });
     }
 
@@ -102,13 +107,13 @@ class ErrorHandler {
 
         // Determine recovery strategy
         const recovery = this.determineRecoveryStrategy(errorInfo);
-        
+
         return {
             ...errorInfo,
             recovery,
             userMessage: this.generateUserMessage(errorInfo),
             shouldRetry: recovery.shouldRetry,
-            retryDelay: recovery.retryDelay
+            retryDelay: recovery.retryDelay,
         };
     }
 
@@ -128,7 +133,7 @@ class ErrorHandler {
             category: ErrorCategory.SYSTEM,
             severity: ErrorSeverity.MEDIUM,
             isRecoverable: true,
-            errorCode: null
+            errorCode: null,
         };
 
         // Classify by error type
@@ -152,21 +157,34 @@ class ErrorHandler {
 
         // Classify by error message patterns
         const message = error.message.toLowerCase();
-        
-        if (message.includes('network') || message.includes('fetch') || message.includes('connection')) {
+
+        if (
+            message.includes('network') ||
+            message.includes('fetch') ||
+            message.includes('connection')
+        ) {
             classification.category = ErrorCategory.NETWORK;
             classification.severity = ErrorSeverity.HIGH;
             classification.errorCode = 'NETWORK_ERROR';
-        } else if (message.includes('api key') || message.includes('authentication')) {
+        } else if (
+            message.includes('api key') ||
+            message.includes('authentication')
+        ) {
             classification.category = ErrorCategory.CONFIGURATION;
             classification.severity = ErrorSeverity.CRITICAL;
             classification.isRecoverable = false;
             classification.errorCode = 'AUTHENTICATION_ERROR';
-        } else if (message.includes('rate limit') || message.includes('quota')) {
+        } else if (
+            message.includes('rate limit') ||
+            message.includes('quota')
+        ) {
             classification.category = ErrorCategory.RATE_LIMIT;
             classification.severity = ErrorSeverity.HIGH;
             classification.errorCode = 'RATE_LIMIT_EXCEEDED';
-        } else if (message.includes('validation') || message.includes('invalid')) {
+        } else if (
+            message.includes('validation') ||
+            message.includes('invalid')
+        ) {
             classification.category = ErrorCategory.VALIDATION;
             classification.severity = ErrorSeverity.MEDIUM;
             classification.errorCode = 'VALIDATION_ERROR';
@@ -190,24 +208,28 @@ class ErrorHandler {
     determineRecoveryStrategy(errorInfo) {
         const strategy = this.recoveryStrategies.get(errorInfo.category) || {
             maxRetries: 1,
-            strategy: 'none'
+            strategy: 'none',
         };
 
         const recovery = {
-            shouldRetry: errorInfo.isRecoverable && (errorInfo.context.retryCount || 0) < strategy.maxRetries,
+            shouldRetry:
+                errorInfo.isRecoverable &&
+                (errorInfo.context.retryCount || 0) < strategy.maxRetries,
             retryDelay: 0,
             strategy: strategy.strategy,
             maxRetries: strategy.maxRetries,
-            fallbackOptions: []
+            fallbackOptions: [],
         };
 
         // Calculate retry delay
         if (recovery.shouldRetry) {
             const retryCount = errorInfo.context.retryCount || 0;
-            
+
             switch (strategy.strategy) {
                 case 'exponential_backoff':
-                    recovery.retryDelay = strategy.baseDelay * Math.pow(strategy.backoffMultiplier, retryCount);
+                    recovery.retryDelay =
+                        strategy.baseDelay *
+                        Math.pow(strategy.backoffMultiplier, retryCount);
                     break;
                 case 'linear_backoff':
                     recovery.retryDelay = strategy.baseDelay * (retryCount + 1);
@@ -235,16 +257,24 @@ class ErrorHandler {
      */
     generateUserMessage(errorInfo) {
         const messages = {
-            [ErrorCategory.NETWORK]: 'Network connection issue. Please check your internet connection and try again.',
-            [ErrorCategory.TRANSLATION]: 'Translation service temporarily unavailable. Trying alternative provider...',
-            [ErrorCategory.SUBTITLE]: 'Subtitle processing failed. Some subtitles may not be available.',
-            [ErrorCategory.RATE_LIMIT]: 'Translation rate limit reached. Please wait a moment before trying again.',
-            [ErrorCategory.CONFIGURATION]: 'Configuration error. Please check your API key settings.',
-            [ErrorCategory.VALIDATION]: 'Invalid data received. Please refresh the page and try again.',
-            [ErrorCategory.SYSTEM]: 'System error occurred. Please try again later.'
+            [ErrorCategory.NETWORK]:
+                'Network connection issue. Please check your internet connection and try again.',
+            [ErrorCategory.TRANSLATION]:
+                'Translation service temporarily unavailable. Trying alternative provider...',
+            [ErrorCategory.SUBTITLE]:
+                'Subtitle processing failed. Some subtitles may not be available.',
+            [ErrorCategory.RATE_LIMIT]:
+                'Translation rate limit reached. Please wait a moment before trying again.',
+            [ErrorCategory.CONFIGURATION]:
+                'Configuration error. Please check your API key settings.',
+            [ErrorCategory.VALIDATION]:
+                'Invalid data received. Please refresh the page and try again.',
+            [ErrorCategory.SYSTEM]:
+                'System error occurred. Please try again later.',
         };
 
-        let message = messages[errorInfo.category] || 'An unexpected error occurred.';
+        let message =
+            messages[errorInfo.category] || 'An unexpected error occurred.';
 
         // Add recovery information
         if (errorInfo.recovery?.shouldRetry) {
@@ -265,21 +295,35 @@ class ErrorHandler {
             errorCode: errorInfo.errorCode,
             isRecoverable: errorInfo.isRecoverable,
             context: errorInfo.context,
-            stack: errorInfo.stack
+            stack: errorInfo.stack,
         };
 
         switch (errorInfo.severity) {
             case ErrorSeverity.CRITICAL:
-                this.logger.error(`CRITICAL ERROR: ${errorInfo.message}`, errorInfo.originalError, logData);
+                this.logger.error(
+                    `CRITICAL ERROR: ${errorInfo.message}`,
+                    errorInfo.originalError,
+                    logData
+                );
                 break;
             case ErrorSeverity.HIGH:
-                this.logger.error(`HIGH SEVERITY: ${errorInfo.message}`, errorInfo.originalError, logData);
+                this.logger.error(
+                    `HIGH SEVERITY: ${errorInfo.message}`,
+                    errorInfo.originalError,
+                    logData
+                );
                 break;
             case ErrorSeverity.MEDIUM:
-                this.logger.warn(`MEDIUM SEVERITY: ${errorInfo.message}`, logData);
+                this.logger.warn(
+                    `MEDIUM SEVERITY: ${errorInfo.message}`,
+                    logData
+                );
                 break;
             case ErrorSeverity.LOW:
-                this.logger.debug(`LOW SEVERITY: ${errorInfo.message}`, logData);
+                this.logger.debug(
+                    `LOW SEVERITY: ${errorInfo.message}`,
+                    logData
+                );
                 break;
         }
     }
@@ -290,7 +334,7 @@ class ErrorHandler {
      */
     updateErrorStats(errorInfo) {
         this.errorStats.total++;
-        
+
         // Update category stats
         if (!this.errorStats.byCategory[errorInfo.category]) {
             this.errorStats.byCategory[errorInfo.category] = 0;
@@ -309,7 +353,7 @@ class ErrorHandler {
             category: errorInfo.category,
             severity: errorInfo.severity,
             message: errorInfo.message,
-            errorCode: errorInfo.errorCode
+            errorCode: errorInfo.errorCode,
         });
 
         if (this.errorStats.recentErrors.length > 50) {
@@ -326,7 +370,7 @@ class ErrorHandler {
             ...this.errorStats,
             errorRate: this.calculateErrorRate(),
             topCategories: this.getTopErrorCategories(),
-            recentTrends: this.getRecentErrorTrends()
+            recentTrends: this.getRecentErrorTrends(),
         };
     }
 
@@ -337,7 +381,7 @@ class ErrorHandler {
     calculateErrorRate() {
         const oneMinuteAgo = Date.now() - 60000;
         const recentErrors = this.errorStats.recentErrors.filter(
-            error => error.timestamp > oneMinuteAgo
+            (error) => error.timestamp > oneMinuteAgo
         );
         return recentErrors.length;
     }
@@ -348,7 +392,7 @@ class ErrorHandler {
      */
     getTopErrorCategories() {
         return Object.entries(this.errorStats.byCategory)
-            .sort(([,a], [,b]) => b - a)
+            .sort(([, a], [, b]) => b - a)
             .slice(0, 5)
             .map(([category, count]) => ({ category, count }));
     }
@@ -360,11 +404,11 @@ class ErrorHandler {
     getRecentErrorTrends() {
         const fiveMinutesAgo = Date.now() - 300000;
         const recentErrors = this.errorStats.recentErrors.filter(
-            error => error.timestamp > fiveMinutesAgo
+            (error) => error.timestamp > fiveMinutesAgo
         );
 
         const trends = {};
-        recentErrors.forEach(error => {
+        recentErrors.forEach((error) => {
             if (!trends[error.category]) {
                 trends[error.category] = 0;
             }
@@ -382,7 +426,7 @@ class ErrorHandler {
             total: 0,
             byCategory: {},
             bySeverity: {},
-            recentErrors: []
+            recentErrors: [],
         };
         this.logger.debug('Error statistics cleared');
     }
@@ -392,4 +436,9 @@ class ErrorHandler {
 export const errorHandler = new ErrorHandler();
 
 // Export error types for convenience
-export { ServiceError, TranslationError, SubtitleProcessingError, RateLimitError };
+export {
+    ServiceError,
+    TranslationError,
+    SubtitleProcessingError,
+    RateLimitError,
+};

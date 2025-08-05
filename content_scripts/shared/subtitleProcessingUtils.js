@@ -7,7 +7,10 @@
  */
 
 // Import consolidated utility functions
-import { parseTimestampToSeconds, sanitizeSubtitleText } from './subtitleUtilities.js';
+import {
+    parseTimestampToSeconds,
+    sanitizeSubtitleText,
+} from './subtitleUtilities.js';
 
 /**
  * Manages dual subtitle processing and display, handling both official and API-based

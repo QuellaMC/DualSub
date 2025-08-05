@@ -190,9 +190,9 @@ describe('configSchema', () => {
 
             // Local scope should contain UI state and debug settings
             expect(localKeys).toEqual(
-                expect.arrayContaining(['appearanceAccordionOpen', 'debugMode'])
+                expect.arrayContaining(['appearanceAccordionOpen', 'debugMode', 'aiContextDebugMode'])
             );
-            expect(localKeys.length).toBe(2);
+            expect(localKeys.length).toBe(3);
 
             // Sync scope should contain all other settings including loggingLevel and OpenAI settings
             expect(syncKeys.length).toBeGreaterThan(10);

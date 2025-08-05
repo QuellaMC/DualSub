@@ -16,5 +16,11 @@ export * from './core/index.js';
 // Shared utilities
 export { default as SubtitleUtilities } from './shared/subtitleUtilities.js';
 
+// AI Context Integration
+export { aiContextIntegrationManager } from './shared/aiContextIntegrationManager.js';
+export { interactiveSubtitleFormatter } from './shared/interactiveSubtitleFormatter.js';
+export { contextModal } from './shared/contextModal.js';
+export { contextLoadingStates } from './shared/contextLoadingStates.js';
+
 // Platform-specific content scripts are imported directly by the manifest
 // They are not exported here to avoid circular dependencies

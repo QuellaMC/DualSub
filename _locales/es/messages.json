@@ -195,6 +195,26 @@
     "providerMicrosoftName": { "message": "Microsoft Translate (Gratuito)" },
     "providerDeepLName": { "message": "DeepL (Requiere Clave API)" },
     "providerDeepLFreeName": { "message": "DeepL Translate (Gratuito)" },
+    "providerOpenAICompatibleName": { "message": "Compatible con OpenAI (Requiere Clave API)" },
+    "cardOpenAICompatibleTitle": { "message": "Compatible con OpenAI (Requiere Clave API)" },
+    "cardOpenAICompatibleDesc": { "message": "Ingresa tu clave API y configuraciones para servicios compatibles con OpenAI como Gemini." },
+    "baseUrlLabel": { "message": "URL Base:" },
+    "modelLabel": { "message": "Modelo:" },
+    "featureCustomizable": { "message": "Endpoint y modelo personalizables" },
+    "fetchModelsButton": { "message": "Obtener Modelos" },
+    "testConnectionButton": { "message": "Probar Conexión" },
+
+    "openaiApiKeyPlaceholder": { "message": "Ingresa tu clave API compatible con OpenAI" },
+    "openaiBaseUrlPlaceholder": { "message": "ej., https://api.openai.com/v1" },
+    "openaiApiKeyError": { "message": "Por favor ingresa tu clave API primero." },
+    "openaiApiKeyNeedsTesting": { "message": "⚠️ La clave API necesita ser probada." },
+    "openaiTestNeedsTesting": { "message": "⚠️ La clave API compatible con OpenAI necesita ser probada." },
+    "openaiTestingConnection": { "message": "Probando conexión..." },
+    "openaiConnectionSuccessful": { "message": "¡Conexión exitosa!" },
+    "openaiConnectionFailed": { "message": "Conexión falló: %s" },
+    "openaieFetchingModels": { "message": "Obteniendo modelos..." },
+    "openaiModelsFetchedSuccessfully": { "message": "Modelos obtenidos exitosamente." },
+    "openaiFailedToFetchModels": { "message": "Error al obtener modelos: %s" },
 
     "cardLoggingLevelTitle": { "message": "Nivel de Registro" },
     "cardLoggingLevelDesc": {
@@ -215,7 +235,9 @@
     "batchingEnabledHelp": {
         "message": "Agrupa múltiples segmentos de subtítulos en solicitudes de traducción únicas"
     },
-    "useProviderDefaultsLabel": { "message": "Usar Configuración Optimizada del Proveedor:" },
+    "useProviderDefaultsLabel": {
+        "message": "Usar Configuración Optimizada del Proveedor:"
+    },
     "useProviderDefaultsHelp": {
         "message": "Usar automáticamente tamaños de lote óptimos para cada proveedor de traducción"
     },
@@ -232,7 +254,9 @@
         "message": "Número de lotes de traducción a procesar simultáneamente"
     },
 
-    "cardProviderBatchTitle": { "message": "Tamaños de Lote Específicos del Proveedor" },
+    "cardProviderBatchTitle": {
+        "message": "Tamaños de Lote Específicos del Proveedor"
+    },
     "cardProviderBatchDesc": {
         "message": "Configure tamaños de lote óptimos para cada proveedor de traducción. Estas configuraciones se usan cuando \"Usar Configuración Optimizada del Proveedor\" está habilitado."
     },
@@ -248,14 +272,20 @@
     "deeplBatchSizeHelp": {
         "message": "Recomendado: 2-3 segmentos (predeterminado: 3)"
     },
-    "microsoftBatchSizeLabel": { "message": "Tamaño de Lote Microsoft Translate:" },
+    "microsoftBatchSizeLabel": {
+        "message": "Tamaño de Lote Microsoft Translate:"
+    },
     "microsoftBatchSizeHelp": {
         "message": "Recomendado: 3-5 segmentos (predeterminado: 4)"
     },
 
-    "deeplTestNeedsTesting": { "message": "⚠️ La clave API de DeepL necesita ser probada." },
+    "deeplTestNeedsTesting": {
+        "message": "⚠️ La clave API de DeepL necesita ser probada."
+    },
 
-    "cardProviderDelayTitle": { "message": "Retrasos de Solicitud Específicos del Proveedor" },
+    "cardProviderDelayTitle": {
+        "message": "Retrasos de Solicitud Específicos del Proveedor"
+    },
     "cardProviderDelayDesc": {
         "message": "Configure retrasos obligatorios entre solicitudes de traducción para prevenir bloqueos de cuenta. Estos retrasos se aplican incluso cuando el procesamiento por lotes está habilitado."
     },
@@ -263,7 +293,9 @@
     "openaieDelayHelp": {
         "message": "Retraso mínimo entre solicitudes (predeterminado: 100ms)"
     },
-    "googleDelayLabel": { "message": "Retraso de Solicitud Google Translate (ms):" },
+    "googleDelayLabel": {
+        "message": "Retraso de Solicitud Google Translate (ms):"
+    },
     "googleDelayHelp": {
         "message": "Retraso requerido para prevenir bloqueos temporales (predeterminado: 1500ms)"
     },
@@ -271,12 +303,122 @@
     "deeplDelayHelp": {
         "message": "Retraso para solicitudes de API DeepL (predeterminado: 500ms)"
     },
-    "deeplFreeDelayLabel": { "message": "Retraso de Solicitud DeepL Gratuito (ms):" },
+    "deeplFreeDelayLabel": {
+        "message": "Retraso de Solicitud DeepL Gratuito (ms):"
+    },
     "deeplFreeDelayHelp": {
         "message": "Retraso conservador para nivel gratuito (predeterminado: 2000ms)"
     },
-    "microsoftDelayLabel": { "message": "Retraso de Solicitud Microsoft Translate (ms):" },
+    "microsoftDelayLabel": {
+        "message": "Retraso de Solicitud Microsoft Translate (ms):"
+    },
     "microsoftDelayHelp": {
         "message": "Retraso para respetar límites de caracteres (predeterminado: 800ms)"
-    }
+    },
+
+    "aiContextModalTitle": { "message": "Análisis de Contexto IA" },
+    "aiContextSelectedWords": { "message": "Palabras Seleccionadas" },
+    "aiContextNoWordsSelected": { "message": "No hay palabras seleccionadas" },
+    "aiContextClickHint": { "message": "💡 Haz clic en una palabra para agregarla o quitarla." },
+    "aiContextStartAnalysis": { "message": "Iniciar Análisis" },
+    "aiContextPauseAnalysis": { "message": "⏸ Pausar" },
+    "aiContextPauseAnalysisTitle": { "message": "Pausar Análisis" },
+    "aiContextInitialMessage": { "message": "Selecciona palabras de los subtítulos para comenzar el análisis." },
+    "aiContextAnalyzing": { "message": "Analizando contexto..." },
+    "aiContextPauseNote": { "message": "Haz clic en ⏸ para pausar el análisis" },
+    "aiContextAnalysisFailed": { "message": "Análisis Fallido" },
+    "aiContextNoContent": { "message": "Sin Contenido de Análisis" },
+    "aiContextNoContentMessage": { "message": "El análisis se completó pero no se devolvió contenido." },
+    "aiContextDefinition": { "message": "📖 Definición" },
+    "aiContextCultural": { "message": "🌍 Contexto Cultural" },
+    "aiContextCulturalSignificance": { "message": "⭐ Significado Cultural" },
+    "aiContextHistorical": { "message": "📜 Contexto Histórico" },
+    "aiContextHistoricalSignificance": { "message": "📜 Significado Histórico" },
+    "aiContextEvolution": { "message": "🔄 Evolución en el Tiempo" },
+    "aiContextLinguistic": { "message": "🔤 Análisis Lingüístico" },
+    "aiContextGrammar": { "message": "📝 Gramática y Semántica" },
+    "aiContextUsage": { "message": "💡 Uso y Ejemplos" },
+    "aiContextExamples": { "message": "Ejemplos:" },
+    "aiContextLearningTips": { "message": "🎯 Consejos de Aprendizaje" },
+    "aiContextRelatedExpressions": { "message": "🔗 Expresiones Relacionadas" },
+    "aiContextKeyInsights": { "message": "🔑 Perspectivas Clave" },
+    "aiContextTypeCultural": { "message": "Cultural" },
+    "aiContextTypeHistorical": { "message": "Histórico" },
+    "aiContextTypeLinguistic": { "message": "Lingüístico" },
+    "aiContextTypeComprehensive": { "message": "Integral" },
+    "aiContextTypeGeneric": { "message": "Contexto" },
+    "aiContextClose": { "message": "Cerrar" },
+    "aiContextAnalysisResults": { "message": "Resultados del Análisis" },
+    "aiContextRetrying": { "message": "Análisis falló, regenerando..." },
+    "aiContextRetryNotification": { "message": "Análisis falló, reintentando..." },
+    "aiContextRetryButton": { "message": "Intentar de Nuevo" },
+    "aiContextMalformedResponse": { "message": "El servicio de IA devolvió un formato de respuesta inválido. Esto puede deberse a problemas temporales del servicio." },
+    "aiContextJsonCodeBlock": { "message": "El servicio de IA devolvió código JSON sin procesar en lugar de datos estructurados. Esto indica un error de formato en la respuesta." },
+    "aiContextCulturalContext": { "message": "Contexto Cultural:" },
+    "aiContextSocialUsage": { "message": "Uso Social:" },
+    "aiContextRegionalNotes": { "message": "Notas Regionales:" },
+    "aiContextOrigins": { "message": "Orígenes:" },
+    "aiContextHistoricalContext": { "message": "Contexto Histórico:" },
+    "aiContextHistoricalSignificance": { "message": "Significado Histórico:" },
+    "aiContextEvolution": { "message": "Evolución:" },
+    "aiContextEtymology": { "message": "Etimología:" },
+    "aiContextGrammarNotes": { "message": "Notas Gramaticales:" },
+    "aiContextTranslationNotes": { "message": "Notas de Traducción:" },
+    "aiContextLinguisticAnalysis": { "message": "Análisis Lingüístico:" },
+    "aiContextGrammarSemantics": { "message": "Gramática y Semántica:" },
+    "aiContextUsageExamples": { "message": "Uso y Ejemplos:" },
+    "aiContextLearningTips": { "message": "Consejos de Aprendizaje:" },
+    "aiContextRelatedExpressions": { "message": "Expresiones Relacionadas:" },
+    "aiContextKeyInsights": { "message": "Puntos Clave:" },
+
+    "navAIContext": { "message": "Contexto IA" },
+    "sectionAIContext": { "message": "Asistente de Contexto IA" },
+    "cardAIContextToggleTitle": { "message": "Habilitar Análisis de Contexto IA" },
+    "cardAIContextToggleDesc": { "message": "Habilita el análisis de contexto cultural, histórico y lingüístico impulsado por IA para el texto de los subtítulos. Haz clic en palabras o frases en los subtítulos para obtener explicaciones detalladas." },
+    "aiContextEnabledLabel": { "message": "Habilitar Contexto IA:" },
+    "cardAIContextProviderTitle": { "message": "Proveedor de IA" },
+    "cardAIContextProviderDesc": { "message": "Elige el proveedor de servicios de IA para el análisis de contexto. Diferentes proveedores pueden ofrecer calidad y tiempos de respuesta variables." },
+    "aiContextProviderLabel": { "message": "Proveedor:" },
+    "cardOpenAIContextTitle": { "message": "Configuración de OpenAI" },
+    "cardOpenAIContextDesc": { "message": "Configura tus ajustes de API de OpenAI para el análisis de contexto. Necesitas una clave API válida de OpenAI." },
+    "openaiApiKeyLabel": { "message": "Clave API:" },
+    "openaiBaseUrlLabel": { "message": "URL Base:" },
+    "openaiModelLabel": { "message": "Modelo:" },
+    "cardGeminiContextTitle": { "message": "Configuración de Google Gemini" },
+    "cardGeminiContextDesc": { "message": "Configura tus ajustes de API de Google Gemini para el análisis de contexto. Necesitas una clave API válida de Gemini." },
+    "geminiApiKeyLabel": { "message": "Clave API:" },
+    "geminiModelLabel": { "message": "Modelo:" },
+    "cardAIContextTypesTitle": { "message": "Tipos de Contexto" },
+    "cardAIContextTypesDesc": { "message": "Habilita los tipos de análisis de contexto que quieres usar. Puedes habilitar múltiples tipos." },
+    "contextTypeCulturalLabel": { "message": "Contexto Cultural:" },
+    "contextTypeCulturalHelp": { "message": "Analizar referencias culturales, modismos y contexto social" },
+    "contextTypeHistoricalLabel": { "message": "Contexto Histórico:" },
+    "contextTypeHistoricalHelp": { "message": "Proporcionar antecedentes históricos y contexto del período de tiempo" },
+    "contextTypeLinguisticLabel": { "message": "Análisis Lingüístico:" },
+    "contextTypeLinguisticHelp": { "message": "Explicar gramática, etimología y estructura del lenguaje" },
+    "cardAIContextInteractiveTitle": { "message": "Características Interactivas" },
+    "cardAIContextInteractiveDesc": { "message": "Configura cómo interactúas con los subtítulos para activar el análisis de contexto." },
+    "interactiveSubtitlesEnabledLabel": { "message": "Habilitar Subtítulos Interactivos:" },
+    "interactiveSubtitlesEnabledHelp": { "message": "Hacer que las palabras de los subtítulos sean clicables para el análisis de contexto" },
+    "contextOnClickLabel": { "message": "Contexto al Hacer Clic:" },
+    "contextOnClickHelp": { "message": "Mostrar análisis de contexto al hacer clic en palabras" },
+    "contextOnSelectionLabel": { "message": "Contexto en Selección:" },
+    "contextOnSelectionHelp": { "message": "Mostrar análisis de contexto al seleccionar texto" },
+    "cardAIContextPrivacyTitle": { "message": "Privacidad y Datos" },
+    "cardAIContextPrivacyDesc": { "message": "Controla cómo se manejan tus datos durante el análisis de contexto." },
+    "aiContextUserConsentLabel": { "message": "Consiento enviar texto de subtítulos a proveedores de IA para análisis:" },
+    "aiContextUserConsentHelp": { "message": "Requerido para que funcione el análisis de contexto IA" },
+    "aiContextDataSharingLabel": { "message": "Permitir análisis de uso anónimo:" },
+    "aiContextDataSharingHelp": { "message": "Ayuda a mejorar el servicio compartiendo datos de uso anónimos" },
+    "cardAIContextAdvancedTitle": { "message": "Configuración Avanzada" },
+    "aiContextTimeoutLabel": { "message": "Tiempo de Espera de Solicitud (ms):" },
+    "aiContextTimeoutHelp": { "message": "Tiempo máximo para esperar respuesta de IA" },
+    "aiContextRateLimitLabel": { "message": "Límite de Velocidad (solicitudes/min):" },
+    "aiContextRateLimitHelp": { "message": "Número máximo de solicitudes por minuto" },
+    "aiContextCacheEnabledLabel": { "message": "Habilitar Caché:" },
+    "aiContextCacheEnabledHelp": { "message": "Almacenar en caché los resultados del análisis para reducir las llamadas a la API" },
+    "aiContextRetryAttemptsLabel": { "message": "Intentos de Reintento:" },
+    "aiContextRetryAttemptsHelp": { "message": "Número de veces para reintentar solicitudes fallidas" },
+    "showAdvancedSettings": { "message": "Mostrar Configuración Avanzada" },
+    "hideAdvancedSettings": { "message": "Ocultar Configuración Avanzada" }
 }

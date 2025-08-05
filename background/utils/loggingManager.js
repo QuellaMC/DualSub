@@ -1,11 +1,11 @@
 /**
  * Logging Manager for Background Services
- * 
+ *
  * Coordinates logging across all background modules and handles
  * cross-context logging level synchronization.
- * 
+ *
  * Reuses existing Logger.create() from utils/logger.js
- * 
+ *
  * @author DualSub Extension
  * @version 2.0.0
  */
@@ -55,7 +55,6 @@ class LoggingManager {
             });
 
             this.isInitialized = true;
-            
         } catch (error) {
             this.logger.error('Failed to initialize logging level', error);
             // Use default level on error

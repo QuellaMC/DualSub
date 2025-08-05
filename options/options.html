@@ -32,6 +32,11 @@
                                 >Providers</a
                             >
                         </li>
+                        <li>
+                            <a href="#ai-context" data-i18n="navAIContext"
+                                >AI Context</a
+                            >
+                        </li>
                         <li><a href="#about" data-i18n="navAbout">About</a></li>
                     </ul>
                 </nav>
@@ -182,11 +187,14 @@
                     </div>
 
                     <div class="setting-card">
-                        <h3 data-i18n="cardBatchTranslationTitle">Batch Translation</h3>
+                        <h3 data-i18n="cardBatchTranslationTitle">
+                            Batch Translation
+                        </h3>
                         <p data-i18n="cardBatchTranslationDesc">
-                            Batch translation processes multiple subtitle segments together,
-                            reducing API calls by 80-90% and improving performance. Configure
-                            optimal settings for your preferred translation provider.
+                            Batch translation processes multiple subtitle
+                            segments together, reducing API calls by 80-90% and
+                            improving performance. Configure optimal settings
+                            for your preferred translation provider.
                         </p>
 
                         <div class="setting setting-with-help">
@@ -196,8 +204,12 @@
                                     data-i18n="batchingEnabledLabel"
                                     >Enable Batch Translation:</label
                                 >
-                                <div class="setting-help" data-i18n="batchingEnabledHelp">
-                                    Groups multiple subtitle segments into single translation requests
+                                <div
+                                    class="setting-help"
+                                    data-i18n="batchingEnabledHelp"
+                                >
+                                    Groups multiple subtitle segments into
+                                    single translation requests
                                 </div>
                             </div>
                             <div class="toggle-switch">
@@ -223,8 +235,12 @@
                                     data-i18n="useProviderDefaultsLabel"
                                     >Use Provider-Optimized Settings:</label
                                 >
-                                <div class="setting-help" data-i18n="useProviderDefaultsHelp">
-                                    Automatically use optimal batch sizes for each translation provider
+                                <div
+                                    class="setting-help"
+                                    data-i18n="useProviderDefaultsHelp"
+                                >
+                                    Automatically use optimal batch sizes for
+                                    each translation provider
                                 </div>
                             </div>
                             <div class="toggle-switch">
@@ -243,15 +259,22 @@
                             </div>
                         </div>
 
-                        <div class="setting setting-with-help" id="globalBatchSizeSetting">
+                        <div
+                            class="setting setting-with-help"
+                            id="globalBatchSizeSetting"
+                        >
                             <div class="setting-content">
                                 <label
                                     for="globalBatchSize"
                                     data-i18n="globalBatchSizeLabel"
                                     >Global Batch Size:</label
                                 >
-                                <div class="setting-help" data-i18n="globalBatchSizeHelp">
-                                    Number of subtitle segments to process together (1-15)
+                                <div
+                                    class="setting-help"
+                                    data-i18n="globalBatchSizeHelp"
+                                >
+                                    Number of subtitle segments to process
+                                    together (1-15)
                                 </div>
                             </div>
                             <input
@@ -271,8 +294,12 @@
                                     data-i18n="smartBatchingLabel"
                                     >Smart Batch Optimization:</label
                                 >
-                                <div class="setting-help" data-i18n="smartBatchingHelp">
-                                    Prioritizes subtitle segments based on playback position
+                                <div
+                                    class="setting-help"
+                                    data-i18n="smartBatchingHelp"
+                                >
+                                    Prioritizes subtitle segments based on
+                                    playback position
                                 </div>
                             </div>
                             <div class="toggle-switch">
@@ -281,10 +308,7 @@
                                     id="smartBatching"
                                     class="toggle-input"
                                 />
-                                <label
-                                    for="smartBatching"
-                                    class="toggle-label"
-                                >
+                                <label for="smartBatching" class="toggle-label">
                                     <span class="toggle-inner"></span>
                                     <span class="toggle-switch-handle"></span>
                                 </label>
@@ -298,8 +322,12 @@
                                     data-i18n="maxConcurrentBatchesLabel"
                                     >Maximum Concurrent Batches:</label
                                 >
-                                <div class="setting-help" data-i18n="maxConcurrentBatchesHelp">
-                                    Number of translation batches to process simultaneously
+                                <div
+                                    class="setting-help"
+                                    data-i18n="maxConcurrentBatchesHelp"
+                                >
+                                    Number of translation batches to process
+                                    simultaneously
                                 </div>
                             </div>
                             <input
@@ -314,10 +342,13 @@
                     </div>
 
                     <div class="setting-card" id="providerBatchSettings">
-                        <h3 data-i18n="cardProviderBatchTitle">Provider-Specific Batch Sizes</h3>
+                        <h3 data-i18n="cardProviderBatchTitle">
+                            Provider-Specific Batch Sizes
+                        </h3>
                         <p data-i18n="cardProviderBatchDesc">
-                            Configure optimal batch sizes for each translation provider.
-                            These settings are used when "Use Provider-Optimized Settings" is enabled.
+                            Configure optimal batch sizes for each translation
+                            provider. These settings are used when "Use
+                            Provider-Optimized Settings" is enabled.
                         </p>
 
                         <div class="setting setting-with-help">
@@ -327,7 +358,10 @@
                                     data-i18n="openaieBatchSizeLabel"
                                     >OpenAI Batch Size:</label
                                 >
-                                <div class="setting-help" data-i18n="openaieBatchSizeHelp">
+                                <div
+                                    class="setting-help"
+                                    data-i18n="openaieBatchSizeHelp"
+                                >
                                     Recommended: 5-10 segments (default: 8)
                                 </div>
                             </div>
@@ -348,7 +382,10 @@
                                     data-i18n="googleBatchSizeLabel"
                                     >Google Translate Batch Size:</label
                                 >
-                                <div class="setting-help" data-i18n="googleBatchSizeHelp">
+                                <div
+                                    class="setting-help"
+                                    data-i18n="googleBatchSizeHelp"
+                                >
                                     Recommended: 3-5 segments (default: 4)
                                 </div>
                             </div>
@@ -369,7 +406,10 @@
                                     data-i18n="deeplBatchSizeLabel"
                                     >DeepL Batch Size:</label
                                 >
-                                <div class="setting-help" data-i18n="deeplBatchSizeHelp">
+                                <div
+                                    class="setting-help"
+                                    data-i18n="deeplBatchSizeHelp"
+                                >
                                     Recommended: 2-3 segments (default: 3)
                                 </div>
                             </div>
@@ -390,7 +430,10 @@
                                     data-i18n="microsoftBatchSizeLabel"
                                     >Microsoft Translate Batch Size:</label
                                 >
-                                <div class="setting-help" data-i18n="microsoftBatchSizeHelp">
+                                <div
+                                    class="setting-help"
+                                    data-i18n="microsoftBatchSizeHelp"
+                                >
                                     Recommended: 3-5 segments (default: 4)
                                 </div>
                             </div>
@@ -406,10 +449,13 @@
                     </div>
 
                     <div class="setting-card" id="providerDelaySettings">
-                        <h3 data-i18n="cardProviderDelayTitle">Provider-Specific Request Delays</h3>
+                        <h3 data-i18n="cardProviderDelayTitle">
+                            Provider-Specific Request Delays
+                        </h3>
                         <p data-i18n="cardProviderDelayDesc">
-                            Configure mandatory delays between translation requests to prevent account lockouts.
-                            These delays are applied even when batch processing is enabled.
+                            Configure mandatory delays between translation
+                            requests to prevent account lockouts. These delays
+                            are applied even when batch processing is enabled.
                         </p>
 
                         <div class="setting setting-with-help">
@@ -419,8 +465,12 @@
                                     data-i18n="openaieDelayLabel"
                                     >OpenAI Request Delay (ms):</label
                                 >
-                                <div class="setting-help" data-i18n="openaieDelayHelp">
-                                    Minimum delay between requests (default: 100ms)
+                                <div
+                                    class="setting-help"
+                                    data-i18n="openaieDelayHelp"
+                                >
+                                    Minimum delay between requests (default:
+                                    100ms)
                                 </div>
                             </div>
                             <input
@@ -440,8 +490,12 @@
                                     data-i18n="googleDelayLabel"
                                     >Google Translate Request Delay (ms):</label
                                 >
-                                <div class="setting-help" data-i18n="googleDelayHelp">
-                                    Required delay to prevent temporary lockouts (default: 1500ms)
+                                <div
+                                    class="setting-help"
+                                    data-i18n="googleDelayHelp"
+                                >
+                                    Required delay to prevent temporary lockouts
+                                    (default: 1500ms)
                                 </div>
                             </div>
                             <input
@@ -461,8 +515,12 @@
                                     data-i18n="deeplDelayLabel"
                                     >DeepL API Request Delay (ms):</label
                                 >
-                                <div class="setting-help" data-i18n="deeplDelayHelp">
-                                    Delay for DeepL API requests (default: 500ms)
+                                <div
+                                    class="setting-help"
+                                    data-i18n="deeplDelayHelp"
+                                >
+                                    Delay for DeepL API requests (default:
+                                    500ms)
                                 </div>
                             </div>
                             <input
@@ -482,8 +540,12 @@
                                     data-i18n="deeplFreeDelayLabel"
                                     >DeepL Free Request Delay (ms):</label
                                 >
-                                <div class="setting-help" data-i18n="deeplFreeDelayHelp">
-                                    Conservative delay for free tier (default: 2000ms)
+                                <div
+                                    class="setting-help"
+                                    data-i18n="deeplFreeDelayHelp"
+                                >
+                                    Conservative delay for free tier (default:
+                                    2000ms)
                                 </div>
                             </div>
                             <input
@@ -501,10 +563,15 @@
                                 <label
                                     for="microsoftDelay"
                                     data-i18n="microsoftDelayLabel"
-                                    >Microsoft Translate Request Delay (ms):</label
+                                    >Microsoft Translate Request Delay
+                                    (ms):</label
                                 >
-                                <div class="setting-help" data-i18n="microsoftDelayHelp">
-                                    Delay to respect character limits (default: 800ms)
+                                <div
+                                    class="setting-help"
+                                    data-i18n="microsoftDelayHelp"
+                                >
+                                    Delay to respect character limits (default:
+                                    800ms)
                                 </div>
                             </div>
                             <input
@@ -672,6 +739,82 @@
                         </div>
                     </div>
 
+                    <!-- OpenAI Compatible Card -->
+                    <div
+                        class="setting-card"
+                        id="openaiCompatibleProviderCard"
+                        style="display: none"
+                    >
+                        <h3 data-i18n="cardOpenAICompatibleTitle">
+                            OpenAI Compatible (API Key Required)
+                        </h3>
+                        <p data-i18n="cardOpenAICompatibleDesc">
+                            Enter your API key and settings for OpenAI-compatible services like Gemini.
+                        </p>
+                        <div class="setting">
+                            <label for="openaiCompatibleApiKey" data-i18n="apiKeyLabel"
+                                >API Key:</label
+                            >
+                            <input
+                                type="password"
+                                id="openaiCompatibleApiKey"
+                                data-i18n-placeholder="openaiApiKeyPlaceholder"
+                                placeholder="Enter your OpenAI-compatible API key"
+                            />
+                        </div>
+                        <div class="setting">
+                            <label for="openaiCompatibleBaseUrl" data-i18n="baseUrlLabel"
+                                >Base URL:</label
+                            >
+                            <input
+                                type="text"
+                                id="openaiCompatibleBaseUrl"
+                                data-i18n-placeholder="openaiBaseUrlPlaceholder"
+                                placeholder="e.g., https://api.openai.com/v1"
+                            />
+                        </div>
+                        <div class="setting">
+                            <label for="openaiCompatibleModel" data-i18n="modelLabel"
+                                >Model:</label
+                            >
+                            <select id="openaiCompatibleModel">
+                            </select>
+                        </div>
+                        <div class="setting openai-test-setting">
+                            <div
+                                id="openaiTestResult"
+                                class="test-result"
+                                aria-live="polite"
+                            ></div>
+                            <button
+                                id="testOpenAIButton"
+                                type="button"
+                                class="btn-sparkle"
+                                data-i18n="testConnectionButton"
+                            >
+                                <span class="text">Test Connection</span>
+                            </button>
+                        </div>
+                        <div class="provider-info">
+                            <div class="info-item">
+                                <strong data-i18n="providerFeatures"
+                                    >Features:</strong
+                                >
+                                <ul>
+                                    <li data-i18n="featureCustomizable">
+                                        Customizable endpoint and model
+                                    </li>
+                                    <li data-i18n="featureApiKeyRequired">
+                                        API key required
+                                    </li>
+                                    <li data-i18n="featureWideLanguageSupport">
+                                        Wide language support
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- DeepL Card -->
                     <div
                         class="setting-card"
@@ -714,7 +857,10 @@
                                 class="test-result"
                                 aria-live="polite"
                                 data-i18n="deeplTestInvalidKey"
-                            >❌ DeepL API key is invalid or has been rejected.</div>
+                            >
+                                ❌ DeepL API key is invalid or has been
+                                rejected.
+                            </div>
                             <button
                                 id="testDeepLButton"
                                 type="button"
@@ -743,6 +889,158 @@
                                         Usage limits apply
                                     </li>
                                 </ul>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                <section id="ai-context" class="hidden">
+                    <h2 data-i18n="sectionAIContext">AI Context Assistant</h2>
+
+                    <!-- Feature Toggle -->
+                    <div class="setting-card">
+                        <h3 data-i18n="cardAIContextToggleTitle">Enable AI Context Analysis</h3>
+                        <p data-i18n="cardAIContextToggleDesc">
+                            Enable AI-powered cultural, historical, and linguistic context analysis for subtitle text.
+                            Click on words or phrases in subtitles to get detailed explanations.
+                        </p>
+                        <div class="setting">
+                            <label for="aiContextEnabled" data-i18n="aiContextEnabledLabel">Enable AI Context:</label>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="aiContextEnabled" class="toggle-input" />
+                                <label for="aiContextEnabled" class="toggle-label">
+                                    <span class="toggle-inner"></span>
+                                    <span class="toggle-switch-handle"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Provider Selection -->
+                    <div class="setting-card" id="aiContextProviderCard">
+                        <h3 data-i18n="cardAIContextProviderTitle">AI Provider</h3>
+                        <p data-i18n="cardAIContextProviderDesc">
+                            Choose the AI service provider for context analysis. Different providers may offer
+                            varying quality and response times.
+                        </p>
+                        <div class="setting">
+                            <label for="aiContextProvider" data-i18n="aiContextProviderLabel">Provider:</label>
+                            <select id="aiContextProvider">
+                                <option value="openai">OpenAI GPT</option>
+                                <option value="gemini">Google Gemini</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- OpenAI Settings -->
+                    <div class="setting-card" id="openaiContextSettings">
+                        <h3 data-i18n="cardOpenAIContextTitle">OpenAI Configuration</h3>
+                        <p data-i18n="cardOpenAIContextDesc">
+                            Configure your OpenAI API settings for context analysis. You need a valid OpenAI API key.
+                        </p>
+                        <div class="setting">
+                            <label for="openaiApiKey" data-i18n="openaiApiKeyLabel">API Key:</label>
+                            <input type="password" id="openaiApiKey" placeholder="sk-..." />
+                        </div>
+                        <div class="setting">
+                            <label for="openaiBaseUrl" data-i18n="openaiBaseUrlLabel">Base URL:</label>
+                            <input type="url" id="openaiBaseUrl" placeholder="https://api.openai.com/v1" />
+                        </div>
+                        <div class="setting">
+                            <label for="openaiModel" data-i18n="openaiModelLabel">Model:</label>
+                            <select id="openaiModel">
+                                <!-- Models will be populated dynamically -->
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Gemini Settings -->
+                    <div class="setting-card" id="geminiContextSettings">
+                        <h3 data-i18n="cardGeminiContextTitle">Google Gemini Configuration</h3>
+                        <p data-i18n="cardGeminiContextDesc">
+                            Configure your Google Gemini API settings for context analysis. You need a valid Gemini API key.
+                        </p>
+                        <div class="setting">
+                            <label for="geminiApiKey" data-i18n="geminiApiKeyLabel">API Key:</label>
+                            <input type="password" id="geminiApiKey" placeholder="AIza..." />
+                        </div>
+                        <div class="setting">
+                            <label for="geminiModel" data-i18n="geminiModelLabel">Model:</label>
+                            <select id="geminiModel">
+                                <!-- Models will be populated dynamically -->
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Context Types -->
+                    <div class="setting-card" id="aiContextTypesCard">
+                        <h3 data-i18n="cardAIContextTypesTitle">Context Types</h3>
+                        <p data-i18n="cardAIContextTypesDesc">
+                            Enable the types of context analysis you want to use. You can enable multiple types.
+                        </p>
+                        <div class="setting">
+                            <label for="contextTypeCultural" data-i18n="contextTypeCulturalLabel">Cultural Context:</label>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="contextTypeCultural" class="toggle-input" value="cultural" />
+                                <label for="contextTypeCultural" class="toggle-label">
+                                    <span class="toggle-inner"></span>
+                                    <span class="toggle-switch-handle"></span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="setting">
+                            <label for="contextTypeHistorical" data-i18n="contextTypeHistoricalLabel">Historical Context:</label>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="contextTypeHistorical" class="toggle-input" value="historical" />
+                                <label for="contextTypeHistorical" class="toggle-label">
+                                    <span class="toggle-inner"></span>
+                                    <span class="toggle-switch-handle"></span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="setting">
+                            <label for="contextTypeLinguistic" data-i18n="contextTypeLinguisticLabel">Linguistic Context:</label>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="contextTypeLinguistic" class="toggle-input" value="linguistic" />
+                                <label for="contextTypeLinguistic" class="toggle-label">
+                                    <span class="toggle-inner"></span>
+                                    <span class="toggle-switch-handle"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+
+
+
+                    <!-- Advanced Settings -->
+                    <div class="setting-card collapsible" id="aiContextAdvancedCard">
+                        <h3 data-i18n="cardAIContextAdvancedTitle">Advanced Settings</h3>
+                        <button class="collapse-toggle" data-target="aiContextAdvancedContent">
+                            <span data-i18n="showAdvancedSettings">Show Advanced Settings</span>
+                            <span class="collapse-icon">▼</span>
+                        </button>
+                        <div class="collapse-content" id="aiContextAdvancedContent">
+                            <div class="setting">
+                                <label for="aiContextTimeout" data-i18n="aiContextTimeoutLabel">Request Timeout (ms):</label>
+                                <input type="number" id="aiContextTimeout" min="5000" max="60000" step="1000" />
+                            </div>
+                            <div class="setting">
+                                <label for="aiContextRateLimit" data-i18n="aiContextRateLimitLabel">Rate Limit (requests/min):</label>
+                                <input type="number" id="aiContextRateLimit" min="10" max="300" step="10" />
+                            </div>
+                            <div class="setting">
+                                <label for="aiContextCacheEnabled" data-i18n="aiContextCacheEnabledLabel">Enable Caching:</label>
+                                <div class="toggle-switch">
+                                    <input type="checkbox" id="aiContextCacheEnabled" class="toggle-input" />
+                                    <label for="aiContextCacheEnabled" class="toggle-label">
+                                        <span class="toggle-inner"></span>
+                                        <span class="toggle-switch-handle"></span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="setting">
+                                <label for="aiContextRetryAttempts" data-i18n="aiContextRetryAttemptsLabel">Retry Attempts:</label>
+                                <input type="number" id="aiContextRetryAttempts" min="1" max="5" step="1" />
                             </div>
                         </div>
                     </div>

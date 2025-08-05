@@ -14,6 +14,7 @@
 - [Features](#-features)
 - [Supported Platforms](#-supported-platforms)
 - [Translation Providers](#-translation-providers)
+- [AI Context Analysis](#-ai-context-analysis)
 - [Installation](#-installation)
 - [Quick Start](#-quick-start)
 - [Configuration](#-configuration)
@@ -43,6 +44,7 @@
 
 ### Advanced Features
 
+- **🤖 AI Context Analysis**: Get cultural, historical, and linguistic explanations for subtitle content using OpenAI or Google Gemini
 - **⚙️ Performance Tuning**: Configurable batch sizes and request delays for optimal performance
 - **🔧 Advanced Options**: Comprehensive settings page with provider-specific configurations
 - **📊 Logging System**: Detailed debugging with configurable log levels
@@ -75,6 +77,98 @@
 - **Automatic Fallback**: Seamlessly switches between providers if one fails
 - **Rate Limiting**: Intelligent request management to avoid API limits
 - **Batch Processing**: Optimized translation of multiple subtitle segments
+
+## 🤖 AI Context Analysis
+
+**AI Context Analysis** is an advanced feature that provides intelligent explanations for cultural references, historical context, and linguistic nuances found in subtitle content. Perfect for language learners and viewers who want deeper understanding of the content they're watching.
+
+### What It Does
+
+The AI Context Analysis feature analyzes selected text from subtitles and provides three types of insights:
+
+- **🏛️ Cultural Context**: Explanations of cultural references, customs, and social norms
+- **📚 Historical Context**: Background information about historical events, periods, or figures
+- **🔤 Linguistic Context**: Grammar explanations, idioms, wordplay, and language-specific nuances
+
+### How to Use
+
+1. **Enable the Feature**: Go to Advanced Settings and enable "AI Context Analysis"
+2. **Configure Provider**: Set up your preferred AI provider (OpenAI or Google Gemini) with API key
+3. **Select Text**: While watching content, click on words or select phrases in the subtitles
+4. **View Analysis**: An interactive modal will appear with detailed context explanations
+5. **Explore Results**: Browse through cultural, historical, and linguistic insights
+
+### Supported AI Providers
+
+| Provider        | Models Available           | Setup Required | Quality    | Notes                           |
+| --------------- | -------------------------- | -------------- | ---------- | ------------------------------- |
+| **OpenAI GPT**  | GPT-4.1 Mini, GPT-4o      | API Key        | ⭐⭐⭐⭐⭐ | Recommended for best results    |
+| **Google Gemini** | Gemini 2.5 Flash, Pro   | API Key        | ⭐⭐⭐⭐⭐ | Fast responses, good quality    |
+
+### Setup Requirements
+
+#### Prerequisites
+- Valid API key from OpenAI or Google
+- Internet connection for AI analysis
+- Supported streaming platform (Netflix, Disney+)
+
+#### Configuration Steps
+
+1. **Get an API Key**:
+   - **OpenAI**: Visit [OpenAI API](https://platform.openai.com/api-keys) and create an API key
+   - **Google Gemini**: Visit [Google AI Studio](https://aistudio.google.com/app/apikey) and generate an API key
+
+2. **Configure in DualSub**:
+   - Click the DualSub icon → "Advanced Settings"
+   - Navigate to "AI Context Analysis" section
+   - Enable "AI Context Analysis"
+   - Select your preferred provider
+   - Enter your API key
+   - Choose your preferred model
+
+3. **Test the Setup**:
+   - Use the "Test Connection" button to verify your configuration
+   - Start watching content and try selecting subtitle text
+
+### Usage Examples
+
+#### Language Learning
+Perfect for understanding cultural references and idioms:
+```
+Selected: "It's raining cats and dogs"
+→ Linguistic: English idiom meaning "raining heavily"
+→ Cultural: Common expression in English-speaking countries
+```
+
+#### Historical Content
+Get context for historical references:
+```
+Selected: "During the Meiji Restoration"
+→ Historical: Period of political revolution in Japan (1868-1912)
+→ Cultural: Transformation from feudal to modern society
+```
+
+#### Cultural Understanding
+Learn about cultural practices and customs:
+```
+Selected: "Bowing deeply"
+→ Cultural: Traditional Japanese greeting showing respect
+→ Linguistic: Different bow depths convey different levels of formality
+```
+
+### Performance & Costs
+
+- **Response Time**: Typically 2-5 seconds depending on provider
+- **Rate Limiting**: Built-in protection against API limits (60 requests/minute)
+- **Caching**: Results are cached for 1 hour to reduce API calls
+- **Cost**: Varies by provider (typically $0.001-0.01 per analysis)
+
+### Privacy & Security
+
+- **Data Handling**: Only selected text is sent to AI providers
+- **No Storage**: Analysis results are not permanently stored
+- **API Security**: All requests use secure HTTPS connections
+- **Local Caching**: Temporary caching improves performance without compromising privacy
 
 ## 📦 Installation
 
@@ -115,6 +209,7 @@ _The extension will be available on the Chrome Web Store in a future release._
 4. **Click the DualSub Icon** in your toolbar to open settings
 5. **Enable Dual Subtitles** and select your target language
 6. **Enjoy!** Original and translated subtitles will appear simultaneously
+7. **Optional**: Enable AI Context Analysis for deeper understanding
 
 ### First-Time Setup Tips
 
@@ -122,6 +217,7 @@ _The extension will be available on the Chrome Web Store in a future release._
 - Use **Top/Bottom layout** for easier reading
 - Adjust **font size** and **gap** for optimal viewing
 - Enable **hide official subtitles** to avoid overlap
+- For AI Context: Set up OpenAI or Gemini API key in Advanced Settings
 
 ## ⚙️ Configuration
 
@@ -152,28 +248,54 @@ Access via popup → "Advanced Settings" for:
 - **⚡ Performance Tuning**: Batch size (1-10) and request delay (50-1000ms)
 - **🔄 Provider Testing**: Test API connections before use
 
+#### AI Context Analysis Settings
+
+- **🤖 Feature Toggle**: Enable/disable AI context analysis
+- **🔑 Provider Selection**: Choose between OpenAI GPT or Google Gemini
+- **🎯 Context Types**: Select analysis types (Cultural, Historical, Linguistic)
+- **⚙️ API Configuration**: Set API keys, models, and endpoints
+- **⏱️ Performance**: Configure timeout, rate limits, and caching
+- **🧪 Testing**: Test API connections and model availability
+
 #### Provider-Specific Settings
 
 - **DeepL API**: API key and plan selection (Free/Pro)
 - **OpenAI Compatible**: API key, base URL, and model configuration
+- **OpenAI Context**: API key and model selection for context analysis
+- **Google Gemini**: API key and model configuration for context analysis
 
 ### Configuration Examples
 
 **For Language Learning:**
 
 ```
-Provider: DeepL Free
+Translation Provider: DeepL Free
 Layout: Top/Bottom
 Display Order: Original First
 Font Size: Large
+AI Context: Enabled (OpenAI GPT-4.1 Mini)
+Context Types: Cultural, Historical, Linguistic
 ```
 
 **For Performance:**
 
 ```
-Batch Size: 5
+Translation Batch Size: 5
 Request Delay: 100ms
-Provider: Google Translate
+Translation Provider: Google Translate
+AI Context: Enabled (Google Gemini Flash)
+Context Cache: Enabled
+```
+
+**For Advanced Users:**
+
+```
+Translation Provider: OpenAI Compatible
+AI Context Provider: OpenAI GPT-4.1 Mini
+Context Types: All
+Rate Limit: 60 requests/minute
+Cache TTL: 1 hour
+Debug Logging: Enabled
 ```
 
 ## 🛠️ Development Setup
@@ -352,11 +474,23 @@ For full license terms, see [LICENSE](LICENSE) file.
 
 ## 📋 Changelog
 
+
 ### Version 2.1.0 (Current)
 
 - 📍 Added vertical position control for precise subtitle placement on screen
 - 🎨 Enhanced appearance customization with new positioning options
 - ⚙️ Improved user interface with vertical position slider control
+
+### Version 2.0.0 (Current)
+
+- 🤖 **NEW**: AI Context Analysis feature with OpenAI and Google Gemini support
+- 🎯 Interactive subtitle text selection with cultural, historical, and linguistic explanations
+- 🔑 Comprehensive API key management and provider configuration
+- 🚀 Implemented universal batch translation system for improved performance
+- ⚡ Added provider-specific batch size optimization (80-90% reduction in API calls)
+- 🔧 Enhanced translation efficiency with intelligent batching and delimiter approach
+- 📊 Improved subtitle processing with configurable batch sizes and concurrent processing
+- 🧠 Advanced caching and rate limiting for AI context requests
 
 ### Version 1.5.0
 
