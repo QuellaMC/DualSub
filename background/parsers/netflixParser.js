@@ -115,7 +115,7 @@ class NetflixParser {
             let targetVttText = '';
             let useNativeTarget = false;
 
-            if (targetTrack && useOfficialSubtitles) {
+            if (targetTrack && targetTrack.downloadUrl && useOfficialSubtitles) {
                 this.logger.debug('Processing target track (official)', {
                     language: targetTrack.language,
                     trackType: targetTrack.trackType,
@@ -126,9 +126,19 @@ class NetflixParser {
                 targetVttText = ttmlParser.convertTtmlToVtt(targetSubtitleText);
                 useNativeTarget = true;
             } else if (originalVttText) {
-                this.logger.debug(
-                    'Will use API translation for target language'
-                );
+                if (targetTrack && !targetTrack.downloadUrl) {
+                    this.logger.info(
+                        'Target track found but no download URL available, falling back to API translation',
+                        {
+                            targetLanguage: targetTrack.language,
+                            trackType: targetTrack.trackType,
+                        }
+                    );
+                } else {
+                    this.logger.debug(
+                        'Will use API translation for target language'
+                    );
+                }
                 // API translation will be handled by the translation service
                 targetVttText = originalVttText; // Placeholder - will be translated
                 useNativeTarget = false;
