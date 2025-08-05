@@ -19,13 +19,14 @@
     width: 100%;
     height: 100%;
     z-index: 9998; /* Lower than subtitle containers */
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family:
+        -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     pointer-events: auto; /* Enable click blocking when modal is visible */
     display: none; /* Match legacy behavior exactly */
 }
 
 /* Ensure hidden modal doesn't block interactions */
-.dualsub-context-modal[style*="display: none"] {
+.dualsub-context-modal[style*='display: none'] {
     pointer-events: none !important;
 }
 
@@ -39,14 +40,19 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.3); /* Slightly darker overlay for better visibility */
+    background: rgba(
+        0,
+        0,
+        0,
+        0.3
+    ); /* Slightly darker overlay for better visibility */
     pointer-events: auto; /* Block clicks to underlying page when visible */
     cursor: default; /* Show default cursor over overlay */
     z-index: 9998; /* Below UI root container (9999) but above page content */
 }
 
 /* Ensure hidden overlay doesn't block interactions */
-.dualsub-modal-overlay[style*="display: none"] {
+.dualsub-modal-overlay[style*='display: none'] {
     pointer-events: none !important;
 }
 
@@ -54,7 +60,9 @@
     position: absolute; /* Changed from fixed to work within UI root container */
     top: 2vh; /* Position higher for maximum space utilization */
     left: 50%;
-    transform: translateX(-50%); /* Only center horizontally - match legacy exactly */
+    transform: translateX(
+        -50%
+    ); /* Only center horizontally - match legacy exactly */
     background: #ffffff;
     color: #333333; /* Ensure text is dark on white background */
     border-radius: 12px;
@@ -295,7 +303,10 @@
     color: white;
     border: none;
     cursor: pointer;
-    transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+    transition:
+        background-color 0.2s ease,
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -320,9 +331,15 @@
 }
 
 @keyframes pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-    100% { transform: scale(1); }
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+    100% {
+        transform: scale(1);
+    }
 }
 
 .dualsub-btn {
@@ -451,8 +468,12 @@
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 /* EXACT legacy loader animation */
@@ -625,7 +646,9 @@
 }
 
 /* EXACT legacy word interaction blocking during processing */
-.dualsub-processing-active [id*="original"]:not([id*="translated"]) .dualsub-interactive-word {
+.dualsub-processing-active
+    [id*='original']:not([id*='translated'])
+    .dualsub-interactive-word {
     pointer-events: none !important;
     opacity: 0.6 !important;
     cursor: default !important;
@@ -734,7 +757,7 @@
 }
 
 .dualsub-error h4::before {
-    content: "⚠️";
+    content: '⚠️';
     font-size: 20px;
 }
 
@@ -787,7 +810,7 @@
 }
 
 .dualsub-error summary::before {
-    content: "▶" !important;
+    content: '▶' !important;
     display: inline-block !important;
     margin-right: 8px !important;
     transition: transform 0.2s ease !important;
@@ -800,7 +823,9 @@
 }
 
 .dualsub-error pre {
-    font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace !important;
+    font-family:
+        'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas,
+        'Courier New', monospace !important;
     font-size: 13px !important;
     line-height: 1.4 !important;
     background: #1a202c !important;
@@ -1028,7 +1053,11 @@
 
     /* Dark mode error states */
     .dualsub-error {
-        background: linear-gradient(135deg, #2d1b1b 0%, #4a2525 100%) !important;
+        background: linear-gradient(
+            135deg,
+            #2d1b1b 0%,
+            #4a2525 100%
+        ) !important;
         border: 1px solid #744d4d !important;
         box-shadow: 0 4px 12px rgba(220, 53, 69, 0.2) !important;
     }

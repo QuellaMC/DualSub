@@ -8,13 +8,23 @@
  * @version 1.0.0
  */
 
-import { jest, describe, test, beforeEach, afterEach, expect } from '@jest/globals';
+import {
+    jest,
+    describe,
+    test,
+    beforeEach,
+    afterEach,
+    expect,
+} from '@jest/globals';
 import { TestHelpers } from '../test-utils/test-helpers.js';
 
 // We'll mock configService functions in the tests directly
 
 import { apiKeyManager } from './apiKeyManager.js';
-import { contextPreferencesManager, CONTEXT_TYPES } from './contextPreferencesManager.js';
+import {
+    contextPreferencesManager,
+    CONTEXT_TYPES,
+} from './contextPreferencesManager.js';
 import { configService } from './configService.js';
 
 describe('Configuration & Settings Integration', () => {
@@ -26,7 +36,7 @@ describe('Configuration & Settings Integration', () => {
         testEnv = testHelpers.setupTestEnvironment({
             platform: 'netflix',
             enableLogger: true,
-            enableChromeApi: true
+            enableChromeApi: true,
         });
 
         // Mock configService methods
@@ -49,51 +59,71 @@ describe('Configuration & Settings Integration', () => {
 
     describe('API Key Manager', () => {
         test('should validate OpenAI API key format', () => {
-            const validKey = 'sk-1234567890abcdef1234567890abcdef1234567890abcdef';
+            const validKey =
+                'sk-1234567890abcdef1234567890abcdef1234567890abcdef';
             const invalidKey = 'invalid-key';
 
-            expect(apiKeyManager.validateAPIKeyFormat('openai', validKey)).toBe(true);
-            expect(apiKeyManager.validateAPIKeyFormat('openai', invalidKey)).toBe(false);
+            expect(apiKeyManager.validateAPIKeyFormat('openai', validKey)).toBe(
+                true
+            );
+            expect(
+                apiKeyManager.validateAPIKeyFormat('openai', invalidKey)
+            ).toBe(false);
         });
 
         test('should validate Gemini API key format', () => {
             const validKey = 'AIzaSyDaGmWKa4JsXZ-HjGw1w2_dQHhHk1234567890';
             const invalidKey = 'invalid-gemini-key';
 
-            expect(apiKeyManager.validateAPIKeyFormat('gemini', validKey)).toBe(true);
-            expect(apiKeyManager.validateAPIKeyFormat('gemini', invalidKey)).toBe(false);
+            expect(apiKeyManager.validateAPIKeyFormat('gemini', validKey)).toBe(
+                true
+            );
+            expect(
+                apiKeyManager.validateAPIKeyFormat('gemini', invalidKey)
+            ).toBe(false);
         });
 
         test('should mask API keys for display', () => {
-            const apiKey = 'sk-1234567890abcdef1234567890abcdef1234567890abcdef';
+            const apiKey =
+                'sk-1234567890abcdef1234567890abcdef1234567890abcdef';
             const masked = apiKeyManager.maskAPIKey(apiKey);
 
             expect(masked).toContain('sk-1');
             expect(masked).toContain('cdef');
             expect(masked).toContain('****');
-            expect(masked).not.toContain('567890abcdef1234567890abcdef123456789');
+            expect(masked).not.toContain(
+                '567890abcdef1234567890abcdef123456789'
+            );
         });
 
         test('should store and retrieve API keys', async () => {
-            const apiKey = 'sk-1234567890abcdef1234567890abcdef1234567890abcdef';
+            const apiKey =
+                'sk-1234567890abcdef1234567890abcdef1234567890abcdef';
 
             configService.set.mockResolvedValue(true);
             configService.get.mockResolvedValue('obfuscated-key-data');
 
             const stored = await apiKeyManager.storeAPIKey('openai', apiKey);
             expect(stored).toBe(true);
-            expect(configService.set).toHaveBeenCalledWith('openaiApiKey', expect.any(String));
+            expect(configService.set).toHaveBeenCalledWith(
+                'openaiApiKey',
+                expect.any(String)
+            );
         });
 
         test('should handle invalid API key storage', async () => {
             const invalidKey = 'invalid-key';
-            const stored = await apiKeyManager.storeAPIKey('openai', invalidKey);
-            
+            const stored = await apiKeyManager.storeAPIKey(
+                'openai',
+                invalidKey
+            );
+
             expect(stored).toBe(false);
         });
 
         test('should test API key validity', async () => {
-            const validKey = 'sk-1234567890abcdef1234567890abcdef1234567890abcdef';
+            const validKey =
+                'sk-1234567890abcdef1234567890abcdef1234567890abcdef';
             const result = await apiKeyManager.testAPIKey('openai', validKey);
 
             expect(result.success).toBe(true);
@@ -109,14 +139,20 @@ describe('Configuration & Settings Integration', () => {
             configService.getMultiple.mockResolvedValue({
                 aiContextTypes: ['cultural', 'historical'],
                 contextOnClick: true,
-                contextOnSelection: false
+                contextOnSelection: false,
             });
 
-            const preferences = await contextPreferencesManager.loadPreferences();
+            const preferences =
+                await contextPreferencesManager.loadPreferences();
 
-            expect(preferences.enabledContextTypes).toEqual(['cultural', 'historical']);
+            expect(preferences.enabledContextTypes).toEqual([
+                'cultural',
+                'historical',
+            ]);
             expect(preferences.enabledInteractionMethods).toContain('click');
-            expect(preferences.enabledInteractionMethods).toContain('selection'); // Both methods always enabled in new implementation
+            expect(preferences.enabledInteractionMethods).toContain(
+                'selection'
+            ); // Both methods always enabled in new implementation
         });
 
         test('should save preferences', async () => {
@@ -129,16 +165,19 @@ describe('Configuration & Settings Integration', () => {
                 modalPosition: 'top',
                 modalSize: 'large',
                 autoClose: true,
-                autoCloseDelay: 5000
+                autoCloseDelay: 5000,
             };
 
-            const saved = await contextPreferencesManager.savePreferences(preferences);
+            const saved =
+                await contextPreferencesManager.savePreferences(preferences);
             expect(saved).toBe(true);
-            expect(configService.setMultiple).toHaveBeenCalledWith(expect.objectContaining({
-                aiContextTypes: ['cultural', 'linguistic'],
-                contextModalPosition: 'top',
-                contextModalSize: 'large'
-            }));
+            expect(configService.setMultiple).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    aiContextTypes: ['cultural', 'linguistic'],
+                    contextModalPosition: 'top',
+                    contextModalSize: 'large',
+                })
+            );
         });
 
         test('should check context type enabled status', async () => {
@@ -147,11 +186,17 @@ describe('Configuration & Settings Integration', () => {
 
             // Use the mocked configService
             configService.getMultiple.mockResolvedValue({
-                aiContextTypes: ['cultural', 'historical']
+                aiContextTypes: ['cultural', 'historical'],
             });
 
-            const culturalEnabled = await contextPreferencesManager.isContextTypeEnabled('cultural');
-            const linguisticEnabled = await contextPreferencesManager.isContextTypeEnabled('linguistic');
+            const culturalEnabled =
+                await contextPreferencesManager.isContextTypeEnabled(
+                    'cultural'
+                );
+            const linguisticEnabled =
+                await contextPreferencesManager.isContextTypeEnabled(
+                    'linguistic'
+                );
 
             expect(culturalEnabled).toBe(true);
             expect(linguisticEnabled).toBe(false);
@@ -163,11 +208,12 @@ describe('Configuration & Settings Integration', () => {
 
             // Use the mocked configService
             configService.getMultiple.mockResolvedValue({
-                aiContextTypes: ['cultural']
+                aiContextTypes: ['cultural'],
             });
             configService.setMultiple.mockResolvedValue(true);
 
-            const newStatus = await contextPreferencesManager.toggleContextType('historical');
+            const newStatus =
+                await contextPreferencesManager.toggleContextType('historical');
             expect(newStatus).toBe(true);
         });
 
@@ -181,28 +227,35 @@ describe('Configuration & Settings Integration', () => {
 
             const languagePrefs = {
                 preferredContextTypes: ['cultural'],
-                displayLanguage: 'es'
+                displayLanguage: 'es',
             };
 
-            const saved = await contextPreferencesManager.setLanguagePreferences('es', languagePrefs);
+            const saved =
+                await contextPreferencesManager.setLanguagePreferences(
+                    'es',
+                    languagePrefs
+                );
             expect(saved).toBe(true);
 
-            const retrieved = await contextPreferencesManager.getLanguagePreferences('es');
+            const retrieved =
+                await contextPreferencesManager.getLanguagePreferences('es');
             expect(retrieved).toEqual(languagePrefs);
         });
 
         test('should export and import preferences', async () => {
             // Use the mocked configService
             configService.getMultiple.mockResolvedValue({
-                aiContextTypes: ['cultural', 'historical']
+                aiContextTypes: ['cultural', 'historical'],
             });
             configService.setMultiple.mockResolvedValue(true);
 
-            const exported = await contextPreferencesManager.exportPreferences();
+            const exported =
+                await contextPreferencesManager.exportPreferences();
             expect(exported.version).toBe('1.0.0');
             expect(exported.preferences).toBeDefined();
 
-            const imported = await contextPreferencesManager.importPreferences(exported);
+            const imported =
+                await contextPreferencesManager.importPreferences(exported);
             expect(imported).toBe(true);
         });
 
@@ -215,13 +268,16 @@ describe('Configuration & Settings Integration', () => {
                 aiContextTypes: ['cultural', 'historical'],
                 contextOnClick: true,
                 contextModalPosition: 'center',
-                contextModalSize: 'medium'
+                contextModalSize: 'medium',
             });
 
-            const summary = await contextPreferencesManager.getPreferencesSummary();
+            const summary =
+                await contextPreferencesManager.getPreferencesSummary();
 
             expect(summary.contextTypes.enabled).toBe(2);
-            expect(summary.contextTypes.total).toBe(Object.keys(CONTEXT_TYPES).length);
+            expect(summary.contextTypes.total).toBe(
+                Object.keys(CONTEXT_TYPES).length
+            );
             expect(summary.display.position).toBe('Center of screen');
             expect(summary.display.size).toBe('Standard view');
         });
@@ -257,12 +313,14 @@ describe('Configuration & Settings Integration', () => {
                 aiContextEnabled: true,
                 aiContextProvider: 'openai',
                 aiContextTypes: ['cultural', 'historical'],
-                aiContextTimeout: 30000
+                aiContextTimeout: 30000,
             };
 
             // In a real implementation, you would validate against the schema
             expect(typeof validConfig.aiContextEnabled).toBe('boolean');
-            expect(['openai', 'gemini'].includes(validConfig.aiContextProvider)).toBe(true);
+            expect(
+                ['openai', 'gemini'].includes(validConfig.aiContextProvider)
+            ).toBe(true);
             expect(Array.isArray(validConfig.aiContextTypes)).toBe(true);
             expect(typeof validConfig.aiContextTimeout).toBe('number');
         });
@@ -273,15 +331,15 @@ describe('Configuration & Settings Integration', () => {
             // Mock DOM elements
             const mockSelect = {
                 value: 'gemini',
-                addEventListener: jest.fn()
+                addEventListener: jest.fn(),
             };
 
             const mockOpenAISettings = {
-                style: { display: 'block' }
+                style: { display: 'block' },
             };
 
             const mockGeminiSettings = {
-                style: { display: 'none' }
+                style: { display: 'none' },
             };
 
             // Simulate provider change
@@ -296,21 +354,21 @@ describe('Configuration & Settings Integration', () => {
         test('should handle feature toggle', () => {
             const mockCheckbox = {
                 checked: true,
-                addEventListener: jest.fn()
+                addEventListener: jest.fn(),
             };
 
             const mockCards = [
                 { style: { display: 'none' } },
-                { style: { display: 'none' } }
+                { style: { display: 'none' } },
             ];
 
             // Simulate feature enable
             mockCheckbox.checked = true;
-            mockCards.forEach(card => {
+            mockCards.forEach((card) => {
                 card.style.display = 'block';
             });
 
-            mockCards.forEach(card => {
+            mockCards.forEach((card) => {
                 expect(card.style.display).toBe('block');
             });
         });

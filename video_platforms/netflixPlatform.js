@@ -12,7 +12,11 @@ export class NetflixPlatform extends VideoPlatform {
     constructor() {
         super();
 
-        this.chromeApiAvailable = !!(chrome && chrome.runtime && chrome.storage);
+        this.chromeApiAvailable = !!(
+            chrome &&
+            chrome.runtime &&
+            chrome.storage
+        );
 
         try {
             this.logger = Logger.create('NetflixPlatform', configService);
@@ -22,9 +26,11 @@ export class NetflixPlatform extends VideoPlatform {
                 info: (...args) => console.info('[NetflixPlatform]', ...args),
                 warn: (...args) => console.warn('[NetflixPlatform]', ...args),
                 error: (...args) => console.error('[NetflixPlatform]', ...args),
-                updateLevel: () => Promise.resolve()
+                updateLevel: () => Promise.resolve(),
             };
-            this.logger.warn('Failed to create proper logger, using fallback', { error: error.message });
+            this.logger.warn('Failed to create proper logger, using fallback', {
+                error: error.message,
+            });
         }
 
         this.currentVideoId = null;
@@ -33,8 +39,11 @@ export class NetflixPlatform extends VideoPlatform {
         this.lastKnownVttUrlForVideoId = {}; // To prevent reprocessing the same subtitle data
         this.eventListener = null; // To hold the bound event listener for later removal
 
-        this.initializeLogger().catch(error => {
-            this.logger.warn('Logger initialization failed, continuing with defaults', { error: error.message });
+        this.initializeLogger().catch((error) => {
+            this.logger.warn(
+                'Logger initialization failed, continuing with defaults',
+                { error: error.message }
+            );
         });
     }
 
@@ -55,13 +64,18 @@ export class NetflixPlatform extends VideoPlatform {
                 await this.logger.updateLevel();
                 this.logger.debug('Logger level updated successfully');
             } else {
-                this.logger.warn('Chrome API not available or logger.updateLevel missing, using default logging level');
+                this.logger.warn(
+                    'Chrome API not available or logger.updateLevel missing, using default logging level'
+                );
             }
         } catch (error) {
-            this.logger.warn('Failed to initialize logger level, continuing with defaults', {
-                error: error.message,
-                chromeApiAvailable: this.chromeApiAvailable
-            });
+            this.logger.warn(
+                'Failed to initialize logger level, continuing with defaults',
+                {
+                    error: error.message,
+                    chromeApiAvailable: this.chromeApiAvailable,
+                }
+            );
         }
     }
 
@@ -661,7 +675,9 @@ export class NetflixPlatform extends VideoPlatform {
         if (!styleElement) {
             // Validate that document.head exists before appending
             if (!document.head || !(document.head instanceof Node)) {
-                console.warn('[NetflixPlatform] document.head not available, cannot inject CSS');
+                console.warn(
+                    '[NetflixPlatform] document.head not available, cannot inject CSS'
+                );
                 return;
             }
 
@@ -705,7 +721,9 @@ export class NetflixPlatform extends VideoPlatform {
 
         // Validate that document.body exists before setting up observer
         if (!document.body || !(document.body instanceof Node)) {
-            console.warn('[NetflixPlatform] document.body not available, retrying in 100ms');
+            console.warn(
+                '[NetflixPlatform] document.body not available, retrying in 100ms'
+            );
             setTimeout(() => {
                 this.setupSubtitleMutationObserver();
             }, 100);
@@ -723,7 +741,9 @@ export class NetflixPlatform extends VideoPlatform {
                             if (node.nodeType === Node.ELEMENT_NODE) {
                                 // Check if the added node or its children contain subtitle elements
                                 if (
-                                    node.classList?.contains('player-timedtext') ||
+                                    node.classList?.contains(
+                                        'player-timedtext'
+                                    ) ||
                                     node.classList?.contains(
                                         'player-timedtext-text-container'
                                     ) ||
@@ -752,9 +772,14 @@ export class NetflixPlatform extends VideoPlatform {
                 subtree: true,
             });
 
-            console.log('[NetflixPlatform] Subtitle mutation observer set up successfully');
+            console.log(
+                '[NetflixPlatform] Subtitle mutation observer set up successfully'
+            );
         } catch (error) {
-            console.error('[NetflixPlatform] Failed to set up subtitle mutation observer:', error);
+            console.error(
+                '[NetflixPlatform] Failed to set up subtitle mutation observer:',
+                error
+            );
             // Retry after a delay
             setTimeout(() => {
                 this.setupSubtitleMutationObserver();

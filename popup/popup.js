@@ -57,8 +57,12 @@ document.addEventListener('DOMContentLoaded', function () {
     );
     const subtitleGapInput = document.getElementById('subtitleGap');
     const subtitleGapValue = document.getElementById('subtitleGapValue');
-    const subtitleVerticalPositionInput = document.getElementById('subtitleVerticalPosition');
-    const subtitleVerticalPositionValue = document.getElementById('subtitleVerticalPositionValue');
+    const subtitleVerticalPositionInput = document.getElementById(
+        'subtitleVerticalPosition'
+    );
+    const subtitleVerticalPositionValue = document.getElementById(
+        'subtitleVerticalPositionValue'
+    );
     const statusMessage = document.getElementById('statusMessage');
     const openOptionsPageButton = document.getElementById('openOptionsPage');
     const openGithubLinkButton = document.getElementById('openGithubLink');
@@ -153,7 +157,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const verticalPosition = settings.subtitleVerticalPosition;
             subtitleVerticalPositionInput.value = verticalPosition;
-            subtitleVerticalPositionValue.textContent = formatSliderValue(verticalPosition);
+            subtitleVerticalPositionValue.textContent =
+                formatSliderValue(verticalPosition);
             updateSliderProgress(subtitleVerticalPositionInput);
 
             appearanceAccordion.open = settings.appearanceAccordionOpen;
@@ -464,29 +469,44 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     subtitleVerticalPositionInput.addEventListener('input', function () {
-        subtitleVerticalPositionValue.textContent = formatSliderValue(this.value);
+        subtitleVerticalPositionValue.textContent = formatSliderValue(
+            this.value
+        );
         updateSliderProgress(this);
 
         // Send immediate update for real-time visual feedback
         const verticalPosition = parseFloat(this.value);
-        sendImmediateConfigUpdate({ subtitleVerticalPosition: verticalPosition });
+        sendImmediateConfigUpdate({
+            subtitleVerticalPosition: verticalPosition,
+        });
     });
     subtitleVerticalPositionInput.addEventListener('change', async function () {
         try {
             const verticalPosition = parseFloat(this.value);
-            await configService.set('subtitleVerticalPosition', verticalPosition);
+            await configService.set(
+                'subtitleVerticalPosition',
+                verticalPosition
+            );
             const statusPrefix =
                 loadedTranslations['statusVerticalPosition']?.message ||
                 'Vertical position: ';
-            showStatus(`${statusPrefix}${formatSliderValue(verticalPosition)}.`);
+            showStatus(
+                `${statusPrefix}${formatSliderValue(verticalPosition)}.`
+            );
 
             // Send immediate update for instant visual feedback
-            sendImmediateConfigUpdate({ subtitleVerticalPosition: verticalPosition });
-        } catch (error) {
-            popupLogger.error('Error setting subtitle vertical position', error, {
-                verticalPosition: parseFloat(this.value),
-                component: 'subtitleVerticalPositionInput',
+            sendImmediateConfigUpdate({
+                subtitleVerticalPosition: verticalPosition,
             });
+        } catch (error) {
+            popupLogger.error(
+                'Error setting subtitle vertical position',
+                error,
+                {
+                    verticalPosition: parseFloat(this.value),
+                    component: 'subtitleVerticalPositionInput',
+                }
+            );
             showStatus('Failed to update vertical position. Please try again.');
         }
     });

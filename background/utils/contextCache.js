@@ -1,9 +1,9 @@
 /**
  * AI Context Cache Manager
- * 
+ *
  * Intelligent caching system for AI context analysis results to optimize
  * API usage and improve performance. Implements LRU eviction and TTL.
- * 
+ *
  * @author DualSub Extension
  * @version 1.0.0
  */
@@ -16,7 +16,8 @@ const logger = Logger.create('ContextCache');
  * Cache entry structure
  */
 class CacheEntry {
-    constructor(data, ttl = 3600000) { // Default 1 hour TTL
+    constructor(data, ttl = 3600000) {
+        // Default 1 hour TTL
         this.data = data;
         this.timestamp = Date.now();
         this.ttl = ttl;
@@ -57,23 +58,23 @@ export class ContextCache {
         this.maxSize = options.maxSize || 200;
         this.defaultTTL = options.defaultTTL || 3600000; // 1 hour
         this.cleanupInterval = options.cleanupInterval || 300000; // 5 minutes
-        
+
         this.cache = new Map();
         this.accessOrder = new Map(); // For LRU tracking
-        
+
         this.stats = {
             hits: 0,
             misses: 0,
             evictions: 0,
-            cleanups: 0
+            cleanups: 0,
         };
 
         this.startCleanupTimer();
-        
+
         logger.info('Context cache initialized', {
             maxSize: this.maxSize,
             defaultTTL: this.defaultTTL,
-            cleanupInterval: this.cleanupInterval
+            cleanupInterval: this.cleanupInterval,
         });
     }
 
@@ -87,7 +88,7 @@ export class ContextCache {
      */
     generateKey(text, contextType, provider, metadata = {}) {
         const { sourceLanguage = '', targetLanguage = '' } = metadata;
-        
+
         // Create a normalized key that's consistent but not too long
         const textHash = this.hashString(text);
         return `${provider}:${contextType}:${sourceLanguage}:${targetLanguage}:${textHash}`;
@@ -101,19 +102,22 @@ export class ContextCache {
     hashString(str) {
         // Validate input - handle null, undefined, or non-string values
         if (!str || typeof str !== 'string') {
-            this.logger?.warn('Invalid input to hashString', { str, type: typeof str });
+            this.logger?.warn('Invalid input to hashString', {
+                str,
+                type: typeof str,
+            });
             return '0'; // Return consistent hash for invalid input
         }
 
         let hash = 0;
         if (str.length === 0) return hash.toString();
-        
+
         for (let i = 0; i < str.length; i++) {
             const char = str.charCodeAt(i);
-            hash = ((hash << 5) - hash) + char;
+            hash = (hash << 5) - hash + char;
             hash = hash & hash; // Convert to 32-bit integer
         }
-        
+
         return Math.abs(hash).toString(36);
     }
 
@@ -124,7 +128,7 @@ export class ContextCache {
      */
     get(key) {
         const entry = this.cache.get(key);
-        
+
         if (!entry) {
             this.stats.misses++;
             logger.debug('Cache miss', { key });
@@ -142,14 +146,14 @@ export class ContextCache {
         entry.updateAccess();
         this.accessOrder.delete(key);
         this.accessOrder.set(key, Date.now());
-        
+
         this.stats.hits++;
-        logger.debug('Cache hit', { 
-            key, 
+        logger.debug('Cache hit', {
+            key,
             accessCount: entry.accessCount,
-            age: entry.getAge()
+            age: entry.getAge(),
         });
-        
+
         return entry.data;
     }
 
@@ -162,18 +166,18 @@ export class ContextCache {
     set(key, data, ttl = null) {
         const entryTTL = ttl || this.defaultTTL;
         const entry = new CacheEntry(data, entryTTL);
-        
+
         if (this.cache.size >= this.maxSize) {
             this.evictLRU();
         }
 
         this.cache.set(key, entry);
         this.accessOrder.set(key, Date.now());
-        
-        logger.debug('Cache entry stored', { 
-            key, 
+
+        logger.debug('Cache entry stored', {
+            key,
             ttl: entryTTL,
-            cacheSize: this.cache.size
+            cacheSize: this.cache.size,
         });
     }
 
@@ -186,7 +190,7 @@ export class ContextCache {
         // Find the oldest accessed entry
         let oldestKey = null;
         let oldestTime = Date.now();
-        
+
         for (const [key, accessTime] of this.accessOrder) {
             if (accessTime < oldestTime) {
                 oldestTime = accessTime;
@@ -198,10 +202,10 @@ export class ContextCache {
             this.cache.delete(oldestKey);
             this.accessOrder.delete(oldestKey);
             this.stats.evictions++;
-            
-            logger.debug('LRU eviction', { 
+
+            logger.debug('LRU eviction', {
                 evictedKey: oldestKey,
-                cacheSize: this.cache.size
+                cacheSize: this.cache.size,
             });
         }
     }
@@ -212,7 +216,7 @@ export class ContextCache {
     cleanup() {
         const beforeSize = this.cache.size;
         const now = Date.now();
-        
+
         for (const [key, entry] of this.cache) {
             if (entry.isExpired()) {
                 this.cache.delete(key);
@@ -225,7 +229,7 @@ export class ContextCache {
             this.stats.cleanups++;
             logger.debug('Cache cleanup completed', {
                 entriesRemoved: cleaned,
-                cacheSize: this.cache.size
+                cacheSize: this.cache.size,
             });
         }
     }
@@ -256,7 +260,7 @@ export class ContextCache {
         const size = this.cache.size;
         this.cache.clear();
         this.accessOrder.clear();
-        
+
         logger.info('Cache cleared', { entriesRemoved: size });
     }
 
@@ -265,15 +269,20 @@ export class ContextCache {
      * @returns {Object} Cache statistics
      */
     getStats() {
-        const hitRate = this.stats.hits + this.stats.misses > 0 
-            ? (this.stats.hits / (this.stats.hits + this.stats.misses) * 100).toFixed(2)
-            : 0;
+        const hitRate =
+            this.stats.hits + this.stats.misses > 0
+                ? (
+                      (this.stats.hits /
+                          (this.stats.hits + this.stats.misses)) *
+                      100
+                  ).toFixed(2)
+                : 0;
 
         return {
             ...this.stats,
             hitRate: `${hitRate}%`,
             size: this.cache.size,
-            maxSize: this.maxSize
+            maxSize: this.maxSize,
         };
     }
 
@@ -287,7 +296,7 @@ export class ContextCache {
             maxSize: this.maxSize,
             stats: this.getStats(),
             oldestEntry: this.getOldestEntryAge(),
-            newestEntry: this.getNewestEntryAge()
+            newestEntry: this.getNewestEntryAge(),
         };
     }
 

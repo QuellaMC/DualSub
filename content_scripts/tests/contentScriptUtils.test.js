@@ -297,7 +297,10 @@ describe('Content Script Utilities', () => {
             shortAgeBuffer.processAll(processor);
 
             // Should process at least the new event (age-based cleanup may vary)
-            expect(processor).toHaveBeenCalledWith(newEvent, expect.any(Number));
+            expect(processor).toHaveBeenCalledWith(
+                newEvent,
+                expect.any(Number)
+            );
         });
 
         test('should provide buffer statistics', () => {

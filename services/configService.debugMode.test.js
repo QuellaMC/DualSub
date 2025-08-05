@@ -332,7 +332,8 @@ describe('ConfigService Debug Mode Tests', () => {
             const startTime = performance.now();
 
             // Rapidly toggle logging levels
-            for (let i = 0; i < 20; i++) { // Reduced from 100 to 20 for speed
+            for (let i = 0; i < 20; i++) {
+                // Reduced from 100 to 20 for speed
                 await realLogger.updateLevel();
                 realLogger.currentLevel =
                     i % 2 === 0 ? Logger.LEVELS.DEBUG : Logger.LEVELS.INFO;
@@ -350,7 +351,8 @@ describe('ConfigService Debug Mode Tests', () => {
                 array: new Array(100).fill('test'), // Reduced from 1000 to 100 for speed
                 object: {},
             };
-            for (let i = 0; i < 50; i++) { // Reduced from 500 to 50 for speed
+            for (let i = 0; i < 50; i++) {
+                // Reduced from 500 to 50 for speed
                 largeData.object[`key${i}`] = `value${i}`;
             }
 

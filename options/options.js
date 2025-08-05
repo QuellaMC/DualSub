@@ -111,36 +111,63 @@ document.addEventListener('DOMContentLoaded', function () {
     const testDeepLButton = document.getElementById('testDeepLButton');
     const deeplTestResult = document.getElementById('deeplTestResult');
 
-    const openaiCompatibleApiKeyInput = document.getElementById('openaiCompatibleApiKey');
-    const openaiCompatibleBaseUrlInput = document.getElementById('openaiCompatibleBaseUrl');
-    const openaiCompatibleModelSelect = document.getElementById('openaiCompatibleModel');
+    const openaiCompatibleApiKeyInput = document.getElementById(
+        'openaiCompatibleApiKey'
+    );
+    const openaiCompatibleBaseUrlInput = document.getElementById(
+        'openaiCompatibleBaseUrl'
+    );
+    const openaiCompatibleModelSelect = document.getElementById(
+        'openaiCompatibleModel'
+    );
     const testOpenAIButton = document.getElementById('testOpenAIButton');
     const openaiTestResult = document.getElementById('openaiTestResult');
 
     // AI Context Settings
-    const aiContextEnabledCheckbox = document.getElementById('aiContextEnabled');
-    const aiContextProviderSelect = document.getElementById('aiContextProvider');
+    const aiContextEnabledCheckbox =
+        document.getElementById('aiContextEnabled');
+    const aiContextProviderSelect =
+        document.getElementById('aiContextProvider');
     const openaiApiKeyInput = document.getElementById('openaiApiKey');
     const openaiBaseUrlInput = document.getElementById('openaiBaseUrl');
     const openaiModelSelect = document.getElementById('openaiModel');
     const geminiApiKeyInput = document.getElementById('geminiApiKey');
     const geminiModelSelect = document.getElementById('geminiModel');
-    const contextTypeCulturalCheckbox = document.getElementById('contextTypeCultural');
-    const contextTypeHistoricalCheckbox = document.getElementById('contextTypeHistorical');
-    const contextTypeLinguisticCheckbox = document.getElementById('contextTypeLinguistic');
+    const contextTypeCulturalCheckbox = document.getElementById(
+        'contextTypeCultural'
+    );
+    const contextTypeHistoricalCheckbox = document.getElementById(
+        'contextTypeHistorical'
+    );
+    const contextTypeLinguisticCheckbox = document.getElementById(
+        'contextTypeLinguistic'
+    );
 
     const aiContextTimeoutInput = document.getElementById('aiContextTimeout');
-    const aiContextRateLimitInput = document.getElementById('aiContextRateLimit');
-    const aiContextCacheEnabledCheckbox = document.getElementById('aiContextCacheEnabled');
-    const aiContextRetryAttemptsInput = document.getElementById('aiContextRetryAttempts');
+    const aiContextRateLimitInput =
+        document.getElementById('aiContextRateLimit');
+    const aiContextCacheEnabledCheckbox = document.getElementById(
+        'aiContextCacheEnabled'
+    );
+    const aiContextRetryAttemptsInput = document.getElementById(
+        'aiContextRetryAttempts'
+    );
 
     // AI Context provider settings containers
-    const openaiContextSettings = document.getElementById('openaiContextSettings');
-    const geminiContextSettings = document.getElementById('geminiContextSettings');
-    const aiContextProviderCard = document.getElementById('aiContextProviderCard');
+    const openaiContextSettings = document.getElementById(
+        'openaiContextSettings'
+    );
+    const geminiContextSettings = document.getElementById(
+        'geminiContextSettings'
+    );
+    const aiContextProviderCard = document.getElementById(
+        'aiContextProviderCard'
+    );
     const aiContextTypesCard = document.getElementById('aiContextTypesCard');
 
-    const aiContextAdvancedCard = document.getElementById('aiContextAdvancedCard');
+    const aiContextAdvancedCard = document.getElementById(
+        'aiContextAdvancedCard'
+    );
 
     // About
     const extensionVersionSpan = document.getElementById('extensionVersion');
@@ -415,7 +442,10 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!apiKey) {
             showTestResult(
                 openaiTestResult,
-                getLocalizedText('openaiApiKeyError', 'Please enter an API key first.'),
+                getLocalizedText(
+                    'openaiApiKeyError',
+                    'Please enter an API key first.'
+                ),
                 'error'
             );
             return;
@@ -424,7 +454,10 @@ document.addEventListener('DOMContentLoaded', function () {
         testOpenAIButton.disabled = true;
         showTestResult(
             openaiTestResult,
-            getLocalizedText('openaiTestingConnection', 'Testing connection...'),
+            getLocalizedText(
+                'openaiTestingConnection',
+                'Testing connection...'
+            ),
             'info'
         );
 
@@ -432,13 +465,20 @@ document.addEventListener('DOMContentLoaded', function () {
             await fetchAvailableModels(apiKey, baseUrl);
             showTestResult(
                 openaiTestResult,
-                getLocalizedText('openaiConnectionSuccessful', 'Connection successful!'),
+                getLocalizedText(
+                    'openaiConnectionSuccessful',
+                    'Connection successful!'
+                ),
                 'success'
             );
         } catch (error) {
             showTestResult(
                 openaiTestResult,
-                getLocalizedText('openaiConnectionFailed', 'Connection failed: %s', error.message),
+                getLocalizedText(
+                    'openaiConnectionFailed',
+                    'Connection failed: %s',
+                    error.message
+                ),
                 'error'
             );
         } finally {
@@ -471,7 +511,7 @@ document.addEventListener('DOMContentLoaded', function () {
             let hasCurrentModel = false;
             let modelToSelect = null;
 
-            models.forEach(model => {
+            models.forEach((model) => {
                 const option = document.createElement('option');
                 option.value = model;
                 option.textContent = model;
@@ -503,13 +543,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
             showTestResult(
                 openaiTestResult,
-                getLocalizedText('openaiModelsFetchedSuccessfully', 'Models fetched successfully.'),
+                getLocalizedText(
+                    'openaiModelsFetchedSuccessfully',
+                    'Models fetched successfully.'
+                ),
                 'success'
             );
         } catch (error) {
             showTestResult(
                 openaiTestResult,
-                getLocalizedText('openaiFailedToFetchModels', 'Failed to fetch models: %s', error.message),
+                getLocalizedText(
+                    'openaiFailedToFetchModels',
+                    'Failed to fetch models: %s',
+                    error.message
+                ),
                 'error'
             );
         }
@@ -543,15 +590,15 @@ document.addEventListener('DOMContentLoaded', function () {
         const microsoftCard = document.getElementById('microsoftProviderCard');
         const deeplCard = document.getElementById('deeplProviderCard');
         const deeplFreeCard = document.getElementById('deeplFreeProviderCard');
-        const openaiCompatibleCard = document.getElementById('openaiCompatibleProviderCard');
-
+        const openaiCompatibleCard = document.getElementById(
+            'openaiCompatibleProviderCard'
+        );
 
         googleCard.style.display = 'none';
         microsoftCard.style.display = 'none';
         deeplCard.style.display = 'none';
         deeplFreeCard.style.display = 'none';
         openaiCompatibleCard.style.display = 'none';
-
 
         // Show the selected provider card
         switch (selectedProvider) {
@@ -631,10 +678,10 @@ document.addEventListener('DOMContentLoaded', function () {
         const aiContextCards = [
             aiContextProviderCard,
             aiContextTypesCard,
-            aiContextAdvancedCard
+            aiContextAdvancedCard,
         ];
 
-        aiContextCards.forEach(card => {
+        aiContextCards.forEach((card) => {
             if (card) {
                 card.style.display = aiContextEnabled ? 'block' : 'none';
             }
@@ -643,23 +690,27 @@ document.addEventListener('DOMContentLoaded', function () {
         // Show/hide provider-specific settings
         if (aiContextEnabled) {
             if (openaiContextSettings) {
-                openaiContextSettings.style.display = selectedProvider === 'openai' ? 'block' : 'none';
+                openaiContextSettings.style.display =
+                    selectedProvider === 'openai' ? 'block' : 'none';
             }
             if (geminiContextSettings) {
-                geminiContextSettings.style.display = selectedProvider === 'gemini' ? 'block' : 'none';
+                geminiContextSettings.style.display =
+                    selectedProvider === 'gemini' ? 'block' : 'none';
             }
 
             // Update model dropdown for the selected provider
             await updateModelDropdown(selectedProvider);
         } else {
-            if (openaiContextSettings) openaiContextSettings.style.display = 'none';
-            if (geminiContextSettings) geminiContextSettings.style.display = 'none';
+            if (openaiContextSettings)
+                openaiContextSettings.style.display = 'none';
+            if (geminiContextSettings)
+                geminiContextSettings.style.display = 'none';
         }
 
         optionsLogger.debug('AI Context settings visibility updated', {
             aiContextEnabled,
             selectedProvider,
-            component: 'updateAIContextSettings'
+            component: 'updateAIContextSettings',
         });
     };
 
@@ -667,18 +718,18 @@ document.addEventListener('DOMContentLoaded', function () {
      * Update model dropdown based on selected provider
      * @param {string} providerId - The provider ID
      */
-    const updateModelDropdown = async function(providerId) {
+    const updateModelDropdown = async function (providerId) {
         try {
             // Get available models from the background service
             const response = await chrome.runtime.sendMessage({
                 action: 'getAvailableModels',
-                providerId: providerId
+                providerId: providerId,
             });
 
             if (!response.success) {
                 optionsLogger.error('Failed to get available models', {
                     providerId,
-                    error: response.error
+                    error: response.error,
                 });
                 return;
             }
@@ -692,7 +743,9 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             if (!modelSelect) {
-                optionsLogger.warn('Model select element not found', { providerId });
+                optionsLogger.warn('Model select element not found', {
+                    providerId,
+                });
                 return;
             }
 
@@ -700,7 +753,7 @@ document.addEventListener('DOMContentLoaded', function () {
             modelSelect.innerHTML = '';
 
             // Populate with new options
-            response.models.forEach(model => {
+            response.models.forEach((model) => {
                 const option = document.createElement('option');
                 option.value = model.id;
                 option.textContent = model.name;
@@ -722,21 +775,22 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             // Check if the saved model is available in the current model list
-            const availableModelIds = response.models.map(model => model.id);
-            const isValidSavedModel = savedModel && availableModelIds.includes(savedModel);
+            const availableModelIds = response.models.map((model) => model.id);
+            const isValidSavedModel =
+                savedModel && availableModelIds.includes(savedModel);
 
             if (isValidSavedModel) {
                 // Use the user's saved preference
                 modelSelect.value = savedModel;
                 optionsLogger.debug('Using saved model preference', {
                     providerId,
-                    savedModel
+                    savedModel,
                 });
             } else {
                 // Fall back to provider's default model
                 const defaultResponse = await chrome.runtime.sendMessage({
                     action: 'getDefaultModel',
-                    providerId: providerId
+                    providerId: providerId,
                 });
 
                 if (defaultResponse.success && defaultResponse.defaultModel) {
@@ -744,15 +798,23 @@ document.addEventListener('DOMContentLoaded', function () {
 
                     // Save the default model as the user's preference if no valid saved model exists
                     if (providerId === 'openai') {
-                        await saveSetting('openaiModel', defaultResponse.defaultModel);
+                        await saveSetting(
+                            'openaiModel',
+                            defaultResponse.defaultModel
+                        );
                     } else if (providerId === 'gemini') {
-                        await saveSetting('geminiModel', defaultResponse.defaultModel);
+                        await saveSetting(
+                            'geminiModel',
+                            defaultResponse.defaultModel
+                        );
                     }
 
                     optionsLogger.debug('Using provider default model', {
                         providerId,
                         defaultModel: defaultResponse.defaultModel,
-                        reason: isValidSavedModel ? 'saved_model_invalid' : 'no_saved_model'
+                        reason: isValidSavedModel
+                            ? 'saved_model_invalid'
+                            : 'no_saved_model',
                     });
                 }
             }
@@ -762,25 +824,28 @@ document.addEventListener('DOMContentLoaded', function () {
                 modelCount: response.models.length,
                 selectedModel: modelSelect.value,
                 savedModel: savedModel,
-                isValidSavedModel: isValidSavedModel
+                isValidSavedModel: isValidSavedModel,
             });
-
         } catch (error) {
-            optionsLogger.error('Error updating model dropdown', error, { providerId });
+            optionsLogger.error('Error updating model dropdown', error, {
+                providerId,
+            });
         }
     };
 
     const updateAIContextTypes = function () {
         const contextTypes = [];
         if (contextTypeCulturalCheckbox?.checked) contextTypes.push('cultural');
-        if (contextTypeHistoricalCheckbox?.checked) contextTypes.push('historical');
-        if (contextTypeLinguisticCheckbox?.checked) contextTypes.push('linguistic');
+        if (contextTypeHistoricalCheckbox?.checked)
+            contextTypes.push('historical');
+        if (contextTypeLinguisticCheckbox?.checked)
+            contextTypes.push('linguistic');
 
         saveSetting('aiContextTypes', contextTypes);
 
         optionsLogger.debug('AI Context types updated', {
             contextTypes,
-            component: 'updateAIContextTypes'
+            component: 'updateAIContextTypes',
         });
     };
 
@@ -891,14 +956,13 @@ document.addEventListener('DOMContentLoaded', function () {
             deeplApiPlanSelect.value = deeplApiPlan;
             openaiCompatibleApiKeyInput.value = openaiCompatibleApiKey;
             openaiCompatibleBaseUrlInput.value = openaiCompatibleBaseUrl;
-            
+
             // Populate models dropdown
             const option = document.createElement('option');
             option.value = openaiCompatibleModel;
             option.textContent = openaiCompatibleModel;
             openaiCompatibleModelSelect.appendChild(option);
             openaiCompatibleModelSelect.value = openaiCompatibleModel;
-
 
             // Batch Translation Settings
             batchingEnabledCheckbox.checked = batchingEnabled;
@@ -921,8 +985,10 @@ document.addEventListener('DOMContentLoaded', function () {
             microsoftDelayInput.value = microsoftDelay;
 
             // AI Context Settings
-            if (aiContextEnabledCheckbox) aiContextEnabledCheckbox.checked = aiContextEnabled;
-            if (aiContextProviderSelect) aiContextProviderSelect.value = aiContextProvider;
+            if (aiContextEnabledCheckbox)
+                aiContextEnabledCheckbox.checked = aiContextEnabled;
+            if (aiContextProviderSelect)
+                aiContextProviderSelect.value = aiContextProvider;
             if (openaiApiKeyInput) openaiApiKeyInput.value = openaiApiKey;
             if (openaiBaseUrlInput) openaiBaseUrlInput.value = openaiBaseUrl;
             if (openaiModelSelect) openaiModelSelect.value = openaiModel;
@@ -934,19 +1000,29 @@ document.addEventListener('DOMContentLoaded', function () {
                 aiContextEnabled,
                 aiContextProvider,
                 providerSelectValue: aiContextProviderSelect?.value,
-                component: 'loadSettings'
+                component: 'loadSettings',
             });
 
-            if (aiContextTimeoutInput) aiContextTimeoutInput.value = aiContextTimeout;
-            if (aiContextRateLimitInput) aiContextRateLimitInput.value = aiContextRateLimit;
-            if (aiContextCacheEnabledCheckbox) aiContextCacheEnabledCheckbox.checked = aiContextCacheEnabled;
-            if (aiContextRetryAttemptsInput) aiContextRetryAttemptsInput.value = aiContextRetryAttempts;
+            if (aiContextTimeoutInput)
+                aiContextTimeoutInput.value = aiContextTimeout;
+            if (aiContextRateLimitInput)
+                aiContextRateLimitInput.value = aiContextRateLimit;
+            if (aiContextCacheEnabledCheckbox)
+                aiContextCacheEnabledCheckbox.checked = aiContextCacheEnabled;
+            if (aiContextRetryAttemptsInput)
+                aiContextRetryAttemptsInput.value = aiContextRetryAttempts;
 
             // AI Context Types (array handling)
             if (aiContextTypes && Array.isArray(aiContextTypes)) {
-                if (contextTypeCulturalCheckbox) contextTypeCulturalCheckbox.checked = aiContextTypes.includes('cultural');
-                if (contextTypeHistoricalCheckbox) contextTypeHistoricalCheckbox.checked = aiContextTypes.includes('historical');
-                if (contextTypeLinguisticCheckbox) contextTypeLinguisticCheckbox.checked = aiContextTypes.includes('linguistic');
+                if (contextTypeCulturalCheckbox)
+                    contextTypeCulturalCheckbox.checked =
+                        aiContextTypes.includes('cultural');
+                if (contextTypeHistoricalCheckbox)
+                    contextTypeHistoricalCheckbox.checked =
+                        aiContextTypes.includes('historical');
+                if (contextTypeLinguisticCheckbox)
+                    contextTypeLinguisticCheckbox.checked =
+                        aiContextTypes.includes('linguistic');
             }
 
             // Update batch settings visibility
@@ -1226,14 +1302,20 @@ document.addEventListener('DOMContentLoaded', function () {
         if (apiKey) {
             showTestResult(
                 openaiTestResult,
-                getLocalizedText('openaiApiKeyNeedsTesting', '⚠️ API key needs testing.'),
+                getLocalizedText(
+                    'openaiApiKeyNeedsTesting',
+                    '⚠️ API key needs testing.'
+                ),
                 'warning'
             );
             debouncedFetchModels();
         } else {
             showTestResult(
                 openaiTestResult,
-                getLocalizedText('openaiApiKeyError', 'Please enter your API key first.'),
+                getLocalizedText(
+                    'openaiApiKeyError',
+                    'Please enter your API key first.'
+                ),
                 'error'
             );
             // Clear models when no API key
@@ -1249,7 +1331,6 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     testOpenAIButton.addEventListener('click', testOpenAIConnection);
-
 
     // Initialize DeepL test result with default status
     const initializeDeepLTestStatus = function () {
@@ -1287,7 +1368,10 @@ document.addEventListener('DOMContentLoaded', function () {
             // Show "needs testing" status when key is present
             showTestResult(
                 openaiTestResult,
-                getLocalizedText('openaiTestNeedsTesting', '⚠️ OpenAI-compatible API key needs testing.'),
+                getLocalizedText(
+                    'openaiTestNeedsTesting',
+                    '⚠️ OpenAI-compatible API key needs testing.'
+                ),
                 'warning'
             );
             // Automatically fetch models when API key is present
@@ -1297,7 +1381,10 @@ document.addEventListener('DOMContentLoaded', function () {
             // Show "no key" status when key is empty
             showTestResult(
                 openaiTestResult,
-                getLocalizedText('openaiApiKeyError', 'Please enter your API key first.'),
+                getLocalizedText(
+                    'openaiApiKeyError',
+                    'Please enter your API key first.'
+                ),
                 'error'
             );
         }
@@ -1362,10 +1449,13 @@ document.addEventListener('DOMContentLoaded', function () {
         aiContextEnabledCheckbox.addEventListener('change', async function () {
             await saveSetting('aiContextEnabled', this.checked);
             updateAIContextSettings();
-            optionsLogger.info(`AI Context enabled changed to: ${this.checked}`, {
-                aiContextEnabled: this.checked,
-                component: 'aiContextEnabledCheckbox',
-            });
+            optionsLogger.info(
+                `AI Context enabled changed to: ${this.checked}`,
+                {
+                    aiContextEnabled: this.checked,
+                    component: 'aiContextEnabledCheckbox',
+                }
+            );
         });
     }
 
@@ -1377,17 +1467,25 @@ document.addEventListener('DOMContentLoaded', function () {
             // Notify background script to reload provider configuration
             try {
                 await chrome.runtime.sendMessage({
-                    action: 'reloadContextProviderConfig'
+                    action: 'reloadContextProviderConfig',
                 });
-                optionsLogger.debug('Background script notified of provider change');
+                optionsLogger.debug(
+                    'Background script notified of provider change'
+                );
             } catch (error) {
-                optionsLogger.warn('Failed to notify background script of provider change', error);
+                optionsLogger.warn(
+                    'Failed to notify background script of provider change',
+                    error
+                );
             }
 
-            optionsLogger.info(`AI Context provider changed to: ${this.value}`, {
-                aiContextProvider: this.value,
-                component: 'aiContextProviderSelect',
-            });
+            optionsLogger.info(
+                `AI Context provider changed to: ${this.value}`,
+                {
+                    aiContextProvider: this.value,
+                    component: 'aiContextProviderSelect',
+                }
+            );
         });
     }
 
@@ -1423,15 +1521,15 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // AI Context Types
-    [contextTypeCulturalCheckbox, contextTypeHistoricalCheckbox, contextTypeLinguisticCheckbox].forEach(checkbox => {
+    [
+        contextTypeCulturalCheckbox,
+        contextTypeHistoricalCheckbox,
+        contextTypeLinguisticCheckbox,
+    ].forEach((checkbox) => {
         if (checkbox) {
             checkbox.addEventListener('change', updateAIContextTypes);
         }
     });
-
-
-
-
 
     // Advanced Settings
     if (aiContextTimeoutInput) {
@@ -1447,19 +1545,28 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     if (aiContextCacheEnabledCheckbox) {
-        aiContextCacheEnabledCheckbox.addEventListener('change', async function () {
-            await saveSetting('aiContextCacheEnabled', this.checked);
-        });
+        aiContextCacheEnabledCheckbox.addEventListener(
+            'change',
+            async function () {
+                await saveSetting('aiContextCacheEnabled', this.checked);
+            }
+        );
     }
 
     if (aiContextRetryAttemptsInput) {
-        aiContextRetryAttemptsInput.addEventListener('change', async function () {
-            await saveSetting('aiContextRetryAttempts', parseInt(this.value));
-        });
+        aiContextRetryAttemptsInput.addEventListener(
+            'change',
+            async function () {
+                await saveSetting(
+                    'aiContextRetryAttempts',
+                    parseInt(this.value)
+                );
+            }
+        );
     }
 
     // Password toggle buttons
-    document.querySelectorAll('.toggle-password').forEach(button => {
+    document.querySelectorAll('.toggle-password').forEach((button) => {
         button.addEventListener('click', function () {
             const targetId = this.getAttribute('data-target');
             togglePasswordVisibility(targetId);
@@ -1467,14 +1574,15 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Collapsible sections
-    document.querySelectorAll('.collapse-toggle').forEach(button => {
+    document.querySelectorAll('.collapse-toggle').forEach((button) => {
         button.addEventListener('click', function () {
             const targetId = this.getAttribute('data-target');
             const content = document.getElementById(targetId);
             const icon = this.querySelector('.collapse-icon');
 
             if (content) {
-                const isCollapsed = content.style.display === 'none' || !content.style.display;
+                const isCollapsed =
+                    content.style.display === 'none' || !content.style.display;
                 content.style.display = isCollapsed ? 'block' : 'none';
                 if (icon) {
                     icon.textContent = isCollapsed ? '▲' : '▼';

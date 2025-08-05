@@ -1,9 +1,9 @@
 /**
  * AI Context Rate Limiter
- * 
+ *
  * Implements intelligent rate limiting for AI context providers to prevent
  * API quota exhaustion and ensure fair usage across different request types.
- * 
+ *
  * @author DualSub Extension
  * @version 1.0.0
  */
@@ -25,7 +25,7 @@ export class ContextRateLimiter {
             window: config.window || 60000, // 1 minute
             mandatoryDelay: config.mandatoryDelay || 1000, // 1 second
             burstLimit: config.burstLimit || 10,
-            ...config
+            ...config,
         };
 
         this.requests = [];
@@ -35,7 +35,7 @@ export class ContextRateLimiter {
 
         logger.info('Rate limiter initialized', {
             providerId: this.providerId,
-            config: this.config
+            config: this.config,
         });
     }
 
@@ -54,7 +54,7 @@ export class ContextRateLimiter {
                 logger.warn('Burst limit exceeded', {
                     providerId: this.providerId,
                     burstCount: this.burstCount,
-                    burstLimit: this.config.burstLimit
+                    burstLimit: this.config.burstLimit,
                 });
                 throw new ContextRateLimitError(
                     'Too many requests in a short time. Please slow down.',
@@ -69,7 +69,7 @@ export class ContextRateLimiter {
                     providerId: this.providerId,
                     requestCount: this.requests.length,
                     limit: this.config.requests,
-                    waitTime
+                    waitTime,
                 });
                 throw new ContextRateLimitError(
                     `Rate limit exceeded. Please wait ${Math.ceil(waitTime / 1000)} seconds.`,
@@ -83,7 +83,7 @@ export class ContextRateLimiter {
             if (delayNeeded > 0) {
                 logger.debug('Applying mandatory delay', {
                     providerId: this.providerId,
-                    delay: delayNeeded
+                    delay: delayNeeded,
                 });
                 await this.wait(delayNeeded);
             }
@@ -91,15 +91,14 @@ export class ContextRateLimiter {
             this.recordRequest(now, contextType);
 
             return true;
-
         } catch (error) {
             if (error instanceof ContextRateLimitError) {
                 throw error;
             }
-            
+
             logger.error('Rate limit check failed', error, {
                 providerId: this.providerId,
-                contextType
+                contextType,
             });
             throw new ContextRateLimitError(
                 'Rate limit check failed',
@@ -115,7 +114,9 @@ export class ContextRateLimiter {
      */
     cleanOldRequests(now) {
         const windowStart = now - this.config.window;
-        this.requests = this.requests.filter(req => req.timestamp > windowStart);
+        this.requests = this.requests.filter(
+            (req) => req.timestamp > windowStart
+        );
     }
 
     /**
@@ -125,8 +126,10 @@ export class ContextRateLimiter {
      */
     isBurstLimited(now) {
         const burstWindowStart = now - this.burstWindow;
-        this.burstCount = this.requests.filter(req => req.timestamp > burstWindowStart).length;
-        
+        this.burstCount = this.requests.filter(
+            (req) => req.timestamp > burstWindowStart
+        ).length;
+
         return this.burstCount >= this.config.burstLimit;
     }
 
@@ -147,9 +150,11 @@ export class ContextRateLimiter {
     getWaitTime(now) {
         if (this.requests.length === 0) return 0;
 
-        const oldestRequest = Math.min(...this.requests.map(req => req.timestamp));
+        const oldestRequest = Math.min(
+            ...this.requests.map((req) => req.timestamp)
+        );
         const windowEnd = oldestRequest + this.config.window;
-        
+
         return Math.max(0, windowEnd - now);
     }
 
@@ -171,7 +176,7 @@ export class ContextRateLimiter {
     recordRequest(now, contextType) {
         this.requests.push({
             timestamp: now,
-            contextType
+            contextType,
         });
         this.lastRequest = now;
 
@@ -179,7 +184,7 @@ export class ContextRateLimiter {
             providerId: this.providerId,
             contextType,
             requestCount: this.requests.length,
-            limit: this.config.requests
+            limit: this.config.requests,
         });
     }
 
@@ -189,7 +194,7 @@ export class ContextRateLimiter {
      * @returns {Promise<void>}
      */
     wait(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
+        return new Promise((resolve) => setTimeout(resolve, ms));
     }
 
     /**
@@ -202,7 +207,7 @@ export class ContextRateLimiter {
 
         const usage = this.requests.length / this.config.requests;
         const burstUsage = this.burstCount / this.config.burstLimit;
-        
+
         return {
             providerId: this.providerId,
             requests: this.requests.length,
@@ -212,7 +217,7 @@ export class ContextRateLimiter {
             burstLimit: this.config.burstLimit,
             burstUsage: `${(burstUsage * 100).toFixed(1)}%`,
             nextRequestAllowed: this.getNextRequestTime(now),
-            windowResetTime: this.getWindowResetTime(now)
+            windowResetTime: this.getWindowResetTime(now),
         };
     }
 
@@ -223,8 +228,10 @@ export class ContextRateLimiter {
      */
     getNextRequestTime(now) {
         const mandatoryDelay = this.getMandatoryDelay(now);
-        const rateLimitWait = this.isRateLimited(now) ? this.getWaitTime(now) : 0;
-        
+        const rateLimitWait = this.isRateLimited(now)
+            ? this.getWaitTime(now)
+            : 0;
+
         return now + Math.max(mandatoryDelay, rateLimitWait);
     }
 
@@ -235,8 +242,10 @@ export class ContextRateLimiter {
      */
     getWindowResetTime(now) {
         if (this.requests.length === 0) return now;
-        
-        const oldestRequest = Math.min(...this.requests.map(req => req.timestamp));
+
+        const oldestRequest = Math.min(
+            ...this.requests.map((req) => req.timestamp)
+        );
         return oldestRequest + this.config.window;
     }
 
@@ -247,9 +256,9 @@ export class ContextRateLimiter {
         this.requests = [];
         this.lastRequest = 0;
         this.burstCount = 0;
-        
+
         logger.info('Rate limiter reset', {
-            providerId: this.providerId
+            providerId: this.providerId,
         });
     }
 
@@ -259,10 +268,10 @@ export class ContextRateLimiter {
      */
     updateConfig(newConfig) {
         this.config = { ...this.config, ...newConfig };
-        
+
         logger.info('Rate limiter configuration updated', {
             providerId: this.providerId,
-            config: this.config
+            config: this.config,
         });
     }
 }
@@ -284,7 +293,10 @@ export class ContextRateLimiterManager {
      */
     getLimiter(providerId, config = {}) {
         if (!this.limiters.has(providerId)) {
-            this.limiters.set(providerId, new ContextRateLimiter(providerId, config));
+            this.limiters.set(
+                providerId,
+                new ContextRateLimiter(providerId, config)
+            );
         }
         return this.limiters.get(providerId);
     }

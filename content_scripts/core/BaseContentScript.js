@@ -607,7 +607,10 @@ export class BaseContentScript {
         try {
             // Check if chrome storage is available before proceeding
             if (!chrome || !chrome.storage) {
-                this.logWithFallback('warn', 'Chrome storage API not available, using default configuration');
+                this.logWithFallback(
+                    'warn',
+                    'Chrome storage API not available, using default configuration'
+                );
                 this.currentConfig = this._getDefaultConfiguration();
                 this._normalizeConfiguration();
                 return true; // Continue with defaults
@@ -621,9 +624,13 @@ export class BaseContentScript {
             try {
                 this.currentConfig = await this.configService.getAll();
             } catch (configError) {
-                this.logWithFallback('warn', 'Failed to load configuration from storage, using defaults', {
-                    error: configError.message
-                });
+                this.logWithFallback(
+                    'warn',
+                    'Failed to load configuration from storage, using defaults',
+                    {
+                        error: configError.message,
+                    }
+                );
                 this.currentConfig = this._getDefaultConfiguration();
             }
 
@@ -644,9 +651,13 @@ export class BaseContentScript {
                     'Configuration listeners set up successfully.'
                 );
             } catch (listenerError) {
-                this.logWithFallback('warn', 'Failed to setup configuration listeners, continuing without live updates', {
-                    error: listenerError.message
-                });
+                this.logWithFallback(
+                    'warn',
+                    'Failed to setup configuration listeners, continuing without live updates',
+                    {
+                        error: listenerError.message,
+                    }
+                );
             }
 
             return true;
@@ -660,12 +671,19 @@ export class BaseContentScript {
             try {
                 this.currentConfig = this._getDefaultConfiguration();
                 this._normalizeConfiguration();
-                this.logWithFallback('warn', 'Continuing with default configuration after initialization error');
+                this.logWithFallback(
+                    'warn',
+                    'Continuing with default configuration after initialization error'
+                );
                 return true;
             } catch (fallbackError) {
-                this.logWithFallback('error', 'Failed to initialize even with default configuration', {
-                    error: fallbackError.message
-                });
+                this.logWithFallback(
+                    'error',
+                    'Failed to initialize even with default configuration',
+                    {
+                        error: fallbackError.message,
+                    }
+                );
                 return false;
             }
         }
@@ -753,11 +771,17 @@ export class BaseContentScript {
      */
     async initializeAIContextFeatures() {
         try {
-            this.logWithFallback('debug', 'Checking AI context configuration...');
+            this.logWithFallback(
+                'debug',
+                'Checking AI context configuration...'
+            );
 
             // Check if configuration is available
             if (!this.configService) {
-                this.logWithFallback('debug', 'Config service not available, skipping AI context initialization');
+                this.logWithFallback(
+                    'debug',
+                    'Config service not available, skipping AI context initialization'
+                );
                 return false;
             }
 
@@ -765,7 +789,10 @@ export class BaseContentScript {
             const aiContextConfig = await this._getAIContextConfiguration();
 
             if (!aiContextConfig.aiContextEnabled) {
-                this.logWithFallback('debug', 'AI context disabled in configuration, but initializing interactive subtitles');
+                this.logWithFallback(
+                    'debug',
+                    'AI context disabled in configuration, but initializing interactive subtitles'
+                );
 
                 // Even if AI Context is disabled, we should still initialize interactive subtitles
                 // so that words are clickable (they just won't trigger AI analysis)
@@ -773,51 +800,75 @@ export class BaseContentScript {
                 return true; // Not an error, just disabled
             }
 
-            this.logWithFallback('info', 'Initializing AI context features with new modular system...', {
-                platform: this.getPlatformName(),
-                config: aiContextConfig
-            });
+            this.logWithFallback(
+                'info',
+                'Initializing AI context features with new modular system...',
+                {
+                    platform: this.getPlatformName(),
+                    config: aiContextConfig,
+                }
+            );
 
             // Initialize new modular AI Context Manager
             if (!this.aiContextManager) {
                 try {
                     // Import the new AIContextManager
-                    const { AIContextManager } = await import(chrome.runtime.getURL('content_scripts/aicontext/core/AIContextManager.js'));
+                    const { AIContextManager } = await import(
+                        chrome.runtime.getURL(
+                            'content_scripts/aicontext/core/AIContextManager.js'
+                        )
+                    );
 
                     // Create and initialize the manager
-                    this.aiContextManager = new AIContextManager(this.getPlatformName(), {
-                        modal: {
-                            maxWidth: '900px',
-                            maxHeight: '80vh',
-                            contentScript: this // Pass content script reference for config access
-                        },
-                        provider: {
-                            timeout: aiContextConfig.aiContextTimeout || 30000,
-                            maxRetries: 3
-                        },
-                        textHandler: {
-                            maxSelectionLength: aiContextConfig.maxSelectionLength || 500,
-                            minSelectionLength: 2,
-                            smartBoundaries: true,
-                            autoAnalysis: true // Enable automatic text selection analysis
-                        },
-                        contentScript: this // Also pass at top level for manager access
-                    });
+                    this.aiContextManager = new AIContextManager(
+                        this.getPlatformName(),
+                        {
+                            modal: {
+                                maxWidth: '900px',
+                                maxHeight: '80vh',
+                                contentScript: this, // Pass content script reference for config access
+                            },
+                            provider: {
+                                timeout:
+                                    aiContextConfig.aiContextTimeout || 30000,
+                                maxRetries: 3,
+                            },
+                            textHandler: {
+                                maxSelectionLength:
+                                    aiContextConfig.maxSelectionLength || 500,
+                                minSelectionLength: 2,
+                                smartBoundaries: true,
+                                autoAnalysis: true, // Enable automatic text selection analysis
+                            },
+                            contentScript: this, // Also pass at top level for manager access
+                        }
+                    );
 
                     const initResult = await this.aiContextManager.initialize();
 
                     if (initResult) {
                         // Enable features based on configuration
                         // Always enable interactive subtitles
-                        await this.aiContextManager.enableFeature('interactiveSubtitles');
+                        await this.aiContextManager.enableFeature(
+                            'interactiveSubtitles'
+                        );
 
-                        await this.aiContextManager.enableFeature('contextModal');
-                        await this.aiContextManager.enableFeature('textSelection');
+                        await this.aiContextManager.enableFeature(
+                            'contextModal'
+                        );
+                        await this.aiContextManager.enableFeature(
+                            'textSelection'
+                        );
 
-                        this.logWithFallback('info', 'New AI Context Manager initialized successfully', {
-                            platform: this.getPlatformName(),
-                            features: this.aiContextManager.getEnabledFeatures()
-                        });
+                        this.logWithFallback(
+                            'info',
+                            'New AI Context Manager initialized successfully',
+                            {
+                                platform: this.getPlatformName(),
+                                features:
+                                    this.aiContextManager.getEnabledFeatures(),
+                            }
+                        );
 
                         // Setup AI Context event listeners
                         this._setupAIContextEventListeners();
@@ -827,27 +878,39 @@ export class BaseContentScript {
 
                         // CRITICAL: Initialize interactive features in legacy SubtitleUtils
                         // This ensures subtitle formatting works with the new AI Context system
-                        await this._initializeSubtitleUtilsInteractiveFeatures(aiContextConfig);
+                        await this._initializeSubtitleUtilsInteractiveFeatures(
+                            aiContextConfig
+                        );
                     } else {
-                        throw new Error('AIContextManager initialization failed');
+                        throw new Error(
+                            'AIContextManager initialization failed'
+                        );
                     }
-
                 } catch (error) {
-                    this.logWithFallback('error', 'Failed to initialize new AI Context Manager, falling back to legacy system', error);
+                    this.logWithFallback(
+                        'error',
+                        'Failed to initialize new AI Context Manager, falling back to legacy system',
+                        error
+                    );
 
                     // Fallback to legacy system
-                    return await this._initializeLegacyAIContextFeatures(aiContextConfig);
+                    return await this._initializeLegacyAIContextFeatures(
+                        aiContextConfig
+                    );
                 }
             }
 
             return true;
-
         } catch (error) {
-            this.logWithFallback('error', 'Error initializing AI context features.', {
-                error: error.message,
-                stack: error.stack,
-                platform: this.getPlatformName()
-            });
+            this.logWithFallback(
+                'error',
+                'Error initializing AI context features.',
+                {
+                    error: error.message,
+                    stack: error.stack,
+                    platform: this.getPlatformName(),
+                }
+            );
             return false;
         }
     }
@@ -860,45 +923,67 @@ export class BaseContentScript {
      */
     async _initializeLegacyAIContextFeatures(aiContextConfig) {
         try {
-            this.logWithFallback('info', 'Initializing legacy AI context features...', {
-                platform: this.getPlatformName()
-            });
+            this.logWithFallback(
+                'info',
+                'Initializing legacy AI context features...',
+                {
+                    platform: this.getPlatformName(),
+                }
+            );
 
             // Initialize interactive subtitle features if subtitle utilities are available
-            if (this.subtitleUtils && this.subtitleUtils.initializeInteractiveSubtitleFeatures) {
+            if (
+                this.subtitleUtils &&
+                this.subtitleUtils.initializeInteractiveSubtitleFeatures
+            ) {
                 await this.subtitleUtils.initializeInteractiveSubtitleFeatures({
                     enabled: true, // Always enable interactive subtitles
-                    contextTypes: aiContextConfig.aiContextTypes || ['cultural', 'historical', 'linguistic'],
+                    contextTypes: aiContextConfig.aiContextTypes || [
+                        'cultural',
+                        'historical',
+                        'linguistic',
+                    ],
                     interactionMethods: {
                         click: true, // Always enable click interactions
-                        selection: true // Always enable selection interactions
+                        selection: true, // Always enable selection interactions
                     },
                     textSelection: {
                         maxLength: 100,
-                        smartBoundaries: true
+                        smartBoundaries: true,
                     },
                     loadingStates: {
                         timeout: aiContextConfig.aiContextTimeout || 30000,
-                        retryAttempts: aiContextConfig.aiContextRetryAttempts || 3
+                        retryAttempts:
+                            aiContextConfig.aiContextRetryAttempts || 3,
                     },
-                    platform: this.getPlatformName()
+                    platform: this.getPlatformName(),
                 });
 
-                this.logWithFallback('info', 'Legacy AI context features initialized successfully', {
-                    platform: this.getPlatformName()
-                });
+                this.logWithFallback(
+                    'info',
+                    'Legacy AI context features initialized successfully',
+                    {
+                        platform: this.getPlatformName(),
+                    }
+                );
                 return true;
             } else {
-                this.logWithFallback('warn', 'Subtitle utilities not available for legacy AI context initialization');
+                this.logWithFallback(
+                    'warn',
+                    'Subtitle utilities not available for legacy AI context initialization'
+                );
                 return false;
             }
-
         } catch (error) {
-            this.logWithFallback('error', 'Failed to initialize legacy AI context features', {
-                error: error.message,
-                stack: error.stack,
-                platform: this.getPlatformName()
-            });
+            this.logWithFallback(
+                'error',
+                'Failed to initialize legacy AI context features',
+                {
+                    error: error.message,
+                    stack: error.stack,
+                    platform: this.getPlatformName(),
+                }
+            );
             return false;
         }
     }
@@ -909,7 +994,10 @@ export class BaseContentScript {
      */
     _setupAIContextEventListeners() {
         if (!this.aiContextManager) {
-            this.logWithFallback('debug', 'AI Context Manager not available, skipping event listener setup');
+            this.logWithFallback(
+                'debug',
+                'AI Context Manager not available, skipping event listener setup'
+            );
             return;
         }
 
@@ -919,59 +1007,94 @@ export class BaseContentScript {
                 this.logWithFallback('info', 'AI Context system initialized', {
                     platform: event.detail.platform,
                     features: event.detail.features,
-                    initTime: event.detail.initTime
+                    initTime: event.detail.initTime,
                 });
             };
-            document.addEventListener('dualsub-system-initialized', systemInitializedListener);
+            document.addEventListener(
+                'dualsub-system-initialized',
+                systemInitializedListener
+            );
             this.eventListenerCleanupFunctions.push(() => {
-                document.removeEventListener('dualsub-system-initialized', systemInitializedListener);
+                document.removeEventListener(
+                    'dualsub-system-initialized',
+                    systemInitializedListener
+                );
             });
 
             // Listen for analysis completion events
             const analysisCompleteListener = (event) => {
                 this.logWithFallback('debug', 'AI Context analysis completed', {
                     requestId: event.detail.requestId,
-                    success: event.detail.success
+                    success: event.detail.success,
                 });
             };
-            document.addEventListener('dualsub-analysis-complete', analysisCompleteListener);
+            document.addEventListener(
+                'dualsub-analysis-complete',
+                analysisCompleteListener
+            );
             this.eventListenerCleanupFunctions.push(() => {
-                document.removeEventListener('dualsub-analysis-complete', analysisCompleteListener);
+                document.removeEventListener(
+                    'dualsub-analysis-complete',
+                    analysisCompleteListener
+                );
             });
 
             // Listen for analysis error events
             const analysisErrorListener = (event) => {
                 this.logWithFallback('warn', 'AI Context analysis error', {
                     requestId: event.detail.requestId,
-                    error: event.detail.error
+                    error: event.detail.error,
                 });
             };
-            document.addEventListener('dualsub-analysis-error', analysisErrorListener);
+            document.addEventListener(
+                'dualsub-analysis-error',
+                analysisErrorListener
+            );
             this.eventListenerCleanupFunctions.push(() => {
-                document.removeEventListener('dualsub-analysis-error', analysisErrorListener);
+                document.removeEventListener(
+                    'dualsub-analysis-error',
+                    analysisErrorListener
+                );
             });
 
             // Listen for modal state changes
             const modalStateListener = (event) => {
-                this.logWithFallback('debug', 'AI Context modal state changed', {
-                    state: event.detail.state,
-                    visible: event.detail.visible
-                });
+                this.logWithFallback(
+                    'debug',
+                    'AI Context modal state changed',
+                    {
+                        state: event.detail.state,
+                        visible: event.detail.visible,
+                    }
+                );
             };
-            document.addEventListener('dualsub-modal-state-change', modalStateListener);
+            document.addEventListener(
+                'dualsub-modal-state-change',
+                modalStateListener
+            );
             this.eventListenerCleanupFunctions.push(() => {
-                document.removeEventListener('dualsub-modal-state-change', modalStateListener);
+                document.removeEventListener(
+                    'dualsub-modal-state-change',
+                    modalStateListener
+                );
             });
 
-            this.logWithFallback('debug', 'AI Context event listeners setup complete', {
-                platform: this.getPlatformName()
-            });
-
+            this.logWithFallback(
+                'debug',
+                'AI Context event listeners setup complete',
+                {
+                    platform: this.getPlatformName(),
+                }
+            );
         } catch (error) {
-            this.logWithFallback('error', 'Failed to setup AI Context event listeners', {
-                error: error.message,
-                stack: error.stack
-            });
+            this.logWithFallback(
+                'error',
+                'Failed to setup AI Context event listeners',
+                {
+                    error: error.message,
+                    stack: error.stack,
+                }
+            );
         }
     }
 
@@ -986,13 +1109,20 @@ export class BaseContentScript {
 
             if (fullscreenElement) {
                 // Entering fullscreen: move UI root into fullscreen element
-                this.logWithFallback('info', 'Entering fullscreen, moving UI root.', {
-                    fullscreenElement: fullscreenElement.tagName
-                });
+                this.logWithFallback(
+                    'info',
+                    'Entering fullscreen, moving UI root.',
+                    {
+                        fullscreenElement: fullscreenElement.tagName,
+                    }
+                );
                 fullscreenElement.appendChild(uiRoot);
             } else {
                 // Exiting fullscreen: move UI root back to body
-                this.logWithFallback('info', 'Exiting fullscreen, moving UI root back to body.');
+                this.logWithFallback(
+                    'info',
+                    'Exiting fullscreen, moving UI root back to body.'
+                );
                 document.body.appendChild(uiRoot);
             }
 
@@ -1006,7 +1136,10 @@ export class BaseContentScript {
 
         // Add cleanup for fullscreen listener
         this.eventListenerCleanupFunctions.push(() => {
-            document.removeEventListener('fullscreenchange', handleFullscreenChange);
+            document.removeEventListener(
+                'fullscreenchange',
+                handleFullscreenChange
+            );
         });
 
         this.logWithFallback('debug', 'Fullscreen handling setup complete');
@@ -1021,50 +1154,70 @@ export class BaseContentScript {
      */
     async _initializeInteractiveSubtitlesOnly(aiContextConfig) {
         try {
-            this.logWithFallback('info', 'Initializing interactive subtitles only (AI Context disabled)', {
-                platform: this.getPlatformName(),
-                hasSubtitleUtils: !!this.subtitleUtils
-            });
+            this.logWithFallback(
+                'info',
+                'Initializing interactive subtitles only (AI Context disabled)',
+                {
+                    platform: this.getPlatformName(),
+                    hasSubtitleUtils: !!this.subtitleUtils,
+                }
+            );
 
             // Initialize interactive subtitle features in SubtitleUtils
-            if (this.subtitleUtils && this.subtitleUtils.initializeInteractiveSubtitleFeatures) {
+            if (
+                this.subtitleUtils &&
+                this.subtitleUtils.initializeInteractiveSubtitleFeatures
+            ) {
                 await this.subtitleUtils.initializeInteractiveSubtitleFeatures({
                     enabled: true, // Always enable interactive subtitles
                     contextTypes: [], // No AI context types since AI is disabled
                     interactionMethods: {
                         click: true, // Enable word clicks
-                        selection: false // Disable text selection since no AI analysis
+                        selection: false, // Disable text selection since no AI analysis
                     },
                     textSelection: {
                         maxLength: 100,
-                        smartBoundaries: true
+                        smartBoundaries: true,
                     },
                     loadingStates: {
                         timeout: 5000, // Shorter timeout since no AI analysis
-                        retryAttempts: 1
+                        retryAttempts: 1,
                     },
-                    platform: this.getPlatformName()
+                    platform: this.getPlatformName(),
                 });
 
-                this.logWithFallback('info', 'Interactive subtitles initialized successfully (without AI Context)', {
-                    platform: this.getPlatformName()
-                });
+                this.logWithFallback(
+                    'info',
+                    'Interactive subtitles initialized successfully (without AI Context)',
+                    {
+                        platform: this.getPlatformName(),
+                    }
+                );
 
                 // Setup fullscreen handling for interactive subtitles
                 this._setupFullscreenHandling();
             } else {
-                this.logWithFallback('warn', 'SubtitleUtils not available for interactive subtitle initialization', {
-                    hasSubtitleUtils: !!this.subtitleUtils,
-                    hasInitMethod: !!(this.subtitleUtils?.initializeInteractiveSubtitleFeatures)
-                });
+                this.logWithFallback(
+                    'warn',
+                    'SubtitleUtils not available for interactive subtitle initialization',
+                    {
+                        hasSubtitleUtils: !!this.subtitleUtils,
+                        hasInitMethod:
+                            !!this.subtitleUtils
+                                ?.initializeInteractiveSubtitleFeatures,
+                    }
+                );
             }
-
         } catch (error) {
-            this.logWithFallback('error', 'Failed to initialize interactive subtitles', {
-                error: error.message,
-                stack: error.stack,
-                platform: this.getPlatformName()
-            });
+            this.logWithFallback(
+                'error',
+                'Failed to initialize interactive subtitles',
+                {
+                    error: error.message,
+                    stack: error.stack,
+                    platform: this.getPlatformName(),
+                }
+            );
         }
     }
 
@@ -1077,47 +1230,72 @@ export class BaseContentScript {
      */
     async _initializeSubtitleUtilsInteractiveFeatures(aiContextConfig) {
         try {
-            this.logWithFallback('info', 'Initializing SubtitleUtils interactive features for new AI Context system', {
-                platform: this.getPlatformName(),
-                hasSubtitleUtils: !!this.subtitleUtils
-            });
+            this.logWithFallback(
+                'info',
+                'Initializing SubtitleUtils interactive features for new AI Context system',
+                {
+                    platform: this.getPlatformName(),
+                    hasSubtitleUtils: !!this.subtitleUtils,
+                }
+            );
 
             // Initialize interactive subtitle features in legacy SubtitleUtils
-            if (this.subtitleUtils && this.subtitleUtils.initializeInteractiveSubtitleFeatures) {
+            if (
+                this.subtitleUtils &&
+                this.subtitleUtils.initializeInteractiveSubtitleFeatures
+            ) {
                 await this.subtitleUtils.initializeInteractiveSubtitleFeatures({
                     enabled: true, // Always enable interactive subtitles
-                    contextTypes: aiContextConfig.aiContextTypes || ['cultural', 'historical', 'linguistic'],
+                    contextTypes: aiContextConfig.aiContextTypes || [
+                        'cultural',
+                        'historical',
+                        'linguistic',
+                    ],
                     interactionMethods: {
                         click: true, // Always enable click interactions
-                        selection: true // Always enable selection interactions
+                        selection: true, // Always enable selection interactions
                     },
                     textSelection: {
                         maxLength: 100,
-                        smartBoundaries: true
+                        smartBoundaries: true,
                     },
                     loadingStates: {
                         timeout: aiContextConfig.aiContextTimeout || 30000,
-                        retryAttempts: aiContextConfig.aiContextRetryAttempts || 3
+                        retryAttempts:
+                            aiContextConfig.aiContextRetryAttempts || 3,
                     },
-                    platform: this.getPlatformName()
+                    platform: this.getPlatformName(),
                 });
 
-                this.logWithFallback('info', 'SubtitleUtils interactive features initialized successfully', {
-                    platform: this.getPlatformName()
-                });
+                this.logWithFallback(
+                    'info',
+                    'SubtitleUtils interactive features initialized successfully',
+                    {
+                        platform: this.getPlatformName(),
+                    }
+                );
             } else {
-                this.logWithFallback('warn', 'SubtitleUtils not available for interactive feature initialization', {
-                    hasSubtitleUtils: !!this.subtitleUtils,
-                    hasInitMethod: !!(this.subtitleUtils?.initializeInteractiveSubtitleFeatures)
-                });
+                this.logWithFallback(
+                    'warn',
+                    'SubtitleUtils not available for interactive feature initialization',
+                    {
+                        hasSubtitleUtils: !!this.subtitleUtils,
+                        hasInitMethod:
+                            !!this.subtitleUtils
+                                ?.initializeInteractiveSubtitleFeatures,
+                    }
+                );
             }
-
         } catch (error) {
-            this.logWithFallback('error', 'Failed to initialize SubtitleUtils interactive features', {
-                error: error.message,
-                stack: error.stack,
-                platform: this.getPlatformName()
-            });
+            this.logWithFallback(
+                'error',
+                'Failed to initialize SubtitleUtils interactive features',
+                {
+                    error: error.message,
+                    stack: error.stack,
+                    platform: this.getPlatformName(),
+                }
+            );
         }
     }
 
@@ -1141,20 +1319,27 @@ export class BaseContentScript {
                 try {
                     config[key] = await this.configService.get(key);
                 } catch (error) {
-                    this.logWithFallback('debug', `Failed to get config key: ${key}`, {
-                        error: error.message
-                    });
+                    this.logWithFallback(
+                        'debug',
+                        `Failed to get config key: ${key}`,
+                        {
+                            error: error.message,
+                        }
+                    );
                     // Use default values for missing keys
                     config[key] = this._getDefaultAIContextValue(key);
                 }
             }
 
             return config;
-
         } catch (error) {
-            this.logWithFallback('error', 'Failed to get AI context configuration', {
-                error: error.message
-            });
+            this.logWithFallback(
+                'error',
+                'Failed to get AI context configuration',
+                {
+                    error: error.message,
+                }
+            );
             return this._getDefaultAIContextConfiguration();
         }
     }
@@ -1171,7 +1356,7 @@ export class BaseContentScript {
             aiContextTypes: ['cultural', 'historical', 'linguistic'],
             aiContextTimeout: 30000,
             aiContextRetryAttempts: 3,
-            aiContextUserConsent: true
+            aiContextUserConsent: true,
         };
     }
 
@@ -2796,16 +2981,26 @@ export class BaseContentScript {
     async _cleanupAIContextManager() {
         try {
             if (this.aiContextManager) {
-                this.logWithFallback('debug', 'Cleaning up AI Context Manager...');
+                this.logWithFallback(
+                    'debug',
+                    'Cleaning up AI Context Manager...'
+                );
                 await this.aiContextManager.destroy();
                 this.aiContextManager = null;
-                this.logWithFallback('debug', 'AI Context Manager cleaned up successfully');
+                this.logWithFallback(
+                    'debug',
+                    'AI Context Manager cleaned up successfully'
+                );
             }
         } catch (error) {
-            this.logWithFallback('error', 'Error cleaning up AI Context Manager', {
-                error: error.message,
-                stack: error.stack
-            });
+            this.logWithFallback(
+                'error',
+                'Error cleaning up AI Context Manager',
+                {
+                    error: error.message,
+                    stack: error.stack,
+                }
+            );
         }
     }
 
@@ -3137,7 +3332,7 @@ export class BaseContentScript {
             loggingLevel: 3, // INFO level
 
             // Other defaults
-            uiLanguage: 'en'
+            uiLanguage: 'en',
         };
     }
 }

@@ -684,7 +684,6 @@ button#testDeepLButton.btn-sparkle * {
     transform: translateY(-2px);
 }
 
-
 .btn-sparkle.no-sparkle:hover {
     background: #1c1a1c;
     box-shadow: none;
@@ -694,7 +693,6 @@ button#testDeepLButton.btn-sparkle * {
 .btn-sparkle:hover .text {
     color: white !important;
 }
-
 
 /* Specific hover rules for DeepL test button */
 #testDeepLButton.btn-sparkle:hover .text,
@@ -754,7 +752,7 @@ button#testDeepLButton.btn-sparkle:hover span.text {
     background-color: rgba(0, 122, 255, 0.05);
 }
 
-.checkbox-label input[type="checkbox"] {
+.checkbox-label input[type='checkbox'] {
     margin: 0;
     width: 18px;
     height: 18px;
@@ -770,12 +768,12 @@ button#testDeepLButton.btn-sparkle:hover span.text {
     transition: all 0.2s ease;
 }
 
-.checkbox-label input[type="checkbox"]:checked + .checkmark {
+.checkbox-label input[type='checkbox']:checked + .checkmark {
     background-color: var(--link-color);
     border-color: var(--link-color);
 }
 
-.checkbox-label input[type="checkbox"]:checked + .checkmark::after {
+.checkbox-label input[type='checkbox']:checked + .checkmark::after {
     content: '✓';
     position: absolute;
     top: 50%;
@@ -885,15 +883,17 @@ button#testDeepLButton.btn-sparkle:hover span.text {
 }
 
 /* Input styling for AI context */
-#ai-context input[type="password"],
-#ai-context input[type="number"] {
-    font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+#ai-context input[type='password'],
+#ai-context input[type='number'] {
+    font-family:
+        'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas,
+        'Courier New', monospace;
 }
 
-#ai-context input[type="password"] {
+#ai-context input[type='password'] {
     letter-spacing: 2px;
 }
 
-#ai-context input[type="password"]:focus {
+#ai-context input[type='password']:focus {
     letter-spacing: normal;
 }

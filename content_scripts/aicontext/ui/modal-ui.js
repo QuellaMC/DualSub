@@ -1,9 +1,9 @@
 /**
  * AI Context Modal - UI Module
- * 
+ *
  * DOM creation and UI rendering functionality.
  * Handles modal element creation, styling, and visual updates.
- * 
+ *
  * @author DualSub Extension - UI Systems Engineer
  * @version 2.0.0
  */
@@ -41,7 +41,7 @@ export class AIContextModalUI {
 
         this.core._log('info', 'UI module initialization completed', {
             language: this._currentLanguage,
-            translationsLoaded: !!this._translationsCache
+            translationsLoaded: !!this._translationsCache,
         });
     }
 
@@ -52,7 +52,10 @@ export class AIContextModalUI {
     async createModalElement() {
         // Ensure language is initialized before creating UI elements
         if (!this._languageInitialized) {
-            this.core._log('debug', 'Language not initialized, initializing now');
+            this.core._log(
+                'debug',
+                'Language not initialized, initializing now'
+            );
             await this.initialize();
         }
         this.core._log('debug', 'Creating modal DOM element');
@@ -110,12 +113,16 @@ export class AIContextModalUI {
         this.core.element = modal;
         this.core.overlayElement = overlay;
         this.core.contentElement = content;
-        this.core._log('debug', 'Modal element created successfully with UI root integration', {
-            modalId: modal.id,
-            contentDisplay: content.style.display,
-            contentParent: content.parentElement?.id,
-            uiRootId: uiRoot.id
-        });
+        this.core._log(
+            'debug',
+            'Modal element created successfully with UI root integration',
+            {
+                modalId: modal.id,
+                contentDisplay: content.style.display,
+                contentParent: content.parentElement?.id,
+                uiRootId: uiRoot.id,
+            }
+        );
     }
 
     /**
@@ -188,8 +195,12 @@ export class AIContextModalUI {
         analysisButton.id = 'dualsub-start-analysis';
         analysisButton.className = 'dualsub-analysis-button';
         analysisButton.disabled = true;
-        analysisButton.title = this._getLocalizedMessage('aiContextStartAnalysis'); // EXACT legacy attribute
-        analysisButton.textContent = this._getLocalizedMessage('aiContextStartAnalysis');
+        analysisButton.title = this._getLocalizedMessage(
+            'aiContextStartAnalysis'
+        ); // EXACT legacy attribute
+        analysisButton.textContent = this._getLocalizedMessage(
+            'aiContextStartAnalysis'
+        );
 
         controlsContainer.appendChild(analysisButton);
         leftPane.appendChild(controlsContainer);
@@ -309,32 +320,46 @@ export class AIContextModalUI {
             button.disabled = true;
         } else {
             // Sort position keys by subtitle sequence
-            const sortedPositionKeys = [...this.core.selectedWordsOrder].sort((keyA, keyB) => {
-                const positionA = this.core.selectedWordPositions.get(keyA);
-                const positionB = this.core.selectedWordPositions.get(keyB);
+            const sortedPositionKeys = [...this.core.selectedWordsOrder].sort(
+                (keyA, keyB) => {
+                    const positionA = this.core.selectedWordPositions.get(keyA);
+                    const positionB = this.core.selectedWordPositions.get(keyB);
 
-                if (!positionA || !positionB) return 0;
+                    if (!positionA || !positionB) return 0;
 
-                // Sort by wordIndex (position in subtitle)
-                const indexA = positionA.position?.wordIndex ?? positionA.position?.index ?? 0;
-                const indexB = positionB.position?.wordIndex ?? positionB.position?.index ?? 0;
+                    // Sort by wordIndex (position in subtitle)
+                    const indexA =
+                        positionA.position?.wordIndex ??
+                        positionA.position?.index ??
+                        0;
+                    const indexB =
+                        positionB.position?.wordIndex ??
+                        positionB.position?.index ??
+                        0;
 
-                return indexA - indexB;
-            });
+                    return indexA - indexB;
+                }
+            );
 
-            const wordsHtml = sortedPositionKeys.map((positionKey, index) => {
-                const positionData = this.core.selectedWordPositions.get(positionKey);
-                if (!positionData) return '';
+            const wordsHtml = sortedPositionKeys
+                .map((positionKey, index) => {
+                    const positionData =
+                        this.core.selectedWordPositions.get(positionKey);
+                    if (!positionData) return '';
 
-                const word = positionData.word;
+                    const word = positionData.word;
 
-                // Hide remove buttons during processing
-                const removeButtonStyle = this.core.isAnalyzing ? ' style="display: none;"' : '';
-                return `<span class="dualsub-selected-word" data-word="${word}" data-position-key="${positionKey}" data-position-index="${index}">
+                    // Hide remove buttons during processing
+                    const removeButtonStyle = this.core.isAnalyzing
+                        ? ' style="display: none;"'
+                        : '';
+                    return `<span class="dualsub-selected-word" data-word="${word}" data-position-key="${positionKey}" data-position-index="${index}">
                     ${word}
                     <span class="dualsub-word-remove" data-word="${word}" data-position-key="${positionKey}"${removeButtonStyle}>×</span>
                 </span>`;
-            }).filter(html => html).join('');
+                })
+                .filter((html) => html)
+                .join('');
 
             container.innerHTML = wordsHtml;
             button.disabled = this.core.selectedWordPositions.size === 0;
@@ -345,12 +370,8 @@ export class AIContextModalUI {
             } else {
                 container.classList.remove('dualsub-processing-disabled');
             }
-
-
         }
     }
-
-
 
     /**
      * Show initial state
@@ -407,15 +428,17 @@ export class AIContextModalUI {
         if (results) results.style.display = 'flex';
     }
 
-
-
     /**
      * Show analysis results
      * @param {string} results - HTML results content
      */
     showAnalysisResults(results) {
-        const processingState = document.getElementById('dualsub-processing-state');
-        const analysisResults = document.getElementById('dualsub-analysis-results');
+        const processingState = document.getElementById(
+            'dualsub-processing-state'
+        );
+        const analysisResults = document.getElementById(
+            'dualsub-analysis-results'
+        );
 
         // EXACT legacy behavior
         if (processingState) processingState.style.display = 'none';
@@ -457,11 +480,15 @@ export class AIContextModalUI {
      */
     _getLocalizedMessage(key) {
         // Use DualSub's translation cache if available
-        if (this._translationsCache && this._translationsCache[key] && this._translationsCache[key].message) {
+        if (
+            this._translationsCache &&
+            this._translationsCache[key] &&
+            this._translationsCache[key].message
+        ) {
             this.core._log('debug', 'Using cached translation', {
                 key,
                 language: this._currentLanguage,
-                message: this._translationsCache[key].message
+                message: this._translationsCache[key].message,
             });
             return this._translationsCache[key].message;
         }
@@ -472,14 +499,14 @@ export class AIContextModalUI {
             if (localizedText) {
                 this.core._log('debug', 'Using Chrome i18n translation', {
                     key,
-                    message: localizedText
+                    message: localizedText,
                 });
                 return localizedText;
             }
         } catch (error) {
             this.core._log('warn', 'Failed to get Chrome i18n message', {
                 key,
-                error: error.message
+                error: error.message,
             });
         }
 
@@ -490,7 +517,8 @@ export class AIContextModalUI {
             aiContextNoWordsSelected: 'No words selected',
             aiContextClickHint: '💡 Click a word to add or remove it.',
             aiContextStartAnalysis: 'Start Analysis',
-            aiContextInitialMessage: 'Select words from the subtitles to begin analysis.',
+            aiContextInitialMessage:
+                'Select words from the subtitles to begin analysis.',
             aiContextAnalyzing: 'Analyzing context...',
             aiContextPauseAnalysis: '⏸ Pause',
             aiContextPauseNote: 'Click ⏸ to pause analysis',
@@ -498,18 +526,17 @@ export class AIContextModalUI {
             aiContextClose: 'Close',
             aiContextAnalysisResults: 'Analysis Results',
             aiContextNoContent: 'No Analysis Content',
-            aiContextNoContentMessage: 'Analysis completed but no content was returned.'
+            aiContextNoContentMessage:
+                'Analysis completed but no content was returned.',
         };
 
         const fallbackMessage = fallbackMessages[key] || key;
         this.core._log('debug', 'Using fallback translation', {
             key,
-            message: fallbackMessage
+            message: fallbackMessage,
         });
         return fallbackMessage;
     }
-
-
 
     /**
      * Initialize language settings using DualSub's config manager (Fixed internationalization)
@@ -522,17 +549,35 @@ export class AIContextModalUI {
             let uiLanguage = 'en'; // Default fallback
 
             // Access configService through the content script instance
-            if (this.core.contentScript && this.core.contentScript.configService) {
-                uiLanguage = await this.core.contentScript.configService.get('uiLanguage');
-                this.core._log('debug', 'Retrieved language from content script config service', { uiLanguage });
+            if (
+                this.core.contentScript &&
+                this.core.contentScript.configService
+            ) {
+                uiLanguage =
+                    await this.core.contentScript.configService.get(
+                        'uiLanguage'
+                    );
+                this.core._log(
+                    'debug',
+                    'Retrieved language from content script config service',
+                    { uiLanguage }
+                );
             } else if (window.configService) {
                 uiLanguage = await window.configService.get('uiLanguage');
-                this.core._log('debug', 'Retrieved language from global config service', { uiLanguage });
+                this.core._log(
+                    'debug',
+                    'Retrieved language from global config service',
+                    { uiLanguage }
+                );
             } else {
                 // Fallback: try to get from chrome storage directly
                 const result = await chrome.storage.sync.get(['uiLanguage']);
                 uiLanguage = result.uiLanguage || 'en';
-                this.core._log('debug', 'Retrieved language from chrome storage fallback', { uiLanguage });
+                this.core._log(
+                    'debug',
+                    'Retrieved language from chrome storage fallback',
+                    { uiLanguage }
+                );
             }
 
             this._currentLanguage = uiLanguage;
@@ -543,15 +588,17 @@ export class AIContextModalUI {
             this.core._log('info', 'Language initialization completed', {
                 language: this._currentLanguage,
                 translationsLoaded: !!this._translationsCache,
-                configServiceAvailable: !!(this.core.contentScript && this.core.contentScript.configService)
+                configServiceAvailable: !!(
+                    this.core.contentScript &&
+                    this.core.contentScript.configService
+                ),
             });
 
             // Set up language change listener (same pattern as popup.js)
             this._setupLanguageChangeListener();
-
         } catch (error) {
             this.core._log('error', 'Failed to initialize language settings', {
-                error: error.message
+                error: error.message,
             });
             this._currentLanguage = 'en';
             this._translationsCache = null;
@@ -565,16 +612,24 @@ export class AIContextModalUI {
     _setupLanguageChangeListener() {
         try {
             // Use configService from content script instance
-            const configService = this.core.contentScript?.configService || window.configService;
+            const configService =
+                this.core.contentScript?.configService || window.configService;
 
-            if (configService && typeof configService.onChanged === 'function') {
+            if (
+                configService &&
+                typeof configService.onChanged === 'function'
+            ) {
                 configService.onChanged(async (changes) => {
                     if (changes.uiLanguage) {
                         const newLang = changes.uiLanguage;
-                        this.core._log('info', 'Detected UI language change, reloading translations', {
-                            oldLanguage: this._currentLanguage,
-                            newLanguage: newLang
-                        });
+                        this.core._log(
+                            'info',
+                            'Detected UI language change, reloading translations',
+                            {
+                                oldLanguage: this._currentLanguage,
+                                newLanguage: newLang,
+                            }
+                        );
 
                         this._currentLanguage = newLang;
                         await this._loadTranslations(newLang);
@@ -586,18 +641,29 @@ export class AIContextModalUI {
                     }
                 });
 
-                this.core._log('debug', 'Language change listener set up successfully', {
-                    configServiceSource: this.core.contentScript?.configService ? 'contentScript' : 'global'
-                });
+                this.core._log(
+                    'debug',
+                    'Language change listener set up successfully',
+                    {
+                        configServiceSource: this.core.contentScript
+                            ?.configService
+                            ? 'contentScript'
+                            : 'global',
+                    }
+                );
             } else {
                 // Fallback: listen for storage changes directly
                 chrome.storage.onChanged.addListener((changes, areaName) => {
                     if (areaName === 'sync' && changes.uiLanguage) {
                         const newLang = changes.uiLanguage.newValue;
-                        this.core._log('info', 'Detected UI language change via storage, reloading translations', {
-                            oldLanguage: this._currentLanguage,
-                            newLanguage: newLang
-                        });
+                        this.core._log(
+                            'info',
+                            'Detected UI language change via storage, reloading translations',
+                            {
+                                oldLanguage: this._currentLanguage,
+                                newLanguage: newLang,
+                            }
+                        );
 
                         this._currentLanguage = newLang;
                         this._loadTranslations(newLang).then(() => {
@@ -608,12 +674,19 @@ export class AIContextModalUI {
                     }
                 });
 
-                this.core._log('debug', 'Language change listener set up via storage fallback');
+                this.core._log(
+                    'debug',
+                    'Language change listener set up via storage fallback'
+                );
             }
         } catch (error) {
-            this.core._log('warn', 'Failed to set up language change listener', {
-                error: error.message
-            });
+            this.core._log(
+                'warn',
+                'Failed to set up language change listener',
+                {
+                    error: error.message,
+                }
+            );
         }
     }
 
@@ -626,25 +699,32 @@ export class AIContextModalUI {
             // Update modal title
             const titleElement = document.getElementById('dualsub-modal-title');
             if (titleElement) {
-                titleElement.textContent = this._getLocalizedMessage('aiContextModalTitle');
+                titleElement.textContent = this._getLocalizedMessage(
+                    'aiContextModalTitle'
+                );
             }
 
             // Update selection display
             this.updateSelectionDisplay();
 
             // Update any visible analysis results
-            const resultsContainer = document.getElementById('dualsub-analysis-results');
+            const resultsContainer = document.getElementById(
+                'dualsub-analysis-results'
+            );
             if (resultsContainer && resultsContainer.innerHTML.trim()) {
                 // Re-render results with new language
                 // This would need the original analysis data to re-render properly
-                this.core._log('debug', 'Modal UI refreshed with new language', {
-                    language: this._currentLanguage
-                });
+                this.core._log(
+                    'debug',
+                    'Modal UI refreshed with new language',
+                    {
+                        language: this._currentLanguage,
+                    }
+                );
             }
-
         } catch (error) {
             this.core._log('error', 'Failed to refresh modal UI', {
-                error: error.message
+                error: error.message,
             });
         }
     }
@@ -667,7 +747,7 @@ export class AIContextModalUI {
             this.core._log('debug', 'Loading translations', {
                 langCode,
                 normalizedLangCode,
-                translationsPath
+                translationsPath,
             });
 
             const response = await fetch(translationsPath);
@@ -682,34 +762,41 @@ export class AIContextModalUI {
                 language: langCode,
                 normalizedLangCode,
                 keysLoaded: Object.keys(translations).length,
-                aiContextKeys: Object.keys(translations).filter(key => key.startsWith('aiContext')).length
+                aiContextKeys: Object.keys(translations).filter((key) =>
+                    key.startsWith('aiContext')
+                ).length,
             });
 
             return translations;
-
         } catch (error) {
-            this.core._log('warn', `Could not load '${langCode}' translations, falling back to English`, {
-                langCode,
-                error: error.message
-            });
+            this.core._log(
+                'warn',
+                `Could not load '${langCode}' translations, falling back to English`,
+                {
+                    langCode,
+                    error: error.message,
+                }
+            );
 
             // Fallback to English
             try {
-                const fallbackPath = chrome.runtime.getURL('_locales/en/messages.json');
+                const fallbackPath = chrome.runtime.getURL(
+                    '_locales/en/messages.json'
+                );
                 const fallbackResponse = await fetch(fallbackPath);
                 const fallbackTranslations = await fallbackResponse.json();
                 this._translationsCache = fallbackTranslations;
 
                 this.core._log('info', 'English fallback translations loaded', {
                     originalLanguage: langCode,
-                    keysLoaded: Object.keys(fallbackTranslations).length
+                    keysLoaded: Object.keys(fallbackTranslations).length,
                 });
 
                 return fallbackTranslations;
             } catch (fallbackError) {
                 this.core._log('error', 'Failed to load any translations', {
                     originalLanguage: langCode,
-                    fallbackError: fallbackError.message
+                    fallbackError: fallbackError.message,
                 });
                 this._translationsCache = null;
                 return {};
@@ -726,13 +813,21 @@ export class AIContextModalUI {
         const debugInfo = {
             currentLanguage: this._currentLanguage,
             translationsCacheLoaded: !!this._translationsCache,
-            translationKeys: this._translationsCache ? Object.keys(this._translationsCache).filter(key => key.startsWith('aiContext')) : [],
-            sampleTranslations: {}
+            translationKeys: this._translationsCache
+                ? Object.keys(this._translationsCache).filter((key) =>
+                      key.startsWith('aiContext')
+                  )
+                : [],
+            sampleTranslations: {},
         };
 
         // Test specific keys that should be in Chinese
-        const testKeys = ['aiContextCultural', 'aiContextModalTitle', 'aiContextStartAnalysis'];
-        testKeys.forEach(key => {
+        const testKeys = [
+            'aiContextCultural',
+            'aiContextModalTitle',
+            'aiContextStartAnalysis',
+        ];
+        testKeys.forEach((key) => {
             debugInfo.sampleTranslations[key] = this._getLocalizedMessage(key);
         });
 
@@ -749,7 +844,7 @@ export class AIContextModalUI {
     async reloadTranslations(langCode) {
         this.core._log('info', 'Manually reloading translations', {
             oldLanguage: this._currentLanguage,
-            newLanguage: langCode
+            newLanguage: langCode,
         });
 
         this._currentLanguage = langCode;
@@ -773,7 +868,9 @@ export class AIContextModalUI {
 
         try {
             // Load CSS file
-            const cssUrl = chrome.runtime.getURL('content_scripts/aicontext/ui/modal.css');
+            const cssUrl = chrome.runtime.getURL(
+                'content_scripts/aicontext/ui/modal.css'
+            );
             const response = await fetch(cssUrl);
             const cssText = await response.text();
 
@@ -786,7 +883,9 @@ export class AIContextModalUI {
             this.cssInjected = true;
             this.core._log('debug', 'Modal CSS styles injected successfully');
         } catch (error) {
-            this.core._log('error', 'Failed to inject modal CSS styles', { error: error.message });
+            this.core._log('error', 'Failed to inject modal CSS styles', {
+                error: error.message,
+            });
             // Fallback to inline styles if CSS file loading fails
             this._injectFallbackStyles();
         }

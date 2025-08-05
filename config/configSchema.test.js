@@ -190,7 +190,11 @@ describe('configSchema', () => {
 
             // Local scope should contain UI state and debug settings
             expect(localKeys).toEqual(
-                expect.arrayContaining(['appearanceAccordionOpen', 'debugMode', 'aiContextDebugMode'])
+                expect.arrayContaining([
+                    'appearanceAccordionOpen',
+                    'debugMode',
+                    'aiContextDebugMode',
+                ])
             );
             expect(localKeys.length).toBe(3);
 

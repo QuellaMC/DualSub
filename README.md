@@ -100,14 +100,15 @@ The AI Context Analysis feature analyzes selected text from subtitles and provid
 
 ### Supported AI Providers
 
-| Provider        | Models Available           | Setup Required | Quality    | Notes                           |
-| --------------- | -------------------------- | -------------- | ---------- | ------------------------------- |
-| **OpenAI GPT**  | GPT-4.1 Mini, GPT-4o      | API Key        | ⭐⭐⭐⭐⭐ | Recommended for best results    |
-| **Google Gemini** | Gemini 2.5 Flash, Pro   | API Key        | ⭐⭐⭐⭐⭐ | Fast responses, good quality    |
+| Provider          | Models Available      | Setup Required | Quality    | Notes                        |
+| ----------------- | --------------------- | -------------- | ---------- | ---------------------------- |
+| **OpenAI GPT**    | GPT-4.1 Mini, GPT-4o  | API Key        | ⭐⭐⭐⭐⭐ | Recommended for best results |
+| **Google Gemini** | Gemini 2.5 Flash, Pro | API Key        | ⭐⭐⭐⭐⭐ | Fast responses, good quality |
 
 ### Setup Requirements
 
 #### Prerequisites
+
 - Valid API key from OpenAI or Google
 - Internet connection for AI analysis
 - Supported streaming platform (Netflix, Disney+)
@@ -115,25 +116,27 @@ The AI Context Analysis feature analyzes selected text from subtitles and provid
 #### Configuration Steps
 
 1. **Get an API Key**:
-   - **OpenAI**: Visit [OpenAI API](https://platform.openai.com/api-keys) and create an API key
-   - **Google Gemini**: Visit [Google AI Studio](https://aistudio.google.com/app/apikey) and generate an API key
+    - **OpenAI**: Visit [OpenAI API](https://platform.openai.com/api-keys) and create an API key
+    - **Google Gemini**: Visit [Google AI Studio](https://aistudio.google.com/app/apikey) and generate an API key
 
 2. **Configure in DualSub**:
-   - Click the DualSub icon → "Advanced Settings"
-   - Navigate to "AI Context Analysis" section
-   - Enable "AI Context Analysis"
-   - Select your preferred provider
-   - Enter your API key
-   - Choose your preferred model
+    - Click the DualSub icon → "Advanced Settings"
+    - Navigate to "AI Context Analysis" section
+    - Enable "AI Context Analysis"
+    - Select your preferred provider
+    - Enter your API key
+    - Choose your preferred model
 
 3. **Test the Setup**:
-   - Use the "Test Connection" button to verify your configuration
-   - Start watching content and try selecting subtitle text
+    - Use the "Test Connection" button to verify your configuration
+    - Start watching content and try selecting subtitle text
 
 ### Usage Examples
 
 #### Language Learning
+
 Perfect for understanding cultural references and idioms:
+
 ```
 Selected: "It's raining cats and dogs"
 → Linguistic: English idiom meaning "raining heavily"
@@ -141,7 +144,9 @@ Selected: "It's raining cats and dogs"
 ```
 
 #### Historical Content
+
 Get context for historical references:
+
 ```
 Selected: "During the Meiji Restoration"
 → Historical: Period of political revolution in Japan (1868-1912)
@@ -149,7 +154,9 @@ Selected: "During the Meiji Restoration"
 ```
 
 #### Cultural Understanding
+
 Learn about cultural practices and customs:
+
 ```
 Selected: "Bowing deeply"
 → Cultural: Traditional Japanese greeting showing respect
@@ -473,7 +480,6 @@ This project is licensed under the **Creative Commons Attribution-NonCommercial-
 For full license terms, see [LICENSE](LICENSE) file.
 
 ## 📋 Changelog
-
 
 ### Version 2.1.0 (Current)
 

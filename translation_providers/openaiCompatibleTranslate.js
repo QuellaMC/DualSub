@@ -115,7 +115,7 @@ export async function fetchAvailableModels(apiKey, baseUrl) {
 
         // Standard OpenAI format
         if (data.data && Array.isArray(data.data)) {
-            models = data.data.map(model => model.id);
+            models = data.data.map((model) => model.id);
         }
         // Google's format
         else if (data.models && Array.isArray(data.models)) {
@@ -123,7 +123,7 @@ export async function fetchAvailableModels(apiKey, baseUrl) {
                 .map((model) => model.name)
                 .filter((name) => name.includes('models/gemini'));
         } else {
-            throw new Error("Unsupported models format");
+            throw new Error('Unsupported models format');
         }
 
         logger.info('Successfully fetched models', { models, provider });
@@ -137,7 +137,6 @@ export async function fetchAvailableModels(apiKey, baseUrl) {
         throw error;
     }
 }
-
 
 /**
  * Retrieves the configuration from storage using the config service.
@@ -289,7 +288,7 @@ export async function translate(text, sourceLang, targetLang) {
             },
         ],
         temperature: 0.1, // Low temperature for consistent translations
-        max_tokens: 10000 // Increased token allocation
+        max_tokens: 10000, // Increased token allocation
     };
 
     const headers = {
@@ -465,9 +464,7 @@ export async function translate(text, sourceLang, targetLang) {
                     );
                 }
             }
-        }
-        
-        else {
+        } else {
             logger.error(
                 'Translation JSON parsing failed or unexpected structure',
                 null,
@@ -476,7 +473,8 @@ export async function translate(text, sourceLang, targetLang) {
                     hasChoices: !!data?.choices,
                     choicesLength: data?.choices?.length || 0,
                     fullResponse: JSON.stringify(data),
-                    expectedStructure: 'data.choices[0].message.content or data.output[0].content[0].text',
+                    expectedStructure:
+                        'data.choices[0].message.content or data.output[0].content[0].text',
                 }
             );
             throw new Error(

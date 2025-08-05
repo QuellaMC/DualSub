@@ -401,15 +401,25 @@ class ConfigService {
      */
     _checkChromeStorageAvailability(area, operation, logContext = {}) {
         if (!chrome || !chrome.storage || !chrome.storage[area]) {
-            const error = new Error(`Chrome storage API not available for ${operation} operation (area: ${area})`);
-            this.logger.error(`Chrome storage API unavailable for ${operation}`, error, {
-                area,
-                operation,
-                ...logContext,
-                chromeAvailable: !!chrome,
-                storageAvailable: !!(chrome && chrome.storage),
-                areaAvailable: !!(chrome && chrome.storage && chrome.storage[area])
-            });
+            const error = new Error(
+                `Chrome storage API not available for ${operation} operation (area: ${area})`
+            );
+            this.logger.error(
+                `Chrome storage API unavailable for ${operation}`,
+                error,
+                {
+                    area,
+                    operation,
+                    ...logContext,
+                    chromeAvailable: !!chrome,
+                    storageAvailable: !!(chrome && chrome.storage),
+                    areaAvailable: !!(
+                        chrome &&
+                        chrome.storage &&
+                        chrome.storage[area]
+                    ),
+                }
+            );
             return false;
         }
         return true;
@@ -427,10 +437,12 @@ class ConfigService {
         const startTime = Date.now();
 
         // Check if chrome.storage is available
-        if (!this._checkChromeStorageAvailability(area, 'get', {
-            keys: normalizedKeys,
-            context
-        })) {
+        if (
+            !this._checkChromeStorageAvailability(area, 'get', {
+                keys: normalizedKeys,
+                context,
+            })
+        ) {
             return {};
         }
 
@@ -443,61 +455,66 @@ class ConfigService {
         return new Promise((resolve, reject) => {
             try {
                 chrome.storage[area].get(keys, (items) => {
-                const duration = Date.now() - startTime;
+                    const duration = Date.now() - startTime;
 
-                if (chrome.runtime.lastError) {
-                    const error = ConfigServiceErrorHandler.createStorageError(
-                        'get',
-                        area,
-                        normalizedKeys,
-                        chrome.runtime.lastError,
-                        { ...context, duration, method: 'getFromStorage' }
-                    );
-
-                    // Special handling for quota exceeded errors
-                    if (error.isQuotaError) {
-                        this.logger.error(
-                            `Storage quota exceeded during get operation`,
-                            error,
-                            {
+                    if (chrome.runtime.lastError) {
+                        const error =
+                            ConfigServiceErrorHandler.createStorageError(
+                                'get',
                                 area,
-                                keys: normalizedKeys,
-                                duration,
-                                context,
-                                quotaError: true,
-                                recoveryAction: error.recoveryAction,
-                            }
-                        );
+                                normalizedKeys,
+                                chrome.runtime.lastError,
+                                {
+                                    ...context,
+                                    duration,
+                                    method: 'getFromStorage',
+                                }
+                            );
+
+                        // Special handling for quota exceeded errors
+                        if (error.isQuotaError) {
+                            this.logger.error(
+                                `Storage quota exceeded during get operation`,
+                                error,
+                                {
+                                    area,
+                                    keys: normalizedKeys,
+                                    duration,
+                                    context,
+                                    quotaError: true,
+                                    recoveryAction: error.recoveryAction,
+                                }
+                            );
+                        } else {
+                            this.logger.error(
+                                `Storage get operation failed`,
+                                error,
+                                {
+                                    area,
+                                    keys: normalizedKeys,
+                                    duration,
+                                    context,
+                                }
+                            );
+                        }
+
+                        reject(error);
                     } else {
-                        this.logger.error(
-                            `Storage get operation failed`,
-                            error,
-                            {
-                                area,
-                                keys: normalizedKeys,
-                                duration,
-                                context,
-                            }
-                        );
+                        this.logger.debug(`Storage get operation completed`, {
+                            area,
+                            keys: normalizedKeys,
+                            duration,
+                            resultKeys: Object.keys(items || {}),
+                        });
+
+                        resolve(items);
                     }
-
-                    reject(error);
-                } else {
-                    this.logger.debug(`Storage get operation completed`, {
-                        area,
-                        keys: normalizedKeys,
-                        duration,
-                        resultKeys: Object.keys(items || {}),
-                    });
-
-                    resolve(items);
-                }
-            });
+                });
             } catch (error) {
                 this.logger.error('Chrome storage access failed', error, {
                     area,
                     keys: normalizedKeys,
-                    context
+                    context,
                 });
                 resolve({});
             }
@@ -516,11 +533,13 @@ class ConfigService {
         const startTime = Date.now();
 
         // Check if chrome.storage is available
-        if (!this._checkChromeStorageAvailability(area, 'set', {
-            keys,
-            itemCount: keys.length,
-            context
-        })) {
+        if (
+            !this._checkChromeStorageAvailability(area, 'set', {
+                keys,
+                itemCount: keys.length,
+                context,
+            })
+        ) {
             return;
         }
 
@@ -534,69 +553,74 @@ class ConfigService {
         return new Promise((resolve, reject) => {
             try {
                 chrome.storage[area].set(items, () => {
-                const duration = Date.now() - startTime;
+                    const duration = Date.now() - startTime;
 
-                if (chrome.runtime.lastError) {
-                    const error = ConfigServiceErrorHandler.createStorageError(
-                        'set',
-                        area,
-                        keys,
-                        chrome.runtime.lastError,
-                        {
-                            ...context,
-                            duration,
-                            method: 'setToStorage',
-                            itemCount: keys.length,
+                    if (chrome.runtime.lastError) {
+                        const error =
+                            ConfigServiceErrorHandler.createStorageError(
+                                'set',
+                                area,
+                                keys,
+                                chrome.runtime.lastError,
+                                {
+                                    ...context,
+                                    duration,
+                                    method: 'setToStorage',
+                                    itemCount: keys.length,
+                                }
+                            );
+
+                        // Special handling for quota exceeded errors
+                        if (error.isQuotaError) {
+                            this.logger.error(
+                                `Storage quota exceeded during set operation`,
+                                error,
+                                {
+                                    area,
+                                    keys,
+                                    duration,
+                                    itemCount: keys.length,
+                                    context,
+                                    quotaError: true,
+                                    recoveryAction: error.recoveryAction,
+                                }
+                            );
+                        } else {
+                            this.logger.error(
+                                `Storage set operation failed`,
+                                error,
+                                {
+                                    area,
+                                    keys,
+                                    duration,
+                                    itemCount: keys.length,
+                                    context,
+                                }
+                            );
                         }
-                    );
 
-                    // Special handling for quota exceeded errors
-                    if (error.isQuotaError) {
-                        this.logger.error(
-                            `Storage quota exceeded during set operation`,
-                            error,
-                            {
-                                area,
-                                keys,
-                                duration,
-                                itemCount: keys.length,
-                                context,
-                                quotaError: true,
-                                recoveryAction: error.recoveryAction,
-                            }
-                        );
+                        reject(error);
                     } else {
-                        this.logger.error(
-                            `Storage set operation failed`,
-                            error,
-                            {
-                                area,
-                                keys,
-                                duration,
-                                itemCount: keys.length,
-                                context,
-                            }
-                        );
-                    }
+                        this.logger.debug(`Storage set operation completed`, {
+                            area,
+                            keys,
+                            duration,
+                            itemCount: keys.length,
+                        });
 
-                    reject(error);
-                } else {
-                    this.logger.debug(`Storage set operation completed`, {
+                        resolve();
+                    }
+                });
+            } catch (error) {
+                this.logger.error(
+                    'Chrome storage set operation failed',
+                    error,
+                    {
                         area,
                         keys,
-                        duration,
-                        itemCount: keys.length,
-                    });
-
-                    resolve();
-                }
-            });
-            } catch (error) {
-                this.logger.error('Chrome storage set operation failed', error, {
-                    area,
-                    keys,
-                    context
-                });
+                        context,
+                    }
+                );
                 // Resolve silently to prevent cascading failures
                 resolve();
             }
@@ -615,11 +639,13 @@ class ConfigService {
         const startTime = Date.now();
 
         // Check if chrome.storage is available
-        if (!this._checkChromeStorageAvailability(area, 'remove', {
-            keys: normalizedKeys,
-            keyCount: normalizedKeys.length,
-            context
-        })) {
+        if (
+            !this._checkChromeStorageAvailability(area, 'remove', {
+                keys: normalizedKeys,
+                keyCount: normalizedKeys.length,
+                context,
+            })
+        ) {
             return;
         }
 

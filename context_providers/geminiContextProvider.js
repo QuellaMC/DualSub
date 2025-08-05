@@ -1,16 +1,20 @@
 /**
  * Google Gemini Context Provider
- * 
+ *
  * Provides AI-powered cultural, historical, and linguistic context analysis
  * using Google's Gemini models through the Generative AI API.
- * 
+ *
  * @author DualSub Extension
  * @version 1.0.0
  */
 
 import Logger from '../utils/logger.js';
 import { configService } from '../services/configService.js';
-import { getContextSchema, getGeminiSchema, validateAgainstSchema } from './contextSchemas.js';
+import {
+    getContextSchema,
+    getGeminiSchema,
+    validateAgainstSchema,
+} from './contextSchemas.js';
 
 const logger = Logger.create('GeminiContextProvider');
 
@@ -23,29 +27,30 @@ export const GEMINI_MODELS = [
         name: 'Gemini 2.5 Flash',
         description: 'Fast and efficient model for quick context analysis',
         contextWindow: 1000000,
-        recommended: true
+        recommended: true,
     },
     {
         id: 'gemini-2.5-pro',
         name: 'Gemini 2.5 Pro',
-        description: 'Advanced model with superior reasoning for complex cultural analysis',
+        description:
+            'Advanced model with superior reasoning for complex cultural analysis',
         contextWindow: 2000000,
-        recommended: false
+        recommended: false,
     },
     {
         id: 'gemini-1.5-flash',
         name: 'Gemini 1.5 Flash',
         description: 'Previous generation fast model (legacy)',
         contextWindow: 1000000,
-        recommended: false
+        recommended: false,
     },
     {
         id: 'gemini-1.5-pro',
         name: 'Gemini 1.5 Pro',
         description: 'Previous generation advanced model (legacy)',
         contextWindow: 2000000,
-        recommended: false
-    }
+        recommended: false,
+    },
 ];
 
 /**
@@ -61,7 +66,7 @@ export function getAvailableModels() {
  * @returns {string} Default model ID
  */
 export function getDefaultModel() {
-    const recommended = GEMINI_MODELS.find(model => model.recommended);
+    const recommended = GEMINI_MODELS.find((model) => model.recommended);
     return recommended ? recommended.id : GEMINI_MODELS[0].id;
 }
 
@@ -73,38 +78,45 @@ export function getDefaultModel() {
  * @returns {string} Formatted prompt for the AI model
  */
 function createContextPrompt(text, contextType, metadata = {}) {
-    const { sourceLanguage = 'unknown', targetLanguage = 'unknown', surroundingContext = '' } = metadata;
-    
+    const {
+        sourceLanguage = 'unknown',
+        targetLanguage = 'unknown',
+        surroundingContext = '',
+    } = metadata;
+
     // Get language name for the target language code
     const getLanguageName = (langCode) => {
         const languageNames = {
-            'en': 'English',
-            'es': 'Spanish',
-            'fr': 'French',
-            'de': 'German',
-            'it': 'Italian',
-            'pt': 'Portuguese',
-            'ru': 'Russian',
-            'ja': 'Japanese',
-            'ko': 'Korean',
+            en: 'English',
+            es: 'Spanish',
+            fr: 'French',
+            de: 'German',
+            it: 'Italian',
+            pt: 'Portuguese',
+            ru: 'Russian',
+            ja: 'Japanese',
+            ko: 'Korean',
             'zh-CN': 'Chinese (Simplified)',
             'zh-TW': 'Chinese (Traditional)',
-            'ar': 'Arabic',
-            'hi': 'Hindi',
-            'th': 'Thai',
-            'vi': 'Vietnamese',
-            'nl': 'Dutch',
-            'sv': 'Swedish',
-            'da': 'Danish',
-            'no': 'Norwegian',
-            'fi': 'Finnish',
-            'pl': 'Polish',
-            'cs': 'Czech',
-            'hu': 'Hungarian',
-            'tr': 'Turkish',
-            'he': 'Hebrew'
+            ar: 'Arabic',
+            hi: 'Hindi',
+            th: 'Thai',
+            vi: 'Vietnamese',
+            nl: 'Dutch',
+            sv: 'Swedish',
+            da: 'Danish',
+            no: 'Norwegian',
+            fi: 'Finnish',
+            pl: 'Polish',
+            cs: 'Czech',
+            hu: 'Hungarian',
+            tr: 'Turkish',
+            he: 'Hebrew',
         };
-        return languageNames[langCode] || (langCode === 'auto' ? 'Unknown' : langCode);
+        return (
+            languageNames[langCode] ||
+            (langCode === 'auto' ? 'Unknown' : langCode)
+        );
     };
 
     const targetLanguageName = getLanguageName(targetLanguage);
@@ -130,7 +142,9 @@ Provide a clear, educational explanation that helps ${targetLanguageName} speake
 
     switch (contextType) {
         case 'cultural':
-            return baseContext + `
+            return (
+                baseContext +
+                `
 Provide a comprehensive cultural analysis of this ${sourceLanguageName} text in the following JSON structure:
 {
   "definition": "Clear definition or meaning of this ${sourceLanguageName} expression",
@@ -150,10 +164,13 @@ Provide a comprehensive cultural analysis of this ${sourceLanguageName} text in 
   "sensitivities": "Cultural sensitivities ${targetLanguageName} speakers should know about this ${sourceLanguageName} expression"
 }
 
-Respond ONLY with valid JSON in this exact structure. All text content within the JSON must be written in ${targetLanguageName} but analyze the ${sourceLanguageName} content.`;
+Respond ONLY with valid JSON in this exact structure. All text content within the JSON must be written in ${targetLanguageName} but analyze the ${sourceLanguageName} content.`
+            );
 
         case 'historical':
-            return baseContext + `
+            return (
+                baseContext +
+                `
 Provide a detailed historical analysis of this ${sourceLanguageName} text in the following JSON structure:
 {
   "definition": "Clear definition or meaning of this ${sourceLanguageName} expression",
@@ -173,10 +190,13 @@ Provide a detailed historical analysis of this ${sourceLanguageName} text in the
   "learning_context": "How understanding ${sourceLanguageName} history helps ${targetLanguageName} speakers learn this expression"
 }
 
-Respond ONLY with valid JSON in this exact structure. All text content within the JSON must be written in ${targetLanguageName} but analyze the ${sourceLanguageName} historical context.`;
+Respond ONLY with valid JSON in this exact structure. All text content within the JSON must be written in ${targetLanguageName} but analyze the ${sourceLanguageName} historical context.`
+            );
 
         case 'linguistic':
-            return baseContext + `
+            return (
+                baseContext +
+                `
 Provide an in-depth linguistic analysis of this ${sourceLanguageName} text in the following JSON structure:
 {
   "definition": "Clear definition or meaning of this ${sourceLanguageName} expression",
@@ -199,10 +219,13 @@ Provide an in-depth linguistic analysis of this ${sourceLanguageName} text in th
   "learning_tips": "Specific tips for ${targetLanguageName} speakers to master this ${sourceLanguageName} expression linguistically"
 }
 
-Respond ONLY with valid JSON in this exact structure. All text content within the JSON must be written in ${targetLanguageName} but analyze the ${sourceLanguageName} linguistic aspects.`;
+Respond ONLY with valid JSON in this exact structure. All text content within the JSON must be written in ${targetLanguageName} but analyze the ${sourceLanguageName} linguistic aspects.`
+            );
 
         default:
-            return baseContext + `
+            return (
+                baseContext +
+                `
 Provide a comprehensive analysis of this ${sourceLanguageName} text covering cultural, historical, and linguistic aspects in the following JSON structure:
 {
   "definition": "Clear definition or meaning of this ${sourceLanguageName} expression",
@@ -231,7 +254,8 @@ Provide a comprehensive analysis of this ${sourceLanguageName} text covering cul
   "key_insights": "Most important things for ${targetLanguageName} speakers to understand about this ${sourceLanguageName} expression"
 }
 
-Respond ONLY with valid JSON in this exact structure. All text content within the JSON must be written in ${targetLanguageName} but analyze the ${sourceLanguageName} content.`;
+Respond ONLY with valid JSON in this exact structure. All text content within the JSON must be written in ${targetLanguageName} but analyze the ${sourceLanguageName} content.`
+            );
     }
 }
 
@@ -259,7 +283,7 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
             success: false,
             error: 'Invalid text provided',
             contextType,
-            text: text || ''
+            text: text || '',
         };
     }
 
@@ -268,7 +292,7 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
         const {
             geminiApiKey,
             geminiModel = 'gemini-2.5-flash',
-            aiContextTimeout = 30000
+            aiContextTimeout = 30000,
         } = config;
 
         if (!geminiApiKey) {
@@ -283,48 +307,55 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiApiKey}`;
 
         const requestBody = {
-            contents: [{
-                parts: [{
-                    text: prompt
-                }]
-            }],
+            contents: [
+                {
+                    parts: [
+                        {
+                            text: prompt,
+                        },
+                    ],
+                },
+            ],
             generationConfig: {
                 temperature: 0.3,
                 topP: 0.95,
                 maxOutputTokens: 80000,
                 stopSequences: [],
                 responseMimeType: 'application/json',
-                responseSchema: geminiSchema
+                responseSchema: geminiSchema,
             },
             safetySettings: [
                 {
-                    category: "HARM_CATEGORY_HARASSMENT",
-                    threshold: "BLOCK_MEDIUM_AND_ABOVE"
+                    category: 'HARM_CATEGORY_HARASSMENT',
+                    threshold: 'BLOCK_MEDIUM_AND_ABOVE',
                 },
                 {
-                    category: "HARM_CATEGORY_HATE_SPEECH",
-                    threshold: "BLOCK_MEDIUM_AND_ABOVE"
+                    category: 'HARM_CATEGORY_HATE_SPEECH',
+                    threshold: 'BLOCK_MEDIUM_AND_ABOVE',
                 },
                 {
-                    category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-                    threshold: "BLOCK_MEDIUM_AND_ABOVE"
+                    category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+                    threshold: 'BLOCK_MEDIUM_AND_ABOVE',
                 },
                 {
-                    category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-                    threshold: "BLOCK_MEDIUM_AND_ABOVE"
-                }
-            ]
+                    category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+                    threshold: 'BLOCK_MEDIUM_AND_ABOVE',
+                },
+            ],
         };
 
         logger.debug('Making Gemini context analysis request', {
             apiUrl: apiUrl.split('?')[0], // Log URL without API key
             model: geminiModel,
             contextType,
-            promptLength: prompt.length
+            promptLength: prompt.length,
         });
 
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), aiContextTimeout);
+        const timeoutId = setTimeout(
+            () => controller.abort(),
+            aiContextTimeout
+        );
 
         const response = await fetch(apiUrl, {
             method: 'POST',
@@ -332,7 +363,7 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify(requestBody),
-            signal: controller.signal
+            signal: controller.signal,
         });
 
         clearTimeout(timeoutId);
@@ -342,24 +373,33 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
             logger.error('Gemini context analysis API request failed', {
                 status: response.status,
                 statusText: response.statusText,
-                errorText: errorText.substring(0, 500)
+                errorText: errorText.substring(0, 500),
             });
-            throw new Error(`Gemini API request failed: ${response.status} ${response.statusText}`);
+            throw new Error(
+                `Gemini API request failed: ${response.status} ${response.statusText}`
+            );
         }
 
         const data = await response.json();
 
-        if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
-            logger.error('Invalid response format from Gemini context analysis API', { data });
+        if (
+            !data.candidates ||
+            !data.candidates[0] ||
+            !data.candidates[0].content
+        ) {
+            logger.error(
+                'Invalid response format from Gemini context analysis API',
+                { data }
+            );
             throw new Error('Invalid response format from Gemini API');
         }
 
         const candidate = data.candidates[0];
-        
+
         // Check for safety blocks
         if (candidate.finishReason === 'SAFETY') {
             logger.warn('Gemini response blocked for safety reasons', {
-                safetyRatings: candidate.safetyRatings
+                safetyRatings: candidate.safetyRatings,
             });
             throw new Error('Content blocked by safety filters');
         }
@@ -371,7 +411,9 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
         try {
             structuredAnalysis = JSON.parse(rawResponse);
             if (!validateAgainstSchema(jsonSchema, structuredAnalysis)) {
-                logger.warn('Schema validation failed', { rawResponsePreview: rawResponse.substring(0, 200) });
+                logger.warn('Schema validation failed', {
+                    rawResponsePreview: rawResponse.substring(0, 200),
+                });
                 return {
                     success: false,
                     error: 'Schema validation failed',
@@ -381,11 +423,14 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
                     shouldRetry: true,
                     shouldCache: false,
                     finishReason: candidate.finishReason,
-                    safetyRatings: candidate.safetyRatings
+                    safetyRatings: candidate.safetyRatings,
                 };
             }
         } catch (error) {
-            logger.warn('Failed to parse JSON response', { error: error.message, rawResponsePreview: rawResponse.substring(0, 200) });
+            logger.warn('Failed to parse JSON response', {
+                error: error.message,
+                rawResponsePreview: rawResponse.substring(0, 200),
+            });
             return {
                 success: false,
                 error: 'Malformed JSON response',
@@ -395,14 +440,14 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
                 shouldRetry: true,
                 shouldCache: false,
                 finishReason: candidate.finishReason,
-                safetyRatings: candidate.safetyRatings
+                safetyRatings: candidate.safetyRatings,
             };
         }
 
         logger.info('Gemini context analysis completed successfully', {
             contextType,
             responseLength: rawResponse.length,
-            finishReason: candidate.finishReason
+            finishReason: candidate.finishReason,
         });
 
         const result = {
@@ -414,7 +459,7 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
             metadata,
             finishReason: candidate.finishReason,
             safetyRatings: candidate.safetyRatings,
-            shouldCache: true
+            shouldCache: true,
         };
 
         logger.debug('Gemini provider returning result', {
@@ -423,16 +468,15 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
             isStructured: result.isStructured,
             analysisType: typeof result.analysis,
             contextType: result.contextType,
-            resultKeys: Object.keys(result)
+            resultKeys: Object.keys(result),
         });
 
         return result;
-
     } catch (error) {
         logger.error('Gemini context analysis failed', error, {
             textLength: text?.length || 0,
             contextType,
-            errorMessage: error.message
+            errorMessage: error.message,
         });
 
         return {
@@ -440,7 +484,7 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
             error: error.message,
             contextType,
             originalText: text,
-            metadata
+            metadata,
         };
     }
 }
@@ -452,7 +496,7 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
  */
 export async function analyzeBatchContext(requests) {
     logger.info('Gemini batch context analysis initiated', {
-        requestCount: requests.length
+        requestCount: requests.length,
     });
 
     // For now, process sequentially to avoid rate limits
@@ -465,14 +509,14 @@ export async function analyzeBatchContext(requests) {
             request.metadata
         );
         results.push(result);
-        
+
         // Add small delay between requests to respect rate limits
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 100));
     }
 
     logger.info('Gemini batch context analysis completed', {
         requestCount: requests.length,
-        successCount: results.filter(r => r.success).length
+        successCount: results.filter((r) => r.success).length,
     });
 
     return results;

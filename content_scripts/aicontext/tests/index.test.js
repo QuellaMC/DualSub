@@ -8,23 +8,32 @@
  * @version 2.0.0
  */
 
-import { jest, describe, test, beforeEach, afterEach, expect } from '@jest/globals';
+import {
+    jest,
+    describe,
+    test,
+    beforeEach,
+    afterEach,
+    expect,
+} from '@jest/globals';
 import { TestHelpers } from '../../../test-utils/test-helpers.js';
 import {
     setupAIContextForPlatform,
     getSystemStatus,
-    AIContextManager
+    AIContextManager,
 } from '../index.js';
 
 // Mock fetch for CSS loading in modal
-global.fetch = global.fetch || (() =>
-    Promise.resolve({
-        text: () => Promise.resolve(`
+global.fetch =
+    global.fetch ||
+    (() =>
+        Promise.resolve({
+            text: () =>
+                Promise.resolve(`
             .dualsub-context-modal { position: fixed; }
             .dualsub-context-modal--visible { opacity: 1 !important; }
-        `)
-    })
-);
+        `),
+        }));
 
 describe('AI Context System - Phase 1 Bootstrap Tests', () => {
     let testHelpers;
@@ -37,7 +46,7 @@ describe('AI Context System - Phase 1 Bootstrap Tests', () => {
             enableLogger: true,
             enableChromeApi: true,
             enableLocation: true,
-            loggerDebugMode: false
+            loggerDebugMode: false,
         });
     });
 
@@ -50,7 +59,7 @@ describe('AI Context System - Phase 1 Bootstrap Tests', () => {
     describe('System Status and Health', () => {
         test('should return correct system status', () => {
             const status = getSystemStatus();
-            
+
             expect(status).toEqual({
                 version: '2.0.0',
                 architecture: 'modular',
@@ -59,8 +68,8 @@ describe('AI Context System - Phase 1 Bootstrap Tests', () => {
                     core: 'AIContextManager',
                     ui: 'AIContextModal',
                     providers: 'AIContextProvider',
-                    handlers: ['TextSelectionHandler']
-                }
+                    handlers: ['TextSelectionHandler'],
+                },
             });
         });
     });
@@ -100,7 +109,7 @@ describe('AI Context System - Phase 1 Bootstrap Tests', () => {
             const result = await setupAIContextForPlatform({
                 platform: 'netflix',
                 config: { aiContextEnabled: true },
-                enabledFeatures: ['contextModal', 'textSelection']
+                enabledFeatures: ['contextModal', 'textSelection'],
             });
 
             expect(result.success).toBe(true);
@@ -120,13 +129,13 @@ describe('AI Context System - Phase 1 Bootstrap Tests', () => {
                 platform: 'disneyplus',
                 enableLogger: true,
                 enableChromeApi: true,
-                enableLocation: true
+                enableLocation: true,
             });
 
             const result = await setupAIContextForPlatform({
                 platform: 'disneyplus',
                 config: { aiContextEnabled: true },
-                enabledFeatures: ['contextModal']
+                enabledFeatures: ['contextModal'],
             });
 
             expect(result.success).toBe(true);
@@ -167,9 +176,9 @@ describe('AI Context System - Phase 1 Bootstrap Tests', () => {
             await manager.enableFeature('contextModal');
             const result = await manager.enableFeature('contextModal');
             expect(result).toBe(true); // Should return true but not duplicate
-            
+
             const features = manager.getEnabledFeatures();
-            const modalFeatures = features.filter(f => f === 'contextModal');
+            const modalFeatures = features.filter((f) => f === 'contextModal');
             expect(modalFeatures).toHaveLength(1);
         });
     });
@@ -193,9 +202,13 @@ describe('AI Context System - Phase 1 Bootstrap Tests', () => {
             expect(manager.getModal().constructor.name).toBe('AIContextModal');
 
             expect(manager.getProvider()).toBeDefined();
-            expect(manager.getProvider().constructor.name).toBe('AIContextProvider');
+            expect(manager.getProvider().constructor.name).toBe(
+                'AIContextProvider'
+            );
             expect(manager.getTextHandler()).toBeDefined();
-            expect(manager.getTextHandler().constructor.name).toBe('TextSelectionHandler');
+            expect(manager.getTextHandler().constructor.name).toBe(
+                'TextSelectionHandler'
+            );
         });
     });
 
@@ -203,11 +216,11 @@ describe('AI Context System - Phase 1 Bootstrap Tests', () => {
         test('should cleanup manager properly', async () => {
             const manager = new AIContextManager('netflix', {});
             await manager.initialize();
-            
+
             expect(manager.initialized).toBe(true);
-            
+
             await manager.destroy();
-            
+
             expect(manager.initialized).toBe(false);
             expect(manager.getEnabledFeatures()).toHaveLength(0);
         });
@@ -224,7 +237,7 @@ describe('Error Handling and Edge Cases', () => {
             platform: 'netflix',
             enableLogger: true,
             enableChromeApi: true,
-            enableLocation: true
+            enableLocation: true,
         });
     });
 
@@ -273,7 +286,7 @@ describe('Phase 2: UI Consolidation Tests', () => {
             platform: 'netflix',
             enableLogger: true,
             enableChromeApi: true,
-            enableLocation: true
+            enableLocation: true,
         });
 
         manager = new AIContextManager('netflix', {});
@@ -305,8 +318,6 @@ describe('Phase 2: UI Consolidation Tests', () => {
             expect(modal.state).toBe('selection');
         });
 
-
-
         test('should hide modal properly', async () => {
             const modal = manager.getModal();
             modal.showSelectionMode();
@@ -316,7 +327,7 @@ describe('Phase 2: UI Consolidation Tests', () => {
             modal.hide();
 
             // Wait for async hide to complete
-            await new Promise(resolve => setTimeout(resolve, 50)); // Reduced from 350ms to 50ms
+            await new Promise((resolve) => setTimeout(resolve, 50)); // Reduced from 350ms to 50ms
 
             expect(modal.isVisible).toBe(false);
         });
@@ -363,7 +374,7 @@ describe('Phase 3: Core Controller Tests', () => {
             platform: 'netflix',
             enableLogger: true,
             enableChromeApi: true,
-            enableLocation: true
+            enableLocation: true,
         });
 
         manager = new AIContextManager('netflix', {});
@@ -385,22 +396,24 @@ describe('Phase 3: Core Controller Tests', () => {
             const mockSendMessage = testEnv.mocks.chromeApi.runtime.sendMessage;
             mockSendMessage.mockResolvedValue({
                 success: true,
-                result: { analysis: 'Test analysis result' }
+                result: { analysis: 'Test analysis result' },
             });
 
             // Dispatch analysis request
-            document.dispatchEvent(new CustomEvent('dualsub-analyze-selection', {
-                detail: {
-                    requestId: 'test-123',
-                    text: 'test text',
-                    contextTypes: ['cultural'],
-                    language: 'en',
-                    targetLanguage: 'es'
-                }
-            }));
+            document.dispatchEvent(
+                new CustomEvent('dualsub-analyze-selection', {
+                    detail: {
+                        requestId: 'test-123',
+                        text: 'test text',
+                        contextTypes: ['cultural'],
+                        language: 'en',
+                        targetLanguage: 'es',
+                    },
+                })
+            );
 
             // Wait for async processing
-            await new Promise(resolve => setTimeout(resolve, 1)); // Reduced from 10ms to 1ms
+            await new Promise((resolve) => setTimeout(resolve, 1)); // Reduced from 10ms to 1ms
 
             // Verify background message was sent
             expect(mockSendMessage).toHaveBeenCalledWith({
@@ -410,28 +423,32 @@ describe('Phase 3: Core Controller Tests', () => {
                 language: 'en',
                 targetLanguage: 'es',
                 platform: 'netflix',
-                requestId: 'test-123'
+                requestId: 'test-123',
             });
         });
 
         test('should handle configuration updates', async () => {
             const newConfig = { aiContextEnabled: false };
 
-            document.dispatchEvent(new CustomEvent('dualsub-config-update', {
-                detail: { config: newConfig }
-            }));
+            document.dispatchEvent(
+                new CustomEvent('dualsub-config-update', {
+                    detail: { config: newConfig },
+                })
+            );
 
             // Wait for async processing
-            await new Promise(resolve => setTimeout(resolve, 1)); // Reduced from 10ms to 1ms
+            await new Promise((resolve) => setTimeout(resolve, 1)); // Reduced from 10ms to 1ms
 
             // Verify config was updated
             expect(manager.config.aiContextEnabled).toBe(false);
         });
 
         test('should handle feature toggles', () => {
-            document.dispatchEvent(new CustomEvent('dualsub-feature-toggle', {
-                detail: { feature: 'contextModal', enabled: false }
-            }));
+            document.dispatchEvent(
+                new CustomEvent('dualsub-feature-toggle', {
+                    detail: { feature: 'contextModal', enabled: false },
+                })
+            );
 
             // Verify feature was toggled
             expect(manager.getEnabledFeatures()).not.toContain('contextModal');
@@ -442,7 +459,7 @@ describe('Phase 3: Core Controller Tests', () => {
         test('should handle background messages', async () => {
             const request = {
                 target: 'aiContext',
-                action: 'getStatus'
+                action: 'getStatus',
             };
 
             const sendResponse = jest.fn();
@@ -457,15 +474,15 @@ describe('Phase 3: Core Controller Tests', () => {
                     platform: 'netflix',
                     features: expect.any(Array),
                     config: expect.any(Object),
-                    metrics: expect.any(Object)
-                }
+                    metrics: expect.any(Object),
+                },
             });
         });
 
         test('should handle unknown actions', async () => {
             const request = {
                 target: 'aiContext',
-                action: 'unknownAction'
+                action: 'unknownAction',
             };
 
             const sendResponse = jest.fn();
@@ -474,7 +491,7 @@ describe('Phase 3: Core Controller Tests', () => {
 
             expect(sendResponse).toHaveBeenCalledWith({
                 success: false,
-                error: 'Unknown action: unknownAction'
+                error: 'Unknown action: unknownAction',
             });
         });
     });
@@ -486,18 +503,20 @@ describe('Phase 3: Core Controller Tests', () => {
             // Mock successful analysis
             testEnv.mocks.chromeApi.runtime.sendMessage.mockResolvedValue({
                 success: true,
-                result: { analysis: 'Test result' }
+                result: { analysis: 'Test result' },
             });
 
             // Trigger analysis
-            document.dispatchEvent(new CustomEvent('dualsub-analyze-selection', {
-                detail: {
-                    requestId: 'test-123',
-                    text: 'test text'
-                }
-            }));
+            document.dispatchEvent(
+                new CustomEvent('dualsub-analyze-selection', {
+                    detail: {
+                        requestId: 'test-123',
+                        text: 'test text',
+                    },
+                })
+            );
 
-            await new Promise(resolve => setTimeout(resolve, 1)); // Reduced from 10ms to 1ms
+            await new Promise((resolve) => setTimeout(resolve, 1)); // Reduced from 10ms to 1ms
 
             expect(manager.metrics.analysisCount).toBe(initialCount + 1);
             expect(manager.metrics.lastActivity).toBeDefined();
@@ -512,14 +531,16 @@ describe('Phase 3: Core Controller Tests', () => {
             );
 
             // Trigger analysis
-            document.dispatchEvent(new CustomEvent('dualsub-analyze-selection', {
-                detail: {
-                    requestId: 'test-123',
-                    text: 'test text'
-                }
-            }));
+            document.dispatchEvent(
+                new CustomEvent('dualsub-analyze-selection', {
+                    detail: {
+                        requestId: 'test-123',
+                        text: 'test text',
+                    },
+                })
+            );
 
-            await new Promise(resolve => setTimeout(resolve, 1)); // Reduced from 10ms to 1ms
+            await new Promise((resolve) => setTimeout(resolve, 1)); // Reduced from 10ms to 1ms
 
             expect(manager.metrics.errorCount).toBe(initialErrorCount + 1);
         });
@@ -537,7 +558,7 @@ describe('Phase 4: Handlers & Providers Tests', () => {
             platform: 'netflix',
             enableLogger: true,
             enableChromeApi: true,
-            enableLocation: true
+            enableLocation: true,
         });
 
         manager = new AIContextManager('netflix', {});
@@ -564,8 +585,13 @@ describe('Phase 4: Handlers & Providers Tests', () => {
         test('should import TextSelectionHandler directly', async () => {
             // Test direct import and instantiation
             try {
-                const { TextSelectionHandler } = await import('../handlers/textSelection.js');
-                console.log('TextSelectionHandler imported:', TextSelectionHandler);
+                const { TextSelectionHandler } = await import(
+                    '../handlers/textSelection.js'
+                );
+                console.log(
+                    'TextSelectionHandler imported:',
+                    TextSelectionHandler
+                );
 
                 const handler = new TextSelectionHandler();
                 console.log('TextSelectionHandler instantiated:', handler);
@@ -596,7 +622,7 @@ describe('Phase 4: Handlers & Providers Tests', () => {
 
             const result = textHandler.processSelection('test text', {
                 platform: 'netflix',
-                language: 'en'
+                language: 'en',
             });
 
             expect(result).toBeDefined();
@@ -617,13 +643,13 @@ describe('Phase 4: Handlers & Providers Tests', () => {
             // Create click event
             const clickEvent = new MouseEvent('click', {
                 bubbles: true,
-                cancelable: true
+                cancelable: true,
             });
 
             // Mock event target
             Object.defineProperty(clickEvent, 'target', {
                 value: wordElement,
-                enumerable: true
+                enumerable: true,
             });
 
             // Handle click
@@ -660,13 +686,13 @@ describe('Phase 4: Handlers & Providers Tests', () => {
             // Mock successful response
             testEnv.mocks.chromeApi.runtime.sendMessage.mockResolvedValue({
                 success: true,
-                result: { analysis: 'Test analysis result' }
+                result: { analysis: 'Test analysis result' },
             });
 
             const result = await provider.analyzeContext('test text', {
                 contextTypes: ['cultural'],
                 language: 'en',
-                targetLanguage: 'es'
+                targetLanguage: 'es',
             });
 
             expect(result.success).toBe(true);
@@ -694,7 +720,7 @@ describe('Phase 4: Handlers & Providers Tests', () => {
             // Mock successful response
             testEnv.mocks.chromeApi.runtime.sendMessage.mockResolvedValue({
                 success: true,
-                result: { analysis: 'Test result' }
+                result: { analysis: 'Test result' },
             });
 
             await provider.analyzeContext('test text');
@@ -710,7 +736,7 @@ describe('Phase 4: Handlers & Providers Tests', () => {
             provider.activeRequests.set('test-123', {
                 startTime: Date.now(),
                 text: 'test',
-                options: {}
+                options: {},
             });
 
             const result = provider.cancelRequest('test-123');
@@ -731,14 +757,14 @@ describe('Phase 4: Handlers & Providers Tests', () => {
             // Mock successful analysis
             testEnv.mocks.chromeApi.runtime.sendMessage.mockResolvedValue({
                 success: true,
-                result: { analysis: 'Cultural context: This is a greeting.' }
+                result: { analysis: 'Cultural context: This is a greeting.' },
             });
 
             // Trigger analysis through text handler
             const textHandler = manager.getTextHandler();
             const selection = textHandler.processSelection('Hello world', {
                 platform: 'netflix',
-                language: 'en'
+                language: 'en',
             });
 
             expect(selection).toBeDefined();
@@ -749,7 +775,7 @@ describe('Phase 4: Handlers & Providers Tests', () => {
             const result = await provider.analyzeContext(selection.text, {
                 contextTypes: ['cultural'],
                 language: 'en',
-                targetLanguage: 'es'
+                targetLanguage: 'es',
             });
 
             expect(result.success).toBe(true);
@@ -768,7 +794,7 @@ describe('Phase 5: Platform Integration Tests', () => {
             platform: 'netflix',
             enableLogger: true,
             enableChromeApi: true,
-            enableLocation: true
+            enableLocation: true,
         });
     });
 
@@ -812,7 +838,7 @@ describe('Phase 5: Platform Integration Tests', () => {
             const config = {
                 aiContextEnabled: true,
                 interactiveSubtitlesEnabled: true,
-                aiContextTimeout: 30000
+                aiContextTimeout: 30000,
             };
 
             // Create mock content script with the initialization method
@@ -825,7 +851,7 @@ describe('Phase 5: Platform Integration Tests', () => {
                         interactiveSubtitles: false,
                         contextModal: false,
                         textSelection: false,
-                        loadingStates: false
+                        loadingStates: false,
                     };
 
                     if (!config.aiContextEnabled) {
@@ -834,24 +860,42 @@ describe('Phase 5: Platform Integration Tests', () => {
 
                     if (!this.aiContextManager) {
                         // Directly use the mock class instead of importing
-                        this.aiContextManager = new mockAIContextManager('netflix', {
-                            modal: { maxWidth: '900px', maxHeight: '80vh' },
-                            provider: { timeout: config.aiContextTimeout || 30000, maxRetries: 3 },
-                            textHandler: { maxSelectionLength: 500, minSelectionLength: 2, smartBoundaries: true, autoAnalysis: false }
-                        });
+                        this.aiContextManager = new mockAIContextManager(
+                            'netflix',
+                            {
+                                modal: { maxWidth: '900px', maxHeight: '80vh' },
+                                provider: {
+                                    timeout: config.aiContextTimeout || 30000,
+                                    maxRetries: 3,
+                                },
+                                textHandler: {
+                                    maxSelectionLength: 500,
+                                    minSelectionLength: 2,
+                                    smartBoundaries: true,
+                                    autoAnalysis: false,
+                                },
+                            }
+                        );
 
-                        const initResult = await this.aiContextManager.initialize();
+                        const initResult =
+                            await this.aiContextManager.initialize();
 
                         if (initResult) {
                             if (config.interactiveSubtitlesEnabled !== false) {
-                                await this.aiContextManager.enableFeature('interactiveSubtitles');
+                                await this.aiContextManager.enableFeature(
+                                    'interactiveSubtitles'
+                                );
                                 features.interactiveSubtitles = true;
                             }
 
-                            await this.aiContextManager.enableFeature('contextModal');
+                            await this.aiContextManager.enableFeature(
+                                'contextModal'
+                            );
                             features.contextModal = true;
 
-                            await this.aiContextManager.enableFeature('textSelection');
+                            await this.aiContextManager.enableFeature(
+                                'textSelection'
+                            );
                             features.textSelection = true;
 
                             features.loadingStates = true;
@@ -859,10 +903,11 @@ describe('Phase 5: Platform Integration Tests', () => {
                     }
 
                     return { initialized: true, features };
-                }
+                },
             };
 
-            const result = await contentScript._initializeAIContextFeatures(config);
+            const result =
+                await contentScript._initializeAIContextFeatures(config);
 
             expect(result.initialized).toBe(true);
             expect(result.features.interactiveSubtitles).toBe(true);
@@ -873,9 +918,15 @@ describe('Phase 5: Platform Integration Tests', () => {
             expect(contentScript.aiContextManager).toBeDefined();
             expect(contentScript.aiContextManager.platform).toBe('netflix');
             expect(contentScript.aiContextManager.initialized).toBe(true);
-            expect(contentScript.aiContextManager.getEnabledFeatures()).toContain('interactiveSubtitles');
-            expect(contentScript.aiContextManager.getEnabledFeatures()).toContain('contextModal');
-            expect(contentScript.aiContextManager.getEnabledFeatures()).toContain('textSelection');
+            expect(
+                contentScript.aiContextManager.getEnabledFeatures()
+            ).toContain('interactiveSubtitles');
+            expect(
+                contentScript.aiContextManager.getEnabledFeatures()
+            ).toContain('contextModal');
+            expect(
+                contentScript.aiContextManager.getEnabledFeatures()
+            ).toContain('textSelection');
         });
 
         test('should create AIContextManager for Disney+ platform', async () => {
@@ -905,7 +956,7 @@ describe('Phase 5: Platform Integration Tests', () => {
             const config = {
                 aiContextEnabled: true,
                 interactiveSubtitlesEnabled: true,
-                aiContextTimeout: 30000
+                aiContextTimeout: 30000,
             };
 
             const contentScript = {
@@ -919,16 +970,25 @@ describe('Phase 5: Platform Integration Tests', () => {
 
                     if (!this.aiContextManager) {
                         // Directly use the mock class instead of importing
-                        this.aiContextManager = new mockAIContextManager('disneyplus', {});
+                        this.aiContextManager = new mockAIContextManager(
+                            'disneyplus',
+                            {}
+                        );
                         await this.aiContextManager.initialize();
-                        await this.aiContextManager.enableFeature('contextModal');
+                        await this.aiContextManager.enableFeature(
+                            'contextModal'
+                        );
                     }
 
-                    return { initialized: true, features: { contextModal: true } };
-                }
+                    return {
+                        initialized: true,
+                        features: { contextModal: true },
+                    };
+                },
             };
 
-            const result = await contentScript._initializeAIContextFeatures(config);
+            const result =
+                await contentScript._initializeAIContextFeatures(config);
 
             expect(result.initialized).toBe(true);
             expect(contentScript.aiContextManager.platform).toBe('disneyplus');
@@ -936,15 +996,19 @@ describe('Phase 5: Platform Integration Tests', () => {
         });
 
         test('should handle AIContextManager initialization failure gracefully', async () => {
-            testEnv.mocks.chromeApi.runtime.getURL.mockReturnValue('mocked-url');
+            testEnv.mocks.chromeApi.runtime.getURL.mockReturnValue(
+                'mocked-url'
+            );
 
             const originalImport = global.import;
-            global.import = jest.fn().mockRejectedValue(new Error('Import failed'));
+            global.import = jest
+                .fn()
+                .mockRejectedValue(new Error('Import failed'));
 
             try {
                 const config = {
                     aiContextEnabled: true,
-                    interactiveSubtitlesEnabled: true
+                    interactiveSubtitlesEnabled: true,
                 };
 
                 const contentScript = {
@@ -953,13 +1017,24 @@ describe('Phase 5: Platform Integration Tests', () => {
 
                     async _initializeAIContextFeatures(config) {
                         try {
-                            const { AIContextManager } = await import('mocked-url');
-                            this.aiContextManager = new AIContextManager('netflix', {});
+                            const { AIContextManager } = await import(
+                                'mocked-url'
+                            );
+                            this.aiContextManager = new AIContextManager(
+                                'netflix',
+                                {}
+                            );
                             await this.aiContextManager.initialize();
                             return { initialized: true, features: {} };
                         } catch (error) {
-                            this.logWithFallback('error', 'Failed to initialize new AI Context Manager, falling back to legacy system', error);
-                            return await this._initializeLegacyAIContextFeatures(config);
+                            this.logWithFallback(
+                                'error',
+                                'Failed to initialize new AI Context Manager, falling back to legacy system',
+                                error
+                            );
+                            return await this._initializeLegacyAIContextFeatures(
+                                config
+                            );
                         }
                     },
 
@@ -970,23 +1045,26 @@ describe('Phase 5: Platform Integration Tests', () => {
                                 interactiveSubtitles: true,
                                 contextModal: true,
                                 textSelection: true,
-                                loadingStates: true
-                            }
+                                loadingStates: true,
+                            },
                         };
-                    }
+                    },
                 };
 
-                const result = await contentScript._initializeAIContextFeatures(config);
+                const result =
+                    await contentScript._initializeAIContextFeatures(config);
 
                 expect(result.initialized).toBe(true);
                 expect(result.features.interactiveSubtitles).toBe(true);
 
                 // Debug: Check what calls were made
-                console.log('logWithFallback calls:', contentScript.logWithFallback.mock.calls);
+                console.log(
+                    'logWithFallback calls:',
+                    contentScript.logWithFallback.mock.calls
+                );
 
                 // Check that the error was logged
                 expect(contentScript.logWithFallback).toHaveBeenCalled();
-
             } finally {
                 global.import = originalImport;
             }
@@ -994,7 +1072,7 @@ describe('Phase 5: Platform Integration Tests', () => {
 
         test('should cleanup AIContextManager properly', async () => {
             const mockAIContextManager = {
-                destroy: jest.fn().mockResolvedValue(true)
+                destroy: jest.fn().mockResolvedValue(true),
             };
 
             const contentScript = {
@@ -1006,19 +1084,29 @@ describe('Phase 5: Platform Integration Tests', () => {
                         try {
                             await this.aiContextManager.destroy();
                             this.aiContextManager = null;
-                            this.logWithFallback('debug', 'AI Context Manager destroyed');
+                            this.logWithFallback(
+                                'debug',
+                                'AI Context Manager destroyed'
+                            );
                         } catch (error) {
-                            this.logWithFallback('error', 'Error destroying AI Context Manager', error);
+                            this.logWithFallback(
+                                'error',
+                                'Error destroying AI Context Manager',
+                                error
+                            );
                         }
                     }
-                }
+                },
             };
 
             await contentScript.cleanup();
 
             expect(mockAIContextManager.destroy).toHaveBeenCalled();
             expect(contentScript.aiContextManager).toBeNull();
-            expect(contentScript.logWithFallback).toHaveBeenCalledWith('debug', 'AI Context Manager destroyed');
+            expect(contentScript.logWithFallback).toHaveBeenCalledWith(
+                'debug',
+                'AI Context Manager destroyed'
+            );
         });
     });
 });
@@ -1034,7 +1122,7 @@ describe('Phase 6: Tests & Observability', () => {
             platform: 'netflix',
             enableLogger: true,
             enableChromeApi: true,
-            enableLocation: true
+            enableLocation: true,
         });
 
         manager = new AIContextManager('netflix', {});
@@ -1050,7 +1138,8 @@ describe('Phase 6: Tests & Observability', () => {
         }
     });
 
-    describe.skip('Performance Metrics', () => { // Removed for performance
+    describe.skip('Performance Metrics', () => {
+        // Removed for performance
         test('should track initialization time', async () => {
             const newManager = new AIContextManager('netflix', {});
             const startTime = Date.now();
@@ -1062,7 +1151,9 @@ describe('Phase 6: Tests & Observability', () => {
 
             expect(newManager.metrics.initializationTime).toBeDefined();
             expect(newManager.metrics.initializationTime).toBeGreaterThan(0);
-            expect(newManager.metrics.initializationTime).toBeLessThanOrEqual(initTime + 5); // Allow small timing variance
+            expect(newManager.metrics.initializationTime).toBeLessThanOrEqual(
+                initTime + 5
+            ); // Allow small timing variance
 
             await newManager.destroy();
         });
@@ -1074,14 +1165,18 @@ describe('Phase 6: Tests & Observability', () => {
             // Mock successful response
             testEnv.mocks.chromeApi.runtime.sendMessage.mockResolvedValue({
                 success: true,
-                result: { analysis: 'Test analysis' }
+                result: { analysis: 'Test analysis' },
             });
 
-            await provider.analyzeContext('test text', { requestId: 'test-123' });
+            await provider.analyzeContext('test text', {
+                requestId: 'test-123',
+            });
 
             expect(provider.metrics.requestCount).toBe(initialCount + 1);
             expect(provider.metrics.successCount).toBeGreaterThan(0);
-            expect(provider.metrics.averageResponseTime).toBeGreaterThanOrEqual(0);
+            expect(provider.metrics.averageResponseTime).toBeGreaterThanOrEqual(
+                0
+            );
         });
 
         test('should track error metrics', async () => {
@@ -1093,7 +1188,9 @@ describe('Phase 6: Tests & Observability', () => {
                 new Error('Network error')
             );
 
-            await provider.analyzeContext('test text', { requestId: 'test-456' });
+            await provider.analyzeContext('test text', {
+                requestId: 'test-456',
+            });
 
             expect(provider.metrics.errorCount).toBe(initialErrorCount + 1);
         });
@@ -1120,7 +1217,8 @@ describe('Phase 6: Tests & Observability', () => {
         });
 
         test('should handle multiple initialization/destruction cycles', async () => {
-            for (let i = 0; i < 1; i++) { // Reduced from 3 to 1 for speed
+            for (let i = 0; i < 1; i++) {
+                // Reduced from 3 to 1 for speed
                 const testManager = new AIContextManager('netflix', {});
                 await testManager.initialize();
 
@@ -1141,7 +1239,7 @@ describe('Phase 6: Tests & Observability', () => {
             const faultyManager = new AIContextManager('invalid-platform', {
                 modal: null, // Invalid config
                 provider: { timeout: -1 }, // Invalid timeout
-                textHandler: { maxSelectionLength: -1 } // Invalid length
+                textHandler: { maxSelectionLength: -1 }, // Invalid length
             });
 
             // Should not throw, but return false
@@ -1152,13 +1250,17 @@ describe('Phase 6: Tests & Observability', () => {
 
         test('should handle event listener errors gracefully', async () => {
             // Trigger various events that might cause errors
-            document.dispatchEvent(new CustomEvent('dualsub-analyze-selection', {
-                detail: { text: null, requestId: 'invalid' }
-            }));
+            document.dispatchEvent(
+                new CustomEvent('dualsub-analyze-selection', {
+                    detail: { text: null, requestId: 'invalid' },
+                })
+            );
 
-            document.dispatchEvent(new CustomEvent('dualsub-config-update', {
-                detail: { config: null }
-            }));
+            document.dispatchEvent(
+                new CustomEvent('dualsub-config-update', {
+                    detail: { config: null },
+                })
+            );
 
             // Manager should still be functional
             expect(manager.initialized).toBe(true);
@@ -1207,7 +1309,6 @@ describe('Phase 6: Tests & Observability', () => {
 
                 expect(document.dispatchEvent).toHaveBeenCalled();
                 expect(eventsSent).toContain('test-event');
-
             } finally {
                 document.dispatchEvent = originalDispatchEvent;
             }
@@ -1226,7 +1327,8 @@ describe('Phase 6: Tests & Observability', () => {
         });
     });
 
-    describe.skip('Integration Health Checks', () => { // Skipped for performance
+    describe.skip('Integration Health Checks', () => {
+        // Skipped for performance
         test('should validate all components are properly connected', () => {
             const modal = manager.getModal();
             const provider = manager.getProvider();
@@ -1256,7 +1358,6 @@ describe('Phase 6: Tests & Observability', () => {
             await manager.enableFeature('contextModal');
             expect(manager.getEnabledFeatures()).toContain('contextModal');
         });
-
     });
 });
 
@@ -1270,7 +1371,7 @@ describe('Phase 7: Stability Burn-In & Synthetic Transactions', () => {
             platform: 'netflix',
             enableLogger: true,
             enableChromeApi: true,
-            enableLocation: true
+            enableLocation: true,
         });
     });
 
@@ -1280,7 +1381,8 @@ describe('Phase 7: Stability Burn-In & Synthetic Transactions', () => {
         }
     });
 
-    describe.skip('Stress Testing', () => { // Removed for performance
+    describe.skip('Stress Testing', () => {
+        // Removed for performance
         test('should handle rapid initialization/destruction cycles', async () => {
             const cycles = 2; // Reduced from 10 to 2 for speed
             const managers = [];
@@ -1294,7 +1396,7 @@ describe('Phase 7: Stability Burn-In & Synthetic Transactions', () => {
             }
 
             // Verify all are initialized
-            managers.forEach(manager => {
+            managers.forEach((manager) => {
                 expect(manager.initialized).toBe(true);
                 expect(manager.getModal()).toBeDefined();
                 expect(manager.getProvider()).toBeDefined();
@@ -1318,12 +1420,14 @@ describe('Phase 7: Stability Burn-In & Synthetic Transactions', () => {
             // Mock successful responses
             testEnv.mocks.chromeApi.runtime.sendMessage.mockResolvedValue({
                 success: true,
-                result: { analysis: 'Concurrent test analysis' }
+                result: { analysis: 'Concurrent test analysis' },
             });
 
             // Create concurrent requests
             const requests = Array.from({ length: requestCount }, (_, i) =>
-                provider.analyzeContext(`test text ${i}`, { requestId: `concurrent-${i}` })
+                provider.analyzeContext(`test text ${i}`, {
+                    requestId: `concurrent-${i}`,
+                })
             );
 
             // Wait for all to complete
@@ -1336,8 +1440,12 @@ describe('Phase 7: Stability Burn-In & Synthetic Transactions', () => {
             });
 
             // Verify metrics
-            expect(provider.metrics.requestCount).toBeGreaterThanOrEqual(requestCount);
-            expect(provider.metrics.successCount).toBeGreaterThanOrEqual(requestCount);
+            expect(provider.metrics.requestCount).toBeGreaterThanOrEqual(
+                requestCount
+            );
+            expect(provider.metrics.successCount).toBeGreaterThanOrEqual(
+                requestCount
+            );
 
             await manager.destroy();
         }, 5000); // Reduced timeout from 15s to 5s
@@ -1352,26 +1460,30 @@ describe('Phase 7: Stability Burn-In & Synthetic Transactions', () => {
                     modal: {
                         maxWidth: '1200px',
                         maxHeight: '90vh',
-                        animationDuration: 500
+                        animationDuration: 500,
                     },
                     provider: {
                         timeout: 60000,
                         maxRetries: 5,
-                        batchSize: 10
+                        batchSize: 10,
                     },
                     textHandler: {
                         maxSelectionLength: 1000,
                         contextRadius: 100,
-                        debounceDelay: 200
-                    }
+                        debounceDelay: 200,
+                    },
                 });
 
                 await manager.initialize();
                 managers.push(manager);
 
                 // Verify memory metrics
-                expect(manager.metrics.memoryUsage.componentsCreated).toBeGreaterThan(0);
-                expect(manager.metrics.memoryUsage.eventListenersActive).toBeGreaterThan(0);
+                expect(
+                    manager.metrics.memoryUsage.componentsCreated
+                ).toBeGreaterThan(0);
+                expect(
+                    manager.metrics.memoryUsage.eventListenersActive
+                ).toBeGreaterThan(0);
             }
 
             // Cleanup all
@@ -1381,7 +1493,8 @@ describe('Phase 7: Stability Burn-In & Synthetic Transactions', () => {
         }, 5000); // Reduced timeout from 10s to 5s
     });
 
-    describe.skip('Synthetic Transaction Scenarios', () => { // Skipped for performance
+    describe.skip('Synthetic Transaction Scenarios', () => {
+        // Skipped for performance
         test('should handle complete user workflow: selection → analysis → display', async () => {
             const manager = new AIContextManager('netflix', {});
             await manager.initialize();
@@ -1394,17 +1507,18 @@ describe('Phase 7: Stability Burn-In & Synthetic Transactions', () => {
             testEnv.mocks.chromeApi.runtime.sendMessage.mockResolvedValue({
                 success: true,
                 result: {
-                    analysis: 'Cultural context: This phrase is commonly used in Japanese business settings.',
+                    analysis:
+                        'Cultural context: This phrase is commonly used in Japanese business settings.',
                     contextType: 'cultural',
-                    confidence: 0.95
-                }
+                    confidence: 0.95,
+                },
             });
 
             // Step 1: User selects text
             const selection = textHandler.processSelection('いらっしゃいませ', {
                 platform: 'netflix',
                 language: 'ja',
-                targetLanguage: 'en'
+                targetLanguage: 'en',
             });
 
             expect(selection).toBeDefined();
@@ -1416,18 +1530,25 @@ describe('Phase 7: Stability Burn-In & Synthetic Transactions', () => {
             expect(modal.isVisible).toBe(true);
 
             // Step 3: User triggers analysis
-            const analysisResult = await provider.analyzeContext(selection.text, {
-                contextTypes: ['cultural'],
-                language: 'ja',
-                targetLanguage: 'en',
-                requestId: 'workflow-test'
-            });
+            const analysisResult = await provider.analyzeContext(
+                selection.text,
+                {
+                    contextTypes: ['cultural'],
+                    language: 'ja',
+                    targetLanguage: 'en',
+                    requestId: 'workflow-test',
+                }
+            );
 
             expect(analysisResult.success).toBe(true);
-            expect(analysisResult.result.analysis).toContain('Cultural context');
+            expect(analysisResult.result.analysis).toContain(
+                'Cultural context'
+            );
 
             // Step 4: Display results
-            const displayResult = modal.showAnalysisResult(analysisResult.result);
+            const displayResult = modal.showAnalysisResult(
+                analysisResult.result
+            );
             expect(displayResult).toBe(true);
             expect(modal.state).toBe('display');
 
@@ -1435,7 +1556,7 @@ describe('Phase 7: Stability Burn-In & Synthetic Transactions', () => {
             modal.hide();
 
             // Wait for animation
-            await new Promise(resolve => setTimeout(resolve, 350));
+            await new Promise((resolve) => setTimeout(resolve, 350));
             expect(modal.isVisible).toBe(false);
 
             await manager.destroy();
@@ -1459,7 +1580,7 @@ describe('Phase 7: Stability Burn-In & Synthetic Transactions', () => {
 
             // Attempt analysis (should fail)
             const analysisResult = await provider.analyzeContext('test text', {
-                requestId: 'error-test'
+                requestId: 'error-test',
             });
 
             expect(analysisResult.success).toBe(false);
@@ -1481,7 +1602,8 @@ describe('Phase 7: Stability Burn-In & Synthetic Transactions', () => {
         });
     });
 
-    describe.skip('Real-World Simulation', () => { // Skipped for performance
+    describe.skip('Real-World Simulation', () => {
+        // Skipped for performance
         test('should simulate typical user session with multiple interactions', async () => {
             const manager = new AIContextManager('netflix', {});
             await manager.initialize();
@@ -1492,30 +1614,32 @@ describe('Phase 7: Stability Burn-In & Synthetic Transactions', () => {
 
             // Mock varying response times and success rates
             let requestCount = 0;
-            testEnv.mocks.chromeApi.runtime.sendMessage.mockImplementation(() => {
-                requestCount++;
-                const delay = Math.random() * 100; // 0-100ms delay
+            testEnv.mocks.chromeApi.runtime.sendMessage.mockImplementation(
+                () => {
+                    requestCount++;
+                    const delay = Math.random() * 100; // 0-100ms delay
 
-                return new Promise((resolve) => {
-                    setTimeout(() => {
-                        if (requestCount % 5 === 0) {
-                            // 20% failure rate
-                            resolve({
-                                success: false,
-                                error: 'Simulated network error'
-                            });
-                        } else {
-                            resolve({
-                                success: true,
-                                result: {
-                                    analysis: `Analysis result ${requestCount}`,
-                                    confidence: 0.8 + Math.random() * 0.2
-                                }
-                            });
-                        }
-                    }, delay);
-                });
-            });
+                    return new Promise((resolve) => {
+                        setTimeout(() => {
+                            if (requestCount % 5 === 0) {
+                                // 20% failure rate
+                                resolve({
+                                    success: false,
+                                    error: 'Simulated network error',
+                                });
+                            } else {
+                                resolve({
+                                    success: true,
+                                    result: {
+                                        analysis: `Analysis result ${requestCount}`,
+                                        confidence: 0.8 + Math.random() * 0.2,
+                                    },
+                                });
+                            }
+                        }, delay);
+                    });
+                }
+            );
 
             // Simulate 3 user interactions (reduced from 10 for speed)
             const interactions = 3;
@@ -1529,13 +1653,13 @@ describe('Phase 7: Stability Burn-In & Synthetic Transactions', () => {
                     'こんにちは',
                     'Bonjour le monde',
                     'Hola mundo',
-                    'Guten Tag'
+                    'Guten Tag',
                 ];
 
                 const text = texts[i % texts.length];
                 const selection = textHandler.processSelection(text, {
                     platform: 'netflix',
-                    language: 'auto'
+                    language: 'auto',
                 });
 
                 expect(selection).toBeDefined();
@@ -1545,7 +1669,7 @@ describe('Phase 7: Stability Burn-In & Synthetic Transactions', () => {
 
                 // Analyze
                 const result = await provider.analyzeContext(selection.text, {
-                    requestId: `session-${i}`
+                    requestId: `session-${i}`,
                 });
 
                 if (result.success) {
@@ -1560,7 +1684,7 @@ describe('Phase 7: Stability Burn-In & Synthetic Transactions', () => {
                 modal.hide();
 
                 // Small delay between interactions
-                await new Promise(resolve => setTimeout(resolve, 10));
+                await new Promise((resolve) => setTimeout(resolve, 10));
             }
 
             // Verify session metrics
@@ -1577,21 +1701,28 @@ describe('Phase 7: Stability Burn-In & Synthetic Transactions', () => {
             const concurrentManagers = 3;
 
             // Create multiple managers concurrently
-            const createPromises = Array.from({ length: concurrentManagers }, async (_, i) => {
-                const manager = new AIContextManager('netflix', {});
-                await manager.initialize();
+            const createPromises = Array.from(
+                { length: concurrentManagers },
+                async (_, i) => {
+                    const manager = new AIContextManager('netflix', {});
+                    await manager.initialize();
 
-                // Simulate activity
-                const provider = manager.getProvider();
-                testEnv.mocks.chromeApi.runtime.sendMessage.mockResolvedValue({
-                    success: true,
-                    result: { analysis: `Manager ${i} analysis` }
-                });
+                    // Simulate activity
+                    const provider = manager.getProvider();
+                    testEnv.mocks.chromeApi.runtime.sendMessage.mockResolvedValue(
+                        {
+                            success: true,
+                            result: { analysis: `Manager ${i} analysis` },
+                        }
+                    );
 
-                await provider.analyzeContext(`test ${i}`, { requestId: `load-${i}` });
+                    await provider.analyzeContext(`test ${i}`, {
+                        requestId: `load-${i}`,
+                    });
 
-                return manager;
-            });
+                    return manager;
+                }
+            );
 
             const createdManagers = await Promise.all(createPromises);
             managers.push(...createdManagers);
@@ -1603,11 +1734,13 @@ describe('Phase 7: Stability Burn-In & Synthetic Transactions', () => {
             });
 
             // Cleanup all concurrently
-            const destroyPromises = managers.map(manager => manager.destroy());
+            const destroyPromises = managers.map((manager) =>
+                manager.destroy()
+            );
             await Promise.all(destroyPromises);
 
             // Verify cleanup
-            managers.forEach(manager => {
+            managers.forEach((manager) => {
                 expect(manager.initialized).toBe(false);
                 expect(manager.components.size).toBe(0);
             });
@@ -1625,7 +1758,7 @@ describe('Phase 8: Knowledge Refresh & Enhancement Hooks', () => {
             platform: 'netflix',
             enableLogger: true,
             enableChromeApi: true,
-            enableLocation: true
+            enableLocation: true,
         });
     });
 
@@ -1635,7 +1768,8 @@ describe('Phase 8: Knowledge Refresh & Enhancement Hooks', () => {
         }
     });
 
-    describe.skip('System Health Validation', () => { // Skipped for performance
+    describe.skip('System Health Validation', () => {
+        // Skipped for performance
         test('should validate complete system architecture', async () => {
             const manager = new AIContextManager('netflix', {});
             await manager.initialize();
@@ -1716,13 +1850,14 @@ describe('Phase 8: Knowledge Refresh & Enhancement Hooks', () => {
         });
     });
 
-    describe.skip('Knowledge Transfer Validation', () => { // Skipped for performance
+    describe.skip('Knowledge Transfer Validation', () => {
+        // Skipped for performance
         test('should demonstrate complete API usage patterns', async () => {
             // Complete workflow demonstration
             const manager = new AIContextManager('netflix', {
                 modal: { maxWidth: '900px' },
                 provider: { timeout: 30000 },
-                textHandler: { maxSelectionLength: 500 }
+                textHandler: { maxSelectionLength: 500 },
             });
 
             // Initialize system
@@ -1741,7 +1876,7 @@ describe('Phase 8: Knowledge Refresh & Enhancement Hooks', () => {
             // Process text selection
             const selection = textHandler.processSelection('Example text', {
                 platform: 'netflix',
-                language: 'en'
+                language: 'en',
             });
             expect(selection).toBeDefined();
 
@@ -1752,18 +1887,23 @@ describe('Phase 8: Knowledge Refresh & Enhancement Hooks', () => {
             // Mock analysis
             testEnv.mocks.chromeApi.runtime.sendMessage.mockResolvedValue({
                 success: true,
-                result: { analysis: 'Example analysis' }
+                result: { analysis: 'Example analysis' },
             });
 
             // Perform analysis
-            const analysisResult = await provider.analyzeContext(selection.text, {
-                contextTypes: ['cultural'],
-                requestId: 'demo-request'
-            });
+            const analysisResult = await provider.analyzeContext(
+                selection.text,
+                {
+                    contextTypes: ['cultural'],
+                    requestId: 'demo-request',
+                }
+            );
             expect(analysisResult.success).toBe(true);
 
             // Display results
-            const displayResult = modal.showAnalysisResult(analysisResult.result);
+            const displayResult = modal.showAnalysisResult(
+                analysisResult.result
+            );
             expect(displayResult).toBe(true);
 
             // Hide modal
@@ -1786,7 +1926,9 @@ describe('Phase 8: Knowledge Refresh & Enhancement Hooks', () => {
                 new Error('Network error')
             );
 
-            const result = await provider.analyzeContext('test', { requestId: 'error-test' });
+            const result = await provider.analyzeContext('test', {
+                requestId: 'error-test',
+            });
             expect(result.success).toBe(false);
             expect(result.error).toBe('Network error');
 
@@ -1802,7 +1944,8 @@ describe('Phase 8: Knowledge Refresh & Enhancement Hooks', () => {
         });
     });
 
-    describe.skip('Enhancement Hooks Validation', () => { // Skipped for performance
+    describe.skip('Enhancement Hooks Validation', () => {
+        // Skipped for performance
         test('should provide observability hooks', async () => {
             const manager = new AIContextManager('netflix', {});
             await manager.initialize();
@@ -1817,7 +1960,9 @@ describe('Phase 8: Knowledge Refresh & Enhancement Hooks', () => {
 
             // Performance tracking hooks
             expect(manager.metrics.initializationTime).toBeGreaterThan(0);
-            expect(manager.metrics.memoryUsage.componentsCreated).toBeGreaterThan(0);
+            expect(
+                manager.metrics.memoryUsage.componentsCreated
+            ).toBeGreaterThan(0);
 
             // Component-level metrics
             const provider = manager.getProvider();
@@ -1834,7 +1979,7 @@ describe('Phase 8: Knowledge Refresh & Enhancement Hooks', () => {
             // Simulate configuration update
             const newConfig = {
                 modal: { maxWidth: '1200px' },
-                provider: { timeout: 60000 }
+                provider: { timeout: 60000 },
             };
 
             await manager._handleConfigurationUpdate({ config: newConfig });
@@ -1856,10 +2001,11 @@ describe('Phase 8: Knowledge Refresh & Enhancement Hooks', () => {
             testEnv.mocks.chromeApi.runtime.sendMessage.mockResolvedValue({
                 success: true,
                 result: {
-                    analysis: 'This is a cultural reference to traditional Japanese greetings.',
+                    analysis:
+                        'This is a cultural reference to traditional Japanese greetings.',
                     contextType: 'cultural',
-                    confidence: 0.92
-                }
+                    confidence: 0.92,
+                },
             });
 
             // Phase 1: Initial state validation
@@ -1868,14 +2014,16 @@ describe('Phase 8: Knowledge Refresh & Enhancement Hooks', () => {
             expect(modal.selectedWords.size).toBe(0);
 
             // Phase 2: Word selection triggers modal display
-            document.dispatchEvent(new CustomEvent('dualsub-word-selected', {
-                detail: {
-                    word: 'いらっしゃいませ',
-                    position: 0,
-                    action: 'toggle',
-                    subtitleType: 'original'
-                }
-            }));
+            document.dispatchEvent(
+                new CustomEvent('dualsub-word-selected', {
+                    detail: {
+                        word: 'いらっしゃいませ',
+                        position: 0,
+                        action: 'toggle',
+                        subtitleType: 'original',
+                    },
+                })
+            );
 
             // Verify modal state after word selection
             expect(modal.isVisible).toBe(true);
@@ -1884,14 +2032,16 @@ describe('Phase 8: Knowledge Refresh & Enhancement Hooks', () => {
             expect(modal.selectedText).toBe('いらっしゃいませ');
 
             // Phase 3: Add second word
-            document.dispatchEvent(new CustomEvent('dualsub-word-selected', {
-                detail: {
-                    word: 'ございます',
-                    position: 1,
-                    action: 'toggle',
-                    subtitleType: 'original'
-                }
-            }));
+            document.dispatchEvent(
+                new CustomEvent('dualsub-word-selected', {
+                    detail: {
+                        word: 'ございます',
+                        position: 1,
+                        action: 'toggle',
+                        subtitleType: 'original',
+                    },
+                })
+            );
 
             // Verify multi-word selection
             expect(modal.selectedWords.size).toBe(2);
@@ -1910,14 +2060,16 @@ describe('Phase 8: Knowledge Refresh & Enhancement Hooks', () => {
             expect(modal.selectedWords.size).toBe(2); // Words should remain selected
 
             // Phase 7: Word selection during analysis mode (should be blocked)
-            document.dispatchEvent(new CustomEvent('dualsub-word-selected', {
-                detail: {
-                    word: 'new-word',
-                    position: 0,
-                    action: 'toggle',
-                    subtitleType: 'original'
-                }
-            }));
+            document.dispatchEvent(
+                new CustomEvent('dualsub-word-selected', {
+                    detail: {
+                        word: 'new-word',
+                        position: 0,
+                        action: 'toggle',
+                        subtitleType: 'original',
+                    },
+                })
+            );
 
             // Should remain in analysis mode and not add new word (blocked during analysis)
             expect(modal.currentMode).toBe('analysis');
@@ -1948,8 +2100,8 @@ describe('Phase 8: Knowledge Refresh & Enhancement Hooks', () => {
                 result: {
                     analysis: 'Cultural context analysis result',
                     contextType: 'cultural',
-                    confidence: 0.85
-                }
+                    confidence: 0.85,
+                },
             });
 
             let interactionCount = 0;
@@ -1975,7 +2127,9 @@ describe('Phase 8: Knowledge Refresh & Enhancement Hooks', () => {
                 // Test feature enabling
                 if (cycle % 7 === 0) {
                     await manager.enableFeature('textSelection');
-                    expect(manager.getEnabledFeatures()).toContain('textSelection');
+                    expect(manager.getEnabledFeatures()).toContain(
+                        'textSelection'
+                    );
                 }
 
                 // Verify system remains stable
@@ -1986,8 +2140,12 @@ describe('Phase 8: Knowledge Refresh & Enhancement Hooks', () => {
             // Verify system health after sustained interactions
             expect(interactionCount).toBe(20);
             expect(manager.metrics).toBeDefined();
-            expect(manager.metrics.memoryUsage.componentsCreated).toBeGreaterThan(0);
-            expect(manager.metrics.memoryUsage.eventListenersActive).toBeGreaterThan(0);
+            expect(
+                manager.metrics.memoryUsage.componentsCreated
+            ).toBeGreaterThan(0);
+            expect(
+                manager.metrics.memoryUsage.eventListenersActive
+            ).toBeGreaterThan(0);
             expect(manager.initialized).toBe(true);
 
             // Test final state
@@ -2007,7 +2165,7 @@ describe('Phase 8: Knowledge Refresh & Enhancement Hooks', () => {
                 'content_scripts/aicontext/core/constants.js',
                 'content_scripts/aicontext/ui/modal.js',
                 'content_scripts/aicontext/providers/AIContextProvider.js',
-                'content_scripts/aicontext/handlers/textSelection.js'
+                'content_scripts/aicontext/handlers/textSelection.js',
             ];
 
             // Verify all required modules are defined
@@ -2039,8 +2197,8 @@ describe('Phase 8: Knowledge Refresh & Enhancement Hooks', () => {
                     smartBoundaries: true,
                     expandSelection: true,
                     maxSelectionLength: 500,
-                    minSelectionLength: 2
-                }
+                    minSelectionLength: 2,
+                },
             });
             await manager.initialize();
 
@@ -2049,13 +2207,19 @@ describe('Phase 8: Knowledge Refresh & Enhancement Hooks', () => {
             // Test smart boundary optimization directly
             const fullContext = 'This is a hello world example sentence.';
             const selectedText = 'hello world';
-            const optimizedText = textHandler._optimizeSelectionBoundaries(selectedText, fullContext);
+            const optimizedText = textHandler._optimizeSelectionBoundaries(
+                selectedText,
+                fullContext
+            );
 
             expect(optimizedText).toBe('hello world');
 
             // Test boundary optimization with partial word selection
             const partialText = 'ello wor';
-            const expandedText = textHandler._optimizeSelectionBoundaries(partialText, fullContext);
+            const expandedText = textHandler._optimizeSelectionBoundaries(
+                partialText,
+                fullContext
+            );
 
             // Should expand to full words
             expect(expandedText).toBe('hello world');
@@ -2078,8 +2242,8 @@ describe('Phase 8: Knowledge Refresh & Enhancement Hooks', () => {
         test('should properly dispatch and handle text selection events', async () => {
             const manager = new AIContextManager('netflix', {
                 textHandler: {
-                    autoAnalysis: true
-                }
+                    autoAnalysis: true,
+                },
             });
             await manager.initialize();
 
@@ -2091,7 +2255,10 @@ describe('Phase 8: Knowledge Refresh & Enhancement Hooks', () => {
                 analysisEventReceived = true;
                 analysisEventDetail = event.detail;
             };
-            document.addEventListener('dualsub-analyze-selection', analysisListener);
+            document.addEventListener(
+                'dualsub-analyze-selection',
+                analysisListener
+            );
 
             const textHandler = manager.getTextHandler();
 
@@ -2101,7 +2268,7 @@ describe('Phase 8: Knowledge Refresh & Enhancement Hooks', () => {
                 text: 'test selection',
                 metadata: { platform: 'netflix' },
                 context: { full: 'This is a test selection example' },
-                timestamp: Date.now()
+                timestamp: Date.now(),
             };
 
             // Trigger the analysis request
@@ -2116,7 +2283,10 @@ describe('Phase 8: Knowledge Refresh & Enhancement Hooks', () => {
             expect(analysisEventDetail.event.type).toBe('mouseup');
 
             // Cleanup
-            document.removeEventListener('dualsub-analyze-selection', analysisListener);
+            document.removeEventListener(
+                'dualsub-analyze-selection',
+                analysisListener
+            );
             await manager.destroy();
         });
 
@@ -2127,20 +2297,22 @@ describe('Phase 8: Knowledge Refresh & Enhancement Hooks', () => {
             const manager = new AIContextManager('netflix', {
                 textHandler: {
                     autoAnalysis: true,
-                    interactiveSubtitlesEnabled: true
-                }
+                    interactiveSubtitlesEnabled: true,
+                },
             });
 
             // Mock the SubtitleUtils initialization
             const mockSubtitleUtils = {
-                initializeInteractiveSubtitleFeatures: jest.fn().mockResolvedValue(true)
+                initializeInteractiveSubtitleFeatures: jest
+                    .fn()
+                    .mockResolvedValue(true),
             };
 
             // Mock the BaseContentScript context
             const mockBaseScript = {
                 subtitleUtils: mockSubtitleUtils,
                 logWithFallback: jest.fn(),
-                getPlatformName: () => 'netflix'
+                getPlatformName: () => 'netflix',
             };
 
             // Simulate the initialization process that should happen in BaseContentScript
@@ -2148,47 +2320,60 @@ describe('Phase 8: Knowledge Refresh & Enhancement Hooks', () => {
                 aiContextEnabled: true,
                 aiContextTypes: ['cultural', 'historical', 'linguistic'],
                 aiContextTimeout: 30000,
-                aiContextRetryAttempts: 3
+                aiContextRetryAttempts: 3,
             };
 
             // Call the method that should initialize SubtitleUtils interactive features
-            if (mockBaseScript.subtitleUtils && mockBaseScript.subtitleUtils.initializeInteractiveSubtitleFeatures) {
-                await mockBaseScript.subtitleUtils.initializeInteractiveSubtitleFeatures({
-                    enabled: true, // Always enable interactive subtitles
-                    contextTypes: aiContextConfig.aiContextTypes || ['cultural', 'historical', 'linguistic'],
-                    interactionMethods: {
-                        click: true, // Always enable click interactions
-                        selection: true // Always enable selection interactions
-                    },
-                    textSelection: {
-                        maxLength: 100,
-                        smartBoundaries: true
-                    },
-                    loadingStates: {
-                        timeout: aiContextConfig.aiContextTimeout || 30000,
-                        retryAttempts: aiContextConfig.aiContextRetryAttempts || 3
-                    },
-                    platform: mockBaseScript.getPlatformName()
-                });
+            if (
+                mockBaseScript.subtitleUtils &&
+                mockBaseScript.subtitleUtils
+                    .initializeInteractiveSubtitleFeatures
+            ) {
+                await mockBaseScript.subtitleUtils.initializeInteractiveSubtitleFeatures(
+                    {
+                        enabled: true, // Always enable interactive subtitles
+                        contextTypes: aiContextConfig.aiContextTypes || [
+                            'cultural',
+                            'historical',
+                            'linguistic',
+                        ],
+                        interactionMethods: {
+                            click: true, // Always enable click interactions
+                            selection: true, // Always enable selection interactions
+                        },
+                        textSelection: {
+                            maxLength: 100,
+                            smartBoundaries: true,
+                        },
+                        loadingStates: {
+                            timeout: aiContextConfig.aiContextTimeout || 30000,
+                            retryAttempts:
+                                aiContextConfig.aiContextRetryAttempts || 3,
+                        },
+                        platform: mockBaseScript.getPlatformName(),
+                    }
+                );
             }
 
             // Verify that SubtitleUtils interactive features were initialized
-            expect(mockSubtitleUtils.initializeInteractiveSubtitleFeatures).toHaveBeenCalledWith({
+            expect(
+                mockSubtitleUtils.initializeInteractiveSubtitleFeatures
+            ).toHaveBeenCalledWith({
                 enabled: true,
                 contextTypes: ['cultural', 'historical', 'linguistic'],
                 interactionMethods: {
                     click: true,
-                    selection: true
+                    selection: true,
                 },
                 textSelection: {
                     maxLength: 100,
-                    smartBoundaries: true
+                    smartBoundaries: true,
                 },
                 loadingStates: {
                     timeout: 30000,
-                    retryAttempts: 3
+                    retryAttempts: 3,
                 },
-                platform: 'netflix'
+                platform: 'netflix',
             });
 
             // Verify the AI Context Manager is also properly initialized
@@ -2211,10 +2396,16 @@ describe('Phase 8: Knowledge Refresh & Enhancement Hooks', () => {
             expect(modal.element).toBeDefined();
 
             // Check that CSS styles are injected
-            const injectedStyles = document.getElementById('dualsub-modal-styles');
+            const injectedStyles = document.getElementById(
+                'dualsub-modal-styles'
+            );
             expect(injectedStyles).toBeTruthy();
-            expect(injectedStyles.textContent).toContain('dualsub-context-modal--visible');
-            expect(injectedStyles.textContent).toContain('opacity: 1 !important');
+            expect(injectedStyles.textContent).toContain(
+                'dualsub-context-modal--visible'
+            );
+            expect(injectedStyles.textContent).toContain(
+                'opacity: 1 !important'
+            );
 
             // Show the modal
             const showResult = modal.showSelectionMode();
@@ -2225,15 +2416,21 @@ describe('Phase 8: Knowledge Refresh & Enhancement Hooks', () => {
             expect(modal.element.style.display).toBe('block');
 
             // Check that the visibility class is added (after animation frame)
-            await new Promise(resolve => {
+            await new Promise((resolve) => {
                 requestAnimationFrame(() => {
-                    expect(modal.element.classList.contains('dualsub-context-modal--visible')).toBe(true);
+                    expect(
+                        modal.element.classList.contains(
+                            'dualsub-context-modal--visible'
+                        )
+                    ).toBe(true);
                     resolve();
                 });
             });
 
             // Verify modal content is properly styled
-            const modalContent = modal.element.querySelector('.dualsub-modal-content');
+            const modalContent = modal.element.querySelector(
+                '.dualsub-modal-content'
+            );
             expect(modalContent).toBeTruthy();
             expect(modalContent.style.position).toBe('absolute');
             expect(modalContent.style.top).toBe('50%');
@@ -2241,10 +2438,14 @@ describe('Phase 8: Knowledge Refresh & Enhancement Hooks', () => {
 
             // Test modal hiding
             modal.hide();
-            expect(modal.element.classList.contains('dualsub-context-modal--visible')).toBe(false);
+            expect(
+                modal.element.classList.contains(
+                    'dualsub-context-modal--visible'
+                )
+            ).toBe(false);
 
             // After animation timeout, modal should be hidden
-            await new Promise(resolve => {
+            await new Promise((resolve) => {
                 setTimeout(() => {
                     expect(modal.element.style.display).toBe('none');
                     expect(modal.isVisible).toBe(false);

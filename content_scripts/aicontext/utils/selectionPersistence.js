@@ -1,9 +1,9 @@
 /**
  * Selection Persistence Manager for AI Context Modal
- * 
+ *
  * Handles preservation of word selections across subtitle refreshes and updates.
  * Monitors subtitle content changes and restores selection state when content is identical.
- * 
+ *
  * @author DualSub Extension - AI Context Team
  * @version 2.0.0
  */
@@ -20,11 +20,11 @@ export class SelectionPersistenceManager {
         this.isMonitoring = false;
         this.observers = new Map();
         this.lastObservedContent = new Map();
-        
+
         // Debounce settings for content monitoring
         this.debounceDelay = 100;
         this.debounceTimers = new Map();
-        
+
         this._log('debug', 'SelectionPersistenceManager initialized');
     }
 
@@ -67,7 +67,10 @@ export class SelectionPersistenceManager {
         this._observeSubtitleContainer('dualsub-original-subtitle', 'original');
 
         // Monitor translated subtitle container
-        this._observeSubtitleContainer('dualsub-translated-subtitle', 'translated');
+        this._observeSubtitleContainer(
+            'dualsub-translated-subtitle',
+            'translated'
+        );
     }
 
     /**
@@ -75,8 +78,12 @@ export class SelectionPersistenceManager {
      * @private
      */
     _setupSubtitleChangeListener() {
-        this.subtitleChangeHandler = (event) => this._handleSubtitleContentChange(event);
-        document.addEventListener('dualsub-subtitle-content-changing', this.subtitleChangeHandler);
+        this.subtitleChangeHandler = (event) =>
+            this._handleSubtitleContentChange(event);
+        document.addEventListener(
+            'dualsub-subtitle-content-changing',
+            this.subtitleChangeHandler
+        );
         this._log('debug', 'Subtitle content change listener setup');
     }
 
@@ -86,7 +93,10 @@ export class SelectionPersistenceManager {
      */
     _cleanupSubtitleChangeListener() {
         if (this.subtitleChangeHandler) {
-            document.removeEventListener('dualsub-subtitle-content-changing', this.subtitleChangeHandler);
+            document.removeEventListener(
+                'dualsub-subtitle-content-changing',
+                this.subtitleChangeHandler
+            );
             this.subtitleChangeHandler = null;
             this._log('debug', 'Subtitle content change listener removed');
         }
@@ -113,30 +123,36 @@ export class SelectionPersistenceManager {
                 type,
                 oldLength: oldText.length,
                 newLength: newText.length,
-                hasSelection: this.modalCore.selectedWords.size > 0
+                hasSelection: this.modalCore.selectedWords.size > 0,
             });
 
             // If we have a selection and content is changing
             if (this.modalCore.selectedWords.size > 0) {
                 // Check if this is the same content being refreshed
                 if (this.modalCore.isContentIdentical(newText)) {
-                    this._log('info', 'Identical content detected via event, preparing restoration', {
-                        contentPreview: newText.substring(0, 50)
-                    });
+                    this._log(
+                        'info',
+                        'Identical content detected via event, preparing restoration',
+                        {
+                            contentPreview: newText.substring(0, 50),
+                        }
+                    );
 
                     // Use debounced restoration to prevent race conditions
                     this._scheduleRestorationDebounced('event');
                 } else {
                     // Content has actually changed, capture current state
                     this.modalCore.captureSelectionState(oldText);
-                    this._log('debug', 'Content changed, captured old state for potential restoration');
+                    this._log(
+                        'debug',
+                        'Content changed, captured old state for potential restoration'
+                    );
                 }
             }
-
         } catch (error) {
             this._log('error', 'Error handling subtitle content change', {
                 error: error.message,
-                type
+                type,
             });
         }
     }
@@ -155,10 +171,14 @@ export class SelectionPersistenceManager {
         tempDiv.innerHTML = html;
 
         // Get text from interactive words if available
-        const interactiveWords = tempDiv.querySelectorAll('.dualsub-interactive-word');
+        const interactiveWords = tempDiv.querySelectorAll(
+            '.dualsub-interactive-word'
+        );
         if (interactiveWords.length > 0) {
             return Array.from(interactiveWords)
-                .map(word => word.getAttribute('data-word') || word.textContent)
+                .map(
+                    (word) => word.getAttribute('data-word') || word.textContent
+                )
                 .join(' ')
                 .trim();
         }
@@ -190,11 +210,14 @@ export class SelectionPersistenceManager {
             childList: true,
             subtree: true,
             characterData: true,
-            attributes: false
+            attributes: false,
         });
 
         this.observers.set(subtitleType, observer);
-        this._log('debug', `Observer setup for ${subtitleType} subtitle container`);
+        this._log(
+            'debug',
+            `Observer setup for ${subtitleType} subtitle container`
+        );
     }
 
     /**
@@ -216,9 +239,12 @@ export class SelectionPersistenceManager {
             clearTimeout(timerId);
         }
 
-        this.debounceTimers.set(subtitleType, setTimeout(() => {
-            this._processSubtitleChange(subtitleType, container);
-        }, this.debounceDelay));
+        this.debounceTimers.set(
+            subtitleType,
+            setTimeout(() => {
+                this._processSubtitleChange(subtitleType, container);
+            }, this.debounceDelay)
+        );
     }
 
     /**
@@ -236,17 +262,24 @@ export class SelectionPersistenceManager {
                 subtitleType,
                 currentLength: currentContent.length,
                 lastLength: lastContent?.length || 0,
-                hasSelection: this.modalCore.selectedWords.size > 0
+                hasSelection: this.modalCore.selectedWords.size > 0,
             });
 
             // If we have a selection and content is changing
             if (this.modalCore.selectedWords.size > 0) {
                 // Check if this is the same content being refreshed
-                if (lastContent && this.modalCore.isContentIdentical(currentContent)) {
-                    this._log('info', 'Identical content detected, attempting selection restoration', {
-                        subtitleType,
-                        contentPreview: currentContent.substring(0, 50)
-                    });
+                if (
+                    lastContent &&
+                    this.modalCore.isContentIdentical(currentContent)
+                ) {
+                    this._log(
+                        'info',
+                        'Identical content detected, attempting selection restoration',
+                        {
+                            subtitleType,
+                            contentPreview: currentContent.substring(0, 50),
+                        }
+                    );
 
                     // Use debounced restoration to prevent race conditions
                     this._scheduleRestorationDebounced('mutation');
@@ -258,11 +291,10 @@ export class SelectionPersistenceManager {
 
             // Update last observed content
             this.lastObservedContent.set(subtitleType, currentContent);
-
         } catch (error) {
             this._log('error', 'Error processing subtitle change', {
                 error: error.message,
-                subtitleType
+                subtitleType,
             });
         }
     }
@@ -279,10 +311,14 @@ export class SelectionPersistenceManager {
         }
 
         // Get text content from interactive words if available
-        const interactiveWords = container.querySelectorAll('.dualsub-interactive-word');
+        const interactiveWords = container.querySelectorAll(
+            '.dualsub-interactive-word'
+        );
         if (interactiveWords.length > 0) {
             return Array.from(interactiveWords)
-                .map(word => word.getAttribute('data-word') || word.textContent)
+                .map(
+                    (word) => word.getAttribute('data-word') || word.textContent
+                )
                 .join(' ')
                 .trim();
         }
@@ -300,10 +336,10 @@ export class SelectionPersistenceManager {
             observer.disconnect();
             this._log('debug', `Observer disconnected for ${type} subtitle`);
         }
-        
+
         this.observers.clear();
         this.lastObservedContent.clear();
-        
+
         // Clear debounce timers
         for (const timer of this.debounceTimers.values()) {
             clearTimeout(timer);
@@ -316,15 +352,17 @@ export class SelectionPersistenceManager {
      * Useful for manual state preservation
      */
     captureCurrentState() {
-        const originalContainer = document.getElementById('dualsub-original-subtitle');
+        const originalContainer = document.getElementById(
+            'dualsub-original-subtitle'
+        );
         if (originalContainer && this.modalCore.selectedWords.size > 0) {
             const content = this._extractTextContent(originalContainer);
             this.modalCore.captureSelectionState(content);
             this.lastObservedContent.set('original', content);
-            
+
             this._log('info', 'Manual state capture completed', {
                 contentLength: content.length,
-                selectedWords: this.modalCore.selectedWords.size
+                selectedWords: this.modalCore.selectedWords.size,
             });
         }
     }
@@ -334,7 +372,10 @@ export class SelectionPersistenceManager {
      * @returns {boolean} True if monitoring and has captured state
      */
     isActive() {
-        return this.isMonitoring && this.modalCore.selectionPersistence.lastSelectionState !== null;
+        return (
+            this.isMonitoring &&
+            this.modalCore.selectionPersistence.lastSelectionState !== null
+        );
     }
 
     /**
@@ -345,9 +386,11 @@ export class SelectionPersistenceManager {
         return {
             isMonitoring: this.isMonitoring,
             observersCount: this.observers.size,
-            hasLastState: !!this.modalCore.selectionPersistence.lastSelectionState,
-            lastContentLength: this.modalCore.selectionPersistence.lastSubtitleContent.length,
-            selectedWordsCount: this.modalCore.selectedWords.size
+            hasLastState:
+                !!this.modalCore.selectionPersistence.lastSelectionState,
+            lastContentLength:
+                this.modalCore.selectionPersistence.lastSubtitleContent.length,
+            selectedWordsCount: this.modalCore.selectedWords.size,
         };
     }
 
@@ -359,33 +402,52 @@ export class SelectionPersistenceManager {
     _scheduleRestorationDebounced(source) {
         // Skip if restoration is already in progress
         if (this.modalCore.selectionPersistence.isRestoring) {
-            this._log('debug', 'Restoration already in progress, skipping', { source });
+            this._log('debug', 'Restoration already in progress, skipping', {
+                source,
+            });
             return;
         }
 
         // Clear any existing restoration timeout
         if (this.modalCore.selectionPersistence.restorationTimeout) {
-            clearTimeout(this.modalCore.selectionPersistence.restorationTimeout);
-            this._log('debug', 'Cleared previous restoration timeout', { source });
+            clearTimeout(
+                this.modalCore.selectionPersistence.restorationTimeout
+            );
+            this._log('debug', 'Cleared previous restoration timeout', {
+                source,
+            });
         }
 
         // Schedule new restoration with appropriate delay
         const delay = source === 'event' ? 150 : 200; // Slightly longer for mutation observer
-        this.modalCore.selectionPersistence.restorationTimeout = setTimeout(() => {
-            this._log('debug', 'Executing debounced restoration', { source, delay });
+        this.modalCore.selectionPersistence.restorationTimeout = setTimeout(
+            () => {
+                this._log('debug', 'Executing debounced restoration', {
+                    source,
+                    delay,
+                });
 
-            // Clear the timeout reference before calling restoration
-            this.modalCore.selectionPersistence.restorationTimeout = null;
+                // Clear the timeout reference before calling restoration
+                this.modalCore.selectionPersistence.restorationTimeout = null;
 
-            const success = this.modalCore.restoreSelectionState();
-            this._log(success ? 'info' : 'warn', 'Debounced restoration completed', {
-                source,
-                success,
-                selectedWordsCount: this.modalCore.selectedWords.size
-            });
-        }, delay);
+                const success = this.modalCore.restoreSelectionState();
+                this._log(
+                    success ? 'info' : 'warn',
+                    'Debounced restoration completed',
+                    {
+                        source,
+                        success,
+                        selectedWordsCount: this.modalCore.selectedWords.size,
+                    }
+                );
+            },
+            delay
+        );
 
-        this._log('debug', 'Scheduled debounced restoration', { source, delay });
+        this._log('debug', 'Scheduled debounced restoration', {
+            source,
+            delay,
+        });
     }
 
     /**
@@ -398,7 +460,7 @@ export class SelectionPersistenceManager {
     _log(level, message, data = {}) {
         logWithFallback(level, `[SelectionPersistence] ${message}`, {
             ...data,
-            component: 'SelectionPersistenceManager'
+            component: 'SelectionPersistenceManager',
         });
     }
 }

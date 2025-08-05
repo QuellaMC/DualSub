@@ -1,9 +1,9 @@
 /**
  * AI Context Modal - Animations Module
- * 
+ *
  * Animation and transition logic functionality.
  * Handles modal show/hide animations, state transitions, and visual effects.
- * 
+ *
  * @author DualSub Extension - UI Systems Engineer
  * @version 2.0.0
  */
@@ -32,7 +32,10 @@ export class AIContextModalAnimations {
         this.core._log('info', 'Showing modal with animation', options);
 
         if (!this.core.element) {
-            this.core._log('error', 'Modal element not available for animation');
+            this.core._log(
+                'error',
+                'Modal element not available for animation'
+            );
             return false;
         }
 
@@ -70,8 +73,9 @@ export class AIContextModalAnimations {
             this.core.overlayElement.style.pointerEvents = 'auto'; // Enable click blocking
             this.core._log('debug', 'Modal overlay shown', {
                 overlayDisplay: this.core.overlayElement.style.display,
-                overlayPointerEvents: this.core.overlayElement.style.pointerEvents,
-                overlayParent: this.core.overlayElement.parentElement?.id
+                overlayPointerEvents:
+                    this.core.overlayElement.style.pointerEvents,
+                overlayParent: this.core.overlayElement.parentElement?.id,
             });
         }
 
@@ -80,14 +84,14 @@ export class AIContextModalAnimations {
             this.core.contentElement.style.display = 'block';
             this.core._log('debug', 'Modal content shown', {
                 contentDisplay: this.core.contentElement.style.display,
-                contentParent: this.core.contentElement.parentElement?.id
+                contentParent: this.core.contentElement.parentElement?.id,
             });
         }
 
         // Dispatch show event
-        this.core._dispatchEvent(EVENT_TYPES.MODAL_SHOW, { 
-            mode: 'selection', 
-            options 
+        this.core._dispatchEvent(EVENT_TYPES.MODAL_SHOW, {
+            mode: 'selection',
+            options,
         });
 
         return true;
@@ -116,7 +120,9 @@ export class AIContextModalAnimations {
 
         // Hide modal element (matches legacy behavior exactly)
         if (this.core.element) {
-            this.core.element.classList.remove('dualsub-context-modal--visible');
+            this.core.element.classList.remove(
+                'dualsub-context-modal--visible'
+            );
             this.core.element.style.display = 'none';
             this.core.element.style.pointerEvents = 'none'; // Ensure no interaction blocking
         }
@@ -127,8 +133,9 @@ export class AIContextModalAnimations {
             this.core.overlayElement.style.pointerEvents = 'none'; // Disable click blocking
             this.core._log('debug', 'Modal overlay hidden', {
                 overlayDisplay: this.core.overlayElement.style.display,
-                overlayPointerEvents: this.core.overlayElement.style.pointerEvents,
-                overlayParent: this.core.overlayElement.parentElement?.id
+                overlayPointerEvents:
+                    this.core.overlayElement.style.pointerEvents,
+                overlayParent: this.core.overlayElement.parentElement?.id,
             });
         }
 
@@ -137,7 +144,7 @@ export class AIContextModalAnimations {
             this.core.contentElement.style.display = 'none';
             this.core._log('debug', 'Modal content hidden', {
                 contentDisplay: this.core.contentElement.style.display,
-                contentParent: this.core.contentElement.parentElement?.id
+                contentParent: this.core.contentElement.parentElement?.id,
             });
         }
 
@@ -149,7 +156,7 @@ export class AIContextModalAnimations {
 
         // Dispatch hide event
         this.core._dispatchEvent(EVENT_TYPES.MODAL_HIDE, {
-            mode: this.core.currentMode
+            mode: this.core.currentMode,
         });
     }
 
@@ -262,26 +269,51 @@ export class AIContextModalAnimations {
             // Get modal content from UI root container (new architecture)
             const modalContent = this.core.contentElement;
             if (!modalContent) {
-                this.core._log('warn', 'Modal content element not found for height adjustment');
+                this.core._log(
+                    'warn',
+                    'Modal content element not found for height adjustment'
+                );
                 return;
             }
 
             const heightData = this._calculateOptimalModalHeight();
 
             // Apply calculated height (matches legacy behavior exactly)
-            modalContent.style.setProperty('height', `${heightData.height}px`, 'important');
-            modalContent.style.setProperty('max-height', `${heightData.height}px`, 'important');
+            modalContent.style.setProperty(
+                'height',
+                `${heightData.height}px`,
+                'important'
+            );
+            modalContent.style.setProperty(
+                'max-height',
+                `${heightData.height}px`,
+                'important'
+            );
 
             // Set modal body height after a small delay to ensure header is rendered
             setTimeout(() => {
-                const modalBody = modalContent.querySelector('.dualsub-modal-body');
+                const modalBody = modalContent.querySelector(
+                    '.dualsub-modal-body'
+                );
                 if (modalBody) {
-                    const modalHeader = modalContent.querySelector('.dualsub-modal-header');
-                    const headerHeight = modalHeader ? modalHeader.offsetHeight : 60; // Fallback to 60px
+                    const modalHeader = modalContent.querySelector(
+                        '.dualsub-modal-header'
+                    );
+                    const headerHeight = modalHeader
+                        ? modalHeader.offsetHeight
+                        : 60; // Fallback to 60px
                     const bodyHeight = heightData.height - headerHeight;
 
-                    modalBody.style.setProperty('height', `${bodyHeight}px`, 'important');
-                    modalBody.style.setProperty('max-height', `${bodyHeight}px`, 'important');
+                    modalBody.style.setProperty(
+                        'height',
+                        `${bodyHeight}px`,
+                        'important'
+                    );
+                    modalBody.style.setProperty(
+                        'max-height',
+                        `${bodyHeight}px`,
+                        'important'
+                    );
 
                     // this.core._log('debug', 'Modal body height explicitly set', {
                     //     totalHeight: heightData.height,
@@ -303,10 +335,9 @@ export class AIContextModalAnimations {
             //     modalContentStyleHeight: modalContent.style.height,
             //     modalContentStyleMaxHeight: modalContent.style.maxHeight
             // });
-
         } catch (error) {
             this.core._log('warn', 'Failed to apply dynamic height', {
-                error: error.message
+                error: error.message,
             });
         }
     }
@@ -325,7 +356,7 @@ export class AIContextModalAnimations {
                 dualsubFound: false,
                 platformFound: false,
                 usedSelectors: [],
-                foundElements: []
+                foundElements: [],
             };
 
             // Comprehensive subtitle selectors (from legacy implementation)
@@ -358,7 +389,7 @@ export class AIContextModalAnimations {
                     '.dualsub-original-subtitle span',
                     '.dualsub-translated-subtitle span',
                     // Interactive word spans
-                    '.dualsub-interactive-word'
+                    '.dualsub-interactive-word',
                 ],
                 // Platform selectors (fallback only if no DualSub subtitles found)
                 platform: [
@@ -385,22 +416,31 @@ export class AIContextModalAnimations {
                     '.caption',
                     '.captions',
                     '.subtitle span',
-                    '.subtitles span'
-                ]
+                    '.subtitles span',
+                ],
             };
 
             // First, try to find DualSub subtitle elements (priority)
-            SUBTITLE_SELECTORS.dualsub.forEach(selector => {
+            SUBTITLE_SELECTORS.dualsub.forEach((selector) => {
                 const elements = document.querySelectorAll(selector);
                 if (elements.length > 0) {
                     detectionResults.usedSelectors.push(selector);
 
-                    elements.forEach(element => {
-                        if (element.offsetWidth > 0 && element.offsetHeight > 0) {
+                    elements.forEach((element) => {
+                        if (
+                            element.offsetWidth > 0 &&
+                            element.offsetHeight > 0
+                        ) {
                             const rect = element.getBoundingClientRect();
-                            if (highestSubtitleTop === null || rect.top < highestSubtitleTop) {
+                            if (
+                                highestSubtitleTop === null ||
+                                rect.top < highestSubtitleTop
+                            ) {
                                 highestSubtitleTop = rect.top;
-                                subtitleHeight = Math.max(subtitleHeight, rect.height);
+                                subtitleHeight = Math.max(
+                                    subtitleHeight,
+                                    rect.height
+                                );
                             }
 
                             detectionResults.dualsubFound = true;
@@ -410,7 +450,7 @@ export class AIContextModalAnimations {
                                 classes: element.className,
                                 id: element.id,
                                 top: rect.top,
-                                height: rect.height
+                                height: rect.height,
                             });
                         }
                     });
@@ -419,17 +459,26 @@ export class AIContextModalAnimations {
 
             // If no DualSub subtitles found, try platform subtitles
             if (!detectionResults.dualsubFound) {
-                SUBTITLE_SELECTORS.platform.forEach(selector => {
+                SUBTITLE_SELECTORS.platform.forEach((selector) => {
                     const elements = document.querySelectorAll(selector);
                     if (elements.length > 0) {
                         detectionResults.usedSelectors.push(selector);
 
-                        elements.forEach(element => {
-                            if (element.offsetWidth > 0 && element.offsetHeight > 0) {
+                        elements.forEach((element) => {
+                            if (
+                                element.offsetWidth > 0 &&
+                                element.offsetHeight > 0
+                            ) {
                                 const rect = element.getBoundingClientRect();
-                                if (highestSubtitleTop === null || rect.top < highestSubtitleTop) {
+                                if (
+                                    highestSubtitleTop === null ||
+                                    rect.top < highestSubtitleTop
+                                ) {
                                     highestSubtitleTop = rect.top;
-                                    subtitleHeight = Math.max(subtitleHeight, rect.height);
+                                    subtitleHeight = Math.max(
+                                        subtitleHeight,
+                                        rect.height
+                                    );
                                 }
 
                                 detectionResults.platformFound = true;
@@ -439,7 +488,7 @@ export class AIContextModalAnimations {
                                     classes: element.className,
                                     id: element.id,
                                     top: rect.top,
-                                    height: rect.height
+                                    height: rect.height,
                                 });
                             }
                         });
@@ -465,27 +514,33 @@ export class AIContextModalAnimations {
             }
 
             // Ensure height is within reasonable bounds
-            const optimalHeight = Math.max(minModalHeight, Math.min(availableHeight, maxModalHeight));
+            const optimalHeight = Math.max(
+                minModalHeight,
+                Math.min(availableHeight, maxModalHeight)
+            );
 
             return {
                 height: optimalHeight,
-                heightVh: (optimalHeight / viewportHeight * 100),
+                heightVh: (optimalHeight / viewportHeight) * 100,
                 subtitleTop: highestSubtitleTop,
                 hasSubtitles: highestSubtitleTop !== null,
-                detectionResults: detectionResults
+                detectionResults: detectionResults,
             };
-
         } catch (error) {
-            this.core._log('error', 'Failed to calculate optimal modal height', {
-                error: error.message
-            });
+            this.core._log(
+                'error',
+                'Failed to calculate optimal modal height',
+                {
+                    error: error.message,
+                }
+            );
 
             // Return fallback values
             return {
                 height: window.innerHeight * 0.7,
                 heightVh: 70,
                 subtitleTop: null,
-                hasSubtitles: false
+                hasSubtitles: false,
             };
         }
     }
@@ -512,22 +567,28 @@ export class AIContextModalAnimations {
                 this.mutationObserver = new MutationObserver((mutations) => {
                     let shouldUpdate = false;
 
-                    mutations.forEach(mutation => {
+                    mutations.forEach((mutation) => {
                         // Check if any subtitle-related elements were added/removed/modified
                         if (mutation.type === 'childList') {
                             const addedNodes = Array.from(mutation.addedNodes);
-                            const removedNodes = Array.from(mutation.removedNodes);
+                            const removedNodes = Array.from(
+                                mutation.removedNodes
+                            );
 
-                            [...addedNodes, ...removedNodes].forEach(node => {
+                            [...addedNodes, ...removedNodes].forEach((node) => {
                                 if (node.nodeType === Node.ELEMENT_NODE) {
                                     const element = node;
-                                    if (this._isSubtitleRelatedElement(element)) {
+                                    if (
+                                        this._isSubtitleRelatedElement(element)
+                                    ) {
                                         shouldUpdate = true;
                                     }
                                 }
                             });
                         } else if (mutation.type === 'attributes') {
-                            if (this._isSubtitleRelatedElement(mutation.target)) {
+                            if (
+                                this._isSubtitleRelatedElement(mutation.target)
+                            ) {
                                 shouldUpdate = true;
                             }
                         }
@@ -553,7 +614,7 @@ export class AIContextModalAnimations {
                     childList: true,
                     subtree: true,
                     attributes: true,
-                    attributeFilter: ['style', 'class', 'id']
+                    attributeFilter: ['style', 'class', 'id'],
                 });
             }
 
@@ -564,13 +625,16 @@ export class AIContextModalAnimations {
 
             this.core._log('debug', 'Dynamic height monitoring started', {
                 hasResizeObserver: !!this.resizeObserver,
-                hasMutationObserver: !!this.mutationObserver
+                hasMutationObserver: !!this.mutationObserver,
             });
-
         } catch (error) {
-            this.core._log('error', 'Failed to setup dynamic height monitoring', {
-                error: error.message
-            });
+            this.core._log(
+                'error',
+                'Failed to setup dynamic height monitoring',
+                {
+                    error: error.message,
+                }
+            );
 
             // Fallback to simple interval monitoring
             this.heightMonitorInterval = setInterval(() => {
@@ -606,12 +670,17 @@ export class AIContextModalAnimations {
 
         // Check for subtitle-related classes and IDs
         const subtitleKeywords = [
-            'subtitle', 'caption', 'timedtext', 'dualsub',
-            'player-timedtext', 'dss-subtitle', 'subtitle-container'
+            'subtitle',
+            'caption',
+            'timedtext',
+            'dualsub',
+            'player-timedtext',
+            'dss-subtitle',
+            'subtitle-container',
         ];
 
-        return subtitleKeywords.some(keyword =>
-            className.includes(keyword) || id.includes(keyword)
+        return subtitleKeywords.some(
+            (keyword) => className.includes(keyword) || id.includes(keyword)
         );
     }
 
@@ -652,9 +721,12 @@ export class AIContextModalAnimations {
      * @private
      */
     _animateProcessingButton() {
-        const button = this.core.element?.querySelector('#dualsub-start-analysis') ||
-                      this.core.contentElement?.querySelector('#dualsub-start-analysis') ||
-                      document.getElementById('dualsub-start-analysis');
+        const button =
+            this.core.element?.querySelector('#dualsub-start-analysis') ||
+            this.core.contentElement?.querySelector(
+                '#dualsub-start-analysis'
+            ) ||
+            document.getElementById('dualsub-start-analysis');
         if (button) {
             button.classList.add('processing');
             button.disabled = true;
@@ -667,10 +739,12 @@ export class AIContextModalAnimations {
      * @private
      */
     _animateContentTransition() {
-        const rightPane = this.core.element?.querySelector('#dualsub-right-pane');
+        const rightPane = this.core.element?.querySelector(
+            '#dualsub-right-pane'
+        );
         if (rightPane) {
             rightPane.style.opacity = '0';
-            
+
             const transitionTimeout = setTimeout(() => {
                 rightPane.style.opacity = '1';
             }, 150);
@@ -688,11 +762,12 @@ export class AIContextModalAnimations {
         if (errorElement) {
             errorElement.style.opacity = '0';
             errorElement.style.transform = 'translateY(20px)';
-            
+
             const errorTimeout = setTimeout(() => {
                 errorElement.style.opacity = '1';
                 errorElement.style.transform = 'translateY(0)';
-                errorElement.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                errorElement.style.transition =
+                    'opacity 0.3s ease, transform 0.3s ease';
             }, 100);
 
             this.animationTimeouts.set('error-animation', errorTimeout);
@@ -705,9 +780,12 @@ export class AIContextModalAnimations {
      */
     _resetModalState() {
         // Reset button states (check multiple locations)
-        const button = this.core.element?.querySelector('#dualsub-start-analysis') ||
-                      this.core.contentElement?.querySelector('#dualsub-start-analysis') ||
-                      document.getElementById('dualsub-start-analysis');
+        const button =
+            this.core.element?.querySelector('#dualsub-start-analysis') ||
+            this.core.contentElement?.querySelector(
+                '#dualsub-start-analysis'
+            ) ||
+            document.getElementById('dualsub-start-analysis');
         if (button) {
             button.classList.remove('processing');
             button.disabled = this.core.selectedWords.size === 0;
@@ -730,7 +808,9 @@ export class AIContextModalAnimations {
      */
     _syncWordSelectionVisuals() {
         // Find all interactive words in original subtitles
-        const interactiveWords = document.querySelectorAll('.dualsub-interactive-word');
+        const interactiveWords = document.querySelectorAll(
+            '.dualsub-interactive-word'
+        );
 
         interactiveWords.forEach((wordElement, index) => {
             const word = wordElement.getAttribute('data-word');
@@ -741,12 +821,16 @@ export class AIContextModalAnimations {
                     index: index,
                     element: wordElement,
                     subtitleType: this._getSubtitleType(wordElement),
-                    wordIndex: this._getWordIndex(wordElement)
+                    wordIndex: this._getWordIndex(wordElement),
                 };
-                const positionKey = this.core._createPositionKey(word, position);
+                const positionKey = this.core._createPositionKey(
+                    word,
+                    position
+                );
 
                 // Check if this specific position is selected
-                const isSelected = this.core.selectedWordPositions.has(positionKey);
+                const isSelected =
+                    this.core.selectedWordPositions.has(positionKey);
 
                 if (isSelected) {
                     wordElement.classList.add('dualsub-word-selected');
@@ -771,12 +855,16 @@ export class AIContextModalAnimations {
      * @private
      */
     _getSubtitleType(wordElement) {
-        const container = wordElement.closest('[id*="subtitle"], .dualsub-subtitle-container');
+        const container = wordElement.closest(
+            '[id*="subtitle"], .dualsub-subtitle-container'
+        );
         if (container) {
             if (container.id.includes('original')) return 'original';
             if (container.id.includes('translated')) return 'translated';
-            if (container.classList.contains('dualsub-original-subtitle')) return 'original';
-            if (container.classList.contains('dualsub-translated-subtitle')) return 'translated';
+            if (container.classList.contains('dualsub-original-subtitle'))
+                return 'original';
+            if (container.classList.contains('dualsub-translated-subtitle'))
+                return 'translated';
         }
         return 'original'; // Default to original
     }
@@ -790,9 +878,13 @@ export class AIContextModalAnimations {
     _getWordIndex(wordElement) {
         if (!wordElement) return 0;
 
-        const container = wordElement.closest('[id*="subtitle"], .dualsub-subtitle-container');
+        const container = wordElement.closest(
+            '[id*="subtitle"], .dualsub-subtitle-container'
+        );
         if (container) {
-            const allWords = container.querySelectorAll('.dualsub-interactive-word');
+            const allWords = container.querySelectorAll(
+                '.dualsub-interactive-word'
+            );
             return Array.from(allWords).indexOf(wordElement);
         }
 
@@ -816,10 +908,10 @@ export class AIContextModalAnimations {
      */
     cleanup() {
         this.core._log('debug', 'Cleaning up animations');
-        
+
         this._clearAnimationTimeouts();
         this._stopDynamicHeightMonitoring();
-        
+
         this.core._log('debug', 'Animations cleanup complete');
     }
 }
