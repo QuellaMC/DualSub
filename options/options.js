@@ -740,22 +740,30 @@ document.addEventListener('DOMContentLoaded', function () {
      * @param {number} delay - Delay between retries in milliseconds
      * @returns {Promise<boolean>} True if background script becomes ready
      */
-    const waitForBackgroundReady = async function (maxRetries = 10, delay = 500) {
+    const waitForBackgroundReady = async function (
+        maxRetries = 10,
+        delay = 500
+    ) {
         for (let i = 0; i < maxRetries; i++) {
             if (await checkBackgroundReady()) {
-                optionsLogger.debug('Background script is ready', { attempt: i + 1 });
+                optionsLogger.debug('Background script is ready', {
+                    attempt: i + 1,
+                });
                 return true;
             }
             optionsLogger.debug('Background script not ready, retrying...', {
                 attempt: i + 1,
-                maxRetries
+                maxRetries,
             });
-            await new Promise(resolve => setTimeout(resolve, delay));
+            await new Promise((resolve) => setTimeout(resolve, delay));
         }
-        optionsLogger.warn('Background script did not become ready within timeout', {
-            maxRetries,
-            totalWaitTime: maxRetries * delay
-        });
+        optionsLogger.warn(
+            'Background script did not become ready within timeout',
+            {
+                maxRetries,
+                totalWaitTime: maxRetries * delay,
+            }
+        );
         return false;
     };
 
@@ -772,9 +780,12 @@ document.addEventListener('DOMContentLoaded', function () {
             if (retryCount === 0) {
                 const isReady = await waitForBackgroundReady();
                 if (!isReady) {
-                    optionsLogger.error('Background script not ready, skipping model loading', {
-                        providerId,
-                    });
+                    optionsLogger.error(
+                        'Background script not ready, skipping model loading',
+                        {
+                            providerId,
+                        }
+                    );
                     return;
                 }
             }
@@ -796,7 +807,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     });
 
                     // Wait a bit before retrying
-                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    await new Promise((resolve) => setTimeout(resolve, 1000));
                     return updateModelDropdown(providerId, retryCount + 1);
                 }
 
@@ -891,15 +902,21 @@ document.addEventListener('DOMContentLoaded', function () {
                             ? 'saved_model_invalid'
                             : 'no_saved_model',
                     });
-                } else if (defaultResponse.needsRetry && retryCount < maxRetries) {
+                } else if (
+                    defaultResponse.needsRetry &&
+                    retryCount < maxRetries
+                ) {
                     // If default model request also needs retry, retry the entire function
-                    optionsLogger.debug('Default model request failed, retrying entire model loading...', {
-                        providerId,
-                        error: defaultResponse.error,
-                        retryCount: retryCount + 1,
-                    });
+                    optionsLogger.debug(
+                        'Default model request failed, retrying entire model loading...',
+                        {
+                            providerId,
+                            error: defaultResponse.error,
+                            retryCount: retryCount + 1,
+                        }
+                    );
 
-                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    await new Promise((resolve) => setTimeout(resolve, 1000));
                     return updateModelDropdown(providerId, retryCount + 1);
                 }
             }
