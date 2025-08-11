@@ -6,6 +6,7 @@
 ![Last Commit](https://img.shields.io/github/last-commit/QuellaMC/DualSub.svg)
 ![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)
 ![Manifest](https://img.shields.io/badge/Manifest-v3-blue.svg)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/QuellaMC/DualSub)
 
 **DualSub** is a powerful Chrome extension that enhances your streaming experience by displaying dual language subtitles simultaneously. Perfect for language learning, accessibility, or simply enjoying content in multiple languages at once.
 
