@@ -140,7 +140,10 @@ export function getOrCreateUiRoot() {
     // If we appended to <html> because <body> didn't exist yet, move to body when available
     if (!document.body) {
         const moveToBody = () => {
-            if (document.body && dualsubUiRoot.parentElement !== document.body) {
+            if (
+                document.body &&
+                dualsubUiRoot.parentElement !== document.body
+            ) {
                 document.body.appendChild(dualsubUiRoot);
             }
             document.removeEventListener('DOMContentLoaded', moveToBody);

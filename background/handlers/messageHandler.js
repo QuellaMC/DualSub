@@ -124,7 +124,10 @@ class MessageHandler {
                 return this.handlePingMessage(message, sendResponse);
 
             case 'checkBackgroundReady':
-                return this.handleCheckBackgroundReadyMessage(message, sendResponse);
+                return this.handleCheckBackgroundReadyMessage(
+                    message,
+                    sendResponse
+                );
 
             default:
                 this.logger.warn('Unknown message action', {
@@ -685,9 +688,12 @@ class MessageHandler {
 
         // Check if AI context service is fully initialized
         if (!this.aiContextService.isInitialized) {
-            this.logger.debug('AI Context service not yet initialized, deferring request', {
-                providerId,
-            });
+            this.logger.debug(
+                'AI Context service not yet initialized, deferring request',
+                {
+                    providerId,
+                }
+            );
             sendResponse({
                 success: false,
                 error: 'AI Context service is still initializing',
@@ -742,9 +748,12 @@ class MessageHandler {
 
         // Check if AI context service is fully initialized
         if (!this.aiContextService.isInitialized) {
-            this.logger.debug('AI Context service not yet initialized, deferring request', {
-                providerId,
-            });
+            this.logger.debug(
+                'AI Context service not yet initialized, deferring request',
+                {
+                    providerId,
+                }
+            );
             sendResponse({
                 success: false,
                 error: 'AI Context service is still initializing',
@@ -864,7 +873,8 @@ class MessageHandler {
                 translation: !!this.translationService,
                 subtitle: !!this.subtitleService,
                 aiContext: !!this.aiContextService,
-                aiContextInitialized: this.aiContextService?.isInitialized || false,
+                aiContextInitialized:
+                    this.aiContextService?.isInitialized || false,
             },
         });
 

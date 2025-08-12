@@ -190,7 +190,7 @@ export class AIContextModalAnimations {
             squares.forEach((sq) => {
                 const prev = sq.style.animation;
                 sq.style.animation = 'none';
-                // eslint-disable-next-line no-unused-expressions
+                 
                 sq.offsetHeight;
                 sq.style.animation = prev || '';
             });
