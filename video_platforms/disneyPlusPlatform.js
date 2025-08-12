@@ -418,9 +418,7 @@ export class DisneyPlusPlatform extends VideoPlatform {
         ];
 
         if (hideOfficialSubtitles) {
-            this.hideOfficialSubtitleContainers(
-                disneyPlusSubtitleSelectors
-            );
+            this.hideOfficialSubtitleContainers(disneyPlusSubtitleSelectors);
         } else {
             this.showOfficialSubtitleContainers();
         }

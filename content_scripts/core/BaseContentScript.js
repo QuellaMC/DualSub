@@ -2030,9 +2030,13 @@ export class BaseContentScript {
             try {
                 await this._handleAIContextConfigurationChanges(changes);
             } catch (error) {
-                this.logWithFallback('warn', 'Failed to apply AI Context config changes', {
-                    error: error.message,
-                });
+                this.logWithFallback(
+                    'warn',
+                    'Failed to apply AI Context config changes',
+                    {
+                        error: error.message,
+                    }
+                );
             }
         });
     }
@@ -2101,7 +2105,12 @@ export class BaseContentScript {
             }
 
             // If the enablement flag changed, handle start/stop directly
-            if (Object.prototype.hasOwnProperty.call(changes, 'aiContextEnabled')) {
+            if (
+                Object.prototype.hasOwnProperty.call(
+                    changes,
+                    'aiContextEnabled'
+                )
+            ) {
                 const enabled = !!changes.aiContextEnabled;
                 if (enabled) {
                     // Start or restart AI Context features
@@ -2121,9 +2130,13 @@ export class BaseContentScript {
                 await this._restartAIContextFeatures();
             }
         } catch (error) {
-            this.logWithFallback('warn', 'AI Context configuration change handling failed', {
-                error: error.message,
-            });
+            this.logWithFallback(
+                'warn',
+                'AI Context configuration change handling failed',
+                {
+                    error: error.message,
+                }
+            );
         }
     }
 
@@ -2136,9 +2149,13 @@ export class BaseContentScript {
             await this._cleanupAIContextManager();
             await this.initializeAIContextFeatures();
         } catch (error) {
-            this.logWithFallback('warn', 'Failed to restart AI Context features', {
-                error: error.message,
-            });
+            this.logWithFallback(
+                'warn',
+                'Failed to restart AI Context features',
+                {
+                    error: error.message,
+                }
+            );
         }
     }
 

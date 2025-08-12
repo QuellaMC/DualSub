@@ -419,7 +419,7 @@ export class AIContextModalUI {
             squares.forEach((sq) => {
                 const previous = sq.style.animation;
                 sq.style.animation = 'none';
-                // eslint-disable-next-line no-unused-expressions
+                 
                 sq.offsetHeight; // trigger reflow
                 sq.style.animation = previous || '';
             });

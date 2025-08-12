@@ -586,8 +586,7 @@ export class NetflixPlatform extends VideoPlatform {
                             }
                         }
                     );
-                }
-            );
+                });
         }
     }
 

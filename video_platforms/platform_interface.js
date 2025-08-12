@@ -187,7 +187,9 @@ export class VideoPlatform {
             this.unsubscribeFromChanges = configService.onChanged(
                 this.storageListener
             );
-            this.logger?.debug('configService change listener added successfully');
+            this.logger?.debug(
+                'configService change listener added successfully'
+            );
         } else {
             this.logger?.warn(
                 'configService.onChanged API not available, skipping listener setup'
