@@ -499,24 +499,39 @@ export class AIContextModalEvents {
 
         this.ui.showProcessingState();
 
-        // Get user's language preferences for analysis (EXACT legacy behavior)
+        // Get user's language preferences for analysis
         let targetLanguage = 'en'; // Default fallback
         let sourceLanguage = 'auto'; // Default to auto-detect
 
         try {
-            // Try to get language preferences from storage (Issue #1: Use correct storage keys)
-            const result = await chrome.storage.sync.get([
-                'targetLanguage',
-                'originalLanguage',
-            ]);
-            if (result.targetLanguage) {
-                targetLanguage = result.targetLanguage;
-            }
-            if (result.originalLanguage) {
-                sourceLanguage = result.originalLanguage;
+            // Prefer config manager for consistency; fall back to chrome.storage if unavailable
+            const cfg =
+                this.core.contentScript?.configService || window.configService;
+            if (cfg && typeof cfg.getMultiple === 'function') {
+                const prefs = await cfg.getMultiple([
+                    'targetLanguage',
+                    'originalLanguage',
+                ]);
+                if (prefs?.targetLanguage) {
+                    targetLanguage = prefs.targetLanguage;
+                }
+                if (prefs?.originalLanguage) {
+                    sourceLanguage = prefs.originalLanguage;
+                }
+            } else if (chrome?.storage?.sync) {
+                const result = await chrome.storage.sync.get([
+                    'targetLanguage',
+                    'originalLanguage',
+                ]);
+                if (result.targetLanguage) {
+                    targetLanguage = result.targetLanguage;
+                }
+                if (result.originalLanguage) {
+                    sourceLanguage = result.originalLanguage;
+                }
             }
 
-            this.core._log('debug', 'Language preferences retrieved', {
+            this.core._log('debug', 'Language preferences resolved', {
                 sourceLanguage,
                 targetLanguage,
                 selectedText: this.core.selectedText,

@@ -298,14 +298,14 @@ export class NetflixPlatform extends VideoPlatform {
                 primaryTrackUrl: primaryTrackUrl,
             });
 
-            chrome.storage.sync.get(
-                [
+            configService
+                .getMultiple([
                     'targetLanguage',
                     'originalLanguage',
                     'useNativeSubtitles',
                     'useOfficialTranslations',
-                ],
-                (settings) => {
+                ])
+                .then((settings) => {
                     const {
                         targetLanguage = 'zh-CN',
                         originalLanguage = 'en',
@@ -787,23 +787,23 @@ export class NetflixPlatform extends VideoPlatform {
         }
     }
 
-    applyCurrentSubtitleSetting() {
-        chrome.storage.sync.get(['hideOfficialSubtitles'], (result) => {
-            const hideOfficialSubtitles = result.hideOfficialSubtitles || false;
+    async applyCurrentSubtitleSetting() {
+        const hideOfficialSubtitles = await configService.get(
+            'hideOfficialSubtitles'
+        );
 
-            const netflixSubtitleSelectors = [
-                '.player-timedtext',
-                '.player-timedtext-text-container',
-                '[data-uia="player-timedtext-text-container"]',
-                '.watch-video--bottom-controls-container .timedtext-text-container',
-            ];
+        const netflixSubtitleSelectors = [
+            '.player-timedtext',
+            '.player-timedtext-text-container',
+            '[data-uia="player-timedtext-text-container"]',
+            '.watch-video--bottom-controls-container .timedtext-text-container',
+        ];
 
-            if (hideOfficialSubtitles) {
-                this.hideOfficialSubtitleContainers(netflixSubtitleSelectors);
-            } else {
-                this.showOfficialSubtitleContainers();
-            }
-        });
+        if (hideOfficialSubtitles) {
+            this.hideOfficialSubtitleContainers(netflixSubtitleSelectors);
+        } else {
+            this.showOfficialSubtitleContainers();
+        }
     }
 
     cleanup() {

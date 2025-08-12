@@ -33,14 +33,14 @@ export const configSchema = {
     // --- General Settings (from options.js) ---
     uiLanguage: { defaultValue: 'en', type: String, scope: 'sync' },
     hideOfficialSubtitles: {
-        defaultValue: false,
+        defaultValue: true,
         type: Boolean,
         scope: 'sync',
     },
 
     // --- Translation & Provider Settings (from background.js & options.js) ---
     selectedProvider: {
-        defaultValue: 'deepl_free',
+        defaultValue: 'microsoft_edge_auth',
         type: String,
         scope: 'sync',
     },
@@ -78,7 +78,7 @@ export const configSchema = {
         scope: 'sync',
     },
     openaiCompatibleModel: {
-        defaultValue: 'gemini-1.5-flash',
+        defaultValue: 'gemini-2.5-flash',
         type: String,
         scope: 'sync',
     },
@@ -145,7 +145,7 @@ export const configSchema = {
     // Google Gemini Context API Settings
     geminiApiKey: { defaultValue: '', type: String, scope: 'sync' },
     geminiModel: {
-        defaultValue: 'gemini-1.5-flash',
+        defaultValue: 'gemini-2.5-flash',
         type: String,
         scope: 'sync',
     },

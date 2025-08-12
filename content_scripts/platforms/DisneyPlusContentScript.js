@@ -345,6 +345,19 @@ export class DisneyPlusContentScript extends BaseContentScript {
                         'Subtitles enabled, initializing platform.'
                     );
                     await this.initializePlatform();
+
+                    // Ensure AI Context is (re)initialized when enabled after entering player page
+                    try {
+                        if (config?.aiContextEnabled) {
+                            await this._restartAIContextFeatures();
+                        }
+                    } catch (e) {
+                        this.logWithFallback(
+                            'warn',
+                            'AI Context restart on page enter failed',
+                            { error: e.message }
+                        );
+                    }
                 }
             } catch (error) {
                 this.logWithFallback(

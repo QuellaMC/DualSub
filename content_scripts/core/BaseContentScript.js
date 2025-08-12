@@ -2025,6 +2025,15 @@ export class BaseContentScript {
             this._normalizeConfiguration();
 
             this.applyConfigurationChanges(changes);
+
+            // Handle AI Context enablement and related changes immediately without requiring page reloads
+            try {
+                await this._handleAIContextConfigurationChanges(changes);
+            } catch (error) {
+                this.logWithFallback('warn', 'Failed to apply AI Context config changes', {
+                    error: error.message,
+                });
+            }
         });
     }
 
@@ -2056,6 +2065,80 @@ export class BaseContentScript {
                     this.logPrefix
                 );
             }
+        }
+    }
+
+    /**
+     * Handle AI Context related configuration changes without requiring reloads
+     * - Starts AI Context when enabled
+     * - Stops AI Context when disabled
+     * - Restarts AI Context when provider or core settings change
+     * @param {Object} changes - Configuration changes map from chrome.storage.onChanged
+     * @private
+     */
+    async _handleAIContextConfigurationChanges(changes) {
+        try {
+            const aiKeys = new Set([
+                'aiContextEnabled',
+                'aiContextProvider',
+                'aiContextTypes',
+                'aiContextTimeout',
+                'aiContextRetryAttempts',
+                'aiContextRateLimit',
+                'aiContextBurstLimit',
+                'aiContextMandatoryDelay',
+                'openaiApiKey',
+                'openaiBaseUrl',
+                'openaiModel',
+                'geminiApiKey',
+                'geminiModel',
+            ]);
+
+            const changedKeys = Object.keys(changes || {});
+            const hasAIChanges = changedKeys.some((k) => aiKeys.has(k));
+            if (!hasAIChanges) {
+                return;
+            }
+
+            // If the enablement flag changed, handle start/stop directly
+            if (Object.prototype.hasOwnProperty.call(changes, 'aiContextEnabled')) {
+                const enabled = !!changes.aiContextEnabled;
+                if (enabled) {
+                    // Start or restart AI Context features
+                    await this._restartAIContextFeatures();
+                } else {
+                    // Stop AI Context features and keep interactive subtitles only
+                    await this._cleanupAIContextManager();
+                    await this._initializeInteractiveSubtitlesOnly(
+                        await this._getAIContextConfiguration()
+                    );
+                }
+                return;
+            }
+
+            // Other AI settings changed while enabled: restart to apply changes
+            if (this.aiContextManager && this.currentConfig?.aiContextEnabled) {
+                await this._restartAIContextFeatures();
+            }
+        } catch (error) {
+            this.logWithFallback('warn', 'AI Context configuration change handling failed', {
+                error: error.message,
+            });
+        }
+    }
+
+    /**
+     * Restart AI Context features by performing a clean destroy and fresh initialization
+     * @private
+     */
+    async _restartAIContextFeatures() {
+        try {
+            await this._cleanupAIContextManager();
+            await this.initializeAIContextFeatures();
+        } catch (error) {
+            this.logWithFallback('warn', 'Failed to restart AI Context features', {
+                error: error.message,
+            });
         }
     }
 

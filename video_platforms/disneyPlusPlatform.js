@@ -131,9 +131,9 @@ export class DisneyPlusPlatform extends VideoPlatform {
             });
 
             // Get user settings for language preferences
-            chrome.storage.sync.get(
-                ['targetLanguage', 'originalLanguage'],
-                (settings) => {
+            configService
+                .getMultiple(['targetLanguage', 'originalLanguage'])
+                .then((settings) => {
                     const targetLanguage = settings.targetLanguage || 'zh-CN';
                     const originalLanguage = settings.originalLanguage || 'en';
 
@@ -221,8 +221,7 @@ export class DisneyPlusPlatform extends VideoPlatform {
                             }
                         }
                     );
-                }
-            );
+                });
         }
     }
 
@@ -406,25 +405,25 @@ export class DisneyPlusPlatform extends VideoPlatform {
         }
     }
 
-    applyCurrentSubtitleSetting() {
-        chrome.storage.sync.get(['hideOfficialSubtitles'], (result) => {
-            const hideOfficialSubtitles = result.hideOfficialSubtitles || false;
+    async applyCurrentSubtitleSetting() {
+        const hideOfficialSubtitles = await configService.get(
+            'hideOfficialSubtitles'
+        );
 
-            const disneyPlusSubtitleSelectors = [
-                '.TimedTextOverlay',
-                '.hive-subtitle-renderer-wrapper',
-                '.hive-subtitle-renderer-cue-positioning-box',
-                '.hive-subtitle-renderer-cue-window',
-            ];
+        const disneyPlusSubtitleSelectors = [
+            '.TimedTextOverlay',
+            '.hive-subtitle-renderer-wrapper',
+            '.hive-subtitle-renderer-cue-positioning-box',
+            '.hive-subtitle-renderer-cue-window',
+        ];
 
-            if (hideOfficialSubtitles) {
-                this.hideOfficialSubtitleContainers(
-                    disneyPlusSubtitleSelectors
-                );
-            } else {
-                this.showOfficialSubtitleContainers();
-            }
-        });
+        if (hideOfficialSubtitles) {
+            this.hideOfficialSubtitleContainers(
+                disneyPlusSubtitleSelectors
+            );
+        } else {
+            this.showOfficialSubtitleContainers();
+        }
     }
 
     cleanup() {

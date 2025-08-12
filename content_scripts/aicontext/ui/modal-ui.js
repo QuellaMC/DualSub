@@ -412,6 +412,17 @@ export class AIContextModalUI {
                 loader.style.display = 'block';
                 loader.style.visibility = 'visible';
             }
+
+            // Force reflow to kick CSS animations in some browsers/themes (e.g., light mode)
+            // by toggling animation property
+            const squares = processing.querySelectorAll('.loader-square');
+            squares.forEach((sq) => {
+                const previous = sq.style.animation;
+                sq.style.animation = 'none';
+                // eslint-disable-next-line no-unused-expressions
+                sq.offsetHeight; // trigger reflow
+                sq.style.animation = previous || '';
+            });
         }
     }
 

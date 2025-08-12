@@ -6,6 +6,8 @@
 ![Last Commit](https://img.shields.io/github/last-commit/QuellaMC/DualSub.svg)
 ![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)
 ![Manifest](https://img.shields.io/badge/Manifest-v3-blue.svg)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/QuellaMC/DualSub)
+[![Chrome Web Store](https://img.shields.io/chrome-web-store/v/lnkcpcbpjbidpjdjnmjdllpkgpocaikj?label=Chrome插件商店)](https://chrome.google.com/webstore/detail/lnkcpcbpjbidpjdjnmjdllpkgpocaikj)
 
 **DualSub** 是一个强大的 Chrome 扩展，通过同时显示双语字幕来增强您的流媒体观看体验。非常适合语言学习、无障碍访问，或者只是想同时享受多种语言的内容。
 
@@ -203,9 +205,9 @@ AI 上下文分析功能分析字幕中的选定文本，并提供三种类型�
     - DualSub 图标应该出现在您的 Chrome 工具栏中
     - 访问 Netflix 或 Disney+ 测试功能
 
-### 选项 2：Chrome 网上应用店（即将推出）
+### 选项 2：Chrome 网上应用店
 
-_扩展将在未来版本中在 Chrome 网上应用店上架。_
+[从 Chrome 网上应用店安装](https://chromewebstore.google.com/detail/dualsub/lnkcpcbpjbidpjdjnmjdllpkgpocaikj)
 
 ## 🚀 快速开始
 

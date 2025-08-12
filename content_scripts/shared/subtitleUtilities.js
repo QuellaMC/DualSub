@@ -114,9 +114,15 @@ initializeLogger();
  * @returns {HTMLElement} The UI root container
  */
 export function getOrCreateUiRoot() {
-    if (dualsubUiRoot && document.body.contains(dualsubUiRoot)) {
+    // If it already exists and is in the DOM (either body or documentElement), reuse it
+    if (
+        dualsubUiRoot &&
+        ((document.body && document.body.contains(dualsubUiRoot)) ||
+            document.documentElement.contains(dualsubUiRoot))
+    ) {
         return dualsubUiRoot;
     }
+
     dualsubUiRoot = document.createElement('div');
     dualsubUiRoot.id = 'dualsub-ui-root';
     dualsubUiRoot.style.pointerEvents = 'none'; // Container should not intercept clicks
@@ -127,7 +133,21 @@ export function getOrCreateUiRoot() {
     dualsubUiRoot.style.height = '100%';
     dualsubUiRoot.style.zIndex = '9999'; // Above modal overlay (9998) but below modal content (10000)
 
-    document.body.appendChild(dualsubUiRoot);
+    // Fallback parent if body is not yet available (document_start timing)
+    const parentNode = document.body || document.documentElement;
+    parentNode.appendChild(dualsubUiRoot);
+
+    // If we appended to <html> because <body> didn't exist yet, move to body when available
+    if (!document.body) {
+        const moveToBody = () => {
+            if (document.body && dualsubUiRoot.parentElement !== document.body) {
+                document.body.appendChild(dualsubUiRoot);
+            }
+            document.removeEventListener('DOMContentLoaded', moveToBody);
+        };
+        document.addEventListener('DOMContentLoaded', moveToBody);
+    }
+
     return dualsubUiRoot;
 }
 

@@ -14,6 +14,8 @@ import {
 import { mockChromeApi, ChromeApiMock } from '../test-utils/chrome-api-mock.js';
 import { createLoggerMock } from '../test-utils/logger-mock.js';
 import Logger from '../utils/logger.js';
+import { configService } from '../services/configService.js';
+import flushPromises from '../test-utils/flush-promises.js';
 
 describe('DisneyPlusPlatform Logging Integration', () => {
     let platform;
@@ -24,6 +26,13 @@ describe('DisneyPlusPlatform Logging Integration', () => {
     beforeEach(() => {
         // Reset all mocks
         jest.clearAllMocks();
+
+        // Setup configService mock
+        jest.spyOn(configService, 'getMultiple').mockResolvedValue({
+            targetLanguage: 'zh-CN',
+            originalLanguage: 'en',
+        });
+        jest.spyOn(configService, 'get').mockResolvedValue(true);
 
         // Setup Chrome API mock
         chromeApiMock = ChromeApiMock.create();
@@ -160,7 +169,7 @@ describe('DisneyPlusPlatform Logging Integration', () => {
     });
 
     describe('Video Context Change Logging', () => {
-        test('should log video context change', () => {
+        test('should log video context change', async () => {
             platform.currentVideoId = '11111';
 
             const mockEvent = {
@@ -170,15 +179,6 @@ describe('DisneyPlusPlatform Logging Integration', () => {
                     url: 'http://example.com/master.m3u8',
                 },
             };
-
-            chromeApiMock.storage.sync.get.mockImplementation(
-                (keys, callback) => {
-                    callback({
-                        targetLanguage: 'zh-CN',
-                        originalLanguage: 'en',
-                    });
-                }
-            );
 
             chromeApiMock.runtime.sendMessage.mockImplementation(
                 (message, callback) => {
@@ -190,6 +190,7 @@ describe('DisneyPlusPlatform Logging Integration', () => {
             );
 
             platform._handleInjectorEvents(mockEvent);
+            await flushPromises();
 
             expect(mockLogger.info).toHaveBeenCalledWith(
                 'Video context changing',
@@ -226,16 +227,7 @@ describe('DisneyPlusPlatform Logging Integration', () => {
     });
 
     describe('Background Communication Logging', () => {
-        test('should log VTT request to background', () => {
-            chromeApiMock.storage.sync.get.mockImplementation(
-                (keys, callback) => {
-                    callback({
-                        targetLanguage: 'zh-CN',
-                        originalLanguage: 'en',
-                    });
-                }
-            );
-
+        test('should log VTT request to background', async () => {
             chromeApiMock.runtime.sendMessage.mockImplementation(
                 (message, callback) => {
                     callback({
@@ -254,6 +246,7 @@ describe('DisneyPlusPlatform Logging Integration', () => {
             };
 
             platform._handleInjectorEvents(mockEvent);
+            await flushPromises();
 
             expect(mockLogger.info).toHaveBeenCalledWith(
                 'Requesting VTT from background',
@@ -264,13 +257,7 @@ describe('DisneyPlusPlatform Logging Integration', () => {
             );
         });
 
-        test('should log successful VTT fetch', () => {
-            chromeApiMock.storage.sync.get.mockImplementation(
-                (keys, callback) => {
-                    callback({});
-                }
-            );
-
+        test('should log successful VTT fetch', async () => {
             chromeApiMock.runtime.sendMessage.mockImplementation(
                 (message, callback) => {
                     callback({
@@ -294,6 +281,7 @@ describe('DisneyPlusPlatform Logging Integration', () => {
             };
 
             platform._handleInjectorEvents(mockEvent);
+            await flushPromises();
 
             expect(mockLogger.info).toHaveBeenCalledWith(
                 'VTT fetched successfully',
@@ -305,13 +293,7 @@ describe('DisneyPlusPlatform Logging Integration', () => {
             );
         });
 
-        test('should log background fetch errors', () => {
-            chromeApiMock.storage.sync.get.mockImplementation(
-                (keys, callback) => {
-                    callback({});
-                }
-            );
-
+        test('should log background fetch errors', async () => {
             chromeApiMock.runtime.sendMessage.mockImplementation(
                 (message, callback) => {
                     callback({
@@ -333,6 +315,7 @@ describe('DisneyPlusPlatform Logging Integration', () => {
             };
 
             platform._handleInjectorEvents(mockEvent);
+            await flushPromises();
 
             expect(mockLogger.error).toHaveBeenCalledWith(
                 'Background failed to fetch VTT',
@@ -345,13 +328,7 @@ describe('DisneyPlusPlatform Logging Integration', () => {
             );
         });
 
-        test('should log chrome runtime errors', () => {
-            chromeApiMock.storage.sync.get.mockImplementation(
-                (keys, callback) => {
-                    callback({});
-                }
-            );
-
+        test('should log chrome runtime errors', async () => {
             chromeApiMock.runtime.lastError = {
                 message: 'Extension context invalidated',
             };
@@ -370,6 +347,7 @@ describe('DisneyPlusPlatform Logging Integration', () => {
             };
 
             platform._handleInjectorEvents(mockEvent);
+            await flushPromises();
 
             expect(mockLogger.error).toHaveBeenCalledWith(
                 'Error for VTT fetch',
@@ -384,13 +362,7 @@ describe('DisneyPlusPlatform Logging Integration', () => {
             chromeApiMock.runtime.lastError = null;
         });
 
-        test('should log video context mismatch warnings', () => {
-            chromeApiMock.storage.sync.get.mockImplementation(
-                (keys, callback) => {
-                    callback({});
-                }
-            );
-
+        test('should log video context mismatch warnings', async () => {
             chromeApiMock.runtime.sendMessage.mockImplementation(
                 (message, callback) => {
                     callback({
@@ -411,6 +383,7 @@ describe('DisneyPlusPlatform Logging Integration', () => {
             };
 
             platform._handleInjectorEvents(mockEvent);
+            await flushPromises();
 
             expect(mockLogger.warn).toHaveBeenCalledWith(
                 'Received VTT for different video context - discarding',

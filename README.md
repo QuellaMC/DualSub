@@ -7,6 +7,7 @@
 ![License](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)
 ![Manifest](https://img.shields.io/badge/Manifest-v3-blue.svg)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/QuellaMC/DualSub)
+[![Chrome Web Store](https://img.shields.io/chrome-web-store/v/lnkcpcbpjbidpjdjnmjdllpkgpocaikj?label=Chrome%20Web%20Store)](https://chrome.google.com/webstore/detail/lnkcpcbpjbidpjdjnmjdllpkgpocaikj)
 
 **DualSub** is a powerful Chrome extension that enhances your streaming experience by displaying dual language subtitles simultaneously. Perfect for language learning, accessibility, or simply enjoying content in multiple languages at once.
 
@@ -205,9 +206,9 @@ Selected: "Bowing deeply"
     - The DualSub icon should appear in your Chrome toolbar
     - Visit Netflix or Disney+ to test functionality
 
-### Option 2: Chrome Web Store (Coming Soon)
+### Option 2: Chrome Web Store
 
-_The extension will be available on the Chrome Web Store in a future release._
+[Install from Chrome Web Store](https://chromewebstore.google.com/detail/dualsub/lnkcpcbpjbidpjdjnmjdllpkgpocaikj)
 
 ## 🚀 Quick Start
 

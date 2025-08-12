@@ -182,6 +182,19 @@ export class AIContextModalAnimations {
 
         // Animate processing button
         this._animateProcessingButton();
+
+        // Ensure loader animations are running by forcing a reflow and toggling animation
+        const processing = document.getElementById('dualsub-processing-state');
+        if (processing) {
+            const squares = processing.querySelectorAll('.loader-square');
+            squares.forEach((sq) => {
+                const prev = sq.style.animation;
+                sq.style.animation = 'none';
+                // eslint-disable-next-line no-unused-expressions
+                sq.offsetHeight;
+                sq.style.animation = prev || '';
+            });
+        }
     }
 
     /**

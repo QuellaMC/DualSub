@@ -580,7 +580,8 @@
     height: 28px;
     margin: 2px;
     border-radius: 0px;
-    background: white;
+    /* Use visible color in light mode to ensure contrast on white backgrounds */
+    background: #007bff;
     background-size: cover;
     background-position: center;
     background-attachment: fixed;
@@ -626,6 +627,13 @@
     background: #ffffff;
     border-radius: 8px;
     margin: 10px 0;
+}
+
+/* Ensure the processing state is fully visible during analysis */
+.dualsub-context-modal.dualsub-processing-disabled #dualsub-processing-state,
+.dualsub-processing-state[style*='display: block'] {
+    visibility: visible !important;
+    opacity: 1 !important;
 }
 
 /* EXACT legacy processing text styling */

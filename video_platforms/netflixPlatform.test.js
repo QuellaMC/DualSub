@@ -14,6 +14,8 @@ import {
 import { mockChromeApi, ChromeApiMock } from '../test-utils/chrome-api-mock.js';
 import { createLoggerMock } from '../test-utils/logger-mock.js';
 import Logger from '../utils/logger.js';
+import { configService } from '../services/configService.js';
+import flushPromises from '../test-utils/flush-promises.js';
 
 describe('NetflixPlatform Logging Integration', () => {
     let platform;
@@ -24,6 +26,15 @@ describe('NetflixPlatform Logging Integration', () => {
     beforeEach(() => {
         // Reset all mocks
         jest.clearAllMocks();
+
+        // Setup configService mock
+        jest.spyOn(configService, 'getMultiple').mockResolvedValue({
+            targetLanguage: 'zh-CN',
+            originalLanguage: 'en',
+            useNativeSubtitles: true,
+            useOfficialTranslations: true,
+        });
+        jest.spyOn(configService, 'get').mockResolvedValue(true);
 
         // Setup Chrome API mock
         chromeApiMock = ChromeApiMock.create();
@@ -325,15 +336,7 @@ describe('NetflixPlatform Logging Integration', () => {
             );
         });
 
-        test('should log successful VTT processing', () => {
-            chromeApiMock.storage.sync.get.mockImplementation(
-                (keys, callback) => {
-                    callback({
-                        useOfficialTranslations: true,
-                    });
-                }
-            );
-
+        test('should log successful VTT processing', async () => {
             chromeApiMock.runtime.sendMessage.mockImplementation(
                 (message, callback) => {
                     callback({
@@ -371,6 +374,7 @@ describe('NetflixPlatform Logging Integration', () => {
             };
 
             platform.handleInjectorEvents(mockEvent);
+            await flushPromises();
 
             expect(mockLogger.info).toHaveBeenCalledWith(
                 'Netflix VTT processed successfully',
@@ -382,15 +386,7 @@ describe('NetflixPlatform Logging Integration', () => {
             );
         });
 
-        test('should log background processing errors', () => {
-            chromeApiMock.storage.sync.get.mockImplementation(
-                (keys, callback) => {
-                    callback({
-                        useOfficialTranslations: true,
-                    });
-                }
-            );
-
+        test('should log background processing errors', async () => {
             chromeApiMock.runtime.sendMessage.mockImplementation(
                 (message, callback) => {
                     callback({
@@ -426,6 +422,7 @@ describe('NetflixPlatform Logging Integration', () => {
             };
 
             platform.handleInjectorEvents(mockEvent);
+            await flushPromises();
 
             expect(mockLogger.error).toHaveBeenCalledWith(
                 'Netflix background failed to process VTT',

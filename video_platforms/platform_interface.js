@@ -1,4 +1,5 @@
 import Logger from '../utils/logger.js';
+import { configService } from '../services/configService.js';
 
 /**
  * @typedef {Object} SubtitleCue
@@ -23,6 +24,7 @@ import Logger from '../utils/logger.js';
 export class VideoPlatform {
     constructor() {
         this.logger = Logger.create('VideoPlatform');
+        this.unsubscribeFromChanges = null;
     }
     /**
      * Checks if the current page is relevant to this platform.
@@ -149,16 +151,16 @@ export class VideoPlatform {
      * Utility method: Handle native subtitles based on user setting
      * @param {string[]} selectors - Array of CSS selectors for subtitle containers
      */
-    handleNativeSubtitlesWithSetting(selectors) {
-        chrome.storage.sync.get(['hideOfficialSubtitles'], (result) => {
-            const hideOfficialSubtitles = result.hideOfficialSubtitles || false;
+    async handleNativeSubtitlesWithSetting(selectors) {
+        const hideOfficialSubtitles = await configService.get(
+            'hideOfficialSubtitles'
+        );
 
-            if (hideOfficialSubtitles) {
-                this.hideOfficialSubtitleContainers(selectors);
-            } else {
-                this.showOfficialSubtitleContainers();
-            }
-        });
+        if (hideOfficialSubtitles) {
+            this.hideOfficialSubtitleContainers(selectors);
+        } else {
+            this.showOfficialSubtitleContainers();
+        }
     }
 
     /**
@@ -168,9 +170,9 @@ export class VideoPlatform {
     setupNativeSubtitleSettingsListener(selectors) {
         this.subtitleSelectors = selectors;
 
-        this.storageListener = (changes, areaName) => {
-            if (areaName === 'sync' && changes.hideOfficialSubtitles) {
-                const newValue = changes.hideOfficialSubtitles.newValue;
+        this.storageListener = (changes) => {
+            if (changes.hideOfficialSubtitles !== undefined) {
+                const newValue = changes.hideOfficialSubtitles;
 
                 if (newValue) {
                     this.hideOfficialSubtitleContainers(this.subtitleSelectors);
@@ -180,32 +182,15 @@ export class VideoPlatform {
             }
         };
 
-        if (
-            chrome &&
-            chrome.storage &&
-            chrome.storage.onChanged &&
-            chrome.storage.onChanged.addListener
-        ) {
-            chrome.storage.onChanged.addListener(this.storageListener);
-            this.logger?.debug('Storage change listener added successfully');
+        // Use configService to listen for changes
+        if (configService && configService.onChanged) {
+            this.unsubscribeFromChanges = configService.onChanged(
+                this.storageListener
+            );
+            this.logger?.debug('configService change listener added successfully');
         } else {
             this.logger?.warn(
-                'Chrome storage onChanged API not available, skipping listener setup',
-                {
-                    chromeAvailable: !!chrome,
-                    storageAvailable: !!(chrome && chrome.storage),
-                    onChangedAvailable: !!(
-                        chrome &&
-                        chrome.storage &&
-                        chrome.storage.onChanged
-                    ),
-                    addListenerAvailable: !!(
-                        chrome &&
-                        chrome.storage &&
-                        chrome.storage.onChanged &&
-                        chrome.storage.onChanged.addListener
-                    ),
-                }
+                'configService.onChanged API not available, skipping listener setup'
             );
         }
     }
@@ -226,24 +211,15 @@ export class VideoPlatform {
      */
     cleanupNativeSubtitleSettingsListener() {
         if (this.storageListener) {
-            // Check if chrome.storage.onChanged is available before removing listener
-            if (
-                chrome &&
-                chrome.storage &&
-                chrome.storage.onChanged &&
-                chrome.storage.onChanged.removeListener
-            ) {
-                chrome.storage.onChanged.removeListener(this.storageListener);
+            if (this.unsubscribeFromChanges) {
+                this.unsubscribeFromChanges();
                 this.logger?.debug(
-                    'Storage change listener removed successfully'
-                );
-            } else {
-                this.logger?.warn(
-                    'Chrome storage onChanged API not available for cleanup'
+                    'configService change listener removed successfully'
                 );
             }
             this.storageListener = null;
             this.subtitleSelectors = null;
+            this.unsubscribeFromChanges = null;
         }
     }
 
