@@ -121,7 +121,10 @@ export class TextSelectionHandler {
             return;
         }
 
-        this._updateSelectionState(selection);
+        clearTimeout(this._selectionStateDebounce);
+        this._selectionStateDebounce = setTimeout(() => {
+            try { this._updateSelectionState(selection); } catch (_) {}
+        }, 50);
 
         // Only auto-analyze if enabled (disabled by default for modal workflow)
         if (this.config.autoAnalysis) {
@@ -151,11 +154,17 @@ export class TextSelectionHandler {
         this._log('debug', 'Word clicked', { word, position });
 
         // Dispatch word selection event
+        const enrichedPosition = {
+            index: position,
+            element: target,
+            subtitleType: target.dataset.subtitleType || 'original',
+            wordIndex: Number(target.dataset.position) || position,
+        };
         document.dispatchEvent(
             new CustomEvent('dualsub-word-selected', {
                 detail: {
                     word,
-                    position,
+                    position: enrichedPosition,
                     action: 'toggle',
                     element: target,
                 },

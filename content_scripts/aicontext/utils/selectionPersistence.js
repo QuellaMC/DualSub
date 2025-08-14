@@ -9,6 +9,7 @@
  */
 
 import { logWithFallback } from '../../core/utils.js';
+import { UI_CONFIG } from '../core/constants.js';
 
 /**
  * Selection Persistence Manager
@@ -33,6 +34,12 @@ export class SelectionPersistenceManager {
      */
     startMonitoring() {
         if (this.isMonitoring) {
+            return;
+        }
+
+        // Only monitor while modal is visible to reduce overhead
+        if (!this.modalCore?.isVisible) {
+            this._log('debug', 'Skipping monitoring start; modal not visible');
             return;
         }
 
@@ -115,6 +122,18 @@ export class SelectionPersistenceManager {
             return;
         }
 
+        // Skip if a visual restoration is pending to avoid re-queues
+        if (this.modalCore?.selectionPersistence?.pendingRestore) {
+            this._log('debug', 'Pending visual restoration; skipping content-change event');
+            return;
+        }
+
+        // Skip entirely while analyzing to prevent flicker/log spam
+        if (this.modalCore.isAnalyzing) {
+            this._log('debug', 'Analyzing active; skipping subtitle change handling', { type });
+            return;
+        }
+
         try {
             const oldText = this._extractTextFromHTML(oldContent);
             const newText = this._extractTextFromHTML(newContent);
@@ -128,8 +147,14 @@ export class SelectionPersistenceManager {
 
             // If we have a selection and content is changing
             if (this.modalCore.selectedWords.size > 0) {
+                // Gate by selection state age to avoid perpetual attempts
+                const lastState = this.modalCore.selectionPersistence.lastSelectionState;
+                const ageThreshold = UI_CONFIG?.MODAL?.SELECTION_STATE_AGE_THRESHOLD || 30000;
+                const stateAge = lastState ? Date.now() - lastState.timestamp : Number.POSITIVE_INFINITY;
+                const isRecent = stateAge < ageThreshold;
+
                 // Check if this is the same content being refreshed
-                if (this.modalCore.isContentIdentical(newText)) {
+                if (isRecent && this.modalCore.isContentIdentical(newText)) {
                     this._log(
                         'info',
                         'Identical content detected via event, preparing restoration',
@@ -147,6 +172,13 @@ export class SelectionPersistenceManager {
                         'debug',
                         'Content changed, captured old state for potential restoration'
                     );
+                    // For old state, avoid restoration attempts
+                    if (!isRecent) {
+                        this._log('debug', 'Skipping restoration due to stale selection state', {
+                            stateAge,
+                            threshold: ageThreshold,
+                        });
+                    }
                 }
             }
         } catch (error) {
@@ -205,12 +237,14 @@ export class SelectionPersistenceManager {
             this._handleSubtitleMutation(mutations, subtitleType, container);
         });
 
-        // Observe changes to innerHTML and child elements
+        // Observe changes but restrict attribute observation to text signature only.
+        // This avoids reacting to highlight class toggles on word spans.
         observer.observe(container, {
             childList: true,
             subtree: true,
             characterData: true,
-            attributes: false,
+            attributes: true,
+            attributeFilter: ['data-text-sig'],
         });
 
         this.observers.set(subtitleType, observer);
@@ -230,6 +264,12 @@ export class SelectionPersistenceManager {
     _handleSubtitleMutation(mutations, subtitleType, container) {
         // Only monitor original subtitles for AI Context (as per requirements)
         if (subtitleType !== 'original') {
+            return;
+        }
+
+        // Ignore while a visual restoration is pending to prevent loops
+        if (this.modalCore?.selectionPersistence?.pendingRestore) {
+            this._log('debug', 'Pending visual restoration; skipping mutation batch', { subtitleType });
             return;
         }
 
@@ -255,6 +295,18 @@ export class SelectionPersistenceManager {
      */
     _processSubtitleChange(subtitleType, container) {
         try {
+            // Skip entirely if a visual restoration is pending (avoid triggering loops)
+            if (this.modalCore?.selectionPersistence?.pendingRestore) {
+                this._log('debug', 'Pending visual restoration; skipping mutation processing', { subtitleType });
+                return;
+            }
+
+            // Skip entirely while analyzing to prevent flicker/log spam
+            if (this.modalCore.isAnalyzing) {
+                this._log('debug', 'Analyzing active; skipping mutation processing', { subtitleType });
+                return;
+            }
+
             const currentContent = this._extractTextContent(container);
             const lastContent = this.lastObservedContent.get(subtitleType);
 
@@ -267,8 +319,15 @@ export class SelectionPersistenceManager {
 
             // If we have a selection and content is changing
             if (this.modalCore.selectedWords.size > 0) {
+                // Gate by selection state age to avoid perpetual attempts
+                const lastState = this.modalCore.selectionPersistence.lastSelectionState;
+                const ageThreshold = UI_CONFIG?.MODAL?.SELECTION_STATE_AGE_THRESHOLD || 30000;
+                const stateAge = lastState ? Date.now() - lastState.timestamp : Number.POSITIVE_INFINITY;
+                const isRecent = stateAge < ageThreshold;
+
                 // Check if this is the same content being refreshed
                 if (
+                    isRecent &&
                     lastContent &&
                     this.modalCore.isContentIdentical(currentContent)
                 ) {
@@ -286,6 +345,12 @@ export class SelectionPersistenceManager {
                 } else {
                     // Content has actually changed, capture new state
                     this.modalCore.captureSelectionState(currentContent);
+                    if (!isRecent) {
+                        this._log('debug', 'Skipping restoration due to stale selection state', {
+                            stateAge,
+                            threshold: ageThreshold,
+                        });
+                    }
                 }
             }
 
@@ -408,15 +473,43 @@ export class SelectionPersistenceManager {
             return;
         }
 
-        // Clear any existing restoration timeout
+        // Skip any restoration attempts while analyzing
+        if (this.modalCore.isAnalyzing) {
+            this._log('debug', 'Analyzing active; skipping restoration scheduling', { source });
+            return;
+        }
+
+        // If a restoration is already scheduled, keep it (avoid perpetual rescheduling during rapid mutations)
         if (this.modalCore.selectionPersistence.restorationTimeout) {
-            clearTimeout(
-                this.modalCore.selectionPersistence.restorationTimeout
-            );
-            this._log('debug', 'Cleared previous restoration timeout', {
+            this._log('debug', 'Restoration already scheduled, skipping re-schedule', {
                 source,
             });
+            return;
         }
+
+        // Suppress restoration if a manual selection happened very recently to avoid overriding user intent
+        try {
+            const lastManual = this.modalCore.selectionPersistence.lastManualSelectionTs || 0;
+            if (Date.now() - lastManual < 500) {
+                this._log('debug', 'Skipping restoration due to recent manual selection', {
+                    deltaMs: Date.now() - lastManual,
+                    source,
+                });
+                return;
+            }
+        } catch (_) {}
+
+        // Cooldown between restorations to avoid log spam/loops
+        try {
+            const lastRestoreAt = this.modalCore.selectionPersistence.lastRestoreAt || 0;
+            if (Date.now() - lastRestoreAt < 400) {
+                this._log('debug', 'Skipping restoration due to cooldown', {
+                    deltaMs: Date.now() - lastRestoreAt,
+                    source,
+                });
+                return;
+            }
+        } catch (_) {}
 
         // Schedule new restoration with appropriate delay
         const delay = source === 'event' ? 150 : 200; // Slightly longer for mutation observer
@@ -430,7 +523,52 @@ export class SelectionPersistenceManager {
                 // Clear the timeout reference before calling restoration
                 this.modalCore.selectionPersistence.restorationTimeout = null;
 
+                // Re-check recent manual selection before actually restoring
+                try {
+                    const lastManual = this.modalCore.selectionPersistence.lastManualSelectionTs || 0;
+                    if (Date.now() - lastManual < 750) {
+                        this._log('debug', 'Aborting restoration due to recent manual selection', {
+                            deltaMs: Date.now() - lastManual,
+                            source,
+                        });
+                        return;
+                    }
+                } catch (_) {}
+
+                // If current selected words differ from saved state, prefer current and skip restoration
+                try {
+                    const saved = this.modalCore.selectionPersistence.lastSelectionState;
+                    const savedWords = Array.isArray(saved?.selectedWords) ? saved.selectedWords.slice().sort().join('|') : '';
+                    const currentWords = Array.from(this.modalCore.selectedWords).sort().join('|');
+                    if (savedWords && savedWords !== currentWords) {
+                        // Update saved state to current to avoid reverting user changes
+                        const container = document.getElementById('dualsub-original-subtitle');
+                        const currentContent = this._extractTextContent(container);
+                        this.modalCore.captureSelectionState(currentContent);
+                        this._log('debug', 'Saved selection updated to current; skipping restoration', {
+                            savedWords,
+                            currentWords,
+                        });
+                        return;
+                    }
+                } catch (_) {}
+
+                // Avoid unbounded attempts per subtitle signature
+                try {
+                    const container = document.getElementById('dualsub-original-subtitle');
+                    const sig = container?.dataset?.textSig || 'unknown';
+                    this._restoreCounts = this._restoreCounts || new Map();
+                    const count = this._restoreCounts.get(sig) || 0;
+                    if (count > 4) {
+                        this._log('warn', 'Max restoration attempts reached for signature', { sig, count });
+                        return;
+                    }
+                    this._restoreCounts.set(sig, count + 1);
+                } catch (_) {}
+
                 const success = this.modalCore.restoreSelectionState();
+                // Mark restore time for cooldown
+                try { this.modalCore.selectionPersistence.lastRestoreAt = Date.now(); } catch (_) {}
                 this._log(
                     success ? 'info' : 'warn',
                     'Debounced restoration completed',

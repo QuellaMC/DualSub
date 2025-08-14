@@ -71,7 +71,10 @@ export class AIContextModalEvents {
             this.core.contentElement?.querySelector('#dualsub-modal-close') ||
             document.getElementById('dualsub-modal-close');
         if (closeBtn) {
-            const closeHandler = () => this._handleCloseModal();
+            const closeHandler = () => {
+                if (this.modalController) this.modalController.closeModal();
+                else this._handleCloseModal();
+            };
             closeBtn.addEventListener('click', closeHandler);
             this.boundHandlers.set('close-click', {
                 element: closeBtn,
@@ -112,12 +115,12 @@ export class AIContextModalEvents {
      * @private
      */
     _setupSelectionEvents() {
-        // Delegate word chip events to the selected words container (check multiple locations)
+        // Delegate word chip events to the selected words container (prefer current content element)
         const wordsContainer =
-            this.core.element.querySelector('#dualsub-selected-words') ||
             this.core.contentElement?.querySelector(
                 '#dualsub-selected-words'
             ) ||
+            this.core.element.querySelector('#dualsub-selected-words') ||
             document.getElementById('dualsub-selected-words');
         if (wordsContainer) {
             const wordsHandler = (e) => this._handleWordChipClick(e);
@@ -134,12 +137,12 @@ export class AIContextModalEvents {
      * @private
      */
     _setupAnalysisEvents() {
-        // Start analysis button (check multiple locations)
+        // Start analysis button (prefer current content element)
         const startBtn =
-            this.core.element.querySelector('#dualsub-start-analysis') ||
             this.core.contentElement?.querySelector(
                 '#dualsub-start-analysis'
             ) ||
+            this.core.element.querySelector('#dualsub-start-analysis') ||
             document.getElementById('dualsub-start-analysis');
         if (startBtn) {
             // Check if we already have a handler for this element to prevent duplicates
@@ -149,19 +152,33 @@ export class AIContextModalEvents {
                     'debug',
                     'Start analysis button already has event listener, skipping'
                 );
+                // Refresh localization in case UI language changed (e.g., fullscreen)
+                try {
+                    startBtn.title = this._getLocalizedMessage('aiContextStartAnalysis');
+                    if (!startBtn.getAttribute('data-paused-toggle')) {
+                        startBtn.textContent = this._getLocalizedMessage('aiContextStartAnalysis');
+                    }
+                } catch (_) {}
                 return;
             }
 
             const startHandler = (event) => {
                 event.preventDefault();
                 event.stopPropagation();
-                this._handleStartAnalysis();
+                if (this.modalController) return this.modalController.startAnalysis();
+                return this._handleStartAnalysis();
             };
             startBtn.addEventListener('click', startHandler);
             this.boundHandlers.set('start-analysis', {
                 element: startBtn,
                 handler: startHandler,
             });
+            // Ensure localized label is applied when binding
+            try {
+                const title = this._getLocalizedMessage('aiContextStartAnalysis');
+                startBtn.title = title;
+                startBtn.textContent = title;
+            } catch (_) {}
         }
 
         // Pause analysis button (check multiple locations)
@@ -172,7 +189,10 @@ export class AIContextModalEvents {
             ) ||
             document.getElementById('dualsub-pause-analysis');
         if (pauseBtn) {
-            const pauseHandler = () => this._handlePauseAnalysis();
+            const pauseHandler = () => {
+                if (this.modalController) return this.modalController.pauseAnalysis();
+                return this._handlePauseAnalysis();
+            };
             pauseBtn.addEventListener('click', pauseHandler);
             this.boundHandlers.set('pause-analysis', {
                 element: pauseBtn,
@@ -186,7 +206,10 @@ export class AIContextModalEvents {
             this.core.contentElement?.querySelector('#dualsub-new-analysis') ||
             document.getElementById('dualsub-new-analysis');
         if (newBtn) {
-            const newHandler = () => this._handleNewAnalysis();
+            const newHandler = () => {
+                if (this.modalController) return this.modalController.newAnalysis();
+                return this._handleNewAnalysis();
+            };
             newBtn.addEventListener('click', newHandler);
             this.boundHandlers.set('new-analysis', {
                 element: newBtn,
@@ -224,9 +247,14 @@ export class AIContextModalEvents {
             handler: analysisRequestHandler,
         });
 
-        // Listen for analysis results (EXACT legacy behavior)
-        const analysisResultHandler = (event) =>
-            this._handleAnalysisResult(event);
+        // Listen for analysis results and delegate to controller
+        const analysisResultHandler = (event) => {
+            if (this.modalController && event?.detail) {
+                this.modalController.onAnalysisResult(event.detail);
+            } else {
+                this._handleAnalysisResult(event);
+            }
+        };
         document.addEventListener(
             'dualsub-context-result',
             analysisResultHandler
@@ -272,7 +300,7 @@ export class AIContextModalEvents {
         this.ui.updateSelectionDisplay();
 
         // Ensure visual state is properly cleared (Issue #3)
-        this._syncWordSelectionVisuals();
+        try { this.core.syncSelectionHighlights(); } catch (_) {}
 
         this.core._dispatchEvent(EVENT_TYPES.MODAL_CLOSE_REQUESTED, {});
     }
@@ -292,7 +320,8 @@ export class AIContextModalEvents {
             event.target.classList.contains('dualsub-modal-overlay') ||
             event.target.classList.contains('dualsub-context-modal')
         ) {
-            this._handleCloseModal();
+            if (this.modalController) this.modalController.closeModal();
+            else this._handleCloseModal();
         }
     }
 
@@ -396,24 +425,21 @@ export class AIContextModalEvents {
                     this.core.removeWordFromSelection(word);
                 }
 
-                // Update selected text with position-based ordering (legacy compatibility)
-                this._updateSelectedTextWithPositionOrder();
+        // Update selected text with position-based ordering (delegated to core model)
+        this.core._updateSelectedText();
 
                 this.ui.updateSelectionDisplay();
 
-                // Sync visual state with original subtitles (legacy compatibility)
-                this._syncWordSelectionVisuals();
+                // Sync visual state with original subtitles (centralized in core)
+                try { this.core.syncSelectionHighlights(); } catch (_) {}
 
                 // Hide modal if no words are selected (legacy compatibility)
                 if (this.core.selectedWordPositions.size === 0) {
                     // Ensure visual state is properly cleared before closing
                     this._syncWordSelectionVisuals();
-                    this.core._dispatchEvent(
-                        EVENT_TYPES.MODAL_CLOSE_REQUESTED,
-                        {
-                            reason: 'no-words-selected',
-                        }
-                    );
+                // Close via controller for centralized cleanup
+                if (this.modalController) this.modalController.closeModal();
+                else this._handleCloseModal();
                 }
             }
         }
@@ -424,6 +450,9 @@ export class AIContextModalEvents {
      * @private
      */
     async _handleStartAnalysis() {
+        // DELEGATE: prefer controller when available
+        if (this.modalController) return this.modalController.startAnalysis();
+
         // Debouncing protection against duplicate clicks
         const currentTime = Date.now();
         if (
@@ -444,60 +473,80 @@ export class AIContextModalEvents {
         this.lastAnalysisClickTime = currentTime;
 
         if (this.core.selectedWords.size === 0) {
+            // Close the modal when no words selected
+            if (this.modalController) this.modalController.closeModal();
+            else this._handleCloseModal();
             return;
         }
 
         // Clear/abort any prior analysis before starting a new one (EXACT legacy behavior)
         if (this.core.isAnalyzing) {
-            this._handlePauseAnalysis();
+            if (this.modalController) this.modalController.pauseAnalysis();
+            else this._handlePauseAnalysis();
         }
 
         this.core.currentMode = 'analysis';
 
         // Use setAnalyzing to trigger duplicate removal (Issue #1: Fixed duplicate word selection during analysis)
+        // Set analyzing before any UI flips
         this.core.setAnalyzing(true);
+        // Centralized state path: set processing state to drive rendering; add sticky to prevent flash back
+        this.core.setState(MODAL_STATES.PROCESSING);
+        this.core.contentElement?.classList.add('dualsub-processing-sticky');
+        // Emit a modal state change to 'analyzing' to keep the manager state in sync during SPA timing
+        try {
+            this.core._dispatchEvent(EVENT_TYPES.MODAL_STATE_CHANGE, {
+                previousState: this.core.state,
+                currentState: MODAL_STATES.PROCESSING,
+                data: { requestId: this.core.currentRequest },
+            });
+        } catch (_) {}
 
         // Disable word interactions during processing (EXACT legacy behavior)
         this._disableWordInteractions();
+        // Also freeze selection persistence while analyzing to avoid blinking
+        try { this.core.selectionPersistence.lastManualSelectionTs = Date.now(); } catch (_) {}
 
-        // Update analysis button to processing state with pause functionality (EXACT legacy behavior)
-        const analysisButton = document.getElementById(
-            'dualsub-start-analysis'
-        );
-        if (analysisButton) {
-            analysisButton.textContent = this._getLocalizedMessage(
-                'aiContextPauseAnalysis'
-            );
-            analysisButton.className = 'dualsub-analysis-button processing';
-            analysisButton.title = this._getLocalizedMessage(
-                'aiContextPauseAnalysisTitle'
-            );
-            analysisButton.disabled = false; // Keep enabled for pause functionality
-
-            // Remove existing event listeners and add pause functionality
-            const newButton = analysisButton.cloneNode(true);
-            analysisButton.parentNode.replaceChild(newButton, analysisButton);
-
-            // Update boundHandlers to point to the new button element
-            if (this.boundHandlers.has('start-analysis')) {
-                this.boundHandlers.delete('start-analysis');
+        // Update analysis button via controller API
+        try {
+            if (this.modalController && typeof this.modalController.resetAnalysisButton === 'function') {
+                // After switching to processing state, we want pause-enabled button; reuse controller reset then toggle
+                this.modalController.resetAnalysisButton();
+                const btn = (this.core.contentElement?.querySelector('#dualsub-start-analysis') || document.getElementById('dualsub-start-analysis'));
+                if (btn) {
+                    btn.textContent = this._getLocalizedMessage('aiContextPauseAnalysis');
+                    btn.className = 'dualsub-analysis-button processing';
+                    btn.title = this._getLocalizedMessage('aiContextPauseAnalysisTitle');
+                    btn.disabled = false;
+                    btn.setAttribute('data-paused-toggle', 'true');
+                    const pauseHandler = (event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        if (this.modalController) this.modalController.pauseAnalysis();
+                        else this._handlePauseAnalysis();
+                    };
+                    const newButton = btn.cloneNode(true);
+                    btn.parentNode.replaceChild(newButton, btn);
+                    newButton.addEventListener('click', pauseHandler);
+                    this.boundHandlers.set('pause-analysis-active', { element: newButton, handler: pauseHandler });
+                }
             }
+        } catch (_) {}
 
-            const pauseHandler = (event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                this._handlePauseAnalysis();
-            };
-            newButton.addEventListener('click', pauseHandler);
-
-            // Store the pause handler for cleanup
-            this.boundHandlers.set('pause-analysis-active', {
-                element: newButton,
-                handler: pauseHandler,
-            });
+        // Use animations pipeline to ensure state class and layout updates
+        if (this.animations && typeof this.animations.showProcessingState === 'function') {
+            this.animations.showProcessingState();
+        } else {
+            // Rely solely on state-driven CSS; avoid inline display mutations
+            this.ui.showProcessingState();
         }
+        // Immediately enforce chip disabled visuals after switching states
+        try { this.ui.updateSelectionDisplay(); } catch (_) {}
 
-        this.ui.showProcessingState();
+        // Keep visual selection highlight visible during processing (multi-sync to withstand reflows)
+        try { this._syncWordSelectionVisuals(); } catch (_) {}
+        try { requestAnimationFrame(() => { try { this._syncWordSelectionVisuals(); } catch (_) {} }); } catch (_) {}
+        try { setTimeout(() => { try { this._syncWordSelectionVisuals(); } catch (_) {} }, 75); } catch (_) {}
 
         // Get user's language preferences for analysis
         let targetLanguage = 'en'; // Default fallback
@@ -581,20 +630,19 @@ export class AIContextModalEvents {
      * @private
      */
     _handlePauseAnalysis() {
-        this.core.isAnalyzing = false;
-        this.core.currentRequest = null;
+        // DELEGATE: prefer controller when available
+        if (this.modalController) return this.modalController.pauseAnalysis();
 
-        // Re-enable word interactions (EXACT legacy behavior)
-        this._enableWordInteractions();
+        // Request provider cancellation through manager by emitting standardized pause event
+        try {
+            document.dispatchEvent(
+                new CustomEvent('aicontext:analysis:pause', {
+                    detail: { requestId: this.core.currentRequest },
+                })
+            );
+        } catch (_) {}
 
-        // Reset analysis button (EXACT legacy behavior)
-        this._resetAnalysisButton();
-
-        // Reset to selection state (EXACT legacy behavior)
-        this.core.currentMode = 'selection';
-        this.ui.showInitialState();
-
-        this.core._log('info', 'Analysis paused');
+        // The remainder of pause cleanup is handled by controller path.
     }
 
     /**
@@ -659,24 +707,12 @@ export class AIContextModalEvents {
             return;
         }
 
-        // Show modal if not visible (matches legacy behavior)
-        if (!this.core.isVisible) {
-            this.core._log('debug', 'Showing modal for word selection', {
-                word,
-                subtitleType,
-            });
-            this.core._dispatchEvent(EVENT_TYPES.MODAL_SHOW_REQUESTED, {
-                mode: 'selection',
-                trigger: 'word-selection',
-            });
-        }
-
-        // Capture original sentence structure on first word selection (legacy compatibility)
+        // Capture original sentence structure on first selection intent (before modal state changes)
         if (this.core.selectedWords.size === 0 && element) {
             this._captureOriginalSentenceStructure(element);
         }
 
-        // Create enhanced position information for position-based selection
+        // Build enhanced position for deterministic selection
         const enhancedPosition = {
             ...effectivePosition,
             elementId: element?.id,
@@ -685,7 +721,12 @@ export class AIContextModalEvents {
             wordIndex: this._getWordIndex(element),
         };
 
-        // Handle word selection
+        // Record last manual selection time to suppress immediate restorations
+        try {
+            this.core.selectionPersistence.lastManualSelectionTs = Date.now();
+        } catch (_) {}
+
+        // Apply the selection change BEFORE possibly showing the modal to avoid race with modal clearing state
         if (effectiveAction === 'toggle') {
             this.core.toggleWordSelection(word, enhancedPosition);
         } else if (effectiveAction === 'add') {
@@ -694,20 +735,69 @@ export class AIContextModalEvents {
             this.core.removeWordFromSelection(word, enhancedPosition);
         }
 
-        // Update selected text with position-based ordering (legacy compatibility)
-        this._updateSelectedTextWithPositionOrder();
+        // Immediate visual feedback on the clicked element (in addition to global sync)
+        try {
+            if (element) {
+                const clickedKey = this.core._createPositionKey(
+                    word,
+                    enhancedPosition
+                );
+                if (this.core.selectedWordPositions.has(clickedKey)) {
+                    element.classList.add('dualsub-word-selected');
+                } else {
+                    element.classList.remove('dualsub-word-selected');
+                }
+            }
+        } catch (_) {}
 
+        // Fallback: if events arrive before positions were fully computed, ensure selectedWordsOrder has at least one entry
+        if (
+            this.core.selectedWords.size > 0 &&
+            this.core.selectedWordsOrder.length === 0
+        ) {
+            const firstWord = Array.from(this.core.selectedWords)[0];
+            this.core.selectedWordsOrder.push(`${firstWord}:fallback:0`);
+        }
+
+        // Update state and visuals
+        this.core._updateSelectedText();
         this.ui.updateSelectionDisplay();
+        try { this.core.syncSelectionHighlights(); } catch (_) {}
 
-        // Sync visual state with original subtitles (legacy compatibility)
-        this._syncWordSelectionVisuals();
-
-        // Hide modal if no words are selected (legacy compatibility)
-        if (this.core.selectedWords.size === 0) {
+        // If modal isn't visible yet, show it now only when there is an active selection
+        if (!this.core.isVisible) {
+            if (this.core.selectedWords.size > 0) {
+                this.core._log('debug', 'Showing modal for word selection', {
+                    word,
+                    subtitleType,
+                });
+                this.core._dispatchEvent(EVENT_TYPES.MODAL_SHOW_REQUESTED, {
+                    mode: 'selection',
+                    trigger: 'word-selection',
+                });
+            } else {
+                // No selection after toggle (e.g., user de-selected the last word)
+                // Ensure modal remains hidden and state is not forced to SELECTION by late async shows
+                this.core.setState(MODAL_STATES.HIDDEN);
+                this.core.isVisible = false;
+                try { this.core.store.setVisibility(false); } catch (_) {}
+                this.core._log('debug', 'No active selection; keeping modal hidden');
+            }
+        } else if (this.core.selectedWords.size === 0) {
+            // Only request close when modal is currently visible and selection becomes empty
             this.core._dispatchEvent(EVENT_TYPES.MODAL_CLOSE_REQUESTED, {
                 reason: 'no-words-selected',
             });
         }
+
+        // Ensure UI reflects current selection even if modal opens asynchronously
+        clearTimeout(this._postOpenSync);
+        this._postOpenSync = setTimeout(() => {
+            try {
+                this.ui.updateSelectionDisplay();
+                try { this.core.syncSelectionHighlights(); } catch (_) {}
+            } catch (_) {}
+        }, 16);
     }
 
     /**
@@ -729,8 +819,8 @@ export class AIContextModalEvents {
             );
         }
 
-        // Show modal if not visible
-        if (!this.core.isVisible) {
+        // Show modal only when selection exists; preserve selection
+        if (!this.core.isVisible && this.core.selectedWords.size > 0) {
             this.core._dispatchEvent(EVENT_TYPES.MODAL_SHOW_REQUESTED, {
                 mode: 'selection',
                 trigger: 'analysis-request',
@@ -761,7 +851,8 @@ export class AIContextModalEvents {
                         !this.core.isAnalyzing
                     ) {
                         // Use the same debouncing mechanism as button clicks
-                        this._handleStartAnalysis();
+                        if (this.modalController) this.modalController.startAnalysis();
+                        else this._handleStartAnalysis();
                     }
                 }
                 break;
@@ -840,61 +931,10 @@ export class AIContextModalEvents {
     }
 
     /**
-     * Sync visual selection state between modal and original subtitles (Issue #1: Fixed position-based)
-     * Replicates legacy contextAnalysisModal.js behavior exactly
+     * Sync visual selection state is centralized in core.syncSelectionHighlights
      * @private
      */
-    _syncWordSelectionVisuals() {
-        // Find all interactive words in original subtitles
-        const interactiveWords = document.querySelectorAll(
-            '.dualsub-interactive-word'
-        );
-
-        interactiveWords.forEach((wordElement, index) => {
-            const word = wordElement.getAttribute('data-word');
-            if (word) {
-                // Create position key for this specific word element
-                const position = {
-                    elementId: wordElement.id,
-                    index: index,
-                    element: wordElement,
-                    subtitleType: this._getSubtitleType(wordElement),
-                    wordIndex: this._getWordIndex(wordElement),
-                };
-                const positionKey = this.core._createPositionKey(
-                    word,
-                    position
-                );
-
-                // Check if this specific position is selected
-                const isSelected =
-                    this.core.selectedWordPositions.has(positionKey);
-
-                if (isSelected) {
-                    wordElement.classList.add('dualsub-word-selected');
-                } else {
-                    wordElement.classList.remove('dualsub-word-selected');
-                }
-
-                // Debug logging for troubleshooting
-                this.core._log('debug', 'Word visual sync', {
-                    word,
-                    positionKey,
-                    isSelected,
-                    elementId: wordElement.id,
-                    index,
-                    subtitleType: position.subtitleType,
-                });
-            }
-        });
-
-        // this.core._log('debug', 'Word selection visuals synced', {
-        //     selectedWords: Array.from(this.core.selectedWords),
-        //     selectedPositions: this.core.selectedWordPositions.size,
-        //     totalInteractiveWords: interactiveWords.length,
-        //     selectedPositionKeys: Array.from(this.core.selectedWordPositions.keys())
-        // });
-    }
+    _syncWordSelectionVisuals() { try { this.core.syncSelectionHighlights(); } catch (_) {} }
 
     /**
      * Get subtitle type from word element (Issue #4: Position-based selection)
@@ -958,7 +998,8 @@ export class AIContextModalEvents {
             resultKeys: result ? Object.keys(result) : null,
         });
 
-        if (requestId !== this.core.currentRequest) {
+        // Ignore results not matching the current request OR if user paused (no currentRequest)
+        if (!this.core.currentRequest || requestId !== this.core.currentRequest) {
             this.core._log('debug', 'Ignoring result - request ID mismatch', {
                 receivedId: requestId,
                 expectedId: this.core.currentRequest,
@@ -971,12 +1012,16 @@ export class AIContextModalEvents {
         // Re-enable word interactions (EXACT legacy behavior)
         this._enableWordInteractions();
 
-        // Reset analysis button (EXACT legacy behavior)
-        this._resetAnalysisButton();
+        // Reset analysis button via controller
+        if (this.modalController && typeof this.modalController.resetAnalysisButton === 'function') {
+            this.modalController.resetAnalysisButton();
+        } else {
+            this._resetAnalysisButton();
+        }
 
-        const analysisContent = document.getElementById(
-            'dualsub-analysis-content'
-        );
+        const analysisContent =
+            this.core.contentElement?.querySelector('#dualsub-analysis-content') ||
+            document.getElementById('dualsub-analysis-content');
         if (!analysisContent) {
             this.core._log('error', 'Analysis content element not found');
             return;
@@ -1055,6 +1100,25 @@ export class AIContextModalEvents {
             if (html) {
                 // Only use the dedicated results pipeline (EXACT legacy behavior)
                 this._handleAnalysisComplete(html);
+                // Ensure state reflects display to avoid flashes
+                this.core.setState(MODAL_STATES.DISPLAY);
+                // Hide processing visuals and sticky flags
+                try {
+                    const processingEl =
+                        this.core.contentElement?.querySelector(
+                            '#dualsub-processing-state'
+                        ) || document.getElementById('dualsub-processing-state');
+                    if (processingEl) processingEl.style.display = 'none';
+                    this.core.contentElement?.classList.remove(
+                        'dualsub-processing-sticky',
+                        'dualsub-processing-active'
+                    );
+                    if (this.core.element) {
+                        this.core.element.classList.remove(
+                            'dualsub-processing-disabled'
+                        );
+                    }
+                } catch (_) {}
                 this.core._log(
                     'info',
                     'Analysis results displayed successfully',
@@ -1444,84 +1508,37 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
      * @private
      */
     _parseMarkdownToHtml(text) {
-        if (!text || typeof text !== 'string') {
-            return '';
-        }
-
+        if (!text || typeof text !== 'string') return '';
         let html = text;
-
-        // Convert line breaks to HTML
         html = html.replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>');
-
-        // Headers (# ## ###)
         html = html.replace(/^### (.*$)/gm, '<h3>$1</h3>');
         html = html.replace(/^## (.*$)/gm, '<h2>$1</h2>');
         html = html.replace(/^# (.*$)/gm, '<h1>$1</h1>');
-
-        // Bold and italic (Issue #3: Fixed italic text handling for all languages)
-        html = html.replace(/\*\*\*(.*?)\*\*\*/g, (_, content) => {
-            // Apply only bold formatting (no italic) for better cross-language compatibility
-            return `<strong>${content}</strong>`;
-        });
+        html = html.replace(/\*\*\*(.*?)\*\*\*/g, '<strong>$1</strong>');
         html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-        html = html.replace(/\*(.*?)\*/g, (_, content) => {
-            // Remove italic markers but don't apply italic formatting for better font compatibility
-            this.core._log(
-                'debug',
-                'Removing italic formatting for better cross-language compatibility',
-                { content }
-            );
-            return content; // Just return the text without italic formatting
-        });
-
-        // Code blocks and inline code
+        html = html.replace(/\*(.*?)\*/g, '$1');
         html = html.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
         html = html.replace(/`(.*?)`/g, '<code>$1</code>');
-
-        // Lists
         html = html.replace(/^\* (.*$)/gm, '<li>$1</li>');
         html = html.replace(/^- (.*$)/gm, '<li>$1</li>');
         html = html.replace(/^(\d+)\. (.*$)/gm, '<li>$1. $2</li>');
-
-        // Wrap consecutive list items in ul/ol tags
         html = html.replace(/(<li>.*<\/li>)/gs, (match) => {
-            if (match.includes('<li>1.') || /\d+\./.test(match)) {
-                return `<ol>${match}</ol>`;
-            } else {
-                return `<ul>${match}</ul>`;
-            }
+            if (match.includes('<li>1.') || /\d+\./.test(match)) return `<ol>${match}</ol>`;
+            return `<ul>${match}</ul>`;
         });
-
-        // Links
-        html = html.replace(
-            /\[([^\]]+)\]\(([^)]+)\)/g,
-            '<a href="$2" target="_blank">$1</a>'
-        );
-
-        // Blockquotes
+        html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
         html = html.replace(/^> (.*$)/gm, '<blockquote>$1</blockquote>');
-
-        // Wrap in paragraphs if not already wrapped
-        if (!html.startsWith('<') && html.trim()) {
-            html = `<p>${html}</p>`;
-        }
-
-        // Clean up empty paragraphs and fix nested tags
+        if (!html.startsWith('<') && html.trim()) html = `<p>${html}</p>`;
         html = html.replace(/<p><\/p>/g, '');
         html = html.replace(/<p>(<h[1-6]>.*<\/h[1-6]>)<\/p>/g, '$1');
         html = html.replace(/<p>(<ul>.*<\/ul>)<\/p>/gs, '$1');
         html = html.replace(/<p>(<ol>.*<\/ol>)<\/p>/gs, '$1');
         html = html.replace(/<p>(<blockquote>.*<\/blockquote>)<\/p>/g, '$1');
 
-        this.core._log('debug', 'Markdown parsed to HTML', {
-            originalLength: text.length,
-            htmlLength: html.length,
-            hasHeaders: html.includes('<h'),
-            hasLists: html.includes('<li>'),
-            hasBold: html.includes('<strong>'),
-            hasItalic: html.includes('<em>'),
-        });
-
+        // Sanitize: strip scripts and inline event handlers
+        html = html.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
+        html = html.replace(/\son\w+="[^"]*"/gi, '');
+        html = html.replace(/\sjavascript:/gi, '');
         return html;
     }
 
@@ -1532,14 +1549,17 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
      * @private
      */
     _getLocalizedContextType(type) {
-        // Simplified - would need full localization system
-        const types = {
-            cultural: 'Cultural',
-            historical: 'Historical',
-            linguistic: 'Linguistic',
-            comprehensive: 'Comprehensive',
-        };
-        return types[type] || type;
+        try {
+            const keyMap = {
+                cultural: 'aiContextTypeCultural',
+                historical: 'aiContextTypeHistorical',
+                linguistic: 'aiContextTypeLinguistic',
+                comprehensive: 'aiContextTypeComprehensive',
+                generic: 'aiContextTypeGeneric',
+            };
+            const key = keyMap[type] || keyMap.generic;
+            return this._getLocalizedMessage(key) || type;
+        } catch (_) { return type; }
     }
 
     /**
@@ -1612,11 +1632,38 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
      * @private
      */
     _disableWordInteractions() {
-        // Add processing class to body to disable interactive words
-        document.body.classList.add('dualsub-processing-active');
+        // Add processing class to content element to disable interactions within modal scope
+        try {
+            this.core.contentElement?.classList.add('dualsub-processing-active');
+        } catch (_) {}
 
         // Disable word removal during processing (Issue #4)
         this._disableWordRemoval();
+
+        // Extra safety: forcibly hide remove buttons on chips even if CSS hasn't loaded yet
+        try {
+            const selectedWordsElement = document.getElementById('dualsub-selected-words');
+            if (selectedWordsElement) {
+                selectedWordsElement
+                    .querySelectorAll('.dualsub-word-remove')
+                    .forEach((el) => {
+                        el.style.display = 'none';
+                    });
+            }
+        } catch (_) {}
+
+        // Hard-disable pointer events on original subtitle container (outside modal DOM)
+        try {
+            const original = document.getElementById('dualsub-original-subtitle');
+            if (original) {
+                original.style.pointerEvents = 'none';
+                // Also add a disabled class for consistent visual styling during processing
+                original.classList.add('dualsub-subtitles-disabled');
+            }
+        } catch (_) {}
+
+        // Ensure visual highlights remain applied while processing
+        try { this._syncWordSelectionVisuals(); } catch (_) {}
 
         // Update selection display to show disabled state
         this.ui.updateSelectionDisplay();
@@ -1627,11 +1674,34 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
      * @private
      */
     _enableWordInteractions() {
-        // Remove processing class from body
-        document.body.classList.remove('dualsub-processing-active');
+        // Remove processing class from content element
+        try {
+            this.core.contentElement?.classList.remove('dualsub-processing-active');
+        } catch (_) {}
 
         // Re-enable word removal after processing (Issue #4)
         this._enableWordRemoval();
+
+        // Extra safety: forcibly re-show remove buttons on chips after processing
+        try {
+            const selectedWordsElement = document.getElementById('dualsub-selected-words');
+            if (selectedWordsElement) {
+                selectedWordsElement
+                    .querySelectorAll('.dualsub-word-remove')
+                    .forEach((el) => {
+                        el.style.removeProperty('display');
+                    });
+            }
+        } catch (_) {}
+
+        // Re-enable pointer events on original subtitle container
+        try {
+            const original = document.getElementById('dualsub-original-subtitle');
+            if (original) {
+                original.style.removeProperty('pointer-events');
+                original.classList.remove('dualsub-subtitles-disabled');
+            }
+        } catch (_) {}
 
         // Update selection display to show enabled state
         this.ui.updateSelectionDisplay();
@@ -1654,6 +1724,7 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
                 'aiContextStartAnalysis'
             );
             analysisButton.disabled = this.core.selectedWords.size === 0;
+            analysisButton.removeAttribute('data-paused-toggle');
 
             // Remove pause handler and restore start analysis handler
             const newButton = analysisButton.cloneNode(true);
@@ -1667,7 +1738,8 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
             const startHandler = (event) => {
                 event.preventDefault();
                 event.stopPropagation();
-                this._handleStartAnalysis();
+                if (this.modalController) this.modalController.startAnalysis();
+                else this._handleStartAnalysis();
             };
             newButton.addEventListener('click', startHandler);
 
@@ -1693,6 +1765,10 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
 
             // Create global click blocker to prevent any clicks during processing
             const globalClickBlocker = (e) => {
+                // Allow interactions when not analyzing anymore
+                if (!this.core.isAnalyzing) {
+                    return; // do not block
+                }
                 e.stopPropagation();
                 e.preventDefault();
                 this.core._log(
@@ -1893,15 +1969,19 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
             'Analysis failed, retrying...';
         notification.textContent = retryNotificationText;
 
-        // Add animation styles
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes slideInRight {
-                from { transform: translateX(100%); opacity: 0; }
-                to { transform: translateX(0); opacity: 1; }
-            }
-        `;
-        document.head.appendChild(style);
+        // Add animation styles (reuse single style element)
+        let style = document.getElementById('dualsub-retry-style');
+        if (!style) {
+            style = document.createElement('style');
+            style.id = 'dualsub-retry-style';
+            style.textContent = `
+                @keyframes slideInRight {
+                    from { transform: translateX(100%); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+            `;
+            document.head.appendChild(style);
+        }
 
         document.body.appendChild(notification);
 
@@ -2037,7 +2117,8 @@ Result Preview: ${JSON.stringify(result, null, 2).substring(0, 500)}</pre>
             'dualsub-retry-analysis',
             () => {
                 this.core._resetRetryState();
-                this._handleStartAnalysis();
+                if (this.modalController) this.modalController.startAnalysis();
+                else this._handleStartAnalysis();
             },
             { once: true }
         );

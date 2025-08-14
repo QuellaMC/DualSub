@@ -9,6 +9,7 @@
  */
 
 import { MODAL_STATES, EVENT_TYPES } from '../core/constants.js';
+import { Transitions } from './animations/Transitions.js';
 
 /**
  * Modal animation and transition management
@@ -42,9 +43,14 @@ export class AIContextModalAnimations {
         // Clear any existing animation timeouts
         this._clearAnimationTimeouts();
 
-        // Set initial state
+        // Set visible; do NOT force state to SELECTION here to avoid overriding ongoing transitions
         this.core.isVisible = true;
-        this.core.setState(MODAL_STATES.SELECTION);
+        try { this.core.store.setVisibility(true); } catch (_) {}
+        // Only move to SELECTION if we're fully hidden and not already processing/displaying
+        const isBusy = this.core.isAnalyzing || this.core.state === MODAL_STATES.PROCESSING || this.core.state === MODAL_STATES.DISPLAY || this.core.state === MODAL_STATES.ERROR;
+        if (this.core.state === MODAL_STATES.HIDDEN && !isBusy) {
+            this.core.setState(MODAL_STATES.SELECTION);
+        }
 
         // Start selection persistence monitoring
         if (this.core.selectionPersistenceManager) {
@@ -62,31 +68,52 @@ export class AIContextModalAnimations {
             this._applyDynamicModalHeight();
         }, 50);
 
-        // Show modal element (matches legacy behavior exactly)
-        this.core.element.style.display = 'block';
-        this.core.element.style.pointerEvents = 'auto'; // Enable interaction
-        this.core.element.classList.add('dualsub-context-modal--visible');
+        // Show modal element via transitions utility (class-only)
+        Transitions.showContainer(this.core.element);
+        // Avoid inline style display toggles; CSS state classes should drive visibility
 
         // Show modal overlay in UI root container
         if (this.core.overlayElement) {
-            this.core.overlayElement.style.display = 'block';
-            this.core.overlayElement.style.pointerEvents = 'auto'; // Enable click blocking
+            Transitions.showOverlay(this.core.overlayElement);
             this.core._log('debug', 'Modal overlay shown', {
-                overlayDisplay: this.core.overlayElement.style.display,
-                overlayPointerEvents:
-                    this.core.overlayElement.style.pointerEvents,
                 overlayParent: this.core.overlayElement.parentElement?.id,
             });
         }
 
-        // Also show modal content if it's in UI root container
+        // Also show modal content if it's in UI root container (class-only)
         if (this.core.contentElement) {
-            this.core.contentElement.style.display = 'block';
+            Transitions.showContent(this.core.contentElement);
             this.core._log('debug', 'Modal content shown', {
-                contentDisplay: this.core.contentElement.style.display,
                 contentParent: this.core.contentElement.parentElement?.id,
             });
+
+            // Ensure selection chips are rendered after modal is visible
+            try {
+                // Always refresh selection display once visible to reflect current state, including empty selection (for auto-close logic in events)
+                this.ui.updateSelectionDisplay();
+                if (this.core.selectedWords && this.core.selectedWords.size > 0) {
+                    setTimeout(() => { this.ui.updateSelectionDisplay(); }, 0);
+                }
+            } catch (_) {}
         }
+
+        // Extra safety: if a stale overlay/content remained somehow, unlink it
+        try {
+            const overlayId = this.core.overlayElement?.id || 'dualsub-modal-overlay';
+            const contentId = this.core.contentElement?.id || 'dualsub-modal-content';
+            const duplicates = document.querySelectorAll(`#${overlayId}, #${contentId}`);
+            if (duplicates.length > 2) {
+                duplicates.forEach((node) => {
+                    if (
+                        node !== this.core.overlayElement &&
+                        node !== this.core.contentElement &&
+                        node.parentElement
+                    ) {
+                        node.parentElement.removeChild(node);
+                    }
+                });
+            }
+        } catch (_) {}
 
         // Dispatch show event
         this.core._dispatchEvent(EVENT_TYPES.MODAL_SHOW, {
@@ -118,38 +145,39 @@ export class AIContextModalAnimations {
             this.core.selectionPersistenceManager.stopMonitoring();
         }
 
-        // Hide modal element (matches legacy behavior exactly)
+        // Hide modal element
         if (this.core.element) {
-            this.core.element.classList.remove(
-                'dualsub-context-modal--visible'
-            );
-            this.core.element.style.display = 'none';
-            this.core.element.style.pointerEvents = 'none'; // Ensure no interaction blocking
+            Transitions.hideContainer(this.core.element);
         }
 
         // Hide modal overlay in UI root container
         if (this.core.overlayElement) {
-            this.core.overlayElement.style.display = 'none';
-            this.core.overlayElement.style.pointerEvents = 'none'; // Disable click blocking
+            Transitions.hideOverlay(this.core.overlayElement);
             this.core._log('debug', 'Modal overlay hidden', {
-                overlayDisplay: this.core.overlayElement.style.display,
-                overlayPointerEvents:
-                    this.core.overlayElement.style.pointerEvents,
                 overlayParent: this.core.overlayElement.parentElement?.id,
             });
         }
 
         // Also hide modal content if it's in UI root container
         if (this.core.contentElement) {
-            this.core.contentElement.style.display = 'none';
+            Transitions.hideContent(this.core.contentElement);
             this.core._log('debug', 'Modal content hidden', {
-                contentDisplay: this.core.contentElement.style.display,
                 contentParent: this.core.contentElement.parentElement?.id,
             });
         }
 
         this.core.isVisible = false;
+        try { this.core.store.setVisibility(false); } catch (_) {}
         this.core.setState(MODAL_STATES.HIDDEN);
+
+        // Also clear visual selections on subtitles when modal hides
+        try {
+            const original = document.getElementById('dualsub-original-subtitle');
+            if (original) {
+                original.querySelectorAll('.dualsub-interactive-word.dualsub-word-selected')
+                    .forEach((el) => el.classList.remove('dualsub-word-selected'));
+            }
+        } catch (_) {}
 
         // Reset state
         this._resetModalState();
@@ -167,15 +195,33 @@ export class AIContextModalAnimations {
         this.core._log('debug', 'Transitioning to processing state');
 
         this.core.currentMode = 'processing';
-        this.core.setState(MODAL_STATES.PROCESSING);
+        // Sticky processing state: prevent any intermediate selection re-render from overriding
+        if (this.core.state !== MODAL_STATES.PROCESSING) {
+            this.core.setState(MODAL_STATES.PROCESSING);
+        }
 
         // Add processing disabled class to prevent interactions
         if (this.core.element) {
             this.core.element.classList.add('dualsub-processing-disabled');
         }
+        // Also mark original subtitles as disabled for consistent UX
+        try {
+            const original = document.getElementById('dualsub-original-subtitle');
+            if (original) original.classList.add('dualsub-subtitles-disabled');
+        } catch (_) {}
 
-        // Update UI state
+        // Update UI state (hide initial, show processing) via UI module
         this.ui.showProcessingState();
+        // Force analyzing class to avoid flicker back to selection from late renders
+        try {
+            const content = this.core.contentElement || document.getElementById('dualsub-modal-content');
+            content?.classList.add('is-analyzing');
+        } catch (_) {}
+        // Avoid inline display toggles; state classes drive visibility
+        // Apply processing-sticky class to prevent CSS transitions flipping back
+        try {
+            this.core.contentElement?.classList.add('dualsub-processing-active');
+        } catch (_) {}
 
         // Apply dynamic height
         this._applyDynamicModalHeight();
@@ -184,16 +230,25 @@ export class AIContextModalAnimations {
         this._animateProcessingButton();
 
         // Ensure loader animations are running by forcing a reflow and toggling animation
-        const processing = document.getElementById('dualsub-processing-state');
+        const processing =
+            this.core.contentElement?.querySelector(
+                '#dualsub-processing-state'
+            ) || document.getElementById('dualsub-processing-state');
         if (processing) {
             const squares = processing.querySelectorAll('.loader-square');
             squares.forEach((sq) => {
                 const prev = sq.style.animation;
                 sq.style.animation = 'none';
-                 
+                // trigger reflow
+                // eslint-disable-next-line no-unused-expressions
                 sq.offsetHeight;
                 sq.style.animation = prev || '';
             });
+            // Ensure processing section wins by temporarily adding a guard class
+            this.core.contentElement?.classList.add('dualsub-processing-sticky');
+            setTimeout(() => {
+                this.core.contentElement?.classList.remove('dualsub-processing-sticky');
+            }, 150);
         }
     }
 
@@ -211,10 +266,17 @@ export class AIContextModalAnimations {
         if (this.core.element) {
             this.core.element.classList.remove('dualsub-processing-disabled');
         }
+        // Remove subtitles disabled indicator
+        try {
+            const original = document.getElementById('dualsub-original-subtitle');
+            if (original) original.classList.remove('dualsub-subtitles-disabled');
+        } catch (_) {}
 
         // Update UI state
-        this.ui.showResultsState();
         this.ui.showAnalysisResults(analysisResult);
+        // Avoid forcing inline display toggles; rely on state classes
+        this.core.contentElement?.classList.remove('dualsub-processing-sticky', 'dualsub-processing-active');
+        if (this.core.element) this.core.element.classList.remove('dualsub-processing-disabled');
 
         // Apply dynamic height
         this._applyDynamicModalHeight();
@@ -238,6 +300,10 @@ export class AIContextModalAnimations {
         if (this.core.element) {
             this.core.element.classList.remove('dualsub-processing-disabled');
         }
+        try {
+            const original = document.getElementById('dualsub-original-subtitle');
+            if (original) original.classList.remove('dualsub-subtitles-disabled');
+        } catch (_) {}
 
         // Update UI state
         this.ui.showErrorState(error, metadata);
@@ -262,6 +328,10 @@ export class AIContextModalAnimations {
         if (this.core.element) {
             this.core.element.classList.remove('dualsub-processing-disabled');
         }
+        try {
+            const original = document.getElementById('dualsub-original-subtitle');
+            if (original) original.classList.remove('dualsub-subtitles-disabled');
+        } catch (_) {}
 
         // Update UI state
         this.ui.showInitialState();
@@ -599,11 +669,15 @@ export class AIContextModalAnimations {
                                 }
                             });
                         } else if (mutation.type === 'attributes') {
-                            if (
-                                this._isSubtitleRelatedElement(mutation.target)
-                            ) {
-                                shouldUpdate = true;
-                            }
+                            // Ignore class/style changes on interactive words to avoid resync loops
+                            try {
+                                const attr = mutation.attributeName || '';
+                                const targetEl = mutation.target;
+                                const isInteractive = targetEl && targetEl.classList && targetEl.classList.contains('dualsub-interactive-word');
+                                if (!isInteractive && this._isSubtitleRelatedElement(mutation.target)) {
+                                    shouldUpdate = true;
+                                }
+                            } catch (_) {}
                         }
                     });
 
@@ -615,7 +689,7 @@ export class AIContextModalAnimations {
 
                             // Re-sync word selection visuals when subtitles change
                             if (this.core.selectedWords.size > 0) {
-                                this._syncWordSelectionVisuals();
+                                try { this.core.syncSelectionHighlights(); } catch (_) {}
                                 // this.core._log('debug', 'Re-synced word selection visuals after subtitle change');
                             }
                         }, 100);
@@ -631,10 +705,12 @@ export class AIContextModalAnimations {
                 });
             }
 
-            // Fallback interval monitoring (legacy compatibility)
-            this.heightMonitorInterval = setInterval(() => {
-                this._applyDynamicModalHeight();
-            }, 2000); // Check every 2 seconds as fallback
+            // Fallback interval monitoring (legacy compatibility): only if observers are not available
+            if (!this.resizeObserver && !this.mutationObserver) {
+                this.heightMonitorInterval = setInterval(() => {
+                    this._applyDynamicModalHeight();
+                }, 2000);
+            }
 
             this.core._log('debug', 'Dynamic height monitoring started', {
                 hasResizeObserver: !!this.resizeObserver,
@@ -735,15 +811,18 @@ export class AIContextModalAnimations {
      */
     _animateProcessingButton() {
         const button =
-            this.core.element?.querySelector('#dualsub-start-analysis') ||
             this.core.contentElement?.querySelector(
                 '#dualsub-start-analysis'
             ) ||
+            this.core.element?.querySelector('#dualsub-start-analysis') ||
             document.getElementById('dualsub-start-analysis');
         if (button) {
             button.classList.add('processing');
-            button.disabled = true;
-            button.textContent = 'Analyzing...';
+            const isPauseEnabled = button.getAttribute('data-paused-toggle') === 'true';
+            if (!isPauseEnabled) {
+                button.disabled = true;
+                button.textContent = 'Analyzing...';
+            }
         }
     }
 
@@ -752,9 +831,9 @@ export class AIContextModalAnimations {
      * @private
      */
     _animateContentTransition() {
-        const rightPane = this.core.element?.querySelector(
-            '#dualsub-right-pane'
-        );
+        const rightPane =
+            this.core.contentElement?.querySelector('#dualsub-right-pane') ||
+            this.core.element?.querySelector('#dualsub-right-pane');
         if (rightPane) {
             rightPane.style.opacity = '0';
 
@@ -771,7 +850,9 @@ export class AIContextModalAnimations {
      * @private
      */
     _animateErrorState() {
-        const errorElement = this.core.element?.querySelector('.dualsub-error');
+        const errorElement =
+            this.core.contentElement?.querySelector('.dualsub-error') ||
+            this.core.element?.querySelector('.dualsub-error');
         if (errorElement) {
             errorElement.style.opacity = '0';
             errorElement.style.transform = 'translateY(20px)';
@@ -794,10 +875,10 @@ export class AIContextModalAnimations {
     _resetModalState() {
         // Reset button states (check multiple locations)
         const button =
-            this.core.element?.querySelector('#dualsub-start-analysis') ||
             this.core.contentElement?.querySelector(
                 '#dualsub-start-analysis'
             ) ||
+            this.core.element?.querySelector('#dualsub-start-analysis') ||
             document.getElementById('dualsub-start-analysis');
         if (button) {
             button.classList.remove('processing');
@@ -815,51 +896,10 @@ export class AIContextModalAnimations {
     }
 
     /**
-     * Sync visual selection state between modal and original subtitles (Issue #1 & #2)
-     * Replicates legacy contextAnalysisModal.js behavior exactly
+     * Sync visual selection state is centralized in core.syncSelectionHighlights
      * @private
      */
-    _syncWordSelectionVisuals() {
-        // Find all interactive words in original subtitles
-        const interactiveWords = document.querySelectorAll(
-            '.dualsub-interactive-word'
-        );
-
-        interactiveWords.forEach((wordElement, index) => {
-            const word = wordElement.getAttribute('data-word');
-            if (word) {
-                // Create position key for this specific word element (Issue #1: Fixed position-based)
-                const position = {
-                    elementId: wordElement.id,
-                    index: index,
-                    element: wordElement,
-                    subtitleType: this._getSubtitleType(wordElement),
-                    wordIndex: this._getWordIndex(wordElement),
-                };
-                const positionKey = this.core._createPositionKey(
-                    word,
-                    position
-                );
-
-                // Check if this specific position is selected
-                const isSelected =
-                    this.core.selectedWordPositions.has(positionKey);
-
-                if (isSelected) {
-                    wordElement.classList.add('dualsub-word-selected');
-                } else {
-                    wordElement.classList.remove('dualsub-word-selected');
-                }
-            }
-        });
-
-        // this.core._log('debug', 'Word selection visuals synced (animations)', {
-        //     selectedWords: Array.from(this.core.selectedWords),
-        //     selectedPositions: this.core.selectedWordPositions.size,
-        //     totalInteractiveWords: interactiveWords.length,
-        //     selectedPositionKeys: Array.from(this.core.selectedWordPositions.keys())
-        // });
-    }
+    _syncWordSelectionVisuals() { try { this.core.syncSelectionHighlights(); } catch (_) {} }
 
     /**
      * Get subtitle type from word element (Issue #1: Position-based selection)

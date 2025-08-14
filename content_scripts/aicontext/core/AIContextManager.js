@@ -53,6 +53,10 @@ export class AIContextManager {
         this._handleSystemError = this._handleSystemError.bind(this);
         this._handleAnalysisRequest = this._handleAnalysisRequest.bind(this);
         this._handleModalStateChange = this._handleModalStateChange.bind(this);
+
+        // Early word-selection buffering for SPA navigation timing
+        this.earlySelectionQueue = [];
+        this._earlyWordSelectionListener = null;
     }
 
     /**
@@ -220,6 +224,34 @@ export class AIContextManager {
         this._log('debug', 'Initializing components');
 
         try {
+            // Attach an early listener to buffer word selections that occur before modal events are ready
+            if (!this._earlyWordSelectionListener) {
+                this._earlyWordSelectionListener = (evt) => {
+                    try {
+                        // If modal events are not yet available, buffer the event
+                        const eventsReady = !!(this.modal && this.modal.events);
+                        if (!eventsReady) {
+                            this.earlySelectionQueue.push(evt.detail);
+                            this._log('debug', 'Buffered early word selection event', {
+                                bufferedCount: this.earlySelectionQueue.length,
+                                word: evt.detail?.word,
+                                subtitleType: evt.detail?.subtitleType,
+                            });
+                        }
+                    } catch (e) {
+                        // Ignore buffering errors, just log
+                        this._log('warn', 'Failed to buffer early word selection', {
+                            error: e.message,
+                        });
+                    }
+                };
+                document.addEventListener(
+                    'dualsub-word-selected',
+                    this._earlyWordSelectionListener,
+                    true // capture early
+                );
+            }
+
             // Initialize modal
             const modalConfig = {
                 ...this.config.modal,
@@ -228,6 +260,18 @@ export class AIContextManager {
             this.modal = new AIContextModal(modalConfig);
             await this.modal.initialize();
             this.components.set('modal', this.modal);
+
+            // Remove early listener to prevent double handling once events are ready
+            if (this._earlyWordSelectionListener) {
+                try {
+                    document.removeEventListener(
+                        'dualsub-word-selected',
+                        this._earlyWordSelectionListener,
+                        true
+                    );
+                } catch (_) {}
+                this._earlyWordSelectionListener = null;
+            }
 
             // Initialize provider
             this.provider = new AIContextProvider(this.config.provider || {});
@@ -242,6 +286,48 @@ export class AIContextManager {
             this.components.set('textHandler', this.textHandler);
 
             this._log('debug', 'Components initialized successfully');
+
+            // Wait for modal to be fully ready (DOM + events bound) before flushing buffered events
+            try {
+                await this.modal.core.onceReady;
+            } catch (_) {}
+
+            // Drain any buffered early word selections now that UI and events are fully ready
+            if (this.earlySelectionQueue.length > 0) {
+                this._log('info', 'Replaying buffered word selection events', {
+                    count: this.earlySelectionQueue.length,
+                });
+                const buffered = [...this.earlySelectionQueue];
+                this.earlySelectionQueue = [];
+                buffered.forEach((detail) => {
+                    try {
+                        const replayDetail = { ...detail, action: 'add' };
+                        const replayEvent = new CustomEvent(
+                            'dualsub-word-selected',
+                            { detail: replayDetail }
+                        );
+                        if (
+                            this.modal &&
+                            typeof this.modal.handleWordSelection === 'function'
+                        ) {
+                            this.modal.handleWordSelection(replayEvent);
+                        } else {
+                            document.dispatchEvent(replayEvent);
+                        }
+                    } catch (e) {
+                        this._log('warn', 'Failed to replay buffered selection event', {
+                            error: e.message,
+                            detailKeys: detail ? Object.keys(detail) : [],
+                        });
+                    }
+                });
+
+                try {
+                    if (this.modal && !this.modal.isVisible) {
+                        this.modal.showSelectionMode({ trigger: 'word-selection' });
+                    }
+                } catch (_) {}
+            }
         } catch (error) {
             this._log('error', 'Failed to initialize components', error);
             console.error('Component initialization error:', error);
@@ -274,6 +360,30 @@ export class AIContextManager {
             this.eventListeners.set(
                 EVENT_TYPES.MODAL_STATE_CHANGE,
                 this._handleModalStateChange
+            );
+
+            // Listen for analysis pause requests to cancel in-flight work
+            const pauseAnalysisListener = (event) => {
+                try {
+                    const reqId = event?.detail?.requestId || this.activeRequest;
+                    this._log('debug', 'Received analysis pause request', {
+                        requestId: reqId,
+                        activeRequest: this.activeRequest,
+                    });
+                    this._handlePauseAnalysisEvent({ requestId: reqId });
+                } catch (e) {
+                    this._log('warn', 'Failed to handle pause analysis event', {
+                        error: e.message,
+                    });
+                }
+            };
+            document.addEventListener(
+                EVENT_TYPES.ANALYSIS_PAUSE,
+                pauseAnalysisListener
+            );
+            this.eventListeners.set(
+                EVENT_TYPES.ANALYSIS_PAUSE,
+                pauseAnalysisListener
             );
 
             // Listen for configuration updates
@@ -364,7 +474,12 @@ export class AIContextManager {
         const detail = event.detail;
         // Extract text from either direct text field or selection object
         const text = detail.text || detail.selection?.text;
-        const requestId = detail.requestId || `analysis-${Date.now()}`;
+        // Preserve provided requestId when present (tests and callers rely on this); otherwise generate one
+        const requestId =
+            detail.requestId ||
+            `analysis-${Date.now()}-${Math.random()
+                .toString(36)
+                .slice(2, 8)}`;
 
         try {
             this._log('debug', 'Handling analysis request', detail);
@@ -382,10 +497,15 @@ export class AIContextManager {
             this.metrics.analysisCount++;
             this.metrics.lastActivity = Date.now();
 
-            // Send request to background script for AI analysis
-            const response = await chrome.runtime.sendMessage({
-                action: 'analyzeContext',
-                text: text,
+            // Route request via provider abstraction
+            // De-duplicate in-flight ids to avoid parallel duplicates
+            if (!this._inflightIds) this._inflightIds = new Set();
+            if (this._inflightIds.has(requestId)) {
+                this._log('debug', 'Duplicate analysis request ignored', { requestId });
+                return;
+            }
+            this._inflightIds.add(requestId);
+            const response = await this.provider.analyzeContext(text, {
                 contextTypes: detail.contextTypes || [
                     'cultural',
                     'historical',
@@ -412,18 +532,20 @@ export class AIContextManager {
                         result: response.result,
                         success: response.success,
                         error: response.error,
-                        shouldRetry: response.shouldRetry,
+                        shouldRetry: response.shouldRetry ?? /timeout|rate limit|temporar/i.test(response?.error || ''),
                     },
                 })
             );
 
-            // Dispatch new event format
+            // Dispatch new event format and track errors in metrics
             if (response.success) {
                 this._dispatchEvent(EVENT_TYPES.ANALYSIS_COMPLETE, {
                     requestId: requestId,
                     result: response.result,
                 });
             } else {
+                // Track error metric for failed analysis responses
+                this.metrics.errorCount++;
                 this._dispatchEvent(EVENT_TYPES.ANALYSIS_ERROR, {
                     requestId: requestId,
                     error: response.error,
@@ -437,7 +559,7 @@ export class AIContextManager {
                 detail: event.detail,
             });
 
-            // Dispatch error events
+            // Dispatch error events (non-fatal). Keep UI in selection state, allow retry.
             document.dispatchEvent(
                 new CustomEvent('dualsub-context-error', {
                     detail: {
@@ -451,29 +573,86 @@ export class AIContextManager {
                 requestId: requestId,
                 error: error.message,
             });
+        } finally {
+            try { if (this._inflightIds) this._inflightIds.delete(requestId); } catch (_) {}
         }
     }
 
     _handleModalStateChange(event) {
-        const { currentState, previousState, data } = event.detail;
+        // Support both legacy (currentState/previousState) and new (newState/oldState) payload shapes
+        const detail = event.detail || {};
+        const nextState = detail.currentState || detail.newState;
+        const prevState = detail.previousState || detail.oldState;
+        const data = detail.data;
 
         this._log('debug', 'Modal state changed', {
-            from: previousState,
-            to: currentState,
+            from: prevState,
+            to: nextState,
             data,
         });
 
         // Update current state tracking
-        this.currentState = currentState;
+        this.currentState = nextState;
 
         // Handle state-specific logic
-        switch (currentState) {
-            case MODAL_STATES.ANALYZING:
+        switch (nextState) {
+            case MODAL_STATES.PROCESSING:
                 this.activeRequest = data.requestId;
+                break;
+            case MODAL_STATES.SELECTION:
+                // When UI leaves processing state, clear active request tracking
+                // unless another request is already set by a newer transition.
+                if (this.activeRequest === (data && data.requestId)) {
+                    this.activeRequest = null;
+                }
                 break;
             case MODAL_STATES.HIDDEN:
                 this.activeRequest = null;
                 break;
+        }
+    }
+
+    /**
+     * Handle analysis pause requests by cancelling in-flight provider work
+     * @param {{requestId?: string}} param0
+     * @private
+     */
+    _handlePauseAnalysisEvent({ requestId } = {}) {
+        try {
+            const targetId = requestId || this.activeRequest;
+            if (!targetId) {
+                this._log('debug', 'No active request to cancel');
+                return;
+            }
+
+            if (this.provider && typeof this.provider.cancelRequest === 'function') {
+                const cancelled = this.provider.cancelRequest(targetId);
+                this._log('info', 'Cancel request invoked on provider', {
+                    requestId: targetId,
+                    cancelled,
+                });
+            }
+
+            this.activeRequest = null;
+
+            // Notify listeners that analysis has been paused
+            this._dispatchEvent(EVENT_TYPES.ANALYSIS_PAUSED, {
+                requestId: targetId,
+                timestamp: Date.now(),
+            });
+
+            // Also dispatch a legacy-style context error to ensure any pending UI flows abort
+            document.dispatchEvent(
+                new CustomEvent('dualsub-context-error', {
+                    detail: {
+                        requestId: targetId,
+                        error: 'Analysis paused by user',
+                        cancelled: true,
+                    },
+                })
+            );
+        } catch (error) {
+            this._log('error', 'Failed to pause analysis', { error: error.message });
         }
     }
 

@@ -1,5 +1,9 @@
 # DualSub - Dual Language Subtitles for Streaming
 
+<p align="center">
+  <img src="assets/images/logo1400x560.png" alt="DualSub" width="600" />
+</p>
+
 [中文版 | Chinese Version](README_zh.md)
 
 ![Version](https://img.shields.io/github/v/release/QuellaMC/DualSub.svg)
@@ -11,15 +15,20 @@
 
 **DualSub** is a powerful Chrome extension that enhances your streaming experience by displaying dual language subtitles simultaneously. Perfect for language learning, accessibility, or simply enjoying content in multiple languages at once.
 
+## 📚 Documentation
+
+- Features: `docs/en/features.md`
+- Supported Platforms: `docs/en/platforms.md`
+- Translation Providers: `docs/en/providers.md`
+- AI Context Analysis: `docs/en/ai-context.md`
+- Installation: `docs/en/installation.md`
+- Configuration: `docs/en/configuration.md`
+
 ## 📋 Table of Contents
 
-- [Features](#-features)
-- [Supported Platforms](#-supported-platforms)
-- [Translation Providers](#-translation-providers)
-- [AI Context Analysis](#-ai-context-analysis)
-- [Installation](#-installation)
-- [Quick Start](#-quick-start)
-- [Configuration](#-configuration)
+- [Documentation](#-documentation)
+- [Highlights](#-highlights)
+- [Installation & Quick Start](#-installation--quick-start)
 - [Development Setup](#-development-setup)
 - [Architecture](#-architecture)
 - [Contributing](#-contributing)
@@ -27,251 +36,24 @@
 - [License](#-license)
 - [Changelog](#-changelog)
 
-## ✨ Features
+## ✨ Highlights
 
-### Core Functionality
+- Dual subtitles on Netflix and Disney+
+- Multiple translation providers with smart fallback and batching
+- AI Context Analysis (OpenAI, Google Gemini)
+- Flexible layouts, appearance controls, and timing offset
+- Multi-language UI (EN, ES, JA, KO, ZH-CN, ZH-TW)
 
-- **🎬 Dual Subtitle Display**: Show original and translated subtitles simultaneously
-- **🌐 Multi-Platform Support**: Works on Netflix and Disney+ with platform-specific optimizations
-- **🔄 Multiple Translation Providers**: Choose from Google, Microsoft, DeepL, and OpenAI-compatible services
-- **🎯 Smart Translation**: Automatic fallback between providers and intelligent batching
+See details in: `docs/en/features.md`, `docs/en/platforms.md`, `docs/en/providers.md`.
 
-### Customization Options
+## 📦 Installation & Quick Start
 
-- **📐 Flexible Layouts**: Vertical (top/bottom) or horizontal (left/right) subtitle arrangements
-- **🎨 Appearance Control**: Adjustable font sizes, spacing, and display order
-- **📍 Vertical Positioning**: Precise control over subtitle placement on screen
-- **⏱️ Timing Precision**: Fine-tune subtitle synchronization with offset controls
-- **🌍 Multi-Language UI**: Interface available in 6 languages (EN, ES, JA, KO, ZH-CN, ZH-TW)
+1) Install from the Chrome Web Store or load unpacked (see `docs/en/installation.md`).
+2) Open Netflix or Disney+ and enable subtitles.
+3) Click the DualSub icon → enable dual subtitles and choose target language.
+4) Optional: Configure AI Context (provider, API key, model) in Advanced Settings.
 
-### Advanced Features
-
-- **🤖 AI Context Analysis**: Get cultural, historical, and linguistic explanations for subtitle content using OpenAI or Google Gemini
-- **⚙️ Performance Tuning**: Configurable batch sizes and request delays for optimal performance
-- **🔧 Advanced Options**: Comprehensive settings page with provider-specific configurations
-- **📊 Logging System**: Detailed debugging with configurable log levels
-- **🔄 Official Subtitle Integration**: Use platform's native subtitles when available (Netflix)
-
-## 🎯 Supported Platforms
-
-| Platform    | Status          | Features                                                |
-| ----------- | --------------- | ------------------------------------------------------- |
-| **Netflix** | ✅ Full Support | Official subtitle integration, SPA navigation detection |
-| **Disney+** | ✅ Full Support | M3U8 playlist parsing, video detection                  |
-
-### Platform-Specific Features
-
-- **Netflix**: Enhanced SPA navigation detection, official translation support
-- **Disney+**: Advanced M3U8 subtitle extraction, multiple URL pattern support
-
-## 🔄 Translation Providers
-
-| Provider                | Type | Quality    | Setup Required | Notes                             |
-| ----------------------- | ---- | ---------- | -------------- | --------------------------------- |
-| **DeepL Free**          | Free | ⭐⭐⭐⭐⭐ | None           | Recommended default, high quality |
-| **Google Translate**    | Free | ⭐⭐⭐⭐   | None           | Fast, wide language support       |
-| **Microsoft Translate** | Free | ⭐⭐⭐⭐   | None           | Good performance, reliable        |
-| **DeepL API**           | Paid | ⭐⭐⭐⭐⭐ | API Key        | Highest quality, usage limits     |
-| **OpenAI Compatible**   | Paid | ⭐⭐⭐⭐⭐ | API Key        | Supports Gemini models            |
-
-### Provider Features
-
-- **Automatic Fallback**: Seamlessly switches between providers if one fails
-- **Rate Limiting**: Intelligent request management to avoid API limits
-- **Batch Processing**: Optimized translation of multiple subtitle segments
-
-## 🤖 AI Context Analysis
-
-**AI Context Analysis** is an advanced feature that provides intelligent explanations for cultural references, historical context, and linguistic nuances found in subtitle content. Perfect for language learners and viewers who want deeper understanding of the content they're watching.
-
-### What It Does
-
-The AI Context Analysis feature analyzes selected text from subtitles and provides three types of insights:
-
-- **🏛️ Cultural Context**: Explanations of cultural references, customs, and social norms
-- **📚 Historical Context**: Background information about historical events, periods, or figures
-- **🔤 Linguistic Context**: Grammar explanations, idioms, wordplay, and language-specific nuances
-
-### How to Use
-
-1. **Enable the Feature**: Go to Advanced Settings and enable "AI Context Analysis"
-2. **Configure Provider**: Set up your preferred AI provider (OpenAI or Google Gemini) with API key
-3. **Select Text**: While watching content, click on words or select phrases in the subtitles
-4. **View Analysis**: An interactive modal will appear with detailed context explanations
-5. **Explore Results**: Browse through cultural, historical, and linguistic insights
-
-### Supported AI Providers
-
-| Provider          | Models Available      | Setup Required | Quality    | Notes                        |
-| ----------------- | --------------------- | -------------- | ---------- | ---------------------------- |
-| **OpenAI GPT**    | GPT-4.1 Mini, GPT-4o  | API Key        | ⭐⭐⭐⭐⭐ | Recommended for best results |
-| **Google Gemini** | Gemini 2.5 Flash, Pro | API Key        | ⭐⭐⭐⭐⭐ | Fast responses, good quality |
-
-### Setup Requirements
-
-#### Prerequisites
-
-- Valid API key from OpenAI or Google
-- Internet connection for AI analysis
-- Supported streaming platform (Netflix, Disney+)
-
-#### Configuration Steps
-
-1. **Get an API Key**:
-    - **OpenAI**: Visit [OpenAI API](https://platform.openai.com/api-keys) and create an API key
-    - **Google Gemini**: Visit [Google AI Studio](https://aistudio.google.com/app/apikey) and generate an API key
-
-2. **Configure in DualSub**:
-    - Click the DualSub icon → "Advanced Settings"
-    - Navigate to "AI Context Analysis" section
-    - Enable "AI Context Analysis"
-    - Select your preferred provider
-    - Enter your API key
-    - Choose your preferred model
-
-3. **Test the Setup**:
-    - Use the "Test Connection" button to verify your configuration
-    - Start watching content and try selecting subtitle text
-
-### Usage Examples
-
-#### Language Learning
-
-Perfect for understanding cultural references and idioms:
-
-```
-Selected: "It's raining cats and dogs"
-→ Linguistic: English idiom meaning "raining heavily"
-→ Cultural: Common expression in English-speaking countries
-```
-
-#### Historical Content
-
-Get context for historical references:
-
-```
-Selected: "During the Meiji Restoration"
-→ Historical: Period of political revolution in Japan (1868-1912)
-→ Cultural: Transformation from feudal to modern society
-```
-
-#### Cultural Understanding
-
-Learn about cultural practices and customs:
-
-```
-Selected: "Bowing deeply"
-→ Cultural: Traditional Japanese greeting showing respect
-→ Linguistic: Different bow depths convey different levels of formality
-```
-
-### Performance & Costs
-
-- **Response Time**: Typically 2-5 seconds depending on provider
-- **Rate Limiting**: Built-in protection against API limits (60 requests/minute)
-- **Caching**: Results are cached for 1 hour to reduce API calls
-- **Cost**: Varies by provider (typically $0.001-0.01 per analysis)
-
-### Privacy & Security
-
-- **Data Handling**: Only selected text is sent to AI providers
-- **No Storage**: Analysis results are not permanently stored
-- **API Security**: All requests use secure HTTPS connections
-- **Local Caching**: Temporary caching improves performance without compromising privacy
-
-## 📦 Installation
-
-### Option 1: Manual Installation (Recommended for Development)
-
-1. **Download the Extension**
-
-    ```bash
-    git clone https://github.com/QuellaMC/DualSub.git
-    cd DualSub
-    ```
-
-2. **Install Dependencies** (for development)
-
-    ```bash
-    npm install
-    ```
-
-3. **Load in Chrome**
-    - Open Chrome and navigate to `chrome://extensions`
-    - Enable "Developer mode" (toggle in top-right corner)
-    - Click "Load unpacked"
-    - Select the `DualSub` directory
-
-4. **Verify Installation**
-    - The DualSub icon should appear in your Chrome toolbar
-    - Visit Netflix or Disney+ to test functionality
-
-### Option 2: Chrome Web Store
-
-[Install from Chrome Web Store](https://chromewebstore.google.com/detail/dualsub/lnkcpcbpjbidpjdjnmjdllpkgpocaikj)
-
-## 🚀 Quick Start
-
-1. **Install the Extension** following the instructions above
-2. **Visit a Supported Platform** (Netflix or Disney+)
-3. **Start Playing a Video** with subtitles enabled
-4. **Click the DualSub Icon** in your toolbar to open settings
-5. **Enable Dual Subtitles** and select your target language
-6. **Enjoy!** Original and translated subtitles will appear simultaneously
-7. **Optional**: Enable AI Context Analysis for deeper understanding
-
-### First-Time Setup Tips
-
-- Start with **DeepL Free** provider (default) for best quality
-- Use **Top/Bottom layout** for easier reading
-- Adjust **font size** and **gap** for optimal viewing
-- Enable **hide official subtitles** to avoid overlap
-- For AI Context: Set up OpenAI or Gemini API key in Advanced Settings
-
-## ⚙️ Configuration
-
-### Popup Settings (Quick Access)
-
-Click the DualSub icon in your toolbar to access:
-
-- **🔄 Enable/Disable**: Toggle dual subtitle functionality
-- **🌐 Translation Provider**: Choose your preferred translation service
-- **🎯 Target Language**: Select translation language from 50+ options
-- **📐 Layout Options**: Top/Bottom or Left/Right arrangement
-- **🎨 Appearance**: Font size, spacing, and display order
-- **⏱️ Timing**: Subtitle offset adjustment (±10 seconds)
-
-### Advanced Options Page
-
-Access via popup → "Advanced Settings" for:
-
-#### General Settings
-
-- **🌍 UI Language**: Choose interface language (EN, ES, JA, KO, ZH-CN, ZH-TW)
-- **👁️ Hide Official Subtitles**: Remove platform's native subtitles
-- **📊 Logging Level**: Control debug information (Off/Error/Warn/Info/Debug)
-
-#### Translation Settings
-
-- **🔧 Provider Configuration**: API keys for premium services
-- **⚡ Performance Tuning**: Batch size (1-10) and request delay (50-1000ms)
-- **🔄 Provider Testing**: Test API connections before use
-
-#### AI Context Analysis Settings
-
-- **🤖 Feature Toggle**: Enable/disable AI context analysis
-- **🔑 Provider Selection**: Choose between OpenAI GPT or Google Gemini
-- **🎯 Context Types**: Select analysis types (Cultural, Historical, Linguistic)
-- **⚙️ API Configuration**: Set API keys, models, and endpoints
-- **⏱️ Performance**: Configure timeout, rate limits, and caching
-- **🧪 Testing**: Test API connections and model availability
-
-#### Provider-Specific Settings
-
-- **DeepL API**: API key and plan selection (Free/Pro)
-- **OpenAI Compatible**: API key, base URL, and model configuration
-- **OpenAI Context**: API key and model selection for context analysis
-- **Google Gemini**: API key and model configuration for context analysis
+Configuration reference: `docs/en/configuration.md`. AI docs: `docs/en/ai-context.md`.
 
 ### Configuration Examples
 
@@ -483,7 +265,13 @@ For full license terms, see [LICENSE](LICENSE) file.
 
 ## 📋 Changelog
 
-### Version 2.1.0 (Current)
+### Version 2.2.0 (Current)
+
+- 🧩 Modularized documentation with English and Chinese docs under `docs/`
+- 🧭 AI Context UI/UX refinements (modal, transitions, selection persistence)
+- 🧹 Internal refactors and minor fixes
+
+### Version 2.1.0
 
 - 📍 Added vertical position control for precise subtitle placement on screen
 - 🎨 Enhanced appearance customization with new positioning options

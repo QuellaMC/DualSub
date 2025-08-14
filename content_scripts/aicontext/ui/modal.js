@@ -13,6 +13,7 @@ import { AIContextModalCore } from './modal-core.js';
 import { AIContextModalUI } from './modal-ui.js';
 import { AIContextModalEvents } from './modal-events.js';
 import { AIContextModalAnimations } from './modal-animations.js';
+import { ModalController } from './events/ModalController.js';
 
 /**
  * AIContextModal - Unified modal component
@@ -73,8 +74,23 @@ export class AIContextModal {
         // Ensure events module has animations reference (backup)
         this.events.setAnimations(this.animations);
 
+        // Mark events ready for SPA gating
+        this.core.markEventsReady();
+
         // Setup event coordination between modules
         this._setupModuleCoordination();
+
+        // Provide a simple controller API for external triggers/tests
+        this.controller = new ModalController(this.core, this.ui, this.animations);
+        // Expose controller to events for gradual migration
+        this.events.modalController = this.controller;
+        // Expose events back to controller for interaction helpers
+        this.controller.events = this.events;
+
+        // Wire close requests to controller close (registered once via coordination map for cleanup)
+        const _closeRelay = () => { try { this.controller.closeModal(); } catch (_) {} };
+        document.addEventListener('aicontext:modal:closeRequested', _closeRelay);
+        this.coordinationHandlers.set('close-relay', _closeRelay);
 
         // Ensure modal starts in completely hidden state
         this._ensureHiddenState();
@@ -100,8 +116,9 @@ export class AIContextModal {
             const { mode, trigger } = event.detail;
             this.core._log('debug', 'Modal show requested', { mode, trigger });
 
-            if (mode === 'selection') {
-                this.showSelectionMode();
+            // Only show when user has created a selection (words present)
+            if (mode === 'selection' && this.core.selectedWords?.size > 0) {
+                this.showSelectionMode({ trigger, preserveSelection: true });
             }
         };
         document.addEventListener(
@@ -141,20 +158,36 @@ export class AIContextModal {
             return false;
         }
 
-        this.core.currentMode = 'selection';
-        this.core.setState(MODAL_STATES.SELECTION);
+        // If already analyzing or showing processing/results, do not override state back to selection (race guard for SPA/soft nav)
+        const isBusy = this.core.isAnalyzing || this.core.state === MODAL_STATES.PROCESSING || this.core.state === MODAL_STATES.DISPLAY || this.core.state === MODAL_STATES.ERROR;
+        if (!isBusy) {
+            this.core.currentMode = 'selection';
+            this.core.setState(MODAL_STATES.SELECTION);
+        }
 
-        // Reset selection state
-        this.core.clearSelection();
+        // Preserve existing selection when triggered by word clicks or analysis request
+        // Users expect selected words to persist when starting analysis.
+        const preserveSelection = (options.preserveSelection !== undefined)
+            ? !!options.preserveSelection
+            : (options.trigger === 'word-selection' || options.trigger === 'analysis-request');
+        if (!preserveSelection) {
+            this.core.clearSelection();
+        }
         this.core.analysisResult = null;
         this.core.isAnalyzing = false;
 
         // Show modal with animation
         const success = this.animations.showModal(options);
         if (success) {
-            // Set initial state for two-pane layout
-            this.ui.showInitialState();
+            // Set initial state for two-pane layout only when not analyzing
+            if (!isBusy) this.ui.showInitialState();
             this.ui.updateSelectionDisplay();
+            // Ensure localized label and correct handler on the Start button
+            try {
+                if (this.controller && typeof this.controller.resetAnalysisButton === 'function') {
+                    this.controller.resetAnalysisButton();
+                }
+            } catch (_) {}
         }
 
         return success;
@@ -357,24 +390,19 @@ export class AIContextModal {
     _ensureHiddenState() {
         this.core._log('debug', 'Ensuring modal is in hidden state');
 
-        // Ensure modal container is hidden
+        // Ensure modal container and elements are hidden via class-only transitions
         if (this.core.element) {
-            this.core.element.style.display = 'none';
-            this.core.element.style.pointerEvents = 'none';
-            this.core.element.classList.remove(
-                'dualsub-context-modal--visible'
-            );
+            this.core.element.classList.remove('dualsub-context-modal--visible');
+            try { this.core.element.style.pointerEvents = 'none'; } catch (_) {}
         }
 
-        // Ensure overlay is hidden
         if (this.core.overlayElement) {
-            this.core.overlayElement.style.display = 'none';
-            this.core.overlayElement.style.pointerEvents = 'none';
+            this.core.overlayElement.classList.remove('dualsub-visible');
+            try { this.core.overlayElement.style.pointerEvents = 'none'; } catch (_) {}
         }
 
-        // Ensure content is hidden
         if (this.core.contentElement) {
-            this.core.contentElement.style.display = 'none';
+            this.core.contentElement.classList.remove('dualsub-visible');
         }
 
         // Ensure core state is correct
@@ -412,6 +440,12 @@ export class AIContextModal {
                 this.coordinationHandlers.get('close-request')
             );
         }
+        if (this.coordinationHandlers.has('close-relay')) {
+            document.removeEventListener(
+                'aicontext:modal:closeRequested',
+                this.coordinationHandlers.get('close-relay')
+            );
+        }
         this.coordinationHandlers.clear();
 
         // Cleanup modules in reverse order
@@ -426,6 +460,7 @@ export class AIContextModal {
         }
 
         if (this.ui) {
+            try { if (this.ui._onFullscreenChange) document.removeEventListener('fullscreenchange', this.ui._onFullscreenChange); } catch (_) {}
             this.ui = null;
         }
 

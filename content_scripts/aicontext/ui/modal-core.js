@@ -10,6 +10,8 @@
 
 import { MODAL_STATES, EVENT_TYPES, UI_CONFIG } from '../core/constants.js';
 import { createSelectionPersistenceManager } from '../utils/selectionPersistence.js';
+import { SelectionModel } from '../core/state/SelectionModel.js';
+import { ModalStore } from '../core/state/ModalStore.js';
 
 /**
  * Core modal state management and lifecycle
@@ -36,7 +38,8 @@ export class AIContextModalCore {
         // Content script reference for config access
         this.contentScript = config.contentScript || null;
 
-        // Selection state (legacy compatibility)
+        // Selection state (legacy compatibility) - now driven by SelectionModel
+        this.selectionModel = new SelectionModel();
         this.selectedWords = new Set();
         this.selectedWordPositions = new Map(); // Map word+position to unique identifier (Issue #4)
         this.selectedWordsOrder = []; // Preserve order of word selection for phrase analysis
@@ -76,6 +79,22 @@ export class AIContextModalCore {
 
         // Selection persistence manager
         this.selectionPersistenceManager = null;
+
+        // Readiness gating for SPA navigation
+        this.uiReady = false;
+        this.eventsReady = false;
+        this._readyResolve = null;
+        this.onceReady = new Promise((resolve) => (this._readyResolve = resolve));
+
+        // ModalStore for observable UI state
+        this.store = new ModalStore({
+            isVisible: this.isVisible,
+            modalState: this.state,
+            mode: this.currentMode,
+            analyzing: this.isAnalyzing,
+            requestId: this.currentRequest,
+            analysisResult: this.analysisResult,
+        });
     }
 
     /**
@@ -94,6 +113,8 @@ export class AIContextModalCore {
 
         // Core is ready - UI and events will be initialized by other modules
         this._log('debug', 'Modal core initialized successfully');
+
+        // Do not resolve readiness here; UI module will resolve when DOM + listeners are attached
     }
 
     /**
@@ -102,6 +123,26 @@ export class AIContextModalCore {
      */
     setLogger(logger) {
         this.logger = logger;
+    }
+
+    /**
+     * Mark UI ready and resolve onceReady gating promise
+     */
+    markUiReady() {
+        if (!this.uiReady) {
+            this.uiReady = true;
+            if (this.eventsReady && this._readyResolve) this._readyResolve();
+        }
+    }
+
+    /**
+     * Mark events ready and resolve onceReady gating promise
+     */
+    markEventsReady() {
+        if (!this.eventsReady) {
+            this.eventsReady = true;
+            if (this.uiReady && this._readyResolve) this._readyResolve();
+        }
     }
 
     /**
@@ -135,11 +176,60 @@ export class AIContextModalCore {
             mode: this.currentMode,
         });
 
-        this._dispatchEvent(EVENT_TYPES.STATE_CHANGE, {
+        this._dispatchEvent(EVENT_TYPES.MODAL_STATE_CHANGE, {
             oldState,
             newState,
             mode: this.currentMode,
+            data: { requestId: this.currentRequest },
         });
+
+        // Centralized render path (applies state classes only)
+        this._renderState();
+
+        // Reflect into store
+        this.store.setState(this.state);
+
+        // Phase 3: Keep selection highlights in sync on key state transitions
+        if (newState === MODAL_STATES.SELECTION || newState === MODAL_STATES.PROCESSING) {
+            try { this.syncSelectionHighlights(); } catch (_) {}
+            // When entering processing, enforce current highlights to be visible immediately
+            if (newState === MODAL_STATES.PROCESSING) {
+                try { this.syncSelectionHighlights(); } catch (_) {}
+            }
+        }
+    }
+
+    /**
+     * Apply state-driven CSS classes to the live modal content. Single render path.
+     * @private
+     */
+    _renderState() {
+        try {
+            const content = this.contentElement || document.getElementById('dualsub-modal-content');
+            if (!content) return;
+
+            content.classList.remove('is-hidden', 'is-selection', 'is-analyzing', 'is-display', 'is-error');
+
+            switch (this.state) {
+                case MODAL_STATES.HIDDEN:
+                    content.classList.add('is-hidden');
+                    break;
+                case MODAL_STATES.SELECTION:
+                    content.classList.add('is-selection');
+                    break;
+                case MODAL_STATES.PROCESSING:
+                    content.classList.add('is-analyzing');
+                    break;
+                case MODAL_STATES.DISPLAY:
+                    content.classList.add('is-display');
+                    break;
+                case MODAL_STATES.ERROR:
+                    content.classList.add('is-error');
+                    break;
+            }
+        } catch (error) {
+            this._log('warn', 'Failed to render modal state', { error: error.message, state: this.state });
+        }
     }
 
     /**
@@ -148,9 +238,8 @@ export class AIContextModalCore {
     resetState() {
         this._log('debug', 'Resetting modal state');
 
-        this.selectedWords.clear();
-        this.selectedWordsOrder = [];
-        this.selectedText = '';
+        this.selectionModel.clear();
+        this._syncSelectionSnapshotFromModel();
         this.analysisResult = null;
         this.isAnalyzing = false;
         this.currentMode = null;
@@ -163,24 +252,11 @@ export class AIContextModalCore {
      * @param {Object} position - Word position information
      */
     addWordToSelection(word, position = {}) {
-        // Create unique identifier for word+position combination
         const positionKey = this._createPositionKey(word, position);
+        const added = this.selectionModel.add(word, position, positionKey);
+        if (!added) return;
 
-        // Check if this exact position is already selected
-        if (this.selectedWordPositions.has(positionKey)) {
-            return;
-        }
-
-        // Add the word to selection
-        this.selectedWords.add(word);
-        this.selectedWordPositions.set(positionKey, { word, position });
-
-        // Add position key to order to maintain sequence
-        this.selectedWordsOrder.push(positionKey);
-
-        this._updateSelectedText();
-
-        // Capture selection state for persistence
+        this._syncSelectionSnapshotFromModel();
         this._captureSelectionStateIfNeeded();
 
         this._dispatchEvent(EVENT_TYPES.WORD_ADDED, {
@@ -190,6 +266,9 @@ export class AIContextModalCore {
             selectedWords: Array.from(this.selectedWords),
             selectedText: this.selectedText,
         });
+
+        // Phase 3: Centralized highlight sync
+        try { this.syncSelectionHighlights(); } catch (_) {}
     }
 
     /**
@@ -199,89 +278,24 @@ export class AIContextModalCore {
      */
     removeWordFromSelection(word, position = null) {
         let removed = false;
-
         if (position) {
-            // Remove specific position (Issue #1: Fixed word sequence preservation)
             const positionKey = this._createPositionKey(word, position);
-            if (this.selectedWordPositions.has(positionKey)) {
-                this.selectedWordPositions.delete(positionKey);
-                removed = true;
-
-                // Remove position key from order array
-                this.selectedWordsOrder = this.selectedWordsOrder.filter(
-                    (key) => key !== positionKey
-                );
-
-                // Check if any other positions of this word exist
-                const hasOtherPositions = Array.from(
-                    this.selectedWordPositions.values()
-                ).some((entry) => entry.word === word);
-
-                if (!hasOtherPositions) {
-                    this.selectedWords.delete(word);
-                }
-
-                this._updateSelectedText();
-
-                this._log('debug', 'Word position removed from selection', {
-                    word,
-                    position,
-                    positionKey,
-                    hasOtherPositions,
-                    totalWords: this.selectedWords.size,
-                    totalPositions: this.selectedWordPositions.size,
-                    selectedWordsOrder: this.selectedWordsOrder,
-                });
-            } else {
+            removed = this.selectionModel.remove(word, position, positionKey);
+            if (!removed) {
                 this._log('debug', 'Word position not found for removal', {
                     word,
                     positionKey,
                     availableKeys: Array.from(
-                        this.selectedWordPositions.keys()
+                        this.selectionModel.getPositionsMap().keys()
                     ),
                 });
             }
         } else {
-            // Remove all positions of this word (legacy compatibility)
-            if (this.selectedWords.has(word)) {
-                this.selectedWords.delete(word);
-                this.selectedWordsOrder = this.selectedWordsOrder.filter(
-                    (w) => w !== word
-                );
-
-                // Remove all position entries for this word
-                const keysToRemove = [];
-                for (const [
-                    key,
-                    entry,
-                ] of this.selectedWordPositions.entries()) {
-                    if (entry.word === word) {
-                        keysToRemove.push(key);
-                    }
-                }
-
-                keysToRemove.forEach((key) =>
-                    this.selectedWordPositions.delete(key)
-                );
-                removed = keysToRemove.length > 0;
-
-                this._updateSelectedText();
-
-                this._log(
-                    'debug',
-                    'All positions of word removed from selection',
-                    {
-                        word,
-                        removedPositions: keysToRemove.length,
-                        totalWords: this.selectedWords.size,
-                        totalPositions: this.selectedWordPositions.size,
-                    }
-                );
-            }
+            removed = this.selectionModel.remove(word);
         }
 
         if (removed) {
-            // Capture selection state for persistence
+            this._syncSelectionSnapshotFromModel();
             this._captureSelectionStateIfNeeded();
 
             this._dispatchEvent(EVENT_TYPES.WORD_REMOVED, {
@@ -290,6 +304,9 @@ export class AIContextModalCore {
                 selectedWords: Array.from(this.selectedWords),
                 selectedText: this.selectedText,
             });
+
+            // Phase 3: Centralized highlight sync
+            try { this.syncSelectionHighlights(); } catch (_) {}
         }
     }
 
@@ -300,12 +317,14 @@ export class AIContextModalCore {
      */
     toggleWordSelection(word, position = {}) {
         const positionKey = this._createPositionKey(word, position);
+        const result = this.selectionModel.toggle(word, position, positionKey);
+        if (result === 'noop') return;
+        this._syncSelectionSnapshotFromModel();
+        // Capture state only when added
+        if (result === 'added') this._captureSelectionStateIfNeeded();
 
-        if (this.selectedWordPositions.has(positionKey)) {
-            this.removeWordFromSelection(word, position);
-        } else {
-            this.addWordToSelection(word, position);
-        }
+        // Phase 3: Centralized highlight sync
+        try { this.syncSelectionHighlights(); } catch (_) {}
     }
 
     /**
@@ -314,10 +333,8 @@ export class AIContextModalCore {
     clearSelection() {
         const hadSelection = this.selectedWords.size > 0;
 
-        this.selectedWords.clear();
-        this.selectedWordPositions.clear();
-        this.selectedWordsOrder = [];
-        this.selectedText = '';
+        this.selectionModel.clear();
+        this._syncSelectionSnapshotFromModel();
 
         // Clear selection persistence state
         this._clearSelectionPersistence();
@@ -407,6 +424,8 @@ export class AIContextModalCore {
             result,
             selectedWords: Array.from(this.selectedWords),
         });
+
+        this.store.set({ analysisResult: result, analyzing: false });
     }
 
     /**
@@ -421,7 +440,10 @@ export class AIContextModalCore {
             this._removeDuplicateSelections();
             // Reset retry state when starting new analysis
             this._resetRetryState();
+            // Ensure visual highlights stay locked-in during processing
+            try { this.syncSelectionHighlights(); } catch (_) {}
         }
+        this.store.setAnalyzing(analyzing);
     }
 
     /**
@@ -432,21 +454,33 @@ export class AIContextModalCore {
      * @private
      */
     _createPositionKey(word, position = {}) {
-        // Create a deterministic identifier using stable position attributes
-        const elementId = position.elementId || position.element?.id || '';
-        const index = position.index || position.wordIndex || 0;
+        // Fast path: prefer stable index + type when available to avoid costly DOM path generation
+        const idx = (position.wordIndex !== undefined ? position.wordIndex : position.index) || 0;
         const subtitleType = position.subtitleType || '';
-        const parentId = position.element?.parentElement?.id || '';
-
-        // Use element reference as primary identifier if available
-        if (position.element) {
-            // Create unique key based on element's position in DOM
-            const elementPath = this._getElementPath(position.element);
-            return `${word}:${elementPath}:${subtitleType}:${index}`;
+        if (subtitleType) {
+            return `${word}:${subtitleType}:${idx}`;
         }
 
-        // Fallback for cases without element reference (use deterministic values only)
-        return `${word}:${elementId}:${parentId}:${index}:${subtitleType}`;
+        // Secondary path: derive from element dataset when present
+        const el = position.element;
+        try {
+            if (el) {
+                const dataIdx = el.getAttribute('data-word-index');
+                const dataType = el.getAttribute('data-subtitle-type') || subtitleType || 'original';
+                if (dataIdx !== null) {
+                    return `${word}:${dataType}:${Number(dataIdx) || 0}`;
+                }
+            }
+        } catch (_) {}
+
+        // Fallback: build a DOM path-based key (legacy compatibility)
+        const elementId = position.elementId || el?.id || '';
+        const parentId = el?.parentElement?.id || '';
+        if (el) {
+            const elementPath = this._getElementPath(el);
+            return `${word}:${elementPath}:${subtitleType}:${idx}`;
+        }
+        return `${word}:${elementId}:${parentId}:${idx}:${subtitleType}`;
     }
 
     /**
@@ -493,72 +527,9 @@ export class AIContextModalCore {
      * @private
      */
     _removeDuplicateSelections() {
-        // Group position keys by word text
-        const wordGroups = new Map();
-        for (const [
-            positionKey,
-            data,
-        ] of this.selectedWordPositions.entries()) {
-            const word = data.word;
-            if (!wordGroups.has(word)) {
-                wordGroups.set(word, []);
-            }
-            wordGroups.get(word).push({ positionKey, data });
-        }
-
-        const duplicateKeys = [];
-
-        // Process each word group to find duplicates
-        for (const [, positions] of wordGroups.entries()) {
-            if (positions.length > 1) {
-                // Multiple position keys for the same word - need to deduplicate
-
-                // Prefer position keys with element references over those without
-                const withElement = positions.filter(
-                    (p) => p.data.position?.element
-                );
-                const withoutElement = positions.filter(
-                    (p) => !p.data.position?.element
-                );
-
-                let removePositions;
-
-                if (withElement.length > 0) {
-                    // Keep the first position with element reference
-                    removePositions = [
-                        ...withElement.slice(1),
-                        ...withoutElement,
-                    ];
-                } else {
-                    // All positions lack element reference, keep the first one
-                    removePositions = positions.slice(1);
-                }
-
-                duplicateKeys.push(
-                    ...removePositions.map((p) => p.positionKey)
-                );
-            }
-        }
-
-        // Remove duplicates
-        duplicateKeys.forEach((key) => {
-            this.selectedWordPositions.delete(key);
-            this.selectedWordsOrder = this.selectedWordsOrder.filter(
-                (orderKey) => orderKey !== key
-            );
-        });
-
-        // Update selected words set to match remaining positions
-        this.selectedWords.clear();
-        for (const [, data] of this.selectedWordPositions.entries()) {
-            this.selectedWords.add(data.word);
-        }
-
-        if (duplicateKeys.length > 0) {
-            this._updateSelectedText();
-        }
-
-        return duplicateKeys.length;
+        const removed = this.selectionModel.removeDuplicatesPreferOriginal();
+        if (removed > 0) this._syncSelectionSnapshotFromModel();
+        return removed;
     }
 
     /**
@@ -616,6 +587,13 @@ export class AIContextModalCore {
             selectedWordsOrder: [...this.selectedWordsOrder],
             selectedText: this.selectedText,
             timestamp: Date.now(),
+            // Phase 4: capture current content signature for gating
+            signature: (() => {
+                try {
+                    const container = document.getElementById('dualsub-original-subtitle');
+                    return container?.dataset?.textSig || '';
+                } catch (_) { return ''; }
+            })(),
         };
 
         this.selectionPersistence.lastSubtitleContent = subtitleContent;
@@ -689,17 +667,41 @@ export class AIContextModalCore {
                     hasSelectionState: !!state,
                 }
             );
-            return false;
+            return false; // Do not schedule further attempts here; upstream gating prevents spam
         }
+
+        // Phase 4: Verify content signature matches before restoring
+        try {
+            const container = document.getElementById('dualsub-original-subtitle');
+            const currentSig = container?.dataset?.textSig || '';
+            const capturedSig = state.signature || '';
+            if (capturedSig && currentSig && capturedSig !== currentSig) {
+                // Re-schedule a single attempt slightly later to coalesce bursts
+                if (!this.selectionPersistence.restorationTimeout) {
+                    this.selectionPersistence.restorationTimeout = setTimeout(() => {
+                        this.selectionPersistence.restorationTimeout = null;
+                        try { this.restoreSelectionState(); } catch (_) {}
+                    }, 100);
+                }
+                return false;
+            }
+        } catch (_) {}
 
         this.selectionPersistence.isRestoring = true;
 
         try {
-            // Restore selection state
-            this.selectedWords = new Set(state.selectedWords);
-            this.selectedWordPositions = new Map(state.selectedWordPositions);
-            this.selectedWordsOrder = [...state.selectedWordsOrder];
-            this.selectedText = state.selectedText;
+            // Restore selection state into SelectionModel
+            this.selectionModel.clear();
+            // state.selectedWordPositions was saved as a Map
+            const positionsMap = new Map(state.selectedWordPositions);
+            for (const [key, entry] of positionsMap.entries()) {
+                this.selectionModel.add(entry.word, entry.position, key);
+            }
+            // Maintain order when available
+            this.selectionModel.positionKeyOrder = [...state.selectedWordsOrder];
+            this.selectionModel.updateSelectedText();
+            // Sync legacy snapshot
+            this._syncSelectionSnapshotFromModel();
 
             this._log(
                 'info',
@@ -712,9 +714,19 @@ export class AIContextModalCore {
 
             // Schedule visual restoration after DOM is ready
             this.selectionPersistence.pendingRestore = true;
-            setTimeout(() => {
-                this._restoreVisualHighlighting();
-            }, 50);
+            // Use requestAnimationFrame to ensure DOM is fully updated after style changes
+            const scheduleVisualRestore = () => {
+                try {
+                    this._restoreVisualHighlighting();
+                } catch (_) {}
+            };
+            if (typeof requestAnimationFrame === 'function') {
+                requestAnimationFrame(() => {
+                    setTimeout(scheduleVisualRestore, 0);
+                });
+            } else {
+                setTimeout(scheduleVisualRestore, 50);
+            }
 
             return true;
         } catch (error) {
@@ -805,26 +817,15 @@ export class AIContextModalCore {
                                                 newPosition
                                             );
 
-                                        // Update stored position to current DOM structure
-                                        this.selectedWordPositions.delete(
-                                            storedPositionKey
-                                        );
-                                        this.selectedWordPositions.set(
+                                        // Update model with the new position key
+                                        this.selectionModel.replacePositionKey(
+                                            storedPositionKey,
                                             newPositionKey,
-                                            { word, position: newPosition }
+                                            word,
+                                            newPosition
                                         );
 
-                                        // Update the order array with the new position key
-                                        const orderIndex =
-                                            this.selectedWordsOrder.indexOf(
-                                                storedPositionKey
-                                            );
-                                        if (orderIndex !== -1) {
-                                            this.selectedWordsOrder[
-                                                orderIndex
-                                            ] = newPositionKey;
-                                        }
-
+                                        const orderIndex = this.selectedWordsOrder.indexOf(storedPositionKey);
                                         this._log(
                                             'debug',
                                             'Word position updated during restoration',
@@ -873,17 +874,8 @@ export class AIContextModalCore {
                                 word,
                                 position
                             );
-                            this.selectedWordPositions.set(positionKey, {
-                                word,
-                                position,
-                            });
-
-                            // Add to order array if not already present
-                            if (
-                                !this.selectedWordsOrder.includes(positionKey)
-                            ) {
-                                this.selectedWordsOrder.push(positionKey);
-                            }
+                            // Add to model
+                            this.selectionModel.add(word, position, positionKey);
 
                             this._log(
                                 'debug',
@@ -905,8 +897,9 @@ export class AIContextModalCore {
                 }
             }
 
-            // Update selected text after restoration to ensure consistency
-            this._updateSelectedText();
+            // Sync from model to ensure consistency
+            this.selectionModel.updateSelectedText();
+            this._syncSelectionSnapshotFromModel();
 
             this._log('info', 'Visual highlighting restored', {
                 totalInteractiveWords: interactiveWords.length,
@@ -924,6 +917,9 @@ export class AIContextModalCore {
                     restored: true,
                 });
             }
+
+            // Phase 3: Centralized highlight sync after restoration
+            try { this.syncSelectionHighlights(); } catch (_) {}
         } catch (error) {
             this._log('error', 'Failed to restore visual highlighting', {
                 error: error.message,
@@ -983,54 +979,26 @@ export class AIContextModalCore {
      * @private
      */
     _updateSelectedText() {
-        // Sort position keys by their actual position in the subtitle
-        const sortedPositionKeys = [...this.selectedWordsOrder].sort(
-            (keyA, keyB) => {
-                const positionA = this.selectedWordPositions.get(keyA);
-                const positionB = this.selectedWordPositions.get(keyB);
-
-                if (!positionA || !positionB) return 0;
-
-                // Sort by wordIndex (position in subtitle)
-                const indexA =
-                    positionA.position?.wordIndex ??
-                    positionA.position?.index ??
-                    0;
-                const indexB =
-                    positionB.position?.wordIndex ??
-                    positionB.position?.index ??
-                    0;
-
-                return indexA - indexB;
-            }
-        );
-
-        // Convert sorted position keys back to words in the correct order
-        const words = sortedPositionKeys
-            .map((positionKey) => {
-                const positionData =
-                    this.selectedWordPositions.get(positionKey);
-                return positionData ? positionData.word : '';
-            })
-            .filter((word) => word); // Remove empty strings
-
-        this.selectedText = words.join(' ');
-
+        this.selectionModel.updateSelectedText();
+        this._syncSelectionSnapshotFromModel();
         this._log('debug', 'Selected text updated with subtitle order', {
             originalOrder: this.selectedWordsOrder,
-            sortedOrder: sortedPositionKeys,
-            words: words,
+            words: Array.from(this.selectedWords),
             selectedText: this.selectedText,
-            positionData: sortedPositionKeys.map((key) => {
-                const pos = this.selectedWordPositions.get(key);
-                return {
-                    key,
-                    word: pos?.word,
-                    wordIndex: pos?.position?.wordIndex,
-                    index: pos?.position?.index,
-                };
-            }),
         });
+        // Keep visuals in sync with model
+        try { this.syncSelectionHighlights(); } catch (_) {}
+    }
+
+    /**
+     * Mirror selection model state into legacy-accessed properties
+     * @private
+     */
+    _syncSelectionSnapshotFromModel() {
+        this.selectedWordPositions = this.selectionModel.getPositionsMap();
+        this.selectedWordsOrder = this.selectionModel.getPositionKeyOrder();
+        this.selectedWords = this.selectionModel.getSelectedWords();
+        this.selectedText = this.selectionModel.selectedText;
     }
 
     /**
@@ -1077,6 +1045,66 @@ export class AIContextModalCore {
                 `[AIContextModal:Core] [${level.toUpperCase()}] ${message}`,
                 data
             );
+        }
+    }
+
+    /**
+     * Phase 3: Centralized selection highlights syncing.
+     * Applies/removes the 'dualsub-word-selected' class on original subtitle words
+     * based on the SelectionModel positions map.
+     */
+    syncSelectionHighlights() {
+        try {
+            const container = document.getElementById('dualsub-original-subtitle');
+            if (!container) return;
+            const wordElements = container.querySelectorAll('.dualsub-interactive-word');
+            wordElements.forEach((wordElement) => {
+                const word = wordElement.getAttribute('data-word') || '';
+                const subtitleType = wordElement.getAttribute('data-subtitle-type') || 'original';
+                const wordIndexAttr = wordElement.getAttribute('data-word-index');
+                const wordIndex = Number.isFinite(Number(wordIndexAttr)) ? Number(wordIndexAttr) : this._getWordIndexFromElement(wordElement);
+                const position = {
+                    elementId: wordElement.id,
+                    element: wordElement,
+                    subtitleType,
+                    wordIndex,
+                };
+                const positionKey = this._createPositionKey(word, position);
+                let isSelected = this.selectedWordPositions.has(positionKey);
+
+                // Fallback: if not matched by positionKey (e.g., DOM path changed), try matching by
+                // word + subtitleType + wordIndex. If matched, also update the model to new key for stability.
+                if (!isSelected) {
+                    let matchedOldKey = null;
+                    for (const [oldKey, entry] of this.selectedWordPositions.entries()) {
+                        const entryIndex = (entry.position?.wordIndex !== undefined ? entry.position.wordIndex : entry.position?.index) || 0;
+                        const entryType = (entry.position?.subtitleType || 'original');
+                        if (entry.word === word && entryType === subtitleType && entryIndex === wordIndex) {
+                            matchedOldKey = oldKey;
+                            isSelected = true;
+                            break;
+                        }
+                    }
+                    // If matched by index, normalize stored key to the new DOM path to keep future checks aligned
+                    if (matchedOldKey) {
+                        try {
+                            this.selectionModel.replacePositionKey(matchedOldKey, positionKey, word, position);
+                            this._syncSelectionSnapshotFromModel();
+                        } catch (_) {}
+                    }
+                }
+
+                if (isSelected) {
+                    wordElement.classList.add('dualsub-word-selected');
+                } else {
+                    // Do not remove highlight while analyzing to preserve selection visuals
+                    if (!this.isAnalyzing) {
+                        wordElement.classList.remove('dualsub-word-selected');
+                    }
+                }
+            });
+        } catch (error) {
+            this._log('warn', 'Failed to sync selection highlights', { error: error.message });
         }
     }
 
@@ -1151,6 +1179,9 @@ export class AIContextModalCore {
                         }
                     );
                 }
+
+                // Opportunistically re-sync highlights when tab becomes visible
+                try { this.syncSelectionHighlights(); } catch (_) {}
             }
         };
 

@@ -25,6 +25,8 @@ export class VideoPlatform {
     constructor() {
         this.logger = Logger.create('VideoPlatform');
         this.unsubscribeFromChanges = null;
+        // Cache for frequently-read settings to avoid repetitive storage calls
+        this._hideOfficialSubtitles = undefined;
     }
     /**
      * Checks if the current page is relevant to this platform.
@@ -152,9 +154,16 @@ export class VideoPlatform {
      * @param {string[]} selectors - Array of CSS selectors for subtitle containers
      */
     async handleNativeSubtitlesWithSetting(selectors) {
-        const hideOfficialSubtitles = await configService.get(
-            'hideOfficialSubtitles'
-        );
+        // Use cached value when available to avoid repeated storage reads
+        let hideOfficialSubtitles = this._hideOfficialSubtitles;
+        if (hideOfficialSubtitles === undefined) {
+            try {
+                hideOfficialSubtitles = await configService.get('hideOfficialSubtitles');
+                this._hideOfficialSubtitles = !!hideOfficialSubtitles;
+            } catch (e) {
+                hideOfficialSubtitles = false;
+            }
+        }
 
         if (hideOfficialSubtitles) {
             this.hideOfficialSubtitleContainers(selectors);
@@ -173,7 +182,8 @@ export class VideoPlatform {
         this.storageListener = (changes) => {
             if (changes.hideOfficialSubtitles !== undefined) {
                 const newValue = changes.hideOfficialSubtitles;
-
+                // Cache the latest value
+                this._hideOfficialSubtitles = !!newValue;
                 if (newValue) {
                     this.hideOfficialSubtitleContainers(this.subtitleSelectors);
                 } else {
@@ -190,6 +200,13 @@ export class VideoPlatform {
             this.logger?.debug(
                 'configService change listener added successfully'
             );
+            // Warm up cache asynchronously without spamming logs
+            (async () => {
+                try {
+                    const v = await configService.get('hideOfficialSubtitles');
+                    this._hideOfficialSubtitles = !!v;
+                } catch (_) {}
+            })();
         } else {
             this.logger?.warn(
                 'configService.onChanged API not available, skipping listener setup'
