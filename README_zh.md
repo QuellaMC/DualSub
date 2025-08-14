@@ -17,12 +17,12 @@
 
 ## 📚 文档
 
-- 功能特性：`docs/zh/features.md`
-- 支持的平台：`docs/zh/platforms.md`
-- 翻译服务商：`docs/zh/providers.md`
-- AI 上下文分析：`docs/zh/ai-context.md`
-- 安装说明：`docs/zh/installation.md`
-- 配置设置：`docs/zh/configuration.md`
+- **功能特性**：[docs/zh/features.md](docs/zh/features.md)
+- **支持的平台**：[docs/zh/platforms.md](docs/zh/platforms.md)
+- **翻译服务商**：[docs/zh/providers.md](docs/zh/providers.md)
+- **AI 上下文分析**：[docs/zh/ai-context.md](docs/zh/ai-context.md)
+- **安装说明**：[docs/zh/installation.md](docs/zh/installation.md)
+- **配置设置**：[docs/zh/configuration.md](docs/zh/configuration.md)
 
 ## 📋 目录
 
@@ -48,7 +48,7 @@
 - 自定义：布局、外观、垂直位置、时间偏移
 - AI 上下文：OpenAI 与 Gemini，文化/历史/语言解读
 
-更多细节：`docs/zh/features.md`、`docs/zh/platforms.md`、`docs/zh/providers.md`、`docs/zh/ai-context.md`。
+更多细节：[docs/zh/features.md](docs/zh/features.md)、[docs/zh/platforms.md](docs/zh/platforms.md)、[docs/zh/providers.md](docs/zh/providers.md)、[docs/zh/ai-context.md](docs/zh/ai-context.md)。
 
 ## 📦 安装与快速开始
 
@@ -57,7 +57,7 @@
 3）点击 DualSub 图标 → 启用双语字幕并选择目标语言。
 4）可选：在“高级设置”中配置 AI 上下文（服务商、API 密钥、模型）。
 
-配置参考：`docs/zh/configuration.md`。
+配置参考：[docs/zh/configuration.md](docs/zh/configuration.md)。
 
 ## 🛠️ 开发环境设置
 

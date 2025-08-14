@@ -17,12 +17,12 @@
 
 ## 📚 Documentation
 
-- Features: `docs/en/features.md`
-- Supported Platforms: `docs/en/platforms.md`
-- Translation Providers: `docs/en/providers.md`
-- AI Context Analysis: `docs/en/ai-context.md`
-- Installation: `docs/en/installation.md`
-- Configuration: `docs/en/configuration.md`
+- [Features](docs/en/features.md)
+- [Supported Platforms](docs/en/platforms.md)
+- [Translation Providers](docs/en/providers.md)
+- [AI Context Analysis](docs/en/ai-context.md)
+- [Installation](docs/en/installation.md)
+- [Configuration](docs/en/configuration.md)
 
 ## 📋 Table of Contents
 
@@ -44,7 +44,7 @@
 - Flexible layouts, appearance controls, and timing offset
 - Multi-language UI (EN, ES, JA, KO, ZH-CN, ZH-TW)
 
-See details in: `docs/en/features.md`, `docs/en/platforms.md`, `docs/en/providers.md`.
+See details in: [docs/en/features.md](docs/en/features.md), [docs/en/platforms.md](docs/en/platforms.md), [docs/en/providers.md](docs/en/providers.md).
 
 ## 📦 Installation & Quick Start
 
@@ -53,7 +53,7 @@ See details in: `docs/en/features.md`, `docs/en/platforms.md`, `docs/en/provider
 3) Click the DualSub icon → enable dual subtitles and choose target language.
 4) Optional: Configure AI Context (provider, API key, model) in Advanced Settings.
 
-Configuration reference: `docs/en/configuration.md`. AI docs: `docs/en/ai-context.md`.
+Configuration reference: [docs/en/configuration.md](docs/en/configuration.md). AI docs: [docs/en/ai-context.md](docs/en/ai-context.md).
 
 ### Configuration Examples
 
