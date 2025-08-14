@@ -26,7 +26,10 @@ export class ModalController {
         this.core.setAnalyzing(true);
         this.core.setState(MODAL_STATES.PROCESSING);
 
-        if (this.animations && typeof this.animations.showProcessingState === 'function') {
+        if (
+            this.animations &&
+            typeof this.animations.showProcessingState === 'function'
+        ) {
             this.animations.showProcessingState();
         } else {
             this.ui.showProcessingState();
@@ -34,36 +37,58 @@ export class ModalController {
 
         // Disable interactions consistently (mirror Events module behavior)
         try {
-            if (this.events && typeof this.events._disableWordInteractions === 'function') {
+            if (
+                this.events &&
+                typeof this.events._disableWordInteractions === 'function'
+            ) {
                 this.events._disableWordInteractions();
             }
             // Ensure original subtitles visually reflect disabled state
             try {
-                const original = document.getElementById('dualsub-original-subtitle');
-                if (original) original.classList.add('dualsub-subtitles-disabled');
+                const original = document.getElementById(
+                    'dualsub-original-subtitle'
+                );
+                if (original)
+                    original.classList.add('dualsub-subtitles-disabled');
             } catch (_) {}
             // Force-hide remove buttons immediately for robustness
             try {
-                const selected = document.getElementById('dualsub-selected-words');
-                selected?.querySelectorAll('.dualsub-word-remove').forEach((el) => { el.style.display = 'none'; });
+                const selected = document.getElementById(
+                    'dualsub-selected-words'
+                );
+                selected
+                    ?.querySelectorAll('.dualsub-word-remove')
+                    .forEach((el) => {
+                        el.style.display = 'none';
+                    });
             } catch (_) {}
         } catch (_) {}
 
         // Freeze selection persistence and suppress immediate restorations
-        try { this.core.selectionPersistence.lastManualSelectionTs = Date.now(); } catch (_) {}
+        try {
+            this.core.selectionPersistence.lastManualSelectionTs = Date.now();
+        } catch (_) {}
 
         // Ensure UI reflects disabled removal (hide X icons) and keep highlights visible
-        try { this.ui.updateSelectionDisplay(); } catch (_) {}
-        try { this.core.syncSelectionHighlights(); } catch (_) {}
+        try {
+            this.ui.updateSelectionDisplay();
+        } catch (_) {}
+        try {
+            this.core.syncSelectionHighlights();
+        } catch (_) {}
 
         // Switch button to pause state
         try {
             const scope = this.core.contentElement || document;
             const btn = scope.querySelector('#dualsub-start-analysis');
             if (btn) {
-                btn.textContent = this._getLocalizedMessage('aiContextPauseAnalysis');
+                btn.textContent = this._getLocalizedMessage(
+                    'aiContextPauseAnalysis'
+                );
                 btn.className = 'dualsub-analysis-button processing';
-                btn.title = this._getLocalizedMessage('aiContextPauseAnalysisTitle');
+                btn.title = this._getLocalizedMessage(
+                    'aiContextPauseAnalysisTitle'
+                );
                 btn.disabled = false;
                 btn.setAttribute('data-paused-toggle', 'true');
                 const newButton = btn.cloneNode(true);
@@ -80,15 +105,26 @@ export class ModalController {
         let targetLanguage = 'en';
         let sourceLanguage = 'auto';
         try {
-            const cfg = this.core.contentScript?.configService || window.configService;
+            const cfg =
+                this.core.contentScript?.configService || window.configService;
             if (cfg && typeof cfg.getMultiple === 'function') {
-                const prefs = await cfg.getMultiple(['targetLanguage', 'originalLanguage']);
-                if (prefs?.targetLanguage) targetLanguage = prefs.targetLanguage;
-                if (prefs?.originalLanguage) sourceLanguage = prefs.originalLanguage;
+                const prefs = await cfg.getMultiple([
+                    'targetLanguage',
+                    'originalLanguage',
+                ]);
+                if (prefs?.targetLanguage)
+                    targetLanguage = prefs.targetLanguage;
+                if (prefs?.originalLanguage)
+                    sourceLanguage = prefs.originalLanguage;
             } else if (chrome?.storage?.sync) {
-                const result = await chrome.storage.sync.get(['targetLanguage', 'originalLanguage']);
-                if (result.targetLanguage) targetLanguage = result.targetLanguage;
-                if (result.originalLanguage) sourceLanguage = result.originalLanguage;
+                const result = await chrome.storage.sync.get([
+                    'targetLanguage',
+                    'originalLanguage',
+                ]);
+                if (result.targetLanguage)
+                    targetLanguage = result.targetLanguage;
+                if (result.originalLanguage)
+                    sourceLanguage = result.originalLanguage;
             }
         } catch (_) {}
 
@@ -122,9 +158,11 @@ export class ModalController {
     pauseAnalysis() {
         // Emit pause intent so the manager can cancel the in-flight provider request
         try {
-            document.dispatchEvent(new CustomEvent('aicontext:analysis:pause', {
-                detail: { requestId: this.core.currentRequest }
-            }));
+            document.dispatchEvent(
+                new CustomEvent('aicontext:analysis:pause', {
+                    detail: { requestId: this.core.currentRequest },
+                })
+            );
         } catch (_) {}
 
         this.core.isAnalyzing = false;
@@ -132,27 +170,51 @@ export class ModalController {
         this.core.currentMode = 'selection';
         // Re-enable interactions
         try {
-            const selectedWordsElement = document.getElementById('dualsub-selected-words');
-            selectedWordsElement?.classList.remove('dualsub-processing-disabled');
+            const selectedWordsElement = document.getElementById(
+                'dualsub-selected-words'
+            );
+            selectedWordsElement?.classList.remove(
+                'dualsub-processing-disabled'
+            );
         } catch (_) {}
         // Reset state back to selection
         this.core.setState(MODAL_STATES.SELECTION);
         this.ui.showInitialState();
-        try { this.ui.updateSelectionDisplay(); } catch (_) {}
+        try {
+            this.ui.updateSelectionDisplay();
+        } catch (_) {}
         // Ensure processing classes cleared
         try {
-            const content = this.core.contentElement || document.getElementById('dualsub-modal-content');
-            content?.classList.remove('is-analyzing', 'dualsub-processing-active', 'dualsub-processing-sticky');
-            if (this.core.element) this.core.element.classList.remove('dualsub-processing-disabled');
+            const content =
+                this.core.contentElement ||
+                document.getElementById('dualsub-modal-content');
+            content?.classList.remove(
+                'is-analyzing',
+                'dualsub-processing-active',
+                'dualsub-processing-sticky'
+            );
+            if (this.core.element)
+                this.core.element.classList.remove(
+                    'dualsub-processing-disabled'
+                );
             // Remove disabled class from subtitles
             try {
-                const original = document.getElementById('dualsub-original-subtitle');
-                if (original) original.classList.remove('dualsub-subtitles-disabled');
+                const original = document.getElementById(
+                    'dualsub-original-subtitle'
+                );
+                if (original)
+                    original.classList.remove('dualsub-subtitles-disabled');
             } catch (_) {}
             // Ensure chips show remove buttons again after unfreezing
             try {
-                const selected = document.getElementById('dualsub-selected-words');
-                selected?.querySelectorAll('.dualsub-word-remove').forEach((el) => { el.style.removeProperty('display'); });
+                const selected = document.getElementById(
+                    'dualsub-selected-words'
+                );
+                selected
+                    ?.querySelectorAll('.dualsub-word-remove')
+                    .forEach((el) => {
+                        el.style.removeProperty('display');
+                    });
             } catch (_) {}
         } catch (_) {}
         // Reset Start button
@@ -180,17 +242,29 @@ export class ModalController {
         this.core.wordPositions.clear();
         this.core.selectedWordsOrder = [];
         this.core.selectedText = '';
-        try { this.ui.updateSelectionDisplay(); } catch (_) {}
+        try {
+            this.ui.updateSelectionDisplay();
+        } catch (_) {}
         // Clear visual highlights on subtitles when closing
         try {
-            const original = document.getElementById('dualsub-original-subtitle');
+            const original = document.getElementById(
+                'dualsub-original-subtitle'
+            );
             if (original) {
-                original.querySelectorAll('.dualsub-interactive-word.dualsub-word-selected')
-                    .forEach((el) => el.classList.remove('dualsub-word-selected'));
+                original
+                    .querySelectorAll(
+                        '.dualsub-interactive-word.dualsub-word-selected'
+                    )
+                    .forEach((el) =>
+                        el.classList.remove('dualsub-word-selected')
+                    );
             }
         } catch (_) {}
         // Hide modal via animations if available
-        if (this.animations && typeof this.animations.hideModal === 'function') {
+        if (
+            this.animations &&
+            typeof this.animations.hideModal === 'function'
+        ) {
             this.animations.hideModal();
         } else {
             this.core.setState(MODAL_STATES.HIDDEN);
@@ -209,20 +283,34 @@ export class ModalController {
         });
 
         // If there's no currentRequest (paused/cancelled) or IDs don't match, ignore this result
-        if (!this.core.currentRequest || (requestId && this.core.currentRequest && requestId !== this.core.currentRequest)) {
-            this.core._log('debug', 'Ignoring result - request ID mismatch (controller)', {
-                receivedId: requestId,
-                expectedId: this.core.currentRequest,
-            });
+        if (
+            !this.core.currentRequest ||
+            (requestId &&
+                this.core.currentRequest &&
+                requestId !== this.core.currentRequest)
+        ) {
+            this.core._log(
+                'debug',
+                'Ignoring result - request ID mismatch (controller)',
+                {
+                    receivedId: requestId,
+                    expectedId: this.core.currentRequest,
+                }
+            );
             return;
         }
 
         if (success && result) {
             // Store raw result for observability
-            try { this.core.setAnalysisResult(result); } catch (_) {}
+            try {
+                this.core.setAnalysisResult(result);
+            } catch (_) {}
 
             const html = this._buildResultsHtml(result);
-            if (this.animations && typeof this.animations.showResultsState === 'function') {
+            if (
+                this.animations &&
+                typeof this.animations.showResultsState === 'function'
+            ) {
                 this.animations.showResultsState(html);
             } else {
                 this.core.setState(MODAL_STATES.DISPLAY);
@@ -230,34 +318,59 @@ export class ModalController {
             }
             // Re-enable interactions and reset button to Start
             try {
-                const selectedWordsElement = document.getElementById('dualsub-selected-words');
+                const selectedWordsElement = document.getElementById(
+                    'dualsub-selected-words'
+                );
                 if (selectedWordsElement) {
-                    selectedWordsElement.classList.remove('dualsub-processing-disabled');
+                    selectedWordsElement.classList.remove(
+                        'dualsub-processing-disabled'
+                    );
                 }
             } catch (_) {}
-            try { this.ui.updateSelectionDisplay(); } catch (_) {}
+            try {
+                this.ui.updateSelectionDisplay();
+            } catch (_) {}
             // Re-enable subtitles interaction visuals
             try {
-                const original = document.getElementById('dualsub-original-subtitle');
-                if (original) original.classList.remove('dualsub-subtitles-disabled');
+                const original = document.getElementById(
+                    'dualsub-original-subtitle'
+                );
+                if (original)
+                    original.classList.remove('dualsub-subtitles-disabled');
             } catch (_) {}
             // Ensure chips show remove buttons again after results
             try {
-                const selected = document.getElementById('dualsub-selected-words');
-                selected?.querySelectorAll('.dualsub-word-remove').forEach((el) => { el.style.removeProperty('display'); });
+                const selected = document.getElementById(
+                    'dualsub-selected-words'
+                );
+                selected
+                    ?.querySelectorAll('.dualsub-word-remove')
+                    .forEach((el) => {
+                        el.style.removeProperty('display');
+                    });
             } catch (_) {}
             this.resetAnalysisButton();
             return;
         }
 
         if (shouldRetry) {
-            this._handleInvalidAnalysisResponse(requestId, result, error || 'Invalid analysis result');
+            this._handleInvalidAnalysisResponse(
+                requestId,
+                result,
+                error || 'Invalid analysis result'
+            );
             return;
         }
 
         // Final error
-        const errorMessage = (typeof error === 'string') ? error : (error?.message || 'Unknown error');
-        if (this.animations && typeof this.animations.showErrorState === 'function') {
+        const errorMessage =
+            typeof error === 'string'
+                ? error
+                : error?.message || 'Unknown error';
+        if (
+            this.animations &&
+            typeof this.animations.showErrorState === 'function'
+        ) {
             this.animations.showErrorState(errorMessage, { requestId });
         } else {
             this.core.setState(MODAL_STATES.ERROR);
@@ -267,7 +380,9 @@ export class ModalController {
 
     resetAnalysisButton() {
         const scope = this.core.contentElement || document;
-        const analysisButton = scope.querySelector('#dualsub-start-analysis') || document.getElementById('dualsub-start-analysis');
+        const analysisButton =
+            scope.querySelector('#dualsub-start-analysis') ||
+            document.getElementById('dualsub-start-analysis');
         if (!analysisButton) return;
 
         const title = this._getLocalizedMessage('aiContextStartAnalysis');
@@ -292,7 +407,10 @@ export class ModalController {
         let html = '';
         if (result.analysis) {
             if (result.isStructured && typeof result.analysis === 'object') {
-                html += this._formatStructuredAnalysis(result.analysis, result.contextType);
+                html += this._formatStructuredAnalysis(
+                    result.analysis,
+                    result.contextType
+                );
             } else {
                 html += `<div class="dualsub-analysis-section">
                         <h4>${this._getContextTypeTitle(result.contextType)} Analysis</h4>
@@ -341,9 +459,12 @@ export class ModalController {
                 </div>
             </div>`;
         }
-        if (contextType === 'cultural' || contextType === 'all') html += this._formatCulturalSection(analysis);
-        if (contextType === 'historical' || contextType === 'all') html += this._formatHistoricalSection(analysis);
-        if (contextType === 'linguistic' || contextType === 'all') html += this._formatLinguisticSection(analysis);
+        if (contextType === 'cultural' || contextType === 'all')
+            html += this._formatCulturalSection(analysis);
+        if (contextType === 'historical' || contextType === 'all')
+            html += this._formatHistoricalSection(analysis);
+        if (contextType === 'linguistic' || contextType === 'all')
+            html += this._formatLinguisticSection(analysis);
         html += this._formatUsageSection(analysis);
         html += this._formatLearningSection(analysis);
         if (!html) {
@@ -367,7 +488,8 @@ export class ModalController {
     }
 
     _formatObjectContent(content) {
-        if (typeof content === 'string') return this._formatAnalysisText(content);
+        if (typeof content === 'string')
+            return this._formatAnalysisText(content);
         if (typeof content === 'object' && content !== null) {
             let html = '';
             for (const [key, value] of Object.entries(content)) {
@@ -378,14 +500,18 @@ export class ModalController {
                     </div>`;
                 }
             }
-            return html || this._formatAnalysisText(JSON.stringify(content, null, 2));
+            return (
+                html ||
+                this._formatAnalysisText(JSON.stringify(content, null, 2))
+            );
         }
         return '';
     }
 
     _formatCulturalSection(analysis) {
         let html = '';
-        const cultural = analysis.cultural_context || analysis.cultural_analysis;
+        const cultural =
+            analysis.cultural_context || analysis.cultural_analysis;
         if (cultural) {
             html += `<div class="dualsub-analysis-section">
                 <h4>${this._getLocalizedSectionHeader('aiContextCultural')}</h4>
@@ -403,7 +529,8 @@ export class ModalController {
 
     _formatHistoricalSection(analysis) {
         let html = '';
-        const historical = analysis.historical_context || analysis.historical_analysis;
+        const historical =
+            analysis.historical_context || analysis.historical_analysis;
         if (historical) {
             html += `<div class="dualsub-analysis-section">
                 <h4>${this._getLocalizedSectionHeader('aiContextHistorical')}</h4>
@@ -489,7 +616,9 @@ export class ModalController {
             };
             const key = keyMap[type] || keyMap.generic;
             return this.ui._getLocalizedMessage(key) || type;
-        } catch (_) { return type; }
+        } catch (_) {
+            return type;
+        }
     }
 
     _getLocalizedFieldName(fieldName) {
@@ -545,7 +674,11 @@ export class ModalController {
         return (
             String(fieldName || '')
                 .charAt(0)
-                .toUpperCase() + String(fieldName || '').slice(1).replace(/_/g, ' ') + ':'
+                .toUpperCase() +
+            String(fieldName || '')
+                .slice(1)
+                .replace(/_/g, ' ') +
+            ':'
         );
     }
 
@@ -565,10 +698,14 @@ export class ModalController {
         html = html.replace(/^- (.*$)/gm, '<li>$1</li>');
         html = html.replace(/^(\d+)\. (.*$)/gm, '<li>$1. $2</li>');
         html = html.replace(/(<li>.*<\/li>)/gs, (match) => {
-            if (match.includes('<li>1.') || /\d+\./.test(match)) return `<ol>${match}</ol>`;
+            if (match.includes('<li>1.') || /\d+\./.test(match))
+                return `<ol>${match}</ol>`;
             return `<ul>${match}</ul>`;
         });
-        html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+        html = html.replace(
+            /\[([^\]]+)\]\(([^)]+)\)/g,
+            '<a href="$2" target="_blank">$1</a>'
+        );
         html = html.replace(/^> (.*$)/gm, '<blockquote>$1</blockquote>');
         if (!html.startsWith('<') && html.trim()) html = `<p>${html}</p>`;
         html = html.replace(/<p><\/p>/g, '');
@@ -580,45 +717,73 @@ export class ModalController {
     }
 
     _getLocalizedMessage(key) {
-        try { return this.ui._getLocalizedMessage(key); } catch (_) { return key; }
+        try {
+            return this.ui._getLocalizedMessage(key);
+        } catch (_) {
+            return key;
+        }
     }
 
     _handleInvalidAnalysisResponse(requestId, result, error) {
-        this.core._log('warn', 'Invalid analysis response detected (controller)', {
-            requestId,
-            error,
-        });
+        this.core._log(
+            'warn',
+            'Invalid analysis response detected (controller)',
+            {
+                requestId,
+                error,
+            }
+        );
 
-        if (typeof this.core.prepareRetry === 'function' && this.core.canRetryAnalysis()) {
-            this.core.prepareRetry({ requestId, text: this.core.selectedText }, error);
+        if (
+            typeof this.core.prepareRetry === 'function' &&
+            this.core.canRetryAnalysis()
+        ) {
+            this.core.prepareRetry(
+                { requestId, text: this.core.selectedText },
+                error
+            );
 
             // Notify user and update processing text if possible
             try {
-                const notification = document.getElementById('dualsub-retry-notification');
-                if (notification) notification.textContent = this._getLocalizedMessage('aiContextRetryNotification') || 'Analysis failed, retrying...';
+                const notification = document.getElementById(
+                    'dualsub-retry-notification'
+                );
+                if (notification)
+                    notification.textContent =
+                        this._getLocalizedMessage(
+                            'aiContextRetryNotification'
+                        ) || 'Analysis failed, retrying...';
             } catch (_) {}
 
             const newRequestId = `analysis-${Date.now()}`;
             this.core.currentRequest = newRequestId;
-            document.dispatchEvent(new CustomEvent('dualsub-analyze-selection', {
-                detail: {
-                    requestId: newRequestId,
-                    text: this.core.selectedText,
-                    contextTypes: ['cultural', 'historical', 'linguistic'],
-                    language: 'auto',
-                    targetLanguage: 'en',
-                    selection: {
+            document.dispatchEvent(
+                new CustomEvent('dualsub-analyze-selection', {
+                    detail: {
+                        requestId: newRequestId,
                         text: this.core.selectedText,
-                        words: Array.from(this.core.selectedWords),
+                        contextTypes: ['cultural', 'historical', 'linguistic'],
+                        language: 'auto',
+                        targetLanguage: 'en',
+                        selection: {
+                            text: this.core.selectedText,
+                            words: Array.from(this.core.selectedWords),
+                        },
                     },
-                },
-            }));
+                })
+            );
             return;
         }
 
         // Exhausted retries; show error
-        const err = typeof error === 'string' ? error : (error?.message || 'Invalid analysis result');
-        if (this.animations && typeof this.animations.showErrorState === 'function') {
+        const err =
+            typeof error === 'string'
+                ? error
+                : error?.message || 'Invalid analysis result';
+        if (
+            this.animations &&
+            typeof this.animations.showErrorState === 'function'
+        ) {
             this.animations.showErrorState(err, { requestId });
         } else {
             this.core.setState(MODAL_STATES.ERROR);
@@ -626,5 +791,3 @@ export class ModalController {
         }
     }
 }
-
-

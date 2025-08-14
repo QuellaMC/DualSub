@@ -35,33 +35,34 @@
 ## Option 2: Manual Install (Best for development and testing)
 
 1. Download the source
-   - Clone the repository:
-     ```bash
-     git clone https://github.com/QuellaMC/DualSub.git
-     cd DualSub
-     ```
-   - Or download the ZIP from GitHub and extract it
+    - Clone the repository:
+        ```bash
+        git clone https://github.com/QuellaMC/DualSub.git
+        cd DualSub
+        ```
+    - Or download the ZIP from GitHub and extract it
 
 2. Install dependencies (for running tests/linting during development)
-   ```bash
-   npm install
-   ```
+
+    ```bash
+    npm install
+    ```
 
 3. Load unpacked extension in Chrome
-   - Open `chrome://extensions`
-   - Enable Developer mode (top-right toggle)
-   - Click Load unpacked and select the project root folder (`DualSub`)
+    - Open `chrome://extensions`
+    - Enable Developer mode (top-right toggle)
+    - Click Load unpacked and select the project root folder (`DualSub`)
 
 4. Verify it’s working (same as above)
-   - Visit Netflix or Disney+
-   - Enable subtitles, then click DualSub to enable dual subtitles
+    - Visit Netflix or Disney+
+    - Enable subtitles, then click DualSub to enable dual subtitles
 
 5. Update (manual installs)
-   - Pull latest changes:
-     ```bash
-     git pull
-     ```
-   - Then click the refresh icon on the DualSub card at `chrome://extensions`
+    - Pull latest changes:
+        ```bash
+        git pull
+        ```
+    - Then click the refresh icon on the DualSub card at `chrome://extensions`
 
 ---
 

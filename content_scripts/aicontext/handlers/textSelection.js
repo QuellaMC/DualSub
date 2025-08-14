@@ -123,7 +123,9 @@ export class TextSelectionHandler {
 
         clearTimeout(this._selectionStateDebounce);
         this._selectionStateDebounce = setTimeout(() => {
-            try { this._updateSelectionState(selection); } catch (_) {}
+            try {
+                this._updateSelectionState(selection);
+            } catch (_) {}
         }, 50);
 
         // Only auto-analyze if enabled (disabled by default for modal workflow)

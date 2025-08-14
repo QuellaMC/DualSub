@@ -2,13 +2,17 @@
  * Subtitle Refactor Integration Tests
  */
 
-import { initializeInteractiveSubtitles, formatInteractiveSubtitleText, getStableSpanId } from '../shared/interactiveSubtitleFormatter.js';
+import {
+    initializeInteractiveSubtitles,
+    formatInteractiveSubtitleText,
+    getStableSpanId,
+} from '../shared/interactiveSubtitleFormatter.js';
 import { computeTextSignature } from '../shared/subtitleUtilities.js';
 
 describe('Subtitle Refactor - Deterministic Spans and Signatures', () => {
     test('Deterministic spans: stable IDs and data attributes', () => {
         initializeInteractiveSubtitles({ enabled: true, clickableWords: true });
-        const text = "Hello 世界 123";
+        const text = 'Hello 世界 123';
         const html = formatInteractiveSubtitleText(text, {
             sourceLanguage: 'en',
             targetLanguage: 'ja',
@@ -17,7 +21,9 @@ describe('Subtitle Refactor - Deterministic Spans and Signatures', () => {
 
         const container = document.createElement('div');
         container.innerHTML = html;
-        const spans = Array.from(container.querySelectorAll('.dualsub-interactive-word'));
+        const spans = Array.from(
+            container.querySelectorAll('.dualsub-interactive-word')
+        );
 
         // Expect 3 tokens: Hello, 世界, 123
         expect(spans.length).toBe(3);
@@ -39,5 +45,3 @@ describe('Subtitle Refactor - Deterministic Spans and Signatures', () => {
         expect(sigA).toBe('Hello world');
     });
 });
-
-

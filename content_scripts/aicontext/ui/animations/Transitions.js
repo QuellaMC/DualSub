@@ -35,13 +35,17 @@ export class Transitions {
     static showContent(content) {
         if (!content) return;
         content.classList.add('dualsub-visible');
-        try { content.style.display = 'block'; } catch (_) {}
+        try {
+            content.style.display = 'block';
+        } catch (_) {}
     }
 
     static hideContent(content) {
         if (!content) return;
         content.classList.remove('dualsub-visible');
-        try { content.style.display = 'none'; } catch (_) {}
+        try {
+            content.style.display = 'none';
+        } catch (_) {}
     }
 
     static markProcessing(content, enable) {
@@ -50,5 +54,3 @@ export class Transitions {
         else content.classList.remove('dualsub-processing-active');
     }
 }
-
-

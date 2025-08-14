@@ -81,15 +81,26 @@ export class AIContextModal {
         this._setupModuleCoordination();
 
         // Provide a simple controller API for external triggers/tests
-        this.controller = new ModalController(this.core, this.ui, this.animations);
+        this.controller = new ModalController(
+            this.core,
+            this.ui,
+            this.animations
+        );
         // Expose controller to events for gradual migration
         this.events.modalController = this.controller;
         // Expose events back to controller for interaction helpers
         this.controller.events = this.events;
 
         // Wire close requests to controller close (registered once via coordination map for cleanup)
-        const _closeRelay = () => { try { this.controller.closeModal(); } catch (_) {} };
-        document.addEventListener('aicontext:modal:closeRequested', _closeRelay);
+        const _closeRelay = () => {
+            try {
+                this.controller.closeModal();
+            } catch (_) {}
+        };
+        document.addEventListener(
+            'aicontext:modal:closeRequested',
+            _closeRelay
+        );
         this.coordinationHandlers.set('close-relay', _closeRelay);
 
         // Ensure modal starts in completely hidden state
@@ -159,7 +170,11 @@ export class AIContextModal {
         }
 
         // If already analyzing or showing processing/results, do not override state back to selection (race guard for SPA/soft nav)
-        const isBusy = this.core.isAnalyzing || this.core.state === MODAL_STATES.PROCESSING || this.core.state === MODAL_STATES.DISPLAY || this.core.state === MODAL_STATES.ERROR;
+        const isBusy =
+            this.core.isAnalyzing ||
+            this.core.state === MODAL_STATES.PROCESSING ||
+            this.core.state === MODAL_STATES.DISPLAY ||
+            this.core.state === MODAL_STATES.ERROR;
         if (!isBusy) {
             this.core.currentMode = 'selection';
             this.core.setState(MODAL_STATES.SELECTION);
@@ -167,9 +182,11 @@ export class AIContextModal {
 
         // Preserve existing selection when triggered by word clicks or analysis request
         // Users expect selected words to persist when starting analysis.
-        const preserveSelection = (options.preserveSelection !== undefined)
-            ? !!options.preserveSelection
-            : (options.trigger === 'word-selection' || options.trigger === 'analysis-request');
+        const preserveSelection =
+            options.preserveSelection !== undefined
+                ? !!options.preserveSelection
+                : options.trigger === 'word-selection' ||
+                  options.trigger === 'analysis-request';
         if (!preserveSelection) {
             this.core.clearSelection();
         }
@@ -184,7 +201,10 @@ export class AIContextModal {
             this.ui.updateSelectionDisplay();
             // Ensure localized label and correct handler on the Start button
             try {
-                if (this.controller && typeof this.controller.resetAnalysisButton === 'function') {
+                if (
+                    this.controller &&
+                    typeof this.controller.resetAnalysisButton === 'function'
+                ) {
                     this.controller.resetAnalysisButton();
                 }
             } catch (_) {}
@@ -392,13 +412,19 @@ export class AIContextModal {
 
         // Ensure modal container and elements are hidden via class-only transitions
         if (this.core.element) {
-            this.core.element.classList.remove('dualsub-context-modal--visible');
-            try { this.core.element.style.pointerEvents = 'none'; } catch (_) {}
+            this.core.element.classList.remove(
+                'dualsub-context-modal--visible'
+            );
+            try {
+                this.core.element.style.pointerEvents = 'none';
+            } catch (_) {}
         }
 
         if (this.core.overlayElement) {
             this.core.overlayElement.classList.remove('dualsub-visible');
-            try { this.core.overlayElement.style.pointerEvents = 'none'; } catch (_) {}
+            try {
+                this.core.overlayElement.style.pointerEvents = 'none';
+            } catch (_) {}
         }
 
         if (this.core.contentElement) {
@@ -460,7 +486,13 @@ export class AIContextModal {
         }
 
         if (this.ui) {
-            try { if (this.ui._onFullscreenChange) document.removeEventListener('fullscreenchange', this.ui._onFullscreenChange); } catch (_) {}
+            try {
+                if (this.ui._onFullscreenChange)
+                    document.removeEventListener(
+                        'fullscreenchange',
+                        this.ui._onFullscreenChange
+                    );
+            } catch (_) {}
             this.ui = null;
         }
 

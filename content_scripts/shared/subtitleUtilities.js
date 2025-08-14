@@ -49,8 +49,8 @@ export function computeTextSignature(textOrHtml) {
         .replace(/&lt;/gi, '<')
         .replace(/&gt;/gi, '>');
     // Normalize punctuation to spaces
-	// Replace punctuation and symbol characters with spaces using Unicode property escapes
-	s = s.replace(/[\p{P}\p{S}]/gu, ' ');
+    // Replace punctuation and symbol characters with spaces using Unicode property escapes
+    s = s.replace(/[\p{P}\p{S}]/gu, ' ');
     // Collapse whitespace
     s = s.replace(/\s+/g, ' ').trim();
     return s;
@@ -1396,7 +1396,10 @@ export function updateSubtitles(
             if (originalText.trim()) {
                 const newSig = computeTextSignature(originalText);
                 const prevSig = originalSubtitleElement.dataset.textSig || '';
-                if (newSig !== prevSig || originalSubtitleElement.innerHTML === '') {
+                if (
+                    newSig !== prevSig ||
+                    originalSubtitleElement.innerHTML === ''
+                ) {
                     // Notify AI Context modal about subtitle content change (debounced)
                     dispatchContentChangeDebounced(
                         'original',
@@ -1434,8 +1437,12 @@ export function updateSubtitles(
             if (translatedText.trim()) {
                 const newSig = computeTextSignature(translatedText);
                 const prevSig = translatedSubtitleElement.dataset.textSig || '';
-                if (newSig !== prevSig || translatedSubtitleElement.innerHTML === '') {
-                    translatedSubtitleElement.innerHTML = translatedTextFormatted;
+                if (
+                    newSig !== prevSig ||
+                    translatedSubtitleElement.innerHTML === ''
+                ) {
+                    translatedSubtitleElement.innerHTML =
+                        translatedTextFormatted;
                     translatedSubtitleElement.dataset.textSig = newSig;
                     contentChanged = true;
                     if (currentWholeSecond !== lastLoggedTimeSec) {
@@ -1465,7 +1472,10 @@ export function updateSubtitles(
             if (originalText.trim()) {
                 const newSig = computeTextSignature(originalText);
                 const prevSig = originalSubtitleElement.dataset.textSig || '';
-                if (newSig !== prevSig || originalSubtitleElement.innerHTML === '') {
+                if (
+                    newSig !== prevSig ||
+                    originalSubtitleElement.innerHTML === ''
+                ) {
                     originalSubtitleElement.innerHTML = originalTextFormatted;
                     originalSubtitleElement.dataset.textSig = newSig;
                     contentChanged = true;
@@ -1495,8 +1505,12 @@ export function updateSubtitles(
             if (translatedText.trim()) {
                 const newSig = computeTextSignature(translatedText);
                 const prevSig = translatedSubtitleElement.dataset.textSig || '';
-                if (newSig !== prevSig || translatedSubtitleElement.innerHTML === '') {
-                    translatedSubtitleElement.innerHTML = translatedTextFormatted;
+                if (
+                    newSig !== prevSig ||
+                    translatedSubtitleElement.innerHTML === ''
+                ) {
+                    translatedSubtitleElement.innerHTML =
+                        translatedTextFormatted;
                     translatedSubtitleElement.dataset.textSig = newSig;
                     contentChanged = true;
                     if (currentWholeSecond !== lastLoggedTimeSec) {
@@ -2051,9 +2065,12 @@ export async function processSubtitleQueue(
                                     err.errorType = 'TRANSLATION_REQUEST_ERROR';
                                     reject(err);
                                 } else if (res?.error) {
-                                    const err = new Error(res.details || res.error);
+                                    const err = new Error(
+                                        res.details || res.error
+                                    );
                                     err.errorType =
-                                        res.errorType || 'TRANSLATION_API_ERROR';
+                                        res.errorType ||
+                                        'TRANSLATION_API_ERROR';
                                     reject(err);
                                 } else if (
                                     res?.translatedText !== undefined &&

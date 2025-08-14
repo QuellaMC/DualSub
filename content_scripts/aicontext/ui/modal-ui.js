@@ -143,7 +143,10 @@ export class AIContextModalUI {
                         document.body.appendChild(modal);
                     }
                 } catch (_) {}
-                document.removeEventListener('DOMContentLoaded', moveModalToBody);
+                document.removeEventListener(
+                    'DOMContentLoaded',
+                    moveModalToBody
+                );
             };
             document.addEventListener('DOMContentLoaded', moveModalToBody);
         }
@@ -168,7 +171,10 @@ export class AIContextModalUI {
 
         // Subscribe to ModalStore to apply state-driven classes
         try {
-            if (this.core.store && typeof this.core.store.subscribe === 'function') {
+            if (
+                this.core.store &&
+                typeof this.core.store.subscribe === 'function'
+            ) {
                 const unsubscribe = this.core.store.subscribe((st) => {
                     try {
                         this._applyStateClasses(st.modalState);
@@ -409,8 +415,8 @@ export class AIContextModalUI {
                       return indexA - indexB;
                   })
                 : // Fallback: no positions yet (first frame after SPA). Build from words set.
-                  Array.from(this.core.selectedWords || []).map((w, idx) =>
-                      `${w}:fallback:${idx}`
+                  Array.from(this.core.selectedWords || []).map(
+                      (w, idx) => `${w}:fallback:${idx}`
                   );
 
             const wordsHtml = sortedPositionKeys
@@ -418,7 +424,9 @@ export class AIContextModalUI {
                     const positionData = hasPositions
                         ? this.core.selectedWordPositions.get(positionKey)
                         : null;
-                    const word = positionData ? positionData.word : positionKey.split(':')[0];
+                    const word = positionData
+                        ? positionData.word
+                        : positionKey.split(':')[0];
 
                     // Hide remove buttons during processing
                     const removeButtonStyle = this.core.isAnalyzing
@@ -440,17 +448,21 @@ export class AIContextModalUI {
                 container.classList.add('dualsub-processing-disabled');
                 // Safety: force-hide remove buttons
                 try {
-                    container.querySelectorAll('.dualsub-word-remove').forEach((el) => {
-                        el.style.display = 'none';
-                    });
+                    container
+                        .querySelectorAll('.dualsub-word-remove')
+                        .forEach((el) => {
+                            el.style.display = 'none';
+                        });
                 } catch (_) {}
             } else {
                 container.classList.remove('dualsub-processing-disabled');
                 // Ensure remove buttons are visible again when re-enabled
                 try {
-                    container.querySelectorAll('.dualsub-word-remove').forEach((el) => {
-                        el.style.removeProperty('display');
-                    });
+                    container
+                        .querySelectorAll('.dualsub-word-remove')
+                        .forEach((el) => {
+                            el.style.removeProperty('display');
+                        });
                 } catch (_) {}
             }
         }
@@ -479,7 +491,7 @@ export class AIContextModalUI {
             squares.forEach((sq) => {
                 const previous = sq.style.animation;
                 sq.style.animation = 'none';
-                
+
                 sq.offsetHeight; // trigger reflow
                 sq.style.animation = previous || '';
             });
@@ -500,7 +512,9 @@ export class AIContextModalUI {
      */
     showAnalysisResults(results) {
         const scope = this.core.contentElement || document;
-        const analysisResults = scope.querySelector('#dualsub-analysis-results');
+        const analysisResults = scope.querySelector(
+            '#dualsub-analysis-results'
+        );
         if (analysisResults && results) {
             // Basic sanitization before injecting HTML
             const sanitized = String(results)
@@ -529,7 +543,9 @@ export class AIContextModalUI {
         `;
 
         const scope = this.core.contentElement || document;
-        const analysisResults = scope.querySelector('#dualsub-analysis-results');
+        const analysisResults = scope.querySelector(
+            '#dualsub-analysis-results'
+        );
         if (analysisResults) {
             const sanitized = errorHtml
                 .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
@@ -669,9 +685,17 @@ export class AIContextModalUI {
             // Also listen for fullscreen changes to refresh button locales
             const onFsChange = () => {
                 try {
-                    const startBtn = (this.core.contentElement?.querySelector('#dualsub-start-analysis') || document.getElementById('dualsub-start-analysis'));
-                    if (startBtn && !startBtn.getAttribute('data-paused-toggle')) {
-                        const title = this._getLocalizedMessage('aiContextStartAnalysis');
+                    const startBtn =
+                        this.core.contentElement?.querySelector(
+                            '#dualsub-start-analysis'
+                        ) || document.getElementById('dualsub-start-analysis');
+                    if (
+                        startBtn &&
+                        !startBtn.getAttribute('data-paused-toggle')
+                    ) {
+                        const title = this._getLocalizedMessage(
+                            'aiContextStartAnalysis'
+                        );
                         startBtn.title = title;
                         startBtn.textContent = title;
                     }
@@ -788,9 +812,14 @@ export class AIContextModalUI {
             }
 
             // Update start analysis button localization immediately
-            const startBtn = (this.core.contentElement?.querySelector('#dualsub-start-analysis') || document.getElementById('dualsub-start-analysis'));
+            const startBtn =
+                this.core.contentElement?.querySelector(
+                    '#dualsub-start-analysis'
+                ) || document.getElementById('dualsub-start-analysis');
             if (startBtn) {
-                const title = this._getLocalizedMessage('aiContextStartAnalysis');
+                const title = this._getLocalizedMessage(
+                    'aiContextStartAnalysis'
+                );
                 startBtn.title = title;
                 // Only set text when not in pause state
                 if (!startBtn.getAttribute('data-paused-toggle')) {
@@ -935,9 +964,17 @@ export class AIContextModalUI {
      * @private
      */
     _applyStateClasses(modalState) {
-        const content = this.core.contentElement || document.getElementById('dualsub-modal-content');
+        const content =
+            this.core.contentElement ||
+            document.getElementById('dualsub-modal-content');
         if (!content) return;
-        content.classList.remove('is-hidden', 'is-selection', 'is-analyzing', 'is-display', 'is-error');
+        content.classList.remove(
+            'is-hidden',
+            'is-selection',
+            'is-analyzing',
+            'is-display',
+            'is-error'
+        );
         switch (modalState) {
             case 'hidden':
                 content.classList.add('is-hidden');
@@ -1007,11 +1044,17 @@ export class AIContextModalUI {
                 (document.documentElement || document.body).appendChild(style);
                 const moveStyleToHead = () => {
                     try {
-                        if (document.head && style.parentElement !== document.head) {
+                        if (
+                            document.head &&
+                            style.parentElement !== document.head
+                        ) {
                             document.head.appendChild(style);
                         }
                     } catch (_) {}
-                    document.removeEventListener('DOMContentLoaded', moveStyleToHead);
+                    document.removeEventListener(
+                        'DOMContentLoaded',
+                        moveStyleToHead
+                    );
                 };
                 document.addEventListener('DOMContentLoaded', moveStyleToHead);
             }
