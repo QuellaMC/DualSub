@@ -102,6 +102,15 @@ export class AIContextProvider {
         this.metrics.requestCount++;
 
         try {
+            // Respect simple rate limiting to avoid backend overload
+            if (!this._checkRateLimit()) {
+                return {
+                    success: false,
+                    error: 'Rate limit exceeded',
+                    requestId,
+                    shouldRetry: true,
+                };
+            }
             // Prepare request data
             const requestData = {
                 action: 'analyzeContext',
@@ -124,11 +133,23 @@ export class AIContextProvider {
                 options,
             });
 
-            // Send request to background script with timeout
-            const response = await this._sendRequestWithTimeout(
-                requestData,
-                this.config.timeout
-            );
+            // Send request to background script with retry to handle service worker wake-ups
+            let response;
+            try {
+                const { sendRuntimeMessageWithRetry } = await import(
+                    chrome.runtime.getURL('content_scripts/shared/messaging.js')
+                );
+                response = await sendRuntimeMessageWithRetry(requestData, {
+                    retries: 2,
+                    baseDelayMs: 120,
+                });
+            } catch (_) {
+                // Fallback to direct timeout wrapper if messaging util not available
+                response = await this._sendRequestWithTimeout(
+                    requestData,
+                    this.config.timeout
+                );
+            }
 
             // Calculate response time
             const responseTime =
@@ -162,10 +183,14 @@ export class AIContextProvider {
                 responseTime,
             });
 
+            const transient = /timeout|network|temporar|rate limit/i.test(
+                error?.message || ''
+            );
             return {
                 success: false,
                 error: error.message,
                 requestId,
+                shouldRetry: transient,
             };
         }
     }
@@ -344,16 +369,26 @@ export class AIContextProvider {
                 reject(new Error(`Request timeout after ${timeout}ms`));
             }, timeout);
 
-            chrome.runtime
-                .sendMessage(requestData)
-                .then((response) => {
+            try {
+                if (!chrome?.runtime?.sendMessage) {
                     clearTimeout(timeoutId);
-                    resolve(response);
-                })
-                .catch((error) => {
-                    clearTimeout(timeoutId);
-                    reject(error);
-                });
+                    reject(new Error('Messaging unavailable'));
+                    return;
+                }
+                chrome.runtime
+                    .sendMessage(requestData)
+                    .then((response) => {
+                        clearTimeout(timeoutId);
+                        resolve(response);
+                    })
+                    .catch((error) => {
+                        clearTimeout(timeoutId);
+                        reject(error);
+                    });
+            } catch (err) {
+                clearTimeout(timeoutId);
+                reject(err);
+            }
         });
     }
 

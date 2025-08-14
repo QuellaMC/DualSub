@@ -34,6 +34,34 @@
     display: block !important; /* Match legacy behavior exactly */
 }
 
+/* ========================================
+   STATE-DRIVEN RENDERING (Single render path)
+   ======================================== */
+
+#dualsub-modal-content #dualsub-initial-state,
+#dualsub-modal-content #dualsub-processing-state,
+#dualsub-modal-content #dualsub-analysis-results {
+    display: none;
+}
+
+#dualsub-modal-content.is-selection #dualsub-initial-state { display: flex !important; }
+#dualsub-modal-content.is-analyzing #dualsub-processing-state { display: block !important; }
+#dualsub-modal-content.dualsub-processing-sticky #dualsub-processing-state { display: block !important; }
+#dualsub-modal-content.is-display #dualsub-analysis-results { display: flex !important; }
+#dualsub-modal-content.is-error #dualsub-analysis-results { display: flex !important; }
+
+/* Ensure initial state never shows while analyzing/displaying/error (guard against late re-render) */
+#dualsub-modal-content.is-analyzing #dualsub-initial-state,
+#dualsub-modal-content.dualsub-processing-sticky #dualsub-initial-state,
+#dualsub-modal-content.is-display #dualsub-initial-state,
+#dualsub-modal-content.is-error #dualsub-initial-state,
+#dualsub-modal-content.is-selection.is-analyzing #dualsub-initial-state { display: none !important; }
+#dualsub-modal-content.is-selection.is-analyzing #dualsub-processing-state { display: block !important; }
+
+/* Layering safeguard in case both panels momentarily render */
+#dualsub-processing-state { position: relative; z-index: 2; }
+#dualsub-initial-state { position: relative; z-index: 1; }
+
 .dualsub-modal-overlay {
     position: absolute;
     top: 0;
@@ -278,11 +306,21 @@
     opacity: 0.4 !important;
     cursor: not-allowed !important;
     pointer-events: none !important;
+    display: none !important; /* Hide the remove button entirely during processing */
 }
 
 /* Completely disable all interactions on word chips during processing */
 .dualsub-processing-disabled .dualsub-selected-word * {
     pointer-events: none !important;
+}
+
+/* Ensure chips are disabled and remove buttons hidden whenever modal is in processing-active state */
+.dualsub-modal-content.dualsub-processing-active #dualsub-selected-words .dualsub-selected-word {
+    pointer-events: none !important;
+    opacity: 0.7 !important;
+}
+.dualsub-modal-content.dualsub-processing-active #dualsub-selected-words .dualsub-word-remove {
+    display: none !important;
 }
 
 /* ========================================
@@ -631,6 +669,7 @@
 
 /* Ensure the processing state is fully visible during analysis */
 .dualsub-context-modal.dualsub-processing-disabled #dualsub-processing-state,
+.dualsub-modal-content.dualsub-processing-active #dualsub-processing-state,
 .dualsub-processing-state[style*='display: block'] {
     visibility: visible !important;
     opacity: 1 !important;
@@ -662,15 +701,39 @@
     cursor: default !important;
 }
 
+/* Explicit class used to visually disable original subtitles during processing */
+.dualsub-subtitles-disabled .dualsub-interactive-word {
+    pointer-events: none !important;
+    opacity: 0.6 !important;
+    cursor: default !important;
+}
+/* Keep selected words clearly visible while subtitles are disabled */
+.dualsub-subtitles-disabled .dualsub-interactive-word.dualsub-word-selected {
+    opacity: 1 !important;
+    filter: none !important;
+}
+
 /* Additional visual feedback for disabled interactive words */
-.dualsub-processing-active .dualsub-interactive-word {
-    filter: grayscale(0.5) !important;
-    transition: all 0.2s ease !important;
+/* Maintain visible highlight for selected words during processing */
+.dualsub-processing-active .dualsub-interactive-word.dualsub-word-selected {
+    opacity: 1 !important;
+    filter: none !important;
 }
 
 .dualsub-processing-active .dualsub-interactive-word:hover {
     background-color: transparent !important;
     transform: none !important;
+}
+
+/* Suppress any hover/click animations while processing */
+.dualsub-processing-active .dualsub-interactive-word,
+.dualsub-subtitles-disabled .dualsub-interactive-word {
+    pointer-events: none !important;
+}
+.dualsub-processing-active .dualsub-interactive-word.dualsub-interactive-word--hover,
+.dualsub-subtitles-disabled .dualsub-interactive-word.dualsub-interactive-word--hover {
+    background: transparent !important;
+    box-shadow: none !important;
 }
 
 /* EXACT legacy analysis results container styling (Issue #2) */
@@ -1033,9 +1096,7 @@
     }
 
     /* EXACT legacy dark mode analysis results container styling (Issue #2) */
-    .dualsub-analysis-results {
-        /* Inherits flex layout from light mode */
-    }
+    .dualsub-analysis-results { display: flex; }
 
     /* EXACT legacy dark mode analysis results styling */
     .dualsub-analysis-section {

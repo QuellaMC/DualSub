@@ -70,10 +70,9 @@ export const AI_CONTEXT_CONFIG = {
 export const MODAL_STATES = {
     HIDDEN: 'hidden',
     SELECTION: 'selection',
-    ANALYZING: 'analyzing',
-    DISPLAYING: 'displaying',
+    PROCESSING: 'processing',
+    DISPLAY: 'display',
     ERROR: 'error',
-    PAUSED: 'paused',
 };
 
 /**

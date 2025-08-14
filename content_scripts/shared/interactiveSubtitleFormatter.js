@@ -46,6 +46,8 @@ const INTERACTIVE_CONFIG = {
     excludeWords: [], // Include all words for phrase analysis (including function words)
     contextTypes: ['cultural', 'historical', 'linguistic'],
     debounceDelay: 300,
+    // Gate verbose debug logs to reduce hot-path noise (Phase 7)
+    debugLogging: false,
 };
 
 /**
@@ -58,6 +60,16 @@ const interactiveState = {
     contextModal: null,
     lastClickTime: 0,
 };
+
+// Helper: detect if modal is currently in analyzing state
+function isAnalyzingActive() {
+    try {
+        const modalContent = document.getElementById('dualsub-modal-content');
+        return !!(modalContent && modalContent.classList && modalContent.classList.contains('is-analyzing'));
+    } catch (_) {
+        return false;
+    }
+}
 
 /**
  * Initialize interactive subtitle functionality
@@ -92,11 +104,13 @@ export function setInteractiveEnabled(enabled) {
  */
 export function formatInteractiveSubtitleText(text, options = {}) {
     if (!text || typeof text !== 'string') {
-        logWithFallback(
-            'debug',
-            'formatInteractiveSubtitleText: empty or invalid text',
-            { text }
-        );
+        if (INTERACTIVE_CONFIG.debugLogging) {
+            logWithFallback(
+                'debug',
+                'formatInteractiveSubtitleText: empty or invalid text',
+                { text }
+            );
+        }
         return '';
     }
 
@@ -111,21 +125,25 @@ export function formatInteractiveSubtitleText(text, options = {}) {
         const originalText = formattedText;
         formattedText = wrapWordsForInteraction(formattedText, options);
 
-        logWithFallback('debug', 'Interactive words wrapped', {
-            isEnabled: interactiveState.isEnabled,
-            clickableWords: INTERACTIVE_CONFIG.clickableWords,
-            originalLength: originalText.length,
-            wrappedLength: formattedText.length,
-            hasSpans: formattedText.includes('dualsub-interactive-word'),
-            sampleOriginal: originalText.substring(0, 30),
-            sampleWrapped: formattedText.substring(0, 100),
-        });
+        if (INTERACTIVE_CONFIG.debugLogging) {
+            logWithFallback('debug', 'Interactive words wrapped', {
+                isEnabled: interactiveState.isEnabled,
+                clickableWords: INTERACTIVE_CONFIG.clickableWords,
+                originalLength: originalText.length,
+                wrappedLength: formattedText.length,
+                hasSpans: formattedText.includes('dualsub-interactive-word'),
+                sampleOriginal: originalText.substring(0, 30),
+                sampleWrapped: formattedText.substring(0, 100),
+            });
+        }
     } else {
-        logWithFallback('debug', 'Interactive wrapping skipped', {
-            isEnabled: interactiveState.isEnabled,
-            clickableWords: INTERACTIVE_CONFIG.clickableWords,
-            config: INTERACTIVE_CONFIG,
-        });
+        if (INTERACTIVE_CONFIG.debugLogging) {
+            logWithFallback('debug', 'Interactive wrapping skipped', {
+                isEnabled: interactiveState.isEnabled,
+                clickableWords: INTERACTIVE_CONFIG.clickableWords,
+                config: INTERACTIVE_CONFIG,
+            });
+        }
     }
 
     return formattedText;
@@ -138,7 +156,11 @@ export function formatInteractiveSubtitleText(text, options = {}) {
  * @returns {string} Text with interactive word spans
  */
 function wrapWordsForInteraction(text, options = {}) {
-    const { sourceLanguage = 'unknown', targetLanguage = 'unknown' } = options;
+    const {
+        sourceLanguage = 'unknown',
+        targetLanguage = 'unknown',
+        subtitleType = 'original', // Phase 1: require/consume subtitleType
+    } = options;
 
     // Enhanced word pattern that works with multiple languages including Chinese, Japanese, Korean
     // This pattern matches:
@@ -151,14 +173,17 @@ function wrapWordsForInteraction(text, options = {}) {
     const wordPattern =
         /([a-zA-Z]+(?:'[a-zA-Z]+)*|[\u4e00-\u9fff]+|[\u3040-\u309f]+|[\u30a0-\u30ff]+|[\uac00-\ud7af]+|\d+)/g;
 
-    logWithFallback('debug', 'Processing text for interactive words', {
-        originalText: text,
-        sourceLanguage,
-        targetLanguage,
-        textLength: text.length,
-    });
+    if (INTERACTIVE_CONFIG.debugLogging) {
+        logWithFallback('debug', 'Processing text for interactive words', {
+            originalText: text,
+            sourceLanguage,
+            targetLanguage,
+            textLength: text.length,
+        });
+    }
 
     let processedCount = 0;
+    let wordIndex = -1;
     const result = text.replace(wordPattern, (match, word) => {
         // Include all words for phrase analysis - no exclusions
         // This ensures proper spacing and allows selection of function words
@@ -173,20 +198,25 @@ function wrapWordsForInteraction(text, options = {}) {
         const isAsciiWord = /^[a-zA-Z]+(?:'[a-zA-Z]+)*$/.test(word);
 
         processedCount++;
+        wordIndex++;
 
         return createInteractiveWordSpan(word, {
             sourceLanguage,
             targetLanguage,
             originalText: text,
+            subtitleType,
+            wordIndex,
         });
     });
 
-    logWithFallback('debug', 'Word wrapping completed', {
-        originalLength: text.length,
-        resultLength: result.length,
-        wordsProcessed: processedCount,
-        hasSpans: result.includes('dualsub-interactive-word'),
-    });
+    if (INTERACTIVE_CONFIG.debugLogging) {
+        logWithFallback('debug', 'Word wrapping completed', {
+            originalLength: text.length,
+            resultLength: result.length,
+            wordsProcessed: processedCount,
+            hasSpans: result.includes('dualsub-interactive-word'),
+        });
+    }
 
     return result;
 }
@@ -198,9 +228,23 @@ function wrapWordsForInteraction(text, options = {}) {
  * @returns {string} HTML span element
  */
 function createInteractiveWordSpan(word, metadata) {
-    const spanId = `interactive-word-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+    const type = metadata.subtitleType || 'original';
+    const index = Number.isFinite(metadata.wordIndex) ? metadata.wordIndex : 0;
+    const spanId = getStableSpanId(type, index);
 
-    return `<span class="dualsub-interactive-word" id="${spanId}" data-word="${word}" data-source-lang="${metadata.sourceLanguage}" data-target-lang="${metadata.targetLanguage}" data-context="${encodeURIComponent(metadata.originalText)}" tabindex="0" role="button" aria-label="Click for context analysis of '${word}'" title="Click for cultural, historical, or linguistic context">${word}</span>`;
+    return `<span class="dualsub-interactive-word" id="${spanId}" data-word="${word}" data-source-lang="${metadata.sourceLanguage}" data-target-lang="${metadata.targetLanguage}" data-context="${encodeURIComponent(metadata.originalText)}" data-subtitle-type="${type}" data-word-index="${index}" tabindex="0" role="button" aria-label="Click for context analysis of '${word}'" title="Click for cultural, historical, or linguistic context">${word}</span>`;
+}
+
+/**
+ * Phase 1: Deterministic span ID helper
+ * @param {('original'|'translated'|string)} subtitleType
+ * @param {number} wordIndex
+ * @returns {string}
+ */
+export function getStableSpanId(subtitleType, wordIndex) {
+    const safeType = String(subtitleType || 'original').toLowerCase();
+    const safeIndex = Number.isFinite(wordIndex) ? wordIndex : 0;
+    return `dualsub-word-${safeType}-${safeIndex}`;
 }
 
 /**
@@ -241,6 +285,20 @@ export function attachInteractiveEventListeners(subtitleElement, options = {}) {
             handleInteractiveWordClick,
             true
         );
+
+        // Block pointer animations during processing
+        const pointerBlocker = (ev) => {
+            const t = ev.target;
+            if (!t || !t.classList || !t.classList.contains('dualsub-interactive-word')) return;
+            if (isAnalyzingActive()) {
+                try { t.classList.remove('dualsub-interactive-word--hover'); } catch (_) {}
+                ev.preventDefault();
+                ev.stopPropagation();
+            }
+        };
+        subtitleElement.addEventListener('mousedown', pointerBlocker, true);
+        subtitleElement.addEventListener('touchstart', pointerBlocker, true);
+        subtitleElement._dualsubPointerBlocker = pointerBlocker;
 
         // Add hover effects if enabled
         if (INTERACTIVE_CONFIG.highlightOnHover) {
@@ -314,6 +372,15 @@ export function removeInteractiveEventListeners(subtitleElement) {
         true
     );
 
+    // Remove pointer blocker if present
+    try {
+        if (subtitleElement._dualsubPointerBlocker) {
+            subtitleElement.removeEventListener('mousedown', subtitleElement._dualsubPointerBlocker, true);
+            subtitleElement.removeEventListener('touchstart', subtitleElement._dualsubPointerBlocker, true);
+            delete subtitleElement._dualsubPointerBlocker;
+        }
+    } catch (_) {}
+
     subtitleElement.removeAttribute('data-interactive-listeners');
 
     logWithFallback('debug', 'Interactive event listeners removed', {
@@ -378,6 +445,12 @@ function handleInteractiveWordClick(event) {
 
     event.preventDefault();
     event.stopPropagation();
+
+    // Block interactions globally while analyzing to prevent de-selections during processing
+    if (isAnalyzingActive()) {
+        try { target.classList.remove('dualsub-interactive-word--hover'); } catch (_) {}
+        return;
+    }
 
     // Debounce rapid clicks
     const now = Date.now();
@@ -472,6 +545,13 @@ function handleInteractiveWordHover(event) {
         return;
     }
 
+    // Suppress hover visual during processing
+    if (isAnalyzingActive()) {
+        try { target.classList.remove('dualsub-interactive-word--hover'); } catch (_) {}
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+    }
     target.classList.add('dualsub-interactive-word--hover');
 }
 
@@ -500,6 +580,12 @@ function handleInteractiveWordKeydown(event) {
         return;
     }
 
+    // Suppress keyboard activation during processing
+    if (isAnalyzingActive()) {
+        event.preventDefault();
+        event.stopPropagation();
+        return;
+    }
     // Handle Enter and Space key presses
     if (event.key === 'Enter' || event.key === ' ') {
         event.preventDefault();
@@ -513,6 +599,7 @@ function handleInteractiveWordKeydown(event) {
  * @param {Object} metadata - Context metadata
  */
 async function requestContextAnalysis(text, metadata = {}) {
+    if (!INTERACTIVE_CONFIG.legacyHandlersEnabled) return; // Phase 6: disabled by default
     const requestId = `context-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
 
     try {
@@ -571,6 +658,7 @@ async function requestContextAnalysis(text, metadata = {}) {
  * @param {Object} metadata - Request metadata
  */
 function showContextModal(contextResult, metadata) {
+    if (!INTERACTIVE_CONFIG.legacyHandlersEnabled) return; // Phase 6: disabled by default
     // This will be implemented in the context modal component
     logWithFallback('info', 'Showing context modal', {
         contextType: contextResult.contextType,
@@ -594,6 +682,7 @@ function showContextModal(contextResult, metadata) {
  * @param {Object} metadata - Request metadata
  */
 function showContextError(error, metadata) {
+    if (!INTERACTIVE_CONFIG.legacyHandlersEnabled) return; // Phase 6: disabled by default
     logWithFallback('warn', 'Context analysis error', { error });
 
     // Dispatch custom event for error display
