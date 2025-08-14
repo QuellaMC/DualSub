@@ -137,15 +137,22 @@ export class DisneyPlusPlatform extends VideoPlatform {
                     const targetLanguage = settings.targetLanguage || 'zh-CN';
                     const originalLanguage = settings.originalLanguage || 'en';
 
-                    import(chrome.runtime.getURL('content_scripts/shared/messaging.js'))
+                    import(
+                        chrome.runtime.getURL(
+                            'content_scripts/shared/messaging.js'
+                        )
+                    )
                         .then(({ sendRuntimeMessageWithRetry }) =>
-                            sendRuntimeMessageWithRetry({
-                                action: 'fetchVTT',
-                                url: vttMasterUrl,
-                                videoId: this.currentVideoId,
-                                targetLanguage: targetLanguage,
-                                originalLanguage: originalLanguage,
-                            }, { retries: 3, baseDelayMs: 150 })
+                            sendRuntimeMessageWithRetry(
+                                {
+                                    action: 'fetchVTT',
+                                    url: vttMasterUrl,
+                                    videoId: this.currentVideoId,
+                                    targetLanguage: targetLanguage,
+                                    originalLanguage: originalLanguage,
+                                },
+                                { retries: 3, baseDelayMs: 150 }
+                            )
                         )
                         .then((response) => {
                             if (
@@ -238,32 +245,51 @@ export class DisneyPlusPlatform extends VideoPlatform {
                                         response.success &&
                                         response.videoId === this.currentVideoId
                                     ) {
-                                        this.logger.info('VTT fetched successfully', {
-                                            videoId: this.currentVideoId,
-                                            sourceLanguage: response.sourceLanguage,
-                                            targetLanguage: response.targetLanguage,
-                                        });
-                                        this.lastKnownVttUrlForVideoId[this.currentVideoId] = response.url;
+                                        this.logger.info(
+                                            'VTT fetched successfully',
+                                            {
+                                                videoId: this.currentVideoId,
+                                                sourceLanguage:
+                                                    response.sourceLanguage,
+                                                targetLanguage:
+                                                    response.targetLanguage,
+                                            }
+                                        );
+                                        this.lastKnownVttUrlForVideoId[
+                                            this.currentVideoId
+                                        ] = response.url;
                                         if (this.onSubtitleUrlFoundCallback) {
                                             this.onSubtitleUrlFoundCallback({
                                                 vttText: response.vttText,
-                                                targetVttText: response.targetVttText,
+                                                targetVttText:
+                                                    response.targetVttText,
                                                 videoId: response.videoId,
                                                 url: response.url,
-                                                sourceLanguage: response.sourceLanguage,
-                                                targetLanguage: response.targetLanguage,
-                                                useNativeTarget: response.useNativeTarget,
-                                                availableLanguages: response.availableLanguages,
-                                                selectedLanguage: response.selectedLanguage,
-                                                targetLanguageInfo: response.targetLanguageInfo,
+                                                sourceLanguage:
+                                                    response.sourceLanguage,
+                                                targetLanguage:
+                                                    response.targetLanguage,
+                                                useNativeTarget:
+                                                    response.useNativeTarget,
+                                                availableLanguages:
+                                                    response.availableLanguages,
+                                                selectedLanguage:
+                                                    response.selectedLanguage,
+                                                targetLanguageInfo:
+                                                    response.targetLanguageInfo,
                                             });
                                         }
                                     } else if (response && !response.success) {
-                                        this.logger.error('Background failed to fetch VTT', null, {
-                                            error: response.error || 'Unknown',
-                                            url: response.url,
-                                            videoId: this.currentVideoId,
-                                        });
+                                        this.logger.error(
+                                            'Background failed to fetch VTT',
+                                            null,
+                                            {
+                                                error:
+                                                    response.error || 'Unknown',
+                                                url: response.url,
+                                                videoId: this.currentVideoId,
+                                            }
+                                        );
                                     } else if (
                                         response &&
                                         response.videoId !== this.currentVideoId
@@ -271,15 +297,21 @@ export class DisneyPlusPlatform extends VideoPlatform {
                                         this.logger.warn(
                                             'Received VTT for different video context - discarding',
                                             {
-                                                receivedVideoId: response.videoId,
-                                                currentVideoId: this.currentVideoId,
+                                                receivedVideoId:
+                                                    response.videoId,
+                                                currentVideoId:
+                                                    this.currentVideoId,
                                             }
                                         );
                                     } else {
-                                        this.logger.error('No/invalid response from background for fetchVTT', null, {
-                                            url: vttMasterUrl,
-                                            videoId: this.currentVideoId,
-                                        });
+                                        this.logger.error(
+                                            'No/invalid response from background for fetchVTT',
+                                            null,
+                                            {
+                                                url: vttMasterUrl,
+                                                videoId: this.currentVideoId,
+                                            }
+                                        );
                                     }
                                 }
                             );
@@ -473,7 +505,9 @@ export class DisneyPlusPlatform extends VideoPlatform {
         let hideOfficialSubtitles = this._hideOfficialSubtitles;
         if (hideOfficialSubtitles === undefined) {
             try {
-                hideOfficialSubtitles = await configService.get('hideOfficialSubtitles');
+                hideOfficialSubtitles = await configService.get(
+                    'hideOfficialSubtitles'
+                );
                 this._hideOfficialSubtitles = !!hideOfficialSubtitles;
             } catch (_) {
                 hideOfficialSubtitles = false;

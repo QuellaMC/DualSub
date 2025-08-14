@@ -84,7 +84,9 @@ export class AIContextModalCore {
         this.uiReady = false;
         this.eventsReady = false;
         this._readyResolve = null;
-        this.onceReady = new Promise((resolve) => (this._readyResolve = resolve));
+        this.onceReady = new Promise(
+            (resolve) => (this._readyResolve = resolve)
+        );
 
         // ModalStore for observable UI state
         this.store = new ModalStore({
@@ -190,11 +192,18 @@ export class AIContextModalCore {
         this.store.setState(this.state);
 
         // Phase 3: Keep selection highlights in sync on key state transitions
-        if (newState === MODAL_STATES.SELECTION || newState === MODAL_STATES.PROCESSING) {
-            try { this.syncSelectionHighlights(); } catch (_) {}
+        if (
+            newState === MODAL_STATES.SELECTION ||
+            newState === MODAL_STATES.PROCESSING
+        ) {
+            try {
+                this.syncSelectionHighlights();
+            } catch (_) {}
             // When entering processing, enforce current highlights to be visible immediately
             if (newState === MODAL_STATES.PROCESSING) {
-                try { this.syncSelectionHighlights(); } catch (_) {}
+                try {
+                    this.syncSelectionHighlights();
+                } catch (_) {}
             }
         }
     }
@@ -205,10 +214,18 @@ export class AIContextModalCore {
      */
     _renderState() {
         try {
-            const content = this.contentElement || document.getElementById('dualsub-modal-content');
+            const content =
+                this.contentElement ||
+                document.getElementById('dualsub-modal-content');
             if (!content) return;
 
-            content.classList.remove('is-hidden', 'is-selection', 'is-analyzing', 'is-display', 'is-error');
+            content.classList.remove(
+                'is-hidden',
+                'is-selection',
+                'is-analyzing',
+                'is-display',
+                'is-error'
+            );
 
             switch (this.state) {
                 case MODAL_STATES.HIDDEN:
@@ -228,7 +245,10 @@ export class AIContextModalCore {
                     break;
             }
         } catch (error) {
-            this._log('warn', 'Failed to render modal state', { error: error.message, state: this.state });
+            this._log('warn', 'Failed to render modal state', {
+                error: error.message,
+                state: this.state,
+            });
         }
     }
 
@@ -268,7 +288,9 @@ export class AIContextModalCore {
         });
 
         // Phase 3: Centralized highlight sync
-        try { this.syncSelectionHighlights(); } catch (_) {}
+        try {
+            this.syncSelectionHighlights();
+        } catch (_) {}
     }
 
     /**
@@ -306,7 +328,9 @@ export class AIContextModalCore {
             });
 
             // Phase 3: Centralized highlight sync
-            try { this.syncSelectionHighlights(); } catch (_) {}
+            try {
+                this.syncSelectionHighlights();
+            } catch (_) {}
         }
     }
 
@@ -324,7 +348,9 @@ export class AIContextModalCore {
         if (result === 'added') this._captureSelectionStateIfNeeded();
 
         // Phase 3: Centralized highlight sync
-        try { this.syncSelectionHighlights(); } catch (_) {}
+        try {
+            this.syncSelectionHighlights();
+        } catch (_) {}
     }
 
     /**
@@ -441,7 +467,9 @@ export class AIContextModalCore {
             // Reset retry state when starting new analysis
             this._resetRetryState();
             // Ensure visual highlights stay locked-in during processing
-            try { this.syncSelectionHighlights(); } catch (_) {}
+            try {
+                this.syncSelectionHighlights();
+            } catch (_) {}
         }
         this.store.setAnalyzing(analyzing);
     }
@@ -455,7 +483,10 @@ export class AIContextModalCore {
      */
     _createPositionKey(word, position = {}) {
         // Fast path: prefer stable index + type when available to avoid costly DOM path generation
-        const idx = (position.wordIndex !== undefined ? position.wordIndex : position.index) || 0;
+        const idx =
+            (position.wordIndex !== undefined
+                ? position.wordIndex
+                : position.index) || 0;
         const subtitleType = position.subtitleType || '';
         if (subtitleType) {
             return `${word}:${subtitleType}:${idx}`;
@@ -466,7 +497,10 @@ export class AIContextModalCore {
         try {
             if (el) {
                 const dataIdx = el.getAttribute('data-word-index');
-                const dataType = el.getAttribute('data-subtitle-type') || subtitleType || 'original';
+                const dataType =
+                    el.getAttribute('data-subtitle-type') ||
+                    subtitleType ||
+                    'original';
                 if (dataIdx !== null) {
                     return `${word}:${dataType}:${Number(dataIdx) || 0}`;
                 }
@@ -590,9 +624,13 @@ export class AIContextModalCore {
             // Phase 4: capture current content signature for gating
             signature: (() => {
                 try {
-                    const container = document.getElementById('dualsub-original-subtitle');
+                    const container = document.getElementById(
+                        'dualsub-original-subtitle'
+                    );
                     return container?.dataset?.textSig || '';
-                } catch (_) { return ''; }
+                } catch (_) {
+                    return '';
+                }
             })(),
         };
 
@@ -672,16 +710,23 @@ export class AIContextModalCore {
 
         // Phase 4: Verify content signature matches before restoring
         try {
-            const container = document.getElementById('dualsub-original-subtitle');
+            const container = document.getElementById(
+                'dualsub-original-subtitle'
+            );
             const currentSig = container?.dataset?.textSig || '';
             const capturedSig = state.signature || '';
             if (capturedSig && currentSig && capturedSig !== currentSig) {
                 // Re-schedule a single attempt slightly later to coalesce bursts
                 if (!this.selectionPersistence.restorationTimeout) {
-                    this.selectionPersistence.restorationTimeout = setTimeout(() => {
-                        this.selectionPersistence.restorationTimeout = null;
-                        try { this.restoreSelectionState(); } catch (_) {}
-                    }, 100);
+                    this.selectionPersistence.restorationTimeout = setTimeout(
+                        () => {
+                            this.selectionPersistence.restorationTimeout = null;
+                            try {
+                                this.restoreSelectionState();
+                            } catch (_) {}
+                        },
+                        100
+                    );
                 }
                 return false;
             }
@@ -698,7 +743,9 @@ export class AIContextModalCore {
                 this.selectionModel.add(entry.word, entry.position, key);
             }
             // Maintain order when available
-            this.selectionModel.positionKeyOrder = [...state.selectedWordsOrder];
+            this.selectionModel.positionKeyOrder = [
+                ...state.selectedWordsOrder,
+            ];
             this.selectionModel.updateSelectedText();
             // Sync legacy snapshot
             this._syncSelectionSnapshotFromModel();
@@ -825,7 +872,10 @@ export class AIContextModalCore {
                                             newPosition
                                         );
 
-                                        const orderIndex = this.selectedWordsOrder.indexOf(storedPositionKey);
+                                        const orderIndex =
+                                            this.selectedWordsOrder.indexOf(
+                                                storedPositionKey
+                                            );
                                         this._log(
                                             'debug',
                                             'Word position updated during restoration',
@@ -875,7 +925,11 @@ export class AIContextModalCore {
                                 position
                             );
                             // Add to model
-                            this.selectionModel.add(word, position, positionKey);
+                            this.selectionModel.add(
+                                word,
+                                position,
+                                positionKey
+                            );
 
                             this._log(
                                 'debug',
@@ -919,7 +973,9 @@ export class AIContextModalCore {
             }
 
             // Phase 3: Centralized highlight sync after restoration
-            try { this.syncSelectionHighlights(); } catch (_) {}
+            try {
+                this.syncSelectionHighlights();
+            } catch (_) {}
         } catch (error) {
             this._log('error', 'Failed to restore visual highlighting', {
                 error: error.message,
@@ -987,7 +1043,9 @@ export class AIContextModalCore {
             selectedText: this.selectedText,
         });
         // Keep visuals in sync with model
-        try { this.syncSelectionHighlights(); } catch (_) {}
+        try {
+            this.syncSelectionHighlights();
+        } catch (_) {}
     }
 
     /**
@@ -1055,14 +1113,23 @@ export class AIContextModalCore {
      */
     syncSelectionHighlights() {
         try {
-            const container = document.getElementById('dualsub-original-subtitle');
+            const container = document.getElementById(
+                'dualsub-original-subtitle'
+            );
             if (!container) return;
-            const wordElements = container.querySelectorAll('.dualsub-interactive-word');
+            const wordElements = container.querySelectorAll(
+                '.dualsub-interactive-word'
+            );
             wordElements.forEach((wordElement) => {
                 const word = wordElement.getAttribute('data-word') || '';
-                const subtitleType = wordElement.getAttribute('data-subtitle-type') || 'original';
-                const wordIndexAttr = wordElement.getAttribute('data-word-index');
-                const wordIndex = Number.isFinite(Number(wordIndexAttr)) ? Number(wordIndexAttr) : this._getWordIndexFromElement(wordElement);
+                const subtitleType =
+                    wordElement.getAttribute('data-subtitle-type') ||
+                    'original';
+                const wordIndexAttr =
+                    wordElement.getAttribute('data-word-index');
+                const wordIndex = Number.isFinite(Number(wordIndexAttr))
+                    ? Number(wordIndexAttr)
+                    : this._getWordIndexFromElement(wordElement);
                 const position = {
                     elementId: wordElement.id,
                     element: wordElement,
@@ -1076,10 +1143,21 @@ export class AIContextModalCore {
                 // word + subtitleType + wordIndex. If matched, also update the model to new key for stability.
                 if (!isSelected) {
                     let matchedOldKey = null;
-                    for (const [oldKey, entry] of this.selectedWordPositions.entries()) {
-                        const entryIndex = (entry.position?.wordIndex !== undefined ? entry.position.wordIndex : entry.position?.index) || 0;
-                        const entryType = (entry.position?.subtitleType || 'original');
-                        if (entry.word === word && entryType === subtitleType && entryIndex === wordIndex) {
+                    for (const [
+                        oldKey,
+                        entry,
+                    ] of this.selectedWordPositions.entries()) {
+                        const entryIndex =
+                            (entry.position?.wordIndex !== undefined
+                                ? entry.position.wordIndex
+                                : entry.position?.index) || 0;
+                        const entryType =
+                            entry.position?.subtitleType || 'original';
+                        if (
+                            entry.word === word &&
+                            entryType === subtitleType &&
+                            entryIndex === wordIndex
+                        ) {
                             matchedOldKey = oldKey;
                             isSelected = true;
                             break;
@@ -1088,7 +1166,12 @@ export class AIContextModalCore {
                     // If matched by index, normalize stored key to the new DOM path to keep future checks aligned
                     if (matchedOldKey) {
                         try {
-                            this.selectionModel.replacePositionKey(matchedOldKey, positionKey, word, position);
+                            this.selectionModel.replacePositionKey(
+                                matchedOldKey,
+                                positionKey,
+                                word,
+                                position
+                            );
                             this._syncSelectionSnapshotFromModel();
                         } catch (_) {}
                     }
@@ -1104,7 +1187,9 @@ export class AIContextModalCore {
                 }
             });
         } catch (error) {
-            this._log('warn', 'Failed to sync selection highlights', { error: error.message });
+            this._log('warn', 'Failed to sync selection highlights', {
+                error: error.message,
+            });
         }
     }
 
@@ -1181,7 +1266,9 @@ export class AIContextModalCore {
                 }
 
                 // Opportunistically re-sync highlights when tab becomes visible
-                try { this.syncSelectionHighlights(); } catch (_) {}
+                try {
+                    this.syncSelectionHighlights();
+                } catch (_) {}
             }
         };
 

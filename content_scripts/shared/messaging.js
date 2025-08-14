@@ -11,11 +11,15 @@
 
 function isTransientMessagingError(error) {
     if (!error) return false;
-    const message = (typeof error === 'string' ? error : error.message || '').toLowerCase();
+    const message = (
+        typeof error === 'string' ? error : error.message || ''
+    ).toLowerCase();
     return (
         message.includes('receiving end does not exist') ||
         message.includes('could not establish connection') ||
-        message.includes('message port closed before a response was received') ||
+        message.includes(
+            'message port closed before a response was received'
+        ) ||
         message.includes('no matching service worker') ||
         message.includes('extension context invalidated')
     );
@@ -40,7 +44,11 @@ async function rawSendMessage(message) {
                 chrome.runtime.sendMessage(message, (response) => {
                     const lastErr = chrome.runtime.lastError;
                     if (lastErr) {
-                        reject(new Error(lastErr.message || 'Unknown runtime error'));
+                        reject(
+                            new Error(
+                                lastErr.message || 'Unknown runtime error'
+                            )
+                        );
                         return;
                     }
                     resolve(response);
@@ -64,7 +72,12 @@ async function rawSendMessage(message) {
  */
 export async function sendRuntimeMessageWithRetry(
     message,
-    { retries = 3, baseDelayMs = 100, backoffFactor = 2, pingBeforeRetry = true } = {}
+    {
+        retries = 3,
+        baseDelayMs = 100,
+        backoffFactor = 2,
+        pingBeforeRetry = true,
+    } = {}
 ) {
     let attempt = 0;
     let delay = baseDelayMs;
@@ -84,7 +97,12 @@ export async function sendRuntimeMessageWithRetry(
                     // Prefer readiness check to know when services are fully initialized
                     await rawSendMessage({ action: 'checkBackgroundReady' });
                 } catch (_) {
-                    try { await rawSendMessage({ action: 'ping', source: 'content' }); } catch (_) {}
+                    try {
+                        await rawSendMessage({
+                            action: 'ping',
+                            source: 'content',
+                        });
+                    } catch (_) {}
                 }
             }
 
@@ -93,5 +111,3 @@ export async function sendRuntimeMessageWithRetry(
         }
     }
 }
-
-

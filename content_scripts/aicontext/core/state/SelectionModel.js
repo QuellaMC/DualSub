@@ -57,7 +57,9 @@ export class SelectionModel {
         if (positionKey) {
             if (this.positionKeyToEntry.has(positionKey)) {
                 this.positionKeyToEntry.delete(positionKey);
-                this.positionKeyOrder = this.positionKeyOrder.filter((k) => k !== positionKey);
+                this.positionKeyOrder = this.positionKeyOrder.filter(
+                    (k) => k !== positionKey
+                );
                 removed = true;
             }
         } else if (word) {
@@ -69,7 +71,9 @@ export class SelectionModel {
             }
             if (keysToRemove.length > 0) {
                 keysToRemove.forEach((k) => this.positionKeyToEntry.delete(k));
-                this.positionKeyOrder = this.positionKeyOrder.filter((k) => !keysToRemove.includes(k));
+                this.positionKeyOrder = this.positionKeyOrder.filter(
+                    (k) => !keysToRemove.includes(k)
+                );
                 removed = true;
             }
         }
@@ -110,7 +114,10 @@ export class SelectionModel {
         if (oldKey === newKey) return;
         if (this.positionKeyToEntry.has(oldKey)) {
             this.positionKeyToEntry.delete(oldKey);
-            this.positionKeyToEntry.set(newKey, { word, position: newPosition });
+            this.positionKeyToEntry.set(newKey, {
+                word,
+                position: newPosition,
+            });
             const idx = this.positionKeyOrder.indexOf(oldKey);
             if (idx !== -1) this.positionKeyOrder[idx] = newKey;
             this._updateSelectedTextInternal();
@@ -142,8 +149,14 @@ export class SelectionModel {
         const toRemove = [];
         for (const [, list] of wordToPositions.entries()) {
             if (list.length <= 1) continue;
-            const withElement = list.filter((p) => p.entry.position && p.entry.position.element);
-            const withElementOriginal = withElement.filter((p) => (p.entry.position.subtitleType || '').toLowerCase() === 'original');
+            const withElement = list.filter(
+                (p) => p.entry.position && p.entry.position.element
+            );
+            const withElementOriginal = withElement.filter(
+                (p) =>
+                    (p.entry.position.subtitleType || '').toLowerCase() ===
+                    'original'
+            );
             let keep;
             if (withElementOriginal.length > 0) keep = withElementOriginal[0];
             else if (withElement.length > 0) keep = withElement[0];
@@ -155,7 +168,9 @@ export class SelectionModel {
 
         if (toRemove.length > 0) {
             toRemove.forEach((k) => this.positionKeyToEntry.delete(k));
-            this.positionKeyOrder = this.positionKeyOrder.filter((k) => !toRemove.includes(k));
+            this.positionKeyOrder = this.positionKeyOrder.filter(
+                (k) => !toRemove.includes(k)
+            );
             this._updateSelectedTextInternal();
         }
         return toRemove.length;
@@ -220,12 +235,12 @@ export class SelectionModel {
         keys.sort((a, b) => {
             const pa = this.positionKeyToEntry.get(a)?.position || {};
             const pb = this.positionKeyToEntry.get(b)?.position || {};
-            const ia = (pa.wordIndex !== undefined ? pa.wordIndex : pa.index) || 0;
-            const ib = (pb.wordIndex !== undefined ? pb.wordIndex : pb.index) || 0;
+            const ia =
+                (pa.wordIndex !== undefined ? pa.wordIndex : pa.index) || 0;
+            const ib =
+                (pb.wordIndex !== undefined ? pb.wordIndex : pb.index) || 0;
             return ia - ib;
         });
         return keys;
     }
 }
-
-

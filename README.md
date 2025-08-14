@@ -48,10 +48,10 @@ See details in: [docs/en/features.md](docs/en/features.md), [docs/en/platforms.m
 
 ## 📦 Installation & Quick Start
 
-1) Install from the Chrome Web Store or load unpacked (see `docs/en/installation.md`).
-2) Open Netflix or Disney+ and enable subtitles.
-3) Click the DualSub icon → enable dual subtitles and choose target language.
-4) Optional: Configure AI Context (provider, API key, model) in Advanced Settings.
+1. Install from the Chrome Web Store or load unpacked (see `docs/en/installation.md`).
+2. Open Netflix or Disney+ and enable subtitles.
+3. Click the DualSub icon → enable dual subtitles and choose target language.
+4. Optional: Configure AI Context (provider, API key, model) in Advanced Settings.
 
 Configuration reference: [docs/en/configuration.md](docs/en/configuration.md). AI docs: [docs/en/ai-context.md](docs/en/ai-context.md).
 

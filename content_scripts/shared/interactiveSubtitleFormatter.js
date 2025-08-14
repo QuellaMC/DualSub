@@ -65,7 +65,11 @@ const interactiveState = {
 function isAnalyzingActive() {
     try {
         const modalContent = document.getElementById('dualsub-modal-content');
-        return !!(modalContent && modalContent.classList && modalContent.classList.contains('is-analyzing'));
+        return !!(
+            modalContent &&
+            modalContent.classList &&
+            modalContent.classList.contains('is-analyzing')
+        );
     } catch (_) {
         return false;
     }
@@ -289,9 +293,16 @@ export function attachInteractiveEventListeners(subtitleElement, options = {}) {
         // Block pointer animations during processing
         const pointerBlocker = (ev) => {
             const t = ev.target;
-            if (!t || !t.classList || !t.classList.contains('dualsub-interactive-word')) return;
+            if (
+                !t ||
+                !t.classList ||
+                !t.classList.contains('dualsub-interactive-word')
+            )
+                return;
             if (isAnalyzingActive()) {
-                try { t.classList.remove('dualsub-interactive-word--hover'); } catch (_) {}
+                try {
+                    t.classList.remove('dualsub-interactive-word--hover');
+                } catch (_) {}
                 ev.preventDefault();
                 ev.stopPropagation();
             }
@@ -375,8 +386,16 @@ export function removeInteractiveEventListeners(subtitleElement) {
     // Remove pointer blocker if present
     try {
         if (subtitleElement._dualsubPointerBlocker) {
-            subtitleElement.removeEventListener('mousedown', subtitleElement._dualsubPointerBlocker, true);
-            subtitleElement.removeEventListener('touchstart', subtitleElement._dualsubPointerBlocker, true);
+            subtitleElement.removeEventListener(
+                'mousedown',
+                subtitleElement._dualsubPointerBlocker,
+                true
+            );
+            subtitleElement.removeEventListener(
+                'touchstart',
+                subtitleElement._dualsubPointerBlocker,
+                true
+            );
             delete subtitleElement._dualsubPointerBlocker;
         }
     } catch (_) {}
@@ -448,7 +467,9 @@ function handleInteractiveWordClick(event) {
 
     // Block interactions globally while analyzing to prevent de-selections during processing
     if (isAnalyzingActive()) {
-        try { target.classList.remove('dualsub-interactive-word--hover'); } catch (_) {}
+        try {
+            target.classList.remove('dualsub-interactive-word--hover');
+        } catch (_) {}
         return;
     }
 
@@ -547,7 +568,9 @@ function handleInteractiveWordHover(event) {
 
     // Suppress hover visual during processing
     if (isAnalyzingActive()) {
-        try { target.classList.remove('dualsub-interactive-word--hover'); } catch (_) {}
+        try {
+            target.classList.remove('dualsub-interactive-word--hover');
+        } catch (_) {}
         event.preventDefault();
         event.stopPropagation();
         return;

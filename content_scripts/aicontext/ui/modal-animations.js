@@ -45,9 +45,15 @@ export class AIContextModalAnimations {
 
         // Set visible; do NOT force state to SELECTION here to avoid overriding ongoing transitions
         this.core.isVisible = true;
-        try { this.core.store.setVisibility(true); } catch (_) {}
+        try {
+            this.core.store.setVisibility(true);
+        } catch (_) {}
         // Only move to SELECTION if we're fully hidden and not already processing/displaying
-        const isBusy = this.core.isAnalyzing || this.core.state === MODAL_STATES.PROCESSING || this.core.state === MODAL_STATES.DISPLAY || this.core.state === MODAL_STATES.ERROR;
+        const isBusy =
+            this.core.isAnalyzing ||
+            this.core.state === MODAL_STATES.PROCESSING ||
+            this.core.state === MODAL_STATES.DISPLAY ||
+            this.core.state === MODAL_STATES.ERROR;
         if (this.core.state === MODAL_STATES.HIDDEN && !isBusy) {
             this.core.setState(MODAL_STATES.SELECTION);
         }
@@ -91,17 +97,26 @@ export class AIContextModalAnimations {
             try {
                 // Always refresh selection display once visible to reflect current state, including empty selection (for auto-close logic in events)
                 this.ui.updateSelectionDisplay();
-                if (this.core.selectedWords && this.core.selectedWords.size > 0) {
-                    setTimeout(() => { this.ui.updateSelectionDisplay(); }, 0);
+                if (
+                    this.core.selectedWords &&
+                    this.core.selectedWords.size > 0
+                ) {
+                    setTimeout(() => {
+                        this.ui.updateSelectionDisplay();
+                    }, 0);
                 }
             } catch (_) {}
         }
 
         // Extra safety: if a stale overlay/content remained somehow, unlink it
         try {
-            const overlayId = this.core.overlayElement?.id || 'dualsub-modal-overlay';
-            const contentId = this.core.contentElement?.id || 'dualsub-modal-content';
-            const duplicates = document.querySelectorAll(`#${overlayId}, #${contentId}`);
+            const overlayId =
+                this.core.overlayElement?.id || 'dualsub-modal-overlay';
+            const contentId =
+                this.core.contentElement?.id || 'dualsub-modal-content';
+            const duplicates = document.querySelectorAll(
+                `#${overlayId}, #${contentId}`
+            );
             if (duplicates.length > 2) {
                 duplicates.forEach((node) => {
                     if (
@@ -167,15 +182,24 @@ export class AIContextModalAnimations {
         }
 
         this.core.isVisible = false;
-        try { this.core.store.setVisibility(false); } catch (_) {}
+        try {
+            this.core.store.setVisibility(false);
+        } catch (_) {}
         this.core.setState(MODAL_STATES.HIDDEN);
 
         // Also clear visual selections on subtitles when modal hides
         try {
-            const original = document.getElementById('dualsub-original-subtitle');
+            const original = document.getElementById(
+                'dualsub-original-subtitle'
+            );
             if (original) {
-                original.querySelectorAll('.dualsub-interactive-word.dualsub-word-selected')
-                    .forEach((el) => el.classList.remove('dualsub-word-selected'));
+                original
+                    .querySelectorAll(
+                        '.dualsub-interactive-word.dualsub-word-selected'
+                    )
+                    .forEach((el) =>
+                        el.classList.remove('dualsub-word-selected')
+                    );
             }
         } catch (_) {}
 
@@ -206,7 +230,9 @@ export class AIContextModalAnimations {
         }
         // Also mark original subtitles as disabled for consistent UX
         try {
-            const original = document.getElementById('dualsub-original-subtitle');
+            const original = document.getElementById(
+                'dualsub-original-subtitle'
+            );
             if (original) original.classList.add('dualsub-subtitles-disabled');
         } catch (_) {}
 
@@ -214,13 +240,17 @@ export class AIContextModalAnimations {
         this.ui.showProcessingState();
         // Force analyzing class to avoid flicker back to selection from late renders
         try {
-            const content = this.core.contentElement || document.getElementById('dualsub-modal-content');
+            const content =
+                this.core.contentElement ||
+                document.getElementById('dualsub-modal-content');
             content?.classList.add('is-analyzing');
         } catch (_) {}
         // Avoid inline display toggles; state classes drive visibility
         // Apply processing-sticky class to prevent CSS transitions flipping back
         try {
-            this.core.contentElement?.classList.add('dualsub-processing-active');
+            this.core.contentElement?.classList.add(
+                'dualsub-processing-active'
+            );
         } catch (_) {}
 
         // Apply dynamic height
@@ -236,17 +266,21 @@ export class AIContextModalAnimations {
             ) || document.getElementById('dualsub-processing-state');
         if (processing) {
             const squares = processing.querySelectorAll('.loader-square');
-			squares.forEach((sq) => {
-				const prev = sq.style.animation;
-				sq.style.animation = 'none';
-				// trigger reflow
-				void sq.offsetHeight;
-				sq.style.animation = prev || '';
-			});
+            squares.forEach((sq) => {
+                const prev = sq.style.animation;
+                sq.style.animation = 'none';
+                // trigger reflow
+                void sq.offsetHeight;
+                sq.style.animation = prev || '';
+            });
             // Ensure processing section wins by temporarily adding a guard class
-            this.core.contentElement?.classList.add('dualsub-processing-sticky');
+            this.core.contentElement?.classList.add(
+                'dualsub-processing-sticky'
+            );
             setTimeout(() => {
-                this.core.contentElement?.classList.remove('dualsub-processing-sticky');
+                this.core.contentElement?.classList.remove(
+                    'dualsub-processing-sticky'
+                );
             }, 150);
         }
     }
@@ -267,15 +301,22 @@ export class AIContextModalAnimations {
         }
         // Remove subtitles disabled indicator
         try {
-            const original = document.getElementById('dualsub-original-subtitle');
-            if (original) original.classList.remove('dualsub-subtitles-disabled');
+            const original = document.getElementById(
+                'dualsub-original-subtitle'
+            );
+            if (original)
+                original.classList.remove('dualsub-subtitles-disabled');
         } catch (_) {}
 
         // Update UI state
         this.ui.showAnalysisResults(analysisResult);
         // Avoid forcing inline display toggles; rely on state classes
-        this.core.contentElement?.classList.remove('dualsub-processing-sticky', 'dualsub-processing-active');
-        if (this.core.element) this.core.element.classList.remove('dualsub-processing-disabled');
+        this.core.contentElement?.classList.remove(
+            'dualsub-processing-sticky',
+            'dualsub-processing-active'
+        );
+        if (this.core.element)
+            this.core.element.classList.remove('dualsub-processing-disabled');
 
         // Apply dynamic height
         this._applyDynamicModalHeight();
@@ -300,8 +341,11 @@ export class AIContextModalAnimations {
             this.core.element.classList.remove('dualsub-processing-disabled');
         }
         try {
-            const original = document.getElementById('dualsub-original-subtitle');
-            if (original) original.classList.remove('dualsub-subtitles-disabled');
+            const original = document.getElementById(
+                'dualsub-original-subtitle'
+            );
+            if (original)
+                original.classList.remove('dualsub-subtitles-disabled');
         } catch (_) {}
 
         // Update UI state
@@ -328,8 +372,11 @@ export class AIContextModalAnimations {
             this.core.element.classList.remove('dualsub-processing-disabled');
         }
         try {
-            const original = document.getElementById('dualsub-original-subtitle');
-            if (original) original.classList.remove('dualsub-subtitles-disabled');
+            const original = document.getElementById(
+                'dualsub-original-subtitle'
+            );
+            if (original)
+                original.classList.remove('dualsub-subtitles-disabled');
         } catch (_) {}
 
         // Update UI state
@@ -672,8 +719,18 @@ export class AIContextModalAnimations {
                             try {
                                 const attr = mutation.attributeName || '';
                                 const targetEl = mutation.target;
-                                const isInteractive = targetEl && targetEl.classList && targetEl.classList.contains('dualsub-interactive-word');
-                                if (!isInteractive && this._isSubtitleRelatedElement(mutation.target)) {
+                                const isInteractive =
+                                    targetEl &&
+                                    targetEl.classList &&
+                                    targetEl.classList.contains(
+                                        'dualsub-interactive-word'
+                                    );
+                                if (
+                                    !isInteractive &&
+                                    this._isSubtitleRelatedElement(
+                                        mutation.target
+                                    )
+                                ) {
                                     shouldUpdate = true;
                                 }
                             } catch (_) {}
@@ -688,7 +745,9 @@ export class AIContextModalAnimations {
 
                             // Re-sync word selection visuals when subtitles change
                             if (this.core.selectedWords.size > 0) {
-                                try { this.core.syncSelectionHighlights(); } catch (_) {}
+                                try {
+                                    this.core.syncSelectionHighlights();
+                                } catch (_) {}
                                 // this.core._log('debug', 'Re-synced word selection visuals after subtitle change');
                             }
                         }, 100);
@@ -817,7 +876,8 @@ export class AIContextModalAnimations {
             document.getElementById('dualsub-start-analysis');
         if (button) {
             button.classList.add('processing');
-            const isPauseEnabled = button.getAttribute('data-paused-toggle') === 'true';
+            const isPauseEnabled =
+                button.getAttribute('data-paused-toggle') === 'true';
             if (!isPauseEnabled) {
                 button.disabled = true;
                 button.textContent = 'Analyzing...';
@@ -898,7 +958,11 @@ export class AIContextModalAnimations {
      * Sync visual selection state is centralized in core.syncSelectionHighlights
      * @private
      */
-    _syncWordSelectionVisuals() { try { this.core.syncSelectionHighlights(); } catch (_) {} }
+    _syncWordSelectionVisuals() {
+        try {
+            this.core.syncSelectionHighlights();
+        } catch (_) {}
+    }
 
     /**
      * Get subtitle type from word element (Issue #1: Position-based selection)

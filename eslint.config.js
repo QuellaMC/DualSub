@@ -9,7 +9,7 @@ export default [
 
     // Ignore third-party and temporary files
     {
-		ignores: ['temp/**', 'node_modules/**', 'DualSub/**'],
+        ignores: ['temp/**', 'node_modules/**', 'DualSub/**'],
     },
 
     // Configuration for all JavaScript files in the project
@@ -26,11 +26,11 @@ export default [
             },
         },
 
-		rules: {
-			'no-unused-vars': 'off',
-			'no-console': 'off',
-			'no-empty': ['error', { allowEmptyCatch: true }],
-		},
+        rules: {
+            'no-unused-vars': 'off',
+            'no-console': 'off',
+            'no-empty': ['error', { allowEmptyCatch: true }],
+        },
     },
 
     // Configuration for Jest test files
@@ -59,11 +59,11 @@ export default [
             },
         },
 
-		rules: {
-			'no-unused-vars': 'off',
-			'no-console': 'off',
-			'no-empty': ['error', { allowEmptyCatch: true }],
-		},
+        rules: {
+            'no-unused-vars': 'off',
+            'no-console': 'off',
+            'no-empty': ['error', { allowEmptyCatch: true }],
+        },
     },
     prettierConfig,
 ];

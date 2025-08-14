@@ -351,18 +351,26 @@ export class NetflixPlatform extends VideoPlatform {
                         );
                     }
 
-                    import(chrome.runtime.getURL('content_scripts/shared/messaging.js'))
+                    import(
+                        chrome.runtime.getURL(
+                            'content_scripts/shared/messaging.js'
+                        )
+                    )
                         .then(({ sendRuntimeMessageWithRetry }) =>
-                            sendRuntimeMessageWithRetry({
-                                action: 'fetchVTT',
-                                data: { tracks: timedtexttracks },
-                                videoId: this.currentVideoId,
-                                targetLanguage: targetLanguage,
-                                originalLanguage: originalLanguage,
-                                useNativeSubtitles: useOfficialSubtitles,
-                                useOfficialTranslations: useOfficialSubtitles,
-                                source: 'netflix',
-                            }, { retries: 3, baseDelayMs: 150 })
+                            sendRuntimeMessageWithRetry(
+                                {
+                                    action: 'fetchVTT',
+                                    data: { tracks: timedtexttracks },
+                                    videoId: this.currentVideoId,
+                                    targetLanguage: targetLanguage,
+                                    originalLanguage: originalLanguage,
+                                    useNativeSubtitles: useOfficialSubtitles,
+                                    useOfficialTranslations:
+                                        useOfficialSubtitles,
+                                    source: 'netflix',
+                                },
+                                { retries: 3, baseDelayMs: 150 }
+                            )
                         )
                         .then((response) => {
                             if (
@@ -574,10 +582,15 @@ export class NetflixPlatform extends VideoPlatform {
                                 );
                             } else {
                                 // Generic failure path
-                                this.logger.error('No/invalid response from background for Netflix fetchVTT', {
-                                    videoId: this.currentVideoId,
-                                });
-                                delete this.lastKnownVttUrlForVideoId[this.currentVideoId];
+                                this.logger.error(
+                                    'No/invalid response from background for Netflix fetchVTT',
+                                    {
+                                        videoId: this.currentVideoId,
+                                    }
+                                );
+                                delete this.lastKnownVttUrlForVideoId[
+                                    this.currentVideoId
+                                ];
                             }
                         })
                         .catch((_error) => {
@@ -590,7 +603,8 @@ export class NetflixPlatform extends VideoPlatform {
                                     targetLanguage: targetLanguage,
                                     originalLanguage: originalLanguage,
                                     useNativeSubtitles: useOfficialSubtitles,
-                                    useOfficialTranslations: useOfficialSubtitles,
+                                    useOfficialTranslations:
+                                        useOfficialSubtitles,
                                     source: 'netflix',
                                 },
                                 (response) => {
@@ -602,7 +616,9 @@ export class NetflixPlatform extends VideoPlatform {
                                                 videoId: this.currentVideoId,
                                             }
                                         );
-                                        delete this.lastKnownVttUrlForVideoId[this.currentVideoId];
+                                        delete this.lastKnownVttUrlForVideoId[
+                                            this.currentVideoId
+                                        ];
                                         return;
                                     }
                                     // Reuse same response handling as above
@@ -615,29 +631,45 @@ export class NetflixPlatform extends VideoPlatform {
                                             'Netflix VTT processed successfully',
                                             {
                                                 videoId: this.currentVideoId,
-                                                sourceLanguage: response.sourceLanguage,
-                                                targetLanguage: response.targetLanguage,
-                                                useNativeTarget: response.useNativeTarget,
-                                                hasTargetVtt: !!response.targetVttText,
-                                                availableLanguagesCount: response.availableLanguages?.length || 0,
+                                                sourceLanguage:
+                                                    response.sourceLanguage,
+                                                targetLanguage:
+                                                    response.targetLanguage,
+                                                useNativeTarget:
+                                                    response.useNativeTarget,
+                                                hasTargetVtt:
+                                                    !!response.targetVttText,
+                                                availableLanguagesCount:
+                                                    response.availableLanguages
+                                                        ?.length || 0,
                                             }
                                         );
                                         if (this.onSubtitleUrlFoundCallback) {
                                             const subtitleData = {
                                                 vttText: response.vttText,
-                                                targetVttText: response.targetVttText,
+                                                targetVttText:
+                                                    response.targetVttText,
                                                 videoId: response.videoId,
                                                 url: response.url,
-                                                sourceLanguage: response.sourceLanguage,
-                                                targetLanguage: response.targetLanguage,
-                                                useNativeTarget: response.useNativeTarget || false,
-                                                availableLanguages: response.availableLanguages,
+                                                sourceLanguage:
+                                                    response.sourceLanguage,
+                                                targetLanguage:
+                                                    response.targetLanguage,
+                                                useNativeTarget:
+                                                    response.useNativeTarget ||
+                                                    false,
+                                                availableLanguages:
+                                                    response.availableLanguages,
                                                 selectedLanguage: {
-                                                    displayName: response.sourceLanguage,
-                                                    normalizedCode: response.sourceLanguage,
+                                                    displayName:
+                                                        response.sourceLanguage,
+                                                    normalizedCode:
+                                                        response.sourceLanguage,
                                                 },
                                             };
-                                            this.onSubtitleUrlFoundCallback(subtitleData);
+                                            this.onSubtitleUrlFoundCallback(
+                                                subtitleData
+                                            );
                                         }
                                     } else if (response && !response.success) {
                                         this.logger.error(
@@ -649,10 +681,13 @@ export class NetflixPlatform extends VideoPlatform {
                                                 useOfficialSubtitles,
                                                 targetLanguage,
                                                 originalLanguage,
-                                                trackCount: timedtexttracks.length,
+                                                trackCount:
+                                                    timedtexttracks.length,
                                             }
                                         );
-                                        delete this.lastKnownVttUrlForVideoId[this.currentVideoId];
+                                        delete this.lastKnownVttUrlForVideoId[
+                                            this.currentVideoId
+                                        ];
                                     } else if (
                                         response &&
                                         response.videoId !== this.currentVideoId
@@ -660,15 +695,22 @@ export class NetflixPlatform extends VideoPlatform {
                                         this.logger.warn(
                                             'Received VTT for different video context - discarding',
                                             {
-                                                receivedVideoId: response.videoId,
-                                                currentVideoId: this.currentVideoId,
+                                                receivedVideoId:
+                                                    response.videoId,
+                                                currentVideoId:
+                                                    this.currentVideoId,
                                             }
                                         );
                                     } else {
-                                        this.logger.error('No/invalid response from background for Netflix fetchVTT', {
-                                            videoId: this.currentVideoId,
-                                        });
-                                        delete this.lastKnownVttUrlForVideoId[this.currentVideoId];
+                                        this.logger.error(
+                                            'No/invalid response from background for Netflix fetchVTT',
+                                            {
+                                                videoId: this.currentVideoId,
+                                            }
+                                        );
+                                        delete this.lastKnownVttUrlForVideoId[
+                                            this.currentVideoId
+                                        ];
                                     }
                                 }
                             );
@@ -878,7 +920,9 @@ export class NetflixPlatform extends VideoPlatform {
         let hideOfficialSubtitles = this._hideOfficialSubtitles;
         if (hideOfficialSubtitles === undefined) {
             try {
-                hideOfficialSubtitles = await configService.get('hideOfficialSubtitles');
+                hideOfficialSubtitles = await configService.get(
+                    'hideOfficialSubtitles'
+                );
                 this._hideOfficialSubtitles = !!hideOfficialSubtitles;
             } catch (_) {
                 hideOfficialSubtitles = false;

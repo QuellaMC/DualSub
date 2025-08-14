@@ -158,7 +158,9 @@ export class VideoPlatform {
         let hideOfficialSubtitles = this._hideOfficialSubtitles;
         if (hideOfficialSubtitles === undefined) {
             try {
-                hideOfficialSubtitles = await configService.get('hideOfficialSubtitles');
+                hideOfficialSubtitles = await configService.get(
+                    'hideOfficialSubtitles'
+                );
                 this._hideOfficialSubtitles = !!hideOfficialSubtitles;
             } catch (e) {
                 hideOfficialSubtitles = false;

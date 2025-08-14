@@ -232,17 +232,26 @@ export class AIContextManager {
                         const eventsReady = !!(this.modal && this.modal.events);
                         if (!eventsReady) {
                             this.earlySelectionQueue.push(evt.detail);
-                            this._log('debug', 'Buffered early word selection event', {
-                                bufferedCount: this.earlySelectionQueue.length,
-                                word: evt.detail?.word,
-                                subtitleType: evt.detail?.subtitleType,
-                            });
+                            this._log(
+                                'debug',
+                                'Buffered early word selection event',
+                                {
+                                    bufferedCount:
+                                        this.earlySelectionQueue.length,
+                                    word: evt.detail?.word,
+                                    subtitleType: evt.detail?.subtitleType,
+                                }
+                            );
                         }
                     } catch (e) {
                         // Ignore buffering errors, just log
-                        this._log('warn', 'Failed to buffer early word selection', {
-                            error: e.message,
-                        });
+                        this._log(
+                            'warn',
+                            'Failed to buffer early word selection',
+                            {
+                                error: e.message,
+                            }
+                        );
                     }
                 };
                 document.addEventListener(
@@ -315,16 +324,22 @@ export class AIContextManager {
                             document.dispatchEvent(replayEvent);
                         }
                     } catch (e) {
-                        this._log('warn', 'Failed to replay buffered selection event', {
-                            error: e.message,
-                            detailKeys: detail ? Object.keys(detail) : [],
-                        });
+                        this._log(
+                            'warn',
+                            'Failed to replay buffered selection event',
+                            {
+                                error: e.message,
+                                detailKeys: detail ? Object.keys(detail) : [],
+                            }
+                        );
                     }
                 });
 
                 try {
                     if (this.modal && !this.modal.isVisible) {
-                        this.modal.showSelectionMode({ trigger: 'word-selection' });
+                        this.modal.showSelectionMode({
+                            trigger: 'word-selection',
+                        });
                     }
                 } catch (_) {}
             }
@@ -365,7 +380,8 @@ export class AIContextManager {
             // Listen for analysis pause requests to cancel in-flight work
             const pauseAnalysisListener = (event) => {
                 try {
-                    const reqId = event?.detail?.requestId || this.activeRequest;
+                    const reqId =
+                        event?.detail?.requestId || this.activeRequest;
                     this._log('debug', 'Received analysis pause request', {
                         requestId: reqId,
                         activeRequest: this.activeRequest,
@@ -477,9 +493,7 @@ export class AIContextManager {
         // Preserve provided requestId when present (tests and callers rely on this); otherwise generate one
         const requestId =
             detail.requestId ||
-            `analysis-${Date.now()}-${Math.random()
-                .toString(36)
-                .slice(2, 8)}`;
+            `analysis-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
         try {
             this._log('debug', 'Handling analysis request', detail);
@@ -501,7 +515,9 @@ export class AIContextManager {
             // De-duplicate in-flight ids to avoid parallel duplicates
             if (!this._inflightIds) this._inflightIds = new Set();
             if (this._inflightIds.has(requestId)) {
-                this._log('debug', 'Duplicate analysis request ignored', { requestId });
+                this._log('debug', 'Duplicate analysis request ignored', {
+                    requestId,
+                });
                 return;
             }
             this._inflightIds.add(requestId);
@@ -532,7 +548,11 @@ export class AIContextManager {
                         result: response.result,
                         success: response.success,
                         error: response.error,
-                        shouldRetry: response.shouldRetry ?? /timeout|rate limit|temporar/i.test(response?.error || ''),
+                        shouldRetry:
+                            response.shouldRetry ??
+                            /timeout|rate limit|temporar/i.test(
+                                response?.error || ''
+                            ),
                     },
                 })
             );
@@ -574,7 +594,9 @@ export class AIContextManager {
                 error: error.message,
             });
         } finally {
-            try { if (this._inflightIds) this._inflightIds.delete(requestId); } catch (_) {}
+            try {
+                if (this._inflightIds) this._inflightIds.delete(requestId);
+            } catch (_) {}
         }
     }
 
@@ -625,7 +647,10 @@ export class AIContextManager {
                 return;
             }
 
-            if (this.provider && typeof this.provider.cancelRequest === 'function') {
+            if (
+                this.provider &&
+                typeof this.provider.cancelRequest === 'function'
+            ) {
                 const cancelled = this.provider.cancelRequest(targetId);
                 this._log('info', 'Cancel request invoked on provider', {
                     requestId: targetId,
@@ -652,7 +677,9 @@ export class AIContextManager {
                 })
             );
         } catch (error) {
-            this._log('error', 'Failed to pause analysis', { error: error.message });
+            this._log('error', 'Failed to pause analysis', {
+                error: error.message,
+            });
         }
     }
 

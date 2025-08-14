@@ -35,33 +35,34 @@
 ## 选项二：手动安装（适合开发与测试）
 
 1. 获取源码
-   - 使用 Git 克隆：
-     ```bash
-     git clone https://github.com/QuellaMC/DualSub.git
-     cd DualSub
-     ```
-   - 或在 GitHub 下载 ZIP 并解压
+    - 使用 Git 克隆：
+        ```bash
+        git clone https://github.com/QuellaMC/DualSub.git
+        cd DualSub
+        ```
+    - 或在 GitHub 下载 ZIP 并解压
 
 2. 安装依赖（便于开发中的测试/检查）
-   ```bash
-   npm install
-   ```
+
+    ```bash
+    npm install
+    ```
 
 3. 在 Chrome 中加载已解压的扩展
-   - 打开 `chrome://extensions`
-   - 开启“开发者模式”（右上角）
-   - 点击“加载已解压的扩展程序”，选择项目根目录（包含 `manifest.json` 的 `DualSub` 目录）
+    - 打开 `chrome://extensions`
+    - 开启“开发者模式”（右上角）
+    - 点击“加载已解压的扩展程序”，选择项目根目录（包含 `manifest.json` 的 `DualSub` 目录）
 
 4. 验证是否生效（同上）
-   - 访问 Netflix 或 Disney+
-   - 开启字幕后点击 DualSub，启用双语字幕
+    - 访问 Netflix 或 Disney+
+    - 开启字幕后点击 DualSub，启用双语字幕
 
 5. 手动更新
-   - 拉取最新代码：
-     ```bash
-     git pull
-     ```
-   - 在 `chrome://extensions` 中点击 DualSub 卡片的刷新按钮
+    - 拉取最新代码：
+        ```bash
+        git pull
+        ```
+    - 在 `chrome://extensions` 中点击 DualSub 卡片的刷新按钮
 
 ---
 
