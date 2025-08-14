@@ -236,14 +236,13 @@ export class AIContextModalAnimations {
             ) || document.getElementById('dualsub-processing-state');
         if (processing) {
             const squares = processing.querySelectorAll('.loader-square');
-            squares.forEach((sq) => {
-                const prev = sq.style.animation;
-                sq.style.animation = 'none';
-                // trigger reflow
-                // eslint-disable-next-line no-unused-expressions
-                sq.offsetHeight;
-                sq.style.animation = prev || '';
-            });
+			squares.forEach((sq) => {
+				const prev = sq.style.animation;
+				sq.style.animation = 'none';
+				// trigger reflow
+				void sq.offsetHeight;
+				sq.style.animation = prev || '';
+			});
             // Ensure processing section wins by temporarily adding a guard class
             this.core.contentElement?.classList.add('dualsub-processing-sticky');
             setTimeout(() => {

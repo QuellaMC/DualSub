@@ -49,7 +49,8 @@ export function computeTextSignature(textOrHtml) {
         .replace(/&lt;/gi, '<')
         .replace(/&gt;/gi, '>');
     // Normalize punctuation to spaces
-    s = s.replace(/[\.,!?;:\-—_"'`~\(\)\[\]\{\}\u3002\uff0c\uff1f\uff01\u3001]/g, ' ');
+	// Replace punctuation and symbol characters with spaces using Unicode property escapes
+	s = s.replace(/[\p{P}\p{S}]/gu, ' ');
     // Collapse whitespace
     s = s.replace(/\s+/g, ' ').trim();
     return s;
