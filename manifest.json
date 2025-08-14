@@ -8,11 +8,9 @@
     "host_permissions": [
         "*://*.disneyplus.com/*",
         "*://*.netflix.com/*",
-            "https://*.disneyplus.com/*",
-            "https://*.netflix.com/*",
         "https://translate.googleapis.com/*",
         "https://api.cognitive.microsofttranslator.com/*",
-        "https://edge.microsofts.com/*",
+        "https://edge.microsoft.com/*",
         "https://api-free.deepl.com/*",
         "https://api.deepl.com/*"
     ],
