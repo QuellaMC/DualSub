@@ -44,16 +44,16 @@
 - Flexible layouts, appearance controls, and timing offset
 - Multi-language UI (EN, ES, JA, KO, ZH-CN, ZH-TW)
 
-See details in: [docs/en/features.md](docs/en/features.md), [docs/en/platforms.md](docs/en/platforms.md), [docs/en/providers.md](docs/en/providers.md).
+See details in: [features.md](docs/en/features.md), [platforms.md](docs/en/platforms.md), [providers.md](docs/en/providers.md).
 
 ## 📦 Installation & Quick Start
 
-1. Install from the Chrome Web Store or load unpacked (see `docs/en/installation.md`).
+1. Install from the Chrome Web Store or load unpacked (see [installation.md](docs/en/installation.md)).
 2. Open Netflix or Disney+ and enable subtitles.
 3. Click the DualSub icon → enable dual subtitles and choose target language.
 4. Optional: Configure AI Context (provider, API key, model) in Advanced Settings.
 
-Configuration reference: [docs/en/configuration.md](docs/en/configuration.md). AI docs: [docs/en/ai-context.md](docs/en/ai-context.md).
+Configuration reference: [configuration.md](docs/en/configuration.md). AI docs: [ai-context.md](docs/en/ai-context.md).
 
 ### Configuration Examples
 
