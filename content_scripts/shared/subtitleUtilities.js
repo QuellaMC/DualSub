@@ -377,8 +377,8 @@ export let lastProgressBarTime = -1;
 export let lastProgressBarUpdateTs = 0;
 export let findProgressBarIntervalId = null;
 export let findProgressBarRetries = 0;
-export const MAX_FIND_PROGRESS_BAR_RETRIES =
-    COMMON_CONSTANTS.MAX_FIND_PROGRESS_BAR_RETRIES;
+export const {MAX_FIND_PROGRESS_BAR_RETRIES} = COMMON_CONSTANTS;
+
 export let lastLoggedTimeSec = -1;
 export let timeUpdateLogCounter = 0;
 export const TIME_UPDATE_LOG_INTERVAL = 30;
