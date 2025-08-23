@@ -1109,12 +1109,10 @@ function attemptToSetupProgressBarObserver(
         // Observe a stable container: prefer the shadowRoot so node replacements don't break observation
         const rootNode = sliderElement.getRootNode?.();
         const progressBarHost = rootNode && rootNode.host ? rootNode.host : sliderElement.closest?.('progress-bar');
-        const anchorSeekableRange = null;
         const observeTarget =
             (rootNode && rootNode.nodeType === Node.DOCUMENT_FRAGMENT_NODE
                 ? rootNode
                 : null) ||
-            anchorSeekableRange ||
             sliderElement;
         const rootType = observeTarget?.constructor?.name ||
             observeTarget?.getRootNode?.()?.constructor?.name ||
