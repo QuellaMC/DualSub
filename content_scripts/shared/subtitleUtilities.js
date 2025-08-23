@@ -1148,8 +1148,6 @@ function attemptToSetupProgressBarObserver(
                     let maxStr = targetElement.getAttribute('aria-valuemax');
                     let textStr = targetElement.getAttribute('aria-valuetext');
 
-                    // For Disney+, use aria-valuenow/aria-valuemax only
-                    let stylePct = NaN;
                     logWithFallback('debug', 'Progress bar mutation observed', {
                         logPrefix,
                         attributeName: mutation.attributeName || 'childList',
