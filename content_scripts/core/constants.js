@@ -17,7 +17,7 @@ export const COMMON_CONSTANTS = {
     VIDEO_DETECTION_MAX_INTERVAL: 5000,
 
     // Progress bar detection settings
-    MAX_FIND_PROGRESS_BAR_RETRIES: 20,
+    MAX_FIND_PROGRESS_BAR_RETRIES: 100,
     FIND_PROGRESS_BAR_INTERVAL: 500,
 
     // Navigation and Initialization

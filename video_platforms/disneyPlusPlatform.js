@@ -338,17 +338,74 @@ export class DisneyPlusPlatform extends VideoPlatform {
     }
 
     getProgressBarElement() {
-        // This selector is based on the current content.js
-        const videoElement = this.getVideoElement();
-        if (!videoElement) return null;
+        // Disney+ specific: read from progress-bar web component's shadow DOM
+        try {
+            // Prefer the controls footer progress bar
+            const preferredHosts = Array.from(
+                document.querySelectorAll(
+                    '.controls__footer__progressWrapper progress-bar'
+                )
+            );
+            const allHosts = preferredHosts.length
+                ? preferredHosts
+                : Array.from(document.querySelectorAll('progress-bar'));
 
-        const playerParent = videoElement.closest(
-            'div[data-testid="webAppRootView"], body'
-        );
-        const sliderSelector = 'div.slider-container[role="slider"]';
-        return playerParent
-            ? playerParent.querySelector(sliderSelector)
-            : document.querySelector(`div.progress-bar ${sliderSelector}`);
+            let bestThumb = null;
+            let bestMax = -1;
+            for (const host of allHosts) {
+                if (!host || !host.shadowRoot) continue;
+                const thumb = host.shadowRoot.querySelector(
+                    '.progress-bar__seekable-range .progress-bar__thumb[aria-valuenow][aria-valuemax]'
+                );
+                if (!thumb) continue;
+                const vmax = parseFloat(thumb.getAttribute('aria-valuemax') || 'NaN');
+                if (!Number.isNaN(vmax) && vmax > bestMax) {
+                    bestMax = vmax;
+                    bestThumb = thumb;
+                }
+            }
+            return bestThumb || null;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    /**
+     * Deep querySelector that traverses shadow DOM trees to find the first match
+     * @param {string[]|string} selectors - One or more selectors to try
+     * @returns {Element|null}
+     * @private
+     */
+    _querySelectorDeep(selectors) {
+        const selectorList = Array.isArray(selectors) ? selectors : [selectors];
+        const visited = new Set();
+        const queue = [document];
+
+        while (queue.length) {
+            const root = queue.shift();
+            if (!root || visited.has(root)) continue;
+            visited.add(root);
+
+            for (const sel of selectorList) {
+                try {
+                    const el = root.querySelector(sel);
+                    if (el) return el;
+                } catch (_) {}
+            }
+
+            let nodes = [];
+            try {
+                nodes = root.querySelectorAll('*');
+            } catch (_) {
+                nodes = [];
+            }
+            for (const node of nodes) {
+                if (node && node.shadowRoot) {
+                    queue.push(node.shadowRoot);
+                }
+            }
+        }
+        return null;
     }
 
     handleNativeSubtitles() {

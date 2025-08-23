@@ -265,7 +265,12 @@ For full license terms, see [LICENSE](LICENSE) file.
 
 ## 📋 Changelog
 
-### Version 2.2.0 (Current)
+### Version 2.3.0 (Current)
+
+- 🛠️ Netflix soft navigation fix: Resolves issue where moving to the next episode (SPA navigation) could continue showing previous episode subtitles. Subtitles now reset and rebind to the new video context.
+- 🎯 Disney+ progress bar update: Adjusted detection to the updated site UI; timing now reads directly from the progress-bar web component’s shadow DOM via aria attributes for accurate sync.
+
+### Version 2.2.0
 
 - 🧩 Modularized documentation with English and Chinese docs under `docs/`
 - 🧭 AI Context UI/UX refinements (modal, transitions, selection persistence)

@@ -6,6 +6,8 @@
  * @version 1.0.0
  */
 
+import { COMMON_CONSTANTS } from '../core/constants.js';
+
 // Logger instance for subtitle utilities
 let utilsLogger = null;
 
@@ -372,12 +374,22 @@ let lastDisplayedCueWindow = { start: null, end: null, videoId: null };
 export let timeUpdateListener = null;
 export let progressBarObserver = null;
 export let lastProgressBarTime = -1;
+export let lastProgressBarUpdateTs = 0;
 export let findProgressBarIntervalId = null;
 export let findProgressBarRetries = 0;
-export const MAX_FIND_PROGRESS_BAR_RETRIES = 20;
+export const {MAX_FIND_PROGRESS_BAR_RETRIES} = COMMON_CONSTANTS;
+
 export let lastLoggedTimeSec = -1;
 export let timeUpdateLogCounter = 0;
 export const TIME_UPDATE_LOG_INTERVAL = 30;
+
+// Navigation guarding to prevent stale subtitles during soft navigations
+let lastKnownLocationHref = (typeof window !== 'undefined' && window.location)
+    ? window.location.href
+    : '';
+let navigationGuardActive = false;
+let navigationGuardFromVideoId = null;
+let lastRenderedVideoId = null;
 
 // State setters (only for core state, not user preferences)
 export function setCurrentVideoId(id) {
@@ -944,8 +956,25 @@ export function attachTimeUpdateListener(
                 const useProgressBar =
                     activePlatform.supportsProgressBarTracking?.() !== false;
 
+                // For platforms that require progress bar (e.g., Disney+), only update when thumb reports
+                if (useProgressBar && progressBarObserver) {
+                    if (
+                        subtitlesActive &&
+                        typeof lastProgressBarTime === 'number' &&
+                        lastProgressBarTime >= 0
+                    ) {
+                        updateSubtitles(
+                            lastProgressBarTime,
+                            activePlatform,
+                            config,
+                            logPrefix
+                        );
+                    }
+                    return;
+                }
+
+                // Fallback for platforms using native timeupdate
                 if (
-                    (!progressBarObserver || !useProgressBar) &&
                     subtitlesActive &&
                     typeof currentTime === 'number' &&
                     readyState >= HAVE_CURRENT_DATA
@@ -974,6 +1003,11 @@ export function setupProgressBarObserver(
     config,
     logPrefix = 'SubtitleUtils'
 ) {
+    logWithFallback('debug', 'setupProgressBarObserver called', {
+        logPrefix,
+        haveVideo: !!videoElement,
+        havePlatform: !!activePlatform,
+    });
     if (findProgressBarIntervalId) {
         clearInterval(findProgressBarIntervalId);
         findProgressBarIntervalId = null;
@@ -1023,7 +1057,7 @@ export function setupProgressBarObserver(
                 }
             );
         }
-    }, 500);
+    }, COMMON_CONSTANTS.FIND_PROGRESS_BAR_INTERVAL);
 }
 
 function attemptToSetupProgressBarObserver(
@@ -1052,6 +1086,9 @@ function attemptToSetupProgressBarObserver(
         return true;
     }
 
+    logWithFallback('debug', 'Attempting to locate progress bar via platform getter', {
+        logPrefix,
+    });
     const sliderElement = activePlatform.getProgressBarElement();
 
     if (sliderElement) {
@@ -1069,47 +1106,144 @@ function attemptToSetupProgressBarObserver(
         }
         findProgressBarRetries = 0;
 
+        // Observe a stable container: prefer the shadowRoot so node replacements don't break observation
+        const rootNode = sliderElement.getRootNode?.();
+        const progressBarHost = rootNode && rootNode.host ? rootNode.host : sliderElement.closest?.('progress-bar');
+        const observeTarget =
+            (rootNode && rootNode.nodeType === Node.DOCUMENT_FRAGMENT_NODE
+                ? rootNode
+                : null) ||
+            sliderElement;
+        const rootType = observeTarget?.constructor?.name ||
+            observeTarget?.getRootNode?.()?.constructor?.name ||
+            'Document';
+        logWithFallback('debug', 'Observe target prepared', {
+            logPrefix,
+            tagName: observeTarget?.tagName || 'unknown',
+            className: observeTarget?.className || '',
+            rootType,
+        });
+
         progressBarObserver = new MutationObserver((mutations) => {
+            const selectActiveThumb = () => {
+                if (progressBarHost && progressBarHost.shadowRoot) {
+                    return progressBarHost.shadowRoot.querySelector(
+                        '.progress-bar__seekable-range .progress-bar__thumb[aria-valuenow][aria-valuemax]'
+                    );
+                }
+                return null;
+            };
             for (const mutation of mutations) {
                 if (
-                    mutation.type === 'attributes' &&
-                    mutation.attributeName === 'aria-valuenow'
+                    (mutation.type === 'attributes' &&
+                        (mutation.attributeName === 'aria-valuenow' ||
+                            mutation.attributeName === 'aria-valuetext' ||
+                            mutation.attributeName === 'aria-valuemax')) ||
+                    mutation.type === 'childList'
                 ) {
-                    const targetElement = mutation.target;
-                    const nowStr = targetElement.getAttribute('aria-valuenow');
-                    const maxStr = targetElement.getAttribute('aria-valuemax');
+                    // Only use the official Disney+ thumb under the progress-bar shadow root
+                    let targetElement = selectActiveThumb() || mutation.target;
+                    // Some UIs move aria attributes to child or sibling nodes; search nearby if missing
+                    let nowStr = targetElement.getAttribute('aria-valuenow');
+                    let maxStr = targetElement.getAttribute('aria-valuemax');
+                    let textStr = targetElement.getAttribute('aria-valuetext');
+
+                    logWithFallback('debug', 'Progress bar mutation observed', {
+                        logPrefix,
+                        attributeName: mutation.attributeName || 'childList',
+                        nowStr,
+                        maxStr,
+                        textStr,
+                    });
+                    if (!nowStr || !maxStr) {
+                        const neighbor =
+                            targetElement.closest('[aria-valuenow]') ||
+                            targetElement.querySelector?.('[aria-valuenow]') ||
+                            targetElement.parentElement?.querySelector?.(
+                                '[aria-valuenow]'
+                            ) ||
+                            null;
+                        if (neighbor) {
+                            nowStr =
+                                nowStr || neighbor.getAttribute('aria-valuenow');
+                            maxStr =
+                                maxStr || neighbor.getAttribute('aria-valuemax');
+                            textStr =
+                                textStr || neighbor.getAttribute('aria-valuetext');
+                        }
+                    }
 
                     const currentVideoElem = activePlatform.getVideoElement();
-                    if (nowStr && maxStr && currentVideoElem) {
-                        const valuenow = parseFloat(nowStr);
-                        const valuemax = parseFloat(maxStr);
-                        const { duration: videoDuration } = currentVideoElem;
-
+                    if ((nowStr || textStr) && currentVideoElem) {
+                        // Prefer numeric aria values; fallback to extracting from valuetext like "135 of 1502"
+                        let valuenow = nowStr ? parseFloat(nowStr) : NaN;
+                        let valuemax = maxStr ? parseFloat(maxStr) : NaN;
+                        if ((Number.isNaN(valuenow) || Number.isNaN(valuemax)) && textStr) {
+                            const m = textStr.match(/(\d+(?:\.\d+)?)\s*[^\d]+\s*(\d+(?:\.\d+)?)/);
+                            if (m) {
+                                if (Number.isNaN(valuenow)) valuenow = parseFloat(m[1]);
+                                if (Number.isNaN(valuemax)) valuemax = parseFloat(m[2]);
+                            }
+                        }
+                        let { duration: videoDuration } = currentVideoElem;
+                        // Some players report 0/null until metadata is ready. Fallback to valuemax when it looks like seconds
                         if (
-                            !Number.isNaN(valuenow) &&
+                            (!videoDuration || Number.isNaN(videoDuration)) &&
                             !Number.isNaN(valuemax) &&
                             valuemax > 0
                         ) {
-                            const calculatedTime =
+                            videoDuration = valuemax;
+                        }
+
+                        if (!Number.isNaN(valuenow)) {
+                            // Directly use valuenow as seconds when valuemax matches duration
+                            let calculatedTime = valuenow;
+                            if (
                                 !Number.isNaN(videoDuration) &&
-                                videoDuration > 0
-                                    ? (valuenow / valuemax) * videoDuration
-                                    : valuenow;
+                                videoDuration > 0 &&
+                                !Number.isNaN(valuemax) &&
+                                valuemax > 0
+                            ) {
+                                // If valuemax does not match duration yet, scale valuenow by valuemax
+                                if (Math.abs(valuemax - videoDuration) > 1.5) {
+                                    calculatedTime = (valuenow / valuemax) * videoDuration;
+                                }
+                            }
 
                             if (
                                 calculatedTime >= 0 &&
-                                Math.abs(calculatedTime - lastProgressBarTime) >
-                                    0.1
+                                Number.isFinite(calculatedTime)
                             ) {
-                                if (subtitlesActive) {
+                                const previous = lastProgressBarTime;
+                                lastProgressBarTime = calculatedTime;
+                                lastProgressBarUpdateTs = Date.now();
+                                logWithFallback('debug', 'Computed progress-bar time', {
+                                    logPrefix,
+                                    valuenow,
+                                    valuemax,
+                                    videoDuration,
+                                    calculatedTime,
+                                    delta: Math.abs(calculatedTime - previous),
+                                });
+                                if (
+                                    subtitlesActive &&
+                                    Math.abs(calculatedTime - previous) > 0.1
+                                ) {
+                                    logWithFallback('debug', 'Updating subtitles using progress bar time', {
+                                        logPrefix,
+                                        time: calculatedTime,
+                                    });
                                     updateSubtitles(
                                         calculatedTime,
                                         activePlatform,
                                         config,
                                         logPrefix
                                     );
+                                } else {
+                                    logWithFallback('debug', 'Skip update - delta too small or subtitles inactive', {
+                                        logPrefix,
+                                    });
                                 }
-                                lastProgressBarTime = calculatedTime;
                             }
                         }
                     }
@@ -1117,17 +1251,24 @@ function attemptToSetupProgressBarObserver(
             }
         });
 
-        progressBarObserver.observe(sliderElement, {
+        progressBarObserver.observe(observeTarget, {
             attributes: true,
-            attributeFilter: ['aria-valuenow'],
+            attributeFilter: ['aria-valuenow', 'aria-valuetext', 'aria-valuemax', 'style'],
+            subtree: true,
+            childList: true,
         });
         logWithFallback(
             'info',
             'Progress bar observer started for aria-valuenow.',
             { logPrefix }
         );
+
+        // Removed extra polling; rely solely on attribute mutations for Disney+
         return true;
     }
+    logWithFallback('debug', 'Platform getter returned null for progress bar', {
+        logPrefix,
+    });
     return false;
 }
 
@@ -1185,6 +1326,45 @@ export function updateSubtitles(
         ? activePlatform.getCurrentVideoId()
         : null;
 
+    // Detect SPA navigation via URL change and temporarily suppress rendering
+    const currentHref = (typeof window !== 'undefined' && window.location)
+        ? window.location.href
+        : lastKnownLocationHref;
+    if (currentHref !== lastKnownLocationHref) {
+        navigationGuardActive = true;
+        navigationGuardFromVideoId = lastRenderedVideoId;
+        lastKnownLocationHref = currentHref;
+    }
+
+    // Do not render subtitles if the platform video context is unknown.
+    // This prevents stale subtitles from a previous video/episode from being shown
+    // during soft navigations before the new videoId is established.
+    if (platformVideoId == null) {
+        hideSubtitleContainer();
+        return;
+    }
+
+    // If we detect navigation and the platform switched to a different videoId,
+    // clear display once and disable the guard.
+    if (navigationGuardActive && navigationGuardFromVideoId !== platformVideoId) {
+        if (originalSubtitleElement) originalSubtitleElement.innerHTML = '';
+        if (translatedSubtitleElement) translatedSubtitleElement.innerHTML = '';
+        lastDisplayedCueWindow = { start: null, end: null, videoId: null };
+        navigationGuardActive = false;
+        navigationGuardFromVideoId = null;
+    }
+
+    // If the video context changed since we last displayed a cue, clear any lingering text
+    // to ensure we don't keep showing previous episode/video subtitles during transitions.
+    if (
+        lastDisplayedCueWindow.videoId != null &&
+        lastDisplayedCueWindow.videoId !== platformVideoId
+    ) {
+        if (originalSubtitleElement) originalSubtitleElement.innerHTML = '';
+        if (translatedSubtitleElement) translatedSubtitleElement.innerHTML = '';
+        lastDisplayedCueWindow = { start: null, end: null, videoId: null };
+    }
+
     // Find all active cues at current time
     const activeCues = [];
     for (const cue of subtitleQueue) {
@@ -1197,8 +1377,7 @@ export function updateSubtitles(
             continue;
         }
         if (
-            // If platform video id is temporarily unavailable, allow any videoId
-            (platformVideoId == null || cue.videoId === platformVideoId) &&
+            cue.videoId === platformVideoId &&
             currentTime >= cue.start &&
             currentTime <= cue.end
         ) {
@@ -1390,6 +1569,7 @@ export function updateSubtitles(
                         ? displayedCue.videoId
                         : platformVideoId) || null,
             };
+            lastRenderedVideoId = lastDisplayedCueWindow.videoId || platformVideoId;
         }
 
         if (useNativeTarget) {
@@ -1601,8 +1781,7 @@ export function updateSubtitles(
         const withinLastWindow =
             lastDisplayedCueWindow.start != null &&
             lastDisplayedCueWindow.end != null &&
-            (platformVideoId == null ||
-                lastDisplayedCueWindow.videoId == null ||
+            (lastDisplayedCueWindow.videoId == null ||
                 platformVideoId === lastDisplayedCueWindow.videoId) &&
             currentTime >= lastDisplayedCueWindow.start &&
             currentTime <= lastDisplayedCueWindow.end;
@@ -1930,6 +2109,8 @@ export function handleVideoIdChange(newVideoId, logPrefix = 'SubtitleUtils') {
         );
     }
     currentVideoId = newVideoId;
+    // Reset last displayed window to avoid stale carryover between videos
+    lastDisplayedCueWindow = { start: null, end: null, videoId: null };
 }
 
 export async function processSubtitleQueue(
