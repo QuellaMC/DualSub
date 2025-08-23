@@ -377,16 +377,17 @@ export let lastProgressBarTime = -1;
 export let lastProgressBarUpdateTs = 0;
 export let findProgressBarIntervalId = null;
 export let findProgressBarRetries = 0;
-export const {MAX_FIND_PROGRESS_BAR_RETRIES} = COMMON_CONSTANTS;
+export const { MAX_FIND_PROGRESS_BAR_RETRIES } = COMMON_CONSTANTS;
 
 export let lastLoggedTimeSec = -1;
 export let timeUpdateLogCounter = 0;
 export const TIME_UPDATE_LOG_INTERVAL = 30;
 
 // Navigation guarding to prevent stale subtitles during soft navigations
-let lastKnownLocationHref = (typeof window !== 'undefined' && window.location)
-    ? window.location.href
-    : '';
+let lastKnownLocationHref =
+    typeof window !== 'undefined' && window.location
+        ? window.location.href
+        : '';
 let navigationGuardActive = false;
 let navigationGuardFromVideoId = null;
 let lastRenderedVideoId = null;
@@ -1086,9 +1087,13 @@ function attemptToSetupProgressBarObserver(
         return true;
     }
 
-    logWithFallback('debug', 'Attempting to locate progress bar via platform getter', {
-        logPrefix,
-    });
+    logWithFallback(
+        'debug',
+        'Attempting to locate progress bar via platform getter',
+        {
+            logPrefix,
+        }
+    );
     const sliderElement = activePlatform.getProgressBarElement();
 
     if (sliderElement) {
@@ -1108,13 +1113,16 @@ function attemptToSetupProgressBarObserver(
 
         // Observe a stable container: prefer the shadowRoot so node replacements don't break observation
         const rootNode = sliderElement.getRootNode?.();
-        const progressBarHost = rootNode && rootNode.host ? rootNode.host : sliderElement.closest?.('progress-bar');
+        const progressBarHost =
+            rootNode && rootNode.host
+                ? rootNode.host
+                : sliderElement.closest?.('progress-bar');
         const observeTarget =
             (rootNode && rootNode.nodeType === Node.DOCUMENT_FRAGMENT_NODE
                 ? rootNode
-                : null) ||
-            sliderElement;
-        const rootType = observeTarget?.constructor?.name ||
+                : null) || sliderElement;
+        const rootType =
+            observeTarget?.constructor?.name ||
             observeTarget?.getRootNode?.()?.constructor?.name ||
             'Document';
         logWithFallback('debug', 'Observe target prepared', {
@@ -1165,11 +1173,14 @@ function attemptToSetupProgressBarObserver(
                             null;
                         if (neighbor) {
                             nowStr =
-                                nowStr || neighbor.getAttribute('aria-valuenow');
+                                nowStr ||
+                                neighbor.getAttribute('aria-valuenow');
                             maxStr =
-                                maxStr || neighbor.getAttribute('aria-valuemax');
+                                maxStr ||
+                                neighbor.getAttribute('aria-valuemax');
                             textStr =
-                                textStr || neighbor.getAttribute('aria-valuetext');
+                                textStr ||
+                                neighbor.getAttribute('aria-valuetext');
                         }
                     }
 
@@ -1178,11 +1189,19 @@ function attemptToSetupProgressBarObserver(
                         // Prefer numeric aria values; fallback to extracting from valuetext like "135 of 1502"
                         let valuenow = nowStr ? parseFloat(nowStr) : NaN;
                         let valuemax = maxStr ? parseFloat(maxStr) : NaN;
-                        if ((Number.isNaN(valuenow) || Number.isNaN(valuemax)) && textStr) {
-                            const m = textStr.match(/(\d+(?:\.\d+)?)\s*[^\d]+\s*(\d+(?:\.\d+)?)/);
+                        if (
+                            (Number.isNaN(valuenow) ||
+                                Number.isNaN(valuemax)) &&
+                            textStr
+                        ) {
+                            const m = textStr.match(
+                                /(\d+(?:\.\d+)?)\s*[^\d]+\s*(\d+(?:\.\d+)?)/
+                            );
                             if (m) {
-                                if (Number.isNaN(valuenow)) valuenow = parseFloat(m[1]);
-                                if (Number.isNaN(valuemax)) valuemax = parseFloat(m[2]);
+                                if (Number.isNaN(valuenow))
+                                    valuenow = parseFloat(m[1]);
+                                if (Number.isNaN(valuemax))
+                                    valuemax = parseFloat(m[2]);
                             }
                         }
                         let { duration: videoDuration } = currentVideoElem;
@@ -1206,7 +1225,8 @@ function attemptToSetupProgressBarObserver(
                             ) {
                                 // If valuemax does not match duration yet, scale valuenow by valuemax
                                 if (Math.abs(valuemax - videoDuration) > 1.5) {
-                                    calculatedTime = (valuenow / valuemax) * videoDuration;
+                                    calculatedTime =
+                                        (valuenow / valuemax) * videoDuration;
                                 }
                             }
 
@@ -1217,22 +1237,32 @@ function attemptToSetupProgressBarObserver(
                                 const previous = lastProgressBarTime;
                                 lastProgressBarTime = calculatedTime;
                                 lastProgressBarUpdateTs = Date.now();
-                                logWithFallback('debug', 'Computed progress-bar time', {
-                                    logPrefix,
-                                    valuenow,
-                                    valuemax,
-                                    videoDuration,
-                                    calculatedTime,
-                                    delta: Math.abs(calculatedTime - previous),
-                                });
+                                logWithFallback(
+                                    'debug',
+                                    'Computed progress-bar time',
+                                    {
+                                        logPrefix,
+                                        valuenow,
+                                        valuemax,
+                                        videoDuration,
+                                        calculatedTime,
+                                        delta: Math.abs(
+                                            calculatedTime - previous
+                                        ),
+                                    }
+                                );
                                 if (
                                     subtitlesActive &&
                                     Math.abs(calculatedTime - previous) > 0.1
                                 ) {
-                                    logWithFallback('debug', 'Updating subtitles using progress bar time', {
-                                        logPrefix,
-                                        time: calculatedTime,
-                                    });
+                                    logWithFallback(
+                                        'debug',
+                                        'Updating subtitles using progress bar time',
+                                        {
+                                            logPrefix,
+                                            time: calculatedTime,
+                                        }
+                                    );
                                     updateSubtitles(
                                         calculatedTime,
                                         activePlatform,
@@ -1240,9 +1270,13 @@ function attemptToSetupProgressBarObserver(
                                         logPrefix
                                     );
                                 } else {
-                                    logWithFallback('debug', 'Skip update - delta too small or subtitles inactive', {
-                                        logPrefix,
-                                    });
+                                    logWithFallback(
+                                        'debug',
+                                        'Skip update - delta too small or subtitles inactive',
+                                        {
+                                            logPrefix,
+                                        }
+                                    );
                                 }
                             }
                         }
@@ -1253,7 +1287,12 @@ function attemptToSetupProgressBarObserver(
 
         progressBarObserver.observe(observeTarget, {
             attributes: true,
-            attributeFilter: ['aria-valuenow', 'aria-valuetext', 'aria-valuemax', 'style'],
+            attributeFilter: [
+                'aria-valuenow',
+                'aria-valuetext',
+                'aria-valuemax',
+                'style',
+            ],
             subtree: true,
             childList: true,
         });
@@ -1327,9 +1366,10 @@ export function updateSubtitles(
         : null;
 
     // Detect SPA navigation via URL change and temporarily suppress rendering
-    const currentHref = (typeof window !== 'undefined' && window.location)
-        ? window.location.href
-        : lastKnownLocationHref;
+    const currentHref =
+        typeof window !== 'undefined' && window.location
+            ? window.location.href
+            : lastKnownLocationHref;
     if (currentHref !== lastKnownLocationHref) {
         navigationGuardActive = true;
         navigationGuardFromVideoId = lastRenderedVideoId;
@@ -1346,7 +1386,10 @@ export function updateSubtitles(
 
     // If we detect navigation and the platform switched to a different videoId,
     // clear display once and disable the guard.
-    if (navigationGuardActive && navigationGuardFromVideoId !== platformVideoId) {
+    if (
+        navigationGuardActive &&
+        navigationGuardFromVideoId !== platformVideoId
+    ) {
         if (originalSubtitleElement) originalSubtitleElement.innerHTML = '';
         if (translatedSubtitleElement) translatedSubtitleElement.innerHTML = '';
         lastDisplayedCueWindow = { start: null, end: null, videoId: null };
@@ -1569,7 +1612,8 @@ export function updateSubtitles(
                         ? displayedCue.videoId
                         : platformVideoId) || null,
             };
-            lastRenderedVideoId = lastDisplayedCueWindow.videoId || platformVideoId;
+            lastRenderedVideoId =
+                lastDisplayedCueWindow.videoId || platformVideoId;
         }
 
         if (useNativeTarget) {

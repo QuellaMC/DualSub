@@ -358,7 +358,9 @@ export class DisneyPlusPlatform extends VideoPlatform {
                     '.progress-bar__seekable-range .progress-bar__thumb[aria-valuenow][aria-valuemax]'
                 );
                 if (!thumb) continue;
-                const vmax = parseFloat(thumb.getAttribute('aria-valuemax') || 'NaN');
+                const vmax = parseFloat(
+                    thumb.getAttribute('aria-valuemax') || 'NaN'
+                );
                 if (!Number.isNaN(vmax) && vmax > bestMax) {
                     bestMax = vmax;
                     bestThumb = thumb;
