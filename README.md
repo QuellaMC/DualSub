@@ -265,7 +265,12 @@ For full license terms, see [LICENSE](LICENSE) file.
 
 ## 📋 Changelog
 
-### Version 2.3.0 (Current)
+### Version 2.3.1 (Current)
+
+- 🧠 Netflix next-episode preload-aware subtitles: buffers subtitle tracks detected before navigation and applies them immediately after SPA route change to the next episode, fixing cases where subtitles did not update on Next Episode.
+- 🧩 Universal improvement: content script now notifies the platform on URL changes, laying the groundwork for cross-platform preload handling.
+
+### Version 2.3.0
 
 - 🛠️ Netflix soft navigation fix: Resolves issue where moving to the next episode (SPA navigation) could continue showing previous episode subtitles. Subtitles now reset and rebind to the new video context.
 - 🎯 Disney+ progress bar update: Adjusted detection to the updated site UI; timing now reads directly from the progress-bar web component’s shadow DOM via aria attributes for accurate sync.
