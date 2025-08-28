@@ -38,6 +38,8 @@ export class NetflixPlatform extends VideoPlatform {
         this.onVideoIdChangeCallback = null;
         this.lastKnownVttUrlForVideoId = {}; // To prevent reprocessing the same subtitle data
         this.eventListener = null; // To hold the bound event listener for later removal
+        // Buffer for preloaded subtitle data keyed by upcoming movieId
+        this.preloadedSubtitleBuffer = Object.create(null);
 
         this.initializeLogger().catch((error) => {
             this.logger.warn(
@@ -157,12 +159,17 @@ export class NetflixPlatform extends VideoPlatform {
             // Extract movieId from current URL to ensure we only process subtitles for the current content
             const urlMovieId = this.extractMovieIdFromUrl();
             if (urlMovieId && String(movieId) !== String(urlMovieId)) {
-                this.logger.debug('Ignoring subtitle data - movieId mismatch', {
-                    receivedMovieId: movieId,
-                    receivedType: typeof movieId,
-                    urlMovieId: urlMovieId,
-                    urlType: typeof urlMovieId,
-                });
+                // Netflix often preloads next episode data before navigation. Buffer it.
+                this.logger.info(
+                    'Buffering preloaded subtitle data for upcoming movieId',
+                    {
+                        receivedMovieId: movieId,
+                        receivedType: typeof movieId,
+                        urlMovieId: urlMovieId,
+                        urlType: typeof urlMovieId,
+                    }
+                );
+                this.preloadedSubtitleBuffer[movieId] = timedtexttracks;
                 return;
             }
             this.logger.debug(
@@ -719,6 +726,49 @@ export class NetflixPlatform extends VideoPlatform {
         }
     }
 
+    /**
+     * Called by content script when URL changes (SPA navigation). If we buffered
+     * subtitle data for the new movieId, process it now.
+     * @param {string} newUrl
+     */
+    onUrlChange(newUrl) {
+        try {
+            const urlMovieId = this.extractMovieIdFromUrl();
+            if (!urlMovieId) return;
+
+            const bufferedTracks = this.preloadedSubtitleBuffer[urlMovieId];
+            if (
+                bufferedTracks &&
+                Array.isArray(bufferedTracks) &&
+                bufferedTracks.length > 0
+            ) {
+                this.logger.info(
+                    'Processing buffered preloaded subtitles after navigation',
+                    {
+                        movieId: urlMovieId,
+                        trackCount: bufferedTracks.length,
+                    }
+                );
+                // Clear buffer for this id before processing to avoid loops
+                delete this.preloadedSubtitleBuffer[urlMovieId];
+                // Reuse the same handler path as real-time events
+                this.handleInjectorEvents({
+                    detail: {
+                        type: 'SUBTITLE_DATA_FOUND',
+                        payload: {
+                            movieId: urlMovieId,
+                            timedtexttracks: bufferedTracks,
+                        },
+                    },
+                });
+            }
+        } catch (e) {
+            this.logger.warn('onUrlChange processing failed', {
+                error: e.message,
+            });
+        }
+    }
+
     getVideoElement() {
         return document.querySelector('video');
     }
@@ -976,6 +1026,7 @@ export class NetflixPlatform extends VideoPlatform {
         this.onSubtitleUrlFoundCallback = null;
         this.onVideoIdChangeCallback = null;
         this.lastKnownVttUrlForVideoId = {};
+        this.preloadedSubtitleBuffer = Object.create(null);
         this.logger.info('Platform cleaned up successfully');
     }
 }

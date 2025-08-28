@@ -97,6 +97,20 @@ export class NetflixContentScript extends BaseContentScript {
                 this.lastKnownPathname = newPathname;
 
                 this._handlePageTransition(wasOnPlayerPage, isOnPlayerPage);
+
+                // Notify platform of URL changes so it can process any
+                // buffered preloaded subtitle data for the next episode.
+                try {
+                    if (this.activePlatform && this.activePlatform.onUrlChange) {
+                        this.activePlatform.onUrlChange(newUrl);
+                    }
+                } catch (e) {
+                    this.logWithFallback(
+                        'debug',
+                        'Platform onUrlChange notification failed',
+                        { error: e.message }
+                    );
+                }
             }
         } catch (error) {
             this.logWithFallback('error', 'Error in URL change detection.', {
