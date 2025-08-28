@@ -101,7 +101,10 @@ export class NetflixContentScript extends BaseContentScript {
                 // Notify platform of URL changes so it can process any
                 // buffered preloaded subtitle data for the next episode.
                 try {
-                    if (this.activePlatform && this.activePlatform.onUrlChange) {
+                    if (
+                        this.activePlatform &&
+                        this.activePlatform.onUrlChange
+                    ) {
                         this.activePlatform.onUrlChange(newUrl);
                     }
                 } catch (e) {
