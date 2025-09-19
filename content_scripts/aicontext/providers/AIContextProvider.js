@@ -159,7 +159,8 @@ export class AIContextProvider {
             // Calculate response time
             const responseTime =
                 Date.now() - this.requestStartTimes.get(requestId);
-            this._updateMetrics(responseTime, true);
+            const wasSuccessful = !!(response && response.success === true);
+            this._updateMetrics(responseTime, wasSuccessful);
 
             // Clean up tracking
             this.activeRequests.delete(requestId);

@@ -12,13 +12,13 @@
 // @ts-check
 
 /**
- * Provide a local alias for the Chrome extension API to satisfy @ts-check in JS
- * without requiring ambient type definitions. In browser runtime, chrome is
- * available on the global object. In tests or non-extension contexts, it may be
- * undefined, which our runtime checks handle.
- * @type {any}
+ * Helper to access the Chrome extension API dynamically so tests can swap mocks between cases.
+ * This avoids capturing a stale reference across test suites.
+ * @returns {any}
  */
-const chrome = /** @type {any} */ (globalThis).chrome;
+function getChrome() {
+    return /** @type {any} */ (globalThis).chrome;
+}
 
 function isTransientMessagingError(error) {
     if (!error) return false;
@@ -43,66 +43,61 @@ function sleep(ms) {
 import { MessageActions } from './constants/messageActions.js';
 
 export async function rawSendMessage(message) {
-    if (!chrome || !chrome.runtime || !chrome.runtime.sendMessage) {
+    const chromeApi = getChrome();
+    if (!chromeApi || !chromeApi.runtime || !chromeApi.runtime.sendMessage) {
         throw new Error('Messaging unavailable');
     }
-    // Prefer promise form when available (MV3). If it throws, propagate.
-    try {
-        const response = await chrome.runtime.sendMessage(message);
-        return response;
-    } catch (err) {
-        // Some environments only support callback form; fall back only when the API arity indicates callback style
+
+    const fn = chromeApi.runtime.sendMessage;
+    const arity = typeof fn === 'function' ? fn.length : 0;
+
+    // Prefer callback-style when available (typical in tests/mocks); otherwise use the promise API.
+    if (arity >= 2) {
         try {
-            const fn = chrome?.runtime?.sendMessage;
-            const arity = typeof fn === 'function' ? fn.length : 0;
-            if (arity >= 2) {
-                return await new Promise((resolve, reject) => {
-                    let settled = false;
-                    try {
-                        const maybePromise = /** @type {any} */ (
-                            chrome.runtime.sendMessage(
-                                message,
-                                (response) => {
-                                    if (settled) return;
-                                    const lastErr = chrome.runtime.lastError;
-                                    if (lastErr) {
-                                        settled = true;
-                                        reject(
-                                            new Error(
-                                                lastErr.message ||
-                                                    'Unknown runtime error'
-                                            )
-                                        );
-                                        return;
-                                    }
-                                    settled = true;
-                                    resolve(response);
-                                }
-                            )
-                        );
-                        if (maybePromise && typeof maybePromise.then === 'function') {
-                            maybePromise
-                                .then((resp) => {
-                                    if (settled) return;
-                                    settled = true;
-                                    resolve(resp);
-                                })
-                                .catch((perr) => {
-                                    if (settled) return;
-                                    settled = true;
-                                    reject(perr);
-                                });
-                        }
-                    } catch (cbErr) {
-                        if (!settled) reject(cbErr);
+            return await new Promise((resolve, reject) => {
+                let settled = false;
+                try {
+const maybePromise = /** @type {any} */ (
+                        fn(message, (response) => {
+                            if (settled) return;
+                            const lastErr = getChrome()?.runtime?.lastError;
+                            if (lastErr) {
+                                settled = true;
+                                reject(new Error(lastErr.message || 'Unknown runtime error'));
+                                return;
+                            }
+                            settled = true;
+                            resolve(response);
+                        })
+                    );
+                    if (maybePromise && typeof maybePromise.then === 'function') {
+                        maybePromise
+                            .then((resp) => {
+                                if (settled) return;
+                                settled = true;
+                                resolve(resp);
+                            })
+                            .catch((perr) => {
+                                if (settled) return;
+                                settled = true;
+                                reject(perr);
+                            });
                     }
-                });
-            }
-        } catch (_) {
-            // ignore and rethrow original error below
+                } catch (cbErr) {
+                    if (!settled) reject(cbErr);
+                }
+            });
+        } catch (err) {
+            // If callback path failed, fall back to promise path
         }
-        throw err;
     }
+
+    // Promise-style path
+    const result = fn(message);
+    if (result && typeof result.then === 'function') {
+        return await result;
+    }
+    return result;
 }
 
 /**

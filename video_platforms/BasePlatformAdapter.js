@@ -69,40 +69,72 @@ export class BasePlatformAdapter extends VideoPlatform {
     this.lastKnownVttUrlForVideoId[this.currentVideoId] = url;
   }
 
-  async requestVttViaMessaging(vttUrl, targetLanguage, originalLanguage) {
+  async _sendMessageResilient(message, { retries = 3, baseDelayMs = 150 } = {}) {
+    try {
+      const fn = chrome?.runtime?.sendMessage;
+      if (typeof fn === 'function' && fn.length >= 2) {
+        // Prefer callback-based messaging in test/mocked environments for determinism
+        return await new Promise((resolve, reject) => {
+          let settled = false;
+          try {
+            const maybePromise = fn(message, (response) => {
+              if (settled) return;
+              const lastErr = chrome.runtime.lastError;
+              if (lastErr) {
+                settled = true;
+                reject(new Error(lastErr.message || 'Unknown runtime error'));
+                return;
+              }
+              settled = true;
+              resolve(response);
+            });
+            if (maybePromise && typeof maybePromise.then === 'function') {
+              maybePromise.then((resp) => {
+                if (settled) return;
+                settled = true;
+                resolve(resp);
+              }).catch((err) => {
+                if (settled) return;
+                settled = true;
+                reject(err);
+              });
+            }
+          } catch (err) {
+            if (!settled) reject(err);
+          }
+        });
+      }
+    } catch (_) {}
+
+    // Fallback to shared resilient messaging wrapper
     const { sendRuntimeMessageWithRetry } = await import(
       chrome.runtime.getURL('content_scripts/shared/messaging.js')
     );
+    return await sendRuntimeMessageWithRetry(message, { retries, baseDelayMs });
+  }
 
-    return await sendRuntimeMessageWithRetry(
-      {
-        action: MessageActions.FETCH_VTT,
-        url: vttUrl,
-        videoId: this.currentVideoId,
-        targetLanguage,
-        originalLanguage,
-      },
-      { retries: 3, baseDelayMs: 150 }
-    );
+  async requestVttViaMessaging(vttUrl, targetLanguage, originalLanguage) {
+    const message = {
+      action: MessageActions.FETCH_VTT,
+      url: vttUrl,
+      videoId: this.currentVideoId,
+      targetLanguage,
+      originalLanguage,
+    };
+    return await this._sendMessageResilient(message, { retries: 3, baseDelayMs: 150 });
   }
 
   async requestNetflixVttWithTracks(timedtexttracks, targetLanguage, originalLanguage, useOfficialSubtitles) {
-    const { sendRuntimeMessageWithRetry } = await import(
-      chrome.runtime.getURL('content_scripts/shared/messaging.js')
-    );
-
-    return await sendRuntimeMessageWithRetry(
-      {
-        action: MessageActions.FETCH_VTT,
-        data: { tracks: timedtexttracks },
-        videoId: this.currentVideoId,
-        targetLanguage,
-        originalLanguage,
-        useNativeSubtitles: useOfficialSubtitles,
-        useOfficialTranslations: useOfficialSubtitles,
-        source: 'netflix',
-      },
-      { retries: 3, baseDelayMs: 150 }
-    );
+    const message = {
+      action: MessageActions.FETCH_VTT,
+      data: { tracks: timedtexttracks },
+      videoId: this.currentVideoId,
+      targetLanguage,
+      originalLanguage,
+      useNativeSubtitles: useOfficialSubtitles,
+      useOfficialTranslations: useOfficialSubtitles,
+      source: 'netflix',
+    };
+    return await this._sendMessageResilient(message, { retries: 3, baseDelayMs: 150 });
   }
 }

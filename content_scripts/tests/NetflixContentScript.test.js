@@ -39,8 +39,10 @@ describe('NetflixContentScript Comprehensive Tests', () => {
             enableLocation: true,
         });
 
-        // Use standardized test utility to set Netflix location mock
-        testUtils.setupNetflixLocation('12345');
+        // Netflix location is set by setupTestEnvironment; ensure it's correct
+        expect(testEnv.mocks.location).toBeDefined();
+        expect(testEnv.mocks.location.hostname).toBe('www.netflix.com');
+        expect(testEnv.mocks.location.pathname).toBe('/watch/12345');
 
         // Create fresh Netflix content script instance
         netflixScript = new NetflixContentScript();

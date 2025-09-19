@@ -273,7 +273,14 @@ For full license terms, see [LICENSE](LICENSE) file.
 
 ## 📋 Changelog
 
-### Version 2.3.1 (Current)
+### Version 2.3.2 (Current)
+
+- Messaging reliability: Refactored messaging utilities to support both callback- and promise-style chrome.runtime.sendMessage, with wake-up retries for MV3 service worker.
+- Unified resilient message sending across platform adapters (BasePlatformAdapter + Netflix), improving background communication stability and test determinism.
+- AI Context: Provider metrics now correctly reflect success/error; tests updated to tolerate callback/promise messaging; dynamic chrome access prevents stale mocks between tests.
+- Internal refactors and stability improvements.
+
+### Version 2.3.1
 
 - 🧠 Netflix next-episode preload-aware subtitles: buffers subtitle tracks detected before navigation and applies them immediately after SPA route change to the next episode, fixing cases where subtitles did not update on Next Episode.
 - 🧩 Universal improvement: content script now notifies the platform on URL changes, laying the groundwork for cross-platform preload handling.
@@ -295,7 +302,7 @@ For full license terms, see [LICENSE](LICENSE) file.
 - 🎨 Enhanced appearance customization with new positioning options
 - ⚙️ Improved user interface with vertical position slider control
 
-### Version 2.0.0 (Current)
+### Version 2.0.0
 
 - 🤖 **NEW**: AI Context Analysis feature with OpenAI and Google Gemini support
 - 🎯 Interactive subtitle text selection with cultural, historical, and linguistic explanations

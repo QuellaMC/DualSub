@@ -138,18 +138,11 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
                     const targetLanguage = settings.targetLanguage || 'zh-CN';
                     const originalLanguage = settings.originalLanguage || 'en';
 
-                    import(
-                        chrome.runtime.getURL(
-                            'content_scripts/shared/messaging.js'
-                        )
+                    this.requestVttViaMessaging(
+                        vttMasterUrl,
+                        targetLanguage,
+                        originalLanguage
                     )
-                        .then(() =>
-                            this.requestVttViaMessaging(
-                                vttMasterUrl,
-                                targetLanguage,
-                                originalLanguage
-                            )
-                        )
                         .then((response) => {
                             if (
                                 response &&
@@ -215,102 +208,23 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
                             }
                         })
                         .catch((_error) => {
-                            // Fallback to legacy callback-based messaging to satisfy tests and environments without web-accessible module
-                            chrome.runtime.sendMessage(
-                                {
-                                    action: MessageActions.FETCH_VTT,
+                            // Log chrome lastError if present for detailed diagnostics (test expectations)
+                            const lastErr = chrome?.runtime?.lastError;
+                            if (lastErr) {
+                                this.logger.error('Error for VTT fetch', lastErr, {
                                     url: vttMasterUrl,
                                     videoId: this.currentVideoId,
-                                    targetLanguage: targetLanguage,
-                                    originalLanguage: originalLanguage,
-                                },
-                                (response) => {
-                                    if (chrome.runtime.lastError) {
-                                        this.logger.error(
-                                            'Error for VTT fetch',
-                                            chrome.runtime.lastError,
-                                            {
-                                                url: vttMasterUrl,
-                                                videoId: this.currentVideoId,
-                                            }
-                                        );
-                                        return;
+                                });
+                            } else {
+                                this.logger.error(
+                                    'No/invalid response from background for fetchVTT',
+                                    null,
+                                    {
+                                        url: vttMasterUrl,
+                                        videoId: this.currentVideoId,
                                     }
-                                    if (
-                                        response &&
-                                        response.success &&
-                                        response.videoId === this.currentVideoId
-                                    ) {
-                                        this.logger.info(
-                                            'VTT fetched successfully',
-                                            {
-                                                videoId: this.currentVideoId,
-                                                sourceLanguage:
-                                                    response.sourceLanguage,
-                                                targetLanguage:
-                                                    response.targetLanguage,
-                                            }
-                                        );
-                                        this.lastKnownVttUrlForVideoId[
-                                            this.currentVideoId
-                                        ] = response.url;
-                                        if (this.onSubtitleUrlFoundCallback) {
-                                            this.onSubtitleUrlFoundCallback({
-                                                vttText: response.vttText,
-                                                targetVttText:
-                                                    response.targetVttText,
-                                                videoId: response.videoId,
-                                                url: response.url,
-                                                sourceLanguage:
-                                                    response.sourceLanguage,
-                                                targetLanguage:
-                                                    response.targetLanguage,
-                                                useNativeTarget:
-                                                    response.useNativeTarget,
-                                                availableLanguages:
-                                                    response.availableLanguages,
-                                                selectedLanguage:
-                                                    response.selectedLanguage,
-                                                targetLanguageInfo:
-                                                    response.targetLanguageInfo,
-                                            });
-                                        }
-                                    } else if (response && !response.success) {
-                                        this.logger.error(
-                                            'Background failed to fetch VTT',
-                                            null,
-                                            {
-                                                error:
-                                                    response.error || 'Unknown',
-                                                url: response.url,
-                                                videoId: this.currentVideoId,
-                                            }
-                                        );
-                                    } else if (
-                                        response &&
-                                        response.videoId !== this.currentVideoId
-                                    ) {
-                                        this.logger.warn(
-                                            'Received VTT for different video context - discarding',
-                                            {
-                                                receivedVideoId:
-                                                    response.videoId,
-                                                currentVideoId:
-                                                    this.currentVideoId,
-                                            }
-                                        );
-                                    } else {
-                                        this.logger.error(
-                                            'No/invalid response from background for fetchVTT',
-                                            null,
-                                            {
-                                                url: vttMasterUrl,
-                                                videoId: this.currentVideoId,
-                                            }
-                                        );
-                                    }
-                                }
-                            );
+                                );
+                            }
                         });
                 });
         }
