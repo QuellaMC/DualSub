@@ -145,16 +145,22 @@ export class AIContextProvider {
                 });
             } catch (_) {
                 // Fallback to direct timeout wrapper if messaging util not available
-                response = await this._sendRequestWithTimeout(
-                    requestData,
-                    this.config.timeout
-                );
+                try {
+                    response = await this._sendRequestWithTimeout(
+                        requestData,
+                        this.config.timeout
+                    );
+                } catch (err) {
+                    // Ensure consistent error shape when messaging rejects so callers can track errors
+                    throw new Error(err?.message || 'Analysis failed');
+                }
             }
 
             // Calculate response time
             const responseTime =
                 Date.now() - this.requestStartTimes.get(requestId);
-            this._updateMetrics(responseTime, true);
+            const wasSuccessful = !!(response && response.success === true);
+            this._updateMetrics(responseTime, wasSuccessful);
 
             // Clean up tracking
             this.activeRequests.delete(requestId);

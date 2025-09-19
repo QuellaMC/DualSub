@@ -1,14 +1,19 @@
 import { VideoPlatform } from './platform_interface.js';
 import Logger from '../utils/logger.js';
 import { configService } from '../services/configService.js';
+import { MessageActions } from '../content_scripts/shared/constants/messageActions.js';
 
 // Define constants for the injected script and communication events
 // It is crucial that these values match what you will use in 'netflixInject.js'
-const INJECT_SCRIPT_FILENAME = 'injected_scripts/netflixInject.js';
-const INJECT_SCRIPT_TAG_ID = 'netflix-dualsub-injector-script-tag';
-const INJECT_EVENT_ID = 'netflix-dualsub-injector-event'; // Must match netflixInject.js
+import { Injection } from '../content_scripts/shared/constants/injection.js';
 
-export class NetflixPlatform extends VideoPlatform {
+const INJECT_SCRIPT_FILENAME = Injection.netflix.SCRIPT_FILENAME;
+const INJECT_SCRIPT_TAG_ID = Injection.netflix.SCRIPT_TAG_ID;
+const INJECT_EVENT_ID = Injection.netflix.EVENT_ID; // Must match netflixInject.js
+
+import { BasePlatformAdapter } from './BasePlatformAdapter.js';
+
+export class NetflixPlatform extends BasePlatformAdapter {
     constructor() {
         super();
 
@@ -93,8 +98,7 @@ export class NetflixPlatform extends VideoPlatform {
     async initialize(onSubtitleUrlFound, onVideoIdChange) {
         if (!this.isPlatformActive()) return;
 
-        this.onSubtitleUrlFoundCallback = onSubtitleUrlFound;
-        this.onVideoIdChangeCallback = onVideoIdChange;
+        this.setCallbacks(onSubtitleUrlFound, onVideoIdChange);
 
         this.eventListener = this.handleInjectorEvents.bind(this);
         document.addEventListener(INJECT_EVENT_ID, this.eventListener);
@@ -189,10 +193,7 @@ export class NetflixPlatform extends VideoPlatform {
                 if (this.currentVideoId) {
                     delete this.lastKnownVttUrlForVideoId[this.currentVideoId];
                 }
-                this.currentVideoId = movieId;
-                if (this.onVideoIdChangeCallback) {
-                    this.onVideoIdChangeCallback(this.currentVideoId);
-                }
+                this.setVideoIdAndNotify(movieId);
             }
 
             // Check if timedtexttracks is an array and has content
@@ -358,33 +359,17 @@ export class NetflixPlatform extends VideoPlatform {
                         );
                     }
 
-                    import(
-                        chrome.runtime.getURL(
-                            'content_scripts/shared/messaging.js'
-                        )
-                    )
-                        .then(({ sendRuntimeMessageWithRetry }) =>
-                            sendRuntimeMessageWithRetry(
-                                {
-                                    action: 'fetchVTT',
-                                    data: { tracks: timedtexttracks },
-                                    videoId: this.currentVideoId,
-                                    targetLanguage: targetLanguage,
-                                    originalLanguage: originalLanguage,
-                                    useNativeSubtitles: useOfficialSubtitles,
-                                    useOfficialTranslations:
-                                        useOfficialSubtitles,
-                                    source: 'netflix',
-                                },
-                                { retries: 3, baseDelayMs: 150 }
-                            )
-                        )
-                        .then((response) => {
-                            if (
-                                response &&
-                                response.success &&
-                                response.videoId === this.currentVideoId
-                            ) {
+                    this.requestNetflixVttWithTracks(
+                        timedtexttracks,
+                        targetLanguage,
+                        originalLanguage,
+                        useOfficialSubtitles
+                    ).then((response) => {
+                        if (
+                            response &&
+                            response.success &&
+                            response.videoId === this.currentVideoId
+                        ) {
                                 // Enhanced logging for debugging official translation functionality
                                 this.logger.info(
                                     'Netflix VTT processed successfully',
@@ -599,129 +584,13 @@ export class NetflixPlatform extends VideoPlatform {
                                     this.currentVideoId
                                 ];
                             }
-                        })
-                        .catch((_error) => {
-                            // Fallback to legacy callback-based messaging to satisfy tests and environments without web-accessible module
-                            chrome.runtime.sendMessage(
-                                {
-                                    action: 'fetchVTT',
-                                    data: { tracks: timedtexttracks },
-                                    videoId: this.currentVideoId,
-                                    targetLanguage: targetLanguage,
-                                    originalLanguage: originalLanguage,
-                                    useNativeSubtitles: useOfficialSubtitles,
-                                    useOfficialTranslations:
-                                        useOfficialSubtitles,
-                                    source: 'netflix',
-                                },
-                                (response) => {
-                                    if (chrome.runtime.lastError) {
-                                        this.logger.error(
-                                            'Error for VTT fetch',
-                                            chrome.runtime.lastError,
-                                            {
-                                                videoId: this.currentVideoId,
-                                            }
-                                        );
-                                        delete this.lastKnownVttUrlForVideoId[
-                                            this.currentVideoId
-                                        ];
-                                        return;
-                                    }
-                                    // Reuse same response handling as above
-                                    if (
-                                        response &&
-                                        response.success &&
-                                        response.videoId === this.currentVideoId
-                                    ) {
-                                        this.logger.info(
-                                            'Netflix VTT processed successfully',
-                                            {
-                                                videoId: this.currentVideoId,
-                                                sourceLanguage:
-                                                    response.sourceLanguage,
-                                                targetLanguage:
-                                                    response.targetLanguage,
-                                                useNativeTarget:
-                                                    response.useNativeTarget,
-                                                hasTargetVtt:
-                                                    !!response.targetVttText,
-                                                availableLanguagesCount:
-                                                    response.availableLanguages
-                                                        ?.length || 0,
-                                            }
-                                        );
-                                        if (this.onSubtitleUrlFoundCallback) {
-                                            const subtitleData = {
-                                                vttText: response.vttText,
-                                                targetVttText:
-                                                    response.targetVttText,
-                                                videoId: response.videoId,
-                                                url: response.url,
-                                                sourceLanguage:
-                                                    response.sourceLanguage,
-                                                targetLanguage:
-                                                    response.targetLanguage,
-                                                useNativeTarget:
-                                                    response.useNativeTarget ||
-                                                    false,
-                                                availableLanguages:
-                                                    response.availableLanguages,
-                                                selectedLanguage: {
-                                                    displayName:
-                                                        response.sourceLanguage,
-                                                    normalizedCode:
-                                                        response.sourceLanguage,
-                                                },
-                                            };
-                                            this.onSubtitleUrlFoundCallback(
-                                                subtitleData
-                                            );
-                                        }
-                                    } else if (response && !response.success) {
-                                        this.logger.error(
-                                            'Netflix background failed to process VTT',
-                                            null,
-                                            {
-                                                error: response.error,
-                                                videoId: this.currentVideoId,
-                                                useOfficialSubtitles,
-                                                targetLanguage,
-                                                originalLanguage,
-                                                trackCount:
-                                                    timedtexttracks.length,
-                                            }
-                                        );
-                                        delete this.lastKnownVttUrlForVideoId[
-                                            this.currentVideoId
-                                        ];
-                                    } else if (
-                                        response &&
-                                        response.videoId !== this.currentVideoId
-                                    ) {
-                                        this.logger.warn(
-                                            'Received VTT for different video context - discarding',
-                                            {
-                                                receivedVideoId:
-                                                    response.videoId,
-                                                currentVideoId:
-                                                    this.currentVideoId,
-                                            }
-                                        );
-                                    } else {
-                                        this.logger.error(
-                                            'No/invalid response from background for Netflix fetchVTT',
-                                            {
-                                                videoId: this.currentVideoId,
-                                            }
-                                        );
-                                        delete this.lastKnownVttUrlForVideoId[
-                                            this.currentVideoId
-                                        ];
-                                    }
-                                }
-                            );
+                    }).catch((_error) => {
+                        // Generic error path; ensure we clear processed URL so future attempts can retry
+                        this.logger.error('No/invalid response from background for Netflix fetchVTT', {
+                            videoId: this.currentVideoId,
                         });
+                        delete this.lastKnownVttUrlForVideoId[this.currentVideoId];
+                    });
                 });
         }
     }

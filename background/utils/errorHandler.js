@@ -15,6 +15,7 @@ import {
     SubtitleProcessingError,
     RateLimitError,
 } from '../services/serviceInterfaces.js';
+import { Providers } from '../../content_scripts/shared/constants/providers.js';
 
 /**
  * Error severity levels
@@ -75,7 +76,7 @@ class ErrorHandler {
         // Translation error recovery
         this.recoveryStrategies.set(ErrorCategory.TRANSLATION, {
             maxRetries: 2,
-            fallbackProviders: ['deepl_free', 'google'],
+            fallbackProviders: [Providers.DEEPL_FREE, Providers.GOOGLE],
             strategy: 'provider_fallback',
         });
 

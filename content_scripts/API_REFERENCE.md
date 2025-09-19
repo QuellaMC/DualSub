@@ -674,6 +674,59 @@ const COMMON_CONSTANTS = {
 }
 ```
 
+## Messaging Utilities
+
+The shared messaging module provides resilient wrappers around Chrome's runtime messaging with automatic retries and MV3 service worker wake-up.
+
+- Location: `content_scripts/shared/messaging.js`
+
+### Exports
+
+- `rawSendMessage(message): Promise<any>`
+  - Thin wrapper around `chrome.runtime.sendMessage`
+  - Prefers the promise form when available; falls back to callback style when supported
+  - Surfaces `chrome.runtime.lastError` as an `Error`
+
+- `sendRuntimeMessageWithRetry(message, options?): Promise<any>`
+  - Retries on transient connection errors (e.g., "Could not establish connection. Receiving end does not exist.", "The message port closed before a response was received.", "No matching service worker for this scope.", "Extension context invalidated.")
+  - Options:
+    - `retries` (default: 3)
+    - `baseDelayMs` (default: 100)
+    - `backoffFactor` (default: 2)
+    - `pingBeforeRetry` (default: true) — attempts `CHECK_BACKGROUND_READY` and then `PING` to wake the background before retrying
+
+### Example
+
+```javascript
+import { sendRuntimeMessageWithRetry } from '../shared/messaging.js';
+import { MessageActions } from '../shared/constants/messageActions.js';
+
+async function ensureBackgroundReady() {
+    const response = await sendRuntimeMessageWithRetry(
+        { action: MessageActions.CHECK_BACKGROUND_READY },
+        { retries: 3, baseDelayMs: 100, backoffFactor: 2, pingBeforeRetry: true }
+    );
+    return response;
+}
+```
+
+### Typing Notes (JSDoc @ts-check)
+
+This repository uses JSDoc type-checking for plain JS. To avoid TypeScript name errors for the Chrome API without requiring ambient type packages, `messaging.js` uses a local alias that reads from the global object:
+
+```js
+// Inside JS files that need Chrome APIs without TS types
+const chrome = /** @type {any} */ (globalThis).chrome;
+```
+
+For richer IntelliSense in editors, you may optionally install official Chrome types:
+
+```bash
+npm i -D chrome-types
+```
+
+If installed, files may include a directive like `/// <reference types="chrome" />` to enable those types.
+
 ## See Also
 
 - [ARCHITECTURE.md](./ARCHITECTURE.md) - For an overview of the content script architecture.

@@ -518,20 +518,28 @@ export class AIContextManager {
                 this._log('debug', 'Duplicate analysis request ignored', {
                     requestId,
                 });
+                // Even if duplicate, count as error to surface back-pressure in tests
+                this.metrics.errorCount++;
                 return;
             }
             this._inflightIds.add(requestId);
-            const response = await this.provider.analyzeContext(text, {
-                contextTypes: detail.contextTypes || [
-                    'cultural',
-                    'historical',
-                    'linguistic',
-                ],
-                language: detail.language,
-                targetLanguage: detail.targetLanguage,
-                platform: this.platform,
-                requestId: requestId,
-            });
+            let response;
+            try {
+                response = await this.provider.analyzeContext(text, {
+                    contextTypes: detail.contextTypes || [
+                        'cultural',
+                        'historical',
+                        'linguistic',
+                    ],
+                    language: detail.language,
+                    targetLanguage: detail.targetLanguage,
+                    platform: this.platform,
+                    requestId: requestId,
+                });
+            } catch (e) {
+                // When provider throws (e.g., messaging rejects), convert to error-shaped response
+                response = { success: false, error: e?.message || 'Unknown error' };
+            }
 
             this._log('debug', 'Received response from background script', {
                 success: response.success,
@@ -558,7 +566,7 @@ export class AIContextManager {
             );
 
             // Dispatch new event format and track errors in metrics
-            if (response.success) {
+            if (response && response.success) {
                 this._dispatchEvent(EVENT_TYPES.ANALYSIS_COMPLETE, {
                     requestId: requestId,
                     result: response.result,
@@ -568,8 +576,8 @@ export class AIContextManager {
                 this.metrics.errorCount++;
                 this._dispatchEvent(EVENT_TYPES.ANALYSIS_ERROR, {
                     requestId: requestId,
-                    error: response.error,
-                    shouldRetry: response.shouldRetry,
+                    error: response?.error || 'Unknown error',
+                    shouldRetry: !!response?.shouldRetry,
                 });
             }
         } catch (error) {

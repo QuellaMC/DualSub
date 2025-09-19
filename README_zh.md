@@ -79,6 +79,14 @@
 
 2. **开发命令**
 
+提示：本项目使用 JSDoc `@ts-check` 进行类型检查。如需在编辑器中获得更好的 Chrome 扩展 API 智能提示，可选择性安装：
+
+```bash
+npm i -D chrome-types
+```
+
+可在文件顶部添加 `/// <reference types="chrome" />` 启用类型提示。可靠的消息通信工具位于 `content_scripts/shared/messaging.js`。
+
     ```bash
     # 代码格式化
     npm run format
@@ -235,7 +243,14 @@ npm test -- --coverage
 
 ## 📋 更新日志
 
-### 版本 2.3.1（当前）
+### 版本 2.3.2（当前）
+
+- 消息通信稳健性：重构消息工具，支持 callback 与 promise 双模式的 chrome.runtime.sendMessage，并在 MV3 后台休眠时进行唤醒重试。
+- 平台适配统一化：在 BasePlatformAdapter 与 Netflix 中统一使用弹性消息发送，提升后台通信稳定性与测试确定性。
+- AI 上下文：修正 Provider 指标统计（成功/失败），测试兼容回调/Promise 双模式；动态获取 chrome 防止测试间的旧 mock 引用。
+- 内部重构与稳定性改进。
+
+### 版本 2.3.1
 
 - 🧠 Netflix 下一集预加载字幕：在导航前捕获并缓存下一集的字幕数据，在 SPA 路由切换后立即应用，修复“下一集”后字幕未更新的问题。
 - 🧩 通用改进：内容脚本在 URL 变化时通知平台，为跨平台的预加载处理打下基础。
@@ -257,7 +272,7 @@ npm test -- --coverage
 - 🎨 通过新的定位选项增强外观自定义功能
 - ⚙️ 通过垂直位置滑块控制改进用户界面
 
-### 版本 2.0.0（当前）
+### 版本 2.0.0
 
 - 🤖 **新功能**：AI 上下文分析功能，支持 OpenAI 和 Google Gemini
 - 🎯 交互式字幕文本选择，提供文化、历史和语言解释

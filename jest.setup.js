@@ -3,7 +3,7 @@ import { jest, beforeEach, afterEach } from '@jest/globals';
 
 // Import centralized mock utilities
 import { ChromeApiMock } from './test-utils/chrome-api-mock.js';
-import { LocationMock } from './test-utils/location-mock.js';
+import { LocationMock, mockWindowLocation } from './test-utils/location-mock.js';
 import { LoggerMock } from './test-utils/logger-mock.js';
 
 // Global mock instances for reuse across tests
@@ -68,7 +68,10 @@ global.testUtils = {
     setupNetflixLocation: (movieId = '12345') => {
         const netflixLocation = LocationMock.createNetflixMock(movieId);
         if (global.window) {
-            global.window.location = netflixLocation;
+            // Use property-level mocking to avoid redefining window.location
+            try {
+                mockWindowLocation(netflixLocation);
+            } catch (_) {}
         }
         global.mockInstances.location = netflixLocation;
         return netflixLocation;
@@ -81,7 +84,10 @@ global.testUtils = {
     setupDisneyPlusLocation: (contentId = 'abc123') => {
         const disneyLocation = LocationMock.createDisneyPlusMock(contentId);
         if (global.window) {
-            global.window.location = disneyLocation;
+            // Use property-level mocking to avoid redefining window.location
+            try {
+                mockWindowLocation(disneyLocation);
+            } catch (_) {}
         }
         global.mockInstances.location = disneyLocation;
         return disneyLocation;

@@ -5,3 +5,7 @@ node_modules/
 .kiro/
 .augment-guidelines
 .augment/
+WARP.md
+
+# Chrome extensions cannot load directories beginning with underscore
+__tests__/
