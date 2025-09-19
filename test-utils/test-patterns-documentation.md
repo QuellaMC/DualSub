@@ -150,6 +150,8 @@ test('should handle subtitle data events', () => {
 
 Testing Chrome extension API interactions:
 
+Note: The runtime messaging layer uses a resilient retry wrapper in `content_scripts/shared/messaging.js`. In tests, you can either mock `env.mocks.chromeApi.runtime.sendMessage` directly (callback or promise forms are both supported by the wrapper) or mock `sendRuntimeMessageWithRetry` if you want to focus on call sites.
+
 ```javascript
 test('should communicate with background script', () => {
     // Setup Chrome API responses

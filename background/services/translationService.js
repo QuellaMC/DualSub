@@ -6,7 +6,9 @@
  *
  * @author DualSub Extension
  * @version 2.0.0
- */
+*/
+
+// @ts-check
 
 import { translate as googleTranslate } from '../../translation_providers/googleTranslate.js';
 import { translate as microsoftTranslateEdgeAuth } from '../../translation_providers/microsoftTranslateEdgeAuth.js';
@@ -25,14 +27,26 @@ import {
 } from '../utils/errorHandler.js';
 import { performanceMonitor } from '../utils/performanceMonitor.js';
 import { universalBatchProcessor } from './universalBatchProcessor.js';
+import { Providers, ProviderNames, ProviderBatchConfigs } from '../../content_scripts/shared/constants/providers.js';
+import TTLCache from '../../utils/cache/TTLCache.js';
+
+/**
+ * @typedef {Object} TranslationResult
+ * @property {string} translatedText
+ * @property {string} originalText
+ * @property {string} sourceLanguage
+ * @property {string} targetLanguage
+ * @property {boolean} cached
+ * @property {number} processingTime
+ */
 
 class TranslationService {
     constructor() {
         this.logger = null;
-        this.currentProviderId = 'deepl_free';
+        this.currentProviderId = Providers.DEEPL_FREE;
         this.providers = {
-            google: {
-                name: 'Google Translate (Free)',
+            [Providers.GOOGLE]: {
+                name: ProviderNames[Providers.GOOGLE],
                 translate: googleTranslate,
                 supportsBatch: false,
                 rateLimit: {
@@ -43,8 +57,8 @@ class TranslationService {
                 },
                 category: 'free',
             },
-            microsoft_edge_auth: {
-                name: 'Microsoft Translate (Free)',
+            [Providers.MICROSOFT_EDGE_AUTH]: {
+                name: ProviderNames[Providers.MICROSOFT_EDGE_AUTH],
                 translate: microsoftTranslateEdgeAuth,
                 supportsBatch: false,
                 rateLimit: {
@@ -57,8 +71,8 @@ class TranslationService {
                 },
                 category: 'free',
             },
-            deepl: {
-                name: 'DeepL Translate (API Key Required)',
+            [Providers.DEEPL]: {
+                name: ProviderNames[Providers.DEEPL],
                 translate: deeplTranslate,
                 supportsBatch: false,
                 rateLimit: {
@@ -69,8 +83,8 @@ class TranslationService {
                 },
                 category: 'api_key',
             },
-            deepl_free: {
-                name: 'DeepL Translate (Free)',
+            [Providers.DEEPL_FREE]: {
+                name: ProviderNames[Providers.DEEPL_FREE],
                 translate: deeplTranslateFree,
                 supportsBatch: false,
                 rateLimit: {
@@ -81,8 +95,8 @@ class TranslationService {
                 },
                 category: 'free',
             },
-            openai_compatible: {
-                name: 'OpenAI Compatible (API Key Required)',
+            [Providers.OPENAI_COMPATIBLE]: {
+                name: ProviderNames[Providers.OPENAI_COMPATIBLE],
                 translate: openaiCompatibleTranslate,
                 translateBatch: openaiCompatibleTranslateBatch,
                 supportsBatch: true,
@@ -94,19 +108,18 @@ class TranslationService {
                 },
                 category: 'api_key',
                 batchOptimizations: {
-                    maxBatchSize: 10,
+                    maxBatchSize: ProviderBatchConfigs[Providers.OPENAI_COMPATIBLE].maxBatchSize,
                     contextPreservation: true,
                     exponentialBackoff: true,
-                    delimiter: '|SUBTITLE_BREAK|',
+                    delimiter: ProviderBatchConfigs[Providers.OPENAI_COMPATIBLE].delimiter,
                 },
             },
         };
         this.isInitialized = false;
-        this.translationCache = new Map();
         this.cacheMaxSize = 1000; // Maximum cache entries
-        this.cacheAccessOrder = []; // For LRU eviction
-        this.rateLimitTracker = new Map();
-        this.characterTracker = new Map(); // For character-based rate limiting
+        this.translationCache = new TTLCache(this.cacheMaxSize, 5 * 60 * 1000); // 5 minutes TTL
+        this.characterTracker = new Map(); // For character/byte-based rate limiting
+        this.rateLimitTracker = new Map(); // For request-per-window rate limiting
         this.lastRequestTime = new Map(); // For mandatory delays
         this.performanceMetrics = {
             totalTranslations: 0,
@@ -388,23 +401,7 @@ class TranslationService {
      * @param {string} value - Cache value
      */
     setCacheItem(key, value) {
-        // Remove existing entry if present
-        if (this.translationCache.has(key)) {
-            const index = this.cacheAccessOrder.indexOf(key);
-            if (index > -1) {
-                this.cacheAccessOrder.splice(index, 1);
-            }
-        }
-
-        // Add to cache and access order
         this.translationCache.set(key, value);
-        this.cacheAccessOrder.push(key);
-
-        // Evict oldest entries if cache is full
-        while (this.translationCache.size > this.cacheMaxSize) {
-            const oldestKey = this.cacheAccessOrder.shift();
-            this.translationCache.delete(oldestKey);
-        }
     }
 
     /**
@@ -413,17 +410,6 @@ class TranslationService {
      * @returns {string|undefined} Cache value
      */
     getCacheItem(key) {
-        if (!this.translationCache.has(key)) {
-            return undefined;
-        }
-
-        // Update access order
-        const index = this.cacheAccessOrder.indexOf(key);
-        if (index > -1) {
-            this.cacheAccessOrder.splice(index, 1);
-            this.cacheAccessOrder.push(key);
-        }
-
         return this.translationCache.get(key);
     }
 
@@ -627,6 +613,9 @@ class TranslationService {
         const provider = this.providers[this.currentProviderId];
 
         if (!provider.rateLimit) return;
+
+        // Ensure trackers exist
+        if (!this.rateLimitTracker) this.rateLimitTracker = new Map();
 
         // Always update request tracker
         if (!this.rateLimitTracker.has(this.currentProviderId)) {

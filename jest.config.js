@@ -2,7 +2,10 @@ export default {
     testEnvironment: 'jsdom',
     transform: {},
     moduleFileExtensions: ['js', 'json'],
-    testMatch: ['**/__tests__/**/*.js', '**/?(*.)+(spec|test).js'],
+    testMatch: [
+        '**/tests/**/*.js',
+        '**/?(*.)+(spec|test).js'
+    ],
     collectCoverageFrom: [
         'utils/**/*.js',
         'services/**/*.js',

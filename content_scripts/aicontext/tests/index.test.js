@@ -415,16 +415,20 @@ describe('Phase 3: Core Controller Tests', () => {
             // Wait for async processing
             await new Promise((resolve) => setTimeout(resolve, 1)); // Reduced from 10ms to 1ms
 
-            // Verify background message was sent
-            expect(mockSendMessage).toHaveBeenCalledWith({
-                action: 'analyzeContext',
-                text: 'test text',
-                contextTypes: ['cultural'],
-                language: 'en',
-                targetLanguage: 'es',
-                platform: 'netflix',
-                requestId: 'test-123',
-            });
+            // Verify background message was sent (accept either promise or callback form)
+            const { calls } = mockSendMessage.mock;
+            const found = calls.some(([msg]) =>
+                msg &&
+                msg.action === 'analyzeContext' &&
+                msg.text === 'test text' &&
+                Array.isArray(msg.contextTypes) &&
+                msg.contextTypes[0] === 'cultural' &&
+                msg.language === 'en' &&
+                msg.targetLanguage === 'es' &&
+                msg.platform === 'netflix' &&
+                msg.requestId === 'test-123'
+            );
+            expect(found).toBe(true);
         });
 
         test('should handle configuration updates', async () => {
@@ -525,9 +529,13 @@ describe('Phase 3: Core Controller Tests', () => {
         test('should track error metrics', async () => {
             const initialErrorCount = manager.metrics.errorCount;
 
-            // Mock failed analysis
-            testEnv.mocks.chromeApi.runtime.sendMessage.mockRejectedValue(
-                new Error('Analysis failed')
+            // Mock failed analysis (support callback-style messaging)
+            testEnv.mocks.chromeApi.runtime.sendMessage.mockImplementation(
+                (message, callback) => {
+                    const response = { success: false, error: 'Analysis failed' };
+                    if (typeof callback === 'function') callback(response);
+                    return Promise.resolve(response);
+                }
             );
 
             // Trigger analysis
@@ -702,9 +710,13 @@ describe('Phase 4: Handlers & Providers Tests', () => {
         test('should handle analysis errors', async () => {
             const provider = manager.getProvider();
 
-            // Mock error response
-            testEnv.mocks.chromeApi.runtime.sendMessage.mockRejectedValue(
-                new Error('Analysis failed')
+            // Mock error response (support callback-style messaging)
+            testEnv.mocks.chromeApi.runtime.sendMessage.mockImplementation(
+                (message, callback) => {
+                    const response = { success: false, error: 'Analysis failed' };
+                    if (typeof callback === 'function') callback(response);
+                    return Promise.resolve(response);
+                }
             );
 
             const result = await provider.analyzeContext('test text');
@@ -754,11 +766,17 @@ describe('Phase 4: Handlers & Providers Tests', () => {
         });
 
         test('should handle end-to-end analysis workflow', async () => {
-            // Mock successful analysis
-            testEnv.mocks.chromeApi.runtime.sendMessage.mockResolvedValue({
-                success: true,
-                result: { analysis: 'Cultural context: This is a greeting.' },
-            });
+            // Mock successful analysis (support callback-style messaging)
+            testEnv.mocks.chromeApi.runtime.sendMessage.mockImplementation(
+                (message, callback) => {
+                    const response = {
+                        success: true,
+                        result: { analysis: 'Cultural context: This is a greeting.' },
+                    };
+                    if (typeof callback === 'function') callback(response);
+                    return Promise.resolve(response);
+                }
+            );
 
             // Trigger analysis through text handler
             const textHandler = manager.getTextHandler();

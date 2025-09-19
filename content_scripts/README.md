@@ -4,6 +4,8 @@
 
 The DualSub extension uses a refactored content script architecture that eliminates code duplication and provides a maintainable foundation for supporting multiple streaming platforms. This architecture is built around the **Template Method Pattern** and **Abstract Base Class** design patterns.
 
+Note on messaging and types: content scripts use a resilient messaging helper (`content_scripts/shared/messaging.js`) with retries to handle MV3 service worker wake-ups. For JSDoc `@ts-check` in plain JS, we locally alias the Chrome API from `globalThis` to avoid undeclared global errors without requiring ambient types. See API_REFERENCE.md → Messaging Utilities.
+
 ## Architecture Components
 
 ### 1. BaseContentScript (Abstract Base Class)

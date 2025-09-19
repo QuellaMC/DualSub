@@ -6,57 +6,19 @@
  *
  * @author DualSub Extension
  * @version 2.0.0
- */
+*/
+
+// @ts-check
 
 import { loggingManager } from '../utils/loggingManager.js';
 import { configService } from '../../services/configService.js';
 import { performanceMonitor } from '../utils/performanceMonitor.js';
+import { Providers, ProviderBatchConfigs } from '../../content_scripts/shared/constants/providers.js';
 
 /**
  * Provider-specific batch configuration (delays will be loaded from config)
  */
-const PROVIDER_BATCH_CONFIGS = {
-    openai_compatible: {
-        defaultBatchSize: 8,
-        maxBatchSize: 15,
-        delimiter: '|SUBTITLE_BREAK|',
-        supportsBatch: true,
-        batchMethod: 'delimiter',
-        delayConfigKey: 'openaieDelay', // Reference to config key for delay
-    },
-    google: {
-        defaultBatchSize: 4,
-        maxBatchSize: 8,
-        delimiter: '\n---SUBTITLE---\n',
-        supportsBatch: false, // Will use simulated batch
-        batchMethod: 'simulated',
-        delayConfigKey: 'googleDelay', // Reference to config key for delay
-    },
-    deepl: {
-        defaultBatchSize: 3,
-        maxBatchSize: 6,
-        delimiter: '\n[SUBTITLE]\n',
-        supportsBatch: false, // Will use simulated batch
-        batchMethod: 'simulated',
-        delayConfigKey: 'deeplDelay', // Reference to config key for delay
-    },
-    deepl_free: {
-        defaultBatchSize: 2,
-        maxBatchSize: 4,
-        delimiter: '\n[SUBTITLE]\n',
-        supportsBatch: false, // Will use simulated batch
-        batchMethod: 'simulated',
-        delayConfigKey: 'deeplFreeDelay', // Reference to config key for delay
-    },
-    microsoft_edge_auth: {
-        defaultBatchSize: 4,
-        maxBatchSize: 8,
-        delimiter: '\n||SUBTITLE||\n',
-        supportsBatch: false, // Will use simulated batch
-        batchMethod: 'simulated',
-        delayConfigKey: 'microsoftDelay', // Reference to config key for delay
-    },
-};
+const PROVIDER_BATCH_CONFIGS = ProviderBatchConfigs;
 
 /**
  * Universal Batch Processor

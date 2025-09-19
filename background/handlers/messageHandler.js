@@ -8,7 +8,9 @@
  *
  * @author DualSub Extension
  * @version 2.0.0
- */
+*/
+
+// @ts-check
 
 import { loggingManager } from '../utils/loggingManager.js';
 import {
@@ -17,8 +19,64 @@ import {
     SubtitleProcessingError,
     AIContextError,
 } from '../services/serviceInterfaces.js';
+import { MessageActions } from '../../content_scripts/shared/constants/messageActions.js';
+
+/**
+ * @typedef {'translate'|'translateBatch'|'checkBatchSupport'|'fetchVTT'|'changeProvider'|'analyzeContext'|'changeContextProvider'|'getContextStatus'|'getAvailableModels'|'getDefaultModel'|'reloadContextProviderConfig'|'ping'|'checkBackgroundReady'} MessageAction
+ */
+
+/**
+ * @typedef {Object} IncomingMessage
+ * @property {MessageAction} action
+ * @property {string} [text]
+ * @property {string[]} [texts]
+ * @property {string} [targetLang]
+ * @property {string} [delimiter]
+ * @property {string} [batchId]
+ * @property {Object} [cueMetadata]
+ * @property {string} [url]
+ * @property {string} [videoId]
+ * @property {Object} [data]
+ * @property {string} [source]
+ */
 
 class MessageHandler {
+    /**
+     * Validate incoming message payload for critical actions.
+     * Returns { valid: boolean, error?: string }
+     * @param {IncomingMessage} message
+     */
+    static validateMessagePayload(message) {
+        if (!message || typeof message !== 'object') {
+            return { valid: false, error: 'Invalid message object' };
+        }
+        const action = /** @type {any} */ (message.action);
+        if (!action || typeof action !== 'string') {
+            return { valid: false, error: 'Missing or invalid action' };
+        }
+        switch (action) {
+            case MessageActions.TRANSLATE:
+                if (typeof message.text !== 'string' || typeof message.targetLang !== 'string') {
+                    return { valid: false, error: 'translate requires text and targetLang' };
+                }
+                break;
+            case MessageActions.TRANSLATE_BATCH:
+                if (!Array.isArray(message.texts) || typeof message.targetLang !== 'string') {
+                    return { valid: false, error: 'translateBatch requires texts[] and targetLang' };
+                }
+                break;
+            case MessageActions.FETCH_VTT:
+                // Accept either URL-based or Netflix data-based payload shape
+                if (!message.url && !(message.data && Array.isArray(message.data.tracks))) {
+                    return { valid: false, error: 'fetchVTT requires url or data.tracks[]' };
+                }
+                break;
+            default:
+                // For other actions, do minimal validation
+                break;
+        }
+        return { valid: true };
+    }
     constructor() {
         this.logger = null;
         this.translationService = null;
@@ -66,64 +124,73 @@ class MessageHandler {
      */
     handleMessage(message, sender, sendResponse) {
         this.logger.debug('Received message', {
-            action: message.action,
-            source: message.source,
-            tabId: sender.tab?.id,
+            action: message?.action,
+            source: message?.source,
+            tabId: sender?.tab?.id,
         });
 
+        const validation = MessageHandler.validateMessagePayload(message);
+        if (!validation.valid) {
+            this.logger.warn('Invalid message payload', { error: validation.error });
+            try {
+                sendResponse({ success: false, error: validation.error });
+            } catch (_) {}
+            return false;
+        }
+
         switch (message.action) {
-            case 'translate':
+            case MessageActions.TRANSLATE:
                 return this.handleTranslateMessage(message, sendResponse);
 
-            case 'translateBatch':
+            case MessageActions.TRANSLATE_BATCH:
                 return this.handleTranslateBatchMessage(message, sendResponse);
 
-            case 'checkBatchSupport':
+            case MessageActions.CHECK_BATCH_SUPPORT:
                 return this.handleCheckBatchSupportMessage(
                     message,
                     sendResponse
                 );
 
-            case 'fetchVTT':
+            case MessageActions.FETCH_VTT:
                 return this.handleFetchVTTMessage(message, sendResponse);
 
-            case 'changeProvider':
+            case MessageActions.CHANGE_PROVIDER:
                 return this.handleChangeProviderMessage(message, sendResponse);
 
-            case 'analyzeContext':
+            case MessageActions.ANALYZE_CONTEXT:
                 return this.handleAnalyzeContextMessage(message, sendResponse);
 
-            case 'changeContextProvider':
+            case MessageActions.CHANGE_CONTEXT_PROVIDER:
                 return this.handleChangeContextProviderMessage(
                     message,
                     sendResponse
                 );
 
-            case 'getContextStatus':
+            case MessageActions.GET_CONTEXT_STATUS:
                 return this.handleGetContextStatusMessage(
                     message,
                     sendResponse
                 );
 
-            case 'getAvailableModels':
+            case MessageActions.GET_AVAILABLE_MODELS:
                 return this.handleGetAvailableModelsMessage(
                     message,
                     sendResponse
                 );
 
-            case 'getDefaultModel':
+            case MessageActions.GET_DEFAULT_MODEL:
                 return this.handleGetDefaultModelMessage(message, sendResponse);
 
-            case 'reloadContextProviderConfig':
+            case MessageActions.RELOAD_CONTEXT_PROVIDER_CONFIG:
                 return this.handleReloadContextProviderConfigMessage(
                     message,
                     sendResponse
                 );
 
-            case 'ping':
+            case MessageActions.PING:
                 return this.handlePingMessage(message, sendResponse);
 
-            case 'checkBackgroundReady':
+            case MessageActions.CHECK_BACKGROUND_READY:
                 return this.handleCheckBackgroundReadyMessage(
                     message,
                     sendResponse
@@ -884,3 +951,4 @@ class MessageHandler {
 
 // Export singleton instance
 export const messageHandler = new MessageHandler();
+export { MessageHandler };

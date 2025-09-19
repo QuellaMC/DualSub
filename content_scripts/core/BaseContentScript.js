@@ -112,7 +112,9 @@
  *         return false;
  *     }
  * }
- */
+*/
+
+// @ts-check
 
 import {
     EventBuffer,
@@ -124,6 +126,8 @@ import {
 } from './utils.js';
 import { COMMON_CONSTANTS } from './constants.js';
 import { getOrCreateUiRoot } from '../shared/subtitleUtilities.js';
+import { MessageActions } from '../shared/constants/messageActions.js';
+import { NavigationDetectionManager } from '../shared/navigationUtils.js';
 
 export class BaseContentScript {
     /**
@@ -213,6 +217,9 @@ export class BaseContentScript {
 
         // Initialize AI Context Manager (will be configured during initializeAIContextFeatures)
         this.aiContextManager = null;
+
+        // Navigation detection manager (optional unified path)
+        this.navigationDetectionManager = null;
     }
 
     /**
@@ -247,27 +254,59 @@ export class BaseContentScript {
     }
 
     /**
+     * Unified navigation detection manager setup. Platforms can call this with optional overrides.
+     * @protected
+     * @param {Object} [options]
+     */
+    _setupNavigationManager(options = {}) {
+        try {
+            const isPlayerPathFn = typeof this._isPlayerPath === 'function'
+                ? (pathname) => this._isPlayerPath(pathname)
+                : () => false;
+
+            this.navigationDetectionManager = new NavigationDetectionManager(
+                this.getPlatformName ? this.getPlatformName() : 'unknown',
+                {
+                    isPlayerPage: isPlayerPathFn,
+                    onUrlChange: (oldUrl, newUrl) => {
+                        // Keep compatibility with existing URL-change flow
+                        try { this.checkForUrlChange(); } catch (_) {}
+                    },
+                    onPageTransition: (wasPlayer, isPlayer) => {
+                        try { this._handlePageTransition(wasPlayer, isPlayer); } catch (_) {}
+                    },
+                    logger: (level, message, data) => this.logWithFallback(level, message, data),
+                    ...options,
+                }
+            );
+            this.navigationDetectionManager.setupComprehensiveNavigation();
+        } catch (e) {
+            this.logWithFallback('warn', 'Failed to setup NavigationDetectionManager, falling back to legacy detection', { error: e?.message });
+        }
+    }
+
+    /**
      * Sets up common message handlers for all platforms.
      * @private
      */
     _setupCommonMessageHandlers() {
         const commonHandlers = [
             {
-                action: 'toggleSubtitles',
+                action: MessageActions.TOGGLE_SUBTITLES,
                 handler: this.handleToggleSubtitles.bind(this),
                 requiresUtilities: true,
                 description:
                     'Toggle subtitle display and manage platform initialization.',
             },
             {
-                action: 'configChanged',
+                action: MessageActions.CONFIG_CHANGED,
                 handler: this.handleConfigChanged.bind(this),
                 requiresUtilities: true,
                 description:
                     'Handle and apply configuration changes immediately.',
             },
             {
-                action: 'LOGGING_LEVEL_CHANGED',
+                action: MessageActions.LOGGING_LEVEL_CHANGED,
                 handler: this.handleLoggingLevelChanged.bind(this),
                 requiresUtilities: false,
                 description:

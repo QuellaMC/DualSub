@@ -18,18 +18,15 @@ import {
 } from '@jest/globals';
 import { NetflixContentScript } from '../platforms/NetflixContentScript.js';
 import { ChromeApiMock } from '../../test-utils/chrome-api-mock.js';
+import { LocationMock, mockWindowLocation } from '../../test-utils/location-mock.js';
 
 // Mock Chrome API
 const mockChrome = ChromeApiMock.create();
 global.chrome = mockChrome;
 
-// Mock window.location
-delete window.location;
-window.location = {
-    href: 'https://www.netflix.com/watch/123456',
-    hostname: 'www.netflix.com',
-    pathname: '/watch/123456',
-};
+// Mock window.location using property-level mocking to avoid redefining window.location
+const netflixLocation = LocationMock.createNetflixMock('123456');
+mockWindowLocation(netflixLocation);
 
 describe('NetflixContentScript Integration Tests', () => {
     let netflixScript;

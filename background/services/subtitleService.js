@@ -6,7 +6,9 @@
  *
  * @author DualSub Extension
  * @version 2.0.0
- */
+*/
+
+// @ts-check
 
 import { loggingManager } from '../utils/loggingManager.js';
 import { vttParser } from '../parsers/vttParser.js';
@@ -17,6 +19,18 @@ import {
     SubtitleProcessingError,
 } from '../utils/errorHandler.js';
 import { configService } from '../../services/configService.js';
+
+/**
+ * @typedef {Object} SubtitleProcessingResult
+ * @property {string} vttText
+ * @property {string} targetVttText
+ * @property {string} sourceLanguage
+ * @property {string} targetLanguage
+ * @property {boolean} useNativeTarget
+ * @property {Array<Object>} availableLanguages
+ * @property {string|null} url
+ * @property {string} [error]
+ */
 
 class SubtitleService {
     constructor() {

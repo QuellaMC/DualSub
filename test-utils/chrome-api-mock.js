@@ -133,6 +133,9 @@ class ChromeStorageMock {
     }
 }
 
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+
 class ChromeRuntimeMock {
     constructor() {
         this.listeners = [];
@@ -162,14 +165,21 @@ class ChromeRuntimeMock {
 
     /**
      * Mock implementation of chrome.runtime.getURL
-     * Simply returns the provided path so that tests depending on the
-     * resolved URL do not fail. In real extension context this would
-     * prepend the extension root URL, but that is unnecessary for unit tests.
+     * Returns a file:// URL pointing at the requested path within the repository
+     * so dynamic imports work under Node's ESM loader in tests.
      *
-     * @param {string} path - Relative path passed to getURL
-     * @returns {string} Same path for test purposes
+     * @param {string} p - Relative path passed to getURL
+     * @returns {string} file:// URL to the absolute path
      */
-    getURL = jest.fn((path = '') => path);
+    getURL = jest.fn((p = '') => {
+        try {
+            const abs = path.resolve(process.cwd(), p);
+            return pathToFileURL(abs).href;
+        } catch (_) {
+            // Fallback to original behavior
+            return p;
+        }
+    });
 
     /**
      * Reset runtime mock to clean state

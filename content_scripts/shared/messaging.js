@@ -7,7 +7,18 @@
  * - "The message port closed before a response was received."
  * - "No matching service worker for this scope."
  * - "Extension context invalidated."
+*/
+
+// @ts-check
+
+/**
+ * Helper to access the Chrome extension API dynamically so tests can swap mocks between cases.
+ * This avoids capturing a stale reference across test suites.
+ * @returns {any}
  */
+function getChrome() {
+    return /** @type {any} */ (globalThis).chrome;
+}
 
 function isTransientMessagingError(error) {
     if (!error) return false;
@@ -29,35 +40,64 @@ function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function rawSendMessage(message) {
-    if (!globalThis.chrome || !chrome.runtime || !chrome.runtime.sendMessage) {
+import { MessageActions } from './constants/messageActions.js';
+
+export async function rawSendMessage(message) {
+    const chromeApi = getChrome();
+    if (!chromeApi || !chromeApi.runtime || !chromeApi.runtime.sendMessage) {
         throw new Error('Messaging unavailable');
     }
-    // Prefer promise form when available (MV3). If it throws, propagate.
-    try {
-        const response = await chrome.runtime.sendMessage(message);
-        return response;
-    } catch (err) {
-        // Some environments only support callback form; fall back if needed.
-        return await new Promise((resolve, reject) => {
-            try {
-                chrome.runtime.sendMessage(message, (response) => {
-                    const lastErr = chrome.runtime.lastError;
-                    if (lastErr) {
-                        reject(
-                            new Error(
-                                lastErr.message || 'Unknown runtime error'
-                            )
-                        );
-                        return;
+
+    const fn = chromeApi.runtime.sendMessage;
+    const arity = typeof fn === 'function' ? fn.length : 0;
+
+    // Prefer callback-style when available (typical in tests/mocks); otherwise use the promise API.
+    if (arity >= 2) {
+        try {
+            return await new Promise((resolve, reject) => {
+                let settled = false;
+                try {
+const maybePromise = /** @type {any} */ (
+                        fn(message, (response) => {
+                            if (settled) return;
+                            const lastErr = getChrome()?.runtime?.lastError;
+                            if (lastErr) {
+                                settled = true;
+                                reject(new Error(lastErr.message || 'Unknown runtime error'));
+                                return;
+                            }
+                            settled = true;
+                            resolve(response);
+                        })
+                    );
+                    if (maybePromise && typeof maybePromise.then === 'function') {
+                        maybePromise
+                            .then((resp) => {
+                                if (settled) return;
+                                settled = true;
+                                resolve(resp);
+                            })
+                            .catch((perr) => {
+                                if (settled) return;
+                                settled = true;
+                                reject(perr);
+                            });
                     }
-                    resolve(response);
-                });
-            } catch (cbErr) {
-                reject(cbErr);
-            }
-        });
+                } catch (cbErr) {
+                    if (!settled) reject(cbErr);
+                }
+            });
+        } catch (err) {
+            // If callback path failed, fall back to promise path
+        }
     }
+
+    // Promise-style path
+    const result = fn(message);
+    if (result && typeof result.then === 'function') {
+        return await result;
+    }
+    return result;
 }
 
 /**
@@ -79,6 +119,9 @@ export async function sendRuntimeMessageWithRetry(
         pingBeforeRetry = true,
     } = {}
 ) {
+    if (!message || typeof message !== 'object' || !message.action) {
+        throw new Error('sendRuntimeMessageWithRetry: message.action is required');
+    }
     let attempt = 0;
     let delay = baseDelayMs;
 
@@ -95,11 +138,11 @@ export async function sendRuntimeMessageWithRetry(
             if (pingBeforeRetry) {
                 try {
                     // Prefer readiness check to know when services are fully initialized
-                    await rawSendMessage({ action: 'checkBackgroundReady' });
+                    await rawSendMessage({ action: MessageActions.CHECK_BACKGROUND_READY });
                 } catch (_) {
                     try {
                         await rawSendMessage({
-                            action: 'ping',
+                            action: MessageActions.PING,
                             source: 'content',
                         });
                     } catch (_) {}
