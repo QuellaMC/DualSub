@@ -33,7 +33,7 @@ With the core features now well-established, we plan to upgrade DualSub from a s
 
 ---
 
-## Team Member
+## Team Members
 
 * Jialin Fang
 * Jiaying Wang
