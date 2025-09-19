@@ -416,7 +416,7 @@ describe('Phase 3: Core Controller Tests', () => {
             await new Promise((resolve) => setTimeout(resolve, 1)); // Reduced from 10ms to 1ms
 
             // Verify background message was sent (accept either promise or callback form)
-            const calls = mockSendMessage.mock.calls;
+            const { calls } = mockSendMessage.mock;
             const found = calls.some(([msg]) =>
                 msg &&
                 msg.action === 'analyzeContext' &&

@@ -5,7 +5,7 @@ export default class TTLCache {
    * @param {number} [ttlMs] - optional TTL in milliseconds
    */
   constructor(maxSize, ttlMs = 0) {
-    this.maxSize = Math.max(1, maxSize || 1);
+    this.maxSize = Math.max(1, maxSize ?? 1);
     this.ttlMs = ttlMs || 0;
     this.map = new Map(); // key -> { value, expiresAt }
   }

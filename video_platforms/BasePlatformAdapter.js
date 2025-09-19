@@ -55,9 +55,7 @@ export class BasePlatformAdapter extends VideoPlatform {
         delete this.lastKnownVttUrlForVideoId[this.currentVideoId];
       }
       this.currentVideoId = newVideoId;
-      if (typeof this.onVideoIdChangeCallback === 'function') {
-        this.onVideoIdChangeCallback(this.currentVideoId);
-      }
+      this.onVideoIdChangeCallback?.(this.currentVideoId);
     }
   }
 
@@ -70,43 +68,7 @@ export class BasePlatformAdapter extends VideoPlatform {
   }
 
   async _sendMessageResilient(message, { retries = 3, baseDelayMs = 150 } = {}) {
-    try {
-      const fn = chrome?.runtime?.sendMessage;
-      if (typeof fn === 'function' && fn.length >= 2) {
-        // Prefer callback-based messaging in test/mocked environments for determinism
-        return await new Promise((resolve, reject) => {
-          let settled = false;
-          try {
-            const maybePromise = fn(message, (response) => {
-              if (settled) return;
-              const lastErr = chrome.runtime.lastError;
-              if (lastErr) {
-                settled = true;
-                reject(new Error(lastErr.message || 'Unknown runtime error'));
-                return;
-              }
-              settled = true;
-              resolve(response);
-            });
-            if (maybePromise && typeof maybePromise.then === 'function') {
-              maybePromise.then((resp) => {
-                if (settled) return;
-                settled = true;
-                resolve(resp);
-              }).catch((err) => {
-                if (settled) return;
-                settled = true;
-                reject(err);
-              });
-            }
-          } catch (err) {
-            if (!settled) reject(err);
-          }
-        });
-      }
-    } catch (_) {}
-
-    // Fallback to shared resilient messaging wrapper
+    // Delegate to shared resilient messaging wrapper which handles callback vs. promise paths and retries.
     const { sendRuntimeMessageWithRetry } = await import(
       chrome.runtime.getURL('content_scripts/shared/messaging.js')
     );

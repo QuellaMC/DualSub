@@ -118,7 +118,6 @@ class TranslationService {
         this.isInitialized = false;
         this.cacheMaxSize = 1000; // Maximum cache entries
         this.translationCache = new TTLCache(this.cacheMaxSize, 5 * 60 * 1000); // 5 minutes TTL
-        this.cacheAccessOrder = []; // For LRU eviction (no longer used with TTLCache)
         this.characterTracker = new Map(); // For character/byte-based rate limiting
         this.rateLimitTracker = new Map(); // For request-per-window rate limiting
         this.lastRequestTime = new Map(); // For mandatory delays
