@@ -683,17 +683,17 @@ The shared messaging module provides resilient wrappers around Chrome's runtime 
 ### Exports
 
 - `rawSendMessage(message): Promise<any>`
-  - Thin wrapper around `chrome.runtime.sendMessage`
-  - Prefers the promise form when available; falls back to callback style when supported
-  - Surfaces `chrome.runtime.lastError` as an `Error`
+    - Thin wrapper around `chrome.runtime.sendMessage`
+    - Prefers the promise form when available; falls back to callback style when supported
+    - Surfaces `chrome.runtime.lastError` as an `Error`
 
 - `sendRuntimeMessageWithRetry(message, options?): Promise<any>`
-  - Retries on transient connection errors (e.g., "Could not establish connection. Receiving end does not exist.", "The message port closed before a response was received.", "No matching service worker for this scope.", "Extension context invalidated.")
-  - Options:
-    - `retries` (default: 3)
-    - `baseDelayMs` (default: 100)
-    - `backoffFactor` (default: 2)
-    - `pingBeforeRetry` (default: true) — attempts `CHECK_BACKGROUND_READY` and then `PING` to wake the background before retrying
+    - Retries on transient connection errors (e.g., "Could not establish connection. Receiving end does not exist.", "The message port closed before a response was received.", "No matching service worker for this scope.", "Extension context invalidated.")
+    - Options:
+        - `retries` (default: 3)
+        - `baseDelayMs` (default: 100)
+        - `backoffFactor` (default: 2)
+        - `pingBeforeRetry` (default: true) — attempts `CHECK_BACKGROUND_READY` and then `PING` to wake the background before retrying
 
 ### Example
 
@@ -704,7 +704,12 @@ import { MessageActions } from '../shared/constants/messageActions.js';
 async function ensureBackgroundReady() {
     const response = await sendRuntimeMessageWithRetry(
         { action: MessageActions.CHECK_BACKGROUND_READY },
-        { retries: 3, baseDelayMs: 100, backoffFactor: 2, pingBeforeRetry: true }
+        {
+            retries: 3,
+            baseDelayMs: 100,
+            backoffFactor: 2,
+            pingBeforeRetry: true,
+        }
     );
     return response;
 }

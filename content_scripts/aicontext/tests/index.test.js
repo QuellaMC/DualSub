@@ -417,16 +417,17 @@ describe('Phase 3: Core Controller Tests', () => {
 
             // Verify background message was sent (accept either promise or callback form)
             const { calls } = mockSendMessage.mock;
-            const found = calls.some(([msg]) =>
-                msg &&
-                msg.action === 'analyzeContext' &&
-                msg.text === 'test text' &&
-                Array.isArray(msg.contextTypes) &&
-                msg.contextTypes[0] === 'cultural' &&
-                msg.language === 'en' &&
-                msg.targetLanguage === 'es' &&
-                msg.platform === 'netflix' &&
-                msg.requestId === 'test-123'
+            const found = calls.some(
+                ([msg]) =>
+                    msg &&
+                    msg.action === 'analyzeContext' &&
+                    msg.text === 'test text' &&
+                    Array.isArray(msg.contextTypes) &&
+                    msg.contextTypes[0] === 'cultural' &&
+                    msg.language === 'en' &&
+                    msg.targetLanguage === 'es' &&
+                    msg.platform === 'netflix' &&
+                    msg.requestId === 'test-123'
             );
             expect(found).toBe(true);
         });
@@ -532,7 +533,10 @@ describe('Phase 3: Core Controller Tests', () => {
             // Mock failed analysis (support callback-style messaging)
             testEnv.mocks.chromeApi.runtime.sendMessage.mockImplementation(
                 (message, callback) => {
-                    const response = { success: false, error: 'Analysis failed' };
+                    const response = {
+                        success: false,
+                        error: 'Analysis failed',
+                    };
                     if (typeof callback === 'function') callback(response);
                     return Promise.resolve(response);
                 }
@@ -713,7 +717,10 @@ describe('Phase 4: Handlers & Providers Tests', () => {
             // Mock error response (support callback-style messaging)
             testEnv.mocks.chromeApi.runtime.sendMessage.mockImplementation(
                 (message, callback) => {
-                    const response = { success: false, error: 'Analysis failed' };
+                    const response = {
+                        success: false,
+                        error: 'Analysis failed',
+                    };
                     if (typeof callback === 'function') callback(response);
                     return Promise.resolve(response);
                 }
@@ -771,7 +778,9 @@ describe('Phase 4: Handlers & Providers Tests', () => {
                 (message, callback) => {
                     const response = {
                         success: true,
-                        result: { analysis: 'Cultural context: This is a greeting.' },
+                        result: {
+                            analysis: 'Cultural context: This is a greeting.',
+                        },
                     };
                     if (typeof callback === 'function') callback(response);
                     return Promise.resolve(response);

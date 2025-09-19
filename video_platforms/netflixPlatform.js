@@ -364,12 +364,13 @@ export class NetflixPlatform extends BasePlatformAdapter {
                         targetLanguage,
                         originalLanguage,
                         useOfficialSubtitles
-                    ).then((response) => {
-                        if (
-                            response &&
-                            response.success &&
-                            response.videoId === this.currentVideoId
-                        ) {
+                    )
+                        .then((response) => {
+                            if (
+                                response &&
+                                response.success &&
+                                response.videoId === this.currentVideoId
+                            ) {
                                 // Enhanced logging for debugging official translation functionality
                                 this.logger.info(
                                     'Netflix VTT processed successfully',
@@ -584,13 +585,19 @@ export class NetflixPlatform extends BasePlatformAdapter {
                                     this.currentVideoId
                                 ];
                             }
-                    }).catch((_error) => {
-                        // Generic error path; ensure we clear processed URL so future attempts can retry
-                        this.logger.error('No/invalid response from background for Netflix fetchVTT', {
-                            videoId: this.currentVideoId,
+                        })
+                        .catch((_error) => {
+                            // Generic error path; ensure we clear processed URL so future attempts can retry
+                            this.logger.error(
+                                'No/invalid response from background for Netflix fetchVTT',
+                                {
+                                    videoId: this.currentVideoId,
+                                }
+                            );
+                            delete this.lastKnownVttUrlForVideoId[
+                                this.currentVideoId
+                            ];
                         });
-                        delete this.lastKnownVttUrlForVideoId[this.currentVideoId];
-                    });
                 });
         }
     }
