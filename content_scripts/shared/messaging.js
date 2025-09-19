@@ -7,7 +7,7 @@
  * - "The message port closed before a response was received."
  * - "No matching service worker for this scope."
  * - "Extension context invalidated."
-*/
+ */
 
 // @ts-check
 
@@ -57,20 +57,28 @@ export async function rawSendMessage(message) {
             return await new Promise((resolve, reject) => {
                 let settled = false;
                 try {
-const maybePromise = /** @type {any} */ (
+                    const maybePromise = /** @type {any} */ (
                         fn(message, (response) => {
                             if (settled) return;
                             const lastErr = getChrome()?.runtime?.lastError;
                             if (lastErr) {
                                 settled = true;
-                                reject(new Error(lastErr.message || 'Unknown runtime error'));
+                                reject(
+                                    new Error(
+                                        lastErr.message ||
+                                            'Unknown runtime error'
+                                    )
+                                );
                                 return;
                             }
                             settled = true;
                             resolve(response);
                         })
                     );
-                    if (maybePromise && typeof maybePromise.then === 'function') {
+                    if (
+                        maybePromise &&
+                        typeof maybePromise.then === 'function'
+                    ) {
                         maybePromise
                             .then((resp) => {
                                 if (settled) return;
@@ -120,7 +128,9 @@ export async function sendRuntimeMessageWithRetry(
     } = {}
 ) {
     if (!message || typeof message !== 'object' || !message.action) {
-        throw new Error('sendRuntimeMessageWithRetry: message.action is required');
+        throw new Error(
+            'sendRuntimeMessageWithRetry: message.action is required'
+        );
     }
     let attempt = 0;
     let delay = baseDelayMs;
@@ -138,7 +148,9 @@ export async function sendRuntimeMessageWithRetry(
             if (pingBeforeRetry) {
                 try {
                     // Prefer readiness check to know when services are fully initialized
-                    await rawSendMessage({ action: MessageActions.CHECK_BACKGROUND_READY });
+                    await rawSendMessage({
+                        action: MessageActions.CHECK_BACKGROUND_READY,
+                    });
                 } catch (_) {
                     try {
                         await rawSendMessage({

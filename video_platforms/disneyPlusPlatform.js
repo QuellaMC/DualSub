@@ -211,10 +211,14 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
                             // Log chrome lastError if present for detailed diagnostics (test expectations)
                             const lastErr = chrome?.runtime?.lastError;
                             if (lastErr) {
-                                this.logger.error('Error for VTT fetch', lastErr, {
-                                    url: vttMasterUrl,
-                                    videoId: this.currentVideoId,
-                                });
+                                this.logger.error(
+                                    'Error for VTT fetch',
+                                    lastErr,
+                                    {
+                                        url: vttMasterUrl,
+                                        videoId: this.currentVideoId,
+                                    }
+                                );
                             } else {
                                 this.logger.error(
                                     'No/invalid response from background for fetchVTT',

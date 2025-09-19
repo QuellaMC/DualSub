@@ -538,7 +538,10 @@ export class AIContextManager {
                 });
             } catch (e) {
                 // When provider throws (e.g., messaging rejects), convert to error-shaped response
-                response = { success: false, error: e?.message || 'Unknown error' };
+                response = {
+                    success: false,
+                    error: e?.message || 'Unknown error',
+                };
             }
 
             this._log('debug', 'Received response from background script', {

@@ -6,7 +6,7 @@
  *
  * @author DualSub Extension
  * @version 2.0.0
-*/
+ */
 
 // @ts-check
 
