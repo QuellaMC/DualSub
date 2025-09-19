@@ -6,14 +6,17 @@
  *
  * @author DualSub Extension
  * @version 2.0.0
-*/
+ */
 
 // @ts-check
 
 import { loggingManager } from '../utils/loggingManager.js';
 import { configService } from '../../services/configService.js';
 import { performanceMonitor } from '../utils/performanceMonitor.js';
-import { Providers, ProviderBatchConfigs } from '../../content_scripts/shared/constants/providers.js';
+import {
+    Providers,
+    ProviderBatchConfigs,
+} from '../../content_scripts/shared/constants/providers.js';
 
 /**
  * Provider-specific batch configuration (delays will be loaded from config)

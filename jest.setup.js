@@ -3,7 +3,10 @@ import { jest, beforeEach, afterEach } from '@jest/globals';
 
 // Import centralized mock utilities
 import { ChromeApiMock } from './test-utils/chrome-api-mock.js';
-import { LocationMock, mockWindowLocation } from './test-utils/location-mock.js';
+import {
+    LocationMock,
+    mockWindowLocation,
+} from './test-utils/location-mock.js';
 import { LoggerMock } from './test-utils/logger-mock.js';
 
 // Global mock instances for reuse across tests

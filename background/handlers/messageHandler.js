@@ -8,7 +8,7 @@
  *
  * @author DualSub Extension
  * @version 2.0.0
-*/
+ */
 
 // @ts-check
 
@@ -56,19 +56,37 @@ class MessageHandler {
         }
         switch (action) {
             case MessageActions.TRANSLATE:
-                if (typeof message.text !== 'string' || typeof message.targetLang !== 'string') {
-                    return { valid: false, error: 'translate requires text and targetLang' };
+                if (
+                    typeof message.text !== 'string' ||
+                    typeof message.targetLang !== 'string'
+                ) {
+                    return {
+                        valid: false,
+                        error: 'translate requires text and targetLang',
+                    };
                 }
                 break;
             case MessageActions.TRANSLATE_BATCH:
-                if (!Array.isArray(message.texts) || typeof message.targetLang !== 'string') {
-                    return { valid: false, error: 'translateBatch requires texts[] and targetLang' };
+                if (
+                    !Array.isArray(message.texts) ||
+                    typeof message.targetLang !== 'string'
+                ) {
+                    return {
+                        valid: false,
+                        error: 'translateBatch requires texts[] and targetLang',
+                    };
                 }
                 break;
             case MessageActions.FETCH_VTT:
                 // Accept either URL-based or Netflix data-based payload shape
-                if (!message.url && !(message.data && Array.isArray(message.data.tracks))) {
-                    return { valid: false, error: 'fetchVTT requires url or data.tracks[]' };
+                if (
+                    !message.url &&
+                    !(message.data && Array.isArray(message.data.tracks))
+                ) {
+                    return {
+                        valid: false,
+                        error: 'fetchVTT requires url or data.tracks[]',
+                    };
                 }
                 break;
             default:
@@ -131,7 +149,9 @@ class MessageHandler {
 
         const validation = MessageHandler.validateMessagePayload(message);
         if (!validation.valid) {
-            this.logger.warn('Invalid message payload', { error: validation.error });
+            this.logger.warn('Invalid message payload', {
+                error: validation.error,
+            });
             try {
                 sendResponse({ success: false, error: validation.error });
             } catch (_) {}

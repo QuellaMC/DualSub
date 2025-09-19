@@ -18,7 +18,10 @@ import {
 } from '@jest/globals';
 import { NetflixContentScript } from '../platforms/NetflixContentScript.js';
 import { ChromeApiMock } from '../../test-utils/chrome-api-mock.js';
-import { LocationMock, mockWindowLocation } from '../../test-utils/location-mock.js';
+import {
+    LocationMock,
+    mockWindowLocation,
+} from '../../test-utils/location-mock.js';
 
 // Mock Chrome API
 const mockChrome = ChromeApiMock.create();

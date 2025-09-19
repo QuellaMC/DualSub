@@ -112,7 +112,7 @@
  *         return false;
  *     }
  * }
-*/
+ */
 
 // @ts-check
 
@@ -260,9 +260,10 @@ export class BaseContentScript {
      */
     _setupNavigationManager(options = {}) {
         try {
-            const isPlayerPathFn = typeof this._isPlayerPath === 'function'
-                ? (pathname) => this._isPlayerPath(pathname)
-                : () => false;
+            const isPlayerPathFn =
+                typeof this._isPlayerPath === 'function'
+                    ? (pathname) => this._isPlayerPath(pathname)
+                    : () => false;
 
             this.navigationDetectionManager = new NavigationDetectionManager(
                 this.getPlatformName ? this.getPlatformName() : 'unknown',
@@ -270,18 +271,27 @@ export class BaseContentScript {
                     isPlayerPage: isPlayerPathFn,
                     onUrlChange: (oldUrl, newUrl) => {
                         // Keep compatibility with existing URL-change flow
-                        try { this.checkForUrlChange(); } catch (_) {}
+                        try {
+                            this.checkForUrlChange();
+                        } catch (_) {}
                     },
                     onPageTransition: (wasPlayer, isPlayer) => {
-                        try { this._handlePageTransition(wasPlayer, isPlayer); } catch (_) {}
+                        try {
+                            this._handlePageTransition(wasPlayer, isPlayer);
+                        } catch (_) {}
                     },
-                    logger: (level, message, data) => this.logWithFallback(level, message, data),
+                    logger: (level, message, data) =>
+                        this.logWithFallback(level, message, data),
                     ...options,
                 }
             );
             this.navigationDetectionManager.setupComprehensiveNavigation();
         } catch (e) {
-            this.logWithFallback('warn', 'Failed to setup NavigationDetectionManager, falling back to legacy detection', { error: e?.message });
+            this.logWithFallback(
+                'warn',
+                'Failed to setup NavigationDetectionManager, falling back to legacy detection',
+                { error: e?.message }
+            );
         }
     }
 

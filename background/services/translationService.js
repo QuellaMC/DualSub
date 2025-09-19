@@ -6,7 +6,7 @@
  *
  * @author DualSub Extension
  * @version 2.0.0
-*/
+ */
 
 // @ts-check
 
@@ -27,7 +27,11 @@ import {
 } from '../utils/errorHandler.js';
 import { performanceMonitor } from '../utils/performanceMonitor.js';
 import { universalBatchProcessor } from './universalBatchProcessor.js';
-import { Providers, ProviderNames, ProviderBatchConfigs } from '../../content_scripts/shared/constants/providers.js';
+import {
+    Providers,
+    ProviderNames,
+    ProviderBatchConfigs,
+} from '../../content_scripts/shared/constants/providers.js';
 import TTLCache from '../../utils/cache/TTLCache.js';
 
 /**
@@ -108,10 +112,14 @@ class TranslationService {
                 },
                 category: 'api_key',
                 batchOptimizations: {
-                    maxBatchSize: ProviderBatchConfigs[Providers.OPENAI_COMPATIBLE].maxBatchSize,
+                    maxBatchSize:
+                        ProviderBatchConfigs[Providers.OPENAI_COMPATIBLE]
+                            .maxBatchSize,
                     contextPreservation: true,
                     exponentialBackoff: true,
-                    delimiter: ProviderBatchConfigs[Providers.OPENAI_COMPATIBLE].delimiter,
+                    delimiter:
+                        ProviderBatchConfigs[Providers.OPENAI_COMPATIBLE]
+                            .delimiter,
                 },
             },
         };
