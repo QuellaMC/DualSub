@@ -109,6 +109,14 @@ Debug Logging: Enabled
 
 2. **Development Commands**
 
+Note: For richer editor IntelliSense of Chrome extension APIs in this JS-only (JSDoc @ts-check) project, you can optionally install:
+
+```bash
+npm i -D chrome-types
+```
+
+Files may include a directive like `/// <reference types="chrome" />` to enable those types locally. Messaging reliability utilities live at `content_scripts/shared/messaging.js`.
+
     ```bash
     # Code formatting
     npm run format

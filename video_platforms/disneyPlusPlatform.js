@@ -1,12 +1,17 @@
 import { VideoPlatform } from './platform_interface.js';
 import Logger from '../utils/logger.js';
 import { configService } from '../services/configService.js';
+import { MessageActions } from '../content_scripts/shared/constants/messageActions.js';
 
-const INJECT_SCRIPT_FILENAME = 'injected_scripts/disneyPlusInject.js';
-const INJECT_SCRIPT_TAG_ID = 'disneyplus-dualsub-injector-script-tag';
-const INJECT_EVENT_ID = 'disneyplus-dualsub-injector-event'; // Must match inject.js
+import { Injection } from '../content_scripts/shared/constants/injection.js';
 
-export class DisneyPlusPlatform extends VideoPlatform {
+const INJECT_SCRIPT_FILENAME = Injection.disneyplus.SCRIPT_FILENAME;
+const INJECT_SCRIPT_TAG_ID = Injection.disneyplus.SCRIPT_TAG_ID;
+const INJECT_EVENT_ID = Injection.disneyplus.EVENT_ID; // Must match inject.js
+
+import { BasePlatformAdapter } from './BasePlatformAdapter.js';
+
+export class DisneyPlusPlatform extends BasePlatformAdapter {
     constructor() {
         super();
         this.logger = Logger.create('DisneyPlusPlatform', configService);
@@ -55,8 +60,7 @@ export class DisneyPlusPlatform extends VideoPlatform {
     async initialize(onSubtitleUrlFound, onVideoIdChange) {
         if (!this.isPlatformActive()) return;
 
-        this.onSubtitleUrlFoundCallback = onSubtitleUrlFound;
-        this.onVideoIdChangeCallback = onVideoIdChange;
+        this.setCallbacks(onSubtitleUrlFound, onVideoIdChange);
 
         this.eventListener = this._handleInjectorEvents.bind(this);
         document.addEventListener(INJECT_EVENT_ID, this.eventListener);
@@ -107,10 +111,7 @@ export class DisneyPlusPlatform extends VideoPlatform {
                 if (this.currentVideoId) {
                     delete this.lastKnownVttUrlForVideoId[this.currentVideoId];
                 }
-                this.currentVideoId = injectedVideoId;
-                if (this.onVideoIdChangeCallback) {
-                    this.onVideoIdChangeCallback(this.currentVideoId);
-                }
+                this.setVideoIdAndNotify(injectedVideoId);
             } else if (
                 this.lastKnownVttUrlForVideoId[this.currentVideoId] ===
                 vttMasterUrl
@@ -142,16 +143,11 @@ export class DisneyPlusPlatform extends VideoPlatform {
                             'content_scripts/shared/messaging.js'
                         )
                     )
-                        .then(({ sendRuntimeMessageWithRetry }) =>
-                            sendRuntimeMessageWithRetry(
-                                {
-                                    action: 'fetchVTT',
-                                    url: vttMasterUrl,
-                                    videoId: this.currentVideoId,
-                                    targetLanguage: targetLanguage,
-                                    originalLanguage: originalLanguage,
-                                },
-                                { retries: 3, baseDelayMs: 150 }
+                        .then(() =>
+                            this.requestVttViaMessaging(
+                                vttMasterUrl,
+                                targetLanguage,
+                                originalLanguage
                             )
                         )
                         .then((response) => {
@@ -222,7 +218,7 @@ export class DisneyPlusPlatform extends VideoPlatform {
                             // Fallback to legacy callback-based messaging to satisfy tests and environments without web-accessible module
                             chrome.runtime.sendMessage(
                                 {
-                                    action: 'fetchVTT',
+                                    action: MessageActions.FETCH_VTT,
                                     url: vttMasterUrl,
                                     videoId: this.currentVideoId,
                                     targetLanguage: targetLanguage,

@@ -39,14 +39,8 @@ describe('NetflixContentScript Comprehensive Tests', () => {
             enableLocation: true,
         });
 
-        // This is the key: delete the property before redefining it.
-        delete window.location;
-
-        window.location = {
-            href: 'https://www.netflix.com/watch/12345',
-            hostname: 'www.netflix.com',
-            pathname: '/watch/12345',
-        };
+        // Use standardized test utility to set Netflix location mock
+        testUtils.setupNetflixLocation('12345');
 
         // Create fresh Netflix content script instance
         netflixScript = new NetflixContentScript();
@@ -223,17 +217,19 @@ describe('NetflixContentScript Comprehensive Tests', () => {
         });
 
         test('should detect non-player page correctly', () => {
-            // Update location mock directly
-            window.location.pathname = '/browse';
-            window.location.href = 'https://www.netflix.com/browse';
+            // Update the location mock directly (no JSDOM navigation)
+            const loc = global.window.location;
+            loc.pathname = '/browse';
+            loc.href = 'https://www.netflix.com/browse';
 
             expect(netflixScript.isPlayerPageActive()).toBe(false);
         });
 
         test('should detect non-Netflix domain correctly', () => {
-            // Update location mock directly
-            window.location.hostname = 'www.example.com';
-            window.location.href = 'https://www.example.com/test';
+            // Update the location mock directly (no JSDOM navigation)
+            const loc2 = global.window.location;
+            loc2.hostname = 'www.example.com';
+            loc2.href = 'https://www.example.com/test';
 
             expect(netflixScript.isPlatformActive()).toBe(false);
         });

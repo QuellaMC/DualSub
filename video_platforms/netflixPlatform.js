@@ -1,14 +1,19 @@
 import { VideoPlatform } from './platform_interface.js';
 import Logger from '../utils/logger.js';
 import { configService } from '../services/configService.js';
+import { MessageActions } from '../content_scripts/shared/constants/messageActions.js';
 
 // Define constants for the injected script and communication events
 // It is crucial that these values match what you will use in 'netflixInject.js'
-const INJECT_SCRIPT_FILENAME = 'injected_scripts/netflixInject.js';
-const INJECT_SCRIPT_TAG_ID = 'netflix-dualsub-injector-script-tag';
-const INJECT_EVENT_ID = 'netflix-dualsub-injector-event'; // Must match netflixInject.js
+import { Injection } from '../content_scripts/shared/constants/injection.js';
 
-export class NetflixPlatform extends VideoPlatform {
+const INJECT_SCRIPT_FILENAME = Injection.netflix.SCRIPT_FILENAME;
+const INJECT_SCRIPT_TAG_ID = Injection.netflix.SCRIPT_TAG_ID;
+const INJECT_EVENT_ID = Injection.netflix.EVENT_ID; // Must match netflixInject.js
+
+import { BasePlatformAdapter } from './BasePlatformAdapter.js';
+
+export class NetflixPlatform extends BasePlatformAdapter {
     constructor() {
         super();
 
@@ -93,8 +98,7 @@ export class NetflixPlatform extends VideoPlatform {
     async initialize(onSubtitleUrlFound, onVideoIdChange) {
         if (!this.isPlatformActive()) return;
 
-        this.onSubtitleUrlFoundCallback = onSubtitleUrlFound;
-        this.onVideoIdChangeCallback = onVideoIdChange;
+        this.setCallbacks(onSubtitleUrlFound, onVideoIdChange);
 
         this.eventListener = this.handleInjectorEvents.bind(this);
         document.addEventListener(INJECT_EVENT_ID, this.eventListener);
@@ -189,10 +193,7 @@ export class NetflixPlatform extends VideoPlatform {
                 if (this.currentVideoId) {
                     delete this.lastKnownVttUrlForVideoId[this.currentVideoId];
                 }
-                this.currentVideoId = movieId;
-                if (this.onVideoIdChangeCallback) {
-                    this.onVideoIdChangeCallback(this.currentVideoId);
-                }
+                this.setVideoIdAndNotify(movieId);
             }
 
             // Check if timedtexttracks is an array and has content
@@ -366,7 +367,7 @@ export class NetflixPlatform extends VideoPlatform {
                         .then(({ sendRuntimeMessageWithRetry }) =>
                             sendRuntimeMessageWithRetry(
                                 {
-                                    action: 'fetchVTT',
+                                    action: MessageActions.FETCH_VTT,
                                     data: { tracks: timedtexttracks },
                                     videoId: this.currentVideoId,
                                     targetLanguage: targetLanguage,

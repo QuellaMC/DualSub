@@ -133,6 +133,14 @@ registerMessageHandler(action, handler, options);
 // - 'LOGGING_LEVEL_CHANGED': Updates the logging level.
 ```
 
+### Messaging Reliability (MV3)
+
+To communicate with the background service worker reliably under Manifest V3, use the shared messaging utilities that include retry and optional wake-up pings.
+
+- Location: `content_scripts/shared/messaging.js`
+- Use `sendRuntimeMessageWithRetry(message, options?)` for calls that may race with service worker startup or suspend.
+- On transient failures (e.g., receiving end does not exist, message port closed, no matching service worker, extension context invalidated), it will back off and optionally send `CHECK_BACKGROUND_READY`/`PING` signals before retrying.
+
 ### Handler Configuration
 
 ```javascript

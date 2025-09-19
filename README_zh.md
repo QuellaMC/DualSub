@@ -79,6 +79,14 @@
 
 2. **开发命令**
 
+提示：本项目使用 JSDoc `@ts-check` 进行类型检查。如需在编辑器中获得更好的 Chrome 扩展 API 智能提示，可选择性安装：
+
+```bash
+npm i -D chrome-types
+```
+
+可在文件顶部添加 `/// <reference types="chrome" />` 启用类型提示。可靠的消息通信工具位于 `content_scripts/shared/messaging.js`。
+
     ```bash
     # 代码格式化
     npm run format

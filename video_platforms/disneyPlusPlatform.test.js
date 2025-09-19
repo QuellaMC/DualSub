@@ -332,6 +332,8 @@ describe('DisneyPlusPlatform Logging Integration', () => {
             chromeApiMock.runtime.lastError = {
                 message: 'Extension context invalidated',
             };
+            // Force dynamic import path to fail so the code takes the callback-based fallback path
+            chromeApiMock.runtime.getURL = jest.fn(() => 'file:///non-existent-module.js');
             chromeApiMock.runtime.sendMessage.mockImplementation(
                 (message, callback) => {
                     callback();
