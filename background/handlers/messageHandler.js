@@ -78,15 +78,23 @@ class MessageHandler {
                 }
                 break;
             case MessageActions.FETCH_VTT:
-                // Accept either URL-based or Netflix data-based payload shape
-                if (
-                    !message.url &&
-                    !(message.data && Array.isArray(message.data.tracks))
-                ) {
-                    return {
-                        valid: false,
-                        error: 'fetchVTT requires url or data.tracks[]',
-                    };
+                // Accept URL-based, Netflix tracks-based, or Hulu transcripts-based payloads
+                if (!message.url) {
+                    const hasTracks = !!(message.data && Array.isArray(message.data.tracks));
+                    const hasTranscripts = !!(
+                        message.data &&
+                        message.data.transcripts &&
+                        (
+                            Array.isArray(message.data.transcripts.ttml) ||
+                            Array.isArray(message.data.transcripts.webvtt)
+                        )
+                    );
+                    if (!hasTracks && !hasTranscripts) {
+                        return {
+                            valid: false,
+                            error: 'fetchVTT requires url or data.tracks[] or data.transcripts{ttml|webvtt}[]',
+                        };
+                    }
                 }
                 break;
             default:
@@ -438,6 +446,8 @@ class MessageHandler {
 
         if (message.source === 'netflix') {
             this.handleNetflixVTTRequest(message, sendResponse);
+        } else if (message.source === 'hulu') {
+            this.handleHuluVTTRequest(message, sendResponse);
         } else {
             this.handleGenericVTTRequest(message, sendResponse);
         }
@@ -512,6 +522,43 @@ class MessageHandler {
                     errorType: response.error.type,
                     videoId,
                 });
+            });
+    }
+
+    /**
+     * Handle Hulu-specific VTT requests using transcripts list
+     */
+    handleHuluVTTRequest(message, sendResponse) {
+        const { data, videoId, targetLanguage, originalLanguage, useNativeSubtitles, useOfficialTranslations } = message;
+        const useOfficial = useOfficialTranslations !== undefined ? useOfficialTranslations : useNativeSubtitles;
+
+        if (!this.subtitleService) {
+            this.logger.error('Subtitle service not available');
+            sendResponse({ success: false, error: 'Subtitle service not initialized', videoId });
+            return true;
+        }
+
+        const transcripts = data?.transcripts || data;
+        this.subtitleService
+            .processHuluSubtitles(transcripts, targetLanguage, originalLanguage, useOfficial)
+            .then((result) => {
+                sendResponse({
+                    success: true,
+                    vttText: result.vttText,
+                    targetVttText: result.targetVttText,
+                    videoId,
+                    url: result.url || null,
+                    sourceLanguage: result.sourceLanguage,
+                    targetLanguage: result.targetLanguage,
+                    useNativeTarget: result.useNativeTarget,
+                    availableLanguages: result.availableLanguages,
+                    selectedLanguage: result.selectedLanguage,
+                    targetLanguageInfo: result.targetLanguageInfo,
+                });
+            })
+            .catch((error) => {
+                this.logger.error('Hulu VTT processing failed', error, { videoId });
+                sendResponse({ success: false, error: `VTT Processing Error: ${error.message}`, videoId });
             });
     }
 

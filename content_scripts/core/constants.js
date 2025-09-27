@@ -57,6 +57,14 @@ export const PLATFORM_CONSTANTS = {
         PLAYER_URL_PATTERN: '/video/',
         LOG_PREFIX: 'DisneyPlusContent',
     },
+    hulu: {
+        INJECT_SCRIPT_FILENAME: 'injected_scripts/huluInject.js',
+        INJECT_SCRIPT_TAG_ID: 'hulu-dualsub-injector-script-tag',
+        INJECT_EVENT_ID: 'hulu-dualsub-injector-event',
+        URL_PATTERNS: ['hulu.com'],
+        PLAYER_URL_PATTERN: '/watch/',
+        LOG_PREFIX: 'HuluContent',
+    },
 };
 
 /**
@@ -100,5 +108,24 @@ export const DEFAULT_PLATFORM_CONFIGS = {
             retryInterval: COMMON_CONSTANTS.VIDEO_DETECTION_INTERVAL,
         },
         logPrefix: PLATFORM_CONSTANTS.disneyplus.LOG_PREFIX,
+    },
+    hulu: {
+        name: 'hulu',
+        injectScript: {
+            filename: PLATFORM_CONSTANTS.hulu.INJECT_SCRIPT_FILENAME,
+            tagId: PLATFORM_CONSTANTS.hulu.INJECT_SCRIPT_TAG_ID,
+            eventId: PLATFORM_CONSTANTS.hulu.INJECT_EVENT_ID,
+        },
+        navigation: {
+            urlPatterns: PLATFORM_CONSTANTS.hulu.URL_PATTERNS,
+            spaHandling: true,
+            checkInterval: COMMON_CONSTANTS.URL_CHECK_INTERVAL,
+            playerUrlPattern: PLATFORM_CONSTANTS.hulu.PLAYER_URL_PATTERN,
+        },
+        videoDetection: {
+            maxRetries: COMMON_CONSTANTS.MAX_VIDEO_DETECTION_RETRIES,
+            retryInterval: COMMON_CONSTANTS.VIDEO_DETECTION_INTERVAL,
+        },
+        logPrefix: PLATFORM_CONSTANTS.hulu.LOG_PREFIX,
     },
 };

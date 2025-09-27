@@ -8,6 +8,7 @@
     "host_permissions": [
         "*://*.disneyplus.com/*",
         "*://*.netflix.com/*",
+        "*://*.hulu.com/*",
         "https://translate.googleapis.com/*",
         "https://api.cognitive.microsofttranslator.com/*",
         "https://edge.microsoft.com/*",
@@ -32,6 +33,13 @@
             "css": ["content_scripts/shared/content.css"],
             "run_at": "document_start",
             "type": "module"
+        },
+        {
+            "matches": ["*://*.hulu.com/*"],
+            "js": ["content_scripts/platforms/huluContent.js"],
+            "css": ["content_scripts/shared/content.css"],
+            "run_at": "document_start",
+            "type": "module"
         }
     ],
     "web_accessible_resources": [
@@ -46,7 +54,9 @@
                 "content_scripts/shared/constants/injection.js",
                 "content_scripts/shared/constants/providers.js",
                 "injected_scripts/disneyPlusInject.js",
+                "injected_scripts/huluInject.js",
                 "video_platforms/disneyPlusPlatform.js",
+                "video_platforms/huluPlatform.js",
                 "video_platforms/platform_interface.js",
                 "content_scripts/shared/subtitleUtilities.js",
                 "content_scripts/shared/messaging.js",
@@ -84,12 +94,13 @@
                 "content_scripts/core/utils.js",
                 "content_scripts/core/constants.js",
                 "content_scripts/platforms/DisneyPlusContentScript.js",
+                "content_scripts/platforms/HuluContentScript.js",
                 "utils/languageNormalization.js",
                 "injected_scripts/netflixInject.js",
                 "video_platforms/netflixPlatform.js",
                 "content_scripts/platforms/NetflixContentScript.js"
             ],
-            "matches": ["*://*.disneyplus.com/*", "*://*.netflix.com/*"]
+            "matches": ["*://*.disneyplus.com/*", "*://*.netflix.com/*", "*://*.hulu.com/*"]
         }
     ],
     "action": {

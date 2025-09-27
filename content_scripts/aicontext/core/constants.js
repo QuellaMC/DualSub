@@ -52,6 +52,18 @@ export const AI_CONTEXT_CONFIG = {
                 textSelection: true,
             },
         },
+        HULU: {
+            name: 'hulu',
+            selectors: {
+                subtitleContainer: '#inband-closed-caption, .ClosedCaption',
+                videoPlayer: '.ContentPlayer, .web-player, .player',
+            },
+            features: {
+                interactiveSubtitles: true,
+                contextModal: true,
+                textSelection: true,
+            },
+        },
     },
 
     // Feature flags

@@ -11,4 +11,9 @@ export const Injection = {
         SCRIPT_TAG_ID: 'disneyplus-dualsub-injector-script-tag',
         EVENT_ID: 'disneyplus-dualsub-injector-event',
     },
+    hulu: {
+        SCRIPT_FILENAME: 'injected_scripts/huluInject.js',
+        SCRIPT_TAG_ID: 'hulu-dualsub-injector-script-tag',
+        EVENT_ID: 'hulu-dualsub-injector-event',
+    },
 };

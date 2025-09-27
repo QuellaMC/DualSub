@@ -168,7 +168,8 @@ export function getOrCreateUiRoot() {
     dualsubUiRoot.style.left = '0';
     dualsubUiRoot.style.width = '100%';
     dualsubUiRoot.style.height = '100%';
-    dualsubUiRoot.style.zIndex = '9999'; // Above modal overlay (9998) but below modal content (10000)
+    // Raise above site overlays while leaving room for our modal content
+    dualsubUiRoot.style.zIndex = '2147483000';
 
     // Fallback parent if body is not yet available (document_start timing)
     const parentNode = document.body || document.documentElement;
@@ -606,7 +607,7 @@ export function applySubtitleStyling(config) {
             pointerEvents: 'auto',
             userSelect: 'text',
             cursor: 'default',
-            zIndex: '10001', // Higher than modal to ensure clickability
+            zIndex: '2147483002', // Ensure above site overlays and container
         });
 
         // Force consistent margins with !important to override any external CSS
@@ -837,10 +838,23 @@ export function ensureSubtitleContainer(
     }
 
     if (subtitleContainer && document.body.contains(subtitleContainer)) {
-        // Ensure subtitle container is always in UI root for unified container system
+        // Prefer anchoring subtitles inside the actual player container when available
+        // to avoid being positioned relative to the viewport (which can place them
+        // below the video when the player does not occupy full height).
         const uiRoot = getOrCreateUiRoot();
-        if (subtitleContainer.parentElement !== uiRoot) {
-            uiRoot.appendChild(subtitleContainer);
+        const playerParent = activePlatform?.getPlayerContainerElement?.();
+
+        // Ensure the player parent can host absolutely positioned children
+        if (
+            playerParent &&
+            getComputedStyle(playerParent).position === 'static'
+        ) {
+            playerParent.style.position = 'relative';
+        }
+
+        const desiredParent = playerParent || uiRoot;
+        if (subtitleContainer.parentElement !== desiredParent) {
+            desiredParent.appendChild(subtitleContainer);
         }
 
         applySubtitleStyling(config);
@@ -859,7 +873,7 @@ export function ensureSubtitleContainer(
         position: 'absolute',
         left: '50%',
         transform: 'translateX(-50%)',
-        zIndex: '9999',
+        zIndex: '2147483001',
         pointerEvents: 'none',
         width: '94%',
         maxWidth: 'none',
@@ -893,9 +907,19 @@ export function ensureSubtitleContainer(
     subtitleContainer.appendChild(originalSubtitleElement);
     subtitleContainer.appendChild(translatedSubtitleElement);
 
-    // Append to UI root container for fullscreen compatibility
+    // Append to the Hulu player container when available; otherwise fall back to UI root
     const uiRoot = getOrCreateUiRoot();
-    uiRoot.appendChild(subtitleContainer);
+    const playerParent = activePlatform?.getPlayerContainerElement?.();
+
+    if (
+        playerParent &&
+        getComputedStyle(playerParent).position === 'static'
+    ) {
+        playerParent.style.position = 'relative';
+    }
+
+    const desiredParent = playerParent || uiRoot;
+    desiredParent.appendChild(subtitleContainer);
 
     // Update subtitle position based on platform
     updateSubtitlePosition(activePlatform);
@@ -1111,13 +1135,15 @@ function attemptToSetupProgressBarObserver(
         }
         findProgressBarRetries = 0;
 
-        // Observe a stable container: prefer the shadowRoot so node replacements don't break observation
+        // Observe a stable container: prefer platform-provided target, then shadowRoot, then slider
         const rootNode = sliderElement.getRootNode?.();
         const progressBarHost =
             rootNode && rootNode.host
                 ? rootNode.host
                 : sliderElement.closest?.('progress-bar');
+        const stableTarget = activePlatform?.getProgressBarObserveTarget?.();
         const observeTarget =
+            stableTarget ||
             (rootNode && rootNode.nodeType === Node.DOCUMENT_FRAGMENT_NODE
                 ? rootNode
                 : null) || sliderElement;
@@ -1149,12 +1175,24 @@ function attemptToSetupProgressBarObserver(
                             mutation.attributeName === 'aria-valuemax')) ||
                     mutation.type === 'childList'
                 ) {
-                    // Only use the official Disney+ thumb under the progress-bar shadow root
-                    let targetElement = selectActiveThumb() || mutation.target;
-                    // Some UIs move aria attributes to child or sibling nodes; search nearby if missing
-                    let nowStr = targetElement.getAttribute('aria-valuenow');
-                    let maxStr = targetElement.getAttribute('aria-valuemax');
-                    let textStr = targetElement.getAttribute('aria-valuetext');
+                    // Prefer querying the platform slider element explicitly for stability
+                    const platformSlider =
+                        activePlatform?.getProgressBarElement?.() || null;
+
+                    // Use Disney+ thumb if available; otherwise fallback to platform slider or mutation target
+                    let targetElement =
+                        selectActiveThumb() || platformSlider || mutation.target;
+
+                    // Read attributes from the most stable element we have (platform slider preferred)
+                    let nowStr = (platformSlider || targetElement).getAttribute(
+                        'aria-valuenow'
+                    );
+                    let maxStr = (platformSlider || targetElement).getAttribute(
+                        'aria-valuemax'
+                    );
+                    let textStr = (platformSlider || targetElement).getAttribute(
+                        'aria-valuetext'
+                    );
 
                     logWithFallback('debug', 'Progress bar mutation observed', {
                         logPrefix,
@@ -1358,6 +1396,7 @@ export function updateSubtitles(
     }
 
     let foundCue = false;
+    let debugLoggedThisSecond = false;
     let originalActiveCue = null;
     let translatedActiveCue = null;
 
@@ -1620,9 +1659,18 @@ export function updateSubtitles(
             if (originalText.trim()) {
                 const newSig = computeTextSignature(originalText);
                 const prevSig = originalSubtitleElement.dataset.textSig || '';
+                // If interactive modules just loaded after initial render, force an upgrade to interactive spans
+                const needsInteractiveUpgrade =
+                    interactiveSubtitlesEnabled &&
+                    interactiveModulesLoaded &&
+                    typeof window !== 'undefined' &&
+                    !!window.dualsub_formatInteractiveSubtitleText &&
+                    originalTextFormatted.includes('dualsub-interactive-word') &&
+                    !originalSubtitleElement.innerHTML.includes('dualsub-interactive-word');
                 if (
                     newSig !== prevSig ||
-                    originalSubtitleElement.innerHTML === ''
+                    originalSubtitleElement.innerHTML === '' ||
+                    needsInteractiveUpgrade
                 ) {
                     // Notify AI Context modal about subtitle content change (debounced)
                     dispatchContentChangeDebounced(
@@ -1637,7 +1685,9 @@ export function updateSubtitles(
                     if (currentWholeSecond !== lastLoggedTimeSec) {
                         logWithFallback(
                             'debug',
-                            'Setting original subtitle (native mode).',
+                            needsInteractiveUpgrade
+                                ? 'Upgrading original subtitle to interactive (native mode).'
+                                : 'Setting original subtitle (native mode).',
                             { logPrefix, text: originalText }
                         );
                     }
@@ -1696,18 +1746,33 @@ export function updateSubtitles(
             if (originalText.trim()) {
                 const newSig = computeTextSignature(originalText);
                 const prevSig = originalSubtitleElement.dataset.textSig || '';
+                // If interactive modules just loaded after initial render, force an upgrade to interactive spans
+                const needsInteractiveUpgrade =
+                    interactiveSubtitlesEnabled &&
+                    interactiveModulesLoaded &&
+                    typeof window !== 'undefined' &&
+                    !!window.dualsub_formatInteractiveSubtitleText &&
+                    originalTextFormatted.includes('dualsub-interactive-word') &&
+                    !originalSubtitleElement.innerHTML.includes('dualsub-interactive-word');
                 if (
                     newSig !== prevSig ||
-                    originalSubtitleElement.innerHTML === ''
+                    originalSubtitleElement.innerHTML === '' ||
+                    needsInteractiveUpgrade
                 ) {
                     originalSubtitleElement.innerHTML = originalTextFormatted;
                     originalSubtitleElement.dataset.textSig = newSig;
                     contentChanged = true;
                     if (currentWholeSecond !== lastLoggedTimeSec) {
-                        logWithFallback('debug', 'Setting original subtitle.', {
-                            logPrefix,
-                            text: originalText,
-                        });
+                        logWithFallback(
+                            'debug',
+                            needsInteractiveUpgrade
+                                ? 'Upgrading original subtitle to interactive.'
+                                : 'Setting original subtitle.',
+                            {
+                                logPrefix,
+                                text: originalText,
+                            }
+                        );
                     }
                 }
                 originalSubtitleElement.style.display = 'inline-block';
@@ -1818,33 +1883,82 @@ export function updateSubtitles(
                     );
                 }
             }
-        }
-    } else {
-        // When no cue is found, avoid clearing during brief style/ID transitions
-        const withinStyleGrace = Date.now() - lastStyleApplicationTs < 800;
-        const withinLastWindow =
-            lastDisplayedCueWindow.start != null &&
-            lastDisplayedCueWindow.end != null &&
-            (lastDisplayedCueWindow.videoId == null ||
-                platformVideoId === lastDisplayedCueWindow.videoId) &&
-            currentTime >= lastDisplayedCueWindow.start &&
-            currentTime <= lastDisplayedCueWindow.end;
+        } else {
+            // No content change, but ensure interactive listeners exist (Hulu can remount containers)
+            if (
+                interactiveSubtitlesEnabled &&
+                interactiveModulesLoaded &&
+                window.dualsub_attachInteractiveEventListeners &&
+                originalSubtitleElement &&
+                originalSubtitleElement.style.display !== 'none' &&
+                originalSubtitleElement.innerHTML.includes('dualsub-interactive-word') &&
+                originalSubtitleElement.getAttribute('data-interactive-listeners') !== 'true'
+            ) {
+                try {
+                    window.dualsub_attachInteractiveEventListeners(
+                        originalSubtitleElement,
+                        {
+                            sourceLanguage: config.sourceLanguage || 'unknown',
+                            targetLanguage: config.targetLanguage || 'unknown',
+                            subtitleType: 'original',
+                        }
+                    );
+                    logWithFallback(
+                        'debug',
+                        'Re-attached interactive listeners (no content change path)',
+                        {
+                            originalElementId: originalSubtitleElement.id,
+                            logPrefix,
+                        }
+                    );
+                } catch (error) {
+                    logWithFallback(
+                        'warn',
+                        'Failed to re-attach interactive listeners on stable content',
+                        {
+                            error: error.message,
+                            stack: error.stack,
+                            logPrefix,
+                        }
+                    );
+                }
+            }
 
-        if (withinStyleGrace || withinLastWindow) {
+            // Diagnostic logging for Hulu: no active cue
+            if (currentWholeSecond !== lastLoggedTimeSec) {
+                logWithFallback('debug', 'No active cue found at time', {
+                    logPrefix,
+                    time: currentTime.toFixed(2),
+                    queueLength: subtitleQueue.length,
+                    videoId: platformVideoId,
+                });
+            }
+            // When no cue is found, avoid clearing during brief style/ID transitions
+            const withinStyleGrace = Date.now() - lastStyleApplicationTs < 800;
+            const withinLastWindow =
+                lastDisplayedCueWindow.start != null &&
+                lastDisplayedCueWindow.end != null &&
+                (lastDisplayedCueWindow.videoId == null ||
+                    platformVideoId === lastDisplayedCueWindow.videoId) &&
+                currentTime >= lastDisplayedCueWindow.start &&
+                currentTime <= lastDisplayedCueWindow.end;
+
+            if (withinStyleGrace || withinLastWindow) {
+                if (originalSubtitleElement.innerHTML)
+                    originalSubtitleElement.style.display = 'inline-block';
+                if (translatedSubtitleElement.innerHTML)
+                    translatedSubtitleElement.style.display = 'inline-block';
+                return;
+            }
+
             if (originalSubtitleElement.innerHTML)
-                originalSubtitleElement.style.display = 'inline-block';
+                originalSubtitleElement.innerHTML = '';
+            originalSubtitleElement.style.display = 'none';
+
             if (translatedSubtitleElement.innerHTML)
-                translatedSubtitleElement.style.display = 'inline-block';
-            return;
+                translatedSubtitleElement.innerHTML = '';
+            translatedSubtitleElement.style.display = 'none';
         }
-
-        if (originalSubtitleElement.innerHTML)
-            originalSubtitleElement.innerHTML = '';
-        originalSubtitleElement.style.display = 'none';
-
-        if (translatedSubtitleElement.innerHTML)
-            translatedSubtitleElement.innerHTML = '';
-        translatedSubtitleElement.style.display = 'none';
     }
 }
 

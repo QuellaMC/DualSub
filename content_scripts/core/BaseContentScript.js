@@ -1245,6 +1245,33 @@ export class BaseContentScript {
 
                 // Setup fullscreen handling for interactive subtitles
                 this._setupFullscreenHandling();
+
+                // Force an immediate subtitle re-render to upgrade existing text to interactive spans
+                try {
+                    const videoElement = this.activePlatform?.getVideoElement?.();
+                    if (
+                        videoElement &&
+                        this.subtitleUtils?.updateSubtitles &&
+                        this.activePlatform
+                    ) {
+                        this.subtitleUtils.updateSubtitles(
+                            videoElement.currentTime || 0,
+                            this.activePlatform,
+                            this.currentConfig,
+                            this.logPrefix
+                        );
+                        this.logWithFallback(
+                            'debug',
+                            'Triggered immediate subtitle re-render after interactive init (no AI)'
+                        );
+                    }
+                } catch (e) {
+                    this.logWithFallback(
+                        'debug',
+                        'Immediate re-render after interactive init failed',
+                        { error: e?.message }
+                    );
+                }
             } else {
                 this.logWithFallback(
                     'warn',
@@ -1323,6 +1350,33 @@ export class BaseContentScript {
                         platform: this.getPlatformName(),
                     }
                 );
+
+                // Force an immediate subtitle re-render to upgrade existing text to interactive spans
+                try {
+                    const videoElement = this.activePlatform?.getVideoElement?.();
+                    if (
+                        videoElement &&
+                        this.subtitleUtils?.updateSubtitles &&
+                        this.activePlatform
+                    ) {
+                        this.subtitleUtils.updateSubtitles(
+                            videoElement.currentTime || 0,
+                            this.activePlatform,
+                            this.currentConfig,
+                            this.logPrefix
+                        );
+                        this.logWithFallback(
+                            'debug',
+                            'Triggered immediate subtitle re-render after interactive init (AI)'
+                        );
+                    }
+                } catch (e) {
+                    this.logWithFallback(
+                        'debug',
+                        'Immediate re-render after interactive init (AI) failed',
+                        { error: e?.message }
+                    );
+                }
             } else {
                 this.logWithFallback(
                     'warn',
@@ -1512,6 +1566,7 @@ export class BaseContentScript {
     _getPlatformFileName(platformName) {
         if (platformName === 'disneyplus') return 'disneyPlusPlatform.js';
         if (platformName === 'netflix') return 'netflixPlatform.js';
+        if (platformName === 'hulu') return 'huluPlatform.js';
         return `${platformName.charAt(0).toUpperCase()}${platformName.slice(1)}Platform.js`;
     }
 

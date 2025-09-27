@@ -756,6 +756,8 @@ export class PlayerReadyDetector {
                 return this._isNetflixReady();
             case 'disneyplus':
                 return this._isDisneyPlusReady();
+            case 'hulu':
+                return this._isHuluReady();
             default:
                 return true;
         }
@@ -795,6 +797,20 @@ export class PlayerReadyDetector {
         // Check for control elements (indicates player is interactive)
         const controls = document.querySelector('.controls, .player-controls');
         return !!controls;
+    }
+
+    /**
+     * A Hulu-specific readiness check.
+     * @private
+     * @returns {boolean} `true` if the Hulu player is ready.
+     */
+    _isHuluReady() {
+        // Check for Hulu player timeline and caption containers
+        const slider = document.querySelector(
+            '.Timeline__slider[aria-valuenow][aria-valuemax], div[role="slider"][aria-valuenow][aria-valuemax]'
+        );
+        const cc = document.querySelector('#inband-closed-caption, .ClosedCaption');
+        return !!(slider || cc);
     }
 
     /**
@@ -889,6 +905,21 @@ export const PLATFORM_DOM_CONFIGS = {
         ],
         maxRetries: 30,
         retryInterval: 500,
+    },
+
+    hulu: {
+        videoSelectors: [
+            'video',
+            '.player video',
+            '.web-player video'
+        ],
+        parentSelectors: [
+            '.player',
+            '.web-player',
+            '.video-player',
+        ],
+        maxRetries: 30,
+        retryInterval: 1000,
     },
 };
 

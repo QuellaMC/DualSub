@@ -13,6 +13,7 @@
 import { loggingManager } from '../utils/loggingManager.js';
 import { vttParser } from '../parsers/vttParser.js';
 import { netflixParser } from '../parsers/netflixParser.js';
+import { ttmlParser } from '../parsers/ttmlParser.js';
 import { normalizeLanguageCode } from '../../utils/languageNormalization.js';
 import {
     errorHandler,
@@ -36,7 +37,7 @@ class SubtitleService {
     constructor() {
         this.logger = null;
         this.isInitialized = false;
-        this.supportedPlatforms = new Set(['netflix', 'disneyplus', 'generic']);
+this.supportedPlatforms = new Set(['netflix', 'disneyplus', 'hulu', 'generic']);
         this.processingCache = new Map();
         this.performanceMetrics = {
             totalProcessed: 0,
@@ -387,6 +388,15 @@ class SubtitleService {
                     );
                     break;
 
+                case 'hulu':
+                    result = await this.processHuluSubtitles(
+                        data.transcripts || data,
+                        options.targetLanguage,
+                        options.originalLanguage,
+                        options.useNativeSubtitles || options.useOfficialTranslations
+                    );
+                    break;
+
                 default:
                     throw new Error(
                         `Platform processing not implemented: ${platform}`
@@ -615,6 +625,168 @@ class SubtitleService {
         }
 
         return match || null;
+    }
+    /**
+     * Process Hulu subtitles using transcripts list (TTML and/or WebVTT)
+     * @param {Object} transcripts - { ttml: Array<{lang,url,display_name}>, webvtt: Array<{lang,url,display_name}> }
+     * @param {string} targetLanguage
+     * @param {string} originalLanguage
+     * @param {boolean} useOfficialSubtitles
+     * @returns {Promise<SubtitleProcessingResult>}
+     */
+    async processHuluSubtitles(
+        transcripts,
+        targetLanguage,
+        originalLanguage,
+        useOfficialSubtitles = true
+    ) {
+        this.logger.info('Processing Hulu subtitles', {
+            hasTTML: Array.isArray(transcripts?.ttml) && transcripts.ttml.length > 0,
+            hasVTT: Array.isArray(transcripts?.webvtt) && transcripts.webvtt.length > 0,
+            targetLanguage,
+            originalLanguage,
+            useOfficialSubtitles,
+        });
+
+        const toNormalized = (lang) => normalizeLanguageCode(lang || '');
+
+        // Build available languages list (merge VTT and TTML, prefer VTT if duplicate)
+        const mapByLang = new Map();
+        const addToMap = (arr, kind) => {
+            (arr || []).forEach((e) => {
+                const code = toNormalized(e.lang || e.language || e.display_name);
+                const entry = mapByLang.get(code) || {
+                    rawCode: e.lang || e.language || code,
+                    normalizedCode: code,
+                    displayName: e.display_name || e.lang || code,
+                    vttUrl: null,
+                    ttmlUrl: null,
+                };
+                if (kind === 'vtt') entry.vttUrl = e.url;
+                if (kind === 'ttml') entry.ttmlUrl = e.url;
+                mapByLang.set(code, entry);
+            });
+        };
+        addToMap(transcripts?.webvtt, 'vtt');
+        addToMap(transcripts?.ttml, 'ttml');
+        const availableLanguages = Array.from(mapByLang.values());
+
+        // Helper to pick best track for a language with fallback to en and then first available
+        const pickBestFor = (langWanted) => {
+            const normalizedWanted = toNormalized(langWanted || '');
+            const exact = availableLanguages.find((l) => l.normalizedCode === normalizedWanted);
+            if (exact) return exact;
+            // partial match
+            const partial = availableLanguages.find(
+                (l) =>
+                    l.normalizedCode.startsWith(normalizedWanted) ||
+                    normalizedWanted.startsWith(l.normalizedCode)
+            );
+            if (partial) return partial;
+            return null;
+        };
+
+        // Select original language track
+        let originalInfo = pickBestFor(originalLanguage);
+        if (!originalInfo && originalLanguage && originalLanguage.toLowerCase() !== 'en') {
+            originalInfo = pickBestFor('en');
+        }
+        if (!originalInfo && availableLanguages.length > 0) {
+            originalInfo = availableLanguages[0];
+        }
+        if (!originalInfo) {
+            throw new Error('No suitable Hulu subtitle language found');
+        }
+
+        // Fetch original VTT (prefer native VTT, fallback to TTML->VTT)
+        let originalVttText = '';
+        let usedOriginalUrl = null;
+        try {
+            if (originalInfo.vttUrl) {
+                originalVttText = await vttParser.fetchText(originalInfo.vttUrl);
+                usedOriginalUrl = originalInfo.vttUrl;
+                if (!originalVttText.trim().toUpperCase().startsWith('WEBVTT')) {
+                    // Not VTT? try TTML conversion if available
+                    if (originalInfo.ttmlUrl) {
+                        const ttml = await vttParser.fetchText(originalInfo.ttmlUrl);
+                        originalVttText = ttmlParser.convertTtmlToVtt(ttml);
+                        usedOriginalUrl = originalInfo.ttmlUrl;
+                    } else {
+                        throw new Error('Fetched non-VTT content and no TTML fallback');
+                    }
+                }
+            } else if (originalInfo.ttmlUrl) {
+                const ttml = await vttParser.fetchText(originalInfo.ttmlUrl);
+                originalVttText = ttmlParser.convertTtmlToVtt(ttml);
+                usedOriginalUrl = originalInfo.ttmlUrl;
+            } else {
+                throw new Error('Original language has neither VTT nor TTML URL');
+            }
+        } catch (e) {
+            this.logger.error('Failed to fetch/convert original Hulu subtitle', e, {
+                language: originalInfo.normalizedCode,
+                vttUrl: originalInfo.vttUrl,
+                ttmlUrl: originalInfo.ttmlUrl,
+            });
+            throw e;
+        }
+
+        // Select target language if official subtitles requested
+        let targetVttText = null;
+        let useNativeTarget = false;
+        let targetInfo = null;
+        if (useOfficialSubtitles && targetLanguage) {
+            targetInfo = pickBestFor(targetLanguage);
+            if (targetInfo) {
+                try {
+                    if (targetInfo.vttUrl) {
+                        targetVttText = await vttParser.fetchText(targetInfo.vttUrl);
+                        if (!targetVttText.trim().toUpperCase().startsWith('WEBVTT')) {
+                            if (targetInfo.ttmlUrl) {
+                                const ttml = await vttParser.fetchText(targetInfo.ttmlUrl);
+                                targetVttText = ttmlParser.convertTtmlToVtt(ttml);
+                            } else {
+                                targetVttText = null; // invalid VTT and no TTML fallback
+                            }
+                        }
+                    } else if (targetInfo.ttmlUrl) {
+                        const ttml = await vttParser.fetchText(targetInfo.ttmlUrl);
+                        targetVttText = ttmlParser.convertTtmlToVtt(ttml);
+                    }
+
+                    if (targetVttText) {
+                        useNativeTarget = true;
+                    }
+                } catch (e) {
+                    this.logger.warn('Failed to fetch/convert target Hulu subtitle - will fall back', e, {
+                        language: targetLanguage,
+                    });
+                    targetVttText = null;
+                    useNativeTarget = false;
+                }
+            }
+        }
+
+        const result = {
+            vttText: originalVttText,
+            targetVttText: targetVttText || originalVttText,
+            sourceLanguage: toNormalized(originalInfo.normalizedCode),
+            targetLanguage: normalizeLanguageCode(targetLanguage || ''),
+            useNativeTarget,
+            availableLanguages,
+            url: usedOriginalUrl,
+            selectedLanguage: originalInfo.normalizedCode,
+            targetLanguageInfo: targetInfo || { code: targetLanguage },
+        };
+
+        this.logger.info('Hulu subtitle processing completed', {
+            useNativeTarget: result.useNativeTarget,
+            sourceLanguage: result.sourceLanguage,
+            targetLanguage: result.targetLanguage,
+            availableLanguageCount: availableLanguages.length,
+        });
+
+        return result;
     }
 }
 
