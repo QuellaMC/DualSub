@@ -18,6 +18,7 @@ async function getConfig() {
         'vertexLocation',
         'vertexModel',
     ]);
+    // test gpg sign
 
     const model = config.vertexModel || 'gemini-1.5-flash';
 
