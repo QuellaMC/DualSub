@@ -35,8 +35,8 @@ body {
 
 .container {
     display: flex;
-    width: 100%;
-    max-width: 1000px;
+    width: 1000px; /* Fixed width instead of 100% */
+    max-width: 100%; /* Allow responsive on smaller screens */
     height: 80vh;
     min-height: 600px;
     background-color: var(--card-bg);
@@ -51,6 +51,7 @@ body {
 .sidebar {
     background-color: var(--sidebar-bg);
     width: 220px;
+    flex-shrink: 0; /* Prevent sidebar from shrinking */
     padding: 20px;
     border-right: 1px solid var(--border-color);
     display: flex;
@@ -102,6 +103,8 @@ body {
 /* Main Content */
 .content {
     flex: 1;
+    min-width: 0; /* Allow flex item to shrink */
+    width: 100%; /* Maintain consistent width */
     padding: 40px;
     overflow-y: auto;
     background-color: var(--background-color);

@@ -273,7 +273,17 @@ For full license terms, see [LICENSE](LICENSE) file.
 
 ## 📋 Changelog
 
-### Version 2.3.2 (Current)
+### Version 2.4.0 (Current)
+
+- 🎉 **Full React Migration**: Popup and options pages migrated to React with 100% functional parity
+- ✨ Modern component-based architecture with custom hooks
+- 📦 Vite build system for optimized production bundles
+- 🐛 Fixed container width consistency and i18n translation keys
+- 📝 Comprehensive migration documentation
+
+See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
+
+### Version 2.3.2
 
 - Messaging reliability: Refactored messaging utilities to support both callback- and promise-style chrome.runtime.sendMessage, with wake-up retries for MV3 service worker.
 - Unified resilient message sending across platform adapters (BasePlatformAdapter + Netflix), improving background communication stability and test determinism.
