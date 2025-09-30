@@ -3,6 +3,7 @@ export default {
     transform: {},
     moduleFileExtensions: ['js', 'json'],
     testMatch: ['**/tests/**/*.js', '**/?(*.)+(spec|test).js'],
+    testPathIgnorePatterns: ['/node_modules/', '/dist/'],
     collectCoverageFrom: [
         'utils/**/*.js',
         'services/**/*.js',
