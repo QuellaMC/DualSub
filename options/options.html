@@ -821,6 +821,49 @@
                         </div>
                     </div>
 
+                    <!-- Vertex AI Gemini Card -->
+                    <div
+                        class="setting-card"
+                        id="vertexProviderCard"
+                        style="display: none"
+                    >
+                        <h3 data-i18n="cardVertexGeminiTitle">
+                            Vertex AI Gemini (API Key Required)
+                        </h3>
+                        <p data-i18n="cardVertexGeminiDesc">
+                            Enter your access token and Vertex project settings.
+                        </p>
+                        <div class="setting">
+                            <label for="vertexAccessToken" data-i18n="vertexAccessTokenLabel">Access Token:</label>
+                            <input type="password" id="vertexAccessToken" placeholder="ya29...." />
+                        </div>
+                        <div class="setting">
+                            <label for="vertexProjectId" data-i18n="vertexProjectIdLabel">Project ID:</label>
+                            <input type="text" id="vertexProjectId" placeholder="your-gcp-project-id" />
+                        </div>
+                        <div class="setting">
+                            <label for="vertexLocation" data-i18n="vertexLocationLabel">Location:</label>
+                            <input type="text" id="vertexLocation" placeholder="us-central1" />
+                        </div>
+                        <div class="setting">
+                            <label for="vertexServiceAccountJson" data-i18n="vertexServiceAccountJsonLabel">Service Account JSON:</label>
+                            <input type="file" id="vertexServiceAccountJson" accept=".json,application/json" />
+                        </div>
+                        <div class="setting">
+                            <div id="vertexJsonImportResult" class="test-result" aria-live="polite"></div>
+                        </div>
+                        <div class="setting">
+                            <label for="vertexModel" data-i18n="vertexModelLabel">Model:</label>
+                            <input type="text" id="vertexModel" placeholder="gemini-1.5-flash" />
+                        </div>
+                        <div class="setting openai-test-setting">
+                            <div id="vertexTestResult" class="test-result" aria-live="polite"></div>
+                            <button id="testVertexButton" type="button" class="btn-sparkle" data-i18n="testConnectionButton">
+                                <span class="text">Test Connection</span>
+                            </button>
+                        </div>
+                    </div>
+
                     <!-- DeepL Card -->
                     <div
                         class="setting-card"

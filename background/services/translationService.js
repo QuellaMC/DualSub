@@ -32,6 +32,7 @@ import {
     ProviderNames,
     ProviderBatchConfigs,
 } from '../../content_scripts/shared/constants/providers.js';
+import { translate as vertexGeminiTranslate, translateBatch as vertexGeminiTranslateBatch } from '../../translation_providers/geminiVertexTranslate.js';
 import TTLCache from '../../utils/cache/TTLCache.js';
 
 /**
@@ -120,6 +121,25 @@ class TranslationService {
                     delimiter:
                         ProviderBatchConfigs[Providers.OPENAI_COMPATIBLE]
                             .delimiter,
+                },
+            },
+            [Providers.VERTEX_GEMINI]: {
+                name: ProviderNames[Providers.VERTEX_GEMINI],
+                translate: vertexGeminiTranslate,
+                translateBatch: vertexGeminiTranslateBatch,
+                supportsBatch: true,
+                rateLimit: {
+                    type: 'requests_per_minute',
+                    requests: 3000,
+                    window: 60000,
+                    mandatoryDelay: 100,
+                },
+                category: 'api_key',
+                batchOptimizations: {
+                    maxBatchSize: ProviderBatchConfigs[Providers.VERTEX_GEMINI].maxBatchSize,
+                    contextPreservation: true,
+                    exponentialBackoff: true,
+                    delimiter: ProviderBatchConfigs[Providers.VERTEX_GEMINI].delimiter,
                 },
             },
         };
