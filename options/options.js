@@ -182,7 +182,6 @@ document.addEventListener('DOMContentLoaded', function () {
         deepl: 'providerDeepLName',
         deepl_free: 'providerDeepLFreeName',
         openai_compatible: 'providerOpenAICompatibleName',
-        vertex_gemini: 'providerVertexGeminiName',
     };
 
     // Helper functions first (no dependencies)
@@ -594,14 +593,12 @@ document.addEventListener('DOMContentLoaded', function () {
         const openaiCompatibleCard = document.getElementById(
             'openaiCompatibleProviderCard'
         );
-        const vertexCard = document.getElementById('vertexProviderCard');
 
         googleCard.style.display = 'none';
         microsoftCard.style.display = 'none';
         deeplCard.style.display = 'none';
         deeplFreeCard.style.display = 'none';
         openaiCompatibleCard.style.display = 'none';
-        if (vertexCard) vertexCard.style.display = 'none';
 
         // Show the selected provider card
         switch (selectedProvider) {
@@ -622,10 +619,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 // Auto-fetch models when OpenAI provider is selected and credentials are configured
                 // This ensures the model list is always up-to-date when users visit the settings
                 initializeOpenAITestStatus();
-                break;
-            case 'vertex_gemini':
-                if (vertexCard) vertexCard.style.display = 'block';
-                initializeVertexPrefill();
                 break;
             default:
                 // Show DeepL Free as default
@@ -1039,12 +1032,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 geminiApiKey,
                 geminiModel,
 
-                // Vertex provider settings
-                vertexAccessToken,
-                vertexProjectId,
-                vertexLocation,
-                vertexModel,
-
                 aiContextTimeout,
                 aiContextRateLimit,
                 aiContextCacheEnabled,
@@ -1102,15 +1089,6 @@ document.addEventListener('DOMContentLoaded', function () {
             // AI Context Settings
             if (aiContextEnabledCheckbox)
                 aiContextEnabledCheckbox.checked = aiContextEnabled;
-            // Vertex Provider
-            const vertexAccessTokenInput = document.getElementById('vertexAccessToken');
-            const vertexProjectIdInput = document.getElementById('vertexProjectId');
-            const vertexLocationInput = document.getElementById('vertexLocation');
-            const vertexModelInput = document.getElementById('vertexModel');
-            if (vertexAccessTokenInput) vertexAccessTokenInput.value = vertexAccessToken || '';
-            if (vertexProjectIdInput) vertexProjectIdInput.value = vertexProjectId || '';
-            if (vertexLocationInput) vertexLocationInput.value = vertexLocation || 'us-central1';
-            if (vertexModelInput) vertexModelInput.value = vertexModel || 'gemini-1.5-flash';
             if (aiContextProviderSelect)
                 aiContextProviderSelect.value = aiContextProvider;
             if (openaiApiKeyInput) openaiApiKeyInput.value = openaiApiKey;
@@ -1248,275 +1226,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             );
         });
-
-    function initializeVertexPrefill() {
-        // No-op placeholder to prefill or test in future
-    }
-
-    // ---- Vertex Service Account JSON Import & OAuth (in-page) ----
-    const vertexJsonFileInput = document.getElementById('vertexServiceAccountJson');
-    const vertexJsonImportResult = document.getElementById('vertexJsonImportResult');
-
-    const showVertexImportStatus = function (message, type) {
-        if (!vertexJsonImportResult) return;
-        vertexJsonImportResult.style.display = 'block';
-        vertexJsonImportResult.textContent = message;
-        vertexJsonImportResult.classList.remove('success', 'error', 'warning', 'info');
-        vertexJsonImportResult.classList.add(type);
-    };
-
-    function base64UrlEncodeString(input) {
-        const base64 = btoa(input);
-        return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
-    }
-
-    function base64UrlEncodeBytes(buffer) {
-        const bytes = new Uint8Array(buffer);
-        let binary = '';
-        for (let i = 0; i < bytes.byteLength; i++) {
-            binary += String.fromCharCode(bytes[i]);
-        }
-        return base64UrlEncodeString(binary);
-    }
-
-    function pemToArrayBuffer(pem) {
-        const cleaned = pem
-            .replace(/-----BEGIN [^-]+-----/g, '')
-            .replace(/-----END [^-]+-----/g, '')
-            .replace(/\s+/g, '');
-        const raw = atob(cleaned);
-        const buffer = new ArrayBuffer(raw.length);
-        const view = new Uint8Array(buffer);
-        for (let i = 0; i < raw.length; i++) {
-            view[i] = raw.charCodeAt(i);
-        }
-        return buffer;
-    }
-
-    async function importPrivateKey(pem) {
-        const keyData = pemToArrayBuffer(pem);
-        return await crypto.subtle.importKey(
-            'pkcs8',
-            keyData,
-            { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
-            false,
-            ['sign']
-        );
-    }
-
-    async function signJwtRS256(headerObj, payloadObj, privateKeyPem) {
-        const encoder = new TextEncoder();
-        const header = base64UrlEncodeString(JSON.stringify(headerObj));
-        const payload = base64UrlEncodeString(JSON.stringify(payloadObj));
-        const unsignedToken = `${header}.${payload}`;
-        const key = await importPrivateKey(privateKeyPem);
-        const signature = await crypto.subtle.sign(
-            { name: 'RSASSA-PKCS1-v1_5' },
-            key,
-            encoder.encode(unsignedToken)
-        );
-        const sig = base64UrlEncodeBytes(signature);
-        return `${unsignedToken}.${sig}`;
-    }
-
-    async function getAccessTokenFromServiceAccount(saJson) {
-        const now = Math.floor(Date.now() / 1000);
-        const iat = now;
-        const exp = now + 3600; // 1 hour
-        const tokenUri = saJson.token_uri || 'https://oauth2.googleapis.com/token';
-        const scope = 'https://www.googleapis.com/auth/cloud-platform';
-
-        const header = { alg: 'RS256', typ: 'JWT' };
-        const claims = {
-            iss: saJson.client_email,
-            scope,
-            aud: tokenUri,
-            iat,
-            exp,
-        };
-
-        const jwt = await signJwtRS256(header, claims, saJson.private_key);
-
-        const body = new URLSearchParams();
-        body.set('grant_type', 'urn:ietf:params:oauth:grant-type:jwt-bearer');
-        body.set('assertion', jwt);
-
-        const res = await fetch(tokenUri, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: body.toString(),
-        });
-
-        if (!res.ok) {
-            const text = await res.text();
-            throw new Error(`Token exchange failed: ${res.status} ${res.statusText} ${text}`);
-        }
-
-        const data = await res.json();
-        if (!data.access_token) {
-            throw new Error('Token exchange response missing access_token');
-        }
-        return { accessToken: data.access_token, expiresIn: data.expires_in || 3600 };
-    }
-
-    async function handleVertexJsonUpload(event) {
-        try {
-            const input = event.target;
-            if (!input || !input.files || input.files.length === 0) return;
-            const file = input.files[0];
-            const text = await file.text();
-            let sa;
-            try {
-                sa = JSON.parse(text);
-            } catch (e) {
-                showVertexImportStatus('Invalid JSON file.', 'error');
-                return;
-            }
-
-            const required = ['type', 'project_id', 'private_key', 'client_email'];
-            const missing = required.filter((k) => !sa[k] || typeof sa[k] !== 'string' || sa[k].trim() === '');
-            if (missing.length > 0) {
-                showVertexImportStatus(`Missing fields: ${missing.join(', ')}`, 'error');
-                return;
-            }
-            if (sa.type !== 'service_account') {
-                showVertexImportStatus('JSON is not a service account key.', 'error');
-                return;
-            }
-
-            showVertexImportStatus('Generating access token...', 'info');
-            const { accessToken } = await getAccessTokenFromServiceAccount(sa);
-
-            // Persist config
-            await configService.setMultiple({
-                vertexProjectId: sa.project_id,
-                vertexAccessToken: accessToken,
-            });
-
-            // Prefill UI inputs
-            const vertexProjectIdInput = document.getElementById('vertexProjectId');
-            const vertexAccessTokenInput = document.getElementById('vertexAccessToken');
-            if (vertexProjectIdInput) vertexProjectIdInput.value = sa.project_id;
-            if (vertexAccessTokenInput) vertexAccessTokenInput.value = accessToken;
-
-            // Switch provider to Vertex for immediate usage
-            if (translationProviderSelect) {
-                translationProviderSelect.value = 'vertex_gemini';
-                await saveSetting('selectedProvider', 'vertex_gemini');
-                updateProviderSettings();
-            }
-
-            showVertexImportStatus('✅ Service account imported and token generated.', 'success');
-
-            // Auto-test connection
-            const testBtn = document.getElementById('testVertexButton');
-            if (testBtn) {
-                setTimeout(() => testBtn.click(), 300);
-            }
-        } catch (err) {
-            showVertexImportStatus(`Import failed: ${err.message}`, 'error');
-        } finally {
-            // Clear file input so same file can be re-selected if needed
-            if (vertexJsonFileInput) vertexJsonFileInput.value = '';
-        }
-    }
-
-    if (vertexJsonFileInput) {
-        vertexJsonFileInput.addEventListener('change', handleVertexJsonUpload);
-    }
-
-    // Vertex settings listeners
-    const vertexAccessTokenInput = document.getElementById('vertexAccessToken');
-    if (vertexAccessTokenInput) {
-        vertexAccessTokenInput.addEventListener('change', async function () {
-            await saveSetting('vertexAccessToken', this.value);
-        });
-    }
-    const vertexProjectIdInput = document.getElementById('vertexProjectId');
-    if (vertexProjectIdInput) {
-        vertexProjectIdInput.addEventListener('change', async function () {
-            await saveSetting('vertexProjectId', this.value);
-        });
-    }
-    const vertexLocationInput = document.getElementById('vertexLocation');
-    if (vertexLocationInput) {
-        vertexLocationInput.addEventListener('change', async function () {
-            await saveSetting('vertexLocation', this.value);
-        });
-    }
-    const vertexModelInput = document.getElementById('vertexModel');
-    if (vertexModelInput) {
-        vertexModelInput.addEventListener('change', async function () {
-            await saveSetting('vertexModel', this.value);
-        });
-    }
-
-    // Test Vertex connection (simple echo call)
-    const testVertexButton = document.getElementById('testVertexButton');
-    const vertexTestResult = document.getElementById('vertexTestResult');
-    if (testVertexButton && vertexTestResult) {
-        testVertexButton.addEventListener('click', async function () {
-            const accessToken = (document.getElementById('vertexAccessToken')?.value || '').trim();
-            const projectId = (document.getElementById('vertexProjectId')?.value || '').trim();
-            const location = (document.getElementById('vertexLocation')?.value || '').trim() || 'us-central1';
-            const model = (document.getElementById('vertexModel')?.value || '').trim() || 'gemini-1.5-flash';
-
-            if (!accessToken || !projectId) {
-                showTestResult(
-                    vertexTestResult,
-                    getLocalizedText('vertexMissingConfig', 'Please enter access token and project ID.'),
-                    'error'
-                );
-                return;
-            }
-
-            showTestResult(
-                vertexTestResult,
-                getLocalizedText('openaiTestingConnection', 'Testing connection...'),
-                'info'
-            );
-
-            try {
-                const normalizedModel = model.startsWith('models/') ? model.split('/').pop() : model;
-                const endpoint = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/${normalizedModel}:generateContent`;
-
-                const body = {
-                    contents: [{ role: 'user', parts: [{ text: 'ping' }] }],
-                    generationConfig: { temperature: 0 },
-                };
-                const res = await fetch(endpoint, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Authorization: `Bearer ${accessToken}`,
-                    },
-                    body: JSON.stringify(body),
-                });
-
-                if (!res.ok) {
-                    const text = await res.text();
-                    showTestResult(
-                        vertexTestResult,
-                        getLocalizedText('vertexConnectionFailed', 'Connection failed: %s', `${res.status} ${res.statusText}`),
-                        'error'
-                    );
-                    return;
-                }
-
-                showTestResult(
-                    vertexTestResult,
-                    getLocalizedText('openaiConnectionSuccessful', 'Connection successful!'),
-                    'success'
-                );
-            } catch (e) {
-                showTestResult(
-                    vertexTestResult,
-                    getLocalizedText('vertexConnectionFailed', 'Connection failed: %s', e.message),
-                    'error'
-                );
-            }
-        });
-    }
 
     // Batch Translation Settings Event Listeners
     batchingEnabledCheckbox.addEventListener('change', async function () {
