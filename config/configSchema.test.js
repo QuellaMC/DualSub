@@ -181,7 +181,7 @@ describe('configSchema', () => {
             expect(actualSettings).toEqual(
                 expect.arrayContaining(expectedSettings)
             );
-            expect(actualSettings.length).toBe(61);
+            expect(actualSettings.length).toBe(62);
         });
 
         it('should have correct scope distribution', () => {

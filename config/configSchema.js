@@ -112,6 +112,17 @@ export const configSchema = {
         scope: 'sync',
     },
 
+    // Platform-specific subtitle blacklist
+    subtitleBlacklist: {
+        defaultValue: {
+            disneyplus: ['--forced--', 'forced=yes'],
+            netflix: [],
+            generic: [],
+        },
+        type: Object,
+        scope: 'sync',
+    },
+
     // --- UI State Settings (local storage for better performance) ---
     appearanceAccordionOpen: {
         defaultValue: false,

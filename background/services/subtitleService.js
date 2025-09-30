@@ -228,8 +228,10 @@ class SubtitleService {
         );
 
         // Step 2: Parse available languages from master playlist
-        const availableLanguages =
-            this.parseAvailableSubtitleLanguages(masterPlaylistText);
+        const availableLanguages = await this.parseAvailableSubtitleLanguages(
+            masterPlaylistText,
+            'disneyplus'
+        );
         this.logger.debug('Available subtitle languages', {
             languages: availableLanguages.map(
                 (lang) => `${lang.normalizedCode} (${lang.displayName})`
@@ -536,12 +538,74 @@ class SubtitleService {
     }
 
     /**
+     * Check if subtitle should be filtered based on platform blacklist
+     * @param {string} displayName - Subtitle display name
+     * @param {string} line - Full M3U8 line
+     * @param {string} platform - Platform name (disneyplus, netflix, generic)
+     * @param {Array<string>} blacklist - Blacklist keywords
+     * @returns {boolean} True if subtitle should be skipped
+     */
+    isSubtitleBlacklisted(displayName, line, platform, blacklist) {
+        if (!blacklist || blacklist.length === 0) {
+            return false;
+        }
+
+        const displayNameLower = displayName.toLowerCase();
+
+        for (const keyword of blacklist) {
+            const keywordLower = keyword.toLowerCase().trim();
+            if (!keywordLower) continue;
+
+            // Check if keyword is in display name
+            if (displayNameLower.includes(keywordLower)) {
+                this.logger.debug('Subtitle blacklisted by name', {
+                    platform,
+                    displayName,
+                    keyword,
+                });
+                return true;
+            }
+
+            // For attribute patterns (contains =), check the full line exactly
+            // This prevents "forced" from matching "FORCED=NO"
+            if (keywordLower.includes('=')) {
+                const lineLower = line.toLowerCase();
+                if (lineLower.includes(keywordLower)) {
+                    this.logger.debug('Subtitle blacklisted by attribute', {
+                        platform,
+                        displayName,
+                        keyword,
+                    });
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Parse available subtitle languages from master M3U8 playlist
      * Ported from original background script
+     * @param {string} masterPlaylistText - M3U8 master playlist content
+     * @param {string} platform - Platform name (disneyplus, netflix, generic)
+     * @returns {Promise<Array>} Array of subtitle language objects
      */
-    parseAvailableSubtitleLanguages(masterPlaylistText) {
+    async parseAvailableSubtitleLanguages(
+        masterPlaylistText,
+        platform = 'generic'
+    ) {
         const lines = masterPlaylistText.split('\n');
         const languages = [];
+
+        // Get blacklist for this platform from configuration
+        const blacklistConfig = await configService.get('subtitleBlacklist');
+        const platformBlacklist = blacklistConfig?.[platform] || [];
+
+        this.logger.debug('Using subtitle blacklist', {
+            platform,
+            blacklist: platformBlacklist,
+        });
 
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i].trim();
@@ -554,6 +618,18 @@ class SubtitleService {
                     const languageCode = languageMatch[1];
                     const displayName = nameMatch[1];
                     const uri = uriMatch[1];
+
+                    // Check if subtitle is blacklisted
+                    if (
+                        this.isSubtitleBlacklisted(
+                            displayName,
+                            line,
+                            platform,
+                            platformBlacklist
+                        )
+                    ) {
+                        continue;
+                    }
 
                     languages.push({
                         normalizedCode: normalizeLanguageCode(languageCode),
