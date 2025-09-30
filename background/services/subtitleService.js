@@ -228,8 +228,10 @@ class SubtitleService {
         );
 
         // Step 2: Parse available languages from master playlist
-        const availableLanguages =
-            await this.parseAvailableSubtitleLanguages(masterPlaylistText, 'disneyplus');
+        const availableLanguages = await this.parseAvailableSubtitleLanguages(
+            masterPlaylistText,
+            'disneyplus'
+        );
         this.logger.debug('Available subtitle languages', {
             languages: availableLanguages.map(
                 (lang) => `${lang.normalizedCode} (${lang.displayName})`
@@ -589,7 +591,10 @@ class SubtitleService {
      * @param {string} platform - Platform name (disneyplus, netflix, generic)
      * @returns {Promise<Array>} Array of subtitle language objects
      */
-    async parseAvailableSubtitleLanguages(masterPlaylistText, platform = 'generic') {
+    async parseAvailableSubtitleLanguages(
+        masterPlaylistText,
+        platform = 'generic'
+    ) {
         const lines = masterPlaylistText.split('\n');
         const languages = [];
 
@@ -615,7 +620,14 @@ class SubtitleService {
                     const uri = uriMatch[1];
 
                     // Check if subtitle is blacklisted
-                    if (this.isSubtitleBlacklisted(displayName, line, platform, platformBlacklist)) {
+                    if (
+                        this.isSubtitleBlacklisted(
+                            displayName,
+                            line,
+                            platform,
+                            platformBlacklist
+                        )
+                    ) {
                         continue;
                     }
 
