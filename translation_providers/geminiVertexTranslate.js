@@ -1,5 +1,6 @@
 import Logger from '../utils/logger.js';
 import { configService } from '../services/configService.js';
+import { autoRefreshIfNeeded } from '../utils/vertexAuth.js';
 
 // Initialize logger for the Vertex AI Gemini translation provider
 const logger = Logger.create('VertexGeminiTranslate');
@@ -20,7 +21,7 @@ async function getConfig() {
     ]);
     // test gpg sign
 
-    const model = config.vertexModel || 'gemini-1.5-flash';
+    const model = config.vertexModel || 'gemini-2.5-flash';
 
     logger.debug('Vertex AI configuration retrieved', {
         hasAccessToken: !!config.vertexAccessToken,
@@ -65,7 +66,7 @@ function parsePossiblyJson(responseText) {
 // "models/gemini-1.5-flash" or "publishers/google/models/gemini-1.5-flash".
 function normalizeModelName(model) {
     if (typeof model !== 'string' || !model) {
-        return 'gemini-1.5-flash';
+        return 'gemini-2.5-flash';
     }
     const parts = model.split('/');
     const last = parts[parts.length - 1];
@@ -94,6 +95,9 @@ export async function translate(text, sourceLang, targetLang) {
     }
 
     try {
+        // Auto-refresh token if needed before making the API call
+        await autoRefreshIfNeeded();
+
         const { accessToken, projectId, location, model } = await getConfig();
         if (!accessToken || !projectId || !location || !model) {
             throw new Error('Vertex access token, project, location, or model not configured.');
@@ -202,6 +206,9 @@ export async function translateBatch(
     }
 
     try {
+        // Auto-refresh token if needed before making the API call
+        await autoRefreshIfNeeded();
+
         const { accessToken, projectId, location, model } = await getConfig();
         if (!accessToken || !projectId || !location || !model) {
             throw new Error('Vertex access token, project, location, or model not configured.');

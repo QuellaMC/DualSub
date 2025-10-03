@@ -9,6 +9,7 @@ export function TranslationSection({ t, settings, onSettingChange }) {
         deepl: 'providerDeepLName',
         deepl_free: 'providerDeepLFreeName',
         openai_compatible: 'providerOpenAICompatibleName',
+        vertex_gemini: 'providerVertexGeminiName',
     };
 
     const batchingEnabled = settings.batchingEnabled || false;
@@ -314,6 +315,28 @@ export function TranslationSection({ t, settings, onSettingChange }) {
                             }
                         />
                     </div>
+
+                    <div className="setting setting-with-help">
+                        <div className="setting-content">
+                            <label htmlFor="vertexBatchSize">
+                                {t('vertexBatchSizeLabel', 'Vertex AI Batch Size:')}
+                            </label>
+                            <div className="setting-help">
+                                {t('vertexBatchSizeHelp', 'Recommended: 5-10 segments (default: 8)')}
+                            </div>
+                        </div>
+                        <input
+                            type="number"
+                            id="vertexBatchSize"
+                            min="1"
+                            max="15"
+                            step="1"
+                            value={settings.vertexBatchSize || 8}
+                            onChange={(e) =>
+                                onSettingChange('vertexBatchSize', parseInt(e.target.value))
+                            }
+                        />
+                    </div>
                 </SettingCard>
             )}
 
@@ -430,6 +453,28 @@ export function TranslationSection({ t, settings, onSettingChange }) {
                         value={settings.microsoftDelay || 800}
                         onChange={(e) =>
                             onSettingChange('microsoftDelay', parseInt(e.target.value))
+                        }
+                    />
+                </div>
+
+                <div className="setting setting-with-help">
+                    <div className="setting-content">
+                        <label htmlFor="vertexDelay">
+                            {t('vertexDelayLabel', 'Vertex AI Request Delay (ms):')}
+                        </label>
+                        <div className="setting-help">
+                            {t('vertexDelayHelp', 'Minimum delay between requests (default: 100ms)')}
+                        </div>
+                    </div>
+                    <input
+                        type="number"
+                        id="vertexDelay"
+                        min="50"
+                        max="5000"
+                        step="50"
+                        value={settings.vertexDelay || 100}
+                        onChange={(e) =>
+                            onSettingChange('vertexDelay', parseInt(e.target.value))
                         }
                     />
                 </div>

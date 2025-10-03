@@ -4,6 +4,7 @@ import { MicrosoftProviderCard } from '../providers/MicrosoftProviderCard.jsx';
 import { DeepLFreeProviderCard } from '../providers/DeepLFreeProviderCard.jsx';
 import { DeepLProviderCard } from '../providers/DeepLProviderCard.jsx';
 import { OpenAICompatibleProviderCard } from '../providers/OpenAICompatibleProviderCard.jsx';
+import { VertexProviderCard } from '../providers/VertexProviderCard.jsx';
 
 export function ProvidersSection({ t, settings, onSettingChange }) {
     const selectedProvider = settings.selectedProvider || 'deepl_free';
@@ -68,6 +69,21 @@ export function ProvidersSection({ t, settings, onSettingChange }) {
                     onBaseUrlChange={(value) => onSettingChange('openaiCompatibleBaseUrl', value)}
                     onModelChange={(value) => onSettingChange('openaiCompatibleModel', value)}
                     onModelsLoaded={handleOpenAIModelsLoaded}
+                />
+            )}
+
+            {selectedProvider === 'vertex_gemini' && (
+                <VertexProviderCard
+                    t={t}
+                    accessToken={settings.vertexAccessToken || ''}
+                    projectId={settings.vertexProjectId || ''}
+                    location={settings.vertexLocation || 'us-central1'}
+                    model={settings.vertexModel || 'gemini-2.5-flash'}
+                    onAccessTokenChange={(value) => onSettingChange('vertexAccessToken', value)}
+                    onProjectIdChange={(value) => onSettingChange('vertexProjectId', value)}
+                    onLocationChange={(value) => onSettingChange('vertexLocation', value)}
+                    onModelChange={(value) => onSettingChange('vertexModel', value)}
+                    onProviderChange={(value) => onSettingChange('selectedProvider', value)}
                 />
             )}
         </section>
