@@ -467,6 +467,9 @@
         "message": "Help improve the service by sharing anonymous usage data"
     },
     "cardAIContextAdvancedTitle": { "message": "Advanced Settings" },
+    "cardAIContextAdvancedDesc": {
+        "message": "Configure advanced options for AI context analysis behavior."
+    },
     "aiContextTimeoutLabel": { "message": "Request Timeout (ms):" },
     "aiContextTimeoutHelp": {
         "message": "Maximum time to wait for AI response"

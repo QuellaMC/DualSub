@@ -971,15 +971,6 @@ button#testDeepLButton.btn-sparkle:hover span.text {
     margin-bottom: 16px;
 }
 
-/* AI Context specific styling */
-#ai-context .setting-card {
-    border-left: 3px solid var(--link-color);
-}
-
-#ai-context .setting-card h3 {
-    color: var(--link-color);
-}
-
 .provider-settings {
     border: 1px solid var(--border-color);
     border-radius: 8px;
@@ -990,38 +981,4 @@ button#testDeepLButton.btn-sparkle:hover span.text {
 .provider-settings h3 {
     margin-top: 0;
     color: var(--heading-color);
-}
-
-/* Privacy settings emphasis */
-#aiContextPrivacyCard {
-    border-left-color: #ff9500;
-}
-
-#aiContextPrivacyCard h3 {
-    color: #ff9500;
-}
-
-/* Advanced settings styling */
-#aiContextAdvancedCard {
-    border-left-color: var(--secondary-text-color);
-}
-
-#aiContextAdvancedCard h3 {
-    color: var(--secondary-text-color);
-}
-
-/* Input styling for AI context */
-#ai-context input[type='password'],
-#ai-context input[type='number'] {
-    font-family:
-        'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas,
-        'Courier New', monospace;
-}
-
-#ai-context input[type='password'] {
-    letter-spacing: 2px;
-}
-
-#ai-context input[type='password']:focus {
-    letter-spacing: normal;
 }

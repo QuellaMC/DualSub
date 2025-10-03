@@ -523,6 +523,9 @@
         "message": "Ayuda a mejorar el servicio compartiendo datos de uso anónimos"
     },
     "cardAIContextAdvancedTitle": { "message": "Configuración Avanzada" },
+    "cardAIContextAdvancedDesc": {
+        "message": "Configure opciones avanzadas para el comportamiento del análisis de contexto de IA."
+    },
     "aiContextTimeoutLabel": {
         "message": "Tiempo de Espera de Solicitud (ms):"
     },

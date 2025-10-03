@@ -8,7 +8,6 @@ export function AIContextSection({ t, settings, onSettingChange }) {
         historical: false,
         linguistic: false,
     });
-    const [advancedExpanded, setAdvancedExpanded] = useState(false);
 
     // Load context types from settings
     useEffect(() => {
@@ -281,90 +280,79 @@ export function AIContextSection({ t, settings, onSettingChange }) {
                 </SettingCard>
             )}
 
-            {/* Card 6: Advanced Settings (Collapsible) */}
+            {/* Card 6: Advanced Settings */}
             {aiContextEnabled && (
-                <div className={`setting-card collapsible${advancedExpanded ? ' expanded' : ''}`}>
-                    <h3>{t('cardAIContextAdvancedTitle', 'Advanced Settings')}</h3>
-                    <button
-                        className="collapse-toggle"
-                        onClick={() => setAdvancedExpanded(!advancedExpanded)}
-                        type="button"
-                    >
-                        <span>
-                            {advancedExpanded
-                                ? t('hideAdvancedSettings', 'Hide Advanced Settings')
-                                : t('showAdvancedSettings', 'Show Advanced Settings')}
-                        </span>
-                        <span className="collapse-icon">{advancedExpanded ? '▲' : '▼'}</span>
-                    </button>
-                    {advancedExpanded && (
-                        <div className="collapse-content" style={{ display: 'block' }}>
-                            <div className="setting">
-                                <label htmlFor="aiContextTimeout">
-                                    {t('aiContextTimeoutLabel', 'Request Timeout (ms):')}
-                                </label>
-                                <input
-                                    type="number"
-                                    id="aiContextTimeout"
-                                    min="5000"
-                                    max="60000"
-                                    step="1000"
-                                    value={settings.aiContextTimeout || 10000}
-                                    onChange={(e) =>
-                                        onSettingChange('aiContextTimeout', parseInt(e.target.value))
-                                    }
-                                />
-                            </div>
-
-                            <div className="setting">
-                                <label htmlFor="aiContextRateLimit">
-                                    {t('aiContextRateLimitLabel', 'Rate Limit (requests/min):')}
-                                </label>
-                                <input
-                                    type="number"
-                                    id="aiContextRateLimit"
-                                    min="10"
-                                    max="300"
-                                    step="10"
-                                    value={settings.aiContextRateLimit || 60}
-                                    onChange={(e) =>
-                                        onSettingChange('aiContextRateLimit', parseInt(e.target.value))
-                                    }
-                                />
-                            </div>
-
-                            <div className="setting">
-                                <label htmlFor="aiContextCacheEnabled">
-                                    {t('aiContextCacheEnabledLabel', 'Enable Caching:')}
-                                </label>
-                                <ToggleSwitch
-                                    id="aiContextCacheEnabled"
-                                    checked={settings.aiContextCacheEnabled || false}
-                                    onChange={(checked) =>
-                                        onSettingChange('aiContextCacheEnabled', checked)
-                                    }
-                                />
-                            </div>
-
-                            <div className="setting">
-                                <label htmlFor="aiContextRetryAttempts">
-                                    {t('aiContextRetryAttemptsLabel', 'Retry Attempts:')}
-                                </label>
-                                <input
-                                    type="number"
-                                    id="aiContextRetryAttempts"
-                                    min="1"
-                                    max="5"
-                                    step="1"
-                                    value={settings.aiContextRetryAttempts || 2}
-                                    onChange={(e) =>
-                                        onSettingChange('aiContextRetryAttempts', parseInt(e.target.value))
-                                    }
-                                />
-                            </div>
-                        </div>
+                <SettingCard
+                    title={t('cardAIContextAdvancedTitle', 'Advanced Settings')}
+                    description={t(
+                        'cardAIContextAdvancedDesc',
+                        'Configure advanced options for AI context analysis behavior.'
                     )}
-                </div>
+                >
+                    <div className="setting">
+                        <label htmlFor="aiContextTimeout">
+                            {t('aiContextTimeoutLabel', 'Request Timeout (ms):')}
+                        </label>
+                        <input
+                            type="number"
+                            id="aiContextTimeout"
+                            min="5000"
+                            max="60000"
+                            step="1000"
+                            value={settings.aiContextTimeout || 10000}
+                            onChange={(e) =>
+                                onSettingChange('aiContextTimeout', parseInt(e.target.value))
+                            }
+                        />
+                    </div>
+
+                    <div className="setting">
+                        <label htmlFor="aiContextRateLimit">
+                            {t('aiContextRateLimitLabel', 'Rate Limit (requests/min):')}
+                        </label>
+                        <input
+                            type="number"
+                            id="aiContextRateLimit"
+                            min="10"
+                            max="300"
+                            step="10"
+                            value={settings.aiContextRateLimit || 60}
+                            onChange={(e) =>
+                                onSettingChange('aiContextRateLimit', parseInt(e.target.value))
+                            }
+                        />
+                    </div>
+
+                    <div className="setting">
+                        <label htmlFor="aiContextCacheEnabled">
+                            {t('aiContextCacheEnabledLabel', 'Enable Caching:')}
+                        </label>
+                        <ToggleSwitch
+                            id="aiContextCacheEnabled"
+                            checked={settings.aiContextCacheEnabled || false}
+                            onChange={(checked) =>
+                                onSettingChange('aiContextCacheEnabled', checked)
+                            }
+                        />
+                    </div>
+
+                    <div className="setting">
+                        <label htmlFor="aiContextRetryAttempts">
+                            {t('aiContextRetryAttemptsLabel', 'Retry Attempts:')}
+                        </label>
+                        <input
+                            type="number"
+                            id="aiContextRetryAttempts"
+                            min="1"
+                            max="5"
+                            step="1"
+                            value={settings.aiContextRetryAttempts || 2}
+                            onChange={(e) =>
+                                onSettingChange('aiContextRetryAttempts', parseInt(e.target.value))
+                            }
+                        />
+                    </div>
+                </SettingCard>
             )}
         </section>
     );

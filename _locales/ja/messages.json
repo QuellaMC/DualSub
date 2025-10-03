@@ -474,6 +474,9 @@
         "message": "匿名使用データを共有してサービスの改善に協力"
     },
     "cardAIContextAdvancedTitle": { "message": "詳細設定" },
+    "cardAIContextAdvancedDesc": {
+        "message": "AIコンテキスト分析の動作に関する詳細オプションを設定します。"
+    },
     "aiContextTimeoutLabel": { "message": "リクエストタイムアウト（ms）：" },
     "aiContextTimeoutHelp": { "message": "AI応答を待つ最大時間" },
     "aiContextRateLimitLabel": { "message": "レート制限（リクエスト/分）：" },

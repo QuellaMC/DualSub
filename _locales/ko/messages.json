@@ -467,6 +467,9 @@
         "message": "익명 사용 데이터를 공유하여 서비스 개선에 도움"
     },
     "cardAIContextAdvancedTitle": { "message": "고급 설정" },
+    "cardAIContextAdvancedDesc": {
+        "message": "AI 컨텍스트 분석 동작에 대한 고급 옵션을 구성합니다."
+    },
     "aiContextTimeoutLabel": { "message": "요청 타임아웃 (ms):" },
     "aiContextTimeoutHelp": { "message": "AI 응답을 기다리는 최대 시간" },
     "aiContextRateLimitLabel": { "message": "속도 제한 (요청/분):" },

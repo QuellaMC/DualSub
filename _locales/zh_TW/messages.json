@@ -427,6 +427,9 @@
         "message": "透過分享匿名使用資料幫助改進服務"
     },
     "cardAIContextAdvancedTitle": { "message": "進階設定" },
+    "cardAIContextAdvancedDesc": {
+        "message": "設定 AI 上下文分析行為的進階選項。"
+    },
     "aiContextTimeoutLabel": { "message": "請求逾時 (ms)：" },
     "aiContextTimeoutHelp": { "message": "等待 AI 回應的最長時間" },
     "aiContextRateLimitLabel": { "message": "速率限制 (請求/分鐘)：" },

@@ -409,6 +409,9 @@
         "message": "通过分享匿名使用数据帮助改进服务"
     },
     "cardAIContextAdvancedTitle": { "message": "高级设置" },
+    "cardAIContextAdvancedDesc": {
+        "message": "配置 AI 上下文分析行为的高级选项。"
+    },
     "aiContextTimeoutLabel": { "message": "请求超时 (ms)：" },
     "aiContextTimeoutHelp": { "message": "等待 AI 响应的最长时间" },
     "aiContextRateLimitLabel": { "message": "速率限制 (请求/分钟)：" },
