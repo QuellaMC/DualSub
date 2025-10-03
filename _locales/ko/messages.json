@@ -184,10 +184,38 @@
     "providerDeepLName": { "message": "DeepL (API 키 필요)" },
     "providerDeepLFreeName": { "message": "DeepL 번역 (무료)" },
     "providerOpenAICompatibleName": { "message": "OpenAI 호환 (API 키 필요)" },
+    "providerVertexGeminiName": { "message": "Vertex AI Gemini (API 키 필요)" },
     "cardOpenAICompatibleTitle": { "message": "OpenAI 호환 (API 키 필요)" },
     "cardOpenAICompatibleDesc": {
         "message": "Gemini와 같은 OpenAI 호환 서비스를 위한 API 키와 설정을 입력하세요."
     },
+    "cardVertexGeminiTitle": { "message": "Vertex AI Gemini (API 키 필요)" },
+    "cardVertexGeminiDesc": { "message": "액세스 토큰과 Vertex 프로젝트 설정을 입력하거나 서비스 계정 JSON 파일을 가져오세요." },
+    "vertexAccessTokenLabel": { "message": "액세스 토큰:" },
+    "vertexProjectIdLabel": { "message": "프로젝트 ID:" },
+    "vertexLocationLabel": { "message": "위치:" },
+    "vertexModelLabel": { "message": "모델:" },
+    "vertexMissingConfig": { "message": "액세스 토큰과 프로젝트 ID를 입력하세요." },
+    "vertexConnectionFailed": { "message": "연결 실패: %s" },
+    "vertexServiceAccountLabel": { "message": "서비스 계정 JSON:" },
+    "vertexImportButton": { "message": "JSON 파일 가져오기" },
+    "vertexRefreshButton": { "message": "🔄 토큰 새로고침" },
+    "vertexImportHint": { "message": "아래 자격 증명을 자동으로 입력합니다" },
+    "vertexImporting": { "message": "가져오는 중..." },
+    "vertexRefreshingToken": { "message": "액세스 토큰 새로고침 중..." },
+    "vertexGeneratingToken": { "message": "액세스 토큰 생성 중..." },
+    "vertexImportSuccess": { "message": "서비스 계정을 가져오고 토큰을 생성했습니다." },
+    "vertexImportFailed": { "message": "가져오기 실패: %s" },
+    "vertexTokenRefreshed": { "message": "액세스 토큰이 성공적으로 새로고침되었습니다." },
+    "vertexRefreshFailed": { "message": "토큰 새로고침 실패: %s" },
+    "vertexTokenExpired": { "message": "⚠️ 액세스 토큰이 만료되었습니다. 새로고침을 클릭하여 갱신하세요." },
+    "vertexTokenExpiringSoon": { "message": "⚠️ 토큰이 %s분 후에 만료됩니다. 새로고침을 고려하세요." },
+    "vertexConfigured": { "message": "⚠️ Vertex AI가 구성되었습니다. 연결을 테스트하세요." },
+    "vertexNotConfigured": { "message": "서비스 계정 JSON을 가져오거나 자격 증명을 입력하세요." },
+    "featureVertexServiceAccount": { "message": "서비스 계정 JSON 가져오기" },
+    "featureVertexAutoToken": { "message": "자동 토큰 생성" },
+    "featureVertexGemini": { "message": "Vertex AI를 통한 Google Gemini 모델" },
+    "vertexNote": { "message": "액세스 토큰은 1시간 후에 만료됩니다. 서비스 계정은 안전하게 저장되어 쉽게 토큰을 새로고침할 수 있습니다 - 필요할 때 토큰 새로고침 버튼을 클릭하세요." },
     "baseUrlLabel": { "message": "기본 URL:" },
     "modelLabel": { "message": "모델:" },
     "featureCustomizable": {
@@ -268,6 +296,10 @@
     "microsoftBatchSizeHelp": {
         "message": "권장: 3-5개 세그먼트 (기본값: 4)"
     },
+    "vertexBatchSizeLabel": { "message": "Vertex AI 배치 크기:" },
+    "vertexBatchSizeHelp": {
+        "message": "권장: 5-10개 세그먼트 (기본값: 8)"
+    },
 
     "deeplTestNeedsTesting": {
         "message": "⚠️ DeepL API 키 테스트가 필요합니다."
@@ -296,6 +328,10 @@
     "microsoftDelayLabel": { "message": "Microsoft 번역 요청 지연 (ms):" },
     "microsoftDelayHelp": {
         "message": "문자 제한을 준수하기 위한 지연 (기본값: 800ms)"
+    },
+    "vertexDelayLabel": { "message": "Vertex AI 요청 지연 (ms):" },
+    "vertexDelayHelp": {
+        "message": "요청 사이의 최소 지연 (기본값: 100ms)"
     },
 
     "aiContextModalTitle": { "message": "AI 컨텍스트 분석" },

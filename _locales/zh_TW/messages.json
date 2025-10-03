@@ -158,10 +158,40 @@
     "providerOpenAICompatibleName": {
         "message": "OpenAI 相容（需要 API 金鑰）"
     },
+    "providerVertexGeminiName": {
+        "message": "Vertex AI Gemini（需要 API 金鑰）"
+    },
     "cardOpenAICompatibleTitle": { "message": "OpenAI 相容（需要 API 金鑰）" },
     "cardOpenAICompatibleDesc": {
         "message": "輸入您的 API 金鑰和設定，用於 Gemini 等 OpenAI 相容服務。"
     },
+    "cardVertexGeminiTitle": { "message": "Vertex AI Gemini（需要 API 金鑰）" },
+    "cardVertexGeminiDesc": { "message": "輸入您的存取權杖和 Vertex 專案設定，或匯入服務帳戶 JSON 檔案。" },
+    "vertexAccessTokenLabel": { "message": "存取權杖：" },
+    "vertexProjectIdLabel": { "message": "專案 ID：" },
+    "vertexLocationLabel": { "message": "位置：" },
+    "vertexModelLabel": { "message": "模型：" },
+    "vertexMissingConfig": { "message": "請輸入存取權杖和專案 ID。" },
+    "vertexConnectionFailed": { "message": "連線失敗：%s" },
+    "vertexServiceAccountLabel": { "message": "服務帳戶 JSON：" },
+    "vertexImportButton": { "message": "匯入 JSON 檔案" },
+    "vertexRefreshButton": { "message": "🔄 重新整理權杖" },
+    "vertexImportHint": { "message": "自動填入下方憑證" },
+    "vertexImporting": { "message": "匯入中..." },
+    "vertexRefreshingToken": { "message": "正在重新整理存取權杖..." },
+    "vertexGeneratingToken": { "message": "正在產生存取權杖..." },
+    "vertexImportSuccess": { "message": "服務帳戶已匯入並產生權杖。" },
+    "vertexImportFailed": { "message": "匯入失敗：%s" },
+    "vertexTokenRefreshed": { "message": "存取權杖已成功重新整理。" },
+    "vertexRefreshFailed": { "message": "權杖重新整理失敗：%s" },
+    "vertexTokenExpired": { "message": "⚠️ 存取權杖已過期。點擊重新整理以更新。" },
+    "vertexTokenExpiringSoon": { "message": "⚠️ 權杖將在 %s 分鐘後過期。建議重新整理。" },
+    "vertexConfigured": { "message": "⚠️ Vertex AI 已設定。請測試連線。" },
+    "vertexNotConfigured": { "message": "請匯入服務帳戶 JSON 或輸入憑證。" },
+    "featureVertexServiceAccount": { "message": "服務帳戶 JSON 匯入" },
+    "featureVertexAutoToken": { "message": "自動產生權杖" },
+    "featureVertexGemini": { "message": "透過 Vertex AI 使用 Google Gemini 模型" },
+    "vertexNote": { "message": "存取權杖在 1 小時後過期。您的服務帳戶已安全儲存，需要時只需點擊重新整理權杖按鈕即可。" },
     "baseUrlLabel": { "message": "基礎 URL：" },
     "modelLabel": { "message": "模型：" },
     "featureCustomizable": { "message": "可自訂端點和模型" },
@@ -240,6 +270,10 @@
     "microsoftBatchSizeHelp": {
         "message": "建議：3-5 個片段（預設：4）"
     },
+    "vertexBatchSizeLabel": { "message": "Vertex AI 批次大小：" },
+    "vertexBatchSizeHelp": {
+        "message": "建議：5-10 個片段（預設：8）"
+    },
 
     "deeplTestNeedsTesting": { "message": "⚠️ DeepL API 金鑰需要測試。" },
 
@@ -266,6 +300,10 @@
     "microsoftDelayLabel": { "message": "Microsoft 翻譯請求延遲 (ms)：" },
     "microsoftDelayHelp": {
         "message": "尊重字元限制的延遲（預設：800ms）"
+    },
+    "vertexDelayLabel": { "message": "Vertex AI 請求延遲 (ms)：" },
+    "vertexDelayHelp": {
+        "message": "請求之間的最小延遲（預設：100ms）"
     },
 
     "aiContextModalTitle": { "message": "AI 上下文分析" },

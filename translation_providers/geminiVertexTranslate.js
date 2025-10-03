@@ -238,8 +238,6 @@ Important:
                 { role: 'user', parts: [{ text: `${instructions}\n\n${combinedText}` }] },
             ],
             generationConfig: {
-                temperature: 0.1,
-                topP: 0.95,
                 maxOutputTokens: Math.min(4096, Math.max(500, combinedText.length * 3)),
             },
         };
