@@ -12,7 +12,10 @@
         "https://api.cognitive.microsofttranslator.com/*",
         "https://edge.microsoft.com/*",
         "https://api-free.deepl.com/*",
-        "https://api.deepl.com/*"
+        "https://api.deepl.com/*",
+        "https://aiplatform.googleapis.com/*",
+        "https://*-aiplatform.googleapis.com/*",
+        "https://oauth2.googleapis.com/*"
     ],
     "background": {
         "service_worker": "background.js",

@@ -183,12 +183,23 @@
     "providerOpenAICompatibleName": {
         "message": "OpenAI Compatible (API Key Required)"
     },
+    "providerVertexGeminiName": {
+        "message": "Vertex AI Gemini (API Key Required)"
+    },
     "cardOpenAICompatibleTitle": {
         "message": "OpenAI Compatible (API Key Required)"
     },
     "cardOpenAICompatibleDesc": {
         "message": "Enter your API key and settings for OpenAI-compatible services like Gemini."
     },
+    "cardVertexGeminiTitle": { "message": "Vertex AI Gemini (API Key Required)" },
+    "cardVertexGeminiDesc": { "message": "Enter your access token and Vertex project settings." },
+    "vertexAccessTokenLabel": { "message": "Access Token:" },
+    "vertexProjectIdLabel": { "message": "Project ID:" },
+    "vertexLocationLabel": { "message": "Location:" },
+    "vertexModelLabel": { "message": "Model:" },
+    "vertexMissingConfig": { "message": "Please enter access token and project ID." },
+    "vertexConnectionFailed": { "message": "Connection failed: %s" },
     "baseUrlLabel": { "message": "Base URL:" },
     "modelLabel": { "message": "Model:" },
     "featureCustomizable": { "message": "Customizable endpoint and model" },

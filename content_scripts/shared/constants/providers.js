@@ -6,6 +6,7 @@ export const Providers = {
     DEEPL: 'deepl',
     DEEPL_FREE: 'deepl_free',
     OPENAI_COMPATIBLE: 'openai_compatible',
+    VERTEX_GEMINI: 'vertex_gemini',
 };
 
 export const ProviderNames = {
@@ -14,6 +15,7 @@ export const ProviderNames = {
     [Providers.DEEPL]: 'DeepL Translate (API Key Required)',
     [Providers.DEEPL_FREE]: 'DeepL Translate (Free)',
     [Providers.OPENAI_COMPATIBLE]: 'OpenAI Compatible (API Key Required)',
+    [Providers.VERTEX_GEMINI]: 'Vertex AI Gemini (API Key Required)',
 };
 
 // Centralized provider-specific batch configuration
@@ -24,6 +26,15 @@ export const ProviderBatchConfigs = {
         delimiter: '|SUBTITLE_BREAK|',
         supportsBatch: true,
         batchMethod: 'delimiter',
+        delayConfigKey: 'openaieDelay',
+    },
+    [Providers.VERTEX_GEMINI]: {
+        defaultBatchSize: 8,
+        maxBatchSize: 15,
+        delimiter: '|SUBTITLE_BREAK|',
+        supportsBatch: true,
+        batchMethod: 'delimiter',
+        // Reuse the OpenAI-compatible delay setting for simplicity
         delayConfigKey: 'openaieDelay',
     },
     [Providers.GOOGLE]: {
