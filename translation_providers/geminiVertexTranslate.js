@@ -124,8 +124,6 @@ export async function translate(text, sourceLang, targetLang) {
                 { role: 'user', parts: [{ text: `${systemPrompt}\n\n${userPrompt}\n\n${text}` }] },
             ],
             generationConfig: {
-                temperature: 0.1,
-                topP: 0.95,
                 maxOutputTokens: Math.max(256, Math.min(2048, Math.ceil(text.length * 3))),
             },
         };
