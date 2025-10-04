@@ -84,7 +84,7 @@
     ```bash
     # 生产构建
     npm run build
-    
+
     # 开发模式（自动重新构建）
     npm run dev
     ```

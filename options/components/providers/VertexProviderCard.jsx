@@ -18,23 +18,28 @@ export function VertexProviderCard({
     onProviderChange,
 }) {
     const fileInputRef = useRef(null);
-    const { 
-        testResult, 
-        importResult, 
-        testing, 
+    const {
+        testResult,
+        importResult,
+        testing,
         importing,
-        testConnection, 
+        testConnection,
         importServiceAccountJson,
         refreshToken,
         checkTokenExpiration,
-        initializeStatus 
-    } = useVertexTest(t, onAccessTokenChange, onProjectIdChange, onProviderChange);
+        initializeStatus,
+    } = useVertexTest(
+        t,
+        onAccessTokenChange,
+        onProjectIdChange,
+        onProviderChange
+    );
 
     // Initialize status and setup auto-refresh on mount
     useEffect(() => {
         const checkAndRefreshToken = async () => {
             const expirationInfo = await checkTokenExpiration();
-            
+
             if (expirationInfo) {
                 // Auto-refresh if token is expired or will expire in less than 5 minutes
                 if (expirationInfo.isExpired || expirationInfo.shouldRefresh) {
@@ -44,7 +49,10 @@ export function VertexProviderCard({
                         console.log('[Vertex AI] Token auto-refreshed');
                     } catch (error) {
                         // Error already handled in hook
-                        console.error('[Vertex AI] Auto-refresh failed:', error);
+                        console.error(
+                            '[Vertex AI] Auto-refresh failed:',
+                            error
+                        );
                     }
                 }
             }
@@ -55,12 +63,21 @@ export function VertexProviderCard({
         checkAndRefreshToken();
 
         // Setup periodic check every 5 minutes
-        const interval = setInterval(() => {
-            checkAndRefreshToken();
-        }, 5 * 60 * 1000); // Check every 5 minutes
+        const interval = setInterval(
+            () => {
+                checkAndRefreshToken();
+            },
+            5 * 60 * 1000
+        ); // Check every 5 minutes
 
         return () => clearInterval(interval);
-    }, [accessToken, projectId, initializeStatus, checkTokenExpiration, refreshToken]);
+    }, [
+        accessToken,
+        projectId,
+        initializeStatus,
+        checkTokenExpiration,
+        refreshToken,
+    ]);
 
     const handleTest = () => {
         const loc = location || 'us-central1';
@@ -103,7 +120,10 @@ export function VertexProviderCard({
 
     return (
         <SettingCard
-            title={t('cardVertexGeminiTitle', 'Vertex AI Gemini (API Key Required)')}
+            title={t(
+                'cardVertexGeminiTitle',
+                'Vertex AI Gemini (API Key Required)'
+            )}
             description={t(
                 'cardVertexGeminiDesc',
                 'Enter your access token and Vertex project settings, or import a service account JSON file.'
@@ -121,7 +141,9 @@ export function VertexProviderCard({
 
             {/* Service Account Import Section */}
             <div className="setting">
-                <label>{t('vertexServiceAccountLabel', 'Service Account JSON:')}</label>
+                <label>
+                    {t('vertexServiceAccountLabel', 'Service Account JSON:')}
+                </label>
                 <AppleStyleFileButton
                     onClick={handleImportClick}
                     disabled={importing}
@@ -130,8 +152,7 @@ export function VertexProviderCard({
                 >
                     {importing
                         ? t('vertexImporting', 'Importing...')
-                        : t('vertexImportButton', 'Import JSON File')
-                    }
+                        : t('vertexImportButton', 'Import JSON File')}
                 </AppleStyleFileButton>
                 <TestResultDisplay result={importResult} />
             </div>
@@ -198,8 +219,7 @@ export function VertexProviderCard({
                 >
                     {testing
                         ? t('testingButton', 'Testing...')
-                        : t('testConnectionButton', 'Test Connection')
-                    }
+                        : t('testConnectionButton', 'Test Connection')}
                 </SparkleButton>
             </div>
 
@@ -208,14 +228,33 @@ export function VertexProviderCard({
                 <div className="info-item">
                     <strong>{t('providerFeatures', 'Features:')}</strong>
                     <ul>
-                        <li>{t('featureVertexServiceAccount', 'Service account JSON import')}</li>
-                        <li>{t('featureVertexAutoToken', 'Automatic token generation')}</li>
-                        <li>{t('featureVertexGemini', 'Google Gemini models via Vertex AI')}</li>
-                        <li>{t('featureWideLanguageSupport', 'Wide language support')}</li>
+                        <li>
+                            {t(
+                                'featureVertexServiceAccount',
+                                'Service account JSON import'
+                            )}
+                        </li>
+                        <li>
+                            {t(
+                                'featureVertexAutoToken',
+                                'Automatic token generation'
+                            )}
+                        </li>
+                        <li>
+                            {t(
+                                'featureVertexGemini',
+                                'Google Gemini models via Vertex AI'
+                            )}
+                        </li>
+                        <li>
+                            {t(
+                                'featureWideLanguageSupport',
+                                'Wide language support'
+                            )}
+                        </li>
                     </ul>
                 </div>
             </div>
         </SettingCard>
     );
 }
-
