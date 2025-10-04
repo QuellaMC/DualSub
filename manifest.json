@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
     "name": "__MSG_appName__",
-    "version": "2.4.0",
+    "version": "2.4.1",
     "description": "__MSG_appDesc__",
     "default_locale": "en",
     "permissions": ["storage", "activeTab"],
@@ -14,7 +14,13 @@
         "https://api-free.deepl.com/*",
         "https://api.deepl.com/*",
         "https://aiplatform.googleapis.com/*",
-        "https://*-aiplatform.googleapis.com/*",
+        "https://us-central1-aiplatform.googleapis.com/*",
+        "https://us-east1-aiplatform.googleapis.com/*",
+        "https://us-west1-aiplatform.googleapis.com/*",
+        "https://europe-west1-aiplatform.googleapis.com/*",
+        "https://europe-west4-aiplatform.googleapis.com/*",
+        "https://asia-northeast1-aiplatform.googleapis.com/*",
+        "https://asia-southeast1-aiplatform.googleapis.com/*",
         "https://oauth2.googleapis.com/*"
     ],
     "background": {
