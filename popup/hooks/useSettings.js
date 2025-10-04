@@ -46,12 +46,13 @@ export function useSettings(keys) {
             setSettings(prev => ({ ...prev, ...changes }));
         };
 
-        configService.onChanged(handleChange);
+        const unsubscribe = configService.onChanged(handleChange);
 
         return () => {
             // Clean up listener
-            // Note: configService doesn't currently expose removeListener
-            // but we should add this capability
+            if (typeof unsubscribe === 'function') {
+                unsubscribe();
+            }
         };
     }, []);
 

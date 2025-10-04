@@ -231,7 +231,6 @@ export function PopupApp() {
             let offset = parseFloat(value);
             if (isNaN(offset)) {
                 showStatus(t('statusInvalidOffset', 'Invalid offset, reverting.'));
-                const currentOffset = await updateSetting.get('subtitleTimeOffset');
                 return;
             }
             offset = parseFloat(offset.toFixed(2));

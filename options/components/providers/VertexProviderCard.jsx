@@ -60,8 +60,7 @@ export function VertexProviderCard({
         }, 5 * 60 * 1000); // Check every 5 minutes
 
         return () => clearInterval(interval);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []); // Only on mount
+    }, [accessToken, projectId, initializeStatus, checkTokenExpiration, refreshToken]);
 
     const handleTest = () => {
         const loc = location || 'us-central1';

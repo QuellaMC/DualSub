@@ -127,7 +127,12 @@ export function useVertexTest(t, onAccessTokenChange, onProjectIdChange, onProvi
             const expiresAt = Date.now() + (expiresIn * 1000);
 
             // Store the service account JSON for auto-refresh
-            // We'll store it in chrome.storage.local for persistence
+            // Security Note: Storing the complete service account (including private_key) in 
+            // chrome.storage.local is a security trade-off to enable automatic token refresh.
+            // Chrome extension storage is isolated per-extension and encrypted at rest by the OS.
+            // Alternative approaches (e.g., storing only the token) would require manual 
+            // re-import every hour when tokens expire. Users with high security requirements 
+            // should use short-lived tokens and manual refresh instead of storing credentials.
             if (typeof chrome !== 'undefined' && chrome.storage) {
                 await chrome.storage.local.set({
                     vertexServiceAccount: sa,
