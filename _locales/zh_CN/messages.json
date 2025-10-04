@@ -155,10 +155,41 @@
     "providerOpenAICompatibleName": {
         "message": "OpenAI 兼容（需要 API 密钥）"
     },
+    "providerVertexGeminiName": {
+        "message": "Vertex AI Gemini（需要 API 密钥）"
+    },
     "cardOpenAICompatibleTitle": { "message": "OpenAI 兼容（需要 API 密钥）" },
     "cardOpenAICompatibleDesc": {
         "message": "输入您的 API 密钥和设置，用于 Gemini 等 OpenAI 兼容服务。"
     },
+    "cardVertexGeminiTitle": { "message": "Vertex AI Gemini（需要 API 密钥）" },
+    "cardVertexGeminiDesc": { "message": "输入您的访问令牌和 Vertex 项目设置，或导入服务账号 JSON 文件。" },
+    "vertexAccessTokenLabel": { "message": "访问令牌：" },
+    "vertexProjectIdLabel": { "message": "项目 ID：" },
+    "vertexLocationLabel": { "message": "位置：" },
+    "vertexModelLabel": { "message": "模型：" },
+    "vertexMissingConfig": { "message": "请输入访问令牌和项目 ID。" },
+    "vertexConnectionFailed": { "message": "连接失败：%s" },
+    "vertexServiceAccountLabel": { "message": "服务账号 JSON：" },
+    "vertexImportButton": { "message": "导入 JSON 文件" },
+    "vertexRefreshButton": { "message": "🔄 刷新令牌" },
+    "vertexImportHint": { "message": "自动填充下方凭据" },
+    "vertexImporting": { "message": "导入中..." },
+    "vertexRefreshingToken": { "message": "正在刷新访问令牌..." },
+    "vertexGeneratingToken": { "message": "正在生成访问令牌..." },
+    "vertexImportSuccess": { "message": "服务账号已导入并生成令牌。" },
+    "vertexImportFailed": { "message": "导入失败：%s" },
+    "vertexTokenRefreshed": { "message": "访问令牌刷新成功。" },
+    "vertexRefreshFailed": { "message": "令牌刷新失败：%s" },
+    "vertexTokenExpired": { "message": "⚠️ 访问令牌已过期。点击刷新以续期。" },
+    "vertexTokenExpiringSoon": { "message": "⚠️ 令牌将在 %s 分钟后过期。建议刷新。" },
+    "vertexConfigured": { "message": "⚠️ Vertex AI 已配置。请测试连接。" },
+    "vertexNotConfigured": { "message": "请导入服务账号 JSON 或输入凭据。" },
+    "featureVertexServiceAccount": { "message": "服务账号 JSON 导入" },
+    "featureVertexAutoToken": { "message": "自动生成令牌" },
+    "featureVertexGemini": { "message": "通过 Vertex AI 使用 Google Gemini 模型" },
+    "providerNote": { "message": "注意：" },
+    "vertexNote": { "message": "访问令牌在 1 小时后过期。您的服务账号已安全存储，需要时只需点击刷新令牌按钮即可。" },
     "baseUrlLabel": { "message": "基础 URL：" },
     "modelLabel": { "message": "模型：" },
     "featureCustomizable": { "message": "可自定义端点和模型" },
@@ -237,6 +268,10 @@
     "microsoftBatchSizeHelp": {
         "message": "推荐：3-5 个片段（默认：4）"
     },
+    "vertexBatchSizeLabel": { "message": "Vertex AI 批量大小：" },
+    "vertexBatchSizeHelp": {
+        "message": "推荐：5-10 个片段（默认：8）"
+    },
 
     "deeplTestNeedsTesting": { "message": "⚠️ DeepL API 密钥需要测试。" },
 
@@ -263,6 +298,10 @@
     "microsoftDelayLabel": { "message": "微软翻译请求延迟 (ms)：" },
     "microsoftDelayHelp": {
         "message": "尊重字符限制的延迟（默认：800ms）"
+    },
+    "vertexDelayLabel": { "message": "Vertex AI 请求延迟 (ms)：" },
+    "vertexDelayHelp": {
+        "message": "请求之间的最小延迟（默认：100ms）"
     },
 
     "aiContextModalTitle": { "message": "AI 上下文分析" },
@@ -312,17 +351,12 @@
     "aiContextRegionalNotes": { "message": "地区特色:" },
     "aiContextOrigins": { "message": "词源:" },
     "aiContextHistoricalContext": { "message": "历史背景:" },
-    "aiContextHistoricalSignificance": { "message": "历史意义:" },
-    "aiContextEvolution": { "message": "演变过程:" },
     "aiContextEtymology": { "message": "词源学:" },
     "aiContextGrammarNotes": { "message": "语法注释:" },
     "aiContextTranslationNotes": { "message": "翻译注释:" },
     "aiContextLinguisticAnalysis": { "message": "语言学分析:" },
     "aiContextGrammarSemantics": { "message": "语法与语义:" },
     "aiContextUsageExamples": { "message": "用法与例句:" },
-    "aiContextLearningTips": { "message": "学习技巧:" },
-    "aiContextRelatedExpressions": { "message": "相关表达:" },
-    "aiContextKeyInsights": { "message": "关键要点:" },
 
     "navAIContext": { "message": "AI 上下文" },
     "sectionAIContext": { "message": "AI 上下文助手" },
@@ -375,6 +409,9 @@
         "message": "通过分享匿名使用数据帮助改进服务"
     },
     "cardAIContextAdvancedTitle": { "message": "高级设置" },
+    "cardAIContextAdvancedDesc": {
+        "message": "配置 AI 上下文分析行为的高级选项。"
+    },
     "aiContextTimeoutLabel": { "message": "请求超时 (ms)：" },
     "aiContextTimeoutHelp": { "message": "等待 AI 响应的最长时间" },
     "aiContextRateLimitLabel": { "message": "速率限制 (请求/分钟)：" },

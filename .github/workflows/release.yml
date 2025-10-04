@@ -224,6 +224,50 @@ jobs:
           echo "::endgroup::"
         continue-on-error: true
       
+      - name: Build React application
+        run: |
+          echo "::group::Building React application"
+          echo "Starting React build at $(date)"
+          echo "Build command: npm run build"
+          
+          if ! npm run build; then
+            echo "::error::React build failed during release process"
+            echo "::group::Build failure details"
+            echo "Exit code: $?"
+            echo "Build environment:"
+            echo "  Node.js version: $(node --version)"
+            echo "  npm version: $(npm --version)"
+            echo "  Working directory: $(pwd)"
+            echo "  Vite config: $(test -f vite.config.js && echo 'present' || echo 'missing')"
+            echo "  Source files:"
+            echo "    popup.jsx: $(test -f popup/popup.jsx && echo 'present' || echo 'missing')"
+            echo "    options.jsx: $(test -f options/options.jsx && echo 'present' || echo 'missing')"
+            echo "::endgroup::"
+            exit 1
+          fi
+          
+          # Verify dist directory was created
+          if [ ! -d "dist" ]; then
+            echo "::error::dist directory was not created by build"
+            exit 1
+          fi
+          
+          # Verify essential files in dist
+          ESSENTIAL_DIST_FILES=("manifest.json" "popup/popup.html" "popup/popup.js" "options/options.html" "options/options.js")
+          for file in "${ESSENTIAL_DIST_FILES[@]}"; do
+            if [ ! -f "dist/$file" ]; then
+              echo "::warning::Essential file missing from dist: $file"
+            else
+              echo "✓ Built file verified: $file"
+            fi
+          done
+          
+          echo "React application built successfully at $(date)"
+          echo "Build output:"
+          ls -lh dist/popup/ dist/options/ | head -20
+          echo "::endgroup::"
+        continue-on-error: false
+      
       - name: Extract version from package.json
         id: version
         run: |
@@ -310,24 +354,13 @@ jobs:
           # Ensure no sensitive files are included in packaging
           SENSITIVE_FILES=(".env" ".env.local" ".env.production" "*.key" "*.pem" "*.p12" "*.pfx")
           for pattern in "${SENSITIVE_FILES[@]}"; do
-            if find . -name "$pattern" -not -path "./node_modules/*" -not -path "./.git/*" | head -1 | grep -q .; then
-              echo "::warning::Potentially sensitive files found matching pattern: $pattern"
-              echo "These files will be excluded from the package"
-              find . -name "$pattern" -not -path "./node_modules/*" -not -path "./.git/*" | head -5
+            if find dist -name "$pattern" 2>/dev/null | head -1 | grep -q .; then
+              echo "::warning::Potentially sensitive files found in dist matching pattern: $pattern"
+              find dist -name "$pattern" | head -5
             fi
           done
           
           # Validate required tools
-          if ! command -v rsync >/dev/null 2>&1; then
-            echo "::error::rsync command not found"
-            echo "::group::Packaging tool error details"
-            echo "rsync is required for file copying with exclusions"
-            echo "Available commands:"
-            which cp ls find zip || true
-            echo "::endgroup::"
-            exit 1
-          fi
-          
           if ! command -v zip >/dev/null 2>&1; then
             echo "::error::zip command not found"
             echo "::group::Packaging tool error details"
@@ -338,130 +371,39 @@ jobs:
             exit 1
           fi
           
-          # Create temporary directory for packaging
-          echo "Creating temporary packaging directory..."
-          if ! mkdir -p dist; then
-            echo "::error::Failed to create packaging directory"
-            echo "::group::Directory creation error details"
+          # Verify dist directory exists (should have been created by build step)
+          if [ ! -d "dist" ]; then
+            echo "::error::dist directory not found - build step may have failed"
+            echo "::group::Directory verification error details"
             echo "Current directory: $(pwd)"
-            echo "Permissions: $(ls -la)"
-            echo "Disk space:"
-            df -h .
+            echo "Available directories:"
+            ls -la
             echo "::endgroup::"
             exit 1
           fi
           
-          # Define exclusion patterns for clean packaging with security considerations
-          echo "Creating exclusion patterns..."
-          cat > .rsync-exclude << 'EOF'
-          # Development dependencies
-          node_modules/
-          package-lock.json
-          
-          # Version control and CI/CD
-          .git/
-          .github/
-          
-          # Temporary and build files
-          temp/
-          dist/
-          .DS_Store
-          
-          # Test files and utilities
-          **/*.test.js
-          **/*.spec.js
-          jest.config.js
-          jest.setup.js
-          test-utils/
-          
-          # Development configuration files
-          .eslintrc.*
-          .prettierrc.*
-          .prettierignore
-          eslint.config.js
-          
-          # Security-sensitive files (prevent accidental inclusion)
-          .env
-          .env.*
-          *.key
-          *.pem
-          *.p12
-          *.pfx
-          *.crt
-          *.csr
-          id_rsa*
-          id_dsa*
-          id_ecdsa*
-          id_ed25519*
-          *.ppk
-          
-          # Backup and temporary files that might contain sensitive data
-          *.bak
-          *.backup
-          *.tmp
-          *.swp
-          *.swo
-          *~
-          
-          # IDE and editor files that might contain sensitive information
-          .vscode/settings.json
-          .idea/
-          *.sublime-workspace
-          *.sublime-project
-          
-          # Log files that might contain sensitive information
-          *.log
-          logs/
-          
-          # Database files
-          *.db
-          *.sqlite
-          *.sqlite3
-          EOF
-          
-          echo "Exclusion patterns:"
-          cat .rsync-exclude
-          
-          # Copy all files except excluded patterns
-          echo "Copying extension files..."
-          if ! rsync -av --exclude-from=.rsync-exclude . dist/; then
-            echo "::error::Failed to copy extension files"
-            echo "::group::File copy error details"
-            echo "rsync exit code: $?"
-            echo "Source directory contents:"
-            ls -la | head -20
-            echo "Destination directory status:"
-            ls -la dist/ || echo "dist directory not accessible"
-            echo "Exclusion file contents:"
-            cat .rsync-exclude
-            echo "::endgroup::"
-            exit 1
-          fi
-          
-          # Validate copied files
-          echo "Validating copied files..."
-          COPIED_FILES=$(find dist -type f | wc -l)
-          if [ "$COPIED_FILES" -eq 0 ]; then
-            echo "::error::No files were copied to packaging directory"
+          # Validate dist directory contents
+          echo "Validating dist directory contents..."
+          DIST_FILES=$(find dist -type f | wc -l)
+          if [ "$DIST_FILES" -eq 0 ]; then
+            echo "::error::dist directory is empty"
             echo "::group::File validation error details"
-            echo "Source files count: $(find . -type f | wc -l)"
-            echo "Destination files count: $COPIED_FILES"
-            echo "Source directory structure:"
-            find . -type f | head -20
+            echo "dist directory contents:"
+            ls -la dist/
             echo "::endgroup::"
             exit 1
           fi
           
           # List packaged files for verification
-          echo "Packaged files ($COPIED_FILES total):"
+          echo "Packaged files ($DIST_FILES total):"
           find dist -type f | sort | head -50
-          if [ "$COPIED_FILES" -gt 50 ]; then
-            echo "... and $((COPIED_FILES - 50)) more files"
+          if [ "$DIST_FILES" -gt 50 ]; then
+            echo "... and $((DIST_FILES - 50)) more files"
           fi
           
           # Validate essential extension files
           echo "Validating essential extension files..."
-          ESSENTIAL_FILES=("manifest.json" "background.js")
+          ESSENTIAL_FILES=("manifest.json" "background.js" "popup/popup.html" "popup/popup.js" "options/options.html" "options/options.js")
           for file in "${ESSENTIAL_FILES[@]}"; do
             if [ ! -f "dist/$file" ]; then
               echo "::warning::Essential file missing from package: $file"
@@ -470,8 +412,8 @@ jobs:
             fi
           done
           
-          # Create ZIP archive with clean extension files only
-          echo "Creating ZIP archive..."
+          # Create ZIP archive from built dist directory
+          echo "Creating ZIP archive from dist directory..."
           ZIP_FILE="dualsub-v${{ steps.version.outputs.version }}.zip"
           
           if ! (cd dist && zip -r "../$ZIP_FILE" .); then
@@ -539,7 +481,7 @@ jobs:
           
           # Clean up temporary files
           echo "Cleaning up temporary files..."
-          rm -rf dist .rsync-exclude zip_contents.txt
+          rm -f zip_contents.txt
           
           echo "Extension packaging completed successfully!"
           echo "Package: $ZIP_FILE ($ZIP_SIZE bytes, $ZIP_FILE_COUNT files)"

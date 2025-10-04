@@ -198,12 +198,42 @@
     "providerOpenAICompatibleName": {
         "message": "Compatible con OpenAI (Requiere Clave API)"
     },
+    "providerVertexGeminiName": {
+        "message": "Vertex AI Gemini (Requiere Clave API)"
+    },
     "cardOpenAICompatibleTitle": {
         "message": "Compatible con OpenAI (Requiere Clave API)"
     },
     "cardOpenAICompatibleDesc": {
         "message": "Ingresa tu clave API y configuraciones para servicios compatibles con OpenAI como Gemini."
     },
+    "cardVertexGeminiTitle": { "message": "Vertex AI Gemini (Requiere Clave API)" },
+    "cardVertexGeminiDesc": { "message": "Ingresa tu token de acceso y configuraciones del proyecto Vertex, o importa un archivo JSON de cuenta de servicio." },
+    "vertexAccessTokenLabel": { "message": "Token de Acceso:" },
+    "vertexProjectIdLabel": { "message": "ID del Proyecto:" },
+    "vertexLocationLabel": { "message": "Ubicación:" },
+    "vertexModelLabel": { "message": "Modelo:" },
+    "vertexMissingConfig": { "message": "Por favor ingresa el token de acceso y el ID del proyecto." },
+    "vertexConnectionFailed": { "message": "Conexión fallida: %s" },
+    "vertexServiceAccountLabel": { "message": "JSON de Cuenta de Servicio:" },
+    "vertexImportButton": { "message": "Importar Archivo JSON" },
+    "vertexRefreshButton": { "message": "🔄 Actualizar Token" },
+    "vertexImportHint": { "message": "Rellena automáticamente las credenciales a continuación" },
+    "vertexImporting": { "message": "Importando..." },
+    "vertexRefreshingToken": { "message": "Actualizando token de acceso..." },
+    "vertexGeneratingToken": { "message": "Generando token de acceso..." },
+    "vertexImportSuccess": { "message": "Cuenta de servicio importada y token generado." },
+    "vertexImportFailed": { "message": "Importación fallida: %s" },
+    "vertexTokenRefreshed": { "message": "Token de acceso actualizado exitosamente." },
+    "vertexRefreshFailed": { "message": "Actualización de token fallida: %s" },
+    "vertexTokenExpired": { "message": "⚠️ Token de acceso expirado. Haz clic en actualizar para renovar." },
+    "vertexTokenExpiringSoon": { "message": "⚠️ El token expira en %s minutos. Considera actualizarlo." },
+    "vertexConfigured": { "message": "⚠️ Vertex AI configurado. Por favor prueba la conexión." },
+    "vertexNotConfigured": { "message": "Por favor importa el JSON de cuenta de servicio o ingresa las credenciales." },
+    "featureVertexServiceAccount": { "message": "Importación de JSON de cuenta de servicio" },
+    "featureVertexAutoToken": { "message": "Generación automática de tokens" },
+    "featureVertexGemini": { "message": "Modelos Google Gemini a través de Vertex AI" },
+    "vertexNote": { "message": "Los tokens de acceso expiran después de 1 hora. Tu cuenta de servicio está almacenada de forma segura para facilitar la actualización del token - solo haz clic en el botón Actualizar Token cuando sea necesario." },
     "baseUrlLabel": { "message": "URL Base:" },
     "modelLabel": { "message": "Modelo:" },
     "featureCustomizable": { "message": "Endpoint y modelo personalizables" },
@@ -294,6 +324,10 @@
     "microsoftBatchSizeHelp": {
         "message": "Recomendado: 3-5 segmentos (predeterminado: 4)"
     },
+    "vertexBatchSizeLabel": { "message": "Tamaño de Lote Vertex AI:" },
+    "vertexBatchSizeHelp": {
+        "message": "Recomendado: 5-10 segmentos (predeterminado: 8)"
+    },
 
     "deeplTestNeedsTesting": {
         "message": "⚠️ La clave API de DeepL necesita ser probada."
@@ -330,6 +364,12 @@
     },
     "microsoftDelayHelp": {
         "message": "Retraso para respetar límites de caracteres (predeterminado: 800ms)"
+    },
+    "vertexDelayLabel": {
+        "message": "Retraso de Solicitud Vertex AI (ms):"
+    },
+    "vertexDelayHelp": {
+        "message": "Retraso mínimo entre solicitudes (predeterminado: 100ms)"
     },
 
     "aiContextModalTitle": { "message": "Análisis de Contexto IA" },
@@ -483,6 +523,9 @@
         "message": "Ayuda a mejorar el servicio compartiendo datos de uso anónimos"
     },
     "cardAIContextAdvancedTitle": { "message": "Configuración Avanzada" },
+    "cardAIContextAdvancedDesc": {
+        "message": "Configure opciones avanzadas para el comportamiento del análisis de contexto de IA."
+    },
     "aiContextTimeoutLabel": {
         "message": "Tiempo de Espera de Solicitud (ms):"
     },

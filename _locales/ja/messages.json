@@ -186,10 +186,38 @@
     "providerDeepLName": { "message": "DeepL（APIキー必須）" },
     "providerDeepLFreeName": { "message": "DeepL翻訳（無料）" },
     "providerOpenAICompatibleName": { "message": "OpenAI互換（APIキー必須）" },
+    "providerVertexGeminiName": { "message": "Vertex AI Gemini（APIキー必須）" },
     "cardOpenAICompatibleTitle": { "message": "OpenAI互換（APIキー必須）" },
     "cardOpenAICompatibleDesc": {
         "message": "GeminiなどのOpenAI互換サービス用のAPIキーと設定を入力してください。"
     },
+    "cardVertexGeminiTitle": { "message": "Vertex AI Gemini（APIキー必須）" },
+    "cardVertexGeminiDesc": { "message": "アクセストークンとVertex プロジェクト設定を入力するか、サービスアカウントJSONファイルをインポートしてください。" },
+    "vertexAccessTokenLabel": { "message": "アクセストークン：" },
+    "vertexProjectIdLabel": { "message": "プロジェクトID：" },
+    "vertexLocationLabel": { "message": "ロケーション：" },
+    "vertexModelLabel": { "message": "モデル：" },
+    "vertexMissingConfig": { "message": "アクセストークンとプロジェクトIDを入力してください。" },
+    "vertexConnectionFailed": { "message": "接続に失敗しました：%s" },
+    "vertexServiceAccountLabel": { "message": "サービスアカウントJSON：" },
+    "vertexImportButton": { "message": "JSONファイルをインポート" },
+    "vertexRefreshButton": { "message": "🔄 トークンを更新" },
+    "vertexImportHint": { "message": "以下の認証情報を自動入力" },
+    "vertexImporting": { "message": "インポート中..." },
+    "vertexRefreshingToken": { "message": "アクセストークンを更新中..." },
+    "vertexGeneratingToken": { "message": "アクセストークンを生成中..." },
+    "vertexImportSuccess": { "message": "サービスアカウントがインポートされ、トークンが生成されました。" },
+    "vertexImportFailed": { "message": "インポートに失敗しました：%s" },
+    "vertexTokenRefreshed": { "message": "アクセストークンが正常に更新されました。" },
+    "vertexRefreshFailed": { "message": "トークンの更新に失敗しました：%s" },
+    "vertexTokenExpired": { "message": "⚠️ アクセストークンが期限切れです。更新をクリックして更新してください。" },
+    "vertexTokenExpiringSoon": { "message": "⚠️ トークンは%s分で期限切れになります。更新を検討してください。" },
+    "vertexConfigured": { "message": "⚠️ Vertex AIが設定されています。接続をテストしてください。" },
+    "vertexNotConfigured": { "message": "サービスアカウントJSONをインポートするか、認証情報を入力してください。" },
+    "featureVertexServiceAccount": { "message": "サービスアカウントJSONのインポート" },
+    "featureVertexAutoToken": { "message": "自動トークン生成" },
+    "featureVertexGemini": { "message": "Vertex AI経由のGoogle Geminiモデル" },
+    "vertexNote": { "message": "アクセストークンは1時間後に期限切れになります。サービスアカウントは安全に保存されており、簡単にトークンを更新できます - 必要に応じてトークン更新ボタンをクリックしてください。" },
     "baseUrlLabel": { "message": "ベースURL：" },
     "modelLabel": { "message": "モデル：" },
     "featureCustomizable": {
@@ -274,6 +302,10 @@
     "microsoftBatchSizeHelp": {
         "message": "推奨：3-5セグメント（デフォルト：4）"
     },
+    "vertexBatchSizeLabel": { "message": "Vertex AIバッチサイズ：" },
+    "vertexBatchSizeHelp": {
+        "message": "推奨：5-10セグメント（デフォルト：8）"
+    },
 
     "deeplTestNeedsTesting": {
         "message": "⚠️ DeepL APIキーのテストが必要です。"
@@ -302,6 +334,10 @@
     "microsoftDelayLabel": { "message": "Microsoft翻訳リクエスト遅延 (ms):" },
     "microsoftDelayHelp": {
         "message": "文字制限を尊重するための遅延（デフォルト：800ms）"
+    },
+    "vertexDelayLabel": { "message": "Vertex AIリクエスト遅延 (ms):" },
+    "vertexDelayHelp": {
+        "message": "リクエスト間の最小遅延（デフォルト：100ms）"
     },
 
     "aiContextModalTitle": { "message": "AIコンテキスト分析" },
@@ -359,17 +395,12 @@
     "aiContextRegionalNotes": { "message": "地域的特徴:" },
     "aiContextOrigins": { "message": "語源:" },
     "aiContextHistoricalContext": { "message": "歴史的背景:" },
-    "aiContextHistoricalSignificance": { "message": "歴史的意義:" },
-    "aiContextEvolution": { "message": "変遷:" },
     "aiContextEtymology": { "message": "語源学:" },
     "aiContextGrammarNotes": { "message": "文法注記:" },
     "aiContextTranslationNotes": { "message": "翻訳注記:" },
     "aiContextLinguisticAnalysis": { "message": "言語学的分析:" },
     "aiContextGrammarSemantics": { "message": "文法と意味論:" },
     "aiContextUsageExamples": { "message": "用法と例:" },
-    "aiContextLearningTips": { "message": "学習のコツ:" },
-    "aiContextRelatedExpressions": { "message": "関連表現:" },
-    "aiContextKeyInsights": { "message": "重要なポイント:" },
 
     "navAIContext": { "message": "AIコンテキスト" },
     "sectionAIContext": { "message": "AIコンテキストアシスタント" },
@@ -443,6 +474,9 @@
         "message": "匿名使用データを共有してサービスの改善に協力"
     },
     "cardAIContextAdvancedTitle": { "message": "詳細設定" },
+    "cardAIContextAdvancedDesc": {
+        "message": "AIコンテキスト分析の動作に関する詳細オプションを設定します。"
+    },
     "aiContextTimeoutLabel": { "message": "リクエストタイムアウト（ms）：" },
     "aiContextTimeoutHelp": { "message": "AI応答を待つ最大時間" },
     "aiContextRateLimitLabel": { "message": "レート制限（リクエスト/分）：" },

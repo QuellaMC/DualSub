@@ -1747,6 +1747,12 @@ export class BaseContentScript {
      * @returns {Promise<boolean>} Success status
      */
     async _initializeBasedOnPageType() {
+        // Check if platform was cleaned up during initialization
+        if (!this.activePlatform) {
+            this.logWithFallback('warn', 'Platform cleaned up during initialization, aborting');
+            return false;
+        }
+
         if (this.activePlatform.isPlayerPageActive()) {
             return await this._initializeForPlayerPage();
         } else {
@@ -1763,6 +1769,13 @@ export class BaseContentScript {
         this.logWithFallback('info', 'Initializing platform on player page');
 
         await this._initializePlatformWithTimeout();
+        
+        // Check if platform was cleaned up during async initialization
+        if (!this.activePlatform) {
+            this.logWithFallback('warn', 'Platform cleaned up during player page initialization, aborting');
+            return false;
+        }
+        
         this.activePlatform.handleNativeSubtitles();
 
         this.platformReady = true;

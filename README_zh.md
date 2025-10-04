@@ -77,7 +77,19 @@
     npm install
     ```
 
-2. **开发命令**
+2. **构建扩展**
+
+    扩展使用 React 开发，使用前需要构建：
+
+    ```bash
+    # 生产构建
+    npm run build
+    
+    # 开发模式（自动重新构建）
+    npm run dev
+    ```
+
+3. **开发命令**
 
 提示：本项目使用 JSDoc `@ts-check` 进行类型检查。如需在编辑器中获得更好的 Chrome 扩展 API 智能提示，可选择性安装：
 
@@ -100,9 +112,11 @@ npm i -D chrome-types
     npm run test:watch
     ```
 
-3. **加载扩展进行测试**
-    - 按照上述手动安装步骤
-    - 更改后重新加载扩展
+4. **加载扩展进行测试**
+    - 打开 `chrome://extensions`
+    - 开启"开发者模式"
+    - 点击"加载已解压的扩展程序"，选择 **`dist/`** 文件夹（不是项目根目录！）
+    - 更改后运行 `npm run dev`（自动重新构建）或 `npm run build`，然后重新加载扩展
 
 ### 项目结构
 
@@ -111,12 +125,14 @@ DualSub/
 ├── content_scripts/     # 平台特定的内容脚本
 ├── translation_providers/ # 翻译服务实现
 ├── services/           # 核心服务（配置、日志）
-├── popup/             # 扩展弹出界面
-├── options/           # 高级设置页面
+├── popup/             # 扩展弹出界面（React）
+├── options/           # 高级设置页面（React）
 ├── utils/             # 共享工具
 ├── test-utils/        # 测试基础设施
 ├── _locales/          # 国际化文件
-└── icons/             # 扩展图标
+├── icons/             # 扩展图标
+├── dist/              # 构建输出（由 Vite 生成）
+└── vite.config.js     # React/Vite 构建配置
 ```
 
 ## 🏗️ 架构设计
@@ -243,7 +259,15 @@ npm test -- --coverage
 
 ## 📋 更新日志
 
-### 版本 2.3.2（当前）
+### 版本 2.4.0（当前）
+
+- ⚛️ **React 迁移**：将弹出窗口和选项页面完全迁移到 React
+- 🏗️ **现代化构建**：使用 Vite 进行快速开发和优化构建
+- 🎨 **UI 改进**：组件化架构，更好的可维护性
+- 📦 **构建系统**：自动化构建流程，GitHub Actions 集成
+- ✅ **100% 功能对等**：保持所有现有功能和样式
+
+### 版本 2.3.2
 
 - 消息通信稳健性：重构消息工具，支持 callback 与 promise 双模式的 chrome.runtime.sendMessage，并在 MV3 后台休眠时进行唤醒重试。
 - 平台适配统一化：在 BasePlatformAdapter 与 Netflix 中统一使用弹性消息发送，提升后台通信稳定性与测试确定性。

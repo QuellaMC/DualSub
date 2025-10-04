@@ -87,7 +87,7 @@ export const configSchema = {
     vertexAccessToken: { defaultValue: '', type: String, scope: 'sync' },
     vertexProjectId: { defaultValue: '', type: String, scope: 'sync' },
     vertexLocation: { defaultValue: 'us-central1', type: String, scope: 'sync' },
-    vertexModel: { defaultValue: 'gemini-1.5-flash', type: String, scope: 'sync' },
+    vertexModel: { defaultValue: 'gemini-2.5-flash', type: String, scope: 'sync' },
 
     // --- Subtitle Settings (from popup.js & background.js defaults) ---
     subtitlesEnabled: { defaultValue: true, type: Boolean, scope: 'sync' },

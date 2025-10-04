@@ -32,7 +32,25 @@
 
 ---
 
-## 选项二：手动安装（适合开发与测试）
+## 选项二：从 GitHub 发布版本安装（推荐手动安装）
+
+1. 下载最新版本
+    - 访问 [GitHub Releases](https://github.com/QuellaMC/DualSub/releases)
+    - 下载最新的 `dualsub-v*.zip` 文件
+    - 解压 ZIP 文件到文件夹
+
+2. 在 Chrome 中加载已解压的扩展
+    - 打开 `chrome://extensions`
+    - 开启"开发者模式"（右上角）
+    - 点击"加载已解压的扩展程序"，选择解压后的文件夹
+
+3. 验证是否生效
+    - 访问 Netflix 或 Disney+
+    - 开启字幕后点击 DualSub，启用双语字幕
+
+---
+
+## 选项三：开发环境配置（适合贡献者和开发者）
 
 1. 获取源码
     - 使用 Git 克隆：
@@ -40,27 +58,50 @@
         git clone https://github.com/QuellaMC/DualSub.git
         cd DualSub
         ```
-    - 或在 GitHub 下载 ZIP 并解压
 
-2. 安装依赖（便于开发中的测试/检查）
+2. 安装依赖
 
     ```bash
     npm install
     ```
 
-3. 在 Chrome 中加载已解压的扩展
-    - 打开 `chrome://extensions`
-    - 开启“开发者模式”（右上角）
-    - 点击“加载已解压的扩展程序”，选择项目根目录（包含 `manifest.json` 的 `DualSub` 目录）
+3. 构建扩展
+    
+    扩展使用 React 开发，使用前需要构建：
+    
+    ```bash
+    npm run build
+    ```
+    
+    这将创建 `dist/` 文件夹，其中包含编译后的扩展。
+    
+    开发模式下自动重新构建：
+    
+    ```bash
+    npm run dev
+    ```
 
-4. 验证是否生效（同上）
+4. 在 Chrome 中加载已解压的扩展
+    - 打开 `chrome://extensions`
+    - 开启"开发者模式"（右上角）
+    - 点击"加载已解压的扩展程序"，选择 **`dist/`** 文件夹（不是项目根目录！）
+
+5. 验证是否生效
     - 访问 Netflix 或 Disney+
     - 开启字幕后点击 DualSub，启用双语字幕
 
-5. 手动更新
+6. 开发工作流程
+    - 修改 `popup/`、`options/` 等源文件
+    - 运行 `npm run dev` 实现修改后自动重新构建
+    - 在 `chrome://extensions` 中点击 DualSub 卡片的刷新按钮重新加载
+    - 测试您的更改
+
+7. 手动更新（开发安装）
     - 拉取最新代码：
         ```bash
         git pull
+        npm install  # 如果依赖项发生变化
+        npm run build
         ```
     - 在 `chrome://extensions` 中点击 DualSub 卡片的刷新按钮
 
@@ -69,7 +110,10 @@
 ## 常见问题排查
 
 - 扩展不可见：在 `chrome://extensions` 确认已启用，并可选择固定到工具栏
-- “无法加载 manifest”：确保选择的是包含 `manifest.json` 的项目根目录
+- "无法加载 manifest"：
+  - GitHub 发布版：确保已解压 ZIP 并选择解压后的文件夹
+  - 开发版：确保选择的是 `dist/` 文件夹（不是项目根目录！）并且已运行 `npm run build`
+- 构建错误：确保已安装 Node.js 18+，并在 `npm run build` 之前运行 `npm install`
 - 无字幕可用：确认平台本身提供字幕并在播放器中已开启
 - AI 上下文无响应：在高级设置中配置 API 密钥与模型；检查速率限制与网络
 - 翻译服务异常：尝试更换服务商，或在高级设置中调小批处理、增大请求延迟

@@ -35,8 +35,8 @@ body {
 
 .container {
     display: flex;
-    width: 100%;
-    max-width: 1000px;
+    width: 1000px; /* Fixed width instead of 100% */
+    max-width: 100%; /* Allow responsive on smaller screens */
     height: 80vh;
     min-height: 600px;
     background-color: var(--card-bg);
@@ -51,6 +51,7 @@ body {
 .sidebar {
     background-color: var(--sidebar-bg);
     width: 220px;
+    flex-shrink: 0; /* Prevent sidebar from shrinking */
     padding: 20px;
     border-right: 1px solid var(--border-color);
     display: flex;
@@ -102,6 +103,8 @@ body {
 /* Main Content */
 .content {
     flex: 1;
+    min-width: 0; /* Allow flex item to shrink */
+    width: 100%; /* Maintain consistent width */
     padding: 40px;
     overflow-y: auto;
     background-color: var(--background-color);
@@ -727,6 +730,131 @@ button#testDeepLButton.btn-sparkle:hover span.text {
         0px 0px 90px 0px #9917ff;
 }
 
+/* Apple Style File Button */
+.apple-file-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border: none;
+    border-radius: 8px;
+    background: linear-gradient(180deg, #007aff 0%, #0051d5 100%);
+    color: white;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    box-shadow: 
+        0 1px 2px rgba(0, 122, 255, 0.3),
+        0 2px 4px rgba(0, 0, 0, 0.1);
+    position: relative;
+    overflow: hidden;
+}
+
+.apple-file-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 50%;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 100%);
+    pointer-events: none;
+}
+
+.apple-file-btn:hover {
+    background: linear-gradient(180deg, #0077ed 0%, #004fc7 100%);
+    box-shadow: 
+        0 2px 4px rgba(0, 122, 255, 0.4),
+        0 4px 8px rgba(0, 0, 0, 0.15);
+    transform: translateY(-1px);
+}
+
+.apple-file-btn:active {
+    background: linear-gradient(180deg, #0051d5 0%, #003fa8 100%);
+    box-shadow: 
+        0 1px 2px rgba(0, 122, 255, 0.3),
+        0 1px 3px rgba(0, 0, 0, 0.2);
+    transform: translateY(0);
+}
+
+.apple-file-btn:disabled {
+    background: linear-gradient(180deg, #c7c7cc 0%, #aeaeb2 100%);
+    cursor: not-allowed;
+    box-shadow: 
+        0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.apple-file-btn:disabled::before {
+    display: none;
+}
+
+.apple-file-btn .apple-icon {
+    width: 18px;
+    height: 18px;
+    color: white;
+    flex-shrink: 0;
+}
+
+.apple-file-btn .apple-btn-text {
+    color: white;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.apple-file-btn.loading {
+    pointer-events: none;
+}
+
+.apple-file-btn .apple-spinner {
+    width: 18px;
+    height: 18px;
+    animation: apple-spin 0.8s linear infinite;
+}
+
+.apple-file-btn .apple-spinner svg {
+    width: 100%;
+    height: 100%;
+}
+
+.apple-file-btn .apple-spinner circle {
+    fill: none;
+    stroke: white;
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    stroke-dasharray: 50;
+    stroke-dashoffset: 25;
+    animation: apple-spinner-dash 1.5s ease-in-out infinite;
+}
+
+@keyframes apple-spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes apple-spinner-dash {
+    0% {
+        stroke-dashoffset: 50;
+    }
+    50% {
+        stroke-dashoffset: 12.5;
+    }
+    100% {
+        stroke-dashoffset: 50;
+    }
+}
+
+/* Make Vertex import button full width like input fields */
+.vertex-import-btn {
+    width: 100%;
+    justify-content: center;
+}
+
 /* AI Context Settings Styles */
 .provider-settings {
     margin-top: 16px;
@@ -843,15 +971,6 @@ button#testDeepLButton.btn-sparkle:hover span.text {
     margin-bottom: 16px;
 }
 
-/* AI Context specific styling */
-#ai-context .setting-card {
-    border-left: 3px solid var(--link-color);
-}
-
-#ai-context .setting-card h3 {
-    color: var(--link-color);
-}
-
 .provider-settings {
     border: 1px solid var(--border-color);
     border-radius: 8px;
@@ -862,38 +981,4 @@ button#testDeepLButton.btn-sparkle:hover span.text {
 .provider-settings h3 {
     margin-top: 0;
     color: var(--heading-color);
-}
-
-/* Privacy settings emphasis */
-#aiContextPrivacyCard {
-    border-left-color: #ff9500;
-}
-
-#aiContextPrivacyCard h3 {
-    color: #ff9500;
-}
-
-/* Advanced settings styling */
-#aiContextAdvancedCard {
-    border-left-color: var(--secondary-text-color);
-}
-
-#aiContextAdvancedCard h3 {
-    color: var(--secondary-text-color);
-}
-
-/* Input styling for AI context */
-#ai-context input[type='password'],
-#ai-context input[type='number'] {
-    font-family:
-        'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas,
-        'Courier New', monospace;
-}
-
-#ai-context input[type='password'] {
-    letter-spacing: 2px;
-}
-
-#ai-context input[type='password']:focus {
-    letter-spacing: normal;
 }
