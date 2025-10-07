@@ -320,6 +320,7 @@ const localizedErrorMessages = {
     TRANSLATION_GENERIC_ERROR: {
         en: '[Translation Failed. Please try again or check settings.]',
         es: '[Traducción Fallida. Por favor, inténtalo de nuevo o revisa la configuración.]',
+        fr: '[Échec de la traduction. Veuillez réessayer ou vérifier les paramètres.]',
         ja: '[翻訳に失敗しました。もう一度試すか、設定を確認してください。]',
         ko: '[번역에 실패했습니다. 다시 시도하거나 설정을 확인해주세요.]',
         'zh-CN': '[翻译失败。请重试或检查设置。]',
@@ -337,6 +338,7 @@ export function getUILanguage() {
     if (lang.startsWith('zh-tw')) return 'zh-TW';
     if (lang.startsWith('zh')) return 'zh-CN';
     if (lang.startsWith('es')) return 'es';
+    if (lang.startsWith('fr')) return 'fr';
     if (lang.startsWith('ja')) return 'ja';
     if (lang.startsWith('ko')) return 'ko';
     return 'en';

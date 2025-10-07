@@ -1,0 +1,75 @@
+{
+    "appName": { "message": "DualSub" },
+    "appDesc": {
+        "message": "Affiche des sous-titres bilingues sur les plateformes de streaming."
+    },
+
+    "optionsPageTitle": { "message": "Options DualSub" },
+    "optionsH1Title": { "message": "DualSub" },
+    "navGeneral": { "message": "Général" },
+    "navTranslation": { "message": "Traduction" },
+    "navProviders": { "message": "Fournisseurs" },
+    "navAbout": { "message": "À propos" },
+
+    "sectionGeneral": { "message": "Général" },
+    "cardUILanguageTitle": { "message": "Langue de l'interface" },
+    "cardUILanguageDesc": {
+        "message": "Choisissez la langue d'affichage de l'interface de l'extension."
+    },
+    "uiLanguageLabel": { "message": "Langue :" },
+
+    "openOptionsButton": { "message": "Paramètres avancés" },
+    "statusLanguageSetTo": { "message": "Langue définie (actualiser la page) : " },
+
+    "originalLanguageLabel": { "message": "Langue d'origine :" },
+    "targetLanguageLabel": { "message": "Traduire en :" },
+
+    "layoutTopBottom": { "message": "Haut / Bas" },
+    "layoutLeftRight": { "message": "Gauche / Droite" },
+
+    "cardHideOfficialSubtitlesTitle": { "message": "Masquer les sous-titres officiels" },
+    "cardHideOfficialSubtitlesDesc": {
+        "message": "Masque les sous-titres officiels de la plateforme vidéo lorsque DualSub est actif."
+    },
+    "hideOfficialSubtitlesLabel": { "message": "Masquer les sous-titres officiels :" },
+
+    "cardTranslationEngineTitle": { "message": "Moteur de traduction" },
+    "cardTranslationEngineDesc": { "message": "Sélectionnez votre service de traduction préféré." },
+    "cardPerformanceTitle": { "message": "Performance" },
+    "cardPerformanceDesc": {
+        "message": "Ajustez la gestion des requêtes de traduction pour équilibrer vitesse et stabilité."
+    },
+    "sectionProviders": { "message": "Paramètres des fournisseurs" },
+    "cardDeepLTitle": { "message": "DeepL" },
+    "cardDeepLDesc": {
+        "message": "Saisissez votre clé API DeepL Translate. Choisissez entre les offres Free et Pro."
+    },
+    "apiKeyLabel": { "message": "Clé API :" },
+    "apiPlanLabel": { "message": "Offre API :" },
+    "apiPlanFree": { "message": "DeepL API Free" },
+    "apiPlanPro": { "message": "DeepL API Pro" },
+
+    "sectionAbout": { "message": "À propos" },
+    "cardAboutTitle": { "message": "DualSub" },
+    "aboutVersion": { "message": "Version" },
+    "aboutDescription": {
+        "message": "Cette extension vous aide à regarder des vidéos avec des sous-titres en deux langues sur diverses plateformes."
+    },
+    "aboutDevelopment": { "message": "Développé par QuellaMC & 1jifang." },
+
+    "lang_en": { "message": "Anglais" },
+    "lang_es": { "message": "Espagnol" },
+    "lang_fr": { "message": "Français" },
+    "lang_de": { "message": "Allemand" },
+    "lang_it": { "message": "Italien" },
+    "lang_pt": { "message": "Portugais" },
+    "lang_ja": { "message": "Japonais" },
+    "lang_ko": { "message": "Coréen" },
+    "lang_zh_CN": { "message": "Chinois (simplifié)" },
+    "lang_zh_TW": { "message": "Chinois (traditionnel)" },
+    "lang_ru": { "message": "Russe" },
+    "lang_ar": { "message": "Arabe" },
+    "lang_hi": { "message": "Hindi" }
+}
+
+
