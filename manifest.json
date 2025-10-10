@@ -4,7 +4,7 @@
     "version": "2.4.1",
     "description": "__MSG_appDesc__",
     "default_locale": "en",
-    "permissions": ["storage", "activeTab"],
+    "permissions": ["storage", "activeTab", "sidePanel"],
     "host_permissions": [
         "*://*.disneyplus.com/*",
         "*://*.netflix.com/*",
@@ -117,5 +117,8 @@
         "16": "icons/icon16.png",
         "48": "icons/icon48.png",
         "128": "icons/icon128.png"
+    },
+    "side_panel": {
+        "default_path": "sidepanel/sidepanel.html"
     }
 }

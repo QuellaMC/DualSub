@@ -46,6 +46,7 @@ export default defineConfig({
             input: {
                 popup: resolve(__dirname, 'popup/popup.html'),
                 options: resolve(__dirname, 'options/options.html'),
+                sidepanel: resolve(__dirname, 'sidepanel/sidepanel.html'),
             },
             output: {
                 entryFileNames: '[name]/[name].js',
@@ -66,6 +67,7 @@ export default defineConfig({
             '@': resolve(__dirname, './'),
             '@popup': resolve(__dirname, './popup'),
             '@options': resolve(__dirname, './options'),
+            '@sidepanel': resolve(__dirname, './sidepanel'),
             '@services': resolve(__dirname, './services'),
             '@utils': resolve(__dirname, './utils'),
         },
