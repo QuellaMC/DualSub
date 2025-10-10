@@ -501,5 +501,9 @@
         "message": "실패한 요청을 재시도하는 횟수"
     },
     "showAdvancedSettings": { "message": "고급 설정 표시" },
-    "hideAdvancedSettings": { "message": "고급 설정 숨기기" }
+    "hideAdvancedSettings": { "message": "고급 설정 숨기기" },
+
+    "errTranslationApi": { "message": "[번역 API 오류. 설정을 확인하거나 다른 제공업체를 시도해보세요.]" },
+    "errTranslationRequest": { "message": "[번역 요청 오류. 다시 시도해주세요.]" },
+    "errTranslationGeneric": { "message": "[번역에 실패했습니다. 다시 시도하거나 설정을 확인해주세요.]" }
 }
