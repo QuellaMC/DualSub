@@ -321,7 +321,141 @@
     "microsoftDelayLabel": { "message": "Délai des requêtes Microsoft Traduction (ms) :" },
     "microsoftDelayHelp": { "message": "Délai pour respecter les limites de caractères (par défaut : 800 ms)" },
     "vertexDelayLabel": { "message": "Délai des requêtes Vertex AI (ms) :" },
-    "vertexDelayHelp": { "message": "Délai minimal entre les requêtes (par défaut : 100 ms)" }
+    "vertexDelayHelp": { "message": "Délai minimal entre les requêtes (par défaut : 100 ms)" },
+
+    "aiContextModalTitle": { "message": "Analyse de contexte IA" },
+    "aiContextSelectedWords": { "message": "Mots sélectionnés" },
+    "aiContextNoWordsSelected": { "message": "Aucun mot sélectionné" },
+    "aiContextClickHint": { "message": "💡 Cliquez sur un mot pour l'ajouter ou le retirer." },
+    "aiContextStartAnalysis": { "message": "Démarrer l'analyse" },
+    "aiContextPauseAnalysis": { "message": "⏸ Pause" },
+    "aiContextPauseAnalysisTitle": { "message": "Mettre l'analyse en pause" },
+    "aiContextInitialMessage": {
+        "message": "Sélectionnez des mots dans les sous-titres pour commencer l'analyse."
+    },
+    "aiContextAnalyzing": { "message": "Analyse du contexte..." },
+    "aiContextPauseNote": { "message": "Cliquez sur ⏸ pour mettre l'analyse en pause" },
+    "aiContextAnalysisFailed": { "message": "Analyse échouée" },
+    "aiContextNoContent": { "message": "Aucun contenu d'analyse" },
+    "aiContextNoContentMessage": {
+        "message": "Analyse terminée mais aucun contenu n'a été renvoyé."
+    },
+    "aiContextDefinition": { "message": "📖 Définition" },
+    "aiContextCultural": { "message": "🌍 Contexte culturel" },
+    "aiContextCulturalSignificance": { "message": "⭐ Importance culturelle" },
+    "aiContextHistorical": { "message": "📜 Contexte historique" },
+    "aiContextHistoricalSignificance": { "message": "📜 Importance historique" },
+    "aiContextEvolution": { "message": "🔄 Évolution dans le temps" },
+    "aiContextLinguistic": { "message": "🔤 Analyse linguistique" },
+    "aiContextGrammar": { "message": "📝 Grammaire et sémantique" },
+    "aiContextUsage": { "message": "💡 Usage et exemples" },
+    "aiContextExamples": { "message": "Exemples :" },
+    "aiContextLearningTips": { "message": "🎯 Conseils d'apprentissage" },
+    "aiContextRelatedExpressions": { "message": "🔗 Expressions liées" },
+    "aiContextKeyInsights": { "message": "🔑 Points clés" },
+    "aiContextTypeCultural": { "message": "Culturel" },
+    "aiContextTypeHistorical": { "message": "Historique" },
+    "aiContextTypeLinguistic": { "message": "Linguistique" },
+    "aiContextTypeComprehensive": { "message": "Complet" },
+    "aiContextTypeGeneric": { "message": "Contexte" },
+    "aiContextClose": { "message": "Fermer" },
+    "aiContextAnalysisResults": { "message": "Résultats de l'analyse" },
+    "aiContextRetrying": { "message": "L'analyse a échoué, régénération..." },
+    "aiContextRetryNotification": { "message": "Analyse échouée, nouvelle tentative..." },
+    "aiContextRetryButton": { "message": "Réessayer" },
+    "aiContextMalformedResponse": {
+        "message": "Le service IA a renvoyé un format de réponse invalide. Cela peut être dû à des problèmes temporaires du service."
+    },
+    "aiContextJsonCodeBlock": {
+        "message": "Le service IA a renvoyé du code JSON non traité au lieu de données structurées. Cela indique une erreur de formatage de la réponse."
+    },
+    "aiContextCulturalContext": { "message": "Contexte culturel :" },
+    "aiContextSocialUsage": { "message": "Usage social :" },
+    "aiContextRegionalNotes": { "message": "Notes régionales :" },
+    "aiContextOrigins": { "message": "Origines :" },
+    "aiContextHistoricalContext": { "message": "Contexte historique :" },
+    "aiContextHistoricalSignificance": { "message": "Importance historique :" },
+    "aiContextEvolution": { "message": "Évolution :" },
+    "aiContextEtymology": { "message": "Étymologie :" },
+    "aiContextGrammarNotes": { "message": "Notes de grammaire :" },
+    "aiContextTranslationNotes": { "message": "Notes de traduction :" },
+    "aiContextLinguisticAnalysis": { "message": "Analyse linguistique :" },
+    "aiContextGrammarSemantics": { "message": "Grammaire et sémantique :" },
+    "aiContextUsageExamples": { "message": "Usage et exemples :" },
+
+    "navAIContext": { "message": "Contexte IA" },
+    "sectionAIContext": { "message": "Assistant de contexte IA" },
+    "cardAIContextToggleTitle": { "message": "Activer l'analyse de contexte IA" },
+    "cardAIContextToggleDesc": {
+        "message": "Active l'analyse contextuelle culturelle, historique et linguistique assistée par IA pour le texte des sous-titres. Cliquez sur des mots ou expressions dans les sous-titres pour obtenir des explications détaillées."
+    },
+    "aiContextEnabledLabel": { "message": "Activer le contexte IA :" },
+    "cardAIContextProviderTitle": { "message": "Fournisseur IA" },
+    "cardAIContextProviderDesc": {
+        "message": "Choisissez le fournisseur de service IA pour l'analyse de contexte. Les fournisseurs peuvent offrir des qualités et des délais différents."
+    },
+    "aiContextProviderLabel": { "message": "Fournisseur :" },
+    "cardOpenAIContextTitle": { "message": "Configuration OpenAI" },
+    "cardOpenAIContextDesc": {
+        "message": "Configurez vos paramètres d'API OpenAI pour l'analyse de contexte. Vous avez besoin d'une clé API OpenAI valide."
+    },
+    "openaiApiKeyLabel": { "message": "Clé API :" },
+    "openaiBaseUrlLabel": { "message": "URL de base :" },
+    "openaiModelLabel": { "message": "Modèle :" },
+    "cardGeminiContextTitle": { "message": "Configuration Google Gemini" },
+    "cardGeminiContextDesc": {
+        "message": "Configurez vos paramètres API Google Gemini pour l'analyse de contexte. Vous avez besoin d'une clé API Gemini valide."
+    },
+    "geminiApiKeyLabel": { "message": "Clé API :" },
+    "geminiModelLabel": { "message": "Modèle :" },
+    "cardAIContextTypesTitle": { "message": "Types de contexte" },
+    "cardAIContextTypesDesc": {
+        "message": "Activez les types d'analyse contextuelle que vous souhaitez utiliser. Vous pouvez en activer plusieurs."
+    },
+    "contextTypeCulturalLabel": { "message": "Contexte culturel :" },
+    "contextTypeCulturalHelp": {
+        "message": "Analyse les références culturelles, idiomes et contexte social"
+    },
+    "contextTypeHistoricalLabel": { "message": "Contexte historique :" },
+    "contextTypeHistoricalHelp": {
+        "message": "Fournit des informations historiques et de période"
+    },
+    "contextTypeLinguisticLabel": { "message": "Analyse linguistique :" },
+    "contextTypeLinguisticHelp": {
+        "message": "Explique la grammaire, l'étymologie et la structure de la langue"
+    },
+    "cardAIContextPrivacyTitle": { "message": "Confidentialité et données" },
+    "cardAIContextPrivacyDesc": {
+        "message": "Contrôlez la manière dont vos données sont traitées pendant l'analyse contextuelle."
+    },
+    "aiContextUserConsentLabel": {
+        "message": "J'accepte d'envoyer le texte des sous-titres aux fournisseurs IA pour analyse :"
+    },
+    "aiContextUserConsentHelp": {
+        "message": "Requis pour le fonctionnement de l'analyse de contexte IA"
+    },
+    "aiContextDataSharingLabel": { "message": "Autoriser les analyses d'utilisation anonymes :" },
+    "aiContextDataSharingHelp": {
+        "message": "Aidez à améliorer le service en partageant des données d'utilisation anonymes"
+    },
+    "cardAIContextAdvancedTitle": { "message": "Paramètres avancés" },
+    "cardAIContextAdvancedDesc": {
+        "message": "Configurez les options avancées du comportement de l'analyse de contexte IA."
+    },
+    "aiContextTimeoutLabel": { "message": "Délai d'attente (ms) :" },
+    "aiContextTimeoutHelp": { "message": "Temps d'attente maximal pour la réponse IA" },
+    "aiContextRateLimitLabel": { "message": "Limite de débit (requêtes/min) :" },
+    "aiContextRateLimitHelp": { "message": "Nombre maximal de requêtes par minute" },
+    "aiContextCacheEnabledLabel": { "message": "Activer le cache :" },
+    "aiContextCacheEnabledHelp": { "message": "Mettre en cache les résultats d'analyse pour réduire les appels API" },
+    "aiContextRetryAttemptsLabel": { "message": "Tentatives de réessai :" },
+    "aiContextRetryAttemptsHelp": { "message": "Nombre de tentatives pour réessayer les requêtes échouées" },
+    "showAdvancedSettings": { "message": "Afficher les paramètres avancés" },
+    "hideAdvancedSettings": { "message": "Masquer les paramètres avancés" },
+
+    "errTranslationApi": { "message": "[Erreur de l'API de traduction. Vérifiez les paramètres ou essayez un autre fournisseur.]" },
+    "errTranslationRequest": { "message": "[Erreur de requête de traduction. Veuillez réessayer.]" },
+    "errTranslationGeneric": { "message": "[Échec de la traduction. Veuillez réessayer ou vérifier les paramètres.]" }
 
 }
 
