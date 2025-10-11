@@ -5,6 +5,7 @@ import { WordsListsTab } from './components/tabs/WordsListsTab.jsx';
 import { useTheme } from './hooks/useTheme.js';
 import { useSettings } from './hooks/useSettings.js';
 import { SidePanelProvider } from './hooks/SidePanelContext.jsx';
+import { useSidePanelCommunication } from './hooks/useSidePanelCommunication.js';
 
 /**
  * Main Side Panel Application Component
@@ -13,6 +14,19 @@ import { SidePanelProvider } from './hooks/SidePanelContext.jsx';
  * Manages theme, settings, and global state for the side panel.
  */
 export function SidePanelApp() {
+    // Internal component to handle SIDEPANEL_UPDATE_STATE
+    function SidePanelStateSync({ onRequestTabChange }) {
+        const { onMessage } = useSidePanelCommunication();
+        useEffect(() => {
+            const unsubscribe = onMessage('sidePanelUpdateState', (data) => {
+                if (data?.activeTab) {
+                    onRequestTabChange(data.activeTab);
+                }
+            });
+            return unsubscribe;
+        }, [onMessage, onRequestTabChange]);
+        return null;
+    }
     const [activeTab, setActiveTab] = useState('ai-analysis');
     const { theme, toggleTheme } = useTheme();
     const { settings, loading: settingsLoading } = useSettings();
@@ -26,10 +40,10 @@ export function SidePanelApp() {
         }
     }, [theme]);
 
-    // Load default tab from settings
+    // Load default tab from settings, but allow background to override via message
     useEffect(() => {
         if (settings.sidePanelDefaultTab && !settingsLoading) {
-            setActiveTab(settings.sidePanelDefaultTab);
+            setActiveTab((prev) => prev || settings.sidePanelDefaultTab);
         }
     }, [settings.sidePanelDefaultTab, settingsLoading]);
 
@@ -67,6 +81,7 @@ export function SidePanelApp() {
 
     return (
         <SidePanelProvider>
+            <SidePanelStateSync onRequestTabChange={(tab) => setActiveTab(tab)} />
             <div className="sidepanel-container">
                 <TabNavigator
                     activeTab={activeTab}

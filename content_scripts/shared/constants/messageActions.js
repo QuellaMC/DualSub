@@ -28,4 +28,6 @@ export const MessageActions = {
     SIDEPANEL_RESUME_VIDEO: 'sidePanelResumeVideo',
     SIDEPANEL_GET_STATE: 'sidePanelGetState',
     SIDEPANEL_UPDATE_STATE: 'sidePanelUpdateState',
+    SIDEPANEL_REGISTER: 'sidePanelRegister',
+    SIDEPANEL_SET_ANALYZING: 'sidePanelSetAnalyzing',
 };

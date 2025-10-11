@@ -6,6 +6,8 @@ export function Sidebar({ t, activeSection, onSectionChange }) {
         { id: 'translation', label: t('navTranslation', 'Translation') },
         { id: 'providers', label: t('navProviders', 'Providers') },
         { id: 'ai-context', label: t('navAIContext', 'AI Context') },
+        { id: 'word-lists', label: t('navWordLists', 'Word Lists') },
+        { id: 'advanced', label: t('navAdvanced', 'Advanced') },
         { id: 'about', label: t('navAbout', 'About') },
     ];
 

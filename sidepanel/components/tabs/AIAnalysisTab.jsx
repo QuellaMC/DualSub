@@ -52,13 +52,14 @@ export function AIAnalysisTab() {
                         Words to Analyze
                     </label>
                     <div className="word-input-wrapper">
-                        <div className="word-tags">
+                        <div className="word-tags" style={{ pointerEvents: isAnalyzing ? 'none' : 'auto', opacity: isAnalyzing ? 0.85 : 1 }}>
                             {Array.from(selectedWords).map((word) => (
                                 <span key={word} className="word-tag">
                                     {word}
                                     <button
                                         className="word-tag-remove"
                                         onClick={() => handleWordRemove(word)}
+                                        disabled={isAnalyzing}
                                         aria-label={`Remove ${word}`}
                                     >
                                         ×
@@ -101,32 +102,47 @@ export function AIAnalysisTab() {
                         <h2 className="results-title">
                             Results for "{Array.from(selectedWords).join('", "')}"
                         </h2>
-                        <div className="results-sections">
-                            {analysisResult.culturalContext && (
-                                <div className="result-section">
-                                    <h3 className="result-section-title">Cultural Context</h3>
-                                    <p className="result-section-content">
-                                        {analysisResult.culturalContext}
-                                    </p>
-                                </div>
-                            )}
-                            {analysisResult.historicalContext && (
-                                <div className="result-section">
-                                    <h3 className="result-section-title">Historical Context</h3>
-                                    <p className="result-section-content">
-                                        {analysisResult.historicalContext}
-                                    </p>
-                                </div>
-                            )}
-                            {analysisResult.linguisticAnalysis && (
-                                <div className="result-section">
-                                    <h3 className="result-section-title">Linguistic Analysis</h3>
-                                    <p className="result-section-content">
-                                        {analysisResult.linguisticAnalysis}
-                                    </p>
-                                </div>
-                            )}
+                <div className="results-sections">
+                    {/* Definition */}
+                    {analysisResult?.definition && (
+                        <div className="result-section">
+                            <h3 className="result-section-title">Definition</h3>
+                            <p className="result-section-content">
+                                {analysisResult.definition}
+                            </p>
                         </div>
+                    )}
+
+                    {/* Cultural */}
+                    {(analysisResult?.cultural_analysis || analysisResult?.culturalContext) && (
+                        <div className="result-section">
+                            <h3 className="result-section-title">Cultural Context</h3>
+                            <p className="result-section-content">
+                                {analysisResult?.culturalContext || analysisResult?.cultural_analysis?.cultural_context || analysisResult?.cultural_analysis}
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Historical */}
+                    {(analysisResult?.historical_analysis || analysisResult?.historicalContext) && (
+                        <div className="result-section">
+                            <h3 className="result-section-title">Historical Context</h3>
+                            <p className="result-section-content">
+                                {analysisResult?.historicalContext || analysisResult?.historical_analysis?.historical_significance || analysisResult?.historical_analysis}
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Linguistic */}
+                    {(analysisResult?.linguistic_analysis || analysisResult?.linguisticAnalysis) && (
+                        <div className="result-section">
+                            <h3 className="result-section-title">Linguistic Analysis</h3>
+                            <p className="result-section-content">
+                                {analysisResult?.linguisticAnalysis || analysisResult?.linguistic_analysis?.translation_notes || analysisResult?.linguistic_analysis}
+                            </p>
+                        </div>
+                    )}
+                </div>
                     </div>
                 )}
             </div>
@@ -228,38 +244,55 @@ export function AIAnalysisTab() {
                     align-items: center;
                 }
 
-                .word-tag {
+.word-tag {
                     display: flex;
                     align-items: center;
                     gap: var(--spacing-1);
-                    background: rgba(19, 127, 236, 0.1);
-                    color: var(--color-primary);
+                    background: var(--color-primary);
+                    color: white;
                     font-size: var(--font-size-sm);
-                    font-weight: 500;
+                    font-weight: 600;
                     padding: var(--spacing-1) var(--spacing-2);
                     border-radius: 6px;
                 }
 
-                .word-tag-remove {
+                body.dark .word-tag {
+                    background: #0f5fb8; /* slightly darker for dark mode */
+                    color: white;
+                }
+
+.word-tag-remove {
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    width: 16px;
-                    height: 16px;
+                    width: 20px;
+                    height: 20px;
                     margin-left: var(--spacing-1);
-                    background: transparent;
-                    color: var(--color-primary);
-                    border: none;
-                    border-radius: 50%;
-                    font-size: 18px;
+                    background: rgba(255, 255, 255, 0.25);
+                    color: white;
+                    border: 1px solid rgba(255, 255, 255, 0.3);
+                    border-radius: 4px;
+                    font-size: 16px;
+                    font-weight: 700;
                     line-height: 1;
                     cursor: pointer;
-                    transition: all var(--transition-fast);
+                    transition: all 0.2s ease;
+                    padding: 0;
                 }
 
-                .word-tag-remove:hover {
-                    background: rgba(19, 127, 236, 0.2);
-                    color: var(--color-error);
+                .word-tag-remove:hover:not(:disabled) {
+                    background: rgba(255, 255, 255, 0.4);
+                    border-color: rgba(255, 255, 255, 0.5);
+                    transform: scale(1.1);
+                }
+
+                .word-tag-remove:active:not(:disabled) {
+                    transform: scale(0.95);
+                }
+
+                .word-tag-remove:disabled {
+                    opacity: 0.4;
+                    cursor: not-allowed;
                 }
 
                 .placeholder-text {

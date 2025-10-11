@@ -455,7 +455,45 @@ function getSubtitleTypeFromElement(element) {
  * Handle click events on interactive words
  * @param {Event} event - Click event
  */
-function handleInteractiveWordClick(event) {
+function getActiveVideoElement() {
+    const isDisney = typeof location !== 'undefined' && location.hostname.includes('disneyplus.com');
+
+    // Disney+: prefer the main hive player if present
+    if (isDisney) {
+        const hive = document.getElementById('hivePlayer');
+        if (hive && hive.tagName === 'VIDEO') return hive;
+    }
+
+    // Default: use the page's primary video first
+    const primary = document.querySelector('video');
+    if (primary) return primary;
+
+    // Then prefer the video our subtitle system attached to
+    const attached = document.querySelector('video[data-listener-attached="true"]');
+    if (attached) return attached;
+
+    // Last resort: pick the best visible, ready video
+    const list = Array.from(document.querySelectorAll('video'));
+    if (list.length === 1) return list[0];
+    let best = null;
+    let bestScore = -Infinity;
+    for (const v of list) {
+        try {
+            const r = v.getBoundingClientRect();
+            const area = Math.max(0, r.width) * Math.max(0, r.height);
+            const rs = Number(v.readyState || 0);
+            const visible = r.width > 0 && r.height > 0;
+            const score = (visible ? 1000 : 0) + rs * 100 + area;
+            if (score > bestScore) {
+                bestScore = score;
+                best = v;
+            }
+        } catch (_) {}
+    }
+    return best || null;
+}
+
+async function handleInteractiveWordClick(event) {
     const target = event.target;
 
     if (!target.classList.contains('dualsub-interactive-word')) {
@@ -496,9 +534,8 @@ function handleInteractiveWordClick(event) {
         targetLanguage,
     });
 
-    // Check if video is paused for enhanced selection mode
-    const videoElement = document.querySelector('video');
-    const isVideoPaused = videoElement ? videoElement.paused : false;
+const videoElement = getActiveVideoElement();
+    let isVideoPaused = videoElement ? videoElement.paused : false;
 
     logWithFallback('info', 'Interactive word clicked', {
         word,
@@ -507,6 +544,19 @@ function handleInteractiveWordClick(event) {
         targetElement: target.tagName,
         targetClass: target.className,
     });
+
+    const isDisney = typeof location !== 'undefined' && location.hostname.includes('disneyplus.com');
+    if (isDisney || !isVideoPaused) {
+        // Try to pause aggressively (Disney+ always routes to platform handler)
+        const paused = await pauseVideoAggressively();
+        if (paused) {
+            isVideoPaused = true;
+        } else {
+            // If not definitively paused, refresh reference and re-check
+            const v2 = getActiveVideoElement();
+            isVideoPaused = v2 ? v2.paused : false;
+        }
+    }
 
     if (isVideoPaused) {
         // Enhanced selection mode - dispatch word selection event
@@ -541,11 +591,10 @@ function handleInteractiveWordClick(event) {
             }
         );
     } else {
-        // Video is playing - no action taken
-        // Context analysis can only be initiated through the modal when video is paused
+        // Video is playing and could not be paused
         logWithFallback(
             'debug',
-            'Word click ignored - video is playing. Pause video to select words for analysis.',
+            'Word click ignored - video is playing and could not be paused.',
             {
                 word,
                 sourceLanguage,
@@ -553,6 +602,57 @@ function handleInteractiveWordClick(event) {
             }
         );
     }
+}
+
+/**
+ * Aggressively attempt to pause the video using multiple strategies
+ * @returns {Promise<boolean>} whether pause succeeded
+ */
+async function pauseVideoAggressively() {
+    try {
+        const isDisney = typeof location !== 'undefined' && location.hostname.includes('disneyplus.com');
+        if (isDisney) {
+            // Route to content script/platform handler to avoid direct pause bugs on Disney+
+            try {
+                const resp = await chrome.runtime.sendMessage({ action: 'sidePanelPauseVideo', source: 'interactive' });
+                if (resp && resp.success) return true;
+                await new Promise((r) => setTimeout(r, 160));
+                const vD = getActiveVideoElement();
+                if (vD && vD.paused) return true;
+            } catch (_) {}
+            return false;
+        }
+
+        // Strategy A: Direct HTML5 pause (generic)
+        const v = getActiveVideoElement();
+        if (v) {
+            try { v.pause(); } catch (_) {}
+            await new Promise((r) => setTimeout(r, 80));
+            if (v.paused) return true;
+        }
+
+        // Strategy B: Click any visible Pause/Play control (generic)
+        try {
+            const pauseBtn = document.querySelector(
+                'button[aria-label*="Pause" i], button[data-uia*="pause" i], button.play-button.control[part="play-button"], button[part="play-button"]'
+            );
+            if (pauseBtn) {
+                pauseBtn.click();
+                await new Promise((r) => setTimeout(r, 140));
+                const v2 = getActiveVideoElement();
+                if (v2 && v2.paused) return true;
+            }
+        } catch (_) {}
+
+        // Strategy C: Background route (best-effort)
+        try {
+            await chrome.runtime.sendMessage({ action: 'sidePanelPauseVideo', source: 'interactive' });
+            await new Promise((r) => setTimeout(r, 150));
+            const v3 = getActiveVideoElement();
+            if (v3 && v3.paused) return true;
+        } catch (_) {}
+    } catch (_) {}
+    return false;
 }
 
 /**

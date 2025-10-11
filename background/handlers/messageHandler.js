@@ -122,14 +122,16 @@ class MessageHandler {
     /**
      * Set service dependencies (will be injected after services are created)
      */
-    setServices(translationService, subtitleService, aiContextService = null) {
+    setServices(translationService, subtitleService, aiContextService = null, sidePanelService = null) {
         this.translationService = translationService;
         this.subtitleService = subtitleService;
         this.aiContextService = aiContextService;
+        this.sidePanelService = sidePanelService;
         this.logger.debug('Services injected into message handler', {
             hasTranslation: !!translationService,
             hasSubtitle: !!subtitleService,
             hasAIContext: !!aiContextService,
+            hasSidePanel: !!sidePanelService,
         });
     }
 
@@ -215,6 +217,21 @@ class MessageHandler {
                     message,
                     sendResponse
                 );
+
+            case MessageActions.SIDEPANEL_OPEN:
+                return this.handleSidePanelOpenMessage(message, sender, sendResponse);
+
+            case MessageActions.SIDEPANEL_WORD_SELECTED:
+                return this.handleSidePanelWordSelectedMessage(message, sender, sendResponse);
+
+            case MessageActions.SIDEPANEL_SET_ANALYZING:
+                return this.handleSidePanelSetAnalyzingMessage(message, sender, sendResponse);
+
+            case MessageActions.SIDEPANEL_PAUSE_VIDEO:
+                return this.handleSidePanelProxyToContent(message, sender, sendResponse);
+
+            case MessageActions.SIDEPANEL_RESUME_VIDEO:
+                return this.handleSidePanelProxyToContent(message, sender, sendResponse);
 
             default:
                 this.logger.warn('Unknown message action', {
@@ -966,6 +983,161 @@ class MessageHandler {
         });
 
         return true;
+    }
+
+    /**
+     * Handle side panel open requests
+     */
+    handleSidePanelOpenMessage(message, sender, sendResponse) {
+        if (!this.sidePanelService) {
+            sendResponse({
+                success: false,
+                error: 'Side panel service not available',
+            });
+            return true;
+        }
+
+        const tabId = sender.tab?.id;
+        if (!tabId) {
+            sendResponse({
+                success: false,
+                error: 'No tab ID available',
+            });
+            return true;
+        }
+
+        this.logger.debug('Handling side panel open request', { tabId });
+
+        // Optionally store requested active tab/open reason before opening
+        try {
+            if (message.options?.activeTab || message.options?.openReason) {
+                this.sidePanelService.updateTabState(tabId, {
+                    ...(message.options.activeTab
+                        ? { activeTab: message.options.activeTab }
+                        : {}),
+                    ...(message.options.openReason
+                        ? { openReason: message.options.openReason }
+                        : {}),
+                });
+            }
+        } catch (_) {}
+
+        // Attempt to open the side panel immediately to preserve user gesture
+        this.sidePanelService
+            .openSidePanelImmediate(tabId, message.options || {})
+            .then((result) => {
+                sendResponse(result);
+            })
+            .catch((error) => {
+                this.logger.error('Failed to open side panel (immediate)', error, { tabId });
+                sendResponse({
+                    success: false,
+                    error: error.message || 'Failed to open side panel',
+                });
+            });
+
+        return true; // Async response
+    }
+
+    /**
+     * Handle word selection events from content scripts
+     */
+    handleSidePanelWordSelectedMessage(message, sender, sendResponse) {
+        if (!this.sidePanelService) {
+            sendResponse({
+                success: false,
+                error: 'Side panel service not available',
+            });
+            return true;
+        }
+
+        const tabId = sender.tab?.id;
+        if (!tabId) {
+            sendResponse({
+                success: false,
+                error: 'No tab ID available',
+            });
+            return true;
+        }
+
+        this.logger.debug('Handling word selection from content script', {
+            tabId,
+            word: message.word,
+        });
+
+        this.sidePanelService
+            .forwardWordSelection(tabId, message)
+            .then(() => {
+                sendResponse({ success: true });
+            })
+            .catch((error) => {
+                this.logger.error('Failed to forward word selection', error, {
+                    tabId,
+                });
+                sendResponse({
+                    success: false,
+                    error: error.message || 'Failed to forward word selection',
+                });
+            });
+
+        return true; // Async response
+    }
+
+    /**
+     * Proxy a side panel or content message to the tab's content script
+     */
+    handleSidePanelProxyToContent(message, sender, sendResponse) {
+        try {
+            const tabId = sender.tab?.id;
+            if (!tabId) {
+                sendResponse({ success: false, error: 'No tab ID available' });
+                return false;
+            }
+            chrome.tabs.sendMessage(tabId, message)
+                .then(() => sendResponse({ success: true }))
+                .catch((error) => {
+                    this.logger.warn('Proxy to content failed', { error: error.message, action: message.action });
+                    sendResponse({ success: false, error: error.message });
+                });
+            return true;
+        } catch (error) {
+            this.logger.warn('Error in proxy to content', { error: error.message, action: message.action });
+            try { sendResponse({ success: false, error: error.message }); } catch (_) {}
+            return false;
+        }
+    }
+
+    /**
+     * Handle analyzing state update from side panel
+     * Broadcasts to content script to block/unblock word clicks
+     */
+    handleSidePanelSetAnalyzingMessage(message, sender, sendResponse) {
+        const tabId = sender.tab?.id;
+        if (!tabId) {
+            sendResponse({ success: false, error: 'No tab ID available' });
+            return false;
+        }
+
+        const isAnalyzing = !!message.isAnalyzing;
+        this.logger.debug('Setting analyzing state', { tabId, isAnalyzing });
+
+        // Store state in side panel service
+        if (this.sidePanelService) {
+            this.sidePanelService.updateTabState(tabId, { isAnalyzing });
+        }
+
+        // Forward to content script to block word clicks
+        chrome.tabs.sendMessage(tabId, {
+            action: MessageActions.SIDEPANEL_SET_ANALYZING,
+            isAnalyzing,
+        }).then(() => {
+            sendResponse({ success: true });
+        }).catch((error) => {
+            this.logger.warn('Failed to send analyzing state to content script', error, { tabId });
+            sendResponse({ success: true }); // Don't fail the side panel
+        });
+
+        return true; // Async response
     }
 }
 

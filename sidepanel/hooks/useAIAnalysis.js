@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useSidePanelContext } from './SidePanelContext.jsx';
+import { useSidePanelCommunication } from './useSidePanelCommunication.js';
 
 /**
  * AI Analysis Hook
@@ -29,6 +30,8 @@ export function useAIAnalysis() {
     const [settings, setSettings] = useState(null);
     const cacheRef = useRef(new Map());
     const abortControllerRef = useRef(null);
+
+    const { sendToActiveTab } = useSidePanelCommunication();
 
     // Load settings
     useEffect(() => {
@@ -149,6 +152,13 @@ export function useAIAnalysis() {
             setError(null);
             setAnalysisResult(null);
 
+            // Notify content script (active tab) that analysis started (to block word clicks)
+            try {
+                await sendToActiveTab('sidePanelSetAnalyzing', { isAnalyzing: true });
+            } catch (err) {
+                console.warn('Failed to notify analyzing state:', err);
+            }
+
             try {
                 const text = Array.from(wordsToAnalyze).join(' ');
 
@@ -168,18 +178,21 @@ export function useAIAnalysis() {
                 }
 
                 if (response && response.success) {
-                    const result = response.result || response;
-                    
-                    // Store in cache
-                    setCachedResult(
-                        wordsToAnalyze,
-                        contextTypes,
-                        sourceLanguage,
-                        result
-                    );
+                    const payload = response.result || response;
+                    const normalized = payload?.analysis || payload?.result || null;
 
-                    setAnalysisResult(result);
-                    return result;
+                    // Store in cache
+                    if (normalized) {
+                        setCachedResult(
+                            wordsToAnalyze,
+                            contextTypes,
+                            sourceLanguage,
+                            normalized
+                        );
+                    }
+
+                    setAnalysisResult(normalized);
+                    return normalized;
                 } else {
                     const errorMsg =
                         response?.error || 'Analysis failed. Please try again.';
@@ -200,6 +213,13 @@ export function useAIAnalysis() {
             } finally {
                 setIsAnalyzing(false);
                 abortControllerRef.current = null;
+
+                // Notify content script (active tab) that analysis stopped
+                try {
+                    await sendToActiveTab('sidePanelSetAnalyzing', { isAnalyzing: false });
+                } catch (err) {
+                    console.warn('Failed to notify analyzing state:', err);
+                }
             }
         },
         [

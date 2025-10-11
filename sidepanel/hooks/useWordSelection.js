@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { useSidePanelContext } from './SidePanelContext.jsx';
 import { useSidePanelCommunication } from './useSidePanelCommunication.js';
 
@@ -22,6 +22,8 @@ export function useWordSelection() {
         clearWords,
         setSourceLanguage,
         setTargetLanguage,
+        sourceLanguage,
+        targetLanguage,
     } = useSidePanelContext();
 
     const { onMessage, sendToActiveTab, getActiveTab } =
@@ -37,17 +39,17 @@ export function useWordSelection() {
                 return;
             }
 
-            const { word, sourceLanguage, targetLanguage, subtitleType } = data;
+            const { word, sourceLanguage, targetLanguage, subtitleType, action } = data;
 
-            console.log('Word selected:', {
-                word,
-                sourceLanguage,
-                targetLanguage,
-                subtitleType,
-            });
-
-            // Add word to selection
-            addWord(word);
+            // Toggle/append semantics like modal: default to 'add' if unspecified
+            if (action === 'remove') {
+                removeWord(word);
+            } else if (action === 'toggle') {
+                if (selectedWords.has(word)) removeWord(word);
+                else addWord(word);
+            } else {
+                addWord(word);
+            }
 
             // Update language settings if provided
             if (sourceLanguage) {
@@ -57,27 +59,51 @@ export function useWordSelection() {
                 setTargetLanguage(targetLanguage);
             }
         },
-        [addWord, setSourceLanguage, setTargetLanguage]
+        [addWord, removeWord, selectedWords, setSourceLanguage, setTargetLanguage]
     );
 
     /**
      * Toggle word selection
      */
     const toggleWord = useCallback(
-        (word) => {
-            if (selectedWords.has(word)) {
+        async (word) => {
+            // Compute next selection locally to sync with content script reliably
+            const next = new Set(selectedWords);
+            if (next.has(word)) {
+                next.delete(word);
                 removeWord(word);
             } else {
+                next.add(word);
                 addWord(word);
             }
+            try {
+                await sendToActiveTab('sidePanelUpdateState', {
+                    clearSelection: true,
+                    selectedWords: Array.from(next),
+                });
+            } catch (err) {
+                console.error('Failed to sync toggle to content script:', err);
+            }
         },
-        [selectedWords, addWord, removeWord]
+        [selectedWords, addWord, removeWord, sendToActiveTab]
     );
 
     /**
      * Request word selection state from content script
      */
+    const inFlightRef = useRef(false);
+    const lastSyncTsRef = useRef(0);
+    const minSyncIntervalMs = 600;
+
     const syncWithContentScript = useCallback(async () => {
+        const now = Date.now();
+        if (inFlightRef.current) {
+            return; // prevent parallel requests
+        }
+        if (now - lastSyncTsRef.current < minSyncIntervalMs) {
+            return; // throttle repetitive syncs
+        }
+        inFlightRef.current = true;
         try {
             const response = await sendToActiveTab('sidePanelGetState', {});
             
@@ -98,6 +124,9 @@ export function useWordSelection() {
             }
         } catch (err) {
             console.error('Failed to sync with content script:', err);
+        } finally {
+            lastSyncTsRef.current = Date.now();
+            inFlightRef.current = false;
         }
     }, [
         sendToActiveTab,
@@ -170,10 +199,8 @@ export function useWordSelection() {
                     await chrome.storage.local.set({
                         sidePanelLastSelection: {
                             words: Array.from(selectedWords),
-                            sourceLanguage:
-                                useSidePanelContext().sourceLanguage,
-                            targetLanguage:
-                                useSidePanelContext().targetLanguage,
+                            sourceLanguage,
+                            targetLanguage,
                             timestamp: Date.now(),
                         },
                     });
@@ -186,7 +213,7 @@ export function useWordSelection() {
         if (selectedWords.size > 0) {
             persistSelection();
         }
-    }, [selectedWords]);
+    }, [selectedWords, sourceLanguage, targetLanguage]);
 
     /**
      * Listen for word selection events
@@ -207,21 +234,61 @@ export function useWordSelection() {
      * Listen for tab changes to update selection
      */
     useEffect(() => {
-        const handleTabChange = async () => {
-            const tab = await getActiveTab();
-            if (tab) {
-                await syncWithContentScript();
+        let syncTimer = null;
+        const activeTabIdRef = { current: null };
+        const lastUrlByTabRef = { current: new Map() };
+        const debouncedSync = () => {
+            if (syncTimer) clearTimeout(syncTimer);
+            syncTimer = setTimeout(() => {
+                syncWithContentScript().catch((e) =>
+                    console.warn('Debounced sync failed:', e)
+                );
+            }, 200);
+        };
+
+        const handleTabActivated = async (activeInfo) => {
+            activeTabIdRef.current = activeInfo?.tabId ?? activeTabIdRef.current;
+            debouncedSync();
+        };
+        const handleTabUpdated = async (tabId, changeInfo, tab) => {
+            // Only act on the currently active tab
+            if (activeTabIdRef.current != null && tabId !== activeTabIdRef.current) {
+                return;
+            }
+            const newUrl = changeInfo?.url || tab?.url || null;
+            let shouldSync = false;
+            if (newUrl) {
+                const prevUrl = lastUrlByTabRef.current.get(tabId);
+                if (prevUrl !== newUrl) {
+                    lastUrlByTabRef.current.set(tabId, newUrl);
+                    shouldSync = true;
+                }
+            }
+            if (changeInfo?.status === 'complete') {
+                shouldSync = true;
+            }
+            if (shouldSync) {
+                debouncedSync();
             }
         };
 
-        chrome.tabs.onActivated.addListener(handleTabChange);
-        chrome.tabs.onUpdated.addListener(handleTabChange);
+        chrome.tabs.onActivated.addListener(handleTabActivated);
+        chrome.tabs.onUpdated.addListener(handleTabUpdated);
+
+        // Initialize active tab id
+        chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
+            if (tab && tab.id) {
+                activeTabIdRef.current = tab.id;
+                if (tab.url) lastUrlByTabRef.current.set(tab.id, tab.url);
+            }
+        }).catch(() => {});
 
         return () => {
-            chrome.tabs.onActivated.removeListener(handleTabChange);
-            chrome.tabs.onUpdated.removeListener(handleTabChange);
+            if (syncTimer) clearTimeout(syncTimer);
+            chrome.tabs.onActivated.removeListener(handleTabActivated);
+            chrome.tabs.onUpdated.removeListener(handleTabUpdated);
         };
-    }, [getActiveTab, syncWithContentScript]);
+    }, [syncWithContentScript]);
 
     return {
         selectedWords,

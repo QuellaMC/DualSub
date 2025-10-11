@@ -5,6 +5,8 @@ import { GeneralSection } from './components/sections/GeneralSection.jsx';
 import { TranslationSection } from './components/sections/TranslationSection.jsx';
 import { ProvidersSection } from './components/sections/ProvidersSection.jsx';
 import { AIContextSection } from './components/sections/AIContextSection.jsx';
+import { WordListsSection } from './components/sections/WordListsSection.jsx';
+import { AdvancedSection } from './components/sections/AdvancedSection.jsx';
 import { AboutSection } from './components/sections/AboutSection.jsx';
 
 export function OptionsApp() {
@@ -72,6 +74,20 @@ export function OptionsApp() {
                 )}
                 {activeSection === 'ai-context' && (
                     <AIContextSection
+                        t={t}
+                        settings={settings}
+                        onSettingChange={handleSettingChange}
+                    />
+                )}
+                {activeSection === 'word-lists' && (
+                    <WordListsSection
+                        t={t}
+                        settings={settings}
+                        onSettingChange={handleSettingChange}
+                    />
+                )}
+                {activeSection === 'advanced' && (
+                    <AdvancedSection
                         t={t}
                         settings={settings}
                         onSettingChange={handleSettingChange}

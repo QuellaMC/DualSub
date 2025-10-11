@@ -38,6 +38,25 @@ export function useSidePanelCommunication() {
 
             setIsConnected(true);
 
+            // Register this side panel with the background, providing the active tab ID
+            chrome.tabs
+                .query({ active: true, currentWindow: true })
+                .then(([tab]) => {
+                    if (tab && tab.id && portRef.current) {
+                        try {
+                            portRef.current.postMessage({
+                                action: 'sidePanelRegister',
+                                data: { tabId: tab.id },
+                                source: 'sidepanel',
+                                timestamp: Date.now(),
+                            });
+                        } catch (e) {
+                            console.warn('Failed to register side panel with background:', e);
+                        }
+                    }
+                })
+                .catch((e) => console.warn('Failed to query active tab for registration:', e));
+
             return () => {
                 if (portRef.current) {
                     portRef.current.disconnect();
