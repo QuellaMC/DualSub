@@ -192,13 +192,19 @@
     "cardOpenAICompatibleDesc": {
         "message": "Enter your API key and settings for OpenAI-compatible services like Gemini."
     },
-    "cardVertexGeminiTitle": { "message": "Vertex AI Gemini (API Key Required)" },
-    "cardVertexGeminiDesc": { "message": "Enter your access token and Vertex project settings." },
+    "cardVertexGeminiTitle": {
+        "message": "Vertex AI Gemini (API Key Required)"
+    },
+    "cardVertexGeminiDesc": {
+        "message": "Enter your access token and Vertex project settings."
+    },
     "vertexAccessTokenLabel": { "message": "Access Token:" },
     "vertexProjectIdLabel": { "message": "Project ID:" },
     "vertexLocationLabel": { "message": "Location:" },
     "vertexModelLabel": { "message": "Model:" },
-    "vertexMissingConfig": { "message": "Please enter access token and project ID." },
+    "vertexMissingConfig": {
+        "message": "Please enter access token and project ID."
+    },
     "vertexConnectionFailed": { "message": "Connection failed: %s" },
     "vertexServiceAccountLabel": { "message": "Service Account JSON:" },
     "vertexImportButton": { "message": "Import JSON File" },
@@ -207,19 +213,33 @@
     "vertexImporting": { "message": "Importing..." },
     "vertexRefreshingToken": { "message": "Refreshing access token..." },
     "vertexGeneratingToken": { "message": "Generating access token..." },
-    "vertexImportSuccess": { "message": "Service account imported and token generated." },
+    "vertexImportSuccess": {
+        "message": "Service account imported and token generated."
+    },
     "vertexImportFailed": { "message": "Import failed: %s" },
-    "vertexTokenRefreshed": { "message": "Access token refreshed successfully." },
+    "vertexTokenRefreshed": {
+        "message": "Access token refreshed successfully."
+    },
     "vertexRefreshFailed": { "message": "Token refresh failed: %s" },
-    "vertexTokenExpired": { "message": "⚠️ Access token expired. Click refresh to renew." },
-    "vertexTokenExpiringSoon": { "message": "⚠️ Token expires in %s minutes. Consider refreshing." },
-    "vertexConfigured": { "message": "⚠️ Vertex AI configured. Please test connection." },
-    "vertexNotConfigured": { "message": "Please import service account JSON or enter credentials." },
+    "vertexTokenExpired": {
+        "message": "⚠️ Access token expired. Click refresh to renew."
+    },
+    "vertexTokenExpiringSoon": {
+        "message": "⚠️ Token expires in %s minutes. Consider refreshing."
+    },
+    "vertexConfigured": {
+        "message": "⚠️ Vertex AI configured. Please test connection."
+    },
+    "vertexNotConfigured": {
+        "message": "Please import service account JSON or enter credentials."
+    },
     "featureVertexServiceAccount": { "message": "Service account JSON import" },
     "featureVertexAutoToken": { "message": "Automatic token generation" },
     "featureVertexGemini": { "message": "Google Gemini models via Vertex AI" },
     "providerNote": { "message": "Note:" },
-    "vertexNote": { "message": "Access tokens expire after 1 hour. Your service account is securely stored for easy token refresh - just click the Refresh Token button when needed." },
+    "vertexNote": {
+        "message": "Access tokens expire after 1 hour. Your service account is securely stored for easy token refresh - just click the Refresh Token button when needed."
+    },
     "baseUrlLabel": { "message": "Base URL:" },
     "modelLabel": { "message": "Model:" },
     "featureCustomizable": { "message": "Customizable endpoint and model" },

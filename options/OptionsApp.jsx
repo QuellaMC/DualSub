@@ -26,7 +26,7 @@ export function OptionsApp() {
 
     const handleSettingChange = async (key, value) => {
         await updateSetting(key, value);
-        
+
         // If language changes, reload translations
         if (key === 'uiLanguage') {
             setCurrentLanguage(value);
