@@ -335,7 +335,7 @@ export function getLocalizedErrorMessage(errorTypeKey, details = '') {
     } catch (e) {
         // no-op; rely on default locale resolution elsewhere
     }
-    return '';
+    return errorTypeKey;
 }
 
 // Core state variables (these are NOT user preferences)
