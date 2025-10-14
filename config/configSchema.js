@@ -25,6 +25,7 @@ function detectBrowserLanguage() {
     if (lang.startsWith('zh-tw')) return 'zh-TW';
     if (lang.startsWith('zh')) return 'zh-CN';
     if (lang.startsWith('es')) return 'es';
+    if (lang.startsWith('fr')) return 'fr';
     if (lang.startsWith('ja')) return 'ja';
     if (lang.startsWith('ko')) return 'ko';
     return 'en';

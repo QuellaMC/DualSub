@@ -300,32 +300,6 @@ export function setInteractiveSubtitlesEnabled(enabled) {
 }
 
 logWithFallback('info', 'Subtitle utilities module loaded');
-const localizedErrorMessages = {
-    TRANSLATION_API_ERROR: {
-        en: '[Translation API Error. Check settings or try another provider.]',
-        es: '[Error de API de Traducción. Revisa la configuración o prueba otro proveedor.]',
-        ja: '[翻訳API エラー。設定を確認するか、他のプロバイダーを試してください。]',
-        ko: '[번역 API 오류. 설정을 확인하거나 다른 제공업체를 시도해보세요.]',
-        'zh-CN': '[翻译API错误。请检查设置或尝试其他翻译源。]',
-        'zh-TW': '[翻譯API錯誤。請檢查設定或嘗試其他翻譯源。]',
-    },
-    TRANSLATION_REQUEST_ERROR: {
-        en: '[Translation Request Error. Please try again.]',
-        es: '[Error en la Solicitud de Traducción. Por favor, inténtalo de nuevo.]',
-        ja: '[翻訳リクエスト エラー。もう一度お試しください。]',
-        ko: '[번역 요청 오류. 다시 시도해주세요.]',
-        'zh-CN': '[翻译请求错误。请重试。]',
-        'zh-TW': '[翻譯請求錯誤。請重試。]',
-    },
-    TRANSLATION_GENERIC_ERROR: {
-        en: '[Translation Failed. Please try again or check settings.]',
-        es: '[Traducción Fallida. Por favor, inténtalo de nuevo o revisa la configuración.]',
-        ja: '[翻訳に失敗しました。もう一度試すか、設定を確認してください。]',
-        ko: '[번역에 실패했습니다. 다시 시도하거나 설정을 확인해주세요.]',
-        'zh-CN': '[翻译失败。请重试或检查设置。]',
-        'zh-TW': '[翻譯失敗。請重試或檢查設定。]',
-    },
-};
 
 export function getUILanguage() {
     const lang = (
@@ -337,24 +311,31 @@ export function getUILanguage() {
     if (lang.startsWith('zh-tw')) return 'zh-TW';
     if (lang.startsWith('zh')) return 'zh-CN';
     if (lang.startsWith('es')) return 'es';
+    if (lang.startsWith('fr')) return 'fr';
     if (lang.startsWith('ja')) return 'ja';
     if (lang.startsWith('ko')) return 'ko';
     return 'en';
 }
 
 export function getLocalizedErrorMessage(errorTypeKey, details = '') {
-    const uiLang = getUILanguage();
-    const messagesForType = localizedErrorMessages[errorTypeKey];
-    if (messagesForType) {
-        return messagesForType[uiLang] || messagesForType['en'];
+    const keyMap = {
+        TRANSLATION_API_ERROR: 'errTranslationApi',
+        TRANSLATION_REQUEST_ERROR: 'errTranslationRequest',
+        TRANSLATION_GENERIC_ERROR: 'errTranslationGeneric',
+    };
+    const messageKey = keyMap[errorTypeKey] || 'errTranslationGeneric';
+    try {
+        if (
+            typeof chrome !== 'undefined' &&
+            chrome.i18n &&
+            typeof chrome.i18n.getMessage === 'function'
+        ) {
+            return chrome.i18n.getMessage(messageKey);
+        }
+    } catch (e) {
+        // no-op; rely on default locale resolution elsewhere
     }
-    const fallbackMessages =
-        localizedErrorMessages['TRANSLATION_GENERIC_ERROR'];
-    return (
-        fallbackMessages[uiLang] ||
-        fallbackMessages['en'] ||
-        '[Translation Error]'
-    );
+    return errorTypeKey;
 }
 
 // Core state variables (these are NOT user preferences)
