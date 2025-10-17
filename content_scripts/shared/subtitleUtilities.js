@@ -58,6 +58,37 @@ export function computeTextSignature(textOrHtml) {
     return s;
 }
 
+function dispatchContentChangeImmediate(type, oldContent, newContent, element) {
+    try {
+        const existingTimeout = contentChangeDebounceTimeouts.get(element);
+        if (existingTimeout) {
+            clearTimeout(existingTimeout);
+            contentChangeDebounceTimeouts.delete(element);
+        }
+
+        document.dispatchEvent(
+            new CustomEvent('dualsub-subtitle-content-changing', {
+                detail: {
+                    type,
+                    oldContent,
+                    newContent,
+                    element,
+                },
+            })
+        );
+
+        logWithFallback('debug', 'Immediate subtitle content change dispatched', {
+            type,
+            oldContentLength: oldContent.length,
+            newContentLength: newContent.length,
+        });
+    } catch (error) {
+        logWithFallback('error', 'Failed to dispatch immediate subtitle change', {
+            error: error?.message,
+        });
+    }
+}
+
 /**
  * Dispatch subtitle content change event with debouncing to prevent rapid-fire events
  * @param {string} type - Subtitle type ('original' or 'translated')
@@ -1645,8 +1676,15 @@ export function updateSubtitles(
                 originalSubtitleElement.style.display = 'inline-block';
             } else {
                 if (originalSubtitleElement.innerHTML) {
+                    dispatchContentChangeImmediate(
+                        'original',
+                        originalSubtitleElement.innerHTML,
+                        '',
+                        originalSubtitleElement
+                    );
                     originalSubtitleElement.innerHTML = '';
                     originalSubtitleElement.dataset.textSig = '';
+                    contentChanged = true;
                     if (currentWholeSecond !== lastLoggedTimeSec) {
                         logWithFallback(
                             'debug',
@@ -1713,8 +1751,15 @@ export function updateSubtitles(
                 originalSubtitleElement.style.display = 'inline-block';
             } else {
                 if (originalSubtitleElement.innerHTML) {
+                    dispatchContentChangeImmediate(
+                        'original',
+                        originalSubtitleElement.innerHTML,
+                        '',
+                        originalSubtitleElement
+                    );
                     originalSubtitleElement.innerHTML = '';
                     originalSubtitleElement.dataset.textSig = '';
+                    contentChanged = true;
                     if (currentWholeSecond !== lastLoggedTimeSec) {
                         logWithFallback(
                             'debug',

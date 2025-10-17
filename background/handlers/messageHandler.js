@@ -224,6 +224,9 @@ class MessageHandler {
             case MessageActions.SIDEPANEL_WORD_SELECTED:
                 return this.handleSidePanelWordSelectedMessage(message, sender, sendResponse);
 
+            case MessageActions.SIDEPANEL_SELECTION_SYNC:
+                return this.handleSidePanelSelectionSyncMessage(message, sender, sendResponse);
+
             case MessageActions.SIDEPANEL_SET_ANALYZING:
                 return this.handleSidePanelSetAnalyzingMessage(message, sender, sendResponse);
 
@@ -1081,6 +1084,42 @@ class MessageHandler {
             });
 
         return true; // Async response
+    }
+
+    handleSidePanelSelectionSyncMessage(message, sender, sendResponse) {
+        if (!this.sidePanelService) {
+            sendResponse({
+                success: false,
+                error: 'Side panel service not available',
+            });
+            return true;
+        }
+
+        const tabId = sender.tab?.id;
+        if (!tabId) {
+            sendResponse({
+                success: false,
+                error: 'No tab ID available',
+            });
+            return true;
+        }
+
+        this.sidePanelService
+            .forwardSelectionSync(tabId, message)
+            .then(() => {
+                sendResponse({ success: true });
+            })
+            .catch((error) => {
+                this.logger.error('Failed to forward selection sync', error, {
+                    tabId,
+                });
+                sendResponse({
+                    success: false,
+                    error: error.message || 'Failed to forward selection sync',
+                });
+            });
+
+        return true;
     }
 
     /**

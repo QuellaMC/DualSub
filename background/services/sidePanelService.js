@@ -66,61 +66,38 @@ class SidePanelService {
      * Handle new connection from side panel
      */
     handleSidePanelConnection(port) {
-        const tabId = port.sender?.tab?.id;
-        if (!tabId) {
-            this.logger.warn('Side panel connection without tab ID');
-            return;
-        }
+        let tabId = port.sender?.tab?.id ?? null;
 
-        this.logger.info('Side panel connected', { tabId });
-        this.activeConnections.set(tabId, port);
+        if (tabId != null) {
+            this.logger.info('Side panel connected', { tabId });
+            this.activeConnections.set(tabId, port);
+        } else {
+            this.logger.warn('Side panel connection without tab ID (awaiting register message)');
+        }
 
         // Handle messages from side panel
         port.onMessage.addListener((message) => {
+            // Update tabId once the side panel sends an explicit register payload
+            if (message?.action === MessageActions.SIDEPANEL_REGISTER) {
+                const claimedTabId = message?.data?.tabId;
+                if (typeof claimedTabId === 'number') {
+                    tabId = claimedTabId;
+                    this.activeConnections.set(tabId, port);
+                }
+            }
+
             this.handleSidePanelMessage(message, port, tabId);
         });
 
         // Handle disconnection
         port.onDisconnect.addListener(() => {
-            this.logger.info('Side panel disconnected', { tabId });
-            this.activeConnections.delete(tabId);
-        });
-
-        // Send current state to newly connected side panel
-        const state = this.tabStates.get(tabId);
-        if (state) {
-            // If there's a pending selection, request AI tab first then forward selection after a short delay
-            if (state.pendingWordSelection) {
-                // Request tab switch
-                port.postMessage({
-                    action: MessageActions.SIDEPANEL_UPDATE_STATE,
-                    data: { activeTab: 'ai-analysis' },
-                });
-
-                // Forward selection after a small delay so the AI tab can mount its listeners
-                setTimeout(() => {
-                    try {
-                        port.postMessage({
-                            action: MessageActions.SIDEPANEL_WORD_SELECTED,
-                            data: state.pendingWordSelection,
-                        });
-
-                        // Clear pending selection
-                        const newState = { ...state };
-                        delete newState.pendingWordSelection;
-                        newState.activeTab = 'ai-analysis';
-                        this.tabStates.set(tabId, newState);
-                    } catch (err) {
-                        this.logger.error('Failed to deliver pending selection to side panel', err, { tabId });
-                    }
-                }, 60);
+            if (tabId != null) {
+                this.logger.info('Side panel disconnected', { tabId });
+                this.activeConnections.delete(tabId);
             } else {
-                port.postMessage({
-                    action: MessageActions.SIDEPANEL_UPDATE_STATE,
-                    data: state,
-                });
+                this.logger.info('Side panel disconnected before registration');
             }
-        }
+        });
     }
 
     /**
@@ -177,13 +154,33 @@ class SidePanelService {
                                 const pending = st.pendingWordSelection;
                                 setTimeout(() => {
                                     try {
+                                        const selectedWords =
+                                            Array.isArray(pending?.selectedWords) && pending.selectedWords.length > 0
+                                                ? pending.selectedWords
+                                                : pending?.word
+                                                    ? [pending.word]
+                                                    : [];
+
                                         port.postMessage({
-                                            action: MessageActions.SIDEPANEL_WORD_SELECTED,
-                                            data: pending,
+                                            action: MessageActions.SIDEPANEL_SELECTION_SYNC,
+                                            data: {
+                                                selectedWords,
+                                                reason: pending?.reason || 'initial-pending-selection',
+                                            },
                                         });
+                                        if (selectedWords.length > 0) {
+                                            port.postMessage({
+                                                action: MessageActions.SIDEPANEL_UPDATE_STATE,
+                                                data: { activeTab: 'ai-analysis' },
+                                            });
+                                        }
+
                                         // Clear pending selection after delivery
                                         const newState = { ...st };
                                         delete newState.pendingWordSelection;
+                                        if (selectedWords.length > 0) {
+                                            newState.selectedWords = selectedWords;
+                                        }
                                         this.tabStates.set(claimedTabId, newState);
                                     } catch (err) {
                                         this.logger.error('Failed to deliver pending selection on register', err, { tabId: claimedTabId });
@@ -349,6 +346,36 @@ class SidePanelService {
 
             // Open side panel immediately to preserve user gesture
             await this.openSidePanelImmediate(tabId, { pauseVideo: true });
+        }
+    }
+
+    /**
+     * Forward selection synchronization (e.g., subtitle change clears selection)
+     */
+    async forwardSelectionSync(tabId, payload = {}) {
+        const port = this.activeConnections.get(tabId);
+        if (port) {
+            try {
+                port.postMessage({
+                    action: MessageActions.SIDEPANEL_SELECTION_SYNC,
+                    data: {
+                        selectedWords: payload.selectedWords || [],
+                        reason: payload.reason || 'unknown',
+                    },
+                });
+                this.logger.debug('Selection sync forwarded to side panel', {
+                    tabId,
+                    count: (payload.selectedWords || []).length,
+                });
+            } catch (err) {
+                this.logger.error('Failed to forward selection sync', err, {
+                    tabId,
+                });
+            }
+        } else {
+            this.logger.debug('Selection sync skipped (no active side panel connection)', {
+                tabId,
+            });
         }
     }
 

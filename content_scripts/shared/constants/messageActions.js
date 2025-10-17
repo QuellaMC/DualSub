@@ -30,4 +30,5 @@ export const MessageActions = {
     SIDEPANEL_UPDATE_STATE: 'sidePanelUpdateState',
     SIDEPANEL_REGISTER: 'sidePanelRegister',
     SIDEPANEL_SET_ANALYZING: 'sidePanelSetAnalyzing',
+    SIDEPANEL_SELECTION_SYNC: 'sidePanelSelectionSync',
 };

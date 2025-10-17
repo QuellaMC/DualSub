@@ -29,6 +29,31 @@ export function useWordSelection() {
     const { onMessage, sendToActiveTab, getActiveTab } =
         useSidePanelCommunication();
 
+    useEffect(() => {
+        const unsubscribe = onMessage(
+            'sidePanelSelectionSync',
+            (payload) => {
+                const incomingWords = Array.isArray(payload?.selectedWords)
+                    ? payload.selectedWords
+                    : [];
+                const normalized = Array.from(
+                    new Set(
+                        incomingWords
+                            .map((w) =>
+                                typeof w === 'string' ? w.trim() : ''
+                            )
+                            .filter((w) => w.length > 0)
+                    )
+                );
+
+                clearWords();
+                normalized.forEach((w) => addWord(w));
+            }
+        );
+
+        return unsubscribe;
+    }, [onMessage, addWord, clearWords]);
+
     /**
      * Handle word selected event from content script
      */
@@ -39,14 +64,23 @@ export function useWordSelection() {
                 return;
             }
 
-            const { word, sourceLanguage, targetLanguage, subtitleType, action } = data;
+            const { word, sourceLanguage, targetLanguage } = data;
+            const selectionAction = data?.selectionAction ?? data?.action;
+            const normalizedAction =
+                selectionAction && selectionAction !== 'sidePanelWordSelected'
+                    ? selectionAction
+                    : 'toggle';
 
-            // Toggle/append semantics like modal: default to 'add' if unspecified
-            if (action === 'remove') {
+            if (normalizedAction === 'remove') {
                 removeWord(word);
-            } else if (action === 'toggle') {
+            } else if (normalizedAction === 'toggle') {
                 if (selectedWords.has(word)) removeWord(word);
                 else addWord(word);
+            } else if (normalizedAction === 'replace') {
+                clearWords();
+                addWord(word);
+            } else if (normalizedAction === 'add') {
+                addWord(word);
             } else {
                 addWord(word);
             }
@@ -59,7 +93,7 @@ export function useWordSelection() {
                 setTargetLanguage(targetLanguage);
             }
         },
-        [addWord, removeWord, selectedWords, setSourceLanguage, setTargetLanguage]
+        [addWord, removeWord, clearWords, selectedWords, setSourceLanguage, setTargetLanguage]
     );
 
     /**

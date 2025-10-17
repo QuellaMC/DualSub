@@ -1249,9 +1249,13 @@ export class BaseContentScript {
                 useSidePanel: false,
                 isAnalyzing: false,
                 boundHandler: null,
+                boundSubtitleChangeHandler: null,
+                selectedWords: new Set(),
 
                 async initialize() {
                     if (this.initialized) return;
+
+                    this.selectedWords = new Set();
 
                     // Prepare logger bridge and messaging wrapper
                     this._log = (level, message, data) => {
@@ -1294,6 +1298,16 @@ export class BaseContentScript {
                         'dualsub-word-selected',
                         this.boundHandler,
                         { capture: true }
+                    );
+
+                    // Listen for subtitle content changes to clear stale selections
+                    this.boundSubtitleChangeHandler = this.handleSubtitleContentChange.bind(
+                        this
+                    );
+                    document.addEventListener(
+                        'dualsub-subtitle-content-changing',
+                        this.boundSubtitleChangeHandler,
+                        { capture: false }
                     );
 
                     // Listen for storage changes
@@ -1359,7 +1373,7 @@ export class BaseContentScript {
                             targetLanguage,
                             context,
                             subtitleType,
-                            action: 'toggle',
+                            selectionAction: 'toggle',
                             timestamp: Date.now(),
                         });
 
@@ -1371,8 +1385,54 @@ export class BaseContentScript {
                                 element.classList.add('dualsub-word-selected');
                             }
                         }
+
+                        const normalizedWord = (word || '').trim();
+                        if (normalizedWord) {
+                            const isSelectedNow =
+                                element?.classList?.contains('dualsub-word-selected') ??
+                                !this.selectedWords.has(normalizedWord);
+                            if (isSelectedNow) {
+                                this.selectedWords.add(normalizedWord);
+                            } else {
+                                this.selectedWords.delete(normalizedWord);
+                            }
+                        }
                     } catch (error) {
                         console.error('[SidePanelIntegration] Error forwarding word selection:', error);
+                    }
+                },
+
+                handleSubtitleContentChange(event) {
+                    if (!this.sidePanelEnabled || !this.useSidePanel) {
+                        return;
+                    }
+
+                    const detail = event?.detail || {};
+                    if (detail.type && detail.type !== 'original') {
+                        return;
+                    }
+
+                    if (!this.selectedWords || this.selectedWords.size === 0) {
+                        return;
+                    }
+
+                    try {
+                        document
+                            .querySelectorAll('.dualsub-interactive-word.dualsub-word-selected')
+                            .forEach((el) => el.classList.remove('dualsub-word-selected'));
+                    } catch (_) {}
+
+                    this.selectedWords.clear();
+
+                    try {
+                        void this._send({
+                            action: MessageActions.SIDEPANEL_SELECTION_SYNC,
+                            selectedWords: [],
+                            timestamp: Date.now(),
+                            reason: 'subtitle-change',
+                        });
+                    } catch (error) {
+                        console.error('[SidePanelIntegration] Error syncing cleared selection:', error);
                     }
                 },
 
@@ -1384,7 +1444,17 @@ export class BaseContentScript {
                             this.boundHandler,
                             { capture: true }
                         );
+                        this.boundHandler = null;
                     }
+                    if (this.boundSubtitleChangeHandler) {
+                        document.removeEventListener(
+                            'dualsub-subtitle-content-changing',
+                            this.boundSubtitleChangeHandler,
+                            { capture: false }
+                        );
+                        this.boundSubtitleChangeHandler = null;
+                    }
+                    this.selectedWords = new Set();
                     this.initialized = false;
                 },
 
@@ -3278,6 +3348,9 @@ export class BaseContentScript {
                 document
                     .querySelectorAll('.dualsub-interactive-word.dualsub-word-selected')
                     .forEach((el) => el.classList.remove('dualsub-word-selected'));
+                if (this.sidePanelIntegration && this.sidePanelIntegration.selectedWords) {
+                    this.sidePanelIntegration.selectedWords.clear();
+                }
             }
 
             if (Array.isArray(data.selectedWords)) {
@@ -3288,6 +3361,9 @@ export class BaseContentScript {
                     ).find((e) => (e.getAttribute('data-word') || '').trim() === word);
                     if (el) el.classList.add('dualsub-word-selected');
                 });
+                if (this.sidePanelIntegration) {
+                    this.sidePanelIntegration.selectedWords = new Set(data.selectedWords);
+                }
             }
 
             sendResponse({ success: true });
