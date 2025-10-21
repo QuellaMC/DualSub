@@ -71,6 +71,7 @@ export default defineConfig({
             '@popup': resolve(__dirname, './popup'),
             '@options': resolve(__dirname, './options'),
             '@sidepanel': resolve(__dirname, './sidepanel'),
+            '@shared': resolve(__dirname, './shared'),
             '@services': resolve(__dirname, './services'),
             '@utils': resolve(__dirname, './utils'),
         },

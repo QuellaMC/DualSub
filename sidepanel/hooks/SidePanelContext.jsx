@@ -13,7 +13,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 const SidePanelContext = createContext(null);
 
 export function SidePanelProvider({ children }) {
-    const [selectedWords, setSelectedWords] = useState(new Set());
+    const [selectedWords, setSelectedWords] = useState([]);
     const [analysisResult, setAnalysisResult] = useState(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [error, setError] = useState(null);
@@ -29,19 +29,18 @@ export function SidePanelProvider({ children }) {
     }, [error]);
 
     const addWord = (word) => {
-        setSelectedWords((prev) => new Set([...prev, word]));
-    };
-
-    const removeWord = (word) => {
         setSelectedWords((prev) => {
-            const newSet = new Set(prev);
-            newSet.delete(word);
-            return newSet;
+            if (prev.includes(word)) return prev;
+            return [...prev, word];
         });
     };
 
+    const removeWord = (word) => {
+        setSelectedWords((prev) => prev.filter((w) => w !== word));
+    };
+
     const clearWords = () => {
-        setSelectedWords(new Set());
+        setSelectedWords([]);
     };
 
     const clearAnalysis = () => {

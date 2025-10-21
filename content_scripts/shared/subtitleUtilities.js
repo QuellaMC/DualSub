@@ -58,85 +58,51 @@ export function computeTextSignature(textOrHtml) {
     return s;
 }
 
-function dispatchContentChangeImmediate(type, oldContent, newContent, element) {
+function dispatchContentChange(type, oldContent, newContent, element, { immediate = false } = {}) {
     try {
+        const oldSig = computeTextSignature(oldContent || '');
+        const newSig = computeTextSignature(newContent || '');
+        if (!immediate && oldSig === newSig) {
+            return;
+        }
+
         const existingTimeout = contentChangeDebounceTimeouts.get(element);
         if (existingTimeout) {
             clearTimeout(existingTimeout);
             contentChangeDebounceTimeouts.delete(element);
         }
 
-        document.dispatchEvent(
-            new CustomEvent('dualsub-subtitle-content-changing', {
-                detail: {
-                    type,
-                    oldContent,
-                    newContent,
-                    element,
-                },
-            })
-        );
+        const dispatch = () => {
+            document.dispatchEvent(
+                new CustomEvent('dualsub-subtitle-content-changing', {
+                    detail: {
+                        type,
+                        oldContent,
+                        newContent,
+                        element,
+                    },
+                })
+            );
 
-        logWithFallback('debug', 'Immediate subtitle content change dispatched', {
-            type,
-            oldContentLength: oldContent.length,
-            newContentLength: newContent.length,
-        });
-    } catch (error) {
-        logWithFallback('error', 'Failed to dispatch immediate subtitle change', {
-            error: error?.message,
-        });
-    }
-}
-
-/**
- * Dispatch subtitle content change event with debouncing to prevent rapid-fire events
- * @param {string} type - Subtitle type ('original' or 'translated')
- * @param {string} oldContent - Previous content
- * @param {string} newContent - New content
- * @param {HTMLElement} element - Subtitle element
- */
-function dispatchContentChangeDebounced(type, oldContent, newContent, element) {
-    // Phase 2: Gate dispatching based on normalized signatures
-    try {
-        const oldSig = computeTextSignature(oldContent || '');
-        const newSig = computeTextSignature(newContent || '');
-        if (oldSig === newSig) {
-            return; // no effective change
-        }
-    } catch (_) {}
-    const existingTimeout = contentChangeDebounceTimeouts.get(element);
-    if (existingTimeout) {
-        clearTimeout(existingTimeout);
-    }
-    const timeoutId = setTimeout(() => {
-        document.dispatchEvent(
-            new CustomEvent('dualsub-subtitle-content-changing', {
-                detail: {
-                    type,
-                    oldContent,
-                    newContent,
-                    element,
-                },
-            })
-        );
-
-        logWithFallback(
-            'debug',
-            'Debounced subtitle content change event dispatched',
-            {
+            logWithFallback('debug', `${immediate ? 'Immediate' : 'Debounced'} subtitle content change dispatched`, {
                 type,
                 oldContentLength: oldContent.length,
                 newContentLength: newContent.length,
-            }
-        );
+            });
+        };
 
-        // Clean up the timeout from the map
-        contentChangeDebounceTimeouts.delete(element);
-    }, CONTENT_CHANGE_DEBOUNCE_DELAY);
+        if (immediate) {
+            dispatch();
+            return;
+        }
 
-    // Store the timeout for this element
-    contentChangeDebounceTimeouts.set(element, timeoutId);
+        const timeoutId = setTimeout(() => {
+            dispatch();
+            contentChangeDebounceTimeouts.delete(element);
+        }, CONTENT_CHANGE_DEBOUNCE_DELAY);
+
+        contentChangeDebounceTimeouts.set(element, timeoutId);
+    } catch (_) {}
 }
 
 // Initialize logger when available
@@ -1656,7 +1622,7 @@ export function updateSubtitles(
                     originalSubtitleElement.innerHTML === ''
                 ) {
                     // Notify AI Context modal about subtitle content change (debounced)
-                    dispatchContentChangeDebounced(
+                    dispatchContentChange(
                         'original',
                         originalSubtitleElement.innerHTML,
                         originalTextFormatted,
@@ -1676,15 +1642,21 @@ export function updateSubtitles(
                 originalSubtitleElement.style.display = 'inline-block';
             } else {
                 if (originalSubtitleElement.innerHTML) {
-                    dispatchContentChangeImmediate(
+                    dispatchContentChange(
                         'original',
                         originalSubtitleElement.innerHTML,
                         '',
-                        originalSubtitleElement
+                        originalSubtitleElement,
+                        { immediate: true }
                     );
                     originalSubtitleElement.innerHTML = '';
                     originalSubtitleElement.dataset.textSig = '';
                     contentChanged = true;
+                    lastDisplayedCueWindow = {
+                        start: null,
+                        end: null,
+                        videoId: null,
+                    };
                     if (currentWholeSecond !== lastLoggedTimeSec) {
                         logWithFallback(
                             'debug',
@@ -1718,8 +1690,16 @@ export function updateSubtitles(
                 translatedSubtitleElement.style.display = 'inline-block';
             } else {
                 if (translatedSubtitleElement.innerHTML) {
+                    dispatchContentChange(
+                        'translated',
+                        translatedSubtitleElement.innerHTML,
+                        '',
+                        translatedSubtitleElement,
+                        { immediate: true }
+                    );
                     translatedSubtitleElement.innerHTML = '';
                     translatedSubtitleElement.dataset.textSig = '';
+                    contentChanged = true;
                     if (currentWholeSecond !== lastLoggedTimeSec) {
                         logWithFallback(
                             'debug',
@@ -1751,15 +1731,21 @@ export function updateSubtitles(
                 originalSubtitleElement.style.display = 'inline-block';
             } else {
                 if (originalSubtitleElement.innerHTML) {
-                    dispatchContentChangeImmediate(
+                    dispatchContentChange(
                         'original',
                         originalSubtitleElement.innerHTML,
                         '',
-                        originalSubtitleElement
+                        originalSubtitleElement,
+                        { immediate: true }
                     );
                     originalSubtitleElement.innerHTML = '';
                     originalSubtitleElement.dataset.textSig = '';
                     contentChanged = true;
+                    lastDisplayedCueWindow = {
+                        start: null,
+                        end: null,
+                        videoId: null,
+                    };
                     if (currentWholeSecond !== lastLoggedTimeSec) {
                         logWithFallback(
                             'debug',
@@ -1793,8 +1779,16 @@ export function updateSubtitles(
                 translatedSubtitleElement.style.display = 'inline-block';
             } else {
                 if (translatedSubtitleElement.innerHTML) {
+                    dispatchContentChange(
+                        'translated',
+                        translatedSubtitleElement.innerHTML,
+                        '',
+                        translatedSubtitleElement,
+                        { immediate: true }
+                    );
                     translatedSubtitleElement.innerHTML = '';
                     translatedSubtitleElement.dataset.textSig = '';
+                    contentChanged = true;
                     if (currentWholeSecond !== lastLoggedTimeSec) {
                         logWithFallback(
                             'debug',
@@ -1883,13 +1877,35 @@ export function updateSubtitles(
             return;
         }
 
-        if (originalSubtitleElement.innerHTML)
+        if (originalSubtitleElement && originalSubtitleElement.innerHTML) {
+            dispatchContentChange(
+                'original',
+                originalSubtitleElement.innerHTML,
+                '',
+                originalSubtitleElement,
+                { immediate: true }
+            );
             originalSubtitleElement.innerHTML = '';
-        originalSubtitleElement.style.display = 'none';
+            originalSubtitleElement.dataset.textSig = '';
+        }
+        if (originalSubtitleElement)
+            originalSubtitleElement.style.display = 'none';
 
-        if (translatedSubtitleElement.innerHTML)
+        if (translatedSubtitleElement && translatedSubtitleElement.innerHTML) {
+            dispatchContentChange(
+                'translated',
+                translatedSubtitleElement.innerHTML,
+                '',
+                translatedSubtitleElement,
+                { immediate: true }
+            );
             translatedSubtitleElement.innerHTML = '';
-        translatedSubtitleElement.style.display = 'none';
+            translatedSubtitleElement.dataset.textSig = '';
+        }
+        if (translatedSubtitleElement)
+            translatedSubtitleElement.style.display = 'none';
+
+        lastDisplayedCueWindow = { start: null, end: null, videoId: null };
     }
 }
 
@@ -1924,6 +1940,74 @@ export function clearSubtitlesDisplayAndQueue(
         } catch (e) {
             // Ignore errors
         }
+    }
+}
+
+export function finalizeExpiredSubtitleIfNeeded(thresholdSeconds = 0.1) {
+    try {
+        if (!lastDisplayedCueWindow || lastDisplayedCueWindow.end == null) {
+            return false;
+        }
+
+        const video =
+            document.querySelector('video[data-listener-attached="true"]') ||
+            document.querySelector('video');
+        const currentTime =
+            typeof video?.currentTime === 'number' ? video.currentTime : null;
+
+        if (
+            currentTime == null ||
+            currentTime <= (lastDisplayedCueWindow.end ?? 0) + thresholdSeconds
+        ) {
+            return false;
+        }
+
+        let cleared = false;
+
+        if (originalSubtitleElement && originalSubtitleElement.innerHTML) {
+            dispatchContentChange(
+                'original',
+                originalSubtitleElement.innerHTML,
+                '',
+                originalSubtitleElement,
+                { immediate: true }
+            );
+            originalSubtitleElement.innerHTML = '';
+            originalSubtitleElement.dataset.textSig = '';
+            originalSubtitleElement.style.display = 'none';
+            cleared = true;
+        }
+
+        if (translatedSubtitleElement && translatedSubtitleElement.innerHTML) {
+            dispatchContentChange(
+                'translated',
+                translatedSubtitleElement.innerHTML,
+                '',
+                translatedSubtitleElement,
+                { immediate: true }
+            );
+            translatedSubtitleElement.innerHTML = '';
+            translatedSubtitleElement.dataset.textSig = '';
+            translatedSubtitleElement.style.display = 'none';
+            cleared = true;
+        }
+
+        if (cleared) {
+            document
+                .querySelectorAll(
+                    '.dualsub-interactive-word.dualsub-word-selected'
+                )
+                .forEach((el) => el.classList.remove('dualsub-word-selected'));
+
+            lastDisplayedCueWindow = { start: null, end: null, videoId: null };
+        }
+
+        return cleared;
+    } catch (error) {
+        logWithFallback('warn', 'Failed to finalize expired subtitle', {
+            error: error?.message,
+        });
+        return false;
     }
 }
 

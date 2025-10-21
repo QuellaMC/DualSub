@@ -125,7 +125,10 @@ import {
     MessageHandlerRegistry,
 } from './utils.js';
 import { COMMON_CONSTANTS } from './constants.js';
-import { getOrCreateUiRoot } from '../shared/subtitleUtilities.js';
+import {
+    getOrCreateUiRoot,
+    finalizeExpiredSubtitleIfNeeded,
+} from '../shared/subtitleUtilities.js';
 import { MessageActions } from '../shared/constants/messageActions.js';
 import { NavigationDetectionManager } from '../shared/navigationUtils.js';
 
@@ -1365,19 +1368,7 @@ export class BaseContentScript {
                             });
                         } catch (_) {}
 
-                        // 2) Forward word selection (ok to await)
-                        const resp = await this._send({
-                            action: MessageActions.SIDEPANEL_WORD_SELECTED,
-                            word,
-                            sourceLanguage,
-                            targetLanguage,
-                            context,
-                            subtitleType,
-                            selectionAction: 'toggle',
-                            timestamp: Date.now(),
-                        });
-
-                        // Visual feedback: toggle selection like legacy modal (do not clear all)
+                        // 2) Toggle visual selection immediately to reflect DOM state
                         if (element) {
                             if (element.classList.contains('dualsub-word-selected')) {
                                 element.classList.remove('dualsub-word-selected');
@@ -1397,6 +1388,43 @@ export class BaseContentScript {
                                 this.selectedWords.delete(normalizedWord);
                             }
                         }
+
+                        // 3) After DOM reflects the new selection, compute canonical ordered list and broadcast
+                        try {
+                            const highlighted = Array.from(
+                                document.querySelectorAll('.dualsub-interactive-word.dualsub-word-selected')
+                            );
+                            const words = [];
+                            const seen = new Set();
+                            highlighted.forEach((el) => {
+                                const w = el.getAttribute('data-word') || el.textContent || '';
+                                const ww = (w || '').trim();
+                                if (ww && !seen.has(ww)) {
+                                    seen.add(ww);
+                                    words.push(ww);
+                                }
+                            });
+
+                            void this._send({
+                                action: MessageActions.SIDEPANEL_SELECTION_SYNC,
+                                selectedWords: words,
+                                timestamp: Date.now(),
+                                reason: 'word-click',
+                            });
+                        } catch (_) {}
+
+                        // 4) Forward word selection (non-authoritative, kept for compatibility)
+                        void this._send({
+                            action: MessageActions.SIDEPANEL_WORD_SELECTED,
+                            word,
+                            sourceLanguage,
+                            targetLanguage,
+                            context,
+                            subtitleType,
+                            selectionAction: 'toggle',
+                            reason: 'word-click',
+                            timestamp: Date.now(),
+                        });
                     } catch (error) {
                         console.error('[SidePanelIntegration] Error forwarding word selection:', error);
                     }
@@ -3574,6 +3602,13 @@ export class BaseContentScript {
                     'debug',
                     'Page visible, resuming operations'
                 );
+                try {
+                    finalizeExpiredSubtitleIfNeeded();
+                } catch (err) {
+                    this.logWithFallback('warn', 'Failed to finalize subtitles after visibility restore', {
+                        error: err?.message,
+                    });
+                }
                 // Re-check video setup when page becomes visible
                 if (
                     this.activePlatform &&

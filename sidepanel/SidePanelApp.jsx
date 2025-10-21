@@ -6,6 +6,7 @@ import { useTheme } from './hooks/useTheme.js';
 import { useSettings } from './hooks/useSettings.js';
 import { SidePanelProvider } from './hooks/SidePanelContext.jsx';
 import { useSidePanelCommunication } from './hooks/useSidePanelCommunication.js';
+import { useCallback } from 'react';
 
 /**
  * Main Side Panel Application Component
@@ -30,6 +31,15 @@ export function SidePanelApp() {
     const [activeTab, setActiveTab] = useState('ai-analysis');
     const { theme, toggleTheme } = useTheme();
     const { settings, loading: settingsLoading } = useSettings();
+    const { postMessage } = useSidePanelCommunication();
+
+    const handleTabChange = useCallback(
+        (tabId) => {
+            setActiveTab(tabId);
+            postMessage('sidePanelUpdateState', { activeTab: tabId });
+        },
+        [postMessage]
+    );
 
     // Apply theme class to body
     useEffect(() => {
@@ -60,17 +70,7 @@ export function SidePanelApp() {
                 }}
             >
                 <div style={{ textAlign: 'center' }}>
-                    <div
-                        style={{
-                            width: '40px',
-                            height: '40px',
-                            border: '4px solid var(--color-border-light)',
-                            borderTopColor: 'var(--color-primary)',
-                            borderRadius: '50%',
-                            animation: 'spin 1s linear infinite',
-                            margin: '0 auto 1rem',
-                        }}
-                    />
+                    <div className="spinner" />
                     <p style={{ color: 'var(--color-subtle-light)' }}>
                         Loading...
                     </p>
@@ -85,7 +85,7 @@ export function SidePanelApp() {
             <div className="sidepanel-container">
                 <TabNavigator
                     activeTab={activeTab}
-                    onTabChange={setActiveTab}
+                    onTabChange={handleTabChange}
                     settings={settings}
                 />
                 <main className="sidepanel-content">
@@ -107,12 +107,6 @@ export function SidePanelApp() {
                     flex: 1;
                     overflow-y: auto;
                     overflow-x: hidden;
-                }
-
-                @keyframes spin {
-                    to {
-                        transform: rotate(360deg);
-                    }
                 }
             `}</style>
         </SidePanelProvider>

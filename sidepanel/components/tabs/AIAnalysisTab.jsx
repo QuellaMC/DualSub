@@ -21,7 +21,7 @@ export function AIAnalysisTab() {
     const { toggleWord, clearSelection } = useWordSelection();
 
     const handleAnalyze = () => {
-        if (selectedWords.size > 0) {
+        if (selectedWords.length > 0) {
             analyzeWords();
         }
     };
@@ -38,7 +38,7 @@ export function AIAnalysisTab() {
                     <button 
                         className="analyze-button"
                         onClick={handleAnalyze}
-                        disabled={selectedWords.size === 0 || isAnalyzing || !settings?.aiContextEnabled}
+                        disabled={selectedWords.length === 0 || isAnalyzing || !settings?.aiContextEnabled}
                     >
                         <span className="material-symbols-outlined">
                             auto_awesome
@@ -53,7 +53,7 @@ export function AIAnalysisTab() {
                     </label>
                     <div className="word-input-wrapper">
                         <div className="word-tags" style={{ pointerEvents: isAnalyzing ? 'none' : 'auto', opacity: isAnalyzing ? 0.85 : 1 }}>
-                            {Array.from(selectedWords).map((word) => (
+                            {selectedWords.map((word) => (
                                 <span key={word} className="word-tag">
                                     {word}
                                     <button
@@ -66,7 +66,7 @@ export function AIAnalysisTab() {
                                     </button>
                                 </span>
                             ))}
-                            {selectedWords.size === 0 && (
+                            {selectedWords.length === 0 && (
                                 <span className="placeholder-text">
                                     Click on subtitle words to add them for analysis...
                                 </span>
@@ -100,7 +100,7 @@ export function AIAnalysisTab() {
                 {analysisResult && !isAnalyzing && (
                     <div className="results-container">
                         <h2 className="results-title">
-                            Results for "{Array.from(selectedWords).join('", "')}"
+                            Results for "{selectedWords.join('", "')}"
                         </h2>
                 <div className="results-sections">
                     {/* Definition */}
@@ -314,21 +314,6 @@ export function AIAnalysisTab() {
                     color: var(--color-subtle-dark);
                 }
 
-                .spinner {
-                    width: 40px;
-                    height: 40px;
-                    border: 4px solid var(--color-border-light);
-                    border-top-color: var(--color-primary);
-                    border-radius: 50%;
-                    animation: spin 1s linear infinite;
-                    margin: 0 auto var(--spacing-4);
-                }
-
-                body.dark .spinner {
-                    border-color: var(--color-border-dark);
-                    border-top-color: var(--color-primary);
-                }
-
                 .error-message {
                     display: flex;
                     align-items: flex-start;
@@ -408,12 +393,6 @@ export function AIAnalysisTab() {
 
                 body.dark .result-section-content {
                     color: var(--color-subtle-dark);
-                }
-
-                @keyframes spin {
-                    to {
-                        transform: rotate(360deg);
-                    }
                 }
             `}</style>
         </>
