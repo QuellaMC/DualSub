@@ -547,5 +547,9 @@
         "message": "Número de veces para reintentar solicitudes fallidas"
     },
     "showAdvancedSettings": { "message": "Mostrar Configuración Avanzada" },
-    "hideAdvancedSettings": { "message": "Ocultar Configuración Avanzada" }
+    "hideAdvancedSettings": { "message": "Ocultar Configuración Avanzada" },
+
+    "errTranslationApi": { "message": "[Error de API de Traducción. Revisa la configuración o prueba otro proveedor.]" },
+    "errTranslationRequest": { "message": "[Error en la Solicitud de Traducción. Por favor, inténtalo de nuevo.]" },
+    "errTranslationGeneric": { "message": "[Traducción Fallida. Por favor, inténtalo de nuevo o revisa la configuración.]" }
 }

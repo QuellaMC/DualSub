@@ -439,5 +439,9 @@
     "aiContextRetryAttemptsLabel": { "message": "重試次數：" },
     "aiContextRetryAttemptsHelp": { "message": "重試失敗請求的次數" },
     "showAdvancedSettings": { "message": "顯示進階設定" },
-    "hideAdvancedSettings": { "message": "隱藏進階設定" }
+    "hideAdvancedSettings": { "message": "隱藏進階設定" },
+
+    "errTranslationApi": { "message": "[翻譯API錯誤。請檢查設定或嘗試其他翻譯源。]" },
+    "errTranslationRequest": { "message": "[翻譯請求錯誤。請重試。]" },
+    "errTranslationGeneric": { "message": "[翻譯失敗。請重試或檢查設定。]" }
 }

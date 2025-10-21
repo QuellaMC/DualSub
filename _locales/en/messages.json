@@ -487,5 +487,9 @@
         "message": "Number of times to retry failed requests"
     },
     "showAdvancedSettings": { "message": "Show Advanced Settings" },
-    "hideAdvancedSettings": { "message": "Hide Advanced Settings" }
+    "hideAdvancedSettings": { "message": "Hide Advanced Settings" },
+
+    "errTranslationApi": { "message": "[Translation API Error. Check settings or try another provider.]" },
+    "errTranslationRequest": { "message": "[Translation Request Error. Please try again.]" },
+    "errTranslationGeneric": { "message": "[Translation Failed. Please try again or check settings.]" }
 }
