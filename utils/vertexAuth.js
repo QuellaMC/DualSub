@@ -81,7 +81,8 @@ export async function getAccessTokenFromServiceAccount(serviceAccountJson) {
     const now = Math.floor(Date.now() / 1000);
     const iat = now;
     const exp = now + 3600; // 1 hour
-    const tokenUri = serviceAccountJson.token_uri || 'https://oauth2.googleapis.com/token';
+    const tokenUri =
+        serviceAccountJson.token_uri || 'https://oauth2.googleapis.com/token';
     const scope = 'https://www.googleapis.com/auth/cloud-platform';
 
     const header = { alg: 'RS256', typ: 'JWT' };
@@ -93,7 +94,11 @@ export async function getAccessTokenFromServiceAccount(serviceAccountJson) {
         exp,
     };
 
-    const jwt = await signJwtRS256(header, claims, serviceAccountJson.private_key);
+    const jwt = await signJwtRS256(
+        header,
+        claims,
+        serviceAccountJson.private_key
+    );
 
     const body = new URLSearchParams();
     body.set('grant_type', 'urn:ietf:params:oauth:grant-type:jwt-bearer');
@@ -107,14 +112,19 @@ export async function getAccessTokenFromServiceAccount(serviceAccountJson) {
 
     if (!res.ok) {
         const text = await res.text();
-        throw new Error(`Token exchange failed: ${res.status} ${res.statusText} ${text}`);
+        throw new Error(
+            `Token exchange failed: ${res.status} ${res.statusText} ${text}`
+        );
     }
 
     const data = await res.json();
     if (!data.access_token) {
         throw new Error('Token exchange response missing access_token');
     }
-    return { accessToken: data.access_token, expiresIn: data.expires_in || 3600 };
+    return {
+        accessToken: data.access_token,
+        expiresIn: data.expires_in || 3600,
+    };
 }
 
 /**
@@ -170,10 +180,11 @@ export async function refreshAccessToken(updateConfig = true) {
     }
 
     // Generate new token
-    const { accessToken, expiresIn } = await getAccessTokenFromServiceAccount(sa);
+    const { accessToken, expiresIn } =
+        await getAccessTokenFromServiceAccount(sa);
 
     // Calculate new expiration time
-    const expiresAt = Date.now() + (expiresIn * 1000);
+    const expiresAt = Date.now() + expiresIn * 1000;
 
     // Update expiration time in storage
     await chrome.storage.local.set({
@@ -183,7 +194,9 @@ export async function refreshAccessToken(updateConfig = true) {
     // Update config if requested
     if (updateConfig && typeof chrome.storage.sync !== 'undefined') {
         try {
-            const { configService } = await import('../services/configService.js');
+            const { configService } = await import(
+                '../services/configService.js'
+            );
             await configService.set('vertexAccessToken', accessToken);
         } catch (error) {
             console.error('[VertexAuth] Failed to update config:', error);
@@ -199,7 +212,7 @@ export async function refreshAccessToken(updateConfig = true) {
  */
 export async function autoRefreshIfNeeded() {
     const expirationInfo = await checkTokenExpiration();
-    
+
     if (!expirationInfo) {
         return null;
     }
@@ -217,4 +230,3 @@ export async function autoRefreshIfNeeded() {
 
     return null;
 }
-

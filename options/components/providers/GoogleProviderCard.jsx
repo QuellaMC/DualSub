@@ -22,8 +22,15 @@ export function GoogleProviderCard({ t }) {
                     <ul>
                         <li>{t('featureFree', 'Free to use')}</li>
                         <li>{t('featureNoApiKey', 'No API key required')}</li>
-                        <li>{t('featureWideLanguageSupport', 'Wide language support')}</li>
-                        <li>{t('featureFastTranslation', 'Fast translation')}</li>
+                        <li>
+                            {t(
+                                'featureWideLanguageSupport',
+                                'Wide language support'
+                            )}
+                        </li>
+                        <li>
+                            {t('featureFastTranslation', 'Fast translation')}
+                        </li>
                     </ul>
                 </div>
             </div>

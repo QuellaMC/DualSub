@@ -1,0 +1,244 @@
+/**
+ * DualSub Side Panel - Base Styles
+ * Design system matching UI_DESIGN specifications
+ */
+
+/* Import Inter font */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* CSS Variables - Design System */
+:root {
+    /* Colors */
+    --color-primary: #137fec;
+    --color-background-light: #f6f7f8;
+    --color-background-dark: #101922;
+    --color-surface-light: #ffffff;
+    --color-surface-dark: #192633;
+    --color-foreground-light: #101922;
+    --color-foreground-dark: #ffffff;
+    --color-subtle-light: #94adc9;
+    --color-subtle-dark: #92adc9;
+    --color-border-light: #e0e7f1;
+    --color-border-dark: #324d67;
+    --color-error: #ef4444;
+    --color-success: #10b981;
+    --color-warning: #f59e0b;
+    --color-star: #eab308;
+
+    /* Typography */
+    --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-size-xs: 0.75rem;
+    --font-size-sm: 0.875rem;
+    --font-size-base: 1rem;
+    --font-size-lg: 1.125rem;
+    --font-size-xl: 1.25rem;
+    --font-size-2xl: 1.5rem;
+
+    /* Spacing */
+    --spacing-1: 0.25rem;
+    --spacing-2: 0.5rem;
+    --spacing-3: 0.75rem;
+    --spacing-4: 1rem;
+    --spacing-5: 1.25rem;
+    --spacing-6: 1.5rem;
+    --spacing-8: 2rem;
+
+    /* Border Radius */
+    --radius-default: 0.5rem;
+    --radius-lg: 0.75rem;
+    --radius-xl: 1rem;
+    --radius-full: 9999px;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+
+    /* Transitions */
+    --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* Z-index */
+    --z-base: 1;
+    --z-sticky: 10;
+    --z-modal: 100;
+    --z-toast: 1000;
+}
+
+/* Base Styles */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html,
+body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+body {
+    font-family: var(--font-family);
+    font-size: var(--font-size-base);
+    line-height: 1.5;
+    background: var(--color-background-light);
+    color: var(--color-foreground-light);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Dark mode */
+body.dark {
+    background: var(--color-background-dark);
+    color: var(--color-foreground-dark);
+}
+
+#root {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+}
+
+/* Material Symbols configuration */
+.material-symbols-outlined {
+    font-variation-settings:
+        'FILL' 0,
+        'wght' 400,
+        'GRAD' 0,
+        'opsz' 24;
+    user-select: none;
+}
+
+.material-symbols-outlined.filled {
+    font-variation-settings:
+        'FILL' 1,
+        'wght' 400,
+        'GRAD' 0,
+        'opsz' 24;
+}
+
+/* Utility Classes */
+.flex {
+    display: flex;
+}
+
+.flex-col {
+    flex-direction: column;
+}
+
+.items-center {
+    align-items: center;
+}
+
+.justify-center {
+    justify-content: center;
+}
+
+.justify-between {
+    justify-content: space-between;
+}
+
+.gap-2 {
+    gap: var(--spacing-2);
+}
+
+.gap-3 {
+    gap: var(--spacing-3);
+}
+
+.gap-4 {
+    gap: var(--spacing-4);
+}
+
+.w-full {
+    width: 100%;
+}
+
+.h-full {
+    height: 100%;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--color-subtle-light);
+    border-radius: var(--radius-full);
+}
+
+body.dark ::-webkit-scrollbar-thumb {
+    background: var(--color-subtle-dark);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--color-primary);
+}
+
+/* Focus Visible Styles */
+*:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
+/* Button Reset */
+button {
+    font-family: inherit;
+    font-size: inherit;
+    border: none;
+    background: none;
+    cursor: pointer;
+    padding: 0;
+}
+
+/* Input Reset */
+input,
+textarea,
+select {
+    font-family: inherit;
+    font-size: inherit;
+}
+
+/* Link Reset */
+a {
+    color: inherit;
+    text-decoration: none;
+}
+
+/* Selection Styling */
+::selection {
+    background: rgba(19, 127, 236, 0.2);
+    color: inherit;
+}
+
+/* Spinner Animation */
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid var(--color-border-light);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 1rem;
+}
+
+body.dark .spinner {
+    border-color: var(--color-border-dark);
+    border-top-color: var(--color-primary);
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}

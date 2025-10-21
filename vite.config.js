@@ -11,10 +11,10 @@ export default defineConfig({
             closeBundle() {
                 const distDir = 'dist';
                 mkdirSync(distDir, { recursive: true });
-                
+
                 // Copy manifest.json
                 copyFileSync('manifest.json', `${distDir}/manifest.json`);
-                
+
                 // Copy all extension files that aren't built by Vite
                 const filesToCopy = [
                     'background.js',
@@ -30,12 +30,15 @@ export default defineConfig({
                     'translation_providers',
                     'context_providers',
                 ];
-                
+
                 filesToCopy.forEach((file) => {
                     try {
                         cpSync(file, `${distDir}/${file}`, { recursive: true });
                     } catch (err) {
-                        console.warn(`Warning: Could not copy ${file}:`, err.message);
+                        console.warn(
+                            `Warning: Could not copy ${file}:`,
+                            err.message
+                        );
                     }
                 });
             },
@@ -46,6 +49,7 @@ export default defineConfig({
             input: {
                 popup: resolve(__dirname, 'popup/popup.html'),
                 options: resolve(__dirname, 'options/options.html'),
+                sidepanel: resolve(__dirname, 'sidepanel/sidepanel.html'),
             },
             output: {
                 entryFileNames: '[name]/[name].js',
@@ -66,6 +70,8 @@ export default defineConfig({
             '@': resolve(__dirname, './'),
             '@popup': resolve(__dirname, './popup'),
             '@options': resolve(__dirname, './options'),
+            '@sidepanel': resolve(__dirname, './sidepanel'),
+            '@shared': resolve(__dirname, './shared'),
             '@services': resolve(__dirname, './services'),
             '@utils': resolve(__dirname, './utils'),
         },

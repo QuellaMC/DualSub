@@ -10,3 +10,4 @@ WARP.md
 # Chrome extensions cannot load directories beginning with underscore
 __tests__/
 dist/
+UI_DESIGN/

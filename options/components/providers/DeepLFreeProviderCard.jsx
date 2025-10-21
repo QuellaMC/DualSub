@@ -22,17 +22,47 @@ export function DeepLFreeProviderCard({ t }) {
                     <ul>
                         <li>{t('featureFree', 'Free to use')}</li>
                         <li>{t('featureNoApiKey', 'No API key required')}</li>
-                        <li>{t('featureHighestQuality', 'Highest quality translation')}</li>
-                        <li>{t('featureWideLanguageSupport', 'Wide language support')}</li>
-                        <li>{t('featureMultipleBackups', 'Multiple backup methods')}</li>
+                        <li>
+                            {t(
+                                'featureHighestQuality',
+                                'Highest quality translation'
+                            )}
+                        </li>
+                        <li>
+                            {t(
+                                'featureWideLanguageSupport',
+                                'Wide language support'
+                            )}
+                        </li>
+                        <li>
+                            {t(
+                                'featureMultipleBackups',
+                                'Multiple backup methods'
+                            )}
+                        </li>
                     </ul>
                 </div>
                 <div className="info-item">
                     <strong>{t('providerNotes', 'Notes:')}</strong>
                     <ul>
-                        <li>{t('noteSlowForSecurity', 'Slightly slower due to security measures')}</li>
-                        <li>{t('noteAutoFallback', 'Automatic fallback to alternative services')}</li>
-                        <li>{t('noteRecommendedDefault', 'Recommended as default provider')}</li>
+                        <li>
+                            {t(
+                                'noteSlowForSecurity',
+                                'Slightly slower due to security measures'
+                            )}
+                        </li>
+                        <li>
+                            {t(
+                                'noteAutoFallback',
+                                'Automatic fallback to alternative services'
+                            )}
+                        </li>
+                        <li>
+                            {t(
+                                'noteRecommendedDefault',
+                                'Recommended as default provider'
+                            )}
+                        </li>
                     </ul>
                 </div>
             </div>

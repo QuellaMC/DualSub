@@ -238,7 +238,11 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
         this._handleInjectorEvents(e);
     }
 
-    getVideoElement() {
+getVideoElement() {
+        // Prefer the known Disney+ primary player
+        const hive = document.getElementById('hivePlayer');
+        if (hive && hive.tagName === 'VIDEO') return hive;
+        // Fallback to the first video element
         return document.querySelector('video');
     }
 
@@ -283,6 +287,65 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
             return bestThumb || null;
         } catch (_) {
             return null;
+        }
+    }
+
+    /**
+     * Platform-specific playback helpers for Disney+
+     */
+    _getToggleButtonRoot() {
+        try {
+            const toggleHost = document.querySelector('disney-web-player-ui toggle-play-pause');
+            return toggleHost?.shadowRoot || null;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    isPlaying() {
+        try {
+            const root = this._getToggleButtonRoot();
+            if (!root) return null;
+            const roleBtn = root.querySelector('[role="button"]');
+            const label = roleBtn?.getAttribute('aria-label');
+            if (!label) return null;
+            return label === 'Pause';
+        } catch (_) {
+            return null;
+        }
+    }
+
+    async pausePlayback() {
+        try {
+            const state = this.isPlaying();
+            if (state === false) return true;
+            const root = this._getToggleButtonRoot();
+            if (!root) return false;
+            const btn = root.querySelector('button') || root.querySelector('[role="button"]');
+            if (!btn) return false;
+            btn.click();
+            await new Promise((r) => setTimeout(r, 160));
+            const after = this.isPlaying();
+            return after === false;
+        } catch (_) {
+            return false;
+        }
+    }
+
+    async resumePlayback() {
+        try {
+            const state = this.isPlaying();
+            if (state === true) return true;
+            const root = this._getToggleButtonRoot();
+            if (!root) return false;
+            const btn = root.querySelector('button') || root.querySelector('[role="button"]');
+            if (!btn) return false;
+            btn.click();
+            await new Promise((r) => setTimeout(r, 160));
+            const after = this.isPlaying();
+            return after === true;
+        } catch (_) {
+            return false;
         }
     }
 

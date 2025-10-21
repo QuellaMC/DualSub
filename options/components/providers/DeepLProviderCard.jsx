@@ -4,8 +4,15 @@ import { SparkleButton } from '../SparkleButton.jsx';
 import { TestResultDisplay } from '../TestResultDisplay.jsx';
 import { useDeepLTest } from '../../hooks/index.js';
 
-export function DeepLProviderCard({ t, apiKey, apiPlan, onApiKeyChange, onApiPlanChange }) {
-    const { testResult, testing, testConnection, initializeStatus } = useDeepLTest(t);
+export function DeepLProviderCard({
+    t,
+    apiKey,
+    apiPlan,
+    onApiKeyChange,
+    onApiPlanChange,
+}) {
+    const { testResult, testing, testConnection, initializeStatus } =
+        useDeepLTest(t);
 
     // Initialize status when component mounts or API key changes
     useEffect(() => {
@@ -61,10 +68,9 @@ export function DeepLProviderCard({ t, apiKey, apiPlan, onApiKeyChange, onApiPla
                     onClick={handleTest}
                     disabled={testing || !apiKey}
                 >
-                    {testing 
+                    {testing
                         ? t('testingButton', 'Testing...')
-                        : t('testDeepLButton', 'Test DeepL Connection')
-                    }
+                        : t('testDeepLButton', 'Test DeepL Connection')}
                 </SparkleButton>
             </div>
 
@@ -72,9 +78,21 @@ export function DeepLProviderCard({ t, apiKey, apiPlan, onApiKeyChange, onApiPla
                 <div className="info-item">
                     <strong>{t('providerFeatures', 'Features:')}</strong>
                     <ul>
-                        <li>{t('featureHighestQuality', 'Highest quality translation')}</li>
-                        <li>{t('featureApiKeyRequired', 'API key required')}</li>
-                        <li>{t('featureLimitedLanguages', 'Limited language support')}</li>
+                        <li>
+                            {t(
+                                'featureHighestQuality',
+                                'Highest quality translation'
+                            )}
+                        </li>
+                        <li>
+                            {t('featureApiKeyRequired', 'API key required')}
+                        </li>
+                        <li>
+                            {t(
+                                'featureLimitedLanguages',
+                                'Limited language support'
+                            )}
+                        </li>
                         <li>{t('featureUsageLimits', 'Usage limits apply')}</li>
                     </ul>
                 </div>
