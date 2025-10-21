@@ -1,10 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import {
-    useSettings,
-    useTranslation,
-    useChromeMessage,
-    useLogger,
-} from './hooks/index.js';
+import { useSettings, useTranslation, useChromeMessage, useLogger } from './hooks/index.js';
 import { Header } from './components/Header.jsx';
 import { SettingToggle } from './components/SettingToggle.jsx';
 import { LanguageSelector } from './components/LanguageSelector.jsx';
@@ -13,12 +8,10 @@ import { StatusMessage } from './components/StatusMessage.jsx';
 
 export function PopupApp() {
     const { settings, updateSetting, loading, error } = useSettings();
-    const { t, loading: translationsLoading } = useTranslation(
-        settings.uiLanguage || 'en'
-    );
+    const { t, loading: translationsLoading } = useTranslation(settings.uiLanguage || 'en');
     const { sendImmediateConfigUpdate } = useChromeMessage();
     const logger = useLogger('Popup');
-
+    
     const [statusMessage, setStatusMessage] = useState('');
     const statusTimeoutRef = useRef(null);
 
@@ -26,7 +19,7 @@ export function PopupApp() {
         if (statusTimeoutRef.current) {
             clearTimeout(statusTimeoutRef.current);
         }
-
+        
         setStatusMessage(message);
         statusTimeoutRef.current = setTimeout(() => {
             setStatusMessage('');
@@ -48,19 +41,14 @@ export function PopupApp() {
             logger.error('Error loading settings', error, {
                 component: 'loadSettings',
             });
-            showStatus(
-                'Failed to load settings. Please try refreshing the popup.',
-                5000
-            );
+            showStatus('Failed to load settings. Please try refreshing the popup.', 5000);
         }
     }, [error, logger]);
 
     const handleToggleSubtitles = async (enabled) => {
         try {
             await updateSetting('subtitlesEnabled', enabled);
-            const statusKey = enabled
-                ? 'statusDualEnabled'
-                : 'statusDualDisabled';
+            const statusKey = enabled ? 'statusDualEnabled' : 'statusDualDisabled';
             const statusText = t(
                 statusKey,
                 enabled ? 'Dual subtitles enabled.' : 'Dual subtitles disabled.'
@@ -82,7 +70,7 @@ export function PopupApp() {
         try {
             await updateSetting('useNativeSubtitles', useOfficial);
             await updateSetting('useOfficialTranslations', useOfficial);
-
+            
             const statusKey = useOfficial
                 ? 'statusSmartTranslationEnabled'
                 : 'statusSmartTranslationDisabled';
@@ -93,7 +81,7 @@ export function PopupApp() {
                     : 'Official subtitles disabled.'
             );
             showStatus(statusText);
-
+            
             sendImmediateConfigUpdate({
                 useNativeSubtitles: useOfficial,
                 useOfficialTranslations: useOfficial,
@@ -105,9 +93,7 @@ export function PopupApp() {
                     component: 'useNativeSubtitlesToggle',
                 });
             }
-            showStatus(
-                'Failed to update official subtitles setting. Please try again.'
-            );
+            showStatus('Failed to update official subtitles setting. Please try again.');
         }
     };
 
@@ -148,9 +134,7 @@ export function PopupApp() {
     const handleLayoutOrderChange = async (layoutOrder) => {
         try {
             await updateSetting('subtitleLayoutOrder', layoutOrder);
-            showStatus(
-                t('statusDisplayOrderUpdated', 'Display order updated.')
-            );
+            showStatus(t('statusDisplayOrderUpdated', 'Display order updated.'));
             sendImmediateConfigUpdate({ subtitleLayoutOrder: layoutOrder });
         } catch (error) {
             if (logger) {
@@ -166,15 +150,8 @@ export function PopupApp() {
     const handleLayoutOrientationChange = async (layoutOrientation) => {
         try {
             await updateSetting('subtitleLayoutOrientation', layoutOrientation);
-            showStatus(
-                t(
-                    'statusLayoutOrientationUpdated',
-                    'Layout orientation updated.'
-                )
-            );
-            sendImmediateConfigUpdate({
-                subtitleLayoutOrientation: layoutOrientation,
-            });
+            showStatus(t('statusLayoutOrientationUpdated', 'Layout orientation updated.'));
+            sendImmediateConfigUpdate({ subtitleLayoutOrientation: layoutOrientation });
         } catch (error) {
             if (logger) {
                 logger.error('Error setting layout orientation', error, {
@@ -182,9 +159,7 @@ export function PopupApp() {
                     component: 'subtitleLayoutOrientationSelect',
                 });
             }
-            showStatus(
-                'Failed to update layout orientation. Please try again.'
-            );
+            showStatus('Failed to update layout orientation. Please try again.');
         }
     };
 
@@ -196,9 +171,7 @@ export function PopupApp() {
     const handleFontSizeChangeEnd = async (fontSize) => {
         try {
             await updateSetting('subtitleFontSize', fontSize);
-            showStatus(
-                `${t('statusFontSize', 'Font size: ')}${fontSize.toFixed(1)}vw.`
-            );
+            showStatus(`${t('statusFontSize', 'Font size: ')}${fontSize.toFixed(1)}vw.`);
             sendImmediateConfigUpdate({ subtitleFontSize: fontSize });
         } catch (error) {
             if (logger) {
@@ -219,9 +192,7 @@ export function PopupApp() {
     const handleGapChangeEnd = async (gap) => {
         try {
             await updateSetting('subtitleGap', gap);
-            showStatus(
-                `${t('statusVerticalGap', 'Vertical gap: ')}${gap.toFixed(1)}em.`
-            );
+            showStatus(`${t('statusVerticalGap', 'Vertical gap: ')}${gap.toFixed(1)}em.`);
             sendImmediateConfigUpdate({ subtitleGap: gap });
         } catch (error) {
             if (logger) {
@@ -236,30 +207,20 @@ export function PopupApp() {
 
     const handleVerticalPositionChange = (verticalPosition) => {
         // Real-time update without saving
-        sendImmediateConfigUpdate({
-            subtitleVerticalPosition: verticalPosition,
-        });
+        sendImmediateConfigUpdate({ subtitleVerticalPosition: verticalPosition });
     };
 
     const handleVerticalPositionChangeEnd = async (verticalPosition) => {
         try {
             await updateSetting('subtitleVerticalPosition', verticalPosition);
-            showStatus(
-                `${t('statusVerticalPosition', 'Vertical position: ')}${verticalPosition.toFixed(1)}.`
-            );
-            sendImmediateConfigUpdate({
-                subtitleVerticalPosition: verticalPosition,
-            });
+            showStatus(`${t('statusVerticalPosition', 'Vertical position: ')}${verticalPosition.toFixed(1)}.`);
+            sendImmediateConfigUpdate({ subtitleVerticalPosition: verticalPosition });
         } catch (error) {
             if (logger) {
-                logger.error(
-                    'Error setting subtitle vertical position',
-                    error,
-                    {
-                        verticalPosition,
-                        component: 'subtitleVerticalPositionInput',
-                    }
-                );
+                logger.error('Error setting subtitle vertical position', error, {
+                    verticalPosition,
+                    component: 'subtitleVerticalPositionInput',
+                });
             }
             showStatus('Failed to update vertical position. Please try again.');
         }
@@ -269,9 +230,7 @@ export function PopupApp() {
         try {
             let offset = parseFloat(value);
             if (isNaN(offset)) {
-                showStatus(
-                    t('statusInvalidOffset', 'Invalid offset, reverting.')
-                );
+                showStatus(t('statusInvalidOffset', 'Invalid offset, reverting.'));
                 return;
             }
             offset = parseFloat(offset.toFixed(2));
@@ -329,10 +288,9 @@ export function PopupApp() {
     } = settings;
 
     // Use useOfficialTranslations if available, fallback to useNativeSubtitles
-    const useOfficial =
-        useOfficialTranslations !== undefined
-            ? useOfficialTranslations
-            : useNativeSubtitles;
+    const useOfficial = useOfficialTranslations !== undefined
+        ? useOfficialTranslations
+        : useNativeSubtitles;
 
     return (
         <>
@@ -351,10 +309,7 @@ export function PopupApp() {
 
             <SettingToggle
                 id="useNativeSubtitles"
-                label={t(
-                    'useNativeSubtitlesLabel',
-                    'Use Official Subtitles When Available'
-                )}
+                label={t('useNativeSubtitlesLabel', 'Use Official Subtitles When Available')}
                 checked={useOfficial}
                 onChange={handleToggleNativeSubtitles}
             />

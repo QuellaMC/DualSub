@@ -14,7 +14,7 @@ export function useTranslation(locale) {
     useEffect(() => {
         const loadTranslations = async () => {
             const normalizedLangCode = locale.replace('-', '_');
-
+            
             // Check cache first
             if (translationsCache[normalizedLangCode]) {
                 setTranslations(translationsCache[normalizedLangCode]);
@@ -29,11 +29,11 @@ export function useTranslation(locale) {
             try {
                 setLoading(true);
                 const response = await fetch(translationsPath);
-
+                
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}`);
                 }
-
+                
                 const data = await response.json();
                 translationsCache[normalizedLangCode] = data;
                 setTranslations(data);
@@ -42,7 +42,7 @@ export function useTranslation(locale) {
                     `Could not load '${normalizedLangCode}' translations, falling back to English`,
                     error
                 );
-
+                
                 // Fallback to English
                 try {
                     const fallbackPath = chrome.runtime.getURL(
@@ -70,25 +70,22 @@ export function useTranslation(locale) {
     }, [locale]);
 
     // Translation function
-    const t = useCallback(
-        (key, fallback = '', ...substitutions) => {
-            let message = translations[key]?.message || fallback || key;
-
-            // Replace %s and %d placeholders with substitutions
-            if (substitutions.length > 0) {
-                let substitutionIndex = 0;
-                message = message.replace(/%[sd]/g, (match) => {
-                    if (substitutionIndex < substitutions.length) {
-                        return substitutions[substitutionIndex++];
-                    }
-                    return match;
-                });
-            }
-
-            return message;
-        },
-        [translations]
-    );
+    const t = useCallback((key, fallback = '', ...substitutions) => {
+        let message = translations[key]?.message || fallback || key;
+        
+        // Replace %s and %d placeholders with substitutions
+        if (substitutions.length > 0) {
+            let substitutionIndex = 0;
+            message = message.replace(/%[sd]/g, (match) => {
+                if (substitutionIndex < substitutions.length) {
+                    return substitutions[substitutionIndex++];
+                }
+                return match;
+            });
+        }
+        
+        return message;
+    }, [translations]);
 
     return { t, loading, translations };
 }

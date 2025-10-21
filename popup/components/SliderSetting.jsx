@@ -12,15 +12,12 @@ export function SliderSetting({
 }) {
     const sliderRef = useRef(null);
 
-    const updateSliderProgress = useCallback(
-        (sliderElement, val) => {
-            const minVal = parseFloat(min) || 0;
-            const maxVal = parseFloat(max) || 100;
-            const percentage = ((val - minVal) / (maxVal - minVal)) * 100;
-            sliderElement.style.backgroundSize = `${percentage}% 100%`;
-        },
-        [min, max]
-    );
+    const updateSliderProgress = useCallback((sliderElement, val) => {
+        const minVal = parseFloat(min) || 0;
+        const maxVal = parseFloat(max) || 100;
+        const percentage = ((val - minVal) / (maxVal - minVal)) * 100;
+        sliderElement.style.backgroundSize = `${percentage}% 100%`;
+    }, [min, max]);
 
     useEffect(() => {
         if (sliderRef.current) {
@@ -51,9 +48,7 @@ export function SliderSetting({
                     step={step}
                     value={value}
                     onInput={handleInput}
-                    onChange={(e) =>
-                        onChangeEnd && onChangeEnd(parseFloat(e.target.value))
-                    }
+                    onChange={(e) => onChangeEnd && onChangeEnd(parseFloat(e.target.value))}
                 />
                 <span className="slider-value">{formatValue(value)}</span>
             </div>

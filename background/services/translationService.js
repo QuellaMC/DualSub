@@ -32,10 +32,7 @@ import {
     ProviderNames,
     ProviderBatchConfigs,
 } from '../../content_scripts/shared/constants/providers.js';
-import {
-    translate as vertexGeminiTranslate,
-    translateBatch as vertexGeminiTranslateBatch,
-} from '../../translation_providers/geminiVertexTranslate.js';
+import { translate as vertexGeminiTranslate, translateBatch as vertexGeminiTranslateBatch } from '../../translation_providers/geminiVertexTranslate.js';
 import TTLCache from '../../utils/cache/TTLCache.js';
 
 /**
@@ -139,13 +136,10 @@ class TranslationService {
                 },
                 category: 'api_key',
                 batchOptimizations: {
-                    maxBatchSize:
-                        ProviderBatchConfigs[Providers.VERTEX_GEMINI]
-                            .maxBatchSize,
+                    maxBatchSize: ProviderBatchConfigs[Providers.VERTEX_GEMINI].maxBatchSize,
                     contextPreservation: true,
                     exponentialBackoff: true,
-                    delimiter:
-                        ProviderBatchConfigs[Providers.VERTEX_GEMINI].delimiter,
+                    delimiter: ProviderBatchConfigs[Providers.VERTEX_GEMINI].delimiter,
                 },
             },
         };

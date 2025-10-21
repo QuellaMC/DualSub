@@ -18,7 +18,7 @@ export function TranslationSection({ t, settings, onSettingChange }) {
     return (
         <section id="translation">
             <h2>{t('sectionTranslation', 'Translation')}</h2>
-
+            
             <SettingCard
                 title={t('cardTranslationEngineTitle', 'Translation Engine')}
                 description={t(
@@ -67,10 +67,7 @@ export function TranslationSection({ t, settings, onSettingChange }) {
                         step="1"
                         value={settings.translationBatchSize || 3}
                         onChange={(e) =>
-                            onSettingChange(
-                                'translationBatchSize',
-                                parseInt(e.target.value)
-                            )
+                            onSettingChange('translationBatchSize', parseInt(e.target.value))
                         }
                     />
                 </div>
@@ -87,10 +84,7 @@ export function TranslationSection({ t, settings, onSettingChange }) {
                         step="50"
                         value={settings.translationDelay || 150}
                         onChange={(e) =>
-                            onSettingChange(
-                                'translationDelay',
-                                parseInt(e.target.value)
-                            )
+                            onSettingChange('translationDelay', parseInt(e.target.value))
                         }
                     />
                 </div>
@@ -106,10 +100,7 @@ export function TranslationSection({ t, settings, onSettingChange }) {
                 <div className="setting setting-with-help">
                     <div className="setting-content">
                         <label htmlFor="batchingEnabled">
-                            {t(
-                                'batchingEnabledLabel',
-                                'Enable Batch Translation:'
-                            )}
+                            {t('batchingEnabledLabel', 'Enable Batch Translation:')}
                         </label>
                         <div className="setting-help">
                             {t(
@@ -148,10 +139,7 @@ export function TranslationSection({ t, settings, onSettingChange }) {
                                 id="useProviderDefaults"
                                 checked={useProviderDefaults}
                                 onChange={(checked) =>
-                                    onSettingChange(
-                                        'useProviderDefaults',
-                                        checked
-                                    )
+                                    onSettingChange('useProviderDefaults', checked)
                                 }
                             />
                         </div>
@@ -160,10 +148,7 @@ export function TranslationSection({ t, settings, onSettingChange }) {
                             <div className="setting setting-with-help">
                                 <div className="setting-content">
                                     <label htmlFor="globalBatchSize">
-                                        {t(
-                                            'globalBatchSizeLabel',
-                                            'Global Batch Size:'
-                                        )}
+                                        {t('globalBatchSizeLabel', 'Global Batch Size:')}
                                     </label>
                                     <div className="setting-help">
                                         {t(
@@ -180,10 +165,7 @@ export function TranslationSection({ t, settings, onSettingChange }) {
                                     step="1"
                                     value={settings.globalBatchSize || 5}
                                     onChange={(e) =>
-                                        onSettingChange(
-                                            'globalBatchSize',
-                                            parseInt(e.target.value)
-                                        )
+                                        onSettingChange('globalBatchSize', parseInt(e.target.value))
                                     }
                                 />
                             </div>
@@ -192,10 +174,7 @@ export function TranslationSection({ t, settings, onSettingChange }) {
                         <div className="setting setting-with-help">
                             <div className="setting-content">
                                 <label htmlFor="smartBatching">
-                                    {t(
-                                        'smartBatchingLabel',
-                                        'Smart Batch Optimization:'
-                                    )}
+                                    {t('smartBatchingLabel', 'Smart Batch Optimization:')}
                                 </label>
                                 <div className="setting-help">
                                     {t(
@@ -216,10 +195,7 @@ export function TranslationSection({ t, settings, onSettingChange }) {
                         <div className="setting setting-with-help">
                             <div className="setting-content">
                                 <label htmlFor="maxConcurrentBatches">
-                                    {t(
-                                        'maxConcurrentBatchesLabel',
-                                        'Maximum Concurrent Batches:'
-                                    )}
+                                    {t('maxConcurrentBatchesLabel', 'Maximum Concurrent Batches:')}
                                 </label>
                                 <div className="setting-help">
                                     {t(
@@ -236,10 +212,7 @@ export function TranslationSection({ t, settings, onSettingChange }) {
                                 step="1"
                                 value={settings.maxConcurrentBatches || 2}
                                 onChange={(e) =>
-                                    onSettingChange(
-                                        'maxConcurrentBatches',
-                                        parseInt(e.target.value)
-                                    )
+                                    onSettingChange('maxConcurrentBatches', parseInt(e.target.value))
                                 }
                             />
                         </div>
@@ -249,10 +222,7 @@ export function TranslationSection({ t, settings, onSettingChange }) {
 
             {batchingEnabled && useProviderDefaults && (
                 <SettingCard
-                    title={t(
-                        'cardProviderBatchTitle',
-                        'Provider-Specific Batch Sizes'
-                    )}
+                    title={t('cardProviderBatchTitle', 'Provider-Specific Batch Sizes')}
                     description={t(
                         'cardProviderBatchDesc',
                         'Configure optimal batch sizes for each translation provider. These settings are used when "Use Provider-Optimized Settings" is enabled.'
@@ -261,16 +231,10 @@ export function TranslationSection({ t, settings, onSettingChange }) {
                     <div className="setting setting-with-help">
                         <div className="setting-content">
                             <label htmlFor="openaieBatchSize">
-                                {t(
-                                    'openaieBatchSizeLabel',
-                                    'OpenAI Batch Size:'
-                                )}
+                                {t('openaieBatchSizeLabel', 'OpenAI Batch Size:')}
                             </label>
                             <div className="setting-help">
-                                {t(
-                                    'openaieBatchSizeHelp',
-                                    'Recommended: 5-10 segments (default: 8)'
-                                )}
+                                {t('openaieBatchSizeHelp', 'Recommended: 5-10 segments (default: 8)')}
                             </div>
                         </div>
                         <input
@@ -281,10 +245,7 @@ export function TranslationSection({ t, settings, onSettingChange }) {
                             step="1"
                             value={settings.openaieBatchSize || 8}
                             onChange={(e) =>
-                                onSettingChange(
-                                    'openaieBatchSize',
-                                    parseInt(e.target.value)
-                                )
+                                onSettingChange('openaieBatchSize', parseInt(e.target.value))
                             }
                         />
                     </div>
@@ -292,16 +253,10 @@ export function TranslationSection({ t, settings, onSettingChange }) {
                     <div className="setting setting-with-help">
                         <div className="setting-content">
                             <label htmlFor="googleBatchSize">
-                                {t(
-                                    'googleBatchSizeLabel',
-                                    'Google Translate Batch Size:'
-                                )}
+                                {t('googleBatchSizeLabel', 'Google Translate Batch Size:')}
                             </label>
                             <div className="setting-help">
-                                {t(
-                                    'googleBatchSizeHelp',
-                                    'Recommended: 3-5 segments (default: 4)'
-                                )}
+                                {t('googleBatchSizeHelp', 'Recommended: 3-5 segments (default: 4)')}
                             </div>
                         </div>
                         <input
@@ -312,10 +267,7 @@ export function TranslationSection({ t, settings, onSettingChange }) {
                             step="1"
                             value={settings.googleBatchSize || 4}
                             onChange={(e) =>
-                                onSettingChange(
-                                    'googleBatchSize',
-                                    parseInt(e.target.value)
-                                )
+                                onSettingChange('googleBatchSize', parseInt(e.target.value))
                             }
                         />
                     </div>
@@ -326,10 +278,7 @@ export function TranslationSection({ t, settings, onSettingChange }) {
                                 {t('deeplBatchSizeLabel', 'DeepL Batch Size:')}
                             </label>
                             <div className="setting-help">
-                                {t(
-                                    'deeplBatchSizeHelp',
-                                    'Recommended: 2-3 segments (default: 3)'
-                                )}
+                                {t('deeplBatchSizeHelp', 'Recommended: 2-3 segments (default: 3)')}
                             </div>
                         </div>
                         <input
@@ -340,10 +289,7 @@ export function TranslationSection({ t, settings, onSettingChange }) {
                             step="1"
                             value={settings.deeplBatchSize || 3}
                             onChange={(e) =>
-                                onSettingChange(
-                                    'deeplBatchSize',
-                                    parseInt(e.target.value)
-                                )
+                                onSettingChange('deeplBatchSize', parseInt(e.target.value))
                             }
                         />
                     </div>
@@ -351,16 +297,10 @@ export function TranslationSection({ t, settings, onSettingChange }) {
                     <div className="setting setting-with-help">
                         <div className="setting-content">
                             <label htmlFor="microsoftBatchSize">
-                                {t(
-                                    'microsoftBatchSizeLabel',
-                                    'Microsoft Translate Batch Size:'
-                                )}
+                                {t('microsoftBatchSizeLabel', 'Microsoft Translate Batch Size:')}
                             </label>
                             <div className="setting-help">
-                                {t(
-                                    'microsoftBatchSizeHelp',
-                                    'Recommended: 3-5 segments (default: 4)'
-                                )}
+                                {t('microsoftBatchSizeHelp', 'Recommended: 3-5 segments (default: 4)')}
                             </div>
                         </div>
                         <input
@@ -371,10 +311,7 @@ export function TranslationSection({ t, settings, onSettingChange }) {
                             step="1"
                             value={settings.microsoftBatchSize || 4}
                             onChange={(e) =>
-                                onSettingChange(
-                                    'microsoftBatchSize',
-                                    parseInt(e.target.value)
-                                )
+                                onSettingChange('microsoftBatchSize', parseInt(e.target.value))
                             }
                         />
                     </div>
@@ -382,16 +319,10 @@ export function TranslationSection({ t, settings, onSettingChange }) {
                     <div className="setting setting-with-help">
                         <div className="setting-content">
                             <label htmlFor="vertexBatchSize">
-                                {t(
-                                    'vertexBatchSizeLabel',
-                                    'Vertex AI Batch Size:'
-                                )}
+                                {t('vertexBatchSizeLabel', 'Vertex AI Batch Size:')}
                             </label>
                             <div className="setting-help">
-                                {t(
-                                    'vertexBatchSizeHelp',
-                                    'Recommended: 5-10 segments (default: 8)'
-                                )}
+                                {t('vertexBatchSizeHelp', 'Recommended: 5-10 segments (default: 8)')}
                             </div>
                         </div>
                         <input
@@ -402,10 +333,7 @@ export function TranslationSection({ t, settings, onSettingChange }) {
                             step="1"
                             value={settings.vertexBatchSize || 8}
                             onChange={(e) =>
-                                onSettingChange(
-                                    'vertexBatchSize',
-                                    parseInt(e.target.value)
-                                )
+                                onSettingChange('vertexBatchSize', parseInt(e.target.value))
                             }
                         />
                     </div>
@@ -413,10 +341,7 @@ export function TranslationSection({ t, settings, onSettingChange }) {
             )}
 
             <SettingCard
-                title={t(
-                    'cardProviderDelayTitle',
-                    'Provider-Specific Request Delays'
-                )}
+                title={t('cardProviderDelayTitle', 'Provider-Specific Request Delays')}
                 description={t(
                     'cardProviderDelayDesc',
                     'Configure mandatory delays between translation requests to prevent account lockouts. These delays are applied even when batch processing is enabled.'
@@ -425,16 +350,10 @@ export function TranslationSection({ t, settings, onSettingChange }) {
                 <div className="setting setting-with-help">
                     <div className="setting-content">
                         <label htmlFor="openaieDelay">
-                            {t(
-                                'openaieDelayLabel',
-                                'OpenAI Request Delay (ms):'
-                            )}
+                            {t('openaieDelayLabel', 'OpenAI Request Delay (ms):')}
                         </label>
                         <div className="setting-help">
-                            {t(
-                                'openaieDelayHelp',
-                                'Minimum delay between requests (default: 100ms)'
-                            )}
+                            {t('openaieDelayHelp', 'Minimum delay between requests (default: 100ms)')}
                         </div>
                     </div>
                     <input
@@ -445,10 +364,7 @@ export function TranslationSection({ t, settings, onSettingChange }) {
                         step="50"
                         value={settings.openaieDelay || 100}
                         onChange={(e) =>
-                            onSettingChange(
-                                'openaieDelay',
-                                parseInt(e.target.value)
-                            )
+                            onSettingChange('openaieDelay', parseInt(e.target.value))
                         }
                     />
                 </div>
@@ -456,16 +372,10 @@ export function TranslationSection({ t, settings, onSettingChange }) {
                 <div className="setting setting-with-help">
                     <div className="setting-content">
                         <label htmlFor="googleDelay">
-                            {t(
-                                'googleDelayLabel',
-                                'Google Translate Request Delay (ms):'
-                            )}
+                            {t('googleDelayLabel', 'Google Translate Request Delay (ms):')}
                         </label>
                         <div className="setting-help">
-                            {t(
-                                'googleDelayHelp',
-                                'Required delay to prevent temporary lockouts (default: 1500ms)'
-                            )}
+                            {t('googleDelayHelp', 'Required delay to prevent temporary lockouts (default: 1500ms)')}
                         </div>
                     </div>
                     <input
@@ -476,10 +386,7 @@ export function TranslationSection({ t, settings, onSettingChange }) {
                         step="100"
                         value={settings.googleDelay || 1500}
                         onChange={(e) =>
-                            onSettingChange(
-                                'googleDelay',
-                                parseInt(e.target.value)
-                            )
+                            onSettingChange('googleDelay', parseInt(e.target.value))
                         }
                     />
                 </div>
@@ -487,16 +394,10 @@ export function TranslationSection({ t, settings, onSettingChange }) {
                 <div className="setting setting-with-help">
                     <div className="setting-content">
                         <label htmlFor="deeplDelay">
-                            {t(
-                                'deeplDelayLabel',
-                                'DeepL API Request Delay (ms):'
-                            )}
+                            {t('deeplDelayLabel', 'DeepL API Request Delay (ms):')}
                         </label>
                         <div className="setting-help">
-                            {t(
-                                'deeplDelayHelp',
-                                'Delay for DeepL API requests (default: 500ms)'
-                            )}
+                            {t('deeplDelayHelp', 'Delay for DeepL API requests (default: 500ms)')}
                         </div>
                     </div>
                     <input
@@ -507,10 +408,7 @@ export function TranslationSection({ t, settings, onSettingChange }) {
                         step="100"
                         value={settings.deeplDelay || 500}
                         onChange={(e) =>
-                            onSettingChange(
-                                'deeplDelay',
-                                parseInt(e.target.value)
-                            )
+                            onSettingChange('deeplDelay', parseInt(e.target.value))
                         }
                     />
                 </div>
@@ -518,16 +416,10 @@ export function TranslationSection({ t, settings, onSettingChange }) {
                 <div className="setting setting-with-help">
                     <div className="setting-content">
                         <label htmlFor="deeplFreeDelay">
-                            {t(
-                                'deeplFreeDelayLabel',
-                                'DeepL Free Request Delay (ms):'
-                            )}
+                            {t('deeplFreeDelayLabel', 'DeepL Free Request Delay (ms):')}
                         </label>
                         <div className="setting-help">
-                            {t(
-                                'deeplFreeDelayHelp',
-                                'Conservative delay for free tier (default: 2000ms)'
-                            )}
+                            {t('deeplFreeDelayHelp', 'Conservative delay for free tier (default: 2000ms)')}
                         </div>
                     </div>
                     <input
@@ -538,10 +430,7 @@ export function TranslationSection({ t, settings, onSettingChange }) {
                         step="100"
                         value={settings.deeplFreeDelay || 2000}
                         onChange={(e) =>
-                            onSettingChange(
-                                'deeplFreeDelay',
-                                parseInt(e.target.value)
-                            )
+                            onSettingChange('deeplFreeDelay', parseInt(e.target.value))
                         }
                     />
                 </div>
@@ -549,16 +438,10 @@ export function TranslationSection({ t, settings, onSettingChange }) {
                 <div className="setting setting-with-help">
                     <div className="setting-content">
                         <label htmlFor="microsoftDelay">
-                            {t(
-                                'microsoftDelayLabel',
-                                'Microsoft Translate Request Delay (ms):'
-                            )}
+                            {t('microsoftDelayLabel', 'Microsoft Translate Request Delay (ms):')}
                         </label>
                         <div className="setting-help">
-                            {t(
-                                'microsoftDelayHelp',
-                                'Delay to respect character limits (default: 800ms)'
-                            )}
+                            {t('microsoftDelayHelp', 'Delay to respect character limits (default: 800ms)')}
                         </div>
                     </div>
                     <input
@@ -569,10 +452,7 @@ export function TranslationSection({ t, settings, onSettingChange }) {
                         step="100"
                         value={settings.microsoftDelay || 800}
                         onChange={(e) =>
-                            onSettingChange(
-                                'microsoftDelay',
-                                parseInt(e.target.value)
-                            )
+                            onSettingChange('microsoftDelay', parseInt(e.target.value))
                         }
                     />
                 </div>
@@ -580,16 +460,10 @@ export function TranslationSection({ t, settings, onSettingChange }) {
                 <div className="setting setting-with-help">
                     <div className="setting-content">
                         <label htmlFor="vertexDelay">
-                            {t(
-                                'vertexDelayLabel',
-                                'Vertex AI Request Delay (ms):'
-                            )}
+                            {t('vertexDelayLabel', 'Vertex AI Request Delay (ms):')}
                         </label>
                         <div className="setting-help">
-                            {t(
-                                'vertexDelayHelp',
-                                'Minimum delay between requests (default: 100ms)'
-                            )}
+                            {t('vertexDelayHelp', 'Minimum delay between requests (default: 100ms)')}
                         </div>
                     </div>
                     <input
@@ -600,10 +474,7 @@ export function TranslationSection({ t, settings, onSettingChange }) {
                         step="50"
                         value={settings.vertexDelay || 100}
                         onChange={(e) =>
-                            onSettingChange(
-                                'vertexDelay',
-                                parseInt(e.target.value)
-                            )
+                            onSettingChange('vertexDelay', parseInt(e.target.value))
                         }
                     />
                 </div>

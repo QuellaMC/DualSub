@@ -163,9 +163,7 @@
         "message": "输入您的 API 密钥和设置，用于 Gemini 等 OpenAI 兼容服务。"
     },
     "cardVertexGeminiTitle": { "message": "Vertex AI Gemini（需要 API 密钥）" },
-    "cardVertexGeminiDesc": {
-        "message": "输入您的访问令牌和 Vertex 项目设置，或导入服务账号 JSON 文件。"
-    },
+    "cardVertexGeminiDesc": { "message": "输入您的访问令牌和 Vertex 项目设置，或导入服务账号 JSON 文件。" },
     "vertexAccessTokenLabel": { "message": "访问令牌：" },
     "vertexProjectIdLabel": { "message": "项目 ID：" },
     "vertexLocationLabel": { "message": "位置：" },
@@ -184,20 +182,14 @@
     "vertexTokenRefreshed": { "message": "访问令牌刷新成功。" },
     "vertexRefreshFailed": { "message": "令牌刷新失败：%s" },
     "vertexTokenExpired": { "message": "⚠️ 访问令牌已过期。点击刷新以续期。" },
-    "vertexTokenExpiringSoon": {
-        "message": "⚠️ 令牌将在 %s 分钟后过期。建议刷新。"
-    },
+    "vertexTokenExpiringSoon": { "message": "⚠️ 令牌将在 %s 分钟后过期。建议刷新。" },
     "vertexConfigured": { "message": "⚠️ Vertex AI 已配置。请测试连接。" },
     "vertexNotConfigured": { "message": "请导入服务账号 JSON 或输入凭据。" },
     "featureVertexServiceAccount": { "message": "服务账号 JSON 导入" },
     "featureVertexAutoToken": { "message": "自动生成令牌" },
-    "featureVertexGemini": {
-        "message": "通过 Vertex AI 使用 Google Gemini 模型"
-    },
+    "featureVertexGemini": { "message": "通过 Vertex AI 使用 Google Gemini 模型" },
     "providerNote": { "message": "注意：" },
-    "vertexNote": {
-        "message": "访问令牌在 1 小时后过期。您的服务账号已安全存储，需要时只需点击刷新令牌按钮即可。"
-    },
+    "vertexNote": { "message": "访问令牌在 1 小时后过期。您的服务账号已安全存储，需要时只需点击刷新令牌按钮即可。" },
     "baseUrlLabel": { "message": "基础 URL：" },
     "modelLabel": { "message": "模型：" },
     "featureCustomizable": { "message": "可自定义端点和模型" },

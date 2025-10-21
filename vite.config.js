@@ -11,10 +11,10 @@ export default defineConfig({
             closeBundle() {
                 const distDir = 'dist';
                 mkdirSync(distDir, { recursive: true });
-
+                
                 // Copy manifest.json
                 copyFileSync('manifest.json', `${distDir}/manifest.json`);
-
+                
                 // Copy all extension files that aren't built by Vite
                 const filesToCopy = [
                     'background.js',
@@ -30,15 +30,12 @@ export default defineConfig({
                     'translation_providers',
                     'context_providers',
                 ];
-
+                
                 filesToCopy.forEach((file) => {
                     try {
                         cpSync(file, `${distDir}/${file}`, { recursive: true });
                     } catch (err) {
-                        console.warn(
-                            `Warning: Could not copy ${file}:`,
-                            err.message
-                        );
+                        console.warn(`Warning: Could not copy ${file}:`, err.message);
                     }
                 });
             },

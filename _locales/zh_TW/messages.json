@@ -166,9 +166,7 @@
         "message": "輸入您的 API 金鑰和設定，用於 Gemini 等 OpenAI 相容服務。"
     },
     "cardVertexGeminiTitle": { "message": "Vertex AI Gemini（需要 API 金鑰）" },
-    "cardVertexGeminiDesc": {
-        "message": "輸入您的存取權杖和 Vertex 專案設定，或匯入服務帳戶 JSON 檔案。"
-    },
+    "cardVertexGeminiDesc": { "message": "輸入您的存取權杖和 Vertex 專案設定，或匯入服務帳戶 JSON 檔案。" },
     "vertexAccessTokenLabel": { "message": "存取權杖：" },
     "vertexProjectIdLabel": { "message": "專案 ID：" },
     "vertexLocationLabel": { "message": "位置：" },
@@ -186,22 +184,14 @@
     "vertexImportFailed": { "message": "匯入失敗：%s" },
     "vertexTokenRefreshed": { "message": "存取權杖已成功重新整理。" },
     "vertexRefreshFailed": { "message": "權杖重新整理失敗：%s" },
-    "vertexTokenExpired": {
-        "message": "⚠️ 存取權杖已過期。點擊重新整理以更新。"
-    },
-    "vertexTokenExpiringSoon": {
-        "message": "⚠️ 權杖將在 %s 分鐘後過期。建議重新整理。"
-    },
+    "vertexTokenExpired": { "message": "⚠️ 存取權杖已過期。點擊重新整理以更新。" },
+    "vertexTokenExpiringSoon": { "message": "⚠️ 權杖將在 %s 分鐘後過期。建議重新整理。" },
     "vertexConfigured": { "message": "⚠️ Vertex AI 已設定。請測試連線。" },
     "vertexNotConfigured": { "message": "請匯入服務帳戶 JSON 或輸入憑證。" },
     "featureVertexServiceAccount": { "message": "服務帳戶 JSON 匯入" },
     "featureVertexAutoToken": { "message": "自動產生權杖" },
-    "featureVertexGemini": {
-        "message": "透過 Vertex AI 使用 Google Gemini 模型"
-    },
-    "vertexNote": {
-        "message": "存取權杖在 1 小時後過期。您的服務帳戶已安全儲存，需要時只需點擊重新整理權杖按鈕即可。"
-    },
+    "featureVertexGemini": { "message": "透過 Vertex AI 使用 Google Gemini 模型" },
+    "vertexNote": { "message": "存取權杖在 1 小時後過期。您的服務帳戶已安全儲存，需要時只需點擊重新整理權杖按鈕即可。" },
     "baseUrlLabel": { "message": "基礎 URL：" },
     "modelLabel": { "message": "模型：" },
     "featureCustomizable": { "message": "可自訂端點和模型" },

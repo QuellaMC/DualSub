@@ -66,17 +66,17 @@
     ```
 
 3. Build the extension
-
+    
     The extension uses React and requires building before use:
-
+    
     ```bash
     npm run build
     ```
-
+    
     This will create a `dist/` folder with the compiled extension.
-
+    
     For development with auto-rebuild:
-
+    
     ```bash
     npm run dev
     ```
@@ -110,9 +110,9 @@
 ## Troubleshooting
 
 - Extension not visible: ensure it's enabled at `chrome://extensions` and optionally pinned in the toolbar
-- "Could not load manifest":
-    - For GitHub releases: make sure you extracted the ZIP and selected the extracted folder
-    - For development: make sure you selected the `dist/` folder (not the project root!) and ran `npm run build` first
+- "Could not load manifest": 
+  - For GitHub releases: make sure you extracted the ZIP and selected the extracted folder
+  - For development: make sure you selected the `dist/` folder (not the project root!) and ran `npm run build` first
 - Build errors: ensure you have Node.js 18+ installed and run `npm install` before `npm run build`
 - No subtitles: verify the platform provides subtitles and they are enabled in the player
 - AI Context not working: set your API key and model in Advanced Settings; check rate limits and network connectivity

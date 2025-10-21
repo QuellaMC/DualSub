@@ -27,7 +27,7 @@ export function AIContextSection({ t, settings, onSettingChange }) {
         const typesArray = Object.entries(newTypes)
             .filter(([_, enabled]) => enabled)
             .map(([type]) => type);
-
+        
         onSettingChange('aiContextTypes', typesArray);
     };
 
@@ -37,13 +37,10 @@ export function AIContextSection({ t, settings, onSettingChange }) {
     return (
         <section id="ai-context">
             <h2>{t('sectionAIContext', 'AI Context Assistant')}</h2>
-
+            
             {/* Card 1: Feature Toggle */}
             <SettingCard
-                title={t(
-                    'cardAIContextToggleTitle',
-                    'Enable AI Context Analysis'
-                )}
+                title={t('cardAIContextToggleTitle', 'Enable AI Context Analysis')}
                 description={t(
                     'cardAIContextToggleDesc',
                     'Enable AI-powered cultural, historical, and linguistic context analysis for subtitle text. Click on words or phrases in subtitles to get detailed explanations.'
@@ -80,10 +77,7 @@ export function AIContextSection({ t, settings, onSettingChange }) {
                             id="aiContextProvider"
                             value={aiContextProvider}
                             onChange={(e) =>
-                                onSettingChange(
-                                    'aiContextProvider',
-                                    e.target.value
-                                )
+                                onSettingChange('aiContextProvider', e.target.value)
                             }
                         >
                             <option value="openai">OpenAI GPT</option>
@@ -138,34 +132,31 @@ export function AIContextSection({ t, settings, onSettingChange }) {
                         </label>
                         <select
                             id="openaiModel"
-                            value={
-                                settings.openaiModel ||
-                                'gpt-4.1-mini-2025-04-14'
-                            }
+                            value={settings.openaiModel || 'gpt-4.1-mini-2025-04-14'}
                             onChange={(e) =>
                                 onSettingChange('openaiModel', e.target.value)
                             }
                         >
-                            <option
-                                value="gpt-4.1-nano-2025-04-14"
+                            <option 
+                                value="gpt-4.1-nano-2025-04-14" 
                                 title="Cost-effective for most context analysis tasks"
                             >
                                 GPT-4.1 Nano
                             </option>
-                            <option
-                                value="gpt-4.1-mini-2025-04-14"
+                            <option 
+                                value="gpt-4.1-mini-2025-04-14" 
                                 title="High-quality analysis with better cultural understanding"
                             >
                                 GPT-4.1 Mini (Recommended)
                             </option>
-                            <option
-                                value="gpt-4o-mini-2024-07-18"
+                            <option 
+                                value="gpt-4o-mini-2024-07-18" 
                                 title="Optimized for speed and efficiency"
                             >
                                 GPT-4o Mini
                             </option>
-                            <option
-                                value="gpt-4o-2024-08-06"
+                            <option 
+                                value="gpt-4o-2024-08-06" 
                                 title="Optimized for speed and efficiency"
                             >
                                 GPT-4o
@@ -178,10 +169,7 @@ export function AIContextSection({ t, settings, onSettingChange }) {
             {/* Card 4: Gemini Configuration */}
             {aiContextEnabled && aiContextProvider === 'gemini' && (
                 <SettingCard
-                    title={t(
-                        'cardGeminiContextTitle',
-                        'Google Gemini Configuration'
-                    )}
+                    title={t('cardGeminiContextTitle', 'Google Gemini Configuration')}
                     description={t(
                         'cardGeminiContextDesc',
                         'Configure your Google Gemini API settings for context analysis. You need a valid Gemini API key.'
@@ -213,26 +201,26 @@ export function AIContextSection({ t, settings, onSettingChange }) {
                                 onSettingChange('geminiModel', e.target.value)
                             }
                         >
-                            <option
-                                value="gemini-2.5-flash"
+                            <option 
+                                value="gemini-2.5-flash" 
                                 title="Fast and efficient model for quick context analysis"
                             >
                                 Gemini 2.5 Flash (Recommended)
                             </option>
-                            <option
-                                value="gemini-2.5-pro"
+                            <option 
+                                value="gemini-2.5-pro" 
                                 title="Advanced model with superior reasoning for complex cultural analysis"
                             >
                                 Gemini 2.5 Pro
                             </option>
-                            <option
-                                value="gemini-1.5-flash"
+                            <option 
+                                value="gemini-1.5-flash" 
                                 title="Previous generation fast model (legacy)"
                             >
                                 Gemini 1.5 Flash
                             </option>
-                            <option
-                                value="gemini-1.5-pro"
+                            <option 
+                                value="gemini-1.5-pro" 
                                 title="Previous generation advanced model (legacy)"
                             >
                                 Gemini 1.5 Pro
@@ -266,10 +254,7 @@ export function AIContextSection({ t, settings, onSettingChange }) {
 
                     <div className="setting">
                         <label htmlFor="contextTypeHistorical">
-                            {t(
-                                'contextTypeHistoricalLabel',
-                                'Historical Context:'
-                            )}
+                            {t('contextTypeHistoricalLabel', 'Historical Context:')}
                         </label>
                         <ToggleSwitch
                             id="contextTypeHistorical"
@@ -282,10 +267,7 @@ export function AIContextSection({ t, settings, onSettingChange }) {
 
                     <div className="setting">
                         <label htmlFor="contextTypeLinguistic">
-                            {t(
-                                'contextTypeLinguisticLabel',
-                                'Linguistic Context:'
-                            )}
+                            {t('contextTypeLinguisticLabel', 'Linguistic Context:')}
                         </label>
                         <ToggleSwitch
                             id="contextTypeLinguistic"
@@ -309,10 +291,7 @@ export function AIContextSection({ t, settings, onSettingChange }) {
                 >
                     <div className="setting">
                         <label htmlFor="aiContextTimeout">
-                            {t(
-                                'aiContextTimeoutLabel',
-                                'Request Timeout (ms):'
-                            )}
+                            {t('aiContextTimeoutLabel', 'Request Timeout (ms):')}
                         </label>
                         <input
                             type="number"
@@ -322,20 +301,14 @@ export function AIContextSection({ t, settings, onSettingChange }) {
                             step="1000"
                             value={settings.aiContextTimeout || 10000}
                             onChange={(e) =>
-                                onSettingChange(
-                                    'aiContextTimeout',
-                                    parseInt(e.target.value)
-                                )
+                                onSettingChange('aiContextTimeout', parseInt(e.target.value))
                             }
                         />
                     </div>
 
                     <div className="setting">
                         <label htmlFor="aiContextRateLimit">
-                            {t(
-                                'aiContextRateLimitLabel',
-                                'Rate Limit (requests/min):'
-                            )}
+                            {t('aiContextRateLimitLabel', 'Rate Limit (requests/min):')}
                         </label>
                         <input
                             type="number"
@@ -345,10 +318,7 @@ export function AIContextSection({ t, settings, onSettingChange }) {
                             step="10"
                             value={settings.aiContextRateLimit || 60}
                             onChange={(e) =>
-                                onSettingChange(
-                                    'aiContextRateLimit',
-                                    parseInt(e.target.value)
-                                )
+                                onSettingChange('aiContextRateLimit', parseInt(e.target.value))
                             }
                         />
                     </div>
@@ -361,20 +331,14 @@ export function AIContextSection({ t, settings, onSettingChange }) {
                             id="aiContextCacheEnabled"
                             checked={settings.aiContextCacheEnabled || false}
                             onChange={(checked) =>
-                                onSettingChange(
-                                    'aiContextCacheEnabled',
-                                    checked
-                                )
+                                onSettingChange('aiContextCacheEnabled', checked)
                             }
                         />
                     </div>
 
                     <div className="setting">
                         <label htmlFor="aiContextRetryAttempts">
-                            {t(
-                                'aiContextRetryAttemptsLabel',
-                                'Retry Attempts:'
-                            )}
+                            {t('aiContextRetryAttemptsLabel', 'Retry Attempts:')}
                         </label>
                         <input
                             type="number"
@@ -384,10 +348,7 @@ export function AIContextSection({ t, settings, onSettingChange }) {
                             step="1"
                             value={settings.aiContextRetryAttempts || 2}
                             onChange={(e) =>
-                                onSettingChange(
-                                    'aiContextRetryAttempts',
-                                    parseInt(e.target.value)
-                                )
+                                onSettingChange('aiContextRetryAttempts', parseInt(e.target.value))
                             }
                         />
                     </div>

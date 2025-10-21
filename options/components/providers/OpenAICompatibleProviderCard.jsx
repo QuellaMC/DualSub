@@ -25,14 +25,8 @@ export function OpenAICompatibleProviderCard({
     onModelChange,
     onModelsLoaded,
 }) {
-    const {
-        testResult,
-        testing,
-        fetchingModels,
-        testConnection,
-        fetchModels,
-        initializeStatus,
-    } = useOpenAITest(t, fetchAvailableModels);
+    const { testResult, testing, fetchingModels, testConnection, fetchModels, initializeStatus } = 
+        useOpenAITest(t, fetchAvailableModels);
 
     // Create debounced model fetching
     const debouncedFetchRef = useRef(
@@ -44,7 +38,7 @@ export function OpenAICompatibleProviderCard({
     // Initialize status
     useEffect(() => {
         initializeStatus(apiKey);
-
+        
         // Auto-fetch models if API key exists
         if (apiKey) {
             fetchModels(apiKey, baseUrl, onModelsLoaded);
@@ -74,10 +68,7 @@ export function OpenAICompatibleProviderCard({
 
     return (
         <SettingCard
-            title={t(
-                'cardOpenAICompatibleTitle',
-                'OpenAI Compatible (API Key Required)'
-            )}
+            title={t('cardOpenAICompatibleTitle', 'OpenAI Compatible (API Key Required)')}
             description={t(
                 'cardOpenAICompatibleDesc',
                 'Enter your API key and settings for OpenAI-compatible services like Gemini.'
@@ -90,10 +81,7 @@ export function OpenAICompatibleProviderCard({
                 <input
                     type="password"
                     id="openaiCompatibleApiKey"
-                    placeholder={t(
-                        'openaiApiKeyPlaceholder',
-                        'Enter your OpenAI-compatible API key'
-                    )}
+                    placeholder={t('openaiApiKeyPlaceholder', 'Enter your OpenAI-compatible API key')}
                     value={apiKey}
                     onChange={(e) => handleApiKeyChange(e.target.value)}
                 />
@@ -106,10 +94,7 @@ export function OpenAICompatibleProviderCard({
                 <input
                     type="text"
                     id="openaiCompatibleBaseUrl"
-                    placeholder={t(
-                        'openaiBaseUrlPlaceholder',
-                        'e.g., https://api.openai.com/v1'
-                    )}
+                    placeholder={t('openaiBaseUrlPlaceholder', 'e.g., https://api.openai.com/v1')}
                     value={baseUrl}
                     onChange={(e) => handleBaseUrlChange(e.target.value)}
                 />
@@ -132,11 +117,7 @@ export function OpenAICompatibleProviderCard({
                             </option>
                         ))
                     ) : (
-                        <option value="">
-                            {fetchingModels
-                                ? 'Loading...'
-                                : 'No models available'}
-                        </option>
+                        <option value="">{fetchingModels ? 'Loading...' : 'No models available'}</option>
                     )}
                 </select>
             </div>
@@ -149,7 +130,8 @@ export function OpenAICompatibleProviderCard({
                 >
                     {testing
                         ? t('testingButton', 'Testing...')
-                        : t('testConnectionButton', 'Test Connection')}
+                        : t('testConnectionButton', 'Test Connection')
+                    }
                 </SparkleButton>
             </div>
 
@@ -157,21 +139,9 @@ export function OpenAICompatibleProviderCard({
                 <div className="info-item">
                     <strong>{t('providerFeatures', 'Features:')}</strong>
                     <ul>
-                        <li>
-                            {t(
-                                'featureCustomizable',
-                                'Customizable endpoint and model'
-                            )}
-                        </li>
-                        <li>
-                            {t('featureApiKeyRequired', 'API key required')}
-                        </li>
-                        <li>
-                            {t(
-                                'featureWideLanguageSupport',
-                                'Wide language support'
-                            )}
-                        </li>
+                        <li>{t('featureCustomizable', 'Customizable endpoint and model')}</li>
+                        <li>{t('featureApiKeyRequired', 'API key required')}</li>
+                        <li>{t('featureWideLanguageSupport', 'Wide language support')}</li>
                     </ul>
                 </div>
             </div>

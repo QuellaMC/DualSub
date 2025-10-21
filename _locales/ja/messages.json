@@ -186,24 +186,18 @@
     "providerDeepLName": { "message": "DeepL（APIキー必須）" },
     "providerDeepLFreeName": { "message": "DeepL翻訳（無料）" },
     "providerOpenAICompatibleName": { "message": "OpenAI互換（APIキー必須）" },
-    "providerVertexGeminiName": {
-        "message": "Vertex AI Gemini（APIキー必須）"
-    },
+    "providerVertexGeminiName": { "message": "Vertex AI Gemini（APIキー必須）" },
     "cardOpenAICompatibleTitle": { "message": "OpenAI互換（APIキー必須）" },
     "cardOpenAICompatibleDesc": {
         "message": "GeminiなどのOpenAI互換サービス用のAPIキーと設定を入力してください。"
     },
     "cardVertexGeminiTitle": { "message": "Vertex AI Gemini（APIキー必須）" },
-    "cardVertexGeminiDesc": {
-        "message": "アクセストークンとVertex プロジェクト設定を入力するか、サービスアカウントJSONファイルをインポートしてください。"
-    },
+    "cardVertexGeminiDesc": { "message": "アクセストークンとVertex プロジェクト設定を入力するか、サービスアカウントJSONファイルをインポートしてください。" },
     "vertexAccessTokenLabel": { "message": "アクセストークン：" },
     "vertexProjectIdLabel": { "message": "プロジェクトID：" },
     "vertexLocationLabel": { "message": "ロケーション：" },
     "vertexModelLabel": { "message": "モデル：" },
-    "vertexMissingConfig": {
-        "message": "アクセストークンとプロジェクトIDを入力してください。"
-    },
+    "vertexMissingConfig": { "message": "アクセストークンとプロジェクトIDを入力してください。" },
     "vertexConnectionFailed": { "message": "接続に失敗しました：%s" },
     "vertexServiceAccountLabel": { "message": "サービスアカウントJSON：" },
     "vertexImportButton": { "message": "JSONファイルをインポート" },
@@ -212,34 +206,18 @@
     "vertexImporting": { "message": "インポート中..." },
     "vertexRefreshingToken": { "message": "アクセストークンを更新中..." },
     "vertexGeneratingToken": { "message": "アクセストークンを生成中..." },
-    "vertexImportSuccess": {
-        "message": "サービスアカウントがインポートされ、トークンが生成されました。"
-    },
+    "vertexImportSuccess": { "message": "サービスアカウントがインポートされ、トークンが生成されました。" },
     "vertexImportFailed": { "message": "インポートに失敗しました：%s" },
-    "vertexTokenRefreshed": {
-        "message": "アクセストークンが正常に更新されました。"
-    },
+    "vertexTokenRefreshed": { "message": "アクセストークンが正常に更新されました。" },
     "vertexRefreshFailed": { "message": "トークンの更新に失敗しました：%s" },
-    "vertexTokenExpired": {
-        "message": "⚠️ アクセストークンが期限切れです。更新をクリックして更新してください。"
-    },
-    "vertexTokenExpiringSoon": {
-        "message": "⚠️ トークンは%s分で期限切れになります。更新を検討してください。"
-    },
-    "vertexConfigured": {
-        "message": "⚠️ Vertex AIが設定されています。接続をテストしてください。"
-    },
-    "vertexNotConfigured": {
-        "message": "サービスアカウントJSONをインポートするか、認証情報を入力してください。"
-    },
-    "featureVertexServiceAccount": {
-        "message": "サービスアカウントJSONのインポート"
-    },
+    "vertexTokenExpired": { "message": "⚠️ アクセストークンが期限切れです。更新をクリックして更新してください。" },
+    "vertexTokenExpiringSoon": { "message": "⚠️ トークンは%s分で期限切れになります。更新を検討してください。" },
+    "vertexConfigured": { "message": "⚠️ Vertex AIが設定されています。接続をテストしてください。" },
+    "vertexNotConfigured": { "message": "サービスアカウントJSONをインポートするか、認証情報を入力してください。" },
+    "featureVertexServiceAccount": { "message": "サービスアカウントJSONのインポート" },
     "featureVertexAutoToken": { "message": "自動トークン生成" },
     "featureVertexGemini": { "message": "Vertex AI経由のGoogle Geminiモデル" },
-    "vertexNote": {
-        "message": "アクセストークンは1時間後に期限切れになります。サービスアカウントは安全に保存されており、簡単にトークンを更新できます - 必要に応じてトークン更新ボタンをクリックしてください。"
-    },
+    "vertexNote": { "message": "アクセストークンは1時間後に期限切れになります。サービスアカウントは安全に保存されており、簡単にトークンを更新できます - 必要に応じてトークン更新ボタンをクリックしてください。" },
     "baseUrlLabel": { "message": "ベースURL：" },
     "modelLabel": { "message": "モデル：" },
     "featureCustomizable": {

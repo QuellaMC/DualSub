@@ -17,7 +17,7 @@ export function useSettings(keys) {
             try {
                 setLoading(true);
                 let data;
-
+                
                 if (Array.isArray(keys)) {
                     data = await configService.getMultiple(keys);
                 } else if (keys) {
@@ -26,7 +26,7 @@ export function useSettings(keys) {
                 } else {
                     data = await configService.getAll();
                 }
-
+                
                 setSettings(data);
                 setError(null);
             } catch (err) {
@@ -43,7 +43,7 @@ export function useSettings(keys) {
     // Listen for setting changes
     useEffect(() => {
         const handleChange = (changes) => {
-            setSettings((prev) => ({ ...prev, ...changes }));
+            setSettings(prev => ({ ...prev, ...changes }));
         };
 
         const unsubscribe = configService.onChanged(handleChange);
@@ -60,7 +60,7 @@ export function useSettings(keys) {
     const updateSetting = useCallback(async (key, value) => {
         try {
             await configService.set(key, value);
-            setSettings((prev) => ({ ...prev, [key]: value }));
+            setSettings(prev => ({ ...prev, [key]: value }));
             return true;
         } catch (err) {
             setError(err);
@@ -73,7 +73,7 @@ export function useSettings(keys) {
     const updateSettings = useCallback(async (updates) => {
         try {
             await configService.setMultiple(updates);
-            setSettings((prev) => ({ ...prev, ...updates }));
+            setSettings(prev => ({ ...prev, ...updates }));
             return true;
         } catch (err) {
             setError(err);
