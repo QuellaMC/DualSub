@@ -48,19 +48,22 @@ function parsePossiblyJson(responseText) {
     if (typeof responseText !== 'string' || responseText.trim() === '') {
         return '';
     }
-    const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```|(\[[\s\S]*\])/);
-    const jsonString = jsonMatch ? (jsonMatch[1] || jsonMatch[2]) : null;
+    const jsonMatch = responseText.match(
+        /```json\s*([\s\S]*?)\s*```|(\[[\s\S]*\])/
+    );
+    const jsonString = jsonMatch ? jsonMatch[1] || jsonMatch[2] : null;
     if (!jsonString) {
         return responseText;
     }
     try {
         return JSON.parse(jsonString);
     } catch (e) {
-        logger.warn('Response looked like JSON but failed to parse, using raw text.');
+        logger.warn(
+            'Response looked like JSON but failed to parse, using raw text.'
+        );
         return responseText;
     }
 }
-
 
 // Ensure model name is in short form (e.g., "gemini-1.5-flash"), removing any leading path like
 // "models/gemini-1.5-flash" or "publishers/google/models/gemini-1.5-flash".
@@ -100,7 +103,9 @@ export async function translate(text, sourceLang, targetLang) {
 
         const { accessToken, projectId, location, model } = await getConfig();
         if (!accessToken || !projectId || !location || !model) {
-            throw new Error('Vertex access token, project, location, or model not configured.');
+            throw new Error(
+                'Vertex access token, project, location, or model not configured.'
+            );
         }
 
         const endpoint = buildVertexEndpoint(
@@ -125,10 +130,18 @@ export async function translate(text, sourceLang, targetLang) {
 
         const requestBody = {
             contents: [
-                { role: 'user', parts: [{ text: `${systemPrompt}\n\n${userPrompt}\n\n${text}` }] },
+                {
+                    role: 'user',
+                    parts: [
+                        { text: `${systemPrompt}\n\n${userPrompt}\n\n${text}` },
+                    ],
+                },
             ],
             generationConfig: {
-                maxOutputTokens: Math.max(256, Math.min(2048, Math.ceil(text.length * 3))),
+                maxOutputTokens: Math.max(
+                    256,
+                    Math.min(2048, Math.ceil(text.length * 3))
+                ),
             },
         };
 
@@ -150,34 +163,31 @@ export async function translate(text, sourceLang, targetLang) {
                     errorMessage = parsed.error.message;
                 }
             } catch (e) {}
-            logger.error(
-                'Vertex AI single translation failed',
-                null,
-                {
-                    status: response.status,
-                    statusText: response.statusText,
-                    endpoint,
-                    errorMessage,
-                }
+            logger.error('Vertex AI single translation failed', null, {
+                status: response.status,
+                statusText: response.statusText,
+                endpoint,
+                errorMessage,
+            });
+            throw new Error(
+                `Vertex translation error: ${response.status} ${response.statusText}`
             );
-            throw new Error(`Vertex translation error: ${response.status} ${response.statusText}`);
         }
 
         const data = await response.json();
-        const responseText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        const responseText =
+            data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
         if (!responseText) {
             throw new Error('Empty response from Vertex AI');
         }
-        return typeof responseText === 'string' ? responseText.trim() : String(responseText);
+        return typeof responseText === 'string'
+            ? responseText.trim()
+            : String(responseText);
     } catch (error) {
-        logger.error(
-            'Fatal error during Vertex AI single translation',
-            error,
-            {
-                sourceLang,
-                targetLang,
-            }
-        );
+        logger.error('Fatal error during Vertex AI single translation', error, {
+            sourceLang,
+            targetLang,
+        });
         return text; // Fallback to original
     }
 }
@@ -211,7 +221,9 @@ export async function translateBatch(
 
         const { accessToken, projectId, location, model } = await getConfig();
         if (!accessToken || !projectId || !location || !model) {
-            throw new Error('Vertex access token, project, location, or model not configured.');
+            throw new Error(
+                'Vertex access token, project, location, or model not configured.'
+            );
         }
 
         const endpoint = buildVertexEndpoint(
@@ -235,10 +247,16 @@ Important:
 
         const requestBody = {
             contents: [
-                { role: 'user', parts: [{ text: `${instructions}\n\n${combinedText}` }] },
+                {
+                    role: 'user',
+                    parts: [{ text: `${instructions}\n\n${combinedText}` }],
+                },
             ],
             generationConfig: {
-                maxOutputTokens: Math.min(4096, Math.max(500, combinedText.length * 3)),
+                maxOutputTokens: Math.min(
+                    4096,
+                    Math.max(500, combinedText.length * 3)
+                ),
             },
         };
 
@@ -260,21 +278,20 @@ Important:
                     errorMessage = parsed.error.message;
                 }
             } catch (e) {}
-            logger.error(
-                'Vertex AI batch translation failed',
-                null,
-                {
-                    status: response.status,
-                    statusText: response.statusText,
-                    endpoint,
-                    errorMessage,
-                }
+            logger.error('Vertex AI batch translation failed', null, {
+                status: response.status,
+                statusText: response.statusText,
+                endpoint,
+                errorMessage,
+            });
+            throw new Error(
+                `Vertex batch translation error: ${response.status}`
             );
-            throw new Error(`Vertex batch translation error: ${response.status}`);
         }
 
         const data = await response.json();
-        const responseText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        const responseText =
+            data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
         if (!responseText) {
             throw new Error('Empty response from Vertex AI');
         }
@@ -284,7 +301,9 @@ Important:
         if (Array.isArray(parsed)) {
             // Ensure array length matches input size
             if (parsed.length !== texts.length) {
-                throw new Error('Translated array length does not match input array length.');
+                throw new Error(
+                    'Translated array length does not match input array length.'
+                );
             }
             return parsed.map((s) => (typeof s === 'string' ? s : String(s)));
         }
@@ -301,15 +320,11 @@ Important:
         }
         return split.map((s) => s.trim());
     } catch (error) {
-        logger.error(
-            'Fatal error during Vertex AI batch translation',
-            error,
-            {
-                sourceLang,
-                targetLang,
-                textCount: texts.length,
-            }
-        );
+        logger.error('Fatal error during Vertex AI batch translation', error, {
+            sourceLang,
+            targetLang,
+            textCount: texts.length,
+        });
         return texts; // Fallback to original array
     }
 }
