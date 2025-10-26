@@ -1635,6 +1635,14 @@ export function updateSubtitles(
                 lastDisplayedCueWindow.videoId || platformVideoId;
         }
 
+        // Always dispatch content change when new text is set
+        dispatchContentChange(
+            'original',
+            originalSubtitleElement.innerHTML,
+            originalTextFormatted,
+            originalSubtitleElement
+        );
+
         if (useNativeTarget) {
             if (originalText.trim()) {
                 const newSig = computeTextSignature(originalText);
@@ -1897,6 +1905,17 @@ export function updateSubtitles(
             if (translatedSubtitleElement.innerHTML)
                 translatedSubtitleElement.style.display = 'inline-block';
             return;
+        }
+
+        // Dispatch content change before clearing subtitles
+        if (originalSubtitleElement.innerHTML) {
+            dispatchContentChange(
+                'original',
+                originalSubtitleElement.innerHTML,
+                '',
+                originalSubtitleElement,
+                { immediate: true }
+            );
         }
 
         if (originalSubtitleElement.innerHTML)

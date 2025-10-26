@@ -60,6 +60,18 @@ export function useWordSelection() {
         return drop;
     }, [onMessage]);
 
+    // Listen for selection clear events from the content script
+    useEffect(() => {
+        const unsubscribe = onMessage('sidePanelClearSelection', () => {
+            console.log(
+                'Side panel received clear selection event from content script'
+            );
+            clearWords();
+        });
+
+        return unsubscribe;
+    }, [onMessage, clearWords]);
+
     /**
      * Handle word selected event from content script
      */
