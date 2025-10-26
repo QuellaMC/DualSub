@@ -11,6 +11,8 @@ const INJECT_EVENT_ID = Injection.disneyplus.EVENT_ID; // Must match inject.js
 
 import { BasePlatformAdapter } from './BasePlatformAdapter.js';
 
+const PLAYBACK_TRANSITION_DELAY_MS = 160;
+
 export class DisneyPlusPlatform extends BasePlatformAdapter {
     constructor() {
         super();
@@ -238,11 +240,7 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
         this._handleInjectorEvents(e);
     }
 
-getVideoElement() {
-        // Prefer the known Disney+ primary player
-        const hive = document.getElementById('hivePlayer');
-        if (hive && hive.tagName === 'VIDEO') return hive;
-        // Fallback to the first video element
+    getVideoElement() {
         return document.querySelector('video');
     }
 
@@ -324,7 +322,7 @@ getVideoElement() {
             const btn = root.querySelector('button') || root.querySelector('[role="button"]');
             if (!btn) return false;
             btn.click();
-            await new Promise((r) => setTimeout(r, 160));
+            await new Promise((r) => setTimeout(r, PLAYBACK_TRANSITION_DELAY_MS));
             const after = this.isPlaying();
             return after === false;
         } catch (_) {
@@ -341,7 +339,7 @@ getVideoElement() {
             const btn = root.querySelector('button') || root.querySelector('[role="button"]');
             if (!btn) return false;
             btn.click();
-            await new Promise((r) => setTimeout(r, 160));
+            await new Promise((r) => setTimeout(r, PLAYBACK_TRANSITION_DELAY_MS));
             const after = this.isPlaying();
             return after === true;
         } catch (_) {

@@ -94,12 +94,12 @@ async function initializeServices() {
         backgroundLogger.info('Services registered in service registry');
 
         // Inject services into message handler
-        messageHandler.setServices(
-            translationProviders,
+        messageHandler.setServices({
+            translationService: translationProviders,
             subtitleService,
             aiContextService,
-            sidePanelService
-        );
+            sidePanelService,
+        });
         backgroundLogger.info('Services injected into message handler');
 
         // Initialize default settings using the configuration service

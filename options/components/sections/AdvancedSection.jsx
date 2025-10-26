@@ -173,7 +173,7 @@ export function AdvancedSection({ t, settings, onSettingChange }) {
                 )}
             >
                 <div className="info-message">
-                    <span className="material-symbols-outlined" style={{ color: '#f59e0b', marginRight: '0.5rem' }}>warning</span>
+                    <span className="material-symbols-outlined" style={{ color: 'var(--color-warning)', marginRight: 'var(--spacing-2)' }}>warning</span>
                     {t(
                         'advancedNote',
                         'Chrome Side Panel API requires Chrome 114 or higher. Lower versions will use the legacy modal.'

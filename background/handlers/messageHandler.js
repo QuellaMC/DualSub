@@ -121,17 +121,40 @@ class MessageHandler {
 
     /**
      * Set service dependencies (will be injected after services are created)
+     * Supports either positional args or an options object:
+     *   setServices({ translationService, subtitleService, aiContextService?, sidePanelService? })
+     * For backward compatibility, the positional signature remains supported.
      */
     setServices(translationService, subtitleService, aiContextService = null, sidePanelService = null) {
-        this.translationService = translationService;
-        this.subtitleService = subtitleService;
-        this.aiContextService = aiContextService;
-        this.sidePanelService = sidePanelService;
+        /** @type {{translationService?: any, subtitleService?: any, aiContextService?: any, sidePanelService?: any}} */
+        let services;
+        if (
+            arguments.length === 1 &&
+            translationService &&
+            typeof translationService === 'object' &&
+            (Object.prototype.hasOwnProperty.call(translationService, 'translationService') ||
+                Object.prototype.hasOwnProperty.call(translationService, 'subtitleService'))
+        ) {
+            services = translationService;
+        } else {
+            services = {
+                translationService,
+                subtitleService,
+                aiContextService,
+                sidePanelService,
+            };
+        }
+
+        this.translationService = services.translationService || null;
+        this.subtitleService = services.subtitleService || null;
+        this.aiContextService = services.aiContextService || null;
+        this.sidePanelService = services.sidePanelService || null;
+
         this.logger.debug('Services injected into message handler', {
-            hasTranslation: !!translationService,
-            hasSubtitle: !!subtitleService,
-            hasAIContext: !!aiContextService,
-            hasSidePanel: !!sidePanelService,
+            hasTranslation: !!this.translationService,
+            hasSubtitle: !!this.subtitleService,
+            hasAIContext: !!this.aiContextService,
+            hasSidePanel: !!this.sidePanelService,
         });
     }
 

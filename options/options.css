@@ -18,6 +18,8 @@
     --font-family:
         -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue',
         Arial, sans-serif;
+    --color-warning: #f59e0b;
+    --spacing-2: 0.5rem;
 }
 
 body {

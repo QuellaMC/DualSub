@@ -260,7 +260,7 @@ async function testMessageHandler() {
         messageHandler.initialize();
 
         // Set services
-        messageHandler.setServices(translationProviders, subtitleService);
+        messageHandler.setServices({ translationService: translationProviders, subtitleService });
 
         // Test that handler is initialized
         if (!messageHandler.isInitialized) {

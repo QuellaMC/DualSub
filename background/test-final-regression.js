@@ -124,7 +124,7 @@ async function testAllServices() {
         // Test Message Handler
         console.log('📊 Testing Message Handler...');
         messageHandler.initialize();
-        messageHandler.setServices(translationProviders, subtitleService);
+        messageHandler.setServices({ translationService: translationProviders, subtitleService });
 
         if (messageHandler.isInitialized) {
             results.messageHandler = true;

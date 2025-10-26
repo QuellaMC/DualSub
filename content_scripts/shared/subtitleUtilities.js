@@ -1132,9 +1132,15 @@ function attemptToSetupProgressBarObserver(
         progressBarObserver = new MutationObserver((mutations) => {
             const selectActiveThumb = () => {
                 if (progressBarHost && progressBarHost.shadowRoot) {
-                    return progressBarHost.shadowRoot.querySelector(
+                    // Original, more specific selector
+                    let thumb = progressBarHost.shadowRoot.querySelector(
                         '.progress-bar__seekable-range .progress-bar__thumb[aria-valuenow][aria-valuemax]'
                     );
+                    if (thumb) return thumb;
+
+                    // Fallback to any element with aria-valuenow in the shadow root, which is common
+                    thumb = progressBarHost.shadowRoot.querySelector('[aria-valuenow]');
+                    if (thumb) return thumb;
                 }
                 return null;
             };
@@ -1156,6 +1162,8 @@ function attemptToSetupProgressBarObserver(
                     logWithFallback('debug', 'Progress bar mutation observed', {
                         logPrefix,
                         attributeName: mutation.attributeName || 'childList',
+                        targetTag: targetElement.tagName,
+                        targetClass: targetElement.className,
                         nowStr,
                         maxStr,
                         textStr,
@@ -1179,6 +1187,12 @@ function attemptToSetupProgressBarObserver(
                                 textStr ||
                                 neighbor.getAttribute('aria-valuetext');
                         }
+                        logWithFallback('debug', 'Progress bar neighbor search values', {
+                            logPrefix,
+                            nowStr,
+                            maxStr,
+                            textStr,
+                        });
                     }
 
                     const currentVideoElem = activePlatform.getVideoElement();
@@ -1202,25 +1216,33 @@ function attemptToSetupProgressBarObserver(
                             }
                         }
                         let { duration: videoDuration } = currentVideoElem;
-                        // Some players report 0/null until metadata is ready. Fallback to valuemax when it looks like seconds
+                        // Some players report 0/null/Infinity until metadata is ready. Fallback to valuemax when it looks like seconds.
                         if (
-                            (!videoDuration || Number.isNaN(videoDuration)) &&
+                            (!isFinite(videoDuration) || videoDuration <= 0) &&
                             !Number.isNaN(valuemax) &&
                             valuemax > 0
                         ) {
                             videoDuration = valuemax;
                         }
 
+                        logWithFallback('debug', 'Progress bar time calculation values', {
+                            logPrefix,
+                            valuenow,
+                            valuemax,
+                            videoDuration,
+                        });
+
                         if (!Number.isNaN(valuenow)) {
                             // Directly use valuenow as seconds when valuemax matches duration
                             let calculatedTime = valuenow;
                             if (
-                                !Number.isNaN(videoDuration) &&
+                                isFinite(videoDuration) &&
                                 videoDuration > 0 &&
                                 !Number.isNaN(valuemax) &&
                                 valuemax > 0
                             ) {
                                 // If valuemax does not match duration yet, scale valuenow by valuemax
+                                // Also, if videoDuration was Infinity and we fell back to valuemax, this should be false.
                                 if (Math.abs(valuemax - videoDuration) > 1.5) {
                                     calculatedTime =
                                         (valuenow / valuemax) * videoDuration;
@@ -1877,35 +1899,13 @@ export function updateSubtitles(
             return;
         }
 
-        if (originalSubtitleElement && originalSubtitleElement.innerHTML) {
-            dispatchContentChange(
-                'original',
-                originalSubtitleElement.innerHTML,
-                '',
-                originalSubtitleElement,
-                { immediate: true }
-            );
+        if (originalSubtitleElement.innerHTML)
             originalSubtitleElement.innerHTML = '';
-            originalSubtitleElement.dataset.textSig = '';
-        }
-        if (originalSubtitleElement)
-            originalSubtitleElement.style.display = 'none';
+        originalSubtitleElement.style.display = 'none';
 
-        if (translatedSubtitleElement && translatedSubtitleElement.innerHTML) {
-            dispatchContentChange(
-                'translated',
-                translatedSubtitleElement.innerHTML,
-                '',
-                translatedSubtitleElement,
-                { immediate: true }
-            );
+        if (translatedSubtitleElement.innerHTML)
             translatedSubtitleElement.innerHTML = '';
-            translatedSubtitleElement.dataset.textSig = '';
-        }
-        if (translatedSubtitleElement)
-            translatedSubtitleElement.style.display = 'none';
-
-        lastDisplayedCueWindow = { start: null, end: null, videoId: null };
+        translatedSubtitleElement.style.display = 'none';
     }
 }
 
@@ -2503,6 +2503,28 @@ export async function processSubtitleQueue(
         }
     } finally {
         processingQueue = false;
+    }
+
+    // After processing a batch, force an update of the subtitles on screen.
+    // This ensures newly available translations are rendered without waiting for the next timeupdate event.
+    const videoElementForUpdate = activePlatform?.getVideoElement();
+    if (videoElementForUpdate) {
+        let currentTimeForUpdate = videoElementForUpdate.currentTime;
+
+        // Use the more accurate progress bar time if available, especially for platforms like Disney+.
+        if (
+            activePlatform.supportsProgressBarTracking?.() !== false &&
+            lastProgressBarTime >= 0
+        ) {
+            currentTimeForUpdate = lastProgressBarTime;
+        }
+
+        updateSubtitles(
+            currentTimeForUpdate,
+            activePlatform,
+            config,
+            logPrefix
+        );
     }
 
     const currentContextVideoIdForNextCheck =

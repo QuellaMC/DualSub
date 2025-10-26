@@ -8,6 +8,8 @@
  * @version 1.0.0
  */
 
+import { PlatformDetector } from './platformConfig.js';
+
 // Robust logging function that's always available
 const logWithFallback = (() => {
     let currentLogger = (level, message, data) => {
@@ -60,6 +62,21 @@ const interactiveState = {
     contextModal: null,
     lastClickTime: 0,
 };
+
+function isDisneyPlusHost() {
+    try {
+        return PlatformDetector.getCurrentPlatformName() === 'disneyplus';
+    } catch (_) {
+        try {
+            return (
+                typeof location !== 'undefined' &&
+                location.hostname.includes('disneyplus.com')
+            );
+        } catch (_) {
+            return false;
+        }
+    }
+}
 
 // Helper: detect if modal is currently in analyzing state
 function isAnalyzingActive() {
@@ -455,45 +472,7 @@ function getSubtitleTypeFromElement(element) {
  * Handle click events on interactive words
  * @param {Event} event - Click event
  */
-function getActiveVideoElement() {
-    const isDisney = typeof location !== 'undefined' && location.hostname.includes('disneyplus.com');
-
-    // Disney+: prefer the main hive player if present
-    if (isDisney) {
-        const hive = document.getElementById('hivePlayer');
-        if (hive && hive.tagName === 'VIDEO') return hive;
-    }
-
-    // Default: use the page's primary video first
-    const primary = document.querySelector('video');
-    if (primary) return primary;
-
-    // Then prefer the video our subtitle system attached to
-    const attached = document.querySelector('video[data-listener-attached="true"]');
-    if (attached) return attached;
-
-    // Last resort: pick the best visible, ready video
-    const list = Array.from(document.querySelectorAll('video'));
-    if (list.length === 1) return list[0];
-    let best = null;
-    let bestScore = -Infinity;
-    for (const v of list) {
-        try {
-            const r = v.getBoundingClientRect();
-            const area = Math.max(0, r.width) * Math.max(0, r.height);
-            const rs = Number(v.readyState || 0);
-            const visible = r.width > 0 && r.height > 0;
-            const score = (visible ? 1000 : 0) + rs * 100 + area;
-            if (score > bestScore) {
-                bestScore = score;
-                best = v;
-            }
-        } catch (_) {}
-    }
-    return best || null;
-}
-
-async function handleInteractiveWordClick(event) {
+function handleInteractiveWordClick(event) {
     const target = event.target;
 
     if (!target.classList.contains('dualsub-interactive-word')) {
@@ -534,8 +513,9 @@ async function handleInteractiveWordClick(event) {
         targetLanguage,
     });
 
-const videoElement = getActiveVideoElement();
-    let isVideoPaused = videoElement ? videoElement.paused : false;
+    // Check if video is paused for enhanced selection mode
+    const videoElement = document.querySelector('video');
+    const isVideoPaused = videoElement ? videoElement.paused : false;
 
     logWithFallback('info', 'Interactive word clicked', {
         word,
@@ -544,19 +524,6 @@ const videoElement = getActiveVideoElement();
         targetElement: target.tagName,
         targetClass: target.className,
     });
-
-    const isDisney = typeof location !== 'undefined' && location.hostname.includes('disneyplus.com');
-    if (isDisney || !isVideoPaused) {
-        // Try to pause aggressively (Disney+ always routes to platform handler)
-        const paused = await pauseVideoAggressively();
-        if (paused) {
-            isVideoPaused = true;
-        } else {
-            // If not definitively paused, refresh reference and re-check
-            const v2 = getActiveVideoElement();
-            isVideoPaused = v2 ? v2.paused : false;
-        }
-    }
 
     if (isVideoPaused) {
         // Enhanced selection mode - dispatch word selection event
@@ -610,7 +577,7 @@ const videoElement = getActiveVideoElement();
  */
 async function pauseVideoAggressively() {
     try {
-        const isDisney = typeof location !== 'undefined' && location.hostname.includes('disneyplus.com');
+        const isDisney = isDisneyPlusHost();
         if (isDisney) {
             // Route to content script/platform handler to avoid direct pause bugs on Disney+
             try {
@@ -619,7 +586,12 @@ async function pauseVideoAggressively() {
                 await new Promise((r) => setTimeout(r, 160));
                 const vD = getActiveVideoElement();
                 if (vD && vD.paused) return true;
-            } catch (_) {}
+            } catch (error) {
+                logWithFallback('warn', 'sidePanelPauseVideo message failed', {
+                    error: error.message,
+                    route: 'disney',
+                });
+            }
             return false;
         }
 
@@ -650,7 +622,11 @@ async function pauseVideoAggressively() {
             await new Promise((r) => setTimeout(r, 150));
             const v3 = getActiveVideoElement();
             if (v3 && v3.paused) return true;
-        } catch (_) {}
+        } catch (error) {
+            logWithFallback('warn', 'Background route pause message failed', {
+                error: error.message,
+            });
+        }
     } catch (_) {}
     return false;
 }
