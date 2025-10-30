@@ -1128,7 +1128,7 @@ class MessageHandler {
         }
 
         this.sidePanelService
-            .forwardSelectionSync(tabId, message)
+            .forwardSelectionSync(tabId, message?.data ?? message)
             .then(() => {
                 sendResponse({ success: true });
             })
