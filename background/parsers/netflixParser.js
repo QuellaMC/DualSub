@@ -94,21 +94,61 @@ class NetflixParser {
                 hasTargetTrack: !!targetTrack,
             });
 
-            // Process original language subtitles
+            // Process original language subtitles (with fallback selection)
             let originalVttText = '';
             let sourceLanguage = originalLanguage;
 
-            if (originalTrack) {
+            // Choose effective original track with fallback when requested language is unavailable
+            let selectedOriginalTrack = originalTrack;
+            if (!selectedOriginalTrack) {
+                // Try English first
+                const englishCandidate = availableLanguages.find(
+                    (lang) =>
+                        lang?.normalizedCode === 'en' ||
+                        (typeof lang?.normalizedCode === 'string' &&
+                            lang.normalizedCode.startsWith('en'))
+                );
+
+                const fallbackCandidate =
+                    englishCandidate || availableLanguages[0] || null;
+
+                if (fallbackCandidate) {
+                    this.logger.info(
+                        'Requested original language not found, using fallback',
+                        {
+                            requested: normalizeLanguageCode(originalLanguage),
+                            fallbackDisplayName: fallbackCandidate.displayName,
+                            fallbackNormalized:
+                                fallbackCandidate.normalizedCode,
+                        }
+                    );
+                    selectedOriginalTrack = {
+                        language: fallbackCandidate.rawCode,
+                        trackType: fallbackCandidate.trackType,
+                        downloadUrl: fallbackCandidate.downloadUrl,
+                    };
+                } else {
+                    this.logger.warn(
+                        'No available languages to fallback to for Netflix subtitles'
+                    );
+                }
+            }
+
+            if (selectedOriginalTrack) {
                 this.logger.debug('Processing original track', {
-                    language: originalTrack.language,
-                    trackType: originalTrack.trackType,
+                    language: selectedOriginalTrack.language,
+                    trackType: selectedOriginalTrack.trackType,
                 });
 
                 const originalSubtitleText =
-                    await this.fetchNetflixSubtitleContent(originalTrack);
+                    await this.fetchNetflixSubtitleContent(
+                        selectedOriginalTrack
+                    );
                 originalVttText =
                     ttmlParser.convertTtmlToVtt(originalSubtitleText);
-                sourceLanguage = normalizeLanguageCode(originalTrack.language);
+                sourceLanguage = normalizeLanguageCode(
+                    selectedOriginalTrack.language
+                );
             }
 
             // Process target language subtitles
@@ -155,7 +195,7 @@ class NetflixParser {
                 targetLanguage: normalizeLanguageCode(targetLanguage),
                 useNativeTarget: useNativeTarget,
                 availableLanguages: availableLanguages,
-                url: originalTrack?.downloadUrl || 'Netflix TTML',
+                url: selectedOriginalTrack?.downloadUrl || 'Netflix TTML',
             };
 
             this.logger.info('Netflix subtitle processing completed', {

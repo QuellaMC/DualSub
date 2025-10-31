@@ -11,6 +11,8 @@ const INJECT_EVENT_ID = Injection.disneyplus.EVENT_ID; // Must match inject.js
 
 import { BasePlatformAdapter } from './BasePlatformAdapter.js';
 
+const PLAYBACK_TRANSITION_DELAY_MS = 160;
+
 export class DisneyPlusPlatform extends BasePlatformAdapter {
     constructor() {
         super();
@@ -283,6 +285,65 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
             return bestThumb || null;
         } catch (_) {
             return null;
+        }
+    }
+
+    /**
+     * Platform-specific playback helpers for Disney+
+     */
+    _getToggleButtonRoot() {
+        try {
+            const toggleHost = document.querySelector('disney-web-player-ui toggle-play-pause');
+            return toggleHost?.shadowRoot || null;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    isPlaying() {
+        try {
+            const root = this._getToggleButtonRoot();
+            if (!root) return null;
+            const roleBtn = root.querySelector('[role="button"]');
+            const label = roleBtn?.getAttribute('aria-label');
+            if (!label) return null;
+            return label === 'Pause';
+        } catch (_) {
+            return null;
+        }
+    }
+
+    async pausePlayback() {
+        try {
+            const state = this.isPlaying();
+            if (state === false) return true;
+            const root = this._getToggleButtonRoot();
+            if (!root) return false;
+            const btn = root.querySelector('button') || root.querySelector('[role="button"]');
+            if (!btn) return false;
+            btn.click();
+            await new Promise((r) => setTimeout(r, PLAYBACK_TRANSITION_DELAY_MS));
+            const after = this.isPlaying();
+            return after === false;
+        } catch (_) {
+            return false;
+        }
+    }
+
+    async resumePlayback() {
+        try {
+            const state = this.isPlaying();
+            if (state === true) return true;
+            const root = this._getToggleButtonRoot();
+            if (!root) return false;
+            const btn = root.querySelector('button') || root.querySelector('[role="button"]');
+            if (!btn) return false;
+            btn.click();
+            await new Promise((r) => setTimeout(r, PLAYBACK_TRANSITION_DELAY_MS));
+            const after = this.isPlaying();
+            return after === true;
+        } catch (_) {
+            return false;
         }
     }
 

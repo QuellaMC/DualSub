@@ -18,6 +18,8 @@
     --font-family:
         -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue',
         Arial, sans-serif;
+    --color-warning: #f59e0b;
+    --spacing-2: 0.5rem;
 }
 
 body {
@@ -740,12 +742,14 @@ button#testDeepLButton.btn-sparkle:hover span.text {
     border-radius: 8px;
     background: linear-gradient(180deg, #007aff 0%, #0051d5 100%);
     color: white;
-    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+    font-family:
+        -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue',
+        sans-serif;
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    box-shadow: 
+    box-shadow:
         0 1px 2px rgba(0, 122, 255, 0.3),
         0 2px 4px rgba(0, 0, 0, 0.1);
     position: relative;
@@ -759,13 +763,17 @@ button#testDeepLButton.btn-sparkle:hover span.text {
     left: 0;
     right: 0;
     height: 50%;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 100%);
+    background: linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.15) 0%,
+        rgba(255, 255, 255, 0) 100%
+    );
     pointer-events: none;
 }
 
 .apple-file-btn:hover {
     background: linear-gradient(180deg, #0077ed 0%, #004fc7 100%);
-    box-shadow: 
+    box-shadow:
         0 2px 4px rgba(0, 122, 255, 0.4),
         0 4px 8px rgba(0, 0, 0, 0.15);
     transform: translateY(-1px);
@@ -773,7 +781,7 @@ button#testDeepLButton.btn-sparkle:hover span.text {
 
 .apple-file-btn:active {
     background: linear-gradient(180deg, #0051d5 0%, #003fa8 100%);
-    box-shadow: 
+    box-shadow:
         0 1px 2px rgba(0, 122, 255, 0.3),
         0 1px 3px rgba(0, 0, 0, 0.2);
     transform: translateY(0);
@@ -782,8 +790,7 @@ button#testDeepLButton.btn-sparkle:hover span.text {
 .apple-file-btn:disabled {
     background: linear-gradient(180deg, #c7c7cc 0%, #aeaeb2 100%);
     cursor: not-allowed;
-    box-shadow: 
-        0 1px 2px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .apple-file-btn:disabled::before {

@@ -8,6 +8,8 @@
  * @version 1.0.0
  */
 
+import { PlatformDetector } from './platformConfig.js';
+
 // Robust logging function that's always available
 const logWithFallback = (() => {
     let currentLogger = (level, message, data) => {
@@ -496,63 +498,36 @@ function handleInteractiveWordClick(event) {
         targetLanguage,
     });
 
-    // Check if video is paused for enhanced selection mode
-    const videoElement = document.querySelector('video');
-    const isVideoPaused = videoElement ? videoElement.paused : false;
+    // Enhanced selection mode - dispatch word selection event
+    // Determine subtitle type from element's container
+    const subtitleType = getSubtitleTypeFromElement(target);
 
-    logWithFallback('info', 'Interactive word clicked', {
+    logWithFallback('info', 'Dispatching word selection event', {
         word,
-        isVideoPaused,
-        hasVideoElement: !!videoElement,
-        targetElement: target.tagName,
-        targetClass: target.className,
+        subtitleType,
     });
 
-    if (isVideoPaused) {
-        // Enhanced selection mode - dispatch word selection event
-        // Determine subtitle type from element's container
-        const subtitleType = getSubtitleTypeFromElement(target);
-
-        logWithFallback('info', 'Dispatching word selection event', {
-            word,
-            subtitleType,
-            isVideoPaused,
-        });
-
-        document.dispatchEvent(
-            new CustomEvent('dualsub-word-selected', {
-                detail: {
-                    word,
-                    element: target,
-                    sourceLanguage,
-                    targetLanguage,
-                    context,
-                    subtitleType,
-                },
-            })
-        );
-
-        logWithFallback(
-            'debug',
-            'Word selection event dispatched (video paused)',
-            {
+    document.dispatchEvent(
+        new CustomEvent('dualsub-word-selected', {
+            detail: {
                 word,
-                subtitleType,
-            }
-        );
-    } else {
-        // Video is playing - no action taken
-        // Context analysis can only be initiated through the modal when video is paused
-        logWithFallback(
-            'debug',
-            'Word click ignored - video is playing. Pause video to select words for analysis.',
-            {
-                word,
+                element: target,
                 sourceLanguage,
                 targetLanguage,
-            }
-        );
-    }
+                context,
+                subtitleType,
+            },
+        })
+    );
+
+    logWithFallback(
+        'debug',
+        'Word selection event dispatched (video paused)',
+        {
+            word,
+            subtitleType,
+        }
+    );
 }
 
 /**

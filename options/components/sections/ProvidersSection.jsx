@@ -19,12 +19,12 @@ export function ProvidersSection({ t, settings, onSettingChange }) {
 
     const handleOpenAIModelsLoaded = async (models) => {
         setOpenaiModels(models);
-        
+
         // Save the first model as default if no model is currently selected
         if (models && models.length > 0) {
             const savedModel = settings.openaiCompatibleModel;
             const isValidModel = savedModel && models.includes(savedModel);
-            
+
             if (!isValidModel) {
                 // Use first model as default
                 await onSettingChange('openaiCompatibleModel', models[0]);
@@ -36,9 +36,7 @@ export function ProvidersSection({ t, settings, onSettingChange }) {
         <section id="providers">
             <h2>{t('sectionProviders', 'Provider Settings')}</h2>
 
-            {selectedProvider === 'google' && (
-                <GoogleProviderCard t={t} />
-            )}
+            {selectedProvider === 'google' && <GoogleProviderCard t={t} />}
 
             {selectedProvider === 'microsoft_edge_auth' && (
                 <MicrosoftProviderCard t={t} />
@@ -53,8 +51,12 @@ export function ProvidersSection({ t, settings, onSettingChange }) {
                     t={t}
                     apiKey={settings.deeplApiKey || ''}
                     apiPlan={settings.deeplApiPlan || 'free'}
-                    onApiKeyChange={(value) => onSettingChange('deeplApiKey', value)}
-                    onApiPlanChange={(value) => onSettingChange('deeplApiPlan', value)}
+                    onApiKeyChange={(value) =>
+                        onSettingChange('deeplApiKey', value)
+                    }
+                    onApiPlanChange={(value) =>
+                        onSettingChange('deeplApiPlan', value)
+                    }
                 />
             )}
 
@@ -65,9 +67,15 @@ export function ProvidersSection({ t, settings, onSettingChange }) {
                     baseUrl={settings.openaiCompatibleBaseUrl || ''}
                     model={settings.openaiCompatibleModel || ''}
                     models={openaiModels}
-                    onApiKeyChange={(value) => onSettingChange('openaiCompatibleApiKey', value)}
-                    onBaseUrlChange={(value) => onSettingChange('openaiCompatibleBaseUrl', value)}
-                    onModelChange={(value) => onSettingChange('openaiCompatibleModel', value)}
+                    onApiKeyChange={(value) =>
+                        onSettingChange('openaiCompatibleApiKey', value)
+                    }
+                    onBaseUrlChange={(value) =>
+                        onSettingChange('openaiCompatibleBaseUrl', value)
+                    }
+                    onModelChange={(value) =>
+                        onSettingChange('openaiCompatibleModel', value)
+                    }
                     onModelsLoaded={handleOpenAIModelsLoaded}
                 />
             )}
@@ -79,11 +87,21 @@ export function ProvidersSection({ t, settings, onSettingChange }) {
                     projectId={settings.vertexProjectId || ''}
                     location={settings.vertexLocation || 'us-central1'}
                     model={settings.vertexModel || 'gemini-2.5-flash'}
-                    onAccessTokenChange={(value) => onSettingChange('vertexAccessToken', value)}
-                    onProjectIdChange={(value) => onSettingChange('vertexProjectId', value)}
-                    onLocationChange={(value) => onSettingChange('vertexLocation', value)}
-                    onModelChange={(value) => onSettingChange('vertexModel', value)}
-                    onProviderChange={(value) => onSettingChange('selectedProvider', value)}
+                    onAccessTokenChange={(value) =>
+                        onSettingChange('vertexAccessToken', value)
+                    }
+                    onProjectIdChange={(value) =>
+                        onSettingChange('vertexProjectId', value)
+                    }
+                    onLocationChange={(value) =>
+                        onSettingChange('vertexLocation', value)
+                    }
+                    onModelChange={(value) =>
+                        onSettingChange('vertexModel', value)
+                    }
+                    onProviderChange={(value) =>
+                        onSettingChange('selectedProvider', value)
+                    }
                 />
             )}
         </section>

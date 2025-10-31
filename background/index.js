@@ -12,6 +12,7 @@ import { translationProviders } from './services/translationService.js';
 import { subtitleService } from './services/subtitleService.js';
 import { batchTranslationQueue } from './services/batchTranslationQueue.js';
 import { aiContextService } from './services/aiContextService.js';
+import { sidePanelService } from './services/sidePanelService.js';
 import { loggingManager } from './utils/loggingManager.js';
 import { messageHandler } from './handlers/messageHandler.js';
 import { configService } from '../services/configService.js';
@@ -53,6 +54,10 @@ async function initializeServices() {
         await aiContextService.initialize();
         backgroundLogger.info('AI context service initialized');
 
+        // Initialize side panel service
+        await sidePanelService.initialize();
+        backgroundLogger.info('Side panel service initialized');
+
         // Initialize message handler
         messageHandler.initialize();
         backgroundLogger.info('Message handler initialized');
@@ -74,21 +79,27 @@ async function initializeServices() {
             'config',
             'logging',
         ]);
+        serviceRegistry.register('sidePanel', sidePanelService, [
+            'config',
+            'logging',
+        ]);
         serviceRegistry.register('logging', loggingManager, ['config']);
         serviceRegistry.register('config', configService, []);
         serviceRegistry.register('messageHandler', messageHandler, [
             'translation',
             'subtitle',
             'aiContext',
+            'sidePanel',
         ]);
         backgroundLogger.info('Services registered in service registry');
 
         // Inject services into message handler
-        messageHandler.setServices(
-            translationProviders,
+        messageHandler.setServices({
+            translationService: translationProviders,
             subtitleService,
-            aiContextService
-        );
+            aiContextService,
+            sidePanelService,
+        });
         backgroundLogger.info('Services injected into message handler');
 
         // Initialize default settings using the configuration service
@@ -141,5 +152,6 @@ export {
     subtitleService,
     loggingManager,
     messageHandler,
+    sidePanelService,
     backgroundLogger,
 };

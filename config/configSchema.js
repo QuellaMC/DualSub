@@ -86,8 +86,16 @@ export const configSchema = {
     // Vertex AI Gemini Translation Settings
     vertexAccessToken: { defaultValue: '', type: String, scope: 'sync' },
     vertexProjectId: { defaultValue: '', type: String, scope: 'sync' },
-    vertexLocation: { defaultValue: 'us-central1', type: String, scope: 'sync' },
-    vertexModel: { defaultValue: 'gemini-2.5-flash', type: String, scope: 'sync' },
+    vertexLocation: {
+        defaultValue: 'us-central1',
+        type: String,
+        scope: 'sync',
+    },
+    vertexModel: {
+        defaultValue: 'gemini-2.5-flash',
+        type: String,
+        scope: 'sync',
+    },
 
     // --- Subtitle Settings (from popup.js & background.js defaults) ---
     subtitlesEnabled: { defaultValue: true, type: Boolean, scope: 'sync' },
@@ -196,6 +204,27 @@ export const configSchema = {
     aiContextRetryAttempts: { defaultValue: 3, type: Number, scope: 'sync' },
     aiContextRetryDelay: { defaultValue: 2000, type: Number, scope: 'sync' },
     aiContextDebugMode: { defaultValue: false, type: Boolean, scope: 'local' },
+
+    // --- Side Panel Settings ---
+    // Core side panel toggles
+    sidePanelEnabled: { defaultValue: true, type: Boolean, scope: 'sync' },
+    sidePanelUseSidePanel: { defaultValue: true, type: Boolean, scope: 'sync' }, // Use side panel instead of modal
+    
+    // UI preferences
+    sidePanelDefaultTab: { defaultValue: 'ai-analysis', type: String, scope: 'sync' }, // 'ai-analysis' or 'words-lists'
+    sidePanelTheme: { defaultValue: 'auto', type: String, scope: 'sync' }, // 'auto', 'light', or 'dark'
+    
+    // Feature toggles
+    sidePanelWordsListsEnabled: { defaultValue: false, type: Boolean, scope: 'sync' },
+    
+    // Advanced behavior settings
+    sidePanelPersistAcrossTabs: { defaultValue: true, type: Boolean, scope: 'sync' },
+    sidePanelAutoPauseVideo: { defaultValue: true, type: Boolean, scope: 'sync' },
+    sidePanelAutoResumeVideo: { defaultValue: false, type: Boolean, scope: 'sync' },
+    sidePanelAutoOpen: { defaultValue: true, type: Boolean, scope: 'sync' }, // Auto-open on word click
+    
+    // State persistence (local storage for per-tab state)
+    sidePanelLastTabState: { defaultValue: {}, type: Object, scope: 'local' },
 
     // --- Debug Settings (local storage for immediate availability) ---
     debugMode: { defaultValue: false, type: Boolean, scope: 'local' }, // Debug logging mode

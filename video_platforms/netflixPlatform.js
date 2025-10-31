@@ -692,6 +692,47 @@ export class NetflixPlatform extends BasePlatformAdapter {
         return null;
     }
 
+    /**
+     * Platform-specific playback helpers for Netflix
+     */
+
+    isPlaying() {
+        try {
+            const video = this.getVideoElement();
+            if (video) {
+                return !video.paused;
+            }
+            return null;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    async pausePlayback() {
+        try {
+            const video = this.getVideoElement();
+            if (video && !video.paused) {
+                video.pause();
+            }
+            return true;
+        } catch (_) {
+            return false;
+        }
+    }
+
+    async resumePlayback() {
+        try {
+            const video = this.getVideoElement();
+            if (video && video.paused) {
+                await video.play();
+            }
+            return true;
+        } catch (_) {
+            return false;
+        }
+    }
+
+
     supportsProgressBarTracking() {
         // Netflix doesn't need progress bar tracking - HTML5 video currentTime is reliable
         return false;

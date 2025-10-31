@@ -177,23 +177,17 @@ export class SelectionPersistenceManager {
                     // Use debounced restoration to prevent race conditions
                     this._scheduleRestorationDebounced('event');
                 } else {
-                    // Content has actually changed, capture current state
-                    this.modalCore.captureSelectionState(oldText);
+                    // Content has changed, clear the current selection
                     this._log(
-                        'debug',
-                        'Content changed, captured old state for potential restoration'
+                        'info',
+                        'Subtitle content changed, clearing selection',
+                        {
+                            source: 'event',
+                            oldContent: oldText.substring(0, 50),
+                            newContent: newText.substring(0, 50),
+                        }
                     );
-                    // For old state, avoid restoration attempts
-                    if (!isRecent) {
-                        this._log(
-                            'debug',
-                            'Skipping restoration due to stale selection state',
-                            {
-                                stateAge,
-                                threshold: ageThreshold,
-                            }
-                        );
-                    }
+                    this.modalCore.clearSelection();
                 }
             }
         } catch (error) {
@@ -374,18 +368,17 @@ export class SelectionPersistenceManager {
                     // Use debounced restoration to prevent race conditions
                     this._scheduleRestorationDebounced('mutation');
                 } else {
-                    // Content has actually changed, capture new state
-                    this.modalCore.captureSelectionState(currentContent);
-                    if (!isRecent) {
-                        this._log(
-                            'debug',
-                            'Skipping restoration due to stale selection state',
-                            {
-                                stateAge,
-                                threshold: ageThreshold,
-                            }
-                        );
-                    }
+                    // Content has changed, clear the current selection
+                    this._log(
+                        'info',
+                        'Subtitle content changed, clearing selection',
+                        {
+                            source: 'mutation',
+                            lastContent: lastContent?.substring(0, 50) || '',
+                            currentContent: currentContent.substring(0, 50),
+                        }
+                    );
+                    this.modalCore.clearSelection();
                 }
             }
 

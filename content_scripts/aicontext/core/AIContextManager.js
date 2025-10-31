@@ -428,6 +428,19 @@ export class AIContextManager {
                 featureToggleListener
             );
 
+            // Listen for selection cleared events to sync with side panel
+            const selectionClearedListener = () => {
+                this._handleSelectionCleared();
+            };
+            document.addEventListener(
+                EVENT_TYPES.SELECTION_CLEARED,
+                selectionClearedListener
+            );
+            this.eventListeners.set(
+                EVENT_TYPES.SELECTION_CLEARED,
+                selectionClearedListener
+            );
+
             // Setup cross-platform communication
             this._setupCrossPlatformCommunication();
 
@@ -825,6 +838,25 @@ export class AIContextManager {
             this._log('error', 'Failed to handle feature toggle', {
                 error: error.message,
                 detail,
+            });
+        }
+    }
+
+    /**
+     * Notify side panel when selection is cleared
+     * @private
+     */
+    _handleSelectionCleared() {
+        try {
+            chrome.runtime.sendMessage({
+                action: 'sidePanelClearSelection',
+                source: 'content_script',
+                timestamp: Date.now(),
+            });
+            this._log('debug', 'Notified side panel of selection clear');
+        } catch (error) {
+            this._log('warn', 'Failed to notify side panel of selection clear', {
+                error: error.message,
             });
         }
     }

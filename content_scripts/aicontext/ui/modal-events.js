@@ -715,6 +715,7 @@ export class AIContextModalEvents {
      * @private
      */
     _handleWordSelectionEvent(event) {
+        this._pauseVideo();
         const { word, action, position, element, subtitleType } = event.detail;
 
         // Handle legacy event format (from interactiveSubtitleFormatter.js)
@@ -814,6 +815,23 @@ export class AIContextModalEvents {
             this.core.syncSelectionHighlights();
         } catch (_) {}
 
+        // Send a message to the background to update the side panel state
+        try {
+            chrome.runtime.sendMessage({
+                action: 'forwardWordSelection',
+                data: {
+                    word,
+                    action: effectiveAction,
+                    subtitleType,
+                    reason: 'word-click',
+                },
+            });
+        } catch (error) {
+            this.core._log('warn', 'Failed to send word selection to background', {
+                error: error.message,
+            });
+        }
+
         // If modal isn't visible yet, show it now only when there is an active selection
         if (!this.core.isVisible) {
             if (this.core.selectedWords.size > 0) {
@@ -855,6 +873,29 @@ export class AIContextModalEvents {
                 } catch (_) {}
             } catch (_) {}
         }, 16);
+    }
+
+    /**
+     * Pause video playback via content script integration
+     * @private
+     */
+    async _pauseVideo() {
+        try {
+            if (
+                this.core &&
+                this.core.contentScript &&
+                this.core.contentScript.activePlatform &&
+                typeof this.core.contentScript.activePlatform.pausePlayback ===
+                    'function'
+            ) {
+                this.core._log('debug', 'Pausing video for modal display');
+                await this.core.contentScript.activePlatform.pausePlayback();
+            }
+        } catch (error) {
+            this.core._log('warn', 'Failed to pause video for modal', {
+                error: error.message,
+            });
+        }
     }
 
     /**

@@ -37,7 +37,7 @@ async function testPhase1Integration() {
         // Test message handler
         console.log('✅ Testing message handler...');
         messageHandler.initialize();
-        messageHandler.setServices(translationProviders, subtitleService);
+        messageHandler.setServices({ translationService: translationProviders, subtitleService });
         console.log('✅ Message handler initialized');
 
         console.log('🎉 All Phase 1 services initialized successfully!');
