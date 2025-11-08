@@ -15,11 +15,70 @@ export function useSidePanelCommunication() {
     const [error, setError] = useState(null);
     const messageListeners = useRef(new Map());
     const portRef = useRef(null);
+    const reconnectTimerRef = useRef(null);
+    const reconnectDelayRef = useRef(1000);
+    const heartbeatTimerRef = useRef(null);
+    const mountedRef = useRef(false);
 
-    // Initialize long-lived connection to background
+    // Initialize long-lived connection to background with auto-reconnect and heartbeat
     useEffect(() => {
-        try {
-            // Create a long-lived connection
+        mountedRef.current = true;
+
+        const registerWithActiveTab = async () => {
+            try {
+                const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+                if (tab && tab.id && portRef.current) {
+                    try {
+                        portRef.current.postMessage({
+                            action: 'sidePanelRegister',
+                            data: { tabId: tab.id },
+                            source: 'sidepanel',
+                            timestamp: Date.now(),
+                        });
+                        // Ask background for a fresh state snapshot for the current tab
+                        portRef.current.postMessage({
+                            action: 'sidePanelGetState',
+                            data: {},
+                            source: 'sidepanel',
+                            timestamp: Date.now(),
+                        });
+                    } catch (e) {
+                        console.warn('Failed to register side panel with background:', e);
+                    }
+                }
+            } catch (e) {
+                console.warn('Failed to query active tab for registration:', e);
+            }
+        };
+
+        const clearReconnectTimer = () => {
+            if (reconnectTimerRef.current) {
+                clearTimeout(reconnectTimerRef.current);
+                reconnectTimerRef.current = null;
+            }
+        };
+
+        const startHeartbeat = () => {
+            if (heartbeatTimerRef.current) return;
+            heartbeatTimerRef.current = setInterval(async () => {
+                try {
+                    // Use runtime message for keep-alive; background handles MessageActions.PING
+                    await chrome.runtime.sendMessage({ action: 'ping', source: 'sidepanel', timestamp: Date.now() });
+                } catch (e) {
+                    // Likely background asleep or reloading; will trigger reconnect via disconnect path
+                }
+            }, 25000);
+        };
+
+        const stopHeartbeat = () => {
+            if (heartbeatTimerRef.current) {
+                clearInterval(heartbeatTimerRef.current);
+                heartbeatTimerRef.current = null;
+            }
+        };
+
+        const connectPort = () => {
+            try {
             const port = chrome.runtime.connect({ name: 'sidepanel' });
             portRef.current = port;
 
@@ -34,40 +93,47 @@ export function useSidePanelCommunication() {
                 console.log('Side panel disconnected from background');
                 setIsConnected(false);
                 portRef.current = null;
+                    stopHeartbeat();
+                    // Exponential backoff reconnect
+                    clearReconnectTimer();
+                    const delay = Math.min(reconnectDelayRef.current, 30000);
+                    reconnectTimerRef.current = setTimeout(() => {
+                        if (!mountedRef.current) return;
+                        connectPort();
+                        reconnectDelayRef.current = Math.min(delay * 2, 30000);
+                    }, delay);
             });
 
             setIsConnected(true);
-
-            // Register this side panel with the background, providing the active tab ID
-            chrome.tabs
-                .query({ active: true, currentWindow: true })
-                .then(([tab]) => {
-                    if (tab && tab.id && portRef.current) {
-                        try {
-                            portRef.current.postMessage({
-                                action: 'sidePanelRegister',
-                                data: { tabId: tab.id },
-                                source: 'sidepanel',
-                                timestamp: Date.now(),
-                            });
-                        } catch (e) {
-                            console.warn('Failed to register side panel with background:', e);
-                        }
-                    }
-                })
-                .catch((e) => console.warn('Failed to query active tab for registration:', e));
-
-            return () => {
-                if (portRef.current) {
-                    portRef.current.disconnect();
-                    portRef.current = null;
-                }
-            };
+                reconnectDelayRef.current = 1000;
+                startHeartbeat();
+                registerWithActiveTab();
         } catch (err) {
             console.error('Failed to connect to background:', err);
             setError(err);
             setIsConnected(false);
-        }
+                // Schedule a reconnect attempt
+                clearReconnectTimer();
+                const delay = Math.min(reconnectDelayRef.current, 30000);
+                reconnectTimerRef.current = setTimeout(() => {
+                    if (!mountedRef.current) return;
+                    connectPort();
+                    reconnectDelayRef.current = Math.min(delay * 2, 30000);
+                }, delay);
+            }
+        };
+
+        connectPort();
+
+        return () => {
+            mountedRef.current = false;
+            clearReconnectTimer();
+            stopHeartbeat();
+            if (portRef.current) {
+                try { portRef.current.disconnect(); } catch (_) {}
+                portRef.current = null;
+            }
+        };
     }, []);
 
     /**

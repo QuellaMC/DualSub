@@ -75,6 +75,16 @@ class SidePanelService {
             this.logger.warn('Side panel connection without tab ID (awaiting register message)');
         }
 
+        const postToTab = (tid, message) => {
+            try {
+                const p = this.activeConnections.get(tid);
+                if (!p) return;
+                p.postMessage(message);
+            } catch (err) {
+                this.logger.error('Failed to post to side panel', err, { tabId: tid, action: message?.action });
+            }
+        };
+
         // Handle messages from side panel
         port.onMessage.addListener((message) => {
             // Update tabId once the side panel sends an explicit register payload
@@ -138,6 +148,12 @@ class SidePanelService {
                     this.updateTabState(tabId, data);
                     break;
 
+                case MessageActions.SIDEPANEL_SELECTION_SYNC:
+                    // Accept selection sync from side panel via long-lived port.
+                    // tabId is resolved from the registered mapping/connection rather than sender.tab.
+                    await this.forwardSelectionSync(tabId, data ?? {});
+                    break;
+
                 case MessageActions.SIDEPANEL_REGISTER:
                     this.logger.info('Side panel register request', { tabIdFromMessage: data?.tabId });
                     try {
@@ -159,26 +175,23 @@ class SidePanelService {
                         // Deliver stored selection state with priority, then any pending single-word fallback.
                         const st = this.tabStates.get(claimedTabId);
                         if (st) {
-                            // Send state update first (active tab if present)
-                            port.postMessage({
-                                action: MessageActions.SIDEPANEL_UPDATE_STATE,
-                                data: { ...(st.activeTab ? { activeTab: st.activeTab } : {}) },
-                            });
-
                             const selectedWordsFromState = Array.isArray(st.selectedWords) ? st.selectedWords : [];
                             if (selectedWordsFromState.length > 0) {
                                 // Prefer authoritative stored selection
                                 setTimeout(() => {
+                                    const p = this.activeConnections.get(claimedTabId);
+                                    if (!p) return; // connection dropped
                                     try {
-                                        port.postMessage({
+                                        p.postMessage({
                                             action: MessageActions.SIDEPANEL_SELECTION_SYNC,
                                             data: {
                                                 selectedWords: selectedWordsFromState,
                                                 reason: 'state-sync-on-register',
+                                                tabId: claimedTabId,
                                             },
                                         });
                                     } catch (err) {
-                                        this.logger.error('Failed to deliver stored selection on register', err, { tabId: claimedTabId });
+                                        this.logger.error('Failed to deliver stored selection on register', err, { tabId: claimedTabId, errorMessage: err.message });
                                     }
                                 }, 40);
                                 // Clear any obsolete pendingWordSelection
@@ -191,25 +204,22 @@ class SidePanelService {
                                 // Fallback to pending single-word selection if no stored array is present
                                 const pending = st.pendingWordSelection;
                                 setTimeout(() => {
+                                    const p = this.activeConnections.get(claimedTabId);
+                                    if (!p) return;
                                     try {
                                         const selectedWords = Array.isArray(pending?.selectedWords) && pending.selectedWords.length > 0
                                             ? pending.selectedWords
                                             : pending?.word
                                                 ? [pending.word]
                                                 : [];
-                                        port.postMessage({
+                                        p.postMessage({
                                             action: MessageActions.SIDEPANEL_SELECTION_SYNC,
                                             data: {
                                                 selectedWords,
                                                 reason: pending?.reason || 'initial-pending-selection',
+                                                tabId: claimedTabId,
                                             },
                                         });
-                                        if (selectedWords.length > 0) {
-                                            port.postMessage({
-                                                action: MessageActions.SIDEPANEL_UPDATE_STATE,
-                                                data: { activeTab: 'ai-analysis' },
-                                            });
-                                        }
                                         // Persist and clear pending after delivery
                                         const newState = { ...st };
                                         delete newState.pendingWordSelection;
@@ -218,19 +228,21 @@ class SidePanelService {
                                         }
                                         this.tabStates.set(claimedTabId, newState);
                                     } catch (err) {
-                                        this.logger.error('Failed to deliver pending selection on register', err, { tabId: claimedTabId });
+                                        this.logger.error('Failed to deliver pending selection on register', err, { tabId: claimedTabId, errorMessage: err.message });
                                     }
                                 }, 60);
                             } else {
                                 // Nothing to sync
                                 setTimeout(() => {
+                                    const p = this.activeConnections.get(claimedTabId);
+                                    if (!p) return;
                                     try {
-                                        port.postMessage({
+                                        p.postMessage({
                                             action: MessageActions.SIDEPANEL_SELECTION_SYNC,
-                                            data: { selectedWords: [], reason: 'empty-state-on-register' },
+                                            data: { selectedWords: [], reason: 'empty-state-on-register', tabId: claimedTabId },
                                         });
                                     } catch (err) {
-                                        this.logger.error('Failed to deliver empty selection on register', err, { tabId: claimedTabId });
+                                        this.logger.error('Failed to deliver empty selection on register', err, { tabId: claimedTabId, errorMessage: err.message });
                                     }
                                 }, 40);
                             }
@@ -374,11 +386,10 @@ class SidePanelService {
         if (!Array.isArray(st.selectedWords) || st.selectedWords.length === 0) {
             this.updateTabState(tabId, {
                 pendingWordSelection: wordData,
-                activeTab: 'ai-analysis',
             });
         } else {
-            // Preserve activeTab for UX but do not set pendingWordSelection, as selectionSync is authoritative
-            this.updateTabState(tabId, { activeTab: 'ai-analysis' });
+            // Do not alter activeTab; selectionSync is authoritative and UI chooses the tab
+            this.updateTabState(tabId, {});
         }
 
         // No longer broadcasting per-word toggle updates to side panel; selectionSync is the source of truth
@@ -416,6 +427,7 @@ class SidePanelService {
                     data: {
                         selectedWords: normalizedWords,
                         reason: payload.reason || 'unknown',
+                        tabId,
                     },
                 });
                 this.logger.debug('Selection sync forwarded to side panel', {
@@ -428,13 +440,27 @@ class SidePanelService {
                 });
             }
         } else {
-            this.logger.debug(
-                'Selection sync persisted without active side panel connection',
-                {
+            // Broadcast fallback with tabId so the side panel can self-filter
+            try {
+                for (const [tid, p] of this.activeConnections.entries()) {
+                    try {
+                        p.postMessage({
+                            action: MessageActions.SIDEPANEL_SELECTION_SYNC,
+                            data: {
+                                selectedWords: normalizedWords,
+                                reason: payload.reason || 'unknown',
+                                tabId,
+                            },
+                        });
+                    } catch (_) {}
+                }
+                this.logger.debug('Selection sync broadcast to all ports (no direct mapping)', {
                     tabId,
                     count: normalizedWords.length,
-                }
-            );
+                });
+            } catch (err) {
+                this.logger.error('Failed broadcast fallback for selection sync', err, { tabId });
+            }
         }
     }
 

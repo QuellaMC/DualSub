@@ -20,13 +20,14 @@ export function useWordSelection() {
         addWord,
         removeWord,
         clearWords,
+        setSelectedWords,
         setSourceLanguage,
         setTargetLanguage,
         sourceLanguage,
         targetLanguage,
     } = useSidePanelContext();
 
-    const { onMessage, sendToActiveTab, sendMessage, getActiveTab } =
+    const { onMessage, sendToActiveTab, sendMessage, postMessage, getActiveTab } =
         useSidePanelCommunication();
 
     useEffect(() => {
@@ -46,13 +47,12 @@ export function useWordSelection() {
                         return acc;
                     }, []);
 
-                clearWords();
-                normalized.forEach((w) => addWord(w));
+                setSelectedWords(normalized);
             }
         );
 
         return unsubscribe;
-    }, [onMessage, addWord, clearWords]);
+    }, [onMessage, setSelectedWords]);
 
     // Drop non-authoritative word-selected events to prevent race overwrites
     useEffect(() => {
@@ -103,12 +103,11 @@ export function useWordSelection() {
                     .filter((w) => w.length > 0)
                     .reduce((acc, w) => (acc.includes(w) ? acc : acc.concat(w)), []);
 
-                clearWords();
-                normalized.forEach((w) => addWord(w));
+                setSelectedWords(normalized);
 
                 // Inform background so it stores the same canonical order
                 try {
-                    await sendMessage('sidePanelSelectionSync', {
+                    postMessage('sidePanelSelectionSync', {
                         selectedWords: normalized,
                         reason: 'word-click',
                     });
@@ -119,7 +118,7 @@ export function useWordSelection() {
                 console.error('Failed to retrieve canonical selection from content script:', err);
             }
         },
-        [addWord, clearWords, setSourceLanguage, setTargetLanguage, sendToActiveTab, sendMessage]
+        [setSelectedWords, setSourceLanguage, setTargetLanguage, sendToActiveTab, postMessage]
     );
 
     /**
@@ -146,7 +145,7 @@ export function useWordSelection() {
             }
 
             try {
-                await sendMessage('sidePanelSelectionSync', {
+                postMessage('sidePanelSelectionSync', {
                     selectedWords: next,
                     reason: 'panel-toggle',
                 });
@@ -154,7 +153,7 @@ export function useWordSelection() {
                 console.warn('Failed to sync toggle to background:', err);
             }
         },
-        [selectedWords, addWord, removeWord, sendToActiveTab, sendMessage]
+        [selectedWords, addWord, removeWord, sendToActiveTab, postMessage]
     );
 
     /**
@@ -177,11 +176,8 @@ export function useWordSelection() {
             const response = await sendToActiveTab('sidePanelGetState', {});
             
             if (response && response.selectedWords) {
-                // Clear current selection
-                clearWords();
-                
-                // Add words from content script
-                response.selectedWords.forEach((word) => addWord(word));
+                // Replace current selection atomically
+                setSelectedWords(response.selectedWords);
                 
                 // Update language settings
                 if (response.sourceLanguage) {
@@ -199,8 +195,7 @@ export function useWordSelection() {
         }
     }, [
         sendToActiveTab,
-        clearWords,
-        addWord,
+        setSelectedWords,
         setSourceLanguage,
         setTargetLanguage,
     ]);
@@ -221,14 +216,14 @@ export function useWordSelection() {
         }
 
         try {
-            await sendMessage('sidePanelSelectionSync', {
+            postMessage('sidePanelSelectionSync', {
                 selectedWords: [],
                 reason: 'panel-clear',
             });
         } catch (err) {
             console.warn('Failed to sync clear to background:', err);
         }
-    }, [clearWords, sendToActiveTab, sendMessage]);
+    }, [clearWords, sendToActiveTab, postMessage]);
 
     /**
      * Load persisted selection on mount
@@ -309,14 +304,13 @@ export function useWordSelection() {
                     if (ww && !acc.includes(ww)) acc.push(ww);
                     return acc;
                 }, []);
-                clearWords();
-                normalized.forEach((w) => addWord(w));
+                setSelectedWords(normalized);
             }
         );
 
         // Removed initial syncWithContentScript() here to avoid overwriting ordered selection after a click
         return unsubscribe;
-    }, [onMessage, addWord, clearWords]);
+    }, [onMessage, setSelectedWords]);
 
     /**
      * Listen for tab changes to update selection

@@ -1034,13 +1034,10 @@ class MessageHandler {
 
         this.logger.debug('Handling side panel open request', { tabId });
 
-        // Optionally store requested active tab/open reason before opening
+        // Optionally store open reason before opening (do NOT override activeTab to avoid UI flips)
         try {
-            if (message.options?.activeTab || message.options?.openReason) {
+            if (message.options?.openReason) {
                 this.sidePanelService.updateTabState(tabId, {
-                    ...(message.options.activeTab
-                        ? { activeTab: message.options.activeTab }
-                        : {}),
                     ...(message.options.openReason
                         ? { openReason: message.options.openReason }
                         : {}),

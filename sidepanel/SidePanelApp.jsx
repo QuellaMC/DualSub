@@ -20,9 +20,9 @@ export function SidePanelApp() {
         const { onMessage } = useSidePanelCommunication();
         useEffect(() => {
             const unsubscribe = onMessage('sidePanelUpdateState', (data) => {
-                if (data?.activeTab) {
-                    onRequestTabChange(data.activeTab);
-                }
+                // Intentionally ignore background-driven activeTab changes to prevent
+                // unwanted UI flips when the user selects the Words Lists tab.
+                // Other state updates are handled in context hooks.
             });
             return unsubscribe;
         }, [onMessage, onRequestTabChange]);
