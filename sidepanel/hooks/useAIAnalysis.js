@@ -31,7 +31,7 @@ export function useAIAnalysis() {
     const cacheRef = useRef(new Map());
     const abortControllerRef = useRef(null);
 
-    const { sendToActiveTab } = useSidePanelCommunication();
+    const { sendToBoundTab } = useSidePanelCommunication();
 
     // Load settings
     useEffect(() => {
@@ -152,9 +152,9 @@ export function useAIAnalysis() {
             setError(null);
             setAnalysisResult(null);
 
-            // Notify content script (active tab) that analysis started (to block word clicks)
+            // Notify content script (bound tab) that analysis started (to block word clicks)
             try {
-                await sendToActiveTab('sidePanelSetAnalyzing', { isAnalyzing: true });
+                await sendToBoundTab('sidePanelSetAnalyzing', { isAnalyzing: true });
             } catch (err) {
                 console.warn('Failed to notify analyzing state:', err);
             }
@@ -214,9 +214,9 @@ export function useAIAnalysis() {
                 setIsAnalyzing(false);
                 abortControllerRef.current = null;
 
-                // Notify content script (active tab) that analysis stopped
+                // Notify content script (bound tab) that analysis stopped
                 try {
-                    await sendToActiveTab('sidePanelSetAnalyzing', { isAnalyzing: false });
+                    await sendToBoundTab('sidePanelSetAnalyzing', { isAnalyzing: false });
                 } catch (err) {
                     console.warn('Failed to notify analyzing state:', err);
                 }

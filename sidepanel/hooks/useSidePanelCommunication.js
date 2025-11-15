@@ -19,6 +19,16 @@ export function useSidePanelCommunication() {
     const reconnectDelayRef = useRef(1000);
     const heartbeatTimerRef = useRef(null);
     const mountedRef = useRef(false);
+    const bindingRef = useRef({ panelInstanceId: null, boundTabId: null, boundWindowId: null });
+
+    const generateInstanceId = () => {
+        // Simple UUID v4-ish generator
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            const r = (Math.random() * 16) | 0;
+            const v = c === 'x' ? r : (r & 0x3) | 0x8;
+            return v.toString(16);
+        });
+    };
 
     // Initialize long-lived connection to background with auto-reconnect and heartbeat
     useEffect(() => {
@@ -28,10 +38,16 @@ export function useSidePanelCommunication() {
             try {
                 const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
                 if (tab && tab.id && portRef.current) {
+                    const windowId = tab.windowId ?? (await chrome.windows.getCurrent({ populate: false }).then(w => w?.id).catch(() => undefined));
+                    if (!bindingRef.current.panelInstanceId) {
+                        bindingRef.current.panelInstanceId = generateInstanceId();
+                    }
+                    bindingRef.current.boundTabId = tab.id;
+                    bindingRef.current.boundWindowId = windowId ?? null;
                     try {
                         portRef.current.postMessage({
                             action: 'sidePanelRegister',
-                            data: { tabId: tab.id },
+                            data: { tabId: tab.id, windowId: bindingRef.current.boundWindowId, panelInstanceId: bindingRef.current.panelInstanceId },
                             source: 'sidepanel',
                             timestamp: Date.now(),
                         });
@@ -83,6 +99,16 @@ export function useSidePanelCommunication() {
             portRef.current = port;
 
             port.onMessage.addListener((message) => {
+                // Special handling for potential future binding change advisories
+                if (message?.action === 'bindingChanged' && message?.data) {
+                    const { tabId, windowId } = message.data;
+                    if (typeof tabId === 'number') {
+                        bindingRef.current.boundTabId = tabId;
+                    }
+                    if (typeof windowId === 'number') {
+                        bindingRef.current.boundWindowId = windowId;
+                    }
+                }
                 const listeners = messageListeners.current.get(message.action);
                 if (listeners) {
                     listeners.forEach((callback) => callback(message.data));
@@ -194,6 +220,33 @@ export function useSidePanelCommunication() {
     }, []);
 
     /**
+     * Send a message to the currently bound tab's content script
+     */
+    const sendToBoundTab = useCallback(async (action, data = {}) => {
+        try {
+            const tabId = bindingRef.current.boundTabId;
+            if (!tabId) {
+                // Fallback to active tab for initialization edge cases
+                return await sendToActiveTab(action, data);
+            }
+            const response = await chrome.tabs.sendMessage(tabId, {
+                action,
+                data,
+                source: 'sidepanel',
+                timestamp: Date.now(),
+            });
+            if (response && response.error) {
+                throw new Error(response.error);
+            }
+            return response;
+        } catch (err) {
+            console.error(`Failed to send message to bound tab (${action}):`, err);
+            setError(err);
+            throw err;
+        }
+    }, [sendToActiveTab]);
+
+    /**
      * Send a message via long-lived connection
      */
     const postMessage = useCallback((action, data = {}) => {
@@ -264,9 +317,11 @@ export function useSidePanelCommunication() {
         error,
         sendMessage,
         sendToActiveTab,
+        sendToBoundTab,
         postMessage,
         onMessage,
         getActiveTab,
         isSidePanelSupported,
+        getBinding: () => ({ ...bindingRef.current }),
     };
 }

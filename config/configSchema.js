@@ -226,6 +226,19 @@ export const configSchema = {
     // State persistence (local storage for per-tab state)
     sidePanelLastTabState: { defaultValue: {}, type: Object, scope: 'local' },
 
+    // Window follow behavior
+    sidePanelFollowActiveTabInWindow: { defaultValue: true, type: Boolean, scope: 'sync' },
+
+    // Scope policies per tab (string enum: 'video' | 'tab' | 'window' | 'global')
+    sidePanelScopePolicyAIAnalysisTab: { defaultValue: 'video', type: String, scope: 'sync' },
+    sidePanelScopePolicyWordsListsTab: { defaultValue: 'global', type: String, scope: 'sync' },
+
+    // Selection buckets for scoped selections (stored locally per device)
+    sidePanelSelectionBuckets: { defaultValue: {}, type: Object, scope: 'local' },
+
+    // Global words lists (synced across devices)
+    sidePanelWordLists: { defaultValue: { lists: [], version: 1, lastUpdated: 0 }, type: Object, scope: 'sync' },
+
     // --- Debug Settings (local storage for immediate availability) ---
     debugMode: { defaultValue: false, type: Boolean, scope: 'local' }, // Debug logging mode
     loggingLevel: { defaultValue: 3, type: Number, scope: 'sync' }, // Logging level: 0=OFF, 1=ERROR, 2=WARN, 3=INFO, 4=DEBUG

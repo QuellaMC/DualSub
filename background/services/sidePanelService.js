@@ -18,6 +18,9 @@ class SidePanelService {
         this.initialized = false;
         this.activeConnections = new Map(); // Track connections from side panels
         this.tabStates = new Map(); // Track state per tab
+        // New: window-scoped connection tracking
+        this.activeConnectionsByWindow = new Map(); // Map<windowId, Map<panelInstanceId, port>>
+        this.panelBindingByInstance = new Map(); // Map<panelInstanceId, { tabId, windowId }>
     }
 
     /**
@@ -67,6 +70,8 @@ class SidePanelService {
      */
     handleSidePanelConnection(port) {
         let tabId = port.sender?.tab?.id ?? null;
+        let windowId = port.sender?.tab?.windowId ?? null;
+        let panelInstanceId = null;
 
         if (tabId != null) {
             this.logger.info('Side panel connected', { tabId });
@@ -90,17 +95,38 @@ class SidePanelService {
             // Update tabId once the side panel sends an explicit register payload
             if (message?.action === MessageActions.SIDEPANEL_REGISTER) {
                 const claimedTabId = message?.data?.tabId;
+                const claimedWindowId = message?.data?.windowId ?? null;
+                const claimedInstanceId = message?.data?.panelInstanceId ?? null;
                 if (typeof claimedTabId === 'number') {
                     tabId = claimedTabId;
-                    // Remove any previous mappings that point to this same port
-                    try {
-                        for (const [tid, p] of this.activeConnections.entries()) {
-                            if (p === port && tid !== claimedTabId) {
-                                this.activeConnections.delete(tid);
-                            }
+                }
+                if (typeof claimedWindowId === 'number') {
+                    windowId = claimedWindowId;
+                }
+                if (typeof claimedInstanceId === 'string') {
+                    panelInstanceId = claimedInstanceId;
+                }
+                // Remove any previous mappings that point to this same port
+                try {
+                    for (const [tid, p] of this.activeConnections.entries()) {
+                        if (p === port && tid !== tabId) {
+                            this.activeConnections.delete(tid);
                         }
-                    } catch (_) {}
+                    }
+                } catch (_) {}
+                if (typeof tabId === 'number') {
                     this.activeConnections.set(tabId, port);
+                }
+                // Track window-scoped connection
+                if (panelInstanceId) {
+                    this.panelBindingByInstance.set(panelInstanceId, { tabId, windowId });
+                    if (typeof windowId === 'number') {
+                        if (!this.activeConnectionsByWindow.has(windowId)) {
+                            this.activeConnectionsByWindow.set(windowId, new Map());
+                        }
+                        const winMap = this.activeConnectionsByWindow.get(windowId);
+                        winMap.set(panelInstanceId, port);
+                    }
                 }
             }
 
@@ -109,6 +135,18 @@ class SidePanelService {
 
         // Handle disconnection
         port.onDisconnect.addListener(() => {
+            try {
+                if (panelInstanceId && typeof windowId === 'number') {
+                    const winMap = this.activeConnectionsByWindow.get(windowId);
+                    if (winMap) {
+                        winMap.delete(panelInstanceId);
+                        if (winMap.size === 0) {
+                            this.activeConnectionsByWindow.delete(windowId);
+                        }
+                    }
+                    this.panelBindingByInstance.delete(panelInstanceId);
+                }
+            } catch (_) {}
             if (tabId != null) {
                 this.logger.info('Side panel disconnected', { tabId });
                 this.activeConnections.delete(tabId);
@@ -152,6 +190,27 @@ class SidePanelService {
                     // Accept selection sync from side panel via long-lived port.
                     // tabId is resolved from the registered mapping/connection rather than sender.tab.
                     await this.forwardSelectionSync(tabId, data ?? {});
+                    break;
+                case MessageActions.SIDEPANEL_SCOPE_CHANGED:
+                    // Advisory: scope policy changed in the panel; currently no-op at service layer
+                    this.logger.debug('Scope policy changed (advisory)', { tabId, details: data });
+                    break;
+                case MessageActions.SIDEPANEL_APPLY_SCOPE_BUCKET:
+                    // Apply a stored bucket to the bound tab by updating content highlights
+                    try {
+                        const words = Array.isArray(data?.selectedWords) ? data.selectedWords : [];
+                        if (typeof tabId === 'number') {
+                            await chrome.tabs.sendMessage(tabId, {
+                                action: MessageActions.SIDEPANEL_UPDATE_STATE,
+                                data: { selectedWords: words, clearSelection: true },
+                                source: 'background',
+                            });
+                            // Update authoritative selection state
+                            await this.forwardSelectionSync(tabId, { selectedWords: words, reason: 'apply-scope-bucket' });
+                        }
+                    } catch (err) {
+                        this.logger.warn('Failed to apply scope bucket', { error: err?.message, tabId });
+                    }
                     break;
 
                 case MessageActions.SIDEPANEL_REGISTER:
@@ -478,20 +537,37 @@ class SidePanelService {
      * Handle tab activation
      */
     handleTabActivated(activeInfo) {
-        const { tabId } = activeInfo;
-        this.logger.debug('Tab activated', { tabId });
+        const { tabId, windowId } = activeInfo;
+        this.logger.debug('Tab activated', { tabId, windowId });
 
-        // Notify all active side panel connections of the tab change
-        for (const port of this.activeConnections.values()) {
-            try {
-                port.postMessage({
-                    action: 'tabActivated',
-                    data: { tabId },
-                });
-            } catch (error) {
-                this.logger.warn('Failed to notify a side panel of tab activation', {
-                    error: error.message,
-                });
+        // Notify only active side panel connections in the same window when possible
+        if (typeof windowId === 'number' && this.activeConnectionsByWindow.has(windowId)) {
+            const winMap = this.activeConnectionsByWindow.get(windowId);
+            for (const port of winMap.values()) {
+                try {
+                    port.postMessage({
+                        action: 'tabActivated',
+                        data: { tabId, windowId },
+                    });
+                } catch (error) {
+                    this.logger.warn('Failed to notify a side panel of tab activation', {
+                        error: error.message,
+                    });
+                }
+            }
+        } else {
+            // Fallback legacy behavior
+            for (const port of this.activeConnections.values()) {
+                try {
+                    port.postMessage({
+                        action: 'tabActivated',
+                        data: { tabId, windowId },
+                    });
+                } catch (error) {
+                    this.logger.warn('Failed to notify a side panel of tab activation', {
+                        error: error.message,
+                    });
+                }
             }
         }
     }

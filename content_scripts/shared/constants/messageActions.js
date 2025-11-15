@@ -31,4 +31,7 @@ export const MessageActions = {
     SIDEPANEL_REGISTER: 'sidePanelRegister',
     SIDEPANEL_SET_ANALYZING: 'sidePanelSetAnalyzing',
     SIDEPANEL_SELECTION_SYNC: 'sidePanelSelectionSync',
+    // Scope and binding related (future-ready)
+    SIDEPANEL_SCOPE_CHANGED: 'sidePanelScopeChanged',
+    SIDEPANEL_APPLY_SCOPE_BUCKET: 'sidePanelApplyScopeBucket',
 };

@@ -22,11 +22,19 @@ const SidePanelContext = createContext(null);
 export function SidePanelProvider({ children }) {
     const [tabState, setTabState] = useState({});
     const [activeTabId, setActiveTabId] = useState(null);
-    const { onMessage, getActiveTab, postMessage } = useSidePanelCommunication();
+    const { onMessage, getActiveTab, postMessage, getBinding } = useSidePanelCommunication();
     const pendingSelectionRef = React.useRef(null);
 
     // Effect to set the initial active tab and listen for changes
     useEffect(() => {
+        let followActiveRef = { current: false };
+        // Load follow-active-tab behavior
+        chrome.storage.sync.get(['sidePanelFollowActiveTabInWindow']).then((res) => {
+            followActiveRef.current = !!res.sidePanelFollowActiveTabInWindow;
+        }).catch(() => {
+            followActiveRef.current = false;
+        });
+
         const handleTabActivated = (tabId) => {
             setActiveTabId(tabId);
             setTabState((prev) => ({
@@ -48,7 +56,8 @@ export function SidePanelProvider({ children }) {
                 if (tab && tab.id) {
                     handleTabActivated(tab.id);
                     try {
-                        postMessage('sidePanelRegister', { tabId: tab.id });
+                        const binding = getBinding();
+                        postMessage('sidePanelRegister', { tabId: tab.id, windowId: tab.windowId, panelInstanceId: binding?.panelInstanceId });
                     } catch (_) {}
                     // Apply any pending selection captured before tab ID was known
                     if (pendingSelectionRef.current) {
@@ -67,11 +76,16 @@ export function SidePanelProvider({ children }) {
             .catch(() => {});
 
         // Listen for tab activation changes from the background script
-        const unsubscribe = onMessage('tabActivated', ({ tabId }) => {
+        const unsubscribe = onMessage('tabActivated', ({ tabId, windowId }) => {
+            // Respect follow-active setting; if disabled, ignore rebind on activation
+            if (!followActiveRef.current) {
+                return;
+            }
             handleTabActivated(tabId);
             // Re-register this side panel with the new active tab so background routes messages correctly
             try {
-                postMessage('sidePanelRegister', { tabId });
+                const binding = getBinding();
+                postMessage('sidePanelRegister', { tabId, windowId, panelInstanceId: binding?.panelInstanceId });
             } catch (_) {}
             // Apply any pending selection for unknown tab now that we have an ID
             if (pendingSelectionRef.current) {
@@ -94,7 +108,14 @@ export function SidePanelProvider({ children }) {
     useEffect(() => {
         const unsubscribe = onMessage(
             'sidePanelSelectionSync',
-            ({ selectedWords }) => {
+            ({ selectedWords, tabId }) => {
+                // If payload tabId exists and doesn't match our bound tab, ignore
+                try {
+                    const { boundTabId } = getBinding();
+                    if (typeof tabId === 'number' && boundTabId && tabId !== boundTabId) {
+                        return;
+                    }
+                } catch (_) {}
                 const normalized = Array.isArray(selectedWords)
                     ? Array.from(
                           new Set(
@@ -141,7 +162,7 @@ export function SidePanelProvider({ children }) {
             }
         );
         return unsubscribe;
-    }, [onMessage, activeTabId, getActiveTab, postMessage]);
+    }, [onMessage, activeTabId, getActiveTab, postMessage, getBinding]);
 
     // Note: We intentionally ignore 'wordSelectionUpdate' messages here.
     // The authoritative selection state is delivered via 'sidePanelSelectionSync',
