@@ -383,6 +383,27 @@ class SidePanelService {
             await chrome.sidePanel.open({ tabId });
             this.logger.info('Side panel opened (immediate)', { tabId });
 
+            // Notify any existing side panel in the same window to switch binding
+            // This ensures the UI updates to the target tab even if 'follow active tab' is disabled
+            try {
+                const tab = await chrome.tabs.get(tabId);
+                if (tab && typeof tab.windowId === 'number') {
+                     const winMap = this.activeConnectionsByWindow.get(tab.windowId);
+                     if (winMap) {
+                         for (const port of winMap.values()) {
+                             try {
+                                 port.postMessage({
+                                     action: 'sidePanelForceBindTab',
+                                     data: { tabId, windowId: tab.windowId }
+                                 });
+                             } catch (_) {}
+                         }
+                     }
+                }
+            } catch (bindingError) {
+                this.logger.warn('Failed to force bind side panel', { error: bindingError.message, tabId });
+            }
+
             // Apply requested options without config wait
             if (options.pauseVideo) {
                 await this.pauseVideo(tabId);
@@ -440,22 +461,33 @@ class SidePanelService {
 
         // Update the state for the specific tab
         const st = this.tabStates.get(tabId) || {};
-        // Only set pending selection when we don't yet have a full authoritative selection
-        // This avoids overriding multi-word state with a single last-click word during tab switches
-        if (!Array.isArray(st.selectedWords) || st.selectedWords.length === 0) {
-            this.updateTabState(tabId, {
-                pendingWordSelection: wordData,
-            });
-        } else {
-            // Do not alter activeTab; selectionSync is authoritative and UI chooses the tab
-            this.updateTabState(tabId, {});
+        
+        // Calculate new word list immediately to avoid race conditions
+        const currentWords = Array.isArray(st.selectedWords) ? [...st.selectedWords] : [];
+        const newWord = wordData?.word;
+
+        if (newWord && typeof newWord === 'string') {
+             if (!currentWords.includes(newWord)) {
+                 currentWords.push(newWord);
+             }
         }
 
-        // No longer broadcasting per-word toggle updates to side panel; selectionSync is the source of truth
+        // Update authoritative state immediately
+        this.updateTabState(tabId, {
+            selectedWords: currentWords,
+            pendingWordSelection: undefined 
+        });
+
+        // Broadcast sync immediately so UI updates without waiting for registration
+        await this.forwardSelectionSync(tabId, {
+            selectedWords: currentWords,
+            reason: 'word-selected'
+        });
 
         this.logger.debug('Word selection forwarded to side panels', {
             tabId,
-            word: wordData.word,
+            word: newWord,
+            totalWords: currentWords.length
         });
     }
 

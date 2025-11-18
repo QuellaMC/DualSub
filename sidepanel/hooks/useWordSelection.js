@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useCallback } from 'react';
 import { useSidePanelContext } from './SidePanelContext.jsx';
 import { useSidePanelCommunication } from './useSidePanelCommunication.js';
 
@@ -9,10 +9,8 @@ import { useSidePanelCommunication } from './useSidePanelCommunication.js';
  * with the side panel state.
  * 
  * Features:
- * - Listen for word selection events from content scripts
- * - Sync selected words with side panel context
- * - Handle word addition/removal
- * - Manage selection state persistence
+ * - Actions for toggling/clearing words (using activeTabId from context)
+ * - Persisting selection state
  */
 export function useWordSelection() {
     const {
@@ -25,108 +23,18 @@ export function useWordSelection() {
         setTargetLanguage,
         sourceLanguage,
         targetLanguage,
+        activeTabId
     } = useSidePanelContext();
 
-    const { onMessage, sendToBoundTab, sendMessage, postMessage, getActiveTab, getBinding } =
-        useSidePanelCommunication();
-
-    useEffect(() => {
-        const unsubscribe = onMessage(
-            'sidePanelSelectionSync',
-            (payload) => {
-                // Filter out selection updates that don't match the currently bound tab (if provided)
-                try {
-                    const { boundTabId } = getBinding();
-                    if (payload && typeof payload.tabId === 'number' && boundTabId && payload.tabId !== boundTabId) {
-                        return;
-                    }
-                } catch (_) {}
-                const incomingWords = Array.isArray(payload?.selectedWords)
-                    ? payload.selectedWords
-                    : [];
-                const normalized = incomingWords
-                    .map((w) => (typeof w === 'string' ? w.trim() : ''))
-                    .filter((w) => w.length > 0)
-                    .reduce((acc, word) => {
-                        if (!acc.includes(word)) {
-                            acc.push(word);
-                        }
-                        return acc;
-                    }, []);
-
-                setSelectedWords(normalized);
-            }
-        );
-
-        return unsubscribe;
-    }, [onMessage, setSelectedWords]);
-
-    // Drop non-authoritative word-selected events to prevent race overwrites
-    useEffect(() => {
-        const drop = onMessage('sidePanelWordSelected', () => {});
-        return drop;
-    }, [onMessage]);
+    const { onMessage, postMessage } = useSidePanelCommunication();
 
     // Listen for selection clear events from the content script
     useEffect(() => {
         const unsubscribe = onMessage('sidePanelClearSelection', () => {
-            console.log(
-                'Side panel received clear selection event from content script'
-            );
             clearWords();
         });
-
         return unsubscribe;
     }, [onMessage, clearWords]);
-
-    /**
-     * Handle word selected event from content script
-     */
-    const handleWordSelected = useCallback(
-        async (data) => {
-            if (!data || !data.word) {
-                console.warn('Invalid word selection data:', data);
-                return;
-            }
-
-            const { word, sourceLanguage, targetLanguage } = data;
-
-            // Update language settings if provided
-            if (sourceLanguage) {
-                setSourceLanguage(sourceLanguage);
-            }
-            if (targetLanguage) {
-                setTargetLanguage(targetLanguage);
-            }
-
-            // Fetch canonical selection from the content script (DOM order)
-            try {
-                const response = await sendToBoundTab('sidePanelGetState', {});
-                const incoming = Array.isArray(response?.selectedWords)
-                    ? response.selectedWords
-                    : [];
-                const normalized = incoming
-                    .map((w) => (typeof w === 'string' ? w.trim() : ''))
-                    .filter((w) => w.length > 0)
-                    .reduce((acc, w) => (acc.includes(w) ? acc : acc.concat(w)), []);
-
-                setSelectedWords(normalized);
-
-                // Inform background so it stores the same canonical order
-                try {
-                    postMessage('sidePanelSelectionSync', {
-                        selectedWords: normalized,
-                        reason: 'word-click',
-                    });
-                } catch (e) {
-                    console.warn('Failed to sync canonical order to background:', e);
-                }
-            } catch (err) {
-                console.error('Failed to retrieve canonical selection from content script:', err);
-            }
-        },
-        [setSelectedWords, setSourceLanguage, setTargetLanguage, sendToBoundTab, postMessage]
-    );
 
     /**
      * Toggle word selection
@@ -142,70 +50,35 @@ export function useWordSelection() {
                 next = [...selectedWords, word];
                 addWord(word);
             }
-            try {
-                await sendToBoundTab('sidePanelUpdateState', {
-                    clearSelection: true,
-                    selectedWords: next,
-                });
-            } catch (err) {
-                console.error('Failed to sync toggle to content script:', err);
+
+            // Send to the currently active tab view
+            if (activeTabId) {
+                try {
+                    await chrome.tabs.sendMessage(activeTabId, {
+                        action: 'sidePanelUpdateState',
+                        data: {
+                            clearSelection: true,
+                            selectedWords: next,
+                        },
+                        source: 'sidepanel'
+                    });
+                } catch (err) {
+                    console.error('Failed to sync toggle to content script:', err);
+                }
             }
 
             try {
                 postMessage('sidePanelSelectionSync', {
                     selectedWords: next,
                     reason: 'panel-toggle',
+                    tabId: activeTabId // Explicitly associate with current view
                 });
             } catch (err) {
                 console.warn('Failed to sync toggle to background:', err);
             }
         },
-        [selectedWords, addWord, removeWord, sendToBoundTab, postMessage]
+        [selectedWords, addWord, removeWord, activeTabId, postMessage]
     );
-
-    /**
-     * Request word selection state from content script
-     */
-    const inFlightRef = useRef(false);
-    const lastSyncTsRef = useRef(0);
-    const minSyncIntervalMs = 600;
-
-    const syncWithContentScript = useCallback(async () => {
-        const now = Date.now();
-        if (inFlightRef.current) {
-            return; // prevent parallel requests
-        }
-        if (now - lastSyncTsRef.current < minSyncIntervalMs) {
-            return; // throttle repetitive syncs
-        }
-        inFlightRef.current = true;
-        try {
-            const response = await sendToBoundTab('sidePanelGetState', {});
-            
-            if (response && response.selectedWords) {
-                // Replace current selection atomically
-                setSelectedWords(response.selectedWords);
-                
-                // Update language settings
-                if (response.sourceLanguage) {
-                    setSourceLanguage(response.sourceLanguage);
-                }
-                if (response.targetLanguage) {
-                    setTargetLanguage(response.targetLanguage);
-                }
-            }
-        } catch (err) {
-            console.error('Failed to sync with content script:', err);
-        } finally {
-            lastSyncTsRef.current = Date.now();
-            inFlightRef.current = false;
-        }
-    }, [
-        sendToBoundTab,
-        setSelectedWords,
-        setSourceLanguage,
-        setTargetLanguage,
-    ]);
 
     /**
      * Clear selection and notify content script
@@ -213,48 +86,31 @@ export function useWordSelection() {
     const clearSelection = useCallback(async () => {
         clearWords();
         
-        try {
-            await sendToBoundTab('sidePanelUpdateState', {
-                selectedWords: [],
-                clearSelection: true,
-            });
-        } catch (err) {
-            console.error('Failed to notify content script of clear:', err);
+        if (activeTabId) {
+            try {
+                await chrome.tabs.sendMessage(activeTabId, {
+                    action: 'sidePanelUpdateState',
+                    data: {
+                        selectedWords: [],
+                        clearSelection: true,
+                    },
+                    source: 'sidepanel'
+                });
+            } catch (err) {
+                console.error('Failed to notify content script of clear:', err);
+            }
         }
 
         try {
             postMessage('sidePanelSelectionSync', {
                 selectedWords: [],
                 reason: 'panel-clear',
+                tabId: activeTabId
             });
         } catch (err) {
             console.warn('Failed to sync clear to background:', err);
         }
-    }, [clearWords, sendToBoundTab, postMessage]);
-
-    /**
-     * Load persisted selection suggestion on mount (do not auto-apply)
-     */
-    useEffect(() => {
-        const loadPersistedSuggestion = async () => {
-            try {
-                const sync = await chrome.storage.sync.get(['sidePanelPersistAcrossTabs']);
-                const local = await chrome.storage.local.get(['sidePanelSelectionBuckets']);
-                if (sync.sidePanelPersistAcrossTabs) {
-                    const buckets = local.sidePanelSelectionBuckets || {};
-                    const suggestion = buckets['global:default'];
-                    // Suggestion is intentionally not auto-applied to avoid cross-tab contamination
-                    // In future UI, we can surface a "Restore" action from this suggestion.
-                    if (suggestion && Array.isArray(suggestion.words)) {
-                        // No-op: keep for future restore flow
-                    }
-                }
-            } catch (err) {
-                console.error('Failed to load persisted selection suggestion:', err);
-            }
-        };
-        loadPersistedSuggestion();
-    }, []);
+    }, [clearWords, activeTabId, postMessage]);
 
     /**
      * Persist selection suggestion on changes (global suggestion bucket)
@@ -283,96 +139,12 @@ export function useWordSelection() {
         }
     }, [selectedWords, sourceLanguage, targetLanguage]);
 
-    /**
-     * Listen for word selection events
-     */
-    useEffect(() => {
-        const unsubscribe = onMessage(
-            'sidePanelSelectionSync',
-            (payload) => {
-                // already handled by the first effect; this keeps backward compatibility if hooks reinitialize
-                const words = Array.isArray(payload?.selectedWords)
-                    ? payload.selectedWords
-                    : [];
-                const normalized = words.reduce((acc, w) => {
-                    const ww = typeof w === 'string' ? w.trim() : '';
-                    if (ww && !acc.includes(ww)) acc.push(ww);
-                    return acc;
-                }, []);
-                setSelectedWords(normalized);
-            }
-        );
-
-        // Removed initial syncWithContentScript() here to avoid overwriting ordered selection after a click
-        return unsubscribe;
-    }, [onMessage, setSelectedWords]);
-
-    /**
-     * Listen for tab changes to update selection
-     */
-    useEffect(() => {
-        let syncTimer = null;
-        const activeTabIdRef = { current: null };
-        const lastUrlByTabRef = { current: new Map() };
-        const debouncedSync = () => {
-            if (syncTimer) clearTimeout(syncTimer);
-            syncTimer = setTimeout(() => {
-                syncWithContentScript().catch((e) =>
-                    console.warn('Debounced sync failed:', e)
-                );
-            }, 200);
-        };
-
-        const handleTabActivated = async (activeInfo) => {
-            activeTabIdRef.current = activeInfo?.tabId ?? activeTabIdRef.current;
-            debouncedSync();
-        };
-        const handleTabUpdated = async (tabId, changeInfo, tab) => {
-            // Only act on the currently active tab
-            if (activeTabIdRef.current != null && tabId !== activeTabIdRef.current) {
-                return;
-            }
-            const newUrl = changeInfo?.url || tab?.url || null;
-            let shouldSync = false;
-            if (newUrl) {
-                const prevUrl = lastUrlByTabRef.current.get(tabId);
-                if (prevUrl !== newUrl) {
-                    lastUrlByTabRef.current.set(tabId, newUrl);
-                    shouldSync = true;
-                }
-            }
-            if (changeInfo?.status === 'complete') {
-                shouldSync = true;
-            }
-            if (shouldSync) {
-                debouncedSync();
-            }
-        };
-
-        chrome.tabs.onActivated.addListener(handleTabActivated);
-        chrome.tabs.onUpdated.addListener(handleTabUpdated);
-
-        // Initialize active tab id
-        chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
-            if (tab && tab.id) {
-                activeTabIdRef.current = tab.id;
-                if (tab.url) lastUrlByTabRef.current.set(tab.id, tab.url);
-            }
-        }).catch(() => {});
-
-        return () => {
-            if (syncTimer) clearTimeout(syncTimer);
-            chrome.tabs.onActivated.removeListener(handleTabActivated);
-            chrome.tabs.onUpdated.removeListener(handleTabUpdated);
-        };
-    }, [syncWithContentScript]);
-
     return {
         selectedWords,
         addWord,
         removeWord,
         toggleWord,
         clearSelection,
-        syncWithContentScript,
+        syncWithContentScript: async () => {} // No-op stub for compatibility if needed
     };
 }

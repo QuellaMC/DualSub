@@ -77,16 +77,16 @@ export function SidePanelProvider({ children }) {
 
         // Listen for tab activation changes from the background script
         const unsubscribe = onMessage('tabActivated', ({ tabId, windowId }) => {
-            // Respect follow-active setting; if disabled, ignore rebind on activation
-            if (!followActiveRef.current) {
-                return;
-            }
+            // Always update the active tab ID to reflect the user's current view
             handleTabActivated(tabId);
-            // Re-register this side panel with the new active tab so background routes messages correctly
+            
+            // Notify background that we are now "looking" at this tab
+            // This triggers the background to send us the latest state for this tab
             try {
                 const binding = getBinding();
                 postMessage('sidePanelRegister', { tabId, windowId, panelInstanceId: binding?.panelInstanceId });
             } catch (_) {}
+
             // Apply any pending selection for unknown tab now that we have an ID
             if (pendingSelectionRef.current) {
                 const normalized = pendingSelectionRef.current;
@@ -101,7 +101,19 @@ export function SidePanelProvider({ children }) {
             }
         });
 
-        return unsubscribe;
+        // Listen for forced tab binding (triggered by explicit user interaction like clicking a word)
+        const unsubscribeForce = onMessage('sidePanelForceBindTab', ({ tabId, windowId }) => {
+            handleTabActivated(tabId);
+            try {
+                const binding = getBinding();
+                postMessage('sidePanelRegister', { tabId, windowId, panelInstanceId: binding?.panelInstanceId });
+            } catch (_) {}
+        });
+
+        return () => {
+            unsubscribe();
+            unsubscribeForce();
+        };
     }, [getActiveTab, onMessage, postMessage]);
 
     // Effect to handle authoritative selection sync from background (e.g., subtitle change clears selection)
@@ -109,13 +121,8 @@ export function SidePanelProvider({ children }) {
         const unsubscribe = onMessage(
             'sidePanelSelectionSync',
             ({ selectedWords, tabId }) => {
-                // If payload tabId exists and doesn't match our bound tab, ignore
-                try {
-                    const { boundTabId } = getBinding();
-                    if (typeof tabId === 'number' && boundTabId && tabId !== boundTabId) {
-                        return;
-                    }
-                } catch (_) {}
+                // Always update the state for the specific tab provided in the message
+                // This ensures we have the latest data cached even if we aren't looking at it right now
                 const normalized = Array.isArray(selectedWords)
                     ? Array.from(
                           new Set(
@@ -129,40 +136,42 @@ export function SidePanelProvider({ children }) {
                           )
                       )
                     : [];
-                // If we don't yet know the active tab, try to resolve and apply immediately; otherwise buffer
-                if (!activeTabId) {
-                    pendingSelectionRef.current = normalized;
-                    getActiveTab()
-                        .then((tab) => {
-                            if (tab && tab.id) {
-                                setActiveTabId(tab.id);
-                                try {
-                                    postMessage('sidePanelRegister', { tabId: tab.id });
-                                } catch (_) {}
-                                setTabState((prev) => ({
-                                    ...prev,
-                                    [tab.id]: {
-                                        ...(prev[tab.id] || {}),
-                                        selectedWords: normalized,
-                                    },
-                                }));
-                                pendingSelectionRef.current = null;
-                            }
-                        })
-                        .catch(() => {});
-                    return;
+                
+                if (typeof tabId === 'number') {
+                    setTabState((prev) => ({
+                        ...prev,
+                        [tabId]: {
+                            ...(prev[tabId] || {}),
+                            selectedWords: normalized,
+                        },
+                    }));
+                } else if (!activeTabId) {
+                    // Fallback for initialization race conditions where tabId isn't known yet
+                     pendingSelectionRef.current = normalized;
+                     getActiveTab().then(tab => {
+                         if (tab?.id) {
+                             setActiveTabId(tab.id);
+                             setTabState(prev => ({
+                                 ...prev,
+                                 [tab.id]: { ...(prev[tab.id] || {}), selectedWords: normalized }
+                             }));
+                             pendingSelectionRef.current = null;
+                         }
+                     }).catch(() => {});
+                } else {
+                    // Fallback: if no tabId in message, assume it's for the active tab
+                    setTabState((prev) => ({
+                        ...prev,
+                        [activeTabId]: {
+                            ...(prev[activeTabId] || {}),
+                            selectedWords: normalized,
+                        },
+                    }));
                 }
-                setTabState((prev) => ({
-                    ...prev,
-                    [activeTabId]: {
-                        ...(prev[activeTabId] || {}),
-                        selectedWords: normalized,
-                    },
-                }));
             }
         );
         return unsubscribe;
-    }, [onMessage, activeTabId, getActiveTab, postMessage, getBinding]);
+    }, [onMessage, activeTabId, getActiveTab]);
 
     // Note: We intentionally ignore 'wordSelectionUpdate' messages here.
     // The authoritative selection state is delivered via 'sidePanelSelectionSync',
