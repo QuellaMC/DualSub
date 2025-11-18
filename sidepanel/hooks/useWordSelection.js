@@ -208,17 +208,6 @@ export function useWordSelection() {
     ]);
 
     /**
-     * One-time lightweight hydrate after mount to align with current DOM state of bound tab.
-     * Uses a small defer to avoid jank during panel open.
-     */
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            syncWithContentScript().catch(() => {});
-        }, 120);
-        return () => clearTimeout(timer);
-    }, [syncWithContentScript]);
-
-    /**
      * Clear selection and notify content script
      */
     const clearSelection = useCallback(async () => {
@@ -323,6 +312,7 @@ export function useWordSelection() {
      */
     useEffect(() => {
         let syncTimer = null;
+        const activeTabIdRef = { current: null };
         const lastUrlByTabRef = { current: new Map() };
         const debouncedSync = () => {
             if (syncTimer) clearTimeout(syncTimer);
@@ -333,51 +323,49 @@ export function useWordSelection() {
             }, 200);
         };
 
+        const handleTabActivated = async (activeInfo) => {
+            activeTabIdRef.current = activeInfo?.tabId ?? activeTabIdRef.current;
+            debouncedSync();
+        };
         const handleTabUpdated = async (tabId, changeInfo, tab) => {
-            try {
-                const binding = getBinding();
-                const boundTabId = binding?.boundTabId ?? null;
-                if (!boundTabId || tabId !== boundTabId) {
-                    return;
-                }
-                const newUrl = changeInfo?.url || tab?.url || null;
-                let shouldSync = false;
-                if (newUrl) {
-                    const prevUrl = lastUrlByTabRef.current.get(tabId);
-                    if (prevUrl !== newUrl) {
-                        lastUrlByTabRef.current.set(tabId, newUrl);
-                        shouldSync = true;
-                    }
-                }
-                if (changeInfo?.status === 'complete') {
+            // Only act on the currently active tab
+            if (activeTabIdRef.current != null && tabId !== activeTabIdRef.current) {
+                return;
+            }
+            const newUrl = changeInfo?.url || tab?.url || null;
+            let shouldSync = false;
+            if (newUrl) {
+                const prevUrl = lastUrlByTabRef.current.get(tabId);
+                if (prevUrl !== newUrl) {
+                    lastUrlByTabRef.current.set(tabId, newUrl);
                     shouldSync = true;
                 }
-                if (shouldSync) {
-                    debouncedSync();
-                }
-            } catch (_) {}
+            }
+            if (changeInfo?.status === 'complete') {
+                shouldSync = true;
+            }
+            if (shouldSync) {
+                debouncedSync();
+            }
         };
 
+        chrome.tabs.onActivated.addListener(handleTabActivated);
         chrome.tabs.onUpdated.addListener(handleTabUpdated);
 
-        // Initialize last known URL for the bound tab
-        try {
-            const binding = getBinding();
-            const boundTabId = binding?.boundTabId ?? null;
-            if (boundTabId) {
-                chrome.tabs.get(boundTabId, (t) => {
-                    if (t && t.url) {
-                        lastUrlByTabRef.current.set(boundTabId, t.url);
-                    }
-                });
+        // Initialize active tab id
+        chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
+            if (tab && tab.id) {
+                activeTabIdRef.current = tab.id;
+                if (tab.url) lastUrlByTabRef.current.set(tab.id, tab.url);
             }
-        } catch (_) {}
+        }).catch(() => {});
 
         return () => {
             if (syncTimer) clearTimeout(syncTimer);
+            chrome.tabs.onActivated.removeListener(handleTabActivated);
             chrome.tabs.onUpdated.removeListener(handleTabUpdated);
         };
-    }, [syncWithContentScript, getBinding]);
+    }, [syncWithContentScript]);
 
     return {
         selectedWords,
