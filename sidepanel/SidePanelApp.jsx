@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { TabNavigator } from './components/TabNavigator.jsx';
 import { AIAnalysisTab } from './components/tabs/AIAnalysisTab.jsx';
 import { WordsListsTab } from './components/tabs/WordsListsTab.jsx';
@@ -6,7 +6,6 @@ import { useTheme } from './hooks/useTheme.js';
 import { useSettings } from './hooks/useSettings.js';
 import { SidePanelProvider } from './hooks/SidePanelContext.jsx';
 import { useSidePanelCommunication } from './hooks/useSidePanelCommunication.js';
-import { useCallback } from 'react';
 
 /**
  * Main Side Panel Application Component
@@ -15,21 +14,8 @@ import { useCallback } from 'react';
  * Manages theme, settings, and global state for the side panel.
  */
 export function SidePanelApp() {
-    // Internal component to handle SIDEPANEL_UPDATE_STATE
-    function SidePanelStateSync({ onRequestTabChange }) {
-        const { onMessage } = useSidePanelCommunication();
-        useEffect(() => {
-            const unsubscribe = onMessage('sidePanelUpdateState', (data) => {
-                // Intentionally ignore background-driven activeTab changes to prevent
-                // unwanted UI flips when the user selects the Words Lists tab.
-                // Other state updates are handled in context hooks.
-            });
-            return unsubscribe;
-        }, [onMessage, onRequestTabChange]);
-        return null;
-    }
     const [activeTab, setActiveTab] = useState('ai-analysis');
-    const { theme, toggleTheme } = useTheme();
+    const { theme } = useTheme();
     const { settings, loading: settingsLoading } = useSettings();
     const { postMessage } = useSidePanelCommunication();
 
@@ -50,7 +36,7 @@ export function SidePanelApp() {
         }
     }, [theme]);
 
-    // Load default tab from settings, but allow background to override via message
+    // Load default tab from settings
     useEffect(() => {
         if (settings.sidePanelDefaultTab && !settingsLoading) {
             setActiveTab((prev) => prev || settings.sidePanelDefaultTab);
@@ -81,7 +67,6 @@ export function SidePanelApp() {
 
     return (
         <SidePanelProvider>
-            <SidePanelStateSync onRequestTabChange={(tab) => setActiveTab(tab)} />
             <div className="sidepanel-container">
                 <TabNavigator
                     activeTab={activeTab}
@@ -93,22 +78,6 @@ export function SidePanelApp() {
                     {activeTab === 'words-lists' && <WordsListsTab />}
                 </main>
             </div>
-
-            <style>{`
-                .sidepanel-container {
-                    display: flex;
-                    flex-direction: column;
-                    height: 100%;
-                    width: 100%;
-                    overflow: hidden;
-                }
-
-                .sidepanel-content {
-                    flex: 1;
-                    overflow-y: auto;
-                    overflow-x: hidden;
-                }
-            `}</style>
         </SidePanelProvider>
     );
 }

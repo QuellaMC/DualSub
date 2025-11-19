@@ -61,8 +61,8 @@ function detectEnvironment() {
             environmentType: isServiceWorker
                 ? 'service-worker'
                 : isBrowser
-                  ? 'browser'
-                  : 'unknown',
+                    ? 'browser'
+                    : 'unknown',
         };
     } catch (error) {
         logger.warn('Environment detection failed', {

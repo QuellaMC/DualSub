@@ -67,15 +67,9 @@ export function useWordSelection() {
                 }
             }
 
-            try {
-                postMessage('sidePanelSelectionSync', {
-                    selectedWords: next,
-                    reason: 'panel-toggle',
-                    tabId: activeTabId // Explicitly associate with current view
-                });
-            } catch (err) {
-                console.warn('Failed to sync toggle to background:', err);
-            }
+            // NOTE: We do NOT send sidePanelSelectionSync to background here.
+            // We wait for the content script to process the update and broadcast the sync back.
+            // This ensures the content script remains the single source of truth.
         },
         [selectedWords, addWord, removeWord, activeTabId, postMessage]
     );
@@ -85,7 +79,7 @@ export function useWordSelection() {
      */
     const clearSelection = useCallback(async () => {
         clearWords();
-        
+
         if (activeTabId) {
             try {
                 await chrome.tabs.sendMessage(activeTabId, {
@@ -99,16 +93,6 @@ export function useWordSelection() {
             } catch (err) {
                 console.error('Failed to notify content script of clear:', err);
             }
-        }
-
-        try {
-            postMessage('sidePanelSelectionSync', {
-                selectedWords: [],
-                reason: 'panel-clear',
-                tabId: activeTabId
-            });
-        } catch (err) {
-            console.warn('Failed to sync clear to background:', err);
         }
     }, [clearWords, activeTabId, postMessage]);
 
@@ -145,6 +129,6 @@ export function useWordSelection() {
         removeWord,
         toggleWord,
         clearSelection,
-        syncWithContentScript: async () => {} // No-op stub for compatibility if needed
+        syncWithContentScript: async () => { } // No-op stub for compatibility if needed
     };
 }

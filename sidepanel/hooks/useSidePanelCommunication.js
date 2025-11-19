@@ -16,154 +16,135 @@ export function useSidePanelCommunication() {
     const messageListeners = useRef(new Map());
     const portRef = useRef(null);
     const reconnectTimerRef = useRef(null);
-    const reconnectDelayRef = useRef(1000);
-    const heartbeatTimerRef = useRef(null);
-    const mountedRef = useRef(false);
     const bindingRef = useRef({ panelInstanceId: null, boundTabId: null, boundWindowId: null });
+    const mountedRef = useRef(false);
 
-    const generateInstanceId = () => {
-        // Simple UUID v4-ish generator
-        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-            const r = (Math.random() * 16) | 0;
-            const v = c === 'x' ? r : (r & 0x3) | 0x8;
-            return v.toString(16);
-        });
-    };
-
-    // Initialize long-lived connection to background with auto-reconnect and heartbeat
+    // Initialize instance ID once
     useEffect(() => {
+        if (!bindingRef.current.panelInstanceId) {
+            bindingRef.current.panelInstanceId = crypto.randomUUID();
+        }
         mountedRef.current = true;
-
-        const registerWithActiveTab = async () => {
-            try {
-                const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-                if (tab && tab.id && portRef.current) {
-                    const windowId = tab.windowId ?? (await chrome.windows.getCurrent({ populate: false }).then(w => w?.id).catch(() => undefined));
-                    if (!bindingRef.current.panelInstanceId) {
-                        bindingRef.current.panelInstanceId = generateInstanceId();
-                    }
-                    bindingRef.current.boundTabId = tab.id;
-                    bindingRef.current.boundWindowId = windowId ?? null;
-                    try {
-                        portRef.current.postMessage({
-                            action: 'sidePanelRegister',
-                            data: { tabId: tab.id, windowId: bindingRef.current.boundWindowId, panelInstanceId: bindingRef.current.panelInstanceId },
-                            source: 'sidepanel',
-                            timestamp: Date.now(),
-                        });
-                        // Ask background for a fresh state snapshot for the current tab
-                        portRef.current.postMessage({
-                            action: 'sidePanelGetState',
-                            data: {},
-                            source: 'sidepanel',
-                            timestamp: Date.now(),
-                        });
-                    } catch (e) {
-                        console.warn('Failed to register side panel with background:', e);
-                    }
-                }
-            } catch (e) {
-                console.warn('Failed to query active tab for registration:', e);
-            }
-        };
-
-        const clearReconnectTimer = () => {
-            if (reconnectTimerRef.current) {
-                clearTimeout(reconnectTimerRef.current);
-                reconnectTimerRef.current = null;
-            }
-        };
-
-        const startHeartbeat = () => {
-            if (heartbeatTimerRef.current) return;
-            heartbeatTimerRef.current = setInterval(async () => {
-                try {
-                    // Use runtime message for keep-alive; background handles MessageActions.PING
-                    await chrome.runtime.sendMessage({ action: 'ping', source: 'sidepanel', timestamp: Date.now() });
-                } catch (e) {
-                    // Likely background asleep or reloading; will trigger reconnect via disconnect path
-                }
-            }, 25000);
-        };
-
-        const stopHeartbeat = () => {
-            if (heartbeatTimerRef.current) {
-                clearInterval(heartbeatTimerRef.current);
-                heartbeatTimerRef.current = null;
-            }
-        };
-
-        const connectPort = () => {
-            try {
-            const port = chrome.runtime.connect({ name: 'sidepanel' });
-            portRef.current = port;
-
-            port.onMessage.addListener((message) => {
-                // Special handling for potential future binding change advisories
-                if (message?.action === 'bindingChanged' && message?.data) {
-                    const { tabId, windowId } = message.data;
-                    if (typeof tabId === 'number') {
-                        bindingRef.current.boundTabId = tabId;
-                    }
-                    if (typeof windowId === 'number') {
-                        bindingRef.current.boundWindowId = windowId;
-                    }
-                }
-                const listeners = messageListeners.current.get(message.action);
-                if (listeners) {
-                    listeners.forEach((callback) => callback(message.data));
-                }
-            });
-
-            port.onDisconnect.addListener(() => {
-                console.log('Side panel disconnected from background');
-                setIsConnected(false);
-                portRef.current = null;
-                    stopHeartbeat();
-                    // Exponential backoff reconnect
-                    clearReconnectTimer();
-                    const delay = Math.min(reconnectDelayRef.current, 30000);
-                    reconnectTimerRef.current = setTimeout(() => {
-                        if (!mountedRef.current) return;
-                        connectPort();
-                        reconnectDelayRef.current = Math.min(delay * 2, 30000);
-                    }, delay);
-            });
-
-            setIsConnected(true);
-                reconnectDelayRef.current = 1000;
-                startHeartbeat();
-                registerWithActiveTab();
-        } catch (err) {
-            console.error('Failed to connect to background:', err);
-            setError(err);
-            setIsConnected(false);
-                // Schedule a reconnect attempt
-                clearReconnectTimer();
-                const delay = Math.min(reconnectDelayRef.current, 30000);
-                reconnectTimerRef.current = setTimeout(() => {
-                    if (!mountedRef.current) return;
-                    connectPort();
-                    reconnectDelayRef.current = Math.min(delay * 2, 30000);
-                }, delay);
-            }
-        };
-
-        connectPort();
-
         return () => {
             mountedRef.current = false;
-            clearReconnectTimer();
-            stopHeartbeat();
-            if (portRef.current) {
-                try { portRef.current.disconnect(); } catch (_) {}
-                portRef.current = null;
-            }
         };
     }, []);
 
     /**
-     * Send a message to the background service worker
+     * Register the side panel with the active tab and background script.
+     */
+    const registerWithActiveTab = useCallback(async () => {
+        if (!portRef.current) return;
+
+        try {
+            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+            if (tab?.id) {
+                const windowId = tab.windowId;
+                bindingRef.current.boundTabId = tab.id;
+                bindingRef.current.boundWindowId = windowId;
+
+                portRef.current.postMessage({
+                    action: 'sidePanelRegister',
+                    data: { 
+                        tabId: tab.id, 
+                        windowId, 
+                        panelInstanceId: bindingRef.current.panelInstanceId 
+                    },
+                    source: 'sidepanel',
+                    timestamp: Date.now(),
+                });
+
+                // Request fresh state
+                portRef.current.postMessage({
+                    action: 'sidePanelGetState',
+                    data: {},
+                    source: 'sidepanel',
+                    timestamp: Date.now(),
+                });
+            }
+        } catch (e) {
+            console.error('Failed to register side panel:', e);
+        }
+    }, []);
+
+    /**
+     * Establishes a long-lived connection to the background script.
+     */
+    const connectPort = useCallback(() => {
+        if (portRef.current) return;
+
+        try {
+            const port = chrome.runtime.connect({ name: 'sidepanel' });
+            portRef.current = port;
+            setIsConnected(true);
+            setError(null);
+
+            port.onMessage.addListener((message) => {
+                // Handle internal binding updates
+                if (message?.action === 'bindingChanged' && message?.data) {
+                    const { tabId, windowId } = message.data;
+                    if (typeof tabId === 'number') bindingRef.current.boundTabId = tabId;
+                    if (typeof windowId === 'number') bindingRef.current.boundWindowId = windowId;
+                }
+
+                // Dispatch to listeners
+                const listeners = messageListeners.current.get(message.action);
+                if (listeners) {
+                    listeners.forEach((callback) => {
+                        try {
+                            callback(message.data);
+                        } catch (err) {
+                            console.error(`Error in listener for ${message.action}:`, err);
+                        }
+                    });
+                }
+            });
+
+            port.onDisconnect.addListener(() => {
+                console.log('Side panel disconnected');
+                portRef.current = null;
+                setIsConnected(false);
+                
+                // Attempt reconnect if still mounted
+                if (mountedRef.current) {
+                    reconnectTimerRef.current = setTimeout(connectPort, 1000);
+                }
+            });
+
+            // Initial registration
+            registerWithActiveTab();
+
+        } catch (err) {
+            console.error('Connection failed:', err);
+            setError(err);
+            setIsConnected(false);
+            if (mountedRef.current) {
+                reconnectTimerRef.current = setTimeout(connectPort, 2000);
+            }
+        }
+    }, [registerWithActiveTab]);
+
+    // Lifecycle management for connection
+    useEffect(() => {
+        connectPort();
+
+        return () => {
+            if (reconnectTimerRef.current) {
+                clearTimeout(reconnectTimerRef.current);
+            }
+            if (portRef.current) {
+                try {
+                    portRef.current.disconnect();
+                } catch (e) {
+                    // Ignore disconnect errors
+                }
+                portRef.current = null;
+            }
+        };
+    }, [connectPort]);
+
+    /**
+     * Send a one-off message to the background service worker.
      */
     const sendMessage = useCallback(async (action, data = {}) => {
         try {
@@ -174,31 +155,23 @@ export function useSidePanelCommunication() {
                 timestamp: Date.now(),
             });
 
-            if (response && response.error) {
+            if (response?.error) {
                 throw new Error(response.error);
             }
-
             return response;
         } catch (err) {
-            console.error(`Failed to send message (${action}):`, err);
-            setError(err);
+            console.error(`sendMessage failed (${action}):`, err);
             throw err;
         }
     }, []);
 
     /**
-     * Send a message to the active tab's content script
+     * Send a message to the active tab's content script.
      */
     const sendToActiveTab = useCallback(async (action, data = {}) => {
         try {
-            const [tab] = await chrome.tabs.query({
-                active: true,
-                currentWindow: true,
-            });
-
-            if (!tab || !tab.id) {
-                throw new Error('No active tab found');
-            }
+            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+            if (!tab?.id) throw new Error('No active tab found');
 
             const response = await chrome.tabs.sendMessage(tab.id, {
                 action,
@@ -207,54 +180,47 @@ export function useSidePanelCommunication() {
                 timestamp: Date.now(),
             });
 
-            if (response && response.error) {
-                throw new Error(response.error);
-            }
-
+            if (response?.error) throw new Error(response.error);
             return response;
         } catch (err) {
-            console.error(`Failed to send message to tab (${action}):`, err);
-            setError(err);
+            console.error(`sendToActiveTab failed (${action}):`, err);
             throw err;
         }
     }, []);
 
     /**
-     * Send a message to the currently bound tab's content script
+     * Send a message to the currently bound tab's content script.
      */
     const sendToBoundTab = useCallback(async (action, data = {}) => {
+        const tabId = bindingRef.current.boundTabId;
+        if (!tabId) {
+            return sendToActiveTab(action, data);
+        }
+
         try {
-            const tabId = bindingRef.current.boundTabId;
-            if (!tabId) {
-                // Fallback to active tab for initialization edge cases
-                return await sendToActiveTab(action, data);
-            }
             const response = await chrome.tabs.sendMessage(tabId, {
                 action,
                 data,
                 source: 'sidepanel',
                 timestamp: Date.now(),
             });
-            if (response && response.error) {
-                throw new Error(response.error);
-            }
+
+            if (response?.error) throw new Error(response.error);
             return response;
         } catch (err) {
-            console.error(`Failed to send message to bound tab (${action}):`, err);
-            setError(err);
+            console.error(`sendToBoundTab failed (${action}):`, err);
             throw err;
         }
     }, [sendToActiveTab]);
 
     /**
-     * Send a message via long-lived connection
+     * Send a message via the long-lived port connection.
      */
     const postMessage = useCallback((action, data = {}) => {
         if (!portRef.current) {
-            console.error('No active connection to background');
+            console.warn('Cannot post message: disconnected');
             return;
         }
-
         try {
             portRef.current.postMessage({
                 action,
@@ -263,13 +229,12 @@ export function useSidePanelCommunication() {
                 timestamp: Date.now(),
             });
         } catch (err) {
-            console.error(`Failed to post message (${action}):`, err);
-            setError(err);
+            console.error(`postMessage failed (${action}):`, err);
         }
     }, []);
 
     /**
-     * Subscribe to messages of a specific action type
+     * Subscribe to messages of a specific action type.
      */
     const onMessage = useCallback((action, callback) => {
         if (!messageListeners.current.has(action)) {
@@ -277,7 +242,6 @@ export function useSidePanelCommunication() {
         }
         messageListeners.current.get(action).add(callback);
 
-        // Return unsubscribe function
         return () => {
             const listeners = messageListeners.current.get(action);
             if (listeners) {
@@ -289,27 +253,14 @@ export function useSidePanelCommunication() {
         };
     }, []);
 
-    /**
-     * Get the current active tab
-     */
     const getActiveTab = useCallback(async () => {
         try {
-            const [tab] = await chrome.tabs.query({
-                active: true,
-                currentWindow: true,
-            });
+            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
             return tab;
         } catch (err) {
-            console.error('Failed to get active tab:', err);
+            console.error('getActiveTab failed:', err);
             return null;
         }
-    }, []);
-
-    /**
-     * Check if side panel is supported (Chrome 114+)
-     */
-    const isSidePanelSupported = useCallback(() => {
-        return typeof chrome.sidePanel !== 'undefined';
     }, []);
 
     return {
@@ -321,7 +272,7 @@ export function useSidePanelCommunication() {
         postMessage,
         onMessage,
         getActiveTab,
-        isSidePanelSupported,
         getBinding: () => ({ ...bindingRef.current }),
     };
 }
+

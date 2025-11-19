@@ -276,12 +276,12 @@ export class BaseContentScript {
                         // Keep compatibility with existing URL-change flow
                         try {
                             this.checkForUrlChange();
-                        } catch (_) {}
+                        } catch (_) { }
                     },
                     onPageTransition: (wasPlayer, isPlayer) => {
                         try {
                             this._handlePageTransition(wasPlayer, isPlayer);
-                        } catch (_) {}
+                        } catch (_) { }
                     },
                     logger: (level, message, data) =>
                         this.logWithFallback(level, message, data),
@@ -1245,6 +1245,15 @@ export class BaseContentScript {
                 }
             );
 
+            // Cleanup existing integration to prevent duplicate listeners
+            if (this.sidePanelIntegration) {
+                try {
+                    this.sidePanelIntegration.destroy();
+                } catch (e) {
+                    this.logWithFallback('warn', 'Error destroying previous side panel integration', { error: e.message });
+                }
+            }
+
             // Create inline side panel integration
             this.sidePanelIntegration = {
                 initialized: false,
@@ -1264,14 +1273,14 @@ export class BaseContentScript {
                     this._log = (level, message, data) => {
                         try {
                             window.__dualsub_log?.(level, message, data);
-                        } catch (_) {}
+                        } catch (_) { }
                         try {
                             // Use outer class logger if available
                             (typeof level === 'string'
                                 ? level
                                 : 'debug') &&
                                 (typeof message === 'string');
-                        } catch (_) {}
+                        } catch (_) { }
                     };
 
                     // Load robust messaging wrapper (reuses existing implementation)
@@ -1366,7 +1375,7 @@ export class BaseContentScript {
                                 action: MessageActions.SIDEPANEL_OPEN,
                                 options: { pauseVideo: true, openReason: 'word-click', activeTab: 'ai-analysis' },
                             });
-                        } catch (_) {}
+                        } catch (_) { }
 
                         // 2) Toggle visual selection immediately to reflect DOM state
                         if (element) {
@@ -1391,19 +1400,16 @@ export class BaseContentScript {
 
                         // 3) After DOM reflects the new selection, compute canonical ordered list and broadcast
                         try {
-                            const highlighted = Array.from(
-                                document.querySelectorAll('.dualsub-interactive-word.dualsub-word-selected')
-                            );
-                            const words = [];
-                            const seen = new Set();
-                            highlighted.forEach((el) => {
-                                const w = el.getAttribute('data-word') || el.textContent || '';
-                                const ww = (w || '').trim();
-                                if (ww && !seen.has(ww)) {
-                                    seen.add(ww);
-                                    words.push(ww);
-                                }
-                            });
+                            // Use DOM order to preserve sentence structure (user preference)
+                            // This ensures "what are you listening" stays in order even if "what" is deselected and re-selected
+                            const selectedElements = document.querySelectorAll('.dualsub-interactive-word.dualsub-word-selected');
+                            const words = Array.from(selectedElements)
+                                .map(el => el.getAttribute('data-word'))
+                                .filter(w => w)
+                                .map(w => w.trim());
+
+                            // Update internal Set to match DOM state (for consistency)
+                            this.selectedWords = new Set(words);
 
                             void this._send({
                                 action: MessageActions.SIDEPANEL_SELECTION_SYNC,
@@ -1411,7 +1417,7 @@ export class BaseContentScript {
                                 timestamp: Date.now(),
                                 reason: 'word-click',
                             });
-                        } catch (_) {}
+                        } catch (_) { }
 
                         // 4) Forward word selection (non-authoritative, kept for compatibility)
                         void this._send({
@@ -1448,7 +1454,7 @@ export class BaseContentScript {
                         document
                             .querySelectorAll('.dualsub-interactive-word.dualsub-word-selected')
                             .forEach((el) => el.classList.remove('dualsub-word-selected'));
-                    } catch (_) {}
+                    } catch (_) { }
 
                     this.selectedWords.clear();
 
@@ -3331,24 +3337,15 @@ export class BaseContentScript {
      * @param {boolean} enabled - Enabled state
      * @returns {boolean} Whether response is handled asynchronously
      */
+
+
     /**
      * Handle side panel get state: returns currently highlighted words and languages
      */
     handleSidePanelGetState(request, sendResponse) {
         try {
-            const highlighted = Array.from(
-                document.querySelectorAll('.dualsub-interactive-word.dualsub-word-selected')
-            );
-            const words = [];
-            const seen = new Set();
-            highlighted.forEach((el) => {
-                const w = el.getAttribute('data-word') || el.textContent || '';
-                const word = (w || '').trim();
-                if (word && !seen.has(word)) {
-                    seen.add(word);
-                    words.push(word);
-                }
-            });
+            // Use the internal Set to preserve insertion order, rather than DOM order
+            const words = Array.from(this.sidePanelIntegration?.selectedWords || []);
 
             // Keep this handler lightweight to avoid page lag
             sendResponse({
@@ -3382,16 +3379,46 @@ export class BaseContentScript {
             }
 
             if (Array.isArray(data.selectedWords)) {
-                // Add highlights for given words (first-match strategy)
                 data.selectedWords.forEach((word) => {
-                    const el = Array.from(
-                        document.querySelectorAll('.dualsub-interactive-word')
-                    ).find((e) => (e.getAttribute('data-word') || '').trim() === word);
-                    if (el) el.classList.add('dualsub-word-selected');
+                    const normalizedWord = (word || '').trim();
+                    if (!normalizedWord) return;
+
+                    // Find elements for this word
+                    // Note: This is a simplified selector; production might need more specific targeting
+                    const elements = document.querySelectorAll(
+                        `.dualsub-interactive-word[data-word="${normalizedWord.replace(/"/g, '\\"')}"]`
+                    );
+                    elements.forEach((el) => {
+                        if (el) el.classList.add('dualsub-word-selected');
+                    });
                 });
+
                 if (this.sidePanelIntegration) {
                     this.sidePanelIntegration.selectedWords = new Set(data.selectedWords);
                 }
+            }
+
+            // Broadcast the new state back to background to ensure authoritative state is in sync
+            // We use DOM order here to maintain consistency with handleWordSelection
+            if (this.sidePanelIntegration) {
+                try {
+                    const selectedElements = document.querySelectorAll('.dualsub-interactive-word.dualsub-word-selected');
+                    const words = Array.from(selectedElements)
+                        .map(el => el.getAttribute('data-word'))
+                        .filter(w => w)
+                        .map(w => w.trim());
+
+                    // If no words found in DOM but we have them in Set (e.g. virtualized/hidden), 
+                    // fallback to the Set (which came from the update request)
+                    const finalWords = words.length > 0 ? words : (data.selectedWords || []);
+
+                    void this.sidePanelIntegration._send({
+                        action: MessageActions.SIDEPANEL_SELECTION_SYNC,
+                        selectedWords: finalWords,
+                        timestamp: Date.now(),
+                        reason: 'sidepanel-update',
+                    });
+                } catch (_) { }
             }
 
             sendResponse({ success: true });
@@ -3424,7 +3451,7 @@ export class BaseContentScript {
                         || (this.activePlatform && typeof this.activePlatform.getVideoElement === 'function' ? this.activePlatform.getVideoElement() : null)
                         || document.querySelector('video');
                     if (v) {
-                        try { v.pause(); } catch (_) {}
+                        try { v.pause(); } catch (_) { }
                         await new Promise((r) => setTimeout(r, 80));
                         if (v.paused) return true;
                     }
@@ -3442,7 +3469,7 @@ export class BaseContentScript {
                                 || document.querySelector('video');
                             if (v2 && v2.paused) return true;
                         }
-                    } catch (_) {}
+                    } catch (_) { }
 
                     // Strategy 3: As absolute fallback, try another direct pause
                     try {
@@ -3452,7 +3479,7 @@ export class BaseContentScript {
                             await new Promise((r) => setTimeout(r, 60));
                             if (v3.paused) return true;
                         }
-                    } catch (_) {}
+                    } catch (_) { }
                     return false;
                 } catch (_) {
                     return false;
@@ -3483,7 +3510,7 @@ export class BaseContentScript {
                 ? this.activePlatform.getVideoElement()
                 : document.querySelector('video');
             if (v) {
-                try { v.play(); } catch (_) {}
+                try { v.play(); } catch (_) { }
             }
             sendResponse({ success: true });
             return false;
@@ -3523,7 +3550,7 @@ export class BaseContentScript {
                 } else {
                     modalContent.classList.remove('is-analyzing');
                 }
-            } catch (_) {}
+            } catch (_) { }
 
             // 2) Disable/enable pointer interactions on the original subtitle container
             try {
@@ -3537,7 +3564,7 @@ export class BaseContentScript {
                         original.classList.remove('dualsub-subtitles-disabled');
                     }
                 }
-            } catch (_) {}
+            } catch (_) { }
 
             sendResponse({ success: true });
             return false;

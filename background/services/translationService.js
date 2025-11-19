@@ -756,14 +756,14 @@ class TranslationService {
             errorRate:
                 this.performanceMetrics.totalTranslations > 0
                     ? (this.performanceMetrics.errors /
-                          this.performanceMetrics.totalTranslations) *
-                      100
+                        this.performanceMetrics.totalTranslations) *
+                    100
                     : 0,
             cacheHitRate:
                 this.performanceMetrics.totalTranslations > 0
                     ? (this.performanceMetrics.cacheHits /
-                          this.performanceMetrics.totalTranslations) *
-                      100
+                        this.performanceMetrics.totalTranslations) *
+                    100
                     : 0,
         };
     }
@@ -1054,7 +1054,7 @@ class TranslationService {
                 sourceLang,
                 targetLang,
                 selectedProvider.batchOptimizations?.delimiter ||
-                    '|SUBTITLE_BREAK|'
+                '|SUBTITLE_BREAK|'
             );
 
             // Update rate limit tracker
