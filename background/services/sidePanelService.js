@@ -527,7 +527,7 @@ class SidePanelService {
         } else {
             // Broadcast fallback with tabId so the side panel can self-filter
             try {
-                for (const [tid, p] of this.activeConnections.entries()) {
+                for (const p of this.activeConnections.values()) {
                     try {
                         p.postMessage({
                             action: MessageActions.SIDEPANEL_SELECTION_SYNC,
