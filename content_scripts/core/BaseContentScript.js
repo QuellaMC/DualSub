@@ -2016,10 +2016,10 @@ export class BaseContentScript {
     _getRetryConfiguration() {
         return {
             maxRetries:
-                this.currentConfig?.platformInitMaxRetries ||
+                this.currentConfig?.platformInitMaxRetries ??
                 COMMON_CONSTANTS.PLATFORM_INIT_MAX_RETRIES,
             retryDelay:
-                this.currentConfig?.platformInitRetryDelay ||
+                this.currentConfig?.platformInitRetryDelay ??
                 COMMON_CONSTANTS.PLATFORM_INIT_RETRY_DELAY,
         };
     }
@@ -2043,13 +2043,12 @@ export class BaseContentScript {
     /**
      * Log initialization start with attempt information
      * @private
-     * @param {number} retryCount - Current retry count
-     * @param {number} maxRetries - Maximum retries allowed
+     * @param {Object} context - Initialization context
      */
-    _logInitializationStart(retryCount, maxRetries) {
+    _logInitializationStart(context) {
         this.logWithFallback('info', 'Starting platform initialization', {
-            attempt: retryCount + 1,
-            maxRetries: maxRetries + 1,
+            attempt: context.attempt,
+            maxRetries: context.totalAttempts,
         });
     }
 

@@ -174,13 +174,14 @@ class SidePanelService {
                     await this.resumeVideo(tabId);
                     break;
 
-                case MessageActions.SIDEPANEL_GET_STATE:
+                case MessageActions.SIDEPANEL_GET_STATE: {
                     const state = this.tabStates.get(tabId) || {};
                     port.postMessage({
                         action: MessageActions.SIDEPANEL_UPDATE_STATE,
                         data: state,
                     });
                     break;
+                }
 
                 case MessageActions.SIDEPANEL_UPDATE_STATE:
                     this.updateTabState(tabId, data);

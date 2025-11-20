@@ -100,7 +100,7 @@ export function AIAnalysisTab() {
                 {analysisResult && !isAnalyzing && (
                     <div className="results-container">
                         <h2 className="results-title">
-                            Results for "{selectedWords.join('", "')}"
+                            Results for &quot;{selectedWords.join('", "')}&quot;
                         </h2>
                         <div className="results-sections">
                             {/* Definition */}

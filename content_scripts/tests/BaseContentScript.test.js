@@ -297,7 +297,7 @@ describe('BaseContentScript', () => {
                     return 'partial';
                 }
                 getPlatformClass() {
-                    return class {};
+                    return class { };
                 }
                 // Missing other abstract methods
             }
@@ -1017,6 +1017,7 @@ describe('BaseContentScript', () => {
                 contentScript.configService = mockModules.configService;
                 contentScript.currentConfig = {
                     subtitlesEnabled: true,
+                    platformInitRetryDelay: 0,
                 };
             });
 
@@ -1115,9 +1116,9 @@ describe('BaseContentScript', () => {
             const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
 
             // Set multiple intervals
-            intervalManager.set('test1', () => {}, 1000);
-            intervalManager.set('test2', () => {}, 2000);
-            intervalManager.set('test3', () => {}, 3000);
+            intervalManager.set('test1', () => { }, 1000);
+            intervalManager.set('test2', () => { }, 2000);
+            intervalManager.set('test3', () => { }, 3000);
 
             expect(intervalManager.count()).toBe(3);
 
@@ -1223,7 +1224,7 @@ describe('BaseContentScript', () => {
             contentScript.currentConfig = {
                 subtitlesEnabled: true,
                 platformInitMaxRetries: 3,
-                platformInitRetryDelay: 1000,
+                platformInitRetryDelay: 0,
                 platformInitTimeout: 5000,
             };
             contentScript.contentLogger = mockLogger;
@@ -1267,7 +1268,7 @@ describe('BaseContentScript', () => {
                 });
 
             contentScript.currentConfig.platformInitMaxRetries = 3;
-            contentScript.currentConfig.platformInitRetryDelay = 10;
+            contentScript.currentConfig.platformInitRetryDelay = 0;
             contentScript.startVideoElementDetection = jest.fn();
             contentScript.processBufferedEvents = jest.fn();
 
@@ -1285,7 +1286,7 @@ describe('BaseContentScript', () => {
             };
 
             contentScript.currentConfig.platformInitMaxRetries = 2;
-            contentScript.currentConfig.platformInitRetryDelay = 10;
+            contentScript.currentConfig.platformInitRetryDelay = 0;
 
             const result = await contentScript.initializePlatform();
 
@@ -1726,8 +1727,8 @@ describe('Platform-Specific Method Mocking and Common Functionality Verification
                         initialize() {
                             return Promise.resolve();
                         }
-                        handleNativeSubtitles() {}
-                        cleanup() {}
+                        handleNativeSubtitles() { }
+                        cleanup() { }
                     };
                 }
                 getInjectScriptConfig() {
@@ -1770,8 +1771,8 @@ describe('Platform-Specific Method Mocking and Common Functionality Verification
                         initialize() {
                             return Promise.resolve();
                         }
-                        handleNativeSubtitles() {}
-                        cleanup() {}
+                        handleNativeSubtitles() { }
+                        cleanup() { }
                     };
                 }
                 getInjectScriptConfig() {
@@ -1862,7 +1863,7 @@ describe('Platform-Specific Method Mocking and Common Functionality Verification
                         return name;
                     }
                     getPlatformClass() {
-                        return class MockPlatform {};
+                        return class MockPlatform { };
                     }
                     getInjectScriptConfig() {
                         return {
@@ -1871,8 +1872,8 @@ describe('Platform-Specific Method Mocking and Common Functionality Verification
                             eventId,
                         };
                     }
-                    setupNavigationDetection() {}
-                    checkForUrlChange() {}
+                    setupNavigationDetection() { }
+                    checkForUrlChange() { }
                     handlePlatformSpecificMessage(req, res) {
                         res({
                             platform: name,
@@ -1907,7 +1908,7 @@ describe('Platform-Specific Method Mocking and Common Functionality Verification
 
             // Verify handler information
             const handlers = contentScript.getRegisteredHandlers();
-            expect(handlers).toHaveLength(3);
+            expect(handlers).toHaveLength(8);
 
             const toggleHandler = handlers.find(
                 (h) => h.action === 'toggleSubtitles'

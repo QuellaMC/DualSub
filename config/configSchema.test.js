@@ -181,7 +181,7 @@ describe('configSchema', () => {
             expect(actualSettings).toEqual(
                 expect.arrayContaining(expectedSettings)
             );
-            expect(actualSettings.length).toBe(66);
+            expect(actualSettings.length).toBe(81);
         });
 
         it('should have correct scope distribution', () => {
@@ -196,7 +196,7 @@ describe('configSchema', () => {
                     'aiContextDebugMode',
                 ])
             );
-            expect(localKeys.length).toBe(3);
+            expect(localKeys.length).toBe(5);
 
             // Sync scope should contain all other settings including loggingLevel and OpenAI settings
             expect(syncKeys.length).toBeGreaterThan(10);
