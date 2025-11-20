@@ -273,7 +273,13 @@ For full license terms, see [LICENSE](LICENSE) file.
 
 ## 📋 Changelog
 
-### Version 2.4.0 (Current)
+### Version 2.5.0 (Current)
+
+- 🤖 **Unified AI Experience**: Integrated AI Context Analysis into the Side Panel for a seamless, persistent workspace.
+- 🐛 **Stability Improvements**: Fixed desync issues when switching videos or deselecting words in the side panel.
+- ✨ **Better UX**: Improved word selection ordering to always match sentence structure.
+
+### Version 2.4.0
 
 - 🎉 **Full React Migration**: Popup and options pages migrated to React with 100% functional parity
 - ✨ Modern component-based architecture with custom hooks

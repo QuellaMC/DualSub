@@ -5,6 +5,23 @@ All notable changes to DualSub will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.0] - 2025-11-19
+
+### ✨ Added
+
+- **Unified AI Side Panel**: Migrated the AI Context Analysis modal into the new Side Panel interface. This provides a persistent, non-intrusive workspace for exploring cultural and linguistic context without obstructing the video playback.
+
+### 🐛 Fixed
+
+- **Side Panel Desync Edge Cases**:
+    - Fixed an issue where deselecting words in the side panel or switching videos caused synchronization errors.
+    - Implemented a "Single Source of Truth" architecture where the content script is the authoritative state holder.
+    - Eliminated race conditions by removing optimistic updates from the side panel to the background.
+- **Word Selection Order**:
+    - Ensured that selected words always maintain their original sentence order (DOM order) in the side panel, even after deselection and re-selection.
+- **Duplicate Event Listeners**:
+    - Fixed a bug where `dualsub-word-selected` listeners were accumulating, causing multiple events for a single click. Added proper cleanup logic.
+
 ## [2.4.0] - 2025-09-30
 
 ### 🎉 Major Changes

@@ -1,10 +1,14 @@
 {
     "manifest_version": 3,
     "name": "__MSG_appName__",
-    "version": "2.4.1",
+    "version": "2.5.0",
     "description": "__MSG_appDesc__",
     "default_locale": "en",
-    "permissions": ["tabs", "storage", "activeTab", "sidePanel"],
+    "permissions": [
+        "storage",
+        "activeTab",
+        "sidePanel"
+    ],
     "host_permissions": [
         "*://*.disneyplus.com/*",
         "*://*.netflix.com/*",
@@ -29,16 +33,28 @@
     },
     "content_scripts": [
         {
-            "matches": ["*://*.disneyplus.com/*"],
-            "js": ["content_scripts/platforms/disneyPlusContent.js"],
-            "css": ["content_scripts/shared/content.css"],
+            "matches": [
+                "*://*.disneyplus.com/*"
+            ],
+            "js": [
+                "content_scripts/platforms/disneyPlusContent.js"
+            ],
+            "css": [
+                "content_scripts/shared/content.css"
+            ],
             "run_at": "document_start",
             "type": "module"
         },
         {
-            "matches": ["*://*.netflix.com/*"],
-            "js": ["content_scripts/platforms/netflixContent.js"],
-            "css": ["content_scripts/shared/content.css"],
+            "matches": [
+                "*://*.netflix.com/*"
+            ],
+            "js": [
+                "content_scripts/platforms/netflixContent.js"
+            ],
+            "css": [
+                "content_scripts/shared/content.css"
+            ],
             "run_at": "document_start",
             "type": "module"
         }
@@ -98,7 +114,10 @@
                 "video_platforms/netflixPlatform.js",
                 "content_scripts/platforms/NetflixContentScript.js"
             ],
-            "matches": ["*://*.disneyplus.com/*", "*://*.netflix.com/*"]
+            "matches": [
+                "*://*.disneyplus.com/*",
+                "*://*.netflix.com/*"
+            ]
         }
     ],
     "action": {

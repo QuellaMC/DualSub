@@ -69,7 +69,7 @@
  *
  * @abstract
  * @author DualSub Extension
- * @version 1.0.0
+ * @version 2.5.0
  * @since 1.0.0
  *
  * @example

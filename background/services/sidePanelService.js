@@ -5,7 +5,7 @@
  * Handles opening/closing the side panel, routing messages, and managing state.
  * 
  * @author DualSub Extension
- * @version 2.0.0
+ * @version 2.5.0
  */
 
 import Logger from '../../utils/logger.js';
