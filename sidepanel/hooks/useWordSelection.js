@@ -18,9 +18,6 @@ export function useWordSelection() {
         addWord,
         removeWord,
         clearWords,
-        setSelectedWords,
-        setSourceLanguage,
-        setTargetLanguage,
         sourceLanguage,
         targetLanguage,
         activeTabId
