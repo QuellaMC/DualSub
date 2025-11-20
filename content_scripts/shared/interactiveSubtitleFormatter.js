@@ -8,7 +8,6 @@
  * @version 1.0.0
  */
 
-import { PlatformDetector } from './platformConfig.js';
 
 // Robust logging function that's always available
 const logWithFallback = (() => {
