@@ -1,408 +1,883 @@
 {
-    "appName": { "message": "DualSub" },
-    "appDesc": { "message": "在流媒体平台上显示双语字幕。" },
-    "pageTitle": { "message": "DualSub 设置" },
-    "h1Title": { "message": "DualSub" },
-    "enableSubtitlesLabel": { "message": "启用双语字幕：" },
-    "useNativeSubtitlesLabel": { "message": "使用官方字幕：" },
-    "originalLanguageLabel": { "message": "原始语言：" },
-    "translationSettingsLegend": { "message": "翻译设置" },
-    "providerLabel": { "message": "提供商：" },
-    "targetLanguageLabel": { "message": "翻译为：" },
-    "batchSizeLabel": { "message": "批量大小：" },
-    "requestDelayLabel": { "message": "请求延迟 (ms)：" },
-    "subtitleAppearanceTimingLegend": { "message": "字幕外观和时序" },
-    "displayOrderLabel": { "message": "显示顺序：" },
-    "layoutLabel": { "message": "布局：" },
-    "fontSizeLabel": { "message": "字体大小：" },
-    "verticalGapLabel": { "message": "垂直间距：" },
-    "subtitleVerticalPositionLabel": { "message": "垂直位置：" },
-    "timeOffsetLabel": { "message": "时间偏移(秒)：" },
-    "displayOrderOriginalFirst": { "message": "原文在上" },
-    "displayOrderTranslationFirst": { "message": "译文在上" },
-    "layoutTopBottom": { "message": "上下排列" },
-    "layoutLeftRight": { "message": "左右排列" },
-    "uiLanguageLabel": { "message": "语言：" },
-    "openOptionsButton": { "message": "高级设置" },
-    "statusLanguageSetTo": { "message": "刷新页面后生效：" },
-    "statusDualEnabled": { "message": "双语字幕已启用。（刷新页面）" },
-    "statusDualDisabled": { "message": "双语字幕已禁用。（刷新页面）" },
+    "appName": {
+        "message": "DualSub"
+    },
+    "appDesc": {
+        "message": "在流媒体平台上显示双语字幕。"
+    },
+    "pageTitle": {
+        "message": "DualSub 设置"
+    },
+    "h1Title": {
+        "message": "DualSub"
+    },
+    "enableSubtitlesLabel": {
+        "message": "启用双语字幕："
+    },
+    "useNativeSubtitlesLabel": {
+        "message": "使用官方字幕："
+    },
+    "originalLanguageLabel": {
+        "message": "原始语言："
+    },
+    "translationSettingsLegend": {
+        "message": "翻译设置"
+    },
+    "providerLabel": {
+        "message": "提供商："
+    },
+    "targetLanguageLabel": {
+        "message": "翻译为："
+    },
+    "batchSizeLabel": {
+        "message": "批量大小："
+    },
+    "requestDelayLabel": {
+        "message": "请求延迟 (ms)："
+    },
+    "subtitleAppearanceTimingLegend": {
+        "message": "字幕外观和时序"
+    },
+    "displayOrderLabel": {
+        "message": "显示顺序："
+    },
+    "layoutLabel": {
+        "message": "布局："
+    },
+    "fontSizeLabel": {
+        "message": "字体大小："
+    },
+    "verticalGapLabel": {
+        "message": "垂直间距："
+    },
+    "subtitleVerticalPositionLabel": {
+        "message": "垂直位置："
+    },
+    "timeOffsetLabel": {
+        "message": "时间偏移(秒)："
+    },
+    "displayOrderOriginalFirst": {
+        "message": "原文在上"
+    },
+    "displayOrderTranslationFirst": {
+        "message": "译文在上"
+    },
+    "layoutTopBottom": {
+        "message": "上下排列"
+    },
+    "layoutLeftRight": {
+        "message": "左右排列"
+    },
+    "uiLanguageLabel": {
+        "message": "语言："
+    },
+    "openOptionsButton": {
+        "message": "高级设置"
+    },
+    "statusLanguageSetTo": {
+        "message": "刷新页面后生效："
+    },
+    "statusDualEnabled": {
+        "message": "双语字幕已启用。（刷新页面）"
+    },
+    "statusDualDisabled": {
+        "message": "双语字幕已禁用。（刷新页面）"
+    },
     "statusSmartTranslationEnabled": {
         "message": "智能翻译已启用。（刷新页面）"
     },
     "statusSmartTranslationDisabled": {
         "message": "智能翻译已禁用。（刷新页面）"
     },
-    "statusOriginalLanguage": { "message": "刷新页面后生效：" },
-    "statusTimeOffset": { "message": "时间偏移：" },
-    "statusDisplayOrderUpdated": { "message": "显示顺序已更新。" },
-    "statusLayoutOrientationUpdated": { "message": "布局方向已更新。" },
-    "statusFontSize": { "message": "字体大小：" },
-    "statusVerticalGap": { "message": "垂直间距：" },
-    "statusVerticalPosition": { "message": "垂直位置：" },
-    "statusInvalidOffset": { "message": "无效偏移，已还原。" },
-    "statusSettingNotApplied": { "message": "设置未应用。请刷新页面。" },
-
-    "optionsPageTitle": { "message": "DualSub 选项" },
-    "optionsH1Title": { "message": "DualSub" },
-    "navGeneral": { "message": "常规" },
-    "navTranslation": { "message": "翻译" },
-    "navProviders": { "message": "提供商" },
-    "navAbout": { "message": "关于" },
-    "sectionGeneral": { "message": "常规" },
-    "cardUILanguageTitle": { "message": "界面语言" },
-    "cardUILanguageDesc": { "message": "选择扩展界面的显示语言。" },
-    "cardHideOfficialSubtitlesTitle": { "message": "隐藏官方字幕" },
+    "statusOriginalLanguage": {
+        "message": "刷新页面后生效："
+    },
+    "statusTimeOffset": {
+        "message": "时间偏移："
+    },
+    "statusDisplayOrderUpdated": {
+        "message": "显示顺序已更新。"
+    },
+    "statusLayoutOrientationUpdated": {
+        "message": "布局方向已更新。"
+    },
+    "statusFontSize": {
+        "message": "字体大小："
+    },
+    "statusVerticalGap": {
+        "message": "垂直间距："
+    },
+    "statusVerticalPosition": {
+        "message": "垂直位置："
+    },
+    "statusInvalidOffset": {
+        "message": "无效偏移，已还原。"
+    },
+    "statusSettingNotApplied": {
+        "message": "设置未应用。请刷新页面。"
+    },
+    "optionsPageTitle": {
+        "message": "DualSub 选项"
+    },
+    "optionsH1Title": {
+        "message": "DualSub"
+    },
+    "navGeneral": {
+        "message": "常规"
+    },
+    "navTranslation": {
+        "message": "翻译"
+    },
+    "navProviders": {
+        "message": "提供商"
+    },
+    "navAbout": {
+        "message": "关于"
+    },
+    "sectionGeneral": {
+        "message": "常规"
+    },
+    "cardUILanguageTitle": {
+        "message": "界面语言"
+    },
+    "cardUILanguageDesc": {
+        "message": "选择扩展界面的显示语言。"
+    },
+    "cardHideOfficialSubtitlesTitle": {
+        "message": "隐藏官方字幕"
+    },
     "cardHideOfficialSubtitlesDesc": {
         "message": "当 DualSub 激活时，隐藏视频平台的官方字幕。"
     },
-    "hideOfficialSubtitlesLabel": { "message": "隐藏官方字幕：" },
-    "sectionTranslation": { "message": "翻译" },
-    "cardTranslationEngineTitle": { "message": "翻译引擎" },
-    "cardTranslationEngineDesc": { "message": "选择您喜欢的翻译服务。" },
-    "cardPerformanceTitle": { "message": "性能" },
+    "hideOfficialSubtitlesLabel": {
+        "message": "隐藏官方字幕："
+    },
+    "sectionTranslation": {
+        "message": "翻译"
+    },
+    "cardTranslationEngineTitle": {
+        "message": "翻译引擎"
+    },
+    "cardTranslationEngineDesc": {
+        "message": "选择您喜欢的翻译服务。"
+    },
+    "cardPerformanceTitle": {
+        "message": "性能"
+    },
     "cardPerformanceDesc": {
         "message": "调整扩展处理翻译请求的方式，以平衡速度和稳定性。"
     },
-    "sectionProviders": { "message": "提供商设置" },
-    "cardDeepLTitle": { "message": "DeepL" },
+    "sectionProviders": {
+        "message": "提供商设置"
+    },
+    "cardDeepLTitle": {
+        "message": "DeepL"
+    },
     "cardDeepLDesc": {
         "message": "输入您的 DeepL 翻译 API 密钥。选择免费或专业版计划。"
     },
-    "apiKeyLabel": { "message": "API 密钥：" },
-    "apiPlanLabel": { "message": "API 计划：" },
-    "apiPlanFree": { "message": "DeepL API 免费版" },
-    "apiPlanPro": { "message": "DeepL API 专业版" },
-    "sectionAbout": { "message": "关于" },
-    "cardAboutTitle": { "message": "DualSub" },
-    "aboutVersion": { "message": "版本" },
+    "apiKeyLabel": {
+        "message": "API 密钥："
+    },
+    "apiPlanLabel": {
+        "message": "API 计划："
+    },
+    "apiPlanFree": {
+        "message": "DeepL API 免费版"
+    },
+    "apiPlanPro": {
+        "message": "DeepL API 专业版"
+    },
+    "sectionAbout": {
+        "message": "关于"
+    },
+    "cardAboutTitle": {
+        "message": "DualSub"
+    },
+    "aboutVersion": {
+        "message": "版本"
+    },
     "aboutDescription": {
         "message": "此扩展帮助您在各种平台上观看双语字幕视频。"
     },
-    "aboutDevelopment": { "message": "由 QuellaMC & 1jifang 开发。" },
-
-    "lang_en": { "message": "英语" },
-    "lang_es": { "message": "西班牙语" },
-    "lang_fr": { "message": "法语" },
-    "lang_de": { "message": "德语" },
-    "lang_it": { "message": "意大利语" },
-    "lang_pt": { "message": "葡萄牙语" },
-    "lang_ja": { "message": "日语" },
-    "lang_ko": { "message": "韩语" },
-    "lang_zh_CN": { "message": "中文 (简体)" },
-    "lang_zh_TW": { "message": "中文 (繁体)" },
-    "lang_ru": { "message": "俄语" },
-    "lang_ar": { "message": "阿拉伯语" },
-    "lang_hi": { "message": "印地语" },
-
-    "testDeepLButton": { "message": "测试 DeepL 连接" },
-    "deeplApiKeyError": { "message": "请先输入您的 DeepL API 密钥。" },
-    "testingButton": { "message": "测试中..." },
-    "testingConnection": { "message": "正在测试 DeepL 连接..." },
+    "aboutDevelopment": {
+        "message": "由 QuellaMC & 1jifang 开发。"
+    },
+    "lang_en": {
+        "message": "英语"
+    },
+    "lang_es": {
+        "message": "西班牙语"
+    },
+    "lang_fr": {
+        "message": "法语"
+    },
+    "lang_de": {
+        "message": "德语"
+    },
+    "lang_it": {
+        "message": "意大利语"
+    },
+    "lang_pt": {
+        "message": "葡萄牙语"
+    },
+    "lang_ja": {
+        "message": "日语"
+    },
+    "lang_ko": {
+        "message": "韩语"
+    },
+    "lang_zh_CN": {
+        "message": "中文 (简体)"
+    },
+    "lang_zh_TW": {
+        "message": "中文 (繁体)"
+    },
+    "lang_ru": {
+        "message": "俄语"
+    },
+    "lang_ar": {
+        "message": "阿拉伯语"
+    },
+    "lang_hi": {
+        "message": "印地语"
+    },
+    "testDeepLButton": {
+        "message": "测试 DeepL 连接"
+    },
+    "deeplApiKeyError": {
+        "message": "请先输入您的 DeepL API 密钥。"
+    },
+    "testingButton": {
+        "message": "测试中..."
+    },
+    "testingConnection": {
+        "message": "正在测试 DeepL 连接..."
+    },
     "deeplTestSuccess": {
         "message": "✅ DeepL API 测试成功"
     },
-    "deeplTestUnexpectedFormat": { "message": "⚠️ DeepL API 响应但格式异常" },
-    "deeplTestInvalidKey": { "message": "❌ DeepL API 密钥无效或被拒绝。" },
+    "deeplTestUnexpectedFormat": {
+        "message": "⚠️ DeepL API 响应但格式异常"
+    },
+    "deeplTestInvalidKey": {
+        "message": "❌ DeepL API 密钥无效或被拒绝。"
+    },
     "deeplTestQuotaExceeded": {
         "message": "❌ DeepL API 配额已超限。请检查您的使用限制。"
     },
-    "deeplTestApiError": { "message": "❌ DeepL API 错误 (%d)：%s" },
+    "deeplTestApiError": {
+        "message": "❌ DeepL API 错误 (%d)：%s"
+    },
     "deeplTestNetworkError": {
         "message": "❌ 网络错误：无法连接到 DeepL API。请检查您的网络连接。"
     },
-    "deeplTestGenericError": { "message": "❌ 测试失败：%s" },
-    "deepLApiUnavailable": { "message": "DeepL API 不可用" },
-    "deepLApiUnavailableTooltip": { "message": "DeepL API 脚本加载失败" },
+    "deeplTestGenericError": {
+        "message": "❌ 测试失败：%s"
+    },
+    "deepLApiUnavailable": {
+        "message": "DeepL API 不可用"
+    },
+    "deepLApiUnavailableTooltip": {
+        "message": "DeepL API 脚本加载失败"
+    },
     "deeplApiNotLoadedError": {
         "message": "❌ DeepL API 脚本不可用。请刷新页面。"
     },
-
-    "cardGoogleTitle": { "message": "谷歌翻译" },
-    "cardGoogleDesc": { "message": "由谷歌提供的免费翻译服务。无需额外配置。" },
-    "cardMicrosoftTitle": { "message": "微软翻译" },
+    "cardGoogleTitle": {
+        "message": "谷歌翻译"
+    },
+    "cardGoogleDesc": {
+        "message": "由谷歌提供的免费翻译服务。无需额外配置。"
+    },
+    "cardMicrosoftTitle": {
+        "message": "微软翻译"
+    },
     "cardMicrosoftDesc": {
         "message": "由微软 Edge 提供的免费翻译服务。无需额外配置。"
     },
-    "cardDeepLFreeTitle": { "message": "DeepL 翻译（免费）" },
+    "cardDeepLFreeTitle": {
+        "message": "DeepL 翻译（免费）"
+    },
     "cardDeepLFreeDesc": {
         "message": "免费的 DeepL 翻译服务，提供高质量的翻译结果。无需 API 密钥 - 使用 DeepL 的网页接口。"
     },
-    "providerStatus": { "message": "状态：" },
-    "statusReady": { "message": "可以使用" },
-    "providerFeatures": { "message": "特性：" },
-    "featureFree": { "message": "免费使用" },
-    "featureNoApiKey": { "message": "无需 API 密钥" },
-    "featureWideLanguageSupport": { "message": "广泛的语言支持" },
-    "featureFastTranslation": { "message": "快速翻译" },
-    "featureHighQuality": { "message": "高质量翻译" },
-    "featureGoodPerformance": { "message": "良好的性能" },
-    "featureHighestQuality": { "message": "最高质量翻译" },
-    "featureApiKeyRequired": { "message": "需要 API 密钥" },
-    "featureLimitedLanguages": { "message": "有限的语言支持" },
-    "featureUsageLimits": { "message": "使用限制适用" },
-    "featureMultipleBackups": { "message": "多种备用方法" },
-
-    "providerNotes": { "message": "注意事项：" },
-    "noteSlowForSecurity": { "message": "由于安全措施，速度稍慢" },
-    "noteAutoFallback": { "message": "自动回退到其他服务" },
-    "noteRecommendedDefault": { "message": "推荐作为默认提供商" },
-
-    "providerGoogleName": { "message": "谷歌翻译（免费）" },
-    "providerMicrosoftName": { "message": "微软翻译（免费）" },
-    "providerDeepLName": { "message": "DeepL（需要 API 密钥）" },
-    "providerDeepLFreeName": { "message": "DeepL 翻译（免费）" },
+    "providerStatus": {
+        "message": "状态："
+    },
+    "statusReady": {
+        "message": "可以使用"
+    },
+    "providerFeatures": {
+        "message": "特性："
+    },
+    "featureFree": {
+        "message": "免费使用"
+    },
+    "featureNoApiKey": {
+        "message": "无需 API 密钥"
+    },
+    "featureWideLanguageSupport": {
+        "message": "广泛的语言支持"
+    },
+    "featureFastTranslation": {
+        "message": "快速翻译"
+    },
+    "featureHighQuality": {
+        "message": "高质量翻译"
+    },
+    "featureGoodPerformance": {
+        "message": "良好的性能"
+    },
+    "featureHighestQuality": {
+        "message": "最高质量翻译"
+    },
+    "featureApiKeyRequired": {
+        "message": "需要 API 密钥"
+    },
+    "featureLimitedLanguages": {
+        "message": "有限的语言支持"
+    },
+    "featureUsageLimits": {
+        "message": "使用限制适用"
+    },
+    "featureMultipleBackups": {
+        "message": "多种备用方法"
+    },
+    "providerNotes": {
+        "message": "注意事项："
+    },
+    "noteSlowForSecurity": {
+        "message": "由于安全措施，速度稍慢"
+    },
+    "noteAutoFallback": {
+        "message": "自动回退到其他服务"
+    },
+    "noteRecommendedDefault": {
+        "message": "推荐作为默认提供商"
+    },
+    "providerGoogleName": {
+        "message": "谷歌翻译（免费）"
+    },
+    "providerMicrosoftName": {
+        "message": "微软翻译（免费）"
+    },
+    "providerDeepLName": {
+        "message": "DeepL（需要 API 密钥）"
+    },
+    "providerDeepLFreeName": {
+        "message": "DeepL 翻译（免费）"
+    },
     "providerOpenAICompatibleName": {
         "message": "OpenAI 兼容（需要 API 密钥）"
     },
     "providerVertexGeminiName": {
         "message": "Vertex AI Gemini（需要 API 密钥）"
     },
-    "cardOpenAICompatibleTitle": { "message": "OpenAI 兼容（需要 API 密钥）" },
+    "cardOpenAICompatibleTitle": {
+        "message": "OpenAI 兼容（需要 API 密钥）"
+    },
     "cardOpenAICompatibleDesc": {
         "message": "输入您的 API 密钥和设置，用于 Gemini 等 OpenAI 兼容服务。"
     },
-    "cardVertexGeminiTitle": { "message": "Vertex AI Gemini（需要 API 密钥）" },
+    "cardVertexGeminiTitle": {
+        "message": "Vertex AI Gemini（需要 API 密钥）"
+    },
     "cardVertexGeminiDesc": {
         "message": "输入您的访问令牌和 Vertex 项目设置，或导入服务账号 JSON 文件。"
     },
-    "vertexAccessTokenLabel": { "message": "访问令牌：" },
-    "vertexProjectIdLabel": { "message": "项目 ID：" },
-    "vertexLocationLabel": { "message": "位置：" },
-    "vertexModelLabel": { "message": "模型：" },
-    "vertexMissingConfig": { "message": "请输入访问令牌和项目 ID。" },
-    "vertexConnectionFailed": { "message": "连接失败：%s" },
-    "vertexServiceAccountLabel": { "message": "服务账号 JSON：" },
-    "vertexImportButton": { "message": "导入 JSON 文件" },
-    "vertexRefreshButton": { "message": "🔄 刷新令牌" },
-    "vertexImportHint": { "message": "自动填充下方凭据" },
-    "vertexImporting": { "message": "导入中..." },
-    "vertexRefreshingToken": { "message": "正在刷新访问令牌..." },
-    "vertexGeneratingToken": { "message": "正在生成访问令牌..." },
-    "vertexImportSuccess": { "message": "服务账号已导入并生成令牌。" },
-    "vertexImportFailed": { "message": "导入失败：%s" },
-    "vertexTokenRefreshed": { "message": "访问令牌刷新成功。" },
-    "vertexRefreshFailed": { "message": "令牌刷新失败：%s" },
-    "vertexTokenExpired": { "message": "⚠️ 访问令牌已过期。点击刷新以续期。" },
+    "vertexAccessTokenLabel": {
+        "message": "访问令牌："
+    },
+    "vertexProjectIdLabel": {
+        "message": "项目 ID："
+    },
+    "vertexLocationLabel": {
+        "message": "位置："
+    },
+    "vertexModelLabel": {
+        "message": "模型："
+    },
+    "vertexMissingConfig": {
+        "message": "请输入访问令牌和项目 ID。"
+    },
+    "vertexConnectionFailed": {
+        "message": "连接失败：%s"
+    },
+    "vertexServiceAccountLabel": {
+        "message": "服务账号 JSON："
+    },
+    "vertexImportButton": {
+        "message": "导入 JSON 文件"
+    },
+    "vertexRefreshButton": {
+        "message": "🔄 刷新令牌"
+    },
+    "vertexImportHint": {
+        "message": "自动填充下方凭据"
+    },
+    "vertexImporting": {
+        "message": "导入中..."
+    },
+    "vertexRefreshingToken": {
+        "message": "正在刷新访问令牌..."
+    },
+    "vertexGeneratingToken": {
+        "message": "正在生成访问令牌..."
+    },
+    "vertexImportSuccess": {
+        "message": "服务账号已导入并生成令牌。"
+    },
+    "vertexImportFailed": {
+        "message": "导入失败：%s"
+    },
+    "vertexTokenRefreshed": {
+        "message": "访问令牌刷新成功。"
+    },
+    "vertexRefreshFailed": {
+        "message": "令牌刷新失败：%s"
+    },
+    "vertexTokenExpired": {
+        "message": "⚠️ 访问令牌已过期。点击刷新以续期。"
+    },
     "vertexTokenExpiringSoon": {
         "message": "⚠️ 令牌将在 %s 分钟后过期。建议刷新。"
     },
-    "vertexConfigured": { "message": "⚠️ Vertex AI 已配置。请测试连接。" },
-    "vertexNotConfigured": { "message": "请导入服务账号 JSON 或输入凭据。" },
-    "featureVertexServiceAccount": { "message": "服务账号 JSON 导入" },
-    "featureVertexAutoToken": { "message": "自动生成令牌" },
+    "vertexConfigured": {
+        "message": "⚠️ Vertex AI 已配置。请测试连接。"
+    },
+    "vertexNotConfigured": {
+        "message": "请导入服务账号 JSON 或输入凭据。"
+    },
+    "featureVertexServiceAccount": {
+        "message": "服务账号 JSON 导入"
+    },
+    "featureVertexAutoToken": {
+        "message": "自动生成令牌"
+    },
     "featureVertexGemini": {
         "message": "通过 Vertex AI 使用 Google Gemini 模型"
     },
-    "providerNote": { "message": "注意：" },
+    "providerNote": {
+        "message": "注意："
+    },
     "vertexNote": {
         "message": "访问令牌在 1 小时后过期。您的服务账号已安全存储，需要时只需点击刷新令牌按钮即可。"
     },
-    "baseUrlLabel": { "message": "基础 URL：" },
-    "modelLabel": { "message": "模型：" },
-    "featureCustomizable": { "message": "可自定义端点和模型" },
-    "fetchModelsButton": { "message": "获取模型" },
-    "testConnectionButton": { "message": "测试连接" },
-
-    "openaiApiKeyPlaceholder": { "message": "输入您的 OpenAI 兼容 API 密钥" },
+    "baseUrlLabel": {
+        "message": "基础 URL："
+    },
+    "modelLabel": {
+        "message": "模型："
+    },
+    "featureCustomizable": {
+        "message": "可自定义端点和模型"
+    },
+    "fetchModelsButton": {
+        "message": "获取模型"
+    },
+    "testConnectionButton": {
+        "message": "测试连接"
+    },
+    "openaiApiKeyPlaceholder": {
+        "message": "输入您的 OpenAI 兼容 API 密钥"
+    },
     "openaiBaseUrlPlaceholder": {
         "message": "例如：https://api.openai.com/v1"
     },
-    "openaiApiKeyError": { "message": "请先输入您的 API 密钥。" },
-    "openaiApiKeyNeedsTesting": { "message": "⚠️ API 密钥需要测试。" },
+    "openaiApiKeyError": {
+        "message": "请先输入您的 API 密钥。"
+    },
+    "openaiApiKeyNeedsTesting": {
+        "message": "⚠️ API 密钥需要测试。"
+    },
     "openaiTestNeedsTesting": {
         "message": "⚠️ OpenAI 兼容 API 密钥需要测试。"
     },
-    "openaiTestingConnection": { "message": "正在测试连接..." },
-    "openaiConnectionSuccessful": { "message": "连接成功！" },
-    "openaiConnectionFailed": { "message": "连接失败：%s" },
-    "openaieFetchingModels": { "message": "正在获取模型..." },
-    "openaiModelsFetchedSuccessfully": { "message": "模型获取成功。" },
-    "openaiFailedToFetchModels": { "message": "获取模型失败：%s" },
-
-    "cardLoggingLevelTitle": { "message": "日志级别" },
+    "openaiTestingConnection": {
+        "message": "正在测试连接..."
+    },
+    "openaiConnectionSuccessful": {
+        "message": "连接成功！"
+    },
+    "openaiConnectionFailed": {
+        "message": "连接失败：%s"
+    },
+    "openaieFetchingModels": {
+        "message": "正在获取模型..."
+    },
+    "openaiModelsFetchedSuccessfully": {
+        "message": "模型获取成功。"
+    },
+    "openaiFailedToFetchModels": {
+        "message": "获取模型失败：%s"
+    },
+    "cardLoggingLevelTitle": {
+        "message": "日志级别"
+    },
     "cardLoggingLevelDesc": {
         "message": "控制浏览器控制台中显示的调试信息量。较高级别包含所有较低级别的消息。"
     },
-    "loggingLevelLabel": { "message": "日志级别：" },
-    "loggingLevelOff": { "message": "关闭" },
-    "loggingLevelError": { "message": "仅错误" },
-    "loggingLevelWarn": { "message": "警告和错误" },
-    "loggingLevelInfo": { "message": "信息及以上" },
-    "loggingLevelDebug": { "message": "调试（全部）" },
-
-    "cardBatchTranslationTitle": { "message": "批量翻译" },
+    "loggingLevelLabel": {
+        "message": "日志级别："
+    },
+    "loggingLevelOff": {
+        "message": "关闭"
+    },
+    "loggingLevelError": {
+        "message": "仅错误"
+    },
+    "loggingLevelWarn": {
+        "message": "警告和错误"
+    },
+    "loggingLevelInfo": {
+        "message": "信息及以上"
+    },
+    "loggingLevelDebug": {
+        "message": "调试（全部）"
+    },
+    "cardBatchTranslationTitle": {
+        "message": "批量翻译"
+    },
     "cardBatchTranslationDesc": {
         "message": "批量翻译将多个字幕片段一起处理，减少 80-90% 的 API 调用并提高性能。为您首选的翻译提供商配置最佳设置。"
     },
-    "batchingEnabledLabel": { "message": "启用批量翻译：" },
+    "batchingEnabledLabel": {
+        "message": "启用批量翻译："
+    },
     "batchingEnabledHelp": {
         "message": "将多个字幕片段组合成单个翻译请求"
     },
-    "useProviderDefaultsLabel": { "message": "使用提供商优化设置：" },
+    "useProviderDefaultsLabel": {
+        "message": "使用提供商优化设置："
+    },
     "useProviderDefaultsHelp": {
         "message": "自动为每个翻译提供商使用最佳批量大小"
     },
-    "globalBatchSizeLabel": { "message": "全局批量大小：" },
+    "globalBatchSizeLabel": {
+        "message": "全局批量大小："
+    },
     "globalBatchSizeHelp": {
         "message": "一起处理的字幕片段数量（1-15）"
     },
-    "smartBatchingLabel": { "message": "智能批量优化：" },
+    "smartBatchingLabel": {
+        "message": "智能批量优化："
+    },
     "smartBatchingHelp": {
         "message": "根据播放位置优先处理字幕片段"
     },
-    "maxConcurrentBatchesLabel": { "message": "最大并发批次：" },
+    "maxConcurrentBatchesLabel": {
+        "message": "最大并发批次："
+    },
     "maxConcurrentBatchesHelp": {
         "message": "同时处理的翻译批次数量"
     },
-
-    "cardProviderBatchTitle": { "message": "提供商特定批量大小" },
+    "cardProviderBatchTitle": {
+        "message": "提供商特定批量大小"
+    },
     "cardProviderBatchDesc": {
         "message": "为每个翻译提供商配置最佳批量大小。这些设置在启用\"使用提供商优化设置\"时使用。"
     },
-    "openaieBatchSizeLabel": { "message": "OpenAI 批量大小：" },
+    "openaieBatchSizeLabel": {
+        "message": "OpenAI 批量大小："
+    },
     "openaieBatchSizeHelp": {
         "message": "推荐：5-10 个片段（默认：8）"
     },
-    "googleBatchSizeLabel": { "message": "谷歌翻译批量大小：" },
+    "googleBatchSizeLabel": {
+        "message": "谷歌翻译批量大小："
+    },
     "googleBatchSizeHelp": {
         "message": "推荐：3-5 个片段（默认：4）"
     },
-    "deeplBatchSizeLabel": { "message": "DeepL 批量大小：" },
+    "deeplBatchSizeLabel": {
+        "message": "DeepL 批量大小："
+    },
     "deeplBatchSizeHelp": {
         "message": "推荐：2-3 个片段（默认：3）"
     },
-    "microsoftBatchSizeLabel": { "message": "微软翻译批量大小：" },
+    "microsoftBatchSizeLabel": {
+        "message": "微软翻译批量大小："
+    },
     "microsoftBatchSizeHelp": {
         "message": "推荐：3-5 个片段（默认：4）"
     },
-    "vertexBatchSizeLabel": { "message": "Vertex AI 批量大小：" },
+    "vertexBatchSizeLabel": {
+        "message": "Vertex AI 批量大小："
+    },
     "vertexBatchSizeHelp": {
         "message": "推荐：5-10 个片段（默认：8）"
     },
-
-    "deeplTestNeedsTesting": { "message": "⚠️ DeepL API 密钥需要测试。" },
-
-    "cardProviderDelayTitle": { "message": "提供商特定请求延迟" },
+    "deeplTestNeedsTesting": {
+        "message": "⚠️ DeepL API 密钥需要测试。"
+    },
+    "cardProviderDelayTitle": {
+        "message": "提供商特定请求延迟"
+    },
     "cardProviderDelayDesc": {
         "message": "配置翻译请求之间的强制延迟以防止账户锁定。即使启用批量处理，这些延迟也会应用。"
     },
-    "openaieDelayLabel": { "message": "OpenAI 请求延迟 (ms)：" },
+    "openaieDelayLabel": {
+        "message": "OpenAI 请求延迟 (ms)："
+    },
     "openaieDelayHelp": {
         "message": "请求之间的最小延迟（默认：100ms）"
     },
-    "googleDelayLabel": { "message": "谷歌翻译请求延迟 (ms)：" },
+    "googleDelayLabel": {
+        "message": "谷歌翻译请求延迟 (ms)："
+    },
     "googleDelayHelp": {
         "message": "防止临时锁定所需的延迟（默认：1500ms）"
     },
-    "deeplDelayLabel": { "message": "DeepL API 请求延迟 (ms)：" },
+    "deeplDelayLabel": {
+        "message": "DeepL API 请求延迟 (ms)："
+    },
     "deeplDelayHelp": {
         "message": "DeepL API 请求的延迟（默认：500ms）"
     },
-    "deeplFreeDelayLabel": { "message": "DeepL 免费请求延迟 (ms)：" },
+    "deeplFreeDelayLabel": {
+        "message": "DeepL 免费请求延迟 (ms)："
+    },
     "deeplFreeDelayHelp": {
         "message": "免费层的保守延迟（默认：2000ms）"
     },
-    "microsoftDelayLabel": { "message": "微软翻译请求延迟 (ms)：" },
+    "microsoftDelayLabel": {
+        "message": "微软翻译请求延迟 (ms)："
+    },
     "microsoftDelayHelp": {
         "message": "尊重字符限制的延迟（默认：800ms）"
     },
-    "vertexDelayLabel": { "message": "Vertex AI 请求延迟 (ms)：" },
+    "vertexDelayLabel": {
+        "message": "Vertex AI 请求延迟 (ms)："
+    },
     "vertexDelayHelp": {
         "message": "请求之间的最小延迟（默认：100ms）"
     },
-
-    "aiContextModalTitle": { "message": "AI 上下文分析" },
-    "aiContextSelectedWords": { "message": "选中的词语" },
-    "aiContextNoWordsSelected": { "message": "未选择词语" },
-    "aiContextClickHint": { "message": "💡 点击词语来添加或移除。" },
-    "aiContextStartAnalysis": { "message": "开始分析" },
-    "aiContextPauseAnalysis": { "message": "⏸ 暂停" },
-    "aiContextPauseAnalysisTitle": { "message": "暂停分析" },
-    "aiContextInitialMessage": { "message": "从字幕中选择词语开始分析。" },
-    "aiContextAnalyzing": { "message": "正在分析上下文..." },
-    "aiContextPauseNote": { "message": "点击 ⏸ 暂停分析" },
-    "aiContextAnalysisFailed": { "message": "分析失败" },
-    "aiContextNoContent": { "message": "无分析内容" },
-    "aiContextNoContentMessage": { "message": "分析已完成但未返回内容。" },
-    "aiContextDefinition": { "message": "📖 定义" },
-    "aiContextCultural": { "message": "🌍 文化背景" },
-    "aiContextCulturalSignificance": { "message": "⭐ 文化意义" },
-    "aiContextHistorical": { "message": "📜 历史背景" },
-    "aiContextHistoricalSignificance": { "message": "📜 历史意义" },
-    "aiContextEvolution": { "message": "🔄 历史演变" },
-    "aiContextLinguistic": { "message": "🔤 语言学分析" },
-    "aiContextGrammar": { "message": "📝 语法与语义" },
-    "aiContextUsage": { "message": "💡 用法与例句" },
-    "aiContextExamples": { "message": "例句：" },
-    "aiContextLearningTips": { "message": "🎯 学习提示" },
-    "aiContextRelatedExpressions": { "message": "🔗 相关表达" },
-    "aiContextKeyInsights": { "message": "🔑 关键见解" },
-    "aiContextTypeCultural": { "message": "文化" },
-    "aiContextTypeHistorical": { "message": "历史" },
-    "aiContextTypeLinguistic": { "message": "语言学" },
-    "aiContextTypeComprehensive": { "message": "综合" },
-    "aiContextTypeGeneric": { "message": "上下文" },
-    "aiContextClose": { "message": "关闭" },
-    "aiContextAnalysisResults": { "message": "分析结果" },
-    "aiContextRetrying": { "message": "分析失败，正在重新生成..." },
-    "aiContextRetryNotification": { "message": "分析失败，正在重试..." },
-    "aiContextRetryButton": { "message": "重试" },
+    "aiContextModalTitle": {
+        "message": "AI 上下文分析"
+    },
+    "aiContextSelectedWords": {
+        "message": "选中的词语"
+    },
+    "aiContextNoWordsSelected": {
+        "message": "未选择词语"
+    },
+    "aiContextClickHint": {
+        "message": "💡 点击词语来添加或移除。"
+    },
+    "aiContextStartAnalysis": {
+        "message": "开始分析"
+    },
+    "aiContextPauseAnalysis": {
+        "message": "⏸ 暂停"
+    },
+    "aiContextPauseAnalysisTitle": {
+        "message": "暂停分析"
+    },
+    "aiContextInitialMessage": {
+        "message": "从字幕中选择词语开始分析。"
+    },
+    "aiContextAnalyzing": {
+        "message": "正在分析上下文..."
+    },
+    "aiContextPauseNote": {
+        "message": "点击 ⏸ 暂停分析"
+    },
+    "aiContextAnalysisFailed": {
+        "message": "分析失败"
+    },
+    "aiContextNoContent": {
+        "message": "无分析内容"
+    },
+    "aiContextNoContentMessage": {
+        "message": "分析已完成但未返回内容。"
+    },
+    "aiContextDefinition": {
+        "message": "📖 定义"
+    },
+    "aiContextCultural": {
+        "message": "🌍 文化背景"
+    },
+    "aiContextCulturalSignificance": {
+        "message": "⭐ 文化意义"
+    },
+    "aiContextHistorical": {
+        "message": "📜 历史背景"
+    },
+    "aiContextHistoricalSignificance": {
+        "message": "📜 历史意义"
+    },
+    "aiContextEvolution": {
+        "message": "🔄 历史演变"
+    },
+    "aiContextLinguistic": {
+        "message": "🔤 语言学分析"
+    },
+    "aiContextGrammar": {
+        "message": "📝 语法与语义"
+    },
+    "aiContextUsage": {
+        "message": "💡 用法与例句"
+    },
+    "aiContextExamples": {
+        "message": "例句："
+    },
+    "aiContextLearningTips": {
+        "message": "🎯 学习提示"
+    },
+    "aiContextRelatedExpressions": {
+        "message": "🔗 相关表达"
+    },
+    "aiContextKeyInsights": {
+        "message": "🔑 关键见解"
+    },
+    "aiContextTypeCultural": {
+        "message": "文化"
+    },
+    "aiContextTypeHistorical": {
+        "message": "历史"
+    },
+    "aiContextTypeLinguistic": {
+        "message": "语言学"
+    },
+    "aiContextTypeComprehensive": {
+        "message": "综合"
+    },
+    "aiContextTypeGeneric": {
+        "message": "上下文"
+    },
+    "aiContextClose": {
+        "message": "关闭"
+    },
+    "aiContextAnalysisResults": {
+        "message": "分析结果"
+    },
+    "aiContextRetrying": {
+        "message": "分析失败，正在重新生成..."
+    },
+    "aiContextRetryNotification": {
+        "message": "分析失败，正在重试..."
+    },
+    "aiContextRetryButton": {
+        "message": "重试"
+    },
     "aiContextMalformedResponse": {
         "message": "AI 服务返回了无效的响应格式。这可能是由于临时服务问题。"
     },
     "aiContextJsonCodeBlock": {
         "message": "AI 服务返回了未处理的 JSON 代码而不是结构化数据。这表明响应中存在格式错误。"
     },
-    "aiContextCulturalContext": { "message": "文化背景:" },
-    "aiContextSocialUsage": { "message": "社会用法:" },
-    "aiContextRegionalNotes": { "message": "地区特色:" },
-    "aiContextOrigins": { "message": "词源:" },
-    "aiContextHistoricalContext": { "message": "历史背景:" },
-    "aiContextEtymology": { "message": "词源学:" },
-    "aiContextGrammarNotes": { "message": "语法注释:" },
-    "aiContextTranslationNotes": { "message": "翻译注释:" },
-    "aiContextLinguisticAnalysis": { "message": "语言学分析:" },
-    "aiContextGrammarSemantics": { "message": "语法与语义:" },
-    "aiContextUsageExamples": { "message": "用法与例句:" },
-
-    "navAIContext": { "message": "AI 上下文" },
-    "sectionAIContext": { "message": "AI 上下文助手" },
-    "cardAIContextToggleTitle": { "message": "启用 AI 上下文分析" },
+    "aiContextCulturalContext": {
+        "message": "文化背景:"
+    },
+    "aiContextSocialUsage": {
+        "message": "社会用法:"
+    },
+    "aiContextRegionalNotes": {
+        "message": "地区特色:"
+    },
+    "aiContextOrigins": {
+        "message": "词源:"
+    },
+    "aiContextHistoricalContext": {
+        "message": "历史背景:"
+    },
+    "aiContextEtymology": {
+        "message": "词源学:"
+    },
+    "aiContextGrammarNotes": {
+        "message": "语法注释:"
+    },
+    "aiContextTranslationNotes": {
+        "message": "翻译注释:"
+    },
+    "aiContextLinguisticAnalysis": {
+        "message": "语言学分析:"
+    },
+    "aiContextGrammarSemantics": {
+        "message": "语法与语义:"
+    },
+    "aiContextUsageExamples": {
+        "message": "用法与例句:"
+    },
+    "navAIContext": {
+        "message": "AI 上下文"
+    },
+    "sectionAIContext": {
+        "message": "AI 上下文助手"
+    },
+    "cardAIContextToggleTitle": {
+        "message": "启用 AI 上下文分析"
+    },
     "cardAIContextToggleDesc": {
         "message": "为字幕文本启用 AI 驱动的文化、历史和语言学上下文分析。点击字幕中的单词或短语以获得详细解释。"
     },
-    "aiContextEnabledLabel": { "message": "启用 AI 上下文：" },
-    "cardAIContextProviderTitle": { "message": "AI 提供商" },
+    "aiContextEnabledLabel": {
+        "message": "启用 AI 上下文："
+    },
+    "cardAIContextProviderTitle": {
+        "message": "AI 提供商"
+    },
     "cardAIContextProviderDesc": {
         "message": "选择用于上下文分析的 AI 服务提供商。不同的提供商可能提供不同的质量和响应时间。"
     },
-    "aiContextProviderLabel": { "message": "提供商：" },
-    "cardOpenAIContextTitle": { "message": "OpenAI 配置" },
+    "aiContextProviderLabel": {
+        "message": "提供商："
+    },
+    "cardOpenAIContextTitle": {
+        "message": "OpenAI 配置"
+    },
     "cardOpenAIContextDesc": {
         "message": "配置用于上下文分析的 OpenAI API 设置。您需要一个有效的 OpenAI API 密钥。"
     },
-    "openaiApiKeyLabel": { "message": "API 密钥：" },
-    "openaiBaseUrlLabel": { "message": "基础 URL：" },
-    "openaiModelLabel": { "message": "模型：" },
-    "cardGeminiContextTitle": { "message": "Google Gemini 配置" },
+    "openaiApiKeyLabel": {
+        "message": "API 密钥："
+    },
+    "openaiBaseUrlLabel": {
+        "message": "基础 URL："
+    },
+    "openaiModelLabel": {
+        "message": "模型："
+    },
+    "cardGeminiContextTitle": {
+        "message": "Google Gemini 配置"
+    },
     "cardGeminiContextDesc": {
         "message": "配置用于上下文分析的 Google Gemini API 设置。您需要一个有效的 Gemini API 密钥。"
     },
-    "geminiApiKeyLabel": { "message": "API 密钥：" },
-    "geminiModelLabel": { "message": "模型：" },
-    "cardAIContextTypesTitle": { "message": "上下文类型" },
+    "geminiApiKeyLabel": {
+        "message": "API 密钥："
+    },
+    "geminiModelLabel": {
+        "message": "模型："
+    },
+    "cardAIContextTypesTitle": {
+        "message": "上下文类型"
+    },
     "cardAIContextTypesDesc": {
         "message": "启用您想要使用的上下文分析类型。您可以启用多种类型。"
     },
-    "contextTypeCulturalLabel": { "message": "文化上下文：" },
-    "contextTypeCulturalHelp": { "message": "分析文化参考、习语和社会背景" },
-    "contextTypeHistoricalLabel": { "message": "历史上下文：" },
-    "contextTypeHistoricalHelp": { "message": "提供历史背景和时代背景" },
-    "contextTypeLinguisticLabel": { "message": "语言学分析：" },
-    "contextTypeLinguisticHelp": { "message": "解释语法、词源和语言结构" },
-
-    "cardAIContextPrivacyTitle": { "message": "隐私和数据" },
+    "contextTypeCulturalLabel": {
+        "message": "文化上下文："
+    },
+    "contextTypeCulturalHelp": {
+        "message": "分析文化参考、习语和社会背景"
+    },
+    "contextTypeHistoricalLabel": {
+        "message": "历史上下文："
+    },
+    "contextTypeHistoricalHelp": {
+        "message": "提供历史背景和时代背景"
+    },
+    "contextTypeLinguisticLabel": {
+        "message": "语言学分析："
+    },
+    "contextTypeLinguisticHelp": {
+        "message": "解释语法、词源和语言结构"
+    },
+    "cardAIContextPrivacyTitle": {
+        "message": "隐私和数据"
+    },
     "cardAIContextPrivacyDesc": {
         "message": "控制在上下文分析期间如何处理您的数据。"
     },
@@ -412,22 +887,103 @@
     "aiContextUserConsentHelp": {
         "message": "AI 上下文分析功能正常运行所必需"
     },
-    "aiContextDataSharingLabel": { "message": "允许匿名使用分析：" },
+    "aiContextDataSharingLabel": {
+        "message": "允许匿名使用分析："
+    },
     "aiContextDataSharingHelp": {
         "message": "通过分享匿名使用数据帮助改进服务"
     },
-    "cardAIContextAdvancedTitle": { "message": "高级设置" },
+    "cardAIContextAdvancedTitle": {
+        "message": "高级设置"
+    },
     "cardAIContextAdvancedDesc": {
         "message": "配置 AI 上下文分析行为的高级选项。"
     },
-    "aiContextTimeoutLabel": { "message": "请求超时 (ms)：" },
-    "aiContextTimeoutHelp": { "message": "等待 AI 响应的最长时间" },
-    "aiContextRateLimitLabel": { "message": "速率限制 (请求/分钟)：" },
-    "aiContextRateLimitHelp": { "message": "每分钟最大请求数" },
-    "aiContextCacheEnabledLabel": { "message": "启用缓存：" },
-    "aiContextCacheEnabledHelp": { "message": "缓存分析结果以减少 API 调用" },
-    "aiContextRetryAttemptsLabel": { "message": "重试次数：" },
-    "aiContextRetryAttemptsHelp": { "message": "重试失败请求的次数" },
-    "showAdvancedSettings": { "message": "显示高级设置" },
-    "hideAdvancedSettings": { "message": "隐藏高级设置" }
+    "aiContextTimeoutLabel": {
+        "message": "请求超时 (ms)："
+    },
+    "aiContextTimeoutHelp": {
+        "message": "等待 AI 响应的最长时间"
+    },
+    "aiContextRateLimitLabel": {
+        "message": "速率限制 (请求/分钟)："
+    },
+    "aiContextRateLimitHelp": {
+        "message": "每分钟最大请求数"
+    },
+    "aiContextCacheEnabledLabel": {
+        "message": "启用缓存："
+    },
+    "aiContextCacheEnabledHelp": {
+        "message": "缓存分析结果以减少 API 调用"
+    },
+    "aiContextRetryAttemptsLabel": {
+        "message": "重试次数："
+    },
+    "aiContextRetryAttemptsHelp": {
+        "message": "重试失败请求的次数"
+    },
+    "showAdvancedSettings": {
+        "message": "显示高级设置"
+    },
+    "hideAdvancedSettings": {
+        "message": "隐藏高级设置"
+    },
+    "sidepanelLoading": {
+        "message": "加载中..."
+    },
+    "sidepanelTabAIAnalysis": {
+        "message": "AI 分析"
+    },
+    "sidepanelTabWordsLists": {
+        "message": "单词列表"
+    },
+    "sidepanelAnalyzeButton": {
+        "message": "分析"
+    },
+    "sidepanelAnalyzing": {
+        "message": "分析中..."
+    },
+    "sidepanelWordsToAnalyze": {
+        "message": "待分析单词"
+    },
+    "sidepanelWordInputPlaceholder": {
+        "message": "点击字幕中的单词以添加分析..."
+    },
+    "sidepanelErrorRetry": {
+        "message": "重试"
+    },
+    "sidepanelResultsTitle": {
+        "message": "“%s”的结果"
+    },
+    "sidepanelSectionDefinition": {
+        "message": "定义"
+    },
+    "sidepanelSectionCultural": {
+        "message": "文化背景"
+    },
+    "sidepanelSectionHistorical": {
+        "message": "历史背景"
+    },
+    "sidepanelSectionLinguistic": {
+        "message": "语言学分析"
+    },
+    "sidepanelMyWordsTitle": {
+        "message": "我的单词"
+    },
+    "sidepanelFeatureComingSoon": {
+        "message": "单词列表功能即将推出！"
+    },
+    "sidepanelFeatureComingSoonDesc": {
+        "message": "此功能目前正在开发中。在设置中启用以尝试预览。"
+    },
+    "sidepanelErrorNoWords": {
+        "message": "未选择要分析的单词"
+    },
+    "sidepanelErrorDisabled": {
+        "message": "AI 上下文分析已禁用。请在设置中启用。"
+    },
+    "sidepanelErrorGeneric": {
+        "message": "分析过程中发生错误。"
+    }
 }

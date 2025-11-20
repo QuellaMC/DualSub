@@ -2,6 +2,7 @@ import React from 'react';
 import { useSidePanelContext } from '../../hooks/SidePanelContext.jsx';
 import { useAIAnalysis } from '../../hooks/useAIAnalysis.js';
 import { useWordSelection } from '../../hooks/useWordSelection.js';
+import { useTranslation } from '../../hooks/useTranslation.js';
 
 /**
  * AI Analysis Tab
@@ -19,6 +20,7 @@ export function AIAnalysisTab() {
 
     const { analyzeWords, retryAnalysis, settings } = useAIAnalysis();
     const { toggleWord, clearSelection } = useWordSelection();
+    const { t } = useTranslation();
 
     const handleAnalyze = () => {
         if (selectedWords.length > 0) {
@@ -43,13 +45,13 @@ export function AIAnalysisTab() {
                         <span className="material-symbols-outlined">
                             auto_awesome
                         </span>
-                        <span>{isAnalyzing ? 'Analyzing...' : 'Analyze'}</span>
+                        <span>{isAnalyzing ? t('sidepanelAnalyzing') : t('sidepanelAnalyzeButton')}</span>
                     </button>
                 </div>
 
                 <div className="input-container">
                     <label className="input-label" htmlFor="word-input">
-                        Words to Analyze
+                        {t('sidepanelWordsToAnalyze')}
                     </label>
                     <div className="word-input-wrapper">
                         <div className="word-tags" style={{ pointerEvents: isAnalyzing ? 'none' : 'auto', opacity: isAnalyzing ? 0.85 : 1 }}>
@@ -68,7 +70,7 @@ export function AIAnalysisTab() {
                             ))}
                             {selectedWords.length === 0 && (
                                 <span className="placeholder-text">
-                                    Click on subtitle words to add them for analysis...
+                                    {t('sidepanelWordInputPlaceholder')}
                                 </span>
                             )}
                         </div>
@@ -78,7 +80,7 @@ export function AIAnalysisTab() {
                 {isAnalyzing && (
                     <div className="loading-state">
                         <div className="spinner" />
-                        <p>Analyzing...</p>
+                        <p>{t('sidepanelAnalyzing')}</p>
                     </div>
                 )}
 
@@ -91,7 +93,7 @@ export function AIAnalysisTab() {
                                 className="error-retry"
                                 onClick={retryAnalysis}
                             >
-                                Retry
+                                {t('sidepanelErrorRetry')}
                             </button>
                         </div>
                     </div>
@@ -100,13 +102,13 @@ export function AIAnalysisTab() {
                 {analysisResult && !isAnalyzing && (
                     <div className="results-container">
                         <h2 className="results-title">
-                            Results for &quot;{selectedWords.join('", "')}&quot;
+                            {t('sidepanelResultsTitle').replace('%s', selectedWords.join(', '))}
                         </h2>
                         <div className="results-sections">
                             {/* Definition */}
                             {analysisResult?.definition && (
                                 <div className="result-section">
-                                    <h3 className="result-section-title">Definition</h3>
+                                    <h3 className="result-section-title">{t('sidepanelSectionDefinition')}</h3>
                                     <p className="result-section-content">
                                         {analysisResult.definition}
                                     </p>
@@ -116,7 +118,7 @@ export function AIAnalysisTab() {
                             {/* Cultural */}
                             {(analysisResult?.cultural_analysis || analysisResult?.culturalContext) && (
                                 <div className="result-section">
-                                    <h3 className="result-section-title">Cultural Context</h3>
+                                    <h3 className="result-section-title">{t('sidepanelSectionCultural')}</h3>
                                     <p className="result-section-content">
                                         {analysisResult?.culturalContext || analysisResult?.cultural_analysis?.cultural_context || analysisResult?.cultural_analysis}
                                     </p>
@@ -126,7 +128,7 @@ export function AIAnalysisTab() {
                             {/* Historical */}
                             {(analysisResult?.historical_analysis || analysisResult?.historicalContext) && (
                                 <div className="result-section">
-                                    <h3 className="result-section-title">Historical Context</h3>
+                                    <h3 className="result-section-title">{t('sidepanelSectionHistorical')}</h3>
                                     <p className="result-section-content">
                                         {analysisResult?.historicalContext || analysisResult?.historical_analysis?.historical_significance || analysisResult?.historical_analysis}
                                     </p>
@@ -136,7 +138,7 @@ export function AIAnalysisTab() {
                             {/* Linguistic */}
                             {(analysisResult?.linguistic_analysis || analysisResult?.linguisticAnalysis) && (
                                 <div className="result-section">
-                                    <h3 className="result-section-title">Linguistic Analysis</h3>
+                                    <h3 className="result-section-title">{t('sidepanelSectionLinguistic')}</h3>
                                     <p className="result-section-content">
                                         {analysisResult?.linguisticAnalysis || analysisResult?.linguistic_analysis?.translation_notes || analysisResult?.linguistic_analysis}
                                     </p>

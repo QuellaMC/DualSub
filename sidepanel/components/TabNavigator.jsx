@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from '../hooks/useTranslation.js';
 
 /**
  * Tab Navigator Component
@@ -7,15 +8,17 @@ import React from 'react';
  * Supports sticky positioning with backdrop blur effect.
  */
 export function TabNavigator({ activeTab, onTabChange, settings }) {
+    const { t } = useTranslation();
+
     const tabs = [
         {
             id: 'ai-analysis',
-            label: 'AI Analysis',
+            label: t('sidepanelTabAIAnalysis'),
             enabled: true,
         },
         {
             id: 'words-lists',
-            label: 'Words Lists',
+            label: t('sidepanelTabWordsLists'),
             enabled: settings.sidePanelWordsListsEnabled || false,
         },
     ];

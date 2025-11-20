@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from '../../hooks/useTranslation.js';
 
 /**
  * Words Lists Tab
@@ -7,6 +8,7 @@ import React from 'react';
  * Currently shows placeholder UI as feature is disabled by default.
  */
 export function WordsListsTab() {
+    const { t } = useTranslation();
     // Sample data for UI demonstration
     const sampleWords = [
         {
@@ -31,7 +33,7 @@ export function WordsListsTab() {
     return (
         <>
             <div className="words-lists-tab">
-                <h1 className="tab-title">My Words</h1>
+                <h1 className="tab-title">{t('sidepanelMyWordsTitle')}</h1>
 
                 <div className="controls-row">
                     <div className="list-selector">
@@ -56,10 +58,9 @@ export function WordsListsTab() {
                         info
                     </span>
                     <p>
-                        <strong>Words Lists feature coming soon!</strong>
+                        <strong>{t('sidepanelFeatureComingSoon')}</strong>
                         <br />
-                        This feature is currently in development. Enable it in
-                        Settings to try the preview.
+                        {t('sidepanelFeatureComingSoonDesc')}
                     </p>
                 </div>
 

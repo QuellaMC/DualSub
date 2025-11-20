@@ -115,12 +115,12 @@ export function useAIAnalysis() {
             const wordsToAnalyze = customWords || selectedWords;
 
             if (!wordsToAnalyze || wordsToAnalyze.size === 0) {
-                setError('No words selected for analysis');
+                setError(chrome.i18n.getMessage('sidepanelErrorNoWords'));
                 return null;
             }
 
             if (!settings?.aiContextEnabled) {
-                setError('AI Context analysis is disabled. Enable it in settings.');
+                setError(chrome.i18n.getMessage('sidepanelErrorDisabled'));
                 return null;
             }
 
@@ -195,7 +195,7 @@ export function useAIAnalysis() {
                     return normalized;
                 } else {
                     const errorMsg =
-                        response?.error || 'Analysis failed. Please try again.';
+                        response?.error || chrome.i18n.getMessage('sidepanelErrorGeneric');
                     setError(errorMsg);
                     return null;
                 }
@@ -207,7 +207,7 @@ export function useAIAnalysis() {
 
                 console.error('AI analysis error:', err);
                 const errorMsg =
-                    err.message || 'An error occurred during analysis.';
+                    err.message || chrome.i18n.getMessage('sidepanelErrorGeneric');
                 setError(errorMsg);
                 return null;
             } finally {

@@ -6,6 +6,7 @@ import { useTheme } from './hooks/useTheme.js';
 import { useSettings } from './hooks/useSettings.js';
 import { SidePanelProvider } from './hooks/SidePanelContext.jsx';
 import { useSidePanelCommunication } from './hooks/useSidePanelCommunication.js';
+import { useTranslation } from './hooks/useTranslation.js';
 
 /**
  * Main Side Panel Application Component
@@ -16,15 +17,19 @@ import { useSidePanelCommunication } from './hooks/useSidePanelCommunication.js'
 export function SidePanelApp() {
     const [activeTab, setActiveTab] = useState('ai-analysis');
     const { theme } = useTheme();
-    const { settings, loading: settingsLoading } = useSettings();
-    const { postMessage } = useSidePanelCommunication();
+    const { settings, loading: settingsLoading } = useSettings([
+        'sidePanelTheme',
+        'sidePanelWordsListsEnabled',
+        'uiLanguage',
+    ]);
+    const { t } = useTranslation();
 
     const handleTabChange = useCallback(
         (tabId) => {
             setActiveTab(tabId);
             postMessage('sidePanelUpdateState', { activeTab: tabId });
         },
-        [postMessage]
+        []
     );
 
     // Apply theme class to body
@@ -58,7 +63,7 @@ export function SidePanelApp() {
                 <div style={{ textAlign: 'center' }}>
                     <div className="spinner" />
                     <p style={{ color: 'var(--color-subtle-light)' }}>
-                        Loading...
+                        {t('sidepanelLoading')}
                     </p>
                 </div>
             </div>
@@ -70,7 +75,7 @@ export function SidePanelApp() {
             <div className="sidepanel-container">
                 <TabNavigator
                     activeTab={activeTab}
-                    onTabChange={handleTabChange}
+                    onTabChange={setActiveTab}
                     settings={settings}
                 />
                 <main className="sidepanel-content">

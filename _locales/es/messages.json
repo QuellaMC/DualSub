@@ -1,33 +1,79 @@
 {
-    "appName": { "message": "DualSub" },
+    "appName": {
+        "message": "DualSub"
+    },
     "appDesc": {
         "message": "Muestra subtítulos en dos idiomas en plataformas de streaming."
     },
-    "pageTitle": { "message": "Configuración de DualSub" },
-    "h1Title": { "message": "DualSub" },
-    "enableSubtitlesLabel": { "message": "Habilitar Subtítulos Duales:" },
-    "useNativeSubtitlesLabel": { "message": "Usar Subtítulos Oficiales:" },
-    "originalLanguageLabel": { "message": "Idioma Original:" },
-    "translationSettingsLegend": { "message": "Configuración de Traducción" },
-    "providerLabel": { "message": "Proveedor:" },
-    "targetLanguageLabel": { "message": "Traducir a:" },
-    "batchSizeLabel": { "message": "Tamaño de Lote:" },
-    "requestDelayLabel": { "message": "Retraso de Solicitud (ms):" },
+    "pageTitle": {
+        "message": "Configuración de DualSub"
+    },
+    "h1Title": {
+        "message": "DualSub"
+    },
+    "enableSubtitlesLabel": {
+        "message": "Habilitar Subtítulos Duales:"
+    },
+    "useNativeSubtitlesLabel": {
+        "message": "Usar Subtítulos Oficiales:"
+    },
+    "originalLanguageLabel": {
+        "message": "Idioma Original:"
+    },
+    "translationSettingsLegend": {
+        "message": "Configuración de Traducción"
+    },
+    "providerLabel": {
+        "message": "Proveedor:"
+    },
+    "targetLanguageLabel": {
+        "message": "Traducir a:"
+    },
+    "batchSizeLabel": {
+        "message": "Tamaño de Lote:"
+    },
+    "requestDelayLabel": {
+        "message": "Retraso de Solicitud (ms):"
+    },
     "subtitleAppearanceTimingLegend": {
         "message": "Apariencia y Sincronización de Subtítulos"
     },
-    "displayOrderLabel": { "message": "Orden de Visualización:" },
-    "layoutLabel": { "message": "Diseño:" },
-    "fontSizeLabel": { "message": "Tamaño de Fuente:" },
-    "verticalGapLabel": { "message": "Espaciado Vertical:" },
-    "subtitleVerticalPositionLabel": { "message": "Posición Vertical:" },
-    "timeOffsetLabel": { "message": "Desfase de Tiempo(s):" },
-    "displayOrderOriginalFirst": { "message": "Original Primero" },
-    "displayOrderTranslationFirst": { "message": "Traducción Primero" },
-    "layoutTopBottom": { "message": "Arriba / Abajo" },
-    "layoutLeftRight": { "message": "Izquierda / Derecha" },
-    "uiLanguageLabel": { "message": "Idioma:" },
-    "openOptionsButton": { "message": "Configuración Avanzada" },
+    "displayOrderLabel": {
+        "message": "Orden de Visualización:"
+    },
+    "layoutLabel": {
+        "message": "Diseño:"
+    },
+    "fontSizeLabel": {
+        "message": "Tamaño de Fuente:"
+    },
+    "verticalGapLabel": {
+        "message": "Espaciado Vertical:"
+    },
+    "subtitleVerticalPositionLabel": {
+        "message": "Posición Vertical:"
+    },
+    "timeOffsetLabel": {
+        "message": "Desfase de Tiempo(s):"
+    },
+    "displayOrderOriginalFirst": {
+        "message": "Original Primero"
+    },
+    "displayOrderTranslationFirst": {
+        "message": "Traducción Primero"
+    },
+    "layoutTopBottom": {
+        "message": "Arriba / Abajo"
+    },
+    "layoutLeftRight": {
+        "message": "Izquierda / Derecha"
+    },
+    "uiLanguageLabel": {
+        "message": "Idioma:"
+    },
+    "openOptionsButton": {
+        "message": "Configuración Avanzada"
+    },
     "statusLanguageSetTo": {
         "message": "Idioma Configurado (Recargar Página): "
     },
@@ -46,29 +92,54 @@
     "statusOriginalLanguage": {
         "message": "Idioma Configurado (Recargar Página): "
     },
-    "statusTimeOffset": { "message": "Desfase de tiempo: " },
+    "statusTimeOffset": {
+        "message": "Desfase de tiempo: "
+    },
     "statusDisplayOrderUpdated": {
         "message": "Orden de visualización actualizado."
     },
     "statusLayoutOrientationUpdated": {
         "message": "Orientación del diseño actualizada."
     },
-    "statusFontSize": { "message": "Tamaño de fuente: " },
-    "statusVerticalGap": { "message": "Espaciado vertical: " },
-    "statusVerticalPosition": { "message": "Posición vertical: " },
-    "statusInvalidOffset": { "message": "Desfase inválido, revirtiendo." },
+    "statusFontSize": {
+        "message": "Tamaño de fuente: "
+    },
+    "statusVerticalGap": {
+        "message": "Espaciado vertical: "
+    },
+    "statusVerticalPosition": {
+        "message": "Posición vertical: "
+    },
+    "statusInvalidOffset": {
+        "message": "Desfase inválido, revirtiendo."
+    },
     "statusSettingNotApplied": {
         "message": "Configuración no aplicada. Recargar página."
     },
-
-    "optionsPageTitle": { "message": "Opciones de DualSub" },
-    "optionsH1Title": { "message": "DualSub" },
-    "navGeneral": { "message": "General" },
-    "navTranslation": { "message": "Traducción" },
-    "navProviders": { "message": "Proveedores" },
-    "navAbout": { "message": "Acerca de" },
-    "sectionGeneral": { "message": "General" },
-    "cardUILanguageTitle": { "message": "Idioma de la Interfaz" },
+    "optionsPageTitle": {
+        "message": "Opciones de DualSub"
+    },
+    "optionsH1Title": {
+        "message": "DualSub"
+    },
+    "navGeneral": {
+        "message": "General"
+    },
+    "navTranslation": {
+        "message": "Traducción"
+    },
+    "navProviders": {
+        "message": "Proveedores"
+    },
+    "navAbout": {
+        "message": "Acerca de"
+    },
+    "sectionGeneral": {
+        "message": "General"
+    },
+    "cardUILanguageTitle": {
+        "message": "Idioma de la Interfaz"
+    },
     "cardUILanguageDesc": {
         "message": "Elige el idioma de visualización para la interfaz de la extensión."
     },
@@ -81,56 +152,114 @@
     "hideOfficialSubtitlesLabel": {
         "message": "Ocultar subtítulos oficiales:"
     },
-    "sectionTranslation": { "message": "Traducción" },
-    "cardTranslationEngineTitle": { "message": "Motor de Traducción" },
+    "sectionTranslation": {
+        "message": "Traducción"
+    },
+    "cardTranslationEngineTitle": {
+        "message": "Motor de Traducción"
+    },
     "cardTranslationEngineDesc": {
         "message": "Selecciona tu servicio de traducción preferido."
     },
-    "cardPerformanceTitle": { "message": "Rendimiento" },
+    "cardPerformanceTitle": {
+        "message": "Rendimiento"
+    },
     "cardPerformanceDesc": {
         "message": "Ajusta cómo la extensión maneja las solicitudes de traducción para equilibrar velocidad y estabilidad."
     },
-    "sectionProviders": { "message": "Configuración de Proveedores" },
-    "cardDeepLTitle": { "message": "DeepL" },
+    "sectionProviders": {
+        "message": "Configuración de Proveedores"
+    },
+    "cardDeepLTitle": {
+        "message": "DeepL"
+    },
     "cardDeepLDesc": {
         "message": "Ingresa tu clave API para DeepL Translate. Elige entre planes Gratuito y Pro."
     },
-    "apiKeyLabel": { "message": "Clave API:" },
-    "apiPlanLabel": { "message": "Plan API:" },
-    "apiPlanFree": { "message": "DeepL API Gratuito" },
-    "apiPlanPro": { "message": "DeepL API Pro" },
-    "sectionAbout": { "message": "Acerca de" },
-    "cardAboutTitle": { "message": "DualSub" },
-    "aboutVersion": { "message": "Versión" },
+    "apiKeyLabel": {
+        "message": "Clave API:"
+    },
+    "apiPlanLabel": {
+        "message": "Plan API:"
+    },
+    "apiPlanFree": {
+        "message": "DeepL API Gratuito"
+    },
+    "apiPlanPro": {
+        "message": "DeepL API Pro"
+    },
+    "sectionAbout": {
+        "message": "Acerca de"
+    },
+    "cardAboutTitle": {
+        "message": "DualSub"
+    },
+    "aboutVersion": {
+        "message": "Versión"
+    },
     "aboutDescription": {
         "message": "Esta extensión te ayuda a ver videos con subtítulos en dos idiomas en varias plataformas."
     },
-    "aboutDevelopment": { "message": "Desarrollado por QuellaMC & 1jifang." },
-
-    "lang_en": { "message": "Inglés" },
-    "lang_es": { "message": "Español" },
-    "lang_fr": { "message": "Francés" },
-    "lang_de": { "message": "Alemán" },
-    "lang_it": { "message": "Italiano" },
-    "lang_pt": { "message": "Portugués" },
-    "lang_ja": { "message": "Japonés" },
-    "lang_ko": { "message": "Coreano" },
-    "lang_zh_CN": { "message": "Chino (Simp)" },
-    "lang_zh_TW": { "message": "Chino (Trad)" },
-    "lang_ru": { "message": "Ruso" },
-    "lang_ar": { "message": "Árabe" },
-    "lang_hi": { "message": "Hindi" },
-
-    "testDeepLButton": { "message": "Probar Conexión DeepL" },
+    "aboutDevelopment": {
+        "message": "Desarrollado por QuellaMC & 1jifang."
+    },
+    "lang_en": {
+        "message": "Inglés"
+    },
+    "lang_es": {
+        "message": "Español"
+    },
+    "lang_fr": {
+        "message": "Francés"
+    },
+    "lang_de": {
+        "message": "Alemán"
+    },
+    "lang_it": {
+        "message": "Italiano"
+    },
+    "lang_pt": {
+        "message": "Portugués"
+    },
+    "lang_ja": {
+        "message": "Japonés"
+    },
+    "lang_ko": {
+        "message": "Coreano"
+    },
+    "lang_zh_CN": {
+        "message": "Chino (Simp)"
+    },
+    "lang_zh_TW": {
+        "message": "Chino (Trad)"
+    },
+    "lang_ru": {
+        "message": "Ruso"
+    },
+    "lang_ar": {
+        "message": "Árabe"
+    },
+    "lang_hi": {
+        "message": "Hindi"
+    },
+    "testDeepLButton": {
+        "message": "Probar Conexión DeepL"
+    },
     "deeplApiKeyError": {
         "message": "Por favor ingresa tu clave API de DeepL primero."
     },
-    "testingButton": { "message": "Probando..." },
-    "testingConnection": { "message": "Probando conexión DeepL..." },
+    "testingButton": {
+        "message": "Probando..."
+    },
+    "testingConnection": {
+        "message": "Probando conexión DeepL..."
+    },
     "deeplTestSuccess": {
         "message": "✅ ¡Prueba de API DeepL exitosa! Tradujo \"Hello\" a \"%s\""
     },
-    "deeplTestSuccessSimple": { "message": "✅ ¡Prueba de API DeepL exitosa!" },
+    "deeplTestSuccessSimple": {
+        "message": "✅ ¡Prueba de API DeepL exitosa!"
+    },
     "deeplTestUnexpectedFormat": {
         "message": "⚠️ DeepL API respondió pero con formato inesperado"
     },
@@ -140,47 +269,87 @@
     "deeplTestQuotaExceeded": {
         "message": "❌ Cuota de API DeepL excedida. Por favor verifica tus límites de uso."
     },
-    "deeplTestApiError": { "message": "❌ Error de API DeepL (%d): %s" },
+    "deeplTestApiError": {
+        "message": "❌ Error de API DeepL (%d): %s"
+    },
     "deeplTestNetworkError": {
         "message": "❌ Error de red: No se pudo conectar a la API de DeepL. Verifica tu conexión a internet."
     },
-    "deeplTestGenericError": { "message": "❌ Prueba fallida: %s" },
-    "deepLApiUnavailable": { "message": "API DeepL No Disponible" },
+    "deeplTestGenericError": {
+        "message": "❌ Prueba fallida: %s"
+    },
+    "deepLApiUnavailable": {
+        "message": "API DeepL No Disponible"
+    },
     "deepLApiUnavailableTooltip": {
         "message": "El script de la API DeepL falló al cargar"
     },
     "deeplApiNotLoadedError": {
         "message": "❌ El script de la API DeepL no está disponible. Por favor recarga la página."
     },
-
-    "cardGoogleTitle": { "message": "Google Translate" },
+    "cardGoogleTitle": {
+        "message": "Google Translate"
+    },
     "cardGoogleDesc": {
         "message": "Servicio de traducción gratuito proporcionado por Google. No requiere configuración adicional."
     },
-    "cardMicrosoftTitle": { "message": "Microsoft Translate" },
+    "cardMicrosoftTitle": {
+        "message": "Microsoft Translate"
+    },
     "cardMicrosoftDesc": {
         "message": "Servicio de traducción gratuito proporcionado por Microsoft Edge. No requiere configuración adicional."
     },
-    "cardDeepLFreeTitle": { "message": "DeepL Translate (Gratuito)" },
+    "cardDeepLFreeTitle": {
+        "message": "DeepL Translate (Gratuito)"
+    },
     "cardDeepLFreeDesc": {
         "message": "Servicio de traducción DeepL gratuito con resultados de alta calidad. No requiere clave API - usa la interfaz web de DeepL."
     },
-    "providerStatus": { "message": "Estado:" },
-    "statusReady": { "message": "Listo para usar" },
-    "providerFeatures": { "message": "Características:" },
-    "featureFree": { "message": "Gratis para usar" },
-    "featureNoApiKey": { "message": "No requiere clave API" },
-    "featureWideLanguageSupport": { "message": "Amplio soporte de idiomas" },
-    "featureFastTranslation": { "message": "Traducción rápida" },
-    "featureHighQuality": { "message": "Traducción de alta calidad" },
-    "featureGoodPerformance": { "message": "Buen rendimiento" },
-    "featureHighestQuality": { "message": "Traducción de la más alta calidad" },
-    "featureApiKeyRequired": { "message": "Requiere clave API" },
-    "featureLimitedLanguages": { "message": "Soporte limitado de idiomas" },
-    "featureUsageLimits": { "message": "Se aplican límites de uso" },
-    "featureMultipleBackups": { "message": "Múltiples métodos de respaldo" },
-
-    "providerNotes": { "message": "Notas:" },
+    "providerStatus": {
+        "message": "Estado:"
+    },
+    "statusReady": {
+        "message": "Listo para usar"
+    },
+    "providerFeatures": {
+        "message": "Características:"
+    },
+    "featureFree": {
+        "message": "Gratis para usar"
+    },
+    "featureNoApiKey": {
+        "message": "No requiere clave API"
+    },
+    "featureWideLanguageSupport": {
+        "message": "Amplio soporte de idiomas"
+    },
+    "featureFastTranslation": {
+        "message": "Traducción rápida"
+    },
+    "featureHighQuality": {
+        "message": "Traducción de alta calidad"
+    },
+    "featureGoodPerformance": {
+        "message": "Buen rendimiento"
+    },
+    "featureHighestQuality": {
+        "message": "Traducción de la más alta calidad"
+    },
+    "featureApiKeyRequired": {
+        "message": "Requiere clave API"
+    },
+    "featureLimitedLanguages": {
+        "message": "Soporte limitado de idiomas"
+    },
+    "featureUsageLimits": {
+        "message": "Se aplican límites de uso"
+    },
+    "featureMultipleBackups": {
+        "message": "Múltiples métodos de respaldo"
+    },
+    "providerNotes": {
+        "message": "Notas:"
+    },
     "noteSlowForSecurity": {
         "message": "Ligeramente más lento debido a medidas de seguridad"
     },
@@ -190,11 +359,18 @@
     "noteRecommendedDefault": {
         "message": "Recomendado como proveedor predeterminado"
     },
-
-    "providerGoogleName": { "message": "Google Translate (Gratuito)" },
-    "providerMicrosoftName": { "message": "Microsoft Translate (Gratuito)" },
-    "providerDeepLName": { "message": "DeepL (Requiere Clave API)" },
-    "providerDeepLFreeName": { "message": "DeepL Translate (Gratuito)" },
+    "providerGoogleName": {
+        "message": "Google Translate (Gratuito)"
+    },
+    "providerMicrosoftName": {
+        "message": "Microsoft Translate (Gratuito)"
+    },
+    "providerDeepLName": {
+        "message": "DeepL (Requiere Clave API)"
+    },
+    "providerDeepLFreeName": {
+        "message": "DeepL Translate (Gratuito)"
+    },
     "providerOpenAICompatibleName": {
         "message": "Compatible con OpenAI (Requiere Clave API)"
     },
@@ -213,31 +389,57 @@
     "cardVertexGeminiDesc": {
         "message": "Ingresa tu token de acceso y configuraciones del proyecto Vertex, o importa un archivo JSON de cuenta de servicio."
     },
-    "vertexAccessTokenLabel": { "message": "Token de Acceso:" },
-    "vertexProjectIdLabel": { "message": "ID del Proyecto:" },
-    "vertexLocationLabel": { "message": "Ubicación:" },
-    "vertexModelLabel": { "message": "Modelo:" },
+    "vertexAccessTokenLabel": {
+        "message": "Token de Acceso:"
+    },
+    "vertexProjectIdLabel": {
+        "message": "ID del Proyecto:"
+    },
+    "vertexLocationLabel": {
+        "message": "Ubicación:"
+    },
+    "vertexModelLabel": {
+        "message": "Modelo:"
+    },
     "vertexMissingConfig": {
         "message": "Por favor ingresa el token de acceso y el ID del proyecto."
     },
-    "vertexConnectionFailed": { "message": "Conexión fallida: %s" },
-    "vertexServiceAccountLabel": { "message": "JSON de Cuenta de Servicio:" },
-    "vertexImportButton": { "message": "Importar Archivo JSON" },
-    "vertexRefreshButton": { "message": "🔄 Actualizar Token" },
+    "vertexConnectionFailed": {
+        "message": "Conexión fallida: %s"
+    },
+    "vertexServiceAccountLabel": {
+        "message": "JSON de Cuenta de Servicio:"
+    },
+    "vertexImportButton": {
+        "message": "Importar Archivo JSON"
+    },
+    "vertexRefreshButton": {
+        "message": "🔄 Actualizar Token"
+    },
     "vertexImportHint": {
         "message": "Rellena automáticamente las credenciales a continuación"
     },
-    "vertexImporting": { "message": "Importando..." },
-    "vertexRefreshingToken": { "message": "Actualizando token de acceso..." },
-    "vertexGeneratingToken": { "message": "Generando token de acceso..." },
+    "vertexImporting": {
+        "message": "Importando..."
+    },
+    "vertexRefreshingToken": {
+        "message": "Actualizando token de acceso..."
+    },
+    "vertexGeneratingToken": {
+        "message": "Generando token de acceso..."
+    },
     "vertexImportSuccess": {
         "message": "Cuenta de servicio importada y token generado."
     },
-    "vertexImportFailed": { "message": "Importación fallida: %s" },
+    "vertexImportFailed": {
+        "message": "Importación fallida: %s"
+    },
     "vertexTokenRefreshed": {
         "message": "Token de acceso actualizado exitosamente."
     },
-    "vertexRefreshFailed": { "message": "Actualización de token fallida: %s" },
+    "vertexRefreshFailed": {
+        "message": "Actualización de token fallida: %s"
+    },
     "vertexTokenExpired": {
         "message": "⚠️ Token de acceso expirado. Haz clic en actualizar para renovar."
     },
@@ -253,23 +455,36 @@
     "featureVertexServiceAccount": {
         "message": "Importación de JSON de cuenta de servicio"
     },
-    "featureVertexAutoToken": { "message": "Generación automática de tokens" },
+    "featureVertexAutoToken": {
+        "message": "Generación automática de tokens"
+    },
     "featureVertexGemini": {
         "message": "Modelos Google Gemini a través de Vertex AI"
     },
     "vertexNote": {
         "message": "Los tokens de acceso expiran después de 1 hora. Tu cuenta de servicio está almacenada de forma segura para facilitar la actualización del token - solo haz clic en el botón Actualizar Token cuando sea necesario."
     },
-    "baseUrlLabel": { "message": "URL Base:" },
-    "modelLabel": { "message": "Modelo:" },
-    "featureCustomizable": { "message": "Endpoint y modelo personalizables" },
-    "fetchModelsButton": { "message": "Obtener Modelos" },
-    "testConnectionButton": { "message": "Probar Conexión" },
-
+    "baseUrlLabel": {
+        "message": "URL Base:"
+    },
+    "modelLabel": {
+        "message": "Modelo:"
+    },
+    "featureCustomizable": {
+        "message": "Endpoint y modelo personalizables"
+    },
+    "fetchModelsButton": {
+        "message": "Obtener Modelos"
+    },
+    "testConnectionButton": {
+        "message": "Probar Conexión"
+    },
     "openaiApiKeyPlaceholder": {
         "message": "Ingresa tu clave API compatible con OpenAI"
     },
-    "openaiBaseUrlPlaceholder": { "message": "ej., https://api.openai.com/v1" },
+    "openaiBaseUrlPlaceholder": {
+        "message": "ej., https://api.openai.com/v1"
+    },
     "openaiApiKeyError": {
         "message": "Por favor ingresa tu clave API primero."
     },
@@ -279,31 +494,57 @@
     "openaiTestNeedsTesting": {
         "message": "⚠️ La clave API compatible con OpenAI necesita ser probada."
     },
-    "openaiTestingConnection": { "message": "Probando conexión..." },
-    "openaiConnectionSuccessful": { "message": "¡Conexión exitosa!" },
-    "openaiConnectionFailed": { "message": "Conexión falló: %s" },
-    "openaieFetchingModels": { "message": "Obteniendo modelos..." },
+    "openaiTestingConnection": {
+        "message": "Probando conexión..."
+    },
+    "openaiConnectionSuccessful": {
+        "message": "¡Conexión exitosa!"
+    },
+    "openaiConnectionFailed": {
+        "message": "Conexión falló: %s"
+    },
+    "openaieFetchingModels": {
+        "message": "Obteniendo modelos..."
+    },
     "openaiModelsFetchedSuccessfully": {
         "message": "Modelos obtenidos exitosamente."
     },
-    "openaiFailedToFetchModels": { "message": "Error al obtener modelos: %s" },
-
-    "cardLoggingLevelTitle": { "message": "Nivel de Registro" },
+    "openaiFailedToFetchModels": {
+        "message": "Error al obtener modelos: %s"
+    },
+    "cardLoggingLevelTitle": {
+        "message": "Nivel de Registro"
+    },
     "cardLoggingLevelDesc": {
         "message": "Controla la cantidad de información de depuración mostrada en la consola del navegador. Los niveles más altos incluyen todos los mensajes de niveles inferiores."
     },
-    "loggingLevelLabel": { "message": "Nivel de Registro:" },
-    "loggingLevelOff": { "message": "Desactivado" },
-    "loggingLevelError": { "message": "Solo Errores" },
-    "loggingLevelWarn": { "message": "Advertencias y Errores" },
-    "loggingLevelInfo": { "message": "Info y Superior" },
-    "loggingLevelDebug": { "message": "Debug (Todo)" },
-
-    "cardBatchTranslationTitle": { "message": "Traducción por Lotes" },
+    "loggingLevelLabel": {
+        "message": "Nivel de Registro:"
+    },
+    "loggingLevelOff": {
+        "message": "Desactivado"
+    },
+    "loggingLevelError": {
+        "message": "Solo Errores"
+    },
+    "loggingLevelWarn": {
+        "message": "Advertencias y Errores"
+    },
+    "loggingLevelInfo": {
+        "message": "Info y Superior"
+    },
+    "loggingLevelDebug": {
+        "message": "Debug (Todo)"
+    },
+    "cardBatchTranslationTitle": {
+        "message": "Traducción por Lotes"
+    },
     "cardBatchTranslationDesc": {
         "message": "La traducción por lotes procesa múltiples segmentos de subtítulos juntos, reduciendo las llamadas a la API en un 80-90% y mejorando el rendimiento. Configure los ajustes óptimos para su proveedor de traducción preferido."
     },
-    "batchingEnabledLabel": { "message": "Habilitar Traducción por Lotes:" },
+    "batchingEnabledLabel": {
+        "message": "Habilitar Traducción por Lotes:"
+    },
     "batchingEnabledHelp": {
         "message": "Agrupa múltiples segmentos de subtítulos en solicitudes de traducción únicas"
     },
@@ -313,34 +554,45 @@
     "useProviderDefaultsHelp": {
         "message": "Usar automáticamente tamaños de lote óptimos para cada proveedor de traducción"
     },
-    "globalBatchSizeLabel": { "message": "Tamaño de Lote Global:" },
+    "globalBatchSizeLabel": {
+        "message": "Tamaño de Lote Global:"
+    },
     "globalBatchSizeHelp": {
         "message": "Número de segmentos de subtítulos a procesar juntos (1-15)"
     },
-    "smartBatchingLabel": { "message": "Optimización Inteligente de Lotes:" },
+    "smartBatchingLabel": {
+        "message": "Optimización Inteligente de Lotes:"
+    },
     "smartBatchingHelp": {
         "message": "Prioriza segmentos de subtítulos basándose en la posición de reproducción"
     },
-    "maxConcurrentBatchesLabel": { "message": "Máximo de Lotes Concurrentes:" },
+    "maxConcurrentBatchesLabel": {
+        "message": "Máximo de Lotes Concurrentes:"
+    },
     "maxConcurrentBatchesHelp": {
         "message": "Número de lotes de traducción a procesar simultáneamente"
     },
-
     "cardProviderBatchTitle": {
         "message": "Tamaños de Lote Específicos del Proveedor"
     },
     "cardProviderBatchDesc": {
         "message": "Configure tamaños de lote óptimos para cada proveedor de traducción. Estas configuraciones se usan cuando \"Usar Configuración Optimizada del Proveedor\" está habilitado."
     },
-    "openaieBatchSizeLabel": { "message": "Tamaño de Lote OpenAI:" },
+    "openaieBatchSizeLabel": {
+        "message": "Tamaño de Lote OpenAI:"
+    },
     "openaieBatchSizeHelp": {
         "message": "Recomendado: 5-10 segmentos (predeterminado: 8)"
     },
-    "googleBatchSizeLabel": { "message": "Tamaño de Lote Google Translate:" },
+    "googleBatchSizeLabel": {
+        "message": "Tamaño de Lote Google Translate:"
+    },
     "googleBatchSizeHelp": {
         "message": "Recomendado: 3-5 segmentos (predeterminado: 4)"
     },
-    "deeplBatchSizeLabel": { "message": "Tamaño de Lote DeepL:" },
+    "deeplBatchSizeLabel": {
+        "message": "Tamaño de Lote DeepL:"
+    },
     "deeplBatchSizeHelp": {
         "message": "Recomendado: 2-3 segmentos (predeterminado: 3)"
     },
@@ -350,22 +602,24 @@
     "microsoftBatchSizeHelp": {
         "message": "Recomendado: 3-5 segmentos (predeterminado: 4)"
     },
-    "vertexBatchSizeLabel": { "message": "Tamaño de Lote Vertex AI:" },
+    "vertexBatchSizeLabel": {
+        "message": "Tamaño de Lote Vertex AI:"
+    },
     "vertexBatchSizeHelp": {
         "message": "Recomendado: 5-10 segmentos (predeterminado: 8)"
     },
-
     "deeplTestNeedsTesting": {
         "message": "⚠️ La clave API de DeepL necesita ser probada."
     },
-
     "cardProviderDelayTitle": {
         "message": "Retrasos de Solicitud Específicos del Proveedor"
     },
     "cardProviderDelayDesc": {
         "message": "Configure retrasos obligatorios entre solicitudes de traducción para prevenir bloqueos de cuenta. Estos retrasos se aplican incluso cuando el procesamiento por lotes está habilitado."
     },
-    "openaieDelayLabel": { "message": "Retraso de Solicitud OpenAI (ms):" },
+    "openaieDelayLabel": {
+        "message": "Retraso de Solicitud OpenAI (ms):"
+    },
     "openaieDelayHelp": {
         "message": "Retraso mínimo entre solicitudes (predeterminado: 100ms)"
     },
@@ -375,7 +629,9 @@
     "googleDelayHelp": {
         "message": "Retraso requerido para prevenir bloqueos temporales (predeterminado: 1500ms)"
     },
-    "deeplDelayLabel": { "message": "Retraso de Solicitud API DeepL (ms):" },
+    "deeplDelayLabel": {
+        "message": "Retraso de Solicitud API DeepL (ms):"
+    },
     "deeplDelayHelp": {
         "message": "Retraso para solicitudes de API DeepL (predeterminado: 500ms)"
     },
@@ -397,118 +653,240 @@
     "vertexDelayHelp": {
         "message": "Retraso mínimo entre solicitudes (predeterminado: 100ms)"
     },
-
-    "aiContextModalTitle": { "message": "Análisis de Contexto IA" },
-    "aiContextSelectedWords": { "message": "Palabras Seleccionadas" },
-    "aiContextNoWordsSelected": { "message": "No hay palabras seleccionadas" },
+    "aiContextModalTitle": {
+        "message": "Análisis de Contexto IA"
+    },
+    "aiContextSelectedWords": {
+        "message": "Palabras Seleccionadas"
+    },
+    "aiContextNoWordsSelected": {
+        "message": "No hay palabras seleccionadas"
+    },
     "aiContextClickHint": {
         "message": "💡 Haz clic en una palabra para agregarla o quitarla."
     },
-    "aiContextStartAnalysis": { "message": "Iniciar Análisis" },
-    "aiContextPauseAnalysis": { "message": "⏸ Pausar" },
-    "aiContextPauseAnalysisTitle": { "message": "Pausar Análisis" },
+    "aiContextStartAnalysis": {
+        "message": "Iniciar Análisis"
+    },
+    "aiContextPauseAnalysis": {
+        "message": "⏸ Pausar"
+    },
+    "aiContextPauseAnalysisTitle": {
+        "message": "Pausar Análisis"
+    },
     "aiContextInitialMessage": {
         "message": "Selecciona palabras de los subtítulos para comenzar el análisis."
     },
-    "aiContextAnalyzing": { "message": "Analizando contexto..." },
+    "aiContextAnalyzing": {
+        "message": "Analizando contexto..."
+    },
     "aiContextPauseNote": {
         "message": "Haz clic en ⏸ para pausar el análisis"
     },
-    "aiContextAnalysisFailed": { "message": "Análisis Fallido" },
-    "aiContextNoContent": { "message": "Sin Contenido de Análisis" },
+    "aiContextAnalysisFailed": {
+        "message": "Análisis Fallido"
+    },
+    "aiContextNoContent": {
+        "message": "Sin Contenido de Análisis"
+    },
     "aiContextNoContentMessage": {
         "message": "El análisis se completó pero no se devolvió contenido."
     },
-    "aiContextDefinition": { "message": "📖 Definición" },
-    "aiContextCultural": { "message": "🌍 Contexto Cultural" },
-    "aiContextCulturalSignificance": { "message": "⭐ Significado Cultural" },
-    "aiContextHistorical": { "message": "📜 Contexto Histórico" },
+    "aiContextDefinition": {
+        "message": "📖 Definición"
+    },
+    "aiContextCultural": {
+        "message": "🌍 Contexto Cultural"
+    },
+    "aiContextCulturalSignificance": {
+        "message": "⭐ Significado Cultural"
+    },
+    "aiContextHistorical": {
+        "message": "📜 Contexto Histórico"
+    },
     "aiContextHistoricalSignificance": {
         "message": "📜 Significado Histórico"
     },
-    "aiContextEvolution": { "message": "🔄 Evolución en el Tiempo" },
-    "aiContextLinguistic": { "message": "🔤 Análisis Lingüístico" },
-    "aiContextGrammar": { "message": "📝 Gramática y Semántica" },
-    "aiContextUsage": { "message": "💡 Uso y Ejemplos" },
-    "aiContextExamples": { "message": "Ejemplos:" },
-    "aiContextLearningTips": { "message": "🎯 Consejos de Aprendizaje" },
-    "aiContextRelatedExpressions": { "message": "🔗 Expresiones Relacionadas" },
-    "aiContextKeyInsights": { "message": "🔑 Perspectivas Clave" },
-    "aiContextTypeCultural": { "message": "Cultural" },
-    "aiContextTypeHistorical": { "message": "Histórico" },
-    "aiContextTypeLinguistic": { "message": "Lingüístico" },
-    "aiContextTypeComprehensive": { "message": "Integral" },
-    "aiContextTypeGeneric": { "message": "Contexto" },
-    "aiContextClose": { "message": "Cerrar" },
-    "aiContextAnalysisResults": { "message": "Resultados del Análisis" },
-    "aiContextRetrying": { "message": "Análisis falló, regenerando..." },
+    "aiContextEvolution": {
+        "message": "🔄 Evolución en el Tiempo"
+    },
+    "aiContextLinguistic": {
+        "message": "🔤 Análisis Lingüístico"
+    },
+    "aiContextGrammar": {
+        "message": "📝 Gramática y Semántica"
+    },
+    "aiContextUsage": {
+        "message": "💡 Uso y Ejemplos"
+    },
+    "aiContextExamples": {
+        "message": "Ejemplos:"
+    },
+    "aiContextLearningTips": {
+        "message": "🎯 Consejos de Aprendizaje"
+    },
+    "aiContextRelatedExpressions": {
+        "message": "🔗 Expresiones Relacionadas"
+    },
+    "aiContextKeyInsights": {
+        "message": "🔑 Perspectivas Clave"
+    },
+    "aiContextTypeCultural": {
+        "message": "Cultural"
+    },
+    "aiContextTypeHistorical": {
+        "message": "Histórico"
+    },
+    "aiContextTypeLinguistic": {
+        "message": "Lingüístico"
+    },
+    "aiContextTypeComprehensive": {
+        "message": "Integral"
+    },
+    "aiContextTypeGeneric": {
+        "message": "Contexto"
+    },
+    "aiContextClose": {
+        "message": "Cerrar"
+    },
+    "aiContextAnalysisResults": {
+        "message": "Resultados del Análisis"
+    },
+    "aiContextRetrying": {
+        "message": "Análisis falló, regenerando..."
+    },
     "aiContextRetryNotification": {
         "message": "Análisis falló, reintentando..."
     },
-    "aiContextRetryButton": { "message": "Intentar de Nuevo" },
+    "aiContextRetryButton": {
+        "message": "Intentar de Nuevo"
+    },
     "aiContextMalformedResponse": {
         "message": "El servicio de IA devolvió un formato de respuesta inválido. Esto puede deberse a problemas temporales del servicio."
     },
     "aiContextJsonCodeBlock": {
         "message": "El servicio de IA devolvió código JSON sin procesar en lugar de datos estructurados. Esto indica un error de formato en la respuesta."
     },
-    "aiContextCulturalContext": { "message": "Contexto Cultural:" },
-    "aiContextSocialUsage": { "message": "Uso Social:" },
-    "aiContextRegionalNotes": { "message": "Notas Regionales:" },
-    "aiContextOrigins": { "message": "Orígenes:" },
-    "aiContextHistoricalContext": { "message": "Contexto Histórico:" },
-    "aiContextHistoricalSignificance": { "message": "Significado Histórico:" },
-    "aiContextEvolution": { "message": "Evolución:" },
-    "aiContextEtymology": { "message": "Etimología:" },
-    "aiContextGrammarNotes": { "message": "Notas Gramaticales:" },
-    "aiContextTranslationNotes": { "message": "Notas de Traducción:" },
-    "aiContextLinguisticAnalysis": { "message": "Análisis Lingüístico:" },
-    "aiContextGrammarSemantics": { "message": "Gramática y Semántica:" },
-    "aiContextUsageExamples": { "message": "Uso y Ejemplos:" },
-    "aiContextLearningTips": { "message": "Consejos de Aprendizaje:" },
-    "aiContextRelatedExpressions": { "message": "Expresiones Relacionadas:" },
-    "aiContextKeyInsights": { "message": "Puntos Clave:" },
-
-    "navAIContext": { "message": "Contexto IA" },
-    "sectionAIContext": { "message": "Asistente de Contexto IA" },
+    "aiContextCulturalContext": {
+        "message": "Contexto Cultural:"
+    },
+    "aiContextSocialUsage": {
+        "message": "Uso Social:"
+    },
+    "aiContextRegionalNotes": {
+        "message": "Notas Regionales:"
+    },
+    "aiContextOrigins": {
+        "message": "Orígenes:"
+    },
+    "aiContextHistoricalContext": {
+        "message": "Contexto Histórico:"
+    },
+    "aiContextHistoricalSignificanceLabel": {
+        "message": "Significado Histórico:"
+    },
+    "aiContextEvolutionLabel": {
+        "message": "Evolución:"
+    },
+    "aiContextEtymology": {
+        "message": "Etimología:"
+    },
+    "aiContextGrammarNotesLabel": {
+        "message": "Notas Gramaticales:"
+    },
+    "aiContextTranslationNotesLabel": {
+        "message": "Notas de Traducción:"
+    },
+    "aiContextLinguisticAnalysisLabel": {
+        "message": "Análisis Lingüístico:"
+    },
+    "aiContextGrammarSemanticsLabel": {
+        "message": "Gramática y Semántica:"
+    },
+    "aiContextUsageExamplesLabel": {
+        "message": "Uso y Ejemplos:"
+    },
+    "aiContextLearningTipsLabel": {
+        "message": "Consejos de Aprendizaje:"
+    },
+    "aiContextRelatedExpressionsLabel": {
+        "message": "Expresiones Relacionadas:"
+    },
+    "aiContextKeyInsightsLabel": {
+        "message": "Puntos Clave:"
+    },
+    "navAIContext": {
+        "message": "Contexto IA"
+    },
+    "sectionAIContext": {
+        "message": "Asistente de Contexto IA"
+    },
     "cardAIContextToggleTitle": {
         "message": "Habilitar Análisis de Contexto IA"
     },
     "cardAIContextToggleDesc": {
         "message": "Habilita el análisis de contexto cultural, histórico y lingüístico impulsado por IA para el texto de los subtítulos. Haz clic en palabras o frases en los subtítulos para obtener explicaciones detalladas."
     },
-    "aiContextEnabledLabel": { "message": "Habilitar Contexto IA:" },
-    "cardAIContextProviderTitle": { "message": "Proveedor de IA" },
+    "aiContextEnabledLabel": {
+        "message": "Habilitar Contexto IA:"
+    },
+    "cardAIContextProviderTitle": {
+        "message": "Proveedor de IA"
+    },
     "cardAIContextProviderDesc": {
         "message": "Elige el proveedor de servicios de IA para el análisis de contexto. Diferentes proveedores pueden ofrecer calidad y tiempos de respuesta variables."
     },
-    "aiContextProviderLabel": { "message": "Proveedor:" },
-    "cardOpenAIContextTitle": { "message": "Configuración de OpenAI" },
+    "aiContextProviderLabel": {
+        "message": "Proveedor:"
+    },
+    "cardOpenAIContextTitle": {
+        "message": "Configuración de OpenAI"
+    },
     "cardOpenAIContextDesc": {
         "message": "Configura tus ajustes de API de OpenAI para el análisis de contexto. Necesitas una clave API válida de OpenAI."
     },
-    "openaiApiKeyLabel": { "message": "Clave API:" },
-    "openaiBaseUrlLabel": { "message": "URL Base:" },
-    "openaiModelLabel": { "message": "Modelo:" },
-    "cardGeminiContextTitle": { "message": "Configuración de Google Gemini" },
+    "openaiApiKeyLabel": {
+        "message": "Clave API:"
+    },
+    "openaiBaseUrlLabel": {
+        "message": "URL Base:"
+    },
+    "openaiModelLabel": {
+        "message": "Modelo:"
+    },
+    "cardGeminiContextTitle": {
+        "message": "Configuración de Google Gemini"
+    },
     "cardGeminiContextDesc": {
         "message": "Configura tus ajustes de API de Google Gemini para el análisis de contexto. Necesitas una clave API válida de Gemini."
     },
-    "geminiApiKeyLabel": { "message": "Clave API:" },
-    "geminiModelLabel": { "message": "Modelo:" },
-    "cardAIContextTypesTitle": { "message": "Tipos de Contexto" },
+    "geminiApiKeyLabel": {
+        "message": "Clave API:"
+    },
+    "geminiModelLabel": {
+        "message": "Modelo:"
+    },
+    "cardAIContextTypesTitle": {
+        "message": "Tipos de Contexto"
+    },
     "cardAIContextTypesDesc": {
         "message": "Habilita los tipos de análisis de contexto que quieres usar. Puedes habilitar múltiples tipos."
     },
-    "contextTypeCulturalLabel": { "message": "Contexto Cultural:" },
+    "contextTypeCulturalLabel": {
+        "message": "Contexto Cultural:"
+    },
     "contextTypeCulturalHelp": {
         "message": "Analizar referencias culturales, modismos y contexto social"
     },
-    "contextTypeHistoricalLabel": { "message": "Contexto Histórico:" },
+    "contextTypeHistoricalLabel": {
+        "message": "Contexto Histórico:"
+    },
     "contextTypeHistoricalHelp": {
         "message": "Proporcionar antecedentes históricos y contexto del período de tiempo"
     },
-    "contextTypeLinguisticLabel": { "message": "Análisis Lingüístico:" },
+    "contextTypeLinguisticLabel": {
+        "message": "Análisis Lingüístico:"
+    },
     "contextTypeLinguisticHelp": {
         "message": "Explicar gramática, etimología y estructura del lenguaje"
     },
@@ -524,15 +902,21 @@
     "interactiveSubtitlesEnabledHelp": {
         "message": "Hacer que las palabras de los subtítulos sean clicables para el análisis de contexto"
     },
-    "contextOnClickLabel": { "message": "Contexto al Hacer Clic:" },
+    "contextOnClickLabel": {
+        "message": "Contexto al Hacer Clic:"
+    },
     "contextOnClickHelp": {
         "message": "Mostrar análisis de contexto al hacer clic en palabras"
     },
-    "contextOnSelectionLabel": { "message": "Contexto en Selección:" },
+    "contextOnSelectionLabel": {
+        "message": "Contexto en Selección:"
+    },
     "contextOnSelectionHelp": {
         "message": "Mostrar análisis de contexto al seleccionar texto"
     },
-    "cardAIContextPrivacyTitle": { "message": "Privacidad y Datos" },
+    "cardAIContextPrivacyTitle": {
+        "message": "Privacidad y Datos"
+    },
     "cardAIContextPrivacyDesc": {
         "message": "Controla cómo se manejan tus datos durante el análisis de contexto."
     },
@@ -548,7 +932,9 @@
     "aiContextDataSharingHelp": {
         "message": "Ayuda a mejorar el servicio compartiendo datos de uso anónimos"
     },
-    "cardAIContextAdvancedTitle": { "message": "Configuración Avanzada" },
+    "cardAIContextAdvancedTitle": {
+        "message": "Configuración Avanzada"
+    },
     "cardAIContextAdvancedDesc": {
         "message": "Configure opciones avanzadas para el comportamiento del análisis de contexto de IA."
     },
@@ -564,14 +950,79 @@
     "aiContextRateLimitHelp": {
         "message": "Número máximo de solicitudes por minuto"
     },
-    "aiContextCacheEnabledLabel": { "message": "Habilitar Caché:" },
+    "aiContextCacheEnabledLabel": {
+        "message": "Habilitar Caché:"
+    },
     "aiContextCacheEnabledHelp": {
         "message": "Almacenar en caché los resultados del análisis para reducir las llamadas a la API"
     },
-    "aiContextRetryAttemptsLabel": { "message": "Intentos de Reintento:" },
+    "aiContextRetryAttemptsLabel": {
+        "message": "Intentos de Reintento:"
+    },
     "aiContextRetryAttemptsHelp": {
         "message": "Número de veces para reintentar solicitudes fallidas"
     },
-    "showAdvancedSettings": { "message": "Mostrar Configuración Avanzada" },
-    "hideAdvancedSettings": { "message": "Ocultar Configuración Avanzada" }
+    "showAdvancedSettings": {
+        "message": "Mostrar Configuración Avanzada"
+    },
+    "hideAdvancedSettings": {
+        "message": "Ocultar Configuración Avanzada"
+    },
+    "sidepanelLoading": {
+        "message": "Cargando..."
+    },
+    "sidepanelTabAIAnalysis": {
+        "message": "Análisis IA"
+    },
+    "sidepanelTabWordsLists": {
+        "message": "Listas de Palabras"
+    },
+    "sidepanelAnalyzeButton": {
+        "message": "Analizar"
+    },
+    "sidepanelAnalyzing": {
+        "message": "Analizando..."
+    },
+    "sidepanelWordsToAnalyze": {
+        "message": "Palabras a Analizar"
+    },
+    "sidepanelWordInputPlaceholder": {
+        "message": "Haz clic en las palabras de los subtítulos para añadirlas al análisis..."
+    },
+    "sidepanelErrorRetry": {
+        "message": "Reintentar"
+    },
+    "sidepanelResultsTitle": {
+        "message": "Resultados para \"%s\""
+    },
+    "sidepanelSectionDefinition": {
+        "message": "Definición"
+    },
+    "sidepanelSectionCultural": {
+        "message": "Contexto Cultural"
+    },
+    "sidepanelSectionHistorical": {
+        "message": "Contexto Histórico"
+    },
+    "sidepanelSectionLinguistic": {
+        "message": "Análisis Lingüístico"
+    },
+    "sidepanelMyWordsTitle": {
+        "message": "Mis Palabras"
+    },
+    "sidepanelFeatureComingSoon": {
+        "message": "¡La función de Listas de Palabras llegará pronto!"
+    },
+    "sidepanelFeatureComingSoonDesc": {
+        "message": "Esta función está actualmente en desarrollo. Habilítala en Configuración para probar la vista previa."
+    },
+    "sidepanelErrorNoWords": {
+        "message": "No hay palabras seleccionadas para el análisis"
+    },
+    "sidepanelErrorDisabled": {
+        "message": "El análisis de contexto IA está deshabilitado. Habilítalo en la configuración."
+    },
+    "sidepanelErrorGeneric": {
+        "message": "Ocurrió un error durante el análisis."
+    }
 }
