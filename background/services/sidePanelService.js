@@ -80,16 +80,6 @@ class SidePanelService {
             this.logger.warn('Side panel connection without tab ID (awaiting register message)');
         }
 
-        const postToTab = (tid, message) => {
-            try {
-                const p = this.activeConnections.get(tid);
-                if (!p) return;
-                p.postMessage(message);
-            } catch (err) {
-                this.logger.error('Failed to post to side panel', err, { tabId: tid, action: message?.action });
-            }
-        };
-
         // Handle messages from side panel
         port.onMessage.addListener((message) => {
             // Update tabId once the side panel sends an explicit register payload
