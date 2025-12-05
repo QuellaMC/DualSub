@@ -4,6 +4,7 @@ import React, {
     useState,
     useEffect,
     useMemo,
+    useRef,
 } from 'react';
 import { useSidePanelCommunication } from './useSidePanelCommunication';
 
@@ -24,6 +25,51 @@ export function SidePanelProvider({ children }) {
     const [activeTabId, setActiveTabId] = useState(null);
     const { onMessage, getActiveTab, postMessage, getBinding } = useSidePanelCommunication();
 
+    const globalTargetLangRef = useRef('zh-CN');
+
+    // Sync target language with storage
+    useEffect(() => {
+        const updateLanguage = (lang) => {
+            if (!lang) return;
+            globalTargetLangRef.current = lang;
+
+            // Update all tabs with the new language
+            setTabState((prev) => {
+                const newState = { ...prev };
+                let hasChanges = false;
+
+                Object.keys(newState).forEach((tId) => {
+                    if (newState[tId].targetLanguage !== lang) {
+                        newState[tId] = {
+                            ...newState[tId],
+                            targetLanguage: lang
+                        };
+                        hasChanges = true;
+                    }
+                });
+
+                return hasChanges ? newState : prev;
+            });
+        };
+
+        // Load initial
+        chrome.storage.sync.get('targetLanguage', (items) => {
+            if (items.targetLanguage) {
+                updateLanguage(items.targetLanguage);
+            }
+        });
+
+        // Listen for changes
+        const handleStorageChange = (changes, area) => {
+            if (area === 'sync' && changes.targetLanguage) {
+                updateLanguage(changes.targetLanguage.newValue);
+            }
+        };
+
+        chrome.storage.onChanged.addListener(handleStorageChange);
+        return () => chrome.storage.onChanged.removeListener(handleStorageChange);
+    }, []);
+
     // Initial setup and tab activation listener
     useEffect(() => {
         const handleTabActivated = (tabId) => {
@@ -36,7 +82,7 @@ export function SidePanelProvider({ children }) {
                     isAnalyzing: false,
                     error: null,
                     sourceLanguage: 'en',
-                    targetLanguage: 'zh-CN',
+                    targetLanguage: globalTargetLangRef.current,
                 },
             }));
         };
