@@ -10,6 +10,37 @@ if (window.disneyPlusDualSubInjectorLoaded) {
     const INJECT_SCRIPT_ID = 'disneyplus-dualsub-injector-event'; // Must match disneyPlusPlatform.js
     const originalJSONParse = JSON.parse;
 
+    const getProgramStartOffsetSeconds = (stream) => {
+        const insertionPoints = stream?.insertion?.points;
+        if (!Array.isArray(insertionPoints)) return null;
+
+        let durationMillis = 0;
+        for (const point of insertionPoints) {
+            if (
+                point?.placement !== 'PREROLL' ||
+                Number(point?.offset) !== 0 ||
+                !Array.isArray(point.content)
+            ) {
+                continue;
+            }
+
+            for (const content of point.content) {
+                const duration = Number(content?.duration);
+                if (
+                    content?.type === 'AUXILIARY_CONTENT' &&
+                    content?.playoutRequired === true &&
+                    Number.isFinite(duration) &&
+                    duration > 0
+                ) {
+                    durationMillis += duration;
+                }
+            }
+        }
+
+        // Disney's playback response reports insertion durations in milliseconds.
+        return durationMillis / 1000;
+    };
+
     console.log(
         'Disney+ Inject script: Overriding JSON.parse to intercept subtitle data.'
     );
@@ -21,19 +52,24 @@ if (window.disneyPlusDualSubInjectorLoaded) {
         try {
             let subtitleUrl = null;
             let sourcePath = '';
+            let stream = null;
+            const nestedStream = parsedObject?.data?.stream;
+            const rootStream = parsedObject?.stream;
 
             // Standard path for Disney+ subtitle master playlist URL (M3U8)
-            if (parsedObject?.data?.stream?.sources?.[0]?.complete?.url) {
-                subtitleUrl = parsedObject.data.stream.sources[0].complete.url;
+            if (nestedStream?.sources?.[0]?.complete?.url) {
+                stream = nestedStream;
+                subtitleUrl = nestedStream.sources[0].complete.url;
                 sourcePath = 'data.stream.sources[0].complete.url';
-            }
-            // Fallback path if the structure changes
-            else if (parsedObject?.stream?.sources?.[0]?.complete?.url) {
-                subtitleUrl = parsedObject.stream.sources[0].complete.url;
+            } else if (rootStream?.sources?.[0]?.complete?.url) {
+                stream = rootStream;
+                subtitleUrl = rootStream.sources[0].complete.url;
                 sourcePath = 'stream.sources[0].complete.url';
             }
 
             if (subtitleUrl) {
+                const programStartOffsetSeconds =
+                    getProgramStartOffsetSeconds(stream);
                 console.log(
                     `%c[Disney+ Inject] Found Disney+ subtitle URL via ${sourcePath}: %s`,
                     'color: blue; font-weight: bold;',
@@ -65,6 +101,9 @@ if (window.disneyPlusDualSubInjectorLoaded) {
                             url: subtitleUrl,
                             videoId: videoId,
                             source: sourcePath,
+                            ...(programStartOffsetSeconds !== null
+                                ? { programStartOffsetSeconds }
+                                : {}),
                         },
                     })
                 );

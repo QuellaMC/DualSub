@@ -28,15 +28,20 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
         this.lastKnownVttUrlForVideoId = {};
         this.pendingVttUrlForVideoId = {};
         this.eventListener = null; // To store the bound event listener for removal
+        this._programStartOffsetSeconds = 0;
+        this._resetPlaybackClockState();
+        this.initializeLogger();
+    }
+
+    _resetPlaybackClockState(needsFreshTimeline = false) {
         this._clockVideoElement = null;
         this._clockTimelineElement = null;
         this._clockTimelineValue = null;
-        this._clockRawVideoTime = null;
-        this._clockNeedsFreshTimeline = false;
+        this._clockProgramTime = null;
+        this._clockNeedsFreshTimeline = needsFreshTimeline;
         this._playbackTimeOffset = null;
         this._cachedProgressBarElement = null;
         this._lastDeepTimelineSearchAt = 0;
-        this.initializeLogger();
     }
 
     /**
@@ -128,7 +133,23 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
                     delete this.lastKnownVttUrlForVideoId[this.currentVideoId];
                     delete this.pendingVttUrlForVideoId[this.currentVideoId];
                 }
+                this._programStartOffsetSeconds = 0;
+                this._resetPlaybackClockState(true);
                 this.setVideoIdAndNotify(injectedVideoId);
+            }
+
+            const programStartOffsetSeconds = data.programStartOffsetSeconds;
+            if (
+                Number.isFinite(programStartOffsetSeconds) &&
+                programStartOffsetSeconds >= 0 &&
+                programStartOffsetSeconds !== this._programStartOffsetSeconds
+            ) {
+                this._programStartOffsetSeconds = programStartOffsetSeconds;
+                this._resetPlaybackClockState(true);
+                this.logger.info('Updated program start offset', {
+                    videoId: injectedVideoId,
+                    offsetSeconds: programStartOffsetSeconds,
+                });
             }
 
             const requestVideoId = this.currentVideoId;
@@ -460,19 +481,53 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
         return Number.isFinite(value) && value >= 0 ? value : null;
     }
 
+    _normalizeTimelineTime(timelineTime, mediaTime, programTime) {
+        if (timelineTime === null || this._programStartOffsetSeconds <= 0) {
+            return timelineTime;
+        }
+
+        const distanceToMediaTime = Math.abs(timelineTime - mediaTime);
+        const distanceToProgramTime = Math.abs(timelineTime - programTime);
+        const timelineTracksStitchedMedia =
+            distanceToMediaTime <= TIMELINE_DRIFT_TOLERANCE_SECONDS &&
+            distanceToMediaTime < distanceToProgramTime;
+
+        return timelineTracksStitchedMedia
+            ? timelineTime - this._programStartOffsetSeconds
+            : timelineTime;
+    }
+
+    _getMeaningfulTimelineOffset(timelineTime, programTime) {
+        const measuredOffset = timelineTime - programTime;
+        // Small differences are normal UI sampling lag; keep the active video
+        // authoritative unless the timeline proves a distinct clock origin.
+        return Math.abs(measuredOffset) > TIMELINE_DRIFT_TOLERANCE_SECONDS
+            ? measuredOffset
+            : 0;
+    }
+
     /**
-     * Use the active HTML video as the continuously advancing clock. Disney+'s
-     * lazily mounted timeline is sampled only to calibrate the media timestamp
-     * onto the episode subtitle timeline.
+     * Use the active HTML video as the continuously advancing clock. Required
+     * preroll duration maps its stitched media time onto program time first;
+     * Disney's lazily mounted timeline then calibrates program time onto the
+     * episode subtitle timeline.
      * @returns {number | null}
      */
     getPlaybackTime(preferredVideoElement = null) {
         const videoElement = preferredVideoElement || this.getVideoElement();
-        const rawVideoTime = videoElement?.currentTime;
-        if (!Number.isFinite(rawVideoTime)) return null;
+        const mediaTime = videoElement?.currentTime;
+        if (!Number.isFinite(mediaTime)) return null;
+
+        const programTime = mediaTime - this._programStartOffsetSeconds;
+        if (programTime < 0) {
+            this._resetPlaybackClockState(true);
+            this._clockVideoElement = videoElement;
+            this._clockProgramTime = programTime;
+            return programTime;
+        }
 
         const previousVideoElement = this._clockVideoElement;
-        const previousRawVideoTime = this._clockRawVideoTime;
+        const previousProgramTime = this._clockProgramTime;
         const previousTimelineElement = this._clockTimelineElement;
         const previousTimelineValue = this._clockTimelineValue;
         const videoElementChanged = videoElement !== previousVideoElement;
@@ -480,17 +535,22 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
         if (videoElementChanged) {
             this._clockVideoElement = videoElement;
             this._playbackTimeOffset = null;
-            this._clockNeedsFreshTimeline = previousVideoElement !== null;
+            this._clockNeedsFreshTimeline =
+                this._clockNeedsFreshTimeline || previousVideoElement !== null;
             this._cachedProgressBarElement = null;
         }
 
         const timelineElement = this.getProgressBarElement();
-        const timelineTime = this._readTimelineTime(timelineElement);
+        const timelineTime = this._normalizeTimelineTime(
+            this._readTimelineTime(timelineElement),
+            mediaTime,
+            programTime
+        );
 
-        const rawVideoTimeChanged =
+        const programTimeChanged =
             !videoElementChanged &&
-            Number.isFinite(previousRawVideoTime) &&
-            Math.abs(rawVideoTime - previousRawVideoTime) >
+            Number.isFinite(previousProgramTime) &&
+            Math.abs(programTime - previousProgramTime) >
                 TIMELINE_DRIFT_TOLERANCE_SECONDS;
         const timelineTimeChanged =
             !videoElementChanged &&
@@ -499,11 +559,11 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
             Math.abs(timelineTime - previousTimelineValue) >
                 TIMELINE_DRIFT_TOLERANCE_SECONDS;
         const coherentClockJump =
-            rawVideoTimeChanged &&
+            programTimeChanged &&
             timelineTimeChanged &&
             Math.abs(
-                rawVideoTime -
-                    previousRawVideoTime -
+                programTime -
+                    previousProgramTime -
                     (timelineTime - previousTimelineValue)
             ) <= TIMELINE_DRIFT_TOLERANCE_SECONDS;
 
@@ -512,18 +572,18 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
         // persistent offset; prefer the active video until the timeline moves
         // again and proves it is fresh.
         if (
-            (rawVideoTimeChanged || timelineTimeChanged) &&
+            (programTimeChanged || timelineTimeChanged) &&
             !coherentClockJump &&
             (timelineTime !== null || this._clockNeedsFreshTimeline)
         ) {
             this._playbackTimeOffset = null;
             this._clockNeedsFreshTimeline = true;
-            this._clockRawVideoTime = rawVideoTime;
+            this._clockProgramTime = programTime;
             if (timelineElement && timelineTime !== null) {
                 this._clockTimelineElement = timelineElement;
                 this._clockTimelineValue = timelineTime;
             }
-            return rawVideoTime;
+            return programTime;
         }
 
         if (this._clockNeedsFreshTimeline) {
@@ -533,17 +593,20 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
                 Number.isFinite(previousTimelineValue) &&
                 Math.abs(timelineTime - previousTimelineValue) > 0.01;
 
-            this._clockRawVideoTime = rawVideoTime;
+            this._clockProgramTime = programTime;
             if (!hasFreshTimelineSample) {
                 if (timelineElement && timelineTime !== null) {
                     this._clockTimelineElement = timelineElement;
                     this._clockTimelineValue = timelineTime;
                 }
-                return rawVideoTime;
+                return programTime;
             }
 
             this._clockNeedsFreshTimeline = false;
-            this._playbackTimeOffset = timelineTime - rawVideoTime;
+            this._playbackTimeOffset = this._getMeaningfulTimelineOffset(
+                timelineTime,
+                programTime
+            );
         }
 
         if (timelineElement && timelineTime !== null) {
@@ -552,17 +615,20 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
             const timelineValueChanged =
                 previousTimelineValue === null ||
                 Math.abs(timelineTime - previousTimelineValue) > 0.01;
-            const predictedTime =
-                rawVideoTime + (this._playbackTimeOffset || 0);
+            const predictedTime = programTime + (this._playbackTimeOffset || 0);
             const clockDrift = Math.abs(timelineTime - predictedTime);
+            const measuredOffset = this._getMeaningfulTimelineOffset(
+                timelineTime,
+                programTime
+            );
 
-            if (
-                this._playbackTimeOffset === null ||
-                timelineElementChanged ||
-                (timelineValueChanged &&
-                    clockDrift > TIMELINE_DRIFT_TOLERANCE_SECONDS)
+            if (this._playbackTimeOffset === null) {
+                this._playbackTimeOffset = measuredOffset;
+            } else if (
+                (timelineElementChanged || timelineValueChanged) &&
+                clockDrift > TIMELINE_DRIFT_TOLERANCE_SECONDS
             ) {
-                this._playbackTimeOffset = timelineTime - rawVideoTime;
+                this._playbackTimeOffset = measuredOffset;
             }
 
             this._clockTimelineElement = timelineElement;
@@ -573,8 +639,8 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
             this._clockTimelineValue = null;
         }
 
-        this._clockRawVideoTime = rawVideoTime;
-        return rawVideoTime + (this._playbackTimeOffset || 0);
+        this._clockProgramTime = programTime;
+        return programTime + (this._playbackTimeOffset || 0);
     }
 
     invalidatePlaybackClockCalibration() {
@@ -901,14 +967,8 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
         this.onVideoIdChangeCallback = null;
         this.lastKnownVttUrlForVideoId = {};
         this.pendingVttUrlForVideoId = {};
-        this._clockVideoElement = null;
-        this._clockTimelineElement = null;
-        this._clockTimelineValue = null;
-        this._clockRawVideoTime = null;
-        this._clockNeedsFreshTimeline = false;
-        this._playbackTimeOffset = null;
-        this._cachedProgressBarElement = null;
-        this._lastDeepTimelineSearchAt = 0;
+        this._programStartOffsetSeconds = 0;
+        this._resetPlaybackClockState();
         this.logger.info('Platform cleaned up successfully');
     }
 }
