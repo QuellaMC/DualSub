@@ -1,273 +1,299 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useSidePanelContext } from './SidePanelContext.jsx';
-import { useSidePanelCommunication } from './useSidePanelCommunication.js';
+import { useSettings } from './useSettings.js';
+import { CONTEXT_TYPES } from '../../context_providers/contextSchemas.js';
+
+const AI_SETTINGS_KEYS = [
+    'aiContextEnabled',
+    'aiContextProvider',
+    'aiContextTypes',
+];
+
+const ALLOWED_CONTEXT_TYPES = new Set(CONTEXT_TYPES);
+
+function normalizeWords(words) {
+    if (!words || typeof words === 'string') {
+        return typeof words === 'string' && words.trim() ? [words.trim()] : [];
+    }
+
+    if (typeof words[Symbol.iterator] !== 'function') {
+        return [];
+    }
+
+    return Array.from(words)
+        .map((word) => (typeof word === 'string' ? word.trim() : ''))
+        .filter(Boolean);
+}
+
+function normalizeContextTypes(contextTypes) {
+    return Array.isArray(contextTypes)
+        ? [
+              ...new Set(
+                  contextTypes.filter((type) => ALLOWED_CONTEXT_TYPES.has(type))
+              ),
+          ]
+        : [];
+}
+
+function getMessage(key, fallback) {
+    return chrome.i18n.getMessage(key) || fallback;
+}
 
 /**
- * AI Analysis Hook
- * 
- * Provides AI context analysis functionality for the side panel.
- * Integrates with the background service worker and existing AIContextProvider.
- * 
- * Features:
- * - Request AI analysis for selected words
- * - Handle loading states and errors
- * - Cache results for performance
- * - Support retry logic
+ * Coordinates AI analysis for the currently bound browser tab. Chrome runtime
+ * messages cannot be aborted, so requests are invalidated locally and stale
+ * responses are ignored.
  */
 export function useAIAnalysis() {
     const {
-        selectedWords,
+        activeTabId,
         analysisResult,
-        setAnalysisResult,
-        isAnalyzing,
-        setIsAnalyzing,
+        communication,
         error,
-        setError,
-        sourceLanguage,
+        isAnalyzing,
+        selectedWords,
         targetLanguage,
+        updateTabState,
     } = useSidePanelContext();
+    const { sendToBoundTab, sendToTab } = communication;
+    const {
+        settings,
+        loading: settingsLoading,
+        error: settingsError,
+    } = useSettings(AI_SETTINGS_KEYS);
+    const activeRequestRef = useRef(null);
+    const requestCounterRef = useRef(0);
 
-    const [settings, setSettings] = useState(null);
-    const cacheRef = useRef(new Map());
-    const abortControllerRef = useRef(null);
+    const notifyAnalyzingState = useCallback(
+        async (tabId, nextIsAnalyzing) => {
+            const data = { isAnalyzing: nextIsAnalyzing };
+            if (typeof tabId === 'number') {
+                return sendToTab(tabId, 'sidePanelSetAnalyzing', data);
+            }
+            return sendToBoundTab('sidePanelSetAnalyzing', data);
+        },
+        [sendToBoundTab, sendToTab]
+    );
 
-    const { sendToBoundTab } = useSidePanelCommunication();
+    const invalidateRequest = useCallback(
+        (request) => {
+            if (!request || request.cancelled) {
+                return Promise.resolve();
+            }
 
-    // Load settings
+            request.cancelled = true;
+            if (typeof request.tabId === 'number') {
+                updateTabState(request.tabId, { isAnalyzing: false });
+            }
+
+            const notification = notifyAnalyzingState(
+                request.tabId,
+                false
+            ).catch((notificationError) =>
+                console.warn(
+                    'Failed to clear analyzing state:',
+                    notificationError
+                )
+            );
+
+            if (activeRequestRef.current === request) {
+                activeRequestRef.current = null;
+            }
+
+            return notification;
+        },
+        [notifyAnalyzingState, updateTabState]
+    );
+
+    const selectedWordsKey = normalizeWords(selectedWords).join('\u0000');
+    const contextTypesKey = normalizeContextTypes(settings.aiContextTypes).join(
+        ','
+    );
+    const requestConfigurationKey = [
+        settings.aiContextEnabled,
+        settings.aiContextProvider,
+        contextTypesKey,
+        targetLanguage,
+    ].join('|');
+
     useEffect(() => {
-        const loadSettings = async () => {
-            try {
-                const result = await chrome.storage.sync.get([
-                    'aiContextEnabled',
-                    'aiContextProvider',
-                    'aiContextTypes',
-                    'aiContextTimeout',
-                    'aiContextCacheEnabled',
-                ]);
-                setSettings(result);
-            } catch (err) {
-                console.error('Failed to load AI settings:', err);
-            }
-        };
-        loadSettings();
-    }, []);
+        const request = activeRequestRef.current;
+        if (
+            request &&
+            (request.tabId !== activeTabId ||
+                request.wordsKey !== selectedWordsKey ||
+                request.configurationKey !== requestConfigurationKey)
+        ) {
+            void invalidateRequest(request);
+        }
+    }, [
+        activeTabId,
+        invalidateRequest,
+        requestConfigurationKey,
+        selectedWordsKey,
+    ]);
 
-    /**
-     * Generate cache key for analysis request
-     */
-    const getCacheKey = useCallback((words, contextTypes, language) => {
-        const sortedWords = Array.from(words).sort().join(',');
-        const sortedTypes = contextTypes.sort().join(',');
-        return `${sortedWords}:${sortedTypes}:${language}`;
-    }, []);
-
-    /**
-     * Check if result is in cache
-     */
-    const getCachedResult = useCallback(
-        (words, contextTypes, language) => {
-            if (!settings?.aiContextCacheEnabled) {
-                return null;
-            }
-
-            const key = getCacheKey(words, contextTypes, language);
-            const cached = cacheRef.current.get(key);
-
-            if (cached && Date.now() - cached.timestamp < 3600000) {
-                // 1 hour cache
-                return cached.result;
-            }
-
-            return null;
+    useEffect(
+        () => () => {
+            void invalidateRequest(activeRequestRef.current);
         },
-        [settings, getCacheKey]
+        [invalidateRequest]
     );
 
-    /**
-     * Store result in cache
-     */
-    const setCachedResult = useCallback(
-        (words, contextTypes, language, result) => {
-            if (!settings?.aiContextCacheEnabled) {
-                return;
-            }
-
-            const key = getCacheKey(words, contextTypes, language);
-            cacheRef.current.set(key, {
-                result,
-                timestamp: Date.now(),
-            });
-
-            // Clean up old cache entries (keep last 50)
-            if (cacheRef.current.size > 50) {
-                const oldestKey = cacheRef.current.keys().next().value;
-                cacheRef.current.delete(oldestKey);
-            }
-        },
-        [settings, getCacheKey]
-    );
-
-    /**
-     * Request AI analysis for selected words
-     */
     const analyzeWords = useCallback(
         async (customWords = null) => {
-            const wordsToAnalyze = customWords || selectedWords;
+            const wordsToAnalyze = normalizeWords(customWords ?? selectedWords);
+            const requestTabId = activeTabId;
 
-            if (!wordsToAnalyze || wordsToAnalyze.size === 0) {
-                setError(chrome.i18n.getMessage('sidepanelErrorNoWords'));
+            if (wordsToAnalyze.length === 0) {
+                if (typeof requestTabId === 'number') {
+                    updateTabState(requestTabId, {
+                        error: chrome.i18n.getMessage('sidepanelErrorNoWords'),
+                    });
+                }
                 return null;
             }
 
             if (!settings?.aiContextEnabled) {
-                setError(chrome.i18n.getMessage('sidepanelErrorDisabled'));
+                updateTabState(requestTabId, {
+                    error: chrome.i18n.getMessage('sidepanelErrorDisabled'),
+                });
                 return null;
             }
 
-            // Check cache first
-            const contextTypes = settings?.aiContextTypes || [
-                'cultural',
-                'historical',
-                'linguistic',
-            ];
-            const cachedResult = getCachedResult(
-                wordsToAnalyze,
-                contextTypes,
-                sourceLanguage
-            );
-
-            if (cachedResult) {
-                setAnalysisResult(cachedResult);
-                return cachedResult;
-            }
-
-            // Cancel any existing request
-            if (abortControllerRef.current) {
-                abortControllerRef.current.abort();
-            }
-
-            abortControllerRef.current = new AbortController();
-
-            setIsAnalyzing(true);
-            setError(null);
-            setAnalysisResult(null);
-
-            // Notify content script (bound tab) that analysis started (to block word clicks)
-            try {
-                await sendToBoundTab('sidePanelSetAnalyzing', { isAnalyzing: true });
-            } catch (err) {
-                console.warn('Failed to notify analyzing state:', err);
-            }
-
-            try {
-                const text = Array.from(wordsToAnalyze).join(' ');
-
-                // Send request to background service worker
-                const response = await chrome.runtime.sendMessage({
-                    action: 'analyzeContext',
-                    text,
-                    contextTypes,
-                    language: sourceLanguage,
-                    targetLanguage: targetLanguage,
-                    requestId: `sidepanel-${Date.now()}`,
+            const contextTypes = normalizeContextTypes(settings.aiContextTypes);
+            if (contextTypes.length === 0) {
+                updateTabState(requestTabId, {
+                    analysisResult: null,
+                    error: getMessage(
+                        'sidepanelErrorNoContextTypes',
+                        'Select at least one context type before analyzing'
+                    ),
                 });
+                return null;
+            }
 
-                // Check if request was aborted
-                if (abortControllerRef.current?.signal.aborted) {
+            await invalidateRequest(activeRequestRef.current);
+
+            const request = {
+                cancelled: false,
+                configurationKey: requestConfigurationKey,
+                id: ++requestCounterRef.current,
+                tabId: requestTabId,
+                wordsKey: wordsToAnalyze.join('\u0000'),
+            };
+            activeRequestRef.current = request;
+
+            updateTabState(requestTabId, {
+                analysisResult: null,
+                error: null,
+                isAnalyzing: true,
+            });
+
+            try {
+                await notifyAnalyzingState(requestTabId, true);
+            } catch (notificationError) {
+                console.warn(
+                    'Failed to set analyzing state:',
+                    notificationError
+                );
+            }
+
+            if (request.cancelled || activeRequestRef.current !== request) {
+                return null;
+            }
+
+            try {
+                const message = {
+                    action: 'analyzeContext',
+                    text: wordsToAnalyze.join(' '),
+                    contextTypes,
+                    targetLanguage,
+                    requestId: `sidepanel-${Date.now()}-${request.id}`,
+                };
+                if (contextTypes.length === 1) {
+                    message.contextType = contextTypes[0];
+                }
+                const response = await chrome.runtime.sendMessage(message);
+
+                if (request.cancelled || activeRequestRef.current !== request) {
                     return null;
                 }
 
-                if (response && response.success) {
-                    const payload = response.result || response;
-                    const normalized = payload?.analysis || payload?.result || null;
-
-                    // Store in cache
-                    if (normalized) {
-                        setCachedResult(
-                            wordsToAnalyze,
-                            contextTypes,
-                            sourceLanguage,
-                            normalized
-                        );
-                    }
-
-                    setAnalysisResult(normalized);
-                    return normalized;
-                } else {
-                    const errorMsg =
-                        response?.error || chrome.i18n.getMessage('sidepanelErrorGeneric');
-                    setError(errorMsg);
-                    return null;
-                }
-            } catch (err) {
-                // Check if error is due to abort
-                if (err.name === 'AbortError') {
+                if (!response?.success) {
+                    updateTabState(requestTabId, {
+                        error:
+                            response?.error ||
+                            chrome.i18n.getMessage('sidepanelErrorGeneric'),
+                    });
                     return null;
                 }
 
-                console.error('AI analysis error:', err);
-                const errorMsg =
-                    err.message || chrome.i18n.getMessage('sidepanelErrorGeneric');
-                setError(errorMsg);
+                const payload = response.result || response;
+                const normalizedResult =
+                    payload?.analysis || payload?.result || null;
+
+                if (!normalizedResult) {
+                    updateTabState(requestTabId, {
+                        error: chrome.i18n.getMessage('sidepanelErrorGeneric'),
+                    });
+                    return null;
+                }
+
+                updateTabState(requestTabId, {
+                    analysisResult: normalizedResult,
+                    error: null,
+                });
+                return normalizedResult;
+            } catch (requestError) {
+                if (request.cancelled || activeRequestRef.current !== request) {
+                    return null;
+                }
+
+                console.error('AI analysis error:', requestError);
+                updateTabState(requestTabId, {
+                    error:
+                        requestError.message ||
+                        chrome.i18n.getMessage('sidepanelErrorGeneric'),
+                });
                 return null;
             } finally {
-                setIsAnalyzing(false);
-                abortControllerRef.current = null;
+                if (activeRequestRef.current === request) {
+                    activeRequestRef.current = null;
+                    updateTabState(requestTabId, { isAnalyzing: false });
 
-                // Notify content script (bound tab) that analysis stopped
-                try {
-                    await sendToBoundTab('sidePanelSetAnalyzing', { isAnalyzing: false });
-                } catch (err) {
-                    console.warn('Failed to notify analyzing state:', err);
+                    try {
+                        await notifyAnalyzingState(requestTabId, false);
+                    } catch (notificationError) {
+                        console.warn(
+                            'Failed to clear analyzing state:',
+                            notificationError
+                        );
+                    }
                 }
             }
         },
         [
+            activeTabId,
+            invalidateRequest,
+            notifyAnalyzingState,
+            requestConfigurationKey,
             selectedWords,
             settings,
-            sourceLanguage,
             targetLanguage,
-            setIsAnalyzing,
-            setError,
-            setAnalysisResult,
-            getCachedResult,
-            setCachedResult,
+            updateTabState,
         ]
     );
 
-    /**
-     * Cancel ongoing analysis
-     */
-    const cancelAnalysis = useCallback(() => {
-        if (abortControllerRef.current) {
-            abortControllerRef.current.abort();
-            abortControllerRef.current = null;
-        }
-        setIsAnalyzing(false);
-    }, [setIsAnalyzing]);
-
-    /**
-     * Clear cache
-     */
-    const clearCache = useCallback(() => {
-        cacheRef.current.clear();
-    }, []);
-
-    /**
-     * Retry last analysis
-     */
-    const retryAnalysis = useCallback(() => {
-        return analyzeWords();
-    }, [analyzeWords]);
+    const retryAnalysis = useCallback(() => analyzeWords(), [analyzeWords]);
 
     return {
-        analyzeWords,
-        cancelAnalysis,
-        retryAnalysis,
-        clearCache,
-        isAnalyzing,
         analysisResult,
-        error,
+        analyzeWords,
+        error: error || settingsError?.message || null,
+        isAnalyzing,
+        retryAnalysis,
         settings,
+        settingsLoading,
     };
 }

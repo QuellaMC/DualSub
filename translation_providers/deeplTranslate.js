@@ -1,6 +1,8 @@
 // DeepL Translation Provider - Self-contained version for service worker compatibility
 
 import Logger from '../utils/logger.js';
+import { fetchWithTimeout } from '../utils/fetchWithTimeout.js';
+import { configService } from '../services/configService.js';
 
 const DEEPL_API_URL_PRO = 'https://api.deepl.com/v2/translate';
 const DEEPL_API_URL_FREE = 'https://api-free.deepl.com/v2/translate';
@@ -61,12 +63,12 @@ function detectEnvironment() {
             environmentType: isServiceWorker
                 ? 'service-worker'
                 : isBrowser
-                    ? 'browser'
-                    : 'unknown',
+                  ? 'browser'
+                  : 'unknown',
         };
     } catch (error) {
         logger.warn('Environment detection failed', {
-            errorMessage: error.message,
+            errorType: error?.name || 'UnknownError',
         });
         return {
             isServiceWorker: false,
@@ -83,7 +85,10 @@ function detectEnvironment() {
  * @throws {Error} Processed error with appropriate message
  */
 function handleDeepLError(error, envInfo) {
-    logger.error('Translation error occurred', error, { environment: envInfo });
+    logger.error('Translation error occurred', null, {
+        errorType: error?.name || 'UnknownError',
+        environmentType: envInfo.environmentType,
+    });
 
     // Network connectivity errors
     if (error.message.includes('Failed to fetch')) {
@@ -94,8 +99,8 @@ function handleDeepLError(error, envInfo) {
     if (envInfo.isServiceWorker && error.message.includes('window')) {
         logger.error(
             'Service worker environment compatibility issue detected',
-            error,
-            { environment: envInfo }
+            null,
+            { environmentType: envInfo.environmentType }
         );
         throw new Error(
             'DeepL Error: Service worker environment compatibility issue'
@@ -158,39 +163,10 @@ export async function translate(text, sourceLang, targetLang) {
     }
 
     try {
-        // Get API credentials from storage with enhanced error handling
+        // Resolve each value from the schema-owned storage scope. Credentials
+        // are device-local while the API plan remains synchronized.
         const { deeplApiKey: apiKey, deeplApiPlan: apiPlan } =
-            await new Promise((resolve, reject) => {
-                try {
-                    if (typeof chrome === 'undefined' || !chrome.storage) {
-                        reject(
-                            new Error('Chrome storage API is not available')
-                        );
-                        return;
-                    }
-
-                    chrome.storage.sync.get(
-                        ['deeplApiKey', 'deeplApiPlan'],
-                        (result) => {
-                            if (chrome.runtime.lastError) {
-                                reject(
-                                    new Error(
-                                        `Storage error: ${chrome.runtime.lastError.message}`
-                                    )
-                                );
-                            } else {
-                                resolve(result);
-                            }
-                        }
-                    );
-                } catch (storageError) {
-                    reject(
-                        new Error(
-                            `Chrome storage access failed: ${storageError.message}`
-                        )
-                    );
-                }
-            });
+            await configService.getMultiple(['deeplApiKey', 'deeplApiPlan']);
 
         if (!apiKey) {
             throw new Error(
@@ -201,7 +177,8 @@ export async function translate(text, sourceLang, targetLang) {
         // Validate input
         if (!text || typeof text !== 'string' || text.trim() === '') {
             logger.warn('Empty or invalid text provided for translation', {
-                text: text?.substring(0, 50),
+                valueType: typeof text,
+                textLength: typeof text === 'string' ? text.length : 0,
             });
             return text || '';
         }
@@ -235,7 +212,7 @@ export async function translate(text, sourceLang, targetLang) {
         });
 
         // Make the API request with enhanced error handling
-        const response = await fetch(apiUrl, {
+        const response = await fetchWithTimeout(apiUrl, {
             method: 'POST',
             headers: {
                 Authorization: `DeepL-Auth-Key ${apiKey}`,
@@ -254,28 +231,14 @@ export async function translate(text, sourceLang, targetLang) {
                 errorMessage =
                     'DeepL API quota exceeded. Please check your usage limits.';
             } else if (response.status === 400) {
-                try {
-                    const errorData = await response.json();
-                    errorMessage = `DeepL API request invalid: ${errorData.message || 'Bad request parameters'}`;
-                    logger.error('DeepL API 400 error details', null, {
-                        status: 400,
-                        errorData,
-                    });
-                } catch {
-                    errorMessage = `DeepL API request invalid: ${response.statusText}`;
-                }
+                errorMessage = 'DeepL API request invalid.';
             } else {
-                try {
-                    const errorData = await response.json();
-                    errorMessage = `DeepL API request failed with status ${response.status}: ${errorData.message || 'Unknown error'}`;
-                    logger.error('DeepL API error', null, {
-                        status: response.status,
-                        errorData,
-                    });
-                } catch {
-                    errorMessage = `DeepL API request failed with status ${response.status}: ${response.statusText}`;
-                }
+                errorMessage = `DeepL API request failed with status ${response.status}.`;
             }
+            logger.error('DeepL API request failed', null, {
+                status: response.status,
+                contentType: response.headers?.get?.('content-type') || null,
+            });
             throw new Error(errorMessage);
         }
 
@@ -292,7 +255,11 @@ export async function translate(text, sourceLang, targetLang) {
             return translatedText;
         } else {
             logger.error('Invalid response structure from DeepL API', null, {
-                responseData: data,
+                responseType: Array.isArray(data) ? 'array' : typeof data,
+                hasTranslations: Array.isArray(data?.translations),
+                translationCount: Array.isArray(data?.translations)
+                    ? data.translations.length
+                    : 0,
             });
             throw new Error(
                 'DeepL translation response was empty or malformed.'

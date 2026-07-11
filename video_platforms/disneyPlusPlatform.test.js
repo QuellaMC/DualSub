@@ -1,21 +1,75 @@
-import {
-    describe,
-    it,
-    expect,
-    beforeEach,
-    afterEach,
-    jest,
-} from '@jest/globals';
+import { describe, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import { DisneyPlusPlatform } from './disneyPlusPlatform.js';
-import {
-    mockWindowLocation,
-    LocationMock,
-} from '../test-utils/location-mock.js';
-import { mockChromeApi, ChromeApiMock } from '../test-utils/chrome-api-mock.js';
+import { ChromeApiMock } from '../test-utils/chrome-api-mock.js';
 import { createLoggerMock } from '../test-utils/logger-mock.js';
 import Logger from '../utils/logger.js';
 import { configService } from '../services/configService.js';
 import flushPromises from '../test-utils/flush-promises.js';
+
+function createVideo({
+    currentTime = 0,
+    readyState = 0,
+    paused = true,
+    ended = false,
+    currentSrc = '',
+    width = 0,
+    height = 0,
+} = {}) {
+    const video = document.createElement('video');
+    const state = { currentTime, readyState, paused, ended, currentSrc };
+
+    Object.defineProperties(video, {
+        currentTime: {
+            configurable: true,
+            get: () => state.currentTime,
+        },
+        readyState: {
+            configurable: true,
+            get: () => state.readyState,
+        },
+        paused: {
+            configurable: true,
+            get: () => state.paused,
+        },
+        ended: {
+            configurable: true,
+            get: () => state.ended,
+        },
+        currentSrc: {
+            configurable: true,
+            get: () => state.currentSrc,
+        },
+    });
+    video.getBoundingClientRect = jest.fn(() => ({
+        width,
+        height,
+        top: 0,
+        right: width,
+        bottom: height,
+        left: 0,
+    }));
+
+    return { video, state };
+}
+
+function createDisneyTimeline(value, max = 1500) {
+    const overlay = document.createElement('main-app-controls-overlay');
+    const overlayRoot = overlay.attachShadow({ mode: 'open' });
+    const progressBar = document.createElement('progress-bar');
+    const progressRoot = progressBar.attachShadow({ mode: 'open' });
+    const timeline = document.createElement('div');
+
+    timeline.className = 'progress-bar__seekable-range';
+    timeline.setAttribute('role', 'slider');
+    timeline.setAttribute('aria-label', 'Timeline');
+    timeline.setAttribute('aria-valuenow', String(value));
+    timeline.setAttribute('aria-valuemax', String(max));
+    progressRoot.appendChild(timeline);
+    overlayRoot.appendChild(progressBar);
+    document.body.appendChild(overlay);
+
+    return { overlay, timeline };
+}
 
 describe('DisneyPlusPlatform Logging Integration', () => {
     let platform;
@@ -26,6 +80,7 @@ describe('DisneyPlusPlatform Logging Integration', () => {
     beforeEach(() => {
         // Reset all mocks
         jest.clearAllMocks();
+        document.body.replaceChildren();
 
         // Setup configService mock
         jest.spyOn(configService, 'getMultiple').mockResolvedValue({
@@ -77,6 +132,7 @@ describe('DisneyPlusPlatform Logging Integration', () => {
 
         // Clear all Jest mocks
         jest.clearAllMocks();
+        document.body.replaceChildren();
     });
 
     describe('Logger Initialization', () => {
@@ -143,7 +199,7 @@ describe('DisneyPlusPlatform Logging Integration', () => {
                 'SUBTITLE_URL_FOUND for injectedVideoId',
                 expect.objectContaining({
                     injectedVideoId: '12345',
-                    url: 'http://example.com/master.m3u8',
+                    urlLength: mockEvent.detail.url.length,
                 })
             );
         });
@@ -162,7 +218,7 @@ describe('DisneyPlusPlatform Logging Integration', () => {
                 'SUBTITLE_URL_FOUND event without a videoId',
                 null,
                 expect.objectContaining({
-                    url: 'http://example.com/master.m3u8',
+                    urlLength: mockEvent.detail.url.length,
                 })
             );
         });
@@ -219,10 +275,81 @@ describe('DisneyPlusPlatform Logging Integration', () => {
             expect(mockLogger.debug).toHaveBeenCalledWith(
                 'VTT URL already processed or known',
                 expect.objectContaining({
-                    url: 'http://example.com/master.m3u8',
-                    videoId: '12345',
+                    urlLength: mockEvent.detail.url.length,
+                    hasVideoId: true,
                 })
             );
+        });
+    });
+
+    describe('Playback clock', () => {
+        test('selects the visible, ready video instead of a dormant first video', () => {
+            const dormant = createVideo();
+            const active = createVideo({
+                currentTime: 430,
+                readyState: 4,
+                paused: false,
+                currentSrc: 'blob:https://www.disneyplus.com/active-video',
+                width: 1512,
+                height: 708,
+            });
+            active.video.id = 'hivePlayer1';
+            document.body.append(dormant.video, active.video);
+
+            expect(platform.getVideoElement()).toBe(active.video);
+        });
+
+        test('finds the semantic timeline through nested open shadow roots', () => {
+            const { timeline } = createDisneyTimeline(1063);
+
+            expect(platform.getProgressBarElement()).toBe(timeline);
+        });
+
+        test('uses active video time continuously after timeline calibration', () => {
+            const active = createVideo({
+                currentTime: 400,
+                readyState: 4,
+                paused: false,
+                currentSrc: 'blob:https://www.disneyplus.com/active-video',
+                width: 1512,
+                height: 708,
+            });
+            document.body.appendChild(active.video);
+            const firstTimeline = createDisneyTimeline(1000);
+
+            expect(platform.getPlaybackTime()).toBeCloseTo(1000);
+
+            active.state.currentTime = 401;
+            expect(platform.getPlaybackTime()).toBeCloseTo(1001);
+
+            firstTimeline.overlay.remove();
+            active.state.currentTime = 410;
+            expect(platform.getPlaybackTime()).toBeCloseTo(1010);
+
+            createDisneyTimeline(1020);
+            active.state.currentTime = 411;
+            expect(platform.getPlaybackTime()).toBeCloseTo(1020);
+
+            active.state.currentTime = 412;
+            expect(platform.getPlaybackTime()).toBeCloseTo(1021);
+        });
+
+        test('falls back immediately to active video time before calibration', () => {
+            const active = createVideo({
+                currentTime: 25,
+                readyState: 4,
+                paused: false,
+                currentSrc: 'blob:https://www.disneyplus.com/active-video',
+                width: 1512,
+                height: 708,
+            });
+            document.body.appendChild(active.video);
+
+            expect(platform.getPlaybackTime()).toBe(25);
+        });
+
+        test('does not enable the generic progress-bar observer', () => {
+            expect(platform.supportsProgressBarTracking()).toBe(false);
         });
     });
 
@@ -251,8 +378,8 @@ describe('DisneyPlusPlatform Logging Integration', () => {
             expect(mockLogger.info).toHaveBeenCalledWith(
                 'Requesting VTT from background',
                 expect.objectContaining({
-                    url: 'http://example.com/master.m3u8',
-                    videoId: '12345',
+                    urlLength: mockEvent.detail.url.length,
+                    hasVideoId: true,
                 })
             );
         });
@@ -321,9 +448,9 @@ describe('DisneyPlusPlatform Logging Integration', () => {
                 'Background failed to fetch VTT',
                 null,
                 expect.objectContaining({
-                    error: 'Network error',
-                    url: 'http://example.com/subtitle.vtt',
-                    videoId: '12345',
+                    errorLength: 'Network error'.length,
+                    hasResponseUrl: true,
+                    hasVideoId: true,
                 })
             );
         });
@@ -357,8 +484,8 @@ describe('DisneyPlusPlatform Logging Integration', () => {
                 'Error for VTT fetch',
                 chromeApiMock.runtime.lastError,
                 expect.objectContaining({
-                    url: 'http://example.com/master.m3u8',
-                    videoId: '12345',
+                    urlLength: mockEvent.detail.url.length,
+                    hasVideoId: true,
                 })
             );
 

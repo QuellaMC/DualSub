@@ -1,47 +1,18 @@
 /**
  * VTT Parser with M3U8 Support
  *
- * Integrates with shared VTT parsing utilities and adds M3U8 playlist
- * parsing capabilities for segmented subtitle files.
- *
- * Reuses existing parseVTT() and parseTimestampToSeconds() from shared utilities.
+ * Parses M3U8 playlists and combines segmented subtitle files.
  *
  * @author DualSub Extension
  * @version 2.0.0
  */
 
-import { sharedUtilityIntegration } from '../utils/sharedUtilityIntegration.js';
 import { loggingManager } from '../utils/loggingManager.js';
+import { fetchWithTimeout } from '../../utils/fetchWithTimeout.js';
 
 class VTTParser {
     constructor() {
         this.logger = loggingManager.createLogger('VTTParser');
-    }
-
-    /**
-     * Parse VTT content using shared utilities
-     * @param {string} vttString - VTT content
-     * @returns {Array} Array of parsed cues
-     */
-    parseVTT(vttString) {
-        this.logger.debug('Parsing VTT content', {
-            contentLength: vttString.length,
-        });
-
-        return sharedUtilityIntegration.parseVTT(vttString, {
-            enableCache: true,
-        });
-    }
-
-    /**
-     * Parse timestamp to seconds using shared utilities
-     * @param {string} timestamp - Timestamp string
-     * @returns {number} Seconds
-     */
-    parseTimestampToSeconds(timestamp) {
-        return sharedUtilityIntegration.parseTimestampToSeconds(timestamp, {
-            enableCache: true,
-        });
     }
 
     /**
@@ -52,7 +23,6 @@ class VTTParser {
      */
     parsePlaylistForVttSegments(playlistText, playlistUrl) {
         this.logger.debug('Parsing M3U8 playlist for VTT segments', {
-            playlistUrl,
             contentLength: playlistText.length,
         });
 
@@ -60,9 +30,7 @@ class VTTParser {
         const segmentUrls = [];
         const baseUrl = new URL(playlistUrl);
 
-        // Log the first few lines for debugging
-        this.logger.debug('M3U8 playlist content preview', {
-            firstLines: lines.slice(0, 10),
+        this.logger.debug('M3U8 playlist structure inspected', {
             totalLines: lines.length,
         });
 
@@ -70,57 +38,32 @@ class VTTParser {
             const trimmedLine = line.trim();
             if (trimmedLine && !trimmedLine.startsWith('#')) {
                 this.logger.debug('Processing M3U8 line', {
-                    line: trimmedLine,
-                    hasVtt: trimmedLine.toLowerCase().includes('.vtt'),
-                    hasWebvtt: trimmedLine.toLowerCase().includes('.webvtt'),
-                    hasSlash: trimmedLine.includes('/'),
                     length: trimmedLine.length,
                 });
 
-                // Enhanced check for subtitle segments
-                // Include Disney+ style segments and other common patterns
-                if (
-                    trimmedLine.toLowerCase().includes('.vtt') ||
-                    trimmedLine.toLowerCase().includes('.webvtt') ||
-                    trimmedLine.toLowerCase().includes('subtitle') ||
-                    trimmedLine.toLowerCase().includes('caption') ||
-                    // Disney+ segments often don't have extensions but are subtitle URLs
-                    (trimmedLine.includes('disney') &&
-                        trimmedLine.includes('subtitle')) ||
-                    // Generic segment pattern (not just files without /)
-                    (!trimmedLine.includes('?') && trimmedLine.length > 5)
-                ) {
-                    try {
-                        const segmentUrl = new URL(trimmedLine, baseUrl.href)
-                            .href;
-                        segmentUrls.push(segmentUrl);
-                        this.logger.debug('Found VTT segment', {
-                            segmentUrl,
-                            originalLine: trimmedLine,
-                        });
-                    } catch (error) {
-                        this.logger.warn(
-                            'Could not form valid URL from M3U8 line',
-                            error,
-                            {
-                                line: trimmedLine,
-                                baseUrl: baseUrl.href,
-                            }
-                        );
-                    }
-                } else {
-                    this.logger.debug('Skipped M3U8 line (no match)', {
-                        line:
-                            trimmedLine.substring(0, 100) +
-                            (trimmedLine.length > 100 ? '...' : ''),
+                // In a media playlist, every non-comment line is a segment URI.
+                // Do not require a file extension: signed CDN URLs are commonly
+                // extensionless and may contain query parameters.
+                try {
+                    const segmentUrl = new URL(trimmedLine, baseUrl).href;
+                    segmentUrls.push(segmentUrl);
+                    this.logger.debug('Found VTT segment', {
+                        segmentCount: segmentUrls.length,
                     });
+                } catch (error) {
+                    this.logger.warn(
+                        'Could not form valid URL from M3U8 line',
+                        error,
+                        {
+                            lineLength: trimmedLine.length,
+                        }
+                    );
                 }
             }
         }
 
         this.logger.info('M3U8 playlist parsing completed', {
             segmentCount: segmentUrls.length,
-            playlistUrl,
         });
 
         return segmentUrls;
@@ -134,22 +77,27 @@ class VTTParser {
      */
     async fetchAndCombineVttSegments(
         segmentUrls,
-        playlistUrlForLogging = 'N/A'
+        _playlistUrlForLogging = 'N/A'
     ) {
+        if (!Array.isArray(segmentUrls) || segmentUrls.length === 0) {
+            throw new Error('At least one VTT segment URL is required.');
+        }
+
         this.logger.info('Fetching VTT segments from playlist', {
             segmentCount: segmentUrls.length,
-            playlistUrl: playlistUrlForLogging,
         });
 
         const fetchPromises = segmentUrls.map(async (url) => {
             try {
-                const response = await fetch(url);
+                const response = await fetchWithTimeout(url);
                 if (!response.ok) {
-                    throw new Error(`HTTP error ${response.status} for ${url}`);
+                    throw new Error(
+                        `VTT segment fetch failed: ${response.status}`
+                    );
                 }
                 return await response.text();
             } catch (error) {
-                this.logger.warn('Error fetching VTT segment', error, { url });
+                this.logger.warn('Error fetching VTT segment', error);
                 return null;
             }
         });
@@ -176,7 +124,7 @@ class VTTParser {
                 `Failed to fetch any of the ${segmentUrls.length} VTT segments.`
             );
             this.logger.error('No VTT segments could be fetched', error, {
-                segmentUrls: segmentUrls.slice(0, 3), // Log first 3 URLs for debugging
+                segmentCount: segmentUrls.length,
             });
             throw error;
         }
@@ -196,14 +144,14 @@ class VTTParser {
      * @returns {Promise<string>} Combined VTT content
      */
     async processM3U8Playlist(playlistUrl) {
-        this.logger.info('Processing M3U8 playlist', { playlistUrl });
+        this.logger.info('Processing M3U8 playlist');
 
         try {
             // Fetch the playlist
-            const response = await fetch(playlistUrl);
+            const response = await fetchWithTimeout(playlistUrl);
             if (!response.ok) {
                 throw new Error(
-                    `HTTP error ${response.status} for playlist ${playlistUrl}`
+                    `M3U8 playlist fetch failed: ${response.status}`
                 );
             }
             const playlistText = await response.text();
@@ -216,29 +164,11 @@ class VTTParser {
 
             if (segmentUrls.length === 0) {
                 this.logger.warn('No VTT segments found in M3U8 playlist', {
-                    playlistUrl,
                     playlistLength: playlistText.length,
                     linesCount: playlistText.split('\n').length,
-                    playlistPreview: playlistText.substring(0, 500),
                 });
 
-                // Try to treat the entire URL as a direct VTT file
-                this.logger.info('Attempting to treat URL as direct VTT file');
-                const directVttResponse = await fetch(playlistUrl);
-                if (directVttResponse.ok) {
-                    const directVttContent = await directVttResponse.text();
-                    this.logger.info(
-                        'Successfully fetched direct VTT content',
-                        {
-                            contentLength: directVttContent.length,
-                        }
-                    );
-                    return directVttContent;
-                } else {
-                    throw new Error(
-                        `No VTT segments found and direct VTT fetch failed: ${directVttResponse.status}`
-                    );
-                }
+                throw new Error('No VTT segments found in M3U8 playlist.');
             }
 
             // Fetch and combine segments
@@ -248,16 +178,13 @@ class VTTParser {
             );
 
             this.logger.info('M3U8 playlist processing completed', {
-                playlistUrl,
                 segmentCount: segmentUrls.length,
                 finalVttLength: combinedVtt.length,
             });
 
             return combinedVtt;
         } catch (error) {
-            this.logger.error('M3U8 playlist processing failed', error, {
-                playlistUrl,
-            });
+            this.logger.error('M3U8 playlist processing failed', error);
             throw error;
         }
     }
@@ -268,9 +195,9 @@ class VTTParser {
      * @returns {Promise<string>} Text content
      */
     async fetchText(url) {
-        const response = await fetch(url);
+        const response = await fetchWithTimeout(url);
         if (!response.ok) {
-            throw new Error(`HTTP error ${response.status} for ${url}`);
+            throw new Error(`Subtitle fetch failed: ${response.status}`);
         }
         return await response.text();
     }

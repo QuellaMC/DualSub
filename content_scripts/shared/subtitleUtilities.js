@@ -19,6 +19,17 @@ let interactiveModulesLoaded = false;
 const contentChangeDebounceTimeouts = new Map();
 const CONTENT_CHANGE_DEBOUNCE_DELAY = 50; // 50ms debounce
 
+// Bound each queue pass so future cues do not monopolize the content script.
+// Cues are still sent as individual translation requests below.
+const MAX_CUES_PER_QUEUE_PASS = 3;
+const TRANSLATION_LOOKAHEAD_SECONDS = 30;
+const TRANSLATION_LOOKBEHIND_SECONDS = 5;
+const QUEUE_CONTINUATION_DELAY_MS = 50;
+// The message wrapper already performs transport retries; one cue-level replay
+// covers provider/transient response failures without multiplying request load.
+const MAX_CUE_TRANSLATION_ATTEMPTS = 2;
+const CUE_TRANSLATION_RETRY_BASE_DELAY_MS = 500;
+
 // Initialize fallback console logging until Logger is loaded
 function logWithFallback(level, message, data = {}) {
     if (utilsLogger) {
@@ -29,6 +40,33 @@ function logWithFallback(level, message, data = {}) {
             data
         );
     }
+}
+
+/**
+ * Resolve the current subtitle-timeline time through the platform clock, with
+ * native HTML video time as a compatibility fallback for lightweight mocks and
+ * adapters that predate getPlaybackTime().
+ * @param {Object | null} activePlatform
+ * @param {HTMLVideoElement | null} videoElement
+ * @returns {number | null}
+ */
+export function resolvePlaybackTime(activePlatform, videoElement = null) {
+    try {
+        const platformTime = activePlatform?.getPlaybackTime?.();
+        if (Number.isFinite(platformTime)) return platformTime;
+    } catch (_) {}
+
+    let fallbackVideo = videoElement;
+    if (!fallbackVideo) {
+        try {
+            fallbackVideo = activePlatform?.getVideoElement?.() || null;
+        } catch (_) {
+            fallbackVideo = null;
+        }
+    }
+
+    const nativeTime = fallbackVideo?.currentTime;
+    return Number.isFinite(nativeTime) ? nativeTime : null;
 }
 
 /**
@@ -58,7 +96,13 @@ export function computeTextSignature(textOrHtml) {
     return s;
 }
 
-function dispatchContentChange(type, oldContent, newContent, element, { immediate = false } = {}) {
+function dispatchContentChange(
+    type,
+    oldContent,
+    newContent,
+    element,
+    { immediate = false } = {}
+) {
     try {
         const oldSig = computeTextSignature(oldContent || '');
         const newSig = computeTextSignature(newContent || '');
@@ -84,11 +128,15 @@ function dispatchContentChange(type, oldContent, newContent, element, { immediat
                 })
             );
 
-            logWithFallback('debug', `${immediate ? 'Immediate' : 'Debounced'} subtitle content change dispatched`, {
-                type,
-                oldContentLength: oldContent.length,
-                newContentLength: newContent.length,
-            });
+            logWithFallback(
+                'debug',
+                `${immediate ? 'Immediate' : 'Debounced'} subtitle content change dispatched`,
+                {
+                    type,
+                    oldContentLength: oldContent.length,
+                    newContentLength: newContent.length,
+                }
+            );
         };
 
         if (immediate) {
@@ -130,11 +178,13 @@ export async function initializeLogger() {
             utilsLogger.updateLevel(Logger.LEVELS.INFO);
             utilsLogger.warn(
                 'Failed to load logging level from config, using INFO level',
-                error
+                { errorType: error?.name || 'UnknownError' }
             );
         }
     } catch (error) {
-        logWithFallback('error', 'Failed to initialize logger', { error });
+        logWithFallback('error', 'Failed to initialize logger', {
+            errorType: error?.name || 'UnknownError',
+        });
     }
 }
 
@@ -220,24 +270,17 @@ export async function initializeInteractiveSubtitleFeatures(config = {}) {
     }
 
     try {
-        // Get absolute URLs for interactive modules (legacy AI context modals removed)
+        // Get the absolute URL for the interactive subtitle formatter.
         const formatterUrl = chrome.runtime.getURL(
             'content_scripts/shared/interactiveSubtitleFormatter.js'
         );
-        const loadingUrl = chrome.runtime.getURL(
-            'content_scripts/shared/contextLoadingStates.js'
-        );
 
-        // Dynamically import interactive modules (legacy AI context system removed)
-        const [
-            {
-                initializeInteractiveSubtitles,
-                formatInteractiveSubtitleText,
-                attachInteractiveEventListeners,
-                setInteractiveEnabled,
-            },
-            { initializeLoadingStates },
-        ] = await Promise.all([import(formatterUrl), import(loadingUrl)]);
+        const {
+            initializeInteractiveSubtitles,
+            formatInteractiveSubtitleText,
+            attachInteractiveEventListeners,
+            setInteractiveEnabled,
+        } = await import(formatterUrl);
 
         // Initialize all interactive components with enabled state
         const interactiveConfig = {
@@ -248,7 +291,6 @@ export async function initializeInteractiveSubtitleFeatures(config = {}) {
         };
 
         initializeInteractiveSubtitles(interactiveConfig);
-        initializeLoadingStates(config.loadingStates || {});
 
         // Note: AI Context features are now handled by the new modular system
         // in content_scripts/aicontext/ and initialized by platform content scripts
@@ -265,17 +307,17 @@ export async function initializeInteractiveSubtitleFeatures(config = {}) {
 
         logWithFallback('info', 'Interactive subtitle features initialized', {
             enabled: interactiveSubtitlesEnabled,
-            config,
+            aiContextEnabled: !!config.aiContextEnabled,
+            sourceLanguage: config.sourceLanguage || 'unknown',
+            targetLanguage: config.targetLanguage || 'unknown',
         });
     } catch (error) {
         logWithFallback(
             'error',
             'Failed to initialize interactive subtitle features',
             {
-                error: error.message,
-                stack: error.stack,
-                name: error.name,
-                config: config,
+                errorType: error?.name || 'UnknownError',
+                aiContextEnabled: !!config.aiContextEnabled,
             }
         );
         throw error; // Re-throw to help with debugging
@@ -296,7 +338,6 @@ export function setInteractiveSubtitlesEnabled(enabled) {
     logWithFallback('info', 'Interactive subtitles toggled', { enabled });
 }
 
-logWithFallback('info', 'Subtitle utilities module loaded');
 const localizedErrorMessages = {
     TRANSLATION_API_ERROR: {
         en: '[Translation API Error. Check settings or try another provider.]',
@@ -339,7 +380,7 @@ export function getUILanguage() {
     return 'en';
 }
 
-export function getLocalizedErrorMessage(errorTypeKey, details = '') {
+export function getLocalizedErrorMessage(errorTypeKey) {
     const uiLang = getUILanguage();
     const messagesForType = localizedErrorMessages[errorTypeKey];
     if (messagesForType) {
@@ -362,6 +403,9 @@ export let translatedSubtitleElement = null;
 export let subtitlesActive = true;
 export let subtitleQueue = [];
 export let processingQueue = false;
+let queueRerunRequested = false;
+let queueProcessingTimeoutId = null;
+let queueProcessingTimeoutDelay = null;
 
 // Guard against transient blanks during style changes and platform ID timing
 let lastStyleApplicationTs = 0;
@@ -379,6 +423,33 @@ export const { MAX_FIND_PROGRESS_BAR_RETRIES } = COMMON_CONSTANTS;
 export let lastLoggedTimeSec = -1;
 export let timeUpdateLogCounter = 0;
 export const TIME_UPDATE_LOG_INTERVAL = 30;
+
+function scheduleSubtitleQueueProcessing(
+    activePlatform,
+    config,
+    logPrefix,
+    delay = 0
+) {
+    if (!activePlatform || !config || !subtitlesActive) return;
+
+    if (processingQueue) {
+        queueRerunRequested = true;
+        return;
+    }
+
+    if (queueProcessingTimeoutId !== null) {
+        // A seek should preempt a lower-priority continuation delay.
+        if (delay !== 0 || queueProcessingTimeoutDelay === 0) return;
+        clearTimeout(queueProcessingTimeoutId);
+    }
+
+    queueProcessingTimeoutDelay = delay;
+    queueProcessingTimeoutId = setTimeout(() => {
+        queueProcessingTimeoutId = null;
+        queueProcessingTimeoutDelay = null;
+        void processSubtitleQueue(activePlatform, config, logPrefix);
+    }, delay);
+}
 
 // Navigation guarding to prevent stale subtitles during soft navigations
 let lastKnownLocationHref =
@@ -414,9 +485,9 @@ export function formatSubtitleTextForDisplay(text, options = {}) {
         window.dualsub_formatInteractiveSubtitleText
     ) {
         try {
-            const originalLength = formattedText.length;
+            const originalLength = text.length;
             formattedText = window.dualsub_formatInteractiveSubtitleText(
-                formattedText,
+                text,
                 options
             );
             const hasInteractiveSpans = formattedText.includes(
@@ -428,17 +499,14 @@ export function formatSubtitleTextForDisplay(text, options = {}) {
                 formattedLength: formattedText.length,
                 hasInteractiveSpans,
                 subtitleType: options.subtitleType,
-                sampleText: text.substring(0, 30),
-                formattedSample: formattedText.substring(0, 100),
             });
         } catch (error) {
             logWithFallback(
                 'error',
                 'Failed to format interactive subtitle text',
                 {
-                    error: error.message,
-                    stack: error.stack,
-                    text: text.substring(0, 50),
+                    errorType: error?.name || 'UnknownError',
+                    textLength: text.length,
                 }
             );
         }
@@ -449,7 +517,7 @@ export function formatSubtitleTextForDisplay(text, options = {}) {
             formatFunctionAvailable:
                 !!window.dualsub_formatInteractiveSubtitleText,
             subtitleType: options.subtitleType,
-            text: text.substring(0, 30),
+            textLength: text.length,
         });
     }
 
@@ -784,6 +852,10 @@ export function ensureSubtitleContainer(
                 'timeupdate',
                 timeUpdateListener
             );
+            previousVideoElement.removeEventListener(
+                'seeked',
+                timeUpdateListener
+            );
             previousVideoElement.removeAttribute('data-listener-attached');
         }
         if (progressBarObserver) {
@@ -805,6 +877,10 @@ export function ensureSubtitleContainer(
         if (attachedVideoElement && timeUpdateListener) {
             attachedVideoElement.removeEventListener(
                 'timeupdate',
+                timeUpdateListener
+            );
+            attachedVideoElement.removeEventListener(
+                'seeked',
                 timeUpdateListener
             );
             attachedVideoElement.removeAttribute('data-listener-attached');
@@ -949,12 +1025,21 @@ export function attachTimeUpdateListener(
             timeUpdateLogCounter++;
             const currentVideoElem = activePlatform?.getVideoElement();
             if (currentVideoElem) {
-                const { currentTime, readyState, HAVE_CURRENT_DATA } =
-                    currentVideoElem;
+                scheduleSubtitleQueueProcessing(
+                    activePlatform,
+                    config,
+                    logPrefix
+                );
+                const { readyState, HAVE_CURRENT_DATA } = currentVideoElem;
+                const currentTime = resolvePlaybackTime(
+                    activePlatform,
+                    currentVideoElem
+                );
                 const useProgressBar =
                     activePlatform.supportsProgressBarTracking?.() !== false;
 
-                // For platforms that require progress bar (e.g., Disney+), only update when thumb reports
+                // Platforms that explicitly opt into a primary progress clock
+                // continue to use the generic observer path.
                 if (useProgressBar && progressBarObserver) {
                     if (
                         subtitlesActive &&
@@ -989,6 +1074,7 @@ export function attachTimeUpdateListener(
     }
 
     videoElement.addEventListener('timeupdate', timeUpdateListener);
+    videoElement.addEventListener('seeked', timeUpdateListener);
     videoElement.setAttribute('data-listener-attached', 'true');
     logWithFallback('info', 'Attached HTML5 timeupdate listener.', {
         logPrefix,
@@ -1139,7 +1225,10 @@ function attemptToSetupProgressBarObserver(
                     if (thumb) return thumb;
 
                     // Fallback to any element with aria-valuenow in the shadow root, which is common
-                    thumb = progressBarHost.shadowRoot.querySelector('[aria-valuenow]');
+                    thumb =
+                        progressBarHost.shadowRoot.querySelector(
+                            '[aria-valuenow]'
+                        );
                     if (thumb) return thumb;
                 }
                 return null;
@@ -1187,12 +1276,16 @@ function attemptToSetupProgressBarObserver(
                                 textStr ||
                                 neighbor.getAttribute('aria-valuetext');
                         }
-                        logWithFallback('debug', 'Progress bar neighbor search values', {
-                            logPrefix,
-                            nowStr,
-                            maxStr,
-                            textStr,
-                        });
+                        logWithFallback(
+                            'debug',
+                            'Progress bar neighbor search values',
+                            {
+                                logPrefix,
+                                nowStr,
+                                maxStr,
+                                textStr,
+                            }
+                        );
                     }
 
                     const currentVideoElem = activePlatform.getVideoElement();
@@ -1225,12 +1318,16 @@ function attemptToSetupProgressBarObserver(
                             videoDuration = valuemax;
                         }
 
-                        logWithFallback('debug', 'Progress bar time calculation values', {
-                            logPrefix,
-                            valuenow,
-                            valuemax,
-                            videoDuration,
-                        });
+                        logWithFallback(
+                            'debug',
+                            'Progress bar time calculation values',
+                            {
+                                logPrefix,
+                                valuenow,
+                                valuemax,
+                                videoDuration,
+                            }
+                        );
 
                         if (!Number.isNaN(valuenow)) {
                             // Directly use valuenow as seconds when valuemax matches duration
@@ -1459,10 +1556,7 @@ export function updateSubtitles(
                 cues: activeCues.map((c) => ({
                     start: c.start.toFixed(2),
                     end: c.end.toFixed(2),
-                    text: (c.original || c.translated || 'empty').substring(
-                        0,
-                        30
-                    ),
+                    textLength: (c.original || c.translated || '').length,
                 })),
             });
         }
@@ -1611,12 +1705,8 @@ export function updateSubtitles(
                 time: currentTime.toFixed(2),
                 useNativeTarget,
                 activeCueCount: activeCues.length,
-                originalText:
-                    originalText.substring(0, 30) +
-                    (originalText.length > 30 ? '...' : ''),
-                translatedText:
-                    translatedText.substring(0, 30) +
-                    (translatedText.length > 30 ? '...' : ''),
+                originalLength: originalText.length,
+                translatedLength: translatedText.length,
             });
         }
 
@@ -1665,7 +1755,7 @@ export function updateSubtitles(
                         logWithFallback(
                             'debug',
                             'Setting original subtitle (native mode).',
-                            { logPrefix, text: originalText }
+                            { logPrefix, textLength: originalText.length }
                         );
                     }
                 }
@@ -1713,7 +1803,7 @@ export function updateSubtitles(
                         logWithFallback(
                             'debug',
                             'Setting native target subtitle.',
-                            { logPrefix, text: translatedText }
+                            { logPrefix, textLength: translatedText.length }
                         );
                     }
                 }
@@ -1754,7 +1844,7 @@ export function updateSubtitles(
                     if (currentWholeSecond !== lastLoggedTimeSec) {
                         logWithFallback('debug', 'Setting original subtitle.', {
                             logPrefix,
-                            text: originalText,
+                            textLength: originalText.length,
                         });
                     }
                 }
@@ -1802,7 +1892,7 @@ export function updateSubtitles(
                         logWithFallback(
                             'debug',
                             'Setting translated subtitle.',
-                            { logPrefix, text: translatedText }
+                            { logPrefix, textLength: translatedText.length }
                         );
                     }
                 }
@@ -1870,9 +1960,7 @@ export function updateSubtitles(
                         'error',
                         'Failed to attach interactive event listeners',
                         {
-                            error: error.message,
-                            stack: error.stack,
-                            name: error.name,
+                            errorType: error?.name || 'UnknownError',
                             logPrefix,
                             interactiveEnabled: interactiveSubtitlesEnabled,
                             modulesLoaded: interactiveModulesLoaded,
@@ -1881,8 +1969,8 @@ export function updateSubtitles(
                             originalElementExists: !!originalSubtitleElement,
                             translatedElementExists:
                                 !!translatedSubtitleElement,
-                            originalText: originalText?.substring(0, 50),
-                            translatedText: translatedText?.substring(0, 50),
+                            originalLength: originalText?.length || 0,
+                            translatedLength: translatedText?.length || 0,
                         }
                     );
                 }
@@ -1962,7 +2050,10 @@ export function clearSubtitlesDisplayAndQueue(
     }
 }
 
-export function finalizeExpiredSubtitleIfNeeded(thresholdSeconds = 0.1) {
+export function finalizeExpiredSubtitleIfNeeded(
+    thresholdSeconds = 0.1,
+    activePlatform = null
+) {
     try {
         if (!lastDisplayedCueWindow || lastDisplayedCueWindow.end == null) {
             return false;
@@ -1971,8 +2062,7 @@ export function finalizeExpiredSubtitleIfNeeded(thresholdSeconds = 0.1) {
         const video =
             document.querySelector('video[data-listener-attached="true"]') ||
             document.querySelector('video');
-        const currentTime =
-            typeof video?.currentTime === 'number' ? video.currentTime : null;
+        const currentTime = resolvePlaybackTime(activePlatform, video);
 
         if (
             currentTime == null ||
@@ -2024,7 +2114,7 @@ export function finalizeExpiredSubtitleIfNeeded(thresholdSeconds = 0.1) {
         return cleared;
     } catch (error) {
         logWithFallback('warn', 'Failed to finalize expired subtitle', {
-            error: error?.message,
+            errorType: error?.name || 'UnknownError',
         });
         return false;
     }
@@ -2043,10 +2133,17 @@ export function clearSubtitleDOM() {
     );
     if (videoElement && timeUpdateListener) {
         videoElement.removeEventListener('timeupdate', timeUpdateListener);
+        videoElement.removeEventListener('seeked', timeUpdateListener);
         videoElement.removeAttribute('data-listener-attached');
     }
 
     timeUpdateListener = null;
+    queueRerunRequested = false;
+    if (queueProcessingTimeoutId !== null) {
+        clearTimeout(queueProcessingTimeoutId);
+        queueProcessingTimeoutId = null;
+        queueProcessingTimeoutDelay = null;
+    }
 
     if (progressBarObserver) {
         progressBarObserver.disconnect();
@@ -2218,9 +2315,13 @@ export function handleSubtitleDataFound(
 
             // Get current video time and update display
             const videoElement = activePlatform?.getVideoElement?.();
-            if (videoElement && !Number.isNaN(videoElement.currentTime)) {
+            const playbackTime = resolvePlaybackTime(
+                activePlatform,
+                videoElement
+            );
+            if (playbackTime !== null) {
                 updateSubtitles(
-                    videoElement.currentTime,
+                    playbackTime,
                     activePlatform,
                     config,
                     logPrefix
@@ -2265,23 +2366,15 @@ export function handleSubtitleDataFound(
 
         // Trigger immediate display update
         const videoElement = activePlatform?.getVideoElement?.();
-        if (
-            videoElement &&
-            !Number.isNaN(videoElement.currentTime) &&
-            subtitlesActive
-        ) {
-            updateSubtitles(
-                videoElement.currentTime,
-                activePlatform,
-                config,
-                logPrefix
-            );
+        const playbackTime = resolvePlaybackTime(activePlatform, videoElement);
+        if (videoElement && playbackTime !== null && subtitlesActive) {
+            updateSubtitles(playbackTime, activePlatform, config, logPrefix);
         }
     } else {
         logWithFallback('warn', 'VTT parsing yielded no cues for videoId.', {
             logPrefix,
             videoId: currentVideoId,
-            vttUrl: subtitleData.url,
+            hasVttUrl: !!subtitleData.url,
         });
     }
 }
@@ -2296,6 +2389,7 @@ export function handleVideoIdChange(newVideoId, logPrefix = 'SubtitleUtils') {
     if (translatedSubtitleElement) translatedSubtitleElement.innerHTML = '';
 
     if (currentVideoId && currentVideoId !== newVideoId) {
+        if (processingQueue) queueRerunRequested = true;
         subtitleQueue = subtitleQueue.filter(
             (cue) => cue.videoId !== currentVideoId
         );
@@ -2305,40 +2399,142 @@ export function handleVideoIdChange(newVideoId, logPrefix = 'SubtitleUtils') {
     lastDisplayedCueWindow = { start: null, end: null, videoId: null };
 }
 
+function getTranslationPriority(cue, currentTime) {
+    if (cue.start <= currentTime && cue.end >= currentTime) {
+        return [0, Math.abs(currentTime - cue.start)];
+    }
+    if (cue.start > currentTime) {
+        return [1, cue.start - currentTime];
+    }
+    return [2, currentTime - cue.end];
+}
+
+function isCueInTranslationWindow(
+    cue,
+    platformVideoId,
+    windowStart,
+    windowEnd
+) {
+    return (
+        cue.videoId === platformVideoId &&
+        cue.original &&
+        !cue.translated &&
+        !cue.useNativeTarget &&
+        Number.isFinite(cue.start) &&
+        Number.isFinite(cue.end) &&
+        cue.end >= windowStart &&
+        cue.start <= windowEnd
+    );
+}
+
+function getCuesToTranslate(platformVideoId, currentTime, limit) {
+    const windowStart = currentTime - TRANSLATION_LOOKBEHIND_SECONDS;
+    const windowEnd = currentTime + TRANSLATION_LOOKAHEAD_SECONDS;
+    const now = Date.now();
+
+    return subtitleQueue
+        .filter(
+            (cue) =>
+                isCueInTranslationWindow(
+                    cue,
+                    platformVideoId,
+                    windowStart,
+                    windowEnd
+                ) &&
+                (!Number.isFinite(cue.translationRetryAt) ||
+                    cue.translationRetryAt <= now)
+        )
+        .sort((a, b) => {
+            const [aBand, aDistance] = getTranslationPriority(a, currentTime);
+            const [bBand, bDistance] = getTranslationPriority(b, currentTime);
+            return aBand - bBand || aDistance - bDistance || a.start - b.start;
+        })
+        .slice(0, limit);
+}
+
+function getNextCueRetryDelay(platformVideoId, currentTime) {
+    const windowStart = currentTime - TRANSLATION_LOOKBEHIND_SECONDS;
+    const windowEnd = currentTime + TRANSLATION_LOOKAHEAD_SECONDS;
+    const now = Date.now();
+    let earliestRetryAt = null;
+
+    for (const cue of subtitleQueue) {
+        if (
+            isCueInTranslationWindow(
+                cue,
+                platformVideoId,
+                windowStart,
+                windowEnd
+            ) &&
+            Number.isFinite(cue.translationRetryAt) &&
+            cue.translationRetryAt > now &&
+            (earliestRetryAt === null ||
+                cue.translationRetryAt < earliestRetryAt)
+        ) {
+            earliestRetryAt = cue.translationRetryAt;
+        }
+    }
+
+    return earliestRetryAt === null ? null : Math.max(1, earliestRetryAt - now);
+}
+
+function isTranslationBatchItemValid(activePlatform, platformVideoId, cue) {
+    let activeVideoId = null;
+    try {
+        activeVideoId = activePlatform?.getCurrentVideoId?.();
+    } catch (_) {
+        return false;
+    }
+
+    return (
+        subtitlesActive &&
+        activeVideoId === platformVideoId &&
+        subtitleQueue.includes(cue)
+    );
+}
+
 export async function processSubtitleQueue(
     activePlatform,
     config,
     logPrefix = 'SubtitleUtils'
 ) {
-    if (processingQueue) return;
     if (!activePlatform || !subtitlesActive) return;
+    if (processingQueue) {
+        queueRerunRequested = true;
+        return;
+    }
+
+    if (queueProcessingTimeoutId !== null) {
+        clearTimeout(queueProcessingTimeoutId);
+        queueProcessingTimeoutId = null;
+        queueProcessingTimeoutDelay = null;
+    }
 
     const videoElement = activePlatform.getVideoElement();
     if (!videoElement) {
-        setTimeout(
-            () => processSubtitleQueue(activePlatform, config, logPrefix),
-            200
-        );
+        scheduleSubtitleQueueProcessing(activePlatform, config, logPrefix, 200);
         return;
     }
 
     const platformVideoId = activePlatform.getCurrentVideoId();
     if (!platformVideoId) return;
 
-    if (!progressBarObserver && findProgressBarIntervalId) {
+    if (
+        activePlatform.supportsProgressBarTracking?.() !== false &&
+        !progressBarObserver &&
+        findProgressBarIntervalId
+    ) {
         logWithFallback(
             'info',
             'Progress bar observer setup in progress. Deferring queue processing slightly.',
             { logPrefix }
         );
-        setTimeout(
-            () => processSubtitleQueue(activePlatform, config, logPrefix),
-            200
-        );
+        scheduleSubtitleQueueProcessing(activePlatform, config, logPrefix, 200);
         return;
     }
 
-    let timeSource = videoElement.currentTime;
+    let timeSource = resolvePlaybackTime(activePlatform, videoElement);
+    if (timeSource === null) return;
 
     // Only use progress bar for platforms that support it
     if (activePlatform.supportsProgressBarTracking?.() !== false) {
@@ -2369,20 +2565,26 @@ export async function processSubtitleQueue(
 
     const currentTime = timeSource + config.subtitleTimeOffset;
 
-    const cuesToProcess = subtitleQueue
-        .filter(
-            (cue) =>
-                cue.videoId === platformVideoId &&
-                cue.original &&
-                !cue.translated &&
-                !cue.useNativeTarget &&
-                cue.end >= currentTime
-        )
-        .sort((a, b) => a.start - b.start)
-        .slice(0, config.translationBatchSize);
+    const cuesToProcess = getCuesToTranslate(
+        platformVideoId,
+        currentTime,
+        MAX_CUES_PER_QUEUE_PASS
+    );
 
-    if (cuesToProcess.length === 0) return;
+    if (cuesToProcess.length === 0) {
+        const retryDelay = getNextCueRetryDelay(platformVideoId, currentTime);
+        if (retryDelay !== null) {
+            scheduleSubtitleQueueProcessing(
+                activePlatform,
+                config,
+                logPrefix,
+                retryDelay
+            );
+        }
+        return;
+    }
 
+    queueRerunRequested = false;
     processingQueue = true;
 
     try {
@@ -2395,6 +2597,17 @@ export async function processSubtitleQueue(
         } catch (_) {}
 
         for (const cueToProcess of cuesToProcess) {
+            if (
+                queueRerunRequested ||
+                !isTranslationBatchItemValid(
+                    activePlatform,
+                    platformVideoId,
+                    cueToProcess
+                )
+            ) {
+                break;
+            }
+
             try {
                 let response;
                 if (sendRuntimeMessageWithRetry) {
@@ -2477,6 +2690,8 @@ export async function processSubtitleQueue(
                     cueInMainQueue.videoId === currentContextVideoId
                 ) {
                     cueInMainQueue.translated = response.translatedText;
+                    delete cueInMainQueue.translationAttempts;
+                    delete cueInMainQueue.translationRetryAt;
                 } else {
                     logWithFallback(
                         'warn',
@@ -2490,6 +2705,17 @@ export async function processSubtitleQueue(
                     );
                 }
 
+                if (
+                    queueRerunRequested ||
+                    !isTranslationBatchItemValid(
+                        activePlatform,
+                        platformVideoId,
+                        cueToProcess
+                    )
+                ) {
+                    break;
+                }
+
                 if (config.translationDelay > 0) {
                     await new Promise((resolve) =>
                         setTimeout(resolve, config.translationDelay)
@@ -2500,8 +2726,7 @@ export async function processSubtitleQueue(
                     logPrefix,
                     videoId: cueToProcess.videoId,
                     start: cueToProcess.start.toFixed(2),
-                    originalText: cueToProcess.original.substring(0, 30),
-                    errorMessage: error.message,
+                    originalLength: cueToProcess.original.length,
                     errorType: error.errorType,
                 });
                 const cueInQueueOnError = subtitleQueue.find(
@@ -2513,10 +2738,21 @@ export async function processSubtitleQueue(
                 if (cueInQueueOnError) {
                     const errorType =
                         error.errorType || 'TRANSLATION_GENERIC_ERROR';
-                    cueInQueueOnError.translated = getLocalizedErrorMessage(
-                        errorType,
-                        error.message
-                    );
+                    const attempts =
+                        (cueInQueueOnError.translationAttempts || 0) + 1;
+                    cueInQueueOnError.translationAttempts = attempts;
+
+                    if (attempts >= MAX_CUE_TRANSLATION_ATTEMPTS) {
+                        cueInQueueOnError.translated =
+                            getLocalizedErrorMessage(errorType);
+                        delete cueInQueueOnError.translationRetryAt;
+                    } else {
+                        const retryDelay =
+                            CUE_TRANSLATION_RETRY_BASE_DELAY_MS *
+                            2 ** (attempts - 1);
+                        cueInQueueOnError.translationRetryAt =
+                            Date.now() + retryDelay;
+                    }
                 }
             }
         }
@@ -2524,13 +2760,16 @@ export async function processSubtitleQueue(
         processingQueue = false;
     }
 
-    // After processing a batch, force an update of the subtitles on screen.
+    // After processing this queue pass, refresh the subtitles on screen.
     // This ensures newly available translations are rendered without waiting for the next timeupdate event.
     const videoElementForUpdate = activePlatform?.getVideoElement();
     if (videoElementForUpdate) {
-        let currentTimeForUpdate = videoElementForUpdate.currentTime;
+        let currentTimeForUpdate = resolvePlaybackTime(
+            activePlatform,
+            videoElementForUpdate
+        );
 
-        // Use the more accurate progress bar time if available, especially for platforms like Disney+.
+        // Preserve the primary progress-clock path for adapters that opt in.
         if (
             activePlatform.supportsProgressBarTracking?.() !== false &&
             lastProgressBarTime >= 0
@@ -2538,32 +2777,60 @@ export async function processSubtitleQueue(
             currentTimeForUpdate = lastProgressBarTime;
         }
 
-        updateSubtitles(
-            currentTimeForUpdate,
-            activePlatform,
-            config,
-            logPrefix
-        );
+        if (currentTimeForUpdate !== null) {
+            updateSubtitles(
+                currentTimeForUpdate,
+                activePlatform,
+                config,
+                logPrefix
+            );
+        }
     }
 
     const currentContextVideoIdForNextCheck =
         activePlatform?.getCurrentVideoId();
-    const moreRelevantCuesExist = subtitleQueue.some(
-        (cue) =>
-            cue.videoId === currentContextVideoIdForNextCheck &&
-            cue.original &&
-            !cue.translated &&
-            cue.end >= currentTime
+    const latestVideoElement = activePlatform?.getVideoElement?.();
+    const latestTimeSource = resolvePlaybackTime(
+        activePlatform,
+        latestVideoElement
     );
+    const latestCurrentTime =
+        latestTimeSource === null
+            ? null
+            : latestTimeSource + config.subtitleTimeOffset;
+    const moreRelevantCuesExist =
+        currentContextVideoIdForNextCheck &&
+        latestCurrentTime !== null &&
+        getCuesToTranslate(
+            currentContextVideoIdForNextCheck,
+            latestCurrentTime,
+            1
+        ).length > 0;
+    const nextRetryDelay =
+        currentContextVideoIdForNextCheck && latestCurrentTime !== null
+            ? getNextCueRetryDelay(
+                  currentContextVideoIdForNextCheck,
+                  latestCurrentTime
+              )
+            : null;
+    const rerunWasRequested = queueRerunRequested;
+    queueRerunRequested = false;
+    const nextRunDelay = rerunWasRequested
+        ? 0
+        : moreRelevantCuesExist
+          ? QUEUE_CONTINUATION_DELAY_MS
+          : nextRetryDelay;
 
     if (
         subtitlesActive &&
         currentContextVideoIdForNextCheck &&
-        moreRelevantCuesExist
+        nextRunDelay !== null
     ) {
-        setTimeout(
-            () => processSubtitleQueue(activePlatform, config, logPrefix),
-            50
+        scheduleSubtitleQueueProcessing(
+            activePlatform,
+            config,
+            logPrefix,
+            nextRunDelay
         );
     }
 }

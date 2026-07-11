@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { fetchWithTimeout } from '../../utils/fetchWithTimeout.js';
 import {
     getAccessTokenFromServiceAccount,
     checkTokenExpiration as checkExpiration,
@@ -10,13 +11,15 @@ import {
  * @param {Function} onAccessTokenChange - Callback when access token changes
  * @param {Function} onProjectIdChange - Callback when project ID changes
  * @param {Function} onProviderChange - Callback to switch provider
+ * @param {Function} onCredentialsChange - Grouped callback for imported credentials
  * @returns {Object} Test functions and state
  */
 export function useVertexTest(
     t,
     onAccessTokenChange,
     onProjectIdChange,
-    onProviderChange
+    onProviderChange,
+    onCredentialsChange
 ) {
     const [testResult, setTestResult] = useState({
         visible: false,
@@ -47,6 +50,41 @@ export function useVertexTest(
         });
     }, []);
 
+    const clearLegacyServiceAccount = useCallback(async () => {
+        if (typeof chrome !== 'undefined' && chrome.storage?.local?.remove) {
+            await chrome.storage.local.remove('vertexServiceAccount');
+        }
+    }, []);
+
+    const updateManualAccessToken = useCallback(
+        async (accessToken) => {
+            try {
+                const saved = await onAccessTokenChange(accessToken);
+                if (saved === false) {
+                    throw new Error('Failed to save the access token.');
+                }
+                if (
+                    typeof chrome !== 'undefined' &&
+                    chrome.storage?.local?.remove
+                ) {
+                    await chrome.storage.local.remove('vertexTokenExpiresAt');
+                }
+                return true;
+            } catch (error) {
+                showTestResult(
+                    t(
+                        'vertexManualTokenSaveFailed',
+                        'Could not save the access token: %s',
+                        error.message
+                    ),
+                    'error'
+                );
+                return false;
+            }
+        },
+        [onAccessTokenChange, showTestResult, t]
+    );
+
     const testConnection = useCallback(
         async (accessToken, projectId, location, model) => {
             if (!accessToken || !projectId) {
@@ -76,7 +114,7 @@ export function useVertexTest(
                     contents: [{ role: 'user', parts: [{ text: 'ping' }] }],
                     generationConfig: { temperature: 0 },
                 };
-                const res = await fetch(endpoint, {
+                const res = await fetchWithTimeout(endpoint, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -125,7 +163,7 @@ export function useVertexTest(
                 let sa;
                 try {
                     sa = JSON.parse(text);
-                } catch (e) {
+                } catch {
                     throw new Error('Invalid JSON file.');
                 }
 
@@ -158,37 +196,50 @@ export function useVertexTest(
                 // Calculate token expiration time
                 const expiresAt = Date.now() + expiresIn * 1000;
 
-                // Store the service account JSON for auto-refresh
-                // Security Note: Storing the complete service account (including private_key) in
-                // chrome.storage.local is a security trade-off to enable automatic token refresh.
-                // Chrome extension storage is isolated per-extension and encrypted at rest by the OS.
-                // Alternative approaches (e.g., storing only the token) would require manual
-                // re-import every hour when tokens expire. Users with high security requirements
-                // should use short-lived tokens and manual refresh instead of storing credentials.
-                if (typeof chrome !== 'undefined' && chrome.storage) {
+                // The imported service-account key is used once in memory and is
+                // deliberately never persisted.
+                if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+                    await clearLegacyServiceAccount();
+                }
+
+                const credentialsSaved = onCredentialsChange
+                    ? await onCredentialsChange({
+                          vertexProjectId: sa.project_id,
+                          vertexAccessToken: accessToken,
+                      })
+                    : (await onProjectIdChange(sa.project_id)) !== false &&
+                      (await onAccessTokenChange(accessToken)) !== false;
+                if (credentialsSaved === false) {
+                    throw new Error('Failed to save imported credentials.');
+                }
+
+                // Associate expiry metadata only after the corresponding token
+                // has been persisted successfully.
+                if (typeof chrome !== 'undefined' && chrome.storage?.local) {
                     await chrome.storage.local.set({
-                        vertexServiceAccount: sa,
                         vertexTokenExpiresAt: expiresAt,
                     });
                 }
 
-                // Update settings via callbacks
-                await onProjectIdChange(sa.project_id);
-                await onAccessTokenChange(accessToken);
+                // Switch provider to Vertex
+                if (onProviderChange) {
+                    const providerSaved =
+                        await onProviderChange('vertex_gemini');
+                    if (providerSaved === false) {
+                        throw new Error(
+                            'Failed to select the Vertex provider.'
+                        );
+                    }
+                }
 
                 showImportResult(
                     '✅ ' +
                         t(
-                            'vertexImportSuccess',
-                            'Service account imported and token generated.'
+                            'vertexImportSuccessEphemeral',
+                            'Access token generated. The service-account key was not stored; re-import the JSON when the token expires.'
                         ),
                     'success'
                 );
-
-                // Switch provider to Vertex
-                if (onProviderChange) {
-                    await onProviderChange('vertex_gemini');
-                }
 
                 return { projectId: sa.project_id, accessToken, expiresAt };
             } catch (error) {
@@ -207,88 +258,9 @@ export function useVertexTest(
             onAccessTokenChange,
             onProjectIdChange,
             onProviderChange,
+            onCredentialsChange,
+            clearLegacyServiceAccount,
         ]
-    );
-
-    const refreshToken = useCallback(
-        async (silent = false) => {
-            if (!silent) {
-                setImporting(true);
-                showImportResult(
-                    t('vertexRefreshingToken', 'Refreshing access token...'),
-                    'info'
-                );
-            }
-
-            try {
-                // Retrieve stored service account
-                if (typeof chrome === 'undefined' || !chrome.storage) {
-                    throw new Error('Chrome storage not available');
-                }
-
-                const result = await chrome.storage.local.get([
-                    'vertexServiceAccount',
-                ]);
-                const sa = result.vertexServiceAccount;
-
-                if (!sa) {
-                    throw new Error(
-                        'No stored service account found. Please import the JSON file again.'
-                    );
-                }
-
-                // Generate new token
-                const { accessToken, expiresIn } =
-                    await getAccessTokenFromServiceAccount(sa);
-
-                // Calculate new expiration time
-                const expiresAt = Date.now() + expiresIn * 1000;
-
-                // Update expiration time in storage
-                await chrome.storage.local.set({
-                    vertexTokenExpiresAt: expiresAt,
-                });
-
-                // Update settings via callback
-                await onAccessTokenChange(accessToken);
-
-                if (!silent) {
-                    showImportResult(
-                        '✅ ' +
-                            t(
-                                'vertexTokenRefreshed',
-                                'Access token refreshed successfully.'
-                            ),
-                        'success'
-                    );
-                } else {
-                    console.log(
-                        '[Vertex AI] Access token auto-refreshed successfully'
-                    );
-                }
-
-                return { accessToken, expiresAt };
-            } catch (error) {
-                if (!silent) {
-                    showImportResult(
-                        t(
-                            'vertexRefreshFailed',
-                            'Token refresh failed: %s',
-                            error.message
-                        ),
-                        'error'
-                    );
-                } else {
-                    console.error('[Vertex AI] Auto-refresh failed:', error);
-                }
-                throw error;
-            } finally {
-                if (!silent) {
-                    setImporting(false);
-                }
-            }
-        },
-        [t, showImportResult, onAccessTokenChange]
     );
 
     const checkTokenExpiration = useCallback(async () => {
@@ -297,24 +269,33 @@ export function useVertexTest(
 
     const initializeStatus = useCallback(
         async (accessToken, projectId) => {
+            try {
+                await clearLegacyServiceAccount();
+            } catch (error) {
+                console.error(
+                    '[Vertex AI] Failed to remove a legacy stored service account:',
+                    error
+                );
+            }
+
             if (accessToken && projectId) {
-                // Check if token is about to expire
                 const expirationInfo = await checkTokenExpiration();
 
                 if (expirationInfo) {
                     if (expirationInfo.isExpired) {
                         showTestResult(
                             t(
-                                'vertexTokenExpired',
-                                '⚠️ Access token expired. Click refresh to renew.'
+                                'vertexTokenExpiredReimport',
+                                '⚠️ Access token expired. Re-import the service account JSON or paste a new access token.'
                             ),
                             'warning'
                         );
-                    } else if (expirationInfo.shouldRefresh) {
+                    } else if (expirationInfo.isExpiringSoon) {
                         showTestResult(
                             t(
-                                'vertexTokenExpiringSoon',
-                                `⚠️ Token expires in ${expirationInfo.expiresInMinutes} minutes. Consider refreshing.`
+                                'vertexTokenExpiringReimport',
+                                '⚠️ Token expires in %s minutes. Re-import the service account JSON or prepare a replacement access token.',
+                                expirationInfo.expiresInMinutes
                             ),
                             'warning'
                         );
@@ -339,14 +320,14 @@ export function useVertexTest(
             } else {
                 showTestResult(
                     t(
-                        'vertexNotConfigured',
-                        'Please import service account JSON or enter credentials.'
+                        'vertexNotConfiguredEphemeral',
+                        'Import a service account JSON once to generate a short-lived token, or paste a token manually.'
                     ),
                     'error'
                 );
             }
         },
-        [t, showTestResult, checkTokenExpiration]
+        [t, showTestResult, checkTokenExpiration, clearLegacyServiceAccount]
     );
 
     return {
@@ -356,9 +337,9 @@ export function useVertexTest(
         importing,
         testConnection,
         importServiceAccountJson,
-        refreshToken,
         checkTokenExpiration,
         initializeStatus,
+        updateManualAccessToken,
         showTestResult,
         showImportResult,
     };

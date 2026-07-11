@@ -1,14 +1,9 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 
 /**
- * Side Panel Communication Hook
- * 
- * Manages all messaging between the side panel and:
- * - Background service worker
- * - Content scripts
- * - Other extension components
- * 
- * Provides a robust messaging API with retry logic and error handling.
+ * Owns the side panel's single long-lived connection to the background worker.
+ * Consumers receive this instance through SidePanelContext; mounting this hook in
+ * individual feature hooks would create competing registrations for the same tab.
  */
 export function useSidePanelCommunication() {
     const [isConnected, setIsConnected] = useState(false);
@@ -16,211 +11,33 @@ export function useSidePanelCommunication() {
     const messageListeners = useRef(new Map());
     const portRef = useRef(null);
     const reconnectTimerRef = useRef(null);
-    const bindingRef = useRef({ panelInstanceId: null, boundTabId: null, boundWindowId: null });
+    const intentionalDisconnectRef = useRef(false);
+    const bindingRef = useRef({
+        panelInstanceId: null,
+        boundTabId: null,
+        boundWindowId: null,
+    });
     const mountedRef = useRef(false);
 
-    // Initialize instance ID once
     useEffect(() => {
         if (!bindingRef.current.panelInstanceId) {
             bindingRef.current.panelInstanceId = crypto.randomUUID();
         }
         mountedRef.current = true;
+
         return () => {
             mountedRef.current = false;
         };
     }, []);
 
-    /**
-     * Register the side panel with the active tab and background script.
-     */
-    const registerWithActiveTab = useCallback(async () => {
-        if (!portRef.current) return;
+    const getBinding = useCallback(() => ({ ...bindingRef.current }), []);
 
-        try {
-            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-            if (tab?.id) {
-                const windowId = tab.windowId;
-                bindingRef.current.boundTabId = tab.id;
-                bindingRef.current.boundWindowId = windowId;
-
-                portRef.current.postMessage({
-                    action: 'sidePanelRegister',
-                    data: { 
-                        tabId: tab.id, 
-                        windowId, 
-                        panelInstanceId: bindingRef.current.panelInstanceId 
-                    },
-                    source: 'sidepanel',
-                    timestamp: Date.now(),
-                });
-
-                // Request fresh state
-                portRef.current.postMessage({
-                    action: 'sidePanelGetState',
-                    data: {},
-                    source: 'sidepanel',
-                    timestamp: Date.now(),
-                });
-            }
-        } catch (e) {
-            console.error('Failed to register side panel:', e);
-        }
-    }, []);
-
-    /**
-     * Establishes a long-lived connection to the background script.
-     */
-    const connectPort = useCallback(() => {
-        if (portRef.current) return;
-
-        try {
-            const port = chrome.runtime.connect({ name: 'sidepanel' });
-            portRef.current = port;
-            setIsConnected(true);
-            setError(null);
-
-            port.onMessage.addListener((message) => {
-                // Handle internal binding updates
-                if (message?.action === 'bindingChanged' && message?.data) {
-                    const { tabId, windowId } = message.data;
-                    if (typeof tabId === 'number') bindingRef.current.boundTabId = tabId;
-                    if (typeof windowId === 'number') bindingRef.current.boundWindowId = windowId;
-                }
-
-                // Dispatch to listeners
-                const listeners = messageListeners.current.get(message.action);
-                if (listeners) {
-                    listeners.forEach((callback) => {
-                        try {
-                            callback(message.data);
-                        } catch (err) {
-                            console.error(`Error in listener for ${message.action}:`, err);
-                        }
-                    });
-                }
-            });
-
-            port.onDisconnect.addListener(() => {
-                console.log('Side panel disconnected');
-                portRef.current = null;
-                setIsConnected(false);
-                
-                // Attempt reconnect if still mounted
-                if (mountedRef.current) {
-                    reconnectTimerRef.current = setTimeout(connectPort, 1000);
-                }
-            });
-
-            // Initial registration
-            registerWithActiveTab();
-
-        } catch (err) {
-            console.error('Connection failed:', err);
-            setError(err);
-            setIsConnected(false);
-            if (mountedRef.current) {
-                reconnectTimerRef.current = setTimeout(connectPort, 2000);
-            }
-        }
-    }, [registerWithActiveTab]);
-
-    // Lifecycle management for connection
-    useEffect(() => {
-        connectPort();
-
-        return () => {
-            if (reconnectTimerRef.current) {
-                clearTimeout(reconnectTimerRef.current);
-            }
-            if (portRef.current) {
-                try {
-                    portRef.current.disconnect();
-                } catch (e) {
-                    // Ignore disconnect errors
-                }
-                portRef.current = null;
-            }
-        };
-    }, [connectPort]);
-
-    /**
-     * Send a one-off message to the background service worker.
-     */
-    const sendMessage = useCallback(async (action, data = {}) => {
-        try {
-            const response = await chrome.runtime.sendMessage({
-                action,
-                data,
-                source: 'sidepanel',
-                timestamp: Date.now(),
-            });
-
-            if (response?.error) {
-                throw new Error(response.error);
-            }
-            return response;
-        } catch (err) {
-            console.error(`sendMessage failed (${action}):`, err);
-            throw err;
-        }
-    }, []);
-
-    /**
-     * Send a message to the active tab's content script.
-     */
-    const sendToActiveTab = useCallback(async (action, data = {}) => {
-        try {
-            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-            if (!tab?.id) throw new Error('No active tab found');
-
-            const response = await chrome.tabs.sendMessage(tab.id, {
-                action,
-                data,
-                source: 'sidepanel',
-                timestamp: Date.now(),
-            });
-
-            if (response?.error) throw new Error(response.error);
-            return response;
-        } catch (err) {
-            console.error(`sendToActiveTab failed (${action}):`, err);
-            throw err;
-        }
-    }, []);
-
-    /**
-     * Send a message to the currently bound tab's content script.
-     */
-    const sendToBoundTab = useCallback(async (action, data = {}) => {
-        const tabId = bindingRef.current.boundTabId;
-        if (!tabId) {
-            return sendToActiveTab(action, data);
-        }
-
-        try {
-            const response = await chrome.tabs.sendMessage(tabId, {
-                action,
-                data,
-                source: 'sidepanel',
-                timestamp: Date.now(),
-            });
-
-            if (response?.error) throw new Error(response.error);
-            return response;
-        } catch (err) {
-            console.error(`sendToBoundTab failed (${action}):`, err);
-            throw err;
-        }
-    }, [sendToActiveTab]);
-
-    /**
-     * Send a message via the long-lived port connection.
-     */
     const postMessage = useCallback((action, data = {}) => {
         if (!portRef.current) {
-            console.warn('Cannot post message: disconnected');
-            return;
+            console.warn('Cannot post side panel message while disconnected');
+            return false;
         }
+
         try {
             portRef.current.postMessage({
                 action,
@@ -228,14 +45,181 @@ export function useSidePanelCommunication() {
                 source: 'sidepanel',
                 timestamp: Date.now(),
             });
+            return true;
         } catch (err) {
             console.error(`postMessage failed (${action}):`, err);
+            return false;
         }
     }, []);
 
     /**
-     * Subscribe to messages of a specific action type.
+     * Register this panel instance against a tab and update the local binding at
+     * the same time. This keeps direct tab messages aligned after tab switches.
      */
+    const registerTab = useCallback(
+        (tabId, windowId = bindingRef.current.boundWindowId) => {
+            if (typeof tabId !== 'number') {
+                return false;
+            }
+
+            bindingRef.current.boundTabId = tabId;
+            if (typeof windowId === 'number') {
+                bindingRef.current.boundWindowId = windowId;
+            }
+
+            return postMessage('sidePanelRegister', {
+                tabId,
+                windowId: bindingRef.current.boundWindowId,
+                panelInstanceId: bindingRef.current.panelInstanceId,
+            });
+        },
+        [postMessage]
+    );
+
+    const getActiveTab = useCallback(async () => {
+        try {
+            const [tab] = await chrome.tabs.query({
+                active: true,
+                currentWindow: true,
+            });
+            return tab || null;
+        } catch (err) {
+            console.error('getActiveTab failed:', err);
+            return null;
+        }
+    }, []);
+
+    const registerWithActiveTab = useCallback(async () => {
+        const tab = await getActiveTab();
+        if (typeof tab?.id !== 'number') {
+            return null;
+        }
+
+        registerTab(tab.id, tab.windowId);
+        postMessage('sidePanelGetState');
+        return tab;
+    }, [getActiveTab, postMessage, registerTab]);
+
+    const connectPort = useCallback(() => {
+        if (portRef.current) {
+            return;
+        }
+
+        try {
+            intentionalDisconnectRef.current = false;
+            const port = chrome.runtime.connect({ name: 'sidepanel' });
+            portRef.current = port;
+            setIsConnected(true);
+            setError(null);
+
+            port.onMessage.addListener((message) => {
+                if (message?.action === 'bindingChanged' && message?.data) {
+                    const { tabId, windowId } = message.data;
+                    if (typeof tabId === 'number') {
+                        bindingRef.current.boundTabId = tabId;
+                    }
+                    if (typeof windowId === 'number') {
+                        bindingRef.current.boundWindowId = windowId;
+                    }
+                }
+
+                const listeners = messageListeners.current.get(message?.action);
+                listeners?.forEach((callback) => {
+                    try {
+                        callback(message.data);
+                    } catch (listenerError) {
+                        console.error(
+                            `Error in listener for ${message.action}:`,
+                            listenerError
+                        );
+                    }
+                });
+            });
+
+            port.onDisconnect.addListener(() => {
+                if (portRef.current !== port) {
+                    return;
+                }
+                portRef.current = null;
+
+                if (intentionalDisconnectRef.current || !mountedRef.current) {
+                    return;
+                }
+
+                setIsConnected(false);
+
+                reconnectTimerRef.current = setTimeout(connectPort, 1000);
+            });
+
+            void registerWithActiveTab();
+        } catch (connectionError) {
+            console.error('Side panel connection failed:', connectionError);
+            setError(connectionError);
+            setIsConnected(false);
+
+            if (mountedRef.current) {
+                reconnectTimerRef.current = setTimeout(connectPort, 2000);
+            }
+        }
+    }, [registerWithActiveTab]);
+
+    useEffect(() => {
+        connectPort();
+
+        return () => {
+            intentionalDisconnectRef.current = true;
+            if (reconnectTimerRef.current) {
+                clearTimeout(reconnectTimerRef.current);
+                reconnectTimerRef.current = null;
+            }
+
+            const port = portRef.current;
+            portRef.current = null;
+            if (port) {
+                try {
+                    port.disconnect();
+                } catch {
+                    // The worker may already have disconnected the port.
+                }
+            }
+        };
+    }, [connectPort]);
+
+    const sendToTab = useCallback(async (tabId, action, data = {}) => {
+        if (typeof tabId !== 'number') {
+            throw new Error('No bound tab is available');
+        }
+
+        const response = await chrome.tabs.sendMessage(tabId, {
+            action,
+            data,
+            source: 'sidepanel',
+            timestamp: Date.now(),
+        });
+
+        if (response?.error) {
+            throw new Error(response.error);
+        }
+        return response;
+    }, []);
+
+    const sendToBoundTab = useCallback(
+        async (action, data = {}) => {
+            let tabId = bindingRef.current.boundTabId;
+            if (typeof tabId !== 'number') {
+                const activeTab = await getActiveTab();
+                tabId = activeTab?.id;
+                if (typeof tabId === 'number') {
+                    bindingRef.current.boundTabId = tabId;
+                    bindingRef.current.boundWindowId = activeTab.windowId;
+                }
+            }
+
+            return sendToTab(tabId, action, data);
+        },
+        [getActiveTab, sendToTab]
+    );
+
     const onMessage = useCallback((action, callback) => {
         if (!messageListeners.current.has(action)) {
             messageListeners.current.set(action, new Set());
@@ -244,35 +228,35 @@ export function useSidePanelCommunication() {
 
         return () => {
             const listeners = messageListeners.current.get(action);
-            if (listeners) {
-                listeners.delete(callback);
-                if (listeners.size === 0) {
-                    messageListeners.current.delete(action);
-                }
+            listeners?.delete(callback);
+            if (listeners?.size === 0) {
+                messageListeners.current.delete(action);
             }
         };
     }, []);
 
-    const getActiveTab = useCallback(async () => {
-        try {
-            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-            return tab;
-        } catch (err) {
-            console.error('getActiveTab failed:', err);
-            return null;
-        }
-    }, []);
-
-    return {
-        isConnected,
-        error,
-        sendMessage,
-        sendToActiveTab,
-        sendToBoundTab,
-        postMessage,
-        onMessage,
-        getActiveTab,
-        getBinding: () => ({ ...bindingRef.current }),
-    };
+    return useMemo(
+        () => ({
+            isConnected,
+            error,
+            getActiveTab,
+            getBinding,
+            onMessage,
+            postMessage,
+            registerTab,
+            sendToBoundTab,
+            sendToTab,
+        }),
+        [
+            error,
+            getActiveTab,
+            getBinding,
+            isConnected,
+            onMessage,
+            postMessage,
+            registerTab,
+            sendToBoundTab,
+            sendToTab,
+        ]
+    );
 }
-

@@ -1,92 +1,62 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
-/**
- * Theme Management Hook
- * 
- * Handles dark mode detection and toggling.
- * Respects user settings and system preferences.
- */
+function resolveTheme(mode, prefersDark) {
+    if (mode === 'dark' || mode === 'light') {
+        return mode;
+    }
+    return prefersDark ? 'dark' : 'light';
+}
+
+/** Keeps the side-panel theme synchronized with storage and system changes. */
 export function useTheme() {
     const [theme, setTheme] = useState('light');
     const [loading, setLoading] = useState(true);
+    const modeRef = useRef('auto');
 
     useEffect(() => {
-        const initializeTheme = async () => {
-            try {
-                // Load theme preference from settings
-                const result = await chrome.storage.sync.get(['sidePanelTheme']);
-                const savedTheme = result.sidePanelTheme || 'auto';
-
-                if (savedTheme === 'auto') {
-                    // Detect system preference
-                    const prefersDark = window.matchMedia(
-                        '(prefers-color-scheme: dark)'
-                    ).matches;
-                    setTheme(prefersDark ? 'dark' : 'light');
-                } else {
-                    setTheme(savedTheme);
-                }
-            } catch (error) {
-                console.error('Error loading theme:', error);
-                // Fallback to system preference
-                const prefersDark = window.matchMedia(
-                    '(prefers-color-scheme: dark)'
-                ).matches;
-                setTheme(prefersDark ? 'dark' : 'light');
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        initializeTheme();
-
-        // Listen for system theme changes
+        let mounted = true;
         const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-        const handleChange = async (e) => {
-            const result = await chrome.storage.sync.get(['sidePanelTheme']);
-            const savedTheme = result.sidePanelTheme || 'auto';
-            
-            if (savedTheme === 'auto') {
-                setTheme(e.matches ? 'dark' : 'light');
+
+        const applyMode = (mode) => {
+            modeRef.current = mode || 'auto';
+            if (mounted) {
+                setTheme(resolveTheme(modeRef.current, mediaQuery.matches));
             }
         };
 
-        mediaQuery.addEventListener('change', handleChange);
-        return () => mediaQuery.removeEventListener('change', handleChange);
+        void chrome.storage.sync
+            .get('sidePanelTheme')
+            .then((result) => applyMode(result.sidePanelTheme || 'auto'))
+            .catch((themeError) => {
+                console.error('Error loading theme:', themeError);
+                applyMode('auto');
+            })
+            .finally(() => {
+                if (mounted) {
+                    setLoading(false);
+                }
+            });
+
+        const handleSystemThemeChange = (event) => {
+            if (modeRef.current === 'auto' && mounted) {
+                setTheme(event.matches ? 'dark' : 'light');
+            }
+        };
+        const handleStorageChange = (changes, area) => {
+            if (area === 'sync' && changes.sidePanelTheme) {
+                applyMode(changes.sidePanelTheme.newValue || 'auto');
+            }
+        };
+
+        mediaQuery.addEventListener('change', handleSystemThemeChange);
+        chrome.storage.onChanged.addListener(handleStorageChange);
+
+        return () => {
+            mounted = false;
+            mediaQuery.removeEventListener('change', handleSystemThemeChange);
+            chrome.storage.onChanged.removeListener(handleStorageChange);
+        };
     }, []);
 
-    const toggleTheme = async () => {
-        const newTheme = theme === 'dark' ? 'light' : 'dark';
-        setTheme(newTheme);
-        
-        try {
-            await chrome.storage.sync.set({ sidePanelTheme: newTheme });
-        } catch (error) {
-            console.error('Error saving theme:', error);
-        }
-    };
-
-    const setThemeMode = async (mode) => {
-        if (mode === 'auto') {
-            const prefersDark = window.matchMedia(
-                '(prefers-color-scheme: dark)'
-            ).matches;
-            setTheme(prefersDark ? 'dark' : 'light');
-        } else {
-            setTheme(mode);
-        }
-
-        try {
-            await chrome.storage.sync.set({ sidePanelTheme: mode });
-        } catch (error) {
-            console.error('Error saving theme:', error);
-        }
-    };
-
-    return {
-        theme,
-        toggleTheme,
-        setThemeMode,
-        loading,
-    };
+    return { loading, theme };
 }

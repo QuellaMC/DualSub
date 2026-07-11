@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { testDeepLConnection } from '../../utils/deepl-api.js';
 
 /**
  * Hook for testing DeepL API connection
@@ -23,21 +24,6 @@ export function useDeepLTest(t) {
 
     const testConnection = useCallback(
         async (apiKey, apiPlan) => {
-            if (
-                typeof window.DeepLAPI === 'undefined' ||
-                !window.DeepLAPI ||
-                typeof window.DeepLAPI.testDeepLConnection !== 'function'
-            ) {
-                showTestResult(
-                    t(
-                        'deeplApiNotLoadedError',
-                        '❌ DeepL API script is not available. Please refresh the page.'
-                    ),
-                    'error'
-                );
-                return;
-            }
-
             if (!apiKey) {
                 showTestResult(
                     t(
@@ -56,10 +42,7 @@ export function useDeepLTest(t) {
             );
 
             try {
-                const result = await window.DeepLAPI.testDeepLConnection(
-                    apiKey,
-                    apiPlan
-                );
+                const result = await testDeepLConnection(apiKey, apiPlan);
 
                 if (result.success) {
                     showTestResult(

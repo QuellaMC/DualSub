@@ -1,7 +1,11 @@
 /**
- * Shared Vertex AI authentication utilities
- * Used by both options page and background script for token management
+ * Vertex AI service-account token generation and expiry metadata utilities.
+ * Service-account credentials are consumed in memory and must never be stored.
  */
+
+import { fetchWithTimeout } from './fetchWithTimeout.js';
+
+const GOOGLE_OAUTH_TOKEN_URI = 'https://oauth2.googleapis.com/token';
 
 /**
  * Base64 URL encode a string
@@ -78,11 +82,19 @@ async function signJwtRS256(headerObj, payloadObj, privateKeyPem) {
  * @returns {Promise<{accessToken: string, expiresIn: number}>}
  */
 export async function getAccessTokenFromServiceAccount(serviceAccountJson) {
+    if (
+        serviceAccountJson.token_uri !== undefined &&
+        serviceAccountJson.token_uri !== GOOGLE_OAUTH_TOKEN_URI
+    ) {
+        throw new Error(
+            'Service-account token_uri must use the canonical Google OAuth endpoint.'
+        );
+    }
+
     const now = Math.floor(Date.now() / 1000);
     const iat = now;
     const exp = now + 3600; // 1 hour
-    const tokenUri =
-        serviceAccountJson.token_uri || 'https://oauth2.googleapis.com/token';
+    const tokenUri = GOOGLE_OAUTH_TOKEN_URI;
     const scope = 'https://www.googleapis.com/auth/cloud-platform';
 
     const header = { alg: 'RS256', typ: 'JWT' };
@@ -104,16 +116,15 @@ export async function getAccessTokenFromServiceAccount(serviceAccountJson) {
     body.set('grant_type', 'urn:ietf:params:oauth:grant-type:jwt-bearer');
     body.set('assertion', jwt);
 
-    const res = await fetch(tokenUri, {
+    const res = await fetchWithTimeout(tokenUri, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: body.toString(),
     });
 
     if (!res.ok) {
-        const text = await res.text();
         throw new Error(
-            `Token exchange failed: ${res.status} ${res.statusText} ${text}`
+            `Token exchange failed: ${res.status} ${res.statusText}`
         );
     }
 
@@ -129,7 +140,7 @@ export async function getAccessTokenFromServiceAccount(serviceAccountJson) {
 
 /**
  * Check if token is expired or about to expire
- * @returns {Promise<{isExpired: boolean, shouldRefresh: boolean, expiresInMinutes: number} | null>}
+ * @returns {Promise<{isExpired: boolean, isExpiringSoon: boolean, expiresInMinutes: number} | null>}
  */
 export async function checkTokenExpiration() {
     if (typeof chrome === 'undefined' || !chrome.storage) {
@@ -154,79 +165,10 @@ export async function checkTokenExpiration() {
             timeUntilExpiry,
             isExpired,
             expiresInMinutes,
-            shouldRefresh: timeUntilExpiry < 5 * 60 * 1000, // Refresh if less than 5 minutes left
+            isExpiringSoon: timeUntilExpiry < 5 * 60 * 1000,
         };
     } catch (error) {
         console.error('[VertexAuth] Failed to check token expiration:', error);
         return null;
     }
-}
-
-/**
- * Refresh the access token using stored service account
- * @param {boolean} updateConfig - Whether to update configService
- * @returns {Promise<{accessToken: string, expiresAt: number}>}
- */
-export async function refreshAccessToken(updateConfig = true) {
-    if (typeof chrome === 'undefined' || !chrome.storage) {
-        throw new Error('Chrome storage not available');
-    }
-
-    const result = await chrome.storage.local.get(['vertexServiceAccount']);
-    const sa = result.vertexServiceAccount;
-
-    if (!sa) {
-        throw new Error('No stored service account found');
-    }
-
-    // Generate new token
-    const { accessToken, expiresIn } =
-        await getAccessTokenFromServiceAccount(sa);
-
-    // Calculate new expiration time
-    const expiresAt = Date.now() + expiresIn * 1000;
-
-    // Update expiration time in storage
-    await chrome.storage.local.set({
-        vertexTokenExpiresAt: expiresAt,
-    });
-
-    // Update config if requested
-    if (updateConfig && typeof chrome.storage.sync !== 'undefined') {
-        try {
-            const { configService } = await import(
-                '../services/configService.js'
-            );
-            await configService.set('vertexAccessToken', accessToken);
-        } catch (error) {
-            console.error('[VertexAuth] Failed to update config:', error);
-        }
-    }
-
-    return { accessToken, expiresAt };
-}
-
-/**
- * Auto-refresh token if needed (silently)
- * @returns {Promise<string | null>} The new access token if refreshed, null if no refresh needed
- */
-export async function autoRefreshIfNeeded() {
-    const expirationInfo = await checkTokenExpiration();
-
-    if (!expirationInfo) {
-        return null;
-    }
-
-    if (expirationInfo.isExpired || expirationInfo.shouldRefresh) {
-        try {
-            const { accessToken } = await refreshAccessToken();
-            console.log('[VertexAuth] Token auto-refreshed successfully');
-            return accessToken;
-        } catch (error) {
-            console.error('[VertexAuth] Auto-refresh failed:', error);
-            return null;
-        }
-    }
-
-    return null;
 }

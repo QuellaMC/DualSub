@@ -39,7 +39,7 @@
 ## ✨ Highlights
 
 - Dual subtitles on Netflix and Disney+
-- Multiple translation providers with smart fallback and batching
+- Multiple translation providers with rate limiting and caching
 - AI Context Analysis (OpenAI, Google Gemini)
 - Flexible layouts, appearance controls, and timing offset
 - Multi-language UI (EN, ES, JA, KO, ZH-CN, ZH-TW)
@@ -60,18 +60,17 @@ Configuration reference: [configuration.md](docs/en/configuration.md). AI docs: 
 **For Language Learning:**
 
 ```
-Translation Provider: DeepL Free
+Translation Provider: Microsoft Translate (Free)
 Layout: Top/Bottom
 Display Order: Original First
 Font Size: Large
-AI Context: Enabled (OpenAI GPT-4.1 Mini)
+AI Context: Enabled (OpenAI GPT-5.6 Luna)
 Context Types: Cultural, Historical, Linguistic
 ```
 
 **For Performance:**
 
 ```
-Translation Batch Size: 5
 Request Delay: 100ms
 Translation Provider: Google Translate
 AI Context: Enabled (Google Gemini Flash)
@@ -82,7 +81,7 @@ Context Cache: Enabled
 
 ```
 Translation Provider: OpenAI Compatible
-AI Context Provider: OpenAI GPT-4.1 Mini
+AI Context Provider: OpenAI GPT-5.6 Luna
 Context Types: All
 Rate Limit: 60 requests/minute
 Cache TTL: 1 hour
@@ -93,7 +92,7 @@ Debug Logging: Enabled
 
 ### Prerequisites
 
-- **Node.js** 18+ and npm
+- **Node.js** 24 LTS and npm 11+
 - **Google Chrome** with Developer mode enabled
 - **Git** for version control
 
@@ -104,30 +103,25 @@ Debug Logging: Enabled
     ```bash
     git clone https://github.com/QuellaMC/DualSub.git
     cd DualSub
-    npm install
+    npm ci
     ```
 
 2. **Development Commands**
 
-Note: For richer editor IntelliSense of Chrome extension APIs in this JS-only (JSDoc @ts-check) project, you can optionally install:
-
-```bash
-npm i -D chrome-types
-```
-
-Files may include a directive like `/// <reference types="chrome" />` to enable those types locally. Messaging reliability utilities live at `content_scripts/shared/messaging.js`.
-
     ```bash
-    # Code formatting
-    npm run format
+    # Verify formatting without changing files
+    npm run format:check
 
     # Linting
     npm run lint
-    npm run lint:fix
 
     # Testing
     npm test
     npm run test:watch
+
+    # Production build and extension-package validation
+    npm run build
+    npm run verify:build
     ```
 
 3. **Load Extension for Testing**
@@ -143,6 +137,7 @@ DualSub/
 ├── services/           # Core services (config, logging)
 ├── popup/             # Extension popup interface
 ├── options/           # Advanced settings page
+├── sidepanel/         # AI analysis side panel
 ├── utils/             # Shared utilities
 ├── test-utils/        # Testing infrastructure
 ├── _locales/          # Internationalization files
@@ -163,7 +158,7 @@ DualSub uses a modern, modular architecture built on several key design patterns
 ### Key Components
 
 - **Content Scripts**: Platform-specific implementations extending `BaseContentScript`
-- **Translation Providers**: Modular translation services with automatic fallback
+- **Translation Providers**: Modular translation services with explicit retry and provider selection
 - **Configuration Service**: Centralized settings management with validation
 - **Logging System**: Cross-context logging with configurable levels
 
@@ -202,8 +197,8 @@ We welcome contributions! Please follow these guidelines:
 
 1. Create provider in `translation_providers/` directory
 2. Implement `async function translate(text, sourceLang, targetLang)`
-3. Add to `background.js` providers object
-4. Update `popup/popup.js` and `options/options.js`
+3. Register it in `background/services/translationService.js` and the shared provider constants
+4. Update the React popup/options section or provider card that exposes it
 5. Add comprehensive tests
 
 #### New Streaming Platforms
@@ -238,7 +233,7 @@ npm run test:watch
 npm test -- background.test.js
 
 # Run tests with coverage
-npm test -- --coverage
+npm run test:coverage
 ```
 
 ### Test Structure
@@ -250,7 +245,7 @@ npm test -- --coverage
 
 ### Testing Guidelines
 
-- **Coverage**: Aim for >80% code coverage
+- **Coverage**: Keep the enforced coverage ratchet green and add focused regressions for changed behavior
 - **Isolation**: Tests should not depend on each other
 - **Mocking**: Use provided mocks for Chrome APIs
 - **Assertions**: Clear, descriptive test assertions
@@ -323,23 +318,12 @@ See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
 - 🤖 **NEW**: AI Context Analysis feature with OpenAI and Google Gemini support
 - 🎯 Interactive subtitle text selection with cultural, historical, and linguistic explanations
 - 🔑 Comprehensive API key management and provider configuration
-- 🚀 Implemented universal batch translation system for improved performance
-- ⚡ Added provider-specific batch size optimization (80-90% reduction in API calls)
-- 🔧 Enhanced translation efficiency with intelligent batching and delimiter approach
-- 📊 Improved subtitle processing with configurable batch sizes and concurrent processing
 - 🧠 Advanced caching and rate limiting for AI context requests
-
-### Version 1.5.0
-
-- 🚀 Implemented universal batch translation system for improved performance
-- ⚡ Added provider-specific batch size optimization (80-90% reduction in API calls)
-- 🔧 Enhanced translation efficiency with intelligent batching and delimiter approach
-- 📊 Improved subtitle processing with configurable batch sizes and concurrent processing
 
 ### Version 1.4.0
 
 - ✨ Added Netflix support with official subtitle integration
-- 🔄 Implemented multiple translation providers with fallback
+- 🔄 Implemented multiple selectable translation providers with bounded retries
 - 🌐 Added multi-language UI support (6 languages)
 - ⚙️ Introduced advanced options page
 - 🏗️ Refactored architecture with Template Method pattern

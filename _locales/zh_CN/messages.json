@@ -5,9 +5,6 @@
     "appDesc": {
         "message": "在流媒体平台上显示双语字幕。"
     },
-    "pageTitle": {
-        "message": "DualSub 设置"
-    },
     "h1Title": {
         "message": "DualSub"
     },
@@ -20,17 +17,11 @@
     "originalLanguageLabel": {
         "message": "原始语言："
     },
-    "translationSettingsLegend": {
-        "message": "翻译设置"
-    },
     "providerLabel": {
         "message": "提供商："
     },
     "targetLanguageLabel": {
         "message": "翻译为："
-    },
-    "batchSizeLabel": {
-        "message": "批量大小："
     },
     "requestDelayLabel": {
         "message": "请求延迟 (ms)："
@@ -71,9 +62,6 @@
     "uiLanguageLabel": {
         "message": "语言："
     },
-    "openOptionsButton": {
-        "message": "高级设置"
-    },
     "statusLanguageSetTo": {
         "message": "刷新页面后生效："
     },
@@ -112,9 +100,6 @@
     },
     "statusInvalidOffset": {
         "message": "无效偏移，已还原。"
-    },
-    "statusSettingNotApplied": {
-        "message": "设置未应用。请刷新页面。"
     },
     "optionsPageTitle": {
         "message": "DualSub 选项"
@@ -254,9 +239,6 @@
     "testingConnection": {
         "message": "正在测试 DeepL 连接..."
     },
-    "deeplTestSuccess": {
-        "message": "✅ DeepL API 测试成功"
-    },
     "deeplTestUnexpectedFormat": {
         "message": "⚠️ DeepL API 响应但格式异常"
     },
@@ -275,15 +257,6 @@
     "deeplTestGenericError": {
         "message": "❌ 测试失败：%s"
     },
-    "deepLApiUnavailable": {
-        "message": "DeepL API 不可用"
-    },
-    "deepLApiUnavailableTooltip": {
-        "message": "DeepL API 脚本加载失败"
-    },
-    "deeplApiNotLoadedError": {
-        "message": "❌ DeepL API 脚本不可用。请刷新页面。"
-    },
     "cardGoogleTitle": {
         "message": "谷歌翻译"
     },
@@ -295,12 +268,6 @@
     },
     "cardMicrosoftDesc": {
         "message": "由微软 Edge 提供的免费翻译服务。无需额外配置。"
-    },
-    "cardDeepLFreeTitle": {
-        "message": "DeepL 翻译（免费）"
-    },
-    "cardDeepLFreeDesc": {
-        "message": "免费的 DeepL 翻译服务，提供高质量的翻译结果。无需 API 密钥 - 使用 DeepL 的网页接口。"
     },
     "providerStatus": {
         "message": "状态："
@@ -341,21 +308,6 @@
     "featureUsageLimits": {
         "message": "使用限制适用"
     },
-    "featureMultipleBackups": {
-        "message": "多种备用方法"
-    },
-    "providerNotes": {
-        "message": "注意事项："
-    },
-    "noteSlowForSecurity": {
-        "message": "由于安全措施，速度稍慢"
-    },
-    "noteAutoFallback": {
-        "message": "自动回退到其他服务"
-    },
-    "noteRecommendedDefault": {
-        "message": "推荐作为默认提供商"
-    },
     "providerGoogleName": {
         "message": "谷歌翻译（免费）"
     },
@@ -364,9 +316,6 @@
     },
     "providerDeepLName": {
         "message": "DeepL（需要 API 密钥）"
-    },
-    "providerDeepLFreeName": {
-        "message": "DeepL 翻译（免费）"
     },
     "providerOpenAICompatibleName": {
         "message": "OpenAI 兼容（需要 API 密钥）"
@@ -382,9 +331,6 @@
     },
     "cardVertexGeminiTitle": {
         "message": "Vertex AI Gemini（需要 API 密钥）"
-    },
-    "cardVertexGeminiDesc": {
-        "message": "输入您的访问令牌和 Vertex 项目设置，或导入服务账号 JSON 文件。"
     },
     "vertexAccessTokenLabel": {
         "message": "访问令牌："
@@ -410,17 +356,8 @@
     "vertexImportButton": {
         "message": "导入 JSON 文件"
     },
-    "vertexRefreshButton": {
-        "message": "🔄 刷新令牌"
-    },
-    "vertexImportHint": {
-        "message": "自动填充下方凭据"
-    },
     "vertexImporting": {
         "message": "导入中..."
-    },
-    "vertexRefreshingToken": {
-        "message": "正在刷新访问令牌..."
     },
     "vertexGeneratingToken": {
         "message": "正在生成访问令牌..."
@@ -431,17 +368,8 @@
     "vertexImportFailed": {
         "message": "导入失败：%s"
     },
-    "vertexTokenRefreshed": {
-        "message": "访问令牌刷新成功。"
-    },
-    "vertexRefreshFailed": {
-        "message": "令牌刷新失败：%s"
-    },
     "vertexTokenExpired": {
         "message": "⚠️ 访问令牌已过期。点击刷新以续期。"
-    },
-    "vertexTokenExpiringSoon": {
-        "message": "⚠️ 令牌将在 %s 分钟后过期。建议刷新。"
     },
     "vertexConfigured": {
         "message": "⚠️ Vertex AI 已配置。请测试连接。"
@@ -452,17 +380,8 @@
     "featureVertexServiceAccount": {
         "message": "服务账号 JSON 导入"
     },
-    "featureVertexAutoToken": {
-        "message": "自动生成令牌"
-    },
     "featureVertexGemini": {
         "message": "通过 Vertex AI 使用 Google Gemini 模型"
-    },
-    "providerNote": {
-        "message": "注意："
-    },
-    "vertexNote": {
-        "message": "访问令牌在 1 小时后过期。您的服务账号已安全存储，需要时只需点击刷新令牌按钮即可。"
     },
     "baseUrlLabel": {
         "message": "基础 URL："
@@ -472,9 +391,6 @@
     },
     "featureCustomizable": {
         "message": "可自定义端点和模型"
-    },
-    "fetchModelsButton": {
-        "message": "获取模型"
     },
     "testConnectionButton": {
         "message": "测试连接"
@@ -487,9 +403,6 @@
     },
     "openaiApiKeyError": {
         "message": "请先输入您的 API 密钥。"
-    },
-    "openaiApiKeyNeedsTesting": {
-        "message": "⚠️ API 密钥需要测试。"
     },
     "openaiTestNeedsTesting": {
         "message": "⚠️ OpenAI 兼容 API 密钥需要测试。"
@@ -536,122 +449,8 @@
     "loggingLevelDebug": {
         "message": "调试（全部）"
     },
-    "cardBatchTranslationTitle": {
-        "message": "批量翻译"
-    },
-    "cardBatchTranslationDesc": {
-        "message": "批量翻译将多个字幕片段一起处理，减少 80-90% 的 API 调用并提高性能。为您首选的翻译提供商配置最佳设置。"
-    },
-    "batchingEnabledLabel": {
-        "message": "启用批量翻译："
-    },
-    "batchingEnabledHelp": {
-        "message": "将多个字幕片段组合成单个翻译请求"
-    },
-    "useProviderDefaultsLabel": {
-        "message": "使用提供商优化设置："
-    },
-    "useProviderDefaultsHelp": {
-        "message": "自动为每个翻译提供商使用最佳批量大小"
-    },
-    "globalBatchSizeLabel": {
-        "message": "全局批量大小："
-    },
-    "globalBatchSizeHelp": {
-        "message": "一起处理的字幕片段数量（1-15）"
-    },
-    "smartBatchingLabel": {
-        "message": "智能批量优化："
-    },
-    "smartBatchingHelp": {
-        "message": "根据播放位置优先处理字幕片段"
-    },
-    "maxConcurrentBatchesLabel": {
-        "message": "最大并发批次："
-    },
-    "maxConcurrentBatchesHelp": {
-        "message": "同时处理的翻译批次数量"
-    },
-    "cardProviderBatchTitle": {
-        "message": "提供商特定批量大小"
-    },
-    "cardProviderBatchDesc": {
-        "message": "为每个翻译提供商配置最佳批量大小。这些设置在启用\"使用提供商优化设置\"时使用。"
-    },
-    "openaieBatchSizeLabel": {
-        "message": "OpenAI 批量大小："
-    },
-    "openaieBatchSizeHelp": {
-        "message": "推荐：5-10 个片段（默认：8）"
-    },
-    "googleBatchSizeLabel": {
-        "message": "谷歌翻译批量大小："
-    },
-    "googleBatchSizeHelp": {
-        "message": "推荐：3-5 个片段（默认：4）"
-    },
-    "deeplBatchSizeLabel": {
-        "message": "DeepL 批量大小："
-    },
-    "deeplBatchSizeHelp": {
-        "message": "推荐：2-3 个片段（默认：3）"
-    },
-    "microsoftBatchSizeLabel": {
-        "message": "微软翻译批量大小："
-    },
-    "microsoftBatchSizeHelp": {
-        "message": "推荐：3-5 个片段（默认：4）"
-    },
-    "vertexBatchSizeLabel": {
-        "message": "Vertex AI 批量大小："
-    },
-    "vertexBatchSizeHelp": {
-        "message": "推荐：5-10 个片段（默认：8）"
-    },
     "deeplTestNeedsTesting": {
         "message": "⚠️ DeepL API 密钥需要测试。"
-    },
-    "cardProviderDelayTitle": {
-        "message": "提供商特定请求延迟"
-    },
-    "cardProviderDelayDesc": {
-        "message": "配置翻译请求之间的强制延迟以防止账户锁定。即使启用批量处理，这些延迟也会应用。"
-    },
-    "openaieDelayLabel": {
-        "message": "OpenAI 请求延迟 (ms)："
-    },
-    "openaieDelayHelp": {
-        "message": "请求之间的最小延迟（默认：100ms）"
-    },
-    "googleDelayLabel": {
-        "message": "谷歌翻译请求延迟 (ms)："
-    },
-    "googleDelayHelp": {
-        "message": "防止临时锁定所需的延迟（默认：1500ms）"
-    },
-    "deeplDelayLabel": {
-        "message": "DeepL API 请求延迟 (ms)："
-    },
-    "deeplDelayHelp": {
-        "message": "DeepL API 请求的延迟（默认：500ms）"
-    },
-    "deeplFreeDelayLabel": {
-        "message": "DeepL 免费请求延迟 (ms)："
-    },
-    "deeplFreeDelayHelp": {
-        "message": "免费层的保守延迟（默认：2000ms）"
-    },
-    "microsoftDelayLabel": {
-        "message": "微软翻译请求延迟 (ms)："
-    },
-    "microsoftDelayHelp": {
-        "message": "尊重字符限制的延迟（默认：800ms）"
-    },
-    "vertexDelayLabel": {
-        "message": "Vertex AI 请求延迟 (ms)："
-    },
-    "vertexDelayHelp": {
-        "message": "请求之间的最小延迟（默认：100ms）"
     },
     "aiContextModalTitle": {
         "message": "AI 上下文分析"
@@ -719,9 +518,6 @@
     "aiContextUsage": {
         "message": "💡 用法与例句"
     },
-    "aiContextExamples": {
-        "message": "例句："
-    },
     "aiContextLearningTips": {
         "message": "🎯 学习提示"
     },
@@ -763,9 +559,6 @@
     },
     "aiContextMalformedResponse": {
         "message": "AI 服务返回了无效的响应格式。这可能是由于临时服务问题。"
-    },
-    "aiContextJsonCodeBlock": {
-        "message": "AI 服务返回了未处理的 JSON 代码而不是结构化数据。这表明响应中存在格式错误。"
     },
     "aiContextCulturalContext": {
         "message": "文化背景:"
@@ -860,38 +653,11 @@
     "contextTypeCulturalLabel": {
         "message": "文化上下文："
     },
-    "contextTypeCulturalHelp": {
-        "message": "分析文化参考、习语和社会背景"
-    },
     "contextTypeHistoricalLabel": {
         "message": "历史上下文："
     },
-    "contextTypeHistoricalHelp": {
-        "message": "提供历史背景和时代背景"
-    },
     "contextTypeLinguisticLabel": {
         "message": "语言学分析："
-    },
-    "contextTypeLinguisticHelp": {
-        "message": "解释语法、词源和语言结构"
-    },
-    "cardAIContextPrivacyTitle": {
-        "message": "隐私和数据"
-    },
-    "cardAIContextPrivacyDesc": {
-        "message": "控制在上下文分析期间如何处理您的数据。"
-    },
-    "aiContextUserConsentLabel": {
-        "message": "我同意将字幕文本发送给 AI 提供商进行分析："
-    },
-    "aiContextUserConsentHelp": {
-        "message": "AI 上下文分析功能正常运行所必需"
-    },
-    "aiContextDataSharingLabel": {
-        "message": "允许匿名使用分析："
-    },
-    "aiContextDataSharingHelp": {
-        "message": "通过分享匿名使用数据帮助改进服务"
     },
     "cardAIContextAdvancedTitle": {
         "message": "高级设置"
@@ -902,41 +668,20 @@
     "aiContextTimeoutLabel": {
         "message": "请求超时 (ms)："
     },
-    "aiContextTimeoutHelp": {
-        "message": "等待 AI 响应的最长时间"
-    },
     "aiContextRateLimitLabel": {
         "message": "速率限制 (请求/分钟)："
-    },
-    "aiContextRateLimitHelp": {
-        "message": "每分钟最大请求数"
     },
     "aiContextCacheEnabledLabel": {
         "message": "启用缓存："
     },
-    "aiContextCacheEnabledHelp": {
-        "message": "缓存分析结果以减少 API 调用"
-    },
     "aiContextRetryAttemptsLabel": {
         "message": "重试次数："
-    },
-    "aiContextRetryAttemptsHelp": {
-        "message": "重试失败请求的次数"
-    },
-    "showAdvancedSettings": {
-        "message": "显示高级设置"
-    },
-    "hideAdvancedSettings": {
-        "message": "隐藏高级设置"
     },
     "sidepanelLoading": {
         "message": "加载中..."
     },
     "sidepanelTabAIAnalysis": {
         "message": "AI 分析"
-    },
-    "sidepanelTabWordsLists": {
-        "message": "单词列表"
     },
     "sidepanelAnalyzeButton": {
         "message": "分析"
@@ -968,15 +713,6 @@
     "sidepanelSectionLinguistic": {
         "message": "语言学分析"
     },
-    "sidepanelMyWordsTitle": {
-        "message": "我的单词"
-    },
-    "sidepanelFeatureComingSoon": {
-        "message": "单词列表功能即将推出！"
-    },
-    "sidepanelFeatureComingSoonDesc": {
-        "message": "此功能目前正在开发中。在设置中启用以尝试预览。"
-    },
     "sidepanelErrorNoWords": {
         "message": "未选择要分析的单词"
     },
@@ -985,5 +721,125 @@
     },
     "sidepanelErrorGeneric": {
         "message": "分析过程中发生错误。"
+    },
+    "advancedNote": {
+        "message": "Automatic side-panel opening requires Chrome 116 or newer."
+    },
+    "advancedTitle": {
+        "message": "高级设置"
+    },
+    "advancedWarningDescription": {
+        "message": "These settings can affect the behavior of the side panel. If you experience issues, try resetting to default values by disabling and re-enabling the side panel feature."
+    },
+    "advancedWarningTitle": {
+        "message": "Important Note"
+    },
+    "aiContextTypesRequired": {
+        "message": "Select at least one context type."
+    },
+    "autoOpenSidePanel": {
+        "message": "Auto-Open Side Panel:"
+    },
+    "autoOpenSidePanelDescription": {
+        "message": "Automatically open the side panel when you click on subtitle words."
+    },
+    "autoPauseVideo": {
+        "message": "Auto-Pause Video:"
+    },
+    "autoPauseVideoDescription": {
+        "message": "Automatically pause the video when you open the side panel to select words."
+    },
+    "cardVertexGeminiEphemeralDesc": {
+        "message": "Enter a short-lived access token, or import a service account JSON once to generate one. The service-account key is never stored."
+    },
+    "deeplTestSuccessSimple": {
+        "message": "✅ DeepL API 测试成功"
+    },
+    "featureVertexEphemeralToken": {
+        "message": "One-time token generation without storing the service-account key"
+    },
+    "navAdvanced": {
+        "message": "高级设置"
+    },
+    "openaiEndpointPermissionRequired": {
+        "message": "Use Test Connection to grant access to this endpoint."
+    },
+    "openaiHostPermissionButton": {
+        "message": "Allow API host"
+    },
+    "openaiHostPermissionChecking": {
+        "message": "Checking API host access…"
+    },
+    "openaiHostPermissionDenied": {
+        "message": "API host access was not granted."
+    },
+    "openaiHostPermissionError": {
+        "message": "无法请求 API 主机访问权限：%s"
+    },
+    "openaiHostPermissionGranted": {
+        "message": "API host access granted."
+    },
+    "sidePanelBehaviorDescription": {
+        "message": "Configure how the AI analysis side panel opens and looks."
+    },
+    "sidePanelBehaviorTitle": {
+        "message": "Side Panel Behavior"
+    },
+    "sidepanelErrorNoContextTypes": {
+        "message": "请先选择至少一种上下文类型再进行分析。"
+    },
+    "sidePanelTheme": {
+        "message": "Side Panel Theme:"
+    },
+    "themeAuto": {
+        "message": "Auto (System)"
+    },
+    "themeDark": {
+        "message": "Dark"
+    },
+    "themeLight": {
+        "message": "Light"
+    },
+    "useSidePanel": {
+        "message": "Use Side Panel:"
+    },
+    "useSidePanelDescription": {
+        "message": "Use Chrome Side Panel instead of the modal for AI context analysis. Disable to use the legacy modal."
+    },
+    "vertexImportSuccessEphemeral": {
+        "message": "Access token generated. The service-account key was not stored; re-import the JSON when the token expires."
+    },
+    "vertexNotConfiguredEphemeral": {
+        "message": "Import a service account JSON once to generate a short-lived token, or paste a token manually."
+    },
+    "vertexManualTokenSaveFailed": {
+        "message": "无法保存访问令牌：%s"
+    },
+    "vertexTokenExpiredReimport": {
+        "message": "⚠️ Access token expired. Re-import the service account JSON or paste a new access token."
+    },
+    "vertexTokenExpiringReimport": {
+        "message": "⚠️ Token expires in %s minutes. Re-import the service account JSON or prepare a replacement access token."
+    },
+    "videoControlDescription": {
+        "message": "Control how the video player behaves when the side panel opens."
+    },
+    "videoControlTitle": {
+        "message": "Video Control"
+    },
+    "aiContextEvolutionLabel": {
+        "message": "🔄 历史演变"
+    },
+    "aiContextHistoricalSignificanceLabel": {
+        "message": "📜 历史意义"
+    },
+    "aiContextKeyInsightsLabel": {
+        "message": "🔑 关键见解"
+    },
+    "aiContextLearningTipsLabel": {
+        "message": "🎯 学习提示"
+    },
+    "aiContextRelatedExpressionsLabel": {
+        "message": "🔗 相关表达"
     }
 }

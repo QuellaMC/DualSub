@@ -5,9 +5,6 @@
     "appDesc": {
         "message": "在串流平台上顯示雙語字幕。"
     },
-    "pageTitle": {
-        "message": "DualSub 設定"
-    },
     "h1Title": {
         "message": "DualSub"
     },
@@ -20,17 +17,11 @@
     "originalLanguageLabel": {
         "message": "原始語言："
     },
-    "translationSettingsLegend": {
-        "message": "翻譯設定"
-    },
     "providerLabel": {
         "message": "提供商："
     },
     "targetLanguageLabel": {
         "message": "翻譯為："
-    },
-    "batchSizeLabel": {
-        "message": "批次大小："
     },
     "requestDelayLabel": {
         "message": "請求延遲 (ms)："
@@ -71,9 +62,6 @@
     "uiLanguageLabel": {
         "message": "語言："
     },
-    "openOptionsButton": {
-        "message": "進階設定"
-    },
     "statusLanguageSetTo": {
         "message": "重新整理頁面後生效："
     },
@@ -112,9 +100,6 @@
     },
     "statusInvalidOffset": {
         "message": "無效偏移，已還原。"
-    },
-    "statusSettingNotApplied": {
-        "message": "設定未套用。請重新整理頁面。"
     },
     "optionsPageTitle": {
         "message": "DualSub 選項"
@@ -254,9 +239,6 @@
     "testingConnection": {
         "message": "正在測試 DeepL 連線..."
     },
-    "deeplTestSuccess": {
-        "message": "✅ DeepL API 測試成功！將 \"Hello\" 翻譯為 \"%s\""
-    },
     "deeplTestSuccessSimple": {
         "message": "✅ DeepL API 測試成功！"
     },
@@ -278,15 +260,6 @@
     "deeplTestGenericError": {
         "message": "❌ 測試失敗：%s"
     },
-    "deepLApiUnavailable": {
-        "message": "DeepL API 不可用"
-    },
-    "deepLApiUnavailableTooltip": {
-        "message": "DeepL API 指令碼載入失敗"
-    },
-    "deeplApiNotLoadedError": {
-        "message": "❌ DeepL API 指令碼不可用。請重新整理頁面。"
-    },
     "cardGoogleTitle": {
         "message": "Google 翻譯"
     },
@@ -298,12 +271,6 @@
     },
     "cardMicrosoftDesc": {
         "message": "由 Microsoft Edge 提供的免費翻譯服務。無需額外設定。"
-    },
-    "cardDeepLFreeTitle": {
-        "message": "DeepL 翻譯（免費）"
-    },
-    "cardDeepLFreeDesc": {
-        "message": "免費的 DeepL 翻譯服務，提供高品質的翻譯結果。無需 API 金鑰 - 使用 DeepL 的網頁介面。"
     },
     "providerStatus": {
         "message": "狀態："
@@ -344,21 +311,6 @@
     "featureUsageLimits": {
         "message": "使用限制適用"
     },
-    "featureMultipleBackups": {
-        "message": "多種備用方法"
-    },
-    "providerNotes": {
-        "message": "注意事項："
-    },
-    "noteSlowForSecurity": {
-        "message": "由於安全措施，速度稍慢"
-    },
-    "noteAutoFallback": {
-        "message": "自動回退到其他服務"
-    },
-    "noteRecommendedDefault": {
-        "message": "推薦作為預設提供商"
-    },
     "providerGoogleName": {
         "message": "Google 翻譯（免費）"
     },
@@ -367,9 +319,6 @@
     },
     "providerDeepLName": {
         "message": "DeepL（需要 API 金鑰）"
-    },
-    "providerDeepLFreeName": {
-        "message": "DeepL 翻譯（免費）"
     },
     "providerOpenAICompatibleName": {
         "message": "OpenAI 相容（需要 API 金鑰）"
@@ -385,9 +334,6 @@
     },
     "cardVertexGeminiTitle": {
         "message": "Vertex AI Gemini（需要 API 金鑰）"
-    },
-    "cardVertexGeminiDesc": {
-        "message": "輸入您的存取權杖和 Vertex 專案設定，或匯入服務帳戶 JSON 檔案。"
     },
     "vertexAccessTokenLabel": {
         "message": "存取權杖："
@@ -413,17 +359,8 @@
     "vertexImportButton": {
         "message": "匯入 JSON 檔案"
     },
-    "vertexRefreshButton": {
-        "message": "🔄 重新整理權杖"
-    },
-    "vertexImportHint": {
-        "message": "自動填入下方憑證"
-    },
     "vertexImporting": {
         "message": "匯入中..."
-    },
-    "vertexRefreshingToken": {
-        "message": "正在重新整理存取權杖..."
     },
     "vertexGeneratingToken": {
         "message": "正在產生存取權杖..."
@@ -434,17 +371,8 @@
     "vertexImportFailed": {
         "message": "匯入失敗：%s"
     },
-    "vertexTokenRefreshed": {
-        "message": "存取權杖已成功重新整理。"
-    },
-    "vertexRefreshFailed": {
-        "message": "權杖重新整理失敗：%s"
-    },
     "vertexTokenExpired": {
         "message": "⚠️ 存取權杖已過期。點擊重新整理以更新。"
-    },
-    "vertexTokenExpiringSoon": {
-        "message": "⚠️ 權杖將在 %s 分鐘後過期。建議重新整理。"
     },
     "vertexConfigured": {
         "message": "⚠️ Vertex AI 已設定。請測試連線。"
@@ -455,14 +383,8 @@
     "featureVertexServiceAccount": {
         "message": "服務帳戶 JSON 匯入"
     },
-    "featureVertexAutoToken": {
-        "message": "自動產生權杖"
-    },
     "featureVertexGemini": {
         "message": "透過 Vertex AI 使用 Google Gemini 模型"
-    },
-    "vertexNote": {
-        "message": "存取權杖在 1 小時後過期。您的服務帳戶已安全儲存，需要時只需點擊重新整理權杖按鈕即可。"
     },
     "baseUrlLabel": {
         "message": "基礎 URL："
@@ -472,9 +394,6 @@
     },
     "featureCustomizable": {
         "message": "可自訂端點和模型"
-    },
-    "fetchModelsButton": {
-        "message": "取得模型"
     },
     "testConnectionButton": {
         "message": "測試連線"
@@ -487,9 +406,6 @@
     },
     "openaiApiKeyError": {
         "message": "請先輸入您的 API 金鑰。"
-    },
-    "openaiApiKeyNeedsTesting": {
-        "message": "⚠️ API 金鑰需要測試。"
     },
     "openaiTestNeedsTesting": {
         "message": "⚠️ OpenAI 相容 API 金鑰需要測試。"
@@ -536,122 +452,8 @@
     "loggingLevelDebug": {
         "message": "除錯（全部）"
     },
-    "cardBatchTranslationTitle": {
-        "message": "批次翻譯"
-    },
-    "cardBatchTranslationDesc": {
-        "message": "批次翻譯將多個字幕片段一起處理，減少 80-90% 的 API 呼叫並提高效能。為您偏好的翻譯提供商設定最佳設定。"
-    },
-    "batchingEnabledLabel": {
-        "message": "啟用批次翻譯："
-    },
-    "batchingEnabledHelp": {
-        "message": "將多個字幕片段組合成單一翻譯請求"
-    },
-    "useProviderDefaultsLabel": {
-        "message": "使用提供商最佳化設定："
-    },
-    "useProviderDefaultsHelp": {
-        "message": "自動為每個翻譯提供商使用最佳批次大小"
-    },
-    "globalBatchSizeLabel": {
-        "message": "全域批次大小："
-    },
-    "globalBatchSizeHelp": {
-        "message": "一起處理的字幕片段數量（1-15）"
-    },
-    "smartBatchingLabel": {
-        "message": "智慧批次最佳化："
-    },
-    "smartBatchingHelp": {
-        "message": "根據播放位置優先處理字幕片段"
-    },
-    "maxConcurrentBatchesLabel": {
-        "message": "最大並行批次："
-    },
-    "maxConcurrentBatchesHelp": {
-        "message": "同時處理的翻譯批次數量"
-    },
-    "cardProviderBatchTitle": {
-        "message": "提供商特定批次大小"
-    },
-    "cardProviderBatchDesc": {
-        "message": "為每個翻譯提供商設定最佳批次大小。這些設定在啟用「使用提供商最佳化設定」時使用。"
-    },
-    "openaieBatchSizeLabel": {
-        "message": "OpenAI 批次大小："
-    },
-    "openaieBatchSizeHelp": {
-        "message": "建議：5-10 個片段（預設：8）"
-    },
-    "googleBatchSizeLabel": {
-        "message": "Google 翻譯批次大小："
-    },
-    "googleBatchSizeHelp": {
-        "message": "建議：3-5 個片段（預設：4）"
-    },
-    "deeplBatchSizeLabel": {
-        "message": "DeepL 批次大小："
-    },
-    "deeplBatchSizeHelp": {
-        "message": "建議：2-3 個片段（預設：3）"
-    },
-    "microsoftBatchSizeLabel": {
-        "message": "Microsoft 翻譯批次大小："
-    },
-    "microsoftBatchSizeHelp": {
-        "message": "建議：3-5 個片段（預設：4）"
-    },
-    "vertexBatchSizeLabel": {
-        "message": "Vertex AI 批次大小："
-    },
-    "vertexBatchSizeHelp": {
-        "message": "建議：5-10 個片段（預設：8）"
-    },
     "deeplTestNeedsTesting": {
         "message": "⚠️ DeepL API 金鑰需要測試。"
-    },
-    "cardProviderDelayTitle": {
-        "message": "提供商特定請求延遲"
-    },
-    "cardProviderDelayDesc": {
-        "message": "設定翻譯請求之間的強制延遲以防止帳戶鎖定。即使啟用批次處理，這些延遲也會套用。"
-    },
-    "openaieDelayLabel": {
-        "message": "OpenAI 請求延遲 (ms)："
-    },
-    "openaieDelayHelp": {
-        "message": "請求之間的最小延遲（預設：100ms）"
-    },
-    "googleDelayLabel": {
-        "message": "Google 翻譯請求延遲 (ms)："
-    },
-    "googleDelayHelp": {
-        "message": "防止臨時鎖定所需的延遲（預設：1500ms）"
-    },
-    "deeplDelayLabel": {
-        "message": "DeepL API 請求延遲 (ms)："
-    },
-    "deeplDelayHelp": {
-        "message": "DeepL API 請求的延遲（預設：500ms）"
-    },
-    "deeplFreeDelayLabel": {
-        "message": "DeepL 免費請求延遲 (ms)："
-    },
-    "deeplFreeDelayHelp": {
-        "message": "免費層的保守延遲（預設：2000ms）"
-    },
-    "microsoftDelayLabel": {
-        "message": "Microsoft 翻譯請求延遲 (ms)："
-    },
-    "microsoftDelayHelp": {
-        "message": "尊重字元限制的延遲（預設：800ms）"
-    },
-    "vertexDelayLabel": {
-        "message": "Vertex AI 請求延遲 (ms)："
-    },
-    "vertexDelayHelp": {
-        "message": "請求之間的最小延遲（預設：100ms）"
     },
     "aiContextModalTitle": {
         "message": "AI 上下文分析"
@@ -719,9 +521,6 @@
     "aiContextUsage": {
         "message": "💡 用法與例句"
     },
-    "aiContextExamples": {
-        "message": "例句："
-    },
     "aiContextLearningTips": {
         "message": "🎯 學習提示"
     },
@@ -764,9 +563,6 @@
     "aiContextMalformedResponse": {
         "message": "AI 服務返回了無效的回應格式。這可能是由於臨時服務問題。"
     },
-    "aiContextJsonCodeBlock": {
-        "message": "AI 服務返回了未處理的 JSON 代碼而不是結構化數據。這表明回應中存在格式錯誤。"
-    },
     "aiContextCulturalContext": {
         "message": "文化背景:"
     },
@@ -790,21 +586,6 @@
     },
     "aiContextEtymology": {
         "message": "詞源學:"
-    },
-    "aiContextGrammarNotesLabel": {
-        "message": "語法註釋:"
-    },
-    "aiContextTranslationNotesLabel": {
-        "message": "翻譯註釋:"
-    },
-    "aiContextLinguisticAnalysisLabel": {
-        "message": "語言學分析:"
-    },
-    "aiContextGrammarSemanticsLabel": {
-        "message": "語法與語義:"
-    },
-    "aiContextUsageExamplesLabel": {
-        "message": "用法與例句:"
     },
     "aiContextLearningTipsLabel": {
         "message": "學習技巧:"
@@ -875,62 +656,11 @@
     "contextTypeCulturalLabel": {
         "message": "文化上下文："
     },
-    "contextTypeCulturalHelp": {
-        "message": "分析文化參考、習語和社會背景"
-    },
     "contextTypeHistoricalLabel": {
         "message": "歷史上下文："
     },
-    "contextTypeHistoricalHelp": {
-        "message": "提供歷史背景和時代背景"
-    },
     "contextTypeLinguisticLabel": {
         "message": "語言學分析："
-    },
-    "contextTypeLinguisticHelp": {
-        "message": "解釋語法、詞源和語言結構"
-    },
-    "cardAIContextInteractiveTitle": {
-        "message": "互動功能"
-    },
-    "cardAIContextInteractiveDesc": {
-        "message": "設定如何與字幕互動以觸發上下文分析。"
-    },
-    "interactiveSubtitlesEnabledLabel": {
-        "message": "啟用互動式字幕："
-    },
-    "interactiveSubtitlesEnabledHelp": {
-        "message": "使字幕單詞可點擊以進行上下文分析"
-    },
-    "contextOnClickLabel": {
-        "message": "點擊時顯示上下文："
-    },
-    "contextOnClickHelp": {
-        "message": "點擊單詞時顯示上下文分析"
-    },
-    "contextOnSelectionLabel": {
-        "message": "選擇時顯示上下文："
-    },
-    "contextOnSelectionHelp": {
-        "message": "選擇文字時顯示上下文分析"
-    },
-    "cardAIContextPrivacyTitle": {
-        "message": "隱私和資料"
-    },
-    "cardAIContextPrivacyDesc": {
-        "message": "控制在上下文分析期間如何處理您的資料。"
-    },
-    "aiContextUserConsentLabel": {
-        "message": "我同意將字幕文字傳送給 AI 提供商進行分析："
-    },
-    "aiContextUserConsentHelp": {
-        "message": "AI 上下文分析功能正常運作所必需"
-    },
-    "aiContextDataSharingLabel": {
-        "message": "允許匿名使用分析："
-    },
-    "aiContextDataSharingHelp": {
-        "message": "透過分享匿名使用資料幫助改進服務"
     },
     "cardAIContextAdvancedTitle": {
         "message": "進階設定"
@@ -941,41 +671,20 @@
     "aiContextTimeoutLabel": {
         "message": "請求逾時 (ms)："
     },
-    "aiContextTimeoutHelp": {
-        "message": "等待 AI 回應的最長時間"
-    },
     "aiContextRateLimitLabel": {
         "message": "速率限制 (請求/分鐘)："
-    },
-    "aiContextRateLimitHelp": {
-        "message": "每分鐘最大請求數"
     },
     "aiContextCacheEnabledLabel": {
         "message": "啟用快取："
     },
-    "aiContextCacheEnabledHelp": {
-        "message": "快取分析結果以減少 API 呼叫"
-    },
     "aiContextRetryAttemptsLabel": {
         "message": "重試次數："
-    },
-    "aiContextRetryAttemptsHelp": {
-        "message": "重試失敗請求的次數"
-    },
-    "showAdvancedSettings": {
-        "message": "顯示進階設定"
-    },
-    "hideAdvancedSettings": {
-        "message": "隱藏進階設定"
     },
     "sidepanelLoading": {
         "message": "載入中..."
     },
     "sidepanelTabAIAnalysis": {
         "message": "AI 分析"
-    },
-    "sidepanelTabWordsLists": {
-        "message": "單字列表"
     },
     "sidepanelAnalyzeButton": {
         "message": "分析"
@@ -1007,15 +716,6 @@
     "sidepanelSectionLinguistic": {
         "message": "語言學分析"
     },
-    "sidepanelMyWordsTitle": {
-        "message": "我的單字"
-    },
-    "sidepanelFeatureComingSoon": {
-        "message": "單字列表功能即將推出！"
-    },
-    "sidepanelFeatureComingSoonDesc": {
-        "message": "此功能目前正在開發中。在設定中啟用以嘗試預覽。"
-    },
     "sidepanelErrorNoWords": {
         "message": "未選擇要分析的單字"
     },
@@ -1024,5 +724,122 @@
     },
     "sidepanelErrorGeneric": {
         "message": "分析過程中發生錯誤。"
+    },
+    "advancedNote": {
+        "message": "Automatic side-panel opening requires Chrome 116 or newer."
+    },
+    "advancedTitle": {
+        "message": "進階設定"
+    },
+    "advancedWarningDescription": {
+        "message": "These settings can affect the behavior of the side panel. If you experience issues, try resetting to default values by disabling and re-enabling the side panel feature."
+    },
+    "advancedWarningTitle": {
+        "message": "Important Note"
+    },
+    "aiContextTypesRequired": {
+        "message": "Select at least one context type."
+    },
+    "autoOpenSidePanel": {
+        "message": "Auto-Open Side Panel:"
+    },
+    "autoOpenSidePanelDescription": {
+        "message": "Automatically open the side panel when you click on subtitle words."
+    },
+    "autoPauseVideo": {
+        "message": "Auto-Pause Video:"
+    },
+    "autoPauseVideoDescription": {
+        "message": "Automatically pause the video when you open the side panel to select words."
+    },
+    "cardVertexGeminiEphemeralDesc": {
+        "message": "Enter a short-lived access token, or import a service account JSON once to generate one. The service-account key is never stored."
+    },
+    "featureVertexEphemeralToken": {
+        "message": "One-time token generation without storing the service-account key"
+    },
+    "navAdvanced": {
+        "message": "進階設定"
+    },
+    "openaiEndpointPermissionRequired": {
+        "message": "Use Test Connection to grant access to this endpoint."
+    },
+    "openaiHostPermissionButton": {
+        "message": "Allow API host"
+    },
+    "openaiHostPermissionChecking": {
+        "message": "Checking API host access…"
+    },
+    "openaiHostPermissionDenied": {
+        "message": "API host access was not granted."
+    },
+    "openaiHostPermissionError": {
+        "message": "無法請求 API 主機存取權限：%s"
+    },
+    "openaiHostPermissionGranted": {
+        "message": "API host access granted."
+    },
+    "sidePanelBehaviorDescription": {
+        "message": "Configure how the AI analysis side panel opens and looks."
+    },
+    "sidePanelBehaviorTitle": {
+        "message": "Side Panel Behavior"
+    },
+    "sidepanelErrorNoContextTypes": {
+        "message": "請先選擇至少一種上下文類型再進行分析。"
+    },
+    "sidePanelTheme": {
+        "message": "Side Panel Theme:"
+    },
+    "themeAuto": {
+        "message": "Auto (System)"
+    },
+    "themeDark": {
+        "message": "Dark"
+    },
+    "themeLight": {
+        "message": "Light"
+    },
+    "useSidePanel": {
+        "message": "Use Side Panel:"
+    },
+    "useSidePanelDescription": {
+        "message": "Use Chrome Side Panel instead of the modal for AI context analysis. Disable to use the legacy modal."
+    },
+    "vertexImportSuccessEphemeral": {
+        "message": "Access token generated. The service-account key was not stored; re-import the JSON when the token expires."
+    },
+    "vertexNotConfiguredEphemeral": {
+        "message": "Import a service account JSON once to generate a short-lived token, or paste a token manually."
+    },
+    "vertexManualTokenSaveFailed": {
+        "message": "無法儲存存取權杖：%s"
+    },
+    "vertexTokenExpiredReimport": {
+        "message": "⚠️ Access token expired. Re-import the service account JSON or paste a new access token."
+    },
+    "vertexTokenExpiringReimport": {
+        "message": "⚠️ Token expires in %s minutes. Re-import the service account JSON or prepare a replacement access token."
+    },
+    "videoControlDescription": {
+        "message": "Control how the video player behaves when the side panel opens."
+    },
+    "videoControlTitle": {
+        "message": "Video Control"
+    },
+    "aiContextGrammarNotes": {
+        "message": "語法註釋:"
+    },
+    "aiContextGrammarSemantics": {
+        "message": "語法與語義:"
+    },
+    "aiContextLinguisticAnalysis": {
+        "message": "語言學分析:"
+    },
+    "aiContextTranslationNotes": {
+        "message": "翻譯註釋:"
+    },
+    "aiContextUsageExamples": {
+        "message": "用法與例句:"
     }
 }

@@ -160,7 +160,7 @@ describe('DisneyPlusContentScript Integration Tests', () => {
                 { action: 'unknown-action', data: 'disney-test' },
             ];
 
-            testMessages.forEach((message, index) => {
+            testMessages.forEach((message) => {
                 const mockSendResponse = jest.fn();
 
                 const result = disneyPlusScript.handlePlatformSpecificMessage(

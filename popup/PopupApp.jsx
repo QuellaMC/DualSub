@@ -12,7 +12,8 @@ import { AppearanceSettings } from './components/AppearanceSettings.jsx';
 import { StatusMessage } from './components/StatusMessage.jsx';
 
 export function PopupApp() {
-    const { settings, updateSetting, loading, error } = useSettings();
+    const { settings, updateSetting, updateSettings, loading, error } =
+        useSettings();
     const { t, loading: translationsLoading } = useTranslation(
         settings.uiLanguage || 'en'
     );
@@ -80,8 +81,10 @@ export function PopupApp() {
 
     const handleToggleNativeSubtitles = async (useOfficial) => {
         try {
-            await updateSetting('useNativeSubtitles', useOfficial);
-            await updateSetting('useOfficialTranslations', useOfficial);
+            await updateSettings({
+                useNativeSubtitles: useOfficial,
+                useOfficialTranslations: useOfficial,
+            });
 
             const statusKey = useOfficial
                 ? 'statusSmartTranslationEnabled'
@@ -208,6 +211,7 @@ export function PopupApp() {
                 });
             }
             showStatus('Failed to update font size. Please try again.');
+            throw error;
         }
     };
 
@@ -231,6 +235,7 @@ export function PopupApp() {
                 });
             }
             showStatus('Failed to update subtitle gap. Please try again.');
+            throw error;
         }
     };
 
@@ -262,6 +267,7 @@ export function PopupApp() {
                 );
             }
             showStatus('Failed to update vertical position. Please try again.');
+            throw error;
         }
     };
 
@@ -310,7 +316,7 @@ export function PopupApp() {
     };
 
     if (loading || translationsLoading) {
-        return <div>Loading...</div>;
+        return <div role="status">Loading...</div>;
     }
 
     const {
@@ -324,7 +330,7 @@ export function PopupApp() {
         subtitleFontSize = 1.1,
         subtitleGap = 0.3,
         subtitleVerticalPosition = 2.8,
-        subtitleTimeOffset = 0.3,
+        subtitleTimeOffset = 0,
         appearanceAccordionOpen = false,
     } = settings;
 

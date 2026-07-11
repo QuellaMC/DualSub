@@ -44,34 +44,24 @@ export const configSchema = {
         type: String,
         scope: 'sync',
     },
-    translationBatchSize: { defaultValue: 3, type: Number, scope: 'sync' },
     translationDelay: { defaultValue: 150, type: Number, scope: 'sync' },
-    maxConcurrentBatches: { defaultValue: 2, type: Number, scope: 'sync' },
-    smartBatching: { defaultValue: true, type: Boolean, scope: 'sync' },
-    batchProcessingDelay: { defaultValue: 100, type: Number, scope: 'sync' },
-    globalBatchSize: { defaultValue: 5, type: Number, scope: 'sync' },
-    batchingEnabled: { defaultValue: true, type: Boolean, scope: 'sync' },
-    useProviderDefaults: { defaultValue: true, type: Boolean, scope: 'sync' },
-
-    // Provider-specific batch sizes
-    openaieBatchSize: { defaultValue: 8, type: Number, scope: 'sync' },
-    googleBatchSize: { defaultValue: 4, type: Number, scope: 'sync' },
-    deeplBatchSize: { defaultValue: 3, type: Number, scope: 'sync' },
-    microsoftBatchSize: { defaultValue: 4, type: Number, scope: 'sync' },
-
-    // Provider-specific delay settings (in milliseconds)
-    openaieDelay: { defaultValue: 100, type: Number, scope: 'sync' },
-    googleDelay: { defaultValue: 1500, type: Number, scope: 'sync' },
-    deeplDelay: { defaultValue: 500, type: Number, scope: 'sync' },
-    deeplFreeDelay: { defaultValue: 2000, type: Number, scope: 'sync' },
-    microsoftDelay: { defaultValue: 800, type: Number, scope: 'sync' },
 
     // DeepL API Settings
-    deeplApiKey: { defaultValue: '', type: String, scope: 'sync' },
+    deeplApiKey: {
+        defaultValue: '',
+        type: String,
+        scope: 'local',
+        sensitive: true,
+    },
     deeplApiPlan: { defaultValue: 'free', type: String, scope: 'sync' },
 
     // OpenAI-compatible API Settings (for Gemini and other compatible endpoints)
-    openaiCompatibleApiKey: { defaultValue: '', type: String, scope: 'sync' },
+    openaiCompatibleApiKey: {
+        defaultValue: '',
+        type: String,
+        scope: 'local',
+        sensitive: true,
+    },
     openaiCompatibleBaseUrl: {
         defaultValue: 'https://generativelanguage.googleapis.com/v1beta/openai',
         type: String,
@@ -84,7 +74,13 @@ export const configSchema = {
     },
 
     // Vertex AI Gemini Translation Settings
-    vertexAccessToken: { defaultValue: '', type: String, scope: 'sync' },
+    // Access tokens are short-lived device credentials and must not sync.
+    vertexAccessToken: {
+        defaultValue: '',
+        type: String,
+        scope: 'local',
+        sensitive: true,
+    },
     vertexProjectId: { defaultValue: '', type: String, scope: 'sync' },
     vertexLocation: {
         defaultValue: 'us-central1',
@@ -107,7 +103,7 @@ export const configSchema = {
     }, // New unified setting
     targetLanguage: { defaultValue: 'zh-CN', type: String, scope: 'sync' },
     originalLanguage: { defaultValue: 'en', type: String, scope: 'sync' },
-    subtitleTimeOffset: { defaultValue: 0.3, type: Number, scope: 'sync' },
+    subtitleTimeOffset: { defaultValue: 0, type: Number, scope: 'sync' },
     subtitleLayoutOrder: {
         defaultValue: 'original_top',
         type: String,
@@ -159,18 +155,28 @@ export const configSchema = {
     },
 
     // OpenAI Context API Settings
-    openaiApiKey: { defaultValue: '', type: String, scope: 'sync' },
+    openaiApiKey: {
+        defaultValue: '',
+        type: String,
+        scope: 'local',
+        sensitive: true,
+    },
     openaiBaseUrl: {
-        defaultValue: 'https://api.openai.com',
+        defaultValue: 'https://api.openai.com/v1',
         type: String,
         scope: 'sync',
     },
-    openaiModel: { defaultValue: 'gpt-4.1-mini', type: String, scope: 'sync' },
+    openaiModel: { defaultValue: 'gpt-5.6-luna', type: String, scope: 'sync' },
 
     // Google Gemini Context API Settings
-    geminiApiKey: { defaultValue: '', type: String, scope: 'sync' },
+    geminiApiKey: {
+        defaultValue: '',
+        type: String,
+        scope: 'local',
+        sensitive: true,
+    },
     geminiModel: {
-        defaultValue: 'gemini-2.5-flash',
+        defaultValue: 'gemini-3.5-flash',
         type: String,
         scope: 'sync',
     },
@@ -190,54 +196,24 @@ export const configSchema = {
         scope: 'sync',
     }, // ms between requests
 
-    // UI preferences
-    contextModalPosition: {
-        defaultValue: 'center',
-        type: String,
-        scope: 'sync',
-    }, // center, top, bottom
-    contextModalSize: { defaultValue: 'medium', type: String, scope: 'sync' }, // small, medium, large
-    contextAutoClose: { defaultValue: false, type: Boolean, scope: 'sync' },
-    contextAutoCloseDelay: { defaultValue: 10000, type: Number, scope: 'sync' }, // 10 seconds
-
     // Advanced settings
     aiContextRetryAttempts: { defaultValue: 3, type: Number, scope: 'sync' },
     aiContextRetryDelay: { defaultValue: 2000, type: Number, scope: 'sync' },
-    aiContextDebugMode: { defaultValue: false, type: Boolean, scope: 'local' },
 
     // --- Side Panel Settings ---
     // Core side panel toggles
-    sidePanelEnabled: { defaultValue: true, type: Boolean, scope: 'sync' },
     sidePanelUseSidePanel: { defaultValue: true, type: Boolean, scope: 'sync' }, // Use side panel instead of modal
-    
+
     // UI preferences
-    sidePanelDefaultTab: { defaultValue: 'ai-analysis', type: String, scope: 'sync' }, // 'ai-analysis' or 'words-lists'
     sidePanelTheme: { defaultValue: 'auto', type: String, scope: 'sync' }, // 'auto', 'light', or 'dark'
-    
-    // Feature toggles
-    sidePanelWordsListsEnabled: { defaultValue: false, type: Boolean, scope: 'sync' },
-    
+
     // Advanced behavior settings
-    sidePanelPersistAcrossTabs: { defaultValue: true, type: Boolean, scope: 'sync' },
-    sidePanelAutoPauseVideo: { defaultValue: true, type: Boolean, scope: 'sync' },
-    sidePanelAutoResumeVideo: { defaultValue: false, type: Boolean, scope: 'sync' },
+    sidePanelAutoPauseVideo: {
+        defaultValue: true,
+        type: Boolean,
+        scope: 'sync',
+    },
     sidePanelAutoOpen: { defaultValue: true, type: Boolean, scope: 'sync' }, // Auto-open on word click
-    
-    // State persistence (local storage for per-tab state)
-    sidePanelLastTabState: { defaultValue: {}, type: Object, scope: 'local' },
-
-    // Window follow behavior
-    sidePanelFollowActiveTabInWindow: { defaultValue: true, type: Boolean, scope: 'sync' },
-
-    // Scope policies per tab (string enum: 'video' | 'tab' | 'window' | 'global')
-    sidePanelScopePolicyAIAnalysisTab: { defaultValue: 'video', type: String, scope: 'sync' },
-    sidePanelScopePolicyWordsListsTab: { defaultValue: 'global', type: String, scope: 'sync' },
-
-    // Selection buckets for scoped selections (stored locally per device)
-    sidePanelSelectionBuckets: { defaultValue: {}, type: Object, scope: 'local' },
-
-    // Global words lists (synced across devices)
-    sidePanelWordLists: { defaultValue: { lists: [], version: 1, lastUpdated: 0 }, type: Object, scope: 'sync' },
 
     // --- Debug Settings (local storage for immediate availability) ---
     debugMode: { defaultValue: false, type: Boolean, scope: 'local' }, // Debug logging mode
@@ -271,7 +247,7 @@ export function validateSetting(key, value) {
     if (schemaEntry.type === String) {
         return typeof value === 'string';
     } else if (schemaEntry.type === Number) {
-        if (typeof value !== 'number' || isNaN(value)) {
+        if (typeof value !== 'number' || !Number.isFinite(value)) {
             return false;
         }
 
@@ -283,6 +259,18 @@ export function validateSetting(key, value) {
         return true;
     } else if (schemaEntry.type === Boolean) {
         return typeof value === 'boolean';
+    } else if (schemaEntry.type === Array) {
+        return Array.isArray(value);
+    } else if (schemaEntry.type === Object) {
+        if (
+            value === null ||
+            typeof value !== 'object' ||
+            Array.isArray(value)
+        ) {
+            return false;
+        }
+        const prototype = Object.getPrototypeOf(value);
+        return prototype === Object.prototype || prototype === null;
     }
 
     return false;
@@ -309,15 +297,4 @@ export function getDefaultValue(key) {
  */
 export function getStorageScope(key) {
     return configSchema[key]?.scope;
-}
-
-// Export for both CommonJS and ES modules
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = {
-        configSchema,
-        getKeysByScope,
-        validateSetting,
-        getDefaultValue,
-        getStorageScope,
-    };
 }

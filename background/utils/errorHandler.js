@@ -15,7 +15,6 @@ import {
     SubtitleProcessingError,
     RateLimitError,
 } from '../services/serviceInterfaces.js';
-import { Providers } from '../../content_scripts/shared/constants/providers.js';
 
 /**
  * Error severity levels
@@ -76,8 +75,8 @@ class ErrorHandler {
         // Translation error recovery
         this.recoveryStrategies.set(ErrorCategory.TRANSLATION, {
             maxRetries: 2,
-            fallbackProviders: [Providers.DEEPL_FREE, Providers.GOOGLE],
-            strategy: 'provider_fallback',
+            baseDelay: 1000,
+            strategy: 'fixed_delay',
         });
 
         // Rate limit error recovery
@@ -125,6 +124,36 @@ class ErrorHandler {
      * @returns {Object} Error classification
      */
     classifyError(error, context) {
+        const errorChain = [];
+        const seenErrors = new Set();
+        let currentError = error;
+        while (
+            currentError &&
+            typeof currentError === 'object' &&
+            !seenErrors.has(currentError)
+        ) {
+            errorChain.push(currentError);
+            seenErrors.add(currentError);
+            currentError = currentError.cause;
+        }
+        const messages = errorChain
+            .map((entry) => entry?.message)
+            .filter((message) => typeof message === 'string')
+            .join(' ')
+            .toLowerCase();
+        const httpStatus = errorChain
+            .map((entry) =>
+                Number(
+                    entry?.status ??
+                        entry?.statusCode ??
+                        entry?.response?.status
+                )
+            )
+            .find((status) => Number.isFinite(status));
+        const retryableHint = errorChain
+            .map((entry) => entry?.retryable ?? entry?.shouldRetry)
+            .find((value) => typeof value === 'boolean');
+
         const classification = {
             originalError: error,
             message: error.message,
@@ -135,7 +164,12 @@ class ErrorHandler {
             severity: ErrorSeverity.MEDIUM,
             isRecoverable: true,
             errorCode: null,
+            httpStatus,
         };
+
+        if (typeof retryableHint === 'boolean') {
+            classification.isRecoverable = retryableHint;
+        }
 
         // Classify by error type
         if (error instanceof TranslationError) {
@@ -156,35 +190,54 @@ class ErrorHandler {
             classification.errorCode = 'SERVICE_ERROR';
         }
 
-        // Classify by error message patterns
-        const message = error.message.toLowerCase();
-
-        if (
-            message.includes('network') ||
-            message.includes('fetch') ||
-            message.includes('connection')
+        // HTTP semantics and nested provider causes take precedence over the
+        // generic wrapper message.
+        if (httpStatus === 401 || httpStatus === 403) {
+            classification.category = ErrorCategory.CONFIGURATION;
+            classification.severity = ErrorSeverity.CRITICAL;
+            classification.isRecoverable = false;
+            classification.errorCode = 'AUTHENTICATION_ERROR';
+        } else if (httpStatus === 429) {
+            classification.category = ErrorCategory.RATE_LIMIT;
+            classification.severity = ErrorSeverity.HIGH;
+            classification.isRecoverable = true;
+            classification.errorCode = 'RATE_LIMIT_EXCEEDED';
+        } else if (httpStatus >= 500) {
+            classification.category = ErrorCategory.NETWORK;
+            classification.severity = ErrorSeverity.HIGH;
+            classification.isRecoverable = true;
+            classification.errorCode = 'UPSTREAM_ERROR';
+        } else if (
+            errorChain.some((entry) => entry instanceof TypeError) ||
+            messages.includes('network') ||
+            messages.includes('fetch') ||
+            messages.includes('connection') ||
+            messages.includes('offline')
         ) {
             classification.category = ErrorCategory.NETWORK;
             classification.severity = ErrorSeverity.HIGH;
+            classification.isRecoverable = retryableHint !== false;
             classification.errorCode = 'NETWORK_ERROR';
         } else if (
-            message.includes('api key') ||
-            message.includes('authentication')
+            messages.includes('api key') ||
+            messages.includes('access token') ||
+            messages.includes('authentication') ||
+            messages.includes('not configured')
         ) {
             classification.category = ErrorCategory.CONFIGURATION;
             classification.severity = ErrorSeverity.CRITICAL;
             classification.isRecoverable = false;
             classification.errorCode = 'AUTHENTICATION_ERROR';
         } else if (
-            message.includes('rate limit') ||
-            message.includes('quota')
+            messages.includes('rate limit') ||
+            messages.includes('quota')
         ) {
             classification.category = ErrorCategory.RATE_LIMIT;
             classification.severity = ErrorSeverity.HIGH;
             classification.errorCode = 'RATE_LIMIT_EXCEEDED';
         } else if (
-            message.includes('validation') ||
-            message.includes('invalid')
+            messages.includes('validation') ||
+            messages.includes('invalid')
         ) {
             classification.category = ErrorCategory.VALIDATION;
             classification.severity = ErrorSeverity.MEDIUM;
@@ -219,7 +272,6 @@ class ErrorHandler {
             retryDelay: 0,
             strategy: strategy.strategy,
             maxRetries: strategy.maxRetries,
-            fallbackOptions: [],
         };
 
         // Calculate retry delay
@@ -243,11 +295,6 @@ class ErrorHandler {
             }
         }
 
-        // Add fallback options
-        if (strategy.fallbackProviders) {
-            recovery.fallbackOptions = strategy.fallbackProviders;
-        }
-
         return recovery;
     }
 
@@ -261,7 +308,7 @@ class ErrorHandler {
             [ErrorCategory.NETWORK]:
                 'Network connection issue. Please check your internet connection and try again.',
             [ErrorCategory.TRANSLATION]:
-                'Translation service temporarily unavailable. Trying alternative provider...',
+                'Translation service temporarily unavailable.',
             [ErrorCategory.SUBTITLE]:
                 'Subtitle processing failed. Some subtitles may not be available.',
             [ErrorCategory.RATE_LIMIT]:

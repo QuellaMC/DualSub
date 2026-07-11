@@ -5,9 +5,6 @@
     "appDesc": {
         "message": "스트리밍 플랫폼에서 이중 언어 자막을 표시합니다."
     },
-    "pageTitle": {
-        "message": "DualSub 설정"
-    },
     "h1Title": {
         "message": "DualSub"
     },
@@ -20,17 +17,11 @@
     "originalLanguageLabel": {
         "message": "언어 설정:"
     },
-    "translationSettingsLegend": {
-        "message": "번역 설정"
-    },
     "providerLabel": {
         "message": "제공업체:"
     },
     "targetLanguageLabel": {
         "message": "번역 대상:"
-    },
-    "batchSizeLabel": {
-        "message": "배치 크기:"
     },
     "requestDelayLabel": {
         "message": "요청 지연 (ms):"
@@ -71,9 +62,6 @@
     "uiLanguageLabel": {
         "message": "언어:"
     },
-    "openOptionsButton": {
-        "message": "고급 설정"
-    },
     "statusLanguageSetTo": {
         "message": "언어 설정 완료 (페이지를 새로고침하세요): "
     },
@@ -112,9 +100,6 @@
     },
     "statusInvalidOffset": {
         "message": "잘못된 오프셋입니다. 되돌립니다."
-    },
-    "statusSettingNotApplied": {
-        "message": "설정이 적용되지 않았습니다. 페이지를 새로고침하세요."
     },
     "optionsPageTitle": {
         "message": "DualSub 옵션"
@@ -254,9 +239,6 @@
     "testingConnection": {
         "message": "DeepL 연결을 테스트하고 있습니다..."
     },
-    "deeplTestSuccess": {
-        "message": "✅ DeepL API 테스트가 성공했습니다! \"Hello\"를 \"%s\"로 번역했습니다"
-    },
     "deeplTestSuccessSimple": {
         "message": "✅ DeepL API 테스트가 성공했습니다!"
     },
@@ -278,15 +260,6 @@
     "deeplTestGenericError": {
         "message": "❌ 테스트에 실패했습니다: %s"
     },
-    "deepLApiUnavailable": {
-        "message": "DeepL API 사용 불가"
-    },
-    "deepLApiUnavailableTooltip": {
-        "message": "DeepL API 스크립트 로드에 실패했습니다"
-    },
-    "deeplApiNotLoadedError": {
-        "message": "❌ DeepL API 스크립트를 사용할 수 없습니다. 페이지를 새로고침해주세요."
-    },
     "cardGoogleTitle": {
         "message": "Google 번역"
     },
@@ -298,12 +271,6 @@
     },
     "cardMicrosoftDesc": {
         "message": "Microsoft Edge에서 제공하는 무료 번역 서비스입니다. 추가 설정이 필요하지 않습니다."
-    },
-    "cardDeepLFreeTitle": {
-        "message": "DeepL 번역 (무료)"
-    },
-    "cardDeepLFreeDesc": {
-        "message": "고품질 결과를 제공하는 무료 DeepL 번역 서비스입니다. API 키 불필요 - DeepL 웹 인터페이스를 사용합니다."
     },
     "providerStatus": {
         "message": "상태:"
@@ -344,21 +311,6 @@
     "featureUsageLimits": {
         "message": "사용 제한 적용"
     },
-    "featureMultipleBackups": {
-        "message": "다중 백업 방법"
-    },
-    "providerNotes": {
-        "message": "참고사항:"
-    },
-    "noteSlowForSecurity": {
-        "message": "보안 조치로 인해 약간 느림"
-    },
-    "noteAutoFallback": {
-        "message": "대체 서비스로 자동 전환"
-    },
-    "noteRecommendedDefault": {
-        "message": "기본 제공업체로 권장"
-    },
     "providerGoogleName": {
         "message": "Google 번역 (무료)"
     },
@@ -367,9 +319,6 @@
     },
     "providerDeepLName": {
         "message": "DeepL (API 키 필요)"
-    },
-    "providerDeepLFreeName": {
-        "message": "DeepL 번역 (무료)"
     },
     "providerOpenAICompatibleName": {
         "message": "OpenAI 호환 (API 키 필요)"
@@ -385,9 +334,6 @@
     },
     "cardVertexGeminiTitle": {
         "message": "Vertex AI Gemini (API 키 필요)"
-    },
-    "cardVertexGeminiDesc": {
-        "message": "액세스 토큰과 Vertex 프로젝트 설정을 입력하거나 서비스 계정 JSON 파일을 가져오세요."
     },
     "vertexAccessTokenLabel": {
         "message": "액세스 토큰:"
@@ -413,17 +359,8 @@
     "vertexImportButton": {
         "message": "JSON 파일 가져오기"
     },
-    "vertexRefreshButton": {
-        "message": "🔄 토큰 새로고침"
-    },
-    "vertexImportHint": {
-        "message": "아래 자격 증명을 자동으로 입력합니다"
-    },
     "vertexImporting": {
         "message": "가져오는 중..."
-    },
-    "vertexRefreshingToken": {
-        "message": "액세스 토큰 새로고침 중..."
     },
     "vertexGeneratingToken": {
         "message": "액세스 토큰 생성 중..."
@@ -434,17 +371,8 @@
     "vertexImportFailed": {
         "message": "가져오기 실패: %s"
     },
-    "vertexTokenRefreshed": {
-        "message": "액세스 토큰이 성공적으로 새로고침되었습니다."
-    },
-    "vertexRefreshFailed": {
-        "message": "토큰 새로고침 실패: %s"
-    },
     "vertexTokenExpired": {
         "message": "⚠️ 액세스 토큰이 만료되었습니다. 새로고침을 클릭하여 갱신하세요."
-    },
-    "vertexTokenExpiringSoon": {
-        "message": "⚠️ 토큰이 %s분 후에 만료됩니다. 새로고침을 고려하세요."
     },
     "vertexConfigured": {
         "message": "⚠️ Vertex AI가 구성되었습니다. 연결을 테스트하세요."
@@ -455,14 +383,8 @@
     "featureVertexServiceAccount": {
         "message": "서비스 계정 JSON 가져오기"
     },
-    "featureVertexAutoToken": {
-        "message": "자동 토큰 생성"
-    },
     "featureVertexGemini": {
         "message": "Vertex AI를 통한 Google Gemini 모델"
-    },
-    "vertexNote": {
-        "message": "액세스 토큰은 1시간 후에 만료됩니다. 서비스 계정은 안전하게 저장되어 쉽게 토큰을 새로고침할 수 있습니다 - 필요할 때 토큰 새로고침 버튼을 클릭하세요."
     },
     "baseUrlLabel": {
         "message": "기본 URL:"
@@ -472,9 +394,6 @@
     },
     "featureCustomizable": {
         "message": "사용자 정의 가능한 엔드포인트 및 모델"
-    },
-    "fetchModelsButton": {
-        "message": "모델 가져오기"
     },
     "testConnectionButton": {
         "message": "연결 테스트"
@@ -487,9 +406,6 @@
     },
     "openaiApiKeyError": {
         "message": "먼저 API 키를 입력해주세요."
-    },
-    "openaiApiKeyNeedsTesting": {
-        "message": "⚠️ API 키 테스트가 필요합니다."
     },
     "openaiTestNeedsTesting": {
         "message": "⚠️ OpenAI 호환 API 키 테스트가 필요합니다."
@@ -536,122 +452,8 @@
     "loggingLevelDebug": {
         "message": "디버그 (모두)"
     },
-    "cardBatchTranslationTitle": {
-        "message": "배치 번역"
-    },
-    "cardBatchTranslationDesc": {
-        "message": "배치 번역은 여러 자막 세그먼트를 함께 처리하여 API 호출을 80-90% 줄이고 성능을 향상시킵니다. 선호하는 번역 제공업체에 대한 최적 설정을 구성하세요."
-    },
-    "batchingEnabledLabel": {
-        "message": "배치 번역 활성화:"
-    },
-    "batchingEnabledHelp": {
-        "message": "여러 자막 세그먼트를 단일 번역 요청으로 그룹화합니다"
-    },
-    "useProviderDefaultsLabel": {
-        "message": "제공업체 최적화 설정 사용:"
-    },
-    "useProviderDefaultsHelp": {
-        "message": "각 번역 제공업체에 대해 최적의 배치 크기를 자동으로 사용합니다"
-    },
-    "globalBatchSizeLabel": {
-        "message": "전역 배치 크기:"
-    },
-    "globalBatchSizeHelp": {
-        "message": "함께 처리할 자막 세그먼트 수 (1-15)"
-    },
-    "smartBatchingLabel": {
-        "message": "스마트 배치 최적화:"
-    },
-    "smartBatchingHelp": {
-        "message": "재생 위치를 기반으로 자막 세그먼트의 우선순위를 정합니다"
-    },
-    "maxConcurrentBatchesLabel": {
-        "message": "최대 동시 배치 수:"
-    },
-    "maxConcurrentBatchesHelp": {
-        "message": "동시에 처리할 번역 배치 수"
-    },
-    "cardProviderBatchTitle": {
-        "message": "제공업체별 배치 크기"
-    },
-    "cardProviderBatchDesc": {
-        "message": "각 번역 제공업체에 대한 최적 배치 크기를 구성합니다. 이 설정은 \"제공업체 최적화 설정 사용\"이 활성화된 경우에 사용됩니다."
-    },
-    "openaieBatchSizeLabel": {
-        "message": "OpenAI 배치 크기:"
-    },
-    "openaieBatchSizeHelp": {
-        "message": "권장: 5-10개 세그먼트 (기본값: 8)"
-    },
-    "googleBatchSizeLabel": {
-        "message": "Google 번역 배치 크기:"
-    },
-    "googleBatchSizeHelp": {
-        "message": "권장: 3-5개 세그먼트 (기본값: 4)"
-    },
-    "deeplBatchSizeLabel": {
-        "message": "DeepL 배치 크기:"
-    },
-    "deeplBatchSizeHelp": {
-        "message": "권장: 2-3개 세그먼트 (기본값: 3)"
-    },
-    "microsoftBatchSizeLabel": {
-        "message": "Microsoft 번역 배치 크기:"
-    },
-    "microsoftBatchSizeHelp": {
-        "message": "권장: 3-5개 세그먼트 (기본값: 4)"
-    },
-    "vertexBatchSizeLabel": {
-        "message": "Vertex AI 배치 크기:"
-    },
-    "vertexBatchSizeHelp": {
-        "message": "권장: 5-10개 세그먼트 (기본값: 8)"
-    },
     "deeplTestNeedsTesting": {
         "message": "⚠️ DeepL API 키 테스트가 필요합니다."
-    },
-    "cardProviderDelayTitle": {
-        "message": "제공업체별 요청 지연"
-    },
-    "cardProviderDelayDesc": {
-        "message": "계정 잠금을 방지하기 위해 번역 요청 간의 필수 지연을 구성합니다. 이러한 지연은 배치 처리가 활성화된 경우에도 적용됩니다."
-    },
-    "openaieDelayLabel": {
-        "message": "OpenAI 요청 지연 (ms):"
-    },
-    "openaieDelayHelp": {
-        "message": "요청 간 최소 지연 (기본값: 100ms)"
-    },
-    "googleDelayLabel": {
-        "message": "Google 번역 요청 지연 (ms):"
-    },
-    "googleDelayHelp": {
-        "message": "임시 잠금을 방지하기 위한 필수 지연 (기본값: 1500ms)"
-    },
-    "deeplDelayLabel": {
-        "message": "DeepL API 요청 지연 (ms):"
-    },
-    "deeplDelayHelp": {
-        "message": "DeepL API 요청 지연 (기본값: 500ms)"
-    },
-    "deeplFreeDelayLabel": {
-        "message": "DeepL 무료 요청 지연 (ms):"
-    },
-    "deeplFreeDelayHelp": {
-        "message": "무료 계층을 위한 보수적 지연 (기본값: 2000ms)"
-    },
-    "microsoftDelayLabel": {
-        "message": "Microsoft 번역 요청 지연 (ms):"
-    },
-    "microsoftDelayHelp": {
-        "message": "문자 제한을 준수하기 위한 지연 (기본값: 800ms)"
-    },
-    "vertexDelayLabel": {
-        "message": "Vertex AI 요청 지연 (ms):"
-    },
-    "vertexDelayHelp": {
-        "message": "요청 사이의 최소 지연 (기본값: 100ms)"
     },
     "aiContextModalTitle": {
         "message": "AI 컨텍스트 분석"
@@ -719,9 +521,6 @@
     "aiContextUsage": {
         "message": "💡 사용법 및 예시"
     },
-    "aiContextExamples": {
-        "message": "예시:"
-    },
     "aiContextLearningTips": {
         "message": "🎯 학습 팁"
     },
@@ -764,9 +563,6 @@
     "aiContextMalformedResponse": {
         "message": "AI 서비스가 잘못된 응답 형식을 반환했습니다. 이는 일시적인 서비스 문제로 인한 것일 수 있습니다."
     },
-    "aiContextJsonCodeBlock": {
-        "message": "AI 서비스가 구조화된 데이터 대신 처리되지 않은 JSON 코드를 반환했습니다. 이는 응답의 형식 오류를 나타냅니다."
-    },
     "aiContextCulturalContext": {
         "message": "문화적 맥락:"
     },
@@ -790,21 +586,6 @@
     },
     "aiContextEtymology": {
         "message": "어원학:"
-    },
-    "aiContextGrammarNotesLabel": {
-        "message": "문법 주석:"
-    },
-    "aiContextTranslationNotesLabel": {
-        "message": "번역 주석:"
-    },
-    "aiContextLinguisticAnalysisLabel": {
-        "message": "언어학적 분석:"
-    },
-    "aiContextGrammarSemanticsLabel": {
-        "message": "문법과 의미론:"
-    },
-    "aiContextUsageExamplesLabel": {
-        "message": "용법과 예시:"
     },
     "aiContextLearningTipsLabel": {
         "message": "학습 팁:"
@@ -875,62 +656,11 @@
     "contextTypeCulturalLabel": {
         "message": "문화적 컨텍스트:"
     },
-    "contextTypeCulturalHelp": {
-        "message": "문화적 참조, 관용구, 사회적 맥락 분석"
-    },
     "contextTypeHistoricalLabel": {
         "message": "역사적 컨텍스트:"
     },
-    "contextTypeHistoricalHelp": {
-        "message": "역사적 배경과 시대적 맥락 제공"
-    },
     "contextTypeLinguisticLabel": {
         "message": "언어학적 분석:"
-    },
-    "contextTypeLinguisticHelp": {
-        "message": "문법, 어원, 언어 구조 설명"
-    },
-    "cardAIContextInteractiveTitle": {
-        "message": "상호작용 기능"
-    },
-    "cardAIContextInteractiveDesc": {
-        "message": "컨텍스트 분석을 트리거하기 위해 자막과 상호작용하는 방법을 구성합니다."
-    },
-    "interactiveSubtitlesEnabledLabel": {
-        "message": "상호작용 자막 활성화:"
-    },
-    "interactiveSubtitlesEnabledHelp": {
-        "message": "컨텍스트 분석을 위해 자막 단어를 클릭 가능하게 만들기"
-    },
-    "contextOnClickLabel": {
-        "message": "클릭 시 컨텍스트:"
-    },
-    "contextOnClickHelp": {
-        "message": "단어를 클릭할 때 컨텍스트 분석 표시"
-    },
-    "contextOnSelectionLabel": {
-        "message": "선택 시 컨텍스트:"
-    },
-    "contextOnSelectionHelp": {
-        "message": "텍스트를 선택할 때 컨텍스트 분석 표시"
-    },
-    "cardAIContextPrivacyTitle": {
-        "message": "개인정보 및 데이터"
-    },
-    "cardAIContextPrivacyDesc": {
-        "message": "컨텍스트 분석 중 데이터 처리 방법을 제어합니다."
-    },
-    "aiContextUserConsentLabel": {
-        "message": "분석을 위해 자막 텍스트를 AI 제공업체에 전송하는 것에 동의합니다:"
-    },
-    "aiContextUserConsentHelp": {
-        "message": "AI 컨텍스트 분석이 작동하기 위해 필요"
-    },
-    "aiContextDataSharingLabel": {
-        "message": "익명 사용 분석 허용:"
-    },
-    "aiContextDataSharingHelp": {
-        "message": "익명 사용 데이터를 공유하여 서비스 개선에 도움"
     },
     "cardAIContextAdvancedTitle": {
         "message": "고급 설정"
@@ -941,41 +671,20 @@
     "aiContextTimeoutLabel": {
         "message": "요청 타임아웃 (ms):"
     },
-    "aiContextTimeoutHelp": {
-        "message": "AI 응답을 기다리는 최대 시간"
-    },
     "aiContextRateLimitLabel": {
         "message": "속도 제한 (요청/분):"
-    },
-    "aiContextRateLimitHelp": {
-        "message": "분당 최대 요청 수"
     },
     "aiContextCacheEnabledLabel": {
         "message": "캐싱 활성화:"
     },
-    "aiContextCacheEnabledHelp": {
-        "message": "API 호출을 줄이기 위해 분석 결과 캐시"
-    },
     "aiContextRetryAttemptsLabel": {
         "message": "재시도 횟수:"
-    },
-    "aiContextRetryAttemptsHelp": {
-        "message": "실패한 요청을 재시도하는 횟수"
-    },
-    "showAdvancedSettings": {
-        "message": "고급 설정 표시"
-    },
-    "hideAdvancedSettings": {
-        "message": "고급 설정 숨기기"
     },
     "sidepanelLoading": {
         "message": "로딩 중..."
     },
     "sidepanelTabAIAnalysis": {
         "message": "AI 분석"
-    },
-    "sidepanelTabWordsLists": {
-        "message": "단어장"
     },
     "sidepanelAnalyzeButton": {
         "message": "분석"
@@ -1007,15 +716,6 @@
     "sidepanelSectionLinguistic": {
         "message": "언어학적 분석"
     },
-    "sidepanelMyWordsTitle": {
-        "message": "내 단어"
-    },
-    "sidepanelFeatureComingSoon": {
-        "message": "단어장 기능이 곧 제공됩니다!"
-    },
-    "sidepanelFeatureComingSoonDesc": {
-        "message": "이 기능은 현재 개발 중입니다. 설정에서 활성화하여 미리보기를 사용해보세요."
-    },
     "sidepanelErrorNoWords": {
         "message": "분석할 단어가 선택되지 않았습니다"
     },
@@ -1024,5 +724,122 @@
     },
     "sidepanelErrorGeneric": {
         "message": "분석 중 오류가 발생했습니다."
+    },
+    "advancedNote": {
+        "message": "Automatic side-panel opening requires Chrome 116 or newer."
+    },
+    "advancedTitle": {
+        "message": "고급 설정"
+    },
+    "advancedWarningDescription": {
+        "message": "These settings can affect the behavior of the side panel. If you experience issues, try resetting to default values by disabling and re-enabling the side panel feature."
+    },
+    "advancedWarningTitle": {
+        "message": "Important Note"
+    },
+    "aiContextTypesRequired": {
+        "message": "Select at least one context type."
+    },
+    "autoOpenSidePanel": {
+        "message": "Auto-Open Side Panel:"
+    },
+    "autoOpenSidePanelDescription": {
+        "message": "Automatically open the side panel when you click on subtitle words."
+    },
+    "autoPauseVideo": {
+        "message": "Auto-Pause Video:"
+    },
+    "autoPauseVideoDescription": {
+        "message": "Automatically pause the video when you open the side panel to select words."
+    },
+    "cardVertexGeminiEphemeralDesc": {
+        "message": "Enter a short-lived access token, or import a service account JSON once to generate one. The service-account key is never stored."
+    },
+    "featureVertexEphemeralToken": {
+        "message": "One-time token generation without storing the service-account key"
+    },
+    "navAdvanced": {
+        "message": "고급 설정"
+    },
+    "openaiEndpointPermissionRequired": {
+        "message": "Use Test Connection to grant access to this endpoint."
+    },
+    "openaiHostPermissionButton": {
+        "message": "Allow API host"
+    },
+    "openaiHostPermissionChecking": {
+        "message": "Checking API host access…"
+    },
+    "openaiHostPermissionDenied": {
+        "message": "API host access was not granted."
+    },
+    "openaiHostPermissionError": {
+        "message": "API 호스트 액세스를 요청할 수 없습니다: %s"
+    },
+    "openaiHostPermissionGranted": {
+        "message": "API host access granted."
+    },
+    "sidePanelBehaviorDescription": {
+        "message": "Configure how the AI analysis side panel opens and looks."
+    },
+    "sidePanelBehaviorTitle": {
+        "message": "Side Panel Behavior"
+    },
+    "sidepanelErrorNoContextTypes": {
+        "message": "분석하기 전에 컨텍스트 유형을 하나 이상 선택하세요."
+    },
+    "sidePanelTheme": {
+        "message": "Side Panel Theme:"
+    },
+    "themeAuto": {
+        "message": "Auto (System)"
+    },
+    "themeDark": {
+        "message": "Dark"
+    },
+    "themeLight": {
+        "message": "Light"
+    },
+    "useSidePanel": {
+        "message": "Use Side Panel:"
+    },
+    "useSidePanelDescription": {
+        "message": "Use Chrome Side Panel instead of the modal for AI context analysis. Disable to use the legacy modal."
+    },
+    "vertexImportSuccessEphemeral": {
+        "message": "Access token generated. The service-account key was not stored; re-import the JSON when the token expires."
+    },
+    "vertexNotConfiguredEphemeral": {
+        "message": "Import a service account JSON once to generate a short-lived token, or paste a token manually."
+    },
+    "vertexManualTokenSaveFailed": {
+        "message": "액세스 토큰을 저장하지 못했습니다: %s"
+    },
+    "vertexTokenExpiredReimport": {
+        "message": "⚠️ Access token expired. Re-import the service account JSON or paste a new access token."
+    },
+    "vertexTokenExpiringReimport": {
+        "message": "⚠️ Token expires in %s minutes. Re-import the service account JSON or prepare a replacement access token."
+    },
+    "videoControlDescription": {
+        "message": "Control how the video player behaves when the side panel opens."
+    },
+    "videoControlTitle": {
+        "message": "Video Control"
+    },
+    "aiContextGrammarNotes": {
+        "message": "문법 주석:"
+    },
+    "aiContextGrammarSemantics": {
+        "message": "문법과 의미론:"
+    },
+    "aiContextLinguisticAnalysis": {
+        "message": "언어학적 분석:"
+    },
+    "aiContextTranslationNotes": {
+        "message": "번역 주석:"
+    },
+    "aiContextUsageExamples": {
+        "message": "용법과 예시:"
     }
 }

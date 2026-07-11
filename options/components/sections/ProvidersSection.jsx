@@ -1,13 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { GoogleProviderCard } from '../providers/GoogleProviderCard.jsx';
 import { MicrosoftProviderCard } from '../providers/MicrosoftProviderCard.jsx';
-import { DeepLFreeProviderCard } from '../providers/DeepLFreeProviderCard.jsx';
 import { DeepLProviderCard } from '../providers/DeepLProviderCard.jsx';
 import { OpenAICompatibleProviderCard } from '../providers/OpenAICompatibleProviderCard.jsx';
 import { VertexProviderCard } from '../providers/VertexProviderCard.jsx';
+import { Providers } from '../../../content_scripts/shared/constants/providers.js';
 
-export function ProvidersSection({ t, settings, onSettingChange }) {
-    const selectedProvider = settings.selectedProvider || 'deepl_free';
+const SUPPORTED_PROVIDERS = new Set(Object.values(Providers));
+
+export function ProvidersSection({
+    t,
+    settings,
+    onSettingChange,
+    onSettingsChange,
+}) {
+    const selectedProvider = SUPPORTED_PROVIDERS.has(settings.selectedProvider)
+        ? settings.selectedProvider
+        : Providers.MICROSOFT_EDGE_AUTH;
     const [openaiModels, setOpenaiModels] = useState([]);
 
     // Load saved OpenAI models
@@ -36,17 +45,15 @@ export function ProvidersSection({ t, settings, onSettingChange }) {
         <section id="providers">
             <h2>{t('sectionProviders', 'Provider Settings')}</h2>
 
-            {selectedProvider === 'google' && <GoogleProviderCard t={t} />}
+            {selectedProvider === Providers.GOOGLE && (
+                <GoogleProviderCard t={t} />
+            )}
 
-            {selectedProvider === 'microsoft_edge_auth' && (
+            {selectedProvider === Providers.MICROSOFT_EDGE_AUTH && (
                 <MicrosoftProviderCard t={t} />
             )}
 
-            {selectedProvider === 'deepl_free' && (
-                <DeepLFreeProviderCard t={t} />
-            )}
-
-            {selectedProvider === 'deepl' && (
+            {selectedProvider === Providers.DEEPL && (
                 <DeepLProviderCard
                     t={t}
                     apiKey={settings.deeplApiKey || ''}
@@ -60,7 +67,7 @@ export function ProvidersSection({ t, settings, onSettingChange }) {
                 />
             )}
 
-            {selectedProvider === 'openai_compatible' && (
+            {selectedProvider === Providers.OPENAI_COMPATIBLE && (
                 <OpenAICompatibleProviderCard
                     t={t}
                     apiKey={settings.openaiCompatibleApiKey || ''}
@@ -80,7 +87,7 @@ export function ProvidersSection({ t, settings, onSettingChange }) {
                 />
             )}
 
-            {selectedProvider === 'vertex_gemini' && (
+            {selectedProvider === Providers.VERTEX_GEMINI && (
                 <VertexProviderCard
                     t={t}
                     accessToken={settings.vertexAccessToken || ''}
@@ -102,6 +109,7 @@ export function ProvidersSection({ t, settings, onSettingChange }) {
                     onProviderChange={(value) =>
                         onSettingChange('selectedProvider', value)
                     }
+                    onCredentialsChange={onSettingsChange}
                 />
             )}
         </section>

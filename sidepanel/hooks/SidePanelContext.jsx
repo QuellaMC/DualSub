@@ -1,201 +1,233 @@
 import React, {
     createContext,
+    useCallback,
     useContext,
-    useState,
     useEffect,
     useMemo,
     useRef,
+    useState,
 } from 'react';
-import { useSidePanelCommunication } from './useSidePanelCommunication';
+import { useSidePanelCommunication } from './useSidePanelCommunication.js';
 
-/**
- * Side Panel Context
- * 
- * Provides global state management for:
- * - Selected words for AI analysis
- * - Analysis results
- * - Loading states
- * - Error handling
- */
+const DEFAULT_TARGET_LANGUAGE = 'zh-CN';
+
+function createTabState(targetLanguage = DEFAULT_TARGET_LANGUAGE) {
+    return {
+        selectedWords: [],
+        analysisResult: null,
+        isAnalyzing: false,
+        error: null,
+        targetLanguage,
+    };
+}
+
+function wordsEqual(left, right) {
+    return (
+        left.length === right.length &&
+        left.every((word, index) => word === right[index])
+    );
+}
 
 const SidePanelContext = createContext(null);
 
 export function SidePanelProvider({ children }) {
     const [tabState, setTabState] = useState({});
     const [activeTabId, setActiveTabId] = useState(null);
-    const { onMessage, getActiveTab, postMessage, getBinding } = useSidePanelCommunication();
+    const communication = useSidePanelCommunication();
+    const { getActiveTab, onMessage, registerTab } = communication;
+    const globalTargetLanguageRef = useRef(DEFAULT_TARGET_LANGUAGE);
 
-    const globalTargetLangRef = useRef('zh-CN');
+    const ensureTabState = useCallback((tabId) => {
+        if (typeof tabId !== 'number') {
+            return;
+        }
 
-    // Sync target language with storage
+        setTabState((previous) => {
+            if (previous[tabId]) {
+                return previous;
+            }
+
+            return {
+                ...previous,
+                [tabId]: createTabState(globalTargetLanguageRef.current),
+            };
+        });
+    }, []);
+
+    const activateTab = useCallback(
+        (tabId) => {
+            if (typeof tabId !== 'number') {
+                return;
+            }
+
+            setActiveTabId((previous) =>
+                previous === tabId ? previous : tabId
+            );
+            ensureTabState(tabId);
+        },
+        [ensureTabState]
+    );
+
+    const updateTabState = useCallback((tabId, updates) => {
+        if (typeof tabId !== 'number') {
+            return;
+        }
+
+        setTabState((previous) => {
+            const current =
+                previous[tabId] ||
+                createTabState(globalTargetLanguageRef.current);
+            const nextUpdates =
+                typeof updates === 'function' ? updates(current) : updates;
+
+            if (!nextUpdates) {
+                return previous;
+            }
+
+            const hasChanges = Object.entries(nextUpdates).some(
+                ([key, value]) => current[key] !== value
+            );
+            if (!hasChanges) {
+                return previous;
+            }
+
+            return {
+                ...previous,
+                [tabId]: { ...current, ...nextUpdates },
+            };
+        });
+    }, []);
+
     useEffect(() => {
-        const updateLanguage = (lang) => {
-            if (!lang) return;
-            globalTargetLangRef.current = lang;
+        const updateTargetLanguage = (language) => {
+            if (!language) {
+                return;
+            }
 
-            // Update all tabs with the new language
-            setTabState((prev) => {
-                const newState = { ...prev };
-                let hasChanges = false;
+            globalTargetLanguageRef.current = language;
+            setTabState((previous) => {
+                let changed = false;
+                const next = { ...previous };
 
-                Object.keys(newState).forEach((tId) => {
-                    if (newState[tId].targetLanguage !== lang) {
-                        newState[tId] = {
-                            ...newState[tId],
-                            targetLanguage: lang
+                Object.entries(previous).forEach(([tabId, state]) => {
+                    if (state.targetLanguage !== language) {
+                        next[tabId] = {
+                            ...state,
+                            targetLanguage: language,
+                            analysisResult: null,
+                            error: null,
                         };
-                        hasChanges = true;
+                        changed = true;
                     }
                 });
 
-                return hasChanges ? newState : prev;
+                return changed ? next : previous;
             });
         };
 
-        // Load initial
-        chrome.storage.sync.get('targetLanguage', (items) => {
-            if (items.targetLanguage) {
-                updateLanguage(items.targetLanguage);
-            }
-        });
+        void chrome.storage.sync
+            .get('targetLanguage')
+            .then((items) => updateTargetLanguage(items.targetLanguage))
+            .catch((storageError) =>
+                console.error('Failed to load target language:', storageError)
+            );
 
-        // Listen for changes
         const handleStorageChange = (changes, area) => {
             if (area === 'sync' && changes.targetLanguage) {
-                updateLanguage(changes.targetLanguage.newValue);
+                updateTargetLanguage(changes.targetLanguage.newValue);
             }
         };
 
         chrome.storage.onChanged.addListener(handleStorageChange);
-        return () => chrome.storage.onChanged.removeListener(handleStorageChange);
+        return () =>
+            chrome.storage.onChanged.removeListener(handleStorageChange);
     }, []);
 
-    // Initial setup and tab activation listener
     useEffect(() => {
-        const handleTabActivated = (tabId) => {
-            setActiveTabId(tabId);
-            setTabState((prev) => ({
-                ...prev,
-                [tabId]: prev[tabId] || {
-                    selectedWords: [],
-                    analysisResult: null,
-                    isAnalyzing: false,
-                    error: null,
-                    sourceLanguage: 'en',
-                    targetLanguage: globalTargetLangRef.current,
-                },
-            }));
-        };
-
-        // Get initial active tab
-        getActiveTab()
+        void getActiveTab()
             .then((tab) => {
-                if (tab?.id) {
-                    handleTabActivated(tab.id);
+                if (typeof tab?.id === 'number') {
+                    activateTab(tab.id);
                 }
             })
-            .catch((err) => console.error('Failed to get initial tab:', err));
+            .catch((tabError) =>
+                console.error('Failed to get initial tab:', tabError)
+            );
 
-        // Listen for tab activation changes from background
-        const unsubscribe = onMessage('tabActivated', ({ tabId }) => {
-            handleTabActivated(tabId);
-
-            // Notify background to register this tab
-            try {
-                const binding = getBinding();
-                postMessage('sidePanelRegister', {
-                    tabId,
-                    windowId: binding?.boundWindowId,
-                    panelInstanceId: binding?.panelInstanceId
-                });
-            } catch (e) {
-                console.error('Failed to register on tab switch:', e);
+        const bindToTab = ({ tabId, windowId } = {}) => {
+            if (typeof tabId !== 'number') {
+                return;
             }
-        });
 
-        // Listen for forced tab binding
-        const unsubscribeForce = onMessage('sidePanelForceBindTab', ({ tabId }) => {
-            handleTabActivated(tabId);
-            try {
-                const binding = getBinding();
-                postMessage('sidePanelRegister', {
-                    tabId,
-                    windowId: binding?.boundWindowId,
-                    panelInstanceId: binding?.panelInstanceId
-                });
-            } catch (e) {
-                console.error('Failed to register on force bind:', e);
-            }
-        });
+            activateTab(tabId);
+            registerTab(tabId, windowId);
+        };
+
+        const unsubscribeActivated = onMessage('tabActivated', bindToTab);
+        const unsubscribeForced = onMessage('sidePanelForceBindTab', bindToTab);
 
         return () => {
-            unsubscribe();
-            unsubscribeForce();
+            unsubscribeActivated();
+            unsubscribeForced();
         };
-    }, [getActiveTab, onMessage, postMessage, getBinding]);
+    }, [activateTab, getActiveTab, onMessage, registerTab]);
 
-    // Handle selection sync from background
     useEffect(() => {
-        const unsubscribe = onMessage('sidePanelSelectionSync', ({ selectedWords, tabId }) => {
-            const normalizedWords = Array.isArray(selectedWords)
-                ? Array.from(new Set(selectedWords.map(w => w?.trim()).filter(Boolean)))
-                : [];
+        return onMessage(
+            'sidePanelSelectionSync',
+            ({ selectedWords, tabId } = {}) => {
+                const normalizedWords = Array.isArray(selectedWords)
+                    ? selectedWords
+                          .map((word) =>
+                              typeof word === 'string' ? word.trim() : ''
+                          )
+                          .filter(Boolean)
+                    : [];
+                const targetTabId =
+                    typeof tabId === 'number' ? tabId : activeTabId;
 
-            const targetTabId = tabId || activeTabId;
+                if (typeof targetTabId !== 'number') {
+                    return;
+                }
 
-            if (targetTabId) {
-                setTabState((prev) => ({
-                    ...prev,
-                    [targetTabId]: {
-                        ...(prev[targetTabId] || {}),
-                        selectedWords: normalizedWords,
-                    },
-                }));
+                setTabState((previous) => {
+                    const current =
+                        previous[targetTabId] ||
+                        createTabState(globalTargetLanguageRef.current);
+                    const selectionChanged = !wordsEqual(
+                        current.selectedWords,
+                        normalizedWords
+                    );
+                    if (!selectionChanged) {
+                        return previous;
+                    }
+
+                    return {
+                        ...previous,
+                        [targetTabId]: {
+                            ...current,
+                            selectedWords: normalizedWords,
+                            analysisResult: null,
+                            error: null,
+                        },
+                    };
+                });
             }
-        });
+        );
+    }, [activeTabId, onMessage]);
 
-        return unsubscribe;
-    }, [onMessage, activeTabId]);
-
-    // Memoized context value
     const value = useMemo(() => {
-        const activeState = tabState[activeTabId] || {
-            selectedWords: [],
-            analysisResult: null,
-            isAnalyzing: false,
-            error: null,
-            sourceLanguage: 'en',
-            targetLanguage: 'zh-CN',
-        };
-
-        const updateActiveTabState = (newState) => {
-            if (activeTabId) {
-                setTabState((prev) => ({
-                    ...prev,
-                    [activeTabId]: { ...prev[activeTabId], ...newState },
-                }));
-            }
-        };
+        const activeState =
+            tabState[activeTabId] ||
+            createTabState(globalTargetLanguageRef.current);
 
         return {
             ...activeState,
             activeTabId,
-            setSelectedWords: (words) => updateActiveTabState({ selectedWords: words }),
-            setAnalysisResult: (result) => updateActiveTabState({ analysisResult: result }),
-            setIsAnalyzing: (isAnalyzing) => updateActiveTabState({ isAnalyzing }),
-            setError: (error) => updateActiveTabState({ error }),
-            setSourceLanguage: (lang) => updateActiveTabState({ sourceLanguage: lang }),
-            setTargetLanguage: (lang) => updateActiveTabState({ targetLanguage: lang }),
-            clearAnalysis: () => updateActiveTabState({ analysisResult: null, error: null }),
-            clearWords: () => updateActiveTabState({ selectedWords: [] }),
-            addWord: (word) => updateActiveTabState({
-                selectedWords: [...new Set([...activeState.selectedWords, word])],
-            }),
-            removeWord: (word) => updateActiveTabState({
-                selectedWords: activeState.selectedWords.filter((w) => w !== word),
-            }),
+            communication,
+            updateTabState,
         };
-    }, [tabState, activeTabId]);
+    }, [activeTabId, communication, tabState, updateTabState]);
 
     return (
         <SidePanelContext.Provider value={value}>
@@ -207,8 +239,9 @@ export function SidePanelProvider({ children }) {
 export function useSidePanelContext() {
     const context = useContext(SidePanelContext);
     if (!context) {
-        throw new Error('useSidePanelContext must be used within SidePanelProvider');
+        throw new Error(
+            'useSidePanelContext must be used within SidePanelProvider'
+        );
     }
     return context;
 }
-

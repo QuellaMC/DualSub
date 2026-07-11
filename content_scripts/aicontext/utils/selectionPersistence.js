@@ -115,7 +115,7 @@ export class SelectionPersistenceManager {
      * @private
      */
     _handleSubtitleContentChange(event) {
-        const { type, oldContent, newContent, element } = event.detail;
+        const { type, oldContent, newContent } = event.detail;
 
         // Only handle original subtitle changes for AI Context
         if (type !== 'original') {
@@ -170,7 +170,7 @@ export class SelectionPersistenceManager {
                         'info',
                         'Identical content detected via event, preparing restoration',
                         {
-                            contentPreview: newText.substring(0, 50),
+                            contentLength: newText.length,
                         }
                     );
 
@@ -183,8 +183,8 @@ export class SelectionPersistenceManager {
                         'Subtitle content changed, clearing selection',
                         {
                             source: 'event',
-                            oldContent: oldText.substring(0, 50),
-                            newContent: newText.substring(0, 50),
+                            oldContentLength: oldText.length,
+                            newContentLength: newText.length,
                         }
                     );
                     this.modalCore.clearSelection();
@@ -192,7 +192,8 @@ export class SelectionPersistenceManager {
             }
         } catch (error) {
             this._log('error', 'Error handling subtitle content change', {
-                error: error.message,
+                errorName: error?.name,
+                errorLength: error?.message?.length || 0,
                 type,
             });
         }
@@ -361,7 +362,7 @@ export class SelectionPersistenceManager {
                         'Identical content detected, attempting selection restoration',
                         {
                             subtitleType,
-                            contentPreview: currentContent.substring(0, 50),
+                            contentLength: currentContent.length,
                         }
                     );
 
@@ -374,8 +375,8 @@ export class SelectionPersistenceManager {
                         'Subtitle content changed, clearing selection',
                         {
                             source: 'mutation',
-                            lastContent: lastContent?.substring(0, 50) || '',
-                            currentContent: currentContent.substring(0, 50),
+                            lastContentLength: lastContent?.length || 0,
+                            currentContentLength: currentContent.length,
                         }
                     );
                     this.modalCore.clearSelection();
@@ -455,7 +456,7 @@ export class SelectionPersistenceManager {
 
             this._log('info', 'Manual state capture completed', {
                 contentLength: content.length,
-                selectedWords: this.modalCore.selectedWords.size,
+                selectedWordsCount: this.modalCore.selectedWords.size,
             });
         }
     }

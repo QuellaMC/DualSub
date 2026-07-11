@@ -92,7 +92,6 @@ class LoggingManager {
                                 error,
                                 {
                                     tabId: tab.id,
-                                    url: tab.url,
                                 }
                             );
                         });

@@ -717,7 +717,6 @@ export class AIContextModalAnimations {
                         } else if (mutation.type === 'attributes') {
                             // Ignore class/style changes on interactive words to avoid resync loops
                             try {
-                                const attr = mutation.attributeName || '';
                                 const targetEl = mutation.target;
                                 const isInteractive =
                                     targetEl &&

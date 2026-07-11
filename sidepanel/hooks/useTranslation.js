@@ -22,7 +22,9 @@ export function useTranslation() {
             try {
                 // Chrome locales use underscores (e.g., zh_CN) but settings might use hyphens (e.g., zh-CN)
                 const normalizedLang = lang.replace('-', '_');
-                const url = chrome.runtime.getURL(`_locales/${normalizedLang}/messages.json`);
+                const url = chrome.runtime.getURL(
+                    `_locales/${normalizedLang}/messages.json`
+                );
                 const response = await fetch(url);
                 const data = await response.json();
                 setMessages(data);
@@ -38,41 +40,48 @@ export function useTranslation() {
         loadMessages();
     }, [settings?.uiLanguage, currentLang]);
 
-    const t = useCallback((key, substitutions) => {
-        // If we have loaded messages for the selected language, use them
-        if (messages && messages[key]) {
-            let message = messages[key].message;
+    const t = useCallback(
+        (key, substitutions) => {
+            // If we have loaded messages for the selected language, use them
+            if (messages && messages[key]) {
+                let message = messages[key].message;
 
-            // Handle substitutions (simple %s replacement to match existing keys)
-            if (substitutions) {
-                const subs = Array.isArray(substitutions) ? substitutions : [substitutions];
-                subs.forEach((sub) => {
-                    message = message.replace('%s', sub);
-                });
+                // Handle substitutions (simple %s replacement to match existing keys)
+                if (substitutions) {
+                    const subs = Array.isArray(substitutions)
+                        ? substitutions
+                        : [substitutions];
+                    subs.forEach((sub) => {
+                        message = message.replace('%s', sub);
+                    });
+                }
+                return message;
             }
-            return message;
-        }
 
-        // Fallback to chrome.i18n (uses browser locale)
-        // Note: chrome.i18n.getMessage does NOT automatically replace %s. 
-        // It expects $PLACEHOLDERS$. If our keys use %s, we must handle it manually even for chrome.i18n result if we want it to work.
-        // However, existing code might rely on chrome.i18n behavior. 
-        // If we want to fix the %s issue globally, we should do it here too.
-        let nativeMessage = chrome.i18n.getMessage(key, substitutions);
+            // Fallback to chrome.i18n (uses browser locale)
+            // Note: chrome.i18n.getMessage does NOT automatically replace %s.
+            // It expects $PLACEHOLDERS$. If our keys use %s, we must handle it manually even for chrome.i18n result if we want it to work.
+            // However, existing code might rely on chrome.i18n behavior.
+            // If we want to fix the %s issue globally, we should do it here too.
+            let nativeMessage = chrome.i18n.getMessage(key, substitutions);
 
-        // If chrome.i18n returned a message and we have substitutions, try %s replacement if it wasn't handled
-        if (nativeMessage && substitutions) {
-            const subs = Array.isArray(substitutions) ? substitutions : [substitutions];
-            // Only replace if it looks like it needs it (contains %s)
-            if (nativeMessage.includes('%s')) {
-                subs.forEach((sub) => {
-                    nativeMessage = nativeMessage.replace('%s', sub);
-                });
+            // If chrome.i18n returned a message and we have substitutions, try %s replacement if it wasn't handled
+            if (nativeMessage && substitutions) {
+                const subs = Array.isArray(substitutions)
+                    ? substitutions
+                    : [substitutions];
+                // Only replace if it looks like it needs it (contains %s)
+                if (nativeMessage.includes('%s')) {
+                    subs.forEach((sub) => {
+                        nativeMessage = nativeMessage.replace('%s', sub);
+                    });
+                }
             }
-        }
 
-        return nativeMessage || key;
-    }, [messages]);
+            return nativeMessage || key;
+        },
+        [messages]
+    );
 
     return { t };
 }

@@ -4,14 +4,13 @@
     "version": "2.5.0",
     "description": "__MSG_appDesc__",
     "default_locale": "en",
-    "permissions": [
-        "storage",
-        "activeTab",
-        "sidePanel"
-    ],
+    "minimum_chrome_version": "116",
+    "permissions": ["storage", "activeTab", "sidePanel"],
     "host_permissions": [
         "*://*.disneyplus.com/*",
         "*://*.netflix.com/*",
+        "https://*.media.dssott.com/*",
+        "https://*.nflxvideo.net/*",
         "https://translate.googleapis.com/*",
         "https://api.cognitive.microsofttranslator.com/*",
         "https://edge.microsoft.com/*",
@@ -25,7 +24,14 @@
         "https://europe-west4-aiplatform.googleapis.com/*",
         "https://asia-northeast1-aiplatform.googleapis.com/*",
         "https://asia-southeast1-aiplatform.googleapis.com/*",
-        "https://oauth2.googleapis.com/*"
+        "https://oauth2.googleapis.com/*",
+        "https://api.openai.com/*",
+        "https://generativelanguage.googleapis.com/*"
+    ],
+    "optional_host_permissions": [
+        "https://*/*",
+        "http://localhost/*",
+        "http://127.0.0.1/*"
     ],
     "background": {
         "service_worker": "background.js",
@@ -33,30 +39,16 @@
     },
     "content_scripts": [
         {
-            "matches": [
-                "*://*.disneyplus.com/*"
-            ],
-            "js": [
-                "content_scripts/platforms/disneyPlusContent.js"
-            ],
-            "css": [
-                "content_scripts/shared/content.css"
-            ],
-            "run_at": "document_start",
-            "type": "module"
+            "matches": ["*://*.disneyplus.com/*"],
+            "js": ["content_scripts/platforms/disneyPlusContent.js"],
+            "css": ["content_scripts/shared/content.css"],
+            "run_at": "document_start"
         },
         {
-            "matches": [
-                "*://*.netflix.com/*"
-            ],
-            "js": [
-                "content_scripts/platforms/netflixContent.js"
-            ],
-            "css": [
-                "content_scripts/shared/content.css"
-            ],
-            "run_at": "document_start",
-            "type": "module"
+            "matches": ["*://*.netflix.com/*"],
+            "js": ["content_scripts/platforms/netflixContent.js"],
+            "css": ["content_scripts/shared/content.css"],
+            "run_at": "document_start"
         }
     ],
     "web_accessible_resources": [
@@ -78,7 +70,6 @@
                 "content_scripts/shared/navigationUtils.js",
                 "content_scripts/shared/domUtils.js",
                 "content_scripts/shared/eventUtils.js",
-                "content_scripts/shared/subtitleProcessingUtils.js",
                 "content_scripts/shared/loggingUtils.js",
                 "content_scripts/shared/platformConfig.js",
                 "content_scripts/shared/interactiveSubtitleFormatter.js",
@@ -98,13 +89,7 @@
                 "content_scripts/aicontext/ui/events/ModalController.js",
                 "content_scripts/aicontext/providers/AIContextProvider.js",
                 "content_scripts/aicontext/handlers/textSelection.js",
-                "content_scripts/aicontext/handlers/eventCoordinator.js",
-                "content_scripts/aicontext/utils/contextCache.js",
-                "content_scripts/aicontext/utils/modalStateManager.js",
-                "content_scripts/aicontext/utils/platformDetector.js",
-                "content_scripts/aicontext/utils/migrationVerification.js",
                 "content_scripts/aicontext/utils/selectionPersistence.js",
-                "content_scripts/shared/contextLoadingStates.js",
                 "content_scripts/core/BaseContentScript.js",
                 "content_scripts/core/utils.js",
                 "content_scripts/core/constants.js",
@@ -114,10 +99,7 @@
                 "video_platforms/netflixPlatform.js",
                 "content_scripts/platforms/NetflixContentScript.js"
             ],
-            "matches": [
-                "*://*.disneyplus.com/*",
-                "*://*.netflix.com/*"
-            ]
+            "matches": ["*://*.disneyplus.com/*", "*://*.netflix.com/*"]
         }
     ],
     "action": {

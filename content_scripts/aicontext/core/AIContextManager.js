@@ -13,6 +13,8 @@ import { AI_CONTEXT_CONFIG, MODAL_STATES, EVENT_TYPES } from './constants.js';
 import { AIContextModal } from '../ui/modal.js';
 import { AIContextProvider } from '../providers/AIContextProvider.js';
 import { TextSelectionHandler } from '../handlers/textSelection.js';
+import { MessageActions } from '../../shared/constants/messageActions.js';
+import Logger from '../../../utils/logger.js';
 
 /**
  * AIContextManager - Core system controller
@@ -27,6 +29,9 @@ export class AIContextManager {
         this.eventListeners = new Map();
 
         this.contentScript = config.contentScript || null;
+        this.logger =
+            this.contentScript?.contentLogger ||
+            Logger.create('AIContextManager');
         this.modal = null;
         this.provider = null;
         this.textHandler = null;
@@ -57,6 +62,7 @@ export class AIContextManager {
         // Early word-selection buffering for SPA navigation timing
         this.earlySelectionQueue = [];
         this._earlyWordSelectionListener = null;
+        this.backgroundMessageListener = null;
     }
 
     /**
@@ -69,7 +75,8 @@ export class AIContextManager {
         try {
             this._log('info', 'Initializing AI Context Manager', {
                 platform: this.platform,
-                config: this.config,
+                configKeys: Object.keys(this.config || {}),
+                hasContentScript: Boolean(this.contentScript),
             });
 
             // Validate platform support
@@ -180,6 +187,26 @@ export class AIContextManager {
             });
             this.eventListeners.clear();
 
+            if (
+                this.backgroundMessageListener &&
+                typeof chrome !== 'undefined' &&
+                chrome.runtime?.onMessage?.removeListener
+            ) {
+                chrome.runtime.onMessage.removeListener(
+                    this.backgroundMessageListener
+                );
+                this.backgroundMessageListener = null;
+            }
+
+            if (this._earlyWordSelectionListener) {
+                document.removeEventListener(
+                    'dualsub-word-selected',
+                    this._earlyWordSelectionListener,
+                    true
+                );
+                this._earlyWordSelectionListener = null;
+            }
+
             // Reset state
             this.initialized = false;
             this.enabledFeatures.clear();
@@ -238,7 +265,10 @@ export class AIContextManager {
                                 {
                                     bufferedCount:
                                         this.earlySelectionQueue.length,
-                                    word: evt.detail?.word,
+                                    wordLength:
+                                        typeof evt.detail?.word === 'string'
+                                            ? evt.detail.word.length
+                                            : 0,
                                     subtitleType: evt.detail?.subtitleType,
                                 }
                             );
@@ -267,6 +297,7 @@ export class AIContextManager {
                 contentScript: this.contentScript,
             };
             this.modal = new AIContextModal(modalConfig);
+            this.modal.setLogger(this.logger);
             await this.modal.initialize();
             this.components.set('modal', this.modal);
 
@@ -291,6 +322,7 @@ export class AIContextManager {
             this.textHandler = new TextSelectionHandler(
                 this.config.textHandler || {}
             );
+            this.textHandler.setLogger(this.logger);
             await this.textHandler.initialize(this.platform);
             this.components.set('textHandler', this.textHandler);
 
@@ -509,14 +541,22 @@ export class AIContextManager {
             `analysis-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
         try {
-            this._log('debug', 'Handling analysis request', detail);
+            this._log('debug', 'Handling analysis request', {
+                requestId,
+                textLength: typeof text === 'string' ? text.length : 0,
+                contextTypeCount: Array.isArray(detail.contextTypes)
+                    ? detail.contextTypes.length
+                    : detail.contextType
+                      ? 1
+                      : 0,
+            });
 
             // Skip if no valid text is available
             if (!text || typeof text !== 'string' || text.trim() === '') {
                 this._log('warn', 'Skipping analysis request - no valid text', {
                     hasDetailText: !!detail.text,
                     hasSelectionText: !!detail.selection?.text,
-                    text: text?.substring(0, 50),
+                    textLength: text?.length || 0,
                 });
                 return;
             }
@@ -600,7 +640,11 @@ export class AIContextManager {
             this.metrics.errorCount++;
             this._log('error', 'Failed to handle analysis request', {
                 error: error.message,
-                detail: event.detail,
+                detailKeys: Object.keys(event.detail || {}),
+                textLength:
+                    typeof event.detail?.text === 'string'
+                        ? event.detail.text.length
+                        : 0,
             });
 
             // Dispatch error events (non-fatal). Keep UI in selection state, allow retry.
@@ -713,23 +757,30 @@ export class AIContextManager {
      */
     _setupCrossPlatformCommunication() {
         try {
+            if (this.backgroundMessageListener) return;
+
             // Listen for messages from background script
-            chrome.runtime.onMessage.addListener(
-                (request, _sender, sendResponse) => {
-                    if (request.target === 'aiContext') {
-                        this._handleBackgroundMessage(request, sendResponse);
-                        return true; // Async response
-                    }
+            this.backgroundMessageListener = (
+                request,
+                _sender,
+                sendResponse
+            ) => {
+                if (request.target === 'aiContext') {
+                    this._handleBackgroundMessage(request, sendResponse);
+                    return true; // Async response
                 }
+                return undefined;
+            };
+            chrome.runtime.onMessage.addListener(
+                this.backgroundMessageListener
             );
 
             this._log('debug', 'Cross-platform communication setup complete');
         } catch (error) {
-            this._log(
-                'error',
-                'Failed to setup cross-platform communication',
-                error
-            );
+            this._log('error', 'Failed to setup cross-platform communication', {
+                errorName: error?.name,
+                errorLength: error?.message?.length || 0,
+            });
         }
     }
 
@@ -741,7 +792,10 @@ export class AIContextManager {
      */
     async _handleBackgroundMessage(request, sendResponse) {
         try {
-            this._log('debug', 'Handling background message', request);
+            this._log('debug', 'Handling background message', {
+                requestAction: request?.action,
+                requestKeys: Object.keys(request || {}),
+            });
 
             switch (request.action) {
                 case 'updateConfig':
@@ -778,7 +832,8 @@ export class AIContextManager {
         } catch (error) {
             this._log('error', 'Failed to handle background message', {
                 error: error.message,
-                request,
+                requestAction: request?.action,
+                requestKeys: Object.keys(request || {}),
             });
             sendResponse({
                 success: false,
@@ -794,7 +849,9 @@ export class AIContextManager {
      */
     async _handleConfigurationUpdate(detail) {
         try {
-            this._log('debug', 'Handling configuration update', detail);
+            this._log('debug', 'Handling configuration update', {
+                changedKeys: Object.keys(detail || {}),
+            });
 
             // Update local configuration
             this.config = { ...this.config, ...detail.config };
@@ -808,7 +865,7 @@ export class AIContextManager {
         } catch (error) {
             this._log('error', 'Failed to handle configuration update', {
                 error: error.message,
-                detail,
+                detailKeys: Object.keys(detail || {}),
             });
         }
     }
@@ -820,7 +877,9 @@ export class AIContextManager {
      */
     _handleFeatureToggle(detail) {
         try {
-            this._log('debug', 'Handling feature toggle', detail);
+            this._log('debug', 'Handling feature toggle', {
+                changedKeys: Object.keys(detail || {}),
+            });
 
             const { feature, enabled } = detail;
 
@@ -837,7 +896,7 @@ export class AIContextManager {
         } catch (error) {
             this._log('error', 'Failed to handle feature toggle', {
                 error: error.message,
-                detail,
+                detailKeys: Object.keys(detail || {}),
             });
         }
     }
@@ -848,16 +907,30 @@ export class AIContextManager {
      */
     _handleSelectionCleared() {
         try {
-            chrome.runtime.sendMessage({
-                action: 'sidePanelClearSelection',
-                source: 'content_script',
-                timestamp: Date.now(),
-            });
+            void chrome.runtime
+                .sendMessage({
+                    action: MessageActions.SIDEPANEL_SELECTION_SYNC,
+                    selectedWords: [],
+                    reason: 'selection-cleared',
+                    source: 'content_script',
+                    timestamp: Date.now(),
+                })
+                .catch((error) => {
+                    this._log(
+                        'warn',
+                        'Failed to notify side panel of selection clear',
+                        { error: error.message }
+                    );
+                });
             this._log('debug', 'Notified side panel of selection clear');
         } catch (error) {
-            this._log('warn', 'Failed to notify side panel of selection clear', {
-                error: error.message,
-            });
+            this._log(
+                'warn',
+                'Failed to notify side panel of selection clear',
+                {
+                    error: error.message,
+                }
+            );
         }
     }
 
@@ -870,13 +943,14 @@ export class AIContextManager {
     }
 
     _log(level, message, data = {}) {
-        const logData = {
+        const method = this.logger?.[level];
+        if (typeof method !== 'function') {
+            return;
+        }
+        method.call(this.logger, message, {
             component: 'AIContextManager',
             platform: this.platform,
-            timestamp: new Date().toISOString(),
             ...data,
-        };
-
-        console[level](`[AIContext] ${message}`, logData);
+        });
     }
 }

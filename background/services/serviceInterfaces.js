@@ -25,22 +25,22 @@ export class ITranslationService {
 
     /**
      * Translate text using current provider
-     * @param {string} text - Text to translate
-     * @param {string} sourceLang - Source language code
-     * @param {string} targetLang - Target language code
-     * @param {Object} options - Translation options
+     * @param {string} _text - Text to translate
+     * @param {string} _sourceLang - Source language code
+     * @param {string} _targetLang - Target language code
+     * @param {Object} _options - Translation options
      * @returns {Promise<string>} Translated text
      */
-    async translate(text, sourceLang, targetLang, options = {}) {
+    async translate(_text, _sourceLang, _targetLang, _options = {}) {
         throw new Error('Method must be implemented');
     }
 
     /**
      * Change translation provider
-     * @param {string} providerId - New provider ID
+     * @param {string} _providerId - New provider ID
      * @returns {Promise<Object>} Result object
      */
-    async changeProvider(providerId) {
+    async changeProvider(_providerId) {
         throw new Error('Method must be implemented');
     }
 
@@ -78,52 +78,52 @@ export class ISubtitleService {
 
     /**
      * Process Netflix subtitle data
-     * @param {Object} data - Netflix subtitle data
-     * @param {string} targetLanguage - Target language code
-     * @param {string} originalLanguage - Original language code
-     * @param {boolean} useNativeSubtitles - Whether to use native subtitles
-     * @param {boolean} useOfficialTranslations - Whether to use official translations
+     * @param {Object} _data - Netflix subtitle data
+     * @param {string} _targetLanguage - Target language code
+     * @param {string} _originalLanguage - Original language code
+     * @param {boolean} _useNativeSubtitles - Whether to use native subtitles
+     * @param {boolean} _useOfficialTranslations - Whether to use official translations
      * @returns {Promise<Object>} Processed subtitle result
      */
     async processNetflixSubtitles(
-        data,
-        targetLanguage,
-        originalLanguage,
-        useNativeSubtitles,
-        useOfficialTranslations
+        _data,
+        _targetLanguage,
+        _originalLanguage,
+        _useNativeSubtitles,
+        _useOfficialTranslations
     ) {
         throw new Error('Method must be implemented');
     }
 
     /**
      * Fetch and process generic subtitles
-     * @param {string} url - Subtitle URL
-     * @param {string} targetLanguage - Target language code
-     * @param {string} originalLanguage - Original language code
+     * @param {string} _url - Subtitle URL
+     * @param {string} _targetLanguage - Target language code
+     * @param {string} _originalLanguage - Original language code
      * @returns {Promise<Object>} Processed subtitle result
      */
-    async fetchAndProcessSubtitles(url, targetLanguage, originalLanguage) {
+    async fetchAndProcessSubtitles(_url, _targetLanguage, _originalLanguage) {
         throw new Error('Method must be implemented');
     }
 
     /**
      * Process subtitles for any supported platform
-     * @param {string} platform - Platform identifier
-     * @param {Object} data - Platform-specific data
-     * @param {Object} options - Processing options
+     * @param {string} _platform - Platform identifier
+     * @param {Object} _data - Platform-specific data
+     * @param {Object} _options - Processing options
      * @returns {Promise<Object>} Processed subtitle result
      */
-    async processSubtitles(platform, data, options = {}) {
+    async processSubtitles(_platform, _data, _options = {}) {
         throw new Error('Method must be implemented');
     }
 
     /**
      * Get available subtitle languages for platform data
-     * @param {string} platform - Platform identifier
-     * @param {Object} data - Platform-specific data
+     * @param {string} _platform - Platform identifier
+     * @param {Object} _data - Platform-specific data
      * @returns {Promise<Array>} Available languages
      */
-    async getAvailableLanguages(platform, data) {
+    async getAvailableLanguages(_platform, _data) {
         throw new Error('Method must be implemented');
     }
 
@@ -373,21 +373,21 @@ export class IAIContextService {
 
     /**
      * Analyze text for cultural, historical, and linguistic context
-     * @param {string} text - Text to analyze
-     * @param {string} contextType - Type of context ('cultural', 'historical', 'linguistic', 'all')
-     * @param {Object} metadata - Additional context metadata
+     * @param {string} _text - Text to analyze
+     * @param {string} _contextType - Type of context ('cultural', 'historical', 'linguistic', 'all')
+     * @param {Object} _metadata - Additional context metadata
      * @returns {Promise<Object>} Context analysis result
      */
-    async analyzeContext(text, contextType = 'all', metadata = {}) {
+    async analyzeContext(_text, _contextType = 'all', _metadata = {}) {
         throw new Error('Method must be implemented');
     }
 
     /**
      * Change context provider
-     * @param {string} providerId - New provider ID
+     * @param {string} _providerId - New provider ID
      * @returns {Promise<Object>} Result object
      */
-    async changeProvider(providerId) {
+    async changeProvider(_providerId) {
         throw new Error('Method must be implemented');
     }
 

@@ -3,9 +3,6 @@
  * Design system matching UI_DESIGN specifications
  */
 
-/* Import Inter font */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
 /* CSS Variables - Design System */
 :root {
     /* Colors */
@@ -16,17 +13,16 @@
     --color-surface-dark: #192633;
     --color-foreground-light: #101922;
     --color-foreground-dark: #ffffff;
-    --color-subtle-light: #94adc9;
+    --color-subtle-light: #526b86;
     --color-subtle-dark: #92adc9;
     --color-border-light: #e0e7f1;
     --color-border-dark: #324d67;
     --color-error: #ef4444;
-    --color-success: #10b981;
-    --color-warning: #f59e0b;
-    --color-star: #eab308;
 
     /* Typography */
-    --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-family:
+        -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
+        sans-serif;
     --font-size-xs: 0.75rem;
     --font-size-sm: 0.875rem;
     --font-size-base: 1rem;
@@ -49,21 +45,9 @@
     --radius-xl: 1rem;
     --radius-full: 9999px;
 
-    /* Shadows */
-    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
-
     /* Transitions */
     --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
     --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
-    --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
-
-    /* Z-index */
-    --z-base: 1;
-    --z-sticky: 10;
-    --z-modal: 100;
-    --z-toast: 1000;
 }
 
 /* Base Styles */
@@ -103,63 +87,14 @@ body.dark {
     overflow: hidden;
 }
 
-/* Material Symbols configuration */
-.material-symbols-outlined {
-    font-variation-settings:
-        'FILL' 0,
-        'wght' 400,
-        'GRAD' 0,
-        'opsz' 24;
-    user-select: none;
-}
-
-.material-symbols-outlined.filled {
-    font-variation-settings:
-        'FILL' 1,
-        'wght' 400,
-        'GRAD' 0,
-        'opsz' 24;
-}
-
-/* Utility Classes */
-.flex {
-    display: flex;
-}
-
-.flex-col {
-    flex-direction: column;
-}
-
-.items-center {
+/* Local text icons avoid remote font dependencies in the extension package. */
+.action-icon,
+.error-icon {
+    display: inline-flex;
     align-items: center;
-}
-
-.justify-center {
     justify-content: center;
-}
-
-.justify-between {
-    justify-content: space-between;
-}
-
-.gap-2 {
-    gap: var(--spacing-2);
-}
-
-.gap-3 {
-    gap: var(--spacing-3);
-}
-
-.gap-4 {
-    gap: var(--spacing-4);
-}
-
-.w-full {
-    width: 100%;
-}
-
-.h-full {
-    height: 100%;
+    line-height: 1;
+    user-select: none;
 }
 
 /* Scrollbar Styling */
@@ -232,6 +167,21 @@ a {
     margin: 0 auto 1rem;
 }
 
+.sidepanel-loading {
+    display: flex;
+    height: 100%;
+    padding: var(--spacing-8);
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    color: var(--color-subtle-light);
+    text-align: center;
+}
+
+body.dark .sidepanel-loading {
+    color: var(--color-subtle-dark);
+}
+
 body.dark .spinner {
     border-color: var(--color-border-dark);
     border-top-color: var(--color-primary);
@@ -243,11 +193,21 @@ body.dark .spinner {
     }
 }
 
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
 /* --- AI Analysis Tab Styles --- */
 
 .ai-analysis-tab {
     padding: var(--spacing-4);
-    min-width: 360px;
     max-width: 920px;
     margin: 0 auto;
 }
@@ -292,7 +252,7 @@ body.dark .tab-title {
     cursor: not-allowed;
 }
 
-.analyze-button .material-symbols-outlined {
+.analyze-button .action-icon {
     font-size: 18px;
 }
 
@@ -486,209 +446,39 @@ body.dark .results-title {
     line-height: 1.6;
     color: var(--color-subtle-light);
     margin: 0;
+    overflow-wrap: anywhere;
 }
 
 body.dark .result-section-content {
     color: var(--color-subtle-dark);
 }
 
-/* --- Words Lists Tab Styles --- */
-
-.words-lists-tab {
-    padding: var(--spacing-4);
-    min-width: 360px;
-    max-width: 920px;
-    margin: 0 auto;
-}
-
-.controls-row {
-    display: flex;
-    gap: var(--spacing-2);
-    margin-bottom: var(--spacing-6);
-}
-
-.list-selector {
-    position: relative;
-    flex: 1;
-}
-
-.list-select {
-    width: 100%;
-    appearance: none;
-    background: var(--color-surface-light);
-    border: 1px solid var(--color-border-light);
-    border-radius: var(--radius-lg);
-    padding: var(--spacing-3) var(--spacing-4);
-    padding-right: 40px;
-    font-size: var(--font-size-base);
-    color: var(--color-foreground-light);
-    cursor: pointer;
-}
-
-body.dark .list-select {
-    background: var(--color-surface-dark);
-    border-color: var(--color-border-dark);
-    color: var(--color-foreground-dark);
-}
-
-.select-icon {
-    position: absolute;
-    right: var(--spacing-2);
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--color-subtle-light);
-    pointer-events: none;
-}
-
-body.dark .select-icon {
-    color: var(--color-subtle-dark);
-}
-
-.filter-button {
-    flex-shrink: 0;
-    background: var(--color-surface-light);
-    border: 1px solid var(--color-border-light);
-    border-radius: var(--radius-lg);
-    padding: var(--spacing-3);
-    color: var(--color-subtle-light);
-    transition: all var(--transition-base);
-}
-
-body.dark .filter-button {
-    background: var(--color-surface-dark);
-    border-color: var(--color-border-dark);
-    color: var(--color-subtle-dark);
-}
-
-.filter-button:hover {
-    background: rgba(19, 127, 236, 0.1);
-    color: var(--color-primary);
-}
-
-body.dark .filter-button:hover {
-    background: rgba(19, 127, 236, 0.2);
-}
-
-.filter-button .material-symbols-outlined {
-    font-size: 20px;
-}
-
-.feature-notice {
-    display: flex;
-    align-items: flex-start;
+.result-value-object {
+    display: grid;
     gap: var(--spacing-3);
-    background: rgba(19, 127, 236, 0.1);
-    border: 1px solid var(--color-primary);
-    border-radius: var(--radius-lg);
-    padding: var(--spacing-4);
-    margin-bottom: var(--spacing-4);
-    color: var(--color-foreground-light);
-}
-
-body.dark .feature-notice {
-    color: var(--color-foreground-dark);
-}
-
-.notice-icon {
-    color: var(--color-primary);
-    flex-shrink: 0;
-    margin-top: 2px;
-}
-
-.feature-notice p {
     margin: 0;
-    font-size: var(--font-size-sm);
-    line-height: 1.6;
 }
 
-.words-list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-2);
-}
-
-.word-card {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-4);
-    background: var(--color-surface-light);
-    border-radius: var(--radius-lg);
-    padding: var(--spacing-3);
-    transition: all var(--transition-base);
-    cursor: pointer;
-}
-
-body.dark .word-card {
-    background: var(--color-surface-dark);
-}
-
-.word-card.starred {
-    background: rgba(19, 127, 236, 0.1);
-}
-
-body.dark .word-card.starred {
-    background: rgba(19, 127, 236, 0.2);
-}
-
-.word-card:hover {
-    background: var(--color-background-light);
-}
-
-body.dark .word-card:hover {
-    background: rgba(25, 38, 51, 0.8);
-}
-
-.word-content {
-    flex: 1;
-}
-
-.word-text {
+.result-value-field dt {
+    color: var(--color-foreground-light);
     font-weight: 600;
-    color: var(--color-foreground-light);
-    margin: 0 0 var(--spacing-1) 0;
 }
 
-body.dark .word-text {
+body.dark .result-value-field dt {
     color: var(--color-foreground-dark);
 }
 
-.word-translation {
-    font-size: var(--font-size-sm);
-    color: var(--color-subtle-light);
+.result-value-field dd {
+    margin: var(--spacing-1) 0 0;
+}
+
+.result-value-list {
     margin: 0;
+    padding-left: var(--spacing-5);
 }
 
-body.dark .word-translation {
-    color: var(--color-subtle-dark);
-}
-
-.word-actions {
-    display: flex;
-    align-items: center;
-}
-
-.star-button {
-    padding: var(--spacing-2);
-    border-radius: var(--radius-full);
-    color: var(--color-subtle-light);
-    transition: all var(--transition-base);
-}
-
-body.dark .star-button {
-    color: var(--color-subtle-dark);
-}
-
-.star-button:hover {
-    background: rgba(19, 127, 236, 0.2);
-    color: var(--color-star);
-}
-
-body.dark .star-button:hover {
-    background: rgba(19, 127, 236, 0.3);
-}
-
-.star-button .material-symbols-outlined.filled {
-    color: var(--color-star);
+.result-value-list li + li {
+    margin-top: var(--spacing-1);
 }
 
 /* --- SidePanelApp Styles --- */

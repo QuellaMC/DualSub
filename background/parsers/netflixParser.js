@@ -1,32 +1,28 @@
 /**
  * Netflix Subtitle Parser
  *
- * Integrates with SubtitleProcessingManager from shared utilities
- * and adds Netflix-specific subtitle data processing.
- *
- * Reuses existing Netflix parsing logic and track selection.
+ * Provides Service Worker-compatible Netflix subtitle parsing and track
+ * selection without depending on DOM-only content-script utilities.
  *
  * @author DualSub Extension
  * @version 2.0.0
  */
 
 import { normalizeLanguageCode } from '../../utils/languageNormalization.js';
+import { fetchWithTimeout } from '../../utils/fetchWithTimeout.js';
 import { ttmlParser } from './ttmlParser.js';
 import { loggingManager } from '../utils/loggingManager.js';
 
 class NetflixParser {
     constructor() {
         this.logger = loggingManager.createLogger('NetflixParser');
-        this.subtitleManager = null;
     }
 
     /**
-     * Initialize the Netflix parser with SubtitleProcessingManager
+     * Initialize the Netflix parser.
      * @param {Object} config - Configuration options
      */
     initialize(config = {}) {
-        // Note: SubtitleProcessingManager not available in ServiceWorker context
-        // Netflix processing will use simplified ServiceWorker-compatible methods
         this.config = {
             useOfficialTranslations: config.useOfficialTranslations || false,
             ...config,
@@ -60,7 +56,7 @@ class NetflixParser {
         });
 
         // Initialize if not already done
-        if (!this.subtitleManager) {
+        if (!this.config) {
             this.initialize({
                 useOfficialTranslations:
                     useOfficialTranslations !== undefined
@@ -75,8 +71,8 @@ class NetflixParser {
                 ? useOfficialTranslations
                 : useNativeSubtitles;
 
-        if (!data || !data.tracks) {
-            throw new Error('Invalid Netflix subtitle data provided');
+        if (!data || !Array.isArray(data.tracks)) {
+            throw new Error('Netflix subtitle tracks must be an array');
         }
 
         try {
@@ -134,22 +130,24 @@ class NetflixParser {
                 }
             }
 
-            if (selectedOriginalTrack) {
-                this.logger.debug('Processing original track', {
-                    language: selectedOriginalTrack.language,
-                    trackType: selectedOriginalTrack.trackType,
-                });
-
-                const originalSubtitleText =
-                    await this.fetchNetflixSubtitleContent(
-                        selectedOriginalTrack
-                    );
-                originalVttText =
-                    ttmlParser.convertTtmlToVtt(originalSubtitleText);
-                sourceLanguage = normalizeLanguageCode(
-                    selectedOriginalTrack.language
+            if (!selectedOriginalTrack) {
+                throw new Error(
+                    'No usable Netflix subtitle track was available'
                 );
             }
+
+            this.logger.debug('Processing original track', {
+                language: selectedOriginalTrack.language,
+                trackType: selectedOriginalTrack.trackType,
+            });
+
+            const originalSubtitleText = await this.fetchNetflixSubtitleContent(
+                selectedOriginalTrack
+            );
+            originalVttText = ttmlParser.convertTtmlToVtt(originalSubtitleText);
+            sourceLanguage = normalizeLanguageCode(
+                selectedOriginalTrack.language
+            );
 
             // Process target language subtitles
             let targetVttText = '';
@@ -213,21 +211,11 @@ class NetflixParser {
                 targetLanguage,
                 originalLanguage,
                 trackCount: data.tracks.length,
-                errorMessage: error.message,
-                errorStack: error.stack,
+                errorName: error?.name,
+                errorLength: error?.message?.length || 0,
             });
 
-            // Return a fallback response instead of throwing to prevent the entire pipeline from failing
-            return {
-                vttText: '',
-                targetVttText: '',
-                sourceLanguage: originalLanguage,
-                targetLanguage: targetLanguage,
-                useNativeTarget: false,
-                availableLanguages: [],
-                url: null,
-                error: error.message,
-            };
+            throw error;
         }
     }
 
@@ -244,14 +232,18 @@ class NetflixParser {
 
         // Filter valid tracks
         const validTracks = timedtexttracks.filter(
-            (track) => !track.isNoneTrack && !track.isForcedNarrative
+            (track) =>
+                track &&
+                typeof track.language === 'string' &&
+                !track.isNoneTrack &&
+                !track.isForcedNarrative
         );
 
         // Process tracks to build available languages list
         for (const track of validTracks) {
             const rawLangCode = track.language;
             const normalizedLangCode = normalizeLanguageCode(rawLangCode);
-            let downloadUrl = this.extractDownloadUrl(track);
+            const downloadUrl = this.extractDownloadUrl(track);
 
             if (downloadUrl) {
                 availableLanguages.push({
@@ -301,9 +293,10 @@ class NetflixParser {
      * @returns {Object|null} Best matching track
      */
     getBestTrackForLanguage(tracks, langCode) {
+        const normalizedRequestedLanguage = normalizeLanguageCode(langCode);
         const matchingTracks = tracks.filter((track) => {
             const trackLangCode = normalizeLanguageCode(track.language);
-            return trackLangCode === langCode;
+            return trackLangCode === normalizedRequestedLanguage;
         });
 
         if (matchingTracks.length === 0) return null;
@@ -334,6 +327,10 @@ class NetflixParser {
      * @returns {string|null} Download URL
      */
     extractDownloadUrl(track) {
+        if (!track || typeof track !== 'object') {
+            return null;
+        }
+
         let downloadables = null;
 
         this.logger.debug('Extracting download URL from track', {
@@ -384,10 +381,15 @@ class NetflixParser {
                     formatData.urls &&
                     formatData.urls.length > 0
                 ) {
-                    const url = formatData.urls[0].url || formatData.urls[0];
+                    const firstUrl = formatData.urls[0];
+                    const url =
+                        typeof firstUrl === 'string' ? firstUrl : firstUrl?.url;
+                    if (typeof url !== 'string' || url.length === 0) {
+                        continue;
+                    }
                     this.logger.debug('Found URL in urls array', {
                         format,
-                        url: url.substring(0, 100) + '...',
+                        urlLength: url.length,
                     });
                     return url;
                 } else if (
@@ -395,12 +397,15 @@ class NetflixParser {
                     formatData.downloadUrls &&
                     formatData.downloadUrls.length > 0
                 ) {
+                    const firstUrl = formatData.downloadUrls[0];
                     const url =
-                        formatData.downloadUrls[0].url ||
-                        formatData.downloadUrls[0];
+                        typeof firstUrl === 'string' ? firstUrl : firstUrl?.url;
+                    if (typeof url !== 'string' || url.length === 0) {
+                        continue;
+                    }
                     this.logger.debug('Found URL in downloadUrls array', {
                         format,
-                        url: url.substring(0, 100) + '...',
+                        urlLength: url.length,
                     });
                     return url;
                 }
@@ -425,15 +430,14 @@ class NetflixParser {
         }
 
         this.logger.debug('Fetching Netflix subtitle content', {
-            url: track.downloadUrl,
             language: track.language,
         });
 
         try {
-            const response = await fetch(track.downloadUrl);
+            const response = await fetchWithTimeout(track.downloadUrl);
             if (!response.ok) {
                 throw new Error(
-                    `HTTP error ${response.status} for ${track.downloadUrl}`
+                    `Netflix subtitle fetch failed: ${response.status}`
                 );
             }
             const content = await response.text();
@@ -449,7 +453,6 @@ class NetflixParser {
                 'Failed to fetch Netflix subtitle content',
                 error,
                 {
-                    url: track.downloadUrl,
                     language: track.language,
                 }
             );

@@ -21,17 +21,11 @@ export const MessageActions = {
     LOGGING_LEVEL_CHANGED: 'LOGGING_LEVEL_CHANGED',
     // Side Panel actions
     SIDEPANEL_OPEN: 'sidePanelOpen',
-    SIDEPANEL_CLOSE: 'sidePanelClose',
     SIDEPANEL_WORD_SELECTED: 'sidePanelWordSelected',
-    SIDEPANEL_REQUEST_ANALYSIS: 'sidePanelRequestAnalysis',
     SIDEPANEL_PAUSE_VIDEO: 'sidePanelPauseVideo',
-    SIDEPANEL_RESUME_VIDEO: 'sidePanelResumeVideo',
     SIDEPANEL_GET_STATE: 'sidePanelGetState',
     SIDEPANEL_UPDATE_STATE: 'sidePanelUpdateState',
     SIDEPANEL_REGISTER: 'sidePanelRegister',
     SIDEPANEL_SET_ANALYZING: 'sidePanelSetAnalyzing',
     SIDEPANEL_SELECTION_SYNC: 'sidePanelSelectionSync',
-    // Scope and binding related (future-ready)
-    SIDEPANEL_SCOPE_CHANGED: 'sidePanelScopeChanged',
-    SIDEPANEL_APPLY_SCOPE_BUCKET: 'sidePanelApplyScopeBucket',
 };

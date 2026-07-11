@@ -338,7 +338,9 @@ export class DisneyPlusContentScript extends BaseContentScript {
 
         setTimeout(async () => {
             try {
-                const config = await this.configService.getAll();
+                const config = await this.configService.getAll({
+                    includeSensitive: false,
+                });
                 if (config?.subtitlesEnabled) {
                     this.logWithFallback(
                         'info',

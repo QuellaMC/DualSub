@@ -1,131 +1,101 @@
-import { useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSidePanelContext } from './SidePanelContext.jsx';
-import { useSidePanelCommunication } from './useSidePanelCommunication.js';
+
+function selectionKey(words) {
+    return words.join('\u0000');
+}
 
 /**
- * Word Selection Hook
- * 
- * Manages word selection from subtitle clicks and synchronization
- * with the side panel state.
- * 
- * Features:
- * - Actions for toggling/clearing words (using activeTabId from context)
- * - Persisting selection state
+ * Requests selection changes from the content script. The content script owns
+ * the authoritative highlighted-word state and confirms it through
+ * sidePanelSelectionSync; this hook deliberately avoids optimistic mutations.
  */
 export function useWordSelection() {
-    const {
-        selectedWords,
-        addWord,
-        removeWord,
-        clearWords,
-        sourceLanguage,
-        targetLanguage,
-        activeTabId
-    } = useSidePanelContext();
+    const { activeTabId, communication, selectedWords } = useSidePanelContext();
+    const { sendToTab } = communication;
+    const [isUpdatingSelection, setIsUpdatingSelection] = useState(false);
+    const pendingSelectionRef = useRef(null);
+    const fallbackTimerRef = useRef(null);
+    const currentSelectionKey = selectionKey(selectedWords);
 
-    const { onMessage, postMessage } = useSidePanelCommunication();
+    const clearPendingSelection = useCallback(() => {
+        pendingSelectionRef.current = null;
+        setIsUpdatingSelection(false);
+        if (fallbackTimerRef.current) {
+            clearTimeout(fallbackTimerRef.current);
+            fallbackTimerRef.current = null;
+        }
+    }, []);
 
-    // Listen for selection clear events from the content script
     useEffect(() => {
-        const unsubscribe = onMessage('sidePanelClearSelection', () => {
-            clearWords();
-        });
-        return unsubscribe;
-    }, [onMessage, clearWords]);
+        if (pendingSelectionRef.current === currentSelectionKey) {
+            clearPendingSelection();
+        }
+    }, [clearPendingSelection, currentSelectionKey]);
 
-    /**
-     * Toggle word selection
-     */
-    const toggleWord = useCallback(
-        async (word) => {
-            // Compute next selection locally to sync with content script reliably
-            let next;
-            if (selectedWords.includes(word)) {
-                next = selectedWords.filter((w) => w !== word);
-                removeWord(word);
-            } else {
-                next = [...selectedWords, word];
-                addWord(word);
+    useEffect(
+        () => () => {
+            if (fallbackTimerRef.current) {
+                clearTimeout(fallbackTimerRef.current);
             }
-
-            // Send to the currently active tab view
-            if (activeTabId) {
-                try {
-                    await chrome.tabs.sendMessage(activeTabId, {
-                        action: 'sidePanelUpdateState',
-                        data: {
-                            clearSelection: true,
-                            selectedWords: next,
-                        },
-                        source: 'sidepanel'
-                    });
-                } catch (err) {
-                    console.error('Failed to sync toggle to content script:', err);
-                }
-            }
-
-            // NOTE: We do NOT send sidePanelSelectionSync to background here.
-            // We wait for the content script to process the update and broadcast the sync back.
-            // This ensures the content script remains the single source of truth.
         },
-        [selectedWords, addWord, removeWord, activeTabId, postMessage]
+        []
     );
 
-    /**
-     * Clear selection and notify content script
-     */
-    const clearSelection = useCallback(async () => {
-        clearWords();
+    const removeWordAt = useCallback(
+        async (index) => {
+            if (
+                isUpdatingSelection ||
+                typeof activeTabId !== 'number' ||
+                !Number.isInteger(index) ||
+                index < 0 ||
+                index >= selectedWords.length
+            ) {
+                return false;
+            }
 
-        if (activeTabId) {
+            const nextSelection = selectedWords.filter(
+                (_selectedWord, selectedIndex) => selectedIndex !== index
+            );
+            pendingSelectionRef.current = selectionKey(nextSelection);
+            setIsUpdatingSelection(true);
+
             try {
-                await chrome.tabs.sendMessage(activeTabId, {
-                    action: 'sidePanelUpdateState',
-                    data: {
-                        selectedWords: [],
-                        clearSelection: true,
-                    },
-                    source: 'sidepanel'
+                await sendToTab(activeTabId, 'sidePanelUpdateState', {
+                    removeSelectionIndex: index,
+                    selectedWords: nextSelection,
                 });
-            } catch (err) {
-                console.error('Failed to notify content script of clear:', err);
-            }
-        }
-    }, [clearWords, activeTabId, postMessage]);
 
-    /**
-     * Persist selection suggestion on changes (global suggestion bucket)
-     */
-    useEffect(() => {
-        const persistSuggestion = async () => {
-            try {
-                const result = await chrome.storage.sync.get(['sidePanelPersistAcrossTabs']);
-                if (result.sidePanelPersistAcrossTabs) {
-                    const local = await chrome.storage.local.get(['sidePanelSelectionBuckets']);
-                    const buckets = local.sidePanelSelectionBuckets || {};
-                    buckets['global:default'] = {
-                        words: selectedWords,
-                        sourceLanguage,
-                        targetLanguage,
-                        ts: Date.now(),
-                    };
-                    await chrome.storage.local.set({ sidePanelSelectionBuckets: buckets });
+                // The authoritative sync normally arrives immediately. Avoid
+                // leaving controls locked if a page unloads before broadcasting.
+                if (pendingSelectionRef.current !== null) {
+                    fallbackTimerRef.current = setTimeout(
+                        clearPendingSelection,
+                        1500
+                    );
                 }
-            } catch (err) {
-                console.error('Failed to persist selection suggestion:', err);
+                return true;
+            } catch (selectionError) {
+                console.error(
+                    'Failed to update content-script selection:',
+                    selectionError
+                );
+                clearPendingSelection();
+                return false;
             }
-        };
-        if (selectedWords.length > 0) {
-            persistSuggestion();
-        }
-    }, [selectedWords, sourceLanguage, targetLanguage]);
+        },
+        [
+            activeTabId,
+            clearPendingSelection,
+            isUpdatingSelection,
+            selectedWords,
+            sendToTab,
+        ]
+    );
 
     return {
+        isUpdatingSelection,
         selectedWords,
-        addWord,
-        removeWord,
-        toggleWord,
-        clearSelection,
-        syncWithContentScript: async () => { } // No-op stub for compatibility if needed
+        removeWordAt,
     };
 }

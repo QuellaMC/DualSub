@@ -1,5 +1,6 @@
 // Import jest for ES modules compatibility
 import { jest, beforeEach, afterEach } from '@jest/globals';
+import '@testing-library/jest-dom';
 
 // Import centralized mock utilities
 import { ChromeApiMock } from './test-utils/chrome-api-mock.js';
@@ -23,6 +24,11 @@ global.chrome = global.mockInstances.chromeApi;
 const originalConsole = { ...console };
 global.console = {
     ...originalConsole,
+    log: jest.fn((...args) => {
+        if (process.env.JEST_VERBOSE === 'true') {
+            originalConsole.log(...args);
+        }
+    }),
     debug: jest.fn((...args) => {
         if (process.env.JEST_VERBOSE === 'true') {
             originalConsole.debug(...args);
@@ -56,6 +62,7 @@ global.resetAllMocks = () => {
     jest.clearAllMocks();
 
     // Reset console mocks
+    global.console.log.mockClear();
     global.console.debug.mockClear();
     global.console.info.mockClear();
     global.console.warn.mockClear();

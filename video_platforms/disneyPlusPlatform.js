@@ -1,17 +1,22 @@
-import { VideoPlatform } from './platform_interface.js';
 import Logger from '../utils/logger.js';
 import { configService } from '../services/configService.js';
-import { MessageActions } from '../content_scripts/shared/constants/messageActions.js';
 
 import { Injection } from '../content_scripts/shared/constants/injection.js';
 
-const INJECT_SCRIPT_FILENAME = Injection.disneyplus.SCRIPT_FILENAME;
-const INJECT_SCRIPT_TAG_ID = Injection.disneyplus.SCRIPT_TAG_ID;
 const INJECT_EVENT_ID = Injection.disneyplus.EVENT_ID; // Must match inject.js
 
 import { BasePlatformAdapter } from './BasePlatformAdapter.js';
 
 const PLAYBACK_TRANSITION_DELAY_MS = 160;
+const DEEP_TIMELINE_SEARCH_INTERVAL_MS = 1000;
+const TIMELINE_DRIFT_TOLERANCE_SECONDS = 1.5;
+const TIMELINE_SELECTORS = [
+    '.progress-bar__seekable-range[role="slider"][aria-valuenow]',
+    '.progress-bar__seekable-range[aria-valuenow]',
+    '[role="slider"][aria-label="Timeline"][aria-valuenow]',
+    '[role="slider"][aria-valuenow][aria-valuemax]',
+    '.progress-bar__thumb[aria-valuenow][aria-valuemax]',
+];
 
 export class DisneyPlusPlatform extends BasePlatformAdapter {
     constructor() {
@@ -22,6 +27,12 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
         this.onVideoIdChangeCallback = null;
         this.lastKnownVttUrlForVideoId = {};
         this.eventListener = null; // To store the bound event listener for removal
+        this._clockVideoElement = null;
+        this._clockTimelineElement = null;
+        this._clockTimelineValue = null;
+        this._playbackTimeOffset = null;
+        this._cachedProgressBarElement = null;
+        this._lastDeepTimelineSearchAt = 0;
         this.initializeLogger();
     }
 
@@ -95,14 +106,14 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
                     'SUBTITLE_URL_FOUND event without a videoId',
                     null,
                     {
-                        url: vttMasterUrl,
+                        urlLength: vttMasterUrl.length,
                     }
                 );
                 return;
             }
             this.logger.info('SUBTITLE_URL_FOUND for injectedVideoId', {
                 injectedVideoId: injectedVideoId,
-                url: vttMasterUrl,
+                urlLength: vttMasterUrl.length,
             });
 
             if (this.currentVideoId !== injectedVideoId) {
@@ -119,8 +130,8 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
                 vttMasterUrl
             ) {
                 this.logger.debug('VTT URL already processed or known', {
-                    url: vttMasterUrl,
-                    videoId: this.currentVideoId,
+                    urlLength: vttMasterUrl.length,
+                    hasVideoId: Boolean(this.currentVideoId),
                 });
                 // If content.js needs to re-evaluate subtitles with existing data, it can do so.
                 // For now, we assume if the URL is the same, no new fetch is needed unless forced by content.js logic
@@ -129,8 +140,8 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
             }
 
             this.logger.info('Requesting VTT from background', {
-                url: vttMasterUrl,
-                videoId: this.currentVideoId,
+                urlLength: vttMasterUrl.length,
+                hasVideoId: Boolean(this.currentVideoId),
             });
 
             // Get user settings for language preferences
@@ -182,9 +193,14 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
                                     'Background failed to fetch VTT',
                                     null,
                                     {
-                                        error: response.error || 'Unknown',
-                                        url: response.url,
-                                        videoId: this.currentVideoId,
+                                        errorLength:
+                                            typeof response.error === 'string'
+                                                ? response.error.length
+                                                : 0,
+                                        hasResponseUrl: Boolean(response.url),
+                                        hasVideoId: Boolean(
+                                            this.currentVideoId
+                                        ),
                                     }
                                 );
                             } else if (
@@ -203,8 +219,10 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
                                     'No/invalid response from background for fetchVTT',
                                     null,
                                     {
-                                        url: vttMasterUrl,
-                                        videoId: this.currentVideoId,
+                                        urlLength: vttMasterUrl.length,
+                                        hasVideoId: Boolean(
+                                            this.currentVideoId
+                                        ),
                                     }
                                 );
                             }
@@ -217,8 +235,10 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
                                     'Error for VTT fetch',
                                     lastErr,
                                     {
-                                        url: vttMasterUrl,
-                                        videoId: this.currentVideoId,
+                                        urlLength: vttMasterUrl.length,
+                                        hasVideoId: Boolean(
+                                            this.currentVideoId
+                                        ),
                                     }
                                 );
                             } else {
@@ -226,8 +246,10 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
                                     'No/invalid response from background for fetchVTT',
                                     null,
                                     {
-                                        url: vttMasterUrl,
-                                        videoId: this.currentVideoId,
+                                        urlLength: vttMasterUrl.length,
+                                        hasVideoId: Boolean(
+                                            this.currentVideoId
+                                        ),
                                     }
                                 );
                             }
@@ -241,7 +263,48 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
     }
 
     getVideoElement() {
-        return document.querySelector('video');
+        const videos = Array.from(document.querySelectorAll('video'));
+        if (videos.length <= 1) return videos[0] || null;
+
+        let bestVideo = videos[0];
+        let bestScore = -Infinity;
+
+        for (const video of videos) {
+            let score = 0;
+            try {
+                const rect = video.getBoundingClientRect?.();
+                const width = rect?.width || 0;
+                const height = rect?.height || 0;
+                if (width > 0 && height > 0) {
+                    score += 100;
+                    score += Math.min((width * height) / 20000, 50);
+                }
+
+                if (video.readyState >= 2) score += 40;
+                if (video.readyState >= 4) score += 10;
+                if (
+                    video.currentSrc ||
+                    video.getAttribute('src') ||
+                    video.querySelector('source[src]')
+                ) {
+                    score += 25;
+                }
+                if (!video.paused && !video.ended) score += 30;
+                if (
+                    Number.isFinite(video.currentTime) &&
+                    video.currentTime > 0
+                ) {
+                    score += 15;
+                }
+            } catch (_) {}
+
+            if (score > bestScore) {
+                bestScore = score;
+                bestVideo = video;
+            }
+        }
+
+        return bestVideo;
     }
 
     getCurrentVideoId() {
@@ -254,38 +317,162 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
     }
 
     getProgressBarElement() {
-        // Disney+ specific: read from progress-bar web component's shadow DOM
         try {
-            // Prefer the controls footer progress bar
-            const preferredHosts = Array.from(
-                document.querySelectorAll(
-                    '.controls__footer__progressWrapper progress-bar'
-                )
-            );
-            const allHosts = preferredHosts.length
-                ? preferredHosts
-                : Array.from(document.querySelectorAll('progress-bar'));
+            if (this._cachedProgressBarElement?.isConnected) {
+                return this._cachedProgressBarElement;
+            }
+            this._cachedProgressBarElement = null;
 
-            let bestThumb = null;
-            let bestMax = -1;
-            for (const host of allHosts) {
-                if (!host || !host.shadowRoot) continue;
-                const thumb = host.shadowRoot.querySelector(
-                    '.progress-bar__seekable-range .progress-bar__thumb[aria-valuenow][aria-valuemax]'
-                );
-                if (!thumb) continue;
-                const vmax = parseFloat(
-                    thumb.getAttribute('aria-valuemax') || 'NaN'
-                );
-                if (!Number.isNaN(vmax) && vmax > bestMax) {
-                    bestMax = vmax;
-                    bestThumb = thumb;
+            // Current Disney+ player: controls overlay -> progress-bar, with
+            // both components exposing open shadow roots.
+            const overlayHosts = document.querySelectorAll(
+                'main-app-controls-overlay'
+            );
+            for (const overlayHost of overlayHosts) {
+                const progressHosts =
+                    overlayHost.shadowRoot?.querySelectorAll('progress-bar') ||
+                    [];
+                const timeline =
+                    this._findTimelineInProgressHosts(progressHosts);
+                if (timeline) {
+                    this._cachedProgressBarElement = timeline;
+                    return timeline;
                 }
             }
-            return bestThumb || null;
+
+            // Retain compatibility with older layouts whose progress-bar host
+            // lived in the light DOM.
+            const lightDomTimeline = this._findTimelineInProgressHosts(
+                document.querySelectorAll('progress-bar')
+            );
+            if (lightDomTimeline) {
+                this._cachedProgressBarElement = lightDomTimeline;
+                return lightDomTimeline;
+            }
+
+            // Bound the expensive recursive fallback. The active video clock
+            // remains usable while the lazily mounted controls are absent.
+            const now = Date.now();
+            if (
+                now - this._lastDeepTimelineSearchAt <
+                DEEP_TIMELINE_SEARCH_INTERVAL_MS
+            ) {
+                return null;
+            }
+            this._lastDeepTimelineSearchAt = now;
+
+            const deepProgressHost = this._querySelectorDeep('progress-bar');
+            const deepTimeline = this._findTimelineInProgressHosts(
+                deepProgressHost ? [deepProgressHost] : []
+            );
+            if (deepTimeline) {
+                this._cachedProgressBarElement = deepTimeline;
+                return deepTimeline;
+            }
+
+            const semanticTimeline = this._querySelectorDeep([
+                TIMELINE_SELECTORS[0],
+                TIMELINE_SELECTORS[2],
+            ]);
+            this._cachedProgressBarElement = semanticTimeline;
+            return semanticTimeline;
         } catch (_) {
             return null;
         }
+    }
+
+    _findTimelineInProgressHosts(progressHosts) {
+        let bestTimeline = null;
+        let bestMaximum = -Infinity;
+
+        for (const host of progressHosts) {
+            if (!host?.shadowRoot) continue;
+
+            let timeline = null;
+            for (const selector of TIMELINE_SELECTORS) {
+                timeline = host.shadowRoot.querySelector(selector);
+                if (timeline) break;
+            }
+            if (!timeline) continue;
+
+            const maximum = Number.parseFloat(
+                timeline.getAttribute('aria-valuemax') || '0'
+            );
+            if (
+                !bestTimeline ||
+                (Number.isFinite(maximum) && maximum > bestMaximum)
+            ) {
+                bestTimeline = timeline;
+                bestMaximum = Number.isFinite(maximum) ? maximum : bestMaximum;
+            }
+        }
+
+        return bestTimeline;
+    }
+
+    _readTimelineTime(timelineElement) {
+        const value = Number.parseFloat(
+            timelineElement?.getAttribute('aria-valuenow') || 'NaN'
+        );
+        return Number.isFinite(value) && value >= 0 ? value : null;
+    }
+
+    /**
+     * Use the active HTML video as the continuously advancing clock. Disney+'s
+     * lazily mounted timeline is sampled only to calibrate the media timestamp
+     * onto the episode subtitle timeline.
+     * @returns {number | null}
+     */
+    getPlaybackTime() {
+        const videoElement = this.getVideoElement();
+        const rawVideoTime = videoElement?.currentTime;
+        if (!Number.isFinite(rawVideoTime)) return null;
+
+        if (videoElement !== this._clockVideoElement) {
+            this._clockVideoElement = videoElement;
+            this._clockTimelineElement = null;
+            this._clockTimelineValue = null;
+            this._playbackTimeOffset = null;
+        }
+
+        const timelineElement = this.getProgressBarElement();
+        const timelineTime = this._readTimelineTime(timelineElement);
+
+        if (timelineElement && timelineTime !== null) {
+            const timelineElementChanged =
+                timelineElement !== this._clockTimelineElement;
+            const timelineValueChanged =
+                this._clockTimelineValue === null ||
+                Math.abs(timelineTime - this._clockTimelineValue) > 0.01;
+            const predictedTime =
+                rawVideoTime + (this._playbackTimeOffset || 0);
+            const clockDrift = Math.abs(timelineTime - predictedTime);
+
+            if (
+                this._playbackTimeOffset === null ||
+                timelineElementChanged ||
+                (timelineValueChanged &&
+                    clockDrift > TIMELINE_DRIFT_TOLERANCE_SECONDS)
+            ) {
+                this._playbackTimeOffset = timelineTime - rawVideoTime;
+            }
+
+            this._clockTimelineElement = timelineElement;
+            this._clockTimelineValue = timelineTime;
+        } else {
+            // Keep the calibrated offset while Disney+ unmounts idle controls.
+            this._clockTimelineElement = null;
+            this._clockTimelineValue = null;
+        }
+
+        return rawVideoTime + (this._playbackTimeOffset || 0);
+    }
+
+    supportsProgressBarTracking() {
+        // The generic observer treats the UI control as the primary clock and
+        // blocks startup while it is absent. Disney+ uses it only for internal
+        // calibration, so native timeupdate events remain authoritative.
+        return false;
     }
 
     /**
@@ -293,7 +480,9 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
      */
     _getToggleButtonRoot() {
         try {
-            const toggleHost = document.querySelector('disney-web-player-ui toggle-play-pause');
+            const toggleHost = document.querySelector(
+                'disney-web-player-ui toggle-play-pause'
+            );
             return toggleHost?.shadowRoot || null;
         } catch (_) {
             return null;
@@ -319,10 +508,14 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
             if (state === false) return true;
             const root = this._getToggleButtonRoot();
             if (!root) return false;
-            const btn = root.querySelector('button') || root.querySelector('[role="button"]');
+            const btn =
+                root.querySelector('button') ||
+                root.querySelector('[role="button"]');
             if (!btn) return false;
             btn.click();
-            await new Promise((r) => setTimeout(r, PLAYBACK_TRANSITION_DELAY_MS));
+            await new Promise((r) =>
+                setTimeout(r, PLAYBACK_TRANSITION_DELAY_MS)
+            );
             const after = this.isPlaying();
             return after === false;
         } catch (_) {
@@ -336,10 +529,14 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
             if (state === true) return true;
             const root = this._getToggleButtonRoot();
             if (!root) return false;
-            const btn = root.querySelector('button') || root.querySelector('[role="button"]');
+            const btn =
+                root.querySelector('button') ||
+                root.querySelector('[role="button"]');
             if (!btn) return false;
             btn.click();
-            await new Promise((r) => setTimeout(r, PLAYBACK_TRANSITION_DELAY_MS));
+            await new Promise((r) =>
+                setTimeout(r, PLAYBACK_TRANSITION_DELAY_MS)
+            );
             const after = this.isPlaying();
             return after === true;
         } catch (_) {
@@ -589,6 +786,12 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
         this.onSubtitleUrlFoundCallback = null;
         this.onVideoIdChangeCallback = null;
         this.lastKnownVttUrlForVideoId = {};
+        this._clockVideoElement = null;
+        this._clockTimelineElement = null;
+        this._clockTimelineValue = null;
+        this._playbackTimeOffset = null;
+        this._cachedProgressBarElement = null;
+        this._lastDeepTimelineSearchAt = 0;
         this.logger.info('Platform cleaned up successfully');
     }
 }

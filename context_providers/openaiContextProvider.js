@@ -15,6 +15,8 @@ import {
     CONTEXT_SCHEMA_NAME,
     validateAgainstSchema,
 } from './contextSchemas.js';
+import { isRetryableContextError } from './retryPolicy.js';
+import { fetchWithTimeout } from '../utils/fetchWithTimeout.js';
 
 const logger = Logger.create('OpenAIContextProvider');
 
@@ -23,31 +25,24 @@ const logger = Logger.create('OpenAIContextProvider');
  */
 export const OPENAI_MODELS = [
     {
-        id: 'gpt-4.1-nano-2025-04-14',
-        name: 'GPT-4.1 Nano',
-        description: 'Cost-effective for most context analysis tasks',
-        contextWindow: 8192,
-        recommended: false,
-    },
-    {
-        id: 'gpt-4.1-mini-2025-04-14',
-        name: 'GPT-4.1 Mini',
-        description: 'High-quality analysis with better cultural understanding',
-        contextWindow: 128000,
+        id: 'gpt-5.6-luna',
+        name: 'GPT-5.6 Luna',
+        description: 'Optimized for cost-sensitive context analysis',
+        contextWindow: 1050000,
         recommended: true,
     },
     {
-        id: 'gpt-4o-mini-2024-07-18',
-        name: 'GPT-4o Mini',
-        description: 'Optimized for speed and efficiency',
-        contextWindow: 128000,
+        id: 'gpt-5.6-terra',
+        name: 'GPT-5.6 Terra',
+        description: 'Balances analysis quality and cost',
+        contextWindow: 1050000,
         recommended: false,
     },
     {
-        id: 'gpt-4o-2024-08-06',
-        name: 'GPT-4o',
-        description: 'Optimized for speed and efficiency',
-        contextWindow: 128000,
+        id: 'gpt-5.6',
+        name: 'GPT-5.6',
+        description: 'Frontier model for the most demanding analysis',
+        contextWindow: 1050000,
         recommended: false,
     },
 ];
@@ -70,21 +65,25 @@ export function getDefaultModel() {
 }
 
 /**
- * Normalizes baseUrl by removing trailing slashes and backslashes
+ * Normalizes a provider base URL to the versioned OpenAI-compatible API root.
  * @param {string} url - The base URL to normalize
- * @returns {string} Normalized URL without trailing slashes
+ * @returns {string} Normalized URL ending in /v1
  */
 function normalizeBaseUrl(url) {
     if (!url || typeof url !== 'string') {
         return url;
     }
 
-    const normalized = url.replace(/[/\\]+$/, '');
+    const withoutTrailingSeparators = url.replace(/[/\\]+$/, '');
+    const normalized = /\/v1$/i.test(withoutTrailingSeparators)
+        ? withoutTrailingSeparators
+        : `${withoutTrailingSeparators}/v1`;
 
     logger.debug('Base URL normalized', {
-        originalUrl: url,
-        normalizedUrl: normalized,
-        hadTrailingSlash: url !== normalized,
+        changed: url !== normalized,
+        isGoogleEndpoint: normalized.includes(
+            'generativelanguage.googleapis.com'
+        ),
     });
 
     return normalized;
@@ -107,8 +106,7 @@ function normalizeModelName(model, baseUrl) {
             : model;
 
         logger.debug('Model name normalized for Gemini', {
-            originalModel: model,
-            normalizedModel: normalized,
+            hadModelsPrefix: model.startsWith('models/'),
         });
 
         return normalized;
@@ -163,10 +161,7 @@ function getLanguageName(langCode) {
  * @returns {string} Formatted prompt for the AI model
  */
 function createContextPrompt(text, contextType, metadata = {}) {
-    const {
-        targetLanguage = 'unknown',
-        surroundingContext = '',
-    } = metadata;
+    const { targetLanguage = 'unknown', surroundingContext = '' } = metadata;
 
     // Get language name for the target language code
     const targetLanguageName = getLanguageName(targetLanguage);
@@ -326,7 +321,8 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
     // Validate input
     if (!text || typeof text !== 'string' || text.trim() === '') {
         logger.warn('Empty or invalid text provided for context analysis', {
-            text: text?.substring(0, 50),
+            valueType: typeof text,
+            textLength: typeof text === 'string' ? text.length : 0,
         });
         return {
             success: false,
@@ -340,8 +336,8 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
         const config = await configService.getAll();
         const {
             openaiApiKey,
-            openaiBaseUrl = 'https://api.openai.com',
-            openaiModel = 'gpt-4.1-mini-2025-04-14',
+            openaiBaseUrl = 'https://api.openai.com/v1',
+            openaiModel = 'gpt-5.6-luna',
             aiContextTimeout = 30000,
         } = config;
 
@@ -383,47 +379,43 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
         };
 
         logger.debug('Making context analysis request', {
-            apiUrl,
-            model: normalizedModel,
             contextType,
             promptLength: prompt.length,
+            isGoogleEndpoint: normalizedBaseUrl.includes(
+                'generativelanguage.googleapis.com'
+            ),
         });
 
-        const controller = new AbortController();
-        const timeoutId = setTimeout(
-            () => controller.abort(),
+        const response = await fetchWithTimeout(
+            apiUrl,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${openaiApiKey}`,
+                },
+                body: JSON.stringify(requestBody),
+            },
             aiContextTimeout
         );
 
-        const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${openaiApiKey}`,
-            },
-            body: JSON.stringify(requestBody),
-            signal: controller.signal,
-        });
-
-        clearTimeout(timeoutId);
-
         if (!response.ok) {
-            const errorText = await response.text();
             logger.error('Context analysis API request failed', {
                 status: response.status,
-                statusText: response.statusText,
-                errorText: errorText.substring(0, 500),
+                contentType: response.headers?.get?.('content-type') || null,
             });
-            throw new Error(
-                `API request failed: ${response.status} ${response.statusText} - ${errorText.substring(0, 500)}`
-            );
+            throw new Error(`API request failed: ${response.status}`);
         }
 
         const data = await response.json();
 
         if (!data.choices || !data.choices[0] || !data.choices[0].message) {
             logger.error('Invalid response format from context analysis API', {
-                data,
+                responseType: Array.isArray(data) ? 'array' : typeof data,
+                hasChoices: Array.isArray(data?.choices),
+                choicesLength: Array.isArray(data?.choices)
+                    ? data.choices.length
+                    : 0,
             });
             throw new Error('Invalid response format from API');
         }
@@ -431,13 +423,15 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
         const rawResponse = data.choices[0].message.content.trim();
 
         let structuredAnalysis;
-        let isStructured = true;
 
         try {
             structuredAnalysis = JSON.parse(rawResponse);
             if (!validateAgainstSchema(jsonSchema, structuredAnalysis)) {
                 logger.warn('Schema validation failed', {
-                    rawResponsePreview: rawResponse.substring(0, 200),
+                    responseLength: rawResponse.length,
+                    analysisType: Array.isArray(structuredAnalysis)
+                        ? 'array'
+                        : typeof structuredAnalysis,
                 });
                 return {
                     success: false,
@@ -451,8 +445,8 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
             }
         } catch (error) {
             logger.warn('Failed to parse JSON response', {
-                error: error.message,
-                rawResponsePreview: rawResponse.substring(0, 200),
+                errorType: error?.name || 'UnknownError',
+                responseLength: rawResponse.length,
             });
             return {
                 success: false,
@@ -482,10 +476,11 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
             shouldCache: true,
         };
     } catch (error) {
-        logger.error('Context analysis failed', error, {
+        logger.error('Context analysis failed', null, {
+            errorType: error?.name || 'UnknownError',
             textLength: text?.length || 0,
             contextType,
-            errorMessage: error.message,
+            shouldRetry: isRetryableContextError(error),
         });
 
         return {
@@ -494,36 +489,8 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
             contextType,
             originalText: text,
             metadata,
+            shouldRetry: isRetryableContextError(error),
+            shouldCache: false,
         };
     }
-}
-
-/**
- * Batch context analysis for multiple texts (future enhancement)
- * @param {Array<Object>} requests - Array of context analysis requests
- * @returns {Promise<Array<Object>>} Array of context analysis results
- */
-export async function analyzeBatchContext(requests) {
-    logger.info('Batch context analysis initiated', {
-        requestCount: requests.length,
-    });
-
-    // For now, process sequentially to avoid rate limits
-    // Future enhancement: implement proper batching with rate limiting
-    const results = [];
-    for (const request of requests) {
-        const result = await analyzeContext(
-            request.text,
-            request.contextType,
-            request.metadata
-        );
-        results.push(result);
-    }
-
-    logger.info('Batch context analysis completed', {
-        requestCount: requests.length,
-        successCount: results.filter((r) => r.success).length,
-    });
-
-    return results;
 }

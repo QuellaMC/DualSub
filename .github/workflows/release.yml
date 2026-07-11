@@ -1,721 +1,87 @@
 name: Release
 
 on:
-  push:
-    branches: [main]
+    push:
+        branches: [main]
 
-# Set minimal permissions for security - only what's needed for releases
 permissions:
-  contents: read
+    contents: write
+
+concurrency:
+    group: release-main
+    cancel-in-progress: false
 
 jobs:
-  test-and-release:
-    runs-on: ubuntu-latest
-    
-    # Skip release for automated formatting commits and style-fixes branches
-    if: |
-      !startsWith(github.event.head_commit.message, 'style:') &&
-      github.event.head_commit.author.name != 'github-actions[bot]' &&
-      !startsWith(github.ref_name, 'style-fixes/')
-    
-    # Job-level permissions - minimal required for release creation
-    permissions:
-      contents: write  # Required for creating releases, tags, and managing releases
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        continue-on-error: false
+    release:
+        name: Release new extension version
+        runs-on: ubuntu-latest
+        timeout-minutes: 30
+        env:
+            GH_TOKEN: ${{ github.token }}
+        steps:
+            - name: Check out repository
+              uses: actions/checkout@v7
 
-      - name: Security validation and token permissions check
-        run: |
-          echo "::group::Security validation and token permissions check"
-          
-          # Validate that no sensitive environment variables are exposed
-          echo "Validating environment security..."
-          
-          # Check for common sensitive environment variable patterns
-          SENSITIVE_VARS=("PASSWORD" "SECRET" "KEY" "TOKEN" "PRIVATE")
-          for var_pattern in "${SENSITIVE_VARS[@]}"; do
-            if env | grep -i "$var_pattern" | grep -v "GITHUB_TOKEN\|NODE_OPTIONS" | head -1; then
-              echo "::warning::Potentially sensitive environment variable detected with pattern: $var_pattern"
-              echo "Please review environment variables for security"
-            fi
-          done
-          
-          # Validate GitHub token availability without exposing it
-          if [ -z "${{ secrets.GITHUB_TOKEN }}" ]; then
-            echo "::error::GITHUB_TOKEN is not available"
-            echo "::group::Permission error details"
-            echo "The GITHUB_TOKEN secret is required for creating releases"
-            echo "This usually indicates a workflow configuration issue"
-            echo "Required permissions: contents:write"
-            echo "::endgroup::"
-            exit 1
-          fi
-          
-          # Test GitHub CLI authentication without exposing token details
-          echo "Validating GitHub CLI authentication..."
-          if ! gh auth status --hostname github.com >/dev/null 2>&1; then
-            echo "::error::GitHub CLI authentication failed"
-            echo "::group::Authentication error details"
-            echo "GitHub CLI cannot authenticate with the provided token"
-            echo "This may indicate insufficient token permissions"
-            echo "Required permissions: contents:write"
-            echo "Workflow permissions are configured at job level for security"
-            echo "::endgroup::"
-            exit 1
-          fi
-          
-          # Validate repository access without exposing sensitive details
-          echo "Validating repository access permissions..."
-          if ! gh repo view --json name,visibility >/dev/null 2>&1; then
-            echo "::error::Cannot access repository information"
-            echo "::group::Repository access error details"
-            echo "This may indicate insufficient repository permissions"
-            echo "Required permissions: contents:write for repository access"
-            echo "::endgroup::"
-            exit 1
-          fi
-          
-          echo "Security validation and GitHub token permissions check successful"
-          echo "::endgroup::"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: false
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-        continue-on-error: false
-      
-      - name: Install dependencies
-        run: |
-          echo "::group::Installing dependencies for release"
-          echo "Starting npm ci at $(date)"
-          echo "Node.js version: $(node --version)"
-          echo "npm version: $(npm --version)"
-          
-          if ! npm ci; then
-            echo "::error::Failed to install dependencies for release"
-            echo "::group::npm ci error details"
-            echo "Exit code: $?"
-            echo "Current directory: $(pwd)"
-            echo "Package-lock.json exists: $(test -f package-lock.json && echo 'yes' || echo 'no')"
-            echo "Package.json exists: $(test -f package.json && echo 'yes' || echo 'no')"
-            if [ -f package.json ]; then
-              echo "Package.json engines field:"
-              node -p "JSON.stringify(require('./package.json').engines || {}, null, 2)"
-            fi
-            echo "::endgroup::"
-            exit 1
-          fi
-          
-          echo "Dependencies installed successfully for release at $(date)"
-          echo "::endgroup::"
-        continue-on-error: false
-      
-      - name: Run tests
-        run: |
-          echo "::group::Running tests for release"
-          echo "Starting tests at $(date)"
-          echo "Test command: npm test"
-          echo "Node options: $NODE_OPTIONS"
-          
-          # Validate test infrastructure setup
-          echo "Validating test infrastructure..."
-          echo "Jest configuration:"
-          if [ -f jest.config.js ]; then
-            echo "✓ Jest config found"
-          else
-            echo "::warning::Jest config not found, using defaults"
-          fi
-          
-          echo "Test utilities:"
-          if [ -d test-utils ]; then
-            echo "✓ Test utilities directory found"
-            echo "Available test utilities:"
-            ls -la test-utils/ | grep -E '\.(js|json)$' || echo "No test utility files found"
-          else
-            echo "::warning::Test utilities directory not found"
-          fi
-          
-          echo "Mock utilities validation:"
-          MOCK_FILES=("test-utils/chrome-api-mock.js" "test-utils/location-mock.js" "test-utils/logger-mock.js")
-          for mock_file in "${MOCK_FILES[@]}"; do
-            if [ -f "$mock_file" ]; then
-              echo "✓ $mock_file found"
-            else
-              echo "::warning::$mock_file not found - tests may use fallback mocking"
-            fi
-          done
-          
-          echo "Jest setup validation:"
-          if [ -f jest.setup.js ]; then
-            echo "✓ Jest setup file found"
-          else
-            echo "::warning::Jest setup file not found"
-          fi
-          
-          # Run tests with enhanced error reporting
-          if ! npm test; then
-            echo "::error::Tests failed during release process"
-            echo "::group::Test failure details"
-            echo "Exit code: $?"
-            echo "Test environment:"
-            echo "  Node.js version: $(node --version)"
-            echo "  npm version: $(npm --version)"
-            echo "  Working directory: $(pwd)"
-            echo "  NODE_OPTIONS: $NODE_OPTIONS"
-            echo "  Jest version: $(npx jest --version 2>/dev/null || echo 'Jest version unavailable')"
-            echo ""
-            echo "Test infrastructure status:"
-            echo "  Jest config: $(test -f jest.config.js && echo 'present' || echo 'missing')"
-            echo "  Jest setup: $(test -f jest.setup.js && echo 'present' || echo 'missing')"
-            echo "  Test utilities: $(test -d test-utils && echo 'present' || echo 'missing')"
-            echo ""
-            echo "Available test files:"
-            find . -name "*.test.js" -o -name "*.spec.js" | head -15
-            echo ""
-            echo "Test patterns and infrastructure:"
-            echo "  Integration tests: $(find . -name "*integration*.test.js" | wc -l) files"
-            echo "  Unit tests: $(find . -name "*.test.js" ! -name "*integration*" | wc -l) files"
-            echo "  Mock utilities: $(find test-utils -name "*mock*.js" 2>/dev/null | wc -l) files"
-            echo "::endgroup::"
-            echo "::error::Release aborted due to test failures on main branch"
-            echo "::notice::Test infrastructure has been updated with centralized mocks and enhanced Jest configuration. Ensure all tests are compatible with the new setup."
-            exit 1
-          fi
-          
-          echo "All tests passed successfully for release at $(date)"
-          echo "Test infrastructure validation completed successfully"
-          echo "::endgroup::"
-        env:
-          NODE_OPTIONS: '--experimental-vm-modules'
-          # Set Jest verbose mode for better debugging in CI
-          JEST_VERBOSE: 'false'
-        continue-on-error: false
-      
-      - name: Run lint
-        run: |
-          echo "::group::Running lint checks for release"
-          echo "Starting lint at $(date)"
-          echo "Lint command: npm run lint"
-          
-          if ! npm run lint; then
-            echo "::error::Lint checks failed during release process"
-            echo "::group::Lint failure details"
-            echo "Exit code: $?"
-            echo "Linting environment:"
-            echo "  Node.js version: $(node --version)"
-            echo "  npm version: $(npm --version)"
-            echo "  Working directory: $(pwd)"
-            echo "  ESLint config files:"
-            find . -name ".eslintrc*" -o -name "eslint.config.*" | head -5
-            echo "::endgroup::"
-            echo "::warning::Release proceeding despite lint issues (main branch should be fixed)"
-            # Don't exit 1 here as lint issues shouldn't block releases from main
-          else
-            echo "All lint checks passed successfully for release at $(date)"
-          fi
-          
-          echo "::endgroup::"
-        continue-on-error: true
-      
-      - name: Build React application
-        run: |
-          echo "::group::Building React application"
-          echo "Starting React build at $(date)"
-          echo "Build command: npm run build"
-          
-          if ! npm run build; then
-            echo "::error::React build failed during release process"
-            echo "::group::Build failure details"
-            echo "Exit code: $?"
-            echo "Build environment:"
-            echo "  Node.js version: $(node --version)"
-            echo "  npm version: $(npm --version)"
-            echo "  Working directory: $(pwd)"
-            echo "  Vite config: $(test -f vite.config.js && echo 'present' || echo 'missing')"
-            echo "  Source files:"
-            echo "    popup.jsx: $(test -f popup/popup.jsx && echo 'present' || echo 'missing')"
-            echo "    options.jsx: $(test -f options/options.jsx && echo 'present' || echo 'missing')"
-            echo "::endgroup::"
-            exit 1
-          fi
-          
-          # Verify dist directory was created
-          if [ ! -d "dist" ]; then
-            echo "::error::dist directory was not created by build"
-            exit 1
-          fi
-          
-          # Verify essential files in dist
-          ESSENTIAL_DIST_FILES=("manifest.json" "popup/popup.html" "popup/popup.js" "options/options.html" "options/options.js")
-          for file in "${ESSENTIAL_DIST_FILES[@]}"; do
-            if [ ! -f "dist/$file" ]; then
-              echo "::warning::Essential file missing from dist: $file"
-            else
-              echo "✓ Built file verified: $file"
-            fi
-          done
-          
-          echo "React application built successfully at $(date)"
-          echo "Build output:"
-          ls -lh dist/popup/ dist/options/ | head -20
-          echo "::endgroup::"
-        continue-on-error: false
-      
-      - name: Extract version from package.json
-        id: version
-        run: |
-          echo "::group::Extracting version information"
-          echo "Reading version from package.json..."
-          
-          if [ ! -f package.json ]; then
-            echo "::error::package.json not found"
-            echo "::group::Version extraction error details"
-            echo "Current directory: $(pwd)"
-            echo "Available files:"
-            ls -la
-            echo "::endgroup::"
-            exit 1
-          fi
-          
-          # Extract version with error handling
-          if ! VERSION=$(node -p "require('./package.json').version" 2>/dev/null); then
-            echo "::error::Failed to extract version from package.json"
-            echo "::group::Version extraction error details"
-            echo "Node.js version: $(node --version)"
-            echo "Package.json content:"
-            cat package.json | head -20
-            echo "::endgroup::"
-            exit 1
-          fi
-          
-          if [ -z "$VERSION" ] || [ "$VERSION" = "undefined" ] || [ "$VERSION" = "null" ]; then
-            echo "::error::Invalid version extracted from package.json"
-            echo "::group::Version validation error details"
-            echo "Extracted version: '$VERSION'"
-            echo "Package.json version field:"
-            node -p "JSON.stringify({version: require('./package.json').version}, null, 2)"
-            echo "::endgroup::"
-            exit 1
-          fi
-          
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "tag=v$VERSION" >> $GITHUB_OUTPUT
-          echo "Successfully extracted version: $VERSION"
-          echo "Release tag will be: v$VERSION"
-          echo "::endgroup::"
-        continue-on-error: false
-      
-      - name: Check if release already exists
-        id: check_release
-        run: |
-          echo "::group::Checking for existing release"
-          echo "Checking if release tag v${{ steps.version.outputs.version }} already exists..."
-          
-          # Check if tag exists locally
-          if git rev-parse "v${{ steps.version.outputs.version }}" >/dev/null 2>&1; then
-            echo "exists=true" >> $GITHUB_OUTPUT
-            echo "::notice::Release tag v${{ steps.version.outputs.version }} already exists locally, skipping release creation"
-            echo "::endgroup::"
-            exit 0
-          fi
-          
-          # Check if release exists on GitHub
-          if gh release view "v${{ steps.version.outputs.version }}" >/dev/null 2>&1; then
-            echo "exists=true" >> $GITHUB_OUTPUT
-            echo "::notice::Release v${{ steps.version.outputs.version }} already exists on GitHub, skipping release creation"
-            echo "::endgroup::"
-            exit 0
-          fi
-          
-          echo "exists=false" >> $GITHUB_OUTPUT
-          echo "Release v${{ steps.version.outputs.version }} does not exist, proceeding with release creation"
-          echo "::endgroup::"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: false
-      
-      - name: Package extension
-        if: steps.check_release.outputs.exists == 'false'
-        run: |
-          echo "::group::Creating extension package"
-          echo "Starting extension packaging at $(date)"
-          echo "Target version: ${{ steps.version.outputs.version }}"
-          
-          # Security validation for packaging process
-          echo "Performing security validation for packaging..."
-          
-          # Ensure no sensitive files are included in packaging
-          SENSITIVE_FILES=(".env" ".env.local" ".env.production" "*.key" "*.pem" "*.p12" "*.pfx")
-          for pattern in "${SENSITIVE_FILES[@]}"; do
-            if find dist -name "$pattern" 2>/dev/null | head -1 | grep -q .; then
-              echo "::warning::Potentially sensitive files found in dist matching pattern: $pattern"
-              find dist -name "$pattern" | head -5
-            fi
-          done
-          
-          # Validate required tools
-          if ! command -v zip >/dev/null 2>&1; then
-            echo "::error::zip command not found"
-            echo "::group::Packaging tool error details"
-            echo "zip is required for creating the extension archive"
-            echo "Available commands:"
-            which tar gzip || true
-            echo "::endgroup::"
-            exit 1
-          fi
-          
-          # Verify dist directory exists (should have been created by build step)
-          if [ ! -d "dist" ]; then
-            echo "::error::dist directory not found - build step may have failed"
-            echo "::group::Directory verification error details"
-            echo "Current directory: $(pwd)"
-            echo "Available directories:"
-            ls -la
-            echo "::endgroup::"
-            exit 1
-          fi
-          
-          # Validate dist directory contents
-          echo "Validating dist directory contents..."
-          DIST_FILES=$(find dist -type f | wc -l)
-          if [ "$DIST_FILES" -eq 0 ]; then
-            echo "::error::dist directory is empty"
-            echo "::group::File validation error details"
-            echo "dist directory contents:"
-            ls -la dist/
-            echo "::endgroup::"
-            exit 1
-          fi
-          
-          # List packaged files for verification
-          echo "Packaged files ($DIST_FILES total):"
-          find dist -type f | sort | head -50
-          if [ "$DIST_FILES" -gt 50 ]; then
-            echo "... and $((DIST_FILES - 50)) more files"
-          fi
-          
-          # Validate essential extension files
-          echo "Validating essential extension files..."
-          ESSENTIAL_FILES=("manifest.json" "background.js" "popup/popup.html" "popup/popup.js" "options/options.html" "options/options.js")
-          for file in "${ESSENTIAL_FILES[@]}"; do
-            if [ ! -f "dist/$file" ]; then
-              echo "::warning::Essential file missing from package: $file"
-            else
-              echo "✓ Essential file found: $file"
-            fi
-          done
-          
-          # Create ZIP archive from built dist directory
-          echo "Creating ZIP archive from dist directory..."
-          ZIP_FILE="dualsub-v${{ steps.version.outputs.version }}.zip"
-          
-          if ! (cd dist && zip -r "../$ZIP_FILE" .); then
-            echo "::error::Failed to create ZIP archive"
-            echo "::group::ZIP creation error details"
-            echo "zip exit code: $?"
-            echo "Current directory: $(pwd)"
-            echo "Files in dist directory:"
-            ls -la dist/ | head -20
-            echo "Available disk space:"
-            df -h .
-            echo "::endgroup::"
-            exit 1
-          fi
-          
-          # Validate ZIP file
-          if [ ! -f "$ZIP_FILE" ]; then
-            echo "::error::ZIP file was not created"
-            echo "::group::ZIP validation error details"
-            echo "Expected file: $ZIP_FILE"
-            echo "Files in current directory:"
-            ls -la *.zip || echo "No ZIP files found"
-            echo "::endgroup::"
-            exit 1
-          fi
-          
-          ZIP_SIZE=$(stat -f%z "$ZIP_FILE" 2>/dev/null || stat -c%s "$ZIP_FILE" 2>/dev/null || echo "unknown")
-          if [ "$ZIP_SIZE" = "0" ] || [ "$ZIP_SIZE" = "unknown" ]; then
-            echo "::error::ZIP file appears to be empty or invalid"
-            echo "::group::ZIP size validation error details"
-            echo "ZIP file size: $ZIP_SIZE bytes"
-            echo "ZIP file info:"
-            ls -la "$ZIP_FILE"
-            echo "::endgroup::"
-            exit 1
-          fi
-          
-          # Verify ZIP contents
-          echo "Verifying ZIP archive contents..."
-          if ! unzip -l "$ZIP_FILE" > zip_contents.txt; then
-            echo "::error::Failed to list ZIP contents"
-            echo "::group::ZIP verification error details"
-            echo "unzip exit code: $?"
-            echo "ZIP file size: $ZIP_SIZE bytes"
-            echo "ZIP file type:"
-            file "$ZIP_FILE" || echo "file command not available"
-            echo "::endgroup::"
-            exit 1
-          fi
-          
-          echo "ZIP archive contents:"
-          cat zip_contents.txt
-          
-          ZIP_FILE_COUNT=$(unzip -l "$ZIP_FILE" | grep -c "^[[:space:]]*[0-9]" || echo "0")
-          echo "ZIP contains $ZIP_FILE_COUNT files"
-          
-          if [ "$ZIP_FILE_COUNT" -eq 0 ]; then
-            echo "::error::ZIP archive appears to be empty"
-            echo "::group::Empty ZIP error details"
-            echo "ZIP listing output:"
-            cat zip_contents.txt
-            echo "::endgroup::"
-            exit 1
-          fi
-          
-          # Clean up temporary files
-          echo "Cleaning up temporary files..."
-          rm -f zip_contents.txt
-          
-          echo "Extension packaging completed successfully!"
-          echo "Package: $ZIP_FILE ($ZIP_SIZE bytes, $ZIP_FILE_COUNT files)"
-          echo "::endgroup::"
-        continue-on-error: false
-      
-      - name: Create GitHub Release with Asset
-        if: steps.check_release.outputs.exists == 'false'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          echo "::group::Creating GitHub release"
-          echo "Starting release creation at $(date)"
-          echo "Release tag: ${{ steps.version.outputs.tag }}"
-          echo "Release version: ${{ steps.version.outputs.version }}"
-          
-          # Security validation for release asset handling
-          echo "Performing security validation for release assets..."
-          
-          # Validate ZIP file exists and perform security checks
-          ZIP_FILE="dualsub-v${{ steps.version.outputs.version }}.zip"
-          if [ ! -f "$ZIP_FILE" ]; then
-            echo "::error::Extension ZIP file not found for release"
-            echo "::group::Release asset error details"
-            echo "Expected file: $ZIP_FILE"
-            echo "Available files:"
-            ls -la *.zip || echo "No ZIP files found"
-            echo "Current directory contents:"
-            ls -la | head -20
-            echo "::endgroup::"
-            exit 1
-          fi
-          
-          # Validate ZIP file integrity and security
-          ZIP_SIZE=$(stat -f%z "$ZIP_FILE" 2>/dev/null || stat -c%s "$ZIP_FILE" 2>/dev/null || echo "0")
-          echo "ZIP file validated: $ZIP_FILE ($ZIP_SIZE bytes)"
-          
-          # Security check: Ensure ZIP file doesn't contain sensitive files
-          echo "Performing security scan of ZIP contents..."
-          if unzip -l "$ZIP_FILE" | grep -E "\.(key|pem|p12|pfx|crt|env)$" | head -5; then
-            echo "::warning::ZIP file may contain potentially sensitive files"
-            echo "Please review the ZIP contents for security"
-          fi
-          
-          # Security check: Validate ZIP file size is reasonable (not too large or too small)
-          if [ "$ZIP_SIZE" -lt 1000 ]; then
-            echo "::warning::ZIP file seems unusually small ($ZIP_SIZE bytes)"
-            echo "This may indicate packaging issues"
-          elif [ "$ZIP_SIZE" -gt 50000000 ]; then  # 50MB
-            echo "::warning::ZIP file seems unusually large ($ZIP_SIZE bytes)"
-            echo "This may indicate inclusion of unnecessary files"
-          fi
-          
-          # Ensure no environment variables are exposed in release notes
-          echo "Validating release notes for sensitive information..."
-          
-          # Create release notes with error handling and security validation
-          echo "Creating release notes..."
-          if ! cat > release_notes.md << EOF
-          Automated release of DualSub extension ${{ steps.version.outputs.tag }}
-          
-          ## Changes
-          This release includes all changes from the latest main branch push.
-          
-          ## Installation
-          Download the \`dualsub-v${{ steps.version.outputs.version }}.zip\` file and load it as an unpacked extension in your browser.
-          
-          ## Version Information
-          - Version: ${{ steps.version.outputs.version }}
-          - Build Date: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
-          - Commit: ${{ github.sha }}
-          - Workflow Run: ${{ github.run_id }}
-          EOF
-          then
-            echo "::error::Failed to create release notes"
-            echo "::group::Release notes error details"
-            echo "Current directory: $(pwd)"
-            echo "Disk space:"
-            df -h .
-            echo "::endgroup::"
-            exit 1
-          fi
-          
-          echo "Release notes created:"
-          cat release_notes.md
-          
-          # Security validation: Ensure release notes don't contain sensitive information
-          echo "Performing security validation of release notes..."
-          SENSITIVE_PATTERNS=("password" "secret" "key" "token" "private" "credential")
-          for pattern in "${SENSITIVE_PATTERNS[@]}"; do
-            if grep -i "$pattern" release_notes.md >/dev/null 2>&1; then
-              echo "::warning::Release notes may contain potentially sensitive information with pattern: $pattern"
-              echo "Please review release notes for security"
-            fi
-          done
-          
-          # Validate release notes don't expose environment variables
-          if grep -E '\$\{[^}]+\}|\$[A-Z_]+' release_notes.md >/dev/null 2>&1; then
-            echo "::warning::Release notes may contain unexpanded environment variables"
-            echo "Please review release notes for proper variable expansion"
-          fi
-          
-          # Function to attempt release creation with retry logic
-          create_release_with_retry() {
-            local max_attempts=3
-            local attempt=1
-            local base_delay=5
-            
-            while [ $attempt -le $max_attempts ]; do
-              echo "Release creation attempt $attempt of $max_attempts..."
-              
-              if gh release create "${{ steps.version.outputs.tag }}" \
-                --title "Release ${{ steps.version.outputs.tag }}" \
-                --notes-file release_notes.md \
-                --latest \
-                "$ZIP_FILE"; then
-                echo "Release created successfully on attempt $attempt"
-                return 0
-              else
-                local exit_code=$?
-                echo "::warning::Release creation attempt $attempt failed (exit code: $exit_code)"
-                
-                if [ $attempt -eq $max_attempts ]; then
-                  echo "::error::All release creation attempts failed"
-                  echo "::group::Release creation failure details"
-                  echo "Final attempt exit code: $exit_code"
-                  echo "GitHub CLI version:"
-                  gh --version
-                  echo "GitHub authentication status:"
-                  gh auth status || echo "Auth status check failed"
-                  echo "Repository information:"
-                  gh repo view || echo "Repo view failed"
-                  echo "Existing releases:"
-                  gh release list --limit 5 || echo "Release list failed"
-                  echo "::endgroup::"
-                  return $exit_code
-                fi
-                
-                # Exponential backoff delay
-                local delay=$((base_delay * (2 ** (attempt - 1))))
-                echo "Waiting ${delay} seconds before retry..."
-                sleep $delay
-                attempt=$((attempt + 1))
-              fi
-            done
-          }
-          
-          # Attempt to create release with retry logic
-          if ! create_release_with_retry; then
-            echo "::error::Failed to create GitHub release after all retry attempts"
-            exit 1
-          fi
-          
-          # Verify release was created successfully
-          echo "Verifying release creation..."
-          if ! gh release view "${{ steps.version.outputs.tag }}" >/dev/null 2>&1; then
-            echo "::error::Release verification failed - release not found after creation"
-            echo "::group::Release verification error details"
-            echo "Expected release tag: ${{ steps.version.outputs.tag }}"
-            echo "Recent releases:"
-            gh release list --limit 10 || echo "Could not list releases"
-            echo "::endgroup::"
-            exit 1
-          fi
-          
-          # Verify asset was uploaded
-          echo "Verifying release asset upload..."
-          if ! gh release view "${{ steps.version.outputs.tag }}" --json assets --jq '.assets[].name' | grep -q "$ZIP_FILE"; then
-            echo "::warning::Release asset may not have been uploaded correctly"
-            echo "::group::Asset verification details"
-            echo "Expected asset: $ZIP_FILE"
-            echo "Actual assets:"
-            gh release view "${{ steps.version.outputs.tag }}" --json assets --jq '.assets[].name' || echo "Could not list assets"
-            echo "::endgroup::"
-            
-            # Attempt to upload asset separately with retry
-            echo "Attempting to upload asset separately..."
-            upload_asset_with_retry() {
-              local max_attempts=3
-              local attempt=1
-              local base_delay=3
-              
-              while [ $attempt -le $max_attempts ]; do
-                echo "Asset upload attempt $attempt of $max_attempts..."
-                
-                if gh release upload "${{ steps.version.outputs.tag }}" "$ZIP_FILE"; then
-                  echo "Asset uploaded successfully on attempt $attempt"
-                  return 0
-                else
-                  local exit_code=$?
-                  echo "::warning::Asset upload attempt $attempt failed (exit code: $exit_code)"
-                  
-                  if [ $attempt -eq $max_attempts ]; then
-                    echo "::error::All asset upload attempts failed"
-                    return $exit_code
+            - name: Set up Node.js
+              uses: actions/setup-node@v6
+              with:
+                  node-version: '24'
+                  cache: npm
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Audit dependencies
+              run: npm audit --audit-level=high
+
+            - name: Check formatting
+              run: npm run format:check
+
+            - name: Lint
+              run: npm run lint
+
+            - name: Test with coverage ratchet
+              run: npm run test:coverage
+
+            - name: Build extension
+              run: npm run build
+
+            - name: Verify extension artifact
+              run: npm run verify:build
+
+            - name: Read release version
+              id: version
+              shell: bash
+              run: |
+                  version=$(node -p "JSON.parse(require('node:fs').readFileSync('package.json', 'utf8')).version")
+                  echo "version=$version" >> "$GITHUB_OUTPUT"
+                  echo "tag=v$version" >> "$GITHUB_OUTPUT"
+
+            - name: Check for an existing release
+              id: existing_release
+              shell: bash
+              run: |
+                  if gh release view "${{ steps.version.outputs.tag }}" >/dev/null 2>&1; then
+                    echo "exists=true" >> "$GITHUB_OUTPUT"
+                  else
+                    echo "exists=false" >> "$GITHUB_OUTPUT"
                   fi
-                  
-                  local delay=$((base_delay * (2 ** (attempt - 1))))
-                  echo "Waiting ${delay} seconds before retry..."
-                  sleep $delay
-                  attempt=$((attempt + 1))
-                fi
-              done
-            }
-            
-            if ! upload_asset_with_retry; then
-              echo "::error::Failed to upload release asset after all retry attempts"
-              # Don't exit 1 here as the release was created, just asset upload failed
-            fi
-          else
-            echo "Release asset verified successfully"
-          fi
-          
-          echo "Release ${{ steps.version.outputs.tag }} created successfully!"
-          echo "Release URL: https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.tag }}"
-          
-          # Clean up
-          rm -f release_notes.md
-          echo "::endgroup::"
-        continue-on-error: false
 
-      - name: Release failure notification
-        if: failure()
-        run: |
-          echo "::error::Release workflow failed"
-          echo "::group::Release failure context"
-          echo "Event: ${{ github.event_name }}"
-          echo "Branch: ${{ github.ref_name }}"
-          echo "Commit: ${{ github.sha }}"
-          echo "Actor: ${{ github.actor }}"
-          echo "Workflow run: ${{ github.run_id }}"
-          echo "Version: ${{ steps.version.outputs.version || 'unknown' }}"
-          echo "Tag: ${{ steps.version.outputs.tag || 'unknown' }}"
-          echo "Release exists check: ${{ steps.check_release.outputs.exists || 'unknown' }}"
-          echo "::endgroup::"
-          
-          echo "::error title=Release Failed::Automated release creation failed for main branch push. Manual intervention may be required."
+            - name: Package extension
+              if: steps.existing_release.outputs.exists == 'false'
+              shell: bash
+              run: |
+                  archive="dualsub-${{ steps.version.outputs.tag }}.zip"
+                  (cd dist && zip -qr "../$archive" .)
+                  unzip -t "$archive"
+
+            - name: Create GitHub release
+              if: steps.existing_release.outputs.exists == 'false'
+              shell: bash
+              run: |
+                  archive="dualsub-${{ steps.version.outputs.tag }}.zip"
+                  gh release create "${{ steps.version.outputs.tag }}" "$archive" \
+                    --generate-notes \
+                    --latest \
+                    --target "$GITHUB_SHA" \
+                    --title "Release ${{ steps.version.outputs.tag }}"

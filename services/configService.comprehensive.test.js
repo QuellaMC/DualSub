@@ -284,6 +284,27 @@ describe('ConfigService Comprehensive Error Handling Tests', () => {
         });
     });
 
+    describe('Collection setting persistence', () => {
+        it('stores array and object settings through the public write APIs', async () => {
+            const contextTypes = ['cultural', 'linguistic'];
+            const subtitleBlacklist = {
+                disneyplus: ['forced=yes'],
+                netflix: [],
+                generic: [],
+            };
+
+            await configService.set('aiContextTypes', contextTypes);
+            await configService.setMultiple({ subtitleBlacklist });
+
+            expect(chromeApiMock.storage.data.get('aiContextTypes')).toEqual(
+                contextTypes
+            );
+            expect(chromeApiMock.storage.data.get('subtitleBlacklist')).toEqual(
+                subtitleBlacklist
+            );
+        });
+    });
+
     describe('End-to-End Error Flow Integration Tests', () => {
         it('should handle complete storage system failure gracefully', async () => {
             // Simulate complete Chrome storage API failure

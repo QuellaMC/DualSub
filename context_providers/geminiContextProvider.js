@@ -10,11 +10,9 @@
 
 import Logger from '../utils/logger.js';
 import { configService } from '../services/configService.js';
-import {
-    getContextSchema,
-    getGeminiSchema,
-    validateAgainstSchema,
-} from './contextSchemas.js';
+import { getContextSchema, validateAgainstSchema } from './contextSchemas.js';
+import { isRetryableContextError } from './retryPolicy.js';
+import { fetchWithTimeout } from '../utils/fetchWithTimeout.js';
 
 const logger = Logger.create('GeminiContextProvider');
 
@@ -23,31 +21,24 @@ const logger = Logger.create('GeminiContextProvider');
  */
 export const GEMINI_MODELS = [
     {
+        id: 'gemini-3.5-flash',
+        name: 'Gemini 3.5 Flash',
+        description: 'Latest stable Flash model for context analysis',
+        contextWindow: 1048576,
+        recommended: true,
+    },
+    {
         id: 'gemini-2.5-flash',
         name: 'Gemini 2.5 Flash',
         description: 'Fast and efficient model for quick context analysis',
         contextWindow: 1000000,
-        recommended: true,
+        recommended: false,
     },
     {
         id: 'gemini-2.5-pro',
         name: 'Gemini 2.5 Pro',
         description:
             'Advanced model with superior reasoning for complex cultural analysis',
-        contextWindow: 2000000,
-        recommended: false,
-    },
-    {
-        id: 'gemini-1.5-flash',
-        name: 'Gemini 1.5 Flash',
-        description: 'Previous generation fast model (legacy)',
-        contextWindow: 1000000,
-        recommended: false,
-    },
-    {
-        id: 'gemini-1.5-pro',
-        name: 'Gemini 1.5 Pro',
-        description: 'Previous generation advanced model (legacy)',
         contextWindow: 2000000,
         recommended: false,
     },
@@ -78,10 +69,7 @@ export function getDefaultModel() {
  * @returns {string} Formatted prompt for the AI model
  */
 function createContextPrompt(text, contextType, metadata = {}) {
-    const {
-        targetLanguage = 'unknown',
-        surroundingContext = '',
-    } = metadata;
+    const { targetLanguage = 'unknown', surroundingContext = '' } = metadata;
 
     // Get language name for the target language code
     const getLanguageName = (langCode) => {
@@ -275,7 +263,8 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
     // Validate input
     if (!text || typeof text !== 'string' || text.trim() === '') {
         logger.warn('Empty or invalid text provided for context analysis', {
-            text: text?.substring(0, 50),
+            valueType: typeof text,
+            textLength: typeof text === 'string' ? text.length : 0,
         });
         return {
             success: false,
@@ -289,7 +278,7 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
         const config = await configService.getAll();
         const {
             geminiApiKey,
-            geminiModel = 'gemini-2.5-flash',
+            geminiModel = 'gemini-3.5-flash',
             aiContextTimeout = 30000,
         } = config;
 
@@ -300,7 +289,6 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
         // Create context-specific prompt
         const prompt = createContextPrompt(text, contextType, metadata);
         const jsonSchema = getContextSchema(contextType);
-        const geminiSchema = getGeminiSchema(contextType);
 
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiApiKey}`;
 
@@ -317,10 +305,10 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
             generationConfig: {
                 temperature: 0.3,
                 topP: 0.95,
-                maxOutputTokens: 80000,
+                maxOutputTokens: 8192,
                 stopSequences: [],
                 responseMimeType: 'application/json',
-                responseSchema: geminiSchema,
+                responseJsonSchema: jsonSchema,
             },
             safetySettings: [
                 {
@@ -343,39 +331,29 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
         };
 
         logger.debug('Making Gemini context analysis request', {
-            apiUrl: apiUrl.split('?')[0], // Log URL without API key
-            model: geminiModel,
             contextType,
             promptLength: prompt.length,
+            hasConfiguredModel: !!geminiModel,
         });
 
-        const controller = new AbortController();
-        const timeoutId = setTimeout(
-            () => controller.abort(),
+        const response = await fetchWithTimeout(
+            apiUrl,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestBody),
+            },
             aiContextTimeout
         );
 
-        const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(requestBody),
-            signal: controller.signal,
-        });
-
-        clearTimeout(timeoutId);
-
         if (!response.ok) {
-            const errorText = await response.text();
             logger.error('Gemini context analysis API request failed', {
                 status: response.status,
-                statusText: response.statusText,
-                errorText: errorText.substring(0, 500),
+                contentType: response.headers?.get?.('content-type') || null,
             });
-            throw new Error(
-                `Gemini API request failed: ${response.status} ${response.statusText}`
-            );
+            throw new Error(`Gemini API request failed: ${response.status}`);
         }
 
         const data = await response.json();
@@ -387,7 +365,13 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
         ) {
             logger.error(
                 'Invalid response format from Gemini context analysis API',
-                { data }
+                {
+                    responseType: Array.isArray(data) ? 'array' : typeof data,
+                    hasCandidates: Array.isArray(data?.candidates),
+                    candidateCount: Array.isArray(data?.candidates)
+                        ? data.candidates.length
+                        : 0,
+                }
             );
             throw new Error('Invalid response format from Gemini API');
         }
@@ -397,7 +381,9 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
         // Check for safety blocks
         if (candidate.finishReason === 'SAFETY') {
             logger.warn('Gemini response blocked for safety reasons', {
-                safetyRatings: candidate.safetyRatings,
+                safetyRatingCount: Array.isArray(candidate.safetyRatings)
+                    ? candidate.safetyRatings.length
+                    : 0,
             });
             throw new Error('Content blocked by safety filters');
         }
@@ -410,7 +396,10 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
             structuredAnalysis = JSON.parse(rawResponse);
             if (!validateAgainstSchema(jsonSchema, structuredAnalysis)) {
                 logger.warn('Schema validation failed', {
-                    rawResponsePreview: rawResponse.substring(0, 200),
+                    responseLength: rawResponse.length,
+                    analysisType: Array.isArray(structuredAnalysis)
+                        ? 'array'
+                        : typeof structuredAnalysis,
                 });
                 return {
                     success: false,
@@ -426,8 +415,8 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
             }
         } catch (error) {
             logger.warn('Failed to parse JSON response', {
-                error: error.message,
-                rawResponsePreview: rawResponse.substring(0, 200),
+                errorType: error?.name || 'UnknownError',
+                responseLength: rawResponse.length,
             });
             return {
                 success: false,
@@ -471,10 +460,11 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
 
         return result;
     } catch (error) {
-        logger.error('Gemini context analysis failed', error, {
+        logger.error('Gemini context analysis failed', null, {
+            errorType: error?.name || 'UnknownError',
             textLength: text?.length || 0,
             contextType,
-            errorMessage: error.message,
+            shouldRetry: isRetryableContextError(error),
         });
 
         return {
@@ -483,39 +473,8 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
             contextType,
             originalText: text,
             metadata,
+            shouldRetry: isRetryableContextError(error),
+            shouldCache: false,
         };
     }
-}
-
-/**
- * Batch context analysis for multiple texts (future enhancement)
- * @param {Array<Object>} requests - Array of context analysis requests
- * @returns {Promise<Array<Object>>} Array of context analysis results
- */
-export async function analyzeBatchContext(requests) {
-    logger.info('Gemini batch context analysis initiated', {
-        requestCount: requests.length,
-    });
-
-    // For now, process sequentially to avoid rate limits
-    // Future enhancement: implement proper batching
-    const results = [];
-    for (const request of requests) {
-        const result = await analyzeContext(
-            request.text,
-            request.contextType,
-            request.metadata
-        );
-        results.push(result);
-
-        // Add small delay between requests to respect rate limits
-        await new Promise((resolve) => setTimeout(resolve, 100));
-    }
-
-    logger.info('Gemini batch context analysis completed', {
-        requestCount: requests.length,
-        successCount: results.filter((r) => r.success).length,
-    });
-
-    return results;
 }

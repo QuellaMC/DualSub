@@ -11,6 +11,84 @@
 import { MODAL_STATES } from '../core/constants.js';
 import { getOrCreateUiRoot } from '../../shared/subtitleUtilities.js';
 
+const ALLOWED_ANALYSIS_TAGS = new Set([
+    'B',
+    'BLOCKQUOTE',
+    'BR',
+    'CODE',
+    'DIV',
+    'EM',
+    'H1',
+    'H2',
+    'H3',
+    'H4',
+    'H5',
+    'H6',
+    'I',
+    'LI',
+    'OL',
+    'P',
+    'PRE',
+    'SPAN',
+    'STRONG',
+    'UL',
+]);
+
+const BLOCKED_ANALYSIS_TAGS = new Set([
+    'EMBED',
+    'IFRAME',
+    'LINK',
+    'MATH',
+    'META',
+    'OBJECT',
+    'SCRIPT',
+    'STYLE',
+    'SVG',
+    'TEMPLATE',
+]);
+
+/**
+ * Keep the small formatting vocabulary produced by the legacy formatter while
+ * stripping executable markup and all attributes except DualSub-owned classes.
+ * Parsing happens in an inert template before the result enters the live DOM.
+ */
+export function sanitizeAnalysisHtml(value) {
+    const template = document.createElement('template');
+    template.innerHTML = String(value ?? '');
+
+    const elements = [...template.content.querySelectorAll('*')].reverse();
+    for (const element of elements) {
+        if (BLOCKED_ANALYSIS_TAGS.has(element.tagName)) {
+            element.remove();
+            continue;
+        }
+
+        if (!ALLOWED_ANALYSIS_TAGS.has(element.tagName)) {
+            element.replaceWith(...element.childNodes);
+            continue;
+        }
+
+        for (const attribute of [...element.attributes]) {
+            if (attribute.name !== 'class') {
+                element.removeAttribute(attribute.name);
+            }
+        }
+
+        if (element.hasAttribute('class')) {
+            const safeClasses = [...element.classList].filter((className) =>
+                /^dualsub-[a-z0-9_-]+$/i.test(className)
+            );
+            if (safeClasses.length > 0) {
+                element.className = safeClasses.join(' ');
+            } else {
+                element.removeAttribute('class');
+            }
+        }
+    }
+
+    return template.innerHTML;
+}
+
 /**
  * Modal UI creation and management
  */
@@ -389,7 +467,12 @@ export class AIContextModalUI {
             this.core.selectedWords && this.core.selectedWords.size > 0;
 
         if (!hasPositions && !hasWords) {
-            container.innerHTML = `<span class="dualsub-placeholder">${this._getLocalizedMessage('aiContextNoWordsSelected')}</span>`;
+            const placeholder = document.createElement('span');
+            placeholder.className = 'dualsub-placeholder';
+            placeholder.textContent = this._getLocalizedMessage(
+                'aiContextNoWordsSelected'
+            );
+            container.replaceChildren(placeholder);
             button.disabled = true;
         } else {
             // Sort position keys by subtitle sequence
@@ -419,28 +502,38 @@ export class AIContextModalUI {
                       (w, idx) => `${w}:fallback:${idx}`
                   );
 
-            const wordsHtml = sortedPositionKeys
-                .map((positionKey, index) => {
+            const wordElements = sortedPositionKeys.map(
+                (positionKey, index) => {
                     const positionData = hasPositions
                         ? this.core.selectedWordPositions.get(positionKey)
                         : null;
                     const word = positionData
-                        ? positionData.word
-                        : positionKey.split(':')[0];
+                        ? String(positionData.word ?? '')
+                        : Array.from(this.core.selectedWords || [])[index] ||
+                          '';
 
-                    // Hide remove buttons during processing
-                    const removeButtonStyle = this.core.isAnalyzing
-                        ? ' style="display: none;"'
-                        : '';
-                    return `<span class="dualsub-selected-word" data-word="${word}" data-position-key="${positionKey}" data-position-index="${index}">
-                    ${word}
-                    <span class="dualsub-word-remove" data-word="${word}" data-position-key="${positionKey}"${removeButtonStyle}>×</span>
-                </span>`;
-                })
-                .filter((html) => html)
-                .join('');
+                    const wordElement = document.createElement('span');
+                    wordElement.className = 'dualsub-selected-word';
+                    wordElement.dataset.word = word;
+                    wordElement.dataset.positionKey = positionKey;
+                    wordElement.dataset.positionIndex = String(index);
+                    wordElement.append(document.createTextNode(word));
 
-            container.innerHTML = wordsHtml;
+                    const removeButton = document.createElement('span');
+                    removeButton.className = 'dualsub-word-remove';
+                    removeButton.dataset.word = word;
+                    removeButton.dataset.positionKey = positionKey;
+                    removeButton.textContent = '×';
+                    if (this.core.isAnalyzing) {
+                        removeButton.style.display = 'none';
+                    }
+                    wordElement.appendChild(removeButton);
+
+                    return wordElement;
+                }
+            );
+
+            container.replaceChildren(...wordElements);
             button.disabled = !hasPositions && !hasWords;
 
             // Apply disabled styling if processing is active
@@ -516,12 +609,7 @@ export class AIContextModalUI {
             '#dualsub-analysis-results'
         );
         if (analysisResults && results) {
-            // Basic sanitization before injecting HTML
-            const sanitized = String(results)
-                .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
-                .replace(/\son\w+="[^"]*"/gi, '')
-                .replace(/\sjavascript:/gi, '');
-            analysisResults.innerHTML = sanitized;
+            analysisResults.innerHTML = sanitizeAnalysisHtml(results);
             analysisResults.scrollTop = 0;
         }
         this.core.setState(MODAL_STATES.DISPLAY);
@@ -532,26 +620,35 @@ export class AIContextModalUI {
      * @param {string} error - Error message
      */
     showErrorState(error) {
-        const errorHtml = `
-            <div class="dualsub-error">
-                <h4>${this._getLocalizedMessage('aiContextAnalysisFailed')}</h4>
-                <p>${error}</p>
-                <button class="dualsub-btn dualsub-btn-secondary" onclick="document.dispatchEvent(new CustomEvent('aicontext:modal:closeRequested'))">
-                    ${this._getLocalizedMessage('aiContextClose')}
-                </button>
-            </div>
-        `;
-
         const scope = this.core.contentElement || document;
         const analysisResults = scope.querySelector(
             '#dualsub-analysis-results'
         );
         if (analysisResults) {
-            const sanitized = errorHtml
-                .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '')
-                .replace(/\son\w+="[^"]*"/gi, '')
-                .replace(/\sjavascript:/gi, '');
-            analysisResults.innerHTML = sanitized;
+            const errorContainer = document.createElement('div');
+            errorContainer.className = 'dualsub-error';
+
+            const heading = document.createElement('h4');
+            heading.textContent = this._getLocalizedMessage(
+                'aiContextAnalysisFailed'
+            );
+
+            const message = document.createElement('p');
+            message.textContent = String(error ?? '');
+
+            const closeButton = document.createElement('button');
+            closeButton.type = 'button';
+            closeButton.className = 'dualsub-btn dualsub-btn-secondary';
+            closeButton.textContent =
+                this._getLocalizedMessage('aiContextClose');
+            closeButton.addEventListener('click', () => {
+                document.dispatchEvent(
+                    new CustomEvent('aicontext:modal:closeRequested')
+                );
+            });
+
+            errorContainer.append(heading, message, closeButton);
+            analysisResults.replaceChildren(errorContainer);
             analysisResults.scrollTop = 0;
         }
         this.core.setState(MODAL_STATES.ERROR);

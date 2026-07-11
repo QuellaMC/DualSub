@@ -1,4 +1,8 @@
 import { useState, useCallback } from 'react';
+import {
+    hasHostPermission,
+    requestHostPermission,
+} from '../../utils/hostPermissions.js';
 
 /**
  * Hook for testing OpenAI API and fetching models
@@ -24,7 +28,7 @@ export function useOpenAITest(t, fetchAvailableModels) {
     }, []);
 
     const testConnection = useCallback(
-        async (apiKey, baseUrl) => {
+        async (apiKey, baseUrl, onModelsLoaded) => {
             if (!apiKey) {
                 showTestResult(
                     t('openaiApiKeyError', 'Please enter an API key first.'),
@@ -40,7 +44,12 @@ export function useOpenAITest(t, fetchAvailableModels) {
             );
 
             try {
-                await fetchAvailableModels(apiKey, baseUrl);
+                const permissionGranted = await requestHostPermission(baseUrl);
+                if (!permissionGranted) {
+                    throw new Error('Endpoint access was not granted.');
+                }
+                const models = await fetchAvailableModels(apiKey, baseUrl);
+                onModelsLoaded?.(models);
                 showTestResult(
                     t('openaiConnectionSuccessful', 'Connection successful!'),
                     'success'
@@ -74,6 +83,16 @@ export function useOpenAITest(t, fetchAvailableModels) {
             );
 
             try {
+                if (!(await hasHostPermission(baseUrl))) {
+                    showTestResult(
+                        t(
+                            'openaiEndpointPermissionRequired',
+                            'Use Test Connection to grant access to this endpoint.'
+                        ),
+                        'warning'
+                    );
+                    return;
+                }
                 const models = await fetchAvailableModels(apiKey, baseUrl);
 
                 if (onModelsLoaded) {

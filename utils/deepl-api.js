@@ -4,6 +4,8 @@
  * to avoid code duplication across different parts of the extension.
  */
 
+import { fetchWithTimeout } from './fetchWithTimeout.js';
+
 /**
  * Makes a DeepL API translation request
  * @param {string} apiKey - The DeepL API key
@@ -17,7 +19,7 @@ async function fetchDeepL(apiKey, apiPlan, requestBody) {
             ? 'https://api.deepl.com/v2/translate'
             : 'https://api-free.deepl.com/v2/translate';
 
-    return fetch(apiUrl, {
+    return fetchWithTimeout(apiUrl, {
         method: 'POST',
         headers: {
             Authorization: `DeepL-Auth-Key ${apiKey}`,
@@ -97,29 +99,4 @@ async function testDeepLConnection(
     }
 }
 
-// Universal export that works in both Node.js, browser, and service worker environments
-if (typeof module !== 'undefined' && module.exports) {
-    // Node.js environment
-    module.exports = { fetchDeepL, testDeepLConnection };
-} else {
-    // Browser or service worker environment
-    // Check for global object availability before using
-    const globalObj = (function () {
-        if (typeof globalThis !== 'undefined') return globalThis;
-        if (typeof window !== 'undefined') return window;
-        if (typeof global !== 'undefined') return global;
-        if (typeof self !== 'undefined') return self;
-        throw new Error('Unable to locate global object');
-    })();
-
-    // Only attach to global object if it exists and is writable
-    try {
-        globalObj.DeepLAPI = { fetchDeepL, testDeepLConnection };
-    } catch (error) {
-        // In strict environments where we can't modify the global object, just log and continue
-        console.warn(
-            'Could not attach DeepLAPI to global object:',
-            error.message
-        );
-    }
-}
+export { fetchDeepL, testDeepLConnection };

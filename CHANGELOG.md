@@ -5,6 +5,13 @@ All notable changes to DualSub will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- Completed a repository-wide sidebar, Manifest V3 lifecycle, dependency, test, build, CI, accessibility, and dead-code modernization pass.
+- Removed unused queue/batch processors and settings that claimed to group live subtitle cues without any production caller. The explicit multi-text provider protocol remains available and now chunks oversized inputs without dropping results.
+
 ## [2.5.0] - 2025-11-19
 
 ### ✨ Added
@@ -42,7 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - `useChromeMessage` for Chrome API integration
 - React-based options page with modular sections:
     - `GeneralSection` for general preferences
-    - `TranslationSection` for translation settings and batch configuration
+    - `TranslationSection` for translation provider settings
     - `ProvidersSection` for provider management
     - `AIContextSection` for AI context configuration
     - `AboutSection` for extension information

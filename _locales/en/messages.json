@@ -5,9 +5,6 @@
     "appDesc": {
         "message": "Displays dual language subtitles on streaming platforms."
     },
-    "pageTitle": {
-        "message": "DualSub Settings"
-    },
     "h1Title": {
         "message": "DualSub"
     },
@@ -20,17 +17,11 @@
     "originalLanguageLabel": {
         "message": "Language Set:"
     },
-    "translationSettingsLegend": {
-        "message": "Translation Settings"
-    },
     "providerLabel": {
         "message": "Provider:"
     },
     "targetLanguageLabel": {
         "message": "Translate to:"
-    },
-    "batchSizeLabel": {
-        "message": "Batch Size:"
     },
     "requestDelayLabel": {
         "message": "Request Delay (ms):"
@@ -71,9 +62,6 @@
     "uiLanguageLabel": {
         "message": "Language:"
     },
-    "openOptionsButton": {
-        "message": "Advanced Settings"
-    },
     "statusLanguageSetTo": {
         "message": "Language Set (Refresh Page): "
     },
@@ -112,9 +100,6 @@
     },
     "statusInvalidOffset": {
         "message": "Invalid offset, reverting."
-    },
-    "statusSettingNotApplied": {
-        "message": "Setting not applied. Refresh page."
     },
     "optionsPageTitle": {
         "message": "DualSub Options"
@@ -257,9 +242,6 @@
     "testingConnection": {
         "message": "Testing DeepL connection..."
     },
-    "deeplTestSuccess": {
-        "message": "✅ DeepL API test successful!"
-    },
     "deeplTestUnexpectedFormat": {
         "message": "⚠️ DeepL API responded but with unexpected format"
     },
@@ -278,15 +260,6 @@
     "deeplTestGenericError": {
         "message": "❌ Test failed: %s"
     },
-    "deepLApiUnavailable": {
-        "message": "DeepL API Unavailable"
-    },
-    "deepLApiUnavailableTooltip": {
-        "message": "DeepL API script failed to load"
-    },
-    "deeplApiNotLoadedError": {
-        "message": "❌ DeepL API script is not available. Please refresh the page."
-    },
     "cardGoogleTitle": {
         "message": "Google Translate"
     },
@@ -298,12 +271,6 @@
     },
     "cardMicrosoftDesc": {
         "message": "Free translation service provided by Microsoft Edge. No additional configuration required."
-    },
-    "cardDeepLFreeTitle": {
-        "message": "DeepL Translate (Free)"
-    },
-    "cardDeepLFreeDesc": {
-        "message": "Free DeepL translation service with high quality results. No API key required - uses DeepL's web interface."
     },
     "providerStatus": {
         "message": "Status:"
@@ -344,21 +311,6 @@
     "featureUsageLimits": {
         "message": "Usage limits apply"
     },
-    "featureMultipleBackups": {
-        "message": "Multiple backup methods"
-    },
-    "providerNotes": {
-        "message": "Notes:"
-    },
-    "noteSlowForSecurity": {
-        "message": "Slightly slower due to security measures"
-    },
-    "noteAutoFallback": {
-        "message": "Automatic fallback to alternative services"
-    },
-    "noteRecommendedDefault": {
-        "message": "Recommended as default provider"
-    },
     "providerGoogleName": {
         "message": "Google Translate (Free)"
     },
@@ -367,9 +319,6 @@
     },
     "providerDeepLName": {
         "message": "DeepL (API Key Required)"
-    },
-    "providerDeepLFreeName": {
-        "message": "DeepL Translate (Free)"
     },
     "providerOpenAICompatibleName": {
         "message": "OpenAI Compatible (API Key Required)"
@@ -385,9 +334,6 @@
     },
     "cardVertexGeminiTitle": {
         "message": "Vertex AI Gemini (API Key Required)"
-    },
-    "cardVertexGeminiDesc": {
-        "message": "Enter your access token and Vertex project settings."
     },
     "vertexAccessTokenLabel": {
         "message": "Access Token:"
@@ -413,17 +359,8 @@
     "vertexImportButton": {
         "message": "Import JSON File"
     },
-    "vertexRefreshButton": {
-        "message": "🔄 Refresh Token"
-    },
-    "vertexImportHint": {
-        "message": "Auto-fills credentials below"
-    },
     "vertexImporting": {
         "message": "Importing..."
-    },
-    "vertexRefreshingToken": {
-        "message": "Refreshing access token..."
     },
     "vertexGeneratingToken": {
         "message": "Generating access token..."
@@ -434,17 +371,8 @@
     "vertexImportFailed": {
         "message": "Import failed: %s"
     },
-    "vertexTokenRefreshed": {
-        "message": "Access token refreshed successfully."
-    },
-    "vertexRefreshFailed": {
-        "message": "Token refresh failed: %s"
-    },
     "vertexTokenExpired": {
         "message": "⚠️ Access token expired. Click refresh to renew."
-    },
-    "vertexTokenExpiringSoon": {
-        "message": "⚠️ Token expires in %s minutes. Consider refreshing."
     },
     "vertexConfigured": {
         "message": "⚠️ Vertex AI configured. Please test connection."
@@ -455,17 +383,8 @@
     "featureVertexServiceAccount": {
         "message": "Service account JSON import"
     },
-    "featureVertexAutoToken": {
-        "message": "Automatic token generation"
-    },
     "featureVertexGemini": {
         "message": "Google Gemini models via Vertex AI"
-    },
-    "providerNote": {
-        "message": "Note:"
-    },
-    "vertexNote": {
-        "message": "Access tokens expire after 1 hour. Your service account is securely stored for easy token refresh - just click the Refresh Token button when needed."
     },
     "baseUrlLabel": {
         "message": "Base URL:"
@@ -475,9 +394,6 @@
     },
     "featureCustomizable": {
         "message": "Customizable endpoint and model"
-    },
-    "fetchModelsButton": {
-        "message": "Fetch Models"
     },
     "testConnectionButton": {
         "message": "Test Connection"
@@ -490,9 +406,6 @@
     },
     "openaiApiKeyError": {
         "message": "Please enter your API key first."
-    },
-    "openaiApiKeyNeedsTesting": {
-        "message": "⚠️ API key needs testing."
     },
     "openaiTestNeedsTesting": {
         "message": "⚠️ OpenAI-compatible API key needs testing."
@@ -538,120 +451,6 @@
     },
     "loggingLevelDebug": {
         "message": "Debug (All)"
-    },
-    "cardBatchTranslationTitle": {
-        "message": "Batch Translation"
-    },
-    "cardBatchTranslationDesc": {
-        "message": "Batch translation processes multiple subtitle segments together, reducing API calls by 80-90% and improving performance. Configure optimal settings for your preferred translation provider."
-    },
-    "batchingEnabledLabel": {
-        "message": "Enable Batch Translation:"
-    },
-    "batchingEnabledHelp": {
-        "message": "Groups multiple subtitle segments into single translation requests"
-    },
-    "useProviderDefaultsLabel": {
-        "message": "Use Provider-Optimized Settings:"
-    },
-    "useProviderDefaultsHelp": {
-        "message": "Automatically use optimal batch sizes for each translation provider"
-    },
-    "globalBatchSizeLabel": {
-        "message": "Global Batch Size:"
-    },
-    "globalBatchSizeHelp": {
-        "message": "Number of subtitle segments to process together (1-15)"
-    },
-    "smartBatchingLabel": {
-        "message": "Smart Batch Optimization:"
-    },
-    "smartBatchingHelp": {
-        "message": "Prioritizes subtitle segments based on playback position"
-    },
-    "maxConcurrentBatchesLabel": {
-        "message": "Maximum Concurrent Batches:"
-    },
-    "maxConcurrentBatchesHelp": {
-        "message": "Number of translation batches to process simultaneously"
-    },
-    "cardProviderBatchTitle": {
-        "message": "Provider-Specific Batch Sizes"
-    },
-    "cardProviderBatchDesc": {
-        "message": "Configure optimal batch sizes for each translation provider. These settings are used when \"Use Provider-Optimized Settings\" is enabled."
-    },
-    "openaieBatchSizeLabel": {
-        "message": "OpenAI Batch Size:"
-    },
-    "openaieBatchSizeHelp": {
-        "message": "Recommended: 5-10 segments (default: 8)"
-    },
-    "googleBatchSizeLabel": {
-        "message": "Google Translate Batch Size:"
-    },
-    "googleBatchSizeHelp": {
-        "message": "Recommended: 3-5 segments (default: 4)"
-    },
-    "deeplBatchSizeLabel": {
-        "message": "DeepL Batch Size:"
-    },
-    "deeplBatchSizeHelp": {
-        "message": "Recommended: 2-3 segments (default: 3)"
-    },
-    "microsoftBatchSizeLabel": {
-        "message": "Microsoft Translate Batch Size:"
-    },
-    "microsoftBatchSizeHelp": {
-        "message": "Recommended: 3-5 segments (default: 4)"
-    },
-    "vertexBatchSizeLabel": {
-        "message": "Vertex AI Batch Size:"
-    },
-    "vertexBatchSizeHelp": {
-        "message": "Recommended: 5-10 segments (default: 8)"
-    },
-    "cardProviderDelayTitle": {
-        "message": "Provider-Specific Request Delays"
-    },
-    "cardProviderDelayDesc": {
-        "message": "Configure mandatory delays between translation requests to prevent account lockouts. These delays are applied even when batch processing is enabled."
-    },
-    "openaieDelayLabel": {
-        "message": "OpenAI Request Delay (ms):"
-    },
-    "openaieDelayHelp": {
-        "message": "Minimum delay between requests (default: 100ms)"
-    },
-    "googleDelayLabel": {
-        "message": "Google Translate Request Delay (ms):"
-    },
-    "googleDelayHelp": {
-        "message": "Required delay to prevent temporary lockouts (default: 1500ms)"
-    },
-    "deeplDelayLabel": {
-        "message": "DeepL API Request Delay (ms):"
-    },
-    "deeplDelayHelp": {
-        "message": "Delay for DeepL API requests (default: 500ms)"
-    },
-    "deeplFreeDelayLabel": {
-        "message": "DeepL Free Request Delay (ms):"
-    },
-    "deeplFreeDelayHelp": {
-        "message": "Conservative delay for free tier (default: 2000ms)"
-    },
-    "microsoftDelayLabel": {
-        "message": "Microsoft Translate Request Delay (ms):"
-    },
-    "microsoftDelayHelp": {
-        "message": "Delay to respect character limits (default: 800ms)"
-    },
-    "vertexDelayLabel": {
-        "message": "Vertex AI Request Delay (ms):"
-    },
-    "vertexDelayHelp": {
-        "message": "Minimum delay between requests (default: 100ms)"
     },
     "aiContextModalTitle": {
         "message": "AI Context Analysis"
@@ -719,9 +518,6 @@
     "aiContextUsage": {
         "message": "💡 Usage & Examples"
     },
-    "aiContextExamples": {
-        "message": "Examples:"
-    },
     "aiContextLearningTips": {
         "message": "🎯 Learning Tips"
     },
@@ -763,9 +559,6 @@
     },
     "aiContextMalformedResponse": {
         "message": "The AI service returned an invalid response format. This may be due to temporary service issues."
-    },
-    "aiContextJsonCodeBlock": {
-        "message": "The AI service returned unprocessed JSON code instead of structured data. This indicates a formatting error in the response."
     },
     "aiContextCulturalContext": {
         "message": "Cultural Context:"
@@ -875,38 +668,11 @@
     "contextTypeCulturalLabel": {
         "message": "Cultural Context:"
     },
-    "contextTypeCulturalHelp": {
-        "message": "Analyze cultural references, idioms, and social context"
-    },
     "contextTypeHistoricalLabel": {
         "message": "Historical Context:"
     },
-    "contextTypeHistoricalHelp": {
-        "message": "Provide historical background and time period context"
-    },
     "contextTypeLinguisticLabel": {
         "message": "Linguistic Analysis:"
-    },
-    "contextTypeLinguisticHelp": {
-        "message": "Explain grammar, etymology, and language structure"
-    },
-    "cardAIContextPrivacyTitle": {
-        "message": "Privacy & Data"
-    },
-    "cardAIContextPrivacyDesc": {
-        "message": "Control how your data is handled during context analysis."
-    },
-    "aiContextUserConsentLabel": {
-        "message": "I consent to sending subtitle text to AI providers for analysis:"
-    },
-    "aiContextUserConsentHelp": {
-        "message": "Required for AI context analysis to function"
-    },
-    "aiContextDataSharingLabel": {
-        "message": "Allow anonymous usage analytics:"
-    },
-    "aiContextDataSharingHelp": {
-        "message": "Help improve the service by sharing anonymous usage data"
     },
     "cardAIContextAdvancedTitle": {
         "message": "Advanced Settings"
@@ -917,35 +683,20 @@
     "aiContextTimeoutLabel": {
         "message": "Request Timeout (ms):"
     },
-    "aiContextTimeoutHelp": {
-        "message": "Maximum time to wait for AI response"
-    },
     "aiContextRateLimitLabel": {
         "message": "Rate Limit (requests/min):"
-    },
-    "aiContextRateLimitHelp": {
-        "message": "Maximum number of requests per minute"
     },
     "aiContextCacheEnabledLabel": {
         "message": "Enable Caching:"
     },
-    "aiContextCacheEnabledHelp": {
-        "message": "Cache analysis results to reduce API calls"
-    },
     "aiContextRetryAttemptsLabel": {
         "message": "Retry Attempts:"
-    },
-    "aiContextRetryAttemptsHelp": {
-        "message": "Number of times to retry failed requests"
     },
     "sidepanelLoading": {
         "message": "Loading..."
     },
     "sidepanelTabAIAnalysis": {
         "message": "AI Analysis"
-    },
-    "sidepanelTabWordsLists": {
-        "message": "Words Lists"
     },
     "sidepanelAnalyzeButton": {
         "message": "Analyze"
@@ -977,15 +728,6 @@
     "sidepanelSectionLinguistic": {
         "message": "Linguistic Analysis"
     },
-    "sidepanelMyWordsTitle": {
-        "message": "My Words"
-    },
-    "sidepanelFeatureComingSoon": {
-        "message": "Words Lists feature coming soon!"
-    },
-    "sidepanelFeatureComingSoonDesc": {
-        "message": "This feature is currently in development. Enable it in Settings to try the preview."
-    },
     "sidepanelErrorNoWords": {
         "message": "No words selected for analysis"
     },
@@ -994,5 +736,110 @@
     },
     "sidepanelErrorGeneric": {
         "message": "An error occurred during analysis."
+    },
+    "advancedNote": {
+        "message": "Automatic side-panel opening requires Chrome 116 or newer."
+    },
+    "advancedTitle": {
+        "message": "Advanced Settings"
+    },
+    "advancedWarningDescription": {
+        "message": "These settings can affect the behavior of the side panel. If you experience issues, try resetting to default values by disabling and re-enabling the side panel feature."
+    },
+    "advancedWarningTitle": {
+        "message": "Important Note"
+    },
+    "aiContextTypesRequired": {
+        "message": "Select at least one context type."
+    },
+    "autoOpenSidePanel": {
+        "message": "Auto-Open Side Panel:"
+    },
+    "autoOpenSidePanelDescription": {
+        "message": "Automatically open the side panel when you click on subtitle words."
+    },
+    "autoPauseVideo": {
+        "message": "Auto-Pause Video:"
+    },
+    "autoPauseVideoDescription": {
+        "message": "Automatically pause the video when you open the side panel to select words."
+    },
+    "cardVertexGeminiEphemeralDesc": {
+        "message": "Enter a short-lived access token, or import a service account JSON once to generate one. The service-account key is never stored."
+    },
+    "deeplTestSuccessSimple": {
+        "message": "✅ DeepL API test successful!"
+    },
+    "featureVertexEphemeralToken": {
+        "message": "One-time token generation without storing the service-account key"
+    },
+    "navAdvanced": {
+        "message": "Advanced Settings"
+    },
+    "openaiEndpointPermissionRequired": {
+        "message": "Use Test Connection to grant access to this endpoint."
+    },
+    "openaiHostPermissionButton": {
+        "message": "Allow API host"
+    },
+    "openaiHostPermissionChecking": {
+        "message": "Checking API host access…"
+    },
+    "openaiHostPermissionDenied": {
+        "message": "API host access was not granted."
+    },
+    "openaiHostPermissionError": {
+        "message": "Could not request API host access: %s"
+    },
+    "openaiHostPermissionGranted": {
+        "message": "API host access granted."
+    },
+    "sidePanelBehaviorDescription": {
+        "message": "Configure how the AI analysis side panel opens and looks."
+    },
+    "sidePanelBehaviorTitle": {
+        "message": "Side Panel Behavior"
+    },
+    "sidepanelErrorNoContextTypes": {
+        "message": "Select at least one context type before analyzing."
+    },
+    "sidePanelTheme": {
+        "message": "Side Panel Theme:"
+    },
+    "themeAuto": {
+        "message": "Auto (System)"
+    },
+    "themeDark": {
+        "message": "Dark"
+    },
+    "themeLight": {
+        "message": "Light"
+    },
+    "useSidePanel": {
+        "message": "Use Side Panel:"
+    },
+    "useSidePanelDescription": {
+        "message": "Use Chrome Side Panel instead of the modal for AI context analysis. Disable to use the legacy modal."
+    },
+    "vertexImportSuccessEphemeral": {
+        "message": "Access token generated. The service-account key was not stored; re-import the JSON when the token expires."
+    },
+    "vertexNotConfiguredEphemeral": {
+        "message": "Import a service account JSON once to generate a short-lived token, or paste a token manually."
+    },
+    "vertexManualTokenSaveFailed": {
+        "message": "Could not save the access token: %s"
+    },
+    "vertexTokenExpiredReimport": {
+        "message": "⚠️ Access token expired. Re-import the service account JSON or paste a new access token."
+    },
+    "vertexTokenExpiringReimport": {
+        "message": "⚠️ Token expires in %s minutes. Re-import the service account JSON or prepare a replacement access token."
+    },
+    "videoControlDescription": {
+        "message": "Control how the video player behaves when the side panel opens."
+    },
+    "videoControlTitle": {
+        "message": "Video Control"
     }
 }

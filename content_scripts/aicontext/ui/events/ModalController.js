@@ -50,7 +50,7 @@ export class ModalController {
                 );
                 if (original)
                     original.classList.add('dualsub-subtitles-disabled');
-            } catch (_) { }
+            } catch (_) {}
             // Force-hide remove buttons immediately for robustness
             try {
                 const selected = document.getElementById(
@@ -61,21 +61,21 @@ export class ModalController {
                     .forEach((el) => {
                         el.style.display = 'none';
                     });
-            } catch (_) { }
-        } catch (_) { }
+            } catch (_) {}
+        } catch (_) {}
 
         // Freeze selection persistence and suppress immediate restorations
         try {
             this.core.selectionPersistence.lastManualSelectionTs = Date.now();
-        } catch (_) { }
+        } catch (_) {}
 
         // Ensure UI reflects disabled removal (hide X icons) and keep highlights visible
         try {
             this.ui.updateSelectionDisplay();
-        } catch (_) { }
+        } catch (_) {}
         try {
             this.core.syncSelectionHighlights();
-        } catch (_) { }
+        } catch (_) {}
 
         // Switch button to pause state
         try {
@@ -99,7 +99,7 @@ export class ModalController {
                     this.pauseAnalysis();
                 });
             }
-        } catch (_) { }
+        } catch (_) {}
 
         // Resolve language prefs
         let targetLanguage = 'en';
@@ -126,7 +126,7 @@ export class ModalController {
                 if (result.originalLanguage)
                     sourceLanguage = result.originalLanguage;
             }
-        } catch (_) { }
+        } catch (_) {}
 
         // Dispatch analysis request
         const requestId = `analysis-${Date.now()}`;
@@ -149,7 +149,7 @@ export class ModalController {
         );
 
         this.core._log('info', 'Context analysis started (controller)', {
-            text: this.core.selectedText,
+            textLength: this.core.selectedText.length,
             selectedWordsCount: this.core.selectedWords.size,
             requestId,
         });
@@ -163,7 +163,7 @@ export class ModalController {
                     detail: { requestId: this.core.currentRequest },
                 })
             );
-        } catch (_) { }
+        } catch (_) {}
 
         this.core.isAnalyzing = false;
         this.core.currentRequest = null;
@@ -176,13 +176,13 @@ export class ModalController {
             selectedWordsElement?.classList.remove(
                 'dualsub-processing-disabled'
             );
-        } catch (_) { }
+        } catch (_) {}
         // Reset state back to selection
         this.core.setState(MODAL_STATES.SELECTION);
         this.ui.showInitialState();
         try {
             this.ui.updateSelectionDisplay();
-        } catch (_) { }
+        } catch (_) {}
         // Ensure processing classes cleared
         try {
             const content =
@@ -204,7 +204,7 @@ export class ModalController {
                 );
                 if (original)
                     original.classList.remove('dualsub-subtitles-disabled');
-            } catch (_) { }
+            } catch (_) {}
             // Ensure chips show remove buttons again after unfreezing
             try {
                 const selected = document.getElementById(
@@ -215,8 +215,8 @@ export class ModalController {
                     .forEach((el) => {
                         el.style.removeProperty('display');
                     });
-            } catch (_) { }
-        } catch (_) { }
+            } catch (_) {}
+        } catch (_) {}
         // Reset Start button
         this.resetAnalysisButton();
     }
@@ -244,7 +244,7 @@ export class ModalController {
         this.core.selectedText = '';
         try {
             this.ui.updateSelectionDisplay();
-        } catch (_) { }
+        } catch (_) {}
         // Clear visual highlights on subtitles when closing
         try {
             const original = document.getElementById(
@@ -259,7 +259,7 @@ export class ModalController {
                         el.classList.remove('dualsub-word-selected')
                     );
             }
-        } catch (_) { }
+        } catch (_) {}
         // Hide modal via animations if available
         if (
             this.animations &&
@@ -304,7 +304,7 @@ export class ModalController {
             // Store raw result for observability
             try {
                 this.core.setAnalysisResult(result);
-            } catch (_) { }
+            } catch (_) {}
 
             const html = this._buildResultsHtml(result);
             if (
@@ -326,10 +326,10 @@ export class ModalController {
                         'dualsub-processing-disabled'
                     );
                 }
-            } catch (_) { }
+            } catch (_) {}
             try {
                 this.ui.updateSelectionDisplay();
-            } catch (_) { }
+            } catch (_) {}
             // Re-enable subtitles interaction visuals
             try {
                 const original = document.getElementById(
@@ -337,7 +337,7 @@ export class ModalController {
                 );
                 if (original)
                     original.classList.remove('dualsub-subtitles-disabled');
-            } catch (_) { }
+            } catch (_) {}
             // Ensure chips show remove buttons again after results
             try {
                 const selected = document.getElementById(
@@ -348,7 +348,7 @@ export class ModalController {
                     .forEach((el) => {
                         el.style.removeProperty('display');
                     });
-            } catch (_) { }
+            } catch (_) {}
             this.resetAnalysisButton();
             return;
         }
@@ -668,7 +668,7 @@ export class ModalController {
             try {
                 const msg = this.ui._getLocalizedMessage(messageKey);
                 if (msg) return msg;
-            } catch (_) { }
+            } catch (_) {}
         }
         // Fallback: Capitalize and append colon
         return (
@@ -730,7 +730,11 @@ export class ModalController {
             'Invalid analysis response detected (controller)',
             {
                 requestId,
-                error,
+                errorName: error?.name,
+                errorLength:
+                    typeof error === 'string'
+                        ? error.length
+                        : error?.message?.length || 0,
             }
         );
 
@@ -753,7 +757,7 @@ export class ModalController {
                         this._getLocalizedMessage(
                             'aiContextRetryNotification'
                         ) || 'Analysis failed, retrying...';
-            } catch (_) { }
+            } catch (_) {}
 
             const newRequestId = `analysis-${Date.now()}`;
             this.core.currentRequest = newRequestId;

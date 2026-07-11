@@ -69,7 +69,7 @@ export function OpenAICompatibleProviderCard({
     };
 
     const handleTest = () => {
-        testConnection(apiKey, baseUrl);
+        testConnection(apiKey, baseUrl, onModelsLoaded);
     };
 
     return (

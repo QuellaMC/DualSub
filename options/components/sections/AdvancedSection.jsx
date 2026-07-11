@@ -4,7 +4,7 @@ import { ToggleSwitch } from '../ToggleSwitch.jsx';
 
 /**
  * Advanced Settings Section
- * 
+ *
  * Advanced configuration options for side panel behavior,
  * video control, and state persistence.
  */
@@ -18,10 +18,9 @@ export function AdvancedSection({ t, settings, onSettingChange }) {
                 title={t('sidePanelBehaviorTitle', 'Side Panel Behavior')}
                 description={t(
                     'sidePanelBehaviorDescription',
-                    'Configure how the side panel opens, behaves, and persists across tabs.'
+                    'Configure how the AI analysis side panel opens and looks.'
                 )}
             >
-
                 <div className="setting">
                     <label htmlFor="sidePanelUseSidePanel">
                         {t('useSidePanel', 'Use Side Panel:')}
@@ -37,7 +36,7 @@ export function AdvancedSection({ t, settings, onSettingChange }) {
                 <p className="setting-description">
                     {t(
                         'useSidePanelDescription',
-                        'Use Chrome Side Panel instead of modal for AI context analysis. Disable to use the legacy modal (Chrome 114+ required for side panel).'
+                        'Use Chrome Side Panel instead of the modal for AI context analysis. Disable to use the legacy modal.'
                     )}
                 </p>
 
@@ -61,45 +60,6 @@ export function AdvancedSection({ t, settings, onSettingChange }) {
                 </p>
 
                 <div className="setting">
-                    <label htmlFor="sidePanelPersistAcrossTabs">
-                        {t('persistAcrossTabs', 'Persist State Across Tabs:')}
-                    </label>
-                    <ToggleSwitch
-                        id="sidePanelPersistAcrossTabs"
-                        checked={settings.sidePanelPersistAcrossTabs !== false}
-                        onChange={(checked) =>
-                            onSettingChange('sidePanelPersistAcrossTabs', checked)
-                        }
-                    />
-                </div>
-                <p className="setting-description">
-                    {t(
-                        'persistAcrossTabsDescription',
-                        'Keep the side panel open and preserve selected words when switching between tabs.'
-                    )}
-                </p>
-
-                <div className="setting">
-                    <label htmlFor="sidePanelDefaultTab">
-                        {t('defaultTab', 'Default Tab:')}
-                    </label>
-                    <select
-                        id="sidePanelDefaultTab"
-                        value={settings.sidePanelDefaultTab || 'ai-analysis'}
-                        onChange={(e) =>
-                            onSettingChange('sidePanelDefaultTab', e.target.value)
-                        }
-                    >
-                        <option value="ai-analysis">
-                            {t('tabAIAnalysis', 'AI Analysis')}
-                        </option>
-                        <option value="words-lists">
-                            {t('tabWordsLists', 'Words Lists')}
-                        </option>
-                    </select>
-                </div>
-
-                <div className="setting">
                     <label htmlFor="sidePanelTheme">
                         {t('sidePanelTheme', 'Side Panel Theme:')}
                     </label>
@@ -110,8 +70,12 @@ export function AdvancedSection({ t, settings, onSettingChange }) {
                             onSettingChange('sidePanelTheme', e.target.value)
                         }
                     >
-                        <option value="auto">{t('themeAuto', 'Auto (System)')}</option>
-                        <option value="light">{t('themeLight', 'Light')}</option>
+                        <option value="auto">
+                            {t('themeAuto', 'Auto (System)')}
+                        </option>
+                        <option value="light">
+                            {t('themeLight', 'Light')}
+                        </option>
                         <option value="dark">{t('themeDark', 'Dark')}</option>
                     </select>
                 </div>
@@ -122,10 +86,9 @@ export function AdvancedSection({ t, settings, onSettingChange }) {
                 title={t('videoControlTitle', 'Video Control')}
                 description={t(
                     'videoControlDescription',
-                    'Control how the video player behaves when the side panel opens and closes.'
+                    'Control how the video player behaves when the side panel opens.'
                 )}
             >
-
                 <div className="setting">
                     <label htmlFor="sidePanelAutoPauseVideo">
                         {t('autoPauseVideo', 'Auto-Pause Video:')}
@@ -144,25 +107,6 @@ export function AdvancedSection({ t, settings, onSettingChange }) {
                         'Automatically pause the video when you open the side panel to select words.'
                     )}
                 </p>
-
-                <div className="setting">
-                    <label htmlFor="sidePanelAutoResumeVideo">
-                        {t('autoResumeVideo', 'Auto-Resume Video:')}
-                    </label>
-                    <ToggleSwitch
-                        id="sidePanelAutoResumeVideo"
-                        checked={settings.sidePanelAutoResumeVideo || false}
-                        onChange={(checked) =>
-                            onSettingChange('sidePanelAutoResumeVideo', checked)
-                        }
-                    />
-                </div>
-                <p className="setting-description">
-                    {t(
-                        'autoResumeVideoDescription',
-                        'Automatically resume video playback when you close the side panel.'
-                    )}
-                </p>
             </SettingCard>
 
             <SettingCard
@@ -173,10 +117,18 @@ export function AdvancedSection({ t, settings, onSettingChange }) {
                 )}
             >
                 <div className="info-message">
-                    <span className="material-symbols-outlined" style={{ color: 'var(--color-warning)', marginRight: 'var(--spacing-2)' }}>warning</span>
+                    <span
+                        aria-hidden="true"
+                        style={{
+                            color: 'var(--color-warning)',
+                            marginRight: 'var(--spacing-2)',
+                        }}
+                    >
+                        ⚠
+                    </span>
                     {t(
                         'advancedNote',
-                        'Chrome Side Panel API requires Chrome 114 or higher. Lower versions will use the legacy modal.'
+                        'Automatic side-panel opening requires Chrome 116 or newer.'
                     )}
                 </div>
             </SettingCard>

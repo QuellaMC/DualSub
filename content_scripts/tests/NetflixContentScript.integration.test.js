@@ -160,7 +160,7 @@ describe('NetflixContentScript Integration Tests', () => {
                 { action: 'unknown-action', data: 'test' },
             ];
 
-            testMessages.forEach((message, index) => {
+            testMessages.forEach((message) => {
                 const mockSendResponse = jest.fn();
 
                 const result = netflixScript.handlePlatformSpecificMessage(

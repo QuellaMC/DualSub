@@ -184,6 +184,22 @@ describe('Logger', () => {
             );
         });
 
+        it('preserves a two-argument context object', () => {
+            logger.error('Provider request failed', {
+                status: 503,
+                endpoint: 'https://api.example.test/v1',
+                apiKey: 'must-be-redacted',
+            });
+
+            const output = console.error.mock.calls[0][0];
+            expect(output).toContain('"status":503');
+            expect(output).toContain(
+                '"endpoint":"https://api.example.test/v1"'
+            );
+            expect(output).toContain('"apiKey":"[REDACTED]"');
+            expect(output).not.toContain('must-be-redacted');
+        });
+
         it('should handle empty context', () => {
             logger.error('Test error message');
 
@@ -227,6 +243,89 @@ describe('Logger', () => {
             expect(new Date(timestampMatch[1]).toISOString()).toBe(
                 timestampMatch[1]
             );
+        });
+
+        it('should recursively redact secrets without losing safe metadata', () => {
+            const circularValue = {
+                label: 'safe-circular-label',
+                api_key: 'api-key-in-cycle',
+            };
+            circularValue.self = circularValue;
+
+            const requestError = new Error(
+                'Request failed with Bearer bearer-error-token'
+            );
+            requestError.authorization = 'authorization-error-token';
+
+            const message = logger.formatMessage(
+                'TEST',
+                'Request failed: authorization=message-token',
+                {
+                    ordinaryMetadata: 'visible-metadata',
+                    nested: [
+                        { openaiApiKey: 'openai-api-key-value' },
+                        { vertex_access_token: 'vertex-token-value' },
+                        { private_key: 'private-key-value' },
+                        { serviceAccount: 'service-account-value' },
+                        { userPassword: 'password-value' },
+                    ],
+                    recordedAt: new Date('2026-01-02T03:04:05.000Z'),
+                    requestError,
+                    circularValue,
+                }
+            );
+
+            for (const secret of [
+                'message-token',
+                'openai-api-key-value',
+                'vertex-token-value',
+                'private-key-value',
+                'service-account-value',
+                'password-value',
+                'bearer-error-token',
+                'authorization-error-token',
+                'api-key-in-cycle',
+            ]) {
+                expect(message).not.toContain(secret);
+            }
+            expect(message).toContain('visible-metadata');
+            expect(message).toContain('safe-circular-label');
+            expect(message).toContain('2026-01-02T03:04:05.000Z');
+            expect(message).toContain('[REDACTED]');
+            expect(message).toContain('[Circular]');
+            expect(message).toContain('Request failed with Bearer [REDACTED]');
+        });
+
+        it('should safely serialize otherwise unsupported values', () => {
+            const message = logger.formatMessage('TEST', 'Test message', {
+                requestId: 42n,
+                callback() {},
+                inaccessible: new Proxy(
+                    {},
+                    {
+                        ownKeys() {
+                            throw new Error('Cannot enumerate');
+                        },
+                    }
+                ),
+            });
+
+            expect(message).toContain('"requestId":"42"');
+            expect(message).toContain('"callback":"[Function callback]"');
+            expect(message).toContain('"inaccessible":"[Unserializable]"');
+        });
+
+        it('redacts query strings and fragments from logged URLs', () => {
+            const message = logger.formatMessage('TEST', 'Fetched subtitle', {
+                url: 'https://cdn.example.test/subtitle.vtt?token=signed-value&expires=123#cue',
+            });
+
+            expect(message).toContain(
+                'https://cdn.example.test/subtitle.vtt?[REDACTED]#[REDACTED]'
+            );
+            expect(message).not.toContain('signed-value');
+            expect(message).not.toContain('expires=123');
+            expect(message).not.toContain('#cue');
         });
     });
 
