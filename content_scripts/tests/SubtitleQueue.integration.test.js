@@ -4,8 +4,10 @@ import {
     attachTimeUpdateListener,
     clearSubtitleDOM,
     clearSubtitlesDisplayAndQueue,
+    ensureSubtitleContainer,
     getLocalizedErrorMessage,
     handleVideoIdChange,
+    originalSubtitleElement,
     processSubtitleQueue,
     setCurrentVideoId,
     setSubtitlesActive,
@@ -144,6 +146,154 @@ describe('seek-aware subtitle translation scheduling', () => {
         expect(
             subtitleQueue.find((cue) => cue.original === 'early cue').translated
         ).toBe('translated:early cue');
+    });
+
+    test('rebinds playback events to the current platform after an SPA video replacement', () => {
+        const firstPlayback = createPlaybackHarness(10);
+        firstPlayback.setVideoId('first-video');
+        setCurrentVideoId('first-video');
+        subtitleQueue.push({
+            ...makeCue('first cue', 10, 12),
+            translated: 'translated:first cue',
+            videoId: 'first-video',
+        });
+
+        ensureSubtitleContainer(
+            firstPlayback.platform,
+            TEST_CONFIG,
+            'QueueTest'
+        );
+        firstPlayback.video.dispatchEvent(new Event('timeupdate'));
+        expect(originalSubtitleElement.textContent).toContain('first cue');
+
+        firstPlayback.video.remove();
+        const nextPlayback = createPlaybackHarness(100);
+        nextPlayback.setVideoId('next-video');
+        handleVideoIdChange('next-video', 'QueueTest');
+        subtitleQueue.push({
+            ...makeCue('next cue', 100, 102),
+            translated: 'translated:next cue',
+            videoId: 'next-video',
+        });
+
+        ensureSubtitleContainer(
+            nextPlayback.platform,
+            TEST_CONFIG,
+            'QueueTest'
+        );
+        nextPlayback.video.dispatchEvent(new Event('timeupdate'));
+
+        expect(originalSubtitleElement.textContent).toContain('next cue');
+
+        firstPlayback.video.dispatchEvent(new Event('timeupdate'));
+        expect(originalSubtitleElement.textContent).toContain('next cue');
+    });
+
+    test('rebinds playback events when SPA navigation reuses the same video element with a new platform', () => {
+        const playback = createPlaybackHarness(10);
+        playback.setVideoId('first-video');
+        setCurrentVideoId('first-video');
+        subtitleQueue.push({
+            ...makeCue('first cue', 10, 12),
+            translated: 'translated:first cue',
+            videoId: 'first-video',
+        });
+
+        ensureSubtitleContainer(playback.platform, TEST_CONFIG, 'QueueTest');
+        playback.video.dispatchEvent(new Event('timeupdate'));
+        expect(originalSubtitleElement.textContent).toContain('first cue');
+
+        playback.setVideoId(null);
+        const nextPlaybackTime = 100;
+        const nextPlatform = {
+            ...playback.platform,
+            getCurrentVideoId: () => 'next-video',
+            getPlaybackTime: () => nextPlaybackTime,
+            getVideoElement: () => playback.video,
+        };
+        handleVideoIdChange('next-video', 'QueueTest');
+        subtitleQueue.push({
+            ...makeCue('same-node next cue', 100, 102),
+            translated: 'translated:same-node next cue',
+            videoId: 'next-video',
+        });
+
+        ensureSubtitleContainer(nextPlatform, TEST_CONFIG, 'QueueTest');
+        playback.video.dispatchEvent(new Event('timeupdate'));
+
+        expect(originalSubtitleElement.textContent).toContain(
+            'same-node next cue'
+        );
+    });
+
+    test('does not clear a rendered cue for a duplicate video ID notification', () => {
+        const { platform, video } = createPlaybackHarness(10);
+        subtitleQueue.push({
+            ...makeCue('stable cue', 10, 12),
+            translated: 'translated:stable cue',
+        });
+
+        ensureSubtitleContainer(platform, TEST_CONFIG, 'QueueTest');
+        video.dispatchEvent(new Event('timeupdate'));
+        expect(originalSubtitleElement.textContent).toContain('stable cue');
+
+        handleVideoIdChange(VIDEO_ID, 'QueueTest');
+
+        expect(originalSubtitleElement.textContent).toContain('stable cue');
+    });
+
+    test('does not let an old video translation completion clear the SPA replacement cue', async () => {
+        const firstPlayback = createPlaybackHarness(10);
+        firstPlayback.setVideoId('first-video');
+        setCurrentVideoId('first-video');
+        subtitleQueue.push({
+            ...makeCue('old pending cue', 10, 12),
+            videoId: 'first-video',
+        });
+
+        let releaseOldTranslation;
+        chrome.runtime.sendMessage = jest.fn((message, callback) => {
+            releaseOldTranslation = () =>
+                callback({
+                    ...translationResponse(message),
+                    cueVideoId: 'first-video',
+                });
+        });
+
+        const oldQueueRun = processSubtitleQueue(
+            firstPlayback.platform,
+            TEST_CONFIG,
+            'QueueTest'
+        );
+        await waitForCondition(() => releaseOldTranslation !== undefined);
+
+        firstPlayback.setVideoId(null);
+        firstPlayback.video.remove();
+        const nextPlayback = createPlaybackHarness(100);
+        nextPlayback.setVideoId('next-video');
+        handleVideoIdChange('next-video', 'QueueTest');
+        subtitleQueue.push({
+            ...makeCue('next stable cue', 100, 102),
+            translated: 'translated:next stable cue',
+            videoId: 'next-video',
+        });
+
+        ensureSubtitleContainer(
+            nextPlayback.platform,
+            TEST_CONFIG,
+            'QueueTest'
+        );
+        nextPlayback.video.dispatchEvent(new Event('timeupdate'));
+        expect(originalSubtitleElement.textContent).toContain(
+            'next stable cue'
+        );
+
+        releaseOldTranslation();
+        await oldQueueRun;
+
+        expect(originalSubtitleElement.textContent).toContain(
+            'next stable cue'
+        );
     });
 
     test('preserves a seek wake that arrives while a translation request is in flight', async () => {

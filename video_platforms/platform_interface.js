@@ -62,13 +62,19 @@ export class VideoPlatform {
      * Gets the platform playback time in subtitle-timeline seconds.
      * Platforms with non-standard media clocks can override this while keeping
      * the active HTML video element as the primary clock source.
+     * @param {HTMLVideoElement | null} [preferredVideoElement=null] The video element that emitted the playback event.
      * @returns {number | null} A finite playback time, or null when unavailable.
      */
-    getPlaybackTime() {
-        const videoElement = this.getVideoElement();
+    getPlaybackTime(preferredVideoElement = null) {
+        const videoElement = preferredVideoElement || this.getVideoElement();
         const currentTime = videoElement?.currentTime;
         return Number.isFinite(currentTime) ? currentTime : null;
     }
+
+    /**
+     * Optional: Invalidates platform-specific clock calibration after a seek.
+     */
+    invalidatePlaybackClockCalibration() {}
 
     /**
      * Gets a unique identifier for the current video.

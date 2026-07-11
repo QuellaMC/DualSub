@@ -280,6 +280,131 @@ describe('DisneyPlusPlatform Logging Integration', () => {
                 })
             );
         });
+
+        test('coalesces duplicate subtitle URL events while a fetch is in flight', async () => {
+            const onSubtitleFound = jest.fn();
+            const onVideoIdChange = jest.fn();
+            await platform.initialize(onSubtitleFound, onVideoIdChange);
+
+            let resolveRequest;
+            jest.spyOn(platform, 'requestVttViaMessaging').mockImplementation(
+                () =>
+                    new Promise((resolve) => {
+                        resolveRequest = resolve;
+                    })
+            );
+
+            const event = {
+                detail: {
+                    type: 'SUBTITLE_URL_FOUND',
+                    videoId: 'next-video-id',
+                    url: 'https://example.com/subtitles/master.m3u8',
+                },
+            };
+
+            platform._handleInjectorEvents(event);
+            platform._handleInjectorEvents(event);
+            await flushPromises();
+
+            expect(platform.requestVttViaMessaging).toHaveBeenCalledTimes(1);
+
+            resolveRequest({
+                success: true,
+                videoId: 'next-video-id',
+                url: event.detail.url,
+                vttText: 'WEBVTT',
+            });
+            await flushPromises();
+
+            expect(onSubtitleFound).toHaveBeenCalledTimes(1);
+        });
+
+        test('keeps pending subtitle requests scoped to the video that emitted them', async () => {
+            await platform.initialize(jest.fn(), jest.fn());
+            jest.spyOn(platform, 'requestVttViaMessaging').mockImplementation(
+                () => new Promise(() => {})
+            );
+
+            platform._handleInjectorEvents({
+                detail: {
+                    type: 'SUBTITLE_URL_FOUND',
+                    videoId: 'video-a',
+                    url: 'https://example.com/video-a.m3u8',
+                },
+            });
+            platform._handleInjectorEvents({
+                detail: {
+                    type: 'SUBTITLE_URL_FOUND',
+                    videoId: 'video-b',
+                    url: 'https://example.com/video-b.m3u8',
+                },
+            });
+            await flushPromises();
+
+            expect(platform.requestVttViaMessaging).toHaveBeenNthCalledWith(
+                1,
+                'https://example.com/video-a.m3u8',
+                'zh-CN',
+                'en',
+                'video-a'
+            );
+            expect(platform.requestVttViaMessaging).toHaveBeenNthCalledWith(
+                2,
+                'https://example.com/video-b.m3u8',
+                'zh-CN',
+                'en',
+                'video-b'
+            );
+        });
+
+        test('discards an older manifest response after a newer URL supersedes it', async () => {
+            const onSubtitleFound = jest.fn();
+            await platform.initialize(onSubtitleFound, jest.fn());
+
+            const requestResolvers = new Map();
+            jest.spyOn(platform, 'requestVttViaMessaging').mockImplementation(
+                (url) =>
+                    new Promise((resolve) => {
+                        requestResolvers.set(url, resolve);
+                    })
+            );
+
+            const firstUrl = 'https://example.com/manifest-old.m3u8';
+            const latestUrl = 'https://example.com/manifest-latest.m3u8';
+            for (const url of [firstUrl, latestUrl]) {
+                platform._handleInjectorEvents({
+                    detail: {
+                        type: 'SUBTITLE_URL_FOUND',
+                        videoId: 'same-video',
+                        url,
+                    },
+                });
+            }
+            await flushPromises();
+
+            requestResolvers.get(latestUrl)({
+                success: true,
+                videoId: 'same-video',
+                url: latestUrl,
+                vttText: 'WEBVTT latest',
+            });
+            await flushPromises();
+            requestResolvers.get(firstUrl)({
+                success: true,
+                videoId: 'same-video',
+                url: firstUrl,
+                vttText: 'WEBVTT old',
+            });
+            await flushPromises();
+
+            expect(onSubtitleFound).toHaveBeenCalledTimes(1);
+            expect(onSubtitleFound).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    url: latestUrl,
+                    vttText: 'WEBVTT latest',
+                })
+            );
+        });
     });
 
     describe('Playback clock', () => {
@@ -332,6 +457,52 @@ describe('DisneyPlusPlatform Logging Integration', () => {
 
             active.state.currentTime = 412;
             expect(platform.getPlaybackTime()).toBeCloseTo(1021);
+        });
+
+        test('drops stale timeline calibration immediately when the video seeks', () => {
+            const active = createVideo({
+                currentTime: 400,
+                readyState: 4,
+                paused: false,
+                currentSrc: 'blob:https://www.disneyplus.com/active-video',
+                width: 1512,
+                height: 708,
+            });
+            document.body.appendChild(active.video);
+            const { timeline } = createDisneyTimeline(1000);
+
+            expect(platform.getPlaybackTime()).toBeCloseTo(1000);
+
+            active.state.currentTime = 900;
+            expect(platform.getPlaybackTime()).toBeCloseTo(900);
+
+            timeline.setAttribute('aria-valuenow', '900');
+            expect(platform.getPlaybackTime()).toBeCloseTo(900);
+        });
+
+        test('does not turn a slider-leading-media seek into a persistent offset', () => {
+            const active = createVideo({
+                currentTime: 100,
+                readyState: 4,
+                paused: false,
+                currentSrc: 'blob:https://www.disneyplus.com/active-video',
+                width: 1512,
+                height: 708,
+            });
+            document.body.appendChild(active.video);
+            const { timeline } = createDisneyTimeline(100);
+
+            expect(platform.getPlaybackTime()).toBeCloseTo(100);
+
+            timeline.setAttribute('aria-valuenow', '500');
+            expect(platform.getPlaybackTime()).toBeCloseTo(100);
+
+            active.state.currentTime = 500;
+            expect(platform.getPlaybackTime()).toBeCloseTo(500);
+
+            timeline.setAttribute('aria-valuenow', '501');
+            active.state.currentTime = 501;
+            expect(platform.getPlaybackTime()).toBeCloseTo(501);
         });
 
         test('falls back immediately to active video time before calibration', () => {

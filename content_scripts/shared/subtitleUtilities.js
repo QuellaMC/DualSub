@@ -52,7 +52,7 @@ function logWithFallback(level, message, data = {}) {
  */
 export function resolvePlaybackTime(activePlatform, videoElement = null) {
     try {
-        const platformTime = activePlatform?.getPlaybackTime?.();
+        const platformTime = activePlatform?.getPlaybackTime?.(videoElement);
         if (Number.isFinite(platformTime)) return platformTime;
     } catch (_) {}
 
@@ -404,8 +404,10 @@ export let subtitlesActive = true;
 export let subtitleQueue = [];
 export let processingQueue = false;
 let queueRerunRequested = false;
+let queueRerunContext = null;
 let queueProcessingTimeoutId = null;
 let queueProcessingTimeoutDelay = null;
+let subtitleContextGeneration = 0;
 
 // Guard against transient blanks during style changes and platform ID timing
 let lastStyleApplicationTs = 0;
@@ -413,6 +415,9 @@ let lastDisplayedCueWindow = { start: null, end: null, videoId: null };
 
 // Video tracking state
 export let timeUpdateListener = null;
+let timeUpdateVideoElement = null;
+let timeUpdatePlatform = null;
+let timeUpdateConfig = null;
 export let progressBarObserver = null;
 export let lastProgressBarTime = -1;
 export let lastProgressBarUpdateTs = 0;
@@ -434,6 +439,12 @@ function scheduleSubtitleQueueProcessing(
 
     if (processingQueue) {
         queueRerunRequested = true;
+        queueRerunContext = {
+            activePlatform,
+            config,
+            logPrefix,
+            generation: subtitleContextGeneration,
+        };
         return;
     }
 
@@ -466,6 +477,7 @@ export function setCurrentVideoId(id) {
 }
 
 export function setSubtitlesActive(active) {
+    if (subtitlesActive !== active) subtitleContextGeneration++;
     subtitlesActive = active;
 }
 
@@ -844,20 +856,7 @@ export function ensureSubtitleContainer(
 
     const videoElement = activePlatform.getVideoElement();
     if (!videoElement) {
-        const previousVideoElement = document.querySelector(
-            'video[data-listener-attached="true"]'
-        );
-        if (previousVideoElement && timeUpdateListener) {
-            previousVideoElement.removeEventListener(
-                'timeupdate',
-                timeUpdateListener
-            );
-            previousVideoElement.removeEventListener(
-                'seeked',
-                timeUpdateListener
-            );
-            previousVideoElement.removeAttribute('data-listener-attached');
-        }
+        detachTimeUpdateListener();
         if (progressBarObserver) {
             progressBarObserver.disconnect();
             progressBarObserver = null;
@@ -873,18 +872,13 @@ export function ensureSubtitleContainer(
     const attachedVideoElement = document.querySelector(
         'video[data-listener-attached="true"]'
     );
-    if (attachedVideoElement !== videoElement) {
-        if (attachedVideoElement && timeUpdateListener) {
-            attachedVideoElement.removeEventListener(
-                'timeupdate',
-                timeUpdateListener
-            );
-            attachedVideoElement.removeEventListener(
-                'seeked',
-                timeUpdateListener
-            );
-            attachedVideoElement.removeAttribute('data-listener-attached');
-        }
+    if (
+        attachedVideoElement !== videoElement ||
+        timeUpdateVideoElement !== videoElement ||
+        timeUpdatePlatform !== activePlatform ||
+        timeUpdateConfig !== config
+    ) {
+        detachTimeUpdateListener();
         if (progressBarObserver) {
             progressBarObserver.disconnect();
             progressBarObserver = null;
@@ -1001,6 +995,29 @@ export function ensureSubtitleContainer(
     return true;
 }
 
+function detachTimeUpdateListener() {
+    const listenerToRemove = timeUpdateListener;
+    const attachedVideos = new Set();
+    if (timeUpdateVideoElement) attachedVideos.add(timeUpdateVideoElement);
+    document
+        .querySelectorAll('video[data-listener-attached="true"]')
+        .forEach((video) => attachedVideos.add(video));
+
+    for (const video of attachedVideos) {
+        if (listenerToRemove) {
+            video.removeEventListener('timeupdate', listenerToRemove);
+            video.removeEventListener('seeking', listenerToRemove);
+            video.removeEventListener('seeked', listenerToRemove);
+        }
+        video.removeAttribute('data-listener-attached');
+    }
+
+    timeUpdateListener = null;
+    timeUpdateVideoElement = null;
+    timeUpdatePlatform = null;
+    timeUpdateConfig = null;
+}
+
 export function attachTimeUpdateListener(
     videoElement,
     activePlatform,
@@ -1016,64 +1033,67 @@ export function attachTimeUpdateListener(
         return;
     }
 
-    if (videoElement.getAttribute('data-listener-attached') === 'true') {
+    if (
+        timeUpdateVideoElement === videoElement &&
+        timeUpdatePlatform === activePlatform &&
+        timeUpdateConfig === config &&
+        timeUpdateListener &&
+        videoElement.getAttribute('data-listener-attached') === 'true'
+    ) {
         return;
     }
 
-    if (!timeUpdateListener) {
-        timeUpdateListener = () => {
-            timeUpdateLogCounter++;
-            const currentVideoElem = activePlatform?.getVideoElement();
-            if (currentVideoElem) {
-                scheduleSubtitleQueueProcessing(
+    detachTimeUpdateListener();
+    timeUpdateVideoElement = videoElement;
+    timeUpdatePlatform = activePlatform;
+    timeUpdateConfig = config;
+    timeUpdateListener = (event) => {
+        timeUpdateLogCounter++;
+        const currentVideoElem = videoElement;
+        if (!currentVideoElem) return;
+
+        if (event?.type === 'seeking' || event?.type === 'seeked') {
+            activePlatform.invalidatePlaybackClockCalibration?.();
+        }
+
+        scheduleSubtitleQueueProcessing(activePlatform, config, logPrefix);
+        const { readyState, HAVE_CURRENT_DATA } = currentVideoElem;
+        const currentTime = resolvePlaybackTime(
+            activePlatform,
+            currentVideoElem
+        );
+        const useProgressBar =
+            activePlatform.supportsProgressBarTracking?.() !== false;
+
+        // Platforms that explicitly opt into a primary progress clock
+        // continue to use the generic observer path.
+        if (useProgressBar && progressBarObserver) {
+            if (
+                subtitlesActive &&
+                typeof lastProgressBarTime === 'number' &&
+                lastProgressBarTime >= 0
+            ) {
+                updateSubtitles(
+                    lastProgressBarTime,
                     activePlatform,
                     config,
                     logPrefix
                 );
-                const { readyState, HAVE_CURRENT_DATA } = currentVideoElem;
-                const currentTime = resolvePlaybackTime(
-                    activePlatform,
-                    currentVideoElem
-                );
-                const useProgressBar =
-                    activePlatform.supportsProgressBarTracking?.() !== false;
-
-                // Platforms that explicitly opt into a primary progress clock
-                // continue to use the generic observer path.
-                if (useProgressBar && progressBarObserver) {
-                    if (
-                        subtitlesActive &&
-                        typeof lastProgressBarTime === 'number' &&
-                        lastProgressBarTime >= 0
-                    ) {
-                        updateSubtitles(
-                            lastProgressBarTime,
-                            activePlatform,
-                            config,
-                            logPrefix
-                        );
-                    }
-                    return;
-                }
-
-                // Fallback for platforms using native timeupdate
-                if (
-                    subtitlesActive &&
-                    typeof currentTime === 'number' &&
-                    readyState >= HAVE_CURRENT_DATA
-                ) {
-                    updateSubtitles(
-                        currentTime,
-                        activePlatform,
-                        config,
-                        logPrefix
-                    );
-                }
             }
-        };
-    }
+            return;
+        }
+
+        if (
+            subtitlesActive &&
+            typeof currentTime === 'number' &&
+            readyState >= HAVE_CURRENT_DATA
+        ) {
+            updateSubtitles(currentTime, activePlatform, config, logPrefix);
+        }
+    };
 
     videoElement.addEventListener('timeupdate', timeUpdateListener);
+    videoElement.addEventListener('seeking', timeUpdateListener);
     videoElement.addEventListener('seeked', timeUpdateListener);
     videoElement.setAttribute('data-listener-attached', 'true');
     logWithFallback('info', 'Attached HTML5 timeupdate listener.', {
@@ -2021,6 +2041,7 @@ export function clearSubtitlesDisplayAndQueue(
     clearAllQueue = true,
     logPrefix = 'SubtitleUtils'
 ) {
+    subtitleContextGeneration++;
     const platformVideoId = activePlatform?.getCurrentVideoId();
 
     if (clearAllQueue) {
@@ -2121,6 +2142,7 @@ export function finalizeExpiredSubtitleIfNeeded(
 }
 
 export function clearSubtitleDOM() {
+    subtitleContextGeneration++;
     if (subtitleContainer && subtitleContainer.parentElement) {
         subtitleContainer.parentElement.removeChild(subtitleContainer);
     }
@@ -2128,17 +2150,9 @@ export function clearSubtitleDOM() {
     originalSubtitleElement = null;
     translatedSubtitleElement = null;
 
-    const videoElement = document.querySelector(
-        'video[data-listener-attached="true"]'
-    );
-    if (videoElement && timeUpdateListener) {
-        videoElement.removeEventListener('timeupdate', timeUpdateListener);
-        videoElement.removeEventListener('seeked', timeUpdateListener);
-        videoElement.removeAttribute('data-listener-attached');
-    }
-
-    timeUpdateListener = null;
+    detachTimeUpdateListener();
     queueRerunRequested = false;
+    queueRerunContext = null;
     if (queueProcessingTimeoutId !== null) {
         clearTimeout(queueProcessingTimeoutId);
         queueProcessingTimeoutId = null;
@@ -2380,6 +2394,16 @@ export function handleSubtitleDataFound(
 }
 
 export function handleVideoIdChange(newVideoId, logPrefix = 'SubtitleUtils') {
+    if (currentVideoId === newVideoId) {
+        logWithFallback('debug', 'Video context unchanged.', {
+            logPrefix,
+            videoId: newVideoId,
+        });
+        return;
+    }
+
+    subtitleContextGeneration++;
+
     logWithFallback('info', 'Video context changing.', {
         logPrefix,
         from: currentVideoId || 'null',
@@ -2501,6 +2525,12 @@ export async function processSubtitleQueue(
     if (!activePlatform || !subtitlesActive) return;
     if (processingQueue) {
         queueRerunRequested = true;
+        queueRerunContext = {
+            activePlatform,
+            config,
+            logPrefix,
+            generation: subtitleContextGeneration,
+        };
         return;
     }
 
@@ -2518,6 +2548,7 @@ export async function processSubtitleQueue(
 
     const platformVideoId = activePlatform.getCurrentVideoId();
     if (!platformVideoId) return;
+    const processingGeneration = subtitleContextGeneration;
 
     if (
         activePlatform.supportsProgressBarTracking?.() !== false &&
@@ -2585,6 +2616,7 @@ export async function processSubtitleQueue(
     }
 
     queueRerunRequested = false;
+    queueRerunContext = null;
     processingQueue = true;
 
     try {
@@ -2760,6 +2792,35 @@ export async function processSubtitleQueue(
         processingQueue = false;
     }
 
+    const rerunWasRequested = queueRerunRequested;
+    const rerunContext = queueRerunContext;
+    queueRerunRequested = false;
+    queueRerunContext = null;
+
+    let activeContextVideoId = null;
+    try {
+        activeContextVideoId = activePlatform?.getCurrentVideoId?.();
+    } catch (_) {}
+    const processingContextIsCurrent =
+        subtitlesActive &&
+        processingGeneration === subtitleContextGeneration &&
+        activeContextVideoId === platformVideoId;
+
+    if (!processingContextIsCurrent) {
+        if (
+            rerunContext &&
+            rerunContext.generation === subtitleContextGeneration &&
+            subtitlesActive
+        ) {
+            scheduleSubtitleQueueProcessing(
+                rerunContext.activePlatform,
+                rerunContext.config,
+                rerunContext.logPrefix
+            );
+        }
+        return;
+    }
+
     // After processing this queue pass, refresh the subtitles on screen.
     // This ensures newly available translations are rendered without waiting for the next timeupdate event.
     const videoElementForUpdate = activePlatform?.getVideoElement();
@@ -2813,8 +2874,6 @@ export async function processSubtitleQueue(
                   latestCurrentTime
               )
             : null;
-    const rerunWasRequested = queueRerunRequested;
-    queueRerunRequested = false;
     const nextRunDelay = rerunWasRequested
         ? 0
         : moreRelevantCuesExist
@@ -2826,10 +2885,15 @@ export async function processSubtitleQueue(
         currentContextVideoIdForNextCheck &&
         nextRunDelay !== null
     ) {
+        const nextContext =
+            rerunContext &&
+            rerunContext.generation === subtitleContextGeneration
+                ? rerunContext
+                : { activePlatform, config, logPrefix };
         scheduleSubtitleQueueProcessing(
-            activePlatform,
-            config,
-            logPrefix,
+            nextContext.activePlatform,
+            nextContext.config,
+            nextContext.logPrefix,
             nextRunDelay
         );
     }
