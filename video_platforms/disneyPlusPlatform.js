@@ -10,6 +10,7 @@ import { BasePlatformAdapter } from './BasePlatformAdapter.js';
 const PLAYBACK_TRANSITION_DELAY_MS = 160;
 const DEEP_TIMELINE_SEARCH_INTERVAL_MS = 1000;
 const TIMELINE_DRIFT_TOLERANCE_SECONDS = 1.5;
+const RUNTIME_SAMPLE_STABILITY_MS = 100;
 const TIMELINE_SELECTORS = [
     '.progress-bar__seekable-range[role="slider"][aria-valuenow]',
     '.progress-bar__seekable-range[aria-valuenow]',
@@ -28,7 +29,7 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
         this.lastKnownVttUrlForVideoId = {};
         this.pendingVttUrlForVideoId = {};
         this.eventListener = null; // To store the bound event listener for removal
-        this._programStartOffsetSeconds = 0;
+        this._stalePlaybackIdentity = null;
         this._resetPlaybackClockState();
         this.initializeLogger();
     }
@@ -42,6 +43,12 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
         this._playbackTimeOffset = null;
         this._cachedProgressBarElement = null;
         this._lastDeepTimelineSearchAt = 0;
+        this._runtimePlaybackAnchor = null;
+        this._runtimeAnchorValid = false;
+        this._runtimeAnchorNeedsCoherentSample = false;
+        this._runtimePendingAnchor = null;
+        this._runtimeInterstitialActive = false;
+        this._runtimeLastSequence = -1;
     }
 
     /**
@@ -85,6 +92,7 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
 
         this.eventListener = this._handleInjectorEvents.bind(this);
         document.addEventListener(INJECT_EVENT_ID, this.eventListener);
+        this._requestPlaybackTimeline();
 
         const disneyPlusSubtitleSelectors = [
             '.TimedTextOverlay',
@@ -99,12 +107,174 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
         });
     }
 
+    _requestPlaybackTimeline() {
+        try {
+            document.dispatchEvent(
+                new CustomEvent(INJECT_EVENT_ID, {
+                    detail: { type: 'REQUEST_PLAYBACK_TIMELINE' },
+                })
+            );
+        } catch (_) {}
+    }
+
+    _getRuntimeIdentity(value) {
+        if (!value) return null;
+
+        const availId =
+            typeof value.availId === 'string' && value.availId
+                ? value.availId
+                : null;
+        const playbackSessionId =
+            typeof value.playbackSessionId === 'string' &&
+            value.playbackSessionId
+                ? value.playbackSessionId
+                : null;
+
+        return availId || playbackSessionId
+            ? { availId, playbackSessionId }
+            : null;
+    }
+
+    _runtimeIdentitiesMatch(leftValue, rightValue) {
+        const left = this._getRuntimeIdentity(leftValue);
+        const right = this._getRuntimeIdentity(rightValue);
+        if (!left || !right) return false;
+
+        if (left.playbackSessionId && right.playbackSessionId) {
+            return left.playbackSessionId === right.playbackSessionId;
+        }
+
+        return Boolean(left.availId && left.availId === right.availId);
+    }
+
+    _handlePlaybackTimelineUpdate(data) {
+        if (!this.currentVideoId || data.videoId !== this.currentVideoId) {
+            return;
+        }
+
+        const programTime = data.programTimeSeconds;
+        if (
+            typeof programTime !== 'number' ||
+            !Number.isFinite(programTime) ||
+            programTime < 0
+        ) {
+            return;
+        }
+
+        const runtimeIdentity = this._getRuntimeIdentity(data);
+        if (!runtimeIdentity) return;
+
+        if (
+            this._stalePlaybackIdentity &&
+            this._runtimeIdentitiesMatch(this._stalePlaybackIdentity, data)
+        ) {
+            return;
+        }
+
+        const videoElement = this.getVideoElement();
+        const mediaTime = videoElement?.currentTime;
+        if (!Number.isFinite(mediaTime)) return;
+
+        const sequence = Number(data.sequence);
+        if (
+            Number.isFinite(sequence) &&
+            sequence <= this._runtimeLastSequence
+        ) {
+            return;
+        }
+
+        const previousAnchor = this._runtimePlaybackAnchor;
+        const sameRuntime = this._runtimeIdentitiesMatch(previousAnchor, data);
+        const interstitialStateKnown =
+            typeof data.isInterstitialPlaying === 'boolean';
+        if (interstitialStateKnown) {
+            const wasInterstitialActive = this._runtimeInterstitialActive;
+            this._runtimeInterstitialActive = data.isInterstitialPlaying;
+            if (wasInterstitialActive !== this._runtimeInterstitialActive) {
+                this.logger.info('Disney interstitial playback state changed', {
+                    videoId: this.currentVideoId,
+                    isInterstitialPlaying: this._runtimeInterstitialActive,
+                    isBumper: data.isBumper === true,
+                });
+            }
+        }
+
+        if (
+            this._runtimeAnchorNeedsCoherentSample &&
+            previousAnchor &&
+            sameRuntime &&
+            previousAnchor.videoElement === videoElement
+        ) {
+            const mediaDelta = mediaTime - previousAnchor.mediaTime;
+            const programDelta = programTime - previousAnchor.programTime;
+            const coherentWithPrevious =
+                Math.abs(mediaDelta - programDelta) <=
+                TIMELINE_DRIFT_TOLERANCE_SECONDS;
+
+            if (!coherentWithPrevious) {
+                const pendingAnchor = this._runtimePendingAnchor;
+                const pendingMatchesRuntime =
+                    pendingAnchor?.videoElement === videoElement &&
+                    this._runtimeIdentitiesMatch(pendingAnchor, data);
+                const coherentWithPending =
+                    pendingMatchesRuntime &&
+                    Math.abs(
+                        mediaTime -
+                            pendingAnchor.mediaTime -
+                            (programTime - pendingAnchor.programTime)
+                    ) <= TIMELINE_DRIFT_TOLERANCE_SECONDS;
+                const pendingIsStable =
+                    coherentWithPending &&
+                    Date.now() - pendingAnchor.observedAt >=
+                        RUNTIME_SAMPLE_STABILITY_MS;
+
+                if (!pendingIsStable) {
+                    if (!coherentWithPending) {
+                        this._runtimePendingAnchor = {
+                            videoElement,
+                            videoId: data.videoId,
+                            mediaTime,
+                            programTime,
+                            observedAt: Date.now(),
+                            ...runtimeIdentity,
+                        };
+                    }
+                    this._runtimeLastSequence = Number.isFinite(sequence)
+                        ? sequence
+                        : this._runtimeLastSequence + 1;
+                    return;
+                }
+            }
+        } else {
+            this._runtimePendingAnchor = null;
+        }
+
+        this._runtimePendingAnchor = null;
+
+        this._runtimePlaybackAnchor = {
+            videoElement,
+            videoId: data.videoId,
+            mediaTime,
+            programTime,
+            ...runtimeIdentity,
+        };
+        this._runtimeAnchorValid = true;
+        this._runtimeAnchorNeedsCoherentSample = false;
+        this._runtimeLastSequence = Number.isFinite(sequence)
+            ? sequence
+            : this._runtimeLastSequence + 1;
+        this._stalePlaybackIdentity = null;
+    }
+
     _handleInjectorEvents(e) {
         const data = e.detail;
         if (!data || !data.type) return;
 
         if (data.type === 'INJECT_SCRIPT_READY') {
             this.logger.info('Inject script is ready');
+            this._requestPlaybackTimeline();
+        } else if (data.type === 'PLAYBACK_TIMELINE_UPDATE') {
+            this._handlePlaybackTimelineUpdate(data);
         } else if (data.type === 'SUBTITLE_URL_FOUND') {
             const injectedVideoId = data.videoId;
             const vttMasterUrl = data.url;
@@ -133,23 +303,11 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
                     delete this.lastKnownVttUrlForVideoId[this.currentVideoId];
                     delete this.pendingVttUrlForVideoId[this.currentVideoId];
                 }
-                this._programStartOffsetSeconds = 0;
+                this._stalePlaybackIdentity = this._getRuntimeIdentity(
+                    this._runtimePlaybackAnchor
+                );
                 this._resetPlaybackClockState(true);
                 this.setVideoIdAndNotify(injectedVideoId);
-            }
-
-            const programStartOffsetSeconds = data.programStartOffsetSeconds;
-            if (
-                Number.isFinite(programStartOffsetSeconds) &&
-                programStartOffsetSeconds >= 0 &&
-                programStartOffsetSeconds !== this._programStartOffsetSeconds
-            ) {
-                this._programStartOffsetSeconds = programStartOffsetSeconds;
-                this._resetPlaybackClockState(true);
-                this.logger.info('Updated program start offset', {
-                    videoId: injectedVideoId,
-                    offsetSeconds: programStartOffsetSeconds,
-                });
             }
 
             const requestVideoId = this.currentVideoId;
@@ -481,22 +639,6 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
         return Number.isFinite(value) && value >= 0 ? value : null;
     }
 
-    _normalizeTimelineTime(timelineTime, mediaTime, programTime) {
-        if (timelineTime === null || this._programStartOffsetSeconds <= 0) {
-            return timelineTime;
-        }
-
-        const distanceToMediaTime = Math.abs(timelineTime - mediaTime);
-        const distanceToProgramTime = Math.abs(timelineTime - programTime);
-        const timelineTracksStitchedMedia =
-            distanceToMediaTime <= TIMELINE_DRIFT_TOLERANCE_SECONDS &&
-            distanceToMediaTime < distanceToProgramTime;
-
-        return timelineTracksStitchedMedia
-            ? timelineTime - this._programStartOffsetSeconds
-            : timelineTime;
-    }
-
     _getMeaningfulTimelineOffset(timelineTime, programTime) {
         const measuredOffset = timelineTime - programTime;
         // Small differences are normal UI sampling lag; keep the active video
@@ -507,10 +649,9 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
     }
 
     /**
-     * Use the active HTML video as the continuously advancing clock. Required
-     * preroll duration maps its stitched media time onto program time first;
-     * Disney's lazily mounted timeline then calibrates program time onto the
-     * episode subtitle timeline.
+     * Use Disney's live program playhead to anchor the active HTML video clock.
+     * The lazily mounted progress slider remains a fallback when the runtime
+     * facade is unavailable.
      * @returns {number | null}
      */
     getPlaybackTime(preferredVideoElement = null) {
@@ -518,13 +659,38 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
         const mediaTime = videoElement?.currentTime;
         if (!Number.isFinite(mediaTime)) return null;
 
-        const programTime = mediaTime - this._programStartOffsetSeconds;
-        if (programTime < 0) {
-            this._resetPlaybackClockState(true);
-            this._clockVideoElement = videoElement;
-            this._clockProgramTime = programTime;
-            return programTime;
+        if (this._runtimeInterstitialActive) return -1;
+
+        const runtimeAnchor = this._runtimePlaybackAnchor;
+        const runtimeAnchorMatchesVideo =
+            runtimeAnchor?.videoElement === videoElement;
+        if (runtimeAnchor && !runtimeAnchorMatchesVideo) {
+            this._runtimeAnchorValid = false;
+            this._runtimeAnchorNeedsCoherentSample = false;
         }
+
+        if (
+            this._runtimeAnchorValid &&
+            runtimeAnchor?.videoId === this.currentVideoId &&
+            runtimeAnchorMatchesVideo
+        ) {
+            return (
+                runtimeAnchor.programTime +
+                (mediaTime - runtimeAnchor.mediaTime)
+            );
+        }
+
+        // A seek can move the media clock before Disney publishes its matching
+        // program playhead. Suppress cues during that short disagreement rather
+        // than briefly rendering subtitles from the wrong scene.
+        if (
+            runtimeAnchorMatchesVideo &&
+            this._runtimeAnchorNeedsCoherentSample
+        ) {
+            return -1;
+        }
+
+        const programTime = mediaTime;
 
         const previousVideoElement = this._clockVideoElement;
         const previousProgramTime = this._clockProgramTime;
@@ -541,11 +707,7 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
         }
 
         const timelineElement = this.getProgressBarElement();
-        const timelineTime = this._normalizeTimelineTime(
-            this._readTimelineTime(timelineElement),
-            mediaTime,
-            programTime
-        );
+        const timelineTime = this._readTimelineTime(timelineElement);
 
         const programTimeChanged =
             !videoElementChanged &&
@@ -646,6 +808,12 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
     invalidatePlaybackClockCalibration() {
         this._playbackTimeOffset = null;
         this._clockNeedsFreshTimeline = true;
+        if (this._runtimePlaybackAnchor) {
+            this._runtimeAnchorValid = false;
+            this._runtimeAnchorNeedsCoherentSample = true;
+            this._runtimePendingAnchor = null;
+        }
+        this._requestPlaybackTimeline();
     }
 
     supportsProgressBarTracking() {
@@ -967,7 +1135,7 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
         this.onVideoIdChangeCallback = null;
         this.lastKnownVttUrlForVideoId = {};
         this.pendingVttUrlForVideoId = {};
-        this._programStartOffsetSeconds = 0;
+        this._stalePlaybackIdentity = null;
         this._resetPlaybackClockState();
         this.logger.info('Platform cleaned up successfully');
     }

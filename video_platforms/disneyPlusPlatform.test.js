@@ -519,9 +519,9 @@ describe('DisneyPlusPlatform Logging Integration', () => {
             expect(platform.getPlaybackTime()).toBe(25);
         });
 
-        test('maps stitched branded preroll time onto the program subtitle timeline', () => {
+        test('does not subtract a declared bumper when Disney skips it', () => {
             const active = createVideo({
-                currentTime: 4.087,
+                currentTime: 10,
                 readyState: 4,
                 paused: false,
                 currentSrc: 'blob:https://www.disneyplus.com/abc-video',
@@ -543,20 +543,232 @@ describe('DisneyPlusPlatform Logging Integration', () => {
                 },
             });
 
-            expect(platform.getPlaybackTime(active.video)).toBeCloseTo(1.084);
-
-            const { overlay, timeline } = createDisneyTimeline(4.087);
-            expect(platform.getPlaybackTime(active.video)).toBeCloseTo(1.084);
-
-            timeline.setAttribute('aria-valuenow', '1.084');
-            expect(platform.getPlaybackTime(active.video)).toBeCloseTo(1.084);
-
-            overlay.remove();
-            active.state.currentTime = 2;
-            expect(platform.getPlaybackTime(active.video)).toBeCloseTo(-1.003);
+            expect(platform.getPlaybackTime(active.video)).toBe(10);
         });
 
-        test('resets branded preroll mapping when SPA navigation enters a normal video', () => {
+        test('anchors Disney program time to the continuously advancing video clock', () => {
+            const active = createVideo({
+                currentTime: 4.087,
+                readyState: 4,
+                paused: false,
+                currentSrc: 'blob:https://www.disneyplus.com/abc-video',
+                width: 1512,
+                height: 708,
+            });
+            document.body.appendChild(active.video);
+
+            platform.currentVideoId = 'abc-video';
+            platform._handleInjectorEvents({
+                detail: {
+                    type: 'PLAYBACK_TIMELINE_UPDATE',
+                    videoId: 'abc-video',
+                    availId: 'abc-avail',
+                    playbackSessionId: 'abc-session',
+                    sequence: 1,
+                    programTimeSeconds: 1.084,
+                    isInterstitialPlaying: false,
+                    isBumper: false,
+                },
+            });
+
+            expect(platform.getPlaybackTime(active.video)).toBeCloseTo(1.084);
+
+            active.state.currentTime = 5.087;
+            expect(platform.getPlaybackTime(active.video)).toBeCloseTo(2.084);
+        });
+
+        test('ignores runtime samples without a playback identity', () => {
+            const active = createVideo({
+                currentTime: 10,
+                readyState: 4,
+                paused: false,
+                currentSrc: 'blob:https://www.disneyplus.com/anonymous',
+                width: 1512,
+                height: 708,
+            });
+            document.body.appendChild(active.video);
+            platform.currentVideoId = 'anonymous-video';
+
+            platform._handleInjectorEvents({
+                detail: {
+                    type: 'PLAYBACK_TIMELINE_UPDATE',
+                    videoId: 'anonymous-video',
+                    sequence: 1,
+                    programTimeSeconds: 100,
+                    isInterstitialPlaying: false,
+                    isBumper: false,
+                },
+            });
+
+            expect(platform.getPlaybackTime(active.video)).toBe(10);
+        });
+
+        test('falls back when the active video is replaced before a new runtime sample', () => {
+            const first = createVideo({
+                currentTime: 20,
+                readyState: 4,
+                paused: false,
+                currentSrc: 'blob:https://www.disneyplus.com/first-video',
+                width: 1512,
+                height: 708,
+            });
+            document.body.appendChild(first.video);
+            platform.currentVideoId = 'replaced-video';
+            platform._handleInjectorEvents({
+                detail: {
+                    type: 'PLAYBACK_TIMELINE_UPDATE',
+                    videoId: 'replaced-video',
+                    availId: 'replaced-avail',
+                    playbackSessionId: 'replaced-session',
+                    sequence: 1,
+                    programTimeSeconds: 10,
+                    isInterstitialPlaying: false,
+                    isBumper: false,
+                },
+            });
+            expect(platform.getPlaybackTime(first.video)).toBe(10);
+
+            first.video.remove();
+            const replacement = createVideo({
+                currentTime: 25,
+                readyState: 4,
+                paused: false,
+                currentSrc: 'blob:https://www.disneyplus.com/replacement',
+                width: 1512,
+                height: 708,
+            });
+            document.body.appendChild(replacement.video);
+
+            expect(platform.getPlaybackTime(replacement.video)).toBe(25);
+        });
+
+        test('suppresses subtitles only while an interstitial actually plays', () => {
+            const active = createVideo({
+                currentTime: 1,
+                readyState: 4,
+                paused: false,
+                currentSrc: 'blob:https://www.disneyplus.com/branded-video',
+                width: 1512,
+                height: 708,
+            });
+            document.body.appendChild(active.video);
+            platform.currentVideoId = 'branded-video';
+            platform._handleInjectorEvents({
+                detail: {
+                    type: 'PLAYBACK_TIMELINE_UPDATE',
+                    videoId: 'branded-video',
+                    availId: 'branded-avail',
+                    playbackSessionId: 'branded-session',
+                    sequence: 1,
+                    programTimeSeconds: 0,
+                    isInterstitialPlaying: true,
+                    isBumper: true,
+                },
+            });
+
+            expect(platform.getPlaybackTime(active.video)).toBe(-1);
+
+            active.state.currentTime = 3.003;
+            platform._handleInjectorEvents({
+                detail: {
+                    type: 'PLAYBACK_TIMELINE_UPDATE',
+                    videoId: 'branded-video',
+                    availId: 'branded-avail',
+                    playbackSessionId: 'branded-session',
+                    sequence: 2,
+                    programTimeSeconds: 0,
+                    isInterstitialPlaying: false,
+                    isBumper: false,
+                },
+            });
+            expect(platform.getPlaybackTime(active.video)).toBe(0);
+
+            active.state.currentTime = 4.003;
+            expect(platform.getPlaybackTime(active.video)).toBeCloseTo(1);
+        });
+
+        test('waits for a coherent program sample after seeking', () => {
+            const active = createVideo({
+                currentTime: 100,
+                readyState: 4,
+                paused: false,
+                currentSrc: 'blob:https://www.disneyplus.com/seek-video',
+                width: 1512,
+                height: 708,
+            });
+            document.body.appendChild(active.video);
+            platform.currentVideoId = 'seek-video';
+
+            const updateTimeline = (sequence, programTimeSeconds) =>
+                platform._handleInjectorEvents({
+                    detail: {
+                        type: 'PLAYBACK_TIMELINE_UPDATE',
+                        videoId: 'seek-video',
+                        availId: 'seek-avail',
+                        playbackSessionId: 'seek-session',
+                        sequence,
+                        programTimeSeconds,
+                        isInterstitialPlaying: false,
+                        isBumper: false,
+                    },
+                });
+
+            updateTimeline(1, 100);
+            expect(platform.getPlaybackTime(active.video)).toBe(100);
+
+            platform.invalidatePlaybackClockCalibration();
+            active.state.currentTime = 500;
+            updateTimeline(2, 101);
+            expect(platform.getPlaybackTime(active.video)).toBe(-1);
+
+            updateTimeline(3, 500);
+            expect(platform.getPlaybackTime(active.video)).toBe(500);
+        });
+
+        test('recovers when a seek changes the media timestamp origin', () => {
+            const active = createVideo({
+                currentTime: 100,
+                readyState: 4,
+                paused: true,
+                currentSrc: 'blob:https://www.disneyplus.com/discontinuity',
+                width: 1512,
+                height: 708,
+            });
+            document.body.appendChild(active.video);
+            platform.currentVideoId = 'discontinuity-video';
+
+            const updateTimeline = (sequence, programTimeSeconds) =>
+                platform._handleInjectorEvents({
+                    detail: {
+                        type: 'PLAYBACK_TIMELINE_UPDATE',
+                        videoId: 'discontinuity-video',
+                        availId: 'discontinuity-avail',
+                        playbackSessionId: 'discontinuity-session',
+                        sequence,
+                        programTimeSeconds,
+                        isInterstitialPlaying: false,
+                        isBumper: false,
+                    },
+                });
+
+            const now = jest.spyOn(Date, 'now').mockReturnValue(1000);
+            try {
+                updateTimeline(1, 100);
+                platform.invalidatePlaybackClockCalibration();
+                active.state.currentTime = 500;
+
+                updateTimeline(2, 400);
+                expect(platform.getPlaybackTime(active.video)).toBe(-1);
+
+                now.mockReturnValue(1200);
+                updateTimeline(3, 400);
+                expect(platform.getPlaybackTime(active.video)).toBe(400);
+            } finally {
+                now.mockRestore();
+            }
+        });
+
+        test('rejects the previous playback session during an SPA transition', () => {
             const active = createVideo({
                 currentTime: 10,
                 readyState: 4,
@@ -566,99 +778,58 @@ describe('DisneyPlusPlatform Logging Integration', () => {
                 height: 708,
             });
             document.body.appendChild(active.video);
+            platform.currentVideoId = 'video-a';
+            platform._handleInjectorEvents({
+                detail: {
+                    type: 'PLAYBACK_TIMELINE_UPDATE',
+                    videoId: 'video-a',
+                    availId: 'avail-a',
+                    playbackSessionId: 'session-a',
+                    sequence: 1,
+                    programTimeSeconds: 100,
+                    isInterstitialPlaying: false,
+                    isBumper: false,
+                },
+            });
+            expect(platform.getPlaybackTime(active.video)).toBe(100);
 
-            const brandedUrl = 'https://example.com/branded.m3u8';
-            platform.currentVideoId = 'branded-video';
-            platform.lastKnownVttUrlForVideoId['branded-video'] = brandedUrl;
+            const nextUrl = 'https://example.com/video-b.m3u8';
+            platform.lastKnownVttUrlForVideoId['video-b'] = nextUrl;
             platform._handleInjectorEvents({
                 detail: {
                     type: 'SUBTITLE_URL_FOUND',
-                    videoId: 'branded-video',
-                    url: brandedUrl,
-                    programStartOffsetSeconds: 3.003,
+                    videoId: 'video-b',
+                    url: nextUrl,
                 },
             });
-            expect(platform.getPlaybackTime(active.video)).toBeCloseTo(6.997);
-
-            createDisneyTimeline(1000);
-
-            const normalUrl = 'https://example.com/normal.m3u8';
-            platform.lastKnownVttUrlForVideoId['normal-video'] = normalUrl;
+            active.state.currentTime = 11;
             platform._handleInjectorEvents({
                 detail: {
-                    type: 'SUBTITLE_URL_FOUND',
-                    videoId: 'normal-video',
-                    url: normalUrl,
+                    type: 'PLAYBACK_TIMELINE_UPDATE',
+                    videoId: 'video-b',
+                    availId: 'avail-a',
+                    playbackSessionId: 'session-a',
+                    sequence: 2,
+                    programTimeSeconds: 101,
+                    isInterstitialPlaying: false,
+                    isBumper: false,
                 },
             });
+            expect(platform.getPlaybackTime(active.video)).toBe(11);
 
-            expect(platform.getPlaybackTime(active.video)).toBe(10);
-        });
-
-        test('drops prior timeline calibration when playback re-enters branded preroll', () => {
-            const active = createVideo({
-                currentTime: 400,
-                readyState: 4,
-                paused: false,
-                currentSrc: 'blob:https://www.disneyplus.com/branded-video',
-                width: 1512,
-                height: 708,
-            });
-            document.body.appendChild(active.video);
-            const { timeline } = createDisneyTimeline(1000);
-
-            const videoId = 'branded-video';
-            const url = 'https://example.com/branded.m3u8';
-            platform.currentVideoId = videoId;
-            platform.lastKnownVttUrlForVideoId[videoId] = url;
             platform._handleInjectorEvents({
                 detail: {
-                    type: 'SUBTITLE_URL_FOUND',
-                    videoId,
-                    url,
-                    programStartOffsetSeconds: 3.003,
+                    type: 'PLAYBACK_TIMELINE_UPDATE',
+                    videoId: 'video-b',
+                    availId: 'avail-b',
+                    playbackSessionId: 'session-b',
+                    sequence: 3,
+                    programTimeSeconds: 1,
+                    isInterstitialPlaying: false,
+                    isBumper: false,
                 },
             });
-
-            expect(platform.getPlaybackTime(active.video)).toBeCloseTo(396.997);
-
-            active.state.currentTime = 401;
-            timeline.setAttribute('aria-valuenow', '1001');
-            expect(platform.getPlaybackTime(active.video)).toBeCloseTo(1001);
-
-            active.state.currentTime = 2;
-            expect(platform.getPlaybackTime(active.video)).toBeCloseTo(-1.003);
-
-            active.state.currentTime = 3.103;
-            expect(platform.getPlaybackTime(active.video)).toBeCloseTo(0.1);
-        });
-
-        test('keeps active video authoritative when the stitched slider lags slightly', () => {
-            const active = createVideo({
-                currentTime: 10,
-                readyState: 4,
-                paused: false,
-                currentSrc: 'blob:https://www.disneyplus.com/branded-video',
-                width: 1512,
-                height: 708,
-            });
-            document.body.appendChild(active.video);
-            createDisneyTimeline(9);
-
-            const videoId = 'branded-video';
-            const url = 'https://example.com/branded.m3u8';
-            platform.currentVideoId = videoId;
-            platform.lastKnownVttUrlForVideoId[videoId] = url;
-            platform._handleInjectorEvents({
-                detail: {
-                    type: 'SUBTITLE_URL_FOUND',
-                    videoId,
-                    url,
-                    programStartOffsetSeconds: 3.003,
-                },
-            });
-
-            expect(platform.getPlaybackTime(active.video)).toBeCloseTo(6.997);
+            expect(platform.getPlaybackTime(active.video)).toBe(1);
         });
 
         test('does not enable the generic progress-bar observer', () => {
