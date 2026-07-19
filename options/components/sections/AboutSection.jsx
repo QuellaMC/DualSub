@@ -23,9 +23,7 @@ export function AboutSection({ t }) {
                         'This extension helps you watch videos with dual language subtitles on various platforms.'
                     )}
                 </p>
-                <p>
-                    {t('aboutDevelopment', 'Developed by ')}{' '}
-                </p>
+                <p>{t('aboutDevelopment', 'Developed by ')} </p>
             </SettingCard>
         </section>
     );

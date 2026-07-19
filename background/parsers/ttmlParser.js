@@ -21,6 +21,9 @@ class TTMLParser {
      * @returns {string} VTT formatted text
      */
     convertTtmlToVtt(ttmlText) {
+        if (typeof ttmlText !== 'string' || ttmlText.trim() === '') {
+            throw new Error('TTML input must be a non-empty string');
+        }
         this.logger.debug('Starting TTML to VTT conversion', {
             inputLength: ttmlText.length,
         });
@@ -80,7 +83,7 @@ class TTMLParser {
             return vtt;
         } catch (error) {
             this.logger.error('Error converting TTML to VTT', error, {
-                ttmlSample: ttmlText.substring(0, 500),
+                inputLength: ttmlText.length,
             });
             throw new Error(`TTML conversion failed: ${error.message}`);
         }
@@ -93,19 +96,20 @@ class TTMLParser {
      */
     parseRegionLayouts(ttmlText) {
         const regionLayouts = new Map();
-        const regionRegex =
-            /<region\s+xml:id="([^"]+)"[^>]*\s+tts:origin="([^"]+)"/gi;
+        const regionRegex = /<(?:[\w-]+:)?region\b([^>]*)\/?\s*>/gi;
         let regionMatch;
-        let regionCount = 0;
 
         while ((regionMatch = regionRegex.exec(ttmlText)) !== null) {
-            const regionId = regionMatch[1];
-            const origin = regionMatch[2].split(' ');
+            const attributes = this.parseAttributes(regionMatch[1]);
+            const regionId = attributes['xml:id'] || attributes.id;
+            const origin = String(attributes['tts:origin'] || '').split(/\s+/);
             if (origin.length === 2) {
                 const x = parseFloat(origin[0]);
                 const y = parseFloat(origin[1]);
+                if (!regionId || !Number.isFinite(x) || !Number.isFinite(y)) {
+                    continue;
+                }
                 regionLayouts.set(regionId, { x, y });
-                regionCount++;
                 this.logger.debug('Region layout parsed', {
                     regionId,
                     x,
@@ -125,25 +129,29 @@ class TTMLParser {
     parsePElements(ttmlText) {
         const intermediateCues = [];
         const pElementRegex =
-            /<p[^>]*\s+begin="([^"]+)"[^>]*\s+end="([^"]+)"[^>]*\s+region="([^"]+)"[^>]*>([\s\S]*?)<\/p>/gi;
+            /<(?:[\w-]+:)?p\b([^>]*)>([\s\S]*?)<\/(?:[\w-]+:)?p>/gi;
         let pMatch;
         let pElementCount = 0;
 
         while ((pMatch = pElementRegex.exec(ttmlText)) !== null) {
-            const [_, begin, end, region, textContent] = pMatch;
+            const attributes = this.parseAttributes(pMatch[1]);
+            const begin = attributes.begin;
+            const end = attributes.end;
+            const region = attributes.region || '';
+            const textContent = pMatch[2];
+            if (!begin || !end) {
+                continue;
+            }
             pElementCount++;
 
-            let text = textContent
-                .replace(/<br\s*\/?>/gi, ' ')
-                .replace(/<[^>]*>/g, '')
-                .replace(/&lt;/g, '<')
-                .replace(/&gt;/g, '>')
-                .replace(/&amp;/g, '&')
-                .replace(/&quot;/g, '"')
-                .replace(/&#39;/g, "'")
-                .replace(/\r?\n/g, ' ')
-                .replace(/\s+/g, ' ')
-                .trim();
+            const text = this.decodeEntities(
+                textContent
+                    .replace(/<br\s*\/?>/gi, ' ')
+                    .replace(/<[^>]*>/g, '')
+                    .replace(/\r?\n/g, ' ')
+                    .replace(/\s+/g, ' ')
+                    .trim()
+            );
 
             intermediateCues.push({ begin, end, region, text });
 
@@ -153,8 +161,7 @@ class TTMLParser {
                     begin,
                     end,
                     region,
-                    textPreview:
-                        text.substring(0, 50) + (text.length > 50 ? '...' : ''),
+                    textLength: text.length,
                 });
             }
         }
@@ -171,7 +178,7 @@ class TTMLParser {
         const groupedByTime = new Map();
 
         for (const cue of intermediateCues) {
-            const key = `${cue.begin}-${cue.end}`;
+            const key = JSON.stringify([cue.begin, cue.end]);
             if (!groupedByTime.has(key)) {
                 groupedByTime.set(key, []);
             }
@@ -220,7 +227,7 @@ class TTMLParser {
                 .join(' ')
                 .trim();
 
-            const [begin, end] = key.split('-');
+            const [begin, end] = JSON.parse(key);
             finalCues.push({
                 begin,
                 end,
@@ -231,9 +238,7 @@ class TTMLParser {
             if (mergedCount <= 3) {
                 this.logger.debug('Merged cues', {
                     groupSize: group.length,
-                    textPreview:
-                        mergedText.substring(0, 80) +
-                        (mergedText.length > 80 ? '...' : ''),
+                    textLength: mergedText.length,
                 });
             }
         }
@@ -248,12 +253,27 @@ class TTMLParser {
      */
     buildVttString(finalCues) {
         // Sort the final, merged cues by start time
-        finalCues.sort((a, b) => parseInt(a.begin) - parseInt(b.begin));
+        finalCues.sort(
+            (a, b) =>
+                this.parseTtmlTimeToSeconds(a.begin) -
+                this.parseTtmlTimeToSeconds(b.begin)
+        );
 
         let vttContent = '';
         let vttCueCount = 0;
 
         for (const cue of finalCues) {
+            const startSeconds = this.parseTtmlTimeToSeconds(cue.begin);
+            const endSeconds = this.parseTtmlTimeToSeconds(cue.end);
+            if (
+                Number.isFinite(startSeconds) &&
+                Number.isFinite(endSeconds) &&
+                endSeconds <= startSeconds
+            ) {
+                throw new Error(
+                    `Invalid TTML cue range: ${cue.begin} to ${cue.end}`
+                );
+            }
             const startTime = this.convertTtmlTimeToVtt(cue.begin);
             const endTime = this.convertTtmlTimeToVtt(cue.end);
 
@@ -266,9 +286,7 @@ class TTMLParser {
                     cueNumber: vttCueCount,
                     startTime,
                     endTime,
-                    textPreview:
-                        cue.text.substring(0, 60) +
-                        (cue.text.length > 60 ? '...' : ''),
+                    textLength: cue.text.length,
                 });
             }
         }
@@ -282,23 +300,71 @@ class TTMLParser {
      * @returns {string} VTT time string
      */
     convertTtmlTimeToVtt(ttmlTime) {
-        // Handle Netflix's tick-based time format (e.g., "107607500t")
-        if (ttmlTime.endsWith('t')) {
-            const ticks = parseInt(ttmlTime.slice(0, -1));
-            const tickRate = 10000000; // Netflix uses 10,000,000 ticks per second
-            const seconds = ticks / tickRate;
+        const seconds = this.parseTtmlTimeToSeconds(ttmlTime);
+        if (!Number.isFinite(seconds) || seconds < 0) {
+            throw new Error(`Unsupported TTML timestamp: ${ttmlTime}`);
+        }
+        return this.formatSecondsAsVtt(seconds);
+    }
 
-            const hours = Math.floor(seconds / 3600);
-            const minutes = Math.floor((seconds % 3600) / 60);
-            const secs = seconds % 60;
+    parseAttributes(attributeText) {
+        const attributes = Object.create(null);
+        const attributeRegex = /([\w:-]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g;
+        let match;
+        while ((match = attributeRegex.exec(attributeText)) !== null) {
+            attributes[match[1].toLowerCase()] = match[2] ?? match[3] ?? '';
+        }
+        return attributes;
+    }
 
-            // Format as HH:MM:SS.mmm
-            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toFixed(3).padStart(6, '0')}`;
+    decodeEntities(text) {
+        return text
+            .replace(/&#x([0-9a-f]+);/gi, (_match, hex) =>
+                String.fromCodePoint(Number.parseInt(hex, 16))
+            )
+            .replace(/&#(\d+);/g, (_match, decimal) =>
+                String.fromCodePoint(Number.parseInt(decimal, 10))
+            )
+            .replace(/&lt;/gi, '<')
+            .replace(/&gt;/gi, '>')
+            .replace(/&quot;/gi, '"')
+            .replace(/&apos;|&#39;/gi, "'")
+            .replace(/&amp;/gi, '&');
+    }
+
+    parseTtmlTimeToSeconds(ttmlTime) {
+        const value = String(ttmlTime).trim().replace(',', '.');
+        const tickMatch = value.match(/^(\d+(?:\.\d+)?)t$/i);
+        if (tickMatch) {
+            return Number(tickMatch[1]) / 10_000_000;
         }
 
-        // Handle standard time format: 00:00:01.500 or 00:00:01,500
-        // VTT format: 00:00:01.500
-        return ttmlTime.replace(',', '.');
+        const clockMatch = value.match(/^(\d+):(\d{2}):(\d{2}(?:\.\d+)?)$/);
+        if (clockMatch) {
+            const minutes = Number(clockMatch[2]);
+            const seconds = Number(clockMatch[3]);
+            if (minutes >= 60 || seconds >= 60) {
+                return Number.NaN;
+            }
+            return Number(clockMatch[1]) * 3600 + minutes * 60 + seconds;
+        }
+
+        const offsetMatch = value.match(/^(\d+(?:\.\d+)?)(h|m|s|ms)$/i);
+        if (!offsetMatch) {
+            return Number.NaN;
+        }
+        const amount = Number(offsetMatch[1]);
+        const multipliers = { h: 3600, m: 60, s: 1, ms: 0.001 };
+        return amount * multipliers[offsetMatch[2].toLowerCase()];
+    }
+
+    formatSecondsAsVtt(seconds) {
+        const totalMilliseconds = Math.round(seconds * 1000);
+        const hours = Math.floor(totalMilliseconds / 3_600_000);
+        const minutes = Math.floor((totalMilliseconds % 3_600_000) / 60_000);
+        const wholeSeconds = Math.floor((totalMilliseconds % 60_000) / 1000);
+        const milliseconds = totalMilliseconds % 1000;
+        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(wholeSeconds).padStart(2, '0')}.${String(milliseconds).padStart(3, '0')}`;
     }
 }
 

@@ -1,22 +1,33 @@
-// eslint.config.js
-import globals from 'globals';
 import js from '@eslint/js';
-import prettierConfig from 'eslint-config-prettier';
+import prettierConfig from 'eslint-config-prettier/flat';
+import { defineConfig } from 'eslint/config';
 import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
+import globals from 'globals';
 
-export default [
-    // Global recommended rules from ESLint
-    js.configs.recommended,
-
-    // Ignore third-party and temporary files
+const unusedVariablesRule = [
+    'warn',
     {
-        ignores: ['temp/**', 'node_modules/**', 'DualSub/**', 'dist/**'],
+        args: 'after-used',
+        argsIgnorePattern: '^_',
+        caughtErrors: 'none',
+        destructuredArrayIgnorePattern: '^_',
+        varsIgnorePattern: '^_',
     },
+];
 
-    // Configuration for all JavaScript files in the project
+export default defineConfig([
     {
-        files: ['**/*.js'],
+        ignores: [
+            'node_modules/**',
+            'dist/**',
+            'coverage/**',
+            'temp/**',
+            'DualSub/**',
+        ],
+    },
+    {
+        files: ['**/*.{js,jsx,mjs}'],
         languageOptions: {
             ecmaVersion: 'latest',
             sourceType: 'module',
@@ -27,42 +38,32 @@ export default [
                 gc: 'readonly',
             },
         },
-
+        linterOptions: {
+            reportUnusedDisableDirectives: 'warn',
+        },
         rules: {
-            'no-unused-vars': 'off',
+            ...js.configs.recommended.rules,
             'no-console': 'off',
             'no-empty': ['error', { allowEmptyCatch: true }],
+            'no-unused-vars': unusedVariablesRule,
         },
     },
-
-    // Configuration for React/JSX files
     {
         files: ['**/*.jsx'],
         languageOptions: {
-            ecmaVersion: 'latest',
-            sourceType: 'module',
             parserOptions: {
                 ecmaFeatures: {
                     jsx: true,
                 },
             },
-            globals: {
-                ...globals.browser,
-                ...globals.webextensions,
-                chrome: 'readonly',
-            },
         },
         plugins: {
             react,
-            'react-hooks': reactHooks,
         },
         rules: {
             ...react.configs.recommended.rules,
-            ...reactHooks.configs.recommended.rules,
-            'react/react-in-jsx-scope': 'off', // Not needed in React 17+
-            'react/prop-types': 'off', // We're not using PropTypes
-            'no-unused-vars': 'off',
-            'no-console': 'off',
+            'react/prop-types': 'off',
+            'react/react-in-jsx-scope': 'off',
         },
         settings: {
             react: {
@@ -70,38 +71,52 @@ export default [
             },
         },
     },
-
-    // Configuration for Jest test files
     {
-        files: ['**/*.test.js', '**/*.spec.js'],
+        files: ['**/*.{js,jsx}'],
+        plugins: {
+            'react-hooks': reactHooks,
+        },
+        rules: {
+            'react-hooks/exhaustive-deps': 'warn',
+            'react-hooks/rules-of-hooks': 'error',
+        },
+    },
+    {
+        files: [
+            '*.config.js',
+            'scripts/**/*.{js,mjs}',
+            'test-utils/style-mock.js',
+        ],
+        rules: {
+            'no-unused-vars': [
+                'error',
+                {
+                    args: 'after-used',
+                    argsIgnorePattern: '^_',
+                    caughtErrors: 'none',
+                    varsIgnorePattern: '^_',
+                },
+            ],
+        },
+    },
+    {
+        files: [
+            '**/*.test.{js,jsx}',
+            '**/*.spec.{js,jsx}',
+            '**/tests/**/*.{js,jsx}',
+            'jest.setup.js',
+            'test-utils/**/*.{js,jsx}',
+        ],
         languageOptions: {
-            ecmaVersion: 'latest',
-            sourceType: 'module',
             globals: {
                 ...globals.browser,
                 ...globals.webextensions,
                 ...globals.node,
                 ...globals.jest,
                 gc: 'readonly',
-                // Additional Jest globals
-                describe: 'readonly',
-                it: 'readonly',
-                expect: 'readonly',
-                beforeEach: 'readonly',
-                afterEach: 'readonly',
-                beforeAll: 'readonly',
-                afterAll: 'readonly',
-                jest: 'readonly',
-                test: 'readonly',
                 fail: 'readonly',
             },
         },
-
-        rules: {
-            'no-unused-vars': 'off',
-            'no-console': 'off',
-            'no-empty': ['error', { allowEmptyCatch: true }],
-        },
     },
     prettierConfig,
-];
+]);

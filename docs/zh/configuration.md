@@ -11,25 +11,25 @@
 - 界面语言（EN、ES、JA、KO、ZH-CN、ZH-TW）
 - 隐藏官方字幕
 - 日志级别
-- 服务商 API 密钥与性能调优（批处理大小、延迟）
+- 服务商 API 密钥与请求延迟调优
 - AI 上下文设置（服务商、模型、缓存、速率限制、超时）
 
 ## 示例
 
 语言学习：
 
-- 服务商：DeepL 免费版
+- 服务商：Microsoft 翻译（免密钥，尽力而为）
 - 布局：上下（原文优先）
-- AI 上下文：OpenAI GPT-4.1 Mini（文化/历史/语言）
+- AI 上下文：OpenAI GPT-5.6 Luna（文化/历史/语言）
 
 性能优先：
 
-- 批处理大小：5，请求延迟：100ms
+- 请求延迟：100ms
 - 服务商：Google 翻译
-- AI 上下文：Gemini 2.5 Flash；启用上下文缓存
+- AI 上下文：Gemini 3.5 Flash；启用上下文缓存
 
 高级用户：
 
 - 服务商：OpenAI 兼容
-- AI 上下文：OpenAI GPT-4.1 Mini
+- AI 上下文：OpenAI GPT-5.6 Luna
 - 速率限制：60 次/分钟；缓存 TTL：1 小时；调试日志：启用

@@ -2,6 +2,7 @@
 // Thanks to: https://github.com/Chewawi/microsoft-translate-api/
 
 import Logger from '../utils/logger.js';
+import { fetchWithTimeout } from '../utils/fetchWithTimeout.js';
 
 const API_AUTH_EDGE = 'https://edge.microsoft.com/translate/auth';
 const API_TRANSLATE_COGNITIVE =
@@ -33,7 +34,7 @@ let ongoingAuthPromise = null;
 async function fetchAuthToken() {
     logger.debug('Attempting to fetch new auth token');
     try {
-        const response = await fetch(API_AUTH_EDGE, {
+        const response = await fetchWithTimeout(API_AUTH_EDGE, {
             headers: { 'User-Agent': DEFAULT_USER_AGENT },
         });
         if (!response.ok) {
@@ -62,7 +63,7 @@ async function fetchAuthToken() {
         } catch (decodeError) {
             // Manual base64 decode as a last resort (simple implementation)
             logger.warn('Standard base64 decode failed, using fallback', {
-                errorMessage: decodeError.message,
+                errorType: decodeError?.name || 'UnknownError',
             });
             const base64chars =
                 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
@@ -105,11 +106,12 @@ async function fetchAuthToken() {
         tokenExpiresAt = jwtPayload.exp * 1000; // Convert to milliseconds
         logger.debug('New auth token fetched successfully', {
             expiresAt: new Date(tokenExpiresAt).toISOString(),
-            tokenLength: authJWT.length,
         });
         return globalAuthToken;
     } catch (e) {
-        logger.error('Failed to fetch auth token', e);
+        logger.error('Failed to fetch auth token', null, {
+            errorType: e?.name || 'UnknownError',
+        });
         globalAuthToken = null;
         tokenExpiresAt = 0;
         throw new Error('Failed to fetch auth token for Microsoft Translator.');
@@ -169,7 +171,8 @@ export async function translate(text, sourceLang, targetLang) {
 
     if (!text || typeof text !== 'string' || text.trim() === '') {
         logger.warn('Empty or invalid text provided for translation', {
-            text: text?.substring(0, 50),
+            valueType: typeof text,
+            textLength: typeof text === 'string' ? text.length : 0,
         });
         return ''; // Return empty string for empty input
     }
@@ -196,7 +199,7 @@ export async function translate(text, sourceLang, targetLang) {
 
         const queryString = queryParts.join('&');
 
-        const response = await fetch(
+        const response = await fetchWithTimeout(
             `${API_TRANSLATE_COGNITIVE}?${queryString}`,
             {
                 method: 'POST',
@@ -210,21 +213,11 @@ export async function translate(text, sourceLang, targetLang) {
         );
 
         if (!response.ok) {
-            let errorDetails = 'No details available.';
-            try {
-                const errorJson = await response.json();
-                errorDetails = JSON.stringify(errorJson.error || errorJson);
-            } catch (e) {
-                errorDetails = await response.text();
-            }
             logger.error('Microsoft Translate API HTTP error', null, {
                 status: response.status,
-                statusText: response.statusText,
-                errorDetails: errorDetails.substring(0, 200),
+                contentType: response.headers?.get?.('content-type') || null,
             });
-            throw new Error(
-                `Translation API HTTP error ${response.status}. Details: ${errorDetails.substring(0, 200)}`
-            );
+            throw new Error(`Translation API HTTP error ${response.status}.`);
         }
 
         const result = await response.json();
@@ -248,7 +241,12 @@ export async function translate(text, sourceLang, targetLang) {
                 'Translation JSON parsing failed or unexpected structure',
                 null,
                 {
-                    responseData: result,
+                    responseType: Array.isArray(result)
+                        ? 'array'
+                        : typeof result,
+                    topLevelItemCount: Array.isArray(result)
+                        ? result.length
+                        : 0,
                 }
             );
             throw new Error(
@@ -256,7 +254,8 @@ export async function translate(text, sourceLang, targetLang) {
             );
         }
     } catch (error) {
-        logger.error('API request/processing error occurred', error, {
+        logger.error('API request/processing error occurred', null, {
+            errorType: error?.name || 'UnknownError',
             sourceLang: actualSourceLang,
             targetLang,
             textLength: text?.length || 0,

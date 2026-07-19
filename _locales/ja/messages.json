@@ -1,31 +1,67 @@
 {
-    "appName": { "message": "DualSub" },
+    "appName": {
+        "message": "DualSub"
+    },
     "appDesc": {
         "message": "ストリーミングプラットフォームで二言語字幕を表示します。"
     },
-    "pageTitle": { "message": "DualSub 設定" },
-    "h1Title": { "message": "DualSub" },
-    "enableSubtitlesLabel": { "message": "二言語字幕を有効にする：" },
-    "useNativeSubtitlesLabel": { "message": "公式字幕を使用：" },
-    "originalLanguageLabel": { "message": "言語設定：" },
-    "translationSettingsLegend": { "message": "翻訳設定" },
-    "providerLabel": { "message": "プロバイダー：" },
-    "targetLanguageLabel": { "message": "翻訳先：" },
-    "batchSizeLabel": { "message": "バッチサイズ：" },
-    "requestDelayLabel": { "message": "リクエスト遅延 (ms)：" },
-    "subtitleAppearanceTimingLegend": { "message": "字幕の外観とタイミング" },
-    "displayOrderLabel": { "message": "表示順序：" },
-    "layoutLabel": { "message": "レイアウト：" },
-    "fontSizeLabel": { "message": "フォントサイズ：" },
-    "verticalGapLabel": { "message": "垂直間隔：" },
-    "subtitleVerticalPositionLabel": { "message": "垂直位置：" },
-    "timeOffsetLabel": { "message": "時間オフセット（秒）：" },
-    "displayOrderOriginalFirst": { "message": "原文を上に" },
-    "displayOrderTranslationFirst": { "message": "翻訳を上に" },
-    "layoutTopBottom": { "message": "上下配置" },
-    "layoutLeftRight": { "message": "左右配置" },
-    "uiLanguageLabel": { "message": "言語：" },
-    "openOptionsButton": { "message": "詳細設定" },
+    "h1Title": {
+        "message": "DualSub"
+    },
+    "enableSubtitlesLabel": {
+        "message": "二言語字幕を有効にする："
+    },
+    "useNativeSubtitlesLabel": {
+        "message": "公式字幕を使用："
+    },
+    "originalLanguageLabel": {
+        "message": "言語設定："
+    },
+    "providerLabel": {
+        "message": "プロバイダー："
+    },
+    "targetLanguageLabel": {
+        "message": "翻訳先："
+    },
+    "requestDelayLabel": {
+        "message": "リクエスト遅延 (ms)："
+    },
+    "subtitleAppearanceTimingLegend": {
+        "message": "字幕の外観とタイミング"
+    },
+    "displayOrderLabel": {
+        "message": "表示順序："
+    },
+    "layoutLabel": {
+        "message": "レイアウト："
+    },
+    "fontSizeLabel": {
+        "message": "フォントサイズ："
+    },
+    "verticalGapLabel": {
+        "message": "垂直間隔："
+    },
+    "subtitleVerticalPositionLabel": {
+        "message": "垂直位置："
+    },
+    "timeOffsetLabel": {
+        "message": "時間オフセット（秒）："
+    },
+    "displayOrderOriginalFirst": {
+        "message": "原文を上に"
+    },
+    "displayOrderTranslationFirst": {
+        "message": "翻訳を上に"
+    },
+    "layoutTopBottom": {
+        "message": "上下配置"
+    },
+    "layoutLeftRight": {
+        "message": "左右配置"
+    },
+    "uiLanguageLabel": {
+        "message": "言語："
+    },
     "statusLanguageSetTo": {
         "message": "言語設定完了（ページを更新してください）："
     },
@@ -44,85 +80,164 @@
     "statusOriginalLanguage": {
         "message": "言語設定完了（ページを更新してください）："
     },
-    "statusTimeOffset": { "message": "時間オフセット：" },
-    "statusDisplayOrderUpdated": { "message": "表示順序が更新されました。" },
+    "statusTimeOffset": {
+        "message": "時間オフセット："
+    },
+    "statusDisplayOrderUpdated": {
+        "message": "表示順序が更新されました。"
+    },
     "statusLayoutOrientationUpdated": {
         "message": "レイアウト方向が更新されました。"
     },
-    "statusFontSize": { "message": "フォントサイズ：" },
-    "statusVerticalGap": { "message": "垂直間隔：" },
-    "statusVerticalPosition": { "message": "垂直位置：" },
+    "statusFontSize": {
+        "message": "フォントサイズ："
+    },
+    "statusVerticalGap": {
+        "message": "垂直間隔："
+    },
+    "statusVerticalPosition": {
+        "message": "垂直位置："
+    },
     "statusInvalidOffset": {
         "message": "無効なオフセットです。元に戻します。"
     },
-    "statusSettingNotApplied": {
-        "message": "設定が適用されませんでした。ページを更新してください。"
+    "optionsPageTitle": {
+        "message": "DualSub オプション"
     },
-
-    "optionsPageTitle": { "message": "DualSub オプション" },
-    "optionsH1Title": { "message": "DualSub" },
-    "navGeneral": { "message": "一般" },
-    "navTranslation": { "message": "翻訳" },
-    "navProviders": { "message": "プロバイダー" },
-    "navAbout": { "message": "について" },
-    "sectionGeneral": { "message": "一般" },
-    "cardUILanguageTitle": { "message": "UI言語" },
+    "optionsH1Title": {
+        "message": "DualSub"
+    },
+    "navGeneral": {
+        "message": "一般"
+    },
+    "navTranslation": {
+        "message": "翻訳"
+    },
+    "navProviders": {
+        "message": "プロバイダー"
+    },
+    "navAbout": {
+        "message": "について"
+    },
+    "sectionGeneral": {
+        "message": "一般"
+    },
+    "cardUILanguageTitle": {
+        "message": "UI言語"
+    },
     "cardUILanguageDesc": {
         "message": "拡張機能のインターフェースの表示言語を選択します。"
     },
-    "cardHideOfficialSubtitlesTitle": { "message": "公式字幕を非表示" },
+    "cardHideOfficialSubtitlesTitle": {
+        "message": "公式字幕を非表示"
+    },
     "cardHideOfficialSubtitlesDesc": {
         "message": "DualSubがアクティブな時、動画プラットフォームの公式字幕を非表示にします。"
     },
-    "hideOfficialSubtitlesLabel": { "message": "公式字幕を非表示：" },
-    "sectionTranslation": { "message": "翻訳" },
-    "cardTranslationEngineTitle": { "message": "翻訳エンジン" },
+    "hideOfficialSubtitlesLabel": {
+        "message": "公式字幕を非表示："
+    },
+    "sectionTranslation": {
+        "message": "翻訳"
+    },
+    "cardTranslationEngineTitle": {
+        "message": "翻訳エンジン"
+    },
     "cardTranslationEngineDesc": {
         "message": "お好みの翻訳サービスを選択してください。"
     },
-    "cardPerformanceTitle": { "message": "パフォーマンス" },
+    "cardPerformanceTitle": {
+        "message": "パフォーマンス"
+    },
     "cardPerformanceDesc": {
         "message": "拡張機能が翻訳リクエストを処理する方法を調整して、速度と安定性のバランスを取ります。"
     },
-    "sectionProviders": { "message": "プロバイダー設定" },
-    "cardDeepLTitle": { "message": "DeepL" },
+    "sectionProviders": {
+        "message": "プロバイダー設定"
+    },
+    "cardDeepLTitle": {
+        "message": "DeepL"
+    },
     "cardDeepLDesc": {
         "message": "DeepL TranslateのAPIキーを入力してください。FreeプランまたはProプランから選択できます。"
     },
-    "apiKeyLabel": { "message": "APIキー：" },
-    "apiPlanLabel": { "message": "APIプラン：" },
-    "apiPlanFree": { "message": "DeepL API Free" },
-    "apiPlanPro": { "message": "DeepL API Pro" },
-    "sectionAbout": { "message": "について" },
-    "cardAboutTitle": { "message": "DualSub" },
-    "aboutVersion": { "message": "バージョン" },
+    "apiKeyLabel": {
+        "message": "APIキー："
+    },
+    "apiPlanLabel": {
+        "message": "APIプラン："
+    },
+    "apiPlanFree": {
+        "message": "DeepL API Free"
+    },
+    "apiPlanPro": {
+        "message": "DeepL API Pro"
+    },
+    "sectionAbout": {
+        "message": "について"
+    },
+    "cardAboutTitle": {
+        "message": "DualSub"
+    },
+    "aboutVersion": {
+        "message": "バージョン"
+    },
     "aboutDescription": {
         "message": "この拡張機能は、様々なプラットフォームで二言語字幕付きの動画を視聴するのに役立ちます。"
     },
     "aboutDevelopment": {
         "message": "QuellaMC & 1jifang によって開発されました。"
     },
-
-    "lang_en": { "message": "英語" },
-    "lang_es": { "message": "スペイン語" },
-    "lang_fr": { "message": "フランス語" },
-    "lang_de": { "message": "ドイツ語" },
-    "lang_it": { "message": "イタリア語" },
-    "lang_pt": { "message": "ポルトガル語" },
-    "lang_ja": { "message": "日本語" },
-    "lang_ko": { "message": "韓国語" },
-    "lang_zh_CN": { "message": "中国語（簡体）" },
-    "lang_zh_TW": { "message": "中国語（繁体）" },
-    "lang_ru": { "message": "ロシア語" },
-    "lang_ar": { "message": "アラビア語" },
-    "lang_hi": { "message": "ヒンディー語" },
-
-    "testDeepLButton": { "message": "DeepL接続をテスト" },
-    "deeplApiKeyError": { "message": "まずDeepL APIキーを入力してください。" },
-    "testingButton": { "message": "テスト中..." },
-    "testingConnection": { "message": "DeepL接続をテストしています..." },
-    "deeplTestSuccess": {
-        "message": "✅ DeepL APIテストが成功しました！\"Hello\"を\"%s\"に翻訳しました"
+    "lang_en": {
+        "message": "英語"
+    },
+    "lang_es": {
+        "message": "スペイン語"
+    },
+    "lang_fr": {
+        "message": "フランス語"
+    },
+    "lang_de": {
+        "message": "ドイツ語"
+    },
+    "lang_it": {
+        "message": "イタリア語"
+    },
+    "lang_pt": {
+        "message": "ポルトガル語"
+    },
+    "lang_ja": {
+        "message": "日本語"
+    },
+    "lang_ko": {
+        "message": "韓国語"
+    },
+    "lang_zh_CN": {
+        "message": "中国語（簡体）"
+    },
+    "lang_zh_TW": {
+        "message": "中国語（繁体）"
+    },
+    "lang_ru": {
+        "message": "ロシア語"
+    },
+    "lang_ar": {
+        "message": "アラビア語"
+    },
+    "lang_hi": {
+        "message": "ヒンディー語"
+    },
+    "testDeepLButton": {
+        "message": "DeepL接続をテスト"
+    },
+    "deeplApiKeyError": {
+        "message": "まずDeepL APIキーを入力してください。"
+    },
+    "testingButton": {
+        "message": "テスト中..."
+    },
+    "testingConnection": {
+        "message": "DeepL接続をテストしています..."
     },
     "deeplTestSuccessSimple": {
         "message": "✅ DeepL APIテストが成功しました！"
@@ -136,359 +251,595 @@
     "deeplTestQuotaExceeded": {
         "message": "❌ DeepL APIの使用量制限に達しました。使用制限を確認してください。"
     },
-    "deeplTestApiError": { "message": "❌ DeepL APIエラー (%d): %s" },
+    "deeplTestApiError": {
+        "message": "❌ DeepL APIエラー (%d): %s"
+    },
     "deeplTestNetworkError": {
         "message": "❌ ネットワークエラー：DeepL APIに接続できませんでした。インターネット接続を確認してください。"
     },
-    "deeplTestGenericError": { "message": "❌ テストに失敗しました：%s" },
-    "deepLApiUnavailable": { "message": "DeepL API利用不可" },
-    "deepLApiUnavailableTooltip": {
-        "message": "DeepL APIスクリプトの読み込みに失敗しました"
+    "deeplTestGenericError": {
+        "message": "❌ テストに失敗しました：%s"
     },
-    "deeplApiNotLoadedError": {
-        "message": "❌ DeepL APIスクリプトが利用できません。ページを更新してください。"
+    "cardGoogleTitle": {
+        "message": "Google翻訳"
     },
-
-    "cardGoogleTitle": { "message": "Google翻訳" },
     "cardGoogleDesc": {
         "message": "Googleが提供する無料の翻訳サービスです。追加の設定は必要ありません。"
     },
-    "cardMicrosoftTitle": { "message": "Microsoft翻訳" },
+    "cardMicrosoftTitle": {
+        "message": "Microsoft翻訳"
+    },
     "cardMicrosoftDesc": {
         "message": "Microsoft Edgeが提供する無料の翻訳サービスです。追加の設定は必要ありません。"
     },
-    "cardDeepLFreeTitle": { "message": "DeepL翻訳（無料）" },
-    "cardDeepLFreeDesc": {
-        "message": "高品質な結果を提供する無料のDeepL翻訳サービス。APIキー不要 - DeepLのWebインターフェースを使用します。"
+    "providerStatus": {
+        "message": "ステータス："
     },
-    "providerStatus": { "message": "ステータス：" },
-    "statusReady": { "message": "使用可能" },
-    "providerFeatures": { "message": "機能：" },
-    "featureFree": { "message": "無料で使用可能" },
-    "featureNoApiKey": { "message": "APIキー不要" },
-    "featureWideLanguageSupport": { "message": "幅広い言語サポート" },
-    "featureFastTranslation": { "message": "高速翻訳" },
-    "featureHighQuality": { "message": "高品質翻訳" },
-    "featureGoodPerformance": { "message": "良好なパフォーマンス" },
-    "featureHighestQuality": { "message": "最高品質翻訳" },
-    "featureApiKeyRequired": { "message": "APIキーが必要" },
-    "featureLimitedLanguages": { "message": "限定的な言語サポート" },
-    "featureUsageLimits": { "message": "使用制限が適用されます" },
-    "featureMultipleBackups": { "message": "複数のバックアップ方法" },
-
-    "providerNotes": { "message": "注意事項：" },
-    "noteSlowForSecurity": { "message": "セキュリティ対策のため若干低速" },
-    "noteAutoFallback": { "message": "代替サービスへの自動フォールバック" },
-    "noteRecommendedDefault": { "message": "デフォルトプロバイダーとして推奨" },
-
-    "providerGoogleName": { "message": "Google翻訳（無料）" },
-    "providerMicrosoftName": { "message": "Microsoft翻訳（無料）" },
-    "providerDeepLName": { "message": "DeepL（APIキー必須）" },
-    "providerDeepLFreeName": { "message": "DeepL翻訳（無料）" },
-    "providerOpenAICompatibleName": { "message": "OpenAI互換（APIキー必須）" },
-    "providerVertexGeminiName": { "message": "Vertex AI Gemini（APIキー必須）" },
-    "cardOpenAICompatibleTitle": { "message": "OpenAI互換（APIキー必須）" },
+    "statusReady": {
+        "message": "使用可能"
+    },
+    "providerFeatures": {
+        "message": "機能："
+    },
+    "featureFree": {
+        "message": "無料で使用可能"
+    },
+    "featureNoApiKey": {
+        "message": "APIキー不要"
+    },
+    "featureWideLanguageSupport": {
+        "message": "幅広い言語サポート"
+    },
+    "featureFastTranslation": {
+        "message": "高速翻訳"
+    },
+    "featureHighQuality": {
+        "message": "高品質翻訳"
+    },
+    "featureGoodPerformance": {
+        "message": "良好なパフォーマンス"
+    },
+    "featureHighestQuality": {
+        "message": "最高品質翻訳"
+    },
+    "featureApiKeyRequired": {
+        "message": "APIキーが必要"
+    },
+    "featureLimitedLanguages": {
+        "message": "限定的な言語サポート"
+    },
+    "featureUsageLimits": {
+        "message": "使用制限が適用されます"
+    },
+    "providerGoogleName": {
+        "message": "Google翻訳（無料）"
+    },
+    "providerMicrosoftName": {
+        "message": "Microsoft翻訳（無料）"
+    },
+    "providerDeepLName": {
+        "message": "DeepL（APIキー必須）"
+    },
+    "providerOpenAICompatibleName": {
+        "message": "OpenAI互換（APIキー必須）"
+    },
+    "providerVertexGeminiName": {
+        "message": "Vertex AI Gemini（APIキー必須）"
+    },
+    "cardOpenAICompatibleTitle": {
+        "message": "OpenAI互換（APIキー必須）"
+    },
     "cardOpenAICompatibleDesc": {
         "message": "GeminiなどのOpenAI互換サービス用のAPIキーと設定を入力してください。"
     },
-    "cardVertexGeminiTitle": { "message": "Vertex AI Gemini（APIキー必須）" },
-    "cardVertexGeminiDesc": { "message": "アクセストークンとVertex プロジェクト設定を入力するか、サービスアカウントJSONファイルをインポートしてください。" },
-    "vertexAccessTokenLabel": { "message": "アクセストークン：" },
-    "vertexProjectIdLabel": { "message": "プロジェクトID：" },
-    "vertexLocationLabel": { "message": "ロケーション：" },
-    "vertexModelLabel": { "message": "モデル：" },
-    "vertexMissingConfig": { "message": "アクセストークンとプロジェクトIDを入力してください。" },
-    "vertexConnectionFailed": { "message": "接続に失敗しました：%s" },
-    "vertexServiceAccountLabel": { "message": "サービスアカウントJSON：" },
-    "vertexImportButton": { "message": "JSONファイルをインポート" },
-    "vertexRefreshButton": { "message": "🔄 トークンを更新" },
-    "vertexImportHint": { "message": "以下の認証情報を自動入力" },
-    "vertexImporting": { "message": "インポート中..." },
-    "vertexRefreshingToken": { "message": "アクセストークンを更新中..." },
-    "vertexGeneratingToken": { "message": "アクセストークンを生成中..." },
-    "vertexImportSuccess": { "message": "サービスアカウントがインポートされ、トークンが生成されました。" },
-    "vertexImportFailed": { "message": "インポートに失敗しました：%s" },
-    "vertexTokenRefreshed": { "message": "アクセストークンが正常に更新されました。" },
-    "vertexRefreshFailed": { "message": "トークンの更新に失敗しました：%s" },
-    "vertexTokenExpired": { "message": "⚠️ アクセストークンが期限切れです。更新をクリックして更新してください。" },
-    "vertexTokenExpiringSoon": { "message": "⚠️ トークンは%s分で期限切れになります。更新を検討してください。" },
-    "vertexConfigured": { "message": "⚠️ Vertex AIが設定されています。接続をテストしてください。" },
-    "vertexNotConfigured": { "message": "サービスアカウントJSONをインポートするか、認証情報を入力してください。" },
-    "featureVertexServiceAccount": { "message": "サービスアカウントJSONのインポート" },
-    "featureVertexAutoToken": { "message": "自動トークン生成" },
-    "featureVertexGemini": { "message": "Vertex AI経由のGoogle Geminiモデル" },
-    "vertexNote": { "message": "アクセストークンは1時間後に期限切れになります。サービスアカウントは安全に保存されており、簡単にトークンを更新できます - 必要に応じてトークン更新ボタンをクリックしてください。" },
-    "baseUrlLabel": { "message": "ベースURL：" },
-    "modelLabel": { "message": "モデル：" },
+    "cardVertexGeminiTitle": {
+        "message": "Vertex AI Gemini（APIキー必須）"
+    },
+    "vertexAccessTokenLabel": {
+        "message": "アクセストークン："
+    },
+    "vertexProjectIdLabel": {
+        "message": "プロジェクトID："
+    },
+    "vertexLocationLabel": {
+        "message": "ロケーション："
+    },
+    "vertexModelLabel": {
+        "message": "モデル："
+    },
+    "vertexMissingConfig": {
+        "message": "アクセストークンとプロジェクトIDを入力してください。"
+    },
+    "vertexConnectionFailed": {
+        "message": "接続に失敗しました：%s"
+    },
+    "vertexServiceAccountLabel": {
+        "message": "サービスアカウントJSON："
+    },
+    "vertexImportButton": {
+        "message": "JSONファイルをインポート"
+    },
+    "vertexImporting": {
+        "message": "インポート中..."
+    },
+    "vertexGeneratingToken": {
+        "message": "アクセストークンを生成中..."
+    },
+    "vertexImportSuccess": {
+        "message": "サービスアカウントがインポートされ、トークンが生成されました。"
+    },
+    "vertexImportFailed": {
+        "message": "インポートに失敗しました：%s"
+    },
+    "vertexTokenExpired": {
+        "message": "⚠️ アクセストークンが期限切れです。更新をクリックして更新してください。"
+    },
+    "vertexConfigured": {
+        "message": "⚠️ Vertex AIが設定されています。接続をテストしてください。"
+    },
+    "vertexNotConfigured": {
+        "message": "サービスアカウントJSONをインポートするか、認証情報を入力してください。"
+    },
+    "featureVertexServiceAccount": {
+        "message": "サービスアカウントJSONのインポート"
+    },
+    "featureVertexGemini": {
+        "message": "Vertex AI経由のGoogle Geminiモデル"
+    },
+    "baseUrlLabel": {
+        "message": "ベースURL："
+    },
+    "modelLabel": {
+        "message": "モデル："
+    },
     "featureCustomizable": {
         "message": "カスタマイズ可能なエンドポイントとモデル"
     },
-    "fetchModelsButton": { "message": "モデルを取得" },
-    "testConnectionButton": { "message": "接続をテスト" },
-
+    "testConnectionButton": {
+        "message": "接続をテスト"
+    },
     "openaiApiKeyPlaceholder": {
         "message": "OpenAI互換APIキーを入力してください"
     },
-    "openaiBaseUrlPlaceholder": { "message": "例：https://api.openai.com/v1" },
-    "openaiApiKeyError": { "message": "まずAPIキーを入力してください。" },
-    "openaiApiKeyNeedsTesting": { "message": "⚠️ APIキーのテストが必要です。" },
+    "openaiBaseUrlPlaceholder": {
+        "message": "例：https://api.openai.com/v1"
+    },
+    "openaiApiKeyError": {
+        "message": "まずAPIキーを入力してください。"
+    },
     "openaiTestNeedsTesting": {
         "message": "⚠️ OpenAI互換APIキーのテストが必要です。"
     },
-    "openaiTestingConnection": { "message": "接続をテスト中..." },
-    "openaiConnectionSuccessful": { "message": "接続成功！" },
-    "openaiConnectionFailed": { "message": "接続失敗：%s" },
-    "openaieFetchingModels": { "message": "モデルを取得中..." },
+    "openaiTestingConnection": {
+        "message": "接続をテスト中..."
+    },
+    "openaiConnectionSuccessful": {
+        "message": "接続成功！"
+    },
+    "openaiConnectionFailed": {
+        "message": "接続失敗：%s"
+    },
+    "openaieFetchingModels": {
+        "message": "モデルを取得中..."
+    },
     "openaiModelsFetchedSuccessfully": {
         "message": "モデルの取得に成功しました。"
     },
     "openaiFailedToFetchModels": {
         "message": "モデルの取得に失敗しました：%s"
     },
-
-    "cardLoggingLevelTitle": { "message": "ログレベル" },
+    "cardLoggingLevelTitle": {
+        "message": "ログレベル"
+    },
     "cardLoggingLevelDesc": {
         "message": "ブラウザコンソールに表示されるデバッグ情報の量を制御します。高いレベルには低いレベルのメッセージも含まれます。"
     },
-    "loggingLevelLabel": { "message": "ログレベル：" },
-    "loggingLevelOff": { "message": "オフ" },
-    "loggingLevelError": { "message": "エラーのみ" },
-    "loggingLevelWarn": { "message": "警告とエラー" },
-    "loggingLevelInfo": { "message": "情報以上" },
-    "loggingLevelDebug": { "message": "デバッグ（すべて）" },
-
-    "cardBatchTranslationTitle": { "message": "バッチ翻訳" },
-    "cardBatchTranslationDesc": {
-        "message": "バッチ翻訳は複数の字幕セグメントを一緒に処理し、API呼び出しを80-90%削減してパフォーマンスを向上させます。お好みの翻訳プロバイダーに最適な設定を構成してください。"
+    "loggingLevelLabel": {
+        "message": "ログレベル："
     },
-    "batchingEnabledLabel": { "message": "バッチ翻訳を有効にする：" },
-    "batchingEnabledHelp": {
-        "message": "複数の字幕セグメントを単一の翻訳リクエストにグループ化します"
+    "loggingLevelOff": {
+        "message": "オフ"
     },
-    "useProviderDefaultsLabel": { "message": "プロバイダー最適化設定を使用：" },
-    "useProviderDefaultsHelp": {
-        "message": "各翻訳プロバイダーに最適なバッチサイズを自動的に使用します"
+    "loggingLevelError": {
+        "message": "エラーのみ"
     },
-    "globalBatchSizeLabel": { "message": "グローバルバッチサイズ：" },
-    "globalBatchSizeHelp": {
-        "message": "一緒に処理する字幕セグメントの数（1-15）"
+    "loggingLevelWarn": {
+        "message": "警告とエラー"
     },
-    "smartBatchingLabel": { "message": "スマートバッチ最適化：" },
-    "smartBatchingHelp": {
-        "message": "再生位置に基づいて字幕セグメントを優先処理します"
+    "loggingLevelInfo": {
+        "message": "情報以上"
     },
-    "maxConcurrentBatchesLabel": { "message": "最大同時バッチ数：" },
-    "maxConcurrentBatchesHelp": {
-        "message": "同時に処理する翻訳バッチの数"
+    "loggingLevelDebug": {
+        "message": "デバッグ（すべて）"
     },
-
-    "cardProviderBatchTitle": { "message": "プロバイダー固有のバッチサイズ" },
-    "cardProviderBatchDesc": {
-        "message": "各翻訳プロバイダーに最適なバッチサイズを設定します。これらの設定は「プロバイダー最適化設定を使用」が有効な場合に使用されます。"
-    },
-    "openaieBatchSizeLabel": { "message": "OpenAIバッチサイズ：" },
-    "openaieBatchSizeHelp": {
-        "message": "推奨：5-10セグメント（デフォルト：8）"
-    },
-    "googleBatchSizeLabel": { "message": "Google翻訳バッチサイズ：" },
-    "googleBatchSizeHelp": {
-        "message": "推奨：3-5セグメント（デフォルト：4）"
-    },
-    "deeplBatchSizeLabel": { "message": "DeepLバッチサイズ：" },
-    "deeplBatchSizeHelp": {
-        "message": "推奨：2-3セグメント（デフォルト：3）"
-    },
-    "microsoftBatchSizeLabel": { "message": "Microsoft翻訳バッチサイズ：" },
-    "microsoftBatchSizeHelp": {
-        "message": "推奨：3-5セグメント（デフォルト：4）"
-    },
-    "vertexBatchSizeLabel": { "message": "Vertex AIバッチサイズ：" },
-    "vertexBatchSizeHelp": {
-        "message": "推奨：5-10セグメント（デフォルト：8）"
-    },
-
     "deeplTestNeedsTesting": {
         "message": "⚠️ DeepL APIキーのテストが必要です。"
     },
-
-    "cardProviderDelayTitle": { "message": "プロバイダー固有のリクエスト遅延" },
-    "cardProviderDelayDesc": {
-        "message": "アカウントロックアウトを防ぐため、翻訳リクエスト間の必須遅延を設定します。これらの遅延はバッチ処理が有効な場合でも適用されます。"
+    "aiContextModalTitle": {
+        "message": "AIコンテキスト分析"
     },
-    "openaieDelayLabel": { "message": "OpenAIリクエスト遅延 (ms):" },
-    "openaieDelayHelp": {
-        "message": "リクエスト間の最小遅延（デフォルト：100ms）"
+    "aiContextSelectedWords": {
+        "message": "選択された単語"
     },
-    "googleDelayLabel": { "message": "Google翻訳リクエスト遅延 (ms):" },
-    "googleDelayHelp": {
-        "message": "一時的なロックアウトを防ぐために必要な遅延（デフォルト：1500ms）"
+    "aiContextNoWordsSelected": {
+        "message": "単語が選択されていません"
     },
-    "deeplDelayLabel": { "message": "DeepL APIリクエスト遅延 (ms):" },
-    "deeplDelayHelp": {
-        "message": "DeepL APIリクエストの遅延（デフォルト：500ms）"
-    },
-    "deeplFreeDelayLabel": { "message": "DeepL無料リクエスト遅延 (ms):" },
-    "deeplFreeDelayHelp": {
-        "message": "無料プランの保守的な遅延（デフォルト：2000ms）"
-    },
-    "microsoftDelayLabel": { "message": "Microsoft翻訳リクエスト遅延 (ms):" },
-    "microsoftDelayHelp": {
-        "message": "文字制限を尊重するための遅延（デフォルト：800ms）"
-    },
-    "vertexDelayLabel": { "message": "Vertex AIリクエスト遅延 (ms):" },
-    "vertexDelayHelp": {
-        "message": "リクエスト間の最小遅延（デフォルト：100ms）"
-    },
-
-    "aiContextModalTitle": { "message": "AIコンテキスト分析" },
-    "aiContextSelectedWords": { "message": "選択された単語" },
-    "aiContextNoWordsSelected": { "message": "単語が選択されていません" },
     "aiContextClickHint": {
         "message": "💡 単語をクリックして追加または削除します。"
     },
-    "aiContextStartAnalysis": { "message": "分析開始" },
-    "aiContextPauseAnalysis": { "message": "⏸ 一時停止" },
-    "aiContextPauseAnalysisTitle": { "message": "分析を一時停止" },
+    "aiContextStartAnalysis": {
+        "message": "分析開始"
+    },
+    "aiContextPauseAnalysis": {
+        "message": "⏸ 一時停止"
+    },
+    "aiContextPauseAnalysisTitle": {
+        "message": "分析を一時停止"
+    },
     "aiContextInitialMessage": {
         "message": "字幕から単語を選択して分析を開始してください。"
     },
-    "aiContextAnalyzing": { "message": "コンテキストを分析中..." },
-    "aiContextPauseNote": { "message": "⏸ をクリックして分析を一時停止" },
-    "aiContextAnalysisFailed": { "message": "分析失敗" },
-    "aiContextNoContent": { "message": "分析コンテンツなし" },
+    "aiContextAnalyzing": {
+        "message": "コンテキストを分析中..."
+    },
+    "aiContextPauseNote": {
+        "message": "⏸ をクリックして分析を一時停止"
+    },
+    "aiContextAnalysisFailed": {
+        "message": "分析失敗"
+    },
+    "aiContextNoContent": {
+        "message": "分析コンテンツなし"
+    },
     "aiContextNoContentMessage": {
         "message": "分析は完了しましたが、コンテンツが返されませんでした。"
     },
-    "aiContextDefinition": { "message": "📖 定義" },
-    "aiContextCultural": { "message": "🌍 文化的コンテキスト" },
-    "aiContextCulturalSignificance": { "message": "⭐ 文化的意義" },
-    "aiContextHistorical": { "message": "📜 歴史的コンテキスト" },
-    "aiContextHistoricalSignificance": { "message": "📜 歴史的意義" },
-    "aiContextEvolution": { "message": "🔄 時代による変遷" },
-    "aiContextLinguistic": { "message": "🔤 言語学的分析" },
-    "aiContextGrammar": { "message": "📝 文法と意味論" },
-    "aiContextUsage": { "message": "💡 使用法と例" },
-    "aiContextExamples": { "message": "例:" },
-    "aiContextLearningTips": { "message": "🎯 学習のヒント" },
-    "aiContextRelatedExpressions": { "message": "🔗 関連表現" },
-    "aiContextKeyInsights": { "message": "🔑 重要な洞察" },
-    "aiContextTypeCultural": { "message": "文化的" },
-    "aiContextTypeHistorical": { "message": "歴史的" },
-    "aiContextTypeLinguistic": { "message": "言語学的" },
-    "aiContextTypeComprehensive": { "message": "包括的" },
-    "aiContextTypeGeneric": { "message": "コンテキスト" },
-    "aiContextClose": { "message": "閉じる" },
-    "aiContextAnalysisResults": { "message": "分析結果" },
-    "aiContextRetrying": { "message": "分析に失敗しました、再生成中..." },
+    "aiContextDefinition": {
+        "message": "📖 定義"
+    },
+    "aiContextCultural": {
+        "message": "🌍 文化的コンテキスト"
+    },
+    "aiContextCulturalSignificance": {
+        "message": "⭐ 文化的意義"
+    },
+    "aiContextHistorical": {
+        "message": "📜 歴史的コンテキスト"
+    },
+    "aiContextHistoricalSignificance": {
+        "message": "📜 歴史的意義"
+    },
+    "aiContextEvolution": {
+        "message": "🔄 時代による変遷"
+    },
+    "aiContextLinguistic": {
+        "message": "🔤 言語学的分析"
+    },
+    "aiContextGrammar": {
+        "message": "📝 文法と意味論"
+    },
+    "aiContextUsage": {
+        "message": "💡 使用法と例"
+    },
+    "aiContextLearningTips": {
+        "message": "🎯 学習のヒント"
+    },
+    "aiContextRelatedExpressions": {
+        "message": "🔗 関連表現"
+    },
+    "aiContextKeyInsights": {
+        "message": "🔑 重要な洞察"
+    },
+    "aiContextTypeCultural": {
+        "message": "文化的"
+    },
+    "aiContextTypeHistorical": {
+        "message": "歴史的"
+    },
+    "aiContextTypeLinguistic": {
+        "message": "言語学的"
+    },
+    "aiContextTypeComprehensive": {
+        "message": "包括的"
+    },
+    "aiContextTypeGeneric": {
+        "message": "コンテキスト"
+    },
+    "aiContextClose": {
+        "message": "閉じる"
+    },
+    "aiContextAnalysisResults": {
+        "message": "分析結果"
+    },
+    "aiContextRetrying": {
+        "message": "分析に失敗しました、再生成中..."
+    },
     "aiContextRetryNotification": {
         "message": "分析に失敗しました、再試行中..."
     },
-    "aiContextRetryButton": { "message": "再試行" },
+    "aiContextRetryButton": {
+        "message": "再試行"
+    },
     "aiContextMalformedResponse": {
         "message": "AIサービスが無効な応答形式を返しました。これは一時的なサービスの問題が原因である可能性があります。"
     },
-    "aiContextJsonCodeBlock": {
-        "message": "AIサービスが構造化データではなく未処理のJSONコードを返しました。これは応答の形式エラーを示しています。"
+    "aiContextCulturalContext": {
+        "message": "文化的背景:"
     },
-    "aiContextCulturalContext": { "message": "文化的背景:" },
-    "aiContextSocialUsage": { "message": "社会的用法:" },
-    "aiContextRegionalNotes": { "message": "地域的特徴:" },
-    "aiContextOrigins": { "message": "語源:" },
-    "aiContextHistoricalContext": { "message": "歴史的背景:" },
-    "aiContextEtymology": { "message": "語源学:" },
-    "aiContextGrammarNotes": { "message": "文法注記:" },
-    "aiContextTranslationNotes": { "message": "翻訳注記:" },
-    "aiContextLinguisticAnalysis": { "message": "言語学的分析:" },
-    "aiContextGrammarSemantics": { "message": "文法と意味論:" },
-    "aiContextUsageExamples": { "message": "用法と例:" },
-
-    "navAIContext": { "message": "AIコンテキスト" },
-    "sectionAIContext": { "message": "AIコンテキストアシスタント" },
-    "cardAIContextToggleTitle": { "message": "AIコンテキスト分析を有効にする" },
+    "aiContextSocialUsage": {
+        "message": "社会的用法:"
+    },
+    "aiContextRegionalNotes": {
+        "message": "地域的特徴:"
+    },
+    "aiContextOrigins": {
+        "message": "語源:"
+    },
+    "aiContextHistoricalContext": {
+        "message": "歴史的背景:"
+    },
+    "aiContextEtymology": {
+        "message": "語源学:"
+    },
+    "aiContextGrammarNotes": {
+        "message": "文法注記:"
+    },
+    "aiContextTranslationNotes": {
+        "message": "翻訳注記:"
+    },
+    "aiContextLinguisticAnalysis": {
+        "message": "言語学的分析:"
+    },
+    "aiContextGrammarSemantics": {
+        "message": "文法と意味論:"
+    },
+    "aiContextUsageExamples": {
+        "message": "用法と例:"
+    },
+    "navAIContext": {
+        "message": "AIコンテキスト"
+    },
+    "sectionAIContext": {
+        "message": "AIコンテキストアシスタント"
+    },
+    "cardAIContextToggleTitle": {
+        "message": "AIコンテキスト分析を有効にする"
+    },
     "cardAIContextToggleDesc": {
         "message": "字幕テキストのAI駆動による文化的、歴史的、言語学的コンテキスト分析を有効にします。字幕の単語やフレーズをクリックして詳細な説明を取得できます。"
     },
-    "aiContextEnabledLabel": { "message": "AIコンテキストを有効にする：" },
-    "cardAIContextProviderTitle": { "message": "AIプロバイダー" },
+    "aiContextEnabledLabel": {
+        "message": "AIコンテキストを有効にする："
+    },
+    "cardAIContextProviderTitle": {
+        "message": "AIプロバイダー"
+    },
     "cardAIContextProviderDesc": {
         "message": "コンテキスト分析用のAIサービスプロバイダーを選択します。プロバイダーによって品質や応答時間が異なる場合があります。"
     },
-    "aiContextProviderLabel": { "message": "プロバイダー：" },
-    "cardOpenAIContextTitle": { "message": "OpenAI設定" },
+    "aiContextProviderLabel": {
+        "message": "プロバイダー："
+    },
+    "cardOpenAIContextTitle": {
+        "message": "OpenAI設定"
+    },
     "cardOpenAIContextDesc": {
         "message": "コンテキスト分析用のOpenAI API設定を構成します。有効なOpenAI APIキーが必要です。"
     },
-    "openaiApiKeyLabel": { "message": "APIキー：" },
-    "openaiBaseUrlLabel": { "message": "ベースURL：" },
-    "openaiModelLabel": { "message": "モデル：" },
-    "cardGeminiContextTitle": { "message": "Google Gemini設定" },
+    "openaiApiKeyLabel": {
+        "message": "APIキー："
+    },
+    "openaiBaseUrlLabel": {
+        "message": "ベースURL："
+    },
+    "openaiModelLabel": {
+        "message": "モデル："
+    },
+    "cardGeminiContextTitle": {
+        "message": "Google Gemini設定"
+    },
     "cardGeminiContextDesc": {
         "message": "コンテキスト分析用のGoogle Gemini API設定を構成します。有効なGemini APIキーが必要です。"
     },
-    "geminiApiKeyLabel": { "message": "APIキー：" },
-    "geminiModelLabel": { "message": "モデル：" },
-    "cardAIContextTypesTitle": { "message": "コンテキストタイプ" },
+    "geminiApiKeyLabel": {
+        "message": "APIキー："
+    },
+    "geminiModelLabel": {
+        "message": "モデル："
+    },
+    "cardAIContextTypesTitle": {
+        "message": "コンテキストタイプ"
+    },
     "cardAIContextTypesDesc": {
         "message": "使用したいコンテキスト分析のタイプを有効にします。複数のタイプを有効にできます。"
     },
-    "contextTypeCulturalLabel": { "message": "文化的コンテキスト：" },
-    "contextTypeCulturalHelp": {
-        "message": "文化的参照、慣用句、社会的コンテキストを分析"
+    "contextTypeCulturalLabel": {
+        "message": "文化的コンテキスト："
     },
-    "contextTypeHistoricalLabel": { "message": "歴史的コンテキスト：" },
-    "contextTypeHistoricalHelp": {
-        "message": "歴史的背景と時代のコンテキストを提供"
+    "contextTypeHistoricalLabel": {
+        "message": "歴史的コンテキスト："
     },
-    "contextTypeLinguisticLabel": { "message": "言語学的分析：" },
-    "contextTypeLinguisticHelp": { "message": "文法、語源、言語構造を説明" },
-    "cardAIContextInteractiveTitle": { "message": "インタラクティブ機能" },
-    "cardAIContextInteractiveDesc": {
-        "message": "コンテキスト分析をトリガーするために字幕とどのように相互作用するかを設定します。"
+    "contextTypeLinguisticLabel": {
+        "message": "言語学的分析："
     },
-    "interactiveSubtitlesEnabledLabel": {
-        "message": "インタラクティブ字幕を有効にする："
+    "cardAIContextAdvancedTitle": {
+        "message": "詳細設定"
     },
-    "interactiveSubtitlesEnabledHelp": {
-        "message": "コンテキスト分析のために字幕の単語をクリック可能にする"
-    },
-    "contextOnClickLabel": { "message": "クリック時のコンテキスト：" },
-    "contextOnClickHelp": {
-        "message": "単語をクリックしたときにコンテキスト分析を表示"
-    },
-    "contextOnSelectionLabel": { "message": "選択時のコンテキスト：" },
-    "contextOnSelectionHelp": {
-        "message": "テキストを選択したときにコンテキスト分析を表示"
-    },
-    "cardAIContextPrivacyTitle": { "message": "プライバシーとデータ" },
-    "cardAIContextPrivacyDesc": {
-        "message": "コンテキスト分析中のデータの処理方法を制御します。"
-    },
-    "aiContextUserConsentLabel": {
-        "message": "分析のために字幕テキストをAIプロバイダーに送信することに同意します："
-    },
-    "aiContextUserConsentHelp": {
-        "message": "AIコンテキスト分析が機能するために必要"
-    },
-    "aiContextDataSharingLabel": { "message": "匿名使用分析を許可：" },
-    "aiContextDataSharingHelp": {
-        "message": "匿名使用データを共有してサービスの改善に協力"
-    },
-    "cardAIContextAdvancedTitle": { "message": "詳細設定" },
     "cardAIContextAdvancedDesc": {
         "message": "AIコンテキスト分析の動作に関する詳細オプションを設定します。"
     },
-    "aiContextTimeoutLabel": { "message": "リクエストタイムアウト（ms）：" },
-    "aiContextTimeoutHelp": { "message": "AI応答を待つ最大時間" },
-    "aiContextRateLimitLabel": { "message": "レート制限（リクエスト/分）：" },
-    "aiContextRateLimitHelp": { "message": "1分あたりの最大リクエスト数" },
-    "aiContextCacheEnabledLabel": { "message": "キャッシュを有効にする：" },
-    "aiContextCacheEnabledHelp": {
-        "message": "API呼び出しを減らすために分析結果をキャッシュ"
+    "aiContextTimeoutLabel": {
+        "message": "リクエストタイムアウト（ms）："
     },
-    "aiContextRetryAttemptsLabel": { "message": "再試行回数：" },
-    "aiContextRetryAttemptsHelp": {
-        "message": "失敗したリクエストを再試行する回数"
+    "aiContextRateLimitLabel": {
+        "message": "レート制限（リクエスト/分）："
     },
-    "showAdvancedSettings": { "message": "詳細設定を表示" },
-    "hideAdvancedSettings": { "message": "詳細設定を非表示" }
+    "aiContextCacheEnabledLabel": {
+        "message": "キャッシュを有効にする："
+    },
+    "aiContextRetryAttemptsLabel": {
+        "message": "再試行回数："
+    },
+    "sidepanelLoading": {
+        "message": "読み込み中..."
+    },
+    "sidepanelTabAIAnalysis": {
+        "message": "AI分析"
+    },
+    "sidepanelAnalyzeButton": {
+        "message": "分析"
+    },
+    "sidepanelAnalyzing": {
+        "message": "分析中..."
+    },
+    "sidepanelWordsToAnalyze": {
+        "message": "分析する単語"
+    },
+    "sidepanelWordInputPlaceholder": {
+        "message": "字幕の単語をクリックして分析に追加..."
+    },
+    "sidepanelErrorRetry": {
+        "message": "再試行"
+    },
+    "sidepanelResultsTitle": {
+        "message": "\"%s\" の結果"
+    },
+    "sidepanelSectionDefinition": {
+        "message": "定義"
+    },
+    "sidepanelSectionCultural": {
+        "message": "文化的コンテキスト"
+    },
+    "sidepanelSectionHistorical": {
+        "message": "歴史的コンテキスト"
+    },
+    "sidepanelSectionLinguistic": {
+        "message": "言語学的分析"
+    },
+    "sidepanelErrorNoWords": {
+        "message": "分析する単語が選択されていません"
+    },
+    "sidepanelErrorDisabled": {
+        "message": "AIコンテキスト分析は無効になっています。設定で有効にしてください。"
+    },
+    "sidepanelErrorGeneric": {
+        "message": "分析中にエラーが発生しました。"
+    },
+    "advancedNote": {
+        "message": "Automatic side-panel opening requires Chrome 116 or newer."
+    },
+    "advancedTitle": {
+        "message": "詳細設定"
+    },
+    "advancedWarningDescription": {
+        "message": "These settings can affect the behavior of the side panel. If you experience issues, try resetting to default values by disabling and re-enabling the side panel feature."
+    },
+    "advancedWarningTitle": {
+        "message": "Important Note"
+    },
+    "aiContextTypesRequired": {
+        "message": "Select at least one context type."
+    },
+    "autoOpenSidePanel": {
+        "message": "Auto-Open Side Panel:"
+    },
+    "autoOpenSidePanelDescription": {
+        "message": "Automatically open the side panel when you click on subtitle words."
+    },
+    "autoPauseVideo": {
+        "message": "Auto-Pause Video:"
+    },
+    "autoPauseVideoDescription": {
+        "message": "Automatically pause the video when you open the side panel to select words."
+    },
+    "cardVertexGeminiEphemeralDesc": {
+        "message": "Enter a short-lived access token, or import a service account JSON once to generate one. The service-account key is never stored."
+    },
+    "featureVertexEphemeralToken": {
+        "message": "One-time token generation without storing the service-account key"
+    },
+    "navAdvanced": {
+        "message": "詳細設定"
+    },
+    "openaiEndpointPermissionRequired": {
+        "message": "Use Test Connection to grant access to this endpoint."
+    },
+    "openaiHostPermissionButton": {
+        "message": "Allow API host"
+    },
+    "openaiHostPermissionChecking": {
+        "message": "Checking API host access…"
+    },
+    "openaiHostPermissionDenied": {
+        "message": "API host access was not granted."
+    },
+    "openaiHostPermissionError": {
+        "message": "API ホストへのアクセスをリクエストできませんでした: %s"
+    },
+    "openaiHostPermissionGranted": {
+        "message": "API host access granted."
+    },
+    "sidePanelBehaviorDescription": {
+        "message": "Configure how the AI analysis side panel opens and looks."
+    },
+    "sidePanelBehaviorTitle": {
+        "message": "Side Panel Behavior"
+    },
+    "sidepanelErrorNoContextTypes": {
+        "message": "分析する前に、少なくとも1つのコンテキストタイプを選択してください。"
+    },
+    "sidePanelTheme": {
+        "message": "Side Panel Theme:"
+    },
+    "themeAuto": {
+        "message": "Auto (System)"
+    },
+    "themeDark": {
+        "message": "Dark"
+    },
+    "themeLight": {
+        "message": "Light"
+    },
+    "useSidePanel": {
+        "message": "Use Side Panel:"
+    },
+    "useSidePanelDescription": {
+        "message": "Use Chrome Side Panel instead of the modal for AI context analysis. Disable to use the legacy modal."
+    },
+    "vertexImportSuccessEphemeral": {
+        "message": "Access token generated. The service-account key was not stored; re-import the JSON when the token expires."
+    },
+    "vertexNotConfiguredEphemeral": {
+        "message": "Import a service account JSON once to generate a short-lived token, or paste a token manually."
+    },
+    "vertexManualTokenSaveFailed": {
+        "message": "アクセストークンを保存できませんでした: %s"
+    },
+    "vertexTokenExpiredReimport": {
+        "message": "⚠️ Access token expired. Re-import the service account JSON or paste a new access token."
+    },
+    "vertexTokenExpiringReimport": {
+        "message": "⚠️ Token expires in %s minutes. Re-import the service account JSON or prepare a replacement access token."
+    },
+    "videoControlDescription": {
+        "message": "Control how the video player behaves when the side panel opens."
+    },
+    "videoControlTitle": {
+        "message": "Video Control"
+    },
+    "aiContextEvolutionLabel": {
+        "message": "🔄 時代による変遷"
+    },
+    "aiContextHistoricalSignificanceLabel": {
+        "message": "📜 歴史的意義"
+    },
+    "aiContextKeyInsightsLabel": {
+        "message": "🔑 重要な洞察"
+    },
+    "aiContextLearningTipsLabel": {
+        "message": "🎯 学習のヒント"
+    },
+    "aiContextRelatedExpressionsLabel": {
+        "message": "🔗 関連表現"
+    }
 }

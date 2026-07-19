@@ -4,8 +4,8 @@
 
 ## 支持的服务商
 
-- OpenAI GPT：GPT-4.1 Mini、GPT-4o、GPT-4o Mini、GPT-4.1 Nano
-- Google Gemini：Gemini 2.5 Flash（推荐）、Gemini 2.5 Pro、Gemini 1.5（旧版）
+- OpenAI GPT：GPT-5.6 Luna（推荐）、GPT-5.6 Terra、GPT-5.6
+- Google Gemini：Gemini 3.5 Flash（推荐）、Gemini 2.5 Flash、Gemini 2.5 Pro
 
 ## 速率限制与缓存
 
@@ -16,16 +16,17 @@
 
 1. 在高级设置启用 AI 上下文分析
 2. 选择服务商（OpenAI 或 Gemini），配置 API 密钥与模型
-3. 使用“测试连接”验证
+3. 使用自定义 OpenAI 兼容主机时，通过“允许 API 主机”授予该来源权限
 
 ## 使用方法
 
-- 在字幕中选择文本以打开上下文窗口
-- 选择分析类型：文化、历史、语言或综合
+- 点击字幕单词组成短语，并在 Chrome 侧边栏中查看分析
+- 可启用文化、历史、语言分析的任意精确组合
+- 关闭“使用侧边栏”后仍可使用旧版弹窗作为回退
 
 ## 隐私
 
-- 仅发送所选文本给 AI 服务商
-- 结果仅本地缓存，不做永久存储
+- 所选文本、语言信息和有限的周边字幕上下文会发送给已配置的 AI 服务商
+- 启用缓存时结果只保存在有界的内存缓存中，DualSub 不会永久保存
 
 参见：`context_providers/openaiContextProvider.js` 与 `context_providers/geminiContextProvider.js`。

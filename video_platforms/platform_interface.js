@@ -40,12 +40,12 @@ export class VideoPlatform {
     /**
      * Initializes the platform-specific logic, sets up observers, etc.
      * @abstract
-     * @param {function(SubtitleData): void} onSubtitleUrlFound - Callback to be invoked when a subtitle URL/data is found.
+     * @param {function(SubtitleData): void} _onSubtitleUrlFound - Callback to be invoked when a subtitle URL/data is found.
      *                                                            The callback expects an object { vttText, videoId, url }.
-     * @param {function(string): void} onVideoIdChange - Callback for when the video ID changes.
+     * @param {function(string): void} _onVideoIdChange - Callback for when the video ID changes.
      * @returns {Promise<void>}
      */
-    async initialize(onSubtitleUrlFound, onVideoIdChange) {
+    async initialize(_onSubtitleUrlFound, _onVideoIdChange) {
         throw new Error("Method 'initialize()' must be implemented.");
     }
 
@@ -57,6 +57,24 @@ export class VideoPlatform {
     getVideoElement() {
         throw new Error("Method 'getVideoElement()' must be implemented.");
     }
+
+    /**
+     * Gets the platform playback time in subtitle-timeline seconds.
+     * Platforms with non-standard media clocks can override this while keeping
+     * the active HTML video element as the primary clock source.
+     * @param {HTMLVideoElement | null} [preferredVideoElement=null] The video element that emitted the playback event.
+     * @returns {number | null} A finite playback time, or null when unavailable.
+     */
+    getPlaybackTime(preferredVideoElement = null) {
+        const videoElement = preferredVideoElement || this.getVideoElement();
+        const currentTime = videoElement?.currentTime;
+        return Number.isFinite(currentTime) ? currentTime : null;
+    }
+
+    /**
+     * Optional: Invalidates platform-specific clock calibration after a seek.
+     */
+    invalidatePlaybackClockCalibration() {}
 
     /**
      * Gets a unique identifier for the current video.
@@ -94,8 +112,8 @@ export class VideoPlatform {
     }
 
     /**
-     * Optional: Gets the progress bar element if the platform uses a specific
-     * element for tracking progress that is more reliable than video.currentTime.
+     * Optional: Gets a progress bar element for platforms that need UI-derived
+     * timing data or clock calibration.
      * @abstract
      * @returns {HTMLElement | null} The progress bar element or null.
      */

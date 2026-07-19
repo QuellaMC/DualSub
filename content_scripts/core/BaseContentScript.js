@@ -69,7 +69,7 @@
  *
  * @abstract
  * @author DualSub Extension
- * @version 1.0.0
+ * @version 2.5.0
  * @since 1.0.0
  *
  * @example
@@ -120,12 +120,15 @@ import {
     EventBuffer,
     IntervalManager,
     injectScript,
-    isExtensionContextValid,
     ModuleLoader,
     MessageHandlerRegistry,
 } from './utils.js';
 import { COMMON_CONSTANTS } from './constants.js';
-import { getOrCreateUiRoot } from '../shared/subtitleUtilities.js';
+import {
+    getOrCreateUiRoot,
+    finalizeExpiredSubtitleIfNeeded,
+    resolvePlaybackTime,
+} from '../shared/subtitleUtilities.js';
 import { MessageActions } from '../shared/constants/messageActions.js';
 import { NavigationDetectionManager } from '../shared/navigationUtils.js';
 
@@ -229,6 +232,9 @@ export class BaseContentScript {
     _initializeCleanupTracking() {
         this.isCleanedUp = false;
         this.passiveVideoObserver = null;
+        this.chromeMessageListener = null;
+        this.chromeMessageListenerAttached = false;
+        this.configUnsubscribe = null;
 
         try {
             this.abortController = new AbortController();
@@ -236,7 +242,10 @@ export class BaseContentScript {
             this.logWithFallback(
                 'warn',
                 'AbortController not available, using fallback cleanup',
-                { error }
+                {
+                    errorName: error?.name,
+                    errorLength: error?.message?.length || 0,
+                }
             );
             this.abortController = null;
         }
@@ -269,7 +278,7 @@ export class BaseContentScript {
                 this.getPlatformName ? this.getPlatformName() : 'unknown',
                 {
                     isPlayerPage: isPlayerPathFn,
-                    onUrlChange: (oldUrl, newUrl) => {
+                    onUrlChange: () => {
                         // Keep compatibility with existing URL-change flow
                         try {
                             this.checkForUrlChange();
@@ -302,6 +311,27 @@ export class BaseContentScript {
     _setupCommonMessageHandlers() {
         const commonHandlers = [
             {
+                action: MessageActions.SIDEPANEL_GET_STATE,
+                handler: this.handleSidePanelGetState.bind(this),
+                requiresUtilities: false,
+                description:
+                    'Return current word selection state from page highlights.',
+            },
+            {
+                action: MessageActions.SIDEPANEL_UPDATE_STATE,
+                handler: this.handleSidePanelUpdateState.bind(this),
+                requiresUtilities: false,
+                description:
+                    'Apply selection updates (clear/apply highlights) from side panel.',
+            },
+            {
+                action: MessageActions.SIDEPANEL_SET_ANALYZING,
+                handler: this.handleSidePanelSetAnalyzing.bind(this),
+                requiresUtilities: false,
+                description:
+                    'Update analyzing state to block/unblock word clicks.',
+            },
+            {
                 action: MessageActions.TOGGLE_SUBTITLES,
                 handler: this.handleToggleSubtitles.bind(this),
                 requiresUtilities: true,
@@ -322,6 +352,13 @@ export class BaseContentScript {
                 description:
                     'Update logging level for the content script logger.',
             },
+            {
+                action: MessageActions.SIDEPANEL_PAUSE_VIDEO,
+                handler: this.handleSidePanelPauseVideo.bind(this),
+                requiresUtilities: false,
+                description:
+                    'Pause the video on the page using multiple strategies.',
+            },
         ];
 
         commonHandlers.forEach(
@@ -339,14 +376,21 @@ export class BaseContentScript {
      * @private
      */
     _attachChromeMessageListener() {
+        if (this.chromeMessageListenerAttached) {
+            return;
+        }
+
         if (
             typeof chrome !== 'undefined' &&
             chrome.runtime &&
             chrome.runtime.onMessage
         ) {
-            chrome.runtime.onMessage.addListener(
-                this.handleChromeMessage.bind(this)
-            );
+            if (!this.chromeMessageListener) {
+                this.chromeMessageListener =
+                    this.handleChromeMessage.bind(this);
+            }
+            chrome.runtime.onMessage.addListener(this.chromeMessageListener);
+            this.chromeMessageListenerAttached = true;
             this.logWithFallback('debug', 'Chrome message listener attached.');
         } else {
             this.logWithFallback(
@@ -535,11 +579,11 @@ export class BaseContentScript {
     /**
      * Handle platform-specific Chrome messages.
      * @abstract
-     * @param {Object} request - The Chrome message request.
-     * @param {Function} sendResponse - The callback to send a response.
+     * @param {Object} _request - The Chrome message request.
+     * @param {Function} _sendResponse - The callback to send a response.
      * @returns {boolean} `true` if the response is sent asynchronously, otherwise `false`.
      */
-    handlePlatformSpecificMessage(request, sendResponse) {
+    handlePlatformSpecificMessage(_request, _sendResponse) {
         throw new Error(
             'handlePlatformSpecificMessage() must be implemented by subclass'
         );
@@ -671,7 +715,9 @@ export class BaseContentScript {
             );
 
             try {
-                this.currentConfig = await this.configService.getAll();
+                this.currentConfig = await this.configService.getAll({
+                    includeSensitive: false,
+                });
             } catch (configError) {
                 this.logWithFallback(
                     'warn',
@@ -685,7 +731,11 @@ export class BaseContentScript {
 
             this._normalizeConfiguration();
             this.logWithFallback('info', 'Loaded initial configuration.', {
-                config: this.currentConfig,
+                settingCount: Object.keys(this.currentConfig).length,
+                selectedProvider: this.currentConfig.selectedProvider ?? null,
+                subtitlesEnabled: Boolean(this.currentConfig.subtitlesEnabled),
+                aiContextEnabled: Boolean(this.currentConfig.aiContextEnabled),
+                aiContextProvider: this.currentConfig.aiContextProvider ?? null,
             });
 
             this.logWithFallback(
@@ -840,12 +890,9 @@ export class BaseContentScript {
             if (!aiContextConfig.aiContextEnabled) {
                 this.logWithFallback(
                     'debug',
-                    'AI context disabled in configuration, but initializing interactive subtitles'
+                    'AI context disabled in configuration; leaving subtitles non-interactive'
                 );
-
-                // Even if AI Context is disabled, we should still initialize interactive subtitles
-                // so that words are clickable (they just won't trigger AI analysis)
-                await this._initializeInteractiveSubtitlesOnly(aiContextConfig);
+                await this._disableAIContextInteractions();
                 return true; // Not an error, just disabled
             }
 
@@ -854,9 +901,12 @@ export class BaseContentScript {
                 'Initializing AI context features with new modular system...',
                 {
                     platform: this.getPlatformName(),
-                    config: aiContextConfig,
+                    configKeys: Object.keys(aiContextConfig || {}),
                 }
             );
+
+            // Initialize side panel integration early so it captures events before modal listeners
+            await this._initializeSidePanelIntegration();
 
             // Initialize new modular AI Context Manager
             if (!this.aiContextManager) {
@@ -966,7 +1016,7 @@ export class BaseContentScript {
 
     /**
      * Initialize legacy AI context features as fallback
-     * @param {Object} aiContextConfig - AI context configuration
+     * @param {Object} _aiContextConfig - AI context configuration
      * @returns {Promise<boolean>} Success status
      * @private
      */
@@ -1007,6 +1057,7 @@ export class BaseContentScript {
                     },
                     platform: this.getPlatformName(),
                 });
+                this.subtitleUtils.setInteractiveSubtitlesEnabled?.(true);
 
                 this.logWithFallback(
                     'info',
@@ -1195,72 +1246,371 @@ export class BaseContentScript {
     }
 
     /**
-     * Initialize interactive subtitles only (without AI Context)
-     * This makes words clickable even when AI Context is disabled
-     * @param {Object} aiContextConfig - AI context configuration
+     * Initialize side panel integration for routing word selections
      * @returns {Promise<void>}
      * @private
      */
-    async _initializeInteractiveSubtitlesOnly(aiContextConfig) {
+    async _initializeSidePanelIntegration() {
         try {
             this.logWithFallback(
                 'info',
-                'Initializing interactive subtitles only (AI Context disabled)',
+                'Initializing side panel integration...',
                 {
                     platform: this.getPlatformName(),
-                    hasSubtitleUtils: !!this.subtitleUtils,
                 }
             );
 
-            // Initialize interactive subtitle features in SubtitleUtils
-            if (
-                this.subtitleUtils &&
-                this.subtitleUtils.initializeInteractiveSubtitleFeatures
-            ) {
-                await this.subtitleUtils.initializeInteractiveSubtitleFeatures({
-                    enabled: true, // Always enable interactive subtitles
-                    contextTypes: [], // No AI context types since AI is disabled
-                    interactionMethods: {
-                        click: true, // Enable word clicks
-                        selection: false, // Disable text selection since no AI analysis
-                    },
-                    textSelection: {
-                        maxLength: 100,
-                        smartBoundaries: true,
-                    },
-                    loadingStates: {
-                        timeout: 5000, // Shorter timeout since no AI analysis
-                        retryAttempts: 1,
-                    },
-                    platform: this.getPlatformName(),
-                });
-
-                this.logWithFallback(
-                    'info',
-                    'Interactive subtitles initialized successfully (without AI Context)',
-                    {
-                        platform: this.getPlatformName(),
-                    }
-                );
-
-                // Setup fullscreen handling for interactive subtitles
-                this._setupFullscreenHandling();
-            } else {
-                this.logWithFallback(
-                    'warn',
-                    'SubtitleUtils not available for interactive subtitle initialization',
-                    {
-                        hasSubtitleUtils: !!this.subtitleUtils,
-                        hasInitMethod:
-                            !!this.subtitleUtils
-                                ?.initializeInteractiveSubtitleFeatures,
-                    }
-                );
+            // Cleanup existing integration to prevent duplicate listeners
+            if (this.sidePanelIntegration) {
+                try {
+                    this.sidePanelIntegration.destroy();
+                } catch (e) {
+                    this.logWithFallback(
+                        'warn',
+                        'Error destroying previous side panel integration',
+                        { error: e.message }
+                    );
+                }
             }
+
+            // Create inline side panel integration
+            this.sidePanelIntegration = {
+                initialized: false,
+                useSidePanel: false,
+                autoOpen: true,
+                autoPauseVideo: true,
+                isAnalyzing: false,
+                boundHandler: null,
+                boundSubtitleChangeHandler: null,
+                storageChangeHandler: null,
+                selectedWords: new Set(),
+
+                async initialize() {
+                    if (this.initialized) return;
+
+                    this.selectedWords = new Set();
+
+                    // Prepare logger bridge and messaging wrapper
+                    this._log = (level, message, data) => {
+                        try {
+                            window.__dualsub_log?.(level, message, data);
+                        } catch (_) {}
+                        try {
+                            // Use outer class logger if available
+                            (typeof level === 'string' ? level : 'debug') &&
+                                typeof message === 'string';
+                        } catch (_) {}
+                    };
+
+                    // Load robust messaging wrapper (reuses existing implementation)
+                    try {
+                        const { sendRuntimeMessageWithRetry } = await import(
+                            chrome.runtime.getURL(
+                                'content_scripts/shared/messaging.js'
+                            )
+                        );
+                        this._send = (msg) =>
+                            sendRuntimeMessageWithRetry(msg, {
+                                retries: 3,
+                                baseDelayMs: 120,
+                            });
+                    } catch (_) {
+                        this._send = (msg) => chrome.runtime.sendMessage(msg);
+                    }
+
+                    // Check settings
+                    await this.checkSettings();
+
+                    // Create bound handler
+                    this.boundHandler = this.handleWordSelection.bind(this);
+
+                    // Listen for word selection events in capture phase (register early)
+                    document.addEventListener(
+                        'dualsub-word-selected',
+                        this.boundHandler,
+                        { capture: true }
+                    );
+
+                    // Listen for subtitle content changes to clear stale selections
+                    this.boundSubtitleChangeHandler =
+                        this.handleSubtitleContentChange.bind(this);
+                    document.addEventListener(
+                        'dualsub-subtitle-content-changing',
+                        this.boundSubtitleChangeHandler,
+                        { capture: false }
+                    );
+
+                    // Listen for storage changes
+                    this.storageChangeHandler = (changes, area) => {
+                        if (area === 'sync') {
+                            if (
+                                changes.sidePanelUseSidePanel ||
+                                changes.sidePanelAutoOpen ||
+                                changes.sidePanelAutoPauseVideo
+                            ) {
+                                this.checkSettings();
+                            }
+                        }
+                    };
+                    chrome.storage.onChanged.addListener(
+                        this.storageChangeHandler
+                    );
+
+                    this.initialized = true;
+                },
+
+                async checkSettings() {
+                    try {
+                        const settings = await chrome.storage.sync.get([
+                            'sidePanelUseSidePanel',
+                            'sidePanelAutoOpen',
+                            'sidePanelAutoPauseVideo',
+                        ]);
+                        this.useSidePanel =
+                            settings.sidePanelUseSidePanel !== false;
+                        this.autoOpen = settings.sidePanelAutoOpen !== false;
+                        this.autoPauseVideo =
+                            settings.sidePanelAutoPauseVideo !== false;
+                    } catch (error) {
+                        this.useSidePanel = false;
+                        this.autoOpen = false;
+                        this.autoPauseVideo = false;
+                    }
+                },
+
+                async handleWordSelection(event) {
+                    if (!this.useSidePanel) {
+                        return;
+                    }
+
+                    // Block word clicks during analysis
+                    if (this.isAnalyzing) {
+                        event.stopPropagation();
+                        event.stopImmediatePropagation();
+                        return;
+                    }
+
+                    const {
+                        word,
+                        element,
+                        sourceLanguage,
+                        targetLanguage,
+                        context,
+                        subtitleType,
+                    } = event.detail || {};
+                    if (!word) return;
+
+                    try {
+                        // Prevent modal from handling
+                        event.stopPropagation();
+                        event.stopImmediatePropagation();
+
+                        // 1) Toggle visual selection immediately to reflect DOM state
+                        if (element) {
+                            if (
+                                element.classList.contains(
+                                    'dualsub-word-selected'
+                                )
+                            ) {
+                                element.classList.remove(
+                                    'dualsub-word-selected'
+                                );
+                            } else {
+                                element.classList.add('dualsub-word-selected');
+                            }
+                        }
+
+                        const normalizedWord = (word || '').trim();
+                        if (normalizedWord) {
+                            const isSelectedNow =
+                                element?.classList?.contains(
+                                    'dualsub-word-selected'
+                                ) ?? !this.selectedWords.has(normalizedWord);
+                            if (isSelectedNow) {
+                                this.selectedWords.add(normalizedWord);
+                            } else {
+                                this.selectedWords.delete(normalizedWord);
+                            }
+                        }
+
+                        // 2) After DOM reflects the new selection, compute canonical ordered list and broadcast
+                        try {
+                            // Use DOM order to preserve sentence structure (user preference)
+                            // This ensures "what are you listening" stays in order even if "what" is deselected and re-selected
+                            const selectedElements = document.querySelectorAll(
+                                '.dualsub-interactive-word.dualsub-word-selected'
+                            );
+                            const words = Array.from(selectedElements)
+                                .map((el) => el.getAttribute('data-word'))
+                                .filter((w) => w)
+                                .map((w) => w.trim());
+
+                            // Update internal Set to match DOM state (for consistency)
+                            this.selectedWords = new Set(words);
+
+                            void this._send({
+                                action: MessageActions.SIDEPANEL_SELECTION_SYNC,
+                                selectedWords: words,
+                                timestamp: Date.now(),
+                                reason: 'word-click',
+                            });
+                        } catch (_) {}
+
+                        // 3) Send the single word-click command. The background applies
+                        // current auto-open/auto-pause settings before opening the panel.
+                        void this._send({
+                            action: MessageActions.SIDEPANEL_WORD_SELECTED,
+                            word,
+                            sourceLanguage,
+                            targetLanguage,
+                            context,
+                            subtitleType,
+                            options: {
+                                autoOpen: this.autoOpen,
+                                pauseVideo: this.autoPauseVideo,
+                            },
+                            selectionAction: 'toggle',
+                            reason: 'word-click',
+                            timestamp: Date.now(),
+                        });
+                    } catch (error) {
+                        console.error(
+                            '[SidePanelIntegration] Error forwarding word selection:',
+                            error
+                        );
+                    }
+                },
+
+                handleSubtitleContentChange(event) {
+                    if (!this.useSidePanel) {
+                        return;
+                    }
+
+                    const detail = event?.detail || {};
+                    if (detail.type && detail.type !== 'original') {
+                        return;
+                    }
+
+                    if (!this.selectedWords || this.selectedWords.size === 0) {
+                        return;
+                    }
+
+                    try {
+                        document
+                            .querySelectorAll(
+                                '.dualsub-interactive-word.dualsub-word-selected'
+                            )
+                            .forEach((el) =>
+                                el.classList.remove('dualsub-word-selected')
+                            );
+                    } catch (_) {}
+
+                    this.selectedWords.clear();
+
+                    try {
+                        void this._send({
+                            action: MessageActions.SIDEPANEL_SELECTION_SYNC,
+                            selectedWords: [],
+                            timestamp: Date.now(),
+                            reason: 'subtitle-change',
+                        });
+                    } catch (error) {
+                        console.error(
+                            '[SidePanelIntegration] Error syncing cleared selection:',
+                            error
+                        );
+                    }
+                },
+
+                destroy() {
+                    if (!this.initialized) return;
+                    if (this.boundHandler) {
+                        document.removeEventListener(
+                            'dualsub-word-selected',
+                            this.boundHandler,
+                            { capture: true }
+                        );
+                        this.boundHandler = null;
+                    }
+                    if (this.boundSubtitleChangeHandler) {
+                        document.removeEventListener(
+                            'dualsub-subtitle-content-changing',
+                            this.boundSubtitleChangeHandler,
+                            { capture: false }
+                        );
+                        this.boundSubtitleChangeHandler = null;
+                    }
+                    if (this.storageChangeHandler) {
+                        chrome.storage.onChanged.removeListener(
+                            this.storageChangeHandler
+                        );
+                        this.storageChangeHandler = null;
+                    }
+                    this.selectedWords = new Set();
+                    this.initialized = false;
+                },
+
+                isSidePanelEnabled() {
+                    return this.useSidePanel;
+                },
+            };
+
+            await this.sidePanelIntegration.initialize();
+
+            // Add cleanup function
+            this.eventListenerCleanupFunctions.push(() => {
+                if (this.sidePanelIntegration) {
+                    this.sidePanelIntegration.destroy();
+                }
+            });
+
+            this.logWithFallback(
+                'info',
+                'Side panel integration initialized successfully',
+                {
+                    platform: this.getPlatformName(),
+                    enabled: this.sidePanelIntegration.isSidePanelEnabled(),
+                }
+            );
         } catch (error) {
             this.logWithFallback(
                 'error',
-                'Failed to initialize interactive subtitles',
+                'Failed to initialize side panel integration',
+                {
+                    error: error.message,
+                    stack: error.stack,
+                    platform: this.getPlatformName(),
+                }
+            );
+            // Non-critical error, continue without side panel integration
+        }
+    }
+
+    /** Disable click affordances and routing when AI context is disabled. */
+    async _disableAIContextInteractions() {
+        try {
+            this.subtitleUtils?.setInteractiveSubtitlesEnabled?.(false);
+
+            if (this.sidePanelIntegration) {
+                this.sidePanelIntegration.destroy();
+                this.sidePanelIntegration = null;
+            }
+
+            document
+                .querySelectorAll(
+                    '.dualsub-interactive-word, .dualsub-word-selected, .dualsub-interactive-word--hover'
+                )
+                .forEach((element) => {
+                    element.classList.remove('dualsub-interactive-word');
+                    element.classList.remove('dualsub-word-selected');
+                    element.classList.remove('dualsub-interactive-word--hover');
+                    element.removeAttribute('role');
+                    element.removeAttribute('tabindex');
+                });
+        } catch (error) {
+            this.logWithFallback(
+                'error',
+                'Failed to disable AI context interactions',
                 {
                     error: error.message,
                     stack: error.stack,
@@ -1315,6 +1665,7 @@ export class BaseContentScript {
                     },
                     platform: this.getPlatformName(),
                 });
+                this.subtitleUtils.setInteractiveSubtitlesEnabled?.(true);
 
                 this.logWithFallback(
                     'info',
@@ -1450,7 +1801,7 @@ export class BaseContentScript {
                 'content_scripts/shared/subtitleUtilities.js'
             );
             this.logWithFallback('debug', 'Loading subtitle utilities.', {
-                url: utilsUrl,
+                resource: 'subtitleUtilities',
             });
             const utilsModule = await import(utilsUrl);
             this.subtitleUtils = utilsModule;
@@ -1483,7 +1834,7 @@ export class BaseContentScript {
                 platformName,
                 fileName,
                 className,
-                url: platformUrl,
+                resource: 'platformModule',
             });
 
             const platformModule = await import(platformUrl);
@@ -1506,7 +1857,7 @@ export class BaseContentScript {
     /**
      * Gets the platform file name from the platform name.
      * @private
-     * @param {string} platformName - The name of the platform.
+     * @param {string} _platformName - The name of the platform.
      * @returns {string} The corresponding file name.
      */
     _getPlatformFileName(platformName) {
@@ -1521,7 +1872,7 @@ export class BaseContentScript {
      * @param {string} platformName - The name of the platform.
      * @returns {string} The corresponding class name.
      */
-    _getPlatformClassName(platformName) {
+    _getPlatformClassName(_platformName) {
         return this.getPlatformClass();
     }
 
@@ -1535,7 +1886,7 @@ export class BaseContentScript {
                 'services/configService.js'
             );
             this.logWithFallback('debug', 'Loading config service.', {
-                url: configUrl,
+                resource: 'configService',
             });
             const configModule = await import(configUrl);
             this.configService = configModule.configService;
@@ -1559,7 +1910,7 @@ export class BaseContentScript {
         try {
             const loggerUrl = chrome.runtime.getURL('utils/logger.js');
             this.logWithFallback('debug', 'Loading logger.', {
-                url: loggerUrl,
+                resource: 'logger',
             });
             const loggerModule = await import(loggerUrl);
             const Logger = loggerModule.default;
@@ -1682,10 +2033,10 @@ export class BaseContentScript {
     _getRetryConfiguration() {
         return {
             maxRetries:
-                this.currentConfig?.platformInitMaxRetries ||
+                this.currentConfig?.platformInitMaxRetries ??
                 COMMON_CONSTANTS.PLATFORM_INIT_MAX_RETRIES,
             retryDelay:
-                this.currentConfig?.platformInitRetryDelay ||
+                this.currentConfig?.platformInitRetryDelay ??
                 COMMON_CONSTANTS.PLATFORM_INIT_RETRY_DELAY,
         };
     }
@@ -1709,13 +2060,12 @@ export class BaseContentScript {
     /**
      * Log initialization start with attempt information
      * @private
-     * @param {number} retryCount - Current retry count
-     * @param {number} maxRetries - Maximum retries allowed
+     * @param {Object} context - Initialization context
      */
-    _logInitializationStart(retryCount, maxRetries) {
+    _logInitializationStart(context) {
         this.logWithFallback('info', 'Starting platform initialization', {
-            attempt: retryCount + 1,
-            maxRetries: maxRetries + 1,
+            attempt: context.attempt,
+            maxRetries: context.totalAttempts,
         });
     }
 
@@ -1749,7 +2099,10 @@ export class BaseContentScript {
     async _initializeBasedOnPageType() {
         // Check if platform was cleaned up during initialization
         if (!this.activePlatform) {
-            this.logWithFallback('warn', 'Platform cleaned up during initialization, aborting');
+            this.logWithFallback(
+                'warn',
+                'Platform cleaned up during initialization, aborting'
+            );
             return false;
         }
 
@@ -1769,13 +2122,16 @@ export class BaseContentScript {
         this.logWithFallback('info', 'Initializing platform on player page');
 
         await this._initializePlatformWithTimeout();
-        
+
         // Check if platform was cleaned up during async initialization
         if (!this.activePlatform) {
-            this.logWithFallback('warn', 'Platform cleaned up during player page initialization, aborting');
+            this.logWithFallback(
+                'warn',
+                'Platform cleaned up during player page initialization, aborting'
+            );
             return false;
         }
-        
+
         this.activePlatform.handleNativeSubtitles();
 
         this.platformReady = true;
@@ -1958,8 +2314,9 @@ export class BaseContentScript {
             (newVideoId) => this.handleVideoIdChange(newVideoId)
         );
 
+        let timeoutId;
         const timeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => {
+            timeoutId = setTimeout(() => {
                 reject(
                     new Error(
                         `Platform initialization timed out after ${timeout}ms`
@@ -1968,7 +2325,11 @@ export class BaseContentScript {
             }, timeout);
         });
 
-        await Promise.race([initPromise, timeoutPromise]);
+        try {
+            await Promise.race([initPromise, timeoutPromise]);
+        } finally {
+            clearTimeout(timeoutId);
+        }
         this.logWithFallback('debug', 'Platform initialized within timeout');
     }
 
@@ -2076,31 +2437,42 @@ export class BaseContentScript {
      * Setup configuration change listeners
      */
     setupConfigurationListeners() {
-        this.configService.onChanged(async (changes) => {
-            this.logWithFallback('info', 'Config changed, updating', {
-                changes,
-            });
-            const newConfig = await this.configService.getAll();
+        if (typeof this.configUnsubscribe === 'function') {
+            this.configUnsubscribe();
+        }
 
-            Object.assign(this.currentConfig, newConfig);
+        const unsubscribe = this.configService.onChanged(
+            async (changes) => {
+                this.logWithFallback('info', 'Config changed, updating', {
+                    changedKeys: Object.keys(changes || {}),
+                });
+                const newConfig = await this.configService.getAll({
+                    includeSensitive: false,
+                });
 
-            this._normalizeConfiguration();
+                Object.assign(this.currentConfig, newConfig);
 
-            this.applyConfigurationChanges(changes);
+                this._normalizeConfiguration();
 
-            // Handle AI Context enablement and related changes immediately without requiring page reloads
-            try {
-                await this._handleAIContextConfigurationChanges(changes);
-            } catch (error) {
-                this.logWithFallback(
-                    'warn',
-                    'Failed to apply AI Context config changes',
-                    {
-                        error: error.message,
-                    }
-                );
-            }
-        });
+                this.applyConfigurationChanges(changes);
+
+                // Handle AI Context enablement and related changes immediately without requiring page reloads
+                try {
+                    await this._handleAIContextConfigurationChanges(changes);
+                } catch (error) {
+                    this.logWithFallback(
+                        'warn',
+                        'Failed to apply AI Context config changes',
+                        {
+                            error: error.message,
+                        }
+                    );
+                }
+            },
+            { includeSensitive: false }
+        );
+        this.configUnsubscribe =
+            typeof unsubscribe === 'function' ? unsubscribe : null;
     }
 
     /**
@@ -2123,9 +2495,13 @@ export class BaseContentScript {
         ) {
             this.subtitleUtils.applySubtitleStyling(this.currentConfig);
             const videoElement = this.activePlatform.getVideoElement();
-            if (videoElement) {
+            const playbackTime = resolvePlaybackTime(
+                this.activePlatform,
+                videoElement
+            );
+            if (playbackTime !== null) {
                 this.subtitleUtils.updateSubtitles(
-                    videoElement.currentTime,
+                    playbackTime,
                     this.activePlatform,
                     this.currentConfig,
                     this.logPrefix
@@ -2178,11 +2554,9 @@ export class BaseContentScript {
                     // Start or restart AI Context features
                     await this._restartAIContextFeatures();
                 } else {
-                    // Stop AI Context features and keep interactive subtitles only
+                    // Stop AI Context features and remove inactive click affordances
                     await this._cleanupAIContextManager();
-                    await this._initializeInteractiveSubtitlesOnly(
-                        await this._getAIContextConfiguration()
-                    );
+                    await this._disableAIContextInteractions();
                 }
                 return;
             }
@@ -2600,9 +2974,13 @@ export class BaseContentScript {
                 'Subtitles are active, showing container and setting up listeners'
             );
             this.subtitleUtils.showSubtitleContainer();
-            if (videoElement.currentTime > 0) {
+            const playbackTime = resolvePlaybackTime(
+                this.activePlatform,
+                videoElement
+            );
+            if (playbackTime !== null && playbackTime > 0) {
                 this.subtitleUtils.updateSubtitles(
-                    videoElement.currentTime,
+                    playbackTime,
                     this.activePlatform,
                     this.currentConfig,
                     this.logPrefix
@@ -2756,18 +3134,20 @@ export class BaseContentScript {
 
             const action = request.action || request.type;
 
-            this.logWithFallback('debug', 'Received Chrome message', {
-                action,
-                hasUtilities: !!(this.subtitleUtils && this.configService),
-                hasRegisteredHandler: this.messageHandlers.has(action),
-            });
+            if (action !== MessageActions.SIDEPANEL_GET_STATE) {
+                this.logWithFallback('debug', 'Received Chrome message', {
+                    action,
+                    hasUtilities: !!(this.subtitleUtils && this.configService),
+                    hasRegisteredHandler: this.messageHandlers.has(action),
+                });
+            }
 
             // Validate message structure
             if (!action) {
                 this.logWithFallback(
                     'warn',
                     'Received message without action or type',
-                    { request }
+                    { requestKeys: Object.keys(request) }
                 );
                 sendResponse({
                     success: false,
@@ -2779,15 +3159,17 @@ export class BaseContentScript {
             // Check if we have a registered handler for this action
             const handlerConfig = this.messageHandlers.get(action);
             if (handlerConfig) {
-                this.logWithFallback(
-                    'debug',
-                    'Using registered message handler',
-                    {
-                        action,
-                        description: handlerConfig.description,
-                        requiresUtilities: handlerConfig.requiresUtilities,
-                    }
-                );
+                if (action !== MessageActions.SIDEPANEL_GET_STATE) {
+                    this.logWithFallback(
+                        'debug',
+                        'Using registered message handler',
+                        {
+                            action,
+                            description: handlerConfig.description,
+                            requiresUtilities: handlerConfig.requiresUtilities,
+                        }
+                    );
+                }
 
                 // Check if handler requires utilities and they're not loaded
                 if (
@@ -2873,7 +3255,7 @@ export class BaseContentScript {
     handleConfigChanged(request, sendResponse) {
         try {
             this.logWithFallback('debug', 'Handling config changed', {
-                changes: request.changes,
+                changedKeys: Object.keys(request.changes || {}),
             });
 
             if (
@@ -2893,9 +3275,13 @@ export class BaseContentScript {
 
                 this.subtitleUtils.applySubtitleStyling(this.currentConfig);
                 const videoElement = this.activePlatform.getVideoElement();
-                if (videoElement) {
+                const playbackTime = resolvePlaybackTime(
+                    this.activePlatform,
+                    videoElement
+                );
+                if (playbackTime !== null) {
                     this.subtitleUtils.updateSubtitles(
-                        videoElement.currentTime,
+                        playbackTime,
                         this.activePlatform,
                         this.currentConfig,
                         this.logPrefix
@@ -2905,7 +3291,7 @@ export class BaseContentScript {
                     'info',
                     'Applied immediate config changes',
                     {
-                        changes: request.changes,
+                        changedKeys: Object.keys(request.changes),
                     }
                 );
             }
@@ -2993,6 +3379,328 @@ export class BaseContentScript {
      * @param {boolean} enabled - Enabled state
      * @returns {boolean} Whether response is handled asynchronously
      */
+
+    /**
+     * Handle side panel get state: returns currently highlighted words and languages
+     */
+    handleSidePanelGetState(request, sendResponse) {
+        try {
+            const selectedElements = document.querySelectorAll(
+                '.dualsub-interactive-word.dualsub-word-selected'
+            );
+            const domWords = Array.from(selectedElements)
+                .map((element) => element.getAttribute('data-word')?.trim())
+                .filter(Boolean);
+            const words =
+                domWords.length > 0
+                    ? domWords
+                    : Array.from(
+                          this.sidePanelIntegration?.selectedWords || []
+                      );
+
+            // Keep this handler lightweight to avoid page lag
+            sendResponse({
+                success: true,
+                selectedWords: words,
+                sourceLanguage: 'auto',
+            });
+            return false;
+        } catch (error) {
+            this.logWithFallback('error', 'Error in handleSidePanelGetState', {
+                error: error.message,
+            });
+            sendResponse({ success: false, error: error.message });
+            return false;
+        }
+    }
+
+    /**
+     * Handle side panel update state: clear/apply highlights
+     */
+    handleSidePanelUpdateState(request, sendResponse) {
+        try {
+            const data = request.data || request; // support both shapes
+            const removeSelectionIndex = Number.isInteger(
+                data.removeSelectionIndex
+            )
+                ? data.removeSelectionIndex
+                : null;
+
+            if (removeSelectionIndex !== null) {
+                const selectedElements = Array.from(
+                    document.querySelectorAll(
+                        '.dualsub-interactive-word.dualsub-word-selected'
+                    )
+                );
+                selectedElements[removeSelectionIndex]?.classList.remove(
+                    'dualsub-word-selected'
+                );
+            } else if (data.clearSelection) {
+                document
+                    .querySelectorAll(
+                        '.dualsub-interactive-word.dualsub-word-selected'
+                    )
+                    .forEach((el) =>
+                        el.classList.remove('dualsub-word-selected')
+                    );
+                if (
+                    this.sidePanelIntegration &&
+                    this.sidePanelIntegration.selectedWords
+                ) {
+                    this.sidePanelIntegration.selectedWords.clear();
+                }
+            }
+
+            if (
+                removeSelectionIndex === null &&
+                Array.isArray(data.selectedWords)
+            ) {
+                document
+                    .querySelectorAll(
+                        '.dualsub-interactive-word.dualsub-word-selected'
+                    )
+                    .forEach((element) =>
+                        element.classList.remove('dualsub-word-selected')
+                    );
+                const remainingOccurrences = new Map();
+                data.selectedWords.forEach((word) => {
+                    const normalizedWord = (word || '').trim();
+                    if (!normalizedWord) return;
+                    remainingOccurrences.set(
+                        normalizedWord,
+                        (remainingOccurrences.get(normalizedWord) || 0) + 1
+                    );
+                });
+
+                document
+                    .querySelectorAll('.dualsub-interactive-word')
+                    .forEach((element) => {
+                        const word = element.getAttribute('data-word')?.trim();
+                        const remaining = remainingOccurrences.get(word) || 0;
+                        if (remaining > 0) {
+                            element.classList.add('dualsub-word-selected');
+                            remainingOccurrences.set(word, remaining - 1);
+                        }
+                    });
+
+                if (this.sidePanelIntegration) {
+                    this.sidePanelIntegration.selectedWords = new Set(
+                        data.selectedWords
+                    );
+                }
+            }
+
+            // Broadcast the new state back to background to ensure authoritative state is in sync
+            // We use DOM order here to maintain consistency with handleWordSelection
+            if (this.sidePanelIntegration) {
+                try {
+                    const selectedElements = document.querySelectorAll(
+                        '.dualsub-interactive-word.dualsub-word-selected'
+                    );
+                    const words = Array.from(selectedElements)
+                        .map((el) => el.getAttribute('data-word'))
+                        .filter((w) => w)
+                        .map((w) => w.trim());
+
+                    // If no words found in DOM but we have them in Set (e.g. virtualized/hidden),
+                    // fallback to the Set (which came from the update request)
+                    const finalWords =
+                        words.length > 0 ? words : data.selectedWords || [];
+
+                    this.sidePanelIntegration.selectedWords = new Set(
+                        finalWords
+                    );
+
+                    void this.sidePanelIntegration._send({
+                        action: MessageActions.SIDEPANEL_SELECTION_SYNC,
+                        selectedWords: finalWords,
+                        timestamp: Date.now(),
+                        reason: 'sidepanel-update',
+                    });
+                } catch (_) {}
+            }
+
+            sendResponse({ success: true });
+            return false;
+        } catch (error) {
+            this.logWithFallback(
+                'error',
+                'Error in handleSidePanelUpdateState',
+                {
+                    error: error.message,
+                }
+            );
+            sendResponse({ success: false, error: error.message });
+            return false;
+        }
+    }
+
+    /**
+     * Pause the video using multiple strategies
+     */
+    handleSidePanelPauseVideo(_request, sendResponse) {
+        void (async () => {
+            try {
+                // Use platform-specific pause when available (e.g., Disney+ shadow button)
+                if (
+                    this.activePlatform &&
+                    typeof this.activePlatform.pausePlayback === 'function'
+                ) {
+                    const ok = await this.activePlatform.pausePlayback();
+                    sendResponse({ success: !!ok });
+                    return;
+                }
+
+                const pauseSucceeded = await (async () => {
+                    try {
+                        // Strategy 1: Direct HTML5 pause (universal)
+                        const v =
+                            document.querySelector(
+                                'video[data-listener-attached="true"]'
+                            ) ||
+                            (this.activePlatform &&
+                            typeof this.activePlatform.getVideoElement ===
+                                'function'
+                                ? this.activePlatform.getVideoElement()
+                                : null) ||
+                            document.querySelector('video');
+                        if (v) {
+                            try {
+                                v.pause();
+                            } catch (_) {}
+                            await new Promise((resolve) =>
+                                setTimeout(resolve, 80)
+                            );
+                            if (v.paused) return true;
+                        }
+
+                        // Strategy 2: Click any visible Pause/Play control (generic platforms)
+                        try {
+                            const pauseBtn = document.querySelector(
+                                'button[aria-label*="Pause" i], button[data-uia*="pause" i], button.play-button.control[part="play-button"], button[part="play-button"]'
+                            );
+                            if (pauseBtn) {
+                                pauseBtn.click();
+                                await new Promise((resolve) =>
+                                    setTimeout(resolve, 140)
+                                );
+                                const v2 =
+                                    document.querySelector(
+                                        'video[data-listener-attached="true"]'
+                                    ) ||
+                                    (this.activePlatform &&
+                                    typeof this.activePlatform
+                                        .getVideoElement === 'function'
+                                        ? this.activePlatform.getVideoElement()
+                                        : null) ||
+                                    document.querySelector('video');
+                                if (v2?.paused) return true;
+                            }
+                        } catch (_) {}
+
+                        // Strategy 3: As absolute fallback, try another direct pause
+                        try {
+                            const v3 =
+                                document.querySelector(
+                                    'video[data-listener-attached="true"]'
+                                ) || document.querySelector('video');
+                            if (v3) {
+                                v3.pause();
+                                await new Promise((resolve) =>
+                                    setTimeout(resolve, 60)
+                                );
+                                if (v3.paused) return true;
+                            }
+                        } catch (_) {}
+                        return false;
+                    } catch (_) {
+                        return false;
+                    }
+                })();
+
+                sendResponse({ success: pauseSucceeded });
+            } catch (error) {
+                this.logWithFallback(
+                    'warn',
+                    'Error while attempting to pause video',
+                    { error: error.message }
+                );
+                sendResponse({ success: false, error: error.message });
+            }
+        })();
+
+        // Chrome before 148 requires a literal true to keep sendResponse alive.
+        return true;
+    }
+
+    /**
+     * Handle analyzing state update: block/unblock word clicks
+     */
+    handleSidePanelSetAnalyzing(request, sendResponse) {
+        try {
+            const isAnalyzing = !!(
+                request.data?.isAnalyzing ?? request.isAnalyzing
+            );
+
+            if (this.sidePanelIntegration) {
+                this.sidePanelIntegration.isAnalyzing = isAnalyzing;
+                this.logWithFallback('debug', 'Analyzing state updated', {
+                    isAnalyzing,
+                });
+            }
+
+            // 1) Mirror legacy modal signal so interactive subtitle code detects analyzing
+            try {
+                let modalContent = document.getElementById(
+                    'dualsub-modal-content'
+                );
+                if (!modalContent) {
+                    modalContent = document.createElement('div');
+                    modalContent.id = 'dualsub-modal-content';
+                    // keep it invisible and out of layout
+                    Object.assign(modalContent.style, {
+                        display: 'none',
+                    });
+                    document.body.appendChild(modalContent);
+                }
+                if (isAnalyzing) {
+                    modalContent.classList.add('is-analyzing');
+                } else {
+                    modalContent.classList.remove('is-analyzing');
+                }
+            } catch (_) {}
+
+            // 2) Disable/enable pointer interactions on the original subtitle container
+            try {
+                const original = document.getElementById(
+                    'dualsub-original-subtitle'
+                );
+                if (original) {
+                    if (isAnalyzing) {
+                        original.style.pointerEvents = 'none';
+                        original.classList.add('dualsub-subtitles-disabled');
+                    } else {
+                        original.style.removeProperty('pointer-events');
+                        original.classList.remove('dualsub-subtitles-disabled');
+                    }
+                }
+            } catch (_) {}
+
+            sendResponse({ success: true });
+            return false;
+        } catch (error) {
+            this.logWithFallback(
+                'error',
+                'Error in handleSidePanelSetAnalyzing',
+                {
+                    error: error.message,
+                }
+            );
+            sendResponse({ success: false, error: error.message });
+            return false;
+        }
+    }
+
     _enableSubtitles(sendResponse, enabled) {
         if (!this.activePlatform) {
             this.initializePlatform()
@@ -3045,6 +3753,17 @@ export class BaseContentScript {
                     'debug',
                     'Page visible, resuming operations'
                 );
+                try {
+                    finalizeExpiredSubtitleIfNeeded(0.1, this.activePlatform);
+                } catch (err) {
+                    this.logWithFallback(
+                        'warn',
+                        'Failed to finalize subtitles after visibility restore',
+                        {
+                            error: err?.message,
+                        }
+                    );
+                }
                 // Re-check video setup when page becomes visible
                 if (
                     this.activePlatform &&
@@ -3184,8 +3903,9 @@ export class BaseContentScript {
                         ? this.activePlatform.cleanup()
                         : Promise.resolve();
 
+                let timeoutId;
                 const timeoutPromise = new Promise((resolve) => {
-                    setTimeout(() => {
+                    timeoutId = setTimeout(() => {
                         this.logWithFallback(
                             'warn',
                             'Platform cleanup timed out'
@@ -3194,7 +3914,11 @@ export class BaseContentScript {
                     }, cleanupTimeout);
                 });
 
-                await Promise.race([cleanupPromise, timeoutPromise]);
+                try {
+                    await Promise.race([cleanupPromise, timeoutPromise]);
+                } finally {
+                    clearTimeout(timeoutId);
+                }
                 this.activePlatform = null;
                 this.logWithFallback('debug', 'Platform resources cleaned up');
             }
@@ -3262,6 +3986,11 @@ export class BaseContentScript {
                 this.eventBuffer.clear();
             }
 
+            if (typeof this.configUnsubscribe === 'function') {
+                this.configUnsubscribe();
+                this.configUnsubscribe = null;
+            }
+
             // Execute all tracked event listener cleanup functions
             if (
                 this.eventListenerCleanupFunctions &&
@@ -3291,12 +4020,19 @@ export class BaseContentScript {
                 this.eventListenerCleanupFunctions = [];
             }
 
-            // Clean up Chrome message listeners
-            if (chrome.runtime && chrome.runtime.onMessage) {
-                // Note: Chrome extension listeners are automatically cleaned up when content script is destroyed
+            // Clean up Chrome message listener when cleanup happens before page destruction.
+            if (
+                this.chromeMessageListenerAttached &&
+                typeof chrome !== 'undefined' &&
+                chrome.runtime?.onMessage?.removeListener
+            ) {
+                chrome.runtime.onMessage.removeListener(
+                    this.chromeMessageListener
+                );
+                this.chromeMessageListenerAttached = false;
                 this.logWithFallback(
                     'debug',
-                    'Chrome message listeners will be cleaned up automatically'
+                    'Chrome message listener removed'
                 );
             }
 
@@ -3479,12 +4215,12 @@ export class BaseContentScript {
 
             // UI settings
             hideOfficialSubtitles: false,
-            subtitleTimeOffset: 0.3,
+            subtitleTimeOffset: 0,
             subtitleLayoutOrder: 'original_top',
             subtitleLayoutOrientation: 'column',
 
             // Translation settings
-            selectedProvider: 'deepl_free',
+            selectedProvider: 'microsoft_edge_auth',
 
             // AI Context settings
             aiContextEnabled: false,

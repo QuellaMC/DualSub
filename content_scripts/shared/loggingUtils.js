@@ -596,7 +596,7 @@ export class SubtitleDiagnostics {
         });
 
         // Update performance baseline
-        this._updatePerformanceBaseline(operation, duration);
+        this._updatePerformanceBaseline(operation);
 
         this._logDiagnostic('debug', `Performance timing: ${operation}`, {
             timing,
@@ -714,9 +714,8 @@ export class SubtitleDiagnostics {
      * Updates the performance baseline metrics.
      * @private
      * @param {string} operation - The name of the operation.
-     * @param {number} duration - The duration of the operation in milliseconds.
      */
-    _updatePerformanceBaseline(operation, duration) {
+    _updatePerformanceBaseline(operation) {
         const operationTimings = this.diagnosticHistory
             .filter(
                 (e) =>

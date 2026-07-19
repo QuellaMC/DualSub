@@ -1,15 +1,23 @@
-import { VideoPlatform } from './platform_interface.js';
 import Logger from '../utils/logger.js';
 import { configService } from '../services/configService.js';
-import { MessageActions } from '../content_scripts/shared/constants/messageActions.js';
 
 import { Injection } from '../content_scripts/shared/constants/injection.js';
 
-const INJECT_SCRIPT_FILENAME = Injection.disneyplus.SCRIPT_FILENAME;
-const INJECT_SCRIPT_TAG_ID = Injection.disneyplus.SCRIPT_TAG_ID;
 const INJECT_EVENT_ID = Injection.disneyplus.EVENT_ID; // Must match inject.js
 
 import { BasePlatformAdapter } from './BasePlatformAdapter.js';
+
+const PLAYBACK_TRANSITION_DELAY_MS = 160;
+const DEEP_TIMELINE_SEARCH_INTERVAL_MS = 1000;
+const TIMELINE_DRIFT_TOLERANCE_SECONDS = 1.5;
+const RUNTIME_SAMPLE_STABILITY_MS = 100;
+const TIMELINE_SELECTORS = [
+    '.progress-bar__seekable-range[role="slider"][aria-valuenow]',
+    '.progress-bar__seekable-range[aria-valuenow]',
+    '[role="slider"][aria-label="Timeline"][aria-valuenow]',
+    '[role="slider"][aria-valuenow][aria-valuemax]',
+    '.progress-bar__thumb[aria-valuenow][aria-valuemax]',
+];
 
 export class DisneyPlusPlatform extends BasePlatformAdapter {
     constructor() {
@@ -19,8 +27,28 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
         this.onSubtitleUrlFoundCallback = null;
         this.onVideoIdChangeCallback = null;
         this.lastKnownVttUrlForVideoId = {};
+        this.pendingVttUrlForVideoId = {};
         this.eventListener = null; // To store the bound event listener for removal
+        this._stalePlaybackIdentity = null;
+        this._resetPlaybackClockState();
         this.initializeLogger();
+    }
+
+    _resetPlaybackClockState(needsFreshTimeline = false) {
+        this._clockVideoElement = null;
+        this._clockTimelineElement = null;
+        this._clockTimelineValue = null;
+        this._clockProgramTime = null;
+        this._clockNeedsFreshTimeline = needsFreshTimeline;
+        this._playbackTimeOffset = null;
+        this._cachedProgressBarElement = null;
+        this._lastDeepTimelineSearchAt = 0;
+        this._runtimePlaybackAnchor = null;
+        this._runtimeAnchorValid = false;
+        this._runtimeAnchorNeedsCoherentSample = false;
+        this._runtimePendingAnchor = null;
+        this._runtimeInterstitialActive = false;
+        this._runtimeLastSequence = -1;
     }
 
     /**
@@ -64,6 +92,7 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
 
         this.eventListener = this._handleInjectorEvents.bind(this);
         document.addEventListener(INJECT_EVENT_ID, this.eventListener);
+        this._requestPlaybackTimeline();
 
         const disneyPlusSubtitleSelectors = [
             '.TimedTextOverlay',
@@ -78,12 +107,174 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
         });
     }
 
+    _requestPlaybackTimeline() {
+        try {
+            document.dispatchEvent(
+                new CustomEvent(INJECT_EVENT_ID, {
+                    detail: { type: 'REQUEST_PLAYBACK_TIMELINE' },
+                })
+            );
+        } catch (_) {}
+    }
+
+    _getRuntimeIdentity(value) {
+        if (!value) return null;
+
+        const availId =
+            typeof value.availId === 'string' && value.availId
+                ? value.availId
+                : null;
+        const playbackSessionId =
+            typeof value.playbackSessionId === 'string' &&
+            value.playbackSessionId
+                ? value.playbackSessionId
+                : null;
+
+        return availId || playbackSessionId
+            ? { availId, playbackSessionId }
+            : null;
+    }
+
+    _runtimeIdentitiesMatch(leftValue, rightValue) {
+        const left = this._getRuntimeIdentity(leftValue);
+        const right = this._getRuntimeIdentity(rightValue);
+        if (!left || !right) return false;
+
+        if (left.playbackSessionId && right.playbackSessionId) {
+            return left.playbackSessionId === right.playbackSessionId;
+        }
+
+        return Boolean(left.availId && left.availId === right.availId);
+    }
+
+    _handlePlaybackTimelineUpdate(data) {
+        if (!this.currentVideoId || data.videoId !== this.currentVideoId) {
+            return;
+        }
+
+        const programTime = data.programTimeSeconds;
+        if (
+            typeof programTime !== 'number' ||
+            !Number.isFinite(programTime) ||
+            programTime < 0
+        ) {
+            return;
+        }
+
+        const runtimeIdentity = this._getRuntimeIdentity(data);
+        if (!runtimeIdentity) return;
+
+        if (
+            this._stalePlaybackIdentity &&
+            this._runtimeIdentitiesMatch(this._stalePlaybackIdentity, data)
+        ) {
+            return;
+        }
+
+        const videoElement = this.getVideoElement();
+        const mediaTime = videoElement?.currentTime;
+        if (!Number.isFinite(mediaTime)) return;
+
+        const sequence = Number(data.sequence);
+        if (
+            Number.isFinite(sequence) &&
+            sequence <= this._runtimeLastSequence
+        ) {
+            return;
+        }
+
+        const previousAnchor = this._runtimePlaybackAnchor;
+        const sameRuntime = this._runtimeIdentitiesMatch(previousAnchor, data);
+        const interstitialStateKnown =
+            typeof data.isInterstitialPlaying === 'boolean';
+        if (interstitialStateKnown) {
+            const wasInterstitialActive = this._runtimeInterstitialActive;
+            this._runtimeInterstitialActive = data.isInterstitialPlaying;
+            if (wasInterstitialActive !== this._runtimeInterstitialActive) {
+                this.logger.info('Disney interstitial playback state changed', {
+                    videoId: this.currentVideoId,
+                    isInterstitialPlaying: this._runtimeInterstitialActive,
+                    isBumper: data.isBumper === true,
+                });
+            }
+        }
+
+        if (
+            this._runtimeAnchorNeedsCoherentSample &&
+            previousAnchor &&
+            sameRuntime &&
+            previousAnchor.videoElement === videoElement
+        ) {
+            const mediaDelta = mediaTime - previousAnchor.mediaTime;
+            const programDelta = programTime - previousAnchor.programTime;
+            const coherentWithPrevious =
+                Math.abs(mediaDelta - programDelta) <=
+                TIMELINE_DRIFT_TOLERANCE_SECONDS;
+
+            if (!coherentWithPrevious) {
+                const pendingAnchor = this._runtimePendingAnchor;
+                const pendingMatchesRuntime =
+                    pendingAnchor?.videoElement === videoElement &&
+                    this._runtimeIdentitiesMatch(pendingAnchor, data);
+                const coherentWithPending =
+                    pendingMatchesRuntime &&
+                    Math.abs(
+                        mediaTime -
+                            pendingAnchor.mediaTime -
+                            (programTime - pendingAnchor.programTime)
+                    ) <= TIMELINE_DRIFT_TOLERANCE_SECONDS;
+                const pendingIsStable =
+                    coherentWithPending &&
+                    Date.now() - pendingAnchor.observedAt >=
+                        RUNTIME_SAMPLE_STABILITY_MS;
+
+                if (!pendingIsStable) {
+                    if (!coherentWithPending) {
+                        this._runtimePendingAnchor = {
+                            videoElement,
+                            videoId: data.videoId,
+                            mediaTime,
+                            programTime,
+                            observedAt: Date.now(),
+                            ...runtimeIdentity,
+                        };
+                    }
+                    this._runtimeLastSequence = Number.isFinite(sequence)
+                        ? sequence
+                        : this._runtimeLastSequence + 1;
+                    return;
+                }
+            }
+        } else {
+            this._runtimePendingAnchor = null;
+        }
+
+        this._runtimePendingAnchor = null;
+
+        this._runtimePlaybackAnchor = {
+            videoElement,
+            videoId: data.videoId,
+            mediaTime,
+            programTime,
+            ...runtimeIdentity,
+        };
+        this._runtimeAnchorValid = true;
+        this._runtimeAnchorNeedsCoherentSample = false;
+        this._runtimeLastSequence = Number.isFinite(sequence)
+            ? sequence
+            : this._runtimeLastSequence + 1;
+        this._stalePlaybackIdentity = null;
+    }
+
     _handleInjectorEvents(e) {
         const data = e.detail;
         if (!data || !data.type) return;
 
         if (data.type === 'INJECT_SCRIPT_READY') {
             this.logger.info('Inject script is ready');
+            this._requestPlaybackTimeline();
+        } else if (data.type === 'PLAYBACK_TIMELINE_UPDATE') {
+            this._handlePlaybackTimelineUpdate(data);
         } else if (data.type === 'SUBTITLE_URL_FOUND') {
             const injectedVideoId = data.videoId;
             const vttMasterUrl = data.url;
@@ -93,14 +284,14 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
                     'SUBTITLE_URL_FOUND event without a videoId',
                     null,
                     {
-                        url: vttMasterUrl,
+                        urlLength: vttMasterUrl.length,
                     }
                 );
                 return;
             }
             this.logger.info('SUBTITLE_URL_FOUND for injectedVideoId', {
                 injectedVideoId: injectedVideoId,
-                url: vttMasterUrl,
+                urlLength: vttMasterUrl.length,
             });
 
             if (this.currentVideoId !== injectedVideoId) {
@@ -110,25 +301,36 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
                 });
                 if (this.currentVideoId) {
                     delete this.lastKnownVttUrlForVideoId[this.currentVideoId];
+                    delete this.pendingVttUrlForVideoId[this.currentVideoId];
                 }
+                this._stalePlaybackIdentity = this._getRuntimeIdentity(
+                    this._runtimePlaybackAnchor
+                );
+                this._resetPlaybackClockState(true);
                 this.setVideoIdAndNotify(injectedVideoId);
-            } else if (
-                this.lastKnownVttUrlForVideoId[this.currentVideoId] ===
-                vttMasterUrl
-            ) {
-                this.logger.debug('VTT URL already processed or known', {
-                    url: vttMasterUrl,
-                    videoId: this.currentVideoId,
-                });
-                // If content.js needs to re-evaluate subtitles with existing data, it can do so.
-                // For now, we assume if the URL is the same, no new fetch is needed unless forced by content.js logic
-                // Potentially, we could resend the last known VTT text here if onSubtitleUrlFoundCallback expects it every time.
-                return; // Or decide if re-sending old data is needed.
             }
 
+            const requestVideoId = this.currentVideoId;
+            const pendingRequest = this.pendingVttUrlForVideoId[requestVideoId];
+            if (
+                this.lastKnownVttUrlForVideoId[requestVideoId] ===
+                    vttMasterUrl ||
+                pendingRequest?.url === vttMasterUrl
+            ) {
+                this.logger.debug('VTT URL already processed or known', {
+                    urlLength: vttMasterUrl.length,
+                    hasVideoId: Boolean(requestVideoId),
+                    inFlight: pendingRequest?.url === vttMasterUrl,
+                });
+                return;
+            }
+
+            const requestMarker = { url: vttMasterUrl };
+            this.pendingVttUrlForVideoId[requestVideoId] = requestMarker;
+
             this.logger.info('Requesting VTT from background', {
-                url: vttMasterUrl,
-                videoId: this.currentVideoId,
+                urlLength: vttMasterUrl.length,
+                hasVideoId: Boolean(this.currentVideoId),
             });
 
             // Get user settings for language preferences
@@ -138,16 +340,22 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
                     const targetLanguage = settings.targetLanguage || 'zh-CN';
                     const originalLanguage = settings.originalLanguage || 'en';
 
-                    this.requestVttViaMessaging(
+                    return this.requestVttViaMessaging(
                         vttMasterUrl,
                         targetLanguage,
-                        originalLanguage
+                        originalLanguage,
+                        requestVideoId
                     )
                         .then((response) => {
+                            const requestIsCurrent =
+                                this.pendingVttUrlForVideoId[requestVideoId] ===
+                                requestMarker;
+
                             if (
                                 response &&
                                 response.success &&
-                                response.videoId === this.currentVideoId
+                                response.videoId === this.currentVideoId &&
+                                requestIsCurrent
                             ) {
                                 this.logger.info('VTT fetched successfully', {
                                     videoId: this.currentVideoId,
@@ -155,8 +363,8 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
                                     targetLanguage: response.targetLanguage,
                                 });
                                 this.lastKnownVttUrlForVideoId[
-                                    this.currentVideoId
-                                ] = response.url;
+                                    response.videoId
+                                ] = vttMasterUrl;
                                 if (this.onSubtitleUrlFoundCallback) {
                                     this.onSubtitleUrlFoundCallback({
                                         vttText: response.vttText,
@@ -175,14 +383,28 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
                                             response.targetLanguageInfo,
                                     });
                                 }
+                            } else if (response?.success && !requestIsCurrent) {
+                                this.logger.warn(
+                                    'Received VTT for superseded subtitle request - discarding',
+                                    {
+                                        receivedVideoId: response.videoId,
+                                        currentVideoId: this.currentVideoId,
+                                        urlLength: vttMasterUrl.length,
+                                    }
+                                );
                             } else if (response && !response.success) {
                                 this.logger.error(
                                     'Background failed to fetch VTT',
                                     null,
                                     {
-                                        error: response.error || 'Unknown',
-                                        url: response.url,
-                                        videoId: this.currentVideoId,
+                                        errorLength:
+                                            typeof response.error === 'string'
+                                                ? response.error.length
+                                                : 0,
+                                        hasResponseUrl: Boolean(response.url),
+                                        hasVideoId: Boolean(
+                                            this.currentVideoId
+                                        ),
                                     }
                                 );
                             } else if (
@@ -201,8 +423,10 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
                                     'No/invalid response from background for fetchVTT',
                                     null,
                                     {
-                                        url: vttMasterUrl,
-                                        videoId: this.currentVideoId,
+                                        urlLength: vttMasterUrl.length,
+                                        hasVideoId: Boolean(
+                                            this.currentVideoId
+                                        ),
                                     }
                                 );
                             }
@@ -215,8 +439,10 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
                                     'Error for VTT fetch',
                                     lastErr,
                                     {
-                                        url: vttMasterUrl,
-                                        videoId: this.currentVideoId,
+                                        urlLength: vttMasterUrl.length,
+                                        hasVideoId: Boolean(
+                                            this.currentVideoId
+                                        ),
                                     }
                                 );
                             } else {
@@ -224,12 +450,32 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
                                     'No/invalid response from background for fetchVTT',
                                     null,
                                     {
-                                        url: vttMasterUrl,
-                                        videoId: this.currentVideoId,
+                                        urlLength: vttMasterUrl.length,
+                                        hasVideoId: Boolean(
+                                            this.currentVideoId
+                                        ),
                                     }
                                 );
                             }
                         });
+                })
+                .catch((error) => {
+                    this.logger.error(
+                        'Failed to resolve subtitle request settings',
+                        error,
+                        {
+                            urlLength: vttMasterUrl.length,
+                            hasVideoId: Boolean(requestVideoId),
+                        }
+                    );
+                })
+                .finally(() => {
+                    if (
+                        this.pendingVttUrlForVideoId[requestVideoId] ===
+                        requestMarker
+                    ) {
+                        delete this.pendingVttUrlForVideoId[requestVideoId];
+                    }
                 });
         }
     }
@@ -239,7 +485,48 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
     }
 
     getVideoElement() {
-        return document.querySelector('video');
+        const videos = Array.from(document.querySelectorAll('video'));
+        if (videos.length <= 1) return videos[0] || null;
+
+        let bestVideo = videos[0];
+        let bestScore = -Infinity;
+
+        for (const video of videos) {
+            let score = 0;
+            try {
+                const rect = video.getBoundingClientRect?.();
+                const width = rect?.width || 0;
+                const height = rect?.height || 0;
+                if (width > 0 && height > 0) {
+                    score += 100;
+                    score += Math.min((width * height) / 20000, 50);
+                }
+
+                if (video.readyState >= 2) score += 40;
+                if (video.readyState >= 4) score += 10;
+                if (
+                    video.currentSrc ||
+                    video.getAttribute('src') ||
+                    video.querySelector('source[src]')
+                ) {
+                    score += 25;
+                }
+                if (!video.paused && !video.ended) score += 30;
+                if (
+                    Number.isFinite(video.currentTime) &&
+                    video.currentTime > 0
+                ) {
+                    score += 15;
+                }
+            } catch (_) {}
+
+            if (score > bestScore) {
+                bestScore = score;
+                bestVideo = video;
+            }
+        }
+
+        return bestVideo;
     }
 
     getCurrentVideoId() {
@@ -252,37 +539,356 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
     }
 
     getProgressBarElement() {
-        // Disney+ specific: read from progress-bar web component's shadow DOM
         try {
-            // Prefer the controls footer progress bar
-            const preferredHosts = Array.from(
-                document.querySelectorAll(
-                    '.controls__footer__progressWrapper progress-bar'
-                )
-            );
-            const allHosts = preferredHosts.length
-                ? preferredHosts
-                : Array.from(document.querySelectorAll('progress-bar'));
+            if (this._cachedProgressBarElement?.isConnected) {
+                return this._cachedProgressBarElement;
+            }
+            this._cachedProgressBarElement = null;
 
-            let bestThumb = null;
-            let bestMax = -1;
-            for (const host of allHosts) {
-                if (!host || !host.shadowRoot) continue;
-                const thumb = host.shadowRoot.querySelector(
-                    '.progress-bar__seekable-range .progress-bar__thumb[aria-valuenow][aria-valuemax]'
-                );
-                if (!thumb) continue;
-                const vmax = parseFloat(
-                    thumb.getAttribute('aria-valuemax') || 'NaN'
-                );
-                if (!Number.isNaN(vmax) && vmax > bestMax) {
-                    bestMax = vmax;
-                    bestThumb = thumb;
+            // Current Disney+ player: controls overlay -> progress-bar, with
+            // both components exposing open shadow roots.
+            const overlayHosts = document.querySelectorAll(
+                'main-app-controls-overlay'
+            );
+            for (const overlayHost of overlayHosts) {
+                const progressHosts =
+                    overlayHost.shadowRoot?.querySelectorAll('progress-bar') ||
+                    [];
+                const timeline =
+                    this._findTimelineInProgressHosts(progressHosts);
+                if (timeline) {
+                    this._cachedProgressBarElement = timeline;
+                    return timeline;
                 }
             }
-            return bestThumb || null;
+
+            // Retain compatibility with older layouts whose progress-bar host
+            // lived in the light DOM.
+            const lightDomTimeline = this._findTimelineInProgressHosts(
+                document.querySelectorAll('progress-bar')
+            );
+            if (lightDomTimeline) {
+                this._cachedProgressBarElement = lightDomTimeline;
+                return lightDomTimeline;
+            }
+
+            // Bound the expensive recursive fallback. The active video clock
+            // remains usable while the lazily mounted controls are absent.
+            const now = Date.now();
+            if (
+                now - this._lastDeepTimelineSearchAt <
+                DEEP_TIMELINE_SEARCH_INTERVAL_MS
+            ) {
+                return null;
+            }
+            this._lastDeepTimelineSearchAt = now;
+
+            const deepProgressHost = this._querySelectorDeep('progress-bar');
+            const deepTimeline = this._findTimelineInProgressHosts(
+                deepProgressHost ? [deepProgressHost] : []
+            );
+            if (deepTimeline) {
+                this._cachedProgressBarElement = deepTimeline;
+                return deepTimeline;
+            }
+
+            const semanticTimeline = this._querySelectorDeep([
+                TIMELINE_SELECTORS[0],
+                TIMELINE_SELECTORS[2],
+            ]);
+            this._cachedProgressBarElement = semanticTimeline;
+            return semanticTimeline;
         } catch (_) {
             return null;
+        }
+    }
+
+    _findTimelineInProgressHosts(progressHosts) {
+        let bestTimeline = null;
+        let bestMaximum = -Infinity;
+
+        for (const host of progressHosts) {
+            if (!host?.shadowRoot) continue;
+
+            let timeline = null;
+            for (const selector of TIMELINE_SELECTORS) {
+                timeline = host.shadowRoot.querySelector(selector);
+                if (timeline) break;
+            }
+            if (!timeline) continue;
+
+            const maximum = Number.parseFloat(
+                timeline.getAttribute('aria-valuemax') || '0'
+            );
+            if (
+                !bestTimeline ||
+                (Number.isFinite(maximum) && maximum > bestMaximum)
+            ) {
+                bestTimeline = timeline;
+                bestMaximum = Number.isFinite(maximum) ? maximum : bestMaximum;
+            }
+        }
+
+        return bestTimeline;
+    }
+
+    _readTimelineTime(timelineElement) {
+        const value = Number.parseFloat(
+            timelineElement?.getAttribute('aria-valuenow') || 'NaN'
+        );
+        return Number.isFinite(value) && value >= 0 ? value : null;
+    }
+
+    _getMeaningfulTimelineOffset(timelineTime, programTime) {
+        const measuredOffset = timelineTime - programTime;
+        // Small differences are normal UI sampling lag; keep the active video
+        // authoritative unless the timeline proves a distinct clock origin.
+        return Math.abs(measuredOffset) > TIMELINE_DRIFT_TOLERANCE_SECONDS
+            ? measuredOffset
+            : 0;
+    }
+
+    /**
+     * Use Disney's live program playhead to anchor the active HTML video clock.
+     * The lazily mounted progress slider remains a fallback when the runtime
+     * facade is unavailable.
+     * @returns {number | null}
+     */
+    getPlaybackTime(preferredVideoElement = null) {
+        const videoElement = preferredVideoElement || this.getVideoElement();
+        const mediaTime = videoElement?.currentTime;
+        if (!Number.isFinite(mediaTime)) return null;
+
+        if (this._runtimeInterstitialActive) return -1;
+
+        const runtimeAnchor = this._runtimePlaybackAnchor;
+        const runtimeAnchorMatchesVideo =
+            runtimeAnchor?.videoElement === videoElement;
+        if (runtimeAnchor && !runtimeAnchorMatchesVideo) {
+            this._runtimeAnchorValid = false;
+            this._runtimeAnchorNeedsCoherentSample = false;
+        }
+
+        if (
+            this._runtimeAnchorValid &&
+            runtimeAnchor?.videoId === this.currentVideoId &&
+            runtimeAnchorMatchesVideo
+        ) {
+            return (
+                runtimeAnchor.programTime +
+                (mediaTime - runtimeAnchor.mediaTime)
+            );
+        }
+
+        // A seek can move the media clock before Disney publishes its matching
+        // program playhead. Suppress cues during that short disagreement rather
+        // than briefly rendering subtitles from the wrong scene.
+        if (
+            runtimeAnchorMatchesVideo &&
+            this._runtimeAnchorNeedsCoherentSample
+        ) {
+            return -1;
+        }
+
+        const programTime = mediaTime;
+
+        const previousVideoElement = this._clockVideoElement;
+        const previousProgramTime = this._clockProgramTime;
+        const previousTimelineElement = this._clockTimelineElement;
+        const previousTimelineValue = this._clockTimelineValue;
+        const videoElementChanged = videoElement !== previousVideoElement;
+
+        if (videoElementChanged) {
+            this._clockVideoElement = videoElement;
+            this._playbackTimeOffset = null;
+            this._clockNeedsFreshTimeline =
+                this._clockNeedsFreshTimeline || previousVideoElement !== null;
+            this._cachedProgressBarElement = null;
+        }
+
+        const timelineElement = this.getProgressBarElement();
+        const timelineTime = this._readTimelineTime(timelineElement);
+
+        const programTimeChanged =
+            !videoElementChanged &&
+            Number.isFinite(previousProgramTime) &&
+            Math.abs(programTime - previousProgramTime) >
+                TIMELINE_DRIFT_TOLERANCE_SECONDS;
+        const timelineTimeChanged =
+            !videoElementChanged &&
+            timelineTime !== null &&
+            Number.isFinite(previousTimelineValue) &&
+            Math.abs(timelineTime - previousTimelineValue) >
+                TIMELINE_DRIFT_TOLERANCE_SECONDS;
+        const coherentClockJump =
+            programTimeChanged &&
+            timelineTimeChanged &&
+            Math.abs(
+                programTime -
+                    previousProgramTime -
+                    (timelineTime - previousTimelineValue)
+            ) <= TIMELINE_DRIFT_TOLERANCE_SECONDS;
+
+        // During a seek, Disney's slider and media clock often update on
+        // different frames. Never turn that temporary disagreement into a
+        // persistent offset; prefer the active video until the timeline moves
+        // again and proves it is fresh.
+        if (
+            (programTimeChanged || timelineTimeChanged) &&
+            !coherentClockJump &&
+            (timelineTime !== null || this._clockNeedsFreshTimeline)
+        ) {
+            this._playbackTimeOffset = null;
+            this._clockNeedsFreshTimeline = true;
+            this._clockProgramTime = programTime;
+            if (timelineElement && timelineTime !== null) {
+                this._clockTimelineElement = timelineElement;
+                this._clockTimelineValue = timelineTime;
+            }
+            return programTime;
+        }
+
+        if (this._clockNeedsFreshTimeline) {
+            const hasFreshTimelineSample =
+                timelineElement &&
+                timelineTime !== null &&
+                Number.isFinite(previousTimelineValue) &&
+                Math.abs(timelineTime - previousTimelineValue) > 0.01;
+
+            this._clockProgramTime = programTime;
+            if (!hasFreshTimelineSample) {
+                if (timelineElement && timelineTime !== null) {
+                    this._clockTimelineElement = timelineElement;
+                    this._clockTimelineValue = timelineTime;
+                }
+                return programTime;
+            }
+
+            this._clockNeedsFreshTimeline = false;
+            this._playbackTimeOffset = this._getMeaningfulTimelineOffset(
+                timelineTime,
+                programTime
+            );
+        }
+
+        if (timelineElement && timelineTime !== null) {
+            const timelineElementChanged =
+                timelineElement !== previousTimelineElement;
+            const timelineValueChanged =
+                previousTimelineValue === null ||
+                Math.abs(timelineTime - previousTimelineValue) > 0.01;
+            const predictedTime = programTime + (this._playbackTimeOffset || 0);
+            const clockDrift = Math.abs(timelineTime - predictedTime);
+            const measuredOffset = this._getMeaningfulTimelineOffset(
+                timelineTime,
+                programTime
+            );
+
+            if (this._playbackTimeOffset === null) {
+                this._playbackTimeOffset = measuredOffset;
+            } else if (
+                (timelineElementChanged || timelineValueChanged) &&
+                clockDrift > TIMELINE_DRIFT_TOLERANCE_SECONDS
+            ) {
+                this._playbackTimeOffset = measuredOffset;
+            }
+
+            this._clockTimelineElement = timelineElement;
+            this._clockTimelineValue = timelineTime;
+        } else {
+            // Keep the calibrated offset while Disney+ unmounts idle controls.
+            this._clockTimelineElement = null;
+            this._clockTimelineValue = null;
+        }
+
+        this._clockProgramTime = programTime;
+        return programTime + (this._playbackTimeOffset || 0);
+    }
+
+    invalidatePlaybackClockCalibration() {
+        this._playbackTimeOffset = null;
+        this._clockNeedsFreshTimeline = true;
+        if (this._runtimePlaybackAnchor) {
+            this._runtimeAnchorValid = false;
+            this._runtimeAnchorNeedsCoherentSample = true;
+            this._runtimePendingAnchor = null;
+        }
+        this._requestPlaybackTimeline();
+    }
+
+    supportsProgressBarTracking() {
+        // The generic observer treats the UI control as the primary clock and
+        // blocks startup while it is absent. Disney+ uses it only for internal
+        // calibration, so native timeupdate events remain authoritative.
+        return false;
+    }
+
+    /**
+     * Platform-specific playback helpers for Disney+
+     */
+    _getToggleButtonRoot() {
+        try {
+            const toggleHost = document.querySelector(
+                'disney-web-player-ui toggle-play-pause'
+            );
+            return toggleHost?.shadowRoot || null;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    isPlaying() {
+        try {
+            const root = this._getToggleButtonRoot();
+            if (!root) return null;
+            const roleBtn = root.querySelector('[role="button"]');
+            const label = roleBtn?.getAttribute('aria-label');
+            if (!label) return null;
+            return label === 'Pause';
+        } catch (_) {
+            return null;
+        }
+    }
+
+    async pausePlayback() {
+        try {
+            const state = this.isPlaying();
+            if (state === false) return true;
+            const root = this._getToggleButtonRoot();
+            if (!root) return false;
+            const btn =
+                root.querySelector('button') ||
+                root.querySelector('[role="button"]');
+            if (!btn) return false;
+            btn.click();
+            await new Promise((r) =>
+                setTimeout(r, PLAYBACK_TRANSITION_DELAY_MS)
+            );
+            const after = this.isPlaying();
+            return after === false;
+        } catch (_) {
+            return false;
+        }
+    }
+
+    async resumePlayback() {
+        try {
+            const state = this.isPlaying();
+            if (state === true) return true;
+            const root = this._getToggleButtonRoot();
+            if (!root) return false;
+            const btn =
+                root.querySelector('button') ||
+                root.querySelector('[role="button"]');
+            if (!btn) return false;
+            btn.click();
+            await new Promise((r) =>
+                setTimeout(r, PLAYBACK_TRANSITION_DELAY_MS)
+            );
+            const after = this.isPlaying();
+            return after === true;
+        } catch (_) {
+            return false;
         }
     }
 
@@ -528,6 +1134,9 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
         this.onSubtitleUrlFoundCallback = null;
         this.onVideoIdChangeCallback = null;
         this.lastKnownVttUrlForVideoId = {};
+        this.pendingVttUrlForVideoId = {};
+        this._stalePlaybackIdentity = null;
+        this._resetPlaybackClockState();
         this.logger.info('Platform cleaned up successfully');
     }
 }

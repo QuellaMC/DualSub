@@ -149,7 +149,7 @@ export class ModalController {
         );
 
         this.core._log('info', 'Context analysis started (controller)', {
-            text: this.core.selectedText,
+            textLength: this.core.selectedText.length,
             selectedWordsCount: this.core.selectedWords.size,
             requestId,
         });
@@ -639,8 +639,8 @@ export class ModalController {
             origin: 'aiContextOrigins',
             historicalcontext: 'aiContextHistoricalContext',
             historical: 'aiContextHistoricalContext',
-            historicalsignificance: 'aiContextHistoricalSignificance',
-            evolution: 'aiContextEvolution',
+            historicalsignificance: 'aiContextHistoricalSignificanceLabel',
+            evolution: 'aiContextEvolutionLabel',
             linguisticanalysis: 'aiContextLinguisticAnalysis',
             linguistic: 'aiContextLinguisticAnalysis',
             etymology: 'aiContextEtymology',
@@ -652,15 +652,15 @@ export class ModalController {
             usageexamples: 'aiContextUsageExamples',
             usage: 'aiContextUsageExamples',
             examples: 'aiContextUsageExamples',
-            learningtips: 'aiContextLearningTips',
-            learning: 'aiContextLearningTips',
-            tips: 'aiContextLearningTips',
-            relatedexpressions: 'aiContextRelatedExpressions',
-            related: 'aiContextRelatedExpressions',
-            expressions: 'aiContextRelatedExpressions',
-            keyinsights: 'aiContextKeyInsights',
-            insights: 'aiContextKeyInsights',
-            key: 'aiContextKeyInsights',
+            learningtips: 'aiContextLearningTipsLabel',
+            learning: 'aiContextLearningTipsLabel',
+            tips: 'aiContextLearningTipsLabel',
+            relatedexpressions: 'aiContextRelatedExpressionsLabel',
+            related: 'aiContextRelatedExpressionsLabel',
+            expressions: 'aiContextRelatedExpressionsLabel',
+            keyinsights: 'aiContextKeyInsightsLabel',
+            insights: 'aiContextKeyInsightsLabel',
+            key: 'aiContextKeyInsightsLabel',
         };
 
         const messageKey = fieldMappings[normalizedField];
@@ -730,7 +730,11 @@ export class ModalController {
             'Invalid analysis response detected (controller)',
             {
                 requestId,
-                error,
+                errorName: error?.name,
+                errorLength:
+                    typeof error === 'string'
+                        ? error.length
+                        : error?.message?.length || 0,
             }
         );
 

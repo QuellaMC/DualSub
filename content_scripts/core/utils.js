@@ -6,7 +6,7 @@
  * @version 1.0.0
  */
 
-import { COMMON_CONSTANTS, DEFAULT_PLATFORM_CONFIGS } from './constants.js';
+import { COMMON_CONSTANTS } from './constants.js';
 
 /**
  * @typedef {Object} PlatformConfig
@@ -1133,131 +1133,6 @@ export function handleExtensionContextInvalidation(
 }
 
 /**
- * A factory for platform configurations.
- */
-export class PlatformConfigFactory {
-    static getConfig(name) {
-        const config = DEFAULT_PLATFORM_CONFIGS[name];
-        if (!config) {
-            throw new Error(`Unknown platform: ${name}`);
-        }
-        return { ...config }; // Return a copy to prevent mutations
-    }
-
-    static getConfigByUrl(url = window.location.href) {
-        for (const [platformName, config] of Object.entries(
-            DEFAULT_PLATFORM_CONFIGS
-        )) {
-            for (const pattern of config.navigation.urlPatterns) {
-                if (url.includes(pattern)) {
-                    return { ...config }; // Return a copy
-                }
-            }
-        }
-        return null;
-    }
-
-    static getSupportedPlatforms() {
-        return Object.keys(DEFAULT_PLATFORM_CONFIGS);
-    }
-
-    static validateConfig(config) {
-        const required = [
-            'name',
-            'injectScript',
-            'navigation',
-            'videoDetection',
-            'logPrefix',
-        ];
-        for (const field of required) {
-            if (!config[field]) {
-                throw new Error(`Missing required config field: ${field}`);
-            }
-        }
-        return true;
-    }
-}
-
-/**
- * Gets the platform configuration by name.
- * @param {string} name - The name of the platform.
- * @returns {Object|null} The platform configuration, or `null` if not found.
- * @deprecated Use `PlatformConfigFactory.getConfig()` instead.
- */
-export function getPlatformConfig(name) {
-    return DEFAULT_PLATFORM_CONFIGS[name] || null;
-}
-
-/**
- * Gets the platform configuration by URL.
- * @param {string} [url=window.location.href] - The URL to check.
- * @returns {Object|null} The platform configuration, or `null` if not found.
- * @deprecated Use `PlatformConfigFactory.getConfigByUrl()` instead.
- */
-export function getPlatformConfigByUrl(url = window.location.href) {
-    for (const [platformName, config] of Object.entries(
-        DEFAULT_PLATFORM_CONFIGS
-    )) {
-        for (const pattern of config.navigation.urlPatterns) {
-            if (url.includes(pattern)) {
-                return config;
-            }
-        }
-    }
-    return null;
-}
-
-/**
- * Creates a standardized content script context object.
- * @param {string} name - The name of the platform.
- * @returns {Object} A context object with common properties.
- */
-export function createContentScriptContext(name) {
-    const config = getPlatformConfig(name);
-
-    return {
-        // Platform info
-        platformName: name,
-        config,
-        logPrefix: config?.logPrefix || 'ContentScript',
-
-        // State
-        activePlatform: null,
-        platformReady: false,
-
-        // Utilities (to be populated)
-        subtitleUtils: null,
-        configService: null,
-        contentLogger: null,
-
-        // Managers
-        intervalManager: new IntervalManager(),
-        eventBuffer: new EventBuffer(),
-        messageRegistry: new MessageHandlerRegistry(),
-
-        // Cleanup functions
-        cleanupFunctions: [],
-
-        // Helper methods
-        addCleanup: function (cleanupFn) {
-            this.cleanupFunctions.push(cleanupFn);
-        },
-
-        cleanup: function () {
-            cleanupContentScriptResources(this);
-            this.cleanupFunctions.forEach((fn) => {
-                try {
-                    fn();
-                } catch (cleanupError) {
-                    console.error('Cleanup function error:', cleanupError);
-                }
-            });
-            this.cleanupFunctions.length = 0;
-        },
-    };
-}
-
-/**
  * Checks if the extension context is valid.
  * @returns {boolean} `true` if the context is valid, otherwise `false`.
  */
@@ -1653,7 +1528,7 @@ export class IntervalManager {
      * Clears all managed intervals.
      */
     clearAll() {
-        for (const [name, intervalInfo] of this.intervals) {
+        for (const intervalInfo of this.intervals.values()) {
             clearInterval(intervalInfo.id);
         }
         this.intervals.clear();
@@ -1887,7 +1762,7 @@ export class SubtitleToggleHandler {
     }
 
     async handle(request, sendResponse, context) {
-        const { subtitleUtils, activePlatform } = context;
+        const { subtitleUtils } = context;
 
         subtitleUtils.setSubtitlesActive(request.enabled);
         this.logger('info', 'Subtitle active state changed', {

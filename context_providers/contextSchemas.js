@@ -1,4 +1,15 @@
 export const CONTEXT_SCHEMA_NAME = 'context_analysis';
+export const CONTEXT_TYPES = Object.freeze([
+    'cultural',
+    'historical',
+    'linguistic',
+]);
+
+const CONTEXT_SECTION_KEYS = Object.freeze({
+    cultural: 'cultural_analysis',
+    historical: 'historical_analysis',
+    linguistic: 'linguistic_analysis',
+});
 
 const culturalSchema = {
     type: 'object',
@@ -206,29 +217,32 @@ export function getContextSchema(contextType = 'all') {
     }
 }
 
-function toGeminiSchema(node) {
-    if (!node) return node;
-    if (node.type === 'object') {
-        const properties = {};
-        const order = [];
-        for (const [key, value] of Object.entries(node.properties || {})) {
-            properties[key] = toGeminiSchema(value);
-            order.push(key);
-        }
-        const result = { type: 'OBJECT', properties };
-        if (order.length) result.propertyOrdering = order;
-        // Note: Gemini API doesn't support 'required' or 'additionalProperties' fields
-        // These are handled through the prompt instructions instead
-        return result;
-    }
-    if (node.type === 'array') {
-        return { type: 'ARRAY', items: toGeminiSchema(node.items) };
-    }
-    return { type: String(node.type || 'string').toUpperCase() };
-}
+/**
+ * Combines successful single-type provider results without introducing sections
+ * that the caller did not request. The first definition is promoted to the
+ * shared top level and each type's remaining fields stay under its own section.
+ */
+export function combineContextAnalyses(contextTypes, resultsByType) {
+    const combined = {};
 
-export function getGeminiSchema(contextType = 'all') {
-    return toGeminiSchema(getContextSchema(contextType));
+    for (const contextType of contextTypes) {
+        const analysis = resultsByType[contextType]?.analysis;
+        if (
+            !analysis ||
+            typeof analysis !== 'object' ||
+            Array.isArray(analysis)
+        ) {
+            continue;
+        }
+
+        const { definition, ...details } = analysis;
+        if (combined.definition === undefined && definition !== undefined) {
+            combined.definition = definition;
+        }
+        combined[CONTEXT_SECTION_KEYS[contextType]] = details;
+    }
+
+    return combined;
 }
 
 export function validateAgainstSchema(schema, data) {

@@ -11,9 +11,8 @@
 (async () => {
     console.log('[DisneyPlusContent] Script loading and initializing.');
     try {
-        const { DisneyPlusContentScript } = await import(
-            './DisneyPlusContentScript.js'
-        );
+        const { DisneyPlusContentScript } =
+            await import('./DisneyPlusContentScript.js');
         const disneyPlusContentScript = new DisneyPlusContentScript();
         if (await disneyPlusContentScript.initialize()) {
             console.log(

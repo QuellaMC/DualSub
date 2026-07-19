@@ -111,6 +111,7 @@ describe('ConfigService Logger Integration', () => {
                 key: 'uiLanguage',
                 value: 'string',
                 usedDefault: false,
+                invalidStoredValue: false,
                 scope: 'sync',
             });
         });
@@ -233,8 +234,11 @@ describe('ConfigService Logger Integration', () => {
         });
 
         test('should log validation errors with full context', async () => {
+            const invalidValue = {
+                secret: 'single-setting-value-must-not-be-logged',
+            };
             try {
-                await configService.set('uiLanguage', 123); // Invalid type
+                await configService.set('uiLanguage', invalidValue);
             } catch {
                 // Expected to throw
             }
@@ -245,10 +249,17 @@ describe('ConfigService Logger Integration', () => {
                 expect.objectContaining({
                     method: 'set',
                     requestedKey: 'uiLanguage',
-                    providedValue: 123,
                     expectedType: 'String',
-                    actualType: 'number',
+                    actualType: 'object',
                 })
+            );
+            const validationLog = mockLogger.error.mock.calls.find(
+                ([message]) =>
+                    message.includes('Invalid value for key "uiLanguage"')
+            );
+            expect(validationLog[2]).not.toHaveProperty('providedValue');
+            expect(JSON.stringify(validationLog)).not.toContain(
+                'single-setting-value-must-not-be-logged'
             );
         });
 
@@ -270,8 +281,8 @@ describe('ConfigService Logger Integration', () => {
             try {
                 await configService.setMultiple({
                     uiLanguage: 'es',
-                    invalidKey: 'value',
-                    debugMode: 'invalid-type',
+                    invalidKey: 'invalid-key-value-must-not-be-logged',
+                    debugMode: 'invalid-setting-value-must-not-be-logged',
                 });
             } catch {
                 // Expected to throw
@@ -283,7 +294,6 @@ describe('ConfigService Logger Integration', () => {
                 expect.objectContaining({
                     method: 'setMultiple',
                     invalidKey: 'invalidKey',
-                    providedValue: 'value',
                 })
             );
 
@@ -293,8 +303,16 @@ describe('ConfigService Logger Integration', () => {
                 expect.objectContaining({
                     method: 'setMultiple',
                     invalidKey: 'debugMode',
-                    providedValue: 'invalid-type',
                 })
+            );
+            const serializedErrorLogs = JSON.stringify(
+                mockLogger.error.mock.calls
+            );
+            expect(serializedErrorLogs).not.toContain(
+                'invalid-key-value-must-not-be-logged'
+            );
+            expect(serializedErrorLogs).not.toContain(
+                'invalid-setting-value-must-not-be-logged'
             );
         });
     });
@@ -332,7 +350,10 @@ describe('ConfigService Logger Integration', () => {
 
         test('should log bulk operations with detailed metrics', async () => {
             chrome.storage.sync.get.mockImplementation((keys, callback) => {
-                callback({ uiLanguage: 'en', selectedProvider: 'deepl_free' });
+                callback({
+                    uiLanguage: 'en',
+                    selectedProvider: 'microsoft_edge_auth',
+                });
             });
             chrome.storage.local.get.mockImplementation((keys, callback) => {
                 callback({ debugMode: false });
@@ -340,7 +361,9 @@ describe('ConfigService Logger Integration', () => {
 
             await configService.getAll();
 
-            expect(mockLogger.debug).toHaveBeenCalledWith('getAll() called');
+            expect(mockLogger.debug).toHaveBeenCalledWith('getAll() called', {
+                includeSensitive: true,
+            });
             expect(mockLogger.debug).toHaveBeenCalledWith(
                 'getAll() storage breakdown',
                 expect.objectContaining({

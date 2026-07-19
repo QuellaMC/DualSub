@@ -87,38 +87,20 @@ export class ContextCache {
      * @returns {string} Cache key
      */
     generateKey(text, contextType, provider, metadata = {}) {
-        const { sourceLanguage = '', targetLanguage = '' } = metadata;
+        const {
+            sourceLanguage = '',
+            targetLanguage = '',
+            surroundingContext = '',
+        } = metadata;
 
-        // Create a normalized key that's consistent but not too long
-        const textHash = this.hashString(text);
-        return `${provider}:${contextType}:${sourceLanguage}:${targetLanguage}:${textHash}`;
-    }
-
-    /**
-     * Simple string hash function for cache keys
-     * @param {string} str - String to hash
-     * @returns {string} Hash string
-     */
-    hashString(str) {
-        // Validate input - handle null, undefined, or non-string values
-        if (!str || typeof str !== 'string') {
-            this.logger?.warn('Invalid input to hashString', {
-                str,
-                type: typeof str,
-            });
-            return '0'; // Return consistent hash for invalid input
-        }
-
-        let hash = 0;
-        if (str.length === 0) return hash.toString();
-
-        for (let i = 0; i < str.length; i++) {
-            const char = str.charCodeAt(i);
-            hash = (hash << 5) - hash + char;
-            hash = hash & hash; // Convert to 32-bit integer
-        }
-
-        return Math.abs(hash).toString(36);
+        return JSON.stringify([
+            provider,
+            contextType,
+            sourceLanguage,
+            targetLanguage,
+            String(surroundingContext),
+            String(text),
+        ]);
     }
 
     /**
@@ -131,7 +113,7 @@ export class ContextCache {
 
         if (!entry) {
             this.stats.misses++;
-            logger.debug('Cache miss', { key });
+            logger.debug('Cache miss', { cacheSize: this.cache.size });
             return null;
         }
 
@@ -139,7 +121,7 @@ export class ContextCache {
             this.cache.delete(key);
             this.accessOrder.delete(key);
             this.stats.misses++;
-            logger.debug('Cache entry expired', { key, age: entry.getAge() });
+            logger.debug('Cache entry expired', { age: entry.getAge() });
             return null;
         }
 
@@ -149,7 +131,6 @@ export class ContextCache {
 
         this.stats.hits++;
         logger.debug('Cache hit', {
-            key,
             accessCount: entry.accessCount,
             age: entry.getAge(),
         });
@@ -175,10 +156,32 @@ export class ContextCache {
         this.accessOrder.set(key, Date.now());
 
         logger.debug('Cache entry stored', {
-            key,
             ttl: entryTTL,
             cacheSize: this.cache.size,
         });
+    }
+
+    /**
+     * Apply runtime cache limits without replacing the cache instance/timer.
+     * Existing entries are cleared when TTL changes because their expiry was
+     * calculated under the previous contract.
+     * @param {{maxSize?: number, defaultTTL?: number}} options
+     */
+    updateConfig(options = {}) {
+        const previousTTL = this.defaultTTL;
+        if (Number.isFinite(options.maxSize) && options.maxSize > 0) {
+            this.maxSize = Math.floor(options.maxSize);
+        }
+        if (Number.isFinite(options.defaultTTL) && options.defaultTTL > 0) {
+            this.defaultTTL = options.defaultTTL;
+        }
+
+        if (this.defaultTTL !== previousTTL) {
+            this.clear();
+        }
+        while (this.cache.size > this.maxSize) {
+            this.evictLRU();
+        }
     }
 
     /**
@@ -189,7 +192,7 @@ export class ContextCache {
 
         // Find the oldest accessed entry
         let oldestKey = null;
-        let oldestTime = Date.now();
+        let oldestTime = Infinity;
 
         for (const [key, accessTime] of this.accessOrder) {
             if (accessTime < oldestTime) {
@@ -204,7 +207,6 @@ export class ContextCache {
             this.stats.evictions++;
 
             logger.debug('LRU eviction', {
-                evictedKey: oldestKey,
                 cacheSize: this.cache.size,
             });
         }
@@ -215,7 +217,6 @@ export class ContextCache {
      */
     cleanup() {
         const beforeSize = this.cache.size;
-        const now = Date.now();
 
         for (const [key, entry] of this.cache) {
             if (entry.isExpired()) {

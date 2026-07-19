@@ -51,13 +51,33 @@ export function normalizeLanguageCode(platformLangCode) {
     }
 
     // Normalize to lowercase for case-insensitive caching and lookup
-    const lowerCaseCode = platformLangCode.toLowerCase();
+    const lowerCaseCode = platformLangCode
+        .trim()
+        .toLowerCase()
+        .replaceAll('_', '-');
 
     if (languageNormalizationCache.has(lowerCaseCode)) {
         return languageNormalizationCache.get(lowerCaseCode);
     }
 
-    const normalized = normalizedMap[lowerCaseCode] || platformLangCode;
+    const subtags = lowerCaseCode.split('-').filter(Boolean);
+    const baseLanguage = subtags[0];
+    let normalized = normalizedMap[lowerCaseCode];
+
+    if (!normalized && baseLanguage === 'zh') {
+        const traditional =
+            subtags.includes('hant') ||
+            subtags.some((subtag) => ['tw', 'hk', 'mo'].includes(subtag));
+        normalized = traditional ? 'zh-TW' : 'zh-CN';
+    }
+
+    if (!normalized && Object.hasOwn(normalizedMap, baseLanguage)) {
+        normalized = normalizedMap[baseLanguage];
+    }
+
+    // Preserve an unknown BCP-47 language at base-language granularity while
+    // keeping casing deterministic for comparisons.
+    normalized = normalized || baseLanguage || lowerCaseCode;
     languageNormalizationCache.set(lowerCaseCode, normalized);
     return normalized;
 }
@@ -76,9 +96,13 @@ export function getSupportedLanguageCodes() {
  * @returns {boolean} - True if supported
  */
 export function isLanguageSupported(langCode) {
-    if (!langCode) return false;
-    const lowerCaseCode = langCode.toLowerCase();
-    return Object.hasOwn(normalizedMap, lowerCaseCode);
+    if (!langCode || typeof langCode !== 'string') return false;
+    const lowerCaseCode = langCode.trim().toLowerCase().replaceAll('_', '-');
+    const [baseLanguage] = lowerCaseCode.split('-');
+    return (
+        Object.hasOwn(normalizedMap, lowerCaseCode) ||
+        Object.hasOwn(normalizedMap, baseLanguage)
+    );
 }
 
 /**

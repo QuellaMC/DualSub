@@ -6,7 +6,7 @@ export function GeneralSection({ t, settings, onSettingChange }) {
     return (
         <section id="general">
             <h2>{t('sectionGeneral', 'General')}</h2>
-            
+
             <SettingCard
                 title={t('cardUILanguageTitle', 'UI Language')}
                 description={t(

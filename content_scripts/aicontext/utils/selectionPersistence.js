@@ -115,7 +115,7 @@ export class SelectionPersistenceManager {
      * @private
      */
     _handleSubtitleContentChange(event) {
-        const { type, oldContent, newContent, element } = event.detail;
+        const { type, oldContent, newContent } = event.detail;
 
         // Only handle original subtitle changes for AI Context
         if (type !== 'original') {
@@ -170,35 +170,30 @@ export class SelectionPersistenceManager {
                         'info',
                         'Identical content detected via event, preparing restoration',
                         {
-                            contentPreview: newText.substring(0, 50),
+                            contentLength: newText.length,
                         }
                     );
 
                     // Use debounced restoration to prevent race conditions
                     this._scheduleRestorationDebounced('event');
                 } else {
-                    // Content has actually changed, capture current state
-                    this.modalCore.captureSelectionState(oldText);
+                    // Content has changed, clear the current selection
                     this._log(
-                        'debug',
-                        'Content changed, captured old state for potential restoration'
+                        'info',
+                        'Subtitle content changed, clearing selection',
+                        {
+                            source: 'event',
+                            oldContentLength: oldText.length,
+                            newContentLength: newText.length,
+                        }
                     );
-                    // For old state, avoid restoration attempts
-                    if (!isRecent) {
-                        this._log(
-                            'debug',
-                            'Skipping restoration due to stale selection state',
-                            {
-                                stateAge,
-                                threshold: ageThreshold,
-                            }
-                        );
-                    }
+                    this.modalCore.clearSelection();
                 }
             }
         } catch (error) {
             this._log('error', 'Error handling subtitle content change', {
-                error: error.message,
+                errorName: error?.name,
+                errorLength: error?.message?.length || 0,
                 type,
             });
         }
@@ -367,25 +362,24 @@ export class SelectionPersistenceManager {
                         'Identical content detected, attempting selection restoration',
                         {
                             subtitleType,
-                            contentPreview: currentContent.substring(0, 50),
+                            contentLength: currentContent.length,
                         }
                     );
 
                     // Use debounced restoration to prevent race conditions
                     this._scheduleRestorationDebounced('mutation');
                 } else {
-                    // Content has actually changed, capture new state
-                    this.modalCore.captureSelectionState(currentContent);
-                    if (!isRecent) {
-                        this._log(
-                            'debug',
-                            'Skipping restoration due to stale selection state',
-                            {
-                                stateAge,
-                                threshold: ageThreshold,
-                            }
-                        );
-                    }
+                    // Content has changed, clear the current selection
+                    this._log(
+                        'info',
+                        'Subtitle content changed, clearing selection',
+                        {
+                            source: 'mutation',
+                            lastContentLength: lastContent?.length || 0,
+                            currentContentLength: currentContent.length,
+                        }
+                    );
+                    this.modalCore.clearSelection();
                 }
             }
 
@@ -462,7 +456,7 @@ export class SelectionPersistenceManager {
 
             this._log('info', 'Manual state capture completed', {
                 contentLength: content.length,
-                selectedWords: this.modalCore.selectedWords.size,
+                selectedWordsCount: this.modalCore.selectedWords.size,
             });
         }
     }

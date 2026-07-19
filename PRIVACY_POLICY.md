@@ -1,155 +1,94 @@
 # Privacy Policy for DualSub
 
-**Last Updated:** 2025-08-04
+**Last updated:** July 11, 2026
 
 ## Overview
 
-DualSub is a browser extension that displays dual-language subtitles on streaming platforms like Disney+ and Netflix. This privacy policy explains how we collect, use, and protect your information when you use our extension.
+DualSub is an open-source Chrome extension that displays translated subtitles on Netflix and Disney+ and, when enabled, can analyze selected subtitle text with an AI provider. DualSub does not operate a developer-owned analytics or data-collection server. This policy describes what Chrome stores and what the extension sends directly to third-party providers to deliver the features you request.
 
-## Information We Collect
+## Data stored by the extension
 
-### Data Stored Locally in Your Browser Only
+DualSub uses the Chrome extension storage APIs:
 
-**Important:** All data listed below is stored only on your device in your browser's local storage. We do not collect, access, or transmit any of this information to our servers.
+- Most non-sensitive preferences, such as languages, subtitle layout, provider choice, and side-panel behavior, use `chrome.storage.sync`. Chrome may synchronize these preferences to other Chrome browsers signed in to the same profile.
+- Provider credentials (`deeplApiKey`, OpenAI-compatible and AI-context API keys, Gemini API keys, and Vertex access tokens) use `chrome.storage.local`, so DualSub does not sync them between devices. Chrome extension local storage is not an encrypted secret vault; protect access to your browser profile and remove credentials in Options when no longer needed.
+- A Vertex service-account JSON file is used once in memory to obtain a short-lived access token. The service-account private key is not persisted. Upgrades remove the legacy stored-key value if an older version created one.
+- Translation and AI-context results may be held temporarily in the extension service worker's in-memory caches to reduce repeated requests. These bounded, time-limited caches are not sent to DualSub's developers and disappear when the worker/browser state is discarded.
 
-- **Your Extension Settings:**
-    - Language preferences (which languages you want to translate to/from)
-    - Subtitle display preferences (font size, position on screen, layout style)
-    - Which translation service you prefer to use
+Uninstalling the extension or clearing its extension data removes its stored settings and credentials. Synced preference removal is also subject to Chrome Sync behavior.
 
-- **Your Personal API Keys (If You Choose to Use Them):**
-    - API keys for DeepL, OpenAI, or Google Gemini that YOU provide
-    - These keys remain on YOUR device only - we never see or collect them
-    - You can remove these keys at any time through the extension settings
+## Data sent to third-party providers
 
-- **Extension Configuration:**
-    - Your choices for batch translation settings
-    - Request delay preferences
-    - AI context analysis options (if you enable this feature)
+DualSub sends only the content needed for the selected feature directly from your browser to the provider you choose.
 
-- **Temporary Performance Data:**
-    - Recently translated subtitle text (cached temporarily to avoid re-translating the same content)
-    - This cache is automatically cleared by your browser and improves extension speed
+To display subtitles, the extension downloads subtitle manifests and files from the streaming services' delivery networks. Netflix currently serves these files from `*.nflxvideo.net`, and Disney+ currently serves them from `*.media.dssott.com`. These requests retrieve the subtitle data already associated with the video you are watching; they are not sent to DualSub's developers.
 
-### Data Sent to Third-Party Services
+### Subtitle translation
 
-When you use translation features, the following data may be sent to external services:
+The selected provider receives subtitle text plus source/target language codes:
 
-#### Translation Services
+- Google Translate and Microsoft Edge translation are best-effort, no-key integrations that use consumer/internal endpoints. They may change without notice and are governed by the providers' terms and privacy practices.
+- DeepL API Free or Pro receives subtitle text when you configure a DeepL API key.
+- OpenAI-compatible services receive subtitle text when you configure an API key, endpoint, and model.
+- Vertex AI receives subtitle text when you configure a Google Cloud project and short-lived access token.
 
-- **Subtitle Text:** Original subtitle content is sent to your selected translation provider (Google Translate, Microsoft Translator, DeepL, or OpenAI-compatible services)
-- **Language Codes:** Source and target language information
+The removed unofficial DeepL scraping/MyMemory fallback is not part of the extension.
 
-#### AI Context Analysis (Optional)
+### AI context analysis
 
-- **Selected Text:** When you use the AI context feature, selected subtitle text is sent to AI providers (OpenAI or Google Gemini)
-- **Context Requests:** Requests for cultural, historical, or linguistic analysis
+AI context is disabled by default. When you enable it and request analysis, the configured OpenAI or Google Gemini endpoint receives:
 
-## How We Use Your Information
+- the subtitle words or phrase you selected;
+- the context types you selected (cultural, historical, and/or linguistic);
+- language information and limited surrounding subtitle context used to interpret the selection.
 
-### What Stays on Your Device
+DualSub does not send AI-context requests until you enable the feature, configure the provider, and select subtitle text.
 
-**We do not collect any personal information.** Here's what happens with your data:
+### Custom endpoints
 
-- **Your Settings:** Stored only in your browser to remember your preferences
-- **Translation Cache:** Temporarily saved on your device to make the extension faster
-- **Your API Keys:** Remain on your device only - we never access or collect them
-- **Extension Configuration:** Saved locally so your settings persist when you restart your browser
+The built-in OpenAI and Gemini hosts are declared in the extension manifest. A custom OpenAI-compatible HTTPS endpoint requires an optional host permission that Chrome asks you to grant from an explicit Options action. Loopback HTTP is allowed only for `localhost` or `127.0.0.1` development endpoints. Granting an endpoint allows the extension to communicate with that host; review the endpoint operator's privacy policy before granting access.
 
-### Third-Party Service Integration
+## Permissions
 
-- Send subtitle text to translation services to provide dual-language functionality
-- Send selected text to AI providers for context analysis (only when explicitly requested)
-- All external API usage requires your explicit configuration and consent
+The current Manifest V3 extension requests:
 
-## Data Sharing and Third Parties
+- `storage` to save preferences and device-local credentials;
+- `activeTab` to interact with the active supported streaming tab after a user action;
+- `sidePanel` to show AI analysis in Chrome's side panel;
+- host access for Netflix and Disney+ pages, their narrow subtitle-delivery hosts, and the built-in translation/AI API hosts listed in `manifest.json`;
+- optional host access for a custom provider only after the user grants that origin.
 
-### Translation Service Providers
+DualSub does not request the `scripting` permission.
 
-We integrate with the following translation services:
+## Sharing, retention, and provider policies
 
-- **Google Translate:** Free translation service
-- **Microsoft Translator:** Free translation service via Microsoft Edge
-- **DeepL:** Both free and API-based translation services
-- **OpenAI-Compatible Services:** For advanced translation and AI context analysis
-
-### AI Context Providers
-
-- **OpenAI:** For AI-powered context analysis
-- **Google Gemini:** For AI-powered context analysis
-
-**Important:** We do not control the privacy practices of these third-party services. Please review their respective privacy policies:
+DualSub's developers do not receive or sell your subtitle text, settings, credentials, or AI responses. Data sent to a third-party provider is processed and may be retained under that provider's own terms, account settings, and privacy policy. DualSub does not control those practices:
 
 - [Google Privacy Policy](https://policies.google.com/privacy)
 - [Microsoft Privacy Statement](https://privacy.microsoft.com/privacystatement)
 - [DeepL Privacy Policy](https://www.deepl.com/privacy)
 - [OpenAI Privacy Policy](https://openai.com/privacy)
 
-## Data Storage and Security
+For a custom OpenAI-compatible endpoint, consult the endpoint operator directly.
 
-### Your Data Security
-
-- **Everything stays on your device:** All your settings, preferences, and API keys are stored only in your browser
-- **We don't have servers collecting your data:** DualSub doesn't send your personal information, settings, or API keys to us
-- **Your API keys are yours alone:** Any API keys you enter remain on your device and are never transmitted to DualSub developers
-
-### Data Retention
-
-- Translation cache is automatically cleared based on browser storage limits
-- User settings persist until you uninstall the extension or clear browser data
-- No data is retained on external servers by DualSub
-
-## User Control and Consent
-
-### Required Permissions
-
-The extension requires the following permissions:
-
-- **activeTab:** To access streaming platform content for subtitle processing
-- **storage:** To save your preferences and cache translations
-- **scripting:** To inject subtitle functionality into streaming platforms
-- **Host permissions:** To access streaming platforms and translation APIs
-
-### Optional Features
-
-- **AI Context Analysis:** Requires explicit user consent and configuration
-- **External API Usage:** All third-party API usage requires user-provided API keys and explicit setup
-
-### User Rights
+## Your controls
 
 You can:
 
-- Disable any feature at any time through the extension settings
-- Clear cached data through browser settings
-- Remove API keys from the extension settings
-- Uninstall the extension to remove all local data
+- disable subtitle translation or AI context analysis;
+- change providers at any time;
+- remove API keys and tokens in Options;
+- revoke optional site access in Chrome's extension settings;
+- clear extension data or uninstall DualSub.
 
-## Children's Privacy
+## Children's privacy
 
-DualSub does not knowingly collect personal information from children under 13. The extension is designed for general use and does not target children specifically.
+DualSub is a general-purpose subtitle tool and is not directed to children under 13. The project does not knowingly collect children's personal information.
 
-## Changes to This Privacy Policy
+## Policy changes
 
-We may update this privacy policy from time to time. Any changes will be reflected in the "Last Updated" date at the top of this policy. Continued use of the extension after changes constitutes acceptance of the updated policy.
+Material changes will be reflected in this file and its “Last updated” date.
 
-## Data Processing Legal Basis
+## Contact and source code
 
-For users in the European Union, our legal basis for processing data is:
-
-- **Consent:** For optional AI context analysis features
-- **Legitimate Interest:** For core subtitle translation functionality
-- **Contract Performance:** To provide the extension services you've requested
-
-## Contact Information
-
-If you have questions about this privacy policy or our data practices, please contact us at:
-
-- **GitHub:** https://github.com/QuellaMC/DualSub
-
-## Open Source
-
-DualSub is open source software. You can review our code and data handling practices at our GitHub repository: https://github.com/QuellaMC/DualSub
-
----
-
-**Note:** This extension processes subtitle data locally and only sends data to third-party services that you explicitly configure. We are committed to transparency and user privacy in all our data handling practices.
+Questions and source-code review: [github.com/QuellaMC/DualSub](https://github.com/QuellaMC/DualSub)

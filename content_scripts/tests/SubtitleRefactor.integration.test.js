@@ -7,7 +7,10 @@ import {
     formatInteractiveSubtitleText,
     getStableSpanId,
 } from '../shared/interactiveSubtitleFormatter.js';
-import { computeTextSignature } from '../shared/subtitleUtilities.js';
+import {
+    computeTextSignature,
+    resolvePlaybackTime,
+} from '../shared/subtitleUtilities.js';
 
 describe('Subtitle Refactor - Deterministic Spans and Signatures', () => {
     test('Deterministic spans: stable IDs and data attributes', () => {
@@ -44,4 +47,55 @@ describe('Subtitle Refactor - Deterministic Spans and Signatures', () => {
         expect(sigA).toBe(sigB);
         expect(sigA).toBe('Hello world');
     });
+
+    test('resolvePlaybackTime prefers the platform clock over raw video time', () => {
+        const video = { currentTime: 401 };
+        const platform = {
+            getPlaybackTime: () => 1001,
+            getVideoElement: () => video,
+        };
+
+        expect(resolvePlaybackTime(platform, video)).toBe(1001);
+    });
+
+    test('resolvePlaybackTime falls back to raw video time for older adapters', () => {
+        const video = { currentTime: 25 };
+
+        expect(resolvePlaybackTime({ getVideoElement: () => video })).toBe(25);
+    });
+
+    test.each([
+        ['Tom & Jerry', ['Tom', 'Jerry']],
+        ['2 < 3', ['2', '3']],
+        [`He said "don't"`, ['He', 'said', "don't"]],
+        [
+            '<img src=x onerror="alert(1)">',
+            ['img', 'src', 'x', 'onerror', 'alert', '1'],
+        ],
+    ])(
+        'wraps visible tokens without inventing HTML-entity words: %s',
+        (text, words) => {
+            initializeInteractiveSubtitles({
+                enabled: true,
+                clickableWords: true,
+            });
+
+            const container = document.createElement('div');
+            container.innerHTML = formatInteractiveSubtitleText(text, {
+                sourceLanguage: 'en',
+                targetLanguage: 'zh-CN',
+                subtitleType: 'original',
+            });
+
+            expect(container.textContent).toBe(text);
+            expect(
+                Array.from(
+                    container.querySelectorAll('.dualsub-interactive-word'),
+                    (span) => span.textContent
+                )
+            ).toEqual(words);
+            expect(container.querySelector('img')).toBeNull();
+            expect(container.querySelector('[onerror]')).toBeNull();
+        }
+    );
 });

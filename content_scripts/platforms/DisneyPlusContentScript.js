@@ -124,12 +124,7 @@ export class DisneyPlusContentScript extends BaseContentScript {
      * @private
      */
     _isPlayerPath(pathname) {
-        return (
-            pathname.includes('/play/') ||
-            pathname.includes('/video/') ||
-            pathname.includes('/movies/') ||
-            pathname.includes('/series/')
-        );
+        return pathname.includes('/play/') || pathname.includes('/video/');
     }
 
     /**
@@ -317,6 +312,15 @@ export class DisneyPlusContentScript extends BaseContentScript {
     _cleanupOnPageLeave() {
         this.stopVideoElementDetection();
 
+        if (this.subtitleUtils) {
+            this.subtitleUtils.clearSubtitlesDisplayAndQueue?.(
+                this.activePlatform,
+                true,
+                this.logPrefix
+            );
+            this.subtitleUtils.clearSubtitleDOM?.();
+        }
+
         if (
             this.activePlatform &&
             typeof this.activePlatform.cleanup === 'function'
@@ -338,7 +342,9 @@ export class DisneyPlusContentScript extends BaseContentScript {
 
         setTimeout(async () => {
             try {
-                const config = await this.configService.getAll();
+                const config = await this.configService.getAll({
+                    includeSensitive: false,
+                });
                 if (config?.subtitlesEnabled) {
                     this.logWithFallback(
                         'info',

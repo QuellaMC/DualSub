@@ -1,26 +1,27 @@
 # Translation Providers
 
-DualSub supports multiple providers with automatic fallback and intelligent batching.
+DualSub supports multiple translation providers with provider-aware rate limits.
 
 ## Providers
 
-- DeepL Free: High quality, no setup; internal guard rails to avoid request spikes
-- Google Translate (Free): Fast and broad language coverage
-- Microsoft Translate (Free): Reliable performance via Edge-auth endpoint
-- DeepL API (Paid): Highest quality; requires API key
-- OpenAI Compatible (Paid): Works with OpenAI and Gemini-compatible endpoints; requires API key
+- Google Translate (No key): Best-effort consumer endpoint with broad language coverage
+- Microsoft Translate (No key): Best-effort Edge translation endpoint
+- DeepL API (Free/Pro): Uses DeepL's supported API; requires an API key
+- OpenAI Compatible: Works with user-configured OpenAI-compatible endpoints; requires an API key
+- Vertex AI Gemini: Uses a Google Cloud project and short-lived access token
 
-## Fallback and Batching
+The no-key Google/Microsoft integrations use undocumented consumer/internal endpoints and can change without notice. Use a supported keyed provider when a documented service contract is required.
 
-- Automatic Fallback: If a provider fails, the system falls back to another configured provider
-- Universal Batch Processor: Reduces API calls by grouping subtitle segments when possible
+## Request Handling
+
+- Subtitle cues are translated individually by the content script.
+- The background protocol retains an explicit multi-text request for OpenAI-compatible and Vertex providers. Other providers process that protocol one text at a time.
 
 ## Internal Rate Limits (subject to change)
 
 - Google (free): bytes-per-window, with mandatory delays
 - Microsoft (free): sliding-window character quotas (per-minute and per-hour)
 - DeepL API: characters-per-month guard rails
-- DeepL Free: requests-per-hour with mandatory delay between requests
-- OpenAI Compatible: requests-per-minute with small mandatory delay; native batch supported
+- OpenAI Compatible: requests-per-minute with a small mandatory delay; explicit multi-text requests supported
 
-Provider-specific batch configurations and delays are dynamically tuned. See `background/services/translationService.js` and `background/services/universalBatchProcessor.js` for current values.
+See `background/services/translationService.js` for the current provider limits and explicit multi-text request path.

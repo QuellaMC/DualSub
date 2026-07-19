@@ -20,17 +20,13 @@ const logWithFallback = (() => {
     const logWrapper = (level, message, data) => {
         try {
             currentLogger(level, message, data);
-        } catch (error) {
+        } catch {
             console.log(
                 `[InteractiveFormatter] [${level.toUpperCase()}] ${message}`,
                 data || {}
             );
         }
     };
-
-    console.log(
-        '[InteractiveFormatter] Using fallback logging (enhanced logging not available)'
-    );
 
     return logWrapper;
 })();
@@ -85,7 +81,9 @@ export function initializeInteractiveSubtitles(config = {}) {
 
     logWithFallback('info', 'Interactive subtitles initialized', {
         enabled: interactiveState.isEnabled,
-        config: INTERACTIVE_CONFIG,
+        clickableWords: INTERACTIVE_CONFIG.clickableWords,
+        highlightOnHover: INTERACTIVE_CONFIG.highlightOnHover,
+        debugLogging: INTERACTIVE_CONFIG.debugLogging,
     });
 }
 
@@ -112,45 +110,40 @@ export function formatInteractiveSubtitleText(text, options = {}) {
             logWithFallback(
                 'debug',
                 'formatInteractiveSubtitleText: empty or invalid text',
-                { text }
+                {
+                    valueType: typeof text,
+                    textLength: typeof text === 'string' ? text.length : 0,
+                }
             );
         }
         return '';
     }
 
-    // Basic HTML escaping
-    let formattedText = text
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
-
     // Add interactive elements if enabled
     if (interactiveState.isEnabled && INTERACTIVE_CONFIG.clickableWords) {
-        const originalText = formattedText;
-        formattedText = wrapWordsForInteraction(formattedText, options);
+        const formattedText = wrapWordsForInteraction(text, options);
 
         if (INTERACTIVE_CONFIG.debugLogging) {
             logWithFallback('debug', 'Interactive words wrapped', {
                 isEnabled: interactiveState.isEnabled,
                 clickableWords: INTERACTIVE_CONFIG.clickableWords,
-                originalLength: originalText.length,
+                originalLength: text.length,
                 wrappedLength: formattedText.length,
                 hasSpans: formattedText.includes('dualsub-interactive-word'),
-                sampleOriginal: originalText.substring(0, 30),
-                sampleWrapped: formattedText.substring(0, 100),
             });
         }
+        return formattedText;
     } else {
         if (INTERACTIVE_CONFIG.debugLogging) {
             logWithFallback('debug', 'Interactive wrapping skipped', {
                 isEnabled: interactiveState.isEnabled,
                 clickableWords: INTERACTIVE_CONFIG.clickableWords,
-                config: INTERACTIVE_CONFIG,
+                debugLogging: INTERACTIVE_CONFIG.debugLogging,
             });
         }
     }
 
-    return formattedText;
+    return escapeHtml(text);
 }
 
 /**
@@ -179,7 +172,6 @@ function wrapWordsForInteraction(text, options = {}) {
 
     if (INTERACTIVE_CONFIG.debugLogging) {
         logWithFallback('debug', 'Processing text for interactive words', {
-            originalText: text,
             sourceLanguage,
             targetLanguage,
             textLength: text.length,
@@ -188,30 +180,35 @@ function wrapWordsForInteraction(text, options = {}) {
 
     let processedCount = 0;
     let wordIndex = -1;
-    const result = text.replace(wordPattern, (match, word) => {
+    let cursor = 0;
+    let result = '';
+
+    for (const match of text.matchAll(wordPattern)) {
+        const word = match[0];
         // Include all words for phrase analysis - no exclusions
         // This ensures proper spacing and allows selection of function words
         // which are essential for idioms and phrases
 
         // Only skip empty matches (shouldn't happen with our pattern)
         if (!word || word.length === 0) {
-            return word;
+            continue;
         }
 
-        // Define isAsciiWord for debugging purposes (includes contractions)
-        const isAsciiWord = /^[a-zA-Z]+(?:'[a-zA-Z]+)*$/.test(word);
-
+        result += escapeHtml(text.slice(cursor, match.index));
         processedCount++;
         wordIndex++;
 
-        return createInteractiveWordSpan(word, {
+        result += createInteractiveWordSpan(word, {
             sourceLanguage,
             targetLanguage,
             originalText: text,
             subtitleType,
             wordIndex,
         });
-    });
+        cursor = match.index + word.length;
+    }
+
+    result += escapeHtml(text.slice(cursor));
 
     if (INTERACTIVE_CONFIG.debugLogging) {
         logWithFallback('debug', 'Word wrapping completed', {
@@ -235,8 +232,21 @@ function createInteractiveWordSpan(word, metadata) {
     const type = metadata.subtitleType || 'original';
     const index = Number.isFinite(metadata.wordIndex) ? metadata.wordIndex : 0;
     const spanId = getStableSpanId(type, index);
+    const safeWord = escapeHtml(word);
+    const encodedContext = encodeURIComponent(
+        String(metadata.originalText).toWellFormed()
+    );
 
-    return `<span class="dualsub-interactive-word" id="${spanId}" data-word="${word}" data-source-lang="${metadata.sourceLanguage}" data-target-lang="${metadata.targetLanguage}" data-context="${encodeURIComponent(metadata.originalText)}" data-subtitle-type="${type}" data-word-index="${index}" tabindex="0" role="button" aria-label="Click for context analysis of '${word}'" title="Click for cultural, historical, or linguistic context">${word}</span>`;
+    return `<span class="dualsub-interactive-word" id="${escapeHtml(spanId)}" data-word="${safeWord}" data-source-lang="${escapeHtml(metadata.sourceLanguage)}" data-target-lang="${escapeHtml(metadata.targetLanguage)}" data-context="${escapeHtml(encodedContext)}" data-subtitle-type="${escapeHtml(type)}" data-word-index="${index}" tabindex="0" role="button" aria-label="Click for context analysis of '${safeWord}'" title="Click for cultural, historical, or linguistic context">${safeWord}</span>`;
+}
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
 }
 
 /**
@@ -338,16 +348,16 @@ export function attachInteractiveEventListeners(subtitleElement, options = {}) {
         logWithFallback('debug', 'Interactive event listeners attached', {
             elementId: subtitleElement.id,
             hasHover: INTERACTIVE_CONFIG.highlightOnHover,
-            options,
+            optionCount:
+                options && typeof options === 'object'
+                    ? Object.keys(options).length
+                    : 0,
         });
     } catch (error) {
         logWithFallback('error', 'Error in attachInteractiveEventListeners', {
-            error: error.message,
-            stack: error.stack,
-            name: error.name,
+            errorType: error?.name || 'UnknownError',
             elementId: subtitleElement?.id,
             isEnabled: interactiveState.isEnabled,
-            config: INTERACTIVE_CONFIG,
         });
         throw error; // Re-throw to propagate the error
     }
@@ -491,68 +501,37 @@ function handleInteractiveWordClick(event) {
     );
 
     logWithFallback('info', 'Interactive word clicked', {
-        word,
+        wordLength: word?.length || 0,
         sourceLanguage,
         targetLanguage,
     });
 
-    // Check if video is paused for enhanced selection mode
-    const videoElement = document.querySelector('video');
-    const isVideoPaused = videoElement ? videoElement.paused : false;
+    // Enhanced selection mode - dispatch word selection event
+    // Determine subtitle type from element's container
+    const subtitleType = getSubtitleTypeFromElement(target);
 
-    logWithFallback('info', 'Interactive word clicked', {
-        word,
-        isVideoPaused,
-        hasVideoElement: !!videoElement,
-        targetElement: target.tagName,
-        targetClass: target.className,
+    logWithFallback('info', 'Dispatching word selection event', {
+        wordLength: word?.length || 0,
+        subtitleType,
     });
 
-    if (isVideoPaused) {
-        // Enhanced selection mode - dispatch word selection event
-        // Determine subtitle type from element's container
-        const subtitleType = getSubtitleTypeFromElement(target);
-
-        logWithFallback('info', 'Dispatching word selection event', {
-            word,
-            subtitleType,
-            isVideoPaused,
-        });
-
-        document.dispatchEvent(
-            new CustomEvent('dualsub-word-selected', {
-                detail: {
-                    word,
-                    element: target,
-                    sourceLanguage,
-                    targetLanguage,
-                    context,
-                    subtitleType,
-                },
-            })
-        );
-
-        logWithFallback(
-            'debug',
-            'Word selection event dispatched (video paused)',
-            {
+    document.dispatchEvent(
+        new CustomEvent('dualsub-word-selected', {
+            detail: {
                 word,
-                subtitleType,
-            }
-        );
-    } else {
-        // Video is playing - no action taken
-        // Context analysis can only be initiated through the modal when video is paused
-        logWithFallback(
-            'debug',
-            'Word click ignored - video is playing. Pause video to select words for analysis.',
-            {
-                word,
+                element: target,
                 sourceLanguage,
                 targetLanguage,
-            }
-        );
-    }
+                context,
+                subtitleType,
+            },
+        })
+    );
+
+    logWithFallback('debug', 'Word selection event dispatched (video paused)', {
+        wordLength: word?.length || 0,
+        subtitleType,
+    });
 }
 
 /**
@@ -617,109 +596,6 @@ function handleInteractiveWordKeydown(event) {
 }
 
 /**
- * Request context analysis for a word or phrase
- * @param {string} text - Text to analyze
- * @param {Object} metadata - Context metadata
- */
-async function requestContextAnalysis(text, metadata = {}) {
-    if (!INTERACTIVE_CONFIG.legacyHandlersEnabled) return; // Phase 6: disabled by default
-    const requestId = `context-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
-
-    try {
-        // Add visual feedback
-        if (metadata.clickedElement) {
-            metadata.clickedElement.classList.add(
-                'dualsub-interactive-word--loading'
-            );
-        }
-
-        logWithFallback('debug', 'Requesting context analysis', {
-            requestId,
-            text,
-            metadata,
-        });
-
-        // Send message to background script for context analysis
-        const response = await chrome.runtime.sendMessage({
-            action: 'analyzeContext',
-            text: text,
-            contextType: 'all',
-            metadata: {
-                sourceLanguage: metadata.sourceLanguage,
-                targetLanguage: metadata.targetLanguage,
-                surroundingContext: metadata.surroundingContext,
-            },
-        });
-
-        if (response && response.success) {
-            showContextModal(response, metadata);
-        } else {
-            showContextError(
-                response?.error || 'Context analysis failed',
-                metadata
-            );
-        }
-    } catch (error) {
-        logWithFallback('error', 'Context analysis request failed', {
-            requestId,
-            error: error.message,
-        });
-        showContextError(error.message, metadata);
-    } finally {
-        // Remove loading state
-        if (metadata.clickedElement) {
-            metadata.clickedElement.classList.remove(
-                'dualsub-interactive-word--loading'
-            );
-        }
-    }
-}
-
-/**
- * Show context analysis modal
- * @param {Object} contextResult - Context analysis result
- * @param {Object} metadata - Request metadata
- */
-function showContextModal(contextResult, metadata) {
-    if (!INTERACTIVE_CONFIG.legacyHandlersEnabled) return; // Phase 6: disabled by default
-    // This will be implemented in the context modal component
-    logWithFallback('info', 'Showing context modal', {
-        contextType: contextResult.contextType,
-        hasAnalysis: !!contextResult.analysis,
-    });
-
-    // Dispatch custom event for modal display
-    document.dispatchEvent(
-        new CustomEvent('dualsub-show-context', {
-            detail: {
-                contextResult,
-                metadata,
-            },
-        })
-    );
-}
-
-/**
- * Show context analysis error
- * @param {string} error - Error message
- * @param {Object} metadata - Request metadata
- */
-function showContextError(error, metadata) {
-    if (!INTERACTIVE_CONFIG.legacyHandlersEnabled) return; // Phase 6: disabled by default
-    logWithFallback('warn', 'Context analysis error', { error });
-
-    // Dispatch custom event for error display
-    document.dispatchEvent(
-        new CustomEvent('dualsub-context-error', {
-            detail: {
-                error,
-                metadata,
-            },
-        })
-    );
-}
-
-/**
  * Get current interactive subtitle configuration
  * @returns {Object} Current configuration
  */
@@ -736,6 +612,9 @@ export function updateInteractiveConfig(newConfig) {
     interactiveState.isEnabled = INTERACTIVE_CONFIG.enabled;
 
     logWithFallback('info', 'Interactive subtitle configuration updated', {
-        config: INTERACTIVE_CONFIG,
+        enabled: interactiveState.isEnabled,
+        clickableWords: INTERACTIVE_CONFIG.clickableWords,
+        highlightOnHover: INTERACTIVE_CONFIG.highlightOnHover,
+        debugLogging: INTERACTIVE_CONFIG.debugLogging,
     });
 }
