@@ -1,6 +1,10 @@
 import { jest } from '@jest/globals';
 import { AIContextProvider } from '../providers/AIContextProvider.js';
 import {
+    buildAnalyzeContextSuccessResponse,
+    MessageSenderRoles,
+} from '../../shared/protocol/messageProtocol.js';
+import {
     formatInteractiveSubtitleText,
     initializeInteractiveSubtitles,
 } from '../../shared/interactiveSubtitleFormatter.js';
@@ -35,7 +39,15 @@ describe('content-script logging privacy', () => {
         const selectedText = 'PRIVATE_LEGACY_SELECTED_TEXT';
         const provider = new AIContextProvider();
         provider.initialized = true;
-        chrome.runtime.sendMessage.mockResolvedValue({ success: true });
+        chrome.runtime.sendMessage.mockImplementation((message, callback) => {
+            const response = buildAnalyzeContextSuccessResponse(
+                MessageSenderRoles.CONTENT,
+                message,
+                { analysis: { summary: 'Safe analysis' } }
+            );
+            if (typeof callback === 'function') callback(response);
+            return Promise.resolve(response);
+        });
         jest.clearAllMocks();
 
         await expect(

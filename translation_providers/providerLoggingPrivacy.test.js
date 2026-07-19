@@ -111,67 +111,136 @@ describe('provider logging privacy', () => {
     });
 
     it('does not log Vertex error response bodies', async () => {
-        const errorPayload = 'PRIVATE_VERTEX_ERROR_PAYLOAD';
-        jest.spyOn(configService, 'getMultiple').mockResolvedValue({
-            vertexAccessToken: 'test-token',
-            vertexProjectId: 'test-project',
-            vertexLocation: 'us-central1',
-            vertexModel: 'test-model',
-        });
+        const source = 'PRIVATE_VERTEX_SOURCE';
+        const token = 'PRIVATE_VERTEX_TOKEN';
+        const project = 'PRIVATE_VERTEX_PROJECT';
+        const model = 'PRIVATE_VERTEX_MODEL';
+        const jsonMarker = 'PRIVATE_VERTEX_JSON_BODY';
+        const textMarker = 'PRIVATE_VERTEX_TEXT_BODY';
+        const configRead = jest
+            .spyOn(configService, 'readMultipleResultStrict')
+            .mockResolvedValue({
+                values: {
+                    vertexAccessToken: token,
+                    vertexProjectId: project,
+                    vertexLocation: 'us-central1',
+                    vertexModel: model,
+                },
+            });
+        const json = jest.fn().mockRejectedValue(new Error(jsonMarker));
+        const text = jest.fn().mockRejectedValue(new Error(textMarker));
         global.fetch = jest.fn().mockResolvedValue({
             ok: false,
             status: 400,
-            statusText: 'Bad Request',
-            headers: { get: jest.fn().mockReturnValue('application/json') },
-            text: jest.fn().mockResolvedValue(errorPayload),
+            json,
+            text,
         });
 
-        await expect(translateVertex('Hello', 'en', 'es')).rejects.toThrow();
+        let providerError;
+        try {
+            await translateVertex(source, 'en', 'es');
+        } catch (error) {
+            providerError = error;
+        }
 
-        expectLogsToExclude(errorPayload, 'test-token');
+        expect(providerError).toMatchObject({
+            provider: 'vertex_gemini',
+            status: 400,
+            code: 'REQUEST_FAILED',
+            retryable: false,
+        });
+        expect(configRead).toHaveBeenCalledTimes(1);
+        expect(configRead).toHaveBeenCalledWith(
+            [
+                'vertexAccessToken',
+                'vertexProjectId',
+                'vertexLocation',
+                'vertexModel',
+            ],
+            { includeSensitive: true }
+        );
+        expect(global.fetch).toHaveBeenCalledTimes(1);
+        expect(json).not.toHaveBeenCalled();
+        expect(text).not.toHaveBeenCalled();
+        expectLogsToExclude(
+            source,
+            token,
+            project,
+            model,
+            jsonMarker,
+            textMarker
+        );
     });
 
     it('does not log malformed AI response content', async () => {
         const source = 'PRIVATE_AI_CONTEXT_INPUT';
         const openAIResponse = 'PRIVATE_OPENAI_AI_RESPONSE';
         const geminiResponse = 'PRIVATE_GEMINI_AI_RESPONSE';
-        jest.spyOn(configService, 'getAll').mockResolvedValue({
-            openaiApiKey: 'openai-key',
-            openaiBaseUrl: 'https://api.openai.com/v1',
-            openaiModel: 'test-model',
-            geminiApiKey: 'gemini-key',
-            geminiModel: 'gemini-3.5-flash',
-            aiContextTimeout: 30000,
+        const openAIJson = jest.fn().mockResolvedValue({
+            choices: [{ message: { content: openAIResponse } }],
         });
+        const geminiJson = jest.fn().mockResolvedValue({
+            candidates: [
+                {
+                    finishReason: 'STOP',
+                    content: {
+                        parts: [{ text: geminiResponse }],
+                    },
+                },
+            ],
+        });
+        jest.spyOn(configService, 'readMultipleResultStrict').mockResolvedValue(
+            {
+                ok: true,
+                values: {
+                    openaiApiKey: 'openai-key',
+                    openaiBaseUrl: 'https://api.openai.com/v1',
+                    openaiModel: 'test-model',
+                    geminiApiKey: 'gemini-key',
+                    geminiModel: 'gemini-3.5-flash',
+                    aiContextTimeout: 30000,
+                },
+                degraded: false,
+                failedAreas: [],
+                areas: {
+                    sync: { status: 'ok' },
+                    local: { status: 'ok' },
+                },
+            }
+        );
         global.fetch = jest
             .fn()
             .mockResolvedValueOnce({
                 ok: true,
-                json: jest.fn().mockResolvedValue({
-                    choices: [{ message: { content: openAIResponse } }],
-                }),
+                json: openAIJson,
             })
             .mockResolvedValueOnce({
                 ok: true,
-                json: jest.fn().mockResolvedValue({
-                    candidates: [
-                        {
-                            finishReason: 'STOP',
-                            content: {
-                                parts: [{ text: geminiResponse }],
-                            },
-                        },
-                    ],
-                }),
+                json: geminiJson,
             });
 
-        await analyzeOpenAIContext(source, 'cultural', {
+        const openAIResult = await analyzeOpenAIContext(source, 'cultural', {
             targetLanguage: 'en',
         });
-        await analyzeGeminiContext(source, 'cultural', {
+        const geminiResult = await analyzeGeminiContext(source, 'cultural', {
             targetLanguage: 'en',
         });
 
+        expect(global.fetch).toHaveBeenCalledTimes(2);
+        expect(openAIJson).toHaveBeenCalledTimes(1);
+        expect(geminiJson).toHaveBeenCalledTimes(1);
+        expect(openAIResult).toMatchObject({
+            success: false,
+            error: 'Malformed JSON response',
+            shouldRetry: true,
+            shouldCache: false,
+        });
+        expect(geminiResult).toMatchObject({
+            success: false,
+            error: 'Malformed JSON response',
+            shouldRetry: true,
+            shouldCache: false,
+        });
         expectLogsToExclude(source, openAIResponse, geminiResponse);
     });
 });

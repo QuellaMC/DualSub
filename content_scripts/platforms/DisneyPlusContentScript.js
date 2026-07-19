@@ -7,6 +7,8 @@
  * @version 1.0.0
  */
 import { BaseContentScript } from '../core/BaseContentScript.js';
+import { createInjectionChannel } from '../shared/injectionChannel.js';
+import { isDisneyPlusPlayerPath } from '../shared/navigationUtils.js';
 
 export class DisneyPlusContentScript extends BaseContentScript {
     /**
@@ -23,10 +25,12 @@ export class DisneyPlusContentScript extends BaseContentScript {
      * @private
      */
     _initializeDisneyPlusSpecificState() {
+        const channel = createInjectionChannel('disneyplus');
         this.injectConfig = {
             filename: 'injected_scripts/disneyPlusInject.js',
             tagId: 'disneyplus-dualsub-injector-script-tag',
             eventId: 'disneyplus-dualsub-injector-event',
+            channel,
         };
         this.urlPatterns = ['*.disneyplus.com'];
     }
@@ -72,49 +76,11 @@ export class DisneyPlusContentScript extends BaseContentScript {
             'info',
             'Setting up Disney+ navigation detection.'
         );
-        this._setupIntervalBasedDetection();
-        this._setupHistoryAPIInterception();
-        this._setupBrowserNavigationEvents();
-        this._setupFocusAndVisibilityEvents();
+        this._setupNavigationManager();
         this.logWithFallback(
             'info',
             'Enhanced Disney+ navigation detection is set up.'
         );
-    }
-
-    /**
-     * Checks for URL changes with Disney+ specific logic.
-     */
-    checkForUrlChange() {
-        try {
-            const newUrl = window.location.href;
-            const newPathname = window.location.pathname;
-
-            if (
-                newUrl !== this.currentUrl ||
-                newPathname !== this.lastKnownPathname
-            ) {
-                this.logWithFallback('info', 'URL change detected.', {
-                    from: this.currentUrl,
-                    to: newUrl,
-                });
-
-                const wasOnPlayerPage = this._isPlayerPath(
-                    this.lastKnownPathname
-                );
-                const isOnPlayerPage = this._isPlayerPath(newPathname);
-
-                this.currentUrl = newUrl;
-                this.lastKnownPathname = newPathname;
-
-                this._handlePageTransition(wasOnPlayerPage, isOnPlayerPage);
-            }
-        } catch (error) {
-            this.logWithFallback('error', 'Error in URL change detection.', {
-                error,
-            });
-            this._handleExtensionContextError(error);
-        }
     }
 
     /**
@@ -124,163 +90,7 @@ export class DisneyPlusContentScript extends BaseContentScript {
      * @private
      */
     _isPlayerPath(pathname) {
-        return pathname.includes('/play/') || pathname.includes('/video/');
-    }
-
-    /**
-     * Handles platform-specific Chrome messages.
-     * @param {Object} request - The Chrome message request.
-     * @param {Function} sendResponse - The callback to send a response.
-     * @returns {boolean} `true` if the response is sent asynchronously.
-     */
-    handlePlatformSpecificMessage(request, sendResponse) {
-        try {
-            const action = request.action || request.type;
-
-            this.logWithFallback(
-                'debug',
-                'Processing Disney+ specific message.',
-                {
-                    action,
-                    hasRequest: !!request,
-                    requestKeys: Object.keys(request || {}),
-                }
-            );
-
-            switch (action) {
-                case 'toggleInteractiveSubtitles':
-                    return this._handleToggleInteractiveSubtitles(
-                        request,
-                        sendResponse
-                    );
-
-                case 'updateContextPreferences':
-                    return this._handleUpdateContextPreferences(
-                        request,
-                        sendResponse
-                    );
-
-                default:
-                    this.logWithFallback(
-                        'debug',
-                        'No Disney+ specific handling required.',
-                        {
-                            action,
-                            message: 'Delegating to default handling.',
-                        }
-                    );
-
-                    sendResponse({
-                        success: true,
-                        handled: false,
-                        platform: 'disneyplus',
-                        message: 'No platform-specific handling required.',
-                    });
-                    return false;
-            }
-        } catch (error) {
-            const action = request ? request.action || request.type : 'unknown';
-
-            this.logWithFallback(
-                'error',
-                'Error in Disney+ specific message handling.',
-                {
-                    error: error.message,
-                    stack: error.stack,
-                    action,
-                }
-            );
-
-            try {
-                if (typeof sendResponse === 'function') {
-                    sendResponse({
-                        success: false,
-                        error: error.message,
-                        platform: 'disneyplus',
-                    });
-                }
-            } catch (responseError) {
-                this.logWithFallback('error', 'Error sending error response.', {
-                    originalError: error.message,
-                    responseError: responseError.message,
-                });
-            }
-            return false;
-        }
-    }
-
-    /**
-     * Sets up interval-based URL change detection.
-     * @private
-     */
-    _setupIntervalBasedDetection() {
-        this.intervalManager.set(
-            'urlChangeCheck',
-            () => this.checkForUrlChange(),
-            1000
-        );
-    }
-
-    /**
-     * Sets up History API interception for programmatic navigation.
-     * @private
-     */
-    _setupHistoryAPIInterception() {
-        const originalPushState = history.pushState;
-        const originalReplaceState = history.replaceState;
-
-        // Intercept pushState
-        history.pushState = (...args) => {
-            originalPushState.apply(history, args);
-            setTimeout(() => this.checkForUrlChange(), 100);
-        };
-
-        // Intercept replaceState
-        history.replaceState = (...args) => {
-            originalReplaceState.apply(history, args);
-            setTimeout(() => this.checkForUrlChange(), 100);
-        };
-
-        this._originalHistoryMethods = {
-            pushState: originalPushState,
-            replaceState: originalReplaceState,
-        };
-    }
-
-    /**
-     * Sets up browser navigation event listeners.
-     * @private
-     */
-    _setupBrowserNavigationEvents() {
-        const events = [
-            { name: 'popstate', delay: 100 },
-            { name: 'hashchange', delay: 100 },
-        ];
-
-        events.forEach(({ name, delay }) => {
-            const handler = () =>
-                setTimeout(() => this.checkForUrlChange(), delay);
-
-            const options = this.abortController
-                ? { signal: this.abortController.signal }
-                : {};
-            window.addEventListener(name, handler, options);
-        });
-    }
-
-    /**
-     * Sets up focus and visibility event listeners.
-     * @private
-     */
-    _setupFocusAndVisibilityEvents() {
-        const focusHandler = () =>
-            setTimeout(() => this.checkForUrlChange(), 100);
-
-        const options = this.abortController
-            ? { signal: this.abortController.signal }
-            : {};
-        window.addEventListener('focus', focusHandler, options);
-        document.addEventListener('visibilitychange', focusHandler, options);
+        return isDisneyPlusPlayerPath(pathname);
     }
 
     /**
@@ -310,27 +120,7 @@ export class DisneyPlusContentScript extends BaseContentScript {
      * @private
      */
     _cleanupOnPageLeave() {
-        this.stopVideoElementDetection();
-
-        if (this.subtitleUtils) {
-            this.subtitleUtils.clearSubtitlesDisplayAndQueue?.(
-                this.activePlatform,
-                true,
-                this.logPrefix
-            );
-            this.subtitleUtils.clearSubtitleDOM?.();
-        }
-
-        if (
-            this.activePlatform &&
-            typeof this.activePlatform.cleanup === 'function'
-        ) {
-            this.activePlatform.cleanup();
-        }
-
-        this.activePlatform = null;
-        this.platformReady = false;
-        this.eventBuffer.clear();
+        this._cleanupOnPlayerPageLeave();
     }
 
     /**
@@ -339,40 +129,14 @@ export class DisneyPlusContentScript extends BaseContentScript {
      */
     _initializeOnPageEnter() {
         this._reinjectScript();
-
-        setTimeout(async () => {
-            try {
-                const config = await this.configService.getAll({
+        this._schedulePlatformInitializationOnPageEnter(
+            () =>
+                this.configService.getAll({
                     includeSensitive: false,
-                });
-                if (config?.subtitlesEnabled) {
-                    this.logWithFallback(
-                        'info',
-                        'Subtitles enabled, initializing platform.'
-                    );
-                    await this.initializePlatform();
-
-                    // Ensure AI Context is (re)initialized when enabled after entering player page
-                    try {
-                        if (config?.aiContextEnabled) {
-                            await this._restartAIContextFeatures();
-                        }
-                    } catch (e) {
-                        this.logWithFallback(
-                            'warn',
-                            'AI Context restart on page enter failed',
-                            { error: e.message }
-                        );
-                    }
-                }
-            } catch (error) {
-                this.logWithFallback(
-                    'error',
-                    'Error during URL change initialization.',
-                    { error }
-                );
-            }
-        }, 1500);
+                }),
+            () => this._isPlayerPage(),
+            1500
+        );
     }
 
     /**
@@ -381,6 +145,19 @@ export class DisneyPlusContentScript extends BaseContentScript {
      */
     _reinjectScript() {
         try {
+            const baseScriptUrl = chrome.runtime.getURL(
+                this.injectConfig.filename
+            );
+            const scriptUrl =
+                this.injectConfig.channel?.createScriptUrl(baseScriptUrl);
+            if (!scriptUrl) {
+                this.logWithFallback(
+                    'error',
+                    'Cannot re-inject script without an active injection channel.'
+                );
+                return false;
+            }
+
             const existingScript = document.getElementById(
                 this.injectConfig.tagId
             );
@@ -389,7 +166,7 @@ export class DisneyPlusContentScript extends BaseContentScript {
             }
 
             const script = document.createElement('script');
-            script.src = chrome.runtime.getURL(this.injectConfig.filename);
+            script.src = scriptUrl;
             script.id = this.injectConfig.tagId;
 
             const target = document.head || document.documentElement;
@@ -400,77 +177,17 @@ export class DisneyPlusContentScript extends BaseContentScript {
                         'info',
                         'Script re-injected successfully.'
                     );
-                script.onerror = (e) =>
+                script.onerror = () =>
                     this.logWithFallback(
                         'error',
-                        'Failed to re-inject script.',
-                        { error: e }
+                        'Failed to re-inject script.'
                     );
+                return true;
             }
-        } catch (error) {
-            this.logWithFallback('error', 'Error during script re-injection.', {
-                error,
-            });
+        } catch {
+            this.logWithFallback('error', 'Error during script re-injection.');
         }
-    }
-
-    /**
-     * Handles errors related to an invalidated extension context.
-     * @private
-     * @param {Error} error - The error that occurred.
-     */
-    _handleExtensionContextError(error) {
-        if (error.message?.includes('Extension context invalidated')) {
-            this.intervalManager.clear('urlChangeCheck');
-            this.logWithFallback(
-                'info',
-                'Stopped URL change detection due to extension context invalidation.'
-            );
-        }
-    }
-
-    /**
-     * Cleans up Disney+ specific resources.
-     * @override
-     */
-    async cleanup() {
-        try {
-            if (this._originalHistoryMethods) {
-                history.pushState = this._originalHistoryMethods.pushState;
-                history.replaceState =
-                    this._originalHistoryMethods.replaceState;
-                this._originalHistoryMethods = null;
-            }
-
-            // Cleanup AI Context Manager
-            if (this.aiContextManager) {
-                try {
-                    await this.aiContextManager.destroy();
-                    this.aiContextManager = null;
-                    this.logWithFallback(
-                        'debug',
-                        'AI Context Manager destroyed'
-                    );
-                } catch (error) {
-                    this.logWithFallback(
-                        'error',
-                        'Error destroying AI Context Manager',
-                        error
-                    );
-                }
-            }
-
-            await super.cleanup();
-
-            this.logWithFallback('info', 'Disney+ specific cleanup completed.');
-        } catch (error) {
-            this.logWithFallback(
-                'error',
-                'Error during Disney+ specific cleanup.',
-                { error }
-            );
-            throw error;
-        }
+        return false;
     }
 
     /**
@@ -481,7 +198,6 @@ export class DisneyPlusContentScript extends BaseContentScript {
         return {
             maxVideoDetectionRetries: 40,
             videoDetectionInterval: 1000,
-            urlChangeCheckInterval: 1000,
             pageTransitionDelay: 1500,
             injectRetryDelay: 10,
             injectMaxRetries: 100,
@@ -504,149 +220,5 @@ export class DisneyPlusContentScript extends BaseContentScript {
             injectConfig: this.getInjectScriptConfig(),
             urlPatterns: this.urlPatterns,
         };
-    }
-
-    /**
-     * Handle interactive subtitles toggle
-     * @param {Object} request - Message request
-     * @param {Function} sendResponse - Response callback
-     * @returns {boolean} True if async response
-     */
-    _handleToggleInteractiveSubtitles(request, sendResponse) {
-        const { enabled } = request;
-
-        this.logWithFallback(
-            'info',
-            'Toggling interactive subtitles for Disney+',
-            {
-                enabled,
-            }
-        );
-
-        try {
-            this._toggleInteractiveSubtitles(enabled);
-            sendResponse({
-                success: true,
-                platform: 'disneyplus',
-                interactiveEnabled: enabled,
-            });
-        } catch (error) {
-            this.logWithFallback(
-                'error',
-                'Failed to toggle interactive subtitles',
-                {
-                    error: error.message,
-                }
-            );
-            sendResponse({
-                success: false,
-                platform: 'disneyplus',
-                error: error.message,
-            });
-        }
-
-        return false; // Sync response
-    }
-
-    /**
-     * Handle context preferences update
-     * @param {Object} request - Message request
-     * @param {Function} sendResponse - Response callback
-     * @returns {boolean} True if async response
-     */
-    _handleUpdateContextPreferences(request, sendResponse) {
-        const { preferences } = request;
-
-        this.logWithFallback(
-            'info',
-            'Updating context preferences for Disney+',
-            {
-                preferences,
-            }
-        );
-
-        this._updateContextPreferences(preferences)
-            .then((result) => {
-                sendResponse({
-                    success: true,
-                    platform: 'disneyplus',
-                    updated: result.updated,
-                    preferences: result.preferences,
-                });
-            })
-            .catch((error) => {
-                this.logWithFallback(
-                    'error',
-                    'Failed to update context preferences',
-                    {
-                        error: error.message,
-                    }
-                );
-                sendResponse({
-                    success: false,
-                    platform: 'disneyplus',
-                    error: error.message,
-                });
-            });
-
-        return true; // Async response
-    }
-
-    /**
-     * Toggle interactive subtitles functionality
-     * @param {boolean} enabled - Whether to enable interactive subtitles
-     */
-    _toggleInteractiveSubtitles(enabled) {
-        if (this.subtitleUtils?.setInteractiveSubtitlesEnabled) {
-            this.subtitleUtils.setInteractiveSubtitlesEnabled(enabled);
-            this.logWithFallback(
-                'info',
-                'Interactive subtitles toggled for Disney+',
-                {
-                    enabled,
-                }
-            );
-        } else {
-            this.logWithFallback(
-                'warn',
-                'Subtitle utilities not available for interactive toggle'
-            );
-        }
-    }
-
-    /**
-     * Update context preferences
-     * @param {Object} preferences - New context preferences
-     * @returns {Promise<Object>} Update result
-     */
-    async _updateContextPreferences(preferences) {
-        try {
-            // Update interactive subtitle configuration if available
-            if (this.subtitleUtils?.updateInteractiveConfig) {
-                this.subtitleUtils.updateInteractiveConfig(preferences);
-            }
-
-            this.logWithFallback(
-                'info',
-                'Context preferences updated for Disney+',
-                {
-                    preferences,
-                }
-            );
-
-            return {
-                updated: true,
-                preferences,
-            };
-        } catch (error) {
-            this.logWithFallback(
-                'error',
-                'Failed to update context preferences',
-                {
-                    error: error.message,
-                }
-            );
-            throw error;
-        }
     }
 }

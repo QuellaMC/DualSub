@@ -18,6 +18,35 @@ import {
 } from '@jest/globals';
 import { TestHelpers } from '../../../test-utils/test-helpers.js';
 import { AIContextManager } from '../core/AIContextManager.js';
+import {
+    buildAnalyzeContextFailureResponse,
+    buildAnalyzeContextSuccessResponse,
+    MessageSenderRoles,
+} from '../../shared/protocol/messageProtocol.js';
+
+function mockAnalyzeSuccess(sendMessage, analysis) {
+    sendMessage.mockImplementation((message, callback) => {
+        const response = buildAnalyzeContextSuccessResponse(
+            MessageSenderRoles.CONTENT,
+            message,
+            { analysis }
+        );
+        if (typeof callback === 'function') callback(response);
+        return Promise.resolve(response);
+    });
+}
+
+function mockAnalyzeFailure(sendMessage, error, shouldRetry = false) {
+    sendMessage.mockImplementation((message, callback) => {
+        const response = buildAnalyzeContextFailureResponse(
+            MessageSenderRoles.CONTENT,
+            message,
+            { error, shouldRetry }
+        );
+        if (typeof callback === 'function') callback(response);
+        return Promise.resolve(response);
+    });
+}
 
 // Mock fetch for CSS loading in modal
 global.fetch =
@@ -329,9 +358,8 @@ describe('Phase 3: Core Controller Tests', () => {
         test('should handle analysis requests', async () => {
             // Mock chrome.runtime.sendMessage
             const mockSendMessage = testEnv.mocks.chromeApi.runtime.sendMessage;
-            mockSendMessage.mockResolvedValue({
-                success: true,
-                result: { analysis: 'Test analysis result' },
+            mockAnalyzeSuccess(mockSendMessage, {
+                summary: 'Test analysis result',
             });
 
             // Dispatch analysis request
@@ -366,74 +394,6 @@ describe('Phase 3: Core Controller Tests', () => {
             );
             expect(found).toBe(true);
         });
-
-        test('should handle configuration updates', async () => {
-            const newConfig = { aiContextEnabled: false };
-
-            document.dispatchEvent(
-                new CustomEvent('dualsub-config-update', {
-                    detail: { config: newConfig },
-                })
-            );
-
-            // Wait for async processing
-            await new Promise((resolve) => setTimeout(resolve, 1)); // Reduced from 10ms to 1ms
-
-            // Verify config was updated
-            expect(manager.config.aiContextEnabled).toBe(false);
-        });
-
-        test('should handle feature toggles', () => {
-            document.dispatchEvent(
-                new CustomEvent('dualsub-feature-toggle', {
-                    detail: { feature: 'contextModal', enabled: false },
-                })
-            );
-
-            // Verify feature was toggled
-            expect(manager.getEnabledFeatures()).not.toContain('contextModal');
-        });
-    });
-
-    describe('Background Communication', () => {
-        test('should handle background messages', async () => {
-            const request = {
-                target: 'aiContext',
-                action: 'getStatus',
-            };
-
-            const sendResponse = jest.fn();
-
-            // Simulate background message
-            await manager._handleBackgroundMessage(request, sendResponse);
-
-            expect(sendResponse).toHaveBeenCalledWith({
-                success: true,
-                status: {
-                    initialized: true,
-                    platform: 'netflix',
-                    features: expect.any(Array),
-                    config: expect.any(Object),
-                    metrics: expect.any(Object),
-                },
-            });
-        });
-
-        test('should handle unknown actions', async () => {
-            const request = {
-                target: 'aiContext',
-                action: 'unknownAction',
-            };
-
-            const sendResponse = jest.fn();
-
-            await manager._handleBackgroundMessage(request, sendResponse);
-
-            expect(sendResponse).toHaveBeenCalledWith({
-                success: false,
-                error: 'Unknown action: unknownAction',
-            });
-        });
     });
 
     describe('Metrics and Performance', () => {
@@ -441,9 +401,8 @@ describe('Phase 3: Core Controller Tests', () => {
             const initialCount = manager.metrics.analysisCount;
 
             // Mock successful analysis
-            testEnv.mocks.chromeApi.runtime.sendMessage.mockResolvedValue({
-                success: true,
-                result: { analysis: 'Test result' },
+            mockAnalyzeSuccess(testEnv.mocks.chromeApi.runtime.sendMessage, {
+                summary: 'Test result',
             });
 
             // Trigger analysis
@@ -466,15 +425,9 @@ describe('Phase 3: Core Controller Tests', () => {
             const initialErrorCount = manager.metrics.errorCount;
 
             // Mock failed analysis (support callback-style messaging)
-            testEnv.mocks.chromeApi.runtime.sendMessage.mockImplementation(
-                (message, callback) => {
-                    const response = {
-                        success: false,
-                        error: 'Analysis failed',
-                    };
-                    if (typeof callback === 'function') callback(response);
-                    return Promise.resolve(response);
-                }
+            mockAnalyzeFailure(
+                testEnv.mocks.chromeApi.runtime.sendMessage,
+                'Analysis failed'
             );
 
             // Trigger analysis
@@ -630,9 +583,8 @@ describe('Phase 4: Handlers & Providers Tests', () => {
             const provider = manager.getProvider();
 
             // Mock successful response
-            testEnv.mocks.chromeApi.runtime.sendMessage.mockResolvedValue({
-                success: true,
-                result: { analysis: 'Test analysis result' },
+            mockAnalyzeSuccess(testEnv.mocks.chromeApi.runtime.sendMessage, {
+                summary: 'Test analysis result',
             });
 
             const result = await provider.analyzeContext('test text', {
@@ -642,22 +594,16 @@ describe('Phase 4: Handlers & Providers Tests', () => {
             });
 
             expect(result.success).toBe(true);
-            expect(result.result.analysis).toBe('Test analysis result');
+            expect(result.result.analysis.summary).toBe('Test analysis result');
         });
 
         test('should handle analysis errors', async () => {
             const provider = manager.getProvider();
 
             // Mock error response (support callback-style messaging)
-            testEnv.mocks.chromeApi.runtime.sendMessage.mockImplementation(
-                (message, callback) => {
-                    const response = {
-                        success: false,
-                        error: 'Analysis failed',
-                    };
-                    if (typeof callback === 'function') callback(response);
-                    return Promise.resolve(response);
-                }
+            mockAnalyzeFailure(
+                testEnv.mocks.chromeApi.runtime.sendMessage,
+                'Analysis failed'
             );
 
             const result = await provider.analyzeContext('test text');
@@ -671,9 +617,8 @@ describe('Phase 4: Handlers & Providers Tests', () => {
             const initialRequestCount = provider.metrics.requestCount;
 
             // Mock successful response
-            testEnv.mocks.chromeApi.runtime.sendMessage.mockResolvedValue({
-                success: true,
-                result: { analysis: 'Test result' },
+            mockAnalyzeSuccess(testEnv.mocks.chromeApi.runtime.sendMessage, {
+                summary: 'Test result',
             });
 
             await provider.analyzeContext('test text');
@@ -708,18 +653,9 @@ describe('Phase 4: Handlers & Providers Tests', () => {
 
         test('should handle end-to-end analysis workflow', async () => {
             // Mock successful analysis (support callback-style messaging)
-            testEnv.mocks.chromeApi.runtime.sendMessage.mockImplementation(
-                (message, callback) => {
-                    const response = {
-                        success: true,
-                        result: {
-                            analysis: 'Cultural context: This is a greeting.',
-                        },
-                    };
-                    if (typeof callback === 'function') callback(response);
-                    return Promise.resolve(response);
-                }
-            );
+            mockAnalyzeSuccess(testEnv.mocks.chromeApi.runtime.sendMessage, {
+                summary: 'Cultural context: This is a greeting.',
+            });
 
             // Trigger analysis through text handler
             const textHandler = manager.getTextHandler();
@@ -740,7 +676,9 @@ describe('Phase 4: Handlers & Providers Tests', () => {
             });
 
             expect(result.success).toBe(true);
-            expect(result.result.analysis).toContain('Cultural context');
+            expect(result.result.analysis.summary).toContain(
+                'Cultural context'
+            );
         });
     });
 });
@@ -1155,12 +1093,6 @@ describe('Phase 6: Tests & Observability', () => {
             document.dispatchEvent(
                 new CustomEvent('dualsub-analyze-selection', {
                     detail: { text: null, requestId: 'invalid' },
-                })
-            );
-
-            document.dispatchEvent(
-                new CustomEvent('dualsub-config-update', {
-                    detail: { config: null },
                 })
             );
 

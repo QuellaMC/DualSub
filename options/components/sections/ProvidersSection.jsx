@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { GoogleProviderCard } from '../providers/GoogleProviderCard.jsx';
 import { MicrosoftProviderCard } from '../providers/MicrosoftProviderCard.jsx';
 import { DeepLProviderCard } from '../providers/DeepLProviderCard.jsx';
@@ -17,28 +17,55 @@ export function ProvidersSection({
     const selectedProvider = SUPPORTED_PROVIDERS.has(settings.selectedProvider)
         ? settings.selectedProvider
         : Providers.MICROSOFT_EDGE_AUTH;
-    const [openaiModels, setOpenaiModels] = useState([]);
+    const currentOpenAIIdentity = {
+        apiKey: settings.openaiCompatibleApiKey || '',
+        baseUrl: settings.openaiCompatibleBaseUrl || '',
+    };
+    const [openAIModelCatalog, setOpenAIModelCatalog] = useState({
+        apiKey: null,
+        baseUrl: null,
+        models: [],
+    });
+    const fetchedOpenAIModels =
+        openAIModelCatalog.apiKey === currentOpenAIIdentity.apiKey &&
+        openAIModelCatalog.baseUrl === currentOpenAIIdentity.baseUrl
+            ? openAIModelCatalog.models
+            : [];
+    const savedOpenAIModel = settings.openaiCompatibleModel;
+    const openaiModels =
+        savedOpenAIModel && !fetchedOpenAIModels.includes(savedOpenAIModel)
+            ? [savedOpenAIModel, ...fetchedOpenAIModels]
+            : fetchedOpenAIModels;
 
-    // Load saved OpenAI models
-    useEffect(() => {
-        if (settings.openaiCompatibleModel) {
-            setOpenaiModels([settings.openaiCompatibleModel]);
+    const handleOpenAIModelsLoaded = async (models, requestIdentity) => {
+        const publishedIdentity = requestIdentity ?? currentOpenAIIdentity;
+        if (
+            publishedIdentity?.apiKey !== currentOpenAIIdentity.apiKey ||
+            publishedIdentity?.baseUrl !== currentOpenAIIdentity.baseUrl
+        ) {
+            return false;
         }
-    }, [settings.openaiCompatibleModel]);
-
-    const handleOpenAIModelsLoaded = async (models) => {
-        setOpenaiModels(models);
+        const publishedModels = Array.isArray(models) ? models : [];
+        setOpenAIModelCatalog({
+            ...currentOpenAIIdentity,
+            models: publishedModels,
+        });
 
         // Save the first model as default if no model is currently selected
-        if (models && models.length > 0) {
+        if (publishedModels.length > 0) {
             const savedModel = settings.openaiCompatibleModel;
-            const isValidModel = savedModel && models.includes(savedModel);
+            const hasSavedModel =
+                typeof savedModel === 'string' && savedModel.trim().length > 0;
 
-            if (!isValidModel) {
+            if (!hasSavedModel) {
                 // Use first model as default
-                await onSettingChange('openaiCompatibleModel', models[0]);
+                await onSettingChange(
+                    'openaiCompatibleModel',
+                    publishedModels[0]
+                );
             }
         }
+        return true;
     };
 
     return (

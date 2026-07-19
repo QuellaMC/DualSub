@@ -94,6 +94,9 @@ describe('Module Loading Fix', () => {
                     'content_scripts/core/utils.js',
                     'content_scripts/aicontext/utils/selectionPersistence.js',
                     'content_scripts/aicontext/core/AIContextManager.js',
+                    'content_scripts/aicontext/core/AIContextChannel.js',
+                    'content_scripts/shared/protocol/messageProtocol.js',
+                    'content_scripts/shared/protocol/plainDataSnapshot.js',
                 ])
             );
             expect(resources).not.toContain('content_scripts/shared/utils.js');

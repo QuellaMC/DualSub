@@ -8,16 +8,8 @@
  * @version 1.0.0
  */
 
-import {
-    analyzeContext as openaiAnalyzeContext,
-    getAvailableModels as getOpenAIModels,
-    getDefaultModel as getOpenAIDefaultModel,
-} from '../../context_providers/openaiContextProvider.js';
-import {
-    analyzeContext as geminiAnalyzeContext,
-    getAvailableModels as getGeminiModels,
-    getDefaultModel as getGeminiDefaultModel,
-} from '../../context_providers/geminiContextProvider.js';
+import { analyzeContext as openaiAnalyzeContext } from '../../context_providers/openaiContextProvider.js';
+import { analyzeContext as geminiAnalyzeContext } from '../../context_providers/geminiContextProvider.js';
 import { configService } from '../../services/configService.js';
 import { loggingManager } from '../utils/loggingManager.js';
 import { ContextCache } from '../utils/contextCache.js';
@@ -38,6 +30,21 @@ const RUNTIME_CONFIG_KEYS = Object.freeze([
     'aiContextRetryDelay',
 ]);
 const RUNTIME_CONFIG_KEY_SET = new Set(RUNTIME_CONFIG_KEYS);
+const AI_CONTEXT_DISABLED_MESSAGE = 'AI context analysis is disabled';
+const AI_CONTEXT_ENABLEMENT_UNAVAILABLE_MESSAGE =
+    'AI context availability could not be verified';
+
+function createEnablementFailure(error, text, contextType, metadata) {
+    return {
+        success: false,
+        error,
+        contextType,
+        originalText: text,
+        metadata,
+        shouldRetry: false,
+        shouldCache: false,
+    };
+}
 
 export class AIContextService {
     constructor() {
@@ -47,8 +54,6 @@ export class AIContextService {
             openai: {
                 name: 'OpenAI GPT (API Key Required)',
                 analyzeContext: openaiAnalyzeContext,
-                getAvailableModels: getOpenAIModels,
-                getDefaultModel: getOpenAIDefaultModel,
                 supportsBatch: false,
                 rateLimit: {
                     type: 'requests_per_minute',
@@ -62,8 +67,6 @@ export class AIContextService {
             gemini: {
                 name: 'Google Gemini (API Key Required)',
                 analyzeContext: geminiAnalyzeContext,
-                getAvailableModels: getGeminiModels,
-                getDefaultModel: getGeminiDefaultModel,
                 supportsBatch: false,
                 rateLimit: {
                     type: 'requests_per_minute',
@@ -261,6 +264,38 @@ export class AIContextService {
         return `${this.currentProviderId}:credential-generation-${this.credentialGeneration}`;
     }
 
+    async _readEnablementFailure(text, contextType, metadata) {
+        let enabled;
+        try {
+            enabled =
+                await configService.readStoredBooleanStrict('aiContextEnabled');
+        } catch {
+            return createEnablementFailure(
+                AI_CONTEXT_ENABLEMENT_UNAVAILABLE_MESSAGE,
+                text,
+                contextType,
+                metadata
+            );
+        }
+        if (typeof enabled !== 'boolean') {
+            return createEnablementFailure(
+                AI_CONTEXT_ENABLEMENT_UNAVAILABLE_MESSAGE,
+                text,
+                contextType,
+                metadata
+            );
+        }
+        if (!enabled) {
+            return createEnablementFailure(
+                AI_CONTEXT_DISABLED_MESSAGE,
+                text,
+                contextType,
+                metadata
+            );
+        }
+        return null;
+    }
+
     async _analyzeWithRetry(provider, text, contextType, metadata) {
         let lastResult;
         let lastError;
@@ -271,17 +306,38 @@ export class AIContextService {
             attempt++
         ) {
             await this.checkRateLimit(this.currentProviderId, contextType);
+            let enablementFailure = await this._readEnablementFailure(
+                text,
+                contextType,
+                metadata
+            );
+            if (enablementFailure) {
+                return enablementFailure;
+            }
+
             try {
                 lastResult = await provider.analyzeContext(
                     text,
                     contextType,
                     metadata
                 );
-                if (lastResult.success || lastResult.shouldRetry !== true) {
-                    return lastResult;
-                }
             } catch (error) {
                 lastError = error;
+            }
+
+            enablementFailure = await this._readEnablementFailure(
+                text,
+                contextType,
+                metadata
+            );
+            if (enablementFailure) {
+                return enablementFailure;
+            }
+            if (
+                lastResult &&
+                (lastResult.success || lastResult.shouldRetry !== true)
+            ) {
+                return lastResult;
             }
 
             if (attempt < this.runtimeConfig.retryAttempts) {
@@ -295,6 +351,14 @@ export class AIContextService {
                     delay,
                 });
                 await new Promise((resolve) => setTimeout(resolve, delay));
+                enablementFailure = await this._readEnablementFailure(
+                    text,
+                    contextType,
+                    metadata
+                );
+                if (enablementFailure) {
+                    return enablementFailure;
+                }
             }
         }
 
@@ -316,46 +380,6 @@ export class AIContextService {
             contextTypes: provider.contextTypes,
             supportsBatch: provider.supportsBatch,
         }));
-    }
-
-    /**
-     * Change context provider
-     * @param {string} providerId - New provider ID
-     * @returns {Promise<Object>} Result object
-     */
-    async changeProvider(providerId) {
-        if (!this.providers[providerId]) {
-            this.logger.error(
-                'Attempted to switch to unknown context provider',
-                null,
-                {
-                    providerId,
-                    availableProviders: Object.keys(this.providers),
-                }
-            );
-            throw new Error(`Unknown context provider: ${providerId}`);
-        }
-
-        const previousProvider = this.currentProviderId;
-        this.currentProviderId = providerId;
-        this.cache.clear();
-
-        // Save to configuration
-        await configService.set('aiContextProvider', providerId);
-
-        const providerName = this.providers[providerId].name;
-        this.logger.info('Context provider changed successfully', {
-            previousProvider,
-            newProvider: providerId,
-            providerName,
-        });
-
-        return {
-            success: true,
-            message: `Context provider changed to ${providerName}`,
-            previousProvider,
-            newProvider: providerId,
-        };
     }
 
     /**
@@ -468,6 +492,15 @@ export class AIContextService {
         }
 
         text = text.trim();
+
+        const enablementFailure = await this._readEnablementFailure(
+            text,
+            contextType,
+            metadata
+        );
+        if (enablementFailure) {
+            return enablementFailure;
+        }
 
         this.logger.info('Context analysis request received', {
             provider: this.currentProviderId,
@@ -612,120 +645,64 @@ export class AIContextService {
     }
 
     /**
-     * Get available models for a specific provider
-     * @param {string} providerId - Provider ID (optional, defaults to current)
-     * @returns {Array} Array of available models
-     */
-    getAvailableModels(providerId = null) {
-        const targetProviderId = providerId || this.currentProviderId;
-        const provider = this.providers[targetProviderId];
-
-        if (!provider || !provider.getAvailableModels) {
-            this.logger.warn('Provider does not support model enumeration', {
-                providerId: targetProviderId,
-            });
-            return [];
-        }
-
-        try {
-            const models = provider.getAvailableModels();
-            this.logger.debug('Retrieved available models', {
-                providerId: targetProviderId,
-                modelCount: models.length,
-            });
-            return models;
-        } catch (error) {
-            this.logger.error('Failed to get available models', error, {
-                providerId: targetProviderId,
-            });
-            return [];
-        }
-    }
-
-    /**
-     * Get default model for a specific provider
-     * @param {string} providerId - Provider ID (optional, defaults to current)
-     * @returns {string} Default model ID
-     */
-    getDefaultModel(providerId = null) {
-        const targetProviderId = providerId || this.currentProviderId;
-        const provider = this.providers[targetProviderId];
-
-        if (!provider || !provider.getDefaultModel) {
-            this.logger.warn('Provider does not support default model', {
-                providerId: targetProviderId,
-            });
-            return null;
-        }
-
-        try {
-            const defaultModel = provider.getDefaultModel();
-            this.logger.debug('Retrieved default model', {
-                providerId: targetProviderId,
-                defaultModel,
-            });
-            return defaultModel;
-        } catch (error) {
-            this.logger.error('Failed to get default model', error, {
-                providerId: targetProviderId,
-            });
-            return null;
-        }
-    }
-
-    /**
      * Set up configuration change listener to automatically update provider
      * @private
      */
     _setupConfigurationListener() {
         this.removeConfigListener?.();
-        this.removeConfigListener = configService.onChanged((changes) => {
-            const cacheIdentityKeys = new Set([
-                'aiContextProvider',
-                'openaiBaseUrl',
-                'openaiModel',
-                'geminiModel',
-                'openaiApiKey',
-                'geminiApiKey',
-            ]);
-            const cacheConfigurationKeys = new Set([
-                'aiContextCacheEnabled',
-                'aiContextCacheTTL',
-                'aiContextMaxCacheSize',
-            ]);
-            const credentialKeys = new Set(['openaiApiKey', 'geminiApiKey']);
-            const changedKeys = Object.keys(changes);
+        this.removeConfigListener = configService.onChanged(
+            (changes) => {
+                const cacheIdentityKeys = new Set([
+                    'aiContextProvider',
+                    'openaiBaseUrl',
+                    'openaiModel',
+                    'geminiModel',
+                    'openaiApiKey',
+                    'geminiApiKey',
+                ]);
+                const cacheConfigurationKeys = new Set([
+                    'aiContextCacheEnabled',
+                    'aiContextCacheTTL',
+                    'aiContextMaxCacheSize',
+                ]);
+                const credentialKeys = new Set([
+                    'openaiApiKey',
+                    'geminiApiKey',
+                ]);
+                const changedKeys = Object.keys(changes);
 
-            if (
-                changes.aiContextProvider &&
-                this.providers[changes.aiContextProvider]
-            ) {
-                this.currentProviderId = changes.aiContextProvider;
-            }
+                if (
+                    changes.aiContextProvider &&
+                    this.providers[changes.aiContextProvider]
+                ) {
+                    this.currentProviderId = changes.aiContextProvider;
+                }
 
-            this._applyRuntimeConfiguration(
-                this._selectRuntimeConfiguration(changes)
-            );
+                this._applyRuntimeConfiguration(
+                    this._selectRuntimeConfiguration(changes)
+                );
 
-            if (changedKeys.some((key) => credentialKeys.has(key))) {
-                this.credentialGeneration++;
-            }
+                if (changedKeys.some((key) => credentialKeys.has(key))) {
+                    this.credentialGeneration++;
+                }
 
-            if (
-                changedKeys.some(
-                    (key) =>
-                        cacheIdentityKeys.has(key) ||
-                        cacheConfigurationKeys.has(key)
-                )
-            ) {
-                this.cache.clear();
-            }
+                if (
+                    changedKeys.some(
+                        (key) =>
+                            cacheIdentityKeys.has(key) ||
+                            cacheConfigurationKeys.has(key)
+                    )
+                ) {
+                    this.cache.clear();
+                }
 
-            this.logger.info('AI Context configuration updated', {
-                changedKeys,
-                currentProvider: this.currentProviderId,
-            });
-        });
+                this.logger.info('AI Context configuration updated', {
+                    changedKeys,
+                    currentProvider: this.currentProviderId,
+                });
+            },
+            { includeSensitive: true }
+        );
     }
 
     /**

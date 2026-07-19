@@ -57,6 +57,93 @@ const interactiveState = {
     lastClickTime: 0,
 };
 
+let activeInteractiveLifecycle = null;
+
+function resetInteractiveLifecycleState() {
+    for (const pendingRequest of interactiveState.pendingRequests.values()) {
+        try {
+            let timeoutId = null;
+            if (typeof pendingRequest === 'number') {
+                timeoutId = pendingRequest;
+            } else if (pendingRequest && typeof pendingRequest === 'object') {
+                const timeoutDescriptor = Object.getOwnPropertyDescriptor(
+                    pendingRequest,
+                    'timeoutId'
+                );
+                if (
+                    timeoutDescriptor &&
+                    Object.hasOwn(timeoutDescriptor, 'value') &&
+                    typeof timeoutDescriptor.value === 'number'
+                ) {
+                    timeoutId = timeoutDescriptor.value;
+                }
+            }
+            if (timeoutId !== null) {
+                clearTimeout(timeoutId);
+            }
+        } catch (_) {}
+    }
+
+    interactiveState.pendingRequests.clear();
+    interactiveState.currentSelection = null;
+    interactiveState.lastClickTime = 0;
+}
+
+/**
+ * Begin one formatter lifecycle and reset all lifecycle-scoped interaction
+ * state. The returned cleanup only resets the lifecycle it created.
+ * @param {Object} options - Lifecycle-private synchronous capabilities.
+ * @returns {() => void} Idempotent compare-and-swap cleanup.
+ */
+export function beginInteractiveLifecycle({
+    publishWordIntent = null,
+    resolveOriginalWordBindingSnapshot = null,
+} = {}) {
+    const previousLifecycle = activeInteractiveLifecycle;
+    const lifecycle = {
+        publishWordIntent:
+            typeof publishWordIntent === 'function' ? publishWordIntent : null,
+        resolveOriginalWordBindingSnapshot:
+            typeof resolveOriginalWordBindingSnapshot === 'function'
+                ? resolveOriginalWordBindingSnapshot
+                : null,
+        boundContainer: null,
+        originalWordRegistry: new Map(),
+    };
+    activeInteractiveLifecycle = lifecycle;
+    const previousContainer = previousLifecycle?.boundContainer;
+    if (previousLifecycle) {
+        previousLifecycle.publishWordIntent = null;
+        previousLifecycle.boundContainer = null;
+        previousLifecycle.originalWordRegistry.clear();
+        previousLifecycle.resolveOriginalWordBindingSnapshot = null;
+    }
+    if (previousContainer) {
+        removeInteractiveEventListeners(previousContainer);
+    }
+    if (activeInteractiveLifecycle === lifecycle) {
+        resetInteractiveLifecycleState();
+    }
+
+    let cleaned = false;
+    return () => {
+        if (cleaned) return;
+        cleaned = true;
+        if (activeInteractiveLifecycle !== lifecycle) return;
+
+        const boundContainer = lifecycle.boundContainer;
+        activeInteractiveLifecycle = null;
+        lifecycle.publishWordIntent = null;
+        lifecycle.boundContainer = null;
+        lifecycle.originalWordRegistry.clear();
+        lifecycle.resolveOriginalWordBindingSnapshot = null;
+        if (boundContainer) {
+            removeInteractiveEventListeners(boundContainer);
+        }
+        resetInteractiveLifecycleState();
+    };
+}
+
 // Helper: detect if modal is currently in analyzing state
 function isAnalyzingActive() {
     try {
@@ -94,6 +181,13 @@ export function initializeInteractiveSubtitles(config = {}) {
 export function setInteractiveEnabled(enabled) {
     interactiveState.isEnabled = enabled;
     INTERACTIVE_CONFIG.enabled = enabled;
+
+    if (!enabled) {
+        const boundContainer = activeInteractiveLifecycle?.boundContainer;
+        if (boundContainer) {
+            removeInteractiveEventListeners(boundContainer);
+        }
+    }
 
     logWithFallback('info', 'Interactive subtitles toggled', { enabled });
 }
@@ -157,6 +251,7 @@ function wrapWordsForInteraction(text, options = {}) {
         sourceLanguage = 'unknown',
         targetLanguage = 'unknown',
         subtitleType = 'original', // Phase 1: require/consume subtitleType
+        renderRevision = null,
     } = options;
 
     // Enhanced word pattern that works with multiple languages including Chinese, Japanese, Korean
@@ -204,6 +299,7 @@ function wrapWordsForInteraction(text, options = {}) {
             originalText: text,
             subtitleType,
             wordIndex,
+            renderRevision,
         });
         cursor = match.index + word.length;
     }
@@ -236,8 +332,14 @@ function createInteractiveWordSpan(word, metadata) {
     const encodedContext = encodeURIComponent(
         String(metadata.originalText).toWellFormed()
     );
+    const revisionAttribute =
+        type === 'original' &&
+        Number.isSafeInteger(metadata.renderRevision) &&
+        metadata.renderRevision > 0
+            ? ` data-render-revision="${metadata.renderRevision}"`
+            : '';
 
-    return `<span class="dualsub-interactive-word" id="${escapeHtml(spanId)}" data-word="${safeWord}" data-source-lang="${escapeHtml(metadata.sourceLanguage)}" data-target-lang="${escapeHtml(metadata.targetLanguage)}" data-context="${escapeHtml(encodedContext)}" data-subtitle-type="${escapeHtml(type)}" data-word-index="${index}" tabindex="0" role="button" aria-label="Click for context analysis of '${safeWord}'" title="Click for cultural, historical, or linguistic context">${safeWord}</span>`;
+    return `<span class="dualsub-interactive-word" id="${escapeHtml(spanId)}" data-word="${safeWord}" data-source-lang="${escapeHtml(metadata.sourceLanguage)}" data-target-lang="${escapeHtml(metadata.targetLanguage)}" data-context="${escapeHtml(encodedContext)}" data-subtitle-type="${escapeHtml(type)}" data-word-index="${index}"${revisionAttribute} tabindex="0" role="button" aria-label="Click for context analysis of '${safeWord}'" title="Click for cultural, historical, or linguistic context">${safeWord}</span>`;
 }
 
 function escapeHtml(value) {
@@ -261,12 +363,274 @@ export function getStableSpanId(subtitleType, wordIndex) {
     return `dualsub-word-${safeType}-${safeIndex}`;
 }
 
+function parseCanonicalSafeInteger(value, { positive = false } = {}) {
+    if (typeof value !== 'string') return null;
+    const pattern = positive ? /^[1-9]\d*$/ : /^(?:0|[1-9]\d*)$/;
+    if (!pattern.test(value)) return null;
+
+    const parsed = Number(value);
+    return Number.isSafeInteger(parsed) ? parsed : null;
+}
+
+function readOriginalWordMetadata(element) {
+    try {
+        if (
+            !element?.classList?.contains('dualsub-interactive-word') ||
+            element.getAttribute('data-subtitle-type') !== 'original'
+        ) {
+            return null;
+        }
+
+        const renderRevision = parseCanonicalSafeInteger(
+            element.getAttribute('data-render-revision'),
+            { positive: true }
+        );
+        const wordIndex = parseCanonicalSafeInteger(
+            element.getAttribute('data-word-index')
+        );
+        const word = element.getAttribute('data-word');
+        const sourceLanguage = element.getAttribute('data-source-lang');
+        const targetLanguage = element.getAttribute('data-target-lang');
+        if (
+            renderRevision === null ||
+            wordIndex === null ||
+            typeof word !== 'string' ||
+            word.length === 0 ||
+            word !== word.trim() ||
+            element.textContent !== word ||
+            typeof sourceLanguage !== 'string' ||
+            sourceLanguage.length === 0 ||
+            typeof targetLanguage !== 'string' ||
+            targetLanguage.length === 0
+        ) {
+            return null;
+        }
+
+        return Object.freeze({
+            renderRevision,
+            wordIndex,
+            word,
+            sourceLanguage,
+            targetLanguage,
+        });
+    } catch (_) {
+        return null;
+    }
+}
+
+function originalWordMetadataEquals(left, right) {
+    return Boolean(
+        left &&
+        right &&
+        left.renderRevision === right.renderRevision &&
+        left.wordIndex === right.wordIndex &&
+        left.word === right.word &&
+        left.sourceLanguage === right.sourceLanguage &&
+        left.targetLanguage === right.targetLanguage
+    );
+}
+
+function buildOriginalWordRegistry(lifecycle, container) {
+    try {
+        if (
+            !lifecycle ||
+            activeInteractiveLifecycle !== lifecycle ||
+            container !==
+                document.getElementById('dualsub-original-subtitle') ||
+            typeof lifecycle.resolveOriginalWordBindingSnapshot !== 'function'
+        ) {
+            return null;
+        }
+
+        const snapshot =
+            lifecycle.resolveOriginalWordBindingSnapshot(container);
+        const renderRevision = snapshot?.renderRevision;
+        const occurrences = snapshot?.occurrences;
+        if (
+            snapshot?.element !== container ||
+            !Number.isSafeInteger(renderRevision) ||
+            renderRevision <= 0 ||
+            container.getAttribute('data-render-revision') !==
+                String(renderRevision) ||
+            !Array.isArray(occurrences) ||
+            occurrences.length === 0
+        ) {
+            return null;
+        }
+
+        const liveOccurrences = Array.from(
+            container.querySelectorAll(
+                '.dualsub-interactive-word[data-subtitle-type="original"]'
+            )
+        );
+        if (liveOccurrences.length !== occurrences.length) return null;
+
+        const registry = new Map();
+        for (let index = 0; index < occurrences.length; index += 1) {
+            const metadata = occurrences[index];
+            const element = metadata?.element;
+            const liveMetadata = readOriginalWordMetadata(element);
+            if (
+                liveOccurrences[index] !== element ||
+                !liveMetadata ||
+                !originalWordMetadataEquals(liveMetadata, metadata) ||
+                element.parentElement !== container ||
+                metadata.renderRevision !== renderRevision ||
+                metadata.wordIndex !== index ||
+                registry.has(element)
+            ) {
+                return null;
+            }
+            registry.set(element, metadata);
+        }
+        return registry;
+    } catch (_) {
+        return null;
+    }
+}
+
+function isRegisteredOriginalWordCurrent(lifecycle, element, metadata) {
+    try {
+        const container = lifecycle?.boundContainer;
+        const liveOccurrences = container
+            ? container.querySelectorAll(
+                  '.dualsub-interactive-word[data-subtitle-type="original"]'
+              )
+            : [];
+        return Boolean(
+            lifecycle &&
+            interactiveState.isEnabled &&
+            activeInteractiveLifecycle === lifecycle &&
+            container ===
+                document.getElementById('dualsub-original-subtitle') &&
+            lifecycle.originalWordRegistry.get(element) === metadata &&
+            liveOccurrences.length === lifecycle.originalWordRegistry.size &&
+            liveOccurrences[metadata.wordIndex] === element &&
+            element.parentElement === container &&
+            container.getAttribute('data-render-revision') ===
+                String(metadata.renderRevision) &&
+            element.classList.contains('dualsub-interactive-word') &&
+            element.getAttribute('data-subtitle-type') === 'original' &&
+            element.getAttribute('data-render-revision') ===
+                String(metadata.renderRevision) &&
+            element.getAttribute('data-word-index') ===
+                String(metadata.wordIndex) &&
+            element.getAttribute('data-word') === metadata.word &&
+            element.textContent === metadata.word &&
+            element.getAttribute('data-source-lang') ===
+                metadata.sourceLanguage &&
+            element.getAttribute('data-target-lang') === metadata.targetLanguage
+        );
+    } catch (_) {
+        return false;
+    }
+}
+
+/**
+ * Project a trusted formatter-owned activation into inert intent data.
+ * Live DOM attributes are integrity checks only; authority comes from the
+ * lifecycle-private immutable registry.
+ * @param {Event | Object | null} event
+ * @returns {Object | null}
+ */
+export function projectInteractiveWordIntent(event) {
+    try {
+        const lifecycle = activeInteractiveLifecycle;
+        if (
+            !lifecycle ||
+            event?.isTrusted !== true ||
+            event.currentTarget !== lifecycle.boundContainer ||
+            (event.type !== 'click' &&
+                !(
+                    event.type === 'keydown' &&
+                    (event.key === 'Enter' || event.key === ' ')
+                ))
+        ) {
+            return null;
+        }
+
+        const metadata = lifecycle.originalWordRegistry.get(event.target);
+        if (
+            !metadata ||
+            !isRegisteredOriginalWordCurrent(lifecycle, event.target, metadata)
+        )
+            return null;
+
+        return Object.freeze({
+            action: 'toggle',
+            renderRevision: metadata.renderRevision,
+            wordIndex: metadata.wordIndex,
+            word: metadata.word,
+            sourceLanguage: metadata.sourceLanguage,
+            targetLanguage: metadata.targetLanguage,
+        });
+    } catch (_) {
+        return null;
+    }
+}
+
+/**
+ * Resolve an already-authorized selection/removal occurrence without querying
+ * mutable page DOM for authority.
+ * @param {Object | null} intent
+ * @returns {HTMLElement | null}
+ */
+export function resolveInteractiveOriginalWordOccurrence(intent) {
+    try {
+        const lifecycle = activeInteractiveLifecycle;
+        const renderRevisionDescriptor = Object.getOwnPropertyDescriptor(
+            intent || {},
+            'renderRevision'
+        );
+        const wordIndexDescriptor = Object.getOwnPropertyDescriptor(
+            intent || {},
+            'wordIndex'
+        );
+        const wordDescriptor = Object.getOwnPropertyDescriptor(
+            intent || {},
+            'word'
+        );
+        const renderRevision = renderRevisionDescriptor?.value;
+        const wordIndex = wordIndexDescriptor?.value;
+        const word = wordDescriptor?.value;
+        if (
+            !lifecycle ||
+            !intent ||
+            !Number.isSafeInteger(renderRevision) ||
+            renderRevision <= 0 ||
+            !Number.isSafeInteger(wordIndex) ||
+            wordIndex < 0 ||
+            typeof word !== 'string' ||
+            word.length === 0
+        ) {
+            return null;
+        }
+
+        let resolvedElement = null;
+        for (const [element, metadata] of lifecycle.originalWordRegistry) {
+            if (
+                metadata.renderRevision === renderRevision &&
+                metadata.wordIndex === wordIndex &&
+                metadata.word === word &&
+                isRegisteredOriginalWordCurrent(lifecycle, element, metadata)
+            ) {
+                if (resolvedElement !== null) return null;
+                resolvedElement = element;
+            }
+        }
+        return resolvedElement;
+    } catch (_) {
+        return null;
+    }
+}
+
 /**
  * Attach event listeners to interactive subtitle elements
  * @param {HTMLElement} subtitleElement - The subtitle container element
- * @param {Object} options - Event handling options
+ * @param {Object} options - Non-authoritative event handling options
  */
 export function attachInteractiveEventListeners(subtitleElement, options = {}) {
+    const lifecycle = activeInteractiveLifecycle;
     try {
         if (!subtitleElement || !interactiveState.isEnabled) {
             logWithFallback('debug', 'Skipping interactive event listeners', {
@@ -274,6 +638,20 @@ export function attachInteractiveEventListeners(subtitleElement, options = {}) {
                 isEnabled: interactiveState.isEnabled,
             });
             return;
+        }
+
+        const isCurrentOriginalContainer = Boolean(
+            subtitleElement ===
+            document.getElementById('dualsub-original-subtitle')
+        );
+        const candidateRegistry = isCurrentOriginalContainer
+            ? buildOriginalWordRegistry(lifecycle, subtitleElement)
+            : null;
+        if (isCurrentOriginalContainer && !candidateRegistry) {
+            if (activeInteractiveLifecycle === lifecycle) {
+                removeInteractiveEventListeners(subtitleElement);
+            }
+            return false;
         }
 
         // Validate that handler functions exist
@@ -345,6 +723,32 @@ export function attachInteractiveEventListeners(subtitleElement, options = {}) {
         // Mark as having interactive listeners
         subtitleElement.setAttribute('data-interactive-listeners', 'true');
 
+        if (isCurrentOriginalContainer) {
+            const previousContainer = lifecycle.boundContainer;
+            if (previousContainer && previousContainer !== subtitleElement) {
+                removeInteractiveEventListeners(previousContainer);
+            }
+            if (activeInteractiveLifecycle === lifecycle) {
+                lifecycle.boundContainer = subtitleElement;
+                lifecycle.originalWordRegistry = candidateRegistry;
+                if (
+                    !Array.from(candidateRegistry).every(
+                        ([element, metadata]) =>
+                            isRegisteredOriginalWordCurrent(
+                                lifecycle,
+                                element,
+                                metadata
+                            )
+                    )
+                ) {
+                    removeInteractiveEventListeners(subtitleElement);
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        }
+
         logWithFallback('debug', 'Interactive event listeners attached', {
             elementId: subtitleElement.id,
             hasHover: INTERACTIVE_CONFIG.highlightOnHover,
@@ -353,7 +757,11 @@ export function attachInteractiveEventListeners(subtitleElement, options = {}) {
                     ? Object.keys(options).length
                     : 0,
         });
+        return true;
     } catch (error) {
+        if (activeInteractiveLifecycle === lifecycle) {
+            removeInteractiveEventListeners(subtitleElement);
+        }
         logWithFallback('error', 'Error in attachInteractiveEventListeners', {
             errorType: error?.name || 'UnknownError',
             elementId: subtitleElement?.id,
@@ -370,6 +778,12 @@ export function attachInteractiveEventListeners(subtitleElement, options = {}) {
 export function removeInteractiveEventListeners(subtitleElement) {
     if (!subtitleElement) {
         return;
+    }
+
+    const lifecycle = activeInteractiveLifecycle;
+    if (lifecycle?.boundContainer === subtitleElement) {
+        lifecycle.boundContainer = null;
+        lifecycle.originalWordRegistry.clear();
     }
 
     subtitleElement.removeEventListener(
@@ -466,6 +880,40 @@ function getSubtitleTypeFromElement(element) {
  * @param {Event} event - Click event
  */
 function handleInteractiveWordClick(event) {
+    const lifecycle = activeInteractiveLifecycle;
+    if (!lifecycle) return;
+
+    if (lifecycle.publishWordIntent) {
+        const intent = projectInteractiveWordIntent(event);
+        if (!intent) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (isAnalyzingActive()) {
+            try {
+                event.target.classList.remove(
+                    'dualsub-interactive-word--hover'
+                );
+            } catch (_) {}
+            return;
+        }
+
+        const now = Date.now();
+        if (
+            now - interactiveState.lastClickTime <
+            INTERACTIVE_CONFIG.debounceDelay
+        ) {
+            return;
+        }
+        interactiveState.lastClickTime = now;
+
+        try {
+            lifecycle.publishWordIntent(intent);
+        } catch (_) {}
+        return;
+    }
+
     const target = event.target;
 
     if (!target.classList.contains('dualsub-interactive-word')) {
@@ -576,6 +1024,8 @@ function handleInteractiveWordLeave(event) {
  * @param {Event} event - Keydown event
  */
 function handleInteractiveWordKeydown(event) {
+    if (!activeInteractiveLifecycle) return;
+
     const target = event.target;
 
     if (!target.classList.contains('dualsub-interactive-word')) {
@@ -590,7 +1040,6 @@ function handleInteractiveWordKeydown(event) {
     }
     // Handle Enter and Space key presses
     if (event.key === 'Enter' || event.key === ' ') {
-        event.preventDefault();
         handleInteractiveWordClick(event);
     }
 }

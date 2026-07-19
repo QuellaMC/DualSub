@@ -15,13 +15,13 @@ The no-key Google/Microsoft integrations use undocumented consumer/internal endp
 ## Request Handling
 
 - Subtitle cues are translated individually by the content script.
-- The background protocol retains an explicit multi-text request for OpenAI-compatible and Vertex providers. Other providers process that protocol one text at a time.
+- The active background translation contract accepts one text per request for every provider.
 
-## Internal Rate Limits (subject to change)
+## Request Pacing and Worker-Local Guards (subject to change)
 
 - Google (free): bytes-per-window, with mandatory delays
-- Microsoft (free): sliding-window character quotas (per-minute and per-hour)
-- DeepL API: characters-per-month guard rails
-- OpenAI Compatible: requests-per-minute with a small mandatory delay; explicit multi-text requests supported
+- Microsoft (free): one-minute worker-local character guard with mandatory pacing; it is not a durable Microsoft account quota
+- DeepL API: local request pacing only; quota truth comes from DeepL provider responses
+- OpenAI Compatible: requests-per-minute with a small mandatory delay
 
-See `background/services/translationService.js` for the current provider limits and explicit multi-text request path.
+See `background/services/translationService.js` for the current provider limits and single-text request path.

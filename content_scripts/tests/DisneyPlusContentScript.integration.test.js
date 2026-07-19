@@ -1,8 +1,7 @@
 /**
  * DisneyPlusContentScript Integration Tests
  *
- * Integration tests to verify Disney+ specific message handling works correctly
- * with popup and options page integration, ensuring backward compatibility.
+ * Integration tests for Disney+ specific lifecycle and privacy behavior.
  *
  * @author DualSub Extension
  * @version 1.0.0
@@ -17,7 +16,69 @@ import {
     expect,
 } from '@jest/globals';
 import { DisneyPlusContentScript } from '../platforms/DisneyPlusContentScript.js';
+import { BaseContentScript } from '../core/BaseContentScript.js';
 import { ChromeApiMock } from '../../test-utils/chrome-api-mock.js';
+
+const LOG_SENTINEL = '__DISNEY_CONTENT_LOG_SECRET__';
+const SECRET_PROPERTY = '__disney_private_property__';
+
+function serializeLogCalls(logSpy) {
+    return JSON.stringify(logSpy.mock.calls, (_key, value) => {
+        if (value instanceof Error) {
+            return {
+                name: value.name,
+                message: value.message,
+                stack: value.stack,
+                cause: value.cause,
+            };
+        }
+        return value;
+    });
+}
+
+function containsReference(value, target, seen = new WeakSet()) {
+    if (value === target) {
+        return true;
+    }
+    if (
+        value === null ||
+        (typeof value !== 'object' && typeof value !== 'function') ||
+        seen.has(value)
+    ) {
+        return false;
+    }
+
+    seen.add(value);
+    return Reflect.ownKeys(value).some((key) => {
+        const descriptor = Object.getOwnPropertyDescriptor(value, key);
+        return (
+            descriptor &&
+            Object.hasOwn(descriptor, 'value') &&
+            containsReference(descriptor.value, target, seen)
+        );
+    });
+}
+
+function expectPrivateLogCalls(
+    logSpy,
+    { sentinels = [], rawValues = [] } = {}
+) {
+    const serialized = serializeLogCalls(logSpy);
+    sentinels.forEach((sentinel) => {
+        expect(serialized).not.toContain(sentinel);
+    });
+    rawValues.forEach((rawValue) => {
+        expect(containsReference(logSpy.mock.calls, rawValue)).toBe(false);
+    });
+}
+
+function createSensitiveError() {
+    const error = new Error(LOG_SENTINEL, {
+        cause: { token: `${LOG_SENTINEL}-cause` },
+    });
+    error.stack = `SensitiveStack: ${LOG_SENTINEL}`;
+    return error;
+}
 
 // Mock Chrome API
 const mockChrome = ChromeApiMock.create();
@@ -51,366 +112,122 @@ describe('DisneyPlusContentScript Integration Tests', () => {
     });
 
     describe('Integration with BaseContentScript message flow', () => {
-        test('should handle complete message flow from popup configChanged', () => {
-            // Mock the required modules for BaseContentScript
+        test('clears the queue and cleans the captured platform once on page leave', async () => {
+            const platform = { cleanup: jest.fn().mockResolvedValue() };
+            disneyPlusScript.activePlatform = platform;
+            disneyPlusScript.platformReady = true;
             disneyPlusScript.subtitleUtils = {
-                setSubtitlesActive: jest.fn(),
-                applySubtitleStyling: jest.fn(),
+                clearSubtitlesDisplayAndQueue: jest.fn(),
+                clearSubtitleDOM: jest.fn(),
             };
-            disneyPlusScript.configService = { getAll: jest.fn() };
-            disneyPlusScript.activePlatform = {
-                getVideoElement: jest.fn().mockReturnValue({ currentTime: 15 }),
-            };
-            disneyPlusScript.currentConfig = { subtitlesEnabled: true };
+            disneyPlusScript.eventBuffer = { clear: jest.fn() };
+            disneyPlusScript.stopVideoElementDetection = jest.fn();
 
-            // Simulate the exact message format sent by popup.js
-            const popupMessage = {
-                action: 'configChanged',
-                changes: {
-                    subtitlePosition: 'top',
-                    fontSize: '18px',
-                    backgroundColor: '#ffffff',
-                },
-            };
+            disneyPlusScript._cleanupOnPageLeave();
 
-            const mockSendResponse = jest.fn();
+            expect(
+                disneyPlusScript.subtitleUtils.clearSubtitlesDisplayAndQueue
+            ).toHaveBeenCalledWith(platform, true, disneyPlusScript.logPrefix);
+            expect(
+                disneyPlusScript.subtitleUtils.clearSubtitleDOM
+            ).toHaveBeenCalledTimes(1);
+            expect(disneyPlusScript.activePlatform).toBeNull();
+            expect(disneyPlusScript.platformReady).toBe(false);
+            expect(disneyPlusScript.eventBuffer.clear).toHaveBeenCalledTimes(1);
+            await Promise.resolve();
+            expect(platform.cleanup).toHaveBeenCalledTimes(1);
 
-            const result = disneyPlusScript.handlePlatformSpecificMessage(
-                popupMessage,
-                mockSendResponse
-            );
-
-            expect(result).toBe(false); // Synchronous handling
-            expect(mockSendResponse).toHaveBeenCalledWith({
-                success: true,
-                handled: false,
-                platform: 'disneyplus',
-                message: 'No platform-specific handling required.',
-            });
-        });
-
-        test('should handle complete message flow from background LOGGING_LEVEL_CHANGED', () => {
-            // Simulate the exact message format sent by background.js
-            const backgroundMessage = {
-                type: 'LOGGING_LEVEL_CHANGED',
-                level: 'INFO',
-            };
-
-            const mockSendResponse = jest.fn();
-
-            // This should also be handled by BaseContentScript's registered handler
-            // but we test the fallback behavior
-            const result = disneyPlusScript.handlePlatformSpecificMessage(
-                backgroundMessage,
-                mockSendResponse
-            );
-
-            expect(result).toBe(false); // Synchronous handling
-            expect(mockSendResponse).toHaveBeenCalledWith({
-                success: true,
-                handled: false,
-                platform: 'disneyplus',
-                message: 'No platform-specific handling required.',
-            });
-        });
-
-        test('should handle unknown messages that would reach platform-specific handler', () => {
-            // Mock the required modules
-            disneyPlusScript.subtitleUtils = { setSubtitlesActive: jest.fn() };
-            disneyPlusScript.configService = { getAll: jest.fn() };
-
-            // Simulate a message that doesn't have a registered handler
-            const unknownMessage = {
-                action: 'disneyplus-custom-action',
-                data: { customData: 'disney-test' },
-            };
-
-            const mockSendResponse = jest.fn();
-
-            // This would reach handlePlatformSpecificMessage via BaseContentScript delegation
-            const result = disneyPlusScript.handlePlatformSpecificMessage(
-                unknownMessage,
-                mockSendResponse
-            );
-
-            expect(result).toBe(false); // Synchronous handling
-            expect(mockSendResponse).toHaveBeenCalledWith({
-                success: true,
-                handled: false,
-                platform: 'disneyplus',
-                message: 'No platform-specific handling required.',
-            });
-
-            // Should log debug information
-            expect(consoleLogSpy).toHaveBeenCalledWith(
-                expect.stringContaining('Processing Disney+ specific message'),
-                expect.objectContaining({
-                    action: 'disneyplus-custom-action',
-                })
-            );
+            disneyPlusScript._cleanupOnPageLeave();
+            await Promise.resolve();
+            expect(platform.cleanup).toHaveBeenCalledTimes(1);
         });
     });
 
-    describe('Backward compatibility verification', () => {
-        test('should maintain exact response format expected by popup', () => {
-            const testMessages = [
-                { action: 'toggleSubtitles', enabled: true },
-                { action: 'configChanged', changes: { theme: 'light' } },
-                { type: 'LOGGING_LEVEL_CHANGED', level: 'DEBUG' },
-                { action: 'unknown-action', data: 'disney-test' },
-            ];
-
-            testMessages.forEach((message) => {
-                const mockSendResponse = jest.fn();
-
-                const result = disneyPlusScript.handlePlatformSpecificMessage(
-                    message,
-                    mockSendResponse
+    describe('Capitalized content-subclass log privacy', () => {
+        test('does not log script error events', () => {
+            const logSpy = jest
+                .spyOn(disneyPlusScript, 'logWithFallback')
+                .mockImplementation(() => {});
+            const scriptErrorEvent = {
+                type: 'error',
+                [SECRET_PROPERTY]: LOG_SENTINEL,
+            };
+            const injectedScript = {
+                id: '',
+                src: '',
+                onload: null,
+                onerror: null,
+            };
+            const createElementSpy = jest
+                .spyOn(document, 'createElement')
+                .mockReturnValueOnce(injectedScript);
+            const appendChildSpy = jest
+                .spyOn(document.head, 'appendChild')
+                .mockImplementationOnce((node) => node);
+            const getURLSpy = jest
+                .spyOn(chrome.runtime, 'getURL')
+                .mockReturnValueOnce(
+                    'chrome-extension://test-extension/injected_scripts/disneyPlusInject.js'
                 );
 
-                // All should be handled synchronously
-                expect(result).toBe(false);
+            try {
+                disneyPlusScript._reinjectScript();
+                expect(typeof injectedScript.onerror).toBe('function');
+                injectedScript.onerror(scriptErrorEvent);
 
-                // All should return consistent format
-                expect(mockSendResponse).toHaveBeenCalledWith(
-                    expect.objectContaining({
-                        success: true,
-                        platform: 'disneyplus',
-                    })
-                );
-            });
-        });
-
-        test('should handle edge cases that popup might send', () => {
-            const edgeCases = [
-                { action: '', data: 'empty action' },
-                { type: '', level: 'empty type' },
-                { action: null, data: 'null action' },
-                { randomField: 'no action or type' },
-            ];
-
-            edgeCases.forEach((message) => {
-                const mockSendResponse = jest.fn();
-
-                const result = disneyPlusScript.handlePlatformSpecificMessage(
-                    message,
-                    mockSendResponse
-                );
-
-                expect(result).toBe(false);
-                expect(mockSendResponse).toHaveBeenCalledWith(
-                    expect.objectContaining({
-                        success: true,
-                        platform: 'disneyplus',
-                    })
-                );
-            });
-        });
-    });
-
-    describe('Error handling in integration scenarios', () => {
-        test('should handle popup sending malformed messages', () => {
-            const malformedMessages = [
-                null,
-                undefined,
-                'string instead of object',
-                456,
-                [],
-            ];
-
-            malformedMessages.forEach((message) => {
-                const mockSendResponse = jest.fn();
-
-                const result = disneyPlusScript.handlePlatformSpecificMessage(
-                    message,
-                    mockSendResponse
-                );
-
-                expect(result).toBe(false);
-                // Should handle gracefully and log error
-                expect(consoleLogSpy).toHaveBeenCalledWith(
-                    expect.stringContaining(
-                        'Error in Disney+ specific message handling'
-                    ),
-                    expect.any(Object)
-                );
-            });
-        });
-
-        test('should handle popup callback errors gracefully', () => {
-            const errorCallback = jest.fn(() => {
-                throw new Error('Popup callback error');
-            });
-
-            const message = { action: 'test-action' };
-
-            const result = disneyPlusScript.handlePlatformSpecificMessage(
-                message,
-                errorCallback
-            );
-
-            expect(result).toBe(false);
-
-            // Should log both original processing and callback error
-            expect(consoleLogSpy).toHaveBeenCalledWith(
-                expect.stringContaining('Error sending error response'),
-                expect.objectContaining({
-                    responseError: 'Popup callback error',
-                })
-            );
-        });
-    });
-
-    describe('Performance and memory considerations', () => {
-        test('should handle rapid message sequences without memory leaks', () => {
-            const messages = Array.from({ length: 100 }, (_, i) => ({
-                action: `test-action-${i}`,
-                data: `test-data-${i}`,
-            }));
-
-            messages.forEach((message) => {
-                const mockSendResponse = jest.fn();
-                const result = disneyPlusScript.handlePlatformSpecificMessage(
-                    message,
-                    mockSendResponse
-                );
-
-                expect(result).toBe(false);
-                expect(mockSendResponse).toHaveBeenCalledWith(
-                    expect.objectContaining({
-                        success: true,
-                        platform: 'disneyplus',
-                    })
-                );
-            });
-
-            // Should not accumulate state or memory
-            expect(disneyPlusScript.messageHandlers.size).toBeGreaterThan(0); // Has registered handlers
-        });
-
-        test('should handle concurrent message processing', async () => {
-            const concurrentMessages = Array.from({ length: 10 }, (_, i) => ({
-                action: `concurrent-action-${i}`,
-                data: `concurrent-data-${i}`,
-            }));
-
-            const promises = concurrentMessages.map((message) => {
-                return new Promise((resolve) => {
-                    const mockSendResponse = jest.fn((response) => {
-                        resolve({ message, response });
-                    });
-
-                    const result =
-                        disneyPlusScript.handlePlatformSpecificMessage(
-                            message,
-                            mockSendResponse
-                        );
-                    expect(result).toBe(false); // Should be synchronous
+                expectPrivateLogCalls(logSpy, {
+                    sentinels: [LOG_SENTINEL, SECRET_PROPERTY],
+                    rawValues: [scriptErrorEvent],
                 });
-            });
+            } finally {
+                getURLSpy.mockRestore();
+                createElementSpy.mockRestore();
+                appendChildSpy.mockRestore();
+            }
+        });
 
-            const results = await Promise.all(promises);
-
-            // All should complete successfully
-            expect(results).toHaveLength(10);
-            results.forEach(({ response }) => {
-                expect(response).toMatchObject({
-                    success: true,
-                    platform: 'disneyplus',
+        test('does not log synchronous reinjection errors', () => {
+            const logSpy = jest
+                .spyOn(disneyPlusScript, 'logWithFallback')
+                .mockImplementation(() => {});
+            const reinjectionError = createSensitiveError();
+            const getURLSpy = jest
+                .spyOn(chrome.runtime, 'getURL')
+                .mockImplementationOnce(() => {
+                    throw reinjectionError;
                 });
-            });
-        });
-    });
 
-    describe('Disney+ specific integration scenarios', () => {
-        test('should handle Disney+ video player state changes', () => {
-            // Mock Disney+ specific video state
-            disneyPlusScript.activePlatform = {
-                getVideoElement: jest.fn().mockReturnValue({
-                    currentTime: 120,
-                    duration: 3600,
-                    paused: false,
-                }),
-            };
-
-            const videoStateMessage = {
-                action: 'getVideoState',
-                requestId: 'disney-video-state-123',
-            };
-
-            const mockSendResponse = jest.fn();
-            const result = disneyPlusScript.handlePlatformSpecificMessage(
-                videoStateMessage,
-                mockSendResponse
-            );
-
-            expect(result).toBe(false);
-            expect(mockSendResponse).toHaveBeenCalledWith({
-                success: true,
-                handled: false,
-                platform: 'disneyplus',
-                message: 'No platform-specific handling required.',
-            });
+            try {
+                expect(() => disneyPlusScript._reinjectScript()).not.toThrow();
+                expectPrivateLogCalls(logSpy, {
+                    sentinels: [LOG_SENTINEL],
+                    rawValues: [reinjectionError, reinjectionError.cause],
+                });
+            } finally {
+                getURLSpy.mockRestore();
+            }
         });
 
-        test('should handle Disney+ navigation events', () => {
-            // Mock Disney+ navigation scenario
-            const navigationMessage = {
-                action: 'navigationDetected',
-                from: '/browse',
-                to: '/video/test-movie',
-                timestamp: Date.now(),
-            };
+        test('rethrows cleanup failures without logging the failure object', async () => {
+            const cleanupError = createSensitiveError();
+            const logSpy = jest
+                .spyOn(disneyPlusScript, 'logWithFallback')
+                .mockImplementation(() => {});
+            const baseCleanupSpy = jest
+                .spyOn(BaseContentScript.prototype, 'cleanup')
+                .mockRejectedValueOnce(cleanupError);
 
-            const mockSendResponse = jest.fn();
-            const result = disneyPlusScript.handlePlatformSpecificMessage(
-                navigationMessage,
-                mockSendResponse
-            );
-
-            expect(result).toBe(false);
-            expect(mockSendResponse).toHaveBeenCalledWith({
-                success: true,
-                handled: false,
-                platform: 'disneyplus',
-                message: 'No platform-specific handling required.',
-            });
-
-            // Should log Disney+ specific navigation
-            expect(consoleLogSpy).toHaveBeenCalledWith(
-                expect.stringContaining('Processing Disney+ specific message'),
-                expect.objectContaining({
-                    action: 'navigationDetected',
-                })
-            );
-        });
-
-        test('should handle Disney+ subtitle configuration updates', () => {
-            // Mock Disney+ subtitle configuration
-            const subtitleConfigMessage = {
-                action: 'updateSubtitleConfig',
-                config: {
-                    position: 'bottom',
-                    fontSize: '16px',
-                    fontFamily: 'Arial',
-                    backgroundColor: 'rgba(0,0,0,0.8)',
-                    textColor: '#ffffff',
-                },
-            };
-
-            const mockSendResponse = jest.fn();
-            const result = disneyPlusScript.handlePlatformSpecificMessage(
-                subtitleConfigMessage,
-                mockSendResponse
-            );
-
-            expect(result).toBe(false);
-            expect(mockSendResponse).toHaveBeenCalledWith({
-                success: true,
-                handled: false,
-                platform: 'disneyplus',
-                message: 'No platform-specific handling required.',
-            });
+            try {
+                await expect(disneyPlusScript.cleanup()).rejects.toBe(
+                    cleanupError
+                );
+                expectPrivateLogCalls(logSpy, {
+                    sentinels: [LOG_SENTINEL],
+                    rawValues: [cleanupError, cleanupError.cause],
+                });
+            } finally {
+                baseCleanupSpy.mockRestore();
+            }
         });
     });
 

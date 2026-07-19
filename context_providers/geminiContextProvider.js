@@ -9,12 +9,20 @@
  */
 
 import Logger from '../utils/logger.js';
-import { configService } from '../services/configService.js';
+import { validateSetting } from '../config/configSchema.js';
 import { getContextSchema, validateAgainstSchema } from './contextSchemas.js';
 import { isRetryableContextError } from './retryPolicy.js';
 import { fetchWithTimeout } from '../utils/fetchWithTimeout.js';
+import { readRequiredProviderConfig } from './providerConfig.js';
 
 const logger = Logger.create('GeminiContextProvider');
+const GEMINI_CONFIGURATION_ERROR_MESSAGE =
+    'Gemini provider configuration is invalid';
+const GEMINI_REQUIRED_CONFIG_KEYS = Object.freeze([
+    'geminiApiKey',
+    'geminiModel',
+    'aiContextTimeout',
+]);
 
 /**
  * Available Gemini models for context analysis
@@ -275,15 +283,22 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
     }
 
     try {
-        const config = await configService.getAll();
-        const {
-            geminiApiKey,
-            geminiModel = 'gemini-3.5-flash',
-            aiContextTimeout = 30000,
-        } = config;
+        const config = await readRequiredProviderConfig(
+            GEMINI_REQUIRED_CONFIG_KEYS
+        );
+        const { geminiApiKey, geminiModel, aiContextTimeout } = config;
 
-        if (!geminiApiKey) {
+        if (
+            !validateSetting('geminiApiKey', geminiApiKey) ||
+            geminiApiKey.trim() === ''
+        ) {
             throw new Error('Gemini API key not configured');
+        }
+        if (
+            !validateSetting('geminiModel', geminiModel) ||
+            !validateSetting('aiContextTimeout', aiContextTimeout)
+        ) {
+            throw new Error(GEMINI_CONFIGURATION_ERROR_MESSAGE);
         }
 
         // Create context-specific prompt

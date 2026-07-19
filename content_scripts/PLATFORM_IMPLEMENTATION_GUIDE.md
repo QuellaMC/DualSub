@@ -29,9 +29,8 @@ Create a new file: `content_scripts/platforms/{PlatformName}ContentScript.js`
 /**
  * {PlatformName}ContentScript - {Platform} specific content script extending BaseContentScript
  *
- * This class implements {Platform} specific functionality including navigation detection,
- * injection configuration, and platform-specific message handling while leveraging
- * the common functionality provided by BaseContentScript.
+ * This class implements {Platform} specific navigation detection and injection
+ * configuration while leveraging the common functionality provided by BaseContentScript.
  *
  * @extends BaseContentScript
  * @author DualSub Extension
@@ -98,118 +97,10 @@ export class {PlatformName}ContentScript extends BaseContentScript {
     }
 
     /**
-     * Setup {Platform} specific navigation detection
+     * Configure the Base-owned navigation manager
      */
     setupNavigationDetection() {
-        this.logWithFallback('info', 'Setting up {Platform} navigation detection');
-
-        // Method 1: Interval-based URL checking (always include as fallback)
-        this._setupIntervalBasedDetection();
-
-        // Method 2: History API interception (for SPA navigation)
-        this._setupHistoryAPIInterception();
-
-        // Method 3: Browser navigation events
-        this._setupBrowserNavigationEvents();
-
-        // Method 4: Focus and visibility events (optional)
-        this._setupFocusAndVisibilityEvents();
-
-        this.logWithFallback('info', '{Platform} navigation detection set up');
-    }
-
-    /**
-     * Check for URL changes with {Platform} specific logic
-     */
-    checkForUrlChange() {
-        try {
-            const newUrl = window.location.href;
-            const newPathname = window.location.pathname;
-
-            if (newUrl !== this.currentUrl || newPathname !== this.lastKnownPathname) {
-                this.logWithFallback('info', 'URL change detected', {
-                    from: this.currentUrl,
-                    to: newUrl,
-                });
-
-                const wasOnPlayerPage = this._isPlayerPath(this.lastKnownPathname);
-                const isOnPlayerPage = this._isPlayerPath(newPathname);
-
-                this.currentUrl = newUrl;
-                this.lastKnownPathname = newPathname;
-
-                this._handlePageTransition(wasOnPlayerPage, isOnPlayerPage);
-            }
-        } catch (error) {
-            this.logWithFallback('error', 'Error in URL change detection', { error });
-            this._handleExtensionContextError(error);
-        }
-    }
-
-    /**
-     * Handle platform-specific Chrome messages
-     * @param {Object} request - Chrome message request
-     * @param {Function} sendResponse - Response callback
-     * @returns {boolean} Whether response is handled asynchronously
-     */
-    handlePlatformSpecificMessage(request, sendResponse) {
-        try {
-            const action = request.action || request.type;
-
-            this.logWithFallback('debug', 'Processing {Platform} specific message', {
-                action,
-                hasRequest: !!request,
-                requestKeys: Object.keys(request || {})
-            });
-
-            // Handle platform-specific message types here
-            switch (action) {
-                // Example platform-specific message:
-                // case '{platformName}-specific-action':
-                //     return this._handle{PlatformName}SpecificAction(request, sendResponse);
-
-                default:
-                    // No platform-specific handling needed for this message
-                    this.logWithFallback('debug', 'No {Platform} specific handling required', {
-                        action,
-                        message: 'Delegating to default handling or returning success'
-                    });
-
-                    // Ensure backward compatibility
-                    sendResponse({
-                        success: true,
-                        handled: false,
-                        platform: '{platformName}',
-                        message: 'No platform-specific handling required'
-                    });
-                    return false; // Synchronous handling
-            }
-        } catch (error) {
-            const action = request ? (request.action || request.type) : 'unknown';
-
-            this.logWithFallback('error', 'Error in {Platform} specific message handling', {
-                error: error.message,
-                stack: error.stack,
-                action
-            });
-
-            // Ensure backward compatibility even on error
-            try {
-                if (typeof sendResponse === 'function') {
-                    sendResponse({
-                        success: false,
-                        error: error.message,
-                        platform: '{platformName}'
-                    });
-                }
-            } catch (responseError) {
-                this.logWithFallback('error', 'Error sending error response', {
-                    originalError: error.message,
-                    responseError: responseError.message
-                });
-            }
-            return false; // Synchronous error handling
-        }
+        this._setupNavigationManager();
     }
 
     // ========================================
@@ -231,6 +122,18 @@ export class {PlatformName}ContentScript extends BaseContentScript {
         // Amazon Prime: pathname.includes('/detail/') && pathname.includes('/play')
 
         return pathname.includes('/watch/'); // Customize for your platform
+    }
+
+    /**
+     * Handle player-page transitions reported by the Base-owned manager
+     * @private
+     */
+    _handlePageTransition(wasOnPlayerPage, isOnPlayerPage) {
+        if (wasOnPlayerPage && !isOnPlayerPage) {
+            this._cleanupOnPageLeave();
+        } else if (!wasOnPlayerPage && isOnPlayerPage) {
+            this._initializeOnPageEnter();
+        }
     }
 
     // ... (implement other helper methods as needed)
@@ -275,213 +178,62 @@ getInjectScriptConfig() {
 
 ### setupNavigationDetection()
 
-Implement navigation detection appropriate for your platform:
+Delegate navigation ownership to Base. Pass only documented
+`NavigationDetectionManager` options when a platform needs an override:
 
 ```javascript
 setupNavigationDetection() {
-    this.logWithFallback('info', 'Setting up Hulu navigation detection');
-
-    // Always include interval-based detection as fallback
-    this._setupIntervalBasedDetection();
-
-    // Add other detection methods based on platform needs:
-
-    // For SPA platforms (most modern streaming sites):
-    this._setupHistoryAPIInterception();
-    this._setupBrowserNavigationEvents();
-
-    // Optional for enhanced detection:
-    this._setupFocusAndVisibilityEvents();
-
-    this.logWithFallback('info', 'Hulu navigation detection set up');
+    this._setupNavigationManager({ intervalMs: 1500 });
 }
 ```
 
-### checkForUrlChange()
+Base replaces and cleans the prior manager, owns all detection signals, forwards URL
+changes to the active platform, and invokes the subclass transition handler. The
+subclass supplies route classification through `_isPlayerPath()`; it does not create a
+parallel URL watcher.
 
-Implement URL change detection with platform-specific logic:
+### Runtime Message Boundary
 
-```javascript
-checkForUrlChange() {
-    try {
-        const newUrl = window.location.href;
-        const newPathname = window.location.pathname;
+Runtime actions are not a platform extension point. Do not implement a platform message
+hook or register an ad hoc action. Any new active action must be added to the shared
+message catalog and exact protocol builders/parsers, then routed centrally with an
+explicit sender role and contract tests.
 
-        if (newUrl !== this.currentUrl || newPathname !== this.lastKnownPathname) {
-            this.logWithFallback('info', 'URL change detected', {
-                from: this.currentUrl,
-                to: newUrl,
-            });
+## Step 3: Implement Route Classification and Transitions
 
-            // Determine if we're transitioning between player and non-player pages
-            const wasOnPlayerPage = this._isPlayerPath(this.lastKnownPathname);
-            const isOnPlayerPage = this._isPlayerPath(newPathname);
+### Classify Player Routes
 
-            // Update current state
-            this.currentUrl = newUrl;
-            this.lastKnownPathname = newPathname;
-
-            // Handle page transitions
-            this._handlePageTransition(wasOnPlayerPage, isOnPlayerPage);
-        }
-    } catch (error) {
-        this.logWithFallback('error', 'Error in URL change detection', { error });
-        this._handleExtensionContextError(error);
-    }
-}
-```
-
-### handlePlatformSpecificMessage()
-
-Handle platform-specific Chrome messages:
+The Base-owned manager calls `_isPlayerPath()` with old and new pathnames:
 
 ```javascript
-handlePlatformSpecificMessage(request, sendResponse) {
-    try {
-        const action = request.action || request.type;
-
-        switch (action) {
-            case 'hulu-specific-action':
-                return this._handleHuluSpecificAction(request, sendResponse);
-
-            default:
-                // No platform-specific handling needed
-                sendResponse({
-                    success: true,
-                    handled: false,
-                    platform: 'hulu',
-                    message: 'No platform-specific handling required'
-                });
-                return false; // Synchronous handling
-        }
-    } catch (error) {
-        this.logWithFallback('error', 'Error in Hulu specific message handling', {
-            error: error.message,
-            action: request ? (request.action || request.type) : 'unknown'
-        });
-
-        sendResponse({
-            success: false,
-            error: error.message,
-            platform: 'hulu'
-        });
-        return false;
-    }
-}
-```
-
-## Step 3: Implement Navigation Detection Helpers
-
-### Standard Helper Methods
-
-```javascript
-/**
- * Setup interval-based URL change detection (always include)
- * @private
- */
-_setupIntervalBasedDetection() {
-    this.intervalManager.set(
-        'urlChangeCheck',
-        () => this.checkForUrlChange(),
-        1000 // Check every second
+_isPlayerPath(pathname) {
+    return (
+        pathname.includes('/watch/') ||
+        pathname.includes('/play/')
     );
 }
+```
 
-/**
- * Setup History API interception for SPA navigation
- * @private
- */
-_setupHistoryAPIInterception() {
-    const originalPushState = history.pushState;
-    const originalReplaceState = history.replaceState;
+Keep this classifier side-effect free. It determines when Base invalidates prior player
+identity and when a player/non-player transition is reported.
 
-    // Intercept pushState
-    history.pushState = (...args) => {
-        originalPushState.apply(history, args);
-        setTimeout(() => this.checkForUrlChange(), 100);
-    };
+### Handle Managed Transitions
 
-    // Intercept replaceState
-    history.replaceState = (...args) => {
-        originalReplaceState.apply(history, args);
-        setTimeout(() => this.checkForUrlChange(), 100);
-    };
+React only to transitions delivered by Base:
 
-    // Store original functions for cleanup
-    this._originalHistoryMethods = {
-        pushState: originalPushState,
-        replaceState: originalReplaceState
-    };
-}
-
-/**
- * Setup browser navigation event listeners
- * @private
- */
-_setupBrowserNavigationEvents() {
-    const events = [
-        { name: 'popstate', delay: 100 },
-        { name: 'hashchange', delay: 100 }
-    ];
-
-    events.forEach(({ name, delay }) => {
-        const handler = () => setTimeout(() => this.checkForUrlChange(), delay);
-
-        const options = this.abortController ? { signal: this.abortController.signal } : {};
-        window.addEventListener(name, handler, options);
-    });
-}
-
-/**
- * Handle page transitions between player and non-player pages
- * @private
- */
+```javascript
 _handlePageTransition(wasOnPlayerPage, isOnPlayerPage) {
     if (wasOnPlayerPage && !isOnPlayerPage) {
-        this.logWithFallback('info', 'Leaving player page, cleaning up platform');
         this._cleanupOnPageLeave();
     } else if (!wasOnPlayerPage && isOnPlayerPage) {
-        this.logWithFallback('info', 'Entering player page, preparing for initialization');
         this._initializeOnPageEnter();
     }
 }
-
-/**
- * Cleanup when leaving a player page
- * @private
- */
-_cleanupOnPageLeave() {
-    this.stopVideoElementDetection();
-
-    if (this.activePlatform && typeof this.activePlatform.cleanup === 'function') {
-        this.activePlatform.cleanup();
-    }
-
-    this.activePlatform = null;
-    this.platformReady = false;
-    this.eventBuffer.clear();
-}
-
-/**
- * Initialize when entering a player page
- * @private
- */
-_initializeOnPageEnter() {
-    this._reinjectScript();
-
-    setTimeout(async () => {
-        try {
-            const config = await this.configService.getAll();
-            if (config && config.subtitlesEnabled) {
-                this.logWithFallback('info', 'Subtitles enabled, initializing platform');
-                await this.initializePlatform();
-            }
-        } catch (error) {
-            this.logWithFallback('error', 'Error during URL change initialization', { error });
-        }
-    }, 1500); // Adjust delay based on platform needs
-}
 ```
+
+Do not install a second interval, History API wrapper, browser listener, or navigation
+observer. The shared manager owns those resources and Base cleans them during
+replacement and content-script cleanup.
 
 ## Step 4: Create Entry Point File
 
@@ -627,44 +379,19 @@ describe('{PlatformName}ContentScript', () => {
     });
 
     describe('Navigation Detection', () => {
-        test('setupNavigationDetection sets up detection methods', () => {
-            const spy = jest.spyOn(contentScript, 'logWithFallback');
+        test('delegates setup to the Base-owned manager', () => {
+            const setupManager = jest
+                .spyOn(contentScript, '_setupNavigationManager')
+                .mockReturnValue(true);
+
             contentScript.setupNavigationDetection();
 
-            expect(spy).toHaveBeenCalledWith('info', 'Setting up {Platform} navigation detection');
-            expect(spy).toHaveBeenCalledWith('info', '{Platform} navigation detection set up');
+            expect(setupManager).toHaveBeenCalledTimes(1);
         });
 
-        test('checkForUrlChange handles URL changes', () => {
-            const originalUrl = window.location.href;
-            const spy = jest.spyOn(contentScript, '_handlePageTransition');
-
-            // Mock URL change
-            Object.defineProperty(window, 'location', {
-                value: { href: 'https://{platform}.com/new-page', pathname: '/new-page' },
-                writable: true
-            });
-
-            contentScript.checkForUrlChange();
-
-            expect(spy).toHaveBeenCalled();
-        });
-    });
-
-    describe('Message Handling', () => {
-        test('handlePlatformSpecificMessage handles unknown messages gracefully', () => {
-            const request = { action: 'unknown-action' };
-            const sendResponse = jest.fn();
-
-            const result = contentScript.handlePlatformSpecificMessage(request, sendResponse);
-
-            expect(result).toBe(false); // Synchronous handling
-            expect(sendResponse).toHaveBeenCalledWith({
-                success: true,
-                handled: false,
-                platform: '{platformName}',
-                message: 'No platform-specific handling required'
-            });
+        test('classifies only platform player routes', () => {
+            expect(contentScript._isPlayerPath('/watch/123')).toBe(true);
+            expect(contentScript._isPlayerPath('/browse')).toBe(false);
         });
     });
 });
@@ -785,62 +512,35 @@ _isPlayerPath(pathname) {
 }
 ```
 
-### 2. Missing Error Handling
+### 2. Reimplementing Navigation Detection
+
+Do not add platform-owned intervals, History API wrappers, browser listeners, or DOM
+observers for navigation. Delegate once through the Base seam:
 
 ```javascript
-// Wrong - no error handling
-checkForUrlChange() {
-    const newUrl = window.location.href;
-    // ... rest of method
-}
-
-// Right - comprehensive error handling
-checkForUrlChange() {
-    try {
-        const newUrl = window.location.href;
-        // ... rest of method
-    } catch (error) {
-        this.logWithFallback('error', 'Error in URL change detection', { error });
-        this._handleExtensionContextError(error);
-    }
+setupNavigationDetection() {
+    this._setupNavigationManager();
 }
 ```
 
-### 3. Forgetting Cleanup
+### 3. Bypassing Base Cleanup
 
-```javascript
-// Wrong - no cleanup
-setupNavigationDetection() {
-    history.pushState = (...args) => {
-        originalPushState.apply(history, args);
-        setTimeout(() => this.checkForUrlChange(), 100);
-    };
-}
-
-// Right - store original for cleanup
-setupNavigationDetection() {
-    const originalPushState = history.pushState;
-    history.pushState = (...args) => {
-        originalPushState.apply(history, args);
-        setTimeout(() => this.checkForUrlChange(), 100);
-    };
-
-    this._originalHistoryMethods = { pushState: originalPushState };
-}
-```
+Do not retain or replace a navigation manager directly. `_setupNavigationManager()`
+cleans the previous owner before installing its successor, and Base cleanup tears down
+the current manager.
 
 ## Best Practices
 
-1. **Always include interval-based detection as fallback**
+1. **Delegate navigation ownership to the Base manager**
 2. **Handle extension context invalidation gracefully**
-3. **Use appropriate timing delays for your platform**
+3. **Use only documented navigation-manager options**
 4. **Implement comprehensive error handling**
 5. **Add thorough logging for debugging**
 6. **Test on actual platform extensively**
 7. **Follow existing naming conventions**
 8. **Document platform-specific behavior**
 9. **Include comprehensive unit tests**
-10. **Maintain backward compatibility**
+10. **Keep runtime actions in the shared exact protocol**
 
 ## Getting Help
 

@@ -11,6 +11,7 @@ describe('Background critical fixes (smoke)', () => {
         expect(
             Object.keys(translationProviders.getAvailableProviders())
         ).toEqual(Object.values(Providers));
-        expect(typeof translationProviders.translateBatch).toBe('function');
+        expect(typeof translationProviders.translate).toBe('function');
+        expect(translationProviders.translateBatch).toBeUndefined();
     });
 });

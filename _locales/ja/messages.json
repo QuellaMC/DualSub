@@ -779,6 +779,9 @@
     "openaiHostPermissionGranted": {
         "message": "API host access granted."
     },
+    "openaiHostPermissionScope": {
+        "message": "設定済みエンドポイント: %s。Chrome の権限範囲: %s（このホスト上のすべてのパスとポート）。"
+    },
     "sidePanelBehaviorDescription": {
         "message": "Configure how the AI analysis side panel opens and looks."
     },
@@ -823,6 +826,12 @@
     },
     "videoControlDescription": {
         "message": "Control how the video player behaves when the side panel opens."
+    },
+    "invalidSettingValue": {
+        "message": "有効な値を入力してください。"
+    },
+    "settingsLoadFailed": {
+        "message": "設定を読み込めませんでした。ポップアップを更新してください。"
     },
     "videoControlTitle": {
         "message": "Video Control"

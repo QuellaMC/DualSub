@@ -66,36 +66,11 @@ getInjectScriptConfig();
 
 ```javascript
 /**
- * Sets up platform-specific navigation detection.
+ * Configures the Base-owned navigation manager for this platform.
  * @abstract
  * @throws {Error} If not implemented by the subclass.
  */
 setupNavigationDetection();
-```
-
-#### checkForUrlChange()
-
-```javascript
-/**
- * Checks for URL changes with platform-specific logic.
- * @abstract
- * @throws {Error} If not implemented by the subclass.
- */
-checkForUrlChange();
-```
-
-#### handlePlatformSpecificMessage()
-
-```javascript
-/**
- * Handles platform-specific Chrome messages.
- * @abstract
- * @param {Object} request - The Chrome message request.
- * @param {Function} sendResponse - The callback to send a response.
- * @returns {boolean} `true` if the response is sent asynchronously.
- * @throws {Error} If not implemented by the subclass.
- */
-handlePlatformSpecificMessage(request, sendResponse);
 ```
 
 ### Template Methods
@@ -178,60 +153,39 @@ async loadModules()
 async initializePlatform(retryCount = 0)
 ```
 
+#### _setupNavigationManager()
+
+```javascript
+/**
+ * Replaces the previous Base-owned navigation manager, wires platform route
+ * classification and transition callbacks, and starts managed detection.
+ * @protected
+ * @param {Object} [options] - Optional NavigationDetectionManager overrides.
+ * @returns {boolean} `true` after the manager is installed.
+ */
+this._setupNavigationManager(options);
+```
+
+Platform subclasses call this protected seam from `setupNavigationDetection()`. Base
+owns URL-change dispatch, player-identity invalidation, transition callbacks, manager
+replacement, and cleanup.
+
 ### Message Handling Methods
 
-#### registerMessageHandler()
+`BaseContentScript` owns a closed route table for the active extension actions. Platform
+subclasses do not register ad hoc runtime actions. Each route declares its allowed sender
+role and uses its exact builder/parser contract from
+`content_scripts/shared/protocol/messageProtocol.js`. Unknown, malformed, or
+unauthorized messages are rejected.
 
-```javascript
-/**
- * Registers a message handler for a specific action.
- * @param {string} action - The action or type to handle.
- * @param {Function} handler - The handler function: `(request, sendResponse) => boolean`.
- * @param {Object} [options] - Optional configuration.
- * @param {boolean} [options.requiresUtilities=true] - `true` if the handler requires utilities to be loaded.
- * @param {string} [options.description] - A description of the handler.
- * @throws {Error} If the action is not a string or the handler is not a function.
- */
-registerMessageHandler(action, handler, (options = {}));
-```
-
-#### unregisterMessageHandler()
-
-```javascript
-/**
- * Unregisters a message handler.
- * @param {string} action - The action or type to unregister.
- * @returns {boolean} `true` if a handler was removed.
- */
-unregisterMessageHandler(action);
-```
-
-#### hasMessageHandler()
-
-```javascript
-/**
- * Checks if a message handler is registered for a specific action.
- * @param {string} action - The action to check.
- * @returns {boolean} `true` if a handler is registered.
- */
-hasMessageHandler(action);
-```
-
-#### getRegisteredHandlers()
-
-```javascript
-/**
- * Gets information about all registered message handlers.
- * @returns {Array<Object>} An array of handler information objects.
- */
-getRegisteredHandlers();
-```
+The registry helpers on `BaseContentScript` are internal setup and diagnostic details,
+not an extension API for platform-specific messages.
 
 #### handleChromeMessage()
 
 ```javascript
 /**
- * Handles incoming Chrome messages with extensible, action-based routing.
+ * Handles incoming Chrome messages through the centralized active route table.
  * @param {Object} request - The Chrome message request.
  * @param {Object} sender - Information about the message sender.
  * @param {Function} sendResponse - The callback to send a response.
@@ -244,18 +198,6 @@ handleChromeMessage(request, sender, sendResponse);
 
 These handlers are automatically registered by `BaseContentScript`.
 
-#### handleToggleSubtitles()
-
-```javascript
-/**
- * Handles the 'toggleSubtitles' message.
- * @param {Object} request - The Chrome message request.
- * @param {Function} sendResponse - The callback to send a response.
- * @returns {Promise<boolean>} `true` if the response is sent asynchronously.
- */
-async handleToggleSubtitles(request, sendResponse)
-```
-
 #### handleConfigChanged()
 
 ```javascript
@@ -263,9 +205,9 @@ async handleToggleSubtitles(request, sendResponse)
  * Handles the 'configChanged' message.
  * @param {Object} request - The Chrome message request.
  * @param {Function} sendResponse - The callback to send a response.
- * @returns {Promise<boolean>} `true` if the response is sent asynchronously.
+ * @returns {boolean} `true` if the response is sent asynchronously.
  */
-async handleConfigChanged(request, sendResponse)
+handleConfigChanged(request, sendResponse);
 ```
 
 #### handleLoggingLevelChanged()
@@ -278,6 +220,19 @@ async handleConfigChanged(request, sendResponse)
  * @returns {boolean} `true` if the response is sent asynchronously.
  */
 handleLoggingLevelChanged(request, sendResponse);
+```
+
+#### handleSidePanelPauseVideo()
+
+```javascript
+/**
+ * Handles the background-owned side-panel pause command.
+ * @param {Object} request - The validated Chrome message request.
+ * @param {Function} sendResponse - The callback to send a response.
+ * @param {Object} senderIdentity - The classified background sender.
+ * @returns {boolean} `true` while the asynchronous pause attempt is pending.
+ */
+handleSidePanelPauseVideo(request, sendResponse, senderIdentity);
 ```
 
 ### Utility Methods
@@ -339,7 +294,7 @@ this.lastKnownPathname; // String: The last known pathname.
 ```javascript
 this.eventBuffer; // EventBuffer: Buffers early events.
 this.intervalManager; // IntervalManager: Manages intervals.
-this.messageHandlers; // Map: Registered message handlers.
+this.messageHandlers; // Map: Internal closed route table.
 this.abortController; // AbortController: Manages event listener cleanup.
 ```
 
@@ -392,32 +347,9 @@ getInjectScriptConfig();
 
 ```javascript
 /**
- * Sets up Netflix-specific navigation detection, using multiple strategies
- * for complex SPA routing.
+ * Delegates Netflix navigation detection to the Base-owned manager.
  */
 setupNavigationDetection();
-```
-
-#### checkForUrlChange()
-
-```javascript
-/**
- * Checks for URL changes with Netflix-specific logic, including enhanced
- * detection with extension context error handling.
- */
-checkForUrlChange();
-```
-
-#### handlePlatformSpecificMessage()
-
-```javascript
-/**
- * Handles Netflix-specific Chrome messages.
- * @param {Object} request - The Chrome message request.
- * @param {Function} sendResponse - The callback to send a response.
- * @returns {boolean} `true` if the response is sent asynchronously.
- */
-handlePlatformSpecificMessage(request, sendResponse);
 ```
 
 ### Netflix-Specific Methods
@@ -529,31 +461,9 @@ getInjectScriptConfig();
 
 ```javascript
 /**
- * Sets up Disney+-specific navigation detection using standard strategies.
+ * Delegates Disney+ navigation detection to the Base-owned manager.
  */
 setupNavigationDetection();
-```
-
-#### checkForUrlChange()
-
-```javascript
-/**
- * Checks for URL changes with Disney+-specific logic, including enhanced
- * detection with extension context error handling.
- */
-checkForUrlChange();
-```
-
-#### handlePlatformSpecificMessage()
-
-```javascript
-/**
- * Handles Disney+-specific Chrome messages.
- * @param {Object} request - The Chrome message request.
- * @param {Function} sendResponse - The callback to send a response.
- * @returns {boolean} `true` if the response is sent asynchronously.
- */
-handlePlatformSpecificMessage(request, sendResponse);
 ```
 
 ### Disney+ Specific Methods
@@ -638,8 +548,6 @@ const COMMON_CONSTANTS = {
 
 - `Error('BaseContentScript is abstract and cannot be instantiated directly')`
 - `Error('{method}() must be implemented by subclass')`
-- `Error('Action must be a non-empty string')`
-- `Error('Handler must be a function')`
 
 ### Platform Errors
 
@@ -649,30 +557,23 @@ const COMMON_CONSTANTS = {
 - Navigation detection failures
 - Extension context invalidation
 
-## Message Format
+## Message Contracts
 
-### Standard Message Format
+There is no generic content-script message envelope or response shape. Import the
+route-specific builders and parsers from
+`content_scripts/shared/protocol/messageProtocol.js`; they enforce the exact keys,
+payload limits, response shape, and sender role for each active route. Do not construct
+new platform-only actions or recognize an alternate action field.
 
-```javascript
-{
-    "action": "actionType",      // e.g., 'toggleSubtitles'
-    "data": { /* payload */ },   // Optional data payload
-    "timestamp": 1629876543210,
-    "source": "sourceIdentifier" // e.g., 'popup'
-}
-```
+`readProtocolMessageAction()` recognizes only catalogued `action` values before routing.
+The active control/readiness contracts are:
 
-### Response Format
-
-```javascript
-{
-    "success": true,
-    "data": { /* response data */ },
-    "error": null,
-    "platform": "platformName",
-    "handled": true
-}
-```
+| Route                             | Allowed sender               | Request contract                                                                        | Response contract                                                                         |
+| --------------------------------- | ---------------------------- | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Configuration update              | Popup                        | `buildConfigChangedRequestMessage()` / `parseConfigChangedRequestMessage()`             | `buildContentControlResponseMessage()` / `parseContentControlResponseMessage()`           |
+| Logging-level update              | Background                   | `buildLoggingLevelChangedRequestMessage()` / `parseLoggingLevelChangedRequestMessage()` | `buildContentControlResponseMessage()` / `parseContentControlResponseMessage()`           |
+| Side-panel pause command          | Background                   | `buildSidePanelPauseVideoRequestMessage()` / `parseSidePanelPauseVideoRequestMessage()` | `buildContentControlResponseMessage()` / `parseContentControlResponseMessage()`           |
+| `PING` / `CHECK_BACKGROUND_READY` | Content script or side panel | `buildBackgroundReadinessRequestMessage()` / `parseBackgroundReadinessRequestMessage()` | `buildBackgroundReadinessResponseMessage()` / `parseBackgroundReadinessResponseMessage()` |
 
 ## Messaging Utilities
 
@@ -700,18 +601,29 @@ The shared messaging module provides resilient wrappers around Chrome's runtime 
 ```javascript
 import { sendRuntimeMessageWithRetry } from '../shared/messaging.js';
 import { MessageActions } from '../shared/constants/messageActions.js';
+import {
+    buildBackgroundReadinessRequestMessage,
+    parseBackgroundReadinessResponseMessage,
+} from '../shared/protocol/messageProtocol.js';
 
 async function ensureBackgroundReady() {
-    const response = await sendRuntimeMessageWithRetry(
-        { action: MessageActions.CHECK_BACKGROUND_READY },
-        {
-            retries: 3,
-            baseDelayMs: 100,
-            backoffFactor: 2,
-            pingBeforeRetry: true,
-        }
+    const request = buildBackgroundReadinessRequestMessage(
+        MessageActions.CHECK_BACKGROUND_READY
     );
-    return response;
+    const response = await sendRuntimeMessageWithRetry(request, {
+        retries: 3,
+        baseDelayMs: 100,
+        backoffFactor: 2,
+        pingBeforeRetry: true,
+    });
+    const readiness = parseBackgroundReadinessResponseMessage(
+        response,
+        request
+    );
+    if (!readiness) {
+        throw new Error('Invalid background-readiness response');
+    }
+    return readiness;
 }
 ```
 

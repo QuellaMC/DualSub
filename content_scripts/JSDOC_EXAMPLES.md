@@ -25,14 +25,15 @@ the extension.
  *
  * This class demonstrates how to implement a platform-specific content script that extends
  * BaseContentScript. It provides Example platform-specific functionality including navigation
- * detection, injection configuration, and message handling while leveraging the common
+ * detection and injection configuration while leveraging the common
  * functionality provided by BaseContentScript.
+ * Cross-context runtime actions remain in the centralized shared protocol and are not
+ * implemented as platform-specific methods.
  *
  * ## Platform-Specific Features
  *
  * - Custom navigation detection for Example platform's SPA routing
  * - Specialized video element detection for Example's player architecture
- * - Platform-specific message handling for Example-only features
  * - Optimized configuration for Example's performance characteristics
  *
  * ## Usage
@@ -88,14 +89,6 @@ the extension.
  * });
  * await exampleCS.initialize();
  *
- * @example
- * // Handling custom messages
- * chrome.runtime.sendMessage({
- *     action: 'example-specific-action',
- *     data: { customParam: 'value' }
- * }, (response) => {
- *     console.log('Example action result:', response);
- * });
  */
 export class ExampleContentScript extends BaseContentScript {
     /**
@@ -119,7 +112,7 @@ export class ExampleContentScript extends BaseContentScript {
 
 ### Abstract Method Implementation
 
-````javascript
+```javascript
 /**
  * Get the platform name identifier
  *
@@ -208,263 +201,55 @@ getInjectScriptConfig() {
 }
 
 /**
- * Setup platform-specific navigation detection
+ * Configure the Base-owned navigation manager
  *
- * Implements navigation detection strategies appropriate for the Example platform's
- * architecture. This method should set up all necessary event listeners and
- * intervals to detect when users navigate between pages.
- *
- * ## Detection Strategies
- *
- * For Example platform, we use multiple detection methods:
- * 1. **Interval-based checking**: Fallback method that works on all platforms
- * 2. **History API interception**: Catches programmatic navigation
- * 3. **Browser events**: Handles back/forward button navigation
- * 4. **Focus events**: Detects navigation when returning to tab
+ * Platform subclasses select documented manager options and provide route
+ * classification/transition behavior. Base owns all navigation listeners, timers,
+ * manager replacement, URL-change dispatch, and cleanup.
  *
  * @override
- * @throws {Error} If navigation detection setup fails
+ * @throws {Error} If managed navigation setup fails
  *
  * @example
  * // Called automatically during initialization
  * const contentScript = new ExampleContentScript();
- * await contentScript.initialize(); // setupNavigationDetection() called internally
- *
- * @example
- * // Manual setup (not recommended)
- * const contentScript = new ExampleContentScript();
- * contentScript.setupNavigationDetection();
+ * await contentScript.initialize();
  */
 setupNavigationDetection() {
-    this.logWithFallback('info', 'Setting up Example navigation detection');
-
-    // Method 1: Interval-based URL checking (always include as fallback)
-    this._setupIntervalBasedDetection();
-
-    // Method 2: History API interception (for SPA navigation)
-    this._setupHistoryAPIInterception();
-
-    // Method 3: Browser navigation events
-    this._setupBrowserNavigationEvents();
-
-    // Method 4: Focus and visibility events (optional for enhanced detection)
-    this._setupFocusAndVisibilityEvents();
-
-    this.logWithFallback('info', 'Example navigation detection set up successfully');
+    this._setupNavigationManager({ intervalMs: 1500 });
 }
 
 /**
- * Check for URL changes with platform-specific logic
+ * Classify Example player routes for the Base-owned manager.
  *
- * Implements URL change detection with Example platform-specific logic for
- * determining page types and handling transitions. This method is called
- * by various navigation detection strategies.
- *
- * ## Page Type Detection
- *
- * Example platform has the following page types:
- * - **Player pages**: `/watch/*`, `/play/*`, `/stream/*`
- * - **Browse pages**: `/browse/*`, `/category/*`, `/search/*`
- * - **Home pages**: `/`, `/home`, `/dashboard`
- *
- * ## Transition Handling
- *
- * Different transitions require different handling:
- * - **To player page**: Initialize platform and start subtitle processing
- * - **From player page**: Cleanup platform and stop processing
- * - **Between non-player pages**: No action required
- *
- * @override
- * @throws {Error} If URL access fails or extension context is invalidated
- *
- * @example
- * // Called automatically by navigation detection
- * // No need to call manually
- *
- * @example
- * // Manual URL change check (for testing)
- * const contentScript = new ExampleContentScript();
- * contentScript.currentUrl = 'https://example.com/home';
- * contentScript.lastKnownPathname = '/home';
- *
- * // Simulate navigation to player page
- * Object.defineProperty(window, 'location', {
- *     value: { href: 'https://example.com/watch/123', pathname: '/watch/123' }
- * });
- *
- * contentScript.checkForUrlChange(); // Will detect change and handle transition
+ * @param {string} pathname - URL pathname to classify
+ * @returns {boolean} Whether the pathname is a player route
+ * @private
  */
-checkForUrlChange() {
-    try {
-        const newUrl = window.location.href;
-        const newPathname = window.location.pathname;
-
-        if (newUrl !== this.currentUrl || newPathname !== this.lastKnownPathname) {
-            this.logWithFallback('info', 'URL change detected', {
-                from: this.currentUrl,
-                to: newUrl,
-                fromPath: this.lastKnownPathname,
-                toPath: newPathname
-            });
-
-            // Determine page types for transition handling
-            const wasOnPlayerPage = this._isPlayerPath(this.lastKnownPathname);
-            const isOnPlayerPage = this._isPlayerPath(newPathname);
-
-            // Update current state
-            this.currentUrl = newUrl;
-            this.lastKnownPathname = newPathname;
-
-            // Handle page transitions
-            this._handlePageTransition(wasOnPlayerPage, isOnPlayerPage);
-        }
-    } catch (error) {
-        this.logWithFallback('error', 'Error in URL change detection', {
-            error: error.message,
-            stack: error.stack
-        });
-        this._handleExtensionContextError(error);
-    }
+_isPlayerPath(pathname) {
+    return (
+        pathname.includes('/watch/') ||
+        pathname.includes('/play/') ||
+        pathname.includes('/stream/')
+    );
 }
 
 /**
- * Handle platform-specific Chrome messages
+ * Handle transitions reported by the Base-owned manager.
  *
- * Processes Chrome messages that are specific to the Example platform.
- * This method is called after common message handlers have been checked,
- * allowing platforms to implement custom functionality.
- *
- * ## Message Format
- *
- * Platform-specific messages should follow this format:
- * ```javascript
- * {
- *     action: 'example-specific-action',  // Action identifier
- *     data: {                             // Action-specific data
- *         param1: 'value1',
- *         param2: 'value2'
- *     },
- *     timestamp: 1234567890,              // Optional timestamp
- *     source: 'popup'                     // Optional source identifier
- * }
- * ```
- *
- * ## Response Format
- *
- * Responses should follow this format:
- * ```javascript
- * {
- *     success: true,                      // Operation success status
- *     platform: 'example',               // Platform identifier
- *     action: 'example-specific-action', // Original action
- *     result: { ... },                   // Action-specific result data
- *     timestamp: 1234567890               // Response timestamp
- * }
- * ```
- *
- * @override
- * @param {Object} request - Chrome message request object
- * @param {string} request.action - The action to perform
- * @param {Object} [request.data] - Action-specific data
- * @param {Function} sendResponse - Response callback function
- * @returns {boolean} Whether response is handled asynchronously (true) or synchronously (false)
- *
- * @throws {Error} If message processing fails
- *
- * @example
- * // Handle a custom Example platform message
- * chrome.runtime.sendMessage({
- *     action: 'example-get-player-info',
- *     data: { includeMetadata: true }
- * }, (response) => {
- *     if (response.success) {
- *         console.log('Player info:', response.result);
- *     } else {
- *         console.error('Failed to get player info:', response.error);
- *     }
- * });
- *
- * @example
- * // Async message handling
- * handlePlatformSpecificMessage(request, sendResponse) {
- *     if (request.action === 'example-async-action') {
- *         this.performAsyncAction(request.data)
- *             .then(result => sendResponse({ success: true, result }))
- *             .catch(error => sendResponse({ success: false, error: error.message }));
- *         return true; // Async handling
- *     }
- *
- *     // Sync handling for other actions
- *     sendResponse({ success: true, handled: false });
- *     return false;
- * }
+ * @param {boolean} wasOnPlayerPage - Whether the prior route was a player route
+ * @param {boolean} isOnPlayerPage - Whether the current route is a player route
+ * @private
  */
-handlePlatformSpecificMessage(request, sendResponse) {
-    try {
-        const action = request.action || request.type;
-
-        this.logWithFallback('debug', 'Processing Example platform-specific message', {
-            action,
-            hasData: !!request.data,
-            dataKeys: request.data ? Object.keys(request.data) : []
-        });
-
-        // Handle Example platform-specific message types
-        switch (action) {
-            case 'example-get-player-info':
-                return this._handleGetPlayerInfo(request, sendResponse);
-
-            case 'example-update-settings':
-                return this._handleUpdateSettings(request, sendResponse);
-
-            case 'example-refresh-subtitles':
-                return this._handleRefreshSubtitles(request, sendResponse);
-
-            default:
-                // No platform-specific handling needed for this message
-                this.logWithFallback('debug', 'No Example platform-specific handling required', {
-                    action,
-                    message: 'Delegating to default handling'
-                });
-
-                // Ensure backward compatibility
-                sendResponse({
-                    success: true,
-                    handled: false,
-                    platform: 'example',
-                    message: 'No platform-specific handling required'
-                });
-                return false; // Synchronous handling
-        }
-    } catch (error) {
-        const action = request ? (request.action || request.type) : 'unknown';
-
-        this.logWithFallback('error', 'Error in Example platform-specific message handling', {
-            error: error.message,
-            stack: error.stack,
-            action
-        });
-
-        // Ensure backward compatibility even on error
-        try {
-            if (typeof sendResponse === 'function') {
-                sendResponse({
-                    success: false,
-                    error: error.message,
-                    platform: 'example',
-                    action
-                });
-            }
-        } catch (responseError) {
-            this.logWithFallback('error', 'Error sending error response', {
-                originalError: error.message,
-                responseError: responseError.message
-            });
-        }
-        return false; // Synchronous error handling
+_handlePageTransition(wasOnPlayerPage, isOnPlayerPage) {
+    if (wasOnPlayerPage && !isOnPlayerPage) {
+        this._cleanupOnPageLeave();
+    } else if (!wasOnPlayerPage && isOnPlayerPage) {
+        this._initializeOnPageEnter();
     }
 }
-````
+
+```
 
 ## Property Documentation
 
@@ -974,38 +759,6 @@ class NavigationDetectionError extends Error {
         this.platform = platform;
         this.detectionMethod = detectionMethod;
         this.currentUrl = currentUrl;
-    }
-}
-
-/**
- * Message handling error
- *
- * Thrown when Chrome message handling fails for platform-specific messages.
- *
- * @class MessageHandlingError
- * @extends Error
- * @property {string} name - Error name 'MessageHandlingError'
- * @property {string} message - Error description
- * @property {string} platform - Platform identifier
- * @property {string} action - Message action that failed
- * @property {Object} request - Original message request
- *
- * @example
- * // Throwing a message handling error
- * throw new MessageHandlingError(
- *     'Invalid message data format',
- *     'example',
- *     'example-custom-action',
- *     request
- * );
- */
-class MessageHandlingError extends Error {
-    constructor(message, platform, action, request) {
-        super(message);
-        this.name = 'MessageHandlingError';
-        this.platform = platform;
-        this.action = action;
-        this.request = request;
     }
 }
 

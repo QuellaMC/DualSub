@@ -6,7 +6,7 @@ This document provides practical examples of implementing and using the content 
 
 1. [Basic Platform Implementation](#basic-platform-implementation)
 2. [Advanced Navigation Detection](#advanced-navigation-detection)
-3. [Custom Message Handling](#custom-message-handling)
+3. [Centralized Runtime Messaging](#centralized-runtime-messaging)
 4. [Configuration Management](#configuration-management)
 5. [Error Handling Patterns](#error-handling-patterns)
 6. [Testing Examples](#testing-examples)
@@ -49,63 +49,19 @@ export class StreamingServiceContentScript extends BaseContentScript {
     }
 
     setupNavigationDetection() {
-        this.logWithFallback(
-            'info',
-            'Setting up StreamingService navigation detection'
-        );
-
-        // Basic interval-based detection
-        this.intervalManager.set(
-            'urlChangeCheck',
-            () => this.checkForUrlChange(),
-            1000
-        );
-
-        this.logWithFallback(
-            'info',
-            'StreamingService navigation detection set up'
-        );
+        this._setupNavigationManager();
     }
 
-    checkForUrlChange() {
-        try {
-            const newUrl = window.location.href;
-            const newPathname = window.location.pathname;
+    _isPlayerPath(pathname) {
+        return pathname.includes('/watch/');
+    }
 
-            if (
-                newUrl !== this.currentUrl ||
-                newPathname !== this.lastKnownPathname
-            ) {
-                this.logWithFallback('info', 'URL change detected', {
-                    from: this.currentUrl,
-                    to: newUrl,
-                });
-
-                this.currentUrl = newUrl;
-                this.lastKnownPathname = newPathname;
-
-                // Simple player page detection
-                const isPlayerPage = newPathname.includes('/watch/');
-                if (isPlayerPage && this.currentConfig.subtitlesEnabled) {
-                    this.initializePlatform();
-                }
-            }
-        } catch (error) {
-            this.logWithFallback('error', 'Error in URL change detection', {
-                error,
-            });
+    _handlePageTransition(wasOnPlayerPage, isOnPlayerPage) {
+        if (wasOnPlayerPage && !isOnPlayerPage) {
+            this._cleanupOnPageLeave();
+        } else if (!wasOnPlayerPage && isOnPlayerPage) {
+            this._initializeOnPageEnter();
         }
-    }
-
-    handlePlatformSpecificMessage(request, sendResponse) {
-        // No platform-specific messages for this simple example
-        sendResponse({
-            success: true,
-            handled: false,
-            platform: 'streamingservice',
-            message: 'No platform-specific handling required',
-        });
-        return false;
     }
 }
 ```
@@ -141,236 +97,22 @@ export class StreamingServiceContentScript extends BaseContentScript {
 
 ## Advanced Navigation Detection
 
-### Complex SPA Navigation (Netflix-style)
+### Base-Owned SPA Navigation
+
+`BaseContentScript` owns one navigation manager. A subclass may tune documented manager
+options, but it does not install its own timers, History API wrappers, or browser event
+listeners.
 
 ```javascript
 export class ComplexSPAContentScript extends BaseContentScript {
     setupNavigationDetection() {
-        this.logWithFallback(
-            'info',
-            'Setting up complex SPA navigation detection'
-        );
-
-        // Method 1: Interval-based checking (fallback)
-        this._setupIntervalBasedDetection();
-
-        // Method 2: History API interception
-        this._setupHistoryAPIInterception();
-
-        // Method 3: Browser navigation events
-        this._setupBrowserNavigationEvents();
-
-        // Method 4: Focus and visibility events
-        this._setupFocusAndVisibilityEvents();
-
-        // Method 5: Custom DOM mutation observer
-        this._setupDOMObserver();
-
-        this.logWithFallback('info', 'Complex SPA navigation detection set up');
-    }
-
-    _setupIntervalBasedDetection() {
-        this.intervalManager.set(
-            'urlChangeCheck',
-            () => this.checkForUrlChange(),
-            2000 // Check every 2 seconds for complex SPAs
-        );
-    }
-
-    _setupHistoryAPIInterception() {
-        const originalPushState = history.pushState;
-        const originalReplaceState = history.replaceState;
-
-        // Enhanced pushState interception with error handling
-        history.pushState = (...args) => {
-            try {
-                originalPushState.apply(history, args);
-                // Delayed check to allow DOM updates
-                setTimeout(() => this.checkForUrlChange(), 200);
-            } catch (error) {
-                this.logWithFallback(
-                    'error',
-                    'Error in pushState interception',
-                    { error }
-                );
-                originalPushState.apply(history, args);
-            }
-        };
-
-        // Enhanced replaceState interception
-        history.replaceState = (...args) => {
-            try {
-                originalReplaceState.apply(history, args);
-                setTimeout(() => this.checkForUrlChange(), 200);
-            } catch (error) {
-                this.logWithFallback(
-                    'error',
-                    'Error in replaceState interception',
-                    { error }
-                );
-                originalReplaceState.apply(history, args);
-            }
-        };
-
-        this._originalHistoryMethods = {
-            pushState: originalPushState,
-            replaceState: originalReplaceState,
-        };
-    }
-
-    _setupBrowserNavigationEvents() {
-        const events = [
-            { name: 'popstate', delay: 100 },
-            { name: 'hashchange', delay: 100 },
-            { name: 'beforeunload', delay: 0 },
-        ];
-
-        events.forEach(({ name, delay }) => {
-            const handler = () => {
-                if (delay > 0) {
-                    setTimeout(() => this.checkForUrlChange(), delay);
-                } else {
-                    this.checkForUrlChange();
-                }
-            };
-
-            const options = this.abortController
-                ? { signal: this.abortController.signal }
-                : {};
-            window.addEventListener(name, handler, options);
-
-            this.logWithFallback('debug', `Added ${name} event listener`);
+        this._setupNavigationManager({
+            intervalMs: 2000,
+            useHistoryAPI: true,
+            usePopstateEvents: true,
+            useIntervalChecking: true,
+            useFocusEvents: true,
         });
-    }
-
-    _setupFocusAndVisibilityEvents() {
-        const focusHandler = () => {
-            // Check for changes when user returns to tab
-            setTimeout(() => this.checkForUrlChange(), 100);
-        };
-
-        const options = this.abortController
-            ? { signal: this.abortController.signal }
-            : {};
-
-        window.addEventListener('focus', focusHandler, options);
-        document.addEventListener(
-            'visibilitychange',
-            () => {
-                if (!document.hidden) {
-                    focusHandler();
-                }
-            },
-            options
-        );
-
-        this.logWithFallback(
-            'debug',
-            'Added focus and visibility event listeners'
-        );
-    }
-
-    _setupDOMObserver() {
-        // Observe changes to specific elements that indicate navigation
-        const targetNode = document.body;
-        const config = {
-            childList: true,
-            subtree: true,
-            attributes: true,
-            attributeFilter: ['data-page-id', 'data-route'], // Platform-specific attributes
-        };
-
-        const callback = (mutationsList) => {
-            for (const mutation of mutationsList) {
-                if (
-                    mutation.type === 'attributes' ||
-                    (mutation.type === 'childList' &&
-                        mutation.addedNodes.length > 0)
-                ) {
-                    // Debounce the URL check
-                    clearTimeout(this._domObserverTimeout);
-                    this._domObserverTimeout = setTimeout(() => {
-                        this.checkForUrlChange();
-                    }, 500);
-                    break;
-                }
-            }
-        };
-
-        if (targetNode) {
-            this.domObserver = new MutationObserver(callback);
-            this.domObserver.observe(targetNode, config);
-            this.logWithFallback('debug', 'DOM mutation observer set up');
-        }
-    }
-
-    checkForUrlChange() {
-        try {
-            const newUrl = window.location.href;
-            const newPathname = window.location.pathname;
-
-            if (
-                newUrl !== this.currentUrl ||
-                newPathname !== this.lastKnownPathname
-            ) {
-                this.logWithFallback('info', 'URL change detected', {
-                    from: this.currentUrl,
-                    to: newUrl,
-                    pathname: newPathname,
-                });
-
-                // Enhanced page type detection
-                const wasOnPlayerPage = this._isPlayerPath(
-                    this.lastKnownPathname
-                );
-                const isOnPlayerPage = this._isPlayerPath(newPathname);
-                const wasOnHomePage = this._isHomePath(this.lastKnownPathname);
-                const isOnHomePage = this._isHomePath(newPathname);
-
-                this.currentUrl = newUrl;
-                this.lastKnownPathname = newPathname;
-
-                // Handle different types of transitions
-                this._handleComplexPageTransition({
-                    wasOnPlayerPage,
-                    isOnPlayerPage,
-                    wasOnHomePage,
-                    isOnHomePage,
-                });
-            }
-        } catch (error) {
-            this.logWithFallback(
-                'error',
-                'Error in complex URL change detection',
-                { error }
-            );
-            this._handleExtensionContextError(error);
-        }
-    }
-
-    _handleComplexPageTransition(transitionInfo) {
-        const { wasOnPlayerPage, isOnPlayerPage, wasOnHomePage, isOnHomePage } =
-            transitionInfo;
-
-        if (wasOnPlayerPage && !isOnPlayerPage) {
-            this.logWithFallback('info', 'Leaving player page');
-            this._cleanupOnPageLeave();
-        }
-
-        if (!wasOnPlayerPage && isOnPlayerPage) {
-            this.logWithFallback('info', 'Entering player page');
-            this._initializeOnPageEnter();
-        }
-
-        if (wasOnHomePage && !isOnHomePage) {
-            this.logWithFallback('debug', 'Leaving home page');
-            // Perform any home page cleanup
-        }
-
-        if (!wasOnHomePage && isOnHomePage) {
-            this.logWithFallback('debug', 'Entering home page');
-            // Perform any home page initialization
-        }
     }
 
     _isPlayerPath(pathname) {
@@ -381,309 +123,38 @@ export class ComplexSPAContentScript extends BaseContentScript {
         );
     }
 
-    _isHomePath(pathname) {
-        return (
-            pathname === '/' || pathname === '/home' || pathname === '/browse'
-        );
-    }
-}
-```
-
-## Custom Message Handling
-
-### Platform-Specific Message Handlers
-
-```javascript
-export class CustomMessageContentScript extends BaseContentScript {
-    constructor() {
-        super('CustomMessageContent');
-        // Register custom message handlers after parent initialization
-        this.registerCustomMessageHandlers();
-    }
-
-    registerCustomMessageHandlers() {
-        // Register a custom message handler
-        this.registerMessageHandler(
-            'customPlatformAction',
-            this.handleCustomPlatformAction.bind(this),
-            {
-                requiresUtilities: true,
-                description: 'Handle custom platform-specific action',
-            }
-        );
-
-        // Register another handler that doesn't require utilities
-        this.registerMessageHandler(
-            'quickStatusCheck',
-            this.handleQuickStatusCheck.bind(this),
-            {
-                requiresUtilities: false,
-                description: 'Quick status check without utility dependencies',
-            }
-        );
-    }
-
-    async handleCustomPlatformAction(request, sendResponse) {
-        try {
-            this.logWithFallback('info', 'Handling custom platform action', {
-                action: request.action,
-                data: request.data,
-            });
-
-            // Perform custom logic
-            const result = await this._performCustomAction(request.data);
-
-            sendResponse({
-                success: true,
-                platform: this.getPlatformName(),
-                action: request.action,
-                result: result,
-            });
-
-            return true; // Async handling
-        } catch (error) {
-            this.logWithFallback('error', 'Error in custom platform action', {
-                error: error.message,
-                action: request.action,
-            });
-
-            sendResponse({
-                success: false,
-                error: error.message,
-                platform: this.getPlatformName(),
-            });
-
-            return false; // Error handling is synchronous
-        }
-    }
-
-    handleQuickStatusCheck(request, sendResponse) {
-        // Quick synchronous status check
-        const status = {
-            platform: this.getPlatformName(),
-            isPlayerPage: this._isPlayerPath(window.location.pathname),
-            platformReady: this.platformReady,
-            currentUrl: this.currentUrl,
-            timestamp: Date.now(),
-        };
-
-        sendResponse({
-            success: true,
-            status: status,
-        });
-
-        return false; // Synchronous handling
-    }
-
-    async _performCustomAction(data) {
-        // Example custom action implementation
-        switch (data.type) {
-            case 'refreshSubtitles':
-                if (
-                    this.activePlatform &&
-                    this.activePlatform.refreshSubtitles
-                ) {
-                    return await this.activePlatform.refreshSubtitles();
-                }
-                throw new Error('Platform not ready or method not available');
-
-            case 'getVideoInfo':
-                return this._getVideoInfo();
-
-            case 'updateSettings':
-                return await this._updatePlatformSettings(data.settings);
-
-            default:
-                throw new Error(`Unknown custom action type: ${data.type}`);
-        }
-    }
-
-    _getVideoInfo() {
-        // Extract video information from the page
-        const videoElement = document.querySelector('video');
-        if (!videoElement) {
-            return { error: 'No video element found' };
-        }
-
-        return {
-            duration: videoElement.duration,
-            currentTime: videoElement.currentTime,
-            paused: videoElement.paused,
-            volume: videoElement.volume,
-            src: videoElement.src || videoElement.currentSrc,
-        };
-    }
-
-    async _updatePlatformSettings(settings) {
-        // Update platform-specific settings
-        if (this.activePlatform && this.activePlatform.updateSettings) {
-            return await this.activePlatform.updateSettings(settings);
-        }
-        throw new Error('Platform not ready or settings update not supported');
-    }
-
-    handlePlatformSpecificMessage(request, sendResponse) {
-        // This method is still required but can delegate to registered handlers
-        const action = request.action || request.type;
-
-        // Check if we have a registered handler
-        if (this.hasMessageHandler(action)) {
-            // The message will be handled by the registered handler
-            // This method should return false to indicate no additional handling
-            return false;
-        }
-
-        // Handle any messages not covered by registered handlers
-        switch (action) {
-            case 'legacyAction':
-                return this._handleLegacyAction(request, sendResponse);
-
-            default:
-                sendResponse({
-                    success: true,
-                    handled: false,
-                    platform: this.getPlatformName(),
-                    message: 'No platform-specific handling required',
-                });
-                return false;
+    _handlePageTransition(wasOnPlayerPage, isOnPlayerPage) {
+        if (wasOnPlayerPage && !isOnPlayerPage) {
+            this._cleanupOnPageLeave();
+        } else if (!wasOnPlayerPage && isOnPlayerPage) {
+            this._initializeOnPageEnter();
         }
     }
 }
 ```
 
-### Message Handler Registry Usage
+## Centralized Runtime Messaging
+
+Platform subclasses do not register runtime actions. Build and validate messages with
+the shared protocol. For example, a content script can check background readiness with
+the exact request and response contract:
 
 ```javascript
-// Example of using the message handler registry
-export class AdvancedMessageHandling extends BaseContentScript {
-    constructor() {
-        super('AdvancedContent');
-        this.setupAdvancedMessageHandling();
-    }
+import { MessageActions } from './shared/constants/messageActions.js';
+import { sendRuntimeMessageWithRetry } from './shared/messaging.js';
+import {
+    buildBackgroundReadinessRequestMessage,
+    parseBackgroundReadinessResponseMessage,
+} from './shared/protocol/messageProtocol.js';
 
-    setupAdvancedMessageHandling() {
-        // Register multiple handlers with different configurations
-        const handlers = [
-            {
-                action: 'batchOperation',
-                handler: this.handleBatchOperation.bind(this),
-                options: {
-                    requiresUtilities: true,
-                    description: 'Handle batch operations',
-                },
-            },
-            {
-                action: 'diagnostics',
-                handler: this.handleDiagnostics.bind(this),
-                options: {
-                    requiresUtilities: false,
-                    description: 'System diagnostics',
-                },
-            },
-            {
-                action: 'emergencyStop',
-                handler: this.handleEmergencyStop.bind(this),
-                options: {
-                    requiresUtilities: false,
-                    description: 'Emergency stop all operations',
-                },
-            },
-        ];
+const request = buildBackgroundReadinessRequestMessage(
+    MessageActions.CHECK_BACKGROUND_READY
+);
+const response = await sendRuntimeMessageWithRetry(request);
+const readiness = parseBackgroundReadinessResponseMessage(response, request);
 
-        handlers.forEach(({ action, handler, options }) => {
-            this.registerMessageHandler(action, handler, options);
-        });
-
-        this.logWithFallback('info', 'Advanced message handlers registered', {
-            handlerCount: handlers.length,
-            handlers: this.getRegisteredHandlers(),
-        });
-    }
-
-    async handleBatchOperation(request, sendResponse) {
-        const operations = request.data.operations || [];
-        const results = [];
-
-        for (const operation of operations) {
-            try {
-                const result = await this._executeOperation(operation);
-                results.push({ success: true, operation, result });
-            } catch (error) {
-                results.push({
-                    success: false,
-                    operation,
-                    error: error.message,
-                });
-            }
-        }
-
-        sendResponse({
-            success: true,
-            batchResults: results,
-            totalOperations: operations.length,
-            successCount: results.filter((r) => r.success).length,
-        });
-
-        return true; // Async handling
-    }
-
-    handleDiagnostics(request, sendResponse) {
-        const diagnostics = {
-            platform: this.getPlatformName(),
-            registeredHandlers: this.getRegisteredHandlers().length,
-            platformReady: this.platformReady,
-            moduleStatus: {
-                logger: !!this.contentLogger,
-                configService: !!this.configService,
-                subtitleUtils: !!this.subtitleUtils,
-                platformClass: !!this.PlatformClass,
-            },
-            intervals: this.intervalManager.getActiveIntervals(),
-            currentConfig: Object.keys(this.currentConfig),
-            timestamp: new Date().toISOString(),
-        };
-
-        sendResponse({
-            success: true,
-            diagnostics: diagnostics,
-        });
-
-        return false; // Synchronous handling
-    }
-
-    handleEmergencyStop(request, sendResponse) {
-        this.logWithFallback('warn', 'Emergency stop requested');
-
-        try {
-            // Stop all intervals
-            this.intervalManager.clearAll();
-
-            // Cleanup platform
-            if (this.activePlatform && this.activePlatform.cleanup) {
-                this.activePlatform.cleanup();
-            }
-
-            // Clear event buffer
-            this.eventBuffer.clear();
-
-            // Reset state
-            this.platformReady = false;
-
-            sendResponse({
-                success: true,
-                message: 'Emergency stop completed',
-                timestamp: new Date().toISOString(),
-            });
-        } catch (error) {
-            sendResponse({
-                success: false,
-                error: error.message,
-                message: 'Emergency stop failed',
-            });
-        }
-
-        return false; // Synchronous handling
-    }
+if (!readiness) {
+    throw new Error('Invalid background-readiness response');
 }
 ```
 
@@ -1256,58 +727,15 @@ describe('CustomContentScript', () => {
         });
     });
 
-    describe('Message Handling', () => {
-        test('should register custom message handlers', () => {
-            expect(contentScript.hasMessageHandler('customAction')).toBe(true);
-            expect(contentScript.getRegisteredHandlers()).toHaveLength(4); // 3 common + 1 custom
-        });
-
-        test('should handle custom messages correctly', async () => {
-            const request = { action: 'customAction', data: { test: 'data' } };
-            const sendResponse = jest.fn();
-
-            const result = await contentScript.handleChromeMessage(
-                request,
-                {},
-                sendResponse
-            );
-
-            expect(sendResponse).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    success: true,
-                    platform: 'custom',
-                })
-            );
-        });
-    });
-
     describe('Navigation Detection', () => {
-        test('should detect URL changes correctly', () => {
-            const spy = jest.spyOn(contentScript, '_handlePageTransition');
+        test('delegates navigation ownership to the Base manager', () => {
+            const setupManager = jest
+                .spyOn(contentScript, '_setupNavigationManager')
+                .mockReturnValue(true);
 
-            // Mock URL change
-            Object.defineProperty(window, 'location', {
-                value: {
-                    href: 'https://example.com/watch/123',
-                    pathname: '/watch/123',
-                },
-                writable: true,
-            });
+            contentScript.setupNavigationDetection();
 
-            contentScript.checkForUrlChange();
-
-            expect(spy).toHaveBeenCalled();
-        });
-
-        test('should handle navigation errors gracefully', () => {
-            // Mock location access error
-            Object.defineProperty(window, 'location', {
-                get: () => {
-                    throw new Error('Location access denied');
-                },
-            });
-
-            expect(() => contentScript.checkForUrlChange()).not.toThrow();
+            expect(setupManager).toHaveBeenCalledTimes(1);
         });
     });
 
@@ -1363,27 +791,6 @@ describe('NetflixContentScript Integration', () => {
         expect(contentScript.activePlatform).toBeDefined();
     });
 
-    test('should handle configuration changes end-to-end', async () => {
-        await contentScript.initialize();
-
-        const configChange = {
-            action: 'configChanged',
-            data: {
-                changes: {
-                    subtitlesEnabled: { newValue: false, oldValue: true },
-                },
-                newConfig: { subtitlesEnabled: false },
-            },
-        };
-
-        const sendResponse = jest.fn();
-        await contentScript.handleChromeMessage(configChange, {}, sendResponse);
-
-        expect(sendResponse).toHaveBeenCalledWith(
-            expect.objectContaining({ success: true })
-        );
-    });
-
     test('should handle navigation between pages', async () => {
         await contentScript.initialize();
 
@@ -1432,7 +839,6 @@ export class DebuggableContentScript extends BaseContentScript {
             contentScript: this,
             getState: () => this.getDebugState(),
             getMetrics: () => this.getPerformanceMetrics(),
-            testMessage: (action, data) => this.testMessage(action, data),
             forceReinitialization: () => this.forceReinitialization(),
         };
 
@@ -1453,7 +859,6 @@ export class DebuggableContentScript extends BaseContentScript {
                 platformClass: !!this.PlatformClass,
                 activePlatform: !!this.activePlatform,
             },
-            registeredHandlers: this.getRegisteredHandlers(),
             activeIntervals: this.intervalManager.getActiveIntervals(),
             eventBufferSize: this.eventBuffer.size(),
             currentConfig: this.currentConfig,
@@ -1479,7 +884,6 @@ export class DebuggableContentScript extends BaseContentScript {
             'initialize',
             'loadModules',
             'initializePlatform',
-            'checkForUrlChange',
             'handleChromeMessage',
         ];
 
@@ -1548,16 +952,6 @@ export class DebuggableContentScript extends BaseContentScript {
         }.bind(this);
     }
 
-    testMessage(action, data = {}) {
-        const request = { action, data, timestamp: Date.now() };
-        const sendResponse = (response) => {
-            console.log('[DEBUG] Test message response:', response);
-        };
-
-        this.logWithFallback('info', '[DEBUG] Testing message', { request });
-        return this.handleChromeMessage(request, {}, sendResponse);
-    }
-
     async forceReinitialization() {
         this.logWithFallback('info', '[DEBUG] Forcing reinitialization');
 
@@ -1621,14 +1015,6 @@ if (typeof window !== 'undefined') {
                 console.log(
                     'Content script not available or debug mode not enabled'
                 );
-            }
-        },
-
-        // Test specific functionality
-        testSubtitleToggle: () => {
-            const cs = window.dualsubDebug?.contentScript;
-            if (cs) {
-                return cs.testMessage('toggleSubtitles', { enabled: true });
             }
         },
 

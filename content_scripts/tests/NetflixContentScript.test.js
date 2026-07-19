@@ -1,8 +1,8 @@
 /**
  * NetflixContentScript Comprehensive Tests
  *
- * Tests for Netflix-specific content script functionality including navigation detection,
- * URL change handling, SPA routing, injection configuration, and event handling.
+ * Tests for Netflix-specific content script functionality including shared-manager
+ * navigation setup, injection configuration, and event handling.
  *
  * @author DualSub Extension
  * @version 1.0.0
@@ -21,11 +21,67 @@ import { TestHelpers } from '../../test-utils/test-helpers.js';
 
 jest.mock('@content_scripts/core/BaseContentScript.js');
 
+const LOG_SENTINEL = '__NETFLIX_DIRECT_LOG_SECRET__';
+
+function serializeLogCalls(logSpy) {
+    return JSON.stringify(logSpy.mock.calls, (_key, value) => {
+        if (value instanceof Error) {
+            return {
+                name: value.name,
+                message: value.message,
+                stack: value.stack,
+                cause: value.cause,
+            };
+        }
+        return value;
+    });
+}
+
+function containsReference(value, target, seen = new WeakSet()) {
+    if (value === target) {
+        return true;
+    }
+    if (
+        value === null ||
+        (typeof value !== 'object' && typeof value !== 'function') ||
+        seen.has(value)
+    ) {
+        return false;
+    }
+
+    seen.add(value);
+    return Reflect.ownKeys(value).some((key) => {
+        const descriptor = Object.getOwnPropertyDescriptor(value, key);
+        return (
+            descriptor &&
+            Object.hasOwn(descriptor, 'value') &&
+            containsReference(descriptor.value, target, seen)
+        );
+    });
+}
+
+function expectPrivateLogCalls(logSpy, sentinels, rawValues) {
+    const serialized = serializeLogCalls(logSpy);
+    sentinels.forEach((sentinel) => {
+        expect(serialized).not.toContain(sentinel);
+    });
+    rawValues.forEach((rawValue) => {
+        expect(containsReference(logSpy.mock.calls, rawValue)).toBe(false);
+    });
+}
+
+function createSensitiveError() {
+    const error = new Error(LOG_SENTINEL, {
+        cause: { token: `${LOG_SENTINEL}-cause` },
+    });
+    error.stack = `SensitiveStack: ${LOG_SENTINEL}`;
+    return error;
+}
+
 describe('NetflixContentScript Comprehensive Tests', () => {
     let netflixScript;
     let testHelpers;
     let testEnv;
-    let mockSendResponse;
     let consoleLogSpy;
 
     beforeEach(() => {
@@ -45,9 +101,6 @@ describe('NetflixContentScript Comprehensive Tests', () => {
 
         // Create fresh Netflix content script instance
         netflixScript = new NetflixContentScript();
-
-        // Mock sendResponse function
-        mockSendResponse = jest.fn();
 
         // Spy on console.log for fallback logging
         consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
@@ -73,10 +126,6 @@ describe('NetflixContentScript Comprehensive Tests', () => {
             ...global.window,
             addEventListener: jest.fn(),
             removeEventListener: jest.fn(),
-            history: {
-                pushState: jest.fn(),
-                replaceState: jest.fn(),
-            },
         };
 
         // Mock global functions
@@ -190,7 +239,14 @@ describe('NetflixContentScript Comprehensive Tests', () => {
                 filename: 'injected_scripts/netflixInject.js',
                 tagId: 'netflix-dualsub-injector-script-tag',
                 eventId: 'netflix-dualsub-injector-event',
+                channel: expect.objectContaining({
+                    platform: 'netflix',
+                    accept: expect.any(Function),
+                    createScriptUrl: expect.any(Function),
+                    revoke: expect.any(Function),
+                }),
             });
+            expect(Object.isFrozen(config.channel)).toBe(true);
         });
 
         test('should have correct URL patterns', () => {
@@ -238,164 +294,33 @@ describe('NetflixContentScript Comprehensive Tests', () => {
     });
 
     describe('Netflix-Specific Navigation Detection', () => {
-        beforeEach(() => {
-            // Mock interval and timeout functions
-            jest.spyOn(global, 'setInterval').mockImplementation(
-                (fn, delay) => {
-                    return setTimeout(fn, delay); // Execute immediately for testing
-                }
+        test('classifies only watch routes as Netflix player routes', () => {
+            expect(netflixScript._isPlayerPath('/watch/123456')).toBe(true);
+            expect(netflixScript._isPlayerPath('/watch/123456/')).toBe(true);
+            expect(netflixScript._isPlayerPath('/watch/123456/credits')).toBe(
+                false
             );
-            jest.spyOn(global, 'clearInterval').mockImplementation(jest.fn());
-            jest.spyOn(global, 'setTimeout').mockImplementation((fn) => {
-                fn(); // Execute immediately for testing
-                return 123;
-            });
+            expect(netflixScript._isPlayerPath('/browse')).toBe(false);
+            expect(netflixScript._isPlayerPath('/title/123456')).toBe(false);
+            expect(netflixScript._isPlayerPath('/watch/')).toBe(false);
+            expect(netflixScript._isPlayerPath('/watchlist/123456')).toBe(
+                false
+            );
+            expect(netflixScript._isPlayerPath('/browse/watch/123456')).toBe(
+                false
+            );
         });
 
-        test('should setup navigation detection with multiple strategies', () => {
-            const addEventListenerSpy = jest.spyOn(window, 'addEventListener');
-            const documentAddEventListenerSpy = jest.spyOn(
-                document,
-                'addEventListener'
+        test('delegates navigation detection exclusively to the shared manager', () => {
+            const setupManager = jest.spyOn(
+                netflixScript,
+                '_setupNavigationManager'
             );
 
             netflixScript.setupNavigationDetection();
 
-            // Should setup interval-based detection
-            expect(netflixScript.intervalManager.set).toHaveBeenCalled();
-
-            // Should setup browser navigation events
-            expect(addEventListenerSpy).toHaveBeenCalledWith(
-                'popstate',
-                expect.any(Function),
-                expect.any(Object)
-            );
-            expect(addEventListenerSpy).toHaveBeenCalledWith(
-                'hashchange',
-                expect.any(Function),
-                expect.any(Object)
-            );
-            expect(addEventListenerSpy).toHaveBeenCalledWith(
-                'focus',
-                expect.any(Function),
-                expect.any(Object)
-            );
-            expect(documentAddEventListenerSpy).toHaveBeenCalledWith(
-                'visibilitychange',
-                expect.any(Function),
-                expect.any(Object)
-            );
-
-            // Should log setup completion
-            expect(consoleLogSpy).toHaveBeenCalledWith(
-                expect.stringContaining(
-                    'Enhanced Netflix navigation detection is set up.'
-                ),
-                expect.any(Object)
-            );
-        });
-
-        test('should intercept History API methods', () => {
-            const originalPushState = window.history.pushState;
-            const originalReplaceState = window.history.replaceState;
-
-            netflixScript.setupNavigationDetection();
-
-            // History methods should be intercepted
-            expect(window.history.pushState).not.toBe(originalPushState);
-            expect(window.history.replaceState).not.toBe(originalReplaceState);
-
-            // Should store original methods for cleanup
-            expect(netflixScript._originalHistoryMethods).toBeDefined();
-            expect(netflixScript._originalHistoryMethods.pushState).toBe(
-                originalPushState
-            );
-            expect(netflixScript._originalHistoryMethods.replaceState).toBe(
-                originalReplaceState
-            );
-        });
-
-        test('should handle URL changes with Netflix SPA routing', () => {
-            // Setup initial state
-            netflixScript.currentUrl = 'https://www.netflix.com/browse';
-            netflixScript.lastKnownPathname = '/browse';
-
-            // Mock page transition handlers
-            jest.spyOn(
-                netflixScript,
-                '_handlePageTransition'
-            ).mockImplementation(() => {});
-
-            // Mock the checkForUrlChange method to simulate URL change detection
-            netflixScript.checkForUrlChange = jest.fn(() => {
-                const newUrl = 'https://www.netflix.com/watch/123456';
-                const newPathname = '/watch/123456';
-
-                if (
-                    newUrl !== netflixScript.currentUrl ||
-                    newPathname !== netflixScript.lastKnownPathname
-                ) {
-                    netflixScript.logWithFallback(
-                        'info',
-                        'URL change detected',
-                        {
-                            from: netflixScript.currentUrl,
-                            to: newUrl,
-                        }
-                    );
-
-                    const wasOnPlayerPage =
-                        netflixScript.lastKnownPathname.includes('/watch/');
-                    const isOnPlayerPage = newPathname.includes('/watch/');
-
-                    netflixScript.currentUrl = newUrl;
-                    netflixScript.lastKnownPathname = newPathname;
-
-                    netflixScript._handlePageTransition(
-                        wasOnPlayerPage,
-                        isOnPlayerPage
-                    );
-                }
-            });
-
-            netflixScript.checkForUrlChange();
-
-            // Should detect URL change
-            expect(netflixScript.currentUrl).toBe(
-                'https://www.netflix.com/watch/123456'
-            );
-            expect(netflixScript.lastKnownPathname).toBe('/watch/123456');
-
-            // Should handle page transition
-            expect(netflixScript._handlePageTransition).toHaveBeenCalledWith(
-                false,
-                true
-            );
-
-            // Should log URL change
-            expect(consoleLogSpy).toHaveBeenCalledWith(
-                expect.stringContaining('URL change detected'),
-                expect.objectContaining({
-                    from: 'https://www.netflix.com/browse',
-                    to: 'https://www.netflix.com/watch/123456',
-                })
-            );
-        });
-
-        test('should handle extension context errors gracefully', () => {
-            // Mock the _handleExtensionContextError method
-            jest.spyOn(
-                netflixScript,
-                '_handleExtensionContextError'
-            ).mockImplementation(() => {});
-
-            // Create an error and call the handler directly to test the logic
-            const error = new Error('Extension context invalidated');
-            netflixScript._handleExtensionContextError(error);
-
-            expect(
-                netflixScript._handleExtensionContextError
-            ).toHaveBeenCalledWith(error);
+            expect(setupManager).toHaveBeenCalledTimes(1);
+            expect(netflixScript.intervalManager.set).not.toHaveBeenCalled();
         });
     });
 
@@ -414,49 +339,61 @@ describe('NetflixContentScript Comprehensive Tests', () => {
                 subtitlesEnabled: true,
             };
             netflixScript._reinjectScript = jest.fn();
+            netflixScript._cleanupOnPlayerPageLeave = jest.fn();
+            netflixScript._schedulePlatformInitializationOnPageEnter =
+                jest.fn();
         });
 
         test('should handle transition from player to non-player page', () => {
-            // Store reference to cleanup function before it gets nulled
-            const cleanupSpy = netflixScript.activePlatform.cleanup;
-
             netflixScript._handlePageTransition(true, false);
 
-            expect(netflixScript.stopVideoElementDetection).toHaveBeenCalled();
-            expect(cleanupSpy).toHaveBeenCalled();
-            expect(netflixScript.activePlatform).toBeNull();
-            expect(netflixScript.platformReady).toBe(false);
-            expect(netflixScript.eventBuffer.clear).toHaveBeenCalled();
+            expect(
+                netflixScript._cleanupOnPlayerPageLeave
+            ).toHaveBeenCalledTimes(1);
         });
 
         test('should handle transition from non-player to player page', () => {
-            jest.spyOn(global, 'setTimeout').mockImplementation((fn) => {
-                fn(); // Execute immediately for testing
-                return 123;
-            });
-
             netflixScript._handlePageTransition(false, true);
 
             expect(netflixScript._reinjectScript).toHaveBeenCalled();
-            expect(netflixScript.initializePlatform).toHaveBeenCalled();
+            expect(
+                netflixScript._schedulePlatformInitializationOnPageEnter
+            ).toHaveBeenCalledWith(
+                expect.any(Function),
+                expect.any(Function),
+                1500
+            );
         });
 
-        test('should not initialize platform if subtitles are disabled', () => {
+        test('passes the current configuration into page-enter initialization', () => {
             netflixScript.currentConfig.subtitlesEnabled = false;
-
-            jest.spyOn(global, 'setTimeout').mockImplementation((fn) => {
-                fn(); // Execute immediately for testing
-                return 123;
-            });
 
             netflixScript._handlePageTransition(false, true);
 
-            expect(netflixScript._reinjectScript).toHaveBeenCalled();
-            expect(netflixScript.initializePlatform).not.toHaveBeenCalled();
+            const [loadConfig] =
+                netflixScript._schedulePlatformInitializationOnPageEnter.mock
+                    .calls[0];
+            expect(loadConfig()).toBe(netflixScript.currentConfig);
+            expect(loadConfig().subtitlesEnabled).toBe(false);
+        });
+
+        test('uses the owned page-enter task for delayed initialization', () => {
+            netflixScript._initializeOnPageEnter();
+
+            expect(
+                netflixScript._schedulePlatformInitializationOnPageEnter
+            ).toHaveBeenCalledWith(
+                expect.any(Function),
+                expect.any(Function),
+                1500
+            );
         });
     });
 
     describe('Script Injection', () => {
+        let appendChildSpy;
+        let documentElementAppendSpy;
+
         beforeEach(() => {
             // Mock Chrome runtime API
             global.chrome = {
@@ -481,6 +418,17 @@ describe('NetflixContentScript Comprehensive Tests', () => {
                 .fn()
                 .mockReturnValue(mockScript);
             global.document.getElementById = jest.fn().mockReturnValue(null); // No existing script
+            appendChildSpy = jest
+                .spyOn(global.document.head, 'appendChild')
+                .mockImplementation((node) => node);
+            documentElementAppendSpy = jest
+                .spyOn(global.document.documentElement, 'appendChild')
+                .mockImplementation((node) => node);
+        });
+
+        afterEach(() => {
+            appendChildSpy.mockRestore();
+            documentElementAppendSpy.mockRestore();
         });
 
         test('should inject script correctly', () => {
@@ -494,6 +442,10 @@ describe('NetflixContentScript Comprehensive Tests', () => {
             );
             expect(global.chrome.runtime.getURL).toHaveBeenCalledWith(
                 'injected_scripts/netflixInject.js'
+            );
+            const appendedScript = appendChildSpy.mock.calls[0][0];
+            expect(appendedScript.src).toMatch(
+                /^chrome-extension:\/\/test\/injected_scripts\/netflixInject\.js#dualsub-channel=netflix\.[0-9a-f]{64}$/u
             );
         });
 
@@ -509,18 +461,68 @@ describe('NetflixContentScript Comprehensive Tests', () => {
         });
 
         test('should handle script injection errors', () => {
+            const reinjectionError = createSensitiveError();
             global.chrome.runtime.getURL.mockImplementation(() => {
-                throw new Error('Extension context invalidated');
+                throw reinjectionError;
             });
 
             expect(() => netflixScript._reinjectScript()).not.toThrow();
 
             expect(consoleLogSpy).toHaveBeenCalledWith(
                 expect.stringContaining('Error during script re-injection'),
-                expect.objectContaining({
-                    error: expect.any(Error),
-                })
+                {}
             );
+            expectPrivateLogCalls(
+                consoleLogSpy,
+                [LOG_SENTINEL],
+                [reinjectionError, reinjectionError.cause]
+            );
+        });
+
+        test.each([
+            ['absent', () => null],
+            [
+                'revoked',
+                () => {
+                    const channel = netflixScript.injectConfig.channel;
+                    channel.revoke();
+                    return channel;
+                },
+            ],
+        ])(
+            'fails closed with an %s injection channel',
+            (_label, getChannel) => {
+                netflixScript.injectConfig = {
+                    ...netflixScript.injectConfig,
+                    channel: getChannel(),
+                };
+
+                netflixScript._reinjectScript();
+
+                expect(global.document.createElement).not.toHaveBeenCalled();
+                expect(appendChildSpy).not.toHaveBeenCalled();
+                expect(documentElementAppendSpy).not.toHaveBeenCalled();
+            }
+        );
+
+        test('rejects an accessor injection channel without invoking it', () => {
+            const getter = jest.fn();
+            const config = {
+                filename: netflixScript.injectConfig.filename,
+                tagId: netflixScript.injectConfig.tagId,
+                eventId: netflixScript.injectConfig.eventId,
+            };
+            Object.defineProperty(config, 'channel', {
+                enumerable: true,
+                get: getter,
+            });
+            netflixScript.injectConfig = config;
+
+            netflixScript._reinjectScript();
+
+            expect(getter).not.toHaveBeenCalled();
+            expect(global.document.createElement).not.toHaveBeenCalled();
+            expect(appendChildSpy).not.toHaveBeenCalled();
         });
     });
 
@@ -531,7 +533,6 @@ describe('NetflixContentScript Comprehensive Tests', () => {
             expect(config).toEqual({
                 maxVideoDetectionRetries: 40,
                 videoDetectionInterval: 1000,
-                urlChangeCheckInterval: 2000,
                 pageTransitionDelay: 1500,
                 injectRetryDelay: 10,
                 injectMaxRetries: 100,
@@ -551,7 +552,6 @@ describe('NetflixContentScript Comprehensive Tests', () => {
                 someBaseSetting: true,
                 maxVideoDetectionRetries: 40, // Netflix-specific override
                 videoDetectionInterval: 1000,
-                urlChangeCheckInterval: 2000,
                 pageTransitionDelay: 1500,
                 injectRetryDelay: 10,
                 injectMaxRetries: 100,
@@ -560,75 +560,16 @@ describe('NetflixContentScript Comprehensive Tests', () => {
                     filename: 'injected_scripts/netflixInject.js',
                     tagId: 'netflix-dualsub-injector-script-tag',
                     eventId: 'netflix-dualsub-injector-event',
+                    channel: netflixScript.injectConfig.channel,
                 },
                 urlPatterns: ['*.netflix.com'],
             });
         });
     });
 
-    describe('Message Handling', () => {
-        test('should handle platform-specific messages correctly', () => {
-            const request = { action: 'test-action', data: 'test' };
-
-            const result = netflixScript.handlePlatformSpecificMessage(
-                request,
-                mockSendResponse
-            );
-
-            expect(result).toBe(false); // Synchronous handling
-            expect(mockSendResponse).toHaveBeenCalledWith({
-                success: true,
-                handled: false,
-                platform: 'netflix',
-                message: 'No platform-specific handling required.',
-            });
-        });
-
-        test('should handle null requests gracefully', () => {
-            const result = netflixScript.handlePlatformSpecificMessage(
-                null,
-                mockSendResponse
-            );
-
-            expect(result).toBe(false);
-            expect(mockSendResponse).toHaveBeenCalledWith({
-                success: false,
-                error: expect.stringContaining('Cannot read'),
-                platform: 'netflix',
-            });
-        });
-
-        test('should log debug information for requests', () => {
-            const request = { action: 'test-action', data: 'test' };
-
-            netflixScript.handlePlatformSpecificMessage(
-                request,
-                mockSendResponse
-            );
-
-            expect(consoleLogSpy).toHaveBeenCalledWith(
-                expect.stringContaining('Processing Netflix-specific message'),
-                expect.objectContaining({
-                    action: 'test-action',
-                    hasRequest: true,
-                    requestKeys: ['action', 'data'],
-                })
-            );
-        });
-    });
-
     describe('Cleanup and Resource Management', () => {
-        beforeEach(() => {
-            // Setup cleanup state
-            netflixScript.urlChangeCheckInterval = 123;
-            netflixScript._originalHistoryMethods = {
-                pushState: jest.fn(),
-                replaceState: jest.fn(),
-            };
-        });
-
         test('should cleanup Netflix-specific resources', async () => {
-            // Ensure clearInterval is mocked and the interval is set
+            // Base cleanup owns interval-manager teardown.
             const intervalManagerClearSpy = jest.spyOn(
                 netflixScript.intervalManager,
                 'clearAll'
@@ -644,100 +585,34 @@ describe('NetflixContentScript Comprehensive Tests', () => {
                 'cleanup'
             );
 
-            // Store original methods before cleanup
-            const originalPushState =
-                netflixScript._originalHistoryMethods.pushState;
-            const originalReplaceState =
-                netflixScript._originalHistoryMethods.replaceState;
-
             await netflixScript.cleanup();
 
             expect(intervalManagerClearSpy).toHaveBeenCalled();
-            expect(window.history.pushState).toBe(originalPushState);
-            expect(window.history.replaceState).toBe(originalReplaceState);
-            expect(netflixScript._originalHistoryMethods).toBeNull();
             expect(baseCleanupSpy).toHaveBeenCalled();
         });
 
-        test('should handle cleanup errors gracefully', async () => {
-            // Force an error during cleanup
-            const intervalManagerClearSpy = jest
-                .spyOn(netflixScript.intervalManager, 'clearAll')
-                .mockImplementation(() => {
-                    throw new Error('Cleanup error');
-                });
-
-            // Mock logWithFallback to capture error logging
+        test('propagates the shared Base cleanup rejection without subclass telemetry', async () => {
+            const cleanupError = createSensitiveError();
             netflixScript.logWithFallback = jest.fn();
-
-            // The cleanup method should throw an error, which we can catch and test
-            await expect(netflixScript.cleanup()).rejects.toThrow(
-                'Cleanup error'
+            expect(
+                Object.hasOwn(Object.getPrototypeOf(netflixScript), 'cleanup')
+            ).toBe(false);
+            const basePrototype = Object.getPrototypeOf(
+                Object.getPrototypeOf(netflixScript)
             );
+            const baseCleanupSpy = jest
+                .spyOn(basePrototype, 'cleanup')
+                .mockRejectedValueOnce(cleanupError);
 
-            expect(intervalManagerClearSpy).toHaveBeenCalled();
-            expect(netflixScript.logWithFallback).toHaveBeenCalledWith(
-                'error',
-                'Error during Netflix-specific cleanup.',
-                expect.objectContaining({
-                    error: expect.any(Error),
-                })
-            );
-        });
-    });
-
-    describe('Netflix SPA Routing Complexity', () => {
-        test('should handle complex Netflix navigation patterns', () => {
-            // Test the navigation logic directly
-            jest.spyOn(
-                netflixScript,
-                '_handlePageTransition'
-            ).mockImplementation(() => {});
-
-            // Test a simple navigation scenario
-            netflixScript.currentUrl = 'https://www.netflix.com/browse';
-            netflixScript.lastKnownPathname = '/browse';
-
-            // Simulate navigation to player page
-            const wasOnPlayerPage =
-                netflixScript.lastKnownPathname.includes('/watch/');
-            const isOnPlayerPage = '/watch/123'.includes('/watch/');
-
-            netflixScript._handlePageTransition(
-                wasOnPlayerPage,
-                isOnPlayerPage
-            );
-
-            // Verify transition handling
-            expect(netflixScript._handlePageTransition).toHaveBeenCalledWith(
-                false,
-                true
-            );
-        });
-
-        test('should handle rapid navigation changes', () => {
-            jest.spyOn(
-                netflixScript,
-                '_handlePageTransition'
-            ).mockImplementation(() => {});
-
-            const rapidChanges = [
-                'https://www.netflix.com/browse',
-                'https://www.netflix.com/watch/123',
-                'https://www.netflix.com/watch/456',
-                'https://www.netflix.com/browse',
-                'https://www.netflix.com/watch/789',
-            ];
-
-            // Test rapid navigation logic directly
-            rapidChanges.forEach(() => {
-                netflixScript._handlePageTransition(false, true);
-            });
-
-            // Should handle all transitions
-            expect(netflixScript._handlePageTransition).toHaveBeenCalledTimes(
-                rapidChanges.length
-            );
+            try {
+                await expect(netflixScript.cleanup()).rejects.toBe(
+                    cleanupError
+                );
+                expect(baseCleanupSpy).toHaveBeenCalledTimes(1);
+                expect(netflixScript.logWithFallback).not.toHaveBeenCalled();
+            } finally {
+                baseCleanupSpy.mockRestore();
+            }
         });
     });
 
@@ -777,8 +652,6 @@ describe('NetflixContentScript Comprehensive Tests', () => {
                 'getPlatformClass',
                 'getInjectScriptConfig',
                 'setupNavigationDetection',
-                'checkForUrlChange',
-                'handlePlatformSpecificMessage',
                 'isPlatformActive',
                 'isPlayerPageActive',
                 'getUrlPatterns',

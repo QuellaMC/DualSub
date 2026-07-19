@@ -16,7 +16,7 @@ Get cultural, historical, and linguistic explanations for selected subtitle text
 
 1. Enable AI Context Analysis in Advanced Settings
 2. Choose a provider (OpenAI or Gemini), then set its API key and model
-3. For a custom OpenAI-compatible host, use **Allow API host** to grant that exact origin
+3. For a custom OpenAI-compatible endpoint, use **Allow API host** to grant Chrome access to that scheme and host across all paths and ports
 
 ## Usage
 

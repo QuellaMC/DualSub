@@ -2,7 +2,7 @@
  * Translation Service
  *
  * Manages translation providers and coordinates translation requests.
- * Includes explicit multi-text translation, caching, and rate limiting.
+ * Includes caching and rate limiting.
  *
  * @author DualSub Extension
  * @version 2.0.0
@@ -13,10 +13,7 @@
 import { translate as googleTranslate } from '../../translation_providers/googleTranslate.js';
 import { translate as microsoftTranslateEdgeAuth } from '../../translation_providers/microsoftTranslateEdgeAuth.js';
 import { translate as deeplTranslate } from '../../translation_providers/deeplTranslate.js';
-import {
-    translate as openaiCompatibleTranslate,
-    translateBatch as openaiCompatibleTranslateBatch,
-} from '../../translation_providers/openaiCompatibleTranslate.js';
+import { translate as openaiCompatibleTranslate } from '../../translation_providers/openaiCompatibleTranslate.js';
 import { configService } from '../../services/configService.js';
 import { loggingManager } from '../utils/loggingManager.js';
 import {
@@ -28,13 +25,10 @@ import { performanceMonitor } from '../utils/performanceMonitor.js';
 import {
     Providers,
     ProviderNames,
-    ProviderBatchConfigs,
 } from '../../content_scripts/shared/constants/providers.js';
-import {
-    translate as vertexGeminiTranslate,
-    translateBatch as vertexGeminiTranslateBatch,
-} from '../../translation_providers/geminiVertexTranslate.js';
+import { translate as vertexGeminiTranslate } from '../../translation_providers/geminiVertexTranslate.js';
 import TTLCache from '../../utils/cache/TTLCache.js';
+import { getDefaultValue, validateSetting } from '../../config/configSchema.js';
 
 const TRANSLATION_CACHE_CONFIGURATION_KEYS = new Set([
     'deeplApiKey',
@@ -47,6 +41,49 @@ const TRANSLATION_CACHE_CONFIGURATION_KEYS = new Set([
     'vertexLocation',
     'vertexModel',
 ]);
+
+function getBucketResetTime(entries, window, getTimestamp) {
+    let oldestTimestamp = null;
+    for (const entry of entries) {
+        const timestamp = getTimestamp(entry);
+        if (
+            Number.isFinite(timestamp) &&
+            (oldestTimestamp === null || timestamp < oldestTimestamp)
+        ) {
+            oldestTimestamp = timestamp;
+        }
+    }
+
+    if (oldestTimestamp === null || !Number.isFinite(window)) return null;
+    const resetTime = oldestTimestamp + window;
+    return Number.isFinite(resetTime) ? resetTime : null;
+}
+
+function isFiniteUsageRecord(record, usageKey) {
+    return (
+        Number.isFinite(record?.timestamp) &&
+        Number.isFinite(record?.[usageKey])
+    );
+}
+
+function clampFutureTimestamp(timestamp, now) {
+    return Math.min(timestamp, now);
+}
+
+function normalizeFutureUsageRecord(record, now) {
+    const timestamp = clampFutureTimestamp(record.timestamp, now);
+    return timestamp === record.timestamp ? record : { ...record, timestamp };
+}
+
+class TranslationConfigurationChangedError extends TranslationError {
+    constructor() {
+        super('Translation configuration changed during request', {
+            errorCode: 'CONFIGURATION_CHANGED',
+            isRecoverable: true,
+        });
+        this.name = 'TranslationConfigurationChangedError';
+    }
+}
 
 /**
  * @typedef {Object} TranslationResult
@@ -66,7 +103,6 @@ class TranslationService {
             [Providers.GOOGLE]: {
                 name: ProviderNames[Providers.GOOGLE],
                 translate: googleTranslate,
-                supportsBatch: false,
                 rateLimit: {
                     type: 'bytes_per_window',
                     bytes: 4500,
@@ -78,13 +114,13 @@ class TranslationService {
             [Providers.MICROSOFT_EDGE_AUTH]: {
                 name: ProviderNames[Providers.MICROSOFT_EDGE_AUTH],
                 translate: microsoftTranslateEdgeAuth,
-                supportsBatch: false,
                 rateLimit: {
-                    type: 'characters_sliding_window',
+                    // Best-effort burst protection for this worker instance,
+                    // not a durable Microsoft account-quota counter.
+                    type: 'characters_per_window',
+                    scope: 'worker_instance',
                     characters: 33300,
                     window: 60000, // 1 minute
-                    maxCharacters: 2000000, // 2M chars per hour
-                    maxWindow: 3600000, // 1 hour
                     mandatoryDelay: 800, // 800ms between requests
                 },
                 category: 'free',
@@ -92,11 +128,10 @@ class TranslationService {
             [Providers.DEEPL]: {
                 name: ProviderNames[Providers.DEEPL],
                 translate: deeplTranslate,
-                supportsBatch: false,
                 rateLimit: {
-                    type: 'characters_per_month',
-                    characters: 500000,
-                    window: 2592000000, // 30 days
+                    // DeepL owns quota truth; this worker reacts to provider
+                    // responses and only applies local request pacing.
+                    type: 'provider_response',
                     mandatoryDelay: 500, // 500ms between requests
                 },
                 category: 'api_key',
@@ -104,8 +139,6 @@ class TranslationService {
             [Providers.OPENAI_COMPATIBLE]: {
                 name: ProviderNames[Providers.OPENAI_COMPATIBLE],
                 translate: openaiCompatibleTranslate,
-                translateBatch: openaiCompatibleTranslateBatch,
-                supportsBatch: true,
                 rateLimit: {
                     type: 'requests_per_minute',
                     requests: 3500,
@@ -113,22 +146,10 @@ class TranslationService {
                     mandatoryDelay: 100, // 100ms between requests
                 },
                 category: 'api_key',
-                batchOptimizations: {
-                    maxBatchSize:
-                        ProviderBatchConfigs[Providers.OPENAI_COMPATIBLE]
-                            .maxBatchSize,
-                    contextPreservation: true,
-                    exponentialBackoff: true,
-                    delimiter:
-                        ProviderBatchConfigs[Providers.OPENAI_COMPATIBLE]
-                            .delimiter,
-                },
             },
             [Providers.VERTEX_GEMINI]: {
                 name: ProviderNames[Providers.VERTEX_GEMINI],
                 translate: vertexGeminiTranslate,
-                translateBatch: vertexGeminiTranslateBatch,
-                supportsBatch: true,
                 rateLimit: {
                     type: 'requests_per_minute',
                     requests: 3000,
@@ -136,26 +157,19 @@ class TranslationService {
                     mandatoryDelay: 100,
                 },
                 category: 'api_key',
-                batchOptimizations: {
-                    maxBatchSize:
-                        ProviderBatchConfigs[Providers.VERTEX_GEMINI]
-                            .maxBatchSize,
-                    contextPreservation: true,
-                    exponentialBackoff: true,
-                    delimiter:
-                        ProviderBatchConfigs[Providers.VERTEX_GEMINI].delimiter,
-                },
             },
         };
         this.isInitialized = false;
         this.cacheMaxSize = 1000; // Maximum cache entries
         this.translationCache = new TTLCache(this.cacheMaxSize, 5 * 60 * 1000); // 5 minutes TTL
+        this.cacheGeneration = 0;
+        this.configuredRequestDelay = getDefaultValue('translationDelay');
         this.characterTracker = new Map(); // For character/byte-based rate limiting
         this.rateLimitTracker = new Map(); // For request-per-window rate limiting
         this.lastRequestTime = new Map(); // For mandatory delays
         this.providerRequestSlotQueues = new Map(); // Serializes rate-limit slot acquisition per provider
         this.performanceMetrics = {
-            // Counts every translate/translateBatch request, including cache hits and failures.
+            // Counts every translate request, including cache hits and failures.
             totalTranslations: 0,
             // Counts successful non-cached translation operations used by averageResponseTime.
             successfulTranslations: 0,
@@ -201,11 +215,25 @@ class TranslationService {
             );
         }
 
+        const defaultRequestDelay = getDefaultValue('translationDelay');
+        this.configuredRequestDelay = defaultRequestDelay;
+        try {
+            const configuredRequestDelay =
+                await configService.get('translationDelay');
+            if (validateSetting('translationDelay', configuredRequestDelay)) {
+                this.configuredRequestDelay = configuredRequestDelay;
+            }
+        } catch (error) {
+            this.configuredRequestDelay = defaultRequestDelay;
+            this.logger.error('Error loading translation delay setting', error);
+        }
+
         // Listen for provider changes
         // Credential values are observed only so their rotation can invalidate
         // cached results; handleConfigurationChanges logs key names, not values.
-        configService.onChanged((changes) =>
-            this.handleConfigurationChanges(changes)
+        configService.onChanged(
+            (changes) => this.handleConfigurationChanges(changes),
+            { includeSensitive: true }
         );
 
         // Validate all providers
@@ -215,9 +243,6 @@ class TranslationService {
         this.logger.info('Translation service initialized', {
             currentProvider: this.currentProviderId,
             totalProviders: Object.keys(this.providers).length,
-            batchCapableProviders: Object.values(this.providers).filter(
-                (p) => p.supportsBatch
-            ).length,
         });
     }
 
@@ -228,6 +253,25 @@ class TranslationService {
      * @param {Object} changes - Changed configuration keys and their new values
      */
     handleConfigurationChanges(changes) {
+        try {
+            const delayDescriptor = Object.getOwnPropertyDescriptor(
+                changes,
+                'translationDelay'
+            );
+            if (delayDescriptor && Object.hasOwn(delayDescriptor, 'value')) {
+                if (delayDescriptor.value === undefined) {
+                    this.configuredRequestDelay =
+                        getDefaultValue('translationDelay');
+                } else if (
+                    validateSetting('translationDelay', delayDescriptor.value)
+                ) {
+                    this.configuredRequestDelay = delayDescriptor.value;
+                }
+            }
+        } catch {
+            // Ignore malformed change records and retain the last valid delay.
+        }
+
         if (
             changes.selectedProvider &&
             this.providers[changes.selectedProvider]
@@ -299,32 +343,46 @@ class TranslationService {
      * @returns {Promise<string>} Translated text
      */
     async translate(text, sourceLang, targetLang, options = {}) {
+        const optionSource =
+            options &&
+            (typeof options === 'object' || typeof options === 'function')
+                ? options
+                : {};
+        const retryCountOption = optionSource.retryCount;
+        const skipCache = optionSource.skipCache === true;
+        const skipRateLimit = optionSource.skipRateLimit === true;
+        const allowRetry = optionSource.allowRetry !== false;
+        const onCacheHit = optionSource._onCacheHit;
         const startTime = Date.now();
         const providerId = this.currentProviderId;
         const selectedProvider = this.providers[providerId];
-        let retryCount = options.retryCount || 0;
+        const expectedCacheGeneration = this.cacheGeneration;
+        let retryCount =
+            Number.isInteger(retryCountOption) && retryCountOption >= 0
+                ? Math.min(retryCountOption, 2)
+                : 0;
         this.performanceMetrics.totalTranslations++;
-        const timerId = performanceMonitor.startTiming('translation', {
-            provider: providerId,
-            textLength: text.length,
-            sourceLang,
-            targetLang,
-        });
-
-        const cacheKey = this.generateCacheKey(
-            text,
-            sourceLang,
-            targetLang,
-            providerId
-        );
+        const timerId = performanceMonitor.startTiming('translation');
 
         try {
+            const cacheKey = this.generateCacheKey(
+                text,
+                sourceLang,
+                targetLang,
+                providerId
+            );
             while (true) {
                 try {
-                    if (!options.skipCache) {
+                    this.assertCacheGeneration(expectedCacheGeneration);
+                    if (!skipCache) {
                         const cachedResult = this.getCacheItem(cacheKey);
-                        if (cachedResult !== undefined) {
+                        if (typeof cachedResult === 'string') {
+                            this.assertCacheGeneration(expectedCacheGeneration);
                             this.performanceMetrics.cacheHits++;
+                            if (typeof onCacheHit === 'function') {
+                                onCacheHit();
+                            }
+                            this.assertCacheGeneration(expectedCacheGeneration);
                             this.logger.debug('Translation cache hit', {
                                 provider: providerId,
                                 sourceLang,
@@ -349,15 +407,25 @@ class TranslationService {
                     // The network response is deliberately outside the slot.
                     await this.acquireProviderRequestSlot(text, {
                         providerId,
-                        skipRateLimit: options.skipRateLimit === true,
+                        skipRateLimit,
                     });
+                    this.assertCacheGeneration(expectedCacheGeneration);
 
                     const translatedText = await selectedProvider.translate(
                         text,
                         sourceLang,
                         targetLang
                     );
-                    this.setCacheItem(cacheKey, translatedText);
+                    if (typeof translatedText !== 'string') {
+                        throw new Error(
+                            'Translation provider returned an invalid result'
+                        );
+                    }
+                    this.setCacheItemForGeneration(
+                        cacheKey,
+                        translatedText,
+                        expectedCacheGeneration
+                    );
 
                     const responseTime = Date.now() - startTime;
                     this.logger.debug('Translation completed', {
@@ -371,6 +439,12 @@ class TranslationService {
                     this.updatePerformanceMetrics(responseTime, true);
                     return translatedText;
                 } catch (error) {
+                    if (error instanceof TranslationConfigurationChangedError) {
+                        throw error;
+                    }
+                    if (this.cacheGeneration !== expectedCacheGeneration) {
+                        throw new TranslationConfigurationChangedError();
+                    }
                     const errorInfo = errorHandler.handleError(error, {
                         operation: 'translate',
                         provider: providerId,
@@ -393,7 +467,7 @@ class TranslationService {
 
                     if (
                         !errorInfo.recovery.shouldRetry ||
-                        options.allowRetry === false ||
+                        !allowRetry ||
                         retryCount >= 2
                     ) {
                         throw translationError;
@@ -440,6 +514,33 @@ class TranslationService {
      */
     setCacheItem(key, value) {
         this.translationCache.set(key, value);
+    }
+
+    /**
+     * Fail a request whose captured configuration has been invalidated.
+     * @param {number} expectedCacheGeneration
+     */
+    assertCacheGeneration(expectedCacheGeneration) {
+        if (this.cacheGeneration !== expectedCacheGeneration) {
+            throw new TranslationConfigurationChangedError();
+        }
+    }
+
+    /**
+     * Commit only while the request's captured configuration is current.
+     * @param {string} key
+     * @param {string} value
+     * @param {number} expectedCacheGeneration
+     */
+    setCacheItemForGeneration(key, value, expectedCacheGeneration) {
+        this.assertCacheGeneration(expectedCacheGeneration);
+        this.setCacheItem(key, value);
+        if (this.cacheGeneration !== expectedCacheGeneration) {
+            // A synchronous cache hook may invalidate while setCacheItem runs.
+            // Remove that stale write without incrementing the generation again.
+            this.translationCache.clear();
+            throw new TranslationConfigurationChangedError();
+        }
     }
 
     /**
@@ -519,26 +620,22 @@ class TranslationService {
                     providerId
                 );
 
-            case 'characters_sliding_window':
-                return this.checkCharactersSlidingWindow(
+            case 'characters_per_window':
+                return this.checkCharactersPerWindow(
                     text,
                     rateLimit,
                     now,
                     providerId
                 );
 
-            case 'characters_per_month':
-                return this.checkCharactersPerMonth(
-                    text,
-                    rateLimit,
-                    now,
-                    providerId
-                );
+            case 'provider_response':
+                return true;
 
-            case 'requests_per_hour':
             case 'requests_per_minute':
-            default:
                 return this.checkRequestsPerWindow(rateLimit, now, providerId);
+
+            default:
+                return true;
         }
     }
 
@@ -565,9 +662,10 @@ class TranslationService {
         const requests = this.characterTracker.get(providerId);
 
         // Remove old requests outside the window
-        const recentRequests = requests.filter(
-            (req) => req.timestamp > windowStart
-        );
+        const recentRequests = requests
+            .filter((request) => Number.isFinite(request?.timestamp))
+            .map((request) => normalizeFutureUsageRecord(request, now))
+            .filter((request) => request.timestamp > windowStart);
         this.characterTracker.set(providerId, recentRequests);
 
         // Calculate total bytes in current window
@@ -581,66 +679,14 @@ class TranslationService {
     }
 
     /**
-     * Check characters sliding window rate limit (Microsoft Translate)
+     * Check worker-local characters per window (Microsoft Translate)
      * @param {string} text - Text to translate
      * @param {Object} rateLimit - Rate limit configuration
      * @param {number} now - Current timestamp
      * @param {string} providerId - Provider to inspect
-     * @returns {boolean} True if within limits
+     * @returns {boolean} True if within the worker-local guard
      */
-    checkCharactersSlidingWindow(
-        text,
-        rateLimit,
-        now,
-        providerId = this.currentProviderId
-    ) {
-        const shortWindowStart = now - rateLimit.window;
-        const longWindowStart = now - rateLimit.maxWindow;
-
-        if (!this.characterTracker.has(providerId)) {
-            this.characterTracker.set(providerId, []);
-        }
-
-        const requests = this.characterTracker.get(providerId);
-
-        // Remove old requests outside the long window
-        const recentRequests = requests.filter(
-            (req) => req.timestamp > longWindowStart
-        );
-        this.characterTracker.set(providerId, recentRequests);
-
-        // Check short window (1 minute)
-        const shortWindowRequests = recentRequests.filter(
-            (req) => req.timestamp > shortWindowStart
-        );
-        const shortWindowChars = shortWindowRequests.reduce(
-            (sum, req) => sum + req.characters,
-            0
-        );
-
-        // Check long window (1 hour)
-        const longWindowChars = recentRequests.reduce(
-            (sum, req) => sum + req.characters,
-            0
-        );
-
-        const textChars = text.length;
-
-        return (
-            shortWindowChars + textChars <= rateLimit.characters &&
-            longWindowChars + textChars <= rateLimit.maxCharacters
-        );
-    }
-
-    /**
-     * Check characters per month rate limit (DeepL)
-     * @param {string} text - Text to translate
-     * @param {Object} rateLimit - Rate limit configuration
-     * @param {number} now - Current timestamp
-     * @param {string} providerId - Provider to inspect
-     * @returns {boolean} True if within limits
-     */
-    checkCharactersPerMonth(
+    checkCharactersPerWindow(
         text,
         rateLimit,
         now,
@@ -653,21 +699,22 @@ class TranslationService {
         }
 
         const requests = this.characterTracker.get(providerId);
-
-        // Remove old requests outside the window
-        const recentRequests = requests.filter(
-            (req) => req.timestamp > windowStart
-        );
+        const recentRequests = requests
+            .filter(
+                (request) =>
+                    isFiniteUsageRecord(request, 'characters') &&
+                    request.characters >= 0
+            )
+            .map((request) => normalizeFutureUsageRecord(request, now))
+            .filter((request) => request.timestamp > windowStart);
         this.characterTracker.set(providerId, recentRequests);
 
-        // Calculate total characters in current window
-        const totalChars = recentRequests.reduce(
-            (sum, req) => sum + req.characters,
-            0
-        );
-        const textChars = text.length;
+        const totalCharacters = recentRequests.reduce((sum, request) => {
+            const nextTotal = sum + request.characters;
+            return Number.isFinite(nextTotal) ? nextTotal : Number.MAX_VALUE;
+        }, 0);
 
-        return totalChars + textChars <= rateLimit.characters;
+        return totalCharacters + text.length <= rateLimit.characters;
     }
 
     /**
@@ -691,9 +738,10 @@ class TranslationService {
         const requests = this.rateLimitTracker.get(providerId);
 
         // Remove old requests outside the window
-        const recentRequests = requests.filter(
-            (timestamp) => timestamp > windowStart
-        );
+        const recentRequests = requests
+            .filter((timestamp) => Number.isFinite(timestamp))
+            .map((timestamp) => clampFutureTimestamp(timestamp, now))
+            .filter((timestamp) => timestamp > windowStart);
         this.rateLimitTracker.set(providerId, recentRequests);
 
         return recentRequests.length < rateLimit.requests;
@@ -706,12 +754,29 @@ class TranslationService {
      */
     async applyMandatoryDelay(providerId = this.currentProviderId) {
         const provider = this.providers[providerId];
-        if (!provider.rateLimit?.mandatoryDelay) return;
+        const providerRequestDelay =
+            Number.isFinite(provider?.rateLimit?.mandatoryDelay) &&
+            provider.rateLimit.mandatoryDelay >= 0
+                ? provider.rateLimit.mandatoryDelay
+                : 0;
+        const configuredRequestDelay = validateSetting(
+            'translationDelay',
+            this.configuredRequestDelay
+        )
+            ? this.configuredRequestDelay
+            : getDefaultValue('translationDelay');
+        const requiredDelay = Math.max(
+            providerRequestDelay,
+            configuredRequestDelay
+        );
 
         const now = Date.now();
-        const lastRequest = this.lastRequestTime.get(providerId) || 0;
-        const timeSinceLastRequest = now - lastRequest;
-        const requiredDelay = provider.rateLimit.mandatoryDelay;
+        const lastRequest = this.lastRequestTime.get(providerId);
+        if (!Number.isFinite(lastRequest)) {
+            this.lastRequestTime.set(providerId, now);
+            return;
+        }
+        const timeSinceLastRequest = Math.max(0, now - lastRequest);
 
         if (timeSinceLastRequest < requiredDelay) {
             const delayNeeded = requiredDelay - timeSinceLastRequest;
@@ -738,21 +803,18 @@ class TranslationService {
 
         if (!provider.rateLimit) return;
 
-        // Ensure trackers exist
-        if (!this.rateLimitTracker) this.rateLimitTracker = new Map();
-
-        // Always update request tracker
-        if (!this.rateLimitTracker.has(providerId)) {
-            this.rateLimitTracker.set(providerId, []);
-        }
-        this.rateLimitTracker.get(providerId).push(now);
-
-        // Update character/byte tracker for relevant providers
         const rateLimit = provider.rateLimit;
+        if (rateLimit.type === 'requests_per_minute') {
+            if (!this.rateLimitTracker) this.rateLimitTracker = new Map();
+            if (!this.rateLimitTracker.has(providerId)) {
+                this.rateLimitTracker.set(providerId, []);
+            }
+            this.rateLimitTracker.get(providerId).push(now);
+        }
+
         if (
             rateLimit.type === 'bytes_per_window' ||
-            rateLimit.type === 'characters_sliding_window' ||
-            rateLimit.type === 'characters_per_month'
+            rateLimit.type === 'characters_per_window'
         ) {
             if (!this.characterTracker.has(providerId)) {
                 this.characterTracker.set(providerId, []);
@@ -766,36 +828,6 @@ class TranslationService {
 
             this.characterTracker.get(providerId).push(entry);
         }
-    }
-
-    /**
-     * Change translation provider
-     * @param {string} providerId - New provider ID
-     * @returns {Promise<Object>} Result object
-     */
-    async changeProvider(providerId) {
-        if (!this.providers[providerId]) {
-            this.logger.error('Attempted to switch to unknown provider', null, {
-                providerId,
-            });
-            throw new Error(`Unknown provider: ${providerId}`);
-        }
-
-        this.currentProviderId = providerId;
-
-        // Save to configuration
-        await configService.set('selectedProvider', providerId);
-
-        const providerName = this.providers[providerId].name;
-        this.logger.info('Provider changed', {
-            providerId,
-            providerName,
-        });
-
-        return {
-            success: true,
-            message: `Provider changed to ${providerName}`,
-        };
     }
 
     /**
@@ -870,6 +902,7 @@ class TranslationService {
      * Clear translation cache
      */
     clearCache() {
+        this.cacheGeneration++;
         this.translationCache.clear();
         this.logger.debug('Translation cache cleared');
     }
@@ -890,28 +923,6 @@ class TranslationService {
     }
 
     /**
-     * Get providers that support batch processing
-     * @returns {Object} Batch-capable providers
-     */
-    getBatchCapableProviders() {
-        const filtered = {};
-        for (const [id, provider] of Object.entries(this.providers)) {
-            if (provider.supportsBatch) {
-                filtered[id] = provider;
-            }
-        }
-        return filtered;
-    }
-
-    /**
-     * Check if current provider supports batch processing
-     * @returns {boolean} True if supports batch
-     */
-    currentProviderSupportsBatch() {
-        return this.providers[this.currentProviderId]?.supportsBatch || false;
-    }
-
-    /**
      * Get rate limit status for current provider
      * @returns {Object} Rate limit status
      */
@@ -928,28 +939,32 @@ class TranslationService {
             case 'bytes_per_window':
                 return this.getBytesRateLimitStatus(rateLimit, now, providerId);
 
-            case 'characters_sliding_window':
-                return this.getCharactersSlidingWindowStatus(
+            case 'characters_per_window':
+                return this.getCharactersPerWindowStatus(
                     rateLimit,
                     now,
                     providerId
                 );
 
-            case 'characters_per_month':
-                return this.getCharactersPerMonthStatus(
-                    rateLimit,
-                    now,
-                    providerId
-                );
+            case 'provider_response':
+                return {
+                    hasLimit: false,
+                    type: 'provider_response',
+                    mandatoryDelay: rateLimit.mandatoryDelay,
+                };
 
-            case 'requests_per_hour':
             case 'requests_per_minute':
-            default:
                 return this.getRequestsRateLimitStatus(
                     rateLimit,
                     now,
                     providerId
                 );
+
+            default:
+                return {
+                    hasLimit: false,
+                    mandatoryDelay: rateLimit.mandatoryDelay,
+                };
         }
     }
 
@@ -964,7 +979,10 @@ class TranslationService {
         const windowStart = now - rateLimit.window;
         const requests = this.characterTracker.get(providerId) || [];
         const recentRequests = requests.filter(
-            (req) => req.timestamp > windowStart
+            (req) =>
+                isFiniteUsageRecord(req, 'bytes') &&
+                req.timestamp <= now &&
+                req.timestamp > windowStart
         );
         const totalBytes = recentRequests.reduce(
             (sum, req) => sum + req.bytes,
@@ -977,62 +995,19 @@ class TranslationService {
             limit: rateLimit.bytes,
             used: totalBytes,
             remaining: rateLimit.bytes - totalBytes,
-            resetTime: windowStart + rateLimit.window,
+            resetTime: getBucketResetTime(
+                recentRequests,
+                rateLimit.window,
+                (request) => request.timestamp
+            ),
             mandatoryDelay: rateLimit.mandatoryDelay,
         };
     }
 
     /**
-     * Get characters sliding window status
+     * Get worker-local characters-per-window status
      */
-    getCharactersSlidingWindowStatus(
-        rateLimit,
-        now,
-        providerId = this.currentProviderId
-    ) {
-        const shortWindowStart = now - rateLimit.window;
-        const longWindowStart = now - rateLimit.maxWindow;
-        const requests = this.characterTracker.get(providerId) || [];
-
-        const shortWindowRequests = requests.filter(
-            (req) => req.timestamp > shortWindowStart
-        );
-        const longWindowRequests = requests.filter(
-            (req) => req.timestamp > longWindowStart
-        );
-
-        const shortWindowChars = shortWindowRequests.reduce(
-            (sum, req) => sum + req.characters,
-            0
-        );
-        const longWindowChars = longWindowRequests.reduce(
-            (sum, req) => sum + req.characters,
-            0
-        );
-
-        return {
-            hasLimit: true,
-            type: 'characters_sliding',
-            shortWindow: {
-                limit: rateLimit.characters,
-                used: shortWindowChars,
-                remaining: rateLimit.characters - shortWindowChars,
-                resetTime: shortWindowStart + rateLimit.window,
-            },
-            longWindow: {
-                limit: rateLimit.maxCharacters,
-                used: longWindowChars,
-                remaining: rateLimit.maxCharacters - longWindowChars,
-                resetTime: longWindowStart + rateLimit.maxWindow,
-            },
-            mandatoryDelay: rateLimit.mandatoryDelay,
-        };
-    }
-
-    /**
-     * Get characters per month status
-     */
-    getCharactersPerMonthStatus(
+    getCharactersPerWindowStatus(
         rateLimit,
         now,
         providerId = this.currentProviderId
@@ -1040,20 +1015,29 @@ class TranslationService {
         const windowStart = now - rateLimit.window;
         const requests = this.characterTracker.get(providerId) || [];
         const recentRequests = requests.filter(
-            (req) => req.timestamp > windowStart
+            (request) =>
+                isFiniteUsageRecord(request, 'characters') &&
+                request.characters >= 0 &&
+                request.timestamp <= now &&
+                request.timestamp > windowStart
         );
-        const totalChars = recentRequests.reduce(
-            (sum, req) => sum + req.characters,
-            0
-        );
+        const totalCharacters = recentRequests.reduce((sum, request) => {
+            const nextTotal = sum + request.characters;
+            return Number.isFinite(nextTotal) ? nextTotal : Number.MAX_VALUE;
+        }, 0);
 
         return {
             hasLimit: true,
-            type: 'characters',
+            type: 'characters_per_window',
+            scope: rateLimit.scope,
             limit: rateLimit.characters,
-            used: totalChars,
-            remaining: rateLimit.characters - totalChars,
-            resetTime: windowStart + rateLimit.window,
+            used: totalCharacters,
+            remaining: Math.max(0, rateLimit.characters - totalCharacters),
+            resetTime: getBucketResetTime(
+                recentRequests,
+                rateLimit.window,
+                (request) => request.timestamp
+            ),
             mandatoryDelay: rateLimit.mandatoryDelay,
         };
     }
@@ -1069,7 +1053,10 @@ class TranslationService {
         const windowStart = now - rateLimit.window;
         const requests = this.rateLimitTracker.get(providerId) || [];
         const recentRequests = requests.filter(
-            (timestamp) => timestamp > windowStart
+            (timestamp) =>
+                Number.isFinite(timestamp) &&
+                timestamp <= now &&
+                timestamp > windowStart
         );
 
         return {
@@ -1078,307 +1065,13 @@ class TranslationService {
             limit: rateLimit.requests,
             used: recentRequests.length,
             remaining: rateLimit.requests - recentRequests.length,
-            resetTime: windowStart + rateLimit.window,
+            resetTime: getBucketResetTime(
+                recentRequests,
+                rateLimit.window,
+                (timestamp) => timestamp
+            ),
             mandatoryDelay: rateLimit.mandatoryDelay,
         };
-    }
-
-    /**
-     * Translate multiple texts in a batch
-     * @param {Array<string>} texts - Array of texts to translate
-     * @param {string} sourceLang - Source language code
-     * @param {string} targetLang - Target language code
-     * @param {Object} options - Batch translation options
-     * @returns {Promise<Array<string>>} Array of translated texts
-     */
-    async translateBatch(texts, sourceLang, targetLang, options = {}) {
-        if (!Array.isArray(texts) || texts.length === 0) {
-            throw new Error('Invalid texts array for batch translation');
-        }
-        if (texts.some((text) => typeof text !== 'string')) {
-            throw new Error('Batch translation texts must be strings');
-        }
-
-        const startTime = Date.now();
-        const providerId = this.currentProviderId;
-        const selectedProvider = this.providers[providerId];
-        this.performanceMetrics.totalTranslations++;
-        const timerId = performanceMonitor.startTiming('batch_processing', {
-            provider: providerId,
-            textCount: texts.length,
-            totalLength: texts.reduce((sum, text) => sum + text.length, 0),
-            sourceLang,
-            targetLang,
-        });
-
-        try {
-            if (texts.every((text) => text.trim() === '')) {
-                throw new Error('Texts array contains only empty strings');
-            }
-
-            this.logger.info('Batch translation request', {
-                provider: providerId,
-                textCount: texts.length,
-                sourceLang,
-                targetLang,
-                options,
-            });
-
-            if (!selectedProvider) {
-                throw new Error(`Provider "${providerId}" is not configured.`);
-            }
-
-            // Check if provider supports batch processing
-            if (
-                !selectedProvider.supportsBatch ||
-                !selectedProvider.translateBatch
-            ) {
-                this.logger.debug(
-                    'Provider does not support batch, falling back to individual translations'
-                );
-                const results = await this.translateIndividually(
-                    texts,
-                    sourceLang,
-                    targetLang,
-                    options
-                );
-                return results;
-            }
-
-            const configuredMaxBatchSize =
-                selectedProvider.batchOptimizations?.maxBatchSize;
-            const maxBatchSize =
-                Number.isInteger(configuredMaxBatchSize) &&
-                configuredMaxBatchSize > 0
-                    ? configuredMaxBatchSize
-                    : texts.length;
-            const textBatches = [];
-            for (let index = 0; index < texts.length; index += maxBatchSize) {
-                textBatches.push(texts.slice(index, index + maxBatchSize));
-            }
-
-            this.logger.debug('Prepared provider batch requests', {
-                originalCount: texts.length,
-                maxBatchSize,
-                requestCount: textBatches.length,
-            });
-
-            const translatedTexts = [];
-            for (const textBatch of textBatches) {
-                const combinedText = textBatch.join(' ');
-                try {
-                    await this.acquireProviderRequestSlot(combinedText, {
-                        providerId,
-                        skipRateLimit: options.skipRateLimit === true,
-                    });
-                } catch (error) {
-                    if (
-                        error instanceof RateLimitError &&
-                        selectedProvider.batchOptimizations?.exponentialBackoff
-                    ) {
-                        await this.exponentialBackoff();
-                        await this.acquireProviderRequestSlot(combinedText, {
-                            providerId,
-                            skipRateLimit: options.skipRateLimit === true,
-                        });
-                    } else {
-                        throw error;
-                    }
-                }
-
-                const translatedBatch = await selectedProvider.translateBatch(
-                    textBatch,
-                    sourceLang,
-                    targetLang,
-                    selectedProvider.batchOptimizations?.delimiter ||
-                        '|SUBTITLE_BREAK|'
-                );
-
-                if (
-                    !Array.isArray(translatedBatch) ||
-                    translatedBatch.length !== textBatch.length
-                ) {
-                    throw new Error(
-                        `Batch translation returned ${translatedBatch?.length ?? 'an invalid result'} for ${textBatch.length} inputs`
-                    );
-                }
-
-                translatedTexts.push(...translatedBatch);
-            }
-
-            if (translatedTexts.length !== texts.length) {
-                throw new Error(
-                    `Batch translation returned ${translatedTexts.length} results for ${texts.length} inputs`
-                );
-            }
-
-            const responseTime = Date.now() - startTime;
-            this.updateBatchPerformanceMetrics(
-                texts.length,
-                responseTime,
-                true,
-                textBatches.length
-            );
-
-            this.logger.info('Batch translation completed', {
-                provider: providerId,
-                originalCount: texts.length,
-                translatedCount: translatedTexts.length,
-                requestCount: textBatches.length,
-                responseTime,
-                apiCallReduction: Math.max(
-                    0,
-                    texts.length - textBatches.length
-                ),
-            });
-
-            return translatedTexts;
-        } catch (error) {
-            const responseTime = Date.now() - startTime;
-            this.updateBatchPerformanceMetrics(
-                texts.length,
-                responseTime,
-                false
-            );
-
-            this.logger.error('Batch translation failed', error, {
-                provider: providerId,
-                textCount: texts.length,
-            });
-
-            // Fallback to individual translations
-            if (options.allowFallback !== false) {
-                this.logger.info('Falling back to individual translations');
-                return this.translateIndividually(
-                    texts,
-                    sourceLang,
-                    targetLang,
-                    options
-                );
-            }
-
-            throw error;
-        } finally {
-            performanceMonitor.endTiming(timerId);
-        }
-    }
-
-    /**
-     * Translate texts individually (fallback method)
-     * @param {Array<string>} texts - Array of texts to translate
-     * @param {string} sourceLang - Source language code
-     * @param {string} targetLang - Target language code
-     * @param {Object} options - Translation options
-     * @returns {Promise<Array<string>>} Array of translated texts
-     */
-    async translateIndividually(texts, sourceLang, targetLang, options = {}) {
-        const results = [];
-        const provider = this.providers[this.currentProviderId];
-
-        // Use provider-specific mandatory delay or fallback to configured delay
-        const mandatoryDelay = provider.rateLimit?.mandatoryDelay || 0;
-        const configuredDelay = options.individualDelay || 100;
-        const delay = Math.max(mandatoryDelay, configuredDelay);
-
-        this.logger.debug('Starting individual translations with delays', {
-            provider: this.currentProviderId,
-            textCount: texts.length,
-            mandatoryDelay,
-            configuredDelay,
-            finalDelay: delay,
-        });
-
-        for (let i = 0; i < texts.length; i++) {
-            try {
-                const translated = await this.translate(
-                    texts[i],
-                    sourceLang,
-                    targetLang,
-                    {
-                        ...options,
-                        skipCache: false, // Allow caching for individual translations
-                    }
-                );
-                results.push(translated);
-
-                // Add delay between requests to avoid rate limiting and account lockouts
-                // Note: translate() method already applies mandatory delay, but we add extra delay for safety
-                if (i < texts.length - 1 && delay > 0) {
-                    await new Promise((resolve) => setTimeout(resolve, delay));
-                }
-            } catch (error) {
-                this.logger.error(
-                    'Individual translation failed in batch fallback',
-                    error,
-                    {
-                        textIndex: i,
-                        textLength: texts[i].length,
-                    }
-                );
-                results.push(texts[i]); // Use original text as fallback
-            }
-        }
-
-        return results;
-    }
-
-    /**
-     * Implement exponential backoff for rate limiting
-     * @param {number} attempt - Current attempt number (default: 1)
-     * @returns {Promise<void>}
-     */
-    async exponentialBackoff(attempt = 1) {
-        const baseDelay = 1000; // 1 second base delay
-        const maxDelay = 30000; // 30 seconds max delay
-        const delay = Math.min(baseDelay * Math.pow(2, attempt - 1), maxDelay);
-
-        this.logger.info('Applying exponential backoff', {
-            attempt,
-            delay,
-            provider: this.currentProviderId,
-        });
-
-        await new Promise((resolve) => setTimeout(resolve, delay));
-    }
-
-    /**
-     * Update batch-specific performance metrics
-     * @param {number} textCount - Number of texts processed
-     * @param {number} responseTime - Response time in milliseconds
-     * @param {boolean} success - Whether batch was successful
-     * @param {number} requestCount - Number of provider requests used
-     */
-    updateBatchPerformanceMetrics(
-        textCount,
-        responseTime,
-        success,
-        requestCount = 1
-    ) {
-        // Update general metrics
-        this.updatePerformanceMetrics(responseTime, success);
-
-        // Add batch-specific metrics
-        if (!this.performanceMetrics.batchMetrics) {
-            this.performanceMetrics.batchMetrics = {
-                totalBatches: 0,
-                totalTextsInBatches: 0,
-                averageBatchSize: 0,
-                apiCallReduction: 0,
-            };
-        }
-
-        const batchMetrics = this.performanceMetrics.batchMetrics;
-        batchMetrics.totalBatches++;
-        batchMetrics.totalTextsInBatches += textCount;
-        batchMetrics.averageBatchSize =
-            batchMetrics.totalTextsInBatches / batchMetrics.totalBatches;
-
-        if (success && textCount > 1) {
-            batchMetrics.apiCallReduction += Math.max(
-                0,
-                textCount - requestCount
-            );
-        }
     }
 }
 

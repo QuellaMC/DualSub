@@ -9,7 +9,7 @@
  */
 
 import Logger from '../utils/logger.js';
-import { configService } from '../services/configService.js';
+import { validateSetting } from '../config/configSchema.js';
 import {
     getContextSchema,
     CONTEXT_SCHEMA_NAME,
@@ -17,8 +17,17 @@ import {
 } from './contextSchemas.js';
 import { isRetryableContextError } from './retryPolicy.js';
 import { fetchWithTimeout } from '../utils/fetchWithTimeout.js';
+import { readRequiredProviderConfig } from './providerConfig.js';
 
 const logger = Logger.create('OpenAIContextProvider');
+const OPENAI_CONFIGURATION_ERROR_MESSAGE =
+    'OpenAI provider configuration is invalid';
+const OPENAI_REQUIRED_CONFIG_KEYS = Object.freeze([
+    'openaiApiKey',
+    'openaiBaseUrl',
+    'openaiModel',
+    'aiContextTimeout',
+]);
 
 /**
  * Available OpenAI models for context analysis
@@ -333,16 +342,24 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
     }
 
     try {
-        const config = await configService.getAll();
-        const {
-            openaiApiKey,
-            openaiBaseUrl = 'https://api.openai.com/v1',
-            openaiModel = 'gpt-5.6-luna',
-            aiContextTimeout = 30000,
-        } = config;
+        const config = await readRequiredProviderConfig(
+            OPENAI_REQUIRED_CONFIG_KEYS
+        );
+        const { openaiApiKey, openaiBaseUrl, openaiModel, aiContextTimeout } =
+            config;
 
-        if (!openaiApiKey) {
+        if (
+            !validateSetting('openaiApiKey', openaiApiKey) ||
+            openaiApiKey.trim() === ''
+        ) {
             throw new Error('OpenAI API key not configured');
+        }
+        if (
+            !validateSetting('openaiBaseUrl', openaiBaseUrl) ||
+            !validateSetting('openaiModel', openaiModel) ||
+            !validateSetting('aiContextTimeout', aiContextTimeout)
+        ) {
+            throw new Error(OPENAI_CONFIGURATION_ERROR_MESSAGE);
         }
 
         const normalizedBaseUrl = normalizeBaseUrl(openaiBaseUrl);

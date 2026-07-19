@@ -6,25 +6,432 @@
 
 import { MODAL_STATES } from '../../core/constants.js';
 
+const TrustedPromise = Promise;
+const trustedPromiseResolve = TrustedPromise.resolve.bind(TrustedPromise);
+const trustedPromiseThen = Function.call.bind(TrustedPromise.prototype.then);
+
+const PRIVATE_FAILURE_CODES = Object.freeze([
+    'busy',
+    'stale-selection',
+    'disabled',
+    'configuration',
+    'rate-limited',
+    'timeout',
+    'network',
+    'provider-unavailable',
+    'invalid-response',
+    'provider-error',
+    'internal',
+]);
+const PRIVATE_CANCEL_REASONS = Object.freeze([
+    'user',
+    'superseded',
+    'modal-closed',
+    'selection-invalidated',
+]);
+
+function hasExactEnumerableDataKeys(value, expectedKeys) {
+    try {
+        if (
+            value === null ||
+            typeof value !== 'object' ||
+            Array.isArray(value)
+        ) {
+            return false;
+        }
+        const ownKeys = Reflect.ownKeys(value);
+        if (ownKeys.length !== expectedKeys.length) return false;
+        return ownKeys.every((key) => {
+            if (typeof key !== 'string' || !expectedKeys.includes(key)) {
+                return false;
+            }
+            const descriptor = Object.getOwnPropertyDescriptor(value, key);
+            return (
+                descriptor?.enumerable === true &&
+                Object.hasOwn(descriptor, 'value')
+            );
+        });
+    } catch (_) {
+        return false;
+    }
+}
+
+function observeCapabilitySettlement(value) {
+    try {
+        const promise = trustedPromiseResolve(value);
+        void trustedPromiseThen(promise, undefined, () => undefined);
+    } catch (_) {}
+}
+
+function parsePrivateSettlement(value) {
+    try {
+        const requestId = Object.getOwnPropertyDescriptor(
+            value,
+            'requestId'
+        )?.value;
+        const outcome = Object.getOwnPropertyDescriptor(
+            value,
+            'outcome'
+        )?.value;
+        if (!Number.isSafeInteger(requestId) || requestId <= 0) return null;
+
+        if (
+            outcome === 'succeeded' &&
+            hasExactEnumerableDataKeys(value, ['requestId', 'outcome'])
+        ) {
+            return Object.freeze({ requestId, outcome });
+        }
+        if (
+            outcome === 'failed' &&
+            hasExactEnumerableDataKeys(value, [
+                'requestId',
+                'outcome',
+                'code',
+                'retryable',
+            ])
+        ) {
+            const code = Object.getOwnPropertyDescriptor(value, 'code').value;
+            const retryable = Object.getOwnPropertyDescriptor(
+                value,
+                'retryable'
+            ).value;
+            if (
+                !PRIVATE_FAILURE_CODES.includes(code) ||
+                typeof retryable !== 'boolean'
+            ) {
+                return null;
+            }
+            return Object.freeze({ requestId, outcome, code, retryable });
+        }
+        if (
+            outcome === 'cancelled' &&
+            hasExactEnumerableDataKeys(value, [
+                'requestId',
+                'outcome',
+                'reason',
+            ])
+        ) {
+            const reason = Object.getOwnPropertyDescriptor(
+                value,
+                'reason'
+            ).value;
+            if (!PRIVATE_CANCEL_REASONS.includes(reason)) return null;
+            return Object.freeze({ requestId, outcome, reason });
+        }
+    } catch (_) {}
+    return null;
+}
+
 export class ModalController {
-    constructor(core, ui, animations) {
+    constructor(core, ui, animations, analysisCapabilities = null) {
         this.core = core;
         this.ui = ui;
         this.animations = animations;
+        this.events = null;
+        this._destroyed = false;
+        this._buttonListenerRecords = new Map();
+        this._analysisCapabilities = analysisCapabilities;
+        this._privateAnalysis = analysisCapabilities !== null;
+        this._privateSettlementUnsubscribe = null;
+        this._privateSettlementListener = null;
+        this._privateSettlementSubscribed = false;
+        this._privateRequestInProgress = false;
+        this._privateBufferedSettlement = null;
+        this._privateBufferedSettlementInvalid = false;
+        this._privateCancelRequestedFor = null;
+        this._privateClosedRequestId = null;
+
+        if (this._privateAnalysis) this._subscribeToPrivateSettlements();
     }
 
-    async startAnalysis() {
-        if (!this.core || this.core.selectedWords.size === 0) return;
+    _releaseButtonListener(
+        key,
+        expectedRecord = this._buttonListenerRecords.get(key)
+    ) {
+        const record = this._buttonListenerRecords.get(key);
+        if (!record || record !== expectedRecord) return false;
 
-        // Reset previous state if needed
-        if (this.core.isAnalyzing) {
-            this.pauseAnalysis();
+        this._buttonListenerRecords.delete(key);
+        record.active = false;
+        try {
+            record.element?.removeEventListener(
+                record.eventType,
+                record.handler,
+                record.options
+            );
+            return true;
+        } catch (_) {
+            return false;
+        }
+    }
+
+    _bindButtonListener(key, element, handler, options = undefined) {
+        if (this._destroyed || !element || typeof handler !== 'function') {
+            return null;
         }
 
-        this.core.currentMode = 'analysis';
-        // Mark analyzing first to ensure downstream logic (sync/highlight, event guards) sees locked state
-        this.core.setAnalyzing(true);
-        this.core.setState(MODAL_STATES.PROCESSING);
+        const previousRecord = this._buttonListenerRecords.get(key);
+        if (previousRecord) {
+            this._releaseButtonListener(key, previousRecord);
+        }
+        if (this._destroyed || this._buttonListenerRecords.has(key)) {
+            return null;
+        }
+
+        const record = {
+            element,
+            eventType: 'click',
+            handler: null,
+            options,
+            active: true,
+        };
+        const guardedHandler = (...args) => {
+            if (this._destroyed || !record.active) return undefined;
+            return handler(...args);
+        };
+        record.handler = guardedHandler;
+        this._buttonListenerRecords.set(key, record);
+        try {
+            element.addEventListener('click', guardedHandler, options);
+        } catch (error) {
+            record.active = false;
+            if (this._buttonListenerRecords.get(key) === record) {
+                this._buttonListenerRecords.delete(key);
+            }
+            throw error;
+        }
+        if (
+            this._destroyed ||
+            this._buttonListenerRecords.get(key) !== record
+        ) {
+            record.active = false;
+            try {
+                element.removeEventListener('click', guardedHandler, options);
+            } catch (_) {}
+            if (this._buttonListenerRecords.get(key) === record) {
+                this._buttonListenerRecords.delete(key);
+            }
+            return null;
+        }
+        return guardedHandler;
+    }
+
+    destroy() {
+        if (this._destroyed) return;
+        this._destroyed = true;
+
+        const unsubscribe = this._privateSettlementUnsubscribe;
+        this._privateSettlementUnsubscribe = null;
+        this._privateSettlementSubscribed = false;
+        this._privateSettlementListener = null;
+        this._privateRequestInProgress = false;
+        this._privateBufferedSettlement = null;
+        this._privateBufferedSettlementInvalid = false;
+        this._privateCancelRequestedFor = null;
+        this._privateClosedRequestId = null;
+        this._analysisCapabilities = null;
+        try {
+            if (typeof unsubscribe === 'function') unsubscribe();
+        } catch (_) {}
+
+        const records = [...this._buttonListenerRecords.values()];
+        this._buttonListenerRecords.clear();
+        for (const record of records) {
+            record.active = false;
+        }
+        for (const record of records) {
+            try {
+                record.element?.removeEventListener(
+                    record.eventType,
+                    record.handler,
+                    record.options
+                );
+            } catch (_) {}
+        }
+
+        this.core = null;
+        this.ui = null;
+        this.animations = null;
+        this.events = null;
+    }
+
+    _subscribeToPrivateSettlements() {
+        const capabilities = this._analysisCapabilities;
+        if (!capabilities) return;
+
+        const listener = (settlement) => {
+            if (
+                this._destroyed ||
+                this._privateSettlementListener !== listener
+            ) {
+                return false;
+            }
+            return this._acceptPrivateSettlement(settlement);
+        };
+        this._privateSettlementListener = listener;
+
+        let unsubscribe;
+        try {
+            unsubscribe = Reflect.apply(
+                capabilities.subscribeSettled,
+                undefined,
+                [listener]
+            );
+        } catch (_) {
+            unsubscribe = null;
+        }
+        if (
+            this._destroyed ||
+            this._privateSettlementListener !== listener ||
+            typeof unsubscribe !== 'function'
+        ) {
+            this._privateSettlementListener = null;
+            try {
+                if (typeof unsubscribe === 'function') unsubscribe();
+            } catch (_) {}
+            return;
+        }
+        this._privateSettlementUnsubscribe = unsubscribe;
+        this._privateSettlementSubscribed = true;
+    }
+
+    _acceptPrivateSettlement(value) {
+        const settlement = parsePrivateSettlement(value);
+        if (this._privateRequestInProgress) {
+            if (!settlement || this._privateBufferedSettlement !== null) {
+                this._privateBufferedSettlementInvalid = true;
+                return false;
+            }
+            this._privateBufferedSettlement = settlement;
+            return true;
+        }
+        if (!settlement) return false;
+        return this._settlePrivateAnalysis(settlement);
+    }
+
+    _setPrivateCurrentRequest(requestId) {
+        if (!this.core) return;
+        this.core.currentRequest = requestId;
+        try {
+            this.core.store?.setRequestId(requestId);
+        } catch (_) {}
+    }
+
+    _cancelPrivateRequestById(requestId, reason) {
+        if (
+            this._destroyed ||
+            !this._analysisCapabilities ||
+            !Number.isSafeInteger(requestId) ||
+            requestId <= 0 ||
+            !PRIVATE_CANCEL_REASONS.includes(reason)
+        ) {
+            return false;
+        }
+        if (this._privateCancelRequestedFor === requestId) return false;
+        this._privateCancelRequestedFor = requestId;
+        try {
+            const cancelled = Reflect.apply(
+                this._analysisCapabilities.cancelAnalysis,
+                undefined,
+                [requestId, reason]
+            );
+            if (cancelled === true) return true;
+        } catch (_) {
+            // Failed cancellation remains retryable below.
+        }
+        if (this._privateCancelRequestedFor === requestId) {
+            this._privateCancelRequestedFor = null;
+        }
+        return false;
+    }
+
+    _startPrivateAnalysis({ cause = 'user', retryOf = null } = {}) {
+        if (
+            this._destroyed ||
+            !this.core ||
+            !this._analysisCapabilities ||
+            !this._privateSettlementSubscribed ||
+            this._privateRequestInProgress ||
+            this.core.isAnalyzing ||
+            this.core.selectedWords.size === 0 ||
+            !['user', 'retry'].includes(cause) ||
+            (cause === 'user' && retryOf !== null) ||
+            (cause === 'retry' &&
+                (!Number.isSafeInteger(retryOf) || retryOf <= 0))
+        ) {
+            return false;
+        }
+
+        const core = this.core;
+        this._privateClosedRequestId = null;
+        this._privateRequestInProgress = true;
+        this._privateBufferedSettlement = null;
+        this._privateBufferedSettlementInvalid = false;
+        this._privateCancelRequestedFor = null;
+
+        let requestId = null;
+        try {
+            requestId = Reflect.apply(
+                this._analysisCapabilities.requestAnalysis,
+                undefined,
+                [
+                    Object.freeze({
+                        cause,
+                        retryOf,
+                        contextTypes: Object.freeze([
+                            'cultural',
+                            'historical',
+                            'linguistic',
+                        ]),
+                    }),
+                ]
+            );
+        } catch (_) {
+            requestId = null;
+        }
+
+        const bufferedSettlement = this._privateBufferedSettlement;
+        const invalidBuffer = this._privateBufferedSettlementInvalid;
+        this._privateRequestInProgress = false;
+        this._privateBufferedSettlement = null;
+        this._privateBufferedSettlementInvalid = false;
+
+        if (this._destroyed || this.core !== core) return false;
+        const validRequestId = Number.isSafeInteger(requestId) && requestId > 0;
+        const invalidSettlement =
+            invalidBuffer ||
+            (bufferedSettlement !== null &&
+                (!validRequestId ||
+                    bufferedSettlement.requestId !== requestId));
+        if (!validRequestId || invalidSettlement) {
+            if (validRequestId) {
+                this._cancelPrivateRequestById(requestId, 'superseded');
+            }
+            return false;
+        }
+
+        this._setPrivateCurrentRequest(requestId);
+        if (bufferedSettlement) {
+            return this._settlePrivateAnalysis(bufferedSettlement);
+        }
+        return this._enterPrivateProcessingState(core, requestId);
+    }
+
+    _hasPrivateRequestAuthority(core, requestId) {
+        return (
+            !this._destroyed &&
+            this.core === core &&
+            core.currentRequest === requestId
+        );
+    }
+
+    _enterPrivateProcessingState(core, requestId) {
+        if (!this._hasPrivateRequestAuthority(core, requestId)) return false;
+        core.currentMode = 'analysis';
+        core.setAnalyzing(true);
+        if (!this._hasPrivateRequestAuthority(core, requestId)) return false;
+        core.setState(MODAL_STATES.PROCESSING);
+        if (!this._hasPrivateRequestAuthority(core, requestId)) return false;
 
         if (
             this.animations &&
@@ -32,8 +439,232 @@ export class ModalController {
         ) {
             this.animations.showProcessingState();
         } else {
-            this.ui.showProcessingState();
+            this.ui?.showProcessingState();
         }
+        if (!this._hasPrivateRequestAuthority(core, requestId)) return false;
+
+        try {
+            this.events?._disableWordInteractions?.();
+        } catch (_) {}
+        try {
+            document
+                .getElementById('dualsub-original-subtitle')
+                ?.classList.add('dualsub-subtitles-disabled');
+        } catch (_) {}
+        try {
+            this.ui?.updateSelectionDisplay();
+            core.syncSelectionHighlights();
+        } catch (_) {}
+        if (!this._hasPrivateRequestAuthority(core, requestId)) return false;
+
+        try {
+            const scope = core.contentElement || document;
+            const button = scope.querySelector('#dualsub-start-analysis');
+            if (button) {
+                button.textContent = this._getLocalizedMessage(
+                    'aiContextPauseAnalysis'
+                );
+                button.className = 'dualsub-analysis-button processing';
+                button.title = this._getLocalizedMessage(
+                    'aiContextPauseAnalysisTitle'
+                );
+                button.disabled = false;
+                button.setAttribute('data-paused-toggle', 'true');
+                const replacement = button.cloneNode(true);
+                button.parentNode.replaceChild(replacement, button);
+                this._bindButtonListener(
+                    'analysis-button',
+                    replacement,
+                    (event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        this.pauseAnalysisFromDomEvent(event);
+                    }
+                );
+            }
+        } catch (_) {}
+        return this._hasPrivateRequestAuthority(core, requestId);
+    }
+
+    _clearPrivateRequestBeforeRendering(core) {
+        this._setPrivateCurrentRequest(null);
+        core.setAnalyzing(false);
+        this._privateCancelRequestedFor = null;
+    }
+
+    _releasePrivateProcessingUi(core) {
+        try {
+            document
+                .getElementById('dualsub-selected-words')
+                ?.classList.remove('dualsub-processing-disabled');
+            document
+                .getElementById('dualsub-original-subtitle')
+                ?.classList.remove('dualsub-subtitles-disabled');
+            core.contentElement?.classList.remove(
+                'dualsub-processing-active',
+                'dualsub-processing-sticky'
+            );
+            core.element?.classList.remove('dualsub-processing-disabled');
+        } catch (_) {}
+        try {
+            this.events?._enableWordInteractions?.();
+        } catch (_) {}
+        try {
+            this.ui?.updateSelectionDisplay();
+        } catch (_) {}
+        this.resetAnalysisButton();
+    }
+
+    _renderPrivateFailure(requestId, retryable) {
+        const core = this.core;
+        if (this._destroyed || !core) return false;
+        core.currentMode = 'error';
+        this._releasePrivateProcessingUi(core);
+        this.ui?.showPrivateTerminalFailure?.({
+            retryable,
+            onRetry: () => {
+                if (this._destroyed || this.core !== core) return false;
+                return this._startPrivateAnalysis({
+                    cause: 'retry',
+                    retryOf: requestId,
+                });
+            },
+            onClose: () => {
+                if (this._destroyed || this.core !== core) return false;
+                return this.closeModal();
+            },
+        });
+        return true;
+    }
+
+    _settlePrivateAnalysis(settlement) {
+        const core = this.core;
+        if (
+            this._destroyed ||
+            !core ||
+            !settlement ||
+            (core.currentRequest !== settlement.requestId &&
+                this._privateClosedRequestId !== settlement.requestId)
+        ) {
+            return false;
+        }
+
+        const requestId = settlement.requestId;
+        if (this._privateClosedRequestId === requestId) {
+            this._setPrivateCurrentRequest(null);
+            core.setAnalyzing(false);
+            this._privateCancelRequestedFor = null;
+            if (settlement.outcome === 'succeeded') {
+                try {
+                    Reflect.apply(
+                        this._analysisCapabilities.takeResult,
+                        undefined,
+                        [requestId]
+                    );
+                } catch (_) {}
+            }
+            return true;
+        }
+        this._clearPrivateRequestBeforeRendering(core);
+        if (this._destroyed || this.core !== core) return false;
+
+        if (settlement.outcome === 'succeeded') {
+            let result;
+            try {
+                result = Reflect.apply(
+                    this._analysisCapabilities.takeResult,
+                    undefined,
+                    [requestId]
+                );
+            } catch (_) {
+                result = null;
+            }
+            if (
+                this._destroyed ||
+                this.core !== core ||
+                result === null ||
+                typeof result !== 'object' ||
+                Array.isArray(result)
+            ) {
+                return this._renderPrivateFailure(requestId, true);
+            }
+
+            let html;
+            try {
+                if (core.setPrivateAnalysisResult(result) !== true) {
+                    return this._renderPrivateFailure(requestId, true);
+                }
+                html = this._buildResultsHtml(result);
+            } catch (_) {
+                return this._renderPrivateFailure(requestId, true);
+            }
+            if (this._destroyed || this.core !== core) return false;
+
+            core.currentMode = 'display';
+            if (
+                this.animations &&
+                typeof this.animations.showResultsState === 'function'
+            ) {
+                this.animations.showResultsState(html);
+            } else {
+                core.setState(MODAL_STATES.DISPLAY);
+                this.ui?.showAnalysisResults(html);
+            }
+            if (this._destroyed || this.core !== core) return false;
+            this._releasePrivateProcessingUi(core);
+            return true;
+        }
+
+        if (settlement.outcome === 'failed') {
+            return this._renderPrivateFailure(requestId, settlement.retryable);
+        }
+
+        core.currentMode = 'selection';
+        this._releasePrivateProcessingUi(core);
+        if (settlement.reason !== 'modal-closed') {
+            core.setState(MODAL_STATES.SELECTION);
+            this.ui?.showInitialState();
+        }
+        return true;
+    }
+
+    async startAnalysis() {
+        if (
+            this._destroyed ||
+            !this.core ||
+            this.core.selectedWords.size === 0
+        ) {
+            return;
+        }
+        if (this._privateAnalysis) {
+            return this._startPrivateAnalysis({ cause: 'user', retryOf: null });
+        }
+        const core = this.core;
+        const ui = this.ui;
+        const animations = this.animations;
+
+        // Reset previous state if needed
+        if (core.isAnalyzing) {
+            this.pauseAnalysis();
+            if (this._destroyed || this.core !== core) return;
+        }
+
+        core.currentMode = 'analysis';
+        // Mark analyzing first to ensure downstream logic (sync/highlight, event guards) sees locked state
+        core.setAnalyzing(true);
+        if (this._destroyed || this.core !== core) return;
+        core.setState(MODAL_STATES.PROCESSING);
+        if (this._destroyed || this.core !== core) return;
+
+        if (
+            animations &&
+            typeof animations.showProcessingState === 'function'
+        ) {
+            animations.showProcessingState();
+        } else {
+            ui.showProcessingState();
+        }
+        if (this._destroyed || this.core !== core) return;
 
         // Disable interactions consistently (mirror Events module behavior)
         try {
@@ -66,20 +697,20 @@ export class ModalController {
 
         // Freeze selection persistence and suppress immediate restorations
         try {
-            this.core.selectionPersistence.lastManualSelectionTs = Date.now();
+            core.selectionPersistence.lastManualSelectionTs = Date.now();
         } catch (_) {}
 
         // Ensure UI reflects disabled removal (hide X icons) and keep highlights visible
         try {
-            this.ui.updateSelectionDisplay();
+            ui.updateSelectionDisplay();
         } catch (_) {}
         try {
-            this.core.syncSelectionHighlights();
+            core.syncSelectionHighlights();
         } catch (_) {}
 
         // Switch button to pause state
         try {
-            const scope = this.core.contentElement || document;
+            const scope = core.contentElement || document;
             const btn = scope.querySelector('#dualsub-start-analysis');
             if (btn) {
                 btn.textContent = this._getLocalizedMessage(
@@ -93,11 +724,15 @@ export class ModalController {
                 btn.setAttribute('data-paused-toggle', 'true');
                 const newButton = btn.cloneNode(true);
                 btn.parentNode.replaceChild(newButton, btn);
-                newButton.addEventListener('click', (event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    this.pauseAnalysis();
-                });
+                this._bindButtonListener(
+                    'analysis-button',
+                    newButton,
+                    (event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        this.pauseAnalysis();
+                    }
+                );
             }
         } catch (_) {}
 
@@ -106,7 +741,7 @@ export class ModalController {
         let sourceLanguage = 'auto';
         try {
             const cfg =
-                this.core.contentScript?.configService || window.configService;
+                core.contentScript?.configService || window.configService;
             if (cfg && typeof cfg.getMultiple === 'function') {
                 const prefs = await cfg.getMultiple([
                     'targetLanguage',
@@ -128,46 +763,57 @@ export class ModalController {
             }
         } catch (_) {}
 
+        if (this._destroyed || this.core !== core) return;
+
         // Dispatch analysis request
         const requestId = `analysis-${Date.now()}`;
-        this.core.currentRequest = requestId;
+        core.currentRequest = requestId;
 
         document.dispatchEvent(
             new CustomEvent('dualsub-analyze-selection', {
                 detail: {
                     requestId,
-                    text: this.core.selectedText,
+                    text: core.selectedText,
                     contextTypes: ['cultural', 'historical', 'linguistic'],
                     language: sourceLanguage,
                     targetLanguage: targetLanguage,
                     selection: {
-                        text: this.core.selectedText,
-                        words: Array.from(this.core.selectedWords),
+                        text: core.selectedText,
+                        words: Array.from(core.selectedWords),
                     },
                 },
             })
         );
 
-        this.core._log('info', 'Context analysis started (controller)', {
-            textLength: this.core.selectedText.length,
-            selectedWordsCount: this.core.selectedWords.size,
+        core._log('info', 'Context analysis started (controller)', {
+            textLength: core.selectedText.length,
+            selectedWordsCount: core.selectedWords.size,
             requestId,
         });
     }
 
     pauseAnalysis() {
+        if (this._destroyed || !this.core) return;
+        const core = this.core;
+        const ui = this.ui;
+
+        if (this._privateAnalysis) {
+            return this._cancelPrivateRequestById(core.currentRequest, 'user');
+        }
+
         // Emit pause intent so the manager can cancel the in-flight provider request
         try {
             document.dispatchEvent(
                 new CustomEvent('aicontext:analysis:pause', {
-                    detail: { requestId: this.core.currentRequest },
+                    detail: { requestId: core.currentRequest },
                 })
             );
         } catch (_) {}
+        if (this._destroyed || this.core !== core) return;
 
-        this.core.isAnalyzing = false;
-        this.core.currentRequest = null;
-        this.core.currentMode = 'selection';
+        core.isAnalyzing = false;
+        core.currentRequest = null;
+        core.currentMode = 'selection';
         // Re-enable interactions
         try {
             const selectedWordsElement = document.getElementById(
@@ -178,25 +824,24 @@ export class ModalController {
             );
         } catch (_) {}
         // Reset state back to selection
-        this.core.setState(MODAL_STATES.SELECTION);
-        this.ui.showInitialState();
+        core.setState(MODAL_STATES.SELECTION);
+        if (this._destroyed || this.core !== core) return;
+        ui.showInitialState();
         try {
-            this.ui.updateSelectionDisplay();
+            ui.updateSelectionDisplay();
         } catch (_) {}
         // Ensure processing classes cleared
         try {
             const content =
-                this.core.contentElement ||
+                core.contentElement ||
                 document.getElementById('dualsub-modal-content');
             content?.classList.remove(
                 'is-analyzing',
                 'dualsub-processing-active',
                 'dualsub-processing-sticky'
             );
-            if (this.core.element)
-                this.core.element.classList.remove(
-                    'dualsub-processing-disabled'
-                );
+            if (core.element)
+                core.element.classList.remove('dualsub-processing-disabled');
             // Remove disabled class from subtitles
             try {
                 const original = document.getElementById(
@@ -222,6 +867,8 @@ export class ModalController {
     }
 
     newAnalysis() {
+        if (this._destroyed || !this.core) return false;
+        if (this._privateAnalysis && this.core.isAnalyzing) return false;
         // Do not clear selection automatically when starting a new analysis session UI-wise.
         // Keep selection until user explicitly removes or closes the modal.
         // this.core.clearSelection();
@@ -232,6 +879,37 @@ export class ModalController {
     }
 
     closeModal() {
+        if (this._destroyed || !this.core) return false;
+        if (this._privateAnalysis) {
+            const core = this.core;
+            if (
+                Number.isSafeInteger(core.currentRequest) &&
+                core.currentRequest > 0
+            ) {
+                const requestId = core.currentRequest;
+                this._privateClosedRequestId = requestId;
+                this._setPrivateCurrentRequest(null);
+                core.setAnalyzing(false);
+                this._cancelPrivateRequestById(requestId, 'modal-closed');
+            }
+            try {
+                const clearResult = Reflect.apply(
+                    this._analysisCapabilities.clearSelection,
+                    undefined,
+                    []
+                );
+                observeCapabilitySettlement(clearResult);
+            } catch (_) {}
+            if (
+                this.animations &&
+                typeof this.animations.hideModal === 'function'
+            ) {
+                this.animations.hideModal();
+            } else {
+                core.setState(MODAL_STATES.HIDDEN);
+            }
+            return true;
+        }
         // Pause/stop analysis if in progress
         if (this.core.isAnalyzing) {
             this.pauseAnalysis();
@@ -272,6 +950,7 @@ export class ModalController {
     }
 
     onAnalysisResult(detail) {
+        if (this._privateAnalysis) return false;
         const { requestId, result, success, error, shouldRetry } = detail || {};
 
         this.core._log('debug', 'Controller received analysis result', {
@@ -379,6 +1058,7 @@ export class ModalController {
     }
 
     resetAnalysisButton() {
+        if (this._destroyed || !this.core) return;
         const scope = this.core.contentElement || document;
         const analysisButton =
             scope.querySelector('#dualsub-start-analysis') ||
@@ -398,9 +1078,33 @@ export class ModalController {
         const startHandler = (event) => {
             event.preventDefault();
             event.stopPropagation();
-            this.startAnalysis();
+            this.startAnalysisFromDomEvent(event);
         };
-        newButton.addEventListener('click', startHandler);
+        this._bindButtonListener('analysis-button', newButton, startHandler);
+    }
+
+    _isTrustedPrivateDomEvent(event) {
+        return !this._privateAnalysis || event?.isTrusted === true;
+    }
+
+    startAnalysisFromDomEvent(event) {
+        if (!this._isTrustedPrivateDomEvent(event)) return false;
+        return this.startAnalysis();
+    }
+
+    pauseAnalysisFromDomEvent(event) {
+        if (!this._isTrustedPrivateDomEvent(event)) return false;
+        return this.pauseAnalysis();
+    }
+
+    closeModalFromDomEvent(event) {
+        if (!this._isTrustedPrivateDomEvent(event)) return false;
+        return this.closeModal();
+    }
+
+    newAnalysisFromDomEvent(event) {
+        if (!this._isTrustedPrivateDomEvent(event)) return false;
+        return this.newAnalysis();
     }
 
     _buildResultsHtml(result) {

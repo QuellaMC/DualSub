@@ -15,6 +15,7 @@ import {
     SubtitleProcessingError,
     RateLimitError,
 } from '../services/serviceInterfaces.js';
+import { getTrustedTranslationProviderErrorMetadata } from '../../translation_providers/translationProviderError.js';
 
 /**
  * Error severity levels
@@ -43,6 +44,124 @@ export const ErrorCategory = {
  * Time conversion constants
  */
 const MILLISECONDS_TO_SECONDS = 1000;
+const TRUSTED_PROVIDER_ERROR_MESSAGE = 'Translation provider request failed.';
+const MAX_TRUSTED_RETRY_COUNT = 2;
+const OWN_DATA_MISSING = Symbol('own-data-missing');
+const TRUSTED_CONTEXT_OPERATIONS = new Set([
+    'translate',
+    'processNetflixSubtitles',
+]);
+
+function readOwnDataValue(record, key) {
+    if (
+        record === null ||
+        (typeof record !== 'object' && typeof record !== 'function')
+    ) {
+        return OWN_DATA_MISSING;
+    }
+
+    try {
+        const descriptor = Object.getOwnPropertyDescriptor(record, key);
+        return descriptor && Object.hasOwn(descriptor, 'value')
+            ? descriptor.value
+            : OWN_DATA_MISSING;
+    } catch {
+        return OWN_DATA_MISSING;
+    }
+}
+
+function createTrustedProviderContext(context, provider) {
+    const safeContext = { provider };
+    const operation = readOwnDataValue(context, 'operation');
+    if (
+        typeof operation === 'string' &&
+        TRUSTED_CONTEXT_OPERATIONS.has(operation)
+    ) {
+        safeContext.operation = operation;
+    }
+
+    const textLength = readOwnDataValue(context, 'textLength');
+    if (Number.isSafeInteger(textLength) && textLength >= 0) {
+        safeContext.textLength = textLength;
+    }
+
+    const retryCount = readOwnDataValue(context, 'retryCount');
+    if (Number.isSafeInteger(retryCount) && retryCount >= 0) {
+        safeContext.retryCount = Math.min(retryCount, MAX_TRUSTED_RETRY_COUNT);
+    }
+
+    for (const key of ['hasUserImpact', 'isCriticalPath']) {
+        const value = readOwnDataValue(context, key);
+        if (typeof value === 'boolean') safeContext[key] = value;
+    }
+
+    return Object.freeze(safeContext);
+}
+
+function mapTrustedProviderMetadata(metadata) {
+    if (metadata.status === 401 || metadata.status === 403) {
+        return {
+            category: ErrorCategory.CONFIGURATION,
+            severity: ErrorSeverity.CRITICAL,
+            isRecoverable: false,
+            errorCode: 'AUTHENTICATION_ERROR',
+        };
+    }
+    if (metadata.status === 429) {
+        return {
+            category: ErrorCategory.RATE_LIMIT,
+            severity: ErrorSeverity.HIGH,
+            isRecoverable: metadata.retryable,
+            errorCode: 'RATE_LIMIT_EXCEEDED',
+        };
+    }
+    if (metadata.status !== undefined && metadata.status >= 500) {
+        return {
+            category: ErrorCategory.NETWORK,
+            severity: ErrorSeverity.HIGH,
+            isRecoverable: metadata.retryable,
+            errorCode: 'UPSTREAM_ERROR',
+        };
+    }
+
+    switch (metadata.code) {
+        case 'AUTHENTICATION_ERROR':
+            return {
+                category: ErrorCategory.CONFIGURATION,
+                severity: ErrorSeverity.CRITICAL,
+                isRecoverable: false,
+                errorCode: 'AUTHENTICATION_ERROR',
+            };
+        case 'RATE_LIMIT_EXCEEDED':
+            return {
+                category: ErrorCategory.RATE_LIMIT,
+                severity: ErrorSeverity.HIGH,
+                isRecoverable: metadata.retryable,
+                errorCode: 'RATE_LIMIT_EXCEEDED',
+            };
+        case 'UPSTREAM_ERROR':
+            return {
+                category: ErrorCategory.NETWORK,
+                severity: ErrorSeverity.HIGH,
+                isRecoverable: metadata.retryable,
+                errorCode: 'UPSTREAM_ERROR',
+            };
+        case 'NETWORK_ERROR':
+            return {
+                category: ErrorCategory.NETWORK,
+                severity: ErrorSeverity.HIGH,
+                isRecoverable: metadata.retryable,
+                errorCode: 'NETWORK_ERROR',
+            };
+        default:
+            return {
+                category: ErrorCategory.TRANSLATION,
+                severity: ErrorSeverity.MEDIUM,
+                isRecoverable: metadata.retryable,
+                errorCode: 'REQUEST_FAILED',
+            };
+    }
+}
 
 /**
  * Comprehensive Error Handler
@@ -103,7 +222,11 @@ class ErrorHandler {
     handleError(error, context = {}) {
         const errorInfo = this.classifyError(error, context);
         this.updateErrorStats(errorInfo);
-        this.logError(errorInfo);
+        try {
+            this.logError(errorInfo);
+        } catch (loggingError) {
+            if (errorInfo.originalError !== null) throw loggingError;
+        }
 
         // Determine recovery strategy
         const recovery = this.determineRecoveryStrategy(errorInfo);
@@ -124,6 +247,12 @@ class ErrorHandler {
      * @returns {Object} Error classification
      */
     classifyError(error, context) {
+        const trustedMetadata =
+            getTrustedTranslationProviderErrorMetadata(error);
+        if (trustedMetadata !== null) {
+            return this.classifyTrustedProviderError(trustedMetadata, context);
+        }
+
         const errorChain = [];
         const seenErrors = new Set();
         let currentError = error;
@@ -255,6 +384,43 @@ class ErrorHandler {
     }
 
     /**
+     * Classify an exact WeakMap-authenticated provider error without touching
+     * its mutable public fields or retaining its identity.
+     * @param {Object} metadata - Trusted provider metadata snapshot
+     * @param {Object} context - Untrusted caller context
+     * @returns {Object} Safe error classification
+     */
+    classifyTrustedProviderError(metadata, context) {
+        const safeContext = createTrustedProviderContext(
+            context,
+            metadata.provider
+        );
+        const mapped = mapTrustedProviderMetadata(metadata);
+        let severity = mapped.severity;
+        if (safeContext.isCriticalPath === true) {
+            severity = ErrorSeverity.CRITICAL;
+        } else if (
+            safeContext.hasUserImpact === true &&
+            severity === ErrorSeverity.MEDIUM
+        ) {
+            severity = ErrorSeverity.HIGH;
+        }
+
+        return {
+            originalError: null,
+            message: TRUSTED_PROVIDER_ERROR_MESSAGE,
+            timestamp: Date.now(),
+            context: safeContext,
+            provider: metadata.provider,
+            category: mapped.category,
+            severity,
+            isRecoverable: mapped.isRecoverable,
+            errorCode: mapped.errorCode,
+            httpStatus: metadata.status ?? null,
+        };
+    }
+
+    /**
      * Determine recovery strategy for error
      * @param {Object} errorInfo - Classified error information
      * @returns {Object} Recovery strategy
@@ -343,7 +509,9 @@ class ErrorHandler {
             errorCode: errorInfo.errorCode,
             isRecoverable: errorInfo.isRecoverable,
             context: errorInfo.context,
-            stack: errorInfo.stack,
+            ...(errorInfo.originalError === null
+                ? {}
+                : { stack: errorInfo.stack }),
         };
 
         switch (errorInfo.severity) {

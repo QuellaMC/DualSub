@@ -25,7 +25,7 @@ describe('ConfigService sensitive projections', () => {
         }
     });
 
-    it('does not read or return credentials for an untrusted projection', async () => {
+    it('does not read or return credentials when getAll options are omitted', async () => {
         const getFromStorage = jest
             .spyOn(configService, 'getFromStorage')
             .mockImplementation(async (_area, keys) =>
@@ -37,9 +37,7 @@ describe('ConfigService sensitive projections', () => {
                 )
             );
 
-        const config = await configService.getAll({
-            includeSensitive: false,
-        });
+        const config = await configService.getAll();
 
         expect(config.subtitlesEnabled).toBe(false);
         for (const key of SENSITIVE_KEYS) {
@@ -50,11 +48,35 @@ describe('ConfigService sensitive projections', () => {
         }
     });
 
-    it('filters credential values from untrusted change listeners', () => {
+    it('reads and returns credentials only when getAll receives an exact own opt-in', async () => {
+        const getFromStorage = jest
+            .spyOn(configService, 'getFromStorage')
+            .mockImplementation(async (_area, keys) =>
+                Object.fromEntries(
+                    keys.map((key) => [key, `explicit-value-${key}`])
+                )
+            );
+
+        const config = await configService.getAll({ includeSensitive: true });
+
+        for (const key of SENSITIVE_KEYS) {
+            expect(config[key]).toBe(`explicit-value-${key}`);
+        }
+        expect(getFromStorage.mock.calls).toEqual(
+            expect.arrayContaining([
+                [
+                    'local',
+                    expect.arrayContaining(SENSITIVE_KEYS),
+                    expect.any(Object),
+                    { privacySafeLogs: true },
+                ],
+            ])
+        );
+    });
+
+    it('filters credential values when onChanged options are omitted', () => {
         const callback = jest.fn();
-        const unsubscribe = configService.onChanged(callback, {
-            includeSensitive: false,
-        });
+        const unsubscribe = configService.onChanged(callback);
         const [projectedCallback] = configService.changeListeners;
 
         projectedCallback({
@@ -67,6 +89,29 @@ describe('ConfigService sensitive projections', () => {
         expect(JSON.stringify(callback.mock.calls)).not.toContain(
             'must-not-leak'
         );
+
+        callback.mockClear();
+        projectedCallback({ geminiApiKey: 'still-must-not-leak' });
+        expect(callback).not.toHaveBeenCalled();
+
+        unsubscribe();
+        expect(configService.changeListeners.size).toBe(0);
+    });
+
+    it('forwards credentials only when onChanged receives an exact own opt-in', () => {
+        const callback = jest.fn();
+        const unsubscribe = configService.onChanged(callback, {
+            includeSensitive: true,
+        });
+        const [registeredCallback] = configService.changeListeners;
+        const changes = {
+            openaiApiKey: 'explicit-secret',
+            subtitlesEnabled: false,
+        };
+
+        registeredCallback(changes);
+
+        expect(callback).toHaveBeenCalledWith(changes);
         unsubscribe();
         expect(configService.changeListeners.size).toBe(0);
     });

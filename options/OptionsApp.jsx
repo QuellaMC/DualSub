@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSettings, useTranslation } from '../popup/hooks/index.js';
+import { OPTIONS_SETTINGS_KEYS } from '../shared/settingsProjections.js';
 import { Sidebar } from './components/Sidebar.jsx';
 import { GeneralSection } from './components/sections/GeneralSection.jsx';
 import { TranslationSection } from './components/sections/TranslationSection.jsx';
@@ -10,9 +11,15 @@ import { AboutSection } from './components/sections/AboutSection.jsx';
 
 export function OptionsApp() {
     const [activeSection, setActiveSection] = useState('general');
-    const { settings, updateSetting, updateSettings, loading, error } =
-        useSettings();
-    const [saveError, setSaveError] = useState(null);
+    const {
+        settings,
+        updateSetting,
+        updateSettings,
+        loading,
+        initialLoadStatus,
+        error,
+    } = useSettings(OPTIONS_SETTINGS_KEYS, { includeSensitive: true });
+    const [saveFailed, setSaveFailed] = useState(false);
     const [currentLanguage, setCurrentLanguage] = useState(
         settings.uiLanguage || 'en'
     );
@@ -28,9 +35,9 @@ export function OptionsApp() {
     const handleSettingChange = async (key, value) => {
         try {
             await updateSetting(key, value);
-            setSaveError(null);
-        } catch (updateError) {
-            setSaveError(updateError);
+            setSaveFailed(false);
+        } catch {
+            setSaveFailed(true);
             return false;
         }
 
@@ -44,10 +51,10 @@ export function OptionsApp() {
     const handleSettingsChange = async (updates) => {
         try {
             await updateSettings(updates);
-            setSaveError(null);
+            setSaveFailed(false);
             return true;
-        } catch (updateError) {
-            setSaveError(updateError);
+        } catch {
+            setSaveFailed(true);
             return false;
         }
     };
@@ -62,6 +69,19 @@ export function OptionsApp() {
         );
     }
 
+    if (initialLoadStatus === 'unavailable') {
+        return (
+            <div className="container">
+                <main className="content">
+                    <p role="alert" className="settings-error">
+                        Unable to load settings. Please reload the page and try
+                        again.
+                    </p>
+                </main>
+            </div>
+        );
+    }
+
     return (
         <div className="container">
             <Sidebar
@@ -70,7 +90,7 @@ export function OptionsApp() {
                 onSectionChange={setActiveSection}
             />
             <main className="content">
-                {(error || saveError) && (
+                {(error || saveFailed) && (
                     <p role="alert" className="settings-error">
                         Unable to save settings. Please try again.
                     </p>

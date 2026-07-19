@@ -12,8 +12,12 @@
 
 import Logger from '../../utils/logger.js';
 import { configService } from '../../services/configService.js';
+import {
+    buildLoggingLevelChangedRequestMessage,
+    parseContentControlResponseMessage,
+} from '../../content_scripts/shared/protocol/messageProtocol.js';
 
-class LoggingManager {
+export class LoggingManager {
     constructor() {
         this.logger = Logger.create('LoggingManager', configService);
         this.currentLoggingLevel = Logger.LEVELS.INFO; // Default level
@@ -69,6 +73,7 @@ class LoggingManager {
      */
     async broadcastLoggingLevelChange(newLevel) {
         try {
+            const request = buildLoggingLevelChangedRequestMessage(newLevel);
             // Get all tabs to send message to content scripts
             const tabs = await chrome.tabs.query({});
             const messagePromises = [];
@@ -81,9 +86,20 @@ class LoggingManager {
                         tab.url.includes('disneyplus.com'))
                 ) {
                     const messagePromise = chrome.tabs
-                        .sendMessage(tab.id, {
-                            type: 'LOGGING_LEVEL_CHANGED',
-                            level: newLevel,
+                        .sendMessage(tab.id, request)
+                        .then((response) => {
+                            const parsed = parseContentControlResponseMessage(
+                                response,
+                                request
+                            );
+                            if (!parsed) {
+                                throw new Error(
+                                    'Invalid logging-level response'
+                                );
+                            }
+                            if (!parsed.success) {
+                                throw new Error(parsed.error);
+                            }
                         })
                         .catch((error) => {
                             // Content script might not be loaded, ignore these errors

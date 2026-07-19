@@ -134,34 +134,17 @@ export class SelectionModel {
     }
 
     /**
-     * Remove duplicate positions for the same word, preferring 'original' subtitle
-     * and entries that have an element reference, otherwise keep first
+     * Remove duplicate representations of the same subtitle occurrence,
+     * preferring 'original' subtitle and entries that have an element reference,
+     * otherwise keeping the first inserted record.
      * @returns {number} Count of removed duplicates
      */
     removeDuplicatesPreferOriginal() {
-        const wordToPositions = new Map();
-        for (const [key, entry] of this.positionKeyToEntry.entries()) {
-            const list = wordToPositions.get(entry.word) || [];
-            list.push({ key, entry });
-            wordToPositions.set(entry.word, list);
-        }
-
         const toRemove = [];
-        for (const [, list] of wordToPositions.entries()) {
-            if (list.length <= 1) continue;
-            const withElement = list.filter(
-                (p) => p.entry.position && p.entry.position.element
-            );
-            const withElementOriginal = withElement.filter(
-                (p) =>
-                    (p.entry.position.subtitleType || '').toLowerCase() ===
-                    'original'
-            );
-            let keep;
-            if (withElementOriginal.length > 0) keep = withElementOriginal[0];
-            else if (withElement.length > 0) keep = withElement[0];
-            else keep = list[0];
-            list.forEach((p) => {
+        for (const group of this._getOccurrenceGroups()) {
+            if (group.records.length <= 1) continue;
+            const keep = this._selectPreferredOccurrenceRecord(group.records);
+            group.records.forEach((p) => {
                 if (p.key !== keep.key) toRemove.push(p.key);
             });
         }
@@ -174,6 +157,24 @@ export class SelectionModel {
             this._updateSelectedTextInternal();
         }
         return toRemove.length;
+    }
+
+    /**
+     * Get canonical occurrence entries without exposing internal position records.
+     * @returns {{wordIndex: number, word: string}[]}
+     */
+    getOrderedEntries() {
+        return this._getOccurrenceGroups()
+            .filter((group) => group.occurrenceIndex !== null)
+            .map((group) => {
+                const preferred = this._selectPreferredOccurrenceRecord(
+                    group.records
+                );
+                return {
+                    wordIndex: group.occurrenceIndex,
+                    word: preferred.entry.word,
+                };
+            });
     }
 
     /**
@@ -231,16 +232,101 @@ export class SelectionModel {
      * @private
      */
     _computeSortedOrder() {
-        const keys = [...this.positionKeyOrder];
-        keys.sort((a, b) => {
-            const pa = this.positionKeyToEntry.get(a)?.position || {};
-            const pb = this.positionKeyToEntry.get(b)?.position || {};
-            const ia =
-                (pa.wordIndex !== undefined ? pa.wordIndex : pa.index) || 0;
-            const ib =
-                (pb.wordIndex !== undefined ? pb.wordIndex : pb.index) || 0;
-            return ia - ib;
-        });
-        return keys;
+        return this._getOrderedRecords().map(({ key }) => key);
+    }
+
+    /**
+     * Return a valid occurrence index, preferring wordIndex when present.
+     * @param {Object|undefined|null} position
+     * @returns {number|null}
+     * @private
+     */
+    _getOccurrenceIndex(position) {
+        const value =
+            position?.wordIndex !== undefined
+                ? position.wordIndex
+                : position?.index;
+        return Number.isSafeInteger(value) && value >= 0 ? value : null;
+    }
+
+    /**
+     * Return current records in canonical occurrence order.
+     * @returns {{key: string, entry: {word: string, position: Object}, occurrenceIndex: number|null, insertionIndex: number}[]}
+     * @private
+     */
+    _getOrderedRecords() {
+        return this.positionKeyOrder
+            .map((key, insertionIndex) => ({
+                key,
+                entry: this.positionKeyToEntry.get(key),
+                occurrenceIndex: this._getOccurrenceIndex(
+                    this.positionKeyToEntry.get(key)?.position
+                ),
+                insertionIndex,
+            }))
+            .filter(({ entry }) => entry !== undefined)
+            .sort((a, b) => {
+                if (a.occurrenceIndex === null) {
+                    return b.occurrenceIndex === null
+                        ? a.insertionIndex - b.insertionIndex
+                        : 1;
+                }
+                if (b.occurrenceIndex === null) return -1;
+                return (
+                    a.occurrenceIndex - b.occurrenceIndex ||
+                    a.insertionIndex - b.insertionIndex
+                );
+            });
+    }
+
+    /**
+     * Group only records that represent the same valid occurrence index.
+     * Invalid-index records remain singleton groups identified by their exact key.
+     * @returns {{occurrenceIndex: number|null, records: Object[]}[]}
+     * @private
+     */
+    _getOccurrenceGroups() {
+        const groups = [];
+        const indexedGroups = new Map();
+
+        for (const record of this._getOrderedRecords()) {
+            if (record.occurrenceIndex === null) {
+                groups.push({
+                    occurrenceIndex: null,
+                    records: [record],
+                });
+                continue;
+            }
+
+            let group = indexedGroups.get(record.occurrenceIndex);
+            if (!group) {
+                group = {
+                    occurrenceIndex: record.occurrenceIndex,
+                    records: [],
+                };
+                indexedGroups.set(record.occurrenceIndex, group);
+                groups.push(group);
+            }
+            group.records.push(record);
+        }
+
+        return groups;
+    }
+
+    /**
+     * Pick one representative using the model's established preference order.
+     * @param {Object[]} records
+     * @returns {Object}
+     * @private
+     */
+    _selectPreferredOccurrenceRecord(records) {
+        const withElement = records.filter(
+            ({ entry }) => entry.position && entry.position.element
+        );
+        const withElementOriginal = withElement.filter(
+            ({ entry }) =>
+                (entry.position.subtitleType || '').toLowerCase() === 'original'
+        );
+        return withElementOriginal[0] || withElement[0] || records[0];
     }
 }

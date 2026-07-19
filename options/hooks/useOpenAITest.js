@@ -1,8 +1,14 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import {
     hasHostPermission,
     requestHostPermission,
 } from '../../utils/hostPermissions.js';
+
+const EMPTY_TEST_RESULT = {
+    visible: false,
+    message: '',
+    type: 'info',
+};
 
 /**
  * Hook for testing OpenAI API and fetching models
@@ -11,15 +17,24 @@ import {
  * @returns {Object} Test functions and state
  */
 export function useOpenAITest(t, fetchAvailableModels) {
-    const [testResult, setTestResult] = useState({
-        visible: false,
-        message: '',
-        type: 'info',
-    });
+    const [testResult, setTestResult] = useState(EMPTY_TEST_RESULT);
     const [testing, setTesting] = useState(false);
     const [fetchingModels, setFetchingModels] = useState(false);
+    const mountedRef = useRef(true);
+    const requestGenerationRef = useRef(0);
+
+    useEffect(() => {
+        mountedRef.current = true;
+        return () => {
+            mountedRef.current = false;
+            requestGenerationRef.current += 1;
+        };
+    }, []);
 
     const showTestResult = useCallback((message, type) => {
+        if (!mountedRef.current) {
+            return;
+        }
         setTestResult({
             visible: true,
             message,
@@ -27,35 +42,96 @@ export function useOpenAITest(t, fetchAvailableModels) {
         });
     }, []);
 
+    const isCurrentRequest = useCallback(
+        (generation) =>
+            mountedRef.current && generation === requestGenerationRef.current,
+        []
+    );
+
+    const publishRequestStatus = useCallback(
+        (generation, message, type) => {
+            if (!isCurrentRequest(generation)) {
+                return;
+            }
+            setTestResult({
+                visible: true,
+                message,
+                type,
+            });
+        },
+        [isCurrentRequest]
+    );
+
+    const startRequest = useCallback((type) => {
+        const generation = ++requestGenerationRef.current;
+        if (mountedRef.current) {
+            setTesting(type === 'test');
+            setFetchingModels(type === 'fetch');
+        }
+        return generation;
+    }, []);
+
+    const finishRequest = useCallback(
+        (generation) => {
+            if (!isCurrentRequest(generation)) {
+                return;
+            }
+            setTesting(false);
+            setFetchingModels(false);
+        },
+        [isCurrentRequest]
+    );
+
+    const invalidateRequests = useCallback(() => {
+        requestGenerationRef.current += 1;
+        if (!mountedRef.current) {
+            return;
+        }
+        setTesting(false);
+        setFetchingModels(false);
+        setTestResult(EMPTY_TEST_RESULT);
+    }, []);
+
     const testConnection = useCallback(
         async (apiKey, baseUrl, onModelsLoaded) => {
+            const generation = startRequest('test');
             if (!apiKey) {
-                showTestResult(
+                publishRequestStatus(
+                    generation,
                     t('openaiApiKeyError', 'Please enter an API key first.'),
                     'error'
                 );
+                finishRequest(generation);
                 return;
             }
 
-            setTesting(true);
-            showTestResult(
+            publishRequestStatus(
+                generation,
                 t('openaiTestingConnection', 'Testing connection...'),
                 'info'
             );
 
             try {
                 const permissionGranted = await requestHostPermission(baseUrl);
+                if (!isCurrentRequest(generation)) {
+                    return;
+                }
                 if (!permissionGranted) {
                     throw new Error('Endpoint access was not granted.');
                 }
                 const models = await fetchAvailableModels(apiKey, baseUrl);
+                if (!isCurrentRequest(generation)) {
+                    return;
+                }
                 onModelsLoaded?.(models);
-                showTestResult(
+                publishRequestStatus(
+                    generation,
                     t('openaiConnectionSuccessful', 'Connection successful!'),
                     'success'
                 );
             } catch (error) {
-                showTestResult(
+                publishRequestStatus(
+                    generation,
                     t(
                         'openaiConnectionFailed',
                         'Connection failed: %s',
@@ -64,27 +140,41 @@ export function useOpenAITest(t, fetchAvailableModels) {
                     'error'
                 );
             } finally {
-                setTesting(false);
+                finishRequest(generation);
             }
         },
-        [t, fetchAvailableModels, showTestResult]
+        [
+            t,
+            fetchAvailableModels,
+            finishRequest,
+            isCurrentRequest,
+            publishRequestStatus,
+            startRequest,
+        ]
     );
 
     const fetchModels = useCallback(
         async (apiKey, baseUrl, onModelsLoaded) => {
+            const generation = startRequest('fetch');
             if (!apiKey) {
+                finishRequest(generation);
                 return;
             }
 
-            setFetchingModels(true);
-            showTestResult(
+            publishRequestStatus(
+                generation,
                 t('openaieFetchingModels', 'Fetching models...'),
                 'info'
             );
 
             try {
-                if (!(await hasHostPermission(baseUrl))) {
-                    showTestResult(
+                const permissionGranted = await hasHostPermission(baseUrl);
+                if (!isCurrentRequest(generation)) {
+                    return;
+                }
+                if (!permissionGranted) {
+                    publishRequestStatus(
+                        generation,
                         t(
                             'openaiEndpointPermissionRequired',
                             'Use Test Connection to grant access to this endpoint.'
@@ -95,11 +185,13 @@ export function useOpenAITest(t, fetchAvailableModels) {
                 }
                 const models = await fetchAvailableModels(apiKey, baseUrl);
 
-                if (onModelsLoaded) {
-                    onModelsLoaded(models);
+                if (!isCurrentRequest(generation)) {
+                    return;
                 }
+                onModelsLoaded?.(models);
 
-                showTestResult(
+                publishRequestStatus(
+                    generation,
                     t(
                         'openaiModelsFetchedSuccessfully',
                         'Models fetched successfully.'
@@ -107,7 +199,8 @@ export function useOpenAITest(t, fetchAvailableModels) {
                     'success'
                 );
             } catch (error) {
-                showTestResult(
+                publishRequestStatus(
+                    generation,
                     t(
                         'openaiFailedToFetchModels',
                         'Failed to fetch models: %s',
@@ -116,10 +209,17 @@ export function useOpenAITest(t, fetchAvailableModels) {
                     'error'
                 );
             } finally {
-                setFetchingModels(false);
+                finishRequest(generation);
             }
         },
-        [t, fetchAvailableModels, showTestResult]
+        [
+            t,
+            fetchAvailableModels,
+            finishRequest,
+            isCurrentRequest,
+            publishRequestStatus,
+            startRequest,
+        ]
     );
 
     const initializeStatus = useCallback(
@@ -148,6 +248,7 @@ export function useOpenAITest(t, fetchAvailableModels) {
         fetchingModels,
         testConnection,
         fetchModels,
+        invalidateRequests,
         initializeStatus,
         showTestResult,
     };

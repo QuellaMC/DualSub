@@ -1,6 +1,7 @@
 // Import jest for ES modules compatibility
 import { jest, beforeEach, afterEach } from '@jest/globals';
 import '@testing-library/jest-dom';
+import { deserialize, serialize } from 'node:v8';
 
 // Import centralized mock utilities
 import { ChromeApiMock } from './test-utils/chrome-api-mock.js';
@@ -9,6 +10,17 @@ import {
     mockWindowLocation,
 } from './test-utils/location-mock.js';
 import { LoggerMock } from './test-utils/logger-mock.js';
+
+// Jest's jsdom global omits structuredClone even though the extension's
+// minimum Chrome version provides it. This test-only shim preserves native-like
+// cloneability checks (including Proxy rejection) and is never bundled.
+if (typeof globalThis.structuredClone !== 'function') {
+    Object.defineProperty(globalThis, 'structuredClone', {
+        configurable: true,
+        value: (value) => deserialize(serialize(value)),
+        writable: true,
+    });
+}
 
 // Global mock instances for reuse across tests
 global.mockInstances = {

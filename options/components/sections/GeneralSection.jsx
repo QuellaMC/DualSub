@@ -1,6 +1,7 @@
 import React from 'react';
 import { SettingCard } from '../SettingCard.jsx';
 import { ToggleSwitch } from '../ToggleSwitch.jsx';
+import { getDefaultValue } from '../../../config/configSchema.js';
 
 export function GeneralSection({ t, settings, onSettingChange }) {
     return (
@@ -54,7 +55,10 @@ export function GeneralSection({ t, settings, onSettingChange }) {
                     </label>
                     <ToggleSwitch
                         id="hideOfficialSubtitles"
-                        checked={settings.hideOfficialSubtitles || false}
+                        checked={
+                            settings.hideOfficialSubtitles ??
+                            getDefaultValue('hideOfficialSubtitles')
+                        }
                         onChange={(checked) =>
                             onSettingChange('hideOfficialSubtitles', checked)
                         }
@@ -75,7 +79,10 @@ export function GeneralSection({ t, settings, onSettingChange }) {
                     </label>
                     <select
                         id="loggingLevel"
-                        value={settings.loggingLevel || 3}
+                        value={
+                            settings.loggingLevel ??
+                            getDefaultValue('loggingLevel')
+                        }
                         onChange={(e) =>
                             onSettingChange(
                                 'loggingLevel',

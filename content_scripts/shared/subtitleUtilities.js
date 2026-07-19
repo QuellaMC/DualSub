@@ -7,6 +7,18 @@
  */
 
 import { COMMON_CONSTANTS } from '../core/constants.js';
+import {
+    normalizeCueLineEndings,
+    normalizeCueText,
+} from '../../utils/cueTextNormalizer.js';
+import {
+    isProvenMessagingNonDelivery,
+    sendRuntimeMessageWithRetry,
+} from './messaging.js';
+import {
+    buildTranslationRequestMessage,
+    parseTranslationResponseMessage,
+} from './protocol/messageProtocol.js';
 
 // Logger instance for subtitle utilities
 let utilsLogger = null;
@@ -14,9 +26,18 @@ let utilsLogger = null;
 // Interactive subtitle functionality
 let interactiveSubtitlesEnabled = false;
 let interactiveModulesLoaded = false;
+let interactiveModuleApi = null;
+let interactiveModuleLoadPromise = null;
+let interactiveBindingIntentSequence = 0;
+let newestInteractiveBindingIntent = null;
+let installedInteractiveBindingIntent = null;
+let activeSubtitleStatePublisherLifecycle = null;
+let originalSubtitleState = null;
+let latestOriginalRenderRevision = 0;
 
 // Debounce mechanism for subtitle content change events
 const contentChangeDebounceTimeouts = new Map();
+const renderedSubtitleText = new WeakMap();
 const CONTENT_CHANGE_DEBOUNCE_DELAY = 50; // 50ms debounce
 
 // Bound each queue pass so future cues do not monopolize the content script.
@@ -25,10 +46,21 @@ const MAX_CUES_PER_QUEUE_PASS = 3;
 const TRANSLATION_LOOKAHEAD_SECONDS = 30;
 const TRANSLATION_LOOKBEHIND_SECONDS = 5;
 const QUEUE_CONTINUATION_DELAY_MS = 50;
-// The message wrapper already performs transport retries; one cue-level replay
-// covers provider/transient response failures without multiplying request load.
-const MAX_CUE_TRANSLATION_ATTEMPTS = 2;
-const CUE_TRANSLATION_RETRY_BASE_DELAY_MS = 500;
+// The wrapper sends each translation once. The queue owns one later replay only
+// when Chrome proves that no receiver accepted the first dispatch.
+const MAX_CUE_NON_DELIVERY_ATTEMPTS = 2;
+const CUE_NON_DELIVERY_RETRY_DELAY_MS = 500;
+
+const TRANSLATION_REQUEST_ERROR_TYPE = 'TRANSLATION_REQUEST_ERROR';
+const TRANSLATION_API_ERROR_TYPE = 'TRANSLATION_API_ERROR';
+
+class CueTranslationError extends Error {
+    constructor(message, errorType) {
+        super(message);
+        this.name = 'CueTranslationError';
+        this.errorType = errorType;
+    }
+}
 
 // Initialize fallback console logging until Logger is loaded
 function logWithFallback(level, message, data = {}) {
@@ -94,6 +126,497 @@ export function computeTextSignature(textOrHtml) {
     // Collapse whitespace
     s = s.replace(/\s+/g, ' ').trim();
     return s;
+}
+
+function shouldRenderSubtitleText(element, text, signature) {
+    return (
+        signature !== (element.dataset.textSig || '') ||
+        text !== (renderedSubtitleText.get(element) || '') ||
+        element.innerHTML === ''
+    );
+}
+
+function storeRenderedSubtitleText(element, text, formattedText, signature) {
+    element.innerHTML = formattedText;
+    element.dataset.textSig = signature;
+    renderedSubtitleText.set(element, text);
+}
+
+function clearRenderedSubtitleText(element) {
+    element.innerHTML = '';
+    element.dataset.textSig = '';
+    renderedSubtitleText.delete(element);
+}
+
+/**
+ * Begin one lifecycle-scoped subtitle state publisher capability.
+ * @param {Object} options
+ * @returns {() => void} Idempotent compare-and-swap cleanup.
+ */
+export function beginSubtitleStatePublisher({
+    publishSubtitleState = null,
+} = {}) {
+    const lifecycle = {
+        publishSubtitleState:
+            typeof publishSubtitleState === 'function'
+                ? publishSubtitleState
+                : null,
+        lastPublishedRevision: null,
+    };
+    activeSubtitleStatePublisherLifecycle = lifecycle;
+
+    let cleaned = false;
+    return () => {
+        if (cleaned) return;
+        cleaned = true;
+        if (activeSubtitleStatePublisherLifecycle !== lifecycle) return;
+        activeSubtitleStatePublisherLifecycle = null;
+    };
+}
+
+function allocateOriginalRenderRevision() {
+    if (latestOriginalRenderRevision >= Number.MAX_SAFE_INTEGER) return null;
+    latestOriginalRenderRevision += 1;
+    return latestOriginalRenderRevision;
+}
+
+function publishOriginalSubtitleState(state) {
+    const lifecycle = activeSubtitleStatePublisherLifecycle;
+    if (!lifecycle?.publishSubtitleState) return;
+
+    const payload = Object.freeze({
+        renderRevision: state.renderRevision,
+        reason: state.reason,
+        videoId: state.videoId,
+        text: state.text,
+    });
+    lifecycle.lastPublishedRevision = state.renderRevision;
+    try {
+        lifecycle.publishSubtitleState(payload);
+    } catch (_) {}
+}
+
+function captureOriginalInteractiveOccurrenceManifest(element, renderRevision) {
+    try {
+        const occurrences = Array.from(
+            element.querySelectorAll(
+                '.dualsub-interactive-word[data-subtitle-type="original"]'
+            )
+        );
+        const manifest = [];
+        for (let index = 0; index < occurrences.length; index += 1) {
+            const wordElement = occurrences[index];
+            const word = wordElement.getAttribute('data-word');
+            const sourceLanguage = wordElement.getAttribute('data-source-lang');
+            const targetLanguage = wordElement.getAttribute('data-target-lang');
+            if (
+                wordElement.parentElement !== element ||
+                wordElement.getAttribute('data-render-revision') !==
+                    String(renderRevision) ||
+                wordElement.getAttribute('data-word-index') !== String(index) ||
+                typeof word !== 'string' ||
+                word.length === 0 ||
+                word !== word.trim() ||
+                wordElement.textContent !== word ||
+                typeof sourceLanguage !== 'string' ||
+                sourceLanguage.length === 0 ||
+                typeof targetLanguage !== 'string' ||
+                targetLanguage.length === 0
+            ) {
+                return null;
+            }
+            manifest.push(
+                Object.freeze({
+                    element: wordElement,
+                    renderRevision,
+                    wordIndex: index,
+                    word,
+                    sourceLanguage,
+                    targetLanguage,
+                })
+            );
+        }
+        return Object.freeze(manifest);
+    } catch (_) {
+        return null;
+    }
+}
+
+function isOriginalInteractiveOccurrenceCurrent(container, occurrence, index) {
+    try {
+        return Boolean(
+            occurrence?.element?.parentElement === container &&
+            occurrence.renderRevision > 0 &&
+            occurrence.wordIndex === index &&
+            occurrence.element.getAttribute('data-render-revision') ===
+                String(occurrence.renderRevision) &&
+            occurrence.element.getAttribute('data-word-index') ===
+                String(index) &&
+            occurrence.element.getAttribute('data-word') === occurrence.word &&
+            occurrence.element.textContent === occurrence.word &&
+            occurrence.element.getAttribute('data-source-lang') ===
+                occurrence.sourceLanguage &&
+            occurrence.element.getAttribute('data-target-lang') ===
+                occurrence.targetLanguage
+        );
+    } catch (_) {
+        return false;
+    }
+}
+
+function isOriginalSubtitleDomStampCurrent(element, state) {
+    try {
+        if (
+            !element ||
+            !state ||
+            element !== document.getElementById('dualsub-original-subtitle') ||
+            element.getAttribute('data-render-revision') !==
+                String(state.renderRevision)
+        ) {
+            return false;
+        }
+
+        const occurrences = Array.from(
+            element.querySelectorAll(
+                '.dualsub-interactive-word[data-subtitle-type="original"]'
+            )
+        );
+        if (
+            state.formattingMode === 'interactive' &&
+            (occurrences.length !== state.interactiveOccurrenceCount ||
+                occurrences.some((wordElement, index) => {
+                    const occurrence =
+                        state.interactiveOccurrenceManifest?.[index];
+                    return (
+                        wordElement !== occurrence?.element ||
+                        !isOriginalInteractiveOccurrenceCurrent(
+                            element,
+                            occurrence,
+                            index
+                        )
+                    );
+                }))
+        ) {
+            return false;
+        }
+
+        return occurrences.every(
+            (word) =>
+                word.getAttribute('data-render-revision') ===
+                String(state.renderRevision)
+        );
+    } catch (_) {
+        return false;
+    }
+}
+
+function isOriginalSubtitleStampCurrent(element, state) {
+    try {
+        if (!isOriginalSubtitleDomStampCurrent(element, state)) return false;
+
+        const lifecycle = activeSubtitleStatePublisherLifecycle;
+        if (
+            lifecycle?.publishSubtitleState &&
+            lifecycle.lastPublishedRevision !== state.renderRevision
+        ) {
+            return false;
+        }
+        return true;
+    } catch (_) {
+        return false;
+    }
+}
+
+function getOriginalSubtitleFormattingMode() {
+    return interactiveSubtitlesEnabled &&
+        interactiveModulesLoaded &&
+        typeof window.dualsub_formatInteractiveSubtitleText === 'function'
+        ? 'interactive'
+        : 'plain';
+}
+
+function shouldCommitOriginalSubtitleState(element, videoId, text) {
+    return (
+        !originalSubtitleState ||
+        originalSubtitleState.videoId !== videoId ||
+        originalSubtitleState.text !== text ||
+        originalSubtitleState.formattingMode !==
+            getOriginalSubtitleFormattingMode() ||
+        !isOriginalSubtitleStampCurrent(element, originalSubtitleState)
+    );
+}
+
+function utf8ByteLength(value) {
+    let bytes = 0;
+    for (let index = 0; index < value.length; index += 1) {
+        const codeUnit = value.charCodeAt(index);
+        if (codeUnit <= 0x7f) bytes += 1;
+        else if (codeUnit <= 0x7ff) bytes += 2;
+        else if (codeUnit >= 0xd800 && codeUnit <= 0xdbff) {
+            bytes += 4;
+            index += 1;
+        } else bytes += 3;
+    }
+    return bytes;
+}
+
+function isWellFormedBoundedString(value, maximumBytes) {
+    return (
+        typeof value === 'string' &&
+        value.isWellFormed() &&
+        utf8ByteLength(value) <= maximumBytes
+    );
+}
+
+function normalizeSubtitleStateVideoId(videoId) {
+    return isWellFormedBoundedString(videoId, 256) &&
+        videoId.length > 0 &&
+        videoId === videoId.trim()
+        ? videoId
+        : null;
+}
+
+function hasOriginalRevisionStamp(element) {
+    try {
+        return Boolean(
+            element?.hasAttribute('data-render-revision') ||
+            element?.querySelector(
+                '.dualsub-interactive-word[data-subtitle-type="original"][data-render-revision]'
+            )
+        );
+    } catch (_) {
+        return true;
+    }
+}
+
+function removeOriginalRevisionStamps(element) {
+    if (!element) return;
+    element.removeAttribute('data-render-revision');
+    element
+        .querySelectorAll(
+            '.dualsub-interactive-word[data-subtitle-type="original"][data-render-revision]'
+        )
+        .forEach((word) => word.removeAttribute('data-render-revision'));
+}
+
+function commitOriginalSubtitleState({
+    element,
+    videoId,
+    text,
+    formatOptions = null,
+    signature = '',
+    emptyReason = 'clear',
+}) {
+    const normalizedVideoId = normalizeSubtitleStateVideoId(videoId);
+    const oldContent = element?.innerHTML || '';
+    const formattingMode = getOriginalSubtitleFormattingMode();
+    const hasPublicText = typeof text === 'string' && text.length > 0;
+    const isValidRender =
+        hasPublicText &&
+        normalizedVideoId !== null &&
+        isWellFormedBoundedString(text, 4096);
+
+    if (hasPublicText && !isValidRender) {
+        const hasPrivateState =
+            originalSubtitleState?.videoId || originalSubtitleState?.text;
+        const hadPrivateAuthority =
+            Boolean(hasPrivateState) || hasOriginalRevisionStamp(element);
+        let accepted = false;
+        if (hadPrivateAuthority) {
+            const renderRevision = allocateOriginalRenderRevision();
+            if (renderRevision !== null) {
+                originalSubtitleState = {
+                    renderRevision,
+                    videoId: null,
+                    text: '',
+                };
+                publishOriginalSubtitleState({
+                    renderRevision,
+                    reason: 'clear',
+                    videoId: null,
+                    text: '',
+                });
+                accepted = true;
+            } else {
+                originalSubtitleState = null;
+            }
+        }
+
+        const domChanged =
+            element && shouldRenderSubtitleText(element, text, signature);
+        let formattedText = oldContent;
+        if (domChanged) {
+            formattedText = formatSubtitleTextForDisplay(text, {
+                ...formatOptions,
+                subtitleType: 'original',
+            });
+            storeRenderedSubtitleText(element, text, formattedText, signature);
+        }
+        removeOriginalRevisionStamps(element);
+        return { accepted, domChanged, formattedText, oldContent };
+    }
+
+    if (isValidRender) {
+        const isRefresh =
+            originalSubtitleState?.videoId === normalizedVideoId &&
+            originalSubtitleState.text === text;
+        if (
+            isRefresh &&
+            originalSubtitleState.formattingMode === formattingMode &&
+            isOriginalSubtitleStampCurrent(element, originalSubtitleState)
+        ) {
+            return { accepted: false, domChanged: false };
+        }
+
+        const renderRevision = allocateOriginalRenderRevision();
+        if (renderRevision === null) {
+            originalSubtitleState = null;
+            const formattedText = formatSubtitleTextForDisplay(text, {
+                ...formatOptions,
+                subtitleType: 'original',
+            });
+            storeRenderedSubtitleText(element, text, formattedText, signature);
+            removeOriginalRevisionStamps(element);
+            return {
+                accepted: false,
+                domChanged: true,
+                formattedText,
+                oldContent,
+            };
+        }
+
+        const formattedText = formatSubtitleTextForDisplay(text, {
+            ...formatOptions,
+            subtitleType: 'original',
+            renderRevision,
+        });
+        storeRenderedSubtitleText(element, text, formattedText, signature);
+        element.setAttribute('data-render-revision', String(renderRevision));
+        const interactiveOccurrences = Array.from(
+            element.querySelectorAll(
+                '.dualsub-interactive-word[data-subtitle-type="original"]'
+            )
+        );
+        interactiveOccurrences.forEach((word) =>
+            word.setAttribute('data-render-revision', String(renderRevision))
+        );
+        const interactiveOccurrenceManifest =
+            captureOriginalInteractiveOccurrenceManifest(
+                element,
+                renderRevision
+            );
+        originalSubtitleState = {
+            renderRevision,
+            videoId: normalizedVideoId,
+            text,
+            formattingMode,
+            formatOptions,
+            interactiveOccurrenceCount: interactiveOccurrences.length,
+            interactiveOccurrenceManifest,
+        };
+        publishOriginalSubtitleState({
+            renderRevision,
+            reason: isRefresh ? 'refresh' : 'render',
+            videoId: normalizedVideoId,
+            text,
+        });
+        return {
+            accepted: true,
+            domChanged: true,
+            formattedText,
+            oldContent,
+        };
+    }
+
+    const reason =
+        emptyReason === 'expired' && normalizedVideoId !== null
+            ? 'expired'
+            : 'clear';
+    const committedVideoId = reason === 'clear' ? null : normalizedVideoId;
+    const privateStampPresent = hasOriginalRevisionStamp(element);
+    const accepted = Boolean(
+        !originalSubtitleState ||
+        originalSubtitleState.videoId !== committedVideoId ||
+        originalSubtitleState.text !== '' ||
+        privateStampPresent
+    );
+    const domChanged = Boolean(
+        oldContent || element?.dataset.textSig || privateStampPresent
+    );
+
+    if (accepted) {
+        const renderRevision = allocateOriginalRenderRevision();
+        if (renderRevision !== null) {
+            originalSubtitleState = {
+                renderRevision,
+                videoId: committedVideoId,
+                text: '',
+            };
+            publishOriginalSubtitleState({
+                renderRevision,
+                reason,
+                videoId: committedVideoId,
+                text: '',
+            });
+        } else {
+            originalSubtitleState = null;
+        }
+    }
+    if (element) clearRenderedSubtitleText(element);
+    removeOriginalRevisionStamps(element);
+    return { accepted, domChanged, formattedText: '', oldContent };
+}
+
+function reconcileCurrentOriginalSubtitleFormatting() {
+    const state = originalSubtitleState;
+    const element = document.getElementById('dualsub-original-subtitle');
+    if (!state?.text || !element) return false;
+    if (
+        element.getAttribute('data-render-revision') !==
+        String(state.renderRevision)
+    ) {
+        return false;
+    }
+    if (
+        state.formattingMode === getOriginalSubtitleFormattingMode() &&
+        isOriginalSubtitleDomStampCurrent(element, state)
+    ) {
+        return false;
+    }
+
+    const commit = commitOriginalSubtitleState({
+        element,
+        videoId: state.videoId,
+        text: state.text,
+        formatOptions: state.formatOptions,
+        signature: computeTextSignature(state.text),
+    });
+    return commit.accepted || commit.domChanged;
+}
+
+function getCurrentOriginalInteractiveBinding() {
+    const state = originalSubtitleState;
+    const element = document.getElementById('dualsub-original-subtitle');
+    if (
+        !state?.text ||
+        state.formattingMode !== 'interactive' ||
+        element?.style.display === 'none' ||
+        !isOriginalSubtitleStampCurrent(element, state)
+    ) {
+        return null;
+    }
+
+    const occurrences = element.querySelectorAll(
+        '.dualsub-interactive-word[data-subtitle-type="original"]'
+    );
+    if (occurrences.length === 0) return null;
+
+    return Object.freeze({
+        element,
+        renderRevision: state.renderRevision,
+        formatOptions: state.formatOptions,
+        occurrences: state.interactiveOccurrenceManifest,
+    });
 }
 
 function dispatchContentChange(
@@ -260,27 +783,103 @@ export function updateSubtitlePosition(activePlatform) {
     );
 }
 
-/**
- * Initialize interactive subtitle functionality
- * @param {Object} config - Configuration options
- */
-export async function initializeInteractiveSubtitleFeatures(config = {}) {
-    if (interactiveModulesLoaded) {
-        return;
-    }
+async function loadInteractiveModuleApi() {
+    if (interactiveModuleApi) return interactiveModuleApi;
 
-    try {
-        // Get the absolute URL for the interactive subtitle formatter.
+    if (!interactiveModuleLoadPromise) {
         const formatterUrl = chrome.runtime.getURL(
             'content_scripts/shared/interactiveSubtitleFormatter.js'
         );
+        interactiveModuleLoadPromise = import(formatterUrl).then(
+            (moduleApi) => {
+                interactiveModuleApi = moduleApi;
+                return moduleApi;
+            },
+            (error) => {
+                interactiveModuleLoadPromise = null;
+                throw error;
+            }
+        );
+    }
+
+    return interactiveModuleLoadPromise;
+}
+
+function isInteractiveBindingIntentCurrent(intent) {
+    if (newestInteractiveBindingIntent !== intent) return false;
+    try {
+        return intent.isCurrent();
+    } catch {
+        return false;
+    }
+}
+
+function releaseInteractiveBindingIntent(intent) {
+    if (newestInteractiveBindingIntent === intent) {
+        newestInteractiveBindingIntent = null;
+    }
+    if (installedInteractiveBindingIntent === intent) {
+        installedInteractiveBindingIntent = null;
+    }
+}
+
+/**
+ * Resolve one current formatter-registered original occurrence for an
+ * already-authorized selection/removal command.
+ * @param {Object | null} intent
+ * @returns {HTMLElement | null}
+ */
+export function resolveInteractiveOriginalWordOccurrence(intent) {
+    if (
+        !newestInteractiveBindingIntent ||
+        installedInteractiveBindingIntent !== newestInteractiveBindingIntent ||
+        !isInteractiveBindingIntentCurrent(newestInteractiveBindingIntent)
+    ) {
+        return null;
+    }
+    const resolver =
+        interactiveModuleApi?.resolveInteractiveOriginalWordOccurrence;
+    if (typeof resolver !== 'function') return null;
+    try {
+        return resolver(intent);
+    } catch (_) {
+        return null;
+    }
+}
+
+/**
+ * Initialize interactive subtitle functionality
+ * @param {Object} config - Configuration options
+ * @param {Function} isCurrent - Whether the captured owner is still current.
+ * @param {Function | null} publishWordIntent - Private word-intent capability.
+ * @returns {Promise<() => void>} Lifecycle-scoped binding cleanup.
+ */
+export async function initializeInteractiveSubtitleFeatures(
+    config = {},
+    isCurrent = () => true,
+    publishWordIntent = null
+) {
+    const intent = Object.freeze({
+        sequence: ++interactiveBindingIntentSequence,
+        isCurrent: typeof isCurrent === 'function' ? isCurrent : () => false,
+    });
+    newestInteractiveBindingIntent = intent;
+
+    let lifecycleCleanup = () => {};
+    try {
+        const moduleApi = await loadInteractiveModuleApi();
+        if (!isInteractiveBindingIntentCurrent(intent)) {
+            releaseInteractiveBindingIntent(intent);
+            return () => {};
+        }
 
         const {
             initializeInteractiveSubtitles,
             formatInteractiveSubtitleText,
             attachInteractiveEventListeners,
             setInteractiveEnabled,
-        } = await import(formatterUrl);
+            beginInteractiveLifecycle,
+        } = moduleApi;
 
         // Initialize all interactive components with enabled state
         const interactiveConfig = {
@@ -302,8 +901,70 @@ export async function initializeInteractiveSubtitleFeatures(config = {}) {
             attachInteractiveEventListeners;
         window.dualsub_setInteractiveEnabled = setInteractiveEnabled;
 
+        const resolveOriginalWordBindingSnapshot = (element) => {
+            if (!isInteractiveBindingIntentCurrent(intent)) return null;
+            const binding = getCurrentOriginalInteractiveBinding();
+            return binding?.element === element ? binding : null;
+        };
+        const lifecyclePublisher =
+            typeof publishWordIntent === 'function'
+                ? (wordIntent) => {
+                      if (
+                          installedInteractiveBindingIntent !== intent ||
+                          !isInteractiveBindingIntentCurrent(intent)
+                      ) {
+                          return;
+                      }
+                      publishWordIntent(wordIntent);
+                  }
+                : null;
+
+        installedInteractiveBindingIntent = null;
+        lifecycleCleanup =
+            typeof beginInteractiveLifecycle === 'function'
+                ? beginInteractiveLifecycle({
+                      publishWordIntent: lifecyclePublisher,
+                      resolveOriginalWordBindingSnapshot,
+                  })
+                : () => {};
+        if (!isInteractiveBindingIntentCurrent(intent)) {
+            lifecycleCleanup();
+            releaseInteractiveBindingIntent(intent);
+            return () => {};
+        }
+
         interactiveModulesLoaded = true;
         interactiveSubtitlesEnabled = true; // Always enable when modules are loaded
+        reconcileCurrentOriginalSubtitleFormatting();
+        if (!isInteractiveBindingIntentCurrent(intent)) {
+            lifecycleCleanup();
+            releaseInteractiveBindingIntent(intent);
+            return () => {};
+        }
+
+        const currentBinding = getCurrentOriginalInteractiveBinding();
+        if (currentBinding) {
+            const attached = attachInteractiveEventListeners(
+                currentBinding.element,
+                currentBinding.formatOptions || {}
+            );
+            const attachedBinding = getCurrentOriginalInteractiveBinding();
+            if (
+                attached !== true ||
+                !isInteractiveBindingIntentCurrent(intent) ||
+                attachedBinding?.element !== currentBinding.element ||
+                attachedBinding.renderRevision !==
+                    currentBinding.renderRevision ||
+                currentBinding.element.getAttribute(
+                    'data-interactive-listeners'
+                ) !== 'true'
+            ) {
+                lifecycleCleanup();
+                releaseInteractiveBindingIntent(intent);
+                return () => {};
+            }
+        }
+        installedInteractiveBindingIntent = intent;
 
         logWithFallback('info', 'Interactive subtitle features initialized', {
             enabled: interactiveSubtitlesEnabled,
@@ -311,7 +972,17 @@ export async function initializeInteractiveSubtitleFeatures(config = {}) {
             sourceLanguage: config.sourceLanguage || 'unknown',
             targetLanguage: config.targetLanguage || 'unknown',
         });
+
+        let cleaned = false;
+        return () => {
+            if (cleaned) return;
+            cleaned = true;
+            lifecycleCleanup();
+            releaseInteractiveBindingIntent(intent);
+        };
     } catch (error) {
+        lifecycleCleanup();
+        releaseInteractiveBindingIntent(intent);
         logWithFallback(
             'error',
             'Failed to initialize interactive subtitle features',
@@ -331,8 +1002,47 @@ export async function initializeInteractiveSubtitleFeatures(config = {}) {
 export function setInteractiveSubtitlesEnabled(enabled) {
     interactiveSubtitlesEnabled = enabled;
 
+    if (
+        !enabled &&
+        newestInteractiveBindingIntent !== installedInteractiveBindingIntent
+    ) {
+        newestInteractiveBindingIntent = null;
+    } else if (
+        enabled &&
+        !newestInteractiveBindingIntent &&
+        installedInteractiveBindingIntent
+    ) {
+        try {
+            if (installedInteractiveBindingIntent.isCurrent()) {
+                newestInteractiveBindingIntent =
+                    installedInteractiveBindingIntent;
+            }
+        } catch (_) {}
+    }
+
     if (interactiveModulesLoaded && window.dualsub_setInteractiveEnabled) {
         window.dualsub_setInteractiveEnabled(enabled);
+    }
+
+    if (
+        enabled &&
+        newestInteractiveBindingIntent &&
+        installedInteractiveBindingIntent === newestInteractiveBindingIntent &&
+        isInteractiveBindingIntentCurrent(newestInteractiveBindingIntent)
+    ) {
+        reconcileCurrentOriginalSubtitleFormatting();
+        const currentBinding = getCurrentOriginalInteractiveBinding();
+        if (
+            currentBinding &&
+            currentBinding.element.getAttribute(
+                'data-interactive-listeners'
+            ) !== 'true'
+        ) {
+            window.dualsub_attachInteractiveEventListeners?.(
+                currentBinding.element,
+                currentBinding.formatOptions || {}
+            );
+        }
     }
 
     logWithFallback('info', 'Interactive subtitles toggled', { enabled });
@@ -409,6 +1119,30 @@ let queueProcessingTimeoutId = null;
 let queueProcessingTimeoutDelay = null;
 let subtitleContextGeneration = 0;
 
+function cancelScheduledQueueProcessing() {
+    if (queueProcessingTimeoutId !== null) {
+        clearTimeout(queueProcessingTimeoutId);
+        queueProcessingTimeoutId = null;
+        queueProcessingTimeoutDelay = null;
+    }
+}
+
+function clearCueTranslationRetryState() {
+    for (const cue of subtitleQueue) {
+        delete cue.translationAttempts;
+        delete cue.translationRetryAt;
+    }
+}
+
+function invalidateSubtitleContext() {
+    subtitleContextGeneration++;
+    invalidateFramePresentationScan();
+    queueRerunRequested = false;
+    queueRerunContext = null;
+    cancelScheduledQueueProcessing();
+    clearCueTranslationRetryState();
+}
+
 // Guard against transient blanks during style changes and platform ID timing
 let lastStyleApplicationTs = 0;
 let lastDisplayedCueWindow = { start: null, end: null, videoId: null };
@@ -418,6 +1152,9 @@ export let timeUpdateListener = null;
 let timeUpdateVideoElement = null;
 let timeUpdatePlatform = null;
 let timeUpdateConfig = null;
+let videoFrameCallbackId = null;
+let videoFrameCallbackOwner = null;
+let framePresentationScan = null;
 export let progressBarObserver = null;
 export let lastProgressBarTime = -1;
 export let lastProgressBarUpdateTs = 0;
@@ -429,6 +1166,56 @@ export let lastLoggedTimeSec = -1;
 export let timeUpdateLogCounter = 0;
 export const TIME_UPDATE_LOG_INTERVAL = 30;
 
+const FRAME_PRESENTATION_STYLE_GRACE_MS = 800;
+
+function invalidateFramePresentationScan() {
+    framePresentationScan = null;
+}
+
+function shouldUpdateSubtitlesForFrame(owner, rawCurrentTime) {
+    const scan = framePresentationScan;
+    const subtitleTimeOffset = owner.config.subtitleTimeOffset;
+    const currentTime = rawCurrentTime + subtitleTimeOffset;
+    const platformVideoId = owner.activePlatform.getCurrentVideoId();
+    const currentHref =
+        typeof window !== 'undefined' && window.location
+            ? window.location.href
+            : lastKnownLocationHref;
+
+    if (
+        !scan ||
+        scan.activePlatform !== owner.activePlatform ||
+        scan.config !== owner.config ||
+        scan.videoElement !== owner.videoElement ||
+        scan.platformVideoId !== platformVideoId ||
+        scan.subtitleTimeOffset !== subtitleTimeOffset ||
+        scan.subtitleContextGeneration !== subtitleContextGeneration ||
+        scan.subtitleQueue !== subtitleQueue ||
+        scan.subtitleQueueLength !== subtitleQueue.length ||
+        scan.firstCue !== (subtitleQueue[0] || null) ||
+        scan.lastCue !== (subtitleQueue[subtitleQueue.length - 1] || null) ||
+        scan.subtitleContainer !== subtitleContainer ||
+        !subtitleContainer ||
+        !document.body.contains(subtitleContainer) ||
+        scan.locationHref !== currentHref ||
+        currentTime < scan.evaluatedTime
+    ) {
+        return true;
+    }
+
+    if (
+        scan.nextWallClockEvaluation !== null &&
+        Date.now() >= scan.nextWallClockEvaluation
+    ) {
+        return true;
+    }
+
+    if (scan.nextBoundaryTime === null) return false;
+    return scan.nextBoundaryInclusive
+        ? currentTime >= scan.nextBoundaryTime
+        : currentTime > scan.nextBoundaryTime;
+}
+
 function scheduleSubtitleQueueProcessing(
     activePlatform,
     config,
@@ -436,6 +1223,18 @@ function scheduleSubtitleQueueProcessing(
     delay = 0
 ) {
     if (!activePlatform || !config || !subtitlesActive) return;
+
+    const scheduledGeneration = subtitleContextGeneration;
+    let scheduledVideoId;
+    try {
+        scheduledVideoId = activePlatform.getCurrentVideoId?.();
+    } catch (_) {
+        return;
+    }
+    const scheduledCues = subtitleQueue.filter(
+        (cue) => cue.videoId === scheduledVideoId
+    );
+    if (!scheduledVideoId || scheduledCues.length === 0) return;
 
     if (processingQueue) {
         queueRerunRequested = true;
@@ -458,6 +1257,24 @@ function scheduleSubtitleQueueProcessing(
     queueProcessingTimeoutId = setTimeout(() => {
         queueProcessingTimeoutId = null;
         queueProcessingTimeoutDelay = null;
+
+        let activeVideoId;
+        try {
+            activeVideoId = activePlatform.getCurrentVideoId?.();
+        } catch (_) {
+            return;
+        }
+        const scheduledContextIsCurrent =
+            subtitlesActive &&
+            scheduledGeneration === subtitleContextGeneration &&
+            activeVideoId === scheduledVideoId &&
+            scheduledCues.some(
+                (cue) =>
+                    cue.videoId === scheduledVideoId &&
+                    subtitleQueue.includes(cue)
+            );
+        if (!scheduledContextIsCurrent) return;
+
         void processSubtitleQueue(activePlatform, config, logPrefix);
     }, delay);
 }
@@ -473,11 +1290,12 @@ let lastRenderedVideoId = null;
 
 // State setters (only for core state, not user preferences)
 export function setCurrentVideoId(id) {
+    if (currentVideoId !== id) invalidateFramePresentationScan();
     currentVideoId = id;
 }
 
 export function setSubtitlesActive(active) {
-    if (subtitlesActive !== active) subtitleContextGeneration++;
+    if (subtitlesActive !== active) invalidateSubtitleContext();
     subtitlesActive = active;
 }
 
@@ -537,7 +1355,12 @@ export function formatSubtitleTextForDisplay(text, options = {}) {
 }
 
 export function parseVTT(vttString) {
-    if (!vttString || !vttString.trim().toUpperCase().startsWith('WEBVTT')) {
+    const normalizedVtt =
+        typeof vttString === 'string' ? normalizeCueLineEndings(vttString) : '';
+    if (
+        !normalizedVtt ||
+        !normalizedVtt.trim().toUpperCase().startsWith('WEBVTT')
+    ) {
         logWithFallback(
             'warn',
             'Invalid or empty VTT string provided for parsing.'
@@ -545,8 +1368,8 @@ export function parseVTT(vttString) {
         return [];
     }
     const cues = [];
-    const cueBlocks = vttString
-        .split(/\r?\n\r?\n/)
+    const cueBlocks = normalizedVtt
+        .split(/\n{2,}/)
         .filter((block) => block.trim() !== '');
 
     for (const block of cueBlocks) {
@@ -554,7 +1377,7 @@ export function parseVTT(vttString) {
             continue;
         }
 
-        const lines = block.split(/\r?\n/);
+        const lines = block.split('\n');
         let timestampLine = '';
         let textLines = [];
 
@@ -568,54 +1391,47 @@ export function parseVTT(vttString) {
             continue;
         }
 
-        const timeParts = timestampLine.split(' --> ');
-        if (timeParts.length < 2) continue;
+        const timeParts = timestampLine.trim().split(/[ \t]+-->[ \t]+/);
+        if (timeParts.length !== 2) continue;
 
-        const startTimeStr = timeParts[0].trim();
-        const endTimeStr = timeParts[1].split(' ')[0].trim();
+        const startTimeStr = timeParts[0];
+        const [endTimeStr] = timeParts[1].split(/[ \t]+/);
 
         const start = parseTimestampToSeconds(startTimeStr);
         const end = parseTimestampToSeconds(endTimeStr);
 
-        const text = textLines
-            .join(' ')
-            .replace(/<br\s*\/?>/gi, ' ')
-            .replace(/<[^>]*>/g, '')
-            .replace(/\s+/g, ' ')
-            .trim();
+        const decodedText = normalizeCueText(textLines.join('\n'), 'webvtt');
 
-        if (text && !Number.isNaN(start) && !Number.isNaN(end)) {
-            cues.push({ start, end, text });
+        if (
+            decodedText &&
+            Number.isFinite(start) &&
+            Number.isFinite(end) &&
+            end > start
+        ) {
+            cues.push({ start, end, text: decodedText });
         }
     }
     return cues;
 }
 
+/**
+ * Parse the WebVTT timestamp forms accepted at the cue boundary.
+ * @param {string} timestamp
+ * @returns {number | null} Seconds, or null when the timestamp is invalid.
+ */
 export function parseTimestampToSeconds(timestamp) {
-    const parts = timestamp.split(':');
-    let seconds = 0;
-    try {
-        if (parts.length === 3) {
-            seconds += parseInt(parts[0], 10) * 3600;
-            seconds += parseInt(parts[1], 10) * 60;
-            seconds += parseFloat(parts[2].replace(',', '.'));
-        } else if (parts.length === 2) {
-            seconds += parseInt(parts[0], 10) * 60;
-            seconds += parseFloat(parts[1].replace(',', '.'));
-        } else if (parts.length === 1) {
-            seconds += parseFloat(parts[0].replace(',', '.'));
-        } else {
-            return 0;
-        }
-        if (Number.isNaN(seconds)) return 0;
-    } catch (e) {
-        logWithFallback('error', 'Error parsing timestamp.', {
-            timestamp,
-            error: e,
-        });
-        return 0;
-    }
-    return seconds;
+    if (typeof timestamp !== 'string') return null;
+    const match = timestamp.match(/^(?:(\d{2,}):)?(\d{2}):(\d{2})\.(\d{3})$/);
+    if (!match) return null;
+
+    const hours = match[1] === undefined ? 0 : Number(match[1]);
+    const minutes = Number(match[2]);
+    const seconds = Number(match[3]);
+    const milliseconds = Number(match[4]);
+    if (minutes >= 60 || seconds >= 60) return null;
+
+    const total = hours * 3600 + minutes * 60 + seconds + milliseconds / 1000;
+    return Number.isFinite(total) ? total : null;
 }
 
 export function showSubtitleContainer() {
@@ -637,7 +1453,12 @@ export function hideSubtitleContainer() {
         subtitleContainer.style.visibility = 'hidden';
         subtitleContainer.style.opacity = '0';
         if (originalSubtitleElement) {
-            originalSubtitleElement.innerHTML = '';
+            commitOriginalSubtitleState({
+                element: originalSubtitleElement,
+                videoId: null,
+                text: '',
+                emptyReason: 'clear',
+            });
             originalSubtitleElement.style.display = 'none';
         }
         if (translatedSubtitleElement) {
@@ -669,7 +1490,7 @@ export function applySubtitleStyling(config) {
         Object.assign(el.style, {
             padding: '0.2em 0.5em',
             lineHeight: '1.3',
-            whiteSpace: 'normal',
+            whiteSpace: 'pre-line',
             overflow: 'visible',
             textOverflow: 'clip',
             marginBottom: '0',
@@ -995,7 +1816,105 @@ export function ensureSubtitleContainer(
     return true;
 }
 
+function cancelVideoFrameUpdate() {
+    invalidateFramePresentationScan();
+    const owner = videoFrameCallbackOwner;
+    const callbackId = videoFrameCallbackId;
+    videoFrameCallbackOwner = null;
+    videoFrameCallbackId = null;
+
+    if (
+        owner &&
+        callbackId !== null &&
+        typeof owner.videoElement.cancelVideoFrameCallback === 'function'
+    ) {
+        try {
+            owner.videoElement.cancelVideoFrameCallback(callbackId);
+        } catch (_) {}
+    }
+}
+
+function isVideoFrameCallbackOwnerCurrent(owner) {
+    return (
+        videoFrameCallbackOwner === owner &&
+        timeUpdateVideoElement === owner.videoElement &&
+        timeUpdatePlatform === owner.activePlatform &&
+        timeUpdateConfig === owner.config &&
+        timeUpdateListener === owner.listener
+    );
+}
+
+function requestOwnedVideoFrameUpdate(owner) {
+    if (!isVideoFrameCallbackOwnerCurrent(owner)) return;
+
+    try {
+        let callbackId = null;
+        callbackId = owner.videoElement.requestVideoFrameCallback(() => {
+            if (
+                !isVideoFrameCallbackOwnerCurrent(owner) ||
+                videoFrameCallbackId !== callbackId
+            ) {
+                return;
+            }
+
+            videoFrameCallbackId = null;
+            const currentTime = resolvePlaybackTime(
+                owner.activePlatform,
+                owner.videoElement
+            );
+            const { readyState, HAVE_CURRENT_DATA } = owner.videoElement;
+            if (
+                subtitlesActive &&
+                typeof currentTime === 'number' &&
+                readyState >= HAVE_CURRENT_DATA &&
+                shouldUpdateSubtitlesForFrame(owner, currentTime)
+            ) {
+                updateSubtitles(
+                    currentTime,
+                    owner.activePlatform,
+                    owner.config,
+                    owner.logPrefix
+                );
+            }
+
+            requestOwnedVideoFrameUpdate(owner);
+        });
+        videoFrameCallbackId = callbackId;
+    } catch (_) {
+        if (videoFrameCallbackOwner === owner) {
+            videoFrameCallbackId = null;
+        }
+    }
+}
+
+function scheduleVideoFrameUpdate(
+    videoElement,
+    activePlatform,
+    config,
+    logPrefix,
+    listener
+) {
+    if (
+        activePlatform.supportsProgressBarTracking?.() !== false ||
+        typeof videoElement.requestVideoFrameCallback !== 'function'
+    ) {
+        return;
+    }
+
+    const owner = {
+        videoElement,
+        activePlatform,
+        config,
+        logPrefix,
+        listener,
+    };
+    invalidateFramePresentationScan();
+    videoFrameCallbackOwner = owner;
+    requestOwnedVideoFrameUpdate(owner);
+}
+
 function detachTimeUpdateListener() {
+    cancelVideoFrameUpdate();
     const listenerToRemove = timeUpdateListener;
     const attachedVideos = new Set();
     if (timeUpdateVideoElement) attachedVideos.add(timeUpdateVideoElement);
@@ -1053,6 +1972,7 @@ export function attachTimeUpdateListener(
         if (!currentVideoElem) return;
 
         if (event?.type === 'seeking' || event?.type === 'seeked') {
+            invalidateFramePresentationScan();
             activePlatform.invalidatePlaybackClockCalibration?.();
         }
 
@@ -1096,6 +2016,13 @@ export function attachTimeUpdateListener(
     videoElement.addEventListener('seeking', timeUpdateListener);
     videoElement.addEventListener('seeked', timeUpdateListener);
     videoElement.setAttribute('data-listener-attached', 'true');
+    scheduleVideoFrameUpdate(
+        videoElement,
+        activePlatform,
+        config,
+        logPrefix,
+        timeUpdateListener
+    );
     logWithFallback('info', 'Attached HTML5 timeupdate listener.', {
         logPrefix,
     });
@@ -1516,6 +2443,7 @@ export function updateSubtitles(
     // This prevents stale subtitles from a previous video/episode from being shown
     // during soft navigations before the new videoId is established.
     if (platformVideoId == null) {
+        invalidateFramePresentationScan();
         hideSubtitleContainer();
         return;
     }
@@ -1526,7 +2454,14 @@ export function updateSubtitles(
         navigationGuardActive &&
         navigationGuardFromVideoId !== platformVideoId
     ) {
-        if (originalSubtitleElement) originalSubtitleElement.innerHTML = '';
+        if (originalSubtitleElement) {
+            commitOriginalSubtitleState({
+                element: originalSubtitleElement,
+                videoId: null,
+                text: '',
+                emptyReason: 'clear',
+            });
+        }
         if (translatedSubtitleElement) translatedSubtitleElement.innerHTML = '';
         lastDisplayedCueWindow = { start: null, end: null, videoId: null };
         navigationGuardActive = false;
@@ -1539,13 +2474,34 @@ export function updateSubtitles(
         lastDisplayedCueWindow.videoId != null &&
         lastDisplayedCueWindow.videoId !== platformVideoId
     ) {
-        if (originalSubtitleElement) originalSubtitleElement.innerHTML = '';
+        if (originalSubtitleElement) {
+            commitOriginalSubtitleState({
+                element: originalSubtitleElement,
+                videoId: null,
+                text: '',
+                emptyReason: 'clear',
+            });
+        }
         if (translatedSubtitleElement) translatedSubtitleElement.innerHTML = '';
         lastDisplayedCueWindow = { start: null, end: null, videoId: null };
     }
 
-    // Find all active cues at current time
+    // Find all active cues and the next point where the active set can change.
+    // The frame callback uses this boundary to avoid rescanning the episode
+    // queue while playback remains inside the same presentation window.
     const activeCues = [];
+    let nextBoundaryTime = null;
+    let nextBoundaryInclusive = false;
+    const considerNextBoundary = (boundaryTime, inclusive) => {
+        if (
+            nextBoundaryTime === null ||
+            boundaryTime < nextBoundaryTime ||
+            (boundaryTime === nextBoundaryTime && inclusive)
+        ) {
+            nextBoundaryTime = boundaryTime;
+            nextBoundaryInclusive = inclusive;
+        }
+    };
     for (const cue of subtitleQueue) {
         if (
             typeof cue.start !== 'number' ||
@@ -1555,14 +2511,55 @@ export function updateSubtitles(
         ) {
             continue;
         }
-        if (
-            cue.videoId === platformVideoId &&
-            currentTime >= cue.start &&
-            currentTime <= cue.end
-        ) {
+        if (cue.videoId !== platformVideoId) continue;
+
+        if (currentTime < cue.start) {
+            considerNextBoundary(cue.start, true);
+        } else if (currentTime <= cue.end) {
             activeCues.push(cue);
+            considerNextBoundary(cue.end, false);
         }
     }
+
+    if (
+        activeCues.length === 0 &&
+        lastDisplayedCueWindow.start != null &&
+        lastDisplayedCueWindow.end != null &&
+        (lastDisplayedCueWindow.videoId == null ||
+            lastDisplayedCueWindow.videoId === platformVideoId) &&
+        currentTime >= lastDisplayedCueWindow.start &&
+        currentTime <= lastDisplayedCueWindow.end
+    ) {
+        considerNextBoundary(lastDisplayedCueWindow.end, false);
+    }
+
+    const styleGraceDeadline =
+        lastStyleApplicationTs + FRAME_PRESENTATION_STYLE_GRACE_MS;
+    const nextWallClockEvaluation =
+        activeCues.length === 0 &&
+        (originalSubtitleElement.innerHTML ||
+            translatedSubtitleElement.innerHTML) &&
+        Date.now() < styleGraceDeadline
+            ? styleGraceDeadline
+            : null;
+    framePresentationScan = {
+        activePlatform,
+        config,
+        videoElement: timeUpdateVideoElement,
+        platformVideoId,
+        subtitleTimeOffset: config.subtitleTimeOffset,
+        subtitleContextGeneration,
+        subtitleQueue,
+        subtitleQueueLength: subtitleQueue.length,
+        firstCue: subtitleQueue[0] || null,
+        lastCue: subtitleQueue[subtitleQueue.length - 1] || null,
+        subtitleContainer,
+        locationHref: currentHref,
+        evaluatedTime: currentTime,
+        nextBoundaryTime,
+        nextBoundaryInclusive,
+        nextWallClockEvaluation,
+    };
 
     if (activeCues.length > 0) {
         foundCue = true;
@@ -1700,14 +2697,10 @@ export function updateSubtitles(
             );
         }
 
-        const originalTextFormatted = formatSubtitleTextForDisplay(
-            originalText,
-            {
-                sourceLanguage: config.sourceLanguage || 'unknown',
-                targetLanguage: config.targetLanguage || 'unknown',
-                subtitleType: 'original',
-            }
-        );
+        const originalFormatOptions = {
+            sourceLanguage: config.sourceLanguage || 'unknown',
+            targetLanguage: config.targetLanguage || 'unknown',
+        };
         const translatedTextFormatted = formatSubtitleTextForDisplay(
             translatedText,
             {
@@ -1745,79 +2738,92 @@ export function updateSubtitles(
                 lastDisplayedCueWindow.videoId || platformVideoId;
         }
 
-        // Always dispatch content change when new text is set
-        dispatchContentChange(
-            'original',
-            originalSubtitleElement.innerHTML,
-            originalTextFormatted,
-            originalSubtitleElement
-        );
-
-        if (useNativeTarget) {
-            if (originalText.trim()) {
-                const newSig = computeTextSignature(originalText);
-                const prevSig = originalSubtitleElement.dataset.textSig || '';
-                if (
-                    newSig !== prevSig ||
-                    originalSubtitleElement.innerHTML === ''
-                ) {
-                    // Notify AI Context modal about subtitle content change (debounced)
+        if (originalText.trim()) {
+            const newSig = computeTextSignature(originalText);
+            if (
+                shouldCommitOriginalSubtitleState(
+                    originalSubtitleElement,
+                    platformVideoId,
+                    originalText
+                )
+            ) {
+                const commit = commitOriginalSubtitleState({
+                    element: originalSubtitleElement,
+                    videoId: platformVideoId,
+                    text: originalText,
+                    formatOptions: originalFormatOptions,
+                    signature: newSig,
+                });
+                contentChanged = commit.accepted || commit.domChanged;
+                if (commit.domChanged) {
                     dispatchContentChange(
                         'original',
-                        originalSubtitleElement.innerHTML,
-                        originalTextFormatted,
+                        commit.oldContent,
+                        commit.formattedText,
                         originalSubtitleElement
                     );
-                    originalSubtitleElement.innerHTML = originalTextFormatted;
-                    originalSubtitleElement.dataset.textSig = newSig;
-                    contentChanged = true;
-                    if (currentWholeSecond !== lastLoggedTimeSec) {
-                        logWithFallback(
-                            'debug',
-                            'Setting original subtitle (native mode).',
-                            { logPrefix, textLength: originalText.length }
-                        );
-                    }
                 }
-                originalSubtitleElement.style.display = 'inline-block';
-            } else {
-                if (originalSubtitleElement.innerHTML) {
-                    dispatchContentChange(
-                        'original',
-                        originalSubtitleElement.innerHTML,
-                        '',
-                        originalSubtitleElement,
-                        { immediate: true }
+                if (currentWholeSecond !== lastLoggedTimeSec) {
+                    logWithFallback(
+                        'debug',
+                        useNativeTarget
+                            ? 'Setting original subtitle (native mode).'
+                            : 'Setting original subtitle.',
+                        { logPrefix, textLength: originalText.length }
                     );
-                    originalSubtitleElement.innerHTML = '';
-                    originalSubtitleElement.dataset.textSig = '';
-                    contentChanged = true;
-                    lastDisplayedCueWindow = {
-                        start: null,
-                        end: null,
-                        videoId: null,
-                    };
-                    if (currentWholeSecond !== lastLoggedTimeSec) {
-                        logWithFallback(
-                            'debug',
-                            'Clearing original subtitle (native mode, empty text).',
-                            { logPrefix }
-                        );
-                    }
                 }
-                originalSubtitleElement.style.display = 'none';
             }
+            originalSubtitleElement.style.display = 'inline-block';
+        } else {
+            if (originalSubtitleElement.innerHTML) {
+                dispatchContentChange(
+                    'original',
+                    originalSubtitleElement.innerHTML,
+                    '',
+                    originalSubtitleElement,
+                    { immediate: true }
+                );
+                const commit = commitOriginalSubtitleState({
+                    element: originalSubtitleElement,
+                    videoId: platformVideoId,
+                    text: '',
+                    emptyReason: 'expired',
+                });
+                contentChanged = commit.accepted || commit.domChanged;
+                lastDisplayedCueWindow = {
+                    start: null,
+                    end: null,
+                    videoId: null,
+                };
+                if (currentWholeSecond !== lastLoggedTimeSec) {
+                    logWithFallback(
+                        'debug',
+                        useNativeTarget
+                            ? 'Clearing original subtitle (native mode, empty text).'
+                            : 'Clearing original subtitle (empty text).',
+                        { logPrefix }
+                    );
+                }
+            }
+            originalSubtitleElement.style.display = 'none';
+        }
 
+        if (useNativeTarget) {
             if (translatedText.trim()) {
                 const newSig = computeTextSignature(translatedText);
-                const prevSig = translatedSubtitleElement.dataset.textSig || '';
                 if (
-                    newSig !== prevSig ||
-                    translatedSubtitleElement.innerHTML === ''
+                    shouldRenderSubtitleText(
+                        translatedSubtitleElement,
+                        translatedText,
+                        newSig
+                    )
                 ) {
-                    translatedSubtitleElement.innerHTML =
-                        translatedTextFormatted;
-                    translatedSubtitleElement.dataset.textSig = newSig;
+                    storeRenderedSubtitleText(
+                        translatedSubtitleElement,
+                        translatedText,
+                        translatedTextFormatted,
+                        newSig
+                    );
                     contentChanged = true;
                     if (currentWholeSecond !== lastLoggedTimeSec) {
                         logWithFallback(
@@ -1837,8 +2843,7 @@ export function updateSubtitles(
                         translatedSubtitleElement,
                         { immediate: true }
                     );
-                    translatedSubtitleElement.innerHTML = '';
-                    translatedSubtitleElement.dataset.textSig = '';
+                    clearRenderedSubtitleText(translatedSubtitleElement);
                     contentChanged = true;
                     if (currentWholeSecond !== lastLoggedTimeSec) {
                         logWithFallback(
@@ -1851,62 +2856,21 @@ export function updateSubtitles(
                 translatedSubtitleElement.style.display = 'none';
             }
         } else {
-            if (originalText.trim()) {
-                const newSig = computeTextSignature(originalText);
-                const prevSig = originalSubtitleElement.dataset.textSig || '';
-                if (
-                    newSig !== prevSig ||
-                    originalSubtitleElement.innerHTML === ''
-                ) {
-                    originalSubtitleElement.innerHTML = originalTextFormatted;
-                    originalSubtitleElement.dataset.textSig = newSig;
-                    contentChanged = true;
-                    if (currentWholeSecond !== lastLoggedTimeSec) {
-                        logWithFallback('debug', 'Setting original subtitle.', {
-                            logPrefix,
-                            textLength: originalText.length,
-                        });
-                    }
-                }
-                originalSubtitleElement.style.display = 'inline-block';
-            } else {
-                if (originalSubtitleElement.innerHTML) {
-                    dispatchContentChange(
-                        'original',
-                        originalSubtitleElement.innerHTML,
-                        '',
-                        originalSubtitleElement,
-                        { immediate: true }
-                    );
-                    originalSubtitleElement.innerHTML = '';
-                    originalSubtitleElement.dataset.textSig = '';
-                    contentChanged = true;
-                    lastDisplayedCueWindow = {
-                        start: null,
-                        end: null,
-                        videoId: null,
-                    };
-                    if (currentWholeSecond !== lastLoggedTimeSec) {
-                        logWithFallback(
-                            'debug',
-                            'Clearing original subtitle (empty text).',
-                            { logPrefix }
-                        );
-                    }
-                }
-                originalSubtitleElement.style.display = 'none';
-            }
-
             if (translatedText.trim()) {
                 const newSig = computeTextSignature(translatedText);
-                const prevSig = translatedSubtitleElement.dataset.textSig || '';
                 if (
-                    newSig !== prevSig ||
-                    translatedSubtitleElement.innerHTML === ''
+                    shouldRenderSubtitleText(
+                        translatedSubtitleElement,
+                        translatedText,
+                        newSig
+                    )
                 ) {
-                    translatedSubtitleElement.innerHTML =
-                        translatedTextFormatted;
-                    translatedSubtitleElement.dataset.textSig = newSig;
+                    storeRenderedSubtitleText(
+                        translatedSubtitleElement,
+                        translatedText,
+                        translatedTextFormatted,
+                        newSig
+                    );
                     contentChanged = true;
                     if (currentWholeSecond !== lastLoggedTimeSec) {
                         logWithFallback(
@@ -1926,8 +2890,7 @@ export function updateSubtitles(
                         translatedSubtitleElement,
                         { immediate: true }
                     );
-                    translatedSubtitleElement.innerHTML = '';
-                    translatedSubtitleElement.dataset.textSig = '';
+                    clearRenderedSubtitleText(translatedSubtitleElement);
                     contentChanged = true;
                     if (currentWholeSecond !== lastLoggedTimeSec) {
                         logWithFallback(
@@ -1955,16 +2918,16 @@ export function updateSubtitles(
                         originalText.trim() &&
                         originalSubtitleElement.style.display !== 'none'
                     ) {
-                        window.dualsub_attachInteractiveEventListeners(
-                            originalSubtitleElement,
-                            {
-                                sourceLanguage:
-                                    config.sourceLanguage || 'unknown',
-                                targetLanguage:
-                                    config.targetLanguage || 'unknown',
-                                subtitleType: 'original',
-                            }
-                        );
+                        const currentBinding =
+                            getCurrentOriginalInteractiveBinding();
+                        if (
+                            currentBinding?.element === originalSubtitleElement
+                        ) {
+                            window.dualsub_attachInteractiveEventListeners(
+                                originalSubtitleElement,
+                                currentBinding.formatOptions || {}
+                            );
+                        }
 
                         logWithFallback(
                             'debug',
@@ -1998,7 +2961,9 @@ export function updateSubtitles(
         }
     } else {
         // When no cue is found, avoid clearing during brief style/ID transitions
-        const withinStyleGrace = Date.now() - lastStyleApplicationTs < 800;
+        const withinStyleGrace =
+            Date.now() - lastStyleApplicationTs <
+            FRAME_PRESENTATION_STYLE_GRACE_MS;
         const withinLastWindow =
             lastDisplayedCueWindow.start != null &&
             lastDisplayedCueWindow.end != null &&
@@ -2026,8 +2991,12 @@ export function updateSubtitles(
             );
         }
 
-        if (originalSubtitleElement.innerHTML)
-            originalSubtitleElement.innerHTML = '';
+        commitOriginalSubtitleState({
+            element: originalSubtitleElement,
+            videoId: platformVideoId,
+            text: '',
+            emptyReason: 'expired',
+        });
         originalSubtitleElement.style.display = 'none';
 
         if (translatedSubtitleElement.innerHTML)
@@ -2041,7 +3010,7 @@ export function clearSubtitlesDisplayAndQueue(
     clearAllQueue = true,
     logPrefix = 'SubtitleUtils'
 ) {
-    subtitleContextGeneration++;
+    invalidateSubtitleContext();
     const platformVideoId = activePlatform?.getCurrentVideoId();
 
     if (clearAllQueue) {
@@ -2057,7 +3026,14 @@ export function clearSubtitlesDisplayAndQueue(
         });
     }
 
-    if (originalSubtitleElement) originalSubtitleElement.innerHTML = '';
+    if (originalSubtitleElement) {
+        commitOriginalSubtitleState({
+            element: originalSubtitleElement,
+            videoId: null,
+            text: '',
+            emptyReason: 'clear',
+        });
+    }
     if (translatedSubtitleElement) translatedSubtitleElement.innerHTML = '';
 
     // Force garbage collection of any remaining maps/objects
@@ -2102,8 +3078,12 @@ export function finalizeExpiredSubtitleIfNeeded(
                 originalSubtitleElement,
                 { immediate: true }
             );
-            originalSubtitleElement.innerHTML = '';
-            originalSubtitleElement.dataset.textSig = '';
+            commitOriginalSubtitleState({
+                element: originalSubtitleElement,
+                videoId: activePlatform?.getCurrentVideoId?.() || null,
+                text: '',
+                emptyReason: 'expired',
+            });
             originalSubtitleElement.style.display = 'none';
             cleared = true;
         }
@@ -2142,7 +3122,15 @@ export function finalizeExpiredSubtitleIfNeeded(
 }
 
 export function clearSubtitleDOM() {
-    subtitleContextGeneration++;
+    invalidateSubtitleContext();
+    if (originalSubtitleElement) {
+        commitOriginalSubtitleState({
+            element: originalSubtitleElement,
+            videoId: null,
+            text: '',
+            emptyReason: 'clear',
+        });
+    }
     if (subtitleContainer && subtitleContainer.parentElement) {
         subtitleContainer.parentElement.removeChild(subtitleContainer);
     }
@@ -2151,13 +3139,6 @@ export function clearSubtitleDOM() {
     translatedSubtitleElement = null;
 
     detachTimeUpdateListener();
-    queueRerunRequested = false;
-    queueRerunContext = null;
-    if (queueProcessingTimeoutId !== null) {
-        clearTimeout(queueProcessingTimeoutId);
-        queueProcessingTimeoutId = null;
-        queueProcessingTimeoutDelay = null;
-    }
 
     if (progressBarObserver) {
         progressBarObserver.disconnect();
@@ -2209,6 +3190,7 @@ export function handleSubtitleDataFound(
         : [];
 
     if (parsedOriginalCues.length > 0) {
+        invalidateFramePresentationScan();
         subtitleQueue = subtitleQueue.filter(
             (cue) => cue.videoId !== currentVideoId
         );
@@ -2402,14 +3384,21 @@ export function handleVideoIdChange(newVideoId, logPrefix = 'SubtitleUtils') {
         return;
     }
 
-    subtitleContextGeneration++;
+    invalidateSubtitleContext();
 
     logWithFallback('info', 'Video context changing.', {
         logPrefix,
         from: currentVideoId || 'null',
         to: newVideoId,
     });
-    if (originalSubtitleElement) originalSubtitleElement.innerHTML = '';
+    if (originalSubtitleElement) {
+        commitOriginalSubtitleState({
+            element: originalSubtitleElement,
+            videoId: null,
+            text: '',
+            emptyReason: 'clear',
+        });
+    }
     if (translatedSubtitleElement) translatedSubtitleElement.innerHTML = '';
 
     if (currentVideoId && currentVideoId !== newVideoId) {
@@ -2502,7 +3491,12 @@ function getNextCueRetryDelay(platformVideoId, currentTime) {
     return earliestRetryAt === null ? null : Math.max(1, earliestRetryAt - now);
 }
 
-function isTranslationBatchItemValid(activePlatform, platformVideoId, cue) {
+function isTranslationBatchItemValid(
+    activePlatform,
+    platformVideoId,
+    cue,
+    processingGeneration
+) {
     let activeVideoId = null;
     try {
         activeVideoId = activePlatform?.getCurrentVideoId?.();
@@ -2512,6 +3506,7 @@ function isTranslationBatchItemValid(activePlatform, platformVideoId, cue) {
 
     return (
         subtitlesActive &&
+        processingGeneration === subtitleContextGeneration &&
         activeVideoId === platformVideoId &&
         subtitleQueue.includes(cue)
     );
@@ -2534,11 +3529,7 @@ export async function processSubtitleQueue(
         return;
     }
 
-    if (queueProcessingTimeoutId !== null) {
-        clearTimeout(queueProcessingTimeoutId);
-        queueProcessingTimeoutId = null;
-        queueProcessingTimeoutDelay = null;
-    }
+    cancelScheduledQueueProcessing();
 
     const videoElement = activePlatform.getVideoElement();
     if (!videoElement) {
@@ -2620,118 +3611,72 @@ export async function processSubtitleQueue(
     processingQueue = true;
 
     try {
-        // Try to load resilient messaging wrapper (safe to fail over)
-        let sendRuntimeMessageWithRetry = null;
-        try {
-            ({ sendRuntimeMessageWithRetry } = await import(
-                chrome.runtime.getURL('content_scripts/shared/messaging.js')
-            ));
-        } catch (_) {}
-
         for (const cueToProcess of cuesToProcess) {
             if (
                 queueRerunRequested ||
                 !isTranslationBatchItemValid(
                     activePlatform,
                     platformVideoId,
-                    cueToProcess
+                    cueToProcess,
+                    processingGeneration
                 )
             ) {
                 break;
             }
 
             try {
-                let response;
-                if (sendRuntimeMessageWithRetry) {
-                    response = await sendRuntimeMessageWithRetry(
-                        {
-                            action: 'translate',
-                            text: cueToProcess.original,
-                            targetLang: config.targetLanguage,
-                            cueStart: cueToProcess.start,
-                            cueVideoId: cueToProcess.videoId,
-                        },
-                        { retries: 2, baseDelayMs: 120 }
+                // The content queue dispatches once per attempt. Background
+                // gating owns translationDelay and all request rate pacing.
+                const request = buildTranslationRequestMessage({
+                    text: cueToProcess.original,
+                    targetLang: config.targetLanguage,
+                    cueStart: cueToProcess.start,
+                    cueVideoId: cueToProcess.videoId,
+                });
+                const response = await sendRuntimeMessageWithRetry(request, {
+                    retries: 0,
+                    pingBeforeRetry: false,
+                });
+                const parsedResponse = parseTranslationResponseMessage(
+                    response,
+                    request
+                );
+
+                if (parsedResponse?.status === 'failure') {
+                    throw new CueTranslationError(
+                        'Translation service reported an error.',
+                        TRANSLATION_API_ERROR_TYPE
                     );
-                    if (
-                        !response ||
-                        response.translatedText === undefined ||
-                        response.cueStart === undefined ||
-                        response.cueVideoId === undefined
-                    ) {
-                        const err = new Error(
-                            `Malformed response from background for translation. Response: ${JSON.stringify(response)}`
-                        );
-                        err.errorType = 'TRANSLATION_REQUEST_ERROR';
-                        throw err;
-                    }
-                } else {
-                    response = await new Promise((resolve, reject) => {
-                        chrome.runtime.sendMessage(
-                            {
-                                action: 'translate',
-                                text: cueToProcess.original,
-                                targetLang: config.targetLanguage,
-                                cueStart: cueToProcess.start,
-                                cueVideoId: cueToProcess.videoId,
-                            },
-                            (res) => {
-                                if (chrome.runtime.lastError) {
-                                    const err = new Error(
-                                        chrome.runtime.lastError.message
-                                    );
-                                    err.errorType = 'TRANSLATION_REQUEST_ERROR';
-                                    reject(err);
-                                } else if (res?.error) {
-                                    const err = new Error(
-                                        res.details || res.error
-                                    );
-                                    err.errorType =
-                                        res.errorType ||
-                                        'TRANSLATION_API_ERROR';
-                                    reject(err);
-                                } else if (
-                                    res?.translatedText !== undefined &&
-                                    res.cueStart !== undefined &&
-                                    res.cueVideoId !== undefined
-                                ) {
-                                    resolve(res);
-                                } else {
-                                    const err = new Error(
-                                        `Malformed response from background for translation. Response: ${JSON.stringify(res)}`
-                                    );
-                                    err.errorType = 'TRANSLATION_REQUEST_ERROR';
-                                    reject(err);
-                                }
-                            }
-                        );
-                    });
                 }
 
-                const cueInMainQueue = subtitleQueue.find(
-                    (c) =>
-                        c.videoId === response.cueVideoId &&
-                        c.start === response.cueStart &&
-                        c.original === response.originalText
-                );
+                if (parsedResponse?.status !== 'success') {
+                    throw new CueTranslationError(
+                        'Malformed response from background for translation.',
+                        TRANSLATION_REQUEST_ERROR_TYPE
+                    );
+                }
 
                 const currentContextVideoId =
                     activePlatform?.getCurrentVideoId();
                 if (
-                    cueInMainQueue &&
-                    cueInMainQueue.videoId === currentContextVideoId
+                    isTranslationBatchItemValid(
+                        activePlatform,
+                        platformVideoId,
+                        cueToProcess,
+                        processingGeneration
+                    )
                 ) {
-                    cueInMainQueue.translated = response.translatedText;
-                    delete cueInMainQueue.translationAttempts;
-                    delete cueInMainQueue.translationRetryAt;
+                    cueToProcess.translated = parsedResponse.translatedText;
+                    delete cueToProcess.translationAttempts;
+                    delete cueToProcess.translationRetryAt;
                 } else {
                     logWithFallback(
                         'warn',
                         'Could not find/match cue post-translation or context changed.',
                         {
                             logPrefix,
-                            responseVideoId: response.cueVideoId,
-                            cueStart: response.cueStart,
+                            responseVideoId: parsedResponse.cueVideoId,
+                            cueStart: parsedResponse.cueStart,
                             currentContextVideoId,
                         }
                     );
@@ -2742,51 +3687,56 @@ export async function processSubtitleQueue(
                     !isTranslationBatchItemValid(
                         activePlatform,
                         platformVideoId,
-                        cueToProcess
+                        cueToProcess,
+                        processingGeneration
                     )
                 ) {
                     break;
                 }
-
-                if (config.translationDelay > 0) {
-                    await new Promise((resolve) =>
-                        setTimeout(resolve, config.translationDelay)
-                    );
-                }
             } catch (error) {
+                const provenNonDelivery = isProvenMessagingNonDelivery(error);
+                const errorType =
+                    error instanceof CueTranslationError
+                        ? error.errorType
+                        : TRANSLATION_REQUEST_ERROR_TYPE;
                 logWithFallback('error', 'Translation failed for cue.', {
                     logPrefix,
                     videoId: cueToProcess.videoId,
                     start: cueToProcess.start.toFixed(2),
                     originalLength: cueToProcess.original.length,
-                    errorType: error.errorType,
+                    errorType,
+                    provenNonDelivery,
                 });
-                const cueInQueueOnError = subtitleQueue.find(
-                    (c) =>
-                        c.start === cueToProcess.start &&
-                        c.original === cueToProcess.original &&
-                        c.videoId === cueToProcess.videoId
-                );
-                if (cueInQueueOnError) {
-                    const errorType =
-                        error.errorType || 'TRANSLATION_GENERIC_ERROR';
-                    const attempts =
-                        (cueInQueueOnError.translationAttempts || 0) + 1;
-                    cueInQueueOnError.translationAttempts = attempts;
+                if (
+                    isTranslationBatchItemValid(
+                        activePlatform,
+                        platformVideoId,
+                        cueToProcess,
+                        processingGeneration
+                    )
+                ) {
+                    if (provenNonDelivery) {
+                        const attempts =
+                            (cueToProcess.translationAttempts || 0) + 1;
+                        cueToProcess.translationAttempts = attempts;
 
-                    if (attempts >= MAX_CUE_TRANSLATION_ATTEMPTS) {
-                        cueInQueueOnError.translated =
-                            getLocalizedErrorMessage(errorType);
-                        delete cueInQueueOnError.translationRetryAt;
+                        if (attempts < MAX_CUE_NON_DELIVERY_ATTEMPTS) {
+                            cueToProcess.translationRetryAt =
+                                Date.now() + CUE_NON_DELIVERY_RETRY_DELAY_MS;
+                        } else {
+                            cueToProcess.translated =
+                                getLocalizedErrorMessage(errorType);
+                            delete cueToProcess.translationRetryAt;
+                        }
                     } else {
-                        const retryDelay =
-                            CUE_TRANSLATION_RETRY_BASE_DELAY_MS *
-                            2 ** (attempts - 1);
-                        cueInQueueOnError.translationRetryAt =
-                            Date.now() + retryDelay;
+                        cueToProcess.translated =
+                            getLocalizedErrorMessage(errorType);
+                        delete cueToProcess.translationAttempts;
+                        delete cueToProcess.translationRetryAt;
                     }
                 }
             }
+            invalidateFramePresentationScan();
         }
     } finally {
         processingQueue = false;

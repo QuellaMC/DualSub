@@ -2,15 +2,26 @@ import Logger from '../utils/logger.js';
 import { configService } from '../services/configService.js';
 
 import { Injection } from '../content_scripts/shared/constants/injection.js';
+import { createInjectionChannel } from '../content_scripts/shared/injectionChannel.js';
+import {
+    extractDisneyPlusVideoIdFromPathname,
+    extractDisneyPlusVideoIdFromUrl,
+    normalizeDisneyPlusVideoId,
+    readOwnPrimitiveDataProperty,
+} from '../content_scripts/shared/subtitleRequestIdentity.js';
 
 const INJECT_EVENT_ID = Injection.disneyplus.EVENT_ID; // Must match inject.js
 
 import { BasePlatformAdapter } from './BasePlatformAdapter.js';
 
 const PLAYBACK_TRANSITION_DELAY_MS = 160;
+const PLAYBACK_BRIDGE_RESUME = 'PLAYBACK_BRIDGE_RESUME';
+const PLAYBACK_BRIDGE_PAUSE = 'PLAYBACK_BRIDGE_PAUSE';
 const DEEP_TIMELINE_SEARCH_INTERVAL_MS = 1000;
 const TIMELINE_DRIFT_TOLERANCE_SECONDS = 1.5;
 const RUNTIME_SAMPLE_STABILITY_MS = 100;
+const SUBTITLE_OBSERVER_RETRY_DELAY_MS = 250;
+const SUBTITLE_OBSERVER_MAX_ATTEMPTS = 20;
 const TIMELINE_SELECTORS = [
     '.progress-bar__seekable-range[role="slider"][aria-valuenow]',
     '.progress-bar__seekable-range[aria-valuenow]',
@@ -26,9 +37,8 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
         this.currentVideoId = null;
         this.onSubtitleUrlFoundCallback = null;
         this.onVideoIdChangeCallback = null;
-        this.lastKnownVttUrlForVideoId = {};
-        this.pendingVttUrlForVideoId = {};
         this.eventListener = null; // To store the bound event listener for removal
+        this._injectionChannel = null;
         this._stalePlaybackIdentity = null;
         this._resetPlaybackClockState();
         this.initializeLogger();
@@ -57,10 +67,10 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
     async initializeLogger() {
         try {
             await this.logger.updateLevel();
-        } catch (error) {
-            console.warn(
-                'DisneyPlusPlatform: Failed to initialize logger level:',
-                error
+        } catch {
+            this._logBestEffort(
+                'warn',
+                'DisneyPlusPlatform: Failed to initialize logger level'
             );
         }
     }
@@ -78,20 +88,41 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
     }
 
     isPlayerPageActive() {
-        // For Disney+, player pages typically include "/video/" in the pathname.
-        return (
-            window.location.pathname.includes('/video/') ||
-            window.location.pathname.includes('/play/')
-        );
+        return Boolean(this.extractVideoIdFromCurrentRoute());
+    }
+
+    extractVideoIdFromCurrentRoute() {
+        return extractDisneyPlusVideoIdFromPathname(window.location.pathname);
+    }
+
+    hasAdoptedPlayerRoute(url) {
+        const routeVideoId = extractDisneyPlusVideoIdFromUrl(url);
+        return Boolean(routeVideoId && routeVideoId === this.currentVideoId);
     }
 
     async initialize(onSubtitleUrlFound, onVideoIdChange) {
+        this._retirePlatformLifecycle();
+
         if (!this.isPlatformActive()) return;
 
+        const channel = createInjectionChannel('disneyplus');
+        if (!channel) {
+            this._logBestEffort(
+                'warn',
+                'Disney injection channel unavailable; platform event bridge disabled'
+            );
+            return;
+        }
+        this._injectionChannel = channel;
         this.setCallbacks(onSubtitleUrlFound, onVideoIdChange);
 
-        this.eventListener = this._handleInjectorEvents.bind(this);
+        const lifecycleGeneration = this._beginPlatformLifecycle();
+        this.eventListener = (event) => {
+            if (!this._isPlatformLifecycleCurrent(lifecycleGeneration)) return;
+            this._handleInjectorEvents(event, channel, lifecycleGeneration);
+        };
         document.addEventListener(INJECT_EVENT_ID, this.eventListener);
+        this._resumePlaybackTimeline();
         this._requestPlaybackTimeline();
 
         const disneyPlusSubtitleSelectors = [
@@ -102,32 +133,51 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
         ];
         this.setupNativeSubtitleSettingsListener(disneyPlusSubtitleSelectors);
 
-        this.logger.info('Initialized and event listener added', {
+        this._logBestEffort('info', 'Initialized and event listener added', {
             selectors: disneyPlusSubtitleSelectors,
         });
     }
 
     _requestPlaybackTimeline() {
+        this._dispatchPlaybackBridgeControl('REQUEST_PLAYBACK_TIMELINE');
+    }
+
+    _dispatchPlaybackBridgeControl(type) {
         try {
+            const detail = this._injectionChannel?.createEventDetail(type);
+            if (!detail) return false;
             document.dispatchEvent(
                 new CustomEvent(INJECT_EVENT_ID, {
-                    detail: { type: 'REQUEST_PLAYBACK_TIMELINE' },
+                    detail,
                 })
             );
-        } catch (_) {}
+            return true;
+        } catch (_) {
+            return false;
+        }
+    }
+
+    _resumePlaybackTimeline() {
+        this._dispatchPlaybackBridgeControl(PLAYBACK_BRIDGE_RESUME);
+    }
+
+    _pausePlaybackTimeline() {
+        this._dispatchPlaybackBridgeControl(PLAYBACK_BRIDGE_PAUSE);
     }
 
     _getRuntimeIdentity(value) {
         if (!value) return null;
 
+        const rawAvailId = readOwnPrimitiveDataProperty(value, 'availId');
+        const rawPlaybackSessionId = readOwnPrimitiveDataProperty(
+            value,
+            'playbackSessionId'
+        );
         const availId =
-            typeof value.availId === 'string' && value.availId
-                ? value.availId
-                : null;
+            typeof rawAvailId === 'string' && rawAvailId ? rawAvailId : null;
         const playbackSessionId =
-            typeof value.playbackSessionId === 'string' &&
-            value.playbackSessionId
-                ? value.playbackSessionId
+            typeof rawPlaybackSessionId === 'string' && rawPlaybackSessionId
+                ? rawPlaybackSessionId
                 : null;
 
         return availId || playbackSessionId
@@ -148,11 +198,17 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
     }
 
     _handlePlaybackTimelineUpdate(data) {
-        if (!this.currentVideoId || data.videoId !== this.currentVideoId) {
+        const timelineVideoId = normalizeDisneyPlusVideoId(
+            readOwnPrimitiveDataProperty(data, 'videoId')
+        );
+        if (!this.currentVideoId || timelineVideoId !== this.currentVideoId) {
             return;
         }
 
-        const programTime = data.programTimeSeconds;
+        const programTime = readOwnPrimitiveDataProperty(
+            data,
+            'programTimeSeconds'
+        );
         if (
             typeof programTime !== 'number' ||
             !Number.isFinite(programTime) ||
@@ -175,7 +231,7 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
         const mediaTime = videoElement?.currentTime;
         if (!Number.isFinite(mediaTime)) return;
 
-        const sequence = Number(data.sequence);
+        const sequence = Number(readOwnPrimitiveDataProperty(data, 'sequence'));
         if (
             Number.isFinite(sequence) &&
             sequence <= this._runtimeLastSequence
@@ -185,17 +241,26 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
 
         const previousAnchor = this._runtimePlaybackAnchor;
         const sameRuntime = this._runtimeIdentitiesMatch(previousAnchor, data);
+        const isInterstitialPlaying = readOwnPrimitiveDataProperty(
+            data,
+            'isInterstitialPlaying'
+        );
+        const isBumper = readOwnPrimitiveDataProperty(data, 'isBumper');
         const interstitialStateKnown =
-            typeof data.isInterstitialPlaying === 'boolean';
+            typeof isInterstitialPlaying === 'boolean';
         if (interstitialStateKnown) {
             const wasInterstitialActive = this._runtimeInterstitialActive;
-            this._runtimeInterstitialActive = data.isInterstitialPlaying;
+            this._runtimeInterstitialActive = isInterstitialPlaying;
             if (wasInterstitialActive !== this._runtimeInterstitialActive) {
-                this.logger.info('Disney interstitial playback state changed', {
-                    videoId: this.currentVideoId,
-                    isInterstitialPlaying: this._runtimeInterstitialActive,
-                    isBumper: data.isBumper === true,
-                });
+                this._logBestEffort(
+                    'info',
+                    'Disney interstitial playback state changed',
+                    {
+                        hasVideoId: Boolean(this.currentVideoId),
+                        isInterstitialPlaying: this._runtimeInterstitialActive,
+                        isBumper: isBumper === true,
+                    }
+                );
             }
         }
 
@@ -232,7 +297,7 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
                     if (!coherentWithPending) {
                         this._runtimePendingAnchor = {
                             videoElement,
-                            videoId: data.videoId,
+                            videoId: timelineVideoId,
                             mediaTime,
                             programTime,
                             observedAt: Date.now(),
@@ -253,7 +318,7 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
 
         this._runtimePlaybackAnchor = {
             videoElement,
-            videoId: data.videoId,
+            videoId: timelineVideoId,
             mediaTime,
             programTime,
             ...runtimeIdentity,
@@ -266,22 +331,62 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
         this._stalePlaybackIdentity = null;
     }
 
-    _handleInjectorEvents(e) {
-        const data = e.detail;
-        if (!data || !data.type) return;
+    _handleInjectorEvents(
+        e,
+        channel = this._injectionChannel,
+        lifecycleGeneration = this._lifecycleGeneration
+    ) {
+        if (!this._isPlatformLifecycleCurrent(lifecycleGeneration)) return;
+        let data;
+        try {
+            data = channel?.accept(e);
+        } catch (_) {
+            return;
+        }
+        if (!data || !this._isPlatformLifecycleCurrent(lifecycleGeneration)) {
+            return;
+        }
+        return this._handleAuthorizedInjectorData(data, lifecycleGeneration);
+    }
 
-        if (data.type === 'INJECT_SCRIPT_READY') {
-            this.logger.info('Inject script is ready');
+    _handleAuthorizedInjectorData(
+        data,
+        lifecycleGeneration = this._lifecycleGeneration
+    ) {
+        const lifecycleIsCurrent = () =>
+            this._isPlatformLifecycleCurrent(lifecycleGeneration);
+        if (!lifecycleIsCurrent()) return;
+
+        const eventType = readOwnPrimitiveDataProperty(data, 'type');
+        if (typeof eventType !== 'string') return;
+
+        if (eventType === 'INJECT_SCRIPT_READY') {
+            this._logBestEffort('info', 'Inject script is ready');
+            this._resumePlaybackTimeline();
             this._requestPlaybackTimeline();
-        } else if (data.type === 'PLAYBACK_TIMELINE_UPDATE') {
+        } else if (eventType === 'PLAYBACK_TIMELINE_UPDATE') {
             this._handlePlaybackTimelineUpdate(data);
-        } else if (data.type === 'SUBTITLE_URL_FOUND') {
-            const injectedVideoId = data.videoId;
-            const vttMasterUrl = data.url;
+        } else if (eventType === 'SUBTITLE_URL_FOUND') {
+            const vttMasterUrl = readOwnPrimitiveDataProperty(data, 'url');
+            const injectedVideoId = normalizeDisneyPlusVideoId(
+                readOwnPrimitiveDataProperty(data, 'videoId')
+            );
+            const canonicalVideoId = this.extractVideoIdFromCurrentRoute();
+
+            if (typeof vttMasterUrl !== 'string' || !vttMasterUrl) {
+                this._logBestEffort(
+                    'error',
+                    'SUBTITLE_URL_FOUND event without a valid URL',
+                    null,
+                    { hasVideoId: Boolean(injectedVideoId) }
+                );
+                return;
+            }
 
             if (!injectedVideoId) {
-                this.logger.error(
-                    'SUBTITLE_URL_FOUND event without a videoId',
+                this._logBestEffort(
+                    'error',
+                    'SUBTITLE_URL_FOUND event without a valid videoId',
                     null,
                     {
                         urlLength: vttMasterUrl.length,
@@ -289,180 +394,266 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
                 );
                 return;
             }
-            this.logger.info('SUBTITLE_URL_FOUND for injectedVideoId', {
-                injectedVideoId: injectedVideoId,
-                urlLength: vttMasterUrl.length,
-            });
 
-            if (this.currentVideoId !== injectedVideoId) {
-                this.logger.info('Video context changing', {
-                    previousVideoId: this.currentVideoId || 'null',
-                    newVideoId: injectedVideoId,
-                });
-                if (this.currentVideoId) {
-                    delete this.lastKnownVttUrlForVideoId[this.currentVideoId];
-                    delete this.pendingVttUrlForVideoId[this.currentVideoId];
+            if (!canonicalVideoId || injectedVideoId !== canonicalVideoId) {
+                this._logBestEffort(
+                    'warn',
+                    'Rejected subtitle event outside current route',
+                    {
+                        hasCanonicalVideoId: Boolean(canonicalVideoId),
+                        eventVideoIdLength: injectedVideoId.length,
+                        idsMatch: injectedVideoId === canonicalVideoId,
+                        urlLength: vttMasterUrl.length,
+                    }
+                );
+                return;
+            }
+
+            this._logBestEffort(
+                'info',
+                'SUBTITLE_URL_FOUND for current route',
+                {
+                    videoIdLength: canonicalVideoId.length,
+                    urlLength: vttMasterUrl.length,
                 }
+            );
+
+            if (this.currentVideoId !== canonicalVideoId) {
+                if (!lifecycleIsCurrent()) return;
                 this._stalePlaybackIdentity = this._getRuntimeIdentity(
                     this._runtimePlaybackAnchor
                 );
                 this._resetPlaybackClockState(true);
-                this.setVideoIdAndNotify(injectedVideoId);
+                this.setVideoIdAndNotify(canonicalVideoId);
+                if (!lifecycleIsCurrent()) return;
             }
 
-            const requestVideoId = this.currentVideoId;
-            const pendingRequest = this.pendingVttUrlForVideoId[requestVideoId];
-            if (
-                this.lastKnownVttUrlForVideoId[requestVideoId] ===
-                    vttMasterUrl ||
-                pendingRequest?.url === vttMasterUrl
-            ) {
-                this.logger.debug('VTT URL already processed or known', {
-                    urlLength: vttMasterUrl.length,
-                    hasVideoId: Boolean(requestVideoId),
-                    inFlight: pendingRequest?.url === vttMasterUrl,
-                });
+            const requestVideoId = canonicalVideoId;
+            const { request, inFlight } = this.beginVttRequest(
+                vttMasterUrl,
+                requestVideoId
+            );
+            if (!request) {
+                this._logBestEffort(
+                    'debug',
+                    'VTT URL already processed or known',
+                    {
+                        urlLength: vttMasterUrl.length,
+                        hasVideoId: Boolean(requestVideoId),
+                        inFlight,
+                    }
+                );
                 return;
             }
 
-            const requestMarker = { url: vttMasterUrl };
-            this.pendingVttUrlForVideoId[requestVideoId] = requestMarker;
-
-            this.logger.info('Requesting VTT from background', {
+            this._logBestEffort('info', 'Requesting VTT from background', {
                 urlLength: vttMasterUrl.length,
-                hasVideoId: Boolean(this.currentVideoId),
+                hasVideoId: Boolean(requestVideoId),
             });
 
             // Get user settings for language preferences
-            configService
-                .getMultiple(['targetLanguage', 'originalLanguage'])
+            return Promise.resolve()
+                .then(() =>
+                    configService.getMultiple([
+                        'targetLanguage',
+                        'originalLanguage',
+                    ])
+                )
                 .then((settings) => {
+                    if (!lifecycleIsCurrent()) return;
                     const targetLanguage = settings.targetLanguage || 'zh-CN';
                     const originalLanguage = settings.originalLanguage || 'en';
+                    const dispatchRouteVideoId =
+                        this.extractVideoIdFromCurrentRoute();
+                    const requestIsCurrent = this.isVttRequestCurrent(request);
+
+                    if (
+                        !lifecycleIsCurrent() ||
+                        dispatchRouteVideoId !== requestVideoId ||
+                        !requestIsCurrent
+                    ) {
+                        this._logBestEffort(
+                            'warn',
+                            'Discarding stale subtitle request before background dispatch',
+                            {
+                                hasRouteVideoId: Boolean(dispatchRouteVideoId),
+                                idsMatch:
+                                    dispatchRouteVideoId === requestVideoId,
+                                requestIsCurrent,
+                                urlLength: vttMasterUrl.length,
+                            }
+                        );
+                        return;
+                    }
+
+                    const canDispatch = () =>
+                        lifecycleIsCurrent() &&
+                        this.extractVideoIdFromCurrentRoute() ===
+                            requestVideoId &&
+                        this.isVttRequestCurrent(request);
 
                     return this.requestVttViaMessaging(
                         vttMasterUrl,
                         targetLanguage,
                         originalLanguage,
-                        requestVideoId
+                        requestVideoId,
+                        canDispatch
                     )
                         .then((response) => {
+                            if (!lifecycleIsCurrent()) return;
+                            const responseRouteVideoId =
+                                this.extractVideoIdFromCurrentRoute();
                             const requestIsCurrent =
-                                this.pendingVttUrlForVideoId[requestVideoId] ===
-                                requestMarker;
+                                this.isVttRequestCurrent(request);
+                            const routeIsCurrent =
+                                responseRouteVideoId === requestVideoId;
 
-                            if (
-                                response &&
-                                response.success &&
-                                response.videoId === this.currentVideoId &&
-                                requestIsCurrent
-                            ) {
-                                this.logger.info('VTT fetched successfully', {
-                                    videoId: this.currentVideoId,
-                                    sourceLanguage: response.sourceLanguage,
-                                    targetLanguage: response.targetLanguage,
-                                });
-                                this.lastKnownVttUrlForVideoId[
-                                    response.videoId
-                                ] = vttMasterUrl;
-                                if (this.onSubtitleUrlFoundCallback) {
-                                    this.onSubtitleUrlFoundCallback({
-                                        vttText: response.vttText,
-                                        targetVttText: response.targetVttText,
-                                        videoId: response.videoId,
-                                        url: response.url,
-                                        sourceLanguage: response.sourceLanguage,
-                                        targetLanguage: response.targetLanguage,
-                                        useNativeTarget:
-                                            response.useNativeTarget,
-                                        availableLanguages:
-                                            response.availableLanguages,
-                                        selectedLanguage:
-                                            response.selectedLanguage,
-                                        targetLanguageInfo:
-                                            response.targetLanguageInfo,
-                                    });
-                                }
-                            } else if (response?.success && !requestIsCurrent) {
-                                this.logger.warn(
-                                    'Received VTT for superseded subtitle request - discarding',
+                            if (!routeIsCurrent || !requestIsCurrent) {
+                                this._logBestEffort(
+                                    'warn',
+                                    'Discarding stale subtitle response after route change',
                                     {
-                                        receivedVideoId: response.videoId,
-                                        currentVideoId: this.currentVideoId,
+                                        hasRouteVideoId:
+                                            Boolean(responseRouteVideoId),
+                                        idsMatch: routeIsCurrent,
+                                        requestIsCurrent,
+                                        hasReceivedVideoId: Boolean(
+                                            response?.videoId
+                                        ),
                                         urlLength: vttMasterUrl.length,
                                     }
                                 );
+                                return;
+                            }
+
+                            if (this.canAcceptVttResponse(request, response)) {
+                                const onSubtitleUrlFound =
+                                    this.onSubtitleUrlFoundCallback;
+                                if (
+                                    !lifecycleIsCurrent() ||
+                                    typeof onSubtitleUrlFound !== 'function'
+                                ) {
+                                    return;
+                                }
+
+                                const subtitleData = {
+                                    vttText: response.vttText,
+                                    targetVttText: response.targetVttText,
+                                    videoId: response.videoId,
+                                    sourceLanguage: response.sourceLanguage,
+                                    targetLanguage: response.targetLanguage,
+                                    useNativeTarget: response.useNativeTarget,
+                                    selectedLanguage: {
+                                        normalizedCode:
+                                            response.selectedLanguage
+                                                .normalizedCode,
+                                        displayName:
+                                            response.selectedLanguage
+                                                .displayName,
+                                    },
+                                };
+                                const successTelemetry = {
+                                    hasVideoId: Boolean(requestVideoId),
+                                    hasSourceLanguage:
+                                        typeof subtitleData.sourceLanguage ===
+                                            'string' &&
+                                        subtitleData.sourceLanguage.length > 0,
+                                    hasTargetLanguage:
+                                        typeof subtitleData.targetLanguage ===
+                                            'string' &&
+                                        subtitleData.targetLanguage.length > 0,
+                                };
+
+                                if (!lifecycleIsCurrent()) return;
+                                onSubtitleUrlFound.call(this, subtitleData);
+
+                                if (
+                                    !lifecycleIsCurrent() ||
+                                    this.extractVideoIdFromCurrentRoute() !==
+                                        request.videoId ||
+                                    !this.acceptVttResponse(request, response)
+                                ) {
+                                    return;
+                                }
+
+                                this._logBestEffort(
+                                    'info',
+                                    'VTT fetched successfully',
+                                    successTelemetry
+                                );
                             } else if (response && !response.success) {
-                                this.logger.error(
+                                this._logBestEffort(
+                                    'error',
                                     'Background failed to fetch VTT',
                                     null,
                                     {
-                                        errorLength:
-                                            typeof response.error === 'string'
-                                                ? response.error.length
-                                                : 0,
-                                        hasResponseUrl: Boolean(response.url),
-                                        hasVideoId: Boolean(
-                                            this.currentVideoId
-                                        ),
+                                        backgroundRejected: true,
+                                        hasVideoId: Boolean(requestVideoId),
                                     }
                                 );
                             } else if (
                                 response &&
                                 response.videoId !== this.currentVideoId
                             ) {
-                                this.logger.warn(
+                                this._logBestEffort(
+                                    'warn',
                                     'Received VTT for different video context - discarding',
                                     {
-                                        receivedVideoId: response.videoId,
-                                        currentVideoId: this.currentVideoId,
+                                        hasReceivedVideoId: Boolean(
+                                            response.videoId
+                                        ),
+                                        idsMatch:
+                                            response.videoId ===
+                                            this.currentVideoId,
                                     }
                                 );
                             } else {
-                                this.logger.error(
+                                this._logBestEffort(
+                                    'error',
                                     'No/invalid response from background for fetchVTT',
                                     null,
                                     {
                                         urlLength: vttMasterUrl.length,
-                                        hasVideoId: Boolean(
-                                            this.currentVideoId
-                                        ),
+                                        hasVideoId: Boolean(requestVideoId),
                                     }
                                 );
                             }
                         })
-                        .catch((_error) => {
-                            // Log chrome lastError if present for detailed diagnostics (test expectations)
-                            const lastErr = chrome?.runtime?.lastError;
-                            if (lastErr) {
-                                this.logger.error(
+                        .catch(() => {
+                            if (!lifecycleIsCurrent()) return;
+                            const hasRuntimeError = Boolean(
+                                chrome?.runtime?.lastError
+                            );
+                            if (hasRuntimeError) {
+                                this._logBestEffort(
+                                    'error',
                                     'Error for VTT fetch',
-                                    lastErr,
+                                    null,
                                     {
+                                        hasRuntimeError,
                                         urlLength: vttMasterUrl.length,
-                                        hasVideoId: Boolean(
-                                            this.currentVideoId
-                                        ),
+                                        hasVideoId: Boolean(requestVideoId),
                                     }
                                 );
                             } else {
-                                this.logger.error(
+                                this._logBestEffort(
+                                    'error',
                                     'No/invalid response from background for fetchVTT',
                                     null,
                                     {
                                         urlLength: vttMasterUrl.length,
-                                        hasVideoId: Boolean(
-                                            this.currentVideoId
-                                        ),
+                                        hasVideoId: Boolean(requestVideoId),
                                     }
                                 );
                             }
                         });
                 })
-                .catch((error) => {
-                    this.logger.error(
+                .catch(() => {
+                    if (!lifecycleIsCurrent()) return;
+                    this._logBestEffort(
+                        'error',
                         'Failed to resolve subtitle request settings',
-                        error,
+                        null,
                         {
                             urlLength: vttMasterUrl.length,
                             hasVideoId: Boolean(requestVideoId),
@@ -470,18 +661,13 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
                     );
                 })
                 .finally(() => {
-                    if (
-                        this.pendingVttUrlForVideoId[requestVideoId] ===
-                        requestMarker
-                    ) {
-                        delete this.pendingVttUrlForVideoId[requestVideoId];
-                    }
+                    this.finishVttRequest(request);
                 });
         }
     }
 
     handleInjectorEvents(e) {
-        this._handleInjectorEvents(e);
+        return this._handleInjectorEvents(e);
     }
 
     getVideoElement() {
@@ -823,28 +1009,66 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
         return false;
     }
 
+    allowsDirectMediaPlaybackFallback() {
+        // Disney's controller owns both playback and its UI projection. Calling
+        // video.pause() behind that controller can leave the control showing a
+        // playing state and consume the user's first attempt to resume.
+        return false;
+    }
+
     /**
      * Platform-specific playback helpers for Disney+
      */
     _getToggleButtonRoot() {
         try {
-            const toggleHost = document.querySelector(
+            const isActionableToggleHost = (candidate) =>
+                Boolean(
+                    candidate?.isConnected &&
+                    this._getActionableToggleButton(candidate.shadowRoot)
+                );
+            const directToggleHost = document.querySelector(
                 'disney-web-player-ui toggle-play-pause'
             );
+            const toggleHost = isActionableToggleHost(directToggleHost)
+                ? directToggleHost
+                : this._querySelectorDeep(
+                      'toggle-play-pause',
+                      isActionableToggleHost
+                  );
             return toggleHost?.shadowRoot || null;
         } catch (_) {
             return null;
         }
     }
 
+    _getActionableToggleButton(root) {
+        if (!root) return null;
+        for (const selector of ['button', '[role="button"]']) {
+            let candidates;
+            try {
+                candidates = root.querySelectorAll(selector);
+            } catch (_) {
+                continue;
+            }
+            for (const candidate of candidates) {
+                try {
+                    if (
+                        candidate.isConnected &&
+                        candidate.disabled !== true &&
+                        candidate.getAttribute('aria-disabled') !== 'true' &&
+                        typeof candidate.click === 'function'
+                    ) {
+                        return candidate;
+                    }
+                } catch (_) {}
+            }
+        }
+        return null;
+    }
+
     isPlaying() {
         try {
-            const root = this._getToggleButtonRoot();
-            if (!root) return null;
-            const roleBtn = root.querySelector('[role="button"]');
-            const label = roleBtn?.getAttribute('aria-label');
-            if (!label) return null;
-            return label === 'Pause';
+            return this._getMediaPlayingState();
         } catch (_) {
             return null;
         }
@@ -852,19 +1076,21 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
 
     async pausePlayback() {
         try {
-            const state = this.isPlaying();
+            const video = this.getVideoElement();
+            const state = this._getMediaPlayingState(video);
+            if (state === null) return false;
             if (state === false) return true;
             const root = this._getToggleButtonRoot();
             if (!root) return false;
-            const btn =
-                root.querySelector('button') ||
-                root.querySelector('[role="button"]');
+            const btn = this._getActionableToggleButton(root);
             if (!btn) return false;
             btn.click();
             await new Promise((r) =>
                 setTimeout(r, PLAYBACK_TRANSITION_DELAY_MS)
             );
-            const after = this.isPlaying();
+            const after = video.isConnected
+                ? this._getMediaPlayingState(video)
+                : null;
             return after === false;
         } catch (_) {
             return false;
@@ -873,19 +1099,21 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
 
     async resumePlayback() {
         try {
-            const state = this.isPlaying();
+            const video = this.getVideoElement();
+            const state = this._getMediaPlayingState(video);
+            if (state === null) return false;
             if (state === true) return true;
             const root = this._getToggleButtonRoot();
             if (!root) return false;
-            const btn =
-                root.querySelector('button') ||
-                root.querySelector('[role="button"]');
+            const btn = this._getActionableToggleButton(root);
             if (!btn) return false;
             btn.click();
             await new Promise((r) =>
                 setTimeout(r, PLAYBACK_TRANSITION_DELAY_MS)
             );
-            const after = this.isPlaying();
+            const after = video.isConnected
+                ? this._getMediaPlayingState(video)
+                : null;
             return after === true;
         } catch (_) {
             return false;
@@ -895,10 +1123,11 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
     /**
      * Deep querySelector that traverses shadow DOM trees to find the first match
      * @param {string[]|string} selectors - One or more selectors to try
+     * @param {((candidate: Element) => boolean)|null} [acceptCandidate=null] Optional candidate filter.
      * @returns {Element|null}
      * @private
      */
-    _querySelectorDeep(selectors) {
+    _querySelectorDeep(selectors, acceptCandidate = null) {
         const selectorList = Array.isArray(selectors) ? selectors : [selectors];
         const visited = new Set();
         const queue = [document];
@@ -910,8 +1139,14 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
 
             for (const sel of selectorList) {
                 try {
-                    const el = root.querySelector(sel);
-                    if (el) return el;
+                    if (typeof acceptCandidate === 'function') {
+                        for (const candidate of root.querySelectorAll(sel)) {
+                            if (acceptCandidate(candidate)) return candidate;
+                        }
+                    } else {
+                        const el = root.querySelector(sel);
+                        if (el) return el;
+                    }
                 } catch (_) {}
             }
 
@@ -959,7 +1194,8 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
         if (!styleElement) {
             // Validate that document.head exists before appending
             if (!document.head || !(document.head instanceof Node)) {
-                console.warn(
+                this._logBestEffort(
+                    'warn',
                     '[DisneyPlusPlatform] document.head not available, cannot inject CSS'
                 );
                 return;
@@ -969,10 +1205,10 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
                 styleElement = document.createElement('style');
                 styleElement.id = cssId;
                 document.head.appendChild(styleElement);
-            } catch (error) {
-                console.error(
-                    '[DisneyPlusPlatform] Failed to inject CSS:',
-                    error
+            } catch {
+                this._logBestEffort(
+                    'error',
+                    '[DisneyPlusPlatform] Failed to inject CSS'
                 );
                 return;
             }
@@ -1005,26 +1241,105 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
         styleElement.textContent = hidingCSS;
     }
 
-    setupSubtitleMutationObserver() {
-        // Disconnect any existing observer
-        if (this.subtitleObserver) {
-            this.subtitleObserver.disconnect();
-        }
+    _getSubtitleObservationRoots() {
+        const roots = [];
+        const seen = new Set();
+        const addRoot = (root) => {
+            if (
+                !(root instanceof Node) ||
+                root === document.body ||
+                seen.has(root)
+            ) {
+                return;
+            }
+            seen.add(root);
+            roots.push(root);
+        };
 
-        // Validate that document.body exists before setting up observer
-        if (!document.body || !(document.body instanceof Node)) {
-            console.warn(
-                '[DisneyPlusPlatform] document.body not available, retrying in 100ms'
-            );
-            setTimeout(() => {
-                this.setupSubtitleMutationObserver();
-            }, 100);
+        try {
+            addRoot(this.getPlayerContainerElement());
+        } catch (_) {}
+
+        try {
+            document
+                .querySelectorAll('main-app-controls-overlay')
+                .forEach((overlay) => addRoot(overlay.shadowRoot));
+        } catch (_) {}
+
+        return roots;
+    }
+
+    setupSubtitleMutationObserver() {
+        const timerGeneration = this._resetOwnedTimeoutLifecycle();
+        this._disconnectSubtitleMutationObserver();
+        this._attemptSubtitleMutationObserverSetup(timerGeneration, 1);
+    }
+
+    _disconnectSubtitleMutationObserver() {
+        const observer = this.subtitleObserver;
+        this.subtitleObserver = null;
+        if (observer) {
+            try {
+                observer.disconnect();
+            } catch (_) {}
+        }
+    }
+
+    _scheduleSubtitleObserverRetry(timerGeneration, attempt, reason) {
+        if (timerGeneration !== this.ownedTimeoutGeneration) {
             return;
         }
 
+        if (attempt >= SUBTITLE_OBSERVER_MAX_ATTEMPTS) {
+            this._logBestEffort(
+                'warn',
+                'Subtitle observer discovery budget exhausted',
+                {
+                    attempts: Number.isSafeInteger(attempt) ? attempt : 0,
+                    hasReason: typeof reason === 'string',
+                }
+            );
+            return;
+        }
+
+        this._scheduleOwnedTimeout(
+            'subtitle-observer-retry',
+            () =>
+                this._attemptSubtitleMutationObserverSetup(
+                    timerGeneration,
+                    attempt + 1
+                ),
+            SUBTITLE_OBSERVER_RETRY_DELAY_MS,
+            timerGeneration
+        );
+    }
+
+    _attemptSubtitleMutationObserverSetup(timerGeneration, attempt) {
+        if (timerGeneration !== this.ownedTimeoutGeneration) {
+            return;
+        }
+
+        const observationRoots = this._getSubtitleObservationRoots();
+        if (observationRoots.length === 0) {
+            this._scheduleSubtitleObserverRetry(
+                timerGeneration,
+                attempt,
+                'scoped-roots-unavailable'
+            );
+            return;
+        }
+
+        let observer = null;
         try {
             // Set up mutation observer to catch dynamically created subtitle elements
-            this.subtitleObserver = new MutationObserver((mutations) => {
+            observer = new MutationObserver((mutations) => {
+                if (
+                    timerGeneration !== this.ownedTimeoutGeneration ||
+                    this.subtitleObserver !== observer
+                ) {
+                    return;
+                }
+
                 let foundNewSubtitles = false;
 
                 mutations.forEach((mutation) => {
@@ -1052,47 +1367,57 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
 
                 if (foundNewSubtitles) {
                     // Reapply hiding rules after a short delay
-                    setTimeout(() => {
-                        this.applyCurrentSubtitleSetting();
-                    }, 100);
+                    this._scheduleOwnedTimeout(
+                        'subtitle-setting-reapply',
+                        () => this.applyCurrentSubtitleSetting(timerGeneration),
+                        100,
+                        timerGeneration
+                    );
                 }
             });
-
-            // Start observing the document body for changes
-            this.subtitleObserver.observe(document.body, {
-                childList: true,
-                subtree: true,
-            });
-
-            console.log(
-                '[DisneyPlusPlatform] Subtitle mutation observer set up successfully'
+        } catch (_) {
+            this._scheduleSubtitleObserverRetry(
+                timerGeneration,
+                attempt,
+                'observer-construction-failed'
             );
-        } catch (error) {
-            console.error(
-                '[DisneyPlusPlatform] Failed to set up subtitle mutation observer:',
-                error
-            );
-            // Retry after a delay
-            setTimeout(() => {
-                this.setupSubtitleMutationObserver();
-            }, 500);
+            return;
         }
+
+        let attachedRootCount = 0;
+        for (const root of observationRoots) {
+            try {
+                observer.observe(root, {
+                    childList: true,
+                    subtree: true,
+                });
+                attachedRootCount += 1;
+            } catch (_) {}
+        }
+
+        if (timerGeneration !== this.ownedTimeoutGeneration) {
+            try {
+                observer.disconnect();
+            } catch (_) {}
+            return;
+        }
+
+        if (attachedRootCount === 0) {
+            try {
+                observer.disconnect();
+            } catch (_) {}
+            this._scheduleSubtitleObserverRetry(
+                timerGeneration,
+                attempt,
+                'observer-attachment-failed'
+            );
+            return;
+        }
+
+        this.subtitleObserver = observer;
     }
 
-    async applyCurrentSubtitleSetting() {
-        // Reuse base class cache when possible to avoid frequent storage calls
-        let hideOfficialSubtitles = this._hideOfficialSubtitles;
-        if (hideOfficialSubtitles === undefined) {
-            try {
-                hideOfficialSubtitles = await configService.get(
-                    'hideOfficialSubtitles'
-                );
-                this._hideOfficialSubtitles = !!hideOfficialSubtitles;
-            } catch (_) {
-                hideOfficialSubtitles = false;
-            }
-        }
-
+    async applyCurrentSubtitleSetting(timerGeneration = null) {
         const disneyPlusSubtitleSelectors = [
             '.TimedTextOverlay',
             '.hive-subtitle-renderer-wrapper',
@@ -1100,27 +1425,50 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
             '.hive-subtitle-renderer-cue-window',
         ];
 
-        if (hideOfficialSubtitles) {
-            this.hideOfficialSubtitleContainers(disneyPlusSubtitleSelectors);
-        } else {
-            this.showOfficialSubtitleContainers();
-        }
+        await this.handleNativeSubtitlesWithSetting(
+            disneyPlusSubtitleSelectors,
+            () =>
+                timerGeneration === null ||
+                timerGeneration === this.ownedTimeoutGeneration
+        );
     }
 
-    cleanup() {
+    _retirePlatformLifecycle() {
+        if (this._platformLifecycleStarted) {
+            this._pausePlaybackTimeline();
+        }
+        this._invalidatePlatformLifecycle();
+        this._clearOwnedTimeouts();
+        this._injectionChannel?.revoke();
+        this._injectionChannel = null;
+
         if (this.eventListener) {
             document.removeEventListener(INJECT_EVENT_ID, this.eventListener);
             this.eventListener = null;
-            this.logger.debug('Event listener removed');
+            this._logBestEffort('debug', 'Event listener removed');
         }
 
-        this.cleanupNativeSubtitleSettingsListener();
+        this._cleanupNativeSubtitleSettingsBestEffort();
 
-        if (this.subtitleObserver) {
-            this.subtitleObserver.disconnect();
-            this.subtitleObserver = null;
-            this.logger.debug('Subtitle mutation observer cleaned up');
+        const hadSubtitleObserver = Boolean(this.subtitleObserver);
+        this._disconnectSubtitleMutationObserver();
+        if (hadSubtitleObserver) {
+            this._logBestEffort(
+                'debug',
+                'Subtitle mutation observer cleaned up'
+            );
         }
+
+        this.currentVideoId = null;
+        this.onSubtitleUrlFoundCallback = null;
+        this.onVideoIdChangeCallback = null;
+        this.resetVttRequestState();
+        this._stalePlaybackIdentity = null;
+        this._resetPlaybackClockState();
+    }
+
+    cleanup() {
+        this._retirePlatformLifecycle();
 
         // Remove our custom CSS
         const cssElement = document.getElementById(
@@ -1130,13 +1478,6 @@ export class DisneyPlusPlatform extends BasePlatformAdapter {
             cssElement.remove();
         }
 
-        this.currentVideoId = null;
-        this.onSubtitleUrlFoundCallback = null;
-        this.onVideoIdChangeCallback = null;
-        this.lastKnownVttUrlForVideoId = {};
-        this.pendingVttUrlForVideoId = {};
-        this._stalePlaybackIdentity = null;
-        this._resetPlaybackClockState();
-        this.logger.info('Platform cleaned up successfully');
+        this._logBestEffort('info', 'Platform cleaned up successfully');
     }
 }

@@ -11,14 +11,174 @@
 // @ts-check
 
 import { loggingManager } from '../utils/loggingManager.js';
-import { vttParser } from '../parsers/vttParser.js';
+import { MAX_M3U8_PLAYLIST_BYTES, vttParser } from '../parsers/vttParser.js';
 import { netflixParser } from '../parsers/netflixParser.js';
 import { normalizeLanguageCode } from '../../utils/languageNormalization.js';
-import {
-    errorHandler,
-    SubtitleProcessingError,
-} from '../utils/errorHandler.js';
+import { SubtitleProcessingError } from '../utils/errorHandler.js';
 import { configService } from '../../services/configService.js';
+import { isAuthorizedSubtitleRequestSnapshot } from '../utils/subtitleRequestPolicy.js';
+import { fetchAuthorizedSubtitleText } from '../utils/subtitleFetch.js';
+import { SubtitleRequestSources } from '../../content_scripts/shared/constants/messageActions.js';
+
+const disneySubtitleFailureMetadata = new WeakMap();
+const DISNEY_MASTER_FETCH_FAILURE = Object.freeze({
+    stage: 'master-fetch',
+    errorCode: 'DISNEY_MASTER_FETCH_FAILED',
+});
+const DISNEY_MASTER_PARSE_FAILURE = Object.freeze({
+    stage: 'master-parse',
+    errorCode: 'DISNEY_MASTER_PARSE_FAILED',
+});
+const DISNEY_MEDIA_FETCH_FAILURE = Object.freeze({
+    stage: 'media-fetch',
+    errorCode: 'DISNEY_MEDIA_FETCH_FAILED',
+});
+const DISNEY_VTT_FETCH_FAILURE = Object.freeze({
+    stage: 'vtt-fetch',
+    errorCode: 'DISNEY_VTT_FETCH_FAILED',
+});
+
+function markDisneySubtitleFailure(error, metadata) {
+    if (isDisneyCallerAbortError(error)) return error;
+    const failure =
+        error !== null &&
+        (typeof error === 'object' || typeof error === 'function')
+            ? error
+            : new Error('Disney+ subtitle processing failed.');
+    disneySubtitleFailureMetadata.set(failure, metadata);
+    return failure;
+}
+
+export function getDisneySubtitleFailureMetadata(error) {
+    if (
+        error === null ||
+        (typeof error !== 'object' && typeof error !== 'function')
+    ) {
+        return null;
+    }
+    return disneySubtitleFailureMetadata.get(error) || null;
+}
+
+function createDisneyAuthorizationError() {
+    const error = new Error('Disney+ subtitle request is unauthorized.');
+    error.name = 'SubtitleServiceAuthorizationError';
+    error.code = 'ERR_DISNEY_SUBTITLE_REQUEST_UNAUTHORIZED';
+    return error;
+}
+
+function assertAuthorizedDisneySnapshot(snapshot) {
+    if (
+        !isAuthorizedSubtitleRequestSnapshot(snapshot) ||
+        snapshot.source !== SubtitleRequestSources.DISNEY_PLUS
+    ) {
+        throw createDisneyAuthorizationError();
+    }
+}
+
+function createNetflixAuthorizationError() {
+    const error = new Error('Netflix subtitle request is unauthorized.');
+    error.name = 'SubtitleServiceAuthorizationError';
+    error.code = 'ERR_NETFLIX_SUBTITLE_REQUEST_UNAUTHORIZED';
+    return error;
+}
+
+function assertAuthorizedNetflixSnapshot(snapshot) {
+    if (
+        !isAuthorizedSubtitleRequestSnapshot(snapshot) ||
+        snapshot.source !== SubtitleRequestSources.NETFLIX
+    ) {
+        throw createNetflixAuthorizationError();
+    }
+}
+
+function createNetflixInputError() {
+    const error = new TypeError(
+        'Netflix subtitle processing input is invalid.'
+    );
+    error.name = 'SubtitleServiceInputError';
+    error.code = 'ERR_NETFLIX_SUBTITLE_INPUT_INVALID';
+    return error;
+}
+
+function readNetflixSignal(options) {
+    if (options === undefined) return undefined;
+    if (
+        options === null ||
+        (typeof options !== 'object' && typeof options !== 'function')
+    ) {
+        throw createNetflixInputError();
+    }
+
+    let descriptor;
+    try {
+        descriptor = Object.getOwnPropertyDescriptor(options, 'signal');
+    } catch (_) {
+        throw createNetflixInputError();
+    }
+    if (!descriptor) return undefined;
+    if (!Object.hasOwn(descriptor, 'value')) throw createNetflixInputError();
+    return descriptor.value;
+}
+
+function isNetflixCallerAbortError(error) {
+    if (
+        error === null ||
+        (typeof error !== 'object' && typeof error !== 'function')
+    ) {
+        return false;
+    }
+    try {
+        return (
+            Object.getOwnPropertyDescriptor(error, 'code')?.value ===
+            'ERR_FETCH_ABORTED'
+        );
+    } catch (_) {
+        return false;
+    }
+}
+
+function isDisneyCallerAbortError(error) {
+    if (
+        error === null ||
+        (typeof error !== 'object' && typeof error !== 'function')
+    ) {
+        return false;
+    }
+    try {
+        const code = Object.getOwnPropertyDescriptor(error, 'code')?.value;
+        return (
+            code === 'ERR_FETCH_ABORTED' ||
+            code === 'ERR_VTT_PROCESSING_ABORTED'
+        );
+    } catch (_) {
+        return false;
+    }
+}
+
+function createDisneyInputError() {
+    const error = new TypeError(
+        'Disney+ subtitle processing input is invalid.'
+    );
+    error.name = 'SubtitleServiceInputError';
+    error.code = 'ERR_DISNEY_SUBTITLE_INPUT_INVALID';
+    return error;
+}
+
+function readDisneySignal(options) {
+    if (options === undefined) return undefined;
+    if (
+        options === null ||
+        (typeof options !== 'object' && typeof options !== 'function')
+    ) {
+        throw createDisneyInputError();
+    }
+
+    try {
+        return options.signal;
+    } catch (_) {
+        throw createDisneyInputError();
+    }
+}
 
 /**
  * @typedef {Object} SubtitleProcessingResult
@@ -76,93 +236,72 @@ class SubtitleService {
 
             this.logger.debug('Parser modules initialized successfully');
         } catch (error) {
-            this.logger.error('Failed to initialize parser modules', error);
+            try {
+                this.logger?.error(
+                    'Failed to initialize subtitle parser modules',
+                    null,
+                    {
+                        stage: 'initialize',
+                        source: 'parsers',
+                    }
+                );
+            } catch (_) {}
             throw error;
         }
     }
 
     /**
      * Process Netflix subtitle data
-     * @param {Object} data - Netflix subtitle data
-     * @param {string} targetLanguage - Target language code
-     * @param {string} originalLanguage - Original language code
-     * @param {boolean} useNativeSubtitles - Whether to use native subtitles
-     * @param {boolean} useOfficialTranslations - Whether to use official translations
+     * @param {Object} snapshot - Authorized Netflix subtitle request snapshot
+     * @param {Object} [options] - Internal processing options
+     * @param {AbortSignal} [options.signal] - Optional internal abort signal
      * @returns {Promise<Object>} Processed subtitle result
      */
-    async processNetflixSubtitles(
-        data,
-        targetLanguage,
-        originalLanguage,
-        useNativeSubtitles,
-        useOfficialTranslations
-    ) {
-        this.logger.info('Processing Netflix subtitles', {
+    async processNetflixSubtitles(snapshot, options) {
+        assertAuthorizedNetflixSnapshot(snapshot);
+        const signal = readNetflixSignal(options);
+        const {
             targetLanguage,
             originalLanguage,
             useNativeSubtitles,
             useOfficialTranslations,
+        } = snapshot;
+        this.logger.info('Processing Netflix subtitles', {
+            hasTargetLanguage:
+                typeof targetLanguage === 'string' && targetLanguage.length > 0,
+            hasOriginalLanguage:
+                typeof originalLanguage === 'string' &&
+                originalLanguage.length > 0,
+            useNativeSubtitles: !!useNativeSubtitles,
+            useOfficialTranslations: !!useOfficialTranslations,
         });
 
         try {
-            return await netflixParser.processNetflixSubtitleData(
-                data,
-                targetLanguage,
-                originalLanguage,
-                useNativeSubtitles,
-                useOfficialTranslations
-            );
+            return await (signal === undefined
+                ? netflixParser.processNetflixSubtitleData(snapshot)
+                : netflixParser.processNetflixSubtitleData(snapshot, {
+                      signal,
+                  }));
         } catch (error) {
-            // Handle error with comprehensive error handler
-            const errorInfo = errorHandler.handleError(error, {
-                operation: 'processNetflixSubtitles',
-                platform: 'netflix',
-                targetLanguage,
-                originalLanguage,
-                hasUserImpact: true,
-                isCriticalPath: true,
-            });
+            if (isNetflixCallerAbortError(error)) throw error;
+            try {
+                this.logger?.error('Netflix subtitle processing failed', null, {
+                    stage: 'process',
+                    source: SubtitleRequestSources.NETFLIX,
+                    category: 'subtitle',
+                    errorCode: 'SUBTITLE_PROCESSING_FAILED',
+                });
+            } catch (_) {}
 
-            const subtitleError = new SubtitleProcessingError(
-                errorInfo.userMessage,
+            throw new SubtitleProcessingError(
+                'Subtitle processing failed. Some subtitles may not be available.',
                 {
-                    originalError: error.message,
-                    platform: 'netflix',
-                    errorCode: errorInfo.errorCode,
-                    isRecoverable: errorInfo.isRecoverable,
+                    platform: SubtitleRequestSources.NETFLIX,
+                    category: 'subtitle',
+                    errorCode: 'SUBTITLE_PROCESSING_FAILED',
+                    isRecoverable: true,
                 }
             );
-
-            throw subtitleError;
-        }
-    }
-
-    /**
-     * Fetch and process generic subtitles
-     * @param {string} url - Subtitle URL
-     * @param {string} targetLanguage - Target language code
-     * @param {string} originalLanguage - Original language code
-     * @returns {Promise<Object>} Processed subtitle result
-     */
-    async fetchAndProcessSubtitles(url, targetLanguage, originalLanguage) {
-        this.logger.info('Fetching and processing subtitles', {
-            urlLength: url.length,
-            targetLanguage,
-            originalLanguage,
-        });
-
-        try {
-            // Use the complete Disney+ processing logic from the original background script
-            return await this.processDisneyPlusSubtitles(
-                url,
-                targetLanguage,
-                originalLanguage
-            );
-        } catch (error) {
-            this.logger.error('Disney+ subtitle processing failed', error, {
-                urlLength: url.length,
-            });
-            throw error;
         }
     }
 
@@ -170,19 +309,40 @@ class SubtitleService {
      * Process Disney+ subtitles using the complete logic from original background script
      * This implements the full master playlist → language playlist → VTT segments flow
      */
-    async processDisneyPlusSubtitles(
-        masterPlaylistUrl,
-        targetLanguage,
-        originalLanguage
-    ) {
+    async processDisneyPlusSubtitles(snapshot, options = {}) {
+        assertAuthorizedDisneySnapshot(snapshot);
+        const signal = readDisneySignal(options);
+        const {
+            url: masterPlaylistUrl,
+            targetLanguage,
+            originalLanguage,
+        } = snapshot;
         this.logger.info('Processing Disney+ subtitles with complete logic', {
             masterPlaylistUrlLength: masterPlaylistUrl.length,
-            originalLanguage,
-            targetLanguage,
+            hasOriginalLanguage:
+                typeof originalLanguage === 'string' &&
+                originalLanguage.length > 0,
+            hasTargetLanguage:
+                typeof targetLanguage === 'string' && targetLanguage.length > 0,
         });
 
         // Step 1: Fetch master playlist
-        const masterPlaylistText = await vttParser.fetchText(masterPlaylistUrl);
+        let masterPlaylist;
+        try {
+            masterPlaylist = await fetchAuthorizedSubtitleText(
+                snapshot,
+                snapshot.url,
+                {
+                    stage: 'disney-master',
+                    signal,
+                    maxBytes: MAX_M3U8_PLAYLIST_BYTES,
+                }
+            );
+        } catch (error) {
+            throw markDisneySubtitleFailure(error, DISNEY_MASTER_FETCH_FAILURE);
+        }
+        const { text: masterPlaylistText, canonicalUrl: masterCanonicalUrl } =
+            masterPlaylist;
 
         // Check if it's direct VTT content
         if (masterPlaylistText.trim().toUpperCase().startsWith('WEBVTT')) {
@@ -215,8 +375,11 @@ class SubtitleService {
             !firstNonCommentLine ||
             !firstNonCommentLine.startsWith('#EXTM3U')
         ) {
-            throw new Error(
-                'Content is not a recognized M3U8 playlist or VTT file.'
+            throw markDisneySubtitleFailure(
+                new Error(
+                    'Content is not a recognized M3U8 playlist or VTT file.'
+                ),
+                DISNEY_MASTER_PARSE_FAILURE
             );
         }
 
@@ -230,9 +393,8 @@ class SubtitleService {
             'disneyplus'
         );
         this.logger.debug('Available subtitle languages', {
-            languages: availableLanguages.map(
-                (lang) => `${lang.normalizedCode} (${lang.displayName})`
-            ),
+            source: SubtitleRequestSources.DISNEY_PLUS,
+            languageCount: availableLanguages.length,
         });
 
         // Step 3: Get user settings for smart subtitle logic
@@ -246,9 +408,12 @@ class SubtitleService {
                 : settings.useNativeSubtitles !== false;
 
         this.logger.debug('Smart subtitle settings', {
-            useOfficialTranslations,
-            targetLanguage,
-            originalLanguage,
+            useOfficialTranslations: !!useOfficialTranslations,
+            hasTargetLanguage:
+                typeof targetLanguage === 'string' && targetLanguage.length > 0,
+            hasOriginalLanguage:
+                typeof originalLanguage === 'string' &&
+                originalLanguage.length > 0,
         });
 
         // Step 4: Find appropriate language tracks
@@ -264,8 +429,12 @@ class SubtitleService {
             );
             if (targetLanguageInfo) {
                 this.logger.info('Target language found natively', {
-                    targetLanguage,
-                    displayName: targetLanguageInfo.displayName,
+                    hasTargetLanguage:
+                        typeof targetLanguage === 'string' &&
+                        targetLanguage.length > 0,
+                    hasUri:
+                        typeof targetLanguageInfo.uri === 'string' &&
+                        targetLanguageInfo.uri.length > 0,
                 });
                 useNativeTarget = true;
             }
@@ -290,8 +459,12 @@ class SubtitleService {
         if (!originalLanguageInfo && availableLanguages.length > 0) {
             originalLanguageInfo = availableLanguages[0];
             this.logger.info('Using first available language as fallback', {
-                displayName: originalLanguageInfo.displayName,
-                normalizedCode: originalLanguageInfo.normalizedCode,
+                hasLanguage:
+                    typeof originalLanguageInfo.normalizedCode === 'string' &&
+                    originalLanguageInfo.normalizedCode.length > 0,
+                hasUri:
+                    typeof originalLanguageInfo.uri === 'string' &&
+                    originalLanguageInfo.uri.length > 0,
             });
         }
 
@@ -303,17 +476,37 @@ class SubtitleService {
 
         // Step 5: Fetch and process original language subtitles
         const originalVttText = await this.fetchLanguageSpecificSubtitles(
+            snapshot,
             originalLanguageInfo.uri,
-            masterPlaylistUrl
+            masterCanonicalUrl,
+            { signal }
         );
 
         // Step 6: Fetch target language subtitles if using native target
         let targetVttText = null;
         if (useNativeTarget && targetLanguageInfo) {
-            targetVttText = await this.fetchLanguageSpecificSubtitles(
-                targetLanguageInfo.uri,
-                masterPlaylistUrl
-            );
+            try {
+                targetVttText = await this.fetchLanguageSpecificSubtitles(
+                    snapshot,
+                    targetLanguageInfo.uri,
+                    masterCanonicalUrl,
+                    { signal }
+                );
+            } catch (error) {
+                if (isDisneyCallerAbortError(error)) throw error;
+
+                targetLanguageInfo = null;
+                useNativeTarget = false;
+                try {
+                    this.logger?.warn(
+                        'Official Disney+ target subtitles unavailable; using original subtitles',
+                        {
+                            source: SubtitleRequestSources.DISNEY_PLUS,
+                            stage: 'official-target',
+                        }
+                    );
+                } catch (_) {}
+            }
         }
 
         const result = {
@@ -331,85 +524,16 @@ class SubtitleService {
 
         this.logger.info('Disney+ subtitle processing completed', {
             useNativeTarget,
-            originalLanguage: result.sourceLanguage,
-            targetLanguage: result.targetLanguage,
+            hasSourceLanguage:
+                typeof result.sourceLanguage === 'string' &&
+                result.sourceLanguage.length > 0,
+            hasTargetLanguage:
+                typeof result.targetLanguage === 'string' &&
+                result.targetLanguage.length > 0,
             availableLanguageCount: availableLanguages.length,
         });
 
         return result;
-    }
-
-    /**
-     * Process subtitles for any supported platform
-     * @param {string} platform - Platform identifier
-     * @param {Object} data - Platform-specific data
-     * @param {Object} options - Processing options
-     * @returns {Promise<Object>} Processed subtitle result
-     */
-    async processSubtitles(platform, data, options = {}) {
-        const startTime = Date.now();
-
-        try {
-            this.logger.info('Processing subtitles', {
-                platform,
-                hasData: !!data,
-                options,
-            });
-
-            if (!this.supportedPlatforms.has(platform)) {
-                const supported = Array.from(this.supportedPlatforms).join(
-                    ', '
-                );
-                throw new Error(
-                    `Unsupported platform: ${platform}. Supported platforms are: ${supported}`
-                );
-            }
-
-            let result;
-            switch (platform) {
-                case 'netflix':
-                    result = await this.processNetflixSubtitles(
-                        data,
-                        options.targetLanguage,
-                        options.originalLanguage,
-                        options.useNativeSubtitles,
-                        options.useOfficialTranslations
-                    );
-                    break;
-
-                case 'disneyplus':
-                case 'generic':
-                    result = await this.fetchAndProcessSubtitles(
-                        data.url || data,
-                        options.targetLanguage,
-                        options.originalLanguage
-                    );
-                    break;
-
-                default:
-                    throw new Error(
-                        `Platform processing not implemented: ${platform}`
-                    );
-            }
-
-            // Update performance metrics
-            const processingTime = Date.now() - startTime;
-            this.updatePerformanceMetrics(processingTime, true);
-
-            this.logger.info('Subtitle processing completed', {
-                platform,
-                processingTime,
-                resultSize: result.vttText?.length || 0,
-            });
-
-            return result;
-        } catch (error) {
-            this.updatePerformanceMetrics(Date.now() - startTime, false);
-            this.logger.error('Subtitle processing failed', error, {
-                platform,
-            });
-            throw error;
-        }
     }
 
     /**
@@ -419,8 +543,16 @@ class SubtitleService {
      * @returns {Promise<Array>} Available languages
      */
     async getAvailableLanguages(platform, data) {
+        const source =
+            typeof platform === 'string' &&
+            this.supportedPlatforms.has(platform)
+                ? platform
+                : 'unknown';
         try {
-            this.logger.debug('Getting available languages', { platform });
+            this.logger.debug('Getting available languages', {
+                source,
+                supported: source !== 'unknown',
+            });
 
             switch (platform) {
                 case 'netflix': {
@@ -445,14 +577,21 @@ class SubtitleService {
                 default:
                     this.logger.warn(
                         'Language detection not supported for platform',
-                        { platform }
+                        { source }
                     );
                     return [];
             }
-        } catch (error) {
-            this.logger.error('Failed to get available languages', error, {
-                platform,
-            });
+        } catch (_) {
+            try {
+                this.logger?.error(
+                    'Failed to get available subtitle languages',
+                    null,
+                    {
+                        stage: 'inventory',
+                        source,
+                    }
+                );
+            } catch (_) {}
             return [];
         }
     }
@@ -508,13 +647,30 @@ class SubtitleService {
     /**
      * Fetch language-specific subtitles from URI
      */
-    async fetchLanguageSpecificSubtitles(uri, masterPlaylistUrl) {
-        const fullSubtitleUrl = new URL(uri, masterPlaylistUrl).href;
+    async fetchLanguageSpecificSubtitles(
+        snapshot,
+        uri,
+        baseCanonicalUrl,
+        options = {}
+    ) {
+        assertAuthorizedDisneySnapshot(snapshot);
+        const signal = readDisneySignal(options);
         this.logger.info('Fetching language-specific subtitle playlist', {
-            urlLength: fullSubtitleUrl.length,
+            referenceLength: typeof uri === 'string' ? uri.length : 0,
         });
 
-        const subtitleText = await vttParser.fetchText(fullSubtitleUrl);
+        let mediaPlaylist;
+        try {
+            mediaPlaylist = await fetchAuthorizedSubtitleText(snapshot, uri, {
+                baseUrl: baseCanonicalUrl,
+                stage: 'disney-language',
+                signal,
+                maxBytes: MAX_M3U8_PLAYLIST_BYTES,
+            });
+        } catch (error) {
+            throw markDisneySubtitleFailure(error, DISNEY_MEDIA_FETCH_FAILURE);
+        }
+        const { text: subtitleText, canonicalUrl } = mediaPlaylist;
 
         if (subtitleText.trim().toUpperCase().startsWith('WEBVTT')) {
             this.logger.debug('Subtitle URI pointed directly to VTT content');
@@ -523,7 +679,19 @@ class SubtitleService {
             this.logger.debug(
                 'Subtitle-specific playlist is an M3U8. Parsing for VTT segments'
             );
-            return await vttParser.processM3U8Playlist(fullSubtitleUrl);
+            try {
+                return await vttParser.processM3U8PlaylistText(
+                    snapshot,
+                    subtitleText,
+                    canonicalUrl,
+                    { signal }
+                );
+            } catch (error) {
+                throw markDisneySubtitleFailure(
+                    error,
+                    DISNEY_VTT_FETCH_FAILURE
+                );
+            }
         } else {
             throw new Error(
                 'Content from subtitle playlist URI was not a recognized M3U8 or VTT.'
@@ -553,9 +721,14 @@ class SubtitleService {
             // Check if keyword is in display name
             if (displayNameLower.includes(keywordLower)) {
                 this.logger.debug('Subtitle blacklisted by name', {
-                    platform,
-                    displayName,
-                    keyword,
+                    source:
+                        typeof platform === 'string' &&
+                        this.supportedPlatforms.has(platform)
+                            ? platform
+                            : 'unknown',
+                    matchKind: 'name',
+                    displayNameLength: displayName.length,
+                    keywordLength: keyword.length,
                 });
                 return true;
             }
@@ -566,9 +739,14 @@ class SubtitleService {
                 const lineLower = line.toLowerCase();
                 if (lineLower.includes(keywordLower)) {
                     this.logger.debug('Subtitle blacklisted by attribute', {
-                        platform,
-                        displayName,
-                        keyword,
+                        source:
+                            typeof platform === 'string' &&
+                            this.supportedPlatforms.has(platform)
+                                ? platform
+                                : 'unknown',
+                        matchKind: 'attribute',
+                        displayNameLength: displayName.length,
+                        keywordLength: keyword.length,
                     });
                     return true;
                 }
@@ -597,8 +775,14 @@ class SubtitleService {
         const platformBlacklist = blacklistConfig?.[platform] || [];
 
         this.logger.debug('Using subtitle blacklist', {
-            platform,
-            blacklist: platformBlacklist,
+            source:
+                typeof platform === 'string' &&
+                this.supportedPlatforms.has(platform)
+                    ? platform
+                    : 'unknown',
+            blacklistCount: Array.isArray(platformBlacklist)
+                ? platformBlacklist.length
+                : 0,
         });
 
         for (let i = 0; i < lines.length; i++) {
@@ -636,10 +820,12 @@ class SubtitleService {
         }
 
         this.logger.debug('Parsed subtitle languages from master playlist', {
-            count: languages.length,
-            languages: languages.map(
-                (l) => `${l.normalizedCode} (${l.displayName})`
-            ),
+            source:
+                typeof platform === 'string' &&
+                this.supportedPlatforms.has(platform)
+                    ? platform
+                    : 'unknown',
+            languageCount: languages.length,
         });
 
         return languages;
@@ -668,19 +854,21 @@ class SubtitleService {
 
         if (match) {
             this.logger.debug('Found subtitle URI for language', {
-                targetLanguage: targetLanguageCode,
-                normalizedTarget,
-                foundLanguage: match.normalizedCode,
-                displayName: match.displayName,
-                uri: match.uri,
+                hasTargetLanguage:
+                    typeof normalizedTarget === 'string' &&
+                    normalizedTarget.length > 0,
+                hasFoundLanguage:
+                    typeof match.normalizedCode === 'string' &&
+                    match.normalizedCode.length > 0,
+                languagesEqual: match.normalizedCode === normalizedTarget,
+                hasUri: typeof match.uri === 'string' && match.uri.length > 0,
             });
         } else {
             this.logger.debug('No subtitle URI found for language', {
-                targetLanguage: targetLanguageCode,
-                normalizedTarget,
-                availableLanguages: availableLanguages.map(
-                    (l) => l.normalizedCode
-                ),
+                hasTargetLanguage:
+                    typeof normalizedTarget === 'string' &&
+                    normalizedTarget.length > 0,
+                availableLanguageCount: availableLanguages.length,
             });
         }
 

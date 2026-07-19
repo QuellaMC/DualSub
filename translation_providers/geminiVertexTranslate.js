@@ -1,11 +1,196 @@
 import Logger from '../utils/logger.js';
 import { fetchWithTimeout } from '../utils/fetchWithTimeout.js';
 import { configService } from '../services/configService.js';
-import { parseTranslationArray } from './batchResponseParser.js';
-import { TranslationProviderError } from './translationProviderError.js';
+import {
+    getTrustedTranslationProviderErrorMetadata,
+    TranslationProviderError,
+} from './translationProviderError.js';
 
 // Initialize logger for the Vertex AI Gemini translation provider
 const logger = Logger.create('VertexGeminiTranslate');
+const PROVIDER = 'vertex_gemini';
+const CONFIG_KEYS = Object.freeze([
+    'vertexAccessToken',
+    'vertexProjectId',
+    'vertexLocation',
+    'vertexModel',
+]);
+const OWN_DATA_MISSING = Symbol('own-data-missing');
+const NETWORK_ERROR_METADATA = Object.freeze({
+    code: 'NETWORK_ERROR',
+    retryable: true,
+});
+const AUTHENTICATION_ERROR_METADATA = Object.freeze({
+    code: 'AUTHENTICATION_ERROR',
+    retryable: false,
+});
+const REQUEST_ERROR_METADATA = Object.freeze({
+    code: 'REQUEST_FAILED',
+    retryable: false,
+});
+
+function createOperationContext() {
+    return {
+        failureMessage: 'Vertex AI translation failed.',
+    };
+}
+
+function readOwnDataValue(record, key) {
+    if (
+        record === null ||
+        (typeof record !== 'object' && typeof record !== 'function')
+    ) {
+        return OWN_DATA_MISSING;
+    }
+
+    try {
+        const descriptor = Object.getOwnPropertyDescriptor(record, key);
+        return descriptor && Object.hasOwn(descriptor, 'value')
+            ? descriptor.value
+            : OWN_DATA_MISSING;
+    } catch {
+        return OWN_DATA_MISSING;
+    }
+}
+
+function copyStrictConfigValues(result) {
+    // ConfigService authenticates the outer result identity. Keep this
+    // consumer bounded to the exact values projection and ignore all public
+    // compatibility metadata on the result object.
+    const values = readOwnDataValue(result, 'values');
+    if (
+        values === OWN_DATA_MISSING ||
+        values === null ||
+        (typeof values !== 'object' && typeof values !== 'function')
+    ) {
+        return null;
+    }
+
+    let ownKeys;
+    try {
+        ownKeys = Reflect.ownKeys(values);
+    } catch {
+        return null;
+    }
+    if (
+        ownKeys.length !== CONFIG_KEYS.length ||
+        CONFIG_KEYS.some((key) => !ownKeys.includes(key))
+    ) {
+        return null;
+    }
+
+    const copied = {};
+    for (const key of CONFIG_KEYS) {
+        const value = readOwnDataValue(values, key);
+        if (typeof value !== 'string' || value.trim() === '') {
+            return null;
+        }
+        copied[key] = value;
+    }
+
+    try {
+        if (typeof globalThis.structuredClone !== 'function') return null;
+        globalThis.structuredClone(values);
+    } catch {
+        return null;
+    }
+    return Object.freeze(copied);
+}
+
+function createStageError(context, stage, metadata) {
+    const trustedStatus =
+        Number.isSafeInteger(metadata.status) &&
+        metadata.status >= 100 &&
+        metadata.status <= 599
+            ? metadata.status
+            : undefined;
+    const error = new TranslationProviderError(
+        context.failureMessage,
+        PROVIDER,
+        metadata
+    );
+    try {
+        logger.error('Vertex Gemini translation stage failed', null, {
+            stage,
+            ...(trustedStatus === undefined ? {} : { status: trustedStatus }),
+        });
+    } catch {}
+    return error;
+}
+
+async function runAsyncStage(context, stage, metadata, operation) {
+    try {
+        return await operation();
+    } catch {
+        throw createStageError(context, stage, metadata);
+    }
+}
+
+function runSyncStage(context, stage, metadata, operation) {
+    try {
+        return operation();
+    } catch {
+        throw createStageError(context, stage, metadata);
+    }
+}
+
+function rethrowTrustedOrRequestError(error, context) {
+    if (getTrustedTranslationProviderErrorMetadata(error) !== null) {
+        throw error;
+    }
+    throw createStageError(context, 'request', REQUEST_ERROR_METADATA);
+}
+
+function createHttpError(context, status) {
+    if (!Number.isSafeInteger(status) || status < 100 || status > 599) {
+        return createStageError(context, 'response', REQUEST_ERROR_METADATA);
+    }
+
+    const metadata = {
+        status,
+        code:
+            status === 401 || status === 403
+                ? 'AUTHENTICATION_ERROR'
+                : status === 429
+                  ? 'RATE_LIMIT_EXCEEDED'
+                  : status >= 500
+                    ? 'UPSTREAM_ERROR'
+                    : 'REQUEST_FAILED',
+        retryable: status === 429 || status >= 500,
+    };
+    return createStageError(context, 'http', metadata);
+}
+
+function readHttpFailureStatus(context, response) {
+    return runSyncStage(context, 'response', REQUEST_ERROR_METADATA, () => {
+        if (response.ok === true) return null;
+        const status = response.status;
+        if (!Number.isSafeInteger(status) || status < 100 || status > 599) {
+            throw new Error('Vertex response status is invalid.');
+        }
+        return status;
+    });
+}
+
+async function readResponseText(context, response) {
+    return await runAsyncStage(
+        context,
+        'response',
+        REQUEST_ERROR_METADATA,
+        async () => {
+            const data = await response.json();
+            const responseText =
+                data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            if (
+                typeof responseText !== 'string' ||
+                responseText.trim() === ''
+            ) {
+                throw new Error('Empty response from Vertex AI');
+            }
+            return responseText.trim();
+        }
+    );
+}
 
 /**
  * Retrieves the necessary configuration for the Vertex AI API from the extension's settings.
@@ -13,38 +198,33 @@ const logger = Logger.create('VertexGeminiTranslate');
  * already-provisioned OAuth access token from settings (service worker cannot run SA OAuth).
  * @returns {Promise<{accessToken: string, projectId: string, location: string, model: string}>}
  */
-async function getConfig() {
-    logger.debug('Retrieving Vertex AI config via configService');
-    const config = await configService.getMultiple([
-        'vertexAccessToken',
-        'vertexProjectId',
-        'vertexLocation',
-        'vertexModel',
-    ]);
-
-    const model = config.vertexModel || 'gemini-2.5-flash';
-
-    logger.debug('Vertex AI configuration retrieved', {
-        hasAccessToken: !!config.vertexAccessToken,
-        hasProjectId: !!config.vertexProjectId,
-        location: config.vertexLocation,
-        model,
-    });
-
-    return {
-        accessToken: config.vertexAccessToken,
-        projectId: config.vertexProjectId,
-        location: config.vertexLocation || 'us-central1',
-        model,
-    };
+async function getConfig(context) {
+    return await runAsyncStage(
+        context,
+        'config',
+        AUTHENTICATION_ERROR_METADATA,
+        async () => {
+            const result = await configService.readMultipleResultStrict(
+                CONFIG_KEYS,
+                { includeSensitive: true }
+            );
+            const values = copyStrictConfigValues(result);
+            if (values === null) {
+                throw new Error('Vertex configuration is incomplete.');
+            }
+            return {
+                accessToken: values.vertexAccessToken,
+                projectId: values.vertexProjectId,
+                location: values.vertexLocation,
+                model: values.vertexModel,
+            };
+        }
+    );
 }
 
 // Ensure model name is in short form (e.g., "gemini-1.5-flash"), removing any leading path like
 // "models/gemini-1.5-flash" or "publishers/google/models/gemini-1.5-flash".
 function normalizeModelName(model) {
-    if (typeof model !== 'string' || !model) {
-        return 'gemini-2.5-flash';
-    }
     const parts = model.split('/');
     const last = parts[parts.length - 1];
     return last || model;
@@ -58,268 +238,84 @@ function buildVertexEndpoint(projectId, location, model, method) {
     )}/publishers/google/models/${encodeURIComponent(normalizedModel)}:${method}`;
 }
 
-function createVertexHttpError(operation, response) {
-    const error = new Error(
-        `${operation}: ${response.status} ${response.statusText || ''}`.trim()
-    );
-    error.name = 'VertexHttpError';
-    error.status = response.status;
-    error.code =
-        response.status === 401 || response.status === 403
-            ? 'AUTHENTICATION_ERROR'
-            : response.status === 429
-              ? 'RATE_LIMIT_EXCEEDED'
-              : response.status >= 500
-                ? 'UPSTREAM_ERROR'
-                : 'REQUEST_FAILED';
-    error.retryable = response.status === 429 || response.status >= 500;
-    return error;
-}
-
 /**
- * Translates a batch of texts using the Google Cloud Vertex AI Gemini API.
+ * Translates text using the Google Cloud Vertex AI Gemini API.
  *
- * @param {string|string[]} text - The text or array of texts to translate.
+ * @param {string} text - The text to translate.
  * @param {string} sourceLang - The source language code (e.g., 'en').
  * @param {string} targetLang - The target language code (e.g., 'es').
- * @returns {Promise<string[]>} A promise that resolves to an array of translated texts.
+ * @returns {Promise<string>} A promise that resolves to translated text.
  */
 export async function translate(text, sourceLang, targetLang) {
     if (typeof text !== 'string' || text.trim() === '') {
         return '';
     }
 
+    const operationContext = createOperationContext();
     try {
-        const { accessToken, projectId, location, model } = await getConfig();
-        if (!accessToken || !projectId || !location || !model) {
-            throw new Error(
-                'Vertex access token, project, location, or model not configured.'
-            );
-        }
+        const { accessToken, projectId, location, model } =
+            await getConfig(operationContext);
 
-        const endpoint = buildVertexEndpoint(
-            projectId,
-            location,
-            model,
-            'generateContent'
-        );
-
-        logger.debug('Vertex single request prepared', {
-            location,
-            model: normalizeModelName(model),
-            textLength: text.length,
-            sourceLang,
-            targetLang,
-        });
-
-        const systemPrompt = `You are a professional subtitle translator.`;
-        const userPrompt = `Translate the following text from ${sourceLang} to ${targetLang}. Return only the translated text with no extra commentary.`;
-
-        const requestBody = {
-            contents: [
-                {
-                    role: 'user',
-                    parts: [
-                        { text: `${systemPrompt}\n\n${userPrompt}\n\n${text}` },
+        const request = runSyncStage(
+            operationContext,
+            'request',
+            REQUEST_ERROR_METADATA,
+            () => {
+                const endpoint = buildVertexEndpoint(
+                    projectId,
+                    location,
+                    model,
+                    'generateContent'
+                );
+                const systemPrompt = `You are a professional subtitle translator.`;
+                const userPrompt = `Translate the following text from ${sourceLang} to ${targetLang}. Return only the translated text with no extra commentary.`;
+                const requestBody = {
+                    contents: [
+                        {
+                            role: 'user',
+                            parts: [
+                                {
+                                    text: `${systemPrompt}\n\n${userPrompt}\n\n${text}`,
+                                },
+                            ],
+                        },
                     ],
-                },
-            ],
-            generationConfig: {
-                maxOutputTokens: Math.max(
-                    256,
-                    Math.min(2048, Math.ceil(text.length * 3))
-                ),
-            },
-        };
+                    generationConfig: {
+                        maxOutputTokens: Math.max(
+                            256,
+                            Math.min(2048, Math.ceil(text.length * 3))
+                        ),
+                    },
+                };
+                return {
+                    endpoint,
+                    init: {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${accessToken}`,
+                        },
+                        body: JSON.stringify(requestBody),
+                    },
+                };
+            }
+        );
 
-        const response = await fetchWithTimeout(endpoint, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${accessToken}`,
-            },
-            body: JSON.stringify(requestBody),
-        });
+        const response = await runAsyncStage(
+            operationContext,
+            'fetch',
+            NETWORK_ERROR_METADATA,
+            () => fetchWithTimeout(request.endpoint, request.init)
+        );
 
-        if (!response.ok) {
-            logger.error('Vertex AI single translation failed', null, {
-                status: response.status,
-                contentType: response.headers?.get?.('content-type') || null,
-            });
-            throw createVertexHttpError(
-                'Vertex translation request failed',
-                response
-            );
+        const failureStatus = readHttpFailureStatus(operationContext, response);
+        if (failureStatus !== null) {
+            throw createHttpError(operationContext, failureStatus);
         }
 
-        const data = await response.json();
-        const responseText =
-            data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        if (!responseText) {
-            throw new Error('Empty response from Vertex AI');
-        }
-        return typeof responseText === 'string'
-            ? responseText.trim()
-            : String(responseText);
+        const responseText = await readResponseText(operationContext, response);
+        return responseText;
     } catch (error) {
-        logger.error('Fatal error during Vertex AI single translation', null, {
-            errorType: error?.name || 'UnknownError',
-            sourceLang,
-            targetLang,
-        });
-        throw new TranslationProviderError(
-            'Vertex AI translation failed.',
-            'vertex_gemini',
-            error
-        );
+        rethrowTrustedOrRequestError(error, operationContext);
     }
-}
-
-/**
- * Translates multiple texts in a single request using Vertex Gemini generateContent.
- * Uses a delimiter strategy similar to the OpenAI-compatible provider.
- * @param {Array<string>} texts
- * @param {string} sourceLang
- * @param {string} targetLang
- * @param {string} delimiter
- * @returns {Promise<Array<string>>}
- */
-export async function translateBatch(
-    texts,
-    sourceLang,
-    targetLang,
-    _delimiter = '|SUBTITLE_BREAK|'
-) {
-    if (!Array.isArray(texts) || texts.length === 0) {
-        throw new Error('Invalid texts array for batch translation');
-    }
-    if (texts.length === 1) {
-        const single = await translate(texts[0], sourceLang, targetLang);
-        return [single];
-    }
-
-    try {
-        const { accessToken, projectId, location, model } = await getConfig();
-        if (!accessToken || !projectId || !location || !model) {
-            throw new Error(
-                'Vertex access token, project, location, or model not configured.'
-            );
-        }
-
-        const endpoint = buildVertexEndpoint(
-            projectId,
-            location,
-            model,
-            'generateContent'
-        );
-
-        const combinedText = JSON.stringify(texts);
-        const sourceLanguageName = getLanguageName(sourceLang);
-        const targetLanguageName = getLanguageName(targetLang);
-
-        const instructions = `You are a professional subtitle translator. The user will provide a JSON array of subtitle strings. Translate every item from ${sourceLanguageName} to ${targetLanguageName}.
-
-Important:
-1. Return one valid JSON array containing exactly ${texts.length} strings in the original order.
-2. Return only the JSON array with no explanations or markdown.
-3. Preserve empty items as empty strings at the same indexes.
-4. Keep style concise and natural for subtitles.`;
-
-        const requestBody = {
-            contents: [
-                {
-                    role: 'user',
-                    parts: [{ text: `${instructions}\n\n${combinedText}` }],
-                },
-            ],
-            generationConfig: {
-                maxOutputTokens: Math.min(
-                    4096,
-                    Math.max(500, combinedText.length * 3)
-                ),
-            },
-        };
-
-        const response = await fetchWithTimeout(endpoint, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${accessToken}`,
-            },
-            body: JSON.stringify(requestBody),
-        });
-
-        if (!response.ok) {
-            logger.error('Vertex AI batch translation failed', null, {
-                status: response.status,
-                contentType: response.headers?.get?.('content-type') || null,
-            });
-            throw createVertexHttpError(
-                'Vertex batch translation request failed',
-                response
-            );
-        }
-
-        const data = await response.json();
-        const responseText =
-            data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        if (!responseText) {
-            throw new Error('Empty response from Vertex AI');
-        }
-
-        return parseTranslationArray(responseText, texts.length);
-    } catch (error) {
-        logger.error('Fatal error during Vertex AI batch translation', null, {
-            errorType: error?.name || 'UnknownError',
-            sourceLang,
-            targetLang,
-            textCount: texts.length,
-        });
-        throw new TranslationProviderError(
-            'Vertex AI batch translation failed.',
-            'vertex_gemini',
-            error
-        );
-    }
-}
-
-// Minimal language code to name mapping for better prompts (kept local to avoid extra deps)
-function getLanguageName(langCode) {
-    const map = {
-        auto: 'auto-detected language',
-        en: 'English',
-        es: 'Spanish',
-        fr: 'French',
-        de: 'German',
-        it: 'Italian',
-        pt: 'Portuguese',
-        ru: 'Russian',
-        ja: 'Japanese',
-        ko: 'Korean',
-        zh: 'Chinese',
-        'zh-CN': 'Chinese (Simplified)',
-        'zh-TW': 'Chinese (Traditional)',
-        ar: 'Arabic',
-        hi: 'Hindi',
-        th: 'Thai',
-        vi: 'Vietnamese',
-        nl: 'Dutch',
-        sv: 'Swedish',
-        da: 'Danish',
-        no: 'Norwegian',
-        fi: 'Finnish',
-        pl: 'Polish',
-        cs: 'Czech',
-        hu: 'Hungarian',
-        ro: 'Romanian',
-        bg: 'Bulgarian',
-        hr: 'Croatian',
-        sk: 'Slovak',
-        sl: 'Slovenian',
-        et: 'Estonian',
-        lv: 'Latvian',
-        lt: 'Lithuanian',
-        tr: 'Turkish',
-    };
-    return map[langCode] || langCode;
 }

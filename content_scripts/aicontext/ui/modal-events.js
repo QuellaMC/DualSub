@@ -9,7 +9,59 @@
  */
 
 import { EVENT_TYPES, MODAL_STATES } from '../core/constants.js';
-import { MessageActions } from '../../shared/constants/messageActions.js';
+import { safeDisplayText } from './modal-ui.js';
+
+const MAX_LOG_METADATA_TEXT_LENGTH = 160;
+const MAX_LOG_METADATA_KEY_LENGTH = 80;
+const MAX_LOG_METADATA_KEYS = 20;
+
+function readGuardedProperty(source, key, fallback) {
+    try {
+        const value = source?.[key];
+        return value === undefined ? fallback : value;
+    } catch (_) {
+        return fallback;
+    }
+}
+
+function boundedMetadataText(value, fallback = null) {
+    return typeof value === 'string'
+        ? value.slice(0, MAX_LOG_METADATA_TEXT_LENGTH)
+        : fallback;
+}
+
+function boundedMetadataKeys(value) {
+    if (
+        value === null ||
+        (typeof value !== 'object' && typeof value !== 'function')
+    ) {
+        return [];
+    }
+
+    try {
+        return Object.keys(value)
+            .slice(0, MAX_LOG_METADATA_KEYS)
+            .map((key) => key.slice(0, MAX_LOG_METADATA_KEY_LENGTH));
+    } catch (_) {
+        return [];
+    }
+}
+
+function collectInvalidResultMetadata(detail, result, error) {
+    const errorName = readGuardedProperty(error, 'name', null);
+    const errorMessage = readGuardedProperty(error, 'message', null);
+    return {
+        errorName: boundedMetadataText(errorName),
+        errorLength:
+            typeof error === 'string'
+                ? Math.min(error.length, MAX_LOG_METADATA_TEXT_LENGTH)
+                : typeof errorMessage === 'string'
+                  ? Math.min(errorMessage.length, MAX_LOG_METADATA_TEXT_LENGTH)
+                  : 0,
+        eventDetailKeys: boundedMetadataKeys(detail),
+        resultKeys: boundedMetadataKeys(result),
+    };
+}
 
 /**
  * Modal event handling and user interactions
@@ -19,9 +71,20 @@ export class AIContextModalEvents {
         this.core = core;
         this.ui = ui;
         this.animations = animations; // Reference to animations module
+        Object.defineProperty(this, 'privateAnalysis', {
+            value: core?.config?.privateAnalysis === true,
+            enumerable: false,
+            configurable: false,
+            writable: false,
+        });
         this.boundHandlers = new Map();
         this.lastAnalysisClickTime = 0; // Debouncing protection
         this.analysisClickDebounceMs = 500; // 500ms debounce
+        this._destroyed = false;
+        this._postOpenSync = null;
+        this._dynamicHeightTimeout = null;
+        this._retryTimeout = null;
+        this._ownedTimerScheduleTokens = new Map();
     }
 
     /**
@@ -32,11 +95,140 @@ export class AIContextModalEvents {
         this.animations = animations;
     }
 
+    _clearOwnedTimer(handleKey) {
+        const timerHandle = this[handleKey];
+        this[handleKey] = null;
+        if (timerHandle === null) return;
+
+        try {
+            clearTimeout(timerHandle);
+        } catch (_) {}
+    }
+
+    _scheduleOwnedTimer(handleKey, callback, delay) {
+        if (this._destroyed) return null;
+        const scheduleToken = {};
+        this._ownedTimerScheduleTokens.set(handleKey, scheduleToken);
+        this._clearOwnedTimer(handleKey);
+        if (
+            this._destroyed ||
+            this._ownedTimerScheduleTokens.get(handleKey) !== scheduleToken
+        ) {
+            return null;
+        }
+
+        let timerHandle;
+        const guardedCallback = () => {
+            if (
+                this._destroyed ||
+                this._ownedTimerScheduleTokens.get(handleKey) !==
+                    scheduleToken ||
+                this[handleKey] !== timerHandle
+            ) {
+                return;
+            }
+            this[handleKey] = null;
+            callback();
+        };
+        timerHandle = setTimeout(guardedCallback, delay);
+
+        if (
+            this._destroyed ||
+            this._ownedTimerScheduleTokens.get(handleKey) !== scheduleToken
+        ) {
+            const candidateIsOwnedByNewerSchedule =
+                !this._destroyed &&
+                this._ownedTimerScheduleTokens.get(handleKey) !==
+                    scheduleToken &&
+                this[handleKey] === timerHandle;
+            if (!candidateIsOwnedByNewerSchedule) {
+                try {
+                    clearTimeout(timerHandle);
+                } catch (_) {}
+            }
+            return null;
+        }
+        this[handleKey] = timerHandle;
+        return timerHandle;
+    }
+
+    _releaseBoundEvent(key, expectedRecord = this.boundHandlers.get(key)) {
+        const record = this.boundHandlers.get(key);
+        if (!record || record !== expectedRecord) return false;
+
+        this.boundHandlers.delete(key);
+        record.active = false;
+        if (
+            key === 'word-removal-blocker' &&
+            record.element?._globalClickBlocker === record.handler
+        ) {
+            delete record.element._globalClickBlocker;
+        }
+        try {
+            record.element?.removeEventListener(
+                record.eventType,
+                record.handler,
+                record.options
+            );
+            return true;
+        } catch (_) {
+            return false;
+        }
+    }
+
+    _bindEvent(key, element, eventType, handler, options = undefined) {
+        if (this._destroyed || !element || typeof handler !== 'function') {
+            return null;
+        }
+
+        const previousRecord = this.boundHandlers.get(key);
+        if (previousRecord) {
+            this._releaseBoundEvent(key, previousRecord);
+        }
+        if (this._destroyed || this.boundHandlers.has(key)) return null;
+
+        const record = {
+            element,
+            eventType,
+            handler: null,
+            options,
+            active: true,
+        };
+        const guardedHandler = (...args) => {
+            if (this._destroyed || !record.active) return undefined;
+            return handler(...args);
+        };
+        record.handler = guardedHandler;
+        this.boundHandlers.set(key, record);
+        try {
+            element.addEventListener(eventType, guardedHandler, options);
+        } catch (error) {
+            record.active = false;
+            if (this.boundHandlers.get(key) === record) {
+                this.boundHandlers.delete(key);
+            }
+            throw error;
+        }
+
+        if (this._destroyed || this.boundHandlers.get(key) !== record) {
+            record.active = false;
+            try {
+                element.removeEventListener(eventType, guardedHandler, options);
+            } catch (_) {}
+            if (this.boundHandlers.get(key) === record) {
+                this.boundHandlers.delete(key);
+            }
+            return null;
+        }
+        return guardedHandler;
+    }
+
     /**
      * Setup all event listeners
      * @returns {Promise<void>}
      */
     async setupEventListeners() {
+        if (this._destroyed) return;
         this.core._log('debug', 'Setting up event listeners');
 
         if (!this.core.element) {
@@ -45,18 +237,23 @@ export class AIContextModalEvents {
 
         // Modal control events
         this._setupModalControlEvents();
+        if (this._destroyed) return;
 
         // Selection events
         this._setupSelectionEvents();
+        if (this._destroyed) return;
 
         // Analysis events
         this._setupAnalysisEvents();
+        if (this._destroyed) return;
 
         // External events (word selection from subtitles)
         this._setupExternalEvents();
+        if (this._destroyed) return;
 
         // Keyboard events
         this._setupKeyboardEvents();
+        if (this._destroyed) return;
 
         this.core._log('debug', 'Event listeners setup complete');
     }
@@ -72,43 +269,40 @@ export class AIContextModalEvents {
             this.core.contentElement?.querySelector('#dualsub-modal-close') ||
             document.getElementById('dualsub-modal-close');
         if (closeBtn) {
-            const closeHandler = () => {
-                if (this.modalController) this.modalController.closeModal();
-                else this._handleCloseModal();
-            };
-            closeBtn.addEventListener('click', closeHandler);
-            this.boundHandlers.set('close-click', {
-                element: closeBtn,
-                handler: closeHandler,
-            });
+            const closeHandler = (event) => this._requestModalClose(event);
+            this._bindEvent('close-click', closeBtn, 'click', closeHandler);
         }
 
         // Handle modal overlay clicks - block all clicks and close on overlay click (EXACT legacy behavior)
         const overlayHandler = (e) => this._handleOverlayClick(e);
-        this.core.element.addEventListener('click', overlayHandler);
-        this.boundHandlers.set('overlay-click', {
-            element: this.core.element,
-            handler: overlayHandler,
-        });
+        this._bindEvent(
+            'overlay-click',
+            this.core.element,
+            'click',
+            overlayHandler
+        );
 
         // Additional click blocking for the overlay specifically (EXACT legacy behavior)
         const mousedownHandler = (e) => {
             // Block all mouse events from reaching underlying page
             e.stopPropagation();
         };
-        this.core.element.addEventListener('mousedown', mousedownHandler);
-        this.boundHandlers.set('overlay-mousedown', {
-            element: this.core.element,
-            handler: mousedownHandler,
-        });
+        this._bindEvent(
+            'overlay-mousedown',
+            this.core.element,
+            'mousedown',
+            mousedownHandler
+        );
 
         // Global click blocking when modal is visible (Issue #2)
         const globalClickBlocker = (e) => this._handleGlobalClick(e);
-        document.addEventListener('click', globalClickBlocker, true); // Use capture phase
-        this.boundHandlers.set('global-click', {
-            element: document,
-            handler: globalClickBlocker,
-        });
+        this._bindEvent(
+            'global-click',
+            document,
+            'click',
+            globalClickBlocker,
+            true
+        );
     }
 
     /**
@@ -116,6 +310,7 @@ export class AIContextModalEvents {
      * @private
      */
     _setupSelectionEvents() {
+        if (this.privateAnalysis) return;
         // Delegate word chip events to the selected words container (prefer current content element)
         const wordsContainer =
             this.core.contentElement?.querySelector(
@@ -125,11 +320,12 @@ export class AIContextModalEvents {
             document.getElementById('dualsub-selected-words');
         if (wordsContainer) {
             const wordsHandler = (e) => this._handleWordChipClick(e);
-            wordsContainer.addEventListener('click', wordsHandler);
-            this.boundHandlers.set('words-click', {
-                element: wordsContainer,
-                handler: wordsHandler,
-            });
+            this._bindEvent(
+                'words-click',
+                wordsContainer,
+                'click',
+                wordsHandler
+            );
         }
     }
 
@@ -170,15 +366,17 @@ export class AIContextModalEvents {
             const startHandler = (event) => {
                 event.preventDefault();
                 event.stopPropagation();
-                if (this.modalController)
+                if (this.privateAnalysis && this.modalController) {
+                    return this.modalController.startAnalysisFromDomEvent(
+                        event
+                    );
+                }
+                if (this.modalController) {
                     return this.modalController.startAnalysis();
+                }
                 return this._handleStartAnalysis();
             };
-            startBtn.addEventListener('click', startHandler);
-            this.boundHandlers.set('start-analysis', {
-                element: startBtn,
-                handler: startHandler,
-            });
+            this._bindEvent('start-analysis', startBtn, 'click', startHandler);
             // Ensure localized label is applied when binding
             try {
                 const title = this._getLocalizedMessage(
@@ -197,16 +395,18 @@ export class AIContextModalEvents {
             ) ||
             document.getElementById('dualsub-pause-analysis');
         if (pauseBtn) {
-            const pauseHandler = () => {
-                if (this.modalController)
+            const pauseHandler = (event) => {
+                if (this.privateAnalysis && this.modalController) {
+                    return this.modalController.pauseAnalysisFromDomEvent(
+                        event
+                    );
+                }
+                if (this.modalController) {
                     return this.modalController.pauseAnalysis();
+                }
                 return this._handlePauseAnalysis();
             };
-            pauseBtn.addEventListener('click', pauseHandler);
-            this.boundHandlers.set('pause-analysis', {
-                element: pauseBtn,
-                handler: pauseHandler,
-            });
+            this._bindEvent('pause-analysis', pauseBtn, 'click', pauseHandler);
         }
 
         // New analysis button (check multiple locations)
@@ -215,16 +415,16 @@ export class AIContextModalEvents {
             this.core.contentElement?.querySelector('#dualsub-new-analysis') ||
             document.getElementById('dualsub-new-analysis');
         if (newBtn) {
-            const newHandler = () => {
-                if (this.modalController)
+            const newHandler = (event) => {
+                if (this.privateAnalysis && this.modalController) {
+                    return this.modalController.newAnalysisFromDomEvent(event);
+                }
+                if (this.modalController) {
                     return this.modalController.newAnalysis();
+                }
                 return this._handleNewAnalysis();
             };
-            newBtn.addEventListener('click', newHandler);
-            this.boundHandlers.set('new-analysis', {
-                element: newBtn,
-                handler: newHandler,
-            });
+            this._bindEvent('new-analysis', newBtn, 'click', newHandler);
         }
     }
 
@@ -233,29 +433,26 @@ export class AIContextModalEvents {
      * @private
      */
     _setupExternalEvents() {
+        if (this.privateAnalysis) return;
         // Listen for word selection events from subtitle interactions
         const wordSelectionHandler = (event) =>
             this._handleWordSelectionEvent(event);
-        document.addEventListener(
+        this._bindEvent(
+            'word-selection',
+            document,
             'dualsub-word-selected',
             wordSelectionHandler
         );
-        this.boundHandlers.set('word-selection', {
-            element: document,
-            handler: wordSelectionHandler,
-        });
 
         // Listen for analysis requests
         const analysisRequestHandler = (event) =>
             this._handleAnalysisRequest(event);
-        document.addEventListener(
+        this._bindEvent(
+            'analysis-request',
+            document,
             'dualsub-analyze-selection',
             analysisRequestHandler
         );
-        this.boundHandlers.set('analysis-request', {
-            element: document,
-            handler: analysisRequestHandler,
-        });
 
         // Listen for analysis results and delegate to controller
         const analysisResultHandler = (event) => {
@@ -265,14 +462,12 @@ export class AIContextModalEvents {
                 this._handleAnalysisResult(event);
             }
         };
-        document.addEventListener(
+        this._bindEvent(
+            'analysis-result',
+            document,
             'dualsub-context-result',
             analysisResultHandler
         );
-        this.boundHandlers.set('analysis-result', {
-            element: document,
-            handler: analysisResultHandler,
-        });
     }
 
     /**
@@ -281,11 +476,24 @@ export class AIContextModalEvents {
      */
     _setupKeyboardEvents() {
         const keyHandler = (e) => this._handleKeyPress(e);
-        document.addEventListener('keydown', keyHandler);
-        this.boundHandlers.set('keydown', {
-            element: document,
-            handler: keyHandler,
-        });
+        this._bindEvent('keydown', document, 'keydown', keyHandler);
+    }
+
+    /**
+     * Release terminal-only actions before entering the existing controller or
+     * legacy close path.
+     * @private
+     */
+    _requestModalClose(event = null) {
+        if (this.privateAnalysis && !this.modalController) return false;
+        if (this.privateAnalysis) {
+            return this.modalController.closeModalFromDomEvent(event);
+        }
+        this.ui.clearTerminalRetryActions?.();
+        if (this.modalController) {
+            return this.modalController.closeModal();
+        }
+        return this._handleCloseModal();
     }
 
     /**
@@ -293,6 +501,8 @@ export class AIContextModalEvents {
      * @private
      */
     _handleCloseModal() {
+        if (this.privateAnalysis) return false;
+        this.ui.clearTerminalRetryActions?.();
         this.core._log('info', 'Close modal requested');
 
         // Check if analysis is in progress and stop it before closing (Issue #5)
@@ -332,8 +542,7 @@ export class AIContextModalEvents {
             event.target.classList.contains('dualsub-modal-overlay') ||
             event.target.classList.contains('dualsub-context-modal')
         ) {
-            if (this.modalController) this.modalController.closeModal();
-            else this._handleCloseModal();
+            this._requestModalClose(event);
         }
     }
 
@@ -382,6 +591,7 @@ export class AIContextModalEvents {
      * @private
      */
     _handleWordChipClick(event) {
+        if (this.privateAnalysis) return false;
         const removeBtn = event.target.closest('.dualsub-word-remove');
         if (removeBtn) {
             const word = removeBtn.dataset.word;
@@ -451,8 +661,7 @@ export class AIContextModalEvents {
                     // Ensure visual state is properly cleared before closing
                     this._syncWordSelectionVisuals();
                     // Close via controller for centralized cleanup
-                    if (this.modalController) this.modalController.closeModal();
-                    else this._handleCloseModal();
+                    this._requestModalClose();
                 }
             }
         }
@@ -465,6 +674,7 @@ export class AIContextModalEvents {
     async _handleStartAnalysis() {
         // DELEGATE: prefer controller when available
         if (this.modalController) return this.modalController.startAnalysis();
+        if (this.privateAnalysis) return false;
 
         // Debouncing protection against duplicate clicks
         const currentTime = Date.now();
@@ -487,8 +697,7 @@ export class AIContextModalEvents {
 
         if (this.core.selectedWords.size === 0) {
             // Close the modal when no words selected
-            if (this.modalController) this.modalController.closeModal();
-            else this._handleCloseModal();
+            this._requestModalClose();
             return;
         }
 
@@ -553,11 +762,12 @@ export class AIContextModalEvents {
                     };
                     const newButton = btn.cloneNode(true);
                     btn.parentNode.replaceChild(newButton, btn);
-                    newButton.addEventListener('click', pauseHandler);
-                    this.boundHandlers.set('pause-analysis-active', {
-                        element: newButton,
-                        handler: pauseHandler,
-                    });
+                    this._bindEvent(
+                        'pause-analysis-active',
+                        newButton,
+                        'click',
+                        pauseHandler
+                    );
                 }
             }
         } catch (_) {}
@@ -681,6 +891,7 @@ export class AIContextModalEvents {
     _handlePauseAnalysis() {
         // DELEGATE: prefer controller when available
         if (this.modalController) return this.modalController.pauseAnalysis();
+        if (this.privateAnalysis) return false;
 
         // Request provider cancellation through manager by emitting standardized pause event
         try {
@@ -699,6 +910,7 @@ export class AIContextModalEvents {
      * @private
      */
     _handleNewAnalysis() {
+        if (this.privateAnalysis) return false;
         this.core._log('info', 'New analysis requested');
 
         this.core.clearSelection();
@@ -716,6 +928,7 @@ export class AIContextModalEvents {
      * @private
      */
     _handleWordSelectionEvent(event) {
+        if (this.privateAnalysis) return false;
         this._pauseVideo();
         const { word, action, position, element, subtitleType } = event.detail;
 
@@ -816,25 +1029,6 @@ export class AIContextModalEvents {
             this.core.syncSelectionHighlights();
         } catch (_) {}
 
-        // Send a message to the background to update the side panel state
-        try {
-            chrome.runtime.sendMessage({
-                action: MessageActions.SIDEPANEL_WORD_SELECTED,
-                word,
-                selectionAction: effectiveAction,
-                subtitleType,
-                reason: 'word-click',
-            });
-        } catch (error) {
-            this.core._log(
-                'warn',
-                'Failed to send word selection to background',
-                {
-                    error: error.message,
-                }
-            );
-        }
-
         // If modal isn't visible yet, show it now only when there is an active selection
         if (!this.core.isVisible) {
             if (this.core.selectedWords.size > 0) {
@@ -867,15 +1061,18 @@ export class AIContextModalEvents {
         }
 
         // Ensure UI reflects current selection even if modal opens asynchronously
-        clearTimeout(this._postOpenSync);
-        this._postOpenSync = setTimeout(() => {
-            try {
-                this.ui.updateSelectionDisplay();
+        this._scheduleOwnedTimer(
+            '_postOpenSync',
+            () => {
                 try {
-                    this.core.syncSelectionHighlights();
+                    this.ui.updateSelectionDisplay();
+                    try {
+                        this.core.syncSelectionHighlights();
+                    } catch (_) {}
                 } catch (_) {}
-            } catch (_) {}
-        }, 16);
+            },
+            16
+        );
     }
 
     /**
@@ -907,6 +1104,7 @@ export class AIContextModalEvents {
      * @private
      */
     _handleAnalysisRequest(event) {
+        if (this.privateAnalysis) return false;
         const { selection } = event.detail;
 
         // Only add words from selection if we don't already have a selection
@@ -938,11 +1136,13 @@ export class AIContextModalEvents {
      */
     _handleKeyPress(event) {
         if (!this.core.isVisible) return;
+        if (this.privateAnalysis && !this.modalController) return false;
+        if (this.privateAnalysis && event?.isTrusted !== true) return false;
 
         switch (event.key) {
             case 'Escape':
                 event.preventDefault();
-                this._handleCloseModal();
+                this._requestModalClose(event);
                 break;
             case 'Enter':
                 if (event.ctrlKey || event.metaKey) {
@@ -953,7 +1153,9 @@ export class AIContextModalEvents {
                     ) {
                         // Use the same debouncing mechanism as button clicks
                         if (this.modalController)
-                            this.modalController.startAnalysis();
+                            this.modalController.startAnalysisFromDomEvent(
+                                event
+                            );
                         else this._handleStartAnalysis();
                     }
                 }
@@ -1091,21 +1293,26 @@ export class AIContextModalEvents {
      * @private
      */
     _handleAnalysisResult(event) {
-        const { requestId, result, success, error, shouldRetry } = event.detail;
+        if (this.privateAnalysis) return false;
+        const detail = readGuardedProperty(event, 'detail', null);
+        const requestId = readGuardedProperty(detail, 'requestId', undefined);
+        const result = readGuardedProperty(detail, 'result', undefined);
+        const success = readGuardedProperty(detail, 'success', false);
+        const error = readGuardedProperty(detail, 'error', undefined);
+        const shouldRetry = readGuardedProperty(detail, 'shouldRetry', false);
+        const ingressMetadata = collectInvalidResultMetadata(
+            detail,
+            result,
+            error
+        );
 
         this.core._log('debug', 'Received analysis result event', {
-            requestId,
-            currentRequest: this.core.currentRequest,
-            success,
+            requestId: boundedMetadataText(requestId),
+            currentRequest: boundedMetadataText(this.core.currentRequest),
+            success: Boolean(success),
             hasResult: !!result,
             hasError: !!error,
-            errorName: error?.name,
-            errorLength:
-                typeof error === 'string'
-                    ? error.length
-                    : error?.message?.length || 0,
-            eventDetailKeys: Object.keys(event.detail),
-            resultKeys: result ? Object.keys(result) : null,
+            ...ingressMetadata,
         });
 
         // Ignore results not matching the current request OR if user paused (no currentRequest)
@@ -1114,8 +1321,8 @@ export class AIContextModalEvents {
             requestId !== this.core.currentRequest
         ) {
             this.core._log('debug', 'Ignoring result - request ID mismatch', {
-                receivedId: requestId,
-                expectedId: this.core.currentRequest,
+                receivedId: boundedMetadataText(requestId),
+                expectedId: boundedMetadataText(this.core.currentRequest),
             });
             return; // Not our request
         }
@@ -1145,10 +1352,10 @@ export class AIContextModalEvents {
         }
 
         this.core._log('debug', 'Processing analysis result', {
-            success,
+            success: Boolean(success),
             hasResult: !!result,
             hasError: !!error,
-            errorName: error?.name,
+            errorName: ingressMetadata.errorName,
         });
 
         if (success && result) {
@@ -1246,20 +1453,24 @@ export class AIContextModalEvents {
                     }
                 );
                 // Give layout a moment to settle and then recalc height in case content changed size
-                setTimeout(() => {
-                    if (
-                        this.animations &&
-                        typeof this.animations._applyDynamicModalHeight ===
-                            'function'
-                    ) {
-                        this.animations._applyDynamicModalHeight();
-                    } else {
-                        this.core._log(
-                            'warn',
-                            'Animations module not available for height recalculation'
-                        );
-                    }
-                }, 50);
+                this._scheduleOwnedTimer(
+                    '_dynamicHeightTimeout',
+                    () => {
+                        if (
+                            this.animations &&
+                            typeof this.animations._applyDynamicModalHeight ===
+                                'function'
+                        ) {
+                            this.animations._applyDynamicModalHeight();
+                        } else {
+                            this.core._log(
+                                'warn',
+                                'Animations module not available for height recalculation'
+                            );
+                        }
+                    },
+                    50
+                );
             } else {
                 this.core._log('warn', 'No analysis content to display', {
                     resultKeys:
@@ -1284,7 +1495,8 @@ export class AIContextModalEvents {
             this._handleInvalidAnalysisResponse(
                 requestId,
                 result,
-                error || 'Invalid analysis result'
+                error || 'Invalid analysis result',
+                ingressMetadata
             );
         } else {
             // Display error (EXACT legacy behavior)
@@ -1863,13 +2075,14 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
             'dualsub-start-analysis'
         );
         if (analysisButton) {
-            analysisButton.textContent = this._getLocalizedMessage(
-                'aiContextStartAnalysis'
+            const startLabel = safeDisplayText(
+                this._getLocalizedMessage('aiContextStartAnalysis'),
+                'Start Analysis',
+                200
             );
+            analysisButton.textContent = startLabel;
             analysisButton.className = 'dualsub-analysis-button';
-            analysisButton.title = this._getLocalizedMessage(
-                'aiContextStartAnalysis'
-            );
+            analysisButton.title = startLabel;
             analysisButton.disabled = this.core.selectedWords.size === 0;
             analysisButton.removeAttribute('data-paused-toggle');
 
@@ -1878,23 +2091,21 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
             analysisButton.parentNode.replaceChild(newButton, analysisButton);
 
             // Clean up pause handler from boundHandlers
-            if (this.boundHandlers.has('pause-analysis-active')) {
-                this.boundHandlers.delete('pause-analysis-active');
-            }
+            this._releaseBoundEvent('pause-analysis-active');
 
             const startHandler = (event) => {
                 event.preventDefault();
                 event.stopPropagation();
-                if (this.modalController) this.modalController.startAnalysis();
-                else this._handleStartAnalysis();
+                if (this.privateAnalysis && this.modalController) {
+                    this.modalController.startAnalysisFromDomEvent(event);
+                } else if (this.modalController) {
+                    this.modalController.startAnalysis();
+                } else {
+                    this._handleStartAnalysis();
+                }
             };
-            newButton.addEventListener('click', startHandler);
-
             // Update boundHandlers to point to the new button element
-            this.boundHandlers.set('start-analysis', {
-                element: newButton,
-                handler: startHandler,
-            });
+            this._bindEvent('start-analysis', newButton, 'click', startHandler);
         }
     }
 
@@ -1924,15 +2135,15 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
                 );
             };
 
-            // Store the blocker for later removal
-            selectedWordsElement._globalClickBlocker = globalClickBlocker;
-
-            // Add the blocker in capture phase to intercept before other handlers
-            selectedWordsElement.addEventListener(
+            const boundBlocker = this._bindEvent(
+                'word-removal-blocker',
+                selectedWordsElement,
                 'click',
                 globalClickBlocker,
                 true
             );
+            // Store the blocker for the existing enable path.
+            selectedWordsElement._globalClickBlocker = boundBlocker;
         }
 
         this.core._log(
@@ -1957,12 +2168,7 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
 
             // Remove the global click blocker
             if (selectedWordsElement._globalClickBlocker) {
-                selectedWordsElement.removeEventListener(
-                    'click',
-                    selectedWordsElement._globalClickBlocker,
-                    true
-                );
-                delete selectedWordsElement._globalClickBlocker;
+                this._releaseBoundEvent('word-removal-blocker');
             }
 
             // Re-create the word elements with proper handlers by calling updateSelectionDisplay
@@ -1977,36 +2183,60 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
      * Remove all event listeners
      */
     removeEventListeners() {
-        this.core._log('debug', 'Removing event listeners');
+        if (this._destroyed) return;
+        this._destroyed = true;
+        this._clearOwnedTimer('_postOpenSync');
+        this._clearOwnedTimer('_dynamicHeightTimeout');
+        this._clearOwnedTimer('_retryTimeout');
+        this._ownedTimerScheduleTokens.clear();
+        const core = this.core;
+        const ui = this.ui;
 
-        for (const [key, { element, handler }] of this.boundHandlers) {
+        const records = [...this.boundHandlers.entries()];
+        this.boundHandlers.clear();
+        for (const [key, record] of records) {
+            record.active = false;
+            if (
+                key === 'word-removal-blocker' &&
+                record.element?._globalClickBlocker === record.handler
+            ) {
+                delete record.element._globalClickBlocker;
+            }
+        }
+        this.core = null;
+        this.ui = null;
+        this.animations = null;
+        this.modalController = null;
+
+        try {
+            core?._log?.('debug', 'Removing event listeners');
+        } catch (_) {}
+
+        try {
+            ui?.clearTerminalRetryActions?.();
+        } catch (_) {}
+
+        let removalFailureCount = 0;
+        for (const [, { element, eventType, handler, options }] of records) {
             try {
-                if (element && handler) {
-                    // Handle different event types and capture phases
-                    if (key === 'global-click') {
-                        element.removeEventListener('click', handler, true); // Capture phase
-                    } else if (key.includes('click')) {
-                        element.removeEventListener('click', handler);
-                    } else if (key.includes('keydown')) {
-                        element.removeEventListener('keydown', handler);
-                    } else if (key.includes('mousedown')) {
-                        element.removeEventListener('mousedown', handler);
-                    } else {
-                        // Fallback for other event types
-                        const eventType = key.replace('-', '');
-                        element.removeEventListener(eventType, handler);
-                    }
+                if (element && eventType && handler) {
+                    element.removeEventListener(eventType, handler, options);
                 }
-            } catch (error) {
-                this.core._log('warn', 'Failed to remove event listener', {
-                    key,
-                    error: error.message,
-                });
+            } catch (_) {
+                removalFailureCount += 1;
             }
         }
 
-        this.boundHandlers.clear();
-        this.core._log('debug', 'Event listeners removed');
+        if (removalFailureCount > 0) {
+            try {
+                core?._log?.('warn', 'Some event listeners failed to remove', {
+                    removalFailureCount,
+                });
+            } catch (_) {}
+        }
+        try {
+            core?._log?.('debug', 'Event listeners removed');
+        } catch (_) {}
     }
 
     /**
@@ -2016,17 +2246,22 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
      * @param {string} error - Error description
      * @private
      */
-    _handleInvalidAnalysisResponse(requestId, result, error) {
+    _handleInvalidAnalysisResponse(
+        requestId,
+        result,
+        error,
+        ingressMetadata = null
+    ) {
+        if (this.privateAnalysis) return false;
+        const metadata =
+            ingressMetadata ||
+            collectInvalidResultMetadata(null, result, error);
         this.core._log('warn', 'Invalid analysis response detected', {
-            requestId,
-            errorName: error?.name,
-            errorLength:
-                typeof error === 'string'
-                    ? error.length
-                    : error?.message?.length || 0,
+            requestId: boundedMetadataText(requestId),
+            errorName: metadata.errorName,
+            errorLength: metadata.errorLength,
             resultType: typeof result,
-            resultKeys:
-                result && typeof result === 'object' ? Object.keys(result) : [],
+            resultKeys: metadata.resultKeys,
             retryAttempt: this.core.retryState.currentAttempt,
             canRetry: this.core.canRetryAnalysis(),
         });
@@ -2047,6 +2282,7 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
      * @private
      */
     _initiateRetry(requestId, result, error) {
+        if (this.privateAnalysis) return false;
         // Prepare retry state
         this.core.prepareRetry(
             {
@@ -2069,9 +2305,13 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
             5000
         );
 
-        setTimeout(() => {
-            this._executeRetry();
-        }, retryDelay);
+        this._scheduleOwnedTimer(
+            '_retryTimeout',
+            () => {
+                this._executeRetry();
+            },
+            retryDelay
+        );
     }
 
     /**
@@ -2157,6 +2397,9 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
      * @private
      */
     _executeRetry() {
+        if (this._destroyed || !this.core) return;
+        if (this.privateAnalysis) return false;
+
         const originalData = this.core.retryState.originalRequestData;
         if (!originalData) {
             this.core._log('error', 'No original request data for retry');
@@ -2184,6 +2427,7 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
      * @private
      */
     _dispatchAnalysisRequest(selectedText) {
+        if (this.privateAnalysis) return false;
         const requestId = `ai-context-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
         this.core.currentRequest = requestId;
 
@@ -2215,11 +2459,19 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
      * @private
      */
     _handleFinalRetryFailure(requestId, result, error) {
+        if (this.privateAnalysis) return false;
         this.core.isAnalyzing = false;
-        this.core._resetRetryState();
+
+        const currentAttempt = this.core.retryState.currentAttempt;
+        const maxRetries = this.core.retryState.maxRetries;
 
         // Re-enable word interactions
         this._enableWordInteractions();
+        this.core.contentElement?.classList.remove(
+            'dualsub-processing-sticky',
+            'dualsub-processing-active'
+        );
+        this.core.element?.classList.remove('dualsub-processing-disabled');
 
         // Reset analysis button
         this._resetAnalysisButton();
@@ -2237,43 +2489,27 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
             this._getLocalizedMessage('aiContextMalformedResponse') ||
             'The AI service returned an invalid response format. This may be due to temporary service issues.';
 
-        const errorHtml = `
-            <div class="dualsub-error">
-                <h4>${errorTitle}</h4>
-                <p>${errorMessage}</p>
-                <div class="dualsub-error-details" style="margin: 15px 0;">
-                    <strong>Error:</strong> ${error}<br>
-                    <strong>Attempts:</strong> ${this.core.retryState.currentAttempt}/${this.core.retryState.maxRetries}
-                </div>
-                <div class="dualsub-error-actions" style="margin-top: 15px;">
-                    <button class="dualsub-btn dualsub-btn-primary" onclick="document.dispatchEvent(new CustomEvent('dualsub-retry-analysis'))">
-                        ${retryButtonText}
-                    </button>
-                    <button class="dualsub-btn dualsub-btn-secondary" onclick="this.closest('.dualsub-context-modal').style.display='none'" style="margin-left: 10px;">
-                        ${closeButtonText}
-                    </button>
-                </div>
-                <details open>
-                    <summary>Debug Information</summary>
-                    <pre>Error Type: Invalid Analysis Response
-Retry Attempts: ${this.core.retryState.currentAttempt}
-Last Error: ${error}
-Result Preview: ${JSON.stringify(result, null, 2).substring(0, 500)}</pre>
-                </details>
-            </div>
-        `;
-
-        this._handleAnalysisComplete(errorHtml);
-
-        // Add event listener for manual retry
-        document.addEventListener(
-            'dualsub-retry-analysis',
-            () => {
+        this.ui.showTerminalRetryFailure({
+            title: errorTitle,
+            message: errorMessage,
+            error,
+            result,
+            currentAttempt,
+            maxRetries,
+            retryLabel: retryButtonText,
+            closeLabel: closeButtonText,
+            onRetry: () => {
                 this.core._resetRetryState();
-                if (this.modalController) this.modalController.startAnalysis();
-                else this._handleStartAnalysis();
+                if (this.modalController) {
+                    this.modalController.startAnalysis();
+                } else {
+                    this._handleStartAnalysis();
+                }
             },
-            { once: true }
-        );
+            onClose: () => {
+                this.core._resetRetryState();
+                this._requestModalClose();
+            },
+        });
     }
 }

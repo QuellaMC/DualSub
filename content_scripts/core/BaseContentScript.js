@@ -19,7 +19,7 @@
  * - **Module Loading**: Dynamic loading of required modules with error handling
  * - **Platform Lifecycle**: Standardized initialization and cleanup patterns
  * - **Message Handling**: Extensible Chrome message handling with action-based routing
- * - **Navigation Detection**: Platform-specific navigation detection strategies
+ * - **Navigation Detection**: Shared, lifecycle-owned SPA navigation manager
  * - **Configuration Management**: Real-time configuration updates and validation
  * - **Error Recovery**: Comprehensive error handling with retry mechanisms
  * - **Resource Management**: Automatic cleanup and memory management
@@ -39,8 +39,6 @@
  *     getPlatformClass() { return 'MyPlatformPlatform'; }
  *     getInjectScriptConfig() { return { ... }; }
  *     setupNavigationDetection() { ... }
- *     checkForUrlChange() { ... }
- *     handlePlatformSpecificMessage(request, sendResponse) { ... }
  * }
  *
  * // Initialize the content script
@@ -54,9 +52,7 @@
  * - `getPlatformName()`: Return platform identifier (e.g., 'netflix')
  * - `getPlatformClass()`: Return platform class name (e.g., 'NetflixPlatform')
  * - `getInjectScriptConfig()`: Return injection script configuration
- * - `setupNavigationDetection()`: Setup platform-specific navigation detection
- * - `checkForUrlChange()`: Handle URL changes with platform-specific logic
- * - `handlePlatformSpecificMessage()`: Handle platform-specific Chrome messages
+ * - `setupNavigationDetection()`: Configure the shared navigation manager
  *
  * ## Template Methods
  *
@@ -96,33 +92,14 @@
  *     }
  *
  *     setupNavigationDetection() {
- *         this.intervalManager.set('urlChangeCheck', () => this.checkForUrlChange(), 1000);
- *     }
- *
- *     checkForUrlChange() {
- *         const newUrl = window.location.href;
- *         if (newUrl !== this.currentUrl) {
- *             this.currentUrl = newUrl;
- *             // Handle URL change logic
- *         }
- *     }
- *
- *     handlePlatformSpecificMessage(request, sendResponse) {
- *         sendResponse({ success: true, handled: false });
- *         return false;
+ *         this._setupNavigationManager();
  *     }
  * }
  */
 
 // @ts-check
 
-import {
-    EventBuffer,
-    IntervalManager,
-    injectScript,
-    ModuleLoader,
-    MessageHandlerRegistry,
-} from './utils.js';
+import { EventBuffer, IntervalManager, injectScript } from './utils.js';
 import { COMMON_CONSTANTS } from './constants.js';
 import {
     getOrCreateUiRoot,
@@ -131,6 +108,1348 @@ import {
 } from '../shared/subtitleUtilities.js';
 import { MessageActions } from '../shared/constants/messageActions.js';
 import { NavigationDetectionManager } from '../shared/navigationUtils.js';
+import {
+    AI_CONTEXT_SIGNAL_TYPES,
+    createAIContextChannel,
+} from '../aicontext/core/AIContextChannel.js';
+import { SelectionModel } from '../aicontext/core/state/SelectionModel.js';
+import {
+    isProvenMessagingNonDelivery,
+    sendRuntimeMessageWithRetry,
+} from '../shared/messaging.js';
+import {
+    acceptInjectedEvent,
+    createInjectedScriptUrl,
+    extendAcceptedInjectedEvent,
+    revokeInjectionChannel,
+} from '../shared/injectionChannel.js';
+import {
+    buildSidePanelContentSelectionSnapshotMessage,
+    buildContentControlResponseMessage,
+    buildSidePanelSelectionRemovalCommandResponse,
+    buildSidePanelSelectionRepublishAck,
+    buildSidePanelWordIntentMessage,
+    classifyExtensionMessageSender,
+    MessageSenderRoles,
+    parseSidePanelContentSelectionSnapshotResponse,
+    parseConfigChangedRequestMessage,
+    parseLoggingLevelChangedRequestMessage,
+    readProtocolMessageAction,
+    parseSidePanelPauseVideoRequestMessage,
+    parseSidePanelSelectionRemovalCommandMessage,
+    parseSidePanelSelectionRepublishRequestMessage,
+} from '../shared/protocol/messageProtocol.js';
+import {
+    prepareSettingValue,
+    validateSetting,
+} from '../../config/configSchema.js';
+
+const TRUSTED_REFLECT_APPLY = Reflect.apply;
+const AI_CONTEXT_CONFIGURATION_KEYS = Object.freeze([
+    'aiContextEnabled',
+    'aiContextProvider',
+    'aiContextTypes',
+    'aiContextTimeout',
+    'aiContextRetryAttempts',
+]);
+const AI_CONTEXT_CONFIGURATION_KEY_SET = new Set(AI_CONTEXT_CONFIGURATION_KEYS);
+const MESSAGE_ACTION_SET = new Set(Object.values(MessageActions));
+const AI_CONTEXT_FEATURE_OWNER_STATES = new WeakMap();
+const AI_CONTEXT_LIFECYCLE_STATES = new WeakMap();
+const CONTENT_SELECTION_AUTHORITY_STATES = new WeakMap();
+let nextContentSelectionLifecycleGeneration = 0;
+let nextPrivateAnalysisRequestId = 0;
+
+function buildChromeMessageFailureResponse(request, error) {
+    try {
+        return buildContentControlResponseMessage(request, {
+            success: false,
+            error,
+        });
+    } catch (_) {
+        return { success: false, error };
+    }
+}
+
+function allocateMonotonicPositiveSafeInteger(counterName) {
+    if (counterName === 'selectionLifecycle') {
+        if (
+            nextContentSelectionLifecycleGeneration >= Number.MAX_SAFE_INTEGER
+        ) {
+            return null;
+        }
+        nextContentSelectionLifecycleGeneration += 1;
+        return nextContentSelectionLifecycleGeneration;
+    }
+    if (nextPrivateAnalysisRequestId >= Number.MAX_SAFE_INTEGER) return null;
+    nextPrivateAnalysisRequestId += 1;
+    return nextPrivateAnalysisRequestId;
+}
+
+function initializeContentSelectionAuthority(contentScript) {
+    const lifecycleGeneration =
+        allocateMonotonicPositiveSafeInteger('selectionLifecycle');
+    CONTENT_SELECTION_AUTHORITY_STATES.set(contentScript, {
+        lifecycleGeneration,
+        lastAllocatedSelectionRevision: 0,
+        currentRenderRevision: null,
+        selectionModel: new SelectionModel(),
+        snapshot: null,
+        publicationTail: Promise.resolve(false),
+        publisherCleanup: null,
+        publisherInstallationGeneration: 0,
+        pendingRemoval: null,
+        terminal: lifecycleGeneration === null,
+    });
+}
+
+function getContentSelectionAuthorityState(contentScript) {
+    return CONTENT_SELECTION_AUTHORITY_STATES.get(contentScript) || null;
+}
+
+function allocateContentSelectionRevision(state) {
+    if (
+        !state ||
+        state.terminal ||
+        state.lastAllocatedSelectionRevision >= Number.MAX_SAFE_INTEGER
+    ) {
+        return null;
+    }
+    state.lastAllocatedSelectionRevision += 1;
+    return state.lastAllocatedSelectionRevision;
+}
+
+function createCanonicalContentSelectionSnapshot(
+    state,
+    selectionRevision,
+    renderRevision,
+    reason,
+    entries
+) {
+    try {
+        const message = buildSidePanelContentSelectionSnapshotMessage({
+            lifecycleGeneration: state.lifecycleGeneration,
+            selectionRevision,
+            renderRevision,
+            reason,
+            entries,
+        });
+        return Object.freeze({
+            selectionRevision: message.data.selectionRevision,
+            renderRevision: message.data.renderRevision,
+            reason: message.data.reason,
+            entries: message.data.entries,
+        });
+    } catch (_) {
+        return null;
+    }
+}
+
+function buildContentSelectionWireMessage(state, snapshot) {
+    return buildSidePanelContentSelectionSnapshotMessage({
+        lifecycleGeneration: state.lifecycleGeneration,
+        selectionRevision: snapshot.selectionRevision,
+        renderRevision: snapshot.renderRevision,
+        reason: snapshot.reason,
+        entries: snapshot.entries,
+    });
+}
+
+function queueContentSelectionSnapshot(
+    contentScript,
+    snapshot,
+    canDispatchExtra = () => true
+) {
+    const state = getContentSelectionAuthorityState(contentScript);
+    if (!state || state.terminal || !snapshot) {
+        return Promise.resolve(false);
+    }
+
+    const run = state.publicationTail.then(async () => {
+        if (state.terminal || canDispatchExtra() !== true) return false;
+        let message;
+        try {
+            message = buildContentSelectionWireMessage(state, snapshot);
+        } catch (_) {
+            return false;
+        }
+        try {
+            const response = await sendRuntimeMessageWithRetry(message, {
+                retries: 2,
+                baseDelayMs: 120,
+                pingBeforeRetry: false,
+                canDispatch: () =>
+                    !state.terminal && canDispatchExtra() === true,
+            });
+            return (
+                parseSidePanelContentSelectionSnapshotResponse(response)
+                    ?.status === 'accepted'
+            );
+        } catch (_) {
+            return false;
+        }
+    });
+    state.publicationTail = run.then(
+        () => false,
+        () => false
+    );
+    return run;
+}
+
+function clearContentSelectionHighlights() {
+    try {
+        document
+            .querySelectorAll('.dualsub-interactive-word.dualsub-word-selected')
+            .forEach((element) =>
+                element.classList.remove('dualsub-word-selected')
+            );
+    } catch (_) {}
+}
+
+function publishSelectionSnapshotToOwner(owner, snapshot) {
+    const ownerState = getAIContextFeatureOwnerState(owner);
+    if (!ownerState || ownerState.drained || !snapshot) return 0;
+    try {
+        return ownerState.channel.publish(
+            AI_CONTEXT_SIGNAL_TYPES.SELECTION_SNAPSHOT,
+            snapshot
+        );
+    } catch (_) {
+        return 0;
+    }
+}
+
+function getAIContextFeatureOwnerState(owner) {
+    if (
+        owner === null ||
+        (typeof owner !== 'object' && typeof owner !== 'function')
+    ) {
+        return null;
+    }
+    return AI_CONTEXT_FEATURE_OWNER_STATES.get(owner) || null;
+}
+
+function getAIContextLifecycleState(contentScript) {
+    return AI_CONTEXT_LIFECYCLE_STATES.get(contentScript) || null;
+}
+
+function isAIContextFeatureOwnerStateOwnedBy(ownerState, contentScript) {
+    return Boolean(
+        ownerState &&
+        ownerState.attached &&
+        ownerState.contentScript === contentScript
+    );
+}
+
+function logAIContextLifecycleFailure(contentScript, level, message) {
+    try {
+        contentScript.logWithFallback(level, message);
+    } catch {
+        // Cleanup authority must never depend on telemetry success.
+    }
+}
+
+function hasExactAIContextLanguageKeys(keys) {
+    try {
+        if (!Array.isArray(keys)) return false;
+        // A transparent Proxy is observationally identical to its Array target;
+        // validation still detaches the only data sent across the boundary.
+        if (Object.getPrototypeOf(keys) !== Array.prototype) return false;
+        const ownKeys = Reflect.ownKeys(keys);
+        if (
+            ownKeys.length !== 3 ||
+            ownKeys[0] !== '0' ||
+            ownKeys[1] !== '1' ||
+            ownKeys[2] !== 'length'
+        ) {
+            return false;
+        }
+        const lengthDescriptor = Object.getOwnPropertyDescriptor(
+            keys,
+            'length'
+        );
+        const targetDescriptor = Object.getOwnPropertyDescriptor(keys, '0');
+        const originalDescriptor = Object.getOwnPropertyDescriptor(keys, '1');
+        return Boolean(
+            lengthDescriptor &&
+            Object.hasOwn(lengthDescriptor, 'value') &&
+            lengthDescriptor.value === 2 &&
+            targetDescriptor &&
+            Object.hasOwn(targetDescriptor, 'value') &&
+            targetDescriptor.value === 'targetLanguage' &&
+            originalDescriptor &&
+            Object.hasOwn(originalDescriptor, 'value') &&
+            originalDescriptor.value === 'originalLanguage'
+        );
+    } catch {
+        return false;
+    }
+}
+
+function projectAIContextLanguageRecord(value) {
+    const projection = Object.create(null);
+    if (value === null || typeof value !== 'object') {
+        return Object.freeze(projection);
+    }
+
+    let targetLanguage;
+    let originalLanguage;
+    try {
+        const targetDescriptor = Object.getOwnPropertyDescriptor(
+            value,
+            'targetLanguage'
+        );
+        const originalDescriptor = Object.getOwnPropertyDescriptor(
+            value,
+            'originalLanguage'
+        );
+        if (
+            targetDescriptor &&
+            Object.hasOwn(targetDescriptor, 'value') &&
+            typeof targetDescriptor.value === 'string'
+        ) {
+            targetLanguage = targetDescriptor.value;
+        }
+        if (
+            originalDescriptor &&
+            Object.hasOwn(originalDescriptor, 'value') &&
+            typeof originalDescriptor.value === 'string'
+        ) {
+            originalLanguage = originalDescriptor.value;
+        }
+    } catch {
+        return Object.freeze(projection);
+    }
+
+    if (targetLanguage !== undefined) {
+        Object.defineProperty(projection, 'targetLanguage', {
+            enumerable: true,
+            value: targetLanguage,
+        });
+    }
+    if (originalLanguage !== undefined) {
+        Object.defineProperty(projection, 'originalLanguage', {
+            enumerable: true,
+            value: originalLanguage,
+        });
+    }
+    return Object.freeze(projection);
+}
+
+function projectAIContextUiLanguageChange(value) {
+    if (value === null || typeof value !== 'object') return null;
+    try {
+        const descriptor = Object.getOwnPropertyDescriptor(value, 'uiLanguage');
+        if (
+            !descriptor ||
+            !Object.hasOwn(descriptor, 'value') ||
+            typeof descriptor.value !== 'string'
+        ) {
+            return null;
+        }
+        const projection = Object.create(null);
+        Object.defineProperty(projection, 'uiLanguage', {
+            enumerable: true,
+            value: descriptor.value,
+        });
+        return Object.freeze(projection);
+    } catch {
+        return null;
+    }
+}
+
+function createAIContextUnsubscribe(rawUnsubscribe, revoke = () => {}) {
+    let active = true;
+    return async () => {
+        if (!active) return false;
+        active = false;
+        revoke();
+        if (typeof rawUnsubscribe !== 'function') return false;
+        try {
+            await TRUSTED_REFLECT_APPLY(rawUnsubscribe, undefined, []);
+            return true;
+        } catch {
+            return false;
+        }
+    };
+}
+
+function createAIContextHostFacade(contentScript) {
+    const configServiceFacade = Object.create(null);
+    Object.defineProperties(configServiceFacade, {
+        get: {
+            enumerable: true,
+            value: async (key) => {
+                if (typeof key !== 'string' || key !== 'uiLanguage') {
+                    return undefined;
+                }
+                try {
+                    const configService = contentScript.configService;
+                    const get = configService?.get;
+                    if (typeof get !== 'function') return undefined;
+                    const result = await TRUSTED_REFLECT_APPLY(
+                        get,
+                        configService,
+                        [key]
+                    );
+                    return typeof result === 'string' ? result : undefined;
+                } catch {
+                    return undefined;
+                }
+            },
+        },
+        getMultiple: {
+            enumerable: true,
+            value: async (keys) => {
+                if (!hasExactAIContextLanguageKeys(keys)) return undefined;
+                try {
+                    const configService = contentScript.configService;
+                    const getMultiple = configService?.getMultiple;
+                    if (typeof getMultiple !== 'function') return undefined;
+                    return projectAIContextLanguageRecord(
+                        await TRUSTED_REFLECT_APPLY(
+                            getMultiple,
+                            configService,
+                            [['targetLanguage', 'originalLanguage']]
+                        )
+                    );
+                } catch {
+                    return undefined;
+                }
+            },
+        },
+        onChanged: {
+            enumerable: true,
+            value: (...args) => {
+                if (args.length !== 1 || typeof args[0] !== 'function') {
+                    return createAIContextUnsubscribe();
+                }
+                const [callback] = args;
+                let configService;
+                let onChanged;
+                try {
+                    configService = contentScript.configService;
+                    onChanged = configService?.onChanged;
+                } catch {
+                    return createAIContextUnsubscribe();
+                }
+                if (typeof onChanged !== 'function') {
+                    return createAIContextUnsubscribe();
+                }
+                const projectorState = { active: true };
+                const revokeProjector = () => {
+                    projectorState.active = false;
+                };
+                const projector = async (changes) => {
+                    if (!projectorState.active) return undefined;
+                    const projectedChanges =
+                        projectAIContextUiLanguageChange(changes);
+                    if (!projectedChanges || !projectorState.active) {
+                        return undefined;
+                    }
+                    try {
+                        await TRUSTED_REFLECT_APPLY(callback, undefined, [
+                            projectedChanges,
+                        ]);
+                    } catch {}
+                    return undefined;
+                };
+                let rawUnsubscribe;
+                try {
+                    rawUnsubscribe = TRUSTED_REFLECT_APPLY(
+                        onChanged,
+                        configService,
+                        [projector]
+                    );
+                } catch {
+                    revokeProjector();
+                    return createAIContextUnsubscribe();
+                }
+                if (typeof rawUnsubscribe !== 'function') {
+                    revokeProjector();
+                    return createAIContextUnsubscribe();
+                }
+                return createAIContextUnsubscribe(
+                    rawUnsubscribe,
+                    revokeProjector
+                );
+            },
+        },
+    });
+    Object.freeze(configServiceFacade);
+
+    const activePlatformFacade = Object.create(null);
+    Object.defineProperty(activePlatformFacade, 'pausePlayback', {
+        enumerable: true,
+        value: async () => {
+            try {
+                const activePlatform = contentScript.activePlatform;
+                const pausePlayback = activePlatform?.pausePlayback;
+                if (typeof pausePlayback !== 'function') return false;
+                const result = await TRUSTED_REFLECT_APPLY(
+                    pausePlayback,
+                    activePlatform,
+                    []
+                );
+                return result === true;
+            } catch {
+                return false;
+            }
+        },
+    });
+    Object.freeze(activePlatformFacade);
+
+    const hostFacade = Object.create(null);
+    Object.defineProperties(hostFacade, {
+        contentLogger: {
+            enumerable: true,
+            value: contentScript.contentLogger,
+        },
+        configService: {
+            enumerable: true,
+            get: () => {
+                try {
+                    return contentScript.configService
+                        ? configServiceFacade
+                        : null;
+                } catch {
+                    return null;
+                }
+            },
+        },
+        activePlatform: {
+            enumerable: true,
+            get: () => {
+                try {
+                    return typeof contentScript.activePlatform
+                        ?.pausePlayback === 'function'
+                        ? activePlatformFacade
+                        : null;
+                } catch {
+                    return null;
+                }
+            },
+        },
+    });
+    return Object.freeze(hostFacade);
+}
+
+function createAIContextFeatureOwner(contentScript, generation) {
+    const owner = {};
+    const state = {
+        contentScript,
+        attached: true,
+        generation,
+        channel: createAIContextChannel({
+            lifecycleGeneration: generation,
+        }),
+        cleanups: [],
+        drained: false,
+        taskGroup: null,
+        eventListenersAttached: false,
+        fullscreenListenerAttached: false,
+        interactiveCleanupAttached: false,
+    };
+    AI_CONTEXT_FEATURE_OWNER_STATES.set(owner, state);
+    Object.defineProperties(owner, {
+        channel: {
+            configurable: false,
+            enumerable: false,
+            get: () => state.channel,
+        },
+        generation: {
+            configurable: false,
+            enumerable: false,
+            get: () => state.generation,
+        },
+        drained: {
+            configurable: false,
+            enumerable: false,
+            get: () => state.drained,
+        },
+    });
+    return Object.freeze(owner);
+}
+
+function createAIContextRoleSlotDescriptor(lifecycleState, valueKey) {
+    return {
+        configurable: false,
+        enumerable: true,
+        get: () => lifecycleState[valueKey],
+        set: (value) => {
+            if (lifecycleState.terminal) {
+                if (value === null) {
+                    lifecycleState[valueKey] = null;
+                }
+                return;
+            }
+
+            if (
+                value !== null &&
+                (typeof value === 'object' || typeof value === 'function') &&
+                lifecycleState.candidateCleanupPromises.has(value)
+            ) {
+                return;
+            }
+            lifecycleState[valueKey] = value;
+        },
+    };
+}
+
+function initializeAIContextLifecycle(contentScript) {
+    const initialOwner = createAIContextFeatureOwner(contentScript, 0);
+    const lifecycleState = {
+        generation: 0,
+        activeGeneration: null,
+        owner: initialOwner,
+        activeTaskGroups: new Set(),
+        terminal: false,
+        terminalCleanupPromise: null,
+        candidateCleanupPromises: new WeakMap(),
+        managerCandidateClaims: new WeakMap(),
+        aiContextManagerValue: null,
+        sidePanelIntegrationValue: null,
+    };
+    AI_CONTEXT_LIFECYCLE_STATES.set(contentScript, lifecycleState);
+    Object.defineProperties(contentScript, {
+        aiContextManager: createAIContextRoleSlotDescriptor(
+            lifecycleState,
+            'aiContextManagerValue'
+        ),
+        sidePanelIntegration: createAIContextRoleSlotDescriptor(
+            lifecycleState,
+            'sidePanelIntegrationValue'
+        ),
+        aiContextLifecycleGeneration: {
+            configurable: false,
+            enumerable: true,
+            get: () =>
+                getAIContextLifecycleState(contentScript)?.generation ?? 0,
+        },
+        aiContextActiveGeneration: {
+            configurable: false,
+            enumerable: true,
+            get: () =>
+                getAIContextLifecycleState(contentScript)?.activeGeneration ??
+                null,
+        },
+        aiContextFeatureOwner: {
+            configurable: false,
+            enumerable: true,
+            get: () => getAIContextLifecycleState(contentScript)?.owner ?? null,
+        },
+        isCleanedUp: {
+            configurable: false,
+            enumerable: true,
+            get: () =>
+                getAIContextLifecycleState(contentScript)?.terminal ?? true,
+        },
+    });
+}
+
+function isAIContextFeatureOwnerCurrent(contentScript, owner) {
+    const lifecycleState = getAIContextLifecycleState(contentScript);
+    const ownerState = getAIContextFeatureOwnerState(owner);
+    return (
+        Boolean(lifecycleState) &&
+        !lifecycleState.terminal &&
+        isAIContextFeatureOwnerStateOwnedBy(ownerState, contentScript) &&
+        !ownerState.drained &&
+        lifecycleState.owner === owner &&
+        ownerState.generation === lifecycleState.generation
+    );
+}
+
+function adoptAIContextCleanupResult(result) {
+    // Keep the observer on a fresh, unexposed Promise. Hostile values are
+    // assimilated into wrapper rejection instead of receiving a direct `.then`.
+    return new Promise((resolve) => {
+        resolve(result);
+    });
+}
+
+function createAIContextTaskGroup(contentScript) {
+    const lifecycleState = getAIContextLifecycleState(contentScript);
+    if (!lifecycleState) {
+        throw new Error('AI context lifecycle state is unavailable');
+    }
+
+    let resolveSettlement;
+    const group = {
+        closed: false,
+        pending: 1,
+        promise: new Promise((resolve) => {
+            resolveSettlement = resolve;
+        }),
+        run(taskFactory, failureMessage = 'AI lifecycle cleanup task failed') {
+            if (group.closed) return false;
+            group.pending += 1;
+            let settled = false;
+            const finish = () => {
+                if (settled) return;
+                settled = true;
+                group.pending -= 1;
+                if (group.pending === 0) {
+                    group.closed = true;
+                    lifecycleState.activeTaskGroups.delete(group);
+                    resolveSettlement();
+                }
+            };
+
+            let task;
+            try {
+                task = taskFactory();
+            } catch {
+                logAIContextLifecycleFailure(
+                    contentScript,
+                    'warn',
+                    failureMessage
+                );
+                finish();
+                return true;
+            }
+
+            let adoptedTask;
+            try {
+                adoptedTask = adoptAIContextCleanupResult(task);
+            } catch {
+                logAIContextLifecycleFailure(
+                    contentScript,
+                    'warn',
+                    failureMessage
+                );
+                finish();
+                return true;
+            }
+
+            // Adoption and settlement failures are projected to a fixed
+            // message without exposing hostile Promise or thenable details.
+            void adoptedTask.then(finish, () => {
+                logAIContextLifecycleFailure(
+                    contentScript,
+                    'warn',
+                    failureMessage
+                );
+                finish();
+            });
+            return true;
+        },
+        closeSetup() {
+            if (group.closed) return;
+            group.pending -= 1;
+            if (group.pending === 0) {
+                group.closed = true;
+                lifecycleState.activeTaskGroups.delete(group);
+                resolveSettlement();
+            }
+        },
+    };
+
+    // The setup sentinel keeps the group live while synchronous callbacks may
+    // register nested work. Register before invoking any lifecycle callback.
+    lifecycleState.activeTaskGroups.add(group);
+    return group;
+}
+
+function runAIContextCleanupInNewGroup(contentScript, cleanup) {
+    const group = createAIContextTaskGroup(contentScript);
+    group.run(cleanup, 'AI feature cleanup failed');
+    group.closeSetup();
+    return group;
+}
+
+function registerAIContextFeatureCleanup(contentScript, owner, cleanup) {
+    if (typeof cleanup !== 'function') return;
+
+    // Contract: a registered destructor must return all asynchronous work and
+    // must not recursively await terminal content-script cleanup. Unreturned
+    // fire-and-forget work is intentionally outside lifecycle settlement.
+
+    const ownerState = getAIContextFeatureOwnerState(owner);
+    if (!isAIContextFeatureOwnerStateOwnedBy(ownerState, contentScript)) {
+        runAIContextCleanupInNewGroup(contentScript, cleanup);
+        return;
+    }
+
+    if (ownerState.drained) {
+        if (!ownerState.taskGroup || ownerState.taskGroup.closed) {
+            ownerState.taskGroup = runAIContextCleanupInNewGroup(
+                contentScript,
+                cleanup
+            );
+        } else {
+            ownerState.taskGroup.run(cleanup, 'AI feature cleanup failed');
+        }
+        return;
+    }
+
+    ownerState.cleanups.push(cleanup);
+}
+
+function drainAIContextFeatureOwner(contentScript, owner, taskGroup) {
+    const ownerState = getAIContextFeatureOwnerState(owner);
+    if (!isAIContextFeatureOwnerStateOwnedBy(ownerState, contentScript)) {
+        return;
+    }
+    if (ownerState.drained) return;
+
+    ownerState.drained = true;
+    ownerState.taskGroup = taskGroup;
+
+    try {
+        ownerState.channel.destroy();
+    } catch {
+        logAIContextLifecycleFailure(
+            contentScript,
+            'warn',
+            'AI context channel destruction failed'
+        );
+    }
+
+    const cleanups = ownerState.cleanups.splice(0);
+    for (const cleanup of cleanups) {
+        taskGroup.run(cleanup, 'AI feature cleanup failed');
+    }
+}
+
+function destroyAIContextCandidate(contentScript, candidate, level, message) {
+    const lifecycleState = getAIContextLifecycleState(contentScript);
+    if (
+        !lifecycleState ||
+        !candidate ||
+        (typeof candidate !== 'object' && typeof candidate !== 'function')
+    ) {
+        return Promise.resolve();
+    }
+
+    const existing = lifecycleState.candidateCleanupPromises.get(candidate);
+    if (existing) {
+        detachAIContextCandidate(contentScript, candidate);
+        return existing;
+    }
+
+    let resolveCleanup;
+    const cleanupPromise = new Promise((resolve) => {
+        resolveCleanup = resolve;
+    });
+    // Publish the canonical promise before destroy can synchronously reenter.
+    lifecycleState.candidateCleanupPromises.set(candidate, cleanupPromise);
+    detachAIContextCandidate(contentScript, candidate);
+
+    let result;
+    try {
+        result = candidate.destroy?.();
+    } catch {
+        logAIContextLifecycleFailure(contentScript, level, message);
+        detachAIContextCandidate(contentScript, candidate);
+        resolveCleanup();
+        return cleanupPromise;
+    }
+    detachAIContextCandidate(contentScript, candidate);
+
+    let adoptedResult;
+    try {
+        adoptedResult = adoptAIContextCleanupResult(result);
+    } catch {
+        logAIContextLifecycleFailure(contentScript, level, message);
+        detachAIContextCandidate(contentScript, candidate);
+        resolveCleanup();
+        return cleanupPromise;
+    }
+
+    void adoptedResult.then(
+        () => {
+            detachAIContextCandidate(contentScript, candidate);
+            resolveCleanup();
+        },
+        () => {
+            logAIContextLifecycleFailure(contentScript, level, message);
+            detachAIContextCandidate(contentScript, candidate);
+            resolveCleanup();
+        }
+    );
+    return cleanupPromise;
+}
+
+function destroyAIContextManagerCandidate(contentScript, candidate) {
+    return destroyAIContextCandidate(
+        contentScript,
+        candidate,
+        'error',
+        'AI context manager destruction failed'
+    );
+}
+
+function detachAIContextCandidate(contentScript, candidate) {
+    try {
+        if (contentScript.aiContextManager === candidate) {
+            contentScript.aiContextManager = null;
+        }
+    } catch {
+        // Public role accessors cannot strand canonical cleanup settlement.
+    }
+    try {
+        if (contentScript.sidePanelIntegration === candidate) {
+            contentScript.sidePanelIntegration = null;
+        }
+    } catch {
+        // Keep role failures isolated so the other exact slot can still clear.
+    }
+}
+
+function releaseAIContextManagerCandidate(
+    contentScript,
+    claimToken,
+    candidate
+) {
+    const lifecycleState = getAIContextLifecycleState(contentScript);
+    const isCandidate = Boolean(
+        candidate &&
+        (typeof candidate === 'object' || typeof candidate === 'function')
+    );
+    if (
+        lifecycleState &&
+        isCandidate &&
+        lifecycleState.candidateCleanupPromises.has(candidate)
+    ) {
+        detachAIContextCandidate(contentScript, candidate);
+        // The raw cleanup task is already the canonical waiter. A tracker
+        // reentering from destroy must not join that ancestor promise.
+        return Promise.resolve();
+    }
+    if (lifecycleState && isCandidate) {
+        const existingClaimToken =
+            lifecycleState.managerCandidateClaims.get(candidate);
+        if (existingClaimToken && existingClaimToken !== claimToken) {
+            return Promise.resolve();
+        }
+        if (!existingClaimToken) {
+            // The first tracker to release an unclaimed result owns destruction.
+            // Keep the token as a tombstone so this identity cannot be reused.
+            lifecycleState.managerCandidateClaims.set(candidate, claimToken);
+        }
+    }
+
+    detachAIContextCandidate(contentScript, candidate);
+    return destroyAIContextManagerCandidate(contentScript, candidate);
+}
+
+function destroySidePanelIntegrationCandidate(contentScript, candidate) {
+    return destroyAIContextCandidate(
+        contentScript,
+        candidate,
+        'warn',
+        'Side panel integration destruction failed'
+    );
+}
+
+function destroyAIContextTransitionCandidate(
+    contentScript,
+    candidate,
+    destroyCandidate
+) {
+    const lifecycleState = getAIContextLifecycleState(contentScript);
+    const isCandidate = Boolean(
+        candidate &&
+        (typeof candidate === 'object' || typeof candidate === 'function')
+    );
+    if (
+        lifecycleState &&
+        isCandidate &&
+        lifecycleState.candidateCleanupPromises.has(candidate)
+    ) {
+        detachAIContextCandidate(contentScript, candidate);
+        // The ancestor raw cleanup task already waits for returned reentrant
+        // work. This transition must not adopt that ancestor promise.
+        return Promise.resolve();
+    }
+
+    const cleanupPromise = destroyCandidate(contentScript, candidate);
+    detachAIContextCandidate(contentScript, candidate);
+    return adoptAIContextCleanupResult(cleanupPromise).then(
+        () => {
+            detachAIContextCandidate(contentScript, candidate);
+        },
+        () => {
+            detachAIContextCandidate(contentScript, candidate);
+        }
+    );
+}
+
+function setAIContextInteractionsEnabled(contentScript, enabled) {
+    try {
+        contentScript.subtitleUtils?.setInteractiveSubtitlesEnabled?.(enabled);
+        return true;
+    } catch {
+        logAIContextLifecycleFailure(
+            contentScript,
+            'warn',
+            'AI interaction state update failed'
+        );
+        return false;
+    }
+}
+
+async function settleAllAIContextTaskGroups(contentScript) {
+    const lifecycleState = getAIContextLifecycleState(contentScript);
+    if (!lifecycleState) return;
+
+    // New late-cleanup groups can appear while an earlier snapshot settles.
+    // Terminal teardown therefore repeats until the private registry is empty.
+    while (lifecycleState.activeTaskGroups.size > 0) {
+        await Promise.all(
+            Array.from(
+                lifecycleState.activeTaskGroups,
+                (group) => group.promise
+            )
+        );
+    }
+}
+
+function beginAIContextFeatureLifecycle(
+    contentScript,
+    joinAllTaskGroups = false
+) {
+    const lifecycleState = getAIContextLifecycleState(contentScript);
+    if (!lifecycleState) {
+        throw new Error('AI context lifecycle state is unavailable');
+    }
+    const previousOwner = lifecycleState.owner;
+    const unownedManager = contentScript.aiContextManager;
+    const unownedSidePanel = contentScript.sidePanelIntegration;
+    contentScript.aiContextManager = null;
+    contentScript.sidePanelIntegration = null;
+
+    const generation = lifecycleState.generation + 1;
+    const owner = createAIContextFeatureOwner(contentScript, generation);
+    lifecycleState.generation = generation;
+    lifecycleState.activeGeneration = null;
+    lifecycleState.owner = owner;
+
+    const taskGroup = createAIContextTaskGroup(contentScript);
+
+    // Terminal replacement channels are tombstones: revoke them before any
+    // previous-owner cleanup or UI collaborator can reenter.
+    if (lifecycleState.terminal) {
+        drainAIContextFeatureOwner(contentScript, owner, taskGroup);
+    }
+
+    drainAIContextFeatureOwner(contentScript, previousOwner, taskGroup);
+
+    setAIContextInteractionsEnabled(contentScript, false);
+
+    if (unownedManager) {
+        taskGroup.run(() =>
+            destroyAIContextTransitionCandidate(
+                contentScript,
+                unownedManager,
+                destroyAIContextManagerCandidate
+            )
+        );
+    }
+    if (unownedSidePanel) {
+        taskGroup.run(() =>
+            destroyAIContextTransitionCandidate(
+                contentScript,
+                unownedSidePanel,
+                destroySidePanelIntegrationCandidate
+            )
+        );
+    }
+
+    taskGroup.closeSetup();
+    return {
+        owner,
+        cleanupPromise:
+            lifecycleState.terminal && joinAllTaskGroups
+                ? settleAllAIContextTaskGroups(contentScript)
+                : taskGroup.promise,
+    };
+}
+
+function trackAIContextManagerCandidateFactory(
+    contentScript,
+    owner,
+    candidatePromise
+) {
+    const claimToken = {};
+    const claimCandidate = (candidate) => {
+        const lifecycleState = getAIContextLifecycleState(contentScript);
+        if (
+            !lifecycleState ||
+            !isAIContextFeatureOwnerCurrent(contentScript, owner) ||
+            !candidate ||
+            (typeof candidate !== 'object' &&
+                typeof candidate !== 'function') ||
+            lifecycleState.managerCandidateClaims.has(candidate) ||
+            lifecycleState.candidateCleanupPromises.has(candidate)
+        ) {
+            return false;
+        }
+
+        lifecycleState.managerCandidateClaims.set(candidate, claimToken);
+        return true;
+    };
+    const releaseCandidate = (candidate) =>
+        releaseAIContextManagerCandidate(contentScript, claimToken, candidate);
+
+    if (!isAIContextFeatureOwnerCurrent(contentScript, owner)) {
+        let invalidOwnerCleanupPromise = null;
+        const requestCleanup = () => {
+            if (!invalidOwnerCleanupPromise) {
+                invalidOwnerCleanupPromise = Promise.resolve(
+                    candidatePromise
+                ).then(
+                    (candidate) => releaseCandidate(candidate),
+                    () => undefined
+                );
+            }
+            return invalidOwnerCleanupPromise;
+        };
+        registerAIContextFeatureCleanup(contentScript, owner, requestCleanup);
+        return {
+            claimCandidate,
+            requestCleanup,
+            setSetupPromise: () => {},
+        };
+    }
+
+    let setupPromise = Promise.resolve();
+    let setupDecisionMade = false;
+    let resolveSetupDecision;
+    const setupDecision = new Promise((resolve) => {
+        resolveSetupDecision = resolve;
+    });
+    let cleanupPromise = null;
+
+    const setSetupPromise = (promise) => {
+        if (setupDecisionMade) return;
+        setupDecisionMade = true;
+        setupPromise = Promise.resolve(promise);
+        resolveSetupDecision();
+    };
+
+    const requestCleanup = () => {
+        if (!cleanupPromise) {
+            cleanupPromise = Promise.resolve(candidatePromise).then(
+                async (candidate) => {
+                    await setupDecision;
+                    await setupPromise.catch(() => undefined);
+                    await releaseCandidate(candidate);
+                },
+                () => undefined
+            );
+        }
+        return cleanupPromise;
+    };
+
+    registerAIContextFeatureCleanup(contentScript, owner, requestCleanup);
+    return { claimCandidate, requestCleanup, setSetupPromise };
+}
+
+function registerAIContextInteractiveCleanup(contentScript, owner) {
+    const ownerState = getAIContextFeatureOwnerState(owner);
+    if (
+        !isAIContextFeatureOwnerStateOwnedBy(ownerState, contentScript) ||
+        ownerState.interactiveCleanupAttached
+    ) {
+        return;
+    }
+    ownerState.interactiveCleanupAttached = true;
+    const ownerGeneration = ownerState.generation;
+    registerAIContextFeatureCleanup(contentScript, owner, () => {
+        const lifecycleState = getAIContextLifecycleState(contentScript);
+        if (!lifecycleState) return;
+        if (lifecycleState.activeGeneration === ownerGeneration) {
+            lifecycleState.activeGeneration = null;
+        }
+        if (
+            lifecycleState.owner === owner ||
+            lifecycleState.activeGeneration === null
+        ) {
+            setAIContextInteractionsEnabled(contentScript, false);
+        }
+    });
+}
+
+function preventStaleAIContextInteractionCommit(contentScript, owner) {
+    const lifecycleState = getAIContextLifecycleState(contentScript);
+    if (!lifecycleState) return;
+    const currentOwner = lifecycleState.owner;
+    const currentOwnerState = getAIContextFeatureOwnerState(currentOwner);
+    if (
+        currentOwner !== owner &&
+        lifecycleState.activeGeneration !== currentOwnerState?.generation
+    ) {
+        setAIContextInteractionsEnabled(contentScript, false);
+    }
+}
+
+function trackAIContextInteractiveInitialization(
+    contentScript,
+    owner,
+    initializationPromise
+) {
+    let cleanupPromise = null;
+    const waitForInteractiveCleanup = () => {
+        if (!cleanupPromise) {
+            cleanupPromise = Promise.resolve(initializationPromise)
+                .catch(() => undefined)
+                .then(() => {
+                    preventStaleAIContextInteractionCommit(
+                        contentScript,
+                        owner
+                    );
+                });
+        }
+        return cleanupPromise;
+    };
+
+    registerAIContextFeatureCleanup(
+        contentScript,
+        owner,
+        waitForInteractiveCleanup
+    );
+    return waitForInteractiveCleanup;
+}
+
+function commitAIContextInteractionState(contentScript, owner) {
+    if (!isAIContextFeatureOwnerCurrent(contentScript, owner)) {
+        return false;
+    }
+
+    const lifecycleState = getAIContextLifecycleState(contentScript);
+    const ownerState = getAIContextFeatureOwnerState(owner);
+    if (!lifecycleState || !ownerState) return false;
+    lifecycleState.activeGeneration = ownerState.generation;
+    // Reassert at the final generation commit. A stale interactive initializer
+    // may have completed between the helper's final await and continuation.
+    setAIContextInteractionsEnabled(contentScript, true);
+    return true;
+}
+
+function copyDenseAIContextTypes(value) {
+    try {
+        if (!Array.isArray(value)) return null;
+
+        const ownKeys = Reflect.ownKeys(value);
+        const lengthDescriptor = Object.getOwnPropertyDescriptor(
+            value,
+            'length'
+        );
+        if (
+            !lengthDescriptor ||
+            !Object.hasOwn(lengthDescriptor, 'value') ||
+            lengthDescriptor.enumerable ||
+            lengthDescriptor.configurable ||
+            !Number.isSafeInteger(lengthDescriptor.value) ||
+            lengthDescriptor.value < 0 ||
+            ownKeys.length !== lengthDescriptor.value + 1
+        ) {
+            return null;
+        }
+
+        const copy = [];
+        for (let index = 0; index < lengthDescriptor.value; index += 1) {
+            const descriptor = Object.getOwnPropertyDescriptor(
+                value,
+                String(index)
+            );
+            if (
+                !descriptor ||
+                !Object.hasOwn(descriptor, 'value') ||
+                !descriptor.enumerable ||
+                typeof descriptor.value !== 'string'
+            ) {
+                return null;
+            }
+            copy.push(descriptor.value);
+        }
+        return copy;
+    } catch {
+        return null;
+    }
+}
+
+function readExactOwnDataProjection(result, keys, keySet) {
+    try {
+        if (result === null || typeof result !== 'object') return null;
+
+        const valuesDescriptor = Object.getOwnPropertyDescriptor(
+            result,
+            'values'
+        );
+        if (
+            !valuesDescriptor ||
+            !Object.hasOwn(valuesDescriptor, 'value') ||
+            !valuesDescriptor.enumerable ||
+            valuesDescriptor.value === null ||
+            typeof valuesDescriptor.value !== 'object'
+        ) {
+            return null;
+        }
+
+        const values = valuesDescriptor.value;
+        const valuesPrototype = Object.getPrototypeOf(values);
+        if (valuesPrototype !== null && valuesPrototype !== Object.prototype) {
+            return null;
+        }
+        const ownKeys = Reflect.ownKeys(values);
+        if (
+            ownKeys.length !== keys.length ||
+            ownKeys.some((key) => typeof key !== 'string' || !keySet.has(key))
+        ) {
+            return null;
+        }
+
+        const projection = {};
+        for (const key of keys) {
+            const descriptor = Object.getOwnPropertyDescriptor(values, key);
+            if (
+                !descriptor ||
+                !Object.hasOwn(descriptor, 'value') ||
+                !descriptor.enumerable ||
+                !validateSetting(key, descriptor.value)
+            ) {
+                return null;
+            }
+            projection[key] = descriptor.value;
+        }
+
+        const aiContextTypes = copyDenseAIContextTypes(
+            projection.aiContextTypes
+        );
+        if (aiContextTypes === null) return null;
+
+        if (typeof globalThis.structuredClone !== 'function') return null;
+        // Native structured cloning rejects transparent and revoked Proxy
+        // objects. Clone only the validated values projection so unrelated
+        // outer result properties are never traversed.
+        globalThis.structuredClone(values);
+        return {
+            ...projection,
+            aiContextTypes,
+        };
+    } catch {
+        return null;
+    }
+}
+
+const AI_CONTEXT_LIFECYCLE_CONFIG_KEYS = new Set([
+    'aiContextEnabled',
+    'aiContextProvider',
+    'aiContextTypes',
+    'aiContextTimeout',
+    'aiContextRetryAttempts',
+    'aiContextRateLimit',
+    'aiContextBurstLimit',
+    'aiContextMandatoryDelay',
+    'openaiApiKey',
+    'openaiBaseUrl',
+    'openaiModel',
+    'geminiApiKey',
+    'geminiModel',
+]);
 
 export class BaseContentScript {
     /**
@@ -149,8 +1468,9 @@ export class BaseContentScript {
         this._initializeModuleReferences();
         this._initializeVideoDetectionState();
         this._initializeEventHandling();
-        this._initializeNavigationState();
-        this._initializeManagers();
+        BaseContentScript.prototype._initializeManagers.call(this);
+        initializeAIContextLifecycle(this);
+        initializeContentSelectionAuthority(this);
         this._initializeCleanupTracking();
         this._initializeMessageHandling();
     }
@@ -162,6 +1482,12 @@ export class BaseContentScript {
     _initializeCoreProperties() {
         this.contentLogger = null;
         this.activePlatform = null;
+        this.platformInitializationPromise = null;
+        this.platformInitializationGeneration = 0;
+        this.platformRetryTimeoutId = null;
+        this.platformRetryResolve = null;
+        this.pageEnterTask = null;
+        this.cleanedPlatformInstances = new WeakSet();
         this.currentConfig = {};
     }
 
@@ -182,6 +1508,12 @@ export class BaseContentScript {
     _initializeVideoDetectionState() {
         this.videoDetectionRetries = 0;
         this.videoDetectionIntervalId = null;
+        this.videoDetectionIntervalOwner = null;
+        this.videoDetectionGeneration = 0;
+        this.videoDetectionTask = null;
+        this.visibilityVideoSetupGeneration = 0;
+        this.visibilityVideoSetupTask = null;
+        this.lastVideoSetupScope = null;
         this.maxVideoDetectionRetries =
             COMMON_CONSTANTS.MAX_VIDEO_DETECTION_RETRIES;
         this.videoDetectionInterval = COMMON_CONSTANTS.VIDEO_DETECTION_INTERVAL;
@@ -192,22 +1524,14 @@ export class BaseContentScript {
      * @private
      */
     _initializeEventHandling() {
-        this.eventBuffer = new EventBuffer((msg, data) =>
-            this.logWithFallback('debug', msg, data)
+        this.eventBuffer = new EventBuffer(() =>
+            this.logWithFallback('debug', 'Event buffer diagnostic event.')
         );
         this.eventListenerAttached = false;
+        this.visibilityChangeHandler = null;
         this.platformReady = false;
         this.eventListenerCleanupFunctions = [];
         this.domObserverCleanupFunctions = [];
-    }
-
-    /**
-     * Initializes state related to navigation and URL tracking.
-     * @private
-     */
-    _initializeNavigationState() {
-        this.currentUrl = window.location.href;
-        this.lastKnownPathname = window.location.pathname;
     }
 
     /**
@@ -217,11 +1541,21 @@ export class BaseContentScript {
     _initializeManagers() {
         this.intervalManager = new IntervalManager();
         this.pageObserver = null;
+        this.pageObserverTask = null;
+        this.domObservationSetupGeneration = 0;
+        this.domObservationCancellationDepth = 0;
 
         // Initialize AI Context Manager (will be configured during initializeAIContextFeatures)
         this.aiContextManager = null;
+        this.sidePanelIntegration = null;
+        this.aiContextConfigurationIntentGeneration = 0;
+        // Store key identities only; reconciliation values come from getAll().
+        this.pendingAIContextConfigurationKeys = new Map();
+        this.configurationSubscriptionGeneration = 0;
+        // Monotonic authority for the latest configuration subscription/refresh.
+        this.configurationRefreshGeneration = 0;
 
-        // Navigation detection manager (optional unified path)
+        // Sole owner of navigation detection
         this.navigationDetectionManager = null;
     }
 
@@ -230,22 +1564,22 @@ export class BaseContentScript {
      * @private
      */
     _initializeCleanupTracking() {
-        this.isCleanedUp = false;
         this.passiveVideoObserver = null;
         this.chromeMessageListener = null;
         this.chromeMessageListenerAttached = false;
         this.configUnsubscribe = null;
+        this.pageShowSelectionHandler = null;
+        this.earlyInjectionRetryTask = null;
+        // Event-handler cleanup is terminal for this instance. A fresh content
+        // script instance is required before subscriptions may be accepted.
+        this.configurationSubscriptionsAccepted = true;
 
         try {
             this.abortController = new AbortController();
-        } catch (error) {
+        } catch {
             this.logWithFallback(
                 'warn',
-                'AbortController not available, using fallback cleanup',
-                {
-                    errorName: error?.name,
-                    errorLength: error?.message?.length || 0,
-                }
+                'AbortController not available, using fallback cleanup'
             );
             this.abortController = null;
         }
@@ -258,7 +1592,6 @@ export class BaseContentScript {
     _initializeMessageHandling() {
         this.messageHandlers = new Map();
         this._setupCommonMessageHandlers();
-        this.registerPlatformMessageHandlers();
         this._attachChromeMessageListener();
     }
 
@@ -268,40 +1601,120 @@ export class BaseContentScript {
      * @param {Object} [options]
      */
     _setupNavigationManager(options = {}) {
+        const previousManager = this.navigationDetectionManager;
+        this.navigationDetectionManager = null;
+        previousManager?.cleanup();
+
+        let manager = null;
         try {
             const isPlayerPathFn =
                 typeof this._isPlayerPath === 'function'
                     ? (pathname) => this._isPlayerPath(pathname)
                     : () => false;
 
-            this.navigationDetectionManager = new NavigationDetectionManager(
+            manager = new NavigationDetectionManager(
                 this.getPlatformName ? this.getPlatformName() : 'unknown',
                 {
+                    ...options,
                     isPlayerPage: isPlayerPathFn,
-                    onUrlChange: () => {
-                        // Keep compatibility with existing URL-change flow
+                    onUrlChange: (oldUrl, newUrl) => {
+                        let oldPathname = '';
+                        let newPathname = '';
                         try {
-                            this.checkForUrlChange();
+                            oldPathname = new URL(oldUrl, window.location.href)
+                                .pathname;
+                            newPathname = new URL(newUrl, window.location.href)
+                                .pathname;
                         } catch (_) {}
+
+                        const playerIdentityChanged =
+                            isPlayerPathFn(oldPathname) &&
+                            isPlayerPathFn(newPathname) &&
+                            oldPathname !== newPathname;
+                        if (playerIdentityChanged) {
+                            let preserveAdoptedPlayerState = false;
+                            try {
+                                preserveAdoptedPlayerState =
+                                    this.activePlatform?.hasAdoptedPlayerRoute?.(
+                                        newUrl
+                                    ) === true;
+                            } catch (_) {}
+                            this._invalidatePlayerNavigationState({
+                                preserveAdoptedPlayerState,
+                            });
+                        }
+
+                        try {
+                            this.activePlatform?.onUrlChange?.(newUrl);
+                        } catch (_) {}
+
+                        if (playerIdentityChanged) {
+                            this._rearmVideoElementDetectionForPlayerNavigation?.();
+                        }
                     },
                     onPageTransition: (wasPlayer, isPlayer) => {
                         try {
                             this._handlePageTransition(wasPlayer, isPlayer);
                         } catch (_) {}
                     },
-                    logger: (level, message, data) =>
-                        this.logWithFallback(level, message, data),
-                    ...options,
+                    logger: () =>
+                        this.logWithFallback(
+                            'debug',
+                            'Navigation manager diagnostic event.'
+                        ),
+                    enableNavigationLogging: false,
                 }
             );
-            this.navigationDetectionManager.setupComprehensiveNavigation();
+            manager.setupComprehensiveNavigation();
+            this.navigationDetectionManager = manager;
+            return true;
         } catch (e) {
+            manager?.cleanup();
+            this.navigationDetectionManager = null;
             this.logWithFallback(
-                'warn',
-                'Failed to setup NavigationDetectionManager, falling back to legacy detection',
-                { error: e?.message }
+                'error',
+                'Failed to setup NavigationDetectionManager.'
             );
+            throw e;
         }
+    }
+
+    /**
+     * Revoke state owned by the prior player identity before replacement work.
+     * Query/hash-only URL changes intentionally do not cross this boundary.
+     * A delayed navigation observation preserves playback state that the
+     * adapter proves already belongs to the destination player route.
+     * @private
+     * @param {Object} [options]
+     * @param {boolean} [options.preserveAdoptedPlayerState=false]
+     */
+    _invalidatePlayerNavigationState({
+        preserveAdoptedPlayerState = false,
+    } = {}) {
+        const platform = this.activePlatform;
+
+        if (preserveAdoptedPlayerState) return;
+
+        this._clearCanonicalContentSelection('clear');
+        try {
+            platform?.setVideoIdAndNotify?.(null);
+        } catch (_) {}
+        try {
+            platform?.resetVttRequestState?.();
+        } catch (_) {}
+        try {
+            this.subtitleUtils?.clearSubtitlesDisplayAndQueue?.(
+                platform,
+                true,
+                this.logPrefix
+            );
+        } catch (_) {}
+        try {
+            this.subtitleUtils?.clearSubtitleDOM?.();
+        } catch (_) {}
+        try {
+            this.eventBuffer?.clear();
+        } catch (_) {}
     }
 
     /**
@@ -314,6 +1727,7 @@ export class BaseContentScript {
                 action: MessageActions.SIDEPANEL_GET_STATE,
                 handler: this.handleSidePanelGetState.bind(this),
                 requiresUtilities: false,
+                senderRoles: [MessageSenderRoles.BACKGROUND],
                 description:
                     'Return current word selection state from page highlights.',
             },
@@ -321,27 +1735,15 @@ export class BaseContentScript {
                 action: MessageActions.SIDEPANEL_UPDATE_STATE,
                 handler: this.handleSidePanelUpdateState.bind(this),
                 requiresUtilities: false,
+                senderRoles: [MessageSenderRoles.BACKGROUND],
                 description:
                     'Apply selection updates (clear/apply highlights) from side panel.',
-            },
-            {
-                action: MessageActions.SIDEPANEL_SET_ANALYZING,
-                handler: this.handleSidePanelSetAnalyzing.bind(this),
-                requiresUtilities: false,
-                description:
-                    'Update analyzing state to block/unblock word clicks.',
-            },
-            {
-                action: MessageActions.TOGGLE_SUBTITLES,
-                handler: this.handleToggleSubtitles.bind(this),
-                requiresUtilities: true,
-                description:
-                    'Toggle subtitle display and manage platform initialization.',
             },
             {
                 action: MessageActions.CONFIG_CHANGED,
                 handler: this.handleConfigChanged.bind(this),
                 requiresUtilities: true,
+                senderRoles: [MessageSenderRoles.POPUP],
                 description:
                     'Handle and apply configuration changes immediately.',
             },
@@ -349,6 +1751,7 @@ export class BaseContentScript {
                 action: MessageActions.LOGGING_LEVEL_CHANGED,
                 handler: this.handleLoggingLevelChanged.bind(this),
                 requiresUtilities: false,
+                senderRoles: [MessageSenderRoles.BACKGROUND],
                 description:
                     'Update logging level for the content script logger.',
             },
@@ -356,15 +1759,23 @@ export class BaseContentScript {
                 action: MessageActions.SIDEPANEL_PAUSE_VIDEO,
                 handler: this.handleSidePanelPauseVideo.bind(this),
                 requiresUtilities: false,
+                senderRoles: [MessageSenderRoles.BACKGROUND],
                 description:
                     'Pause the video on the page using multiple strategies.',
             },
         ];
 
         commonHandlers.forEach(
-            ({ action, handler, requiresUtilities, description }) => {
+            ({
+                action,
+                handler,
+                requiresUtilities,
+                senderRoles,
+                description,
+            }) => {
                 this.registerMessageHandler(action, handler, {
                     requiresUtilities,
+                    senderRoles,
                     description,
                 });
             }
@@ -406,29 +1817,45 @@ export class BaseContentScript {
      * @param {Function} handler - The handler function `(request, sendResponse) => boolean`.
      * @param {Object} [options] - Optional configuration.
      * @param {boolean} [options.requiresUtilities=true] - Whether the handler requires utilities to be loaded.
+     * @param {string[]} [options.senderRoles] - Exact extension sender roles allowed to invoke the handler.
      * @param {string} [options.description] - A description of the handler.
      */
     registerMessageHandler(action, handler, options = {}) {
         if (typeof action !== 'string' || !action.trim()) {
             throw new Error('Action must be a non-empty string.');
         }
+        if (!MESSAGE_ACTION_SET.has(action)) {
+            throw new Error('Action must be present in MessageActions.');
+        }
 
         if (typeof handler !== 'function') {
             throw new Error('Handler must be a function.');
         }
 
+        const senderRoles = options.senderRoles;
+        if (
+            !Array.isArray(senderRoles) ||
+            senderRoles.length === 0 ||
+            senderRoles.some(
+                (role) => !Object.values(MessageSenderRoles).includes(role)
+            )
+        ) {
+            throw new Error(
+                'Handler senderRoles must be a non-empty role list.'
+            );
+        }
+
         const handlerConfig = {
             handler,
             requiresUtilities: options.requiresUtilities !== false,
+            senderRoles: Object.freeze([...new Set(senderRoles)]),
             description: options.description || `Handler for ${action}`,
             registeredAt: new Date().toISOString(),
         };
 
         this.messageHandlers.set(action, handlerConfig);
         this.logWithFallback('debug', 'Registered message handler.', {
-            action,
-            requiresUtilities: handlerConfig.requiresUtilities,
-            description: handlerConfig.description,
+            requiresUtilities: Boolean(handlerConfig.requiresUtilities),
         });
     }
 
@@ -440,14 +1867,11 @@ export class BaseContentScript {
     unregisterMessageHandler(action) {
         const removed = this.messageHandlers.delete(action);
         if (removed) {
-            this.logWithFallback('debug', 'Unregistered message handler.', {
-                action,
-            });
+            this.logWithFallback('debug', 'Unregistered message handler.');
         } else {
             this.logWithFallback(
                 'warn',
-                'Attempted to unregister non-existent message handler.',
-                { action }
+                'Attempted to unregister non-existent message handler.'
             );
         }
         return removed;
@@ -462,6 +1886,7 @@ export class BaseContentScript {
             ([action, config]) => ({
                 action,
                 requiresUtilities: config.requiresUtilities,
+                senderRoles: config.senderRoles,
                 description: config.description,
                 registeredAt: config.registeredAt,
             })
@@ -475,18 +1900,6 @@ export class BaseContentScript {
      */
     hasMessageHandler(action) {
         return this.messageHandlers.has(action);
-    }
-
-    /**
-     * Registers platform-specific message handlers.
-     * Subclasses can override this method to register their own handlers.
-     * @protected
-     */
-    registerPlatformMessageHandlers() {
-        this.logWithFallback(
-            'debug',
-            'No platform-specific message handlers to register.'
-        );
     }
 
     /**
@@ -504,25 +1917,6 @@ export class BaseContentScript {
                 data
             );
         }
-    }
-
-    /**
-     * Create a module loader instance for dependency injection
-     * This allows for better testability and separation of concerns
-     * @protected
-     * @returns {ModuleLoader} Module loader instance
-     */
-    createModuleLoader() {
-        return new ModuleLoader(this.logWithFallback.bind(this));
-    }
-
-    /**
-     * Create a message handler registry for extensible message handling
-     * @protected
-     * @returns {MessageHandlerRegistry} Message handler registry
-     */
-    createMessageHandlerRegistry() {
-        return new MessageHandlerRegistry(this.logWithFallback.bind(this));
     }
 
     // ========================================
@@ -565,27 +1959,6 @@ export class BaseContentScript {
     setupNavigationDetection() {
         throw new Error(
             'setupNavigationDetection() must be implemented by subclass'
-        );
-    }
-
-    /**
-     * Check for URL changes with platform-specific logic.
-     * @abstract
-     */
-    checkForUrlChange() {
-        throw new Error('checkForUrlChange() must be implemented by subclass');
-    }
-
-    /**
-     * Handle platform-specific Chrome messages.
-     * @abstract
-     * @param {Object} _request - The Chrome message request.
-     * @param {Function} _sendResponse - The callback to send a response.
-     * @returns {boolean} `true` if the response is sent asynchronously, otherwise `false`.
-     */
-    handlePlatformSpecificMessage(_request, _sendResponse) {
-        throw new Error(
-            'handlePlatformSpecificMessage() must be implemented by subclass'
         );
     }
 
@@ -651,14 +2024,10 @@ export class BaseContentScript {
                 'Content script initialization completed successfully'
             );
             return true;
-        } catch (error) {
+        } catch {
             this.logWithFallback(
                 'error',
-                'An unexpected error occurred during initialization.',
-                {
-                    error: error.message,
-                    stack: error.stack,
-                }
+                'An unexpected error occurred during initialization.'
             );
             return false;
         }
@@ -683,11 +2052,8 @@ export class BaseContentScript {
                 'All required modules loaded successfully.'
             );
             return true;
-        } catch (error) {
-            this.logWithFallback('error', 'Error initializing core modules.', {
-                error: error.message,
-                stack: error.stack,
-            });
+        } catch {
+            this.logWithFallback('error', 'Error initializing core modules.');
             return false;
         }
     }
@@ -698,17 +2064,6 @@ export class BaseContentScript {
      */
     async initializeConfiguration() {
         try {
-            // Check if chrome storage is available before proceeding
-            if (!chrome || !chrome.storage) {
-                this.logWithFallback(
-                    'warn',
-                    'Chrome storage API not available, using default configuration'
-                );
-                this.currentConfig = this._getDefaultConfiguration();
-                this._normalizeConfiguration();
-                return true; // Continue with defaults
-            }
-
             this.logWithFallback(
                 'debug',
                 'Loading configuration from configService...'
@@ -718,24 +2073,19 @@ export class BaseContentScript {
                 this.currentConfig = await this.configService.getAll({
                     includeSensitive: false,
                 });
-            } catch (configError) {
+            } catch {
                 this.logWithFallback(
-                    'warn',
-                    'Failed to load configuration from storage, using defaults',
-                    {
-                        error: configError.message,
-                    }
+                    'error',
+                    'Failed to load configuration from configService.'
                 );
-                this.currentConfig = this._getDefaultConfiguration();
+                return false;
             }
 
             this._normalizeConfiguration();
             this.logWithFallback('info', 'Loaded initial configuration.', {
                 settingCount: Object.keys(this.currentConfig).length,
-                selectedProvider: this.currentConfig.selectedProvider ?? null,
                 subtitlesEnabled: Boolean(this.currentConfig.subtitlesEnabled),
                 aiContextEnabled: Boolean(this.currentConfig.aiContextEnabled),
-                aiContextProvider: this.currentConfig.aiContextProvider ?? null,
             });
 
             this.logWithFallback(
@@ -749,42 +2099,20 @@ export class BaseContentScript {
                     'debug',
                     'Configuration listeners set up successfully.'
                 );
-            } catch (listenerError) {
+            } catch {
                 this.logWithFallback(
                     'warn',
-                    'Failed to setup configuration listeners, continuing without live updates',
-                    {
-                        error: listenerError.message,
-                    }
+                    'Failed to setup configuration listeners, continuing without live updates'
                 );
             }
 
             return true;
-        } catch (error) {
-            this.logWithFallback('error', 'Error initializing configuration.', {
-                error: error.message,
-                stack: error.stack,
-            });
-
-            // Try to continue with default configuration
-            try {
-                this.currentConfig = this._getDefaultConfiguration();
-                this._normalizeConfiguration();
-                this.logWithFallback(
-                    'warn',
-                    'Continuing with default configuration after initialization error'
-                );
-                return true;
-            } catch (fallbackError) {
-                this.logWithFallback(
-                    'error',
-                    'Failed to initialize even with default configuration',
-                    {
-                        error: fallbackError.message,
-                    }
-                );
-                return false;
-            }
+        } catch {
+            this.logWithFallback(
+                'error',
+                'Unexpected configuration initialization failure.'
+            );
+            return false;
         }
     }
 
@@ -814,15 +2142,8 @@ export class BaseContentScript {
                 );
             }
             return true;
-        } catch (error) {
-            this.logWithFallback(
-                'error',
-                'Error initializing event handling.',
-                {
-                    error: error.message,
-                    stack: error.stack,
-                }
-            );
+        } catch {
+            this.logWithFallback('error', 'Error initializing event handling.');
             return false;
         }
     }
@@ -855,11 +2176,8 @@ export class BaseContentScript {
             );
 
             return true;
-        } catch (error) {
-            this.logWithFallback('error', 'Error initializing observers.', {
-                error: error.message,
-                stack: error.stack,
-            });
+        } catch {
+            this.logWithFallback('error', 'Error initializing observers.');
             return false;
         }
     }
@@ -869,6 +2187,8 @@ export class BaseContentScript {
      * @returns {Promise<boolean>} `true` on success, `false` on failure.
      */
     async initializeAIContextFeatures() {
+        const { owner, cleanupPromise } = beginAIContextFeatureLifecycle(this);
+
         try {
             this.logWithFallback(
                 'debug',
@@ -886,13 +2206,16 @@ export class BaseContentScript {
 
             // Get AI context configuration
             const aiContextConfig = await this._getAIContextConfiguration();
+            if (!isAIContextFeatureOwnerCurrent(this, owner)) {
+                return false;
+            }
 
-            if (!aiContextConfig.aiContextEnabled) {
+            if (aiContextConfig?.aiContextEnabled !== true) {
                 this.logWithFallback(
                     'debug',
                     'AI context disabled in configuration; leaving subtitles non-interactive'
                 );
-                await this._disableAIContextInteractions();
+                await this._disableAIContextInteractions(owner, cleanupPromise);
                 return true; // Not an error, just disabled
             }
 
@@ -900,117 +2223,205 @@ export class BaseContentScript {
                 'info',
                 'Initializing AI context features with new modular system...',
                 {
-                    platform: this.getPlatformName(),
-                    configKeys: Object.keys(aiContextConfig || {}),
+                    configKeyCount: Object.keys(aiContextConfig || {}).length,
                 }
             );
 
             // Initialize side panel integration early so it captures events before modal listeners
-            await this._initializeSidePanelIntegration();
-
-            // Initialize new modular AI Context Manager
-            if (!this.aiContextManager) {
-                try {
-                    // Import the new AIContextManager
-                    const { AIContextManager } = await import(
-                        chrome.runtime.getURL(
-                            'content_scripts/aicontext/core/AIContextManager.js'
-                        )
-                    );
-
-                    // Create and initialize the manager
-                    this.aiContextManager = new AIContextManager(
-                        this.getPlatformName(),
-                        {
-                            modal: {
-                                maxWidth: '900px',
-                                maxHeight: '80vh',
-                                contentScript: this, // Pass content script reference for config access
-                            },
-                            provider: {
-                                timeout:
-                                    aiContextConfig.aiContextTimeout || 30000,
-                                maxRetries: 3,
-                            },
-                            textHandler: {
-                                maxSelectionLength:
-                                    aiContextConfig.maxSelectionLength || 500,
-                                minSelectionLength: 2,
-                                smartBoundaries: true,
-                                autoAnalysis: true, // Enable automatic text selection analysis
-                            },
-                            contentScript: this, // Also pass at top level for manager access
-                        }
-                    );
-
-                    const initResult = await this.aiContextManager.initialize();
-
-                    if (initResult) {
-                        // Enable features based on configuration
-                        // Always enable interactive subtitles
-                        await this.aiContextManager.enableFeature(
-                            'interactiveSubtitles'
-                        );
-
-                        await this.aiContextManager.enableFeature(
-                            'contextModal'
-                        );
-                        await this.aiContextManager.enableFeature(
-                            'textSelection'
-                        );
-
-                        this.logWithFallback(
-                            'info',
-                            'New AI Context Manager initialized successfully',
-                            {
-                                platform: this.getPlatformName(),
-                                features:
-                                    this.aiContextManager.getEnabledFeatures(),
-                            }
-                        );
-
-                        // Setup AI Context event listeners
-                        this._setupAIContextEventListeners();
-
-                        // Setup fullscreen handling for UI root container
-                        this._setupFullscreenHandling();
-
-                        // CRITICAL: Initialize interactive features in legacy SubtitleUtils
-                        // This ensures subtitle formatting works with the new AI Context system
-                        await this._initializeSubtitleUtilsInteractiveFeatures(
-                            aiContextConfig
-                        );
-                    } else {
-                        throw new Error(
-                            'AIContextManager initialization failed'
-                        );
-                    }
-                } catch (error) {
-                    this.logWithFallback(
-                        'error',
-                        'Failed to initialize new AI Context Manager, falling back to legacy system',
-                        error
-                    );
-
-                    // Fallback to legacy system
-                    return await this._initializeLegacyAIContextFeatures(
-                        aiContextConfig
-                    );
-                }
+            await this._initializeSidePanelIntegration(owner);
+            if (!isAIContextFeatureOwnerCurrent(this, owner)) {
+                return false;
             }
 
-            return true;
-        } catch (error) {
+            // Initialize new modular AI Context Manager
+            return await this._initializeModularAIContextFeatures(
+                aiContextConfig,
+                owner
+            );
+        } catch {
+            if (!isAIContextFeatureOwnerCurrent(this, owner)) {
+                preventStaleAIContextInteractionCommit(this, owner);
+                return false;
+            }
             this.logWithFallback(
                 'error',
-                'Error initializing AI context features.',
-                {
-                    error: error.message,
-                    stack: error.stack,
-                    platform: this.getPlatformName(),
-                }
+                'Error initializing AI context features.'
             );
             return false;
+        }
+    }
+
+    /** @private */
+    async _createAIContextManager(
+        aiContextConfig,
+        owner = this.aiContextFeatureOwner
+    ) {
+        if (!isAIContextFeatureOwnerCurrent(this, owner)) {
+            throw new Error('Invalid AI context feature owner');
+        }
+        const { AIContextManager } = await import(
+            chrome.runtime.getURL(
+                'content_scripts/aicontext/core/AIContextManager.js'
+            )
+        );
+        const ownerState = getAIContextFeatureOwnerState(owner);
+        if (!isAIContextFeatureOwnerCurrent(this, owner) || !ownerState) {
+            throw new Error('Invalid AI context feature owner');
+        }
+
+        const contentScriptFacade = createAIContextHostFacade(this);
+        const analysisAuthority = this._createPrivateAnalysisAuthority(owner);
+        if (!analysisAuthority) {
+            throw new Error('Private analysis authority unavailable');
+        }
+        return new AIContextManager(this.getPlatformName(), {
+            modal: {
+                maxWidth: '900px',
+                maxHeight: '80vh',
+            },
+            provider: {
+                timeout: aiContextConfig.aiContextTimeout || 30000,
+                maxRetries: 3,
+            },
+            textHandler: {
+                maxSelectionLength: aiContextConfig.maxSelectionLength || 500,
+                minSelectionLength: 2,
+                smartBoundaries: true,
+                autoAnalysis: true,
+            },
+            contentScript: contentScriptFacade,
+            analysisAuthority,
+        });
+    }
+
+    /** @private */
+    async _initializeAIContextManagerCandidate(candidate, owner) {
+        const initResult = await candidate.initialize();
+        if (!initResult || !isAIContextFeatureOwnerCurrent(this, owner)) {
+            return false;
+        }
+
+        await candidate.enableFeature('interactiveSubtitles');
+        if (!isAIContextFeatureOwnerCurrent(this, owner)) return false;
+        await candidate.enableFeature('contextModal');
+        if (!isAIContextFeatureOwnerCurrent(this, owner)) return false;
+        return isAIContextFeatureOwnerCurrent(this, owner);
+    }
+
+    /** @private */
+    async _initializeModularAIContextFeatures(aiContextConfig, owner) {
+        if (!isAIContextFeatureOwnerCurrent(this, owner)) return false;
+
+        let candidate = null;
+        let candidateOwnership = null;
+        let requestCandidateCleanup = null;
+
+        try {
+            const candidatePromise = Promise.resolve().then(() =>
+                this._createAIContextManager(aiContextConfig, owner)
+            );
+            candidateOwnership = trackAIContextManagerCandidateFactory(
+                this,
+                owner,
+                candidatePromise
+            );
+            requestCandidateCleanup = candidateOwnership.requestCleanup;
+            candidate = await candidatePromise;
+            if (!isAIContextFeatureOwnerCurrent(this, owner)) {
+                candidateOwnership.setSetupPromise(Promise.resolve(false));
+                await requestCandidateCleanup();
+                return false;
+            }
+            if (
+                candidate &&
+                (typeof candidate === 'object' ||
+                    typeof candidate === 'function') &&
+                !candidateOwnership.claimCandidate(candidate)
+            ) {
+                candidateOwnership.setSetupPromise(Promise.resolve(false));
+                await requestCandidateCleanup();
+                return false;
+            }
+
+            const setupPromise = this._initializeAIContextManagerCandidate(
+                candidate,
+                owner
+            );
+            candidateOwnership.setSetupPromise(setupPromise);
+            const initialized = await setupPromise;
+
+            if (!isAIContextFeatureOwnerCurrent(this, owner)) {
+                await requestCandidateCleanup();
+                return false;
+            }
+            if (!initialized) {
+                throw new Error('AIContextManager initialization failed');
+            }
+
+            registerAIContextInteractiveCleanup(this, owner);
+            const interactiveInitialization =
+                this._initializeSubtitleUtilsInteractiveFeatures(
+                    aiContextConfig,
+                    owner
+                );
+            trackAIContextInteractiveInitialization(
+                this,
+                owner,
+                interactiveInitialization
+            );
+            await interactiveInitialization;
+            if (!isAIContextFeatureOwnerCurrent(this, owner)) {
+                await requestCandidateCleanup();
+                preventStaleAIContextInteractionCommit(this, owner);
+                return false;
+            }
+
+            // Commit only after every asynchronous setup step still belongs to
+            // this generation. Cleanup closures capture the candidate itself.
+            this.aiContextManager = candidate;
+            commitAIContextInteractionState(this, owner);
+            this._setupAIContextEventListeners(owner);
+            this._setupFullscreenHandling(owner);
+
+            this.logWithFallback(
+                'info',
+                'New AI Context Manager initialized successfully'
+            );
+            return true;
+        } catch {
+            candidateOwnership?.setSetupPromise(Promise.resolve(false));
+            if (requestCandidateCleanup) {
+                await requestCandidateCleanup();
+            } else if (candidate) {
+                await destroyAIContextManagerCandidate(this, candidate);
+            }
+
+            if (!isAIContextFeatureOwnerCurrent(this, owner)) {
+                preventStaleAIContextInteractionCommit(this, owner);
+                return false;
+            }
+
+            this.logWithFallback(
+                'error',
+                'Failed to initialize new AI Context Manager, falling back to legacy system'
+            );
+
+            const legacyInitialization =
+                this._initializeLegacyAIContextFeatures(aiContextConfig, owner);
+            trackAIContextInteractiveInitialization(
+                this,
+                owner,
+                legacyInitialization
+            );
+            const initialized = await legacyInitialization;
+            if (!isAIContextFeatureOwnerCurrent(this, owner)) {
+                preventStaleAIContextInteractionCommit(this, owner);
+                return false;
+            }
+            if (initialized) {
+                commitAIContextInteractionState(this, owner);
+            }
+            return initialized;
         }
     }
 
@@ -1020,14 +2431,14 @@ export class BaseContentScript {
      * @returns {Promise<boolean>} Success status
      * @private
      */
-    async _initializeLegacyAIContextFeatures(aiContextConfig) {
+    async _initializeLegacyAIContextFeatures(
+        aiContextConfig,
+        owner = this.aiContextFeatureOwner
+    ) {
         try {
             this.logWithFallback(
                 'info',
-                'Initializing legacy AI context features...',
-                {
-                    platform: this.getPlatformName(),
-                }
+                'Initializing legacy AI context features...'
             );
 
             // Initialize interactive subtitle features if subtitle utilities are available
@@ -1035,36 +2446,52 @@ export class BaseContentScript {
                 this.subtitleUtils &&
                 this.subtitleUtils.initializeInteractiveSubtitleFeatures
             ) {
-                await this.subtitleUtils.initializeInteractiveSubtitleFeatures({
-                    enabled: true, // Always enable interactive subtitles
-                    contextTypes: aiContextConfig.aiContextTypes || [
-                        'cultural',
-                        'historical',
-                        'linguistic',
-                    ],
-                    interactionMethods: {
-                        click: true, // Always enable click interactions
-                        selection: true, // Always enable selection interactions
-                    },
-                    textSelection: {
-                        maxLength: 100,
-                        smartBoundaries: true,
-                    },
-                    loadingStates: {
-                        timeout: aiContextConfig.aiContextTimeout || 30000,
-                        retryAttempts:
-                            aiContextConfig.aiContextRetryAttempts || 3,
-                    },
-                    platform: this.getPlatformName(),
-                });
+                const ownerState = getAIContextFeatureOwnerState(owner);
+                if (
+                    !ownerState ||
+                    !isAIContextFeatureOwnerCurrent(this, owner)
+                ) {
+                    return false;
+                }
+                registerAIContextInteractiveCleanup(this, owner);
+                const bindingCleanup =
+                    await this.subtitleUtils.initializeInteractiveSubtitleFeatures(
+                        {
+                            enabled: true, // Always enable interactive subtitles
+                            contextTypes: aiContextConfig.aiContextTypes || [
+                                'cultural',
+                                'historical',
+                                'linguistic',
+                            ],
+                            interactionMethods: {
+                                click: true, // Always enable click interactions
+                                selection: true, // Always enable selection interactions
+                            },
+                            textSelection: {
+                                maxLength: 100,
+                                smartBoundaries: true,
+                            },
+                            loadingStates: {
+                                timeout:
+                                    aiContextConfig.aiContextTimeout || 30000,
+                                retryAttempts:
+                                    aiContextConfig.aiContextRetryAttempts || 3,
+                            },
+                            platform: this.getPlatformName(),
+                        },
+                        () => isAIContextFeatureOwnerCurrent(this, owner),
+                        (intent) => this._handlePrivateWordIntent(owner, intent)
+                    );
+                registerAIContextFeatureCleanup(this, owner, bindingCleanup);
+                if (!isAIContextFeatureOwnerCurrent(this, owner)) {
+                    preventStaleAIContextInteractionCommit(this, owner);
+                    return false;
+                }
                 this.subtitleUtils.setInteractiveSubtitlesEnabled?.(true);
 
                 this.logWithFallback(
                     'info',
-                    'Legacy AI context features initialized successfully',
-                    {
-                        platform: this.getPlatformName(),
-                    }
+                    'Legacy AI context features initialized successfully'
                 );
                 return true;
             } else {
@@ -1074,15 +2501,10 @@ export class BaseContentScript {
                 );
                 return false;
             }
-        } catch (error) {
+        } catch {
             this.logWithFallback(
                 'error',
-                'Failed to initialize legacy AI context features',
-                {
-                    error: error.message,
-                    stack: error.stack,
-                    platform: this.getPlatformName(),
-                }
+                'Failed to initialize legacy AI context features'
             );
             return false;
         }
@@ -1092,7 +2514,7 @@ export class BaseContentScript {
      * Setup AI Context event listeners for cross-component communication
      * @private
      */
-    _setupAIContextEventListeners() {
+    _setupAIContextEventListeners(owner = this.aiContextFeatureOwner) {
         if (!this.aiContextManager) {
             this.logWithFallback(
                 'debug',
@@ -1100,21 +2522,32 @@ export class BaseContentScript {
             );
             return;
         }
+        const ownerState = getAIContextFeatureOwnerState(owner);
+        if (
+            !ownerState ||
+            !isAIContextFeatureOwnerCurrent(this, owner) ||
+            ownerState.eventListenersAttached
+        ) {
+            return;
+        }
 
+        const registeredListeners = [];
         try {
+            ownerState.eventListenersAttached = true;
             // Listen for system events from AI Context Manager
-            const systemInitializedListener = (event) => {
-                this.logWithFallback('info', 'AI Context system initialized', {
-                    platform: event.detail.platform,
-                    features: event.detail.features,
-                    initTime: event.detail.initTime,
-                });
+            const systemInitializedListener = () => {
+                if (!isAIContextFeatureOwnerCurrent(this, owner)) return;
+                this.logWithFallback('info', 'AI Context system initialized');
             };
             document.addEventListener(
                 'dualsub-system-initialized',
                 systemInitializedListener
             );
-            this.eventListenerCleanupFunctions.push(() => {
+            registeredListeners.push([
+                'dualsub-system-initialized',
+                systemInitializedListener,
+            ]);
+            registerAIContextFeatureCleanup(this, owner, () => {
                 document.removeEventListener(
                     'dualsub-system-initialized',
                     systemInitializedListener
@@ -1122,17 +2555,19 @@ export class BaseContentScript {
             });
 
             // Listen for analysis completion events
-            const analysisCompleteListener = (event) => {
-                this.logWithFallback('debug', 'AI Context analysis completed', {
-                    requestId: event.detail.requestId,
-                    success: event.detail.success,
-                });
+            const analysisCompleteListener = () => {
+                if (!isAIContextFeatureOwnerCurrent(this, owner)) return;
+                this.logWithFallback('debug', 'AI Context analysis completed');
             };
             document.addEventListener(
                 'dualsub-analysis-complete',
                 analysisCompleteListener
             );
-            this.eventListenerCleanupFunctions.push(() => {
+            registeredListeners.push([
+                'dualsub-analysis-complete',
+                analysisCompleteListener,
+            ]);
+            registerAIContextFeatureCleanup(this, owner, () => {
                 document.removeEventListener(
                     'dualsub-analysis-complete',
                     analysisCompleteListener
@@ -1140,17 +2575,19 @@ export class BaseContentScript {
             });
 
             // Listen for analysis error events
-            const analysisErrorListener = (event) => {
-                this.logWithFallback('warn', 'AI Context analysis error', {
-                    requestId: event.detail.requestId,
-                    error: event.detail.error,
-                });
+            const analysisErrorListener = () => {
+                if (!isAIContextFeatureOwnerCurrent(this, owner)) return;
+                this.logWithFallback('warn', 'AI Context analysis error');
             };
             document.addEventListener(
                 'dualsub-analysis-error',
                 analysisErrorListener
             );
-            this.eventListenerCleanupFunctions.push(() => {
+            registeredListeners.push([
+                'dualsub-analysis-error',
+                analysisErrorListener,
+            ]);
+            registerAIContextFeatureCleanup(this, owner, () => {
                 document.removeEventListener(
                     'dualsub-analysis-error',
                     analysisErrorListener
@@ -1158,21 +2595,19 @@ export class BaseContentScript {
             });
 
             // Listen for modal state changes
-            const modalStateListener = (event) => {
-                this.logWithFallback(
-                    'debug',
-                    'AI Context modal state changed',
-                    {
-                        state: event.detail.state,
-                        visible: event.detail.visible,
-                    }
-                );
+            const modalStateListener = () => {
+                if (!isAIContextFeatureOwnerCurrent(this, owner)) return;
+                this.logWithFallback('debug', 'AI Context modal state changed');
             };
             document.addEventListener(
                 'dualsub-modal-state-change',
                 modalStateListener
             );
-            this.eventListenerCleanupFunctions.push(() => {
+            registeredListeners.push([
+                'dualsub-modal-state-change',
+                modalStateListener,
+            ]);
+            registerAIContextFeatureCleanup(this, owner, () => {
                 document.removeEventListener(
                     'dualsub-modal-state-change',
                     modalStateListener
@@ -1181,19 +2616,16 @@ export class BaseContentScript {
 
             this.logWithFallback(
                 'debug',
-                'AI Context event listeners setup complete',
-                {
-                    platform: this.getPlatformName(),
-                }
+                'AI Context event listeners setup complete'
             );
-        } catch (error) {
+        } catch {
+            for (const [eventName, listener] of registeredListeners) {
+                document.removeEventListener(eventName, listener);
+            }
+            ownerState.eventListenersAttached = false;
             this.logWithFallback(
                 'error',
-                'Failed to setup AI Context event listeners',
-                {
-                    error: error.message,
-                    stack: error.stack,
-                }
+                'Failed to setup AI Context event listeners'
             );
         }
     }
@@ -1202,8 +2634,19 @@ export class BaseContentScript {
      * Setup fullscreen transition handling for UI root container
      * @private
      */
-    _setupFullscreenHandling() {
+    _setupFullscreenHandling(owner = this.aiContextFeatureOwner) {
+        const ownerState = getAIContextFeatureOwnerState(owner);
+        if (
+            !ownerState ||
+            !isAIContextFeatureOwnerCurrent(this, owner) ||
+            ownerState.fullscreenListenerAttached
+        ) {
+            return;
+        }
+        ownerState.fullscreenListenerAttached = true;
+
         const handleFullscreenChange = () => {
+            if (!isAIContextFeatureOwnerCurrent(this, owner)) return;
             const uiRoot = getOrCreateUiRoot();
             const fullscreenElement = document.fullscreenElement;
 
@@ -1211,10 +2654,7 @@ export class BaseContentScript {
                 // Entering fullscreen: move UI root into fullscreen element
                 this.logWithFallback(
                     'info',
-                    'Entering fullscreen, moving UI root.',
-                    {
-                        fullscreenElement: fullscreenElement.tagName,
-                    }
+                    'Entering fullscreen, moving UI root.'
                 );
                 fullscreenElement.appendChild(uiRoot);
             } else {
@@ -1232,113 +2672,125 @@ export class BaseContentScript {
             }
         };
 
-        document.addEventListener('fullscreenchange', handleFullscreenChange);
-
-        // Add cleanup for fullscreen listener
-        this.eventListenerCleanupFunctions.push(() => {
-            document.removeEventListener(
+        try {
+            document.addEventListener(
                 'fullscreenchange',
                 handleFullscreenChange
             );
-        });
 
-        this.logWithFallback('debug', 'Fullscreen handling setup complete');
+            // Add cleanup for fullscreen listener
+            registerAIContextFeatureCleanup(this, owner, () => {
+                document.removeEventListener(
+                    'fullscreenchange',
+                    handleFullscreenChange
+                );
+            });
+
+            this.logWithFallback('debug', 'Fullscreen handling setup complete');
+        } catch {
+            ownerState.fullscreenListenerAttached = false;
+            this.logWithFallback(
+                'error',
+                'Failed to setup fullscreen handling'
+            );
+        }
     }
 
     /**
      * Initialize side panel integration for routing word selections
-     * @returns {Promise<void>}
+     * @param {Object} [owner] - Captured AI feature owner.
+     * @returns {Promise<Object|null>} Current integration, or null when stale/unavailable.
      * @private
      */
-    async _initializeSidePanelIntegration() {
+    async _initializeSidePanelIntegration(owner = this.aiContextFeatureOwner) {
+        let integration = null;
         try {
+            if (!isAIContextFeatureOwnerCurrent(this, owner)) {
+                return null;
+            }
+
             this.logWithFallback(
                 'info',
-                'Initializing side panel integration...',
-                {
-                    platform: this.getPlatformName(),
-                }
+                'Initializing side panel integration...'
             );
 
             // Cleanup existing integration to prevent duplicate listeners
-            if (this.sidePanelIntegration) {
-                try {
-                    this.sidePanelIntegration.destroy();
-                } catch (e) {
-                    this.logWithFallback(
-                        'warn',
-                        'Error destroying previous side panel integration',
-                        { error: e.message }
-                    );
+            const previousIntegration = this.sidePanelIntegration;
+            if (previousIntegration) {
+                this.sidePanelIntegration = null;
+                await destroySidePanelIntegrationCandidate(
+                    this,
+                    previousIntegration
+                );
+                if (!isAIContextFeatureOwnerCurrent(this, owner)) {
+                    return null;
                 }
             }
 
             // Create inline side panel integration
-            this.sidePanelIntegration = {
+            const isCurrent = () => isAIContextFeatureOwnerCurrent(this, owner);
+            const logSidePanelCallbackFailure = () =>
+                logAIContextLifecycleFailure(
+                    this,
+                    'error',
+                    'Side panel integration callback failed.'
+                );
+            const sendSidePanelMessageSafely = (
+                send,
+                message,
+                onExplicitFailure
+            ) => {
+                try {
+                    const result = send(message);
+                    void Promise.resolve(result).then(
+                        (response) => {
+                            if (
+                                parseSidePanelContentSelectionSnapshotResponse(
+                                    response
+                                )?.status === 'rejected'
+                            ) {
+                                onExplicitFailure?.();
+                            }
+                        },
+                        (error) => {
+                            if (isProvenMessagingNonDelivery(error)) {
+                                onExplicitFailure?.();
+                                return;
+                            }
+                            logSidePanelCallbackFailure();
+                        }
+                    );
+                } catch (error) {
+                    if (isProvenMessagingNonDelivery(error)) {
+                        onExplicitFailure?.();
+                        return;
+                    }
+                    logSidePanelCallbackFailure();
+                }
+            };
+            integration = {
                 initialized: false,
+                destroyed: false,
                 useSidePanel: false,
                 autoOpen: true,
                 autoPauseVideo: true,
-                isAnalyzing: false,
-                boundHandler: null,
-                boundSubtitleChangeHandler: null,
                 storageChangeHandler: null,
-                selectedWords: new Set(),
 
                 async initialize() {
-                    if (this.initialized) return;
+                    if (this.initialized) return true;
+                    if (this.destroyed || !isCurrent()) return false;
 
-                    this.selectedWords = new Set();
-
-                    // Prepare logger bridge and messaging wrapper
-                    this._log = (level, message, data) => {
-                        try {
-                            window.__dualsub_log?.(level, message, data);
-                        } catch (_) {}
-                        try {
-                            // Use outer class logger if available
-                            (typeof level === 'string' ? level : 'debug') &&
-                                typeof message === 'string';
-                        } catch (_) {}
-                    };
-
-                    // Load robust messaging wrapper (reuses existing implementation)
-                    try {
-                        const { sendRuntimeMessageWithRetry } = await import(
-                            chrome.runtime.getURL(
-                                'content_scripts/shared/messaging.js'
-                            )
-                        );
-                        this._send = (msg) =>
-                            sendRuntimeMessageWithRetry(msg, {
-                                retries: 3,
-                                baseDelayMs: 120,
-                            });
-                    } catch (_) {
-                        this._send = (msg) => chrome.runtime.sendMessage(msg);
-                    }
+                    this._send = (message) =>
+                        sendRuntimeMessageWithRetry(message, {
+                            retries: 2,
+                            baseDelayMs: 120,
+                            canDispatch: () => !this.destroyed && isCurrent(),
+                        });
+                    if (this.destroyed || !isCurrent()) return false;
 
                     // Check settings
                     await this.checkSettings();
-
-                    // Create bound handler
-                    this.boundHandler = this.handleWordSelection.bind(this);
-
-                    // Listen for word selection events in capture phase (register early)
-                    document.addEventListener(
-                        'dualsub-word-selected',
-                        this.boundHandler,
-                        { capture: true }
-                    );
-
-                    // Listen for subtitle content changes to clear stale selections
-                    this.boundSubtitleChangeHandler =
-                        this.handleSubtitleContentChange.bind(this);
-                    document.addEventListener(
-                        'dualsub-subtitle-content-changing',
-                        this.boundSubtitleChangeHandler,
-                        { capture: false }
-                    );
+                    if (this.destroyed || !isCurrent()) return false;
 
                     // Listen for storage changes
                     this.storageChangeHandler = (changes, area) => {
@@ -1357,6 +2809,7 @@ export class BaseContentScript {
                     );
 
                     this.initialized = true;
+                    return true;
                 },
 
                 async checkSettings() {
@@ -1378,175 +2831,36 @@ export class BaseContentScript {
                     }
                 },
 
-                async handleWordSelection(event) {
-                    if (!this.useSidePanel) {
-                        return;
+                notifyWordIntent(onExplicitFailure) {
+                    if (
+                        this.destroyed ||
+                        !this.initialized ||
+                        !this.useSidePanel ||
+                        !isCurrent()
+                    ) {
+                        return false;
                     }
-
-                    // Block word clicks during analysis
-                    if (this.isAnalyzing) {
-                        event.stopPropagation();
-                        event.stopImmediatePropagation();
-                        return;
-                    }
-
-                    const {
-                        word,
-                        element,
-                        sourceLanguage,
-                        targetLanguage,
-                        context,
-                        subtitleType,
-                    } = event.detail || {};
-                    if (!word) return;
-
-                    try {
-                        // Prevent modal from handling
-                        event.stopPropagation();
-                        event.stopImmediatePropagation();
-
-                        // 1) Toggle visual selection immediately to reflect DOM state
-                        if (element) {
-                            if (
-                                element.classList.contains(
-                                    'dualsub-word-selected'
-                                )
-                            ) {
-                                element.classList.remove(
-                                    'dualsub-word-selected'
-                                );
-                            } else {
-                                element.classList.add('dualsub-word-selected');
-                            }
-                        }
-
-                        const normalizedWord = (word || '').trim();
-                        if (normalizedWord) {
-                            const isSelectedNow =
-                                element?.classList?.contains(
-                                    'dualsub-word-selected'
-                                ) ?? !this.selectedWords.has(normalizedWord);
-                            if (isSelectedNow) {
-                                this.selectedWords.add(normalizedWord);
-                            } else {
-                                this.selectedWords.delete(normalizedWord);
-                            }
-                        }
-
-                        // 2) After DOM reflects the new selection, compute canonical ordered list and broadcast
-                        try {
-                            // Use DOM order to preserve sentence structure (user preference)
-                            // This ensures "what are you listening" stays in order even if "what" is deselected and re-selected
-                            const selectedElements = document.querySelectorAll(
-                                '.dualsub-interactive-word.dualsub-word-selected'
-                            );
-                            const words = Array.from(selectedElements)
-                                .map((el) => el.getAttribute('data-word'))
-                                .filter((w) => w)
-                                .map((w) => w.trim());
-
-                            // Update internal Set to match DOM state (for consistency)
-                            this.selectedWords = new Set(words);
-
-                            void this._send({
-                                action: MessageActions.SIDEPANEL_SELECTION_SYNC,
-                                selectedWords: words,
-                                timestamp: Date.now(),
-                                reason: 'word-click',
-                            });
-                        } catch (_) {}
-
-                        // 3) Send the single word-click command. The background applies
-                        // current auto-open/auto-pause settings before opening the panel.
-                        void this._send({
-                            action: MessageActions.SIDEPANEL_WORD_SELECTED,
-                            word,
-                            sourceLanguage,
-                            targetLanguage,
-                            context,
-                            subtitleType,
-                            options: {
-                                autoOpen: this.autoOpen,
-                                pauseVideo: this.autoPauseVideo,
-                            },
-                            selectionAction: 'toggle',
-                            reason: 'word-click',
-                            timestamp: Date.now(),
-                        });
-                    } catch (error) {
-                        console.error(
-                            '[SidePanelIntegration] Error forwarding word selection:',
-                            error
-                        );
-                    }
-                },
-
-                handleSubtitleContentChange(event) {
-                    if (!this.useSidePanel) {
-                        return;
-                    }
-
-                    const detail = event?.detail || {};
-                    if (detail.type && detail.type !== 'original') {
-                        return;
-                    }
-
-                    if (!this.selectedWords || this.selectedWords.size === 0) {
-                        return;
-                    }
-
-                    try {
-                        document
-                            .querySelectorAll(
-                                '.dualsub-interactive-word.dualsub-word-selected'
-                            )
-                            .forEach((el) =>
-                                el.classList.remove('dualsub-word-selected')
-                            );
-                    } catch (_) {}
-
-                    this.selectedWords.clear();
-
-                    try {
-                        void this._send({
-                            action: MessageActions.SIDEPANEL_SELECTION_SYNC,
-                            selectedWords: [],
-                            timestamp: Date.now(),
-                            reason: 'subtitle-change',
-                        });
-                    } catch (error) {
-                        console.error(
-                            '[SidePanelIntegration] Error syncing cleared selection:',
-                            error
-                        );
-                    }
+                    sendSidePanelMessageSafely(
+                        this._send,
+                        buildSidePanelWordIntentMessage({
+                            autoOpen: this.autoOpen,
+                            pauseVideo: this.autoPauseVideo,
+                        }),
+                        onExplicitFailure
+                    );
+                    return true;
                 },
 
                 destroy() {
-                    if (!this.initialized) return;
-                    if (this.boundHandler) {
-                        document.removeEventListener(
-                            'dualsub-word-selected',
-                            this.boundHandler,
-                            { capture: true }
-                        );
-                        this.boundHandler = null;
-                    }
-                    if (this.boundSubtitleChangeHandler) {
-                        document.removeEventListener(
-                            'dualsub-subtitle-content-changing',
-                            this.boundSubtitleChangeHandler,
-                            { capture: false }
-                        );
-                        this.boundSubtitleChangeHandler = null;
-                    }
+                    if (this.destroyed) return;
+                    this.destroyed = true;
                     if (this.storageChangeHandler) {
                         chrome.storage.onChanged.removeListener(
                             this.storageChangeHandler
                         );
                         this.storageChangeHandler = null;
                     }
-                    this.selectedWords = new Set();
+                    this._send = null;
                     this.initialized = false;
                 },
 
@@ -1555,46 +2869,65 @@ export class BaseContentScript {
                 },
             };
 
-            await this.sidePanelIntegration.initialize();
-
-            // Add cleanup function
-            this.eventListenerCleanupFunctions.push(() => {
-                if (this.sidePanelIntegration) {
-                    this.sidePanelIntegration.destroy();
+            const cleanupIntegration = () => {
+                if (this.sidePanelIntegration === integration) {
+                    this.sidePanelIntegration = null;
                 }
-            });
+                return destroySidePanelIntegrationCandidate(this, integration);
+            };
+            registerAIContextFeatureCleanup(this, owner, cleanupIntegration);
+
+            const initialized = await integration.initialize();
+            if (!initialized || !isAIContextFeatureOwnerCurrent(this, owner)) {
+                await cleanupIntegration();
+                return null;
+            }
+
+            this.sidePanelIntegration = integration;
 
             this.logWithFallback(
                 'info',
                 'Side panel integration initialized successfully',
                 {
-                    platform: this.getPlatformName(),
-                    enabled: this.sidePanelIntegration.isSidePanelEnabled(),
+                    enabled: Boolean(integration.isSidePanelEnabled()),
                 }
             );
+            return integration;
         } catch (error) {
+            if (integration) {
+                await destroySidePanelIntegrationCandidate(this, integration);
+            }
+            if (!isAIContextFeatureOwnerCurrent(this, owner)) {
+                return null;
+            }
             this.logWithFallback(
                 'error',
-                'Failed to initialize side panel integration',
-                {
-                    error: error.message,
-                    stack: error.stack,
-                    platform: this.getPlatformName(),
-                }
+                'Failed to initialize side panel integration'
             );
             // Non-critical error, continue without side panel integration
+            return null;
         }
     }
 
     /** Disable click affordances and routing when AI context is disabled. */
-    async _disableAIContextInteractions() {
-        try {
-            this.subtitleUtils?.setInteractiveSubtitlesEnabled?.(false);
+    async _disableAIContextInteractions(
+        owner = null,
+        cleanupPromise = Promise.resolve()
+    ) {
+        if (!owner) {
+            const transition = beginAIContextFeatureLifecycle(this);
+            owner = transition.owner;
+            cleanupPromise = transition.cleanupPromise;
+        }
 
-            if (this.sidePanelIntegration) {
-                this.sidePanelIntegration.destroy();
-                this.sidePanelIntegration = null;
+        try {
+            if (!isAIContextFeatureOwnerCurrent(this, owner)) {
+                await cleanupPromise;
+                return;
             }
+
+            this._clearCanonicalContentSelection('clear', owner);
+            setAIContextInteractionsEnabled(this, false);
 
             document
                 .querySelectorAll(
@@ -1607,15 +2940,12 @@ export class BaseContentScript {
                     element.removeAttribute('role');
                     element.removeAttribute('tabindex');
                 });
+
+            await cleanupPromise;
         } catch (error) {
             this.logWithFallback(
                 'error',
-                'Failed to disable AI context interactions',
-                {
-                    error: error.message,
-                    stack: error.stack,
-                    platform: this.getPlatformName(),
-                }
+                'Failed to disable AI context interactions'
             );
         }
     }
@@ -1627,14 +2957,16 @@ export class BaseContentScript {
      * @returns {Promise<void>}
      * @private
      */
-    async _initializeSubtitleUtilsInteractiveFeatures(aiContextConfig) {
+    async _initializeSubtitleUtilsInteractiveFeatures(
+        aiContextConfig,
+        owner = this.aiContextFeatureOwner
+    ) {
         try {
             this.logWithFallback(
                 'info',
                 'Initializing SubtitleUtils interactive features for new AI Context system',
                 {
-                    platform: this.getPlatformName(),
-                    hasSubtitleUtils: !!this.subtitleUtils,
+                    hasSubtitleUtils: Boolean(this.subtitleUtils),
                 }
             );
 
@@ -1643,36 +2975,52 @@ export class BaseContentScript {
                 this.subtitleUtils &&
                 this.subtitleUtils.initializeInteractiveSubtitleFeatures
             ) {
-                await this.subtitleUtils.initializeInteractiveSubtitleFeatures({
-                    enabled: true, // Always enable interactive subtitles
-                    contextTypes: aiContextConfig.aiContextTypes || [
-                        'cultural',
-                        'historical',
-                        'linguistic',
-                    ],
-                    interactionMethods: {
-                        click: true, // Always enable click interactions
-                        selection: true, // Always enable selection interactions
-                    },
-                    textSelection: {
-                        maxLength: 100,
-                        smartBoundaries: true,
-                    },
-                    loadingStates: {
-                        timeout: aiContextConfig.aiContextTimeout || 30000,
-                        retryAttempts:
-                            aiContextConfig.aiContextRetryAttempts || 3,
-                    },
-                    platform: this.getPlatformName(),
-                });
+                const ownerState = getAIContextFeatureOwnerState(owner);
+                if (
+                    !ownerState ||
+                    !isAIContextFeatureOwnerCurrent(this, owner)
+                ) {
+                    return;
+                }
+                registerAIContextInteractiveCleanup(this, owner);
+                const bindingCleanup =
+                    await this.subtitleUtils.initializeInteractiveSubtitleFeatures(
+                        {
+                            enabled: true, // Always enable interactive subtitles
+                            contextTypes: aiContextConfig.aiContextTypes || [
+                                'cultural',
+                                'historical',
+                                'linguistic',
+                            ],
+                            interactionMethods: {
+                                click: true, // Always enable click interactions
+                                selection: true, // Always enable selection interactions
+                            },
+                            textSelection: {
+                                maxLength: 100,
+                                smartBoundaries: true,
+                            },
+                            loadingStates: {
+                                timeout:
+                                    aiContextConfig.aiContextTimeout || 30000,
+                                retryAttempts:
+                                    aiContextConfig.aiContextRetryAttempts || 3,
+                            },
+                            platform: this.getPlatformName(),
+                        },
+                        () => isAIContextFeatureOwnerCurrent(this, owner),
+                        (intent) => this._handlePrivateWordIntent(owner, intent)
+                    );
+                registerAIContextFeatureCleanup(this, owner, bindingCleanup);
+                if (!isAIContextFeatureOwnerCurrent(this, owner)) {
+                    preventStaleAIContextInteractionCommit(this, owner);
+                    return;
+                }
                 this.subtitleUtils.setInteractiveSubtitlesEnabled?.(true);
 
                 this.logWithFallback(
                     'info',
-                    'SubtitleUtils interactive features initialized successfully',
-                    {
-                        platform: this.getPlatformName(),
-                    }
+                    'SubtitleUtils interactive features initialized successfully'
                 );
             } else {
                 this.logWithFallback(
@@ -1689,86 +3037,33 @@ export class BaseContentScript {
         } catch (error) {
             this.logWithFallback(
                 'error',
-                'Failed to initialize SubtitleUtils interactive features',
-                {
-                    error: error.message,
-                    stack: error.stack,
-                    platform: this.getPlatformName(),
-                }
+                'Failed to initialize SubtitleUtils interactive features'
             );
         }
     }
 
     /**
      * Get AI context configuration from config service
-     * @returns {Promise<Object>} AI context configuration
+     * @returns {Promise<Object|null>} Verified AI context configuration
      * @private
      */
     async _getAIContextConfiguration() {
         try {
-            const configKeys = [
-                'aiContextEnabled',
-                'aiContextProvider',
-                'aiContextTypes',
-                'aiContextTimeout',
-                'aiContextRetryAttempts',
-            ];
-
-            const config = {};
-            for (const key of configKeys) {
-                try {
-                    config[key] = await this.configService.get(key);
-                } catch (error) {
-                    this.logWithFallback(
-                        'debug',
-                        `Failed to get config key: ${key}`,
-                        {
-                            error: error.message,
-                        }
-                    );
-                    // Use default values for missing keys
-                    config[key] = this._getDefaultAIContextValue(key);
-                }
-            }
-
-            return config;
-        } catch (error) {
-            this.logWithFallback(
-                'error',
-                'Failed to get AI context configuration',
-                {
-                    error: error.message,
-                }
+            const result = await this.configService.readMultipleResultStrict(
+                AI_CONTEXT_CONFIGURATION_KEYS
             );
-            return this._getDefaultAIContextConfiguration();
+            return readExactOwnDataProjection(
+                result,
+                AI_CONTEXT_CONFIGURATION_KEYS,
+                AI_CONTEXT_CONFIGURATION_KEY_SET
+            );
+        } catch {
+            this.logWithFallback(
+                'warn',
+                'AI context configuration could not be verified.'
+            );
+            return null;
         }
-    }
-
-    /**
-     * Get default AI context configuration
-     * @returns {Object} Default configuration
-     * @private
-     */
-    _getDefaultAIContextConfiguration() {
-        return {
-            aiContextEnabled: true, // Enable by default for development/testing
-            aiContextProvider: 'openai',
-            aiContextTypes: ['cultural', 'historical', 'linguistic'],
-            aiContextTimeout: 30000,
-            aiContextRetryAttempts: 3,
-            aiContextUserConsent: true,
-        };
-    }
-
-    /**
-     * Get default value for AI context configuration key
-     * @param {string} key - Configuration key
-     * @returns {*} Default value
-     * @private
-     */
-    _getDefaultAIContextValue(key) {
-        const defaults = this._getDefaultAIContextConfiguration();
-        return defaults[key];
     }
 
     /**
@@ -1783,10 +3078,7 @@ export class BaseContentScript {
             await this._loadAndInitializeLogger();
             return true;
         } catch (error) {
-            this.logWithFallback('error', 'Error loading modules.', {
-                error: error.message,
-                stack: error.stack,
-            });
+            this.logWithFallback('error', 'Error loading modules.');
             return false;
         }
     }
@@ -1795,24 +3087,385 @@ export class BaseContentScript {
      * Loads the subtitle utilities module.
      * @private
      */
+    _installContentSelectionPublisher(utilsModule) {
+        const state = getContentSelectionAuthorityState(this);
+        const beginPublisher = utilsModule?.beginSubtitleStatePublisher;
+        if (!state || state.terminal || typeof beginPublisher !== 'function') {
+            return false;
+        }
+
+        state.publisherInstallationGeneration += 1;
+        const installationGeneration = state.publisherInstallationGeneration;
+        const previousCleanup = state.publisherCleanup;
+        state.publisherCleanup = null;
+        try {
+            previousCleanup?.();
+        } catch (_) {}
+
+        let cleanup;
+        try {
+            cleanup = beginPublisher({
+                publishSubtitleState: (payload) => {
+                    if (
+                        state.terminal ||
+                        state.publisherInstallationGeneration !==
+                            installationGeneration
+                    ) {
+                        return;
+                    }
+                    this._handlePrivateSubtitleState(payload);
+                },
+            });
+        } catch (_) {
+            return false;
+        }
+        if (typeof cleanup !== 'function') return false;
+
+        let cleaned = false;
+        state.publisherCleanup = () => {
+            if (cleaned) return;
+            cleaned = true;
+            if (
+                state.publisherInstallationGeneration === installationGeneration
+            ) {
+                state.publisherCleanup = null;
+            }
+            try {
+                cleanup();
+            } catch (_) {}
+        };
+        return true;
+    }
+
+    _handlePrivateSubtitleState(payload) {
+        const state = getContentSelectionAuthorityState(this);
+        if (
+            !state ||
+            state.terminal ||
+            !payload ||
+            !Number.isSafeInteger(payload.renderRevision) ||
+            payload.renderRevision <= 0 ||
+            (state.currentRenderRevision !== null &&
+                payload.renderRevision <= state.currentRenderRevision) ||
+            !['render', 'refresh', 'expired', 'clear'].includes(payload.reason)
+        ) {
+            return false;
+        }
+
+        state.pendingRemoval = null;
+        state.selectionModel.clear();
+        clearContentSelectionHighlights();
+        state.currentRenderRevision = payload.renderRevision;
+        const selectionRevision = allocateContentSelectionRevision(state);
+        if (selectionRevision === null) {
+            state.terminal = true;
+            return false;
+        }
+        const snapshot = createCanonicalContentSelectionSnapshot(
+            state,
+            selectionRevision,
+            payload.renderRevision,
+            'subtitle-change',
+            []
+        );
+        if (!snapshot) return false;
+        state.snapshot = snapshot;
+
+        void queueContentSelectionSnapshot(this, snapshot);
+        const owner = this.aiContextFeatureOwner;
+        publishSelectionSnapshotToOwner(owner, snapshot);
+        const ownerState = getAIContextFeatureOwnerState(owner);
+        try {
+            ownerState?.channel.publish(
+                AI_CONTEXT_SIGNAL_TYPES.SUBTITLE_CHANGED,
+                payload
+            );
+        } catch (_) {}
+        return true;
+    }
+
+    _clearCanonicalContentSelection(
+        reason = 'clear',
+        owner = this.aiContextFeatureOwner
+    ) {
+        const state = getContentSelectionAuthorityState(this);
+        if (!state || state.terminal) return null;
+
+        state.pendingRemoval = null;
+        state.selectionModel.clear();
+        const renderRevision =
+            state.currentRenderRevision ?? state.snapshot?.renderRevision;
+        const selectionRevision = Number.isSafeInteger(renderRevision)
+            ? allocateContentSelectionRevision(state)
+            : null;
+        const snapshot =
+            selectionRevision === null
+                ? null
+                : createCanonicalContentSelectionSnapshot(
+                      state,
+                      selectionRevision,
+                      renderRevision,
+                      reason,
+                      []
+                  );
+        if (snapshot) {
+            state.snapshot = snapshot;
+            void queueContentSelectionSnapshot(this, snapshot);
+            publishSelectionSnapshotToOwner(owner, snapshot);
+        }
+        clearContentSelectionHighlights();
+        return snapshot;
+    }
+
+    async _repairCanonicalContentSelection(state, current) {
+        if (!state || state.terminal || state.snapshot !== current) {
+            return false;
+        }
+        const selectionRevision = allocateContentSelectionRevision(state);
+        const entries = state.selectionModel.getOrderedEntries();
+        const repair =
+            selectionRevision === null
+                ? null
+                : createCanonicalContentSelectionSnapshot(
+                      state,
+                      selectionRevision,
+                      current.renderRevision,
+                      entries.length > 0 ? 'restore' : 'clear',
+                      entries
+                  );
+        if (!repair) return false;
+
+        state.snapshot = repair;
+        publishSelectionSnapshotToOwner(this.aiContextFeatureOwner, repair);
+        return await queueContentSelectionSnapshot(
+            this,
+            repair,
+            () => !state.terminal && state.snapshot === repair
+        );
+    }
+
+    _findPrivateSelectionWordElement(intent) {
+        try {
+            return (
+                this.subtitleUtils?.resolveInteractiveOriginalWordOccurrence?.(
+                    intent
+                ) ?? null
+            );
+        } catch (_) {
+            return null;
+        }
+    }
+
+    _clearPrivateSelectionWordProjection(intent) {
+        try {
+            const container = document.getElementById(
+                'dualsub-original-subtitle'
+            );
+            if (
+                !container ||
+                !Number.isSafeInteger(intent?.renderRevision) ||
+                intent.renderRevision <= 0 ||
+                !Number.isSafeInteger(intent?.wordIndex) ||
+                intent.wordIndex < 0 ||
+                typeof intent?.word !== 'string' ||
+                intent.word.length === 0
+            ) {
+                return false;
+            }
+
+            let cleared = false;
+            for (const element of container.querySelectorAll(
+                '.dualsub-word-selected[data-render-revision][data-word-index][data-word]'
+            )) {
+                if (
+                    element.getAttribute('data-render-revision') ===
+                        String(intent.renderRevision) &&
+                    element.getAttribute('data-word-index') ===
+                        String(intent.wordIndex) &&
+                    element.getAttribute('data-word') === intent.word
+                ) {
+                    element.classList.remove('dualsub-word-selected');
+                    cleared = true;
+                }
+            }
+            return cleared;
+        } catch (_) {
+            return false;
+        }
+    }
+
+    _handlePrivateWordIntent(owner, intent) {
+        const state = getContentSelectionAuthorityState(this);
+        if (
+            !state ||
+            state.terminal ||
+            state.pendingRemoval ||
+            !isAIContextFeatureOwnerCurrent(this, owner) ||
+            !intent ||
+            intent.action !== 'toggle' ||
+            intent.renderRevision !== state.currentRenderRevision ||
+            !Number.isSafeInteger(intent.wordIndex) ||
+            intent.wordIndex < 0 ||
+            typeof intent.word !== 'string' ||
+            intent.word.length === 0
+        ) {
+            return false;
+        }
+
+        const element = this._findPrivateSelectionWordElement(intent);
+        if (!element) return false;
+        const positionKey = `original:${intent.renderRevision}:${intent.wordIndex}`;
+        const position = {
+            wordIndex: intent.wordIndex,
+            index: intent.wordIndex,
+            subtitleType: 'original',
+            element,
+        };
+        const toggleResult = state.selectionModel.toggle(
+            intent.word,
+            position,
+            positionKey
+        );
+        if (toggleResult === 'noop') return false;
+
+        const candidateRevision =
+            state.lastAllocatedSelectionRevision < Number.MAX_SAFE_INTEGER
+                ? state.lastAllocatedSelectionRevision + 1
+                : null;
+        const entries = state.selectionModel.getOrderedEntries();
+        const snapshot =
+            candidateRevision === null
+                ? null
+                : createCanonicalContentSelectionSnapshot(
+                      state,
+                      candidateRevision,
+                      intent.renderRevision,
+                      'toggle',
+                      entries
+                  );
+        if (!snapshot) {
+            state.selectionModel.toggle(intent.word, position, positionKey);
+            return false;
+        }
+
+        state.lastAllocatedSelectionRevision = candidateRevision;
+        state.snapshot = snapshot;
+        element.classList.toggle(
+            'dualsub-word-selected',
+            toggleResult === 'added'
+        );
+        void queueContentSelectionSnapshot(this, snapshot);
+
+        publishSelectionSnapshotToOwner(owner, snapshot);
+        if (
+            state.terminal ||
+            state.snapshot !== snapshot ||
+            state.currentRenderRevision !== intent.renderRevision ||
+            !isAIContextFeatureOwnerCurrent(this, owner)
+        ) {
+            return true;
+        }
+
+        let fallbackPublished = false;
+        const publishLegacyWordIntent = () => {
+            const currentState = getContentSelectionAuthorityState(this);
+            if (
+                fallbackPublished ||
+                currentState !== state ||
+                state.terminal ||
+                state.snapshot !== snapshot ||
+                state.currentRenderRevision !== intent.renderRevision ||
+                !isAIContextFeatureOwnerCurrent(this, owner)
+            ) {
+                return false;
+            }
+            fallbackPublished = true;
+            const ownerState = getAIContextFeatureOwnerState(owner);
+            try {
+                ownerState?.channel.publish(
+                    AI_CONTEXT_SIGNAL_TYPES.WORD_INTENT,
+                    intent
+                );
+            } catch (_) {}
+            return true;
+        };
+
+        let handledBySidePanel = false;
+        try {
+            handledBySidePanel =
+                this.sidePanelIntegration?.notifyWordIntent?.(
+                    publishLegacyWordIntent
+                ) === true;
+        } catch (_) {}
+        if (
+            state.terminal ||
+            state.snapshot !== snapshot ||
+            state.currentRenderRevision !== intent.renderRevision ||
+            !isAIContextFeatureOwnerCurrent(this, owner)
+        ) {
+            return true;
+        }
+        if (handledBySidePanel) return true;
+        publishLegacyWordIntent();
+        return true;
+    }
+
+    _createPrivateAnalysisAuthority(owner) {
+        const state = getContentSelectionAuthorityState(this);
+        const ownerState = getAIContextFeatureOwnerState(owner);
+        if (
+            !state ||
+            state.terminal ||
+            !ownerState ||
+            !isAIContextFeatureOwnerCurrent(this, owner)
+        ) {
+            return null;
+        }
+        return Object.freeze({
+            channel: ownerState.channel,
+            allocateRequestId: () => {
+                if (
+                    state.terminal ||
+                    !isAIContextFeatureOwnerCurrent(this, owner)
+                ) {
+                    return null;
+                }
+                return allocateMonotonicPositiveSafeInteger('analysisRequest');
+            },
+            getSelectionSnapshot: () => {
+                if (
+                    state.terminal ||
+                    !isAIContextFeatureOwnerCurrent(this, owner)
+                ) {
+                    return null;
+                }
+                return state.snapshot;
+            },
+            clearSelection: () => {
+                if (
+                    state.terminal ||
+                    !isAIContextFeatureOwnerCurrent(this, owner)
+                ) {
+                    return false;
+                }
+                return Boolean(
+                    this._clearCanonicalContentSelection('clear', owner)
+                );
+            },
+        });
+    }
+
     async _loadSubtitleUtilities() {
         try {
             const utilsUrl = chrome.runtime.getURL(
                 'content_scripts/shared/subtitleUtilities.js'
             );
-            this.logWithFallback('debug', 'Loading subtitle utilities.', {
-                resource: 'subtitleUtilities',
-            });
+            this.logWithFallback('debug', 'Loading subtitle utilities.');
             const utilsModule = await import(utilsUrl);
             this.subtitleUtils = utilsModule;
+            this._installContentSelectionPublisher(utilsModule);
         } catch (error) {
-            this.logWithFallback(
-                'error',
-                'Failed to load subtitle utilities.',
-                {
-                    error: error.message,
-                }
-            );
+            this.logWithFallback('error', 'Failed to load subtitle utilities.');
             throw error;
         }
     }
@@ -1830,12 +3483,7 @@ export class BaseContentScript {
                 `video_platforms/${fileName}`
             );
 
-            this.logWithFallback('debug', 'Loading platform class.', {
-                platformName,
-                fileName,
-                className,
-                resource: 'platformModule',
-            });
+            this.logWithFallback('debug', 'Loading platform class.');
 
             const platformModule = await import(platformUrl);
             this.PlatformClass = platformModule[className];
@@ -1846,10 +3494,7 @@ export class BaseContentScript {
                 );
             }
         } catch (error) {
-            this.logWithFallback('error', 'Failed to load platform class.', {
-                error: error.message,
-                platformName: this.getPlatformName(),
-            });
+            this.logWithFallback('error', 'Failed to load platform class.');
             throw error;
         }
     }
@@ -1885,9 +3530,7 @@ export class BaseContentScript {
             const configUrl = chrome.runtime.getURL(
                 'services/configService.js'
             );
-            this.logWithFallback('debug', 'Loading config service.', {
-                resource: 'configService',
-            });
+            this.logWithFallback('debug', 'Loading config service.');
             const configModule = await import(configUrl);
             this.configService = configModule.configService;
 
@@ -1895,9 +3538,7 @@ export class BaseContentScript {
                 throw new Error('configService not found in module.');
             }
         } catch (error) {
-            this.logWithFallback('error', 'Failed to load config service.', {
-                error: error.message,
-            });
+            this.logWithFallback('error', 'Failed to load config service.');
             throw error;
         }
     }
@@ -1909,9 +3550,7 @@ export class BaseContentScript {
     async _loadAndInitializeLogger() {
         try {
             const loggerUrl = chrome.runtime.getURL('utils/logger.js');
-            this.logWithFallback('debug', 'Loading logger.', {
-                resource: 'logger',
-            });
+            this.logWithFallback('debug', 'Loading logger.');
             const loggerModule = await import(loggerUrl);
             const Logger = loggerModule.default;
 
@@ -1924,10 +3563,7 @@ export class BaseContentScript {
         } catch (error) {
             this.logWithFallback(
                 'error',
-                'Failed to load and initialize logger.',
-                {
-                    error: error.message,
-                }
+                'Failed to load and initialize logger.'
             );
             throw error;
         }
@@ -1942,15 +3578,12 @@ export class BaseContentScript {
         try {
             const loggingLevel = await this.configService.get('loggingLevel');
             this.contentLogger.updateLevel(loggingLevel);
-            this.contentLogger.info('Content script logger initialized', {
-                level: loggingLevel,
-            });
+            this.contentLogger.info('Content script logger initialized');
         } catch (error) {
             // Fallback to INFO level if config can't be read
             this.contentLogger.updateLevel(Logger.LEVELS.INFO);
             this.contentLogger.warn(
-                'Failed to load logging level from config, using INFO level',
-                error
+                'Failed to load logging level from config, using INFO level'
             );
         }
     }
@@ -1961,7 +3594,291 @@ export class BaseContentScript {
      * @param {number} retryCount - Current retry attempt (internal use)
      * @returns {Promise<boolean>} Success status
      */
-    async initializePlatform(retryCount = 0) {
+    initializePlatform(retryCount = 0) {
+        if (this.isCleanedUp) {
+            this.logWithFallback(
+                'debug',
+                'Platform initialization skipped after comprehensive cleanup'
+            );
+            return Promise.resolve(false);
+        }
+
+        if (this.platformInitializationPromise) {
+            return this.platformInitializationPromise;
+        }
+
+        const generation = this.platformInitializationGeneration;
+        let resolveInitialization;
+        let rejectInitialization;
+        const initializationPromise = new Promise((resolve, reject) => {
+            resolveInitialization = resolve;
+            rejectInitialization = reject;
+        });
+
+        // Claim the single-flight slot before any initialization collaborator
+        // can run synchronously and re-enter this public method.
+        this.platformInitializationPromise = initializationPromise;
+        try {
+            Promise.resolve(
+                this._initializePlatformForGeneration(retryCount, generation)
+            ).then(resolveInitialization, rejectInitialization);
+        } catch (error) {
+            rejectInitialization(error);
+        }
+
+        const clearInitializationPromise = () => {
+            if (this.platformInitializationPromise === initializationPromise) {
+                this.platformInitializationPromise = null;
+            }
+        };
+        initializationPromise.then(
+            clearInitializationPromise,
+            clearInitializationPromise
+        );
+
+        return initializationPromise;
+    }
+
+    /**
+     * Invalidate pending platform work and allow a new lifecycle generation.
+     * Subclasses should call this before navigation-specific platform teardown.
+     * @protected
+     * @returns {number} The new lifecycle generation.
+     */
+    _invalidatePlatformInitialization() {
+        this._cancelPlayerRootObservation();
+        this._cancelPlatformRetry();
+        this._cancelPageEnterTask();
+        this._cancelVisibilityVideoSetupRetry();
+        this.platformInitializationGeneration += 1;
+        this.platformInitializationPromise = null;
+        this.lastVideoSetupScope = null;
+        return this.platformInitializationGeneration;
+    }
+
+    /**
+     * Schedule the single navigation-delayed page-enter task for this lifecycle.
+     * Replacing or invalidating the lifecycle cancels the prior task.
+     * @protected
+     * @param {Function} callback - Receives the captured platform generation.
+     * @param {number} delay - Delay in milliseconds.
+     */
+    _schedulePageEnterTask(callback, delay) {
+        this._cancelPageEnterTask();
+
+        const generation = this.platformInitializationGeneration;
+        const task = { timeoutId: null };
+        this.pageEnterTask = task;
+        task.timeoutId = setTimeout(() => {
+            if (this.pageEnterTask !== task) {
+                return;
+            }
+            task.timeoutId = null;
+            const isCurrent = () =>
+                this.pageEnterTask === task &&
+                this._isPlatformGenerationCurrent(generation);
+            if (!isCurrent()) {
+                return;
+            }
+
+            let taskResult;
+            try {
+                taskResult = callback(generation, isCurrent);
+            } catch {
+                this.logWithFallback('error', 'Delayed page-enter task failed');
+                if (this.pageEnterTask === task) {
+                    this.pageEnterTask = null;
+                }
+                return;
+            }
+
+            Promise.resolve(taskResult)
+                .catch(() => {
+                    this.logWithFallback(
+                        'error',
+                        'Delayed page-enter task failed'
+                    );
+                })
+                .finally(() => {
+                    if (this.pageEnterTask === task) {
+                        this.pageEnterTask = null;
+                    }
+                });
+        }, delay);
+    }
+
+    /**
+     * Schedule the shared player-page initialization flow for a navigation.
+     * Generation and route checks bracket every asynchronous boundary.
+     * @protected
+     * @param {Function} loadConfig - Returns the configuration projection.
+     * @param {Function} isPlayerPageActive - Returns whether the route is still a player.
+     * @param {number} [delay=1500] - Navigation settling delay.
+     */
+    _schedulePlatformInitializationOnPageEnter(
+        loadConfig,
+        isPlayerPageActive,
+        delay = 1500
+    ) {
+        this._schedulePageEnterTask(async (_generation, isCurrent) => {
+            try {
+                if (!isCurrent() || !isPlayerPageActive()) {
+                    return;
+                }
+
+                const config = await loadConfig();
+                if (
+                    !isCurrent() ||
+                    !isPlayerPageActive() ||
+                    !config?.subtitlesEnabled
+                ) {
+                    return;
+                }
+
+                this.logWithFallback(
+                    'info',
+                    'Subtitles enabled, initializing platform.'
+                );
+                const initialized = await this.initializePlatform();
+                if (
+                    initialized !== true ||
+                    !isCurrent() ||
+                    !isPlayerPageActive()
+                ) {
+                    return;
+                }
+
+                if (config?.aiContextEnabled) {
+                    try {
+                        await this._restartAIContextFeatures();
+                    } catch {
+                        this.logWithFallback(
+                            'warn',
+                            'AI Context restart on page enter failed'
+                        );
+                    }
+                }
+            } catch {
+                this.logWithFallback(
+                    'error',
+                    'Error during URL change initialization.'
+                );
+            }
+        }, delay);
+    }
+
+    /**
+     * Cancel the currently owned delayed page-enter task.
+     * @private
+     */
+    _cancelPageEnterTask() {
+        const task = this.pageEnterTask;
+        this.pageEnterTask = null;
+        if (task?.timeoutId !== null && task?.timeoutId !== undefined) {
+            clearTimeout(task.timeoutId);
+        }
+    }
+
+    /**
+     * Tear down the player-page platform lifecycle without terminating the
+     * content-script instance. Navigation callers intentionally do not await
+     * platform cleanup, so all shared state is detached synchronously first.
+     * @protected
+     */
+    _cleanupOnPlayerPageLeave() {
+        const platform = this.activePlatform;
+        this.activePlatform = null;
+        this.platformReady = false;
+        this._invalidatePlatformInitialization();
+        try {
+            this.stopVideoElementDetection();
+        } catch {
+            this.logWithFallback(
+                'warn',
+                'Failed to stop video detection on page leave'
+            );
+        }
+
+        if (this.subtitleUtils) {
+            try {
+                this.subtitleUtils.clearSubtitlesDisplayAndQueue?.(
+                    platform,
+                    true,
+                    this.logPrefix
+                );
+            } catch {
+                this.logWithFallback(
+                    'warn',
+                    'Failed to clear subtitle display and queue on page leave'
+                );
+            }
+
+            try {
+                this.subtitleUtils.clearSubtitleDOM?.();
+            } catch {
+                this.logWithFallback(
+                    'warn',
+                    'Failed to clear subtitle DOM on page leave'
+                );
+            }
+        }
+
+        try {
+            this.eventBuffer?.clear();
+        } catch {
+            this.logWithFallback(
+                'warn',
+                'Failed to clear event buffer on page leave'
+            );
+        }
+
+        this._cleanupPlatformCandidate(platform).catch(() => {
+            this.logWithFallback(
+                'warn',
+                'Error cleaning up platform after leaving player page'
+            );
+        });
+    }
+
+    /**
+     * Cancel a pending Base-owned platform retry and settle its wait.
+     * @private
+     */
+    _cancelPlatformRetry() {
+        if (this.platformRetryTimeoutId !== null) {
+            clearTimeout(this.platformRetryTimeoutId);
+            this.platformRetryTimeoutId = null;
+        }
+
+        const resolveRetry = this.platformRetryResolve;
+        this.platformRetryResolve = null;
+        if (resolveRetry) {
+            resolveRetry(false);
+        }
+    }
+
+    /**
+     * Check whether asynchronous work still belongs to the active lifecycle.
+     * @private
+     * @param {number} generation - Captured lifecycle generation.
+     * @param {Object|null} [platform=null] - Optional captured platform candidate.
+     * @returns {boolean} Whether the work may mutate shared state.
+     */
+    _isPlatformGenerationCurrent(generation, platform = null) {
+        return (
+            generation === this.platformInitializationGeneration &&
+            (!platform || this.activePlatform === platform)
+        );
+    }
+
+    /**
+     * Run one generation of the platform initialization flow.
+     * @private
+     * @param {number} retryCount - Current retry attempt.
+     * @param {number} generation - Lifecycle generation captured by the caller.
+     * @returns {Promise<boolean>} Success status.
+     */
+    async _initializePlatformForGeneration(retryCount, generation) {
         const initializationContext =
             this._createInitializationContext(retryCount);
 
@@ -1970,11 +3887,15 @@ export class BaseContentScript {
         }
 
         try {
-            return await this._executeInitializationFlow(initializationContext);
+            return await this._executeInitializationFlow(
+                initializationContext,
+                generation
+            );
         } catch (error) {
             return await this._handleInitializationError(
                 error,
-                initializationContext
+                initializationContext,
+                generation
             );
         }
     }
@@ -1994,6 +3915,7 @@ export class BaseContentScript {
             retryDelay: retryConfig.retryDelay,
             attempt: retryCount + 1,
             totalAttempts: retryConfig.maxRetries + 1,
+            platform: null,
         };
     }
 
@@ -2012,13 +3934,24 @@ export class BaseContentScript {
      * @param {Object} context - Initialization context
      * @returns {Promise<boolean>} Success status
      */
-    async _executeInitializationFlow(context) {
+    async _executeInitializationFlow(context, generation) {
         this._logInitializationStart(context);
 
         await this._prepareForInitialization();
-        this.activePlatform = await this._createPlatformInstance();
+        if (!this._isPlatformGenerationCurrent(generation)) {
+            return false;
+        }
 
-        return await this._initializeBasedOnPageType();
+        const platform = await this._createPlatformInstance();
+        context.platform = platform;
+        if (!this._isPlatformGenerationCurrent(generation)) {
+            await this._cleanupPlatformCandidate(platform);
+            return false;
+        }
+
+        this.activePlatform = platform;
+
+        return await this._initializeBasedOnPageType(platform, generation);
     }
 
     // ========================================
@@ -2096,9 +4029,9 @@ export class BaseContentScript {
      * @private
      * @returns {Promise<boolean>} Success status
      */
-    async _initializeBasedOnPageType() {
-        // Check if platform was cleaned up during initialization
-        if (!this.activePlatform) {
+    async _initializeBasedOnPageType(platform, generation) {
+        // Check if this candidate was cleaned up during initialization
+        if (!this._isPlatformGenerationCurrent(generation, platform)) {
             this.logWithFallback(
                 'warn',
                 'Platform cleaned up during initialization, aborting'
@@ -2106,10 +4039,10 @@ export class BaseContentScript {
             return false;
         }
 
-        if (this.activePlatform.isPlayerPageActive()) {
-            return await this._initializeForPlayerPage();
+        if (platform.isPlayerPageActive()) {
+            return await this._initializeForPlayerPage(platform, generation);
         } else {
-            return this._initializeForNonPlayerPage();
+            return this._initializeForNonPlayerPage(platform, generation);
         }
     }
 
@@ -2118,21 +4051,22 @@ export class BaseContentScript {
      * @private
      * @returns {Promise<boolean>} Success status
      */
-    async _initializeForPlayerPage() {
+    async _initializeForPlayerPage(platform, generation) {
         this.logWithFallback('info', 'Initializing platform on player page');
 
-        await this._initializePlatformWithTimeout();
+        await this._initializePlatformWithTimeout(platform, generation);
 
-        // Check if platform was cleaned up during async initialization
-        if (!this.activePlatform) {
+        // Check if this candidate was cleaned up during async initialization
+        if (!this._isPlatformGenerationCurrent(generation, platform)) {
             this.logWithFallback(
                 'warn',
                 'Platform cleaned up during player page initialization, aborting'
             );
+            await this._cleanupPlatformCandidate(platform);
             return false;
         }
 
-        this.activePlatform.handleNativeSubtitles();
+        platform.handleNativeSubtitles();
 
         this.platformReady = true;
         this.processBufferedEvents();
@@ -2150,7 +4084,10 @@ export class BaseContentScript {
      * @private
      * @returns {boolean} Success status
      */
-    _initializeForNonPlayerPage() {
+    _initializeForNonPlayerPage(platform, generation) {
+        if (!this._isPlatformGenerationCurrent(generation, platform)) {
+            return false;
+        }
         this.logWithFallback('info', 'Not on a player page. UI setup deferred');
         if (this.subtitleUtils && this.subtitleUtils.hideSubtitleContainer) {
             this.subtitleUtils.hideSubtitleContainer();
@@ -2165,7 +4102,12 @@ export class BaseContentScript {
      * @param {Object} context - Initialization context
      * @returns {Promise<boolean>} Success status
      */
-    async _handleInitializationError(error, context) {
+    async _handleInitializationError(error, context, generation) {
+        if (!this._isPlatformGenerationCurrent(generation, context.platform)) {
+            await this._cleanupPlatformCandidate(context.platform);
+            return false;
+        }
+
         if (error.message?.includes('Extension context invalidated')) {
             this.logWithFallback(
                 'warn',
@@ -2176,19 +4118,21 @@ export class BaseContentScript {
         }
 
         this.logWithFallback('error', 'Error initializing platform', {
-            error: error.message,
-            stack: error.stack,
-            name: error.name,
             attempt: context.attempt,
             maxRetries: context.totalAttempts,
         });
 
-        await this._cleanupPartialInitialization();
+        await this._cleanupPartialInitialization(context.platform, generation);
+
+        if (!this._isPlatformGenerationCurrent(generation)) {
+            return false;
+        }
 
         if (context.retryCount < context.maxRetries) {
             return await this._scheduleRetry(
                 context.retryCount,
-                context.retryDelay
+                context.retryDelay,
+                generation
             );
         } else {
             return this._handleMaxRetriesExceeded();
@@ -2200,22 +4144,36 @@ export class BaseContentScript {
      * @private
      * @param {number} retryCount - Current retry count
      * @param {number} baseDelay - Base delay for retry
+     * @param {number} generation - Captured lifecycle generation
      * @returns {Promise<boolean>} Success status
      */
-    async _scheduleRetry(retryCount, baseDelay) {
+    async _scheduleRetry(retryCount, baseDelay, generation) {
         const delay = baseDelay * Math.pow(2, retryCount);
-        this.logWithFallback(
-            'info',
-            `Retrying platform initialization in ${delay}ms`,
-            {
-                nextAttempt: retryCount + 2,
-                delay,
-            }
-        );
+        this.logWithFallback('info', 'Retrying platform initialization', {
+            nextAttempt: retryCount + 2,
+            delay,
+        });
 
         return new Promise((resolve) => {
-            setTimeout(async () => {
-                const result = await this.initializePlatform(retryCount + 1);
+            if (!this._isPlatformGenerationCurrent(generation)) {
+                resolve(false);
+                return;
+            }
+
+            this._cancelPlatformRetry();
+            this.platformRetryResolve = resolve;
+            this.platformRetryTimeoutId = setTimeout(async () => {
+                this.platformRetryTimeoutId = null;
+                this.platformRetryResolve = null;
+                if (!this._isPlatformGenerationCurrent(generation)) {
+                    resolve(false);
+                    return;
+                }
+
+                const result = await this._initializePlatformForGeneration(
+                    retryCount + 1,
+                    generation
+                );
                 resolve(result);
             }, delay);
         });
@@ -2231,6 +4189,7 @@ export class BaseContentScript {
             'error',
             'Platform initialization failed after all retry attempts'
         );
+        this._cancelPlayerRootObservation();
         this.activePlatform = null;
         this.platformReady = false;
         return false;
@@ -2275,26 +4234,11 @@ export class BaseContentScript {
             const platform = new this.PlatformClass();
             this.logWithFallback(
                 'debug',
-                'Platform instance created successfully',
-                {
-                    platformName: this.getPlatformName(),
-                    className: this.PlatformClass.name,
-                }
+                'Platform instance created successfully'
             );
             return platform;
         } catch (error) {
-            const errorContext = {
-                error: error.message,
-                stack: error.stack,
-                platformName: this.getPlatformName(),
-                className: this.PlatformClass?.name || 'unknown',
-                currentUrl: window.location.href,
-            };
-            this.logWithFallback(
-                'error',
-                'Failed to create platform instance',
-                errorContext
-            );
+            this.logWithFallback('error', 'Failed to create platform instance');
             throw new Error(`Platform instantiation failed: ${error.message}`);
         }
     }
@@ -2304,14 +4248,25 @@ export class BaseContentScript {
      * @private
      * @returns {Promise<void>}
      */
-    async _initializePlatformWithTimeout() {
+    async _initializePlatformWithTimeout(
+        platform = this.activePlatform,
+        generation = this.platformInitializationGeneration
+    ) {
         const timeout =
             this.currentConfig?.platformInitTimeout ||
             COMMON_CONSTANTS.PLATFORM_INIT_TIMEOUT;
 
-        const initPromise = this.activePlatform.initialize(
-            (subtitleData) => this.handleSubtitleDataFound(subtitleData),
-            (newVideoId) => this.handleVideoIdChange(newVideoId)
+        const initPromise = platform.initialize(
+            (subtitleData) => {
+                if (this._isPlatformGenerationCurrent(generation, platform)) {
+                    this.handleSubtitleDataFound(subtitleData);
+                }
+            },
+            (newVideoId) => {
+                if (this._isPlatformGenerationCurrent(generation, platform)) {
+                    this.handleVideoIdChange(newVideoId);
+                }
+            }
         );
 
         let timeoutId;
@@ -2338,27 +4293,50 @@ export class BaseContentScript {
      * @private
      * @returns {Promise<void>}
      */
-    async _cleanupPlatformInstance() {
+    async _cleanupPlatformInstance(platform = this.activePlatform) {
+        const wasActivePlatform = this.activePlatform === platform;
+        if (wasActivePlatform) {
+            this._cancelPlayerRootObservation();
+            this.activePlatform = null;
+            this.platformReady = false;
+        }
+
         try {
-            if (
-                this.activePlatform &&
-                typeof this.activePlatform.cleanup === 'function'
-            ) {
-                await this.activePlatform.cleanup();
+            if (await this._cleanupPlatformCandidate(platform)) {
                 this.logWithFallback(
                     'debug',
                     'Previous platform instance cleaned up'
                 );
             }
-        } catch (error) {
+        } catch {
             this.logWithFallback(
                 'warn',
-                'Error cleaning up previous platform instance',
-                { error }
+                'Error cleaning up previous platform instance'
             );
         }
-        this.activePlatform = null;
-        this.platformReady = false;
+    }
+
+    /**
+     * Clean up one captured platform candidate at most once.
+     * @private
+     * @param {Object|null} platform - Captured platform candidate.
+     * @returns {Promise<boolean>} Whether cleanup was invoked.
+     */
+    async _cleanupPlatformCandidate(platform) {
+        if (
+            !platform ||
+            typeof platform !== 'object' ||
+            this.cleanedPlatformInstances.has(platform)
+        ) {
+            return false;
+        }
+
+        this.cleanedPlatformInstances.add(platform);
+        if (typeof platform.cleanup === 'function') {
+            await platform.cleanup();
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -2366,33 +4344,53 @@ export class BaseContentScript {
      * @private
      * @returns {Promise<void>}
      */
-    async _cleanupPartialInitialization() {
-        try {
-            // Stop any ongoing video detection
-            this.stopVideoElementDetection();
-
-            // Clean up platform instance
-            if (this.activePlatform) {
-                await this._cleanupPlatformInstance();
+    async _cleanupPartialInitialization(
+        platform = this.activePlatform,
+        generation = this.platformInitializationGeneration
+    ) {
+        if (!this._isPlatformGenerationCurrent(generation, platform)) {
+            try {
+                await this._cleanupPlatformCandidate(platform);
+            } catch {
+                this.logWithFallback(
+                    'warn',
+                    'Error cleaning up stale platform candidate'
+                );
             }
+            return;
+        }
 
-            // Clear event buffer
-            this.eventBuffer.clear();
-
-            // Reset state
-            this.platformReady = false;
-
-            this.logWithFallback(
-                'debug',
-                'Partial initialization state cleaned up'
-            );
-        } catch (error) {
+        try {
+            this.stopVideoElementDetection();
+        } catch {
             this.logWithFallback(
                 'warn',
-                'Error during partial initialization cleanup',
-                { error }
+                'Error stopping video detection during partial cleanup'
             );
         }
+
+        if (platform) {
+            await this._cleanupPlatformInstance(platform);
+        }
+
+        if (!this._isPlatformGenerationCurrent(generation)) {
+            return;
+        }
+
+        try {
+            this.eventBuffer.clear();
+        } catch {
+            this.logWithFallback(
+                'warn',
+                'Error clearing event buffer during partial cleanup'
+            );
+        }
+
+        this.platformReady = false;
+        this.logWithFallback(
+            'debug',
+            'Partial initialization state cleaned up'
+        );
     }
 
     // ========================================
@@ -2415,7 +4413,7 @@ export class BaseContentScript {
                 'debug',
                 'Normalized useOfficialTranslations from useNativeSubtitles',
                 {
-                    value: this.currentConfig.useOfficialTranslations,
+                    value: Boolean(this.currentConfig.useOfficialTranslations),
                 }
             );
         }
@@ -2427,7 +4425,7 @@ export class BaseContentScript {
                 'debug',
                 'Set default useOfficialTranslations value',
                 {
-                    value: this.currentConfig.useOfficialTranslations,
+                    value: Boolean(this.currentConfig.useOfficialTranslations),
                 }
             );
         }
@@ -2437,18 +4435,86 @@ export class BaseContentScript {
      * Setup configuration change listeners
      */
     setupConfigurationListeners() {
-        if (typeof this.configUnsubscribe === 'function') {
-            this.configUnsubscribe();
+        if (!this._acceptsConfigurationSubscriptions()) {
+            return;
+        }
+
+        const subscriptionGeneration = ++this
+            .configurationSubscriptionGeneration;
+        this.configurationRefreshGeneration += 1;
+
+        // Take ownership before unsubscribe can synchronously re-enter setup.
+        const previousUnsubscribe = this.configUnsubscribe;
+        this.configUnsubscribe = null;
+        if (typeof previousUnsubscribe === 'function') {
+            previousUnsubscribe();
         }
 
         const unsubscribe = this.configService.onChanged(
             async (changes) => {
+                if (
+                    !this._isCurrentConfigurationSubscription(
+                        subscriptionGeneration
+                    )
+                ) {
+                    return;
+                }
+                const refreshGeneration = ++this.configurationRefreshGeneration;
+                const aiContextIntentGeneration =
+                    this._captureAIContextConfigurationIntent(changes);
                 this.logWithFallback('info', 'Config changed, updating', {
-                    changedKeys: Object.keys(changes || {}),
+                    changedKeyCount: Object.keys(changes || {}).length,
                 });
-                const newConfig = await this.configService.getAll({
-                    includeSensitive: false,
-                });
+                let newConfig;
+                try {
+                    newConfig = await this.configService.getAll({
+                        includeSensitive: false,
+                    });
+                } catch {
+                    if (
+                        this._isCurrentConfigurationSubscription(
+                            subscriptionGeneration
+                        ) &&
+                        refreshGeneration ===
+                            this.configurationRefreshGeneration
+                    ) {
+                        this.logWithFallback(
+                            'error',
+                            'Failed to refresh configuration from configService.'
+                        );
+                    }
+                    return;
+                }
+
+                if (
+                    !this._isCurrentConfigurationSubscription(
+                        subscriptionGeneration
+                    ) ||
+                    refreshGeneration !== this.configurationRefreshGeneration
+                ) {
+                    return;
+                }
+
+                const reconciliationGeneration =
+                    this.aiContextConfigurationIntentGeneration;
+                const pendingAIContextKeys = new Map();
+                for (const [key, intentGeneration] of this
+                    .pendingAIContextConfigurationKeys) {
+                    if (intentGeneration <= reconciliationGeneration) {
+                        pendingAIContextKeys.set(key, intentGeneration);
+                    }
+                }
+                const canonicalAIContextChanges = {};
+                for (const key of pendingAIContextKeys.keys()) {
+                    const descriptor = Object.getOwnPropertyDescriptor(
+                        newConfig,
+                        key
+                    );
+                    canonicalAIContextChanges[key] =
+                        descriptor && Object.hasOwn(descriptor, 'value')
+                            ? descriptor.value
+                            : undefined;
+                }
 
                 Object.assign(this.currentConfig, newConfig);
 
@@ -2458,21 +4524,81 @@ export class BaseContentScript {
 
                 // Handle AI Context enablement and related changes immediately without requiring page reloads
                 try {
-                    await this._handleAIContextConfigurationChanges(changes);
-                } catch (error) {
+                    await this._handleAIContextConfigurationChanges(
+                        pendingAIContextKeys.size > 0
+                            ? canonicalAIContextChanges
+                            : changes,
+                        pendingAIContextKeys.size > 0
+                            ? reconciliationGeneration
+                            : aiContextIntentGeneration
+                    );
+                    if (pendingAIContextKeys.size > 0) {
+                        for (const [
+                            key,
+                            intentGeneration,
+                        ] of pendingAIContextKeys) {
+                            if (
+                                this.pendingAIContextConfigurationKeys.get(
+                                    key
+                                ) === intentGeneration
+                            ) {
+                                this.pendingAIContextConfigurationKeys.delete(
+                                    key
+                                );
+                            }
+                        }
+                    }
+                } catch {
                     this.logWithFallback(
                         'warn',
-                        'Failed to apply AI Context config changes',
-                        {
-                            error: error.message,
-                        }
+                        'Failed to apply AI Context config changes'
                     );
                 }
             },
             { includeSensitive: false }
         );
+
+        if (!this._isCurrentConfigurationSubscription(subscriptionGeneration)) {
+            if (typeof unsubscribe === 'function') {
+                unsubscribe();
+            }
+            return;
+        }
         this.configUnsubscribe =
             typeof unsubscribe === 'function' ? unsubscribe : null;
+    }
+
+    /** @private */
+    _acceptsConfigurationSubscriptions() {
+        return (
+            this.configurationSubscriptionsAccepted === true &&
+            !this.isCleanedUp
+        );
+    }
+
+    /** @private */
+    _isCurrentConfigurationSubscription(subscriptionGeneration) {
+        return (
+            this._acceptsConfigurationSubscriptions() &&
+            subscriptionGeneration === this.configurationSubscriptionGeneration
+        );
+    }
+
+    /** @private */
+    _captureAIContextConfigurationIntent(changes) {
+        const aiContextKeys = Object.keys(changes || {}).filter((key) =>
+            AI_CONTEXT_LIFECYCLE_CONFIG_KEYS.has(key)
+        );
+        if (aiContextKeys.length === 0) {
+            return null;
+        }
+
+        this.aiContextConfigurationIntentGeneration += 1;
+        const intentGeneration = this.aiContextConfigurationIntentGeneration;
+        for (const key of aiContextKeys) {
+            this.pendingAIContextConfigurationKeys.set(key, intentGeneration);
+        }
+        return intentGeneration;
     }
 
     /**
@@ -2518,27 +4644,27 @@ export class BaseContentScript {
      * @param {Object} changes - Configuration changes map from chrome.storage.onChanged
      * @private
      */
-    async _handleAIContextConfigurationChanges(changes) {
+    async _handleAIContextConfigurationChanges(
+        changes,
+        capturedIntentGeneration = undefined
+    ) {
         try {
-            const aiKeys = new Set([
-                'aiContextEnabled',
-                'aiContextProvider',
-                'aiContextTypes',
-                'aiContextTimeout',
-                'aiContextRetryAttempts',
-                'aiContextRateLimit',
-                'aiContextBurstLimit',
-                'aiContextMandatoryDelay',
-                'openaiApiKey',
-                'openaiBaseUrl',
-                'openaiModel',
-                'geminiApiKey',
-                'geminiModel',
-            ]);
-
             const changedKeys = Object.keys(changes || {});
-            const hasAIChanges = changedKeys.some((k) => aiKeys.has(k));
+            const hasAIChanges = changedKeys.some((key) =>
+                AI_CONTEXT_LIFECYCLE_CONFIG_KEYS.has(key)
+            );
             if (!hasAIChanges) {
+                return;
+            }
+
+            const intentGeneration =
+                capturedIntentGeneration === undefined
+                    ? this._captureAIContextConfigurationIntent(changes)
+                    : capturedIntentGeneration;
+            if (
+                intentGeneration === null ||
+                intentGeneration !== this.aiContextConfigurationIntentGeneration
+            ) {
                 return;
             }
 
@@ -2555,23 +4681,19 @@ export class BaseContentScript {
                     await this._restartAIContextFeatures();
                 } else {
                     // Stop AI Context features and remove inactive click affordances
-                    await this._cleanupAIContextManager();
                     await this._disableAIContextInteractions();
                 }
                 return;
             }
 
             // Other AI settings changed while enabled: restart to apply changes
-            if (this.aiContextManager && this.currentConfig?.aiContextEnabled) {
+            if (this.currentConfig?.aiContextEnabled) {
                 await this._restartAIContextFeatures();
             }
-        } catch (error) {
+        } catch {
             this.logWithFallback(
                 'warn',
-                'AI Context configuration change handling failed',
-                {
-                    error: error.message,
-                }
+                'AI Context configuration change handling failed'
             );
         }
     }
@@ -2582,16 +4704,13 @@ export class BaseContentScript {
      */
     async _restartAIContextFeatures() {
         try {
-            await this._cleanupAIContextManager();
-            await this.initializeAIContextFeatures();
-        } catch (error) {
+            return await this.initializeAIContextFeatures();
+        } catch {
             this.logWithFallback(
                 'warn',
-                'Failed to restart AI Context features',
-                {
-                    error: error.message,
-                }
+                'Failed to restart AI Context features'
             );
+            return false;
         }
     }
 
@@ -2617,14 +4736,10 @@ export class BaseContentScript {
             this.eventListenerCleanupFunctions.push(() => {
                 document.removeEventListener(config.eventId, eventHandler);
                 this.eventListenerAttached = false;
-                this.logWithFallback('debug', 'Early event listener removed', {
-                    eventId: config.eventId,
-                });
+                this.logWithFallback('debug', 'Early event listener removed');
             });
 
-            this.logWithFallback('debug', 'Early event listener attached', {
-                eventId: config.eventId,
-            });
+            this.logWithFallback('debug', 'Early event listener attached');
         }
 
         // Inject script early to catch subtitle data
@@ -2637,30 +4752,21 @@ export class BaseContentScript {
      * @param {Event} e - Custom event from injected script
      */
     handleEarlyInjectorEvents(e) {
+        if (getAIContextLifecycleState(this)?.terminal) return false;
         try {
-            if (!e || !e.detail) {
-                this.logWithFallback('warn', 'Received invalid event data');
-                return;
-            }
-
-            const data = e.detail;
-            if (!data || !data.type) {
-                this.logWithFallback(
-                    'warn',
-                    'Event data missing required type field'
-                );
-                return;
-            }
+            const config = this.getInjectScriptConfig();
+            const data = acceptInjectedEvent(config, e);
+            if (!data) return;
 
             // Enhanced event processing with timestamp and validation
             // Preserve original data fields (including url) and add extra contextual
             // information without overwriting them.  Use a separate property
             // `pageUrl` so the subtitle URL remains intact.
-            const eventData = {
-                ...data,
+            const eventData = extendAcceptedInjectedEvent(data, {
                 timestamp: Date.now(),
                 pageUrl: window.location.href,
-            };
+            });
+            if (!eventData) return;
 
             if (data.type === 'INJECT_SCRIPT_READY') {
                 this.logWithFallback('info', 'Inject script is ready');
@@ -2687,7 +4793,6 @@ export class BaseContentScript {
                 this.eventBuffer.add(eventData);
                 this.logWithFallback('debug', 'Subtitle data buffered', {
                     bufferSize: this.eventBuffer.size(),
-                    eventType: data.type,
                 });
             }
 
@@ -2699,14 +4804,10 @@ export class BaseContentScript {
             ) {
                 this.processBufferedEvents();
             }
-        } catch (error) {
+        } catch {
             this.logWithFallback(
                 'error',
-                'Error handling early injector event',
-                {
-                    error: error.message,
-                    stack: error.stack,
-                }
+                'Error handling early injector event'
             );
         }
     }
@@ -2735,7 +4836,7 @@ export class BaseContentScript {
                     this.logWithFallback(
                         'warn',
                         'Skipping invalid buffered event',
-                        { index, eventData }
+                        { index }
                     );
                     return;
                 }
@@ -2750,7 +4851,6 @@ export class BaseContentScript {
                         {
                             index,
                             age: eventAge,
-                            type: eventData.type,
                         }
                     );
                     return;
@@ -2769,15 +4869,11 @@ export class BaseContentScript {
                         { index }
                     );
                 }
-            } catch (error) {
+            } catch {
                 this.logWithFallback(
                     'error',
                     'Error processing buffered event',
-                    {
-                        index,
-                        error: error.message,
-                        eventType: eventData?.type,
-                    }
+                    { index }
                 );
             }
         });
@@ -2792,28 +4888,55 @@ export class BaseContentScript {
      * Inject script early to catch subtitle data
      */
     injectScriptEarly() {
+        if (getAIContextLifecycleState(this)?.terminal) return false;
         const config = this.getInjectScriptConfig();
+        const scriptUrl = createInjectedScriptUrl(
+            config,
+            chrome.runtime.getURL(config.filename)
+        );
+        if (!scriptUrl) return false;
 
-        injectScript(
-            chrome.runtime.getURL(config.filename),
+        return injectScript(
+            scriptUrl,
             config.tagId,
             () =>
                 this.logWithFallback(
                     'info',
                     'Early inject script loaded successfully'
                 ),
-            (error) => {
+            () => {
                 this.logWithFallback(
                     'error',
-                    'Failed to load early inject script!',
-                    { error }
+                    'Failed to load early inject script!'
                 );
-                // Retry after a short delay
-                setTimeout(() => this.injectScriptEarly(), 100);
+                try {
+                    document.getElementById(config.tagId)?.remove();
+                } catch (_) {}
+                this._cancelEarlyInjectionRetry();
+                if (getAIContextLifecycleState(this)?.terminal) return;
+                const task = { timeoutId: null };
+                this.earlyInjectionRetryTask = task;
+                task.timeoutId = setTimeout(() => {
+                    if (
+                        this.earlyInjectionRetryTask !== task ||
+                        getAIContextLifecycleState(this)?.terminal
+                    ) {
+                        return;
+                    }
+                    this.earlyInjectionRetryTask = null;
+                    this.injectScriptEarly();
+                }, 100);
             },
-            (msg) => this.logWithFallback('debug', msg),
-            true // Treat as a module
+            () => {}
         );
+    }
+
+    _cancelEarlyInjectionRetry() {
+        const task = this.earlyInjectionRetryTask;
+        this.earlyInjectionRetryTask = null;
+        if (task?.timeoutId !== null && task?.timeoutId !== undefined) {
+            clearTimeout(task.timeoutId);
+        }
     }
 
     // ========================================
@@ -2826,16 +4949,13 @@ export class BaseContentScript {
      */
     handleSubtitleDataFound(subtitleData) {
         this.logWithFallback('info', 'Subtitle data found callback triggered', {
-            hasSubtitleData: !!subtitleData,
-            videoId: subtitleData?.videoId,
-            hasVttText: !!subtitleData?.vttText,
-            hasTargetVttText: !!subtitleData?.targetVttText,
-            useNativeTarget: subtitleData?.useNativeTarget,
-            sourceLanguage: subtitleData?.sourceLanguage,
-            targetLanguage: subtitleData?.targetLanguage,
-            hasSubtitleUtils: !!this.subtitleUtils,
-            hasActivePlatform: !!this.activePlatform,
-            subtitlesActive: this.subtitleUtils?.subtitlesActive,
+            hasSubtitleData: Boolean(subtitleData),
+            hasVttText: Boolean(subtitleData?.vttText),
+            hasTargetVttText: Boolean(subtitleData?.targetVttText),
+            usesNativeTarget: Boolean(subtitleData?.useNativeTarget),
+            hasSubtitleUtils: Boolean(this.subtitleUtils),
+            hasActivePlatform: Boolean(this.activePlatform),
+            subtitlesActive: Boolean(this.subtitleUtils?.subtitlesActive),
         });
 
         if (this.subtitleUtils && this.subtitleUtils.handleSubtitleDataFound) {
@@ -2882,48 +5002,151 @@ export class BaseContentScript {
     // ========================================
 
     /**
-     * Start video element detection with retry mechanism
+     * Start video element detection with retry mechanism.
+     * @param {Object} [options] - Optional owned detection context.
+     * @param {Object|null} [options.platform] - Captured platform identity.
+     * @param {number} [options.platformGeneration] - Captured platform generation.
+     * @param {Object|null} [options.previousScope] - Last verified video/root scope.
+     * @param {boolean} [options.replacementRequired=false] - Wait for a replacement scope.
+     * @param {string} [options.pathname] - Exact player path captured by the caller.
      */
-    startVideoElementDetection() {
-        this.logWithFallback('info', 'Starting video element detection');
-        this.videoDetectionRetries = 0;
+    startVideoElementDetection(options = {}) {
+        const previousDetectionGeneration = this.videoDetectionGeneration;
+        const previousDetectionTask = this.videoDetectionTask;
+        const previousDetectionIntervalId = this.videoDetectionIntervalId;
+        const previousDetectionIntervalOwner = this.videoDetectionIntervalOwner;
+        const platform = options.platform || this.activePlatform;
+        const platformGeneration =
+            options.platformGeneration ?? this.platformInitializationGeneration;
+        const pathname = options.pathname ?? window.location.pathname;
 
-        // Clear any existing detection interval
-        if (this.videoDetectionIntervalId) {
-            clearInterval(this.videoDetectionIntervalId);
-            this.videoDetectionIntervalId = null;
+        this.logWithFallback('info', 'Starting video element detection');
+        if (
+            this.videoDetectionGeneration !== previousDetectionGeneration ||
+            this.videoDetectionTask !== previousDetectionTask ||
+            this.videoDetectionIntervalId !== previousDetectionIntervalId ||
+            this.videoDetectionIntervalOwner !==
+                previousDetectionIntervalOwner ||
+            this.platformInitializationGeneration !== platformGeneration ||
+            this.activePlatform !== platform
+        ) {
+            return;
         }
 
+        this._cancelVisibilityVideoSetupRetry();
+        if (
+            this.videoDetectionGeneration !== previousDetectionGeneration ||
+            this.videoDetectionTask !== previousDetectionTask ||
+            this.videoDetectionIntervalId !== previousDetectionIntervalId ||
+            this.videoDetectionIntervalOwner !==
+                previousDetectionIntervalOwner ||
+            this.platformInitializationGeneration !== platformGeneration ||
+            this.activePlatform !== platform
+        ) {
+            return;
+        }
+
+        this.videoDetectionRetries = 0;
+        this.videoDetectionGeneration += 1;
+        const claimedDetectionGeneration = this.videoDetectionGeneration;
+
+        // Clear any existing detection interval
+        this.videoDetectionTask = null;
+        this.videoDetectionIntervalId = null;
+        this.videoDetectionIntervalOwner = null;
+        if (previousDetectionTask?.intervalId === previousDetectionIntervalId) {
+            previousDetectionTask.intervalId = null;
+        }
+        if (previousDetectionIntervalId !== null) {
+            clearInterval(previousDetectionIntervalId);
+        }
+        if (
+            this.videoDetectionGeneration !== claimedDetectionGeneration ||
+            this.videoDetectionTask !== null ||
+            this.videoDetectionIntervalId !== null ||
+            this.videoDetectionIntervalOwner !== null ||
+            this.platformInitializationGeneration !== platformGeneration ||
+            this.activePlatform !== platform
+        ) {
+            return;
+        }
+
+        const detectionContext = {
+            detectionGeneration: this.videoDetectionGeneration,
+            platform,
+            platformGeneration,
+            previousScope: options.previousScope || null,
+            previousScopeDisconnected: false,
+            replacementRequired: options.replacementRequired === true,
+            requiresVerifiedScope: options.replacementRequired === true,
+            pathname,
+            intervalId: null,
+            intervalInstallationPending: false,
+        };
+        this.videoDetectionTask = detectionContext;
+
         // Try immediately first
-        if (this.attemptVideoSetup()) {
+        let immediateResult;
+        try {
+            immediateResult = this._attemptVideoDetection(detectionContext);
+        } catch (_) {
+            this._handleVideoDetectionAttemptFailure(detectionContext, null);
+            return;
+        }
+        if (immediateResult !== 'pending') {
+            this._releaseVideoDetectionTask(detectionContext, null);
             return; // Success, no need for interval
+        }
+        if (!this._isVideoDetectionContextCurrent(detectionContext)) {
+            this._releaseVideoDetectionTask(detectionContext, null);
+            return;
         }
 
         // Start retry mechanism
-        this.videoDetectionIntervalId = setInterval(() => {
-            this.videoDetectionRetries++;
-            this.logWithFallback('debug', 'Video detection attempt', {
-                attempt: this.videoDetectionRetries,
-                maxAttempts: this.maxVideoDetectionRetries,
-            });
+        let intervalId = null;
+        let firedBeforeInstallationCompleted = false;
+        const runDetectionAttempt = () => {
+            if (intervalId === null) {
+                firedBeforeInstallationCompleted = true;
+                return;
+            }
+            if (!this._isVideoDetectionContextCurrent(detectionContext)) {
+                this._releaseVideoDetectionTask(detectionContext, intervalId);
+                return;
+            }
 
-            if (this.attemptVideoSetup()) {
-                // Success! Clear the interval
-                clearInterval(this.videoDetectionIntervalId);
-                this.videoDetectionIntervalId = null;
-                this.logWithFallback(
-                    'info',
-                    'Video element found and setup completed',
-                    {
-                        attempts: this.videoDetectionRetries,
-                    }
+            let result;
+            try {
+                this.videoDetectionRetries++;
+                this.logWithFallback('debug', 'Video detection attempt', {
+                    attempt: this.videoDetectionRetries,
+                    maxAttempts: this.maxVideoDetectionRetries,
+                });
+                result = this._attemptVideoDetection(detectionContext);
+            } catch (_) {
+                this._handleVideoDetectionAttemptFailure(
+                    detectionContext,
+                    intervalId
                 );
+                return;
+            }
+            if (result !== 'pending') {
+                // Success! Clear the interval
+                this._releaseVideoDetectionTask(detectionContext, intervalId);
+                if (result === 'success') {
+                    this.logWithFallback(
+                        'info',
+                        'Video element found and setup completed',
+                        {
+                            attempts: this.videoDetectionRetries,
+                        }
+                    );
+                }
             } else if (
                 this.videoDetectionRetries >= this.maxVideoDetectionRetries
             ) {
                 // Give up after max retries
-                clearInterval(this.videoDetectionIntervalId);
-                this.videoDetectionIntervalId = null;
+                this._releaseVideoDetectionTask(detectionContext, intervalId);
                 this.logWithFallback(
                     'warn',
                     'Could not find video element after max attempts. Giving up',
@@ -2932,14 +5155,413 @@ export class BaseContentScript {
                     }
                 );
             }
-        }, this.videoDetectionInterval);
+        };
+
+        detectionContext.intervalInstallationPending = true;
+        try {
+            intervalId = setInterval(
+                runDetectionAttempt,
+                this.videoDetectionInterval
+            );
+        } catch (_) {
+            this._handleVideoDetectionAttemptFailure(detectionContext, null);
+            return;
+        }
+        if (firedBeforeInstallationCompleted) {
+            this._releaseVideoDetectionTask(detectionContext, intervalId);
+            return;
+        }
+        if (!this._isVideoDetectionContextCurrent(detectionContext)) {
+            this._releaseVideoDetectionTask(detectionContext, intervalId);
+            return;
+        }
+        detectionContext.intervalId = intervalId;
+        detectionContext.intervalInstallationPending = false;
+        this.videoDetectionIntervalId = intervalId;
+        this.videoDetectionIntervalOwner = detectionContext;
+    }
+
+    /**
+     * Release only the exact detector task and interval owned by a context.
+     * @private
+     * @param {Object} context - Captured detection context.
+     * @param {*} intervalId - Captured interval identifier, or `null`.
+     */
+    _releaseVideoDetectionTask(context, intervalId) {
+        const ownsInstalledInterval =
+            this.videoDetectionIntervalOwner === context &&
+            this.videoDetectionIntervalId === intervalId &&
+            context?.intervalId === intervalId;
+        const ownsPreInstallationTask =
+            this.videoDetectionTask === context &&
+            this.videoDetectionIntervalOwner === null &&
+            this.videoDetectionIntervalId === null &&
+            context?.intervalId === null &&
+            context?.intervalInstallationPending !== true;
+        const conflictsWithNewerInterval =
+            this.videoDetectionIntervalOwner !== null &&
+            this.videoDetectionIntervalOwner !== context &&
+            this.videoDetectionIntervalId === intervalId;
+        const ownsProvisionalInterval =
+            context?.intervalInstallationPending === true &&
+            context?.intervalId === null &&
+            !conflictsWithNewerInterval;
+        if (
+            !ownsInstalledInterval &&
+            !ownsPreInstallationTask &&
+            !ownsProvisionalInterval
+        ) {
+            return false;
+        }
+
+        if (ownsInstalledInterval) {
+            this.videoDetectionIntervalId = null;
+            this.videoDetectionIntervalOwner = null;
+        }
+        if (this.videoDetectionTask === context) {
+            this.videoDetectionTask = null;
+        }
+        if (context?.intervalId === intervalId) {
+            context.intervalId = null;
+        }
+        if (context) {
+            context.intervalInstallationPending = false;
+        }
+        if (intervalId !== null) {
+            clearInterval(intervalId);
+        }
+        return true;
+    }
+
+    /**
+     * Terminate a detector after a collaborator throws without exposing details.
+     * @private
+     * @param {Object} context - Captured detection context.
+     * @param {*} intervalId - Captured interval identifier, or `null`.
+     */
+    _handleVideoDetectionAttemptFailure(context, intervalId) {
+        const visibilityTask = this.visibilityVideoSetupTask;
+        if (
+            visibilityTask === context ||
+            visibilityTask?.detectionTask === context
+        ) {
+            this._cancelVisibilityVideoSetupRetry(visibilityTask);
+        }
+        this._releaseVideoDetectionTask(context, intervalId);
+        try {
+            this.logWithFallback(
+                'warn',
+                'Video detection attempt failed safely'
+            );
+        } catch (_) {}
+    }
+
+    /**
+     * Run one owned video-detection attempt.
+     * @private
+     * @param {Object} context - Captured detection context.
+     * @returns {'success'|'pending'|'aborted'} Detection result.
+     */
+    _attemptVideoDetection(context) {
+        if (!this._isVideoDetectionTaskCurrent(context)) {
+            return 'aborted';
+        }
+
+        if (!context.replacementRequired) {
+            return this.attemptVideoSetup(context) ? 'success' : 'pending';
+        }
+
+        if (!this._isReplacementDetectionContextCurrent(context)) {
+            return 'aborted';
+        }
+
+        const previousScope = context.previousScope;
+        if (
+            previousScope &&
+            (!previousScope.root.isConnected ||
+                !previousScope.video.isConnected ||
+                (previousScope.root !== previousScope.video &&
+                    !previousScope.root.contains?.(previousScope.video)))
+        ) {
+            context.previousScopeDisconnected = true;
+        }
+
+        const currentScope = this._getVerifiedVideoSetupScope(context.platform);
+        if (!this._isReplacementDetectionContextCurrent(context)) {
+            return 'aborted';
+        }
+        if (!currentScope) {
+            return 'pending';
+        }
+
+        if (
+            previousScope &&
+            !context.previousScopeDisconnected &&
+            currentScope.root === previousScope.root &&
+            currentScope.video === previousScope.video
+        ) {
+            return 'pending';
+        }
+
+        const setupComplete = this.attemptVideoSetup(context);
+        if (!this._isReplacementDetectionContextCurrent(context)) {
+            return 'aborted';
+        }
+        if (!setupComplete) {
+            return 'pending';
+        }
+
+        const completedScope = this.lastVideoSetupScope;
+        if (
+            !completedScope ||
+            completedScope.platform !== context.platform ||
+            completedScope.platformGeneration !== context.platformGeneration
+        ) {
+            return 'pending';
+        }
+
+        if (
+            previousScope &&
+            !context.previousScopeDisconnected &&
+            completedScope.root === previousScope.root &&
+            completedScope.video === previousScope.video
+        ) {
+            return 'pending';
+        }
+
+        return 'success';
+    }
+
+    /**
+     * Check exact ownership of the active video-detection task.
+     * @private
+     * @param {Object} context - Captured detection context.
+     * @returns {boolean} Whether the task may continue.
+     */
+    _isVideoDetectionTaskCurrent(context) {
+        return (
+            this.videoDetectionTask === context &&
+            context.detectionGeneration === this.videoDetectionGeneration &&
+            !this.isCleanedUp &&
+            (context.intervalId === null
+                ? this.videoDetectionIntervalId === null &&
+                  this.videoDetectionIntervalOwner === null
+                : this.videoDetectionIntervalId === context.intervalId &&
+                  this.videoDetectionIntervalOwner === context)
+        );
+    }
+
+    /**
+     * Check platform and route ownership in addition to exact detector ownership.
+     * @private
+     * @param {Object} context - Captured detection context.
+     * @returns {boolean} Whether the context may continue.
+     */
+    _isVideoDetectionContextCurrent(context) {
+        if (
+            !context.platform ||
+            !this._isVideoDetectionTaskCurrent(context) ||
+            !this._isPlatformGenerationCurrent(
+                context.platformGeneration,
+                context.platform
+            )
+        ) {
+            return false;
+        }
+
+        if (window.location.pathname !== context.pathname) {
+            return false;
+        }
+        const pathnameBeforeRouteCheck = window.location.pathname;
+        const isPlayerRoute = this._isCurrentPlayerRoute(context.platform);
+        if (
+            !isPlayerRoute ||
+            window.location.pathname !== pathnameBeforeRouteCheck ||
+            window.location.pathname !== context.pathname
+        ) {
+            return false;
+        }
+
+        return (
+            this._isVideoDetectionTaskCurrent(context) &&
+            this._isPlatformGenerationCurrent(
+                context.platformGeneration,
+                context.platform
+            )
+        );
+    }
+
+    /**
+     * Check that replacement detection still owns the active player lifecycle.
+     * @private
+     * @param {Object} context - Captured detection context.
+     * @returns {boolean} Whether the context may continue.
+     */
+    _isReplacementDetectionContextCurrent(context) {
+        return (
+            context.replacementRequired === true &&
+            this._isVideoDetectionContextCurrent(context)
+        );
+    }
+
+    /**
+     * Check whether a captured platform still owns an active player route.
+     * @private
+     * @param {Object|null} platform - Captured platform identity.
+     * @returns {boolean} Whether replacement detection may continue.
+     */
+    _isCurrentPlayerRoute(platform) {
+        try {
+            if (typeof this._isPlayerPath === 'function') {
+                return this._isPlayerPath(window.location.pathname);
+            }
+            return platform?.isPlayerPageActive?.() === true;
+        } catch (_) {
+            return false;
+        }
+    }
+
+    /**
+     * Return the connected, platform-owned player root without ever widening
+     * observation to the page document.
+     * @private
+     * @param {Object|null} platform - Platform to query.
+     * @returns {Element|null} Verified player root.
+     */
+    _getVerifiedPlayerRoot(platform) {
+        try {
+            if (!platform || this.activePlatform !== platform) {
+                return null;
+            }
+
+            const root = platform.getPlayerContainerElement?.();
+            if (
+                !(root instanceof Element) ||
+                !root.isConnected ||
+                root === document.body ||
+                root === document.documentElement
+            ) {
+                return null;
+            }
+            return root;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    _getVerifiedPlayerObservationShell(root) {
+        try {
+            const shell = root?.parentElement;
+            if (
+                !(shell instanceof Element) ||
+                !shell.isConnected ||
+                shell === document.body ||
+                shell === document.documentElement ||
+                !shell.contains(root)
+            ) {
+                return null;
+            }
+            return shell;
+        } catch (_) {
+            return null;
+        }
+    }
+
+    /**
+     * Return a connected, player-contained video/root pair.
+     * @private
+     * @param {Object|null} platform - Platform to query.
+     * @param {HTMLVideoElement|null} [videoElement] - Optional captured video.
+     * @returns {Object|null} Verified scope.
+     */
+    _getVerifiedVideoSetupScope(platform, videoElement = null) {
+        try {
+            if (!platform || this.activePlatform !== platform) {
+                return null;
+            }
+
+            const video = videoElement || platform.getVideoElement?.();
+            const root = this._getVerifiedPlayerRoot(platform);
+            if (
+                !(video instanceof HTMLVideoElement) ||
+                !root ||
+                !video.isConnected ||
+                root === video ||
+                !root.contains(video)
+            ) {
+                return null;
+            }
+
+            return { root, video };
+        } catch (_) {
+            return null;
+        }
+    }
+
+    /**
+     * Rearm the existing bounded detector for a player-to-player replacement.
+     * @protected
+     */
+    _rearmVideoElementDetectionForPlayerNavigation() {
+        const platform = this.activePlatform;
+        const platformGeneration = this.platformInitializationGeneration;
+        const detectionGeneration = this.videoDetectionGeneration;
+        const detectionTask = this.videoDetectionTask;
+        const detectionIntervalId = this.videoDetectionIntervalId;
+        const pathname = window.location.pathname;
+        if (
+            !platform ||
+            !this._isPlatformGenerationCurrent(platformGeneration, platform)
+        ) {
+            return;
+        }
+        const isPlayerRoute = this._isCurrentPlayerRoute(platform);
+        if (
+            !isPlayerRoute ||
+            window.location.pathname !== pathname ||
+            this.videoDetectionGeneration !== detectionGeneration ||
+            this.videoDetectionTask !== detectionTask ||
+            this.videoDetectionIntervalId !== detectionIntervalId ||
+            !this._isPlatformGenerationCurrent(platformGeneration, platform)
+        ) {
+            return;
+        }
+        const lastScope = this.lastVideoSetupScope;
+        const previousScope =
+            lastScope?.platform === platform &&
+            lastScope?.platformGeneration === platformGeneration
+                ? lastScope
+                : this._getVerifiedVideoSetupScope(platform);
+        if (window.location.pathname !== pathname) {
+            return;
+        }
+        const isStillPlayerRoute = this._isCurrentPlayerRoute(platform);
+        if (
+            !isStillPlayerRoute ||
+            window.location.pathname !== pathname ||
+            this.videoDetectionGeneration !== detectionGeneration ||
+            this.videoDetectionTask !== detectionTask ||
+            this.videoDetectionIntervalId !== detectionIntervalId ||
+            !this._isPlatformGenerationCurrent(platformGeneration, platform)
+        ) {
+            return;
+        }
+
+        this.startVideoElementDetection({
+            platform,
+            platformGeneration,
+            previousScope,
+            replacementRequired: true,
+            pathname,
+        });
     }
 
     /**
      * Attempt to setup video element and subtitle container
+     * @param {Object|null} [detectionContext=null] - Optional owned detector task.
      * @returns {boolean} Success status
      */
-    attemptVideoSetup() {
+    attemptVideoSetup(detectionContext = null) {
         if (
             !this.activePlatform ||
             !this.subtitleUtils ||
@@ -2948,41 +5570,138 @@ export class BaseContentScript {
             return false;
         }
 
-        const videoElement = this.activePlatform.getVideoElement();
+        const platform = this.activePlatform;
+        const platformGeneration = this.platformInitializationGeneration;
+        const subtitleUtils = this.subtitleUtils;
+        const config = this.currentConfig;
+        if (
+            detectionContext &&
+            !this._isVideoSetupAttemptCurrent(
+                detectionContext,
+                platform,
+                platformGeneration
+            )
+        ) {
+            return false;
+        }
+        const videoElement = platform.getVideoElement();
         if (!videoElement) {
             return false; // Video not ready yet
+        }
+
+        const verifiedScope = this._getVerifiedVideoSetupScope(
+            platform,
+            videoElement
+        );
+        if (
+            !this._isVideoSetupAttemptCurrent(
+                detectionContext,
+                platform,
+                platformGeneration
+            ) ||
+            (detectionContext?.requiresVerifiedScope && !verifiedScope)
+        ) {
+            return false;
         }
 
         this.logWithFallback(
             'info',
             'Video element found! Setting up subtitle container and listeners'
         );
+        if (
+            !this._isVideoSetupAttemptCurrent(
+                detectionContext,
+                platform,
+                platformGeneration
+            )
+        ) {
+            return false;
+        }
         this.logWithFallback('debug', 'Current subtitlesActive state', {
-            subtitlesActive: this.subtitleUtils.subtitlesActive,
+            subtitlesActive: Boolean(subtitleUtils.subtitlesActive),
         });
+        if (
+            !this._isVideoSetupAttemptCurrent(
+                detectionContext,
+                platform,
+                platformGeneration
+            )
+        ) {
+            return false;
+        }
 
         // Ensure container and timeupdate listener
-        this.subtitleUtils.ensureSubtitleContainer(
-            this.activePlatform,
-            this.currentConfig,
-            this.logPrefix
-        );
+        subtitleUtils.ensureSubtitleContainer(platform, config, this.logPrefix);
 
-        if (this.subtitleUtils.subtitlesActive) {
+        if (
+            platform.getVideoElement() !== videoElement ||
+            !this._isVideoSetupAttemptCurrent(
+                detectionContext,
+                platform,
+                platformGeneration
+            )
+        ) {
+            return false;
+        }
+
+        const stableVerifiedScope =
+            verifiedScope &&
+            verifiedScope.root.isConnected &&
+            verifiedScope.video.isConnected &&
+            verifiedScope.root.contains(verifiedScope.video)
+                ? verifiedScope
+                : null;
+        if (detectionContext?.requiresVerifiedScope && !stableVerifiedScope) {
+            return false;
+        }
+
+        if (stableVerifiedScope) {
+            this.lastVideoSetupScope = {
+                ...stableVerifiedScope,
+                platform,
+                platformGeneration,
+            };
+        }
+
+        if (
+            !this._isVideoSetupAttemptCurrent(
+                detectionContext,
+                platform,
+                platformGeneration
+            )
+        ) {
+            return false;
+        }
+
+        if (subtitleUtils.subtitlesActive) {
             this.logWithFallback(
                 'info',
                 'Subtitles are active, showing container and setting up listeners'
             );
-            this.subtitleUtils.showSubtitleContainer();
-            const playbackTime = resolvePlaybackTime(
-                this.activePlatform,
-                videoElement
-            );
-            if (playbackTime !== null && playbackTime > 0) {
-                this.subtitleUtils.updateSubtitles(
+            if (
+                !this._isVideoSetupAttemptCurrent(
+                    detectionContext,
+                    platform,
+                    platformGeneration
+                )
+            ) {
+                return false;
+            }
+            subtitleUtils.showSubtitleContainer();
+            const playbackTime = resolvePlaybackTime(platform, videoElement);
+            if (
+                playbackTime !== null &&
+                playbackTime > 0 &&
+                this._isVideoSetupAttemptCurrent(
+                    detectionContext,
+                    platform,
+                    platformGeneration
+                )
+            ) {
+                subtitleUtils.updateSubtitles(
                     playbackTime,
-                    this.activePlatform,
-                    this.currentConfig,
+                    platform,
+                    config,
                     this.logPrefix
                 );
             }
@@ -2991,21 +5710,273 @@ export class BaseContentScript {
                 'info',
                 'Subtitles are not active, hiding container'
             );
-            this.subtitleUtils.hideSubtitleContainer();
+            if (
+                !this._isVideoSetupAttemptCurrent(
+                    detectionContext,
+                    platform,
+                    platformGeneration
+                )
+            ) {
+                return false;
+            }
+            subtitleUtils.hideSubtitleContainer();
         }
 
-        return true; // Success
+        const setupIsCurrent = this._isVideoSetupAttemptCurrent(
+            detectionContext,
+            platform,
+            platformGeneration
+        );
+        if (setupIsCurrent && stableVerifiedScope) {
+            this._refreshPlayerRootObservationAfterVideoSetup(
+                stableVerifiedScope,
+                platform,
+                platformGeneration
+            );
+        }
+        return this._isVideoSetupAttemptCurrent(
+            detectionContext,
+            platform,
+            platformGeneration
+        );
+    }
+
+    /**
+     * Check lifecycle and optional detector-task ownership for video setup.
+     * @private
+     * @param {Object|null} detectionContext - Optional detector task.
+     * @param {Object} platform - Captured platform identity.
+     * @param {number} platformGeneration - Captured platform generation.
+     * @returns {boolean} Whether setup may continue.
+     */
+    _isVideoSetupAttemptCurrent(
+        detectionContext,
+        platform,
+        platformGeneration
+    ) {
+        if (
+            this.isCleanedUp ||
+            !this._isPlatformGenerationCurrent(platformGeneration, platform)
+        ) {
+            return false;
+        }
+
+        if (!detectionContext) {
+            return true;
+        }
+
+        if (detectionContext.ownerType === 'visibility-video-setup') {
+            return (
+                detectionContext.platform === platform &&
+                detectionContext.platformGeneration === platformGeneration &&
+                this._isVisibilityVideoSetupTaskCurrent(detectionContext)
+            );
+        }
+
+        if (
+            detectionContext.platform !== platform ||
+            detectionContext.platformGeneration !== platformGeneration ||
+            !this._isVideoDetectionTaskCurrent(detectionContext)
+        ) {
+            return false;
+        }
+
+        return this._isVideoDetectionContextCurrent(detectionContext);
     }
 
     /**
      * Stop video element detection
      */
     stopVideoElementDetection() {
-        if (this.videoDetectionIntervalId) {
-            clearInterval(this.videoDetectionIntervalId);
-            this.videoDetectionIntervalId = null;
+        this._cancelVisibilityVideoSetupRetry();
+        this.videoDetectionGeneration += 1;
+        const intervalId = this.videoDetectionIntervalId;
+        const intervalOwner = this.videoDetectionIntervalOwner;
+        this.videoDetectionIntervalId = null;
+        this.videoDetectionIntervalOwner = null;
+        this.videoDetectionTask = null;
+        if (intervalOwner?.intervalId === intervalId) {
+            intervalOwner.intervalId = null;
+        }
+        if (intervalId !== null) {
+            clearInterval(intervalId);
             this.logWithFallback('info', 'Video element detection stopped');
         }
+    }
+
+    /**
+     * Cancel the visibility-owned video setup retry, if any.
+     * @private
+     */
+    _cancelVisibilityVideoSetupRetry(expectedTask = null) {
+        const task = this.visibilityVideoSetupTask;
+        if (expectedTask && task !== expectedTask) {
+            return false;
+        }
+        this.visibilityVideoSetupGeneration += 1;
+        this.visibilityVideoSetupTask = null;
+        if (task?.timeoutId !== null && task?.timeoutId !== undefined) {
+            clearTimeout(task.timeoutId);
+            task.timeoutId = null;
+        }
+        return task !== null;
+    }
+
+    /**
+     * Schedule one visibility-owned video setup attempt.
+     * @private
+     * @param {number} [delay=500] - Delay before the guarded attempt.
+     * @returns {boolean} Whether an owned timeout was installed.
+     */
+    _scheduleVisibilityVideoSetupRetry(delay = 500) {
+        const visibilityGeneration = this.visibilityVideoSetupGeneration + 1;
+        this._cancelVisibilityVideoSetupRetry();
+        if (
+            this.visibilityVideoSetupGeneration !== visibilityGeneration ||
+            this.visibilityVideoSetupTask !== null
+        ) {
+            return false;
+        }
+
+        const platform = this.activePlatform;
+        const platformGeneration = this.platformInitializationGeneration;
+        const pathname = window.location.pathname;
+        const detectionGeneration = this.videoDetectionGeneration;
+        const detectionTask = this.videoDetectionTask;
+        const detectionIntervalId = this.videoDetectionIntervalId;
+        if (
+            !platform ||
+            !this.subtitleUtils?.subtitlesActive ||
+            this.isCleanedUp ||
+            !this._isPlatformGenerationCurrent(platformGeneration, platform)
+        ) {
+            return false;
+        }
+        const isPlayerRoute = this._isCurrentPlayerRoute(platform);
+        if (
+            !isPlayerRoute ||
+            window.location.pathname !== pathname ||
+            !this._isPlatformGenerationCurrent(platformGeneration, platform) ||
+            this.videoDetectionGeneration !== detectionGeneration ||
+            this.videoDetectionTask !== detectionTask ||
+            this.videoDetectionIntervalId !== detectionIntervalId ||
+            this.visibilityVideoSetupGeneration !== visibilityGeneration ||
+            this.visibilityVideoSetupTask !== null
+        ) {
+            return false;
+        }
+
+        const task = {
+            ownerType: 'visibility-video-setup',
+            visibilityGeneration,
+            timeoutId: null,
+            platform,
+            platformGeneration,
+            pathname,
+            detectionGeneration,
+            detectionTask,
+            detectionIntervalId,
+            requiresVerifiedScope: true,
+        };
+        this.visibilityVideoSetupTask = task;
+
+        let timeoutId = null;
+        let firedBeforeInstallationCompleted = false;
+        const runVisibilitySetup = () => {
+            if (timeoutId === null) {
+                firedBeforeInstallationCompleted = true;
+                return;
+            }
+            if (!this._isVisibilityVideoSetupTaskCurrent(task)) {
+                if (this.visibilityVideoSetupTask === task) {
+                    this.visibilityVideoSetupTask = null;
+                }
+                task.timeoutId = null;
+                return;
+            }
+
+            task.timeoutId = null;
+            try {
+                this.attemptVideoSetup(task);
+            } catch (_) {
+                this._handleVideoDetectionAttemptFailure(task, null);
+                return;
+            }
+            if (this.visibilityVideoSetupTask === task) {
+                this.visibilityVideoSetupTask = null;
+            }
+        };
+
+        try {
+            timeoutId = setTimeout(runVisibilitySetup, delay);
+        } catch (_) {
+            this._handleVideoDetectionAttemptFailure(task, null);
+            return false;
+        }
+        if (firedBeforeInstallationCompleted) {
+            clearTimeout(timeoutId);
+            if (this.visibilityVideoSetupTask === task) {
+                this.visibilityVideoSetupTask = null;
+            }
+            return false;
+        }
+        if (!this._isVisibilityVideoSetupTaskCurrent(task)) {
+            clearTimeout(timeoutId);
+            if (this.visibilityVideoSetupTask === task) {
+                this.visibilityVideoSetupTask = null;
+            }
+            return false;
+        }
+        task.timeoutId = timeoutId;
+        return true;
+    }
+
+    /**
+     * Check exact ownership of a delayed visibility video setup.
+     * @private
+     * @param {Object} task - Captured visibility task.
+     * @returns {boolean} Whether the task may continue.
+     */
+    _isVisibilityVideoSetupTaskCurrent(task) {
+        if (
+            this.visibilityVideoSetupTask !== task ||
+            this.visibilityVideoSetupGeneration !== task.visibilityGeneration ||
+            this.isCleanedUp ||
+            !this._isPlatformGenerationCurrent(
+                task.platformGeneration,
+                task.platform
+            ) ||
+            this.videoDetectionGeneration !== task.detectionGeneration ||
+            this.videoDetectionTask !== task.detectionTask ||
+            this.videoDetectionIntervalId !== task.detectionIntervalId ||
+            window.location.pathname !== task.pathname
+        ) {
+            return false;
+        }
+
+        const pathnameBeforeRouteCheck = window.location.pathname;
+        const isPlayerRoute = this._isCurrentPlayerRoute(task.platform);
+        if (
+            !isPlayerRoute ||
+            window.location.pathname !== pathnameBeforeRouteCheck ||
+            window.location.pathname !== task.pathname
+        ) {
+            return false;
+        }
+
+        return (
+            this.visibilityVideoSetupTask === task &&
+            this.visibilityVideoSetupGeneration === task.visibilityGeneration &&
+            !this.isCleanedUp &&
+            this._isPlatformGenerationCurrent(
+                task.platformGeneration,
+                task.platform
+            ) &&
+            this.videoDetectionGeneration === task.detectionGeneration &&
+            this.videoDetectionTask === task.detectionTask &&
+            this.videoDetectionIntervalId === task.detectionIntervalId &&
+            window.location.pathname === task.pathname
+        );
     }
 
     // ========================================
@@ -3013,96 +5984,616 @@ export class BaseContentScript {
     // ========================================
 
     /**
-     * Setup DOM mutation observer for dynamic content changes
+     * Check one captured player lifecycle without relying on broad page state.
+     * Route checks are treated as re-entrant collaborators, so every check is
+     * followed by the same identity snapshot.
+     * @private
+     * @param {Object} platform - Captured platform identity.
+     * @param {number} platformGeneration - Captured platform generation.
+     * @param {string} pathname - Captured exact pathname.
+     * @param {Element|null} [root=null] - Optional connected player root.
+     * @returns {boolean} Whether the lifecycle is still current.
      */
-    setupDOMObservation() {
-        this.pageObserver = new MutationObserver((mutationsList) => {
-            if (!this.subtitleUtils) return; // Utilities not loaded yet
+    _isPlayerLifecycleCurrent(
+        platform,
+        platformGeneration,
+        pathname,
+        root = null
+    ) {
+        if (
+            !platform ||
+            this.isCleanedUp ||
+            !this._isPlatformGenerationCurrent(platformGeneration, platform) ||
+            window.location.pathname !== pathname ||
+            (root && !root.isConnected)
+        ) {
+            return false;
+        }
 
-            // Check for URL changes in case other detection methods missed it
-            setTimeout(() => this.checkForUrlChange(), 100);
+        const pathnameBeforeRouteCheck = window.location.pathname;
+        const isPlayerRoute = this._isCurrentPlayerRoute(platform);
+        return (
+            isPlayerRoute &&
+            pathnameBeforeRouteCheck === pathname &&
+            window.location.pathname === pathname &&
+            !this.isCleanedUp &&
+            this._isPlatformGenerationCurrent(platformGeneration, platform) &&
+            (!root || root.isConnected)
+        );
+    }
 
-            if (!this.activePlatform && this.subtitleUtils.subtitlesActive) {
-                this.logWithFallback(
-                    'info',
-                    'PageObserver detected DOM changes. Attempting to initialize platform'
-                );
-                this.initializePlatform();
+    /**
+     * Check exact observer ownership and the captured player lifecycle.
+     * @private
+     * @param {Object} task - Captured player-root observation task.
+     * @returns {boolean} Whether the task may continue.
+     */
+    _isPlayerRootObservationTaskCurrent(task) {
+        const observationRoot = task?.observationShell || task?.root;
+        if (
+            !task ||
+            this.pageObserverTask !== task ||
+            this.pageObserver !== task.observer ||
+            !(task.root instanceof Element) ||
+            task.root === document.body ||
+            task.root === document.documentElement ||
+            !(observationRoot instanceof Element) ||
+            observationRoot === document.body ||
+            observationRoot === document.documentElement ||
+            !this._isPlayerLifecycleCurrent(
+                task.platform,
+                task.platformGeneration,
+                task.pathname,
+                observationRoot
+            )
+        ) {
+            return false;
+        }
+
+        return (
+            this.pageObserverTask === task &&
+            this.pageObserver === task.observer &&
+            this._isPlatformGenerationCurrent(
+                task.platformGeneration,
+                task.platform
+            ) &&
+            window.location.pathname === task.pathname &&
+            observationRoot.isConnected
+        );
+    }
+
+    /**
+     * Release only the exact observer task (or one legacy unowned observer).
+     * Shared ownership is detached before timer/observer collaborators run.
+     * @private
+     * @param {Object|null} task - Expected task identity.
+     * @param {MutationObserver|null} [legacyObserver=null] - Legacy fallback.
+     * @returns {boolean} Whether an observer owner was released.
+     */
+    _releasePlayerRootObservationTask(task, legacyObserver = null) {
+        if (task) {
+            if (
+                this.pageObserverTask !== task ||
+                this.pageObserver !== task.observer
+            ) {
+                return false;
+            }
+
+            this.pageObserverTask = null;
+            this.pageObserver = null;
+            const timeoutId = task.timeoutId;
+            task.timeoutId = null;
+            task.timeoutInstallationPending = false;
+            if (timeoutId !== null && timeoutId !== undefined) {
+                try {
+                    clearTimeout(timeoutId);
+                } catch (_) {}
+            }
+            try {
+                task.observer.disconnect();
+            } catch (_) {}
+            return true;
+        }
+
+        if (
+            legacyObserver &&
+            this.pageObserverTask === null &&
+            this.pageObserver === legacyObserver
+        ) {
+            this.pageObserver = null;
+            try {
+                legacyObserver.disconnect();
+            } catch (_) {}
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Invalidate setup work and cancel the exact current observer owner.
+     * @private
+     * @param {Object|null} [expectedTask=null] - Optional exact owner guard.
+     * @returns {boolean} Whether the current owner was released.
+     */
+    _cancelPlayerRootObservation(expectedTask = null) {
+        const task = this.pageObserverTask;
+        if (expectedTask && task !== expectedTask) {
+            return false;
+        }
+        this.domObservationSetupGeneration += 1;
+        this.domObservationCancellationDepth += 1;
+        try {
+            return this._releasePlayerRootObservationTask(
+                task,
+                task ? null : this.pageObserver
+            );
+        } finally {
+            this.domObservationCancellationDepth -= 1;
+        }
+    }
+
+    /**
+     * Clear a provisional timeout only when a newer exact owner has not
+     * already claimed the same reusable host timer id.
+     * @private
+     * @param {Object} task - Stale or current installation task.
+     * @param {*} timeoutId - Provisional host timer id.
+     * @returns {boolean} Whether a clear was attempted.
+     */
+    _clearUnclaimedPlayerRootTimeout(task, timeoutId) {
+        const currentTask = this.pageObserverTask;
+        if (
+            currentTask &&
+            currentTask !== task &&
+            (currentTask.timeoutInstallationPending ||
+                currentTask.timeoutId === timeoutId)
+        ) {
+            return false;
+        }
+        try {
+            clearTimeout(timeoutId);
+        } catch (_) {}
+        return true;
+    }
+
+    /**
+     * Coalesce one relevant player-root mutation burst behind an exactly-owned
+     * 100 ms timeout.
+     * @private
+     * @param {Object} task - Captured observer task.
+     * @param {MutationRecord[]} mutationsList - Delivered mutations.
+     */
+    _schedulePlayerRootMutation(task, mutationsList) {
+        if (!this._isPlayerRootObservationTaskCurrent(task)) {
+            return;
+        }
+
+        let hasRelevantMutation = false;
+        try {
+            hasRelevantMutation = Array.from(mutationsList || []).some(
+                (mutation) =>
+                    mutation?.type === 'childList' &&
+                    (mutation.target === task.root ||
+                        mutation.target === task.observationShell ||
+                        (mutation.target instanceof Node &&
+                            task.root.contains(mutation.target)))
+            );
+        } catch (_) {
+            return;
+        }
+        if (
+            !hasRelevantMutation ||
+            !this._isPlayerRootObservationTaskCurrent(task) ||
+            task.timeoutInstallationPending ||
+            task.timeoutId !== null
+        ) {
+            return;
+        }
+
+        task.timeoutInstallationPending = true;
+        let timeoutId = null;
+        let firedBeforeInstallationCompleted = false;
+        const runMutationTask = () => {
+            if (timeoutId === null) {
+                firedBeforeInstallationCompleted = true;
+                return;
+            }
+            if (
+                task.timeoutInstallationPending ||
+                task.timeoutId !== timeoutId ||
+                !this._isPlayerRootObservationTaskCurrent(task)
+            ) {
                 return;
             }
 
-            if (!this.activePlatform) return;
+            task.timeoutId = null;
+            this._processPlayerRootMutation(task);
+        };
 
-            for (let mutation of mutationsList) {
-                if (mutation.type === 'childList') {
-                    const videoElementNow =
-                        this.activePlatform.getVideoElement();
-                    const currentDOMVideoElement = document.querySelector(
-                        'video[data-listener-attached="true"]'
-                    );
-
-                    if (
-                        videoElementNow &&
-                        (!currentDOMVideoElement ||
-                            currentDOMVideoElement !== videoElementNow)
-                    ) {
-                        this.logWithFallback(
-                            'debug',
-                            'PageObserver detected video element appearance or change'
-                        );
-                        if (
-                            this.subtitleUtils.subtitlesActive &&
-                            this.platformReady &&
-                            this.activePlatform
-                        ) {
-                            this.logWithFallback(
-                                'debug',
-                                'Platform is ready, re-ensuring container/listeners'
-                            );
-                            this.subtitleUtils.ensureSubtitleContainer(
-                                this.activePlatform,
-                                this.currentConfig,
-                                this.logPrefix
-                            );
-                        }
-                    } else if (currentDOMVideoElement && !videoElementNow) {
-                        this.logWithFallback(
-                            'debug',
-                            'PageObserver detected video element removal'
-                        );
-                        this.subtitleUtils.hideSubtitleContainer();
-                        if (this.subtitleUtils.clearSubtitleDOM) {
-                            this.subtitleUtils.clearSubtitleDOM();
-                        }
-                    }
-                }
+        try {
+            timeoutId = setTimeout(runMutationTask, 100);
+        } catch (_) {
+            if (
+                this.pageObserverTask === task &&
+                task.timeoutInstallationPending
+            ) {
+                task.timeoutInstallationPending = false;
             }
-        });
+            return;
+        }
 
-        // Ensure document.body exists before observing
-        if (document.body) {
-            this.pageObserver.observe(document.body, {
+        if (firedBeforeInstallationCompleted) {
+            this._clearUnclaimedPlayerRootTimeout(task, timeoutId);
+            if (
+                this.pageObserverTask === task &&
+                task.timeoutInstallationPending
+            ) {
+                task.timeoutInstallationPending = false;
+            }
+            return;
+        }
+        if (
+            !this._isPlayerRootObservationTaskCurrent(task) ||
+            !task.timeoutInstallationPending ||
+            task.timeoutId !== null
+        ) {
+            this._clearUnclaimedPlayerRootTimeout(task, timeoutId);
+            if (this.pageObserverTask === task) {
+                task.timeoutInstallationPending = false;
+            }
+            return;
+        }
+
+        task.timeoutInstallationPending = false;
+        task.timeoutId = timeoutId;
+    }
+
+    /**
+     * Reconcile one valid same-root video replacement/removal through the
+     * existing bounded video-detection and setup seams.
+     * @private
+     * @param {Object} task - Captured observer task.
+     */
+    _processPlayerRootMutation(task) {
+        if (!this._isPlayerRootObservationTaskCurrent(task)) {
+            return;
+        }
+
+        const currentRoot = this._getVerifiedPlayerRoot(task.platform);
+        if (!this._isPlayerRootObservationTaskCurrent(task)) {
+            return;
+        }
+
+        if (currentRoot !== task.root) {
+            if (!currentRoot) return;
+            let currentVideo = null;
+            try {
+                currentVideo = task.platform.getVideoElement?.() || null;
+            } catch (_) {
+                return;
+            }
+            if (
+                !(currentVideo instanceof HTMLVideoElement) ||
+                !currentVideo.isConnected ||
+                !currentRoot.contains(currentVideo) ||
+                !this._isPlayerRootObservationTaskCurrent(task)
+            ) {
+                return;
+            }
+            this.startVideoElementDetection({
+                platform: task.platform,
+                platformGeneration: task.platformGeneration,
+                previousScope: task.videoScope,
+                replacementRequired: true,
+                pathname: task.pathname,
+            });
+            return;
+        }
+
+        let currentVideo = null;
+        try {
+            currentVideo = task.platform.getVideoElement?.() || null;
+        } catch (_) {
+            return;
+        }
+        if (!this._isPlayerRootObservationTaskCurrent(task)) {
+            return;
+        }
+
+        const currentScope =
+            currentVideo instanceof HTMLVideoElement &&
+            currentVideo.isConnected &&
+            currentRoot.contains(currentVideo) &&
+            currentRoot !== currentVideo
+                ? { root: currentRoot, video: currentVideo }
+                : null;
+        if (!this._isPlayerRootObservationTaskCurrent(task)) {
+            return;
+        }
+        const previousScope = task.videoScope;
+        if (
+            currentScope &&
+            previousScope?.root === currentScope.root &&
+            previousScope?.video === currentScope.video
+        ) {
+            return;
+        }
+
+        if (currentScope) {
+            if (!this._isPlayerRootObservationTaskCurrent(task)) {
+                return;
+            }
+            this.startVideoElementDetection({
+                platform: task.platform,
+                platformGeneration: task.platformGeneration,
+                previousScope,
+                replacementRequired: true,
+                pathname: task.pathname,
+            });
+            if (!this._isPlayerRootObservationTaskCurrent(task)) {
+                return;
+            }
+
+            const completedScope = this.lastVideoSetupScope;
+            if (
+                completedScope?.platform === task.platform &&
+                completedScope?.platformGeneration ===
+                    task.platformGeneration &&
+                completedScope.root === currentScope.root &&
+                completedScope.video === currentScope.video
+            ) {
+                task.videoScope = currentScope;
+            }
+            return;
+        }
+
+        if (!previousScope) {
+            return;
+        }
+        task.videoScope = null;
+        const subtitleUtils = this.subtitleUtils;
+        if (typeof subtitleUtils?.hideSubtitleContainer === 'function') {
+            try {
+                subtitleUtils.hideSubtitleContainer();
+            } catch (_) {}
+            if (
+                !this._isPlayerRootObservationTaskCurrent(task) ||
+                this.subtitleUtils !== subtitleUtils
+            ) {
+                return;
+            }
+        }
+        if (typeof subtitleUtils?.clearSubtitleDOM === 'function') {
+            try {
+                subtitleUtils.clearSubtitleDOM();
+            } catch (_) {}
+            if (
+                !this._isPlayerRootObservationTaskCurrent(task) ||
+                this.subtitleUtils !== subtitleUtils
+            ) {
+                return;
+            }
+        }
+
+        if (!this._isPlayerRootObservationTaskCurrent(task)) {
+            return;
+        }
+        this.startVideoElementDetection({
+            platform: task.platform,
+            platformGeneration: task.platformGeneration,
+            previousScope,
+            replacementRequired: true,
+            pathname: task.pathname,
+        });
+    }
+
+    /**
+     * Keep an existing same-root observation in sync after successful video
+     * setup, or establish it when setup completed before observer startup.
+     * @private
+     * @param {{root: Element, video: HTMLVideoElement}} scope - Verified scope.
+     * @param {Object} platform - Captured platform identity.
+     * @param {number} platformGeneration - Captured platform generation.
+     * @returns {boolean} Whether an observer owns the verified scope.
+     */
+    _refreshPlayerRootObservationAfterVideoSetup(
+        scope,
+        platform,
+        platformGeneration
+    ) {
+        const pathname = window.location.pathname;
+        if (
+            !scope?.root?.isConnected ||
+            !scope?.video?.isConnected ||
+            !scope.root.contains(scope.video) ||
+            !this._isPlayerLifecycleCurrent(
+                platform,
+                platformGeneration,
+                pathname,
+                scope.root
+            )
+        ) {
+            return false;
+        }
+
+        const task = this.pageObserverTask;
+        if (
+            task?.platform === platform &&
+            task.platformGeneration === platformGeneration &&
+            task.pathname === pathname &&
+            task.root === scope.root &&
+            this._isPlayerRootObservationTaskCurrent(task)
+        ) {
+            task.videoScope = { root: scope.root, video: scope.video };
+            return true;
+        }
+
+        return this.setupDOMObservation();
+    }
+
+    /**
+     * Setup one lifecycle-owned observer scoped to a verified player root and,
+     * when available, its bounded direct-parent shell.
+     * There is deliberately no document/body fallback.
+     * @returns {boolean} Whether an observer owns the current verified scope.
+     */
+    setupDOMObservation() {
+        if (this.domObservationCancellationDepth > 0) {
+            return false;
+        }
+        const setupGeneration = this.domObservationSetupGeneration + 1;
+        this.domObservationSetupGeneration = setupGeneration;
+        const previousTask = this.pageObserverTask;
+        const previousObserver = this.pageObserver;
+        const platform = this.activePlatform;
+        const platformGeneration = this.platformInitializationGeneration;
+        const pathname = window.location.pathname;
+        const stillOwnsInitialSnapshot = () =>
+            this.domObservationSetupGeneration === setupGeneration &&
+            this.pageObserverTask === previousTask &&
+            this.pageObserver === previousObserver;
+        const releaseInitialSnapshot = () => {
+            if (!stillOwnsInitialSnapshot()) {
+                return;
+            }
+            this._releasePlayerRootObservationTask(
+                previousTask,
+                previousTask ? null : previousObserver
+            );
+        };
+
+        if (
+            !this._isPlayerLifecycleCurrent(
+                platform,
+                platformGeneration,
+                pathname
+            ) ||
+            !stillOwnsInitialSnapshot()
+        ) {
+            releaseInitialSnapshot();
+            return false;
+        }
+
+        const verifiedScope = this._getVerifiedVideoSetupScope(platform);
+        if (
+            !verifiedScope ||
+            !stillOwnsInitialSnapshot() ||
+            !this._isPlayerLifecycleCurrent(
+                platform,
+                platformGeneration,
+                pathname,
+                verifiedScope.root
+            ) ||
+            !stillOwnsInitialSnapshot()
+        ) {
+            releaseInitialSnapshot();
+            return false;
+        }
+
+        if (
+            previousTask?.platform === platform &&
+            previousTask.platformGeneration === platformGeneration &&
+            previousTask.pathname === pathname &&
+            previousTask.root === verifiedScope.root &&
+            previousTask.videoScope?.video === verifiedScope.video &&
+            this._isPlayerRootObservationTaskCurrent(previousTask) &&
+            stillOwnsInitialSnapshot()
+        ) {
+            return true;
+        }
+
+        releaseInitialSnapshot();
+        if (
+            this.domObservationSetupGeneration !== setupGeneration ||
+            this.pageObserverTask !== null ||
+            this.pageObserver !== null ||
+            !this._isPlayerLifecycleCurrent(
+                platform,
+                platformGeneration,
+                pathname,
+                verifiedScope.root
+            ) ||
+            this.domObservationSetupGeneration !== setupGeneration
+        ) {
+            return false;
+        }
+
+        const observationShell = this._getVerifiedPlayerObservationShell(
+            verifiedScope.root
+        );
+        const task = {
+            observer: null,
+            timeoutId: null,
+            timeoutInstallationPending: false,
+            platform,
+            platformGeneration,
+            pathname,
+            root: verifiedScope.root,
+            observationShell,
+            videoScope: verifiedScope,
+        };
+        let observer;
+        try {
+            observer = new MutationObserver((mutationsList) => {
+                this._schedulePlayerRootMutation(task, mutationsList);
+            });
+        } catch (_) {
+            return false;
+        }
+        task.observer = observer;
+
+        if (
+            this.domObservationSetupGeneration !== setupGeneration ||
+            this.pageObserverTask !== null ||
+            this.pageObserver !== null ||
+            !this._isPlayerLifecycleCurrent(
+                platform,
+                platformGeneration,
+                pathname,
+                verifiedScope.root
+            ) ||
+            this.domObservationSetupGeneration !== setupGeneration
+        ) {
+            try {
+                observer.disconnect();
+            } catch (_) {}
+            return false;
+        }
+
+        this.pageObserverTask = task;
+        this.pageObserver = observer;
+        try {
+            observer.observe(verifiedScope.root, {
                 childList: true,
                 subtree: true,
             });
-        } else {
-            // Wait for body to be available
-            const waitForBody = () => {
-                if (document.body) {
-                    this.pageObserver.observe(document.body, {
+            if (task.observationShell) {
+                try {
+                    observer.observe(task.observationShell, {
                         childList: true,
-                        subtree: true,
+                        subtree: false,
                     });
-                    this.logWithFallback(
-                        'info',
-                        'Page observer started after body became available'
-                    );
-                } else {
-                    setTimeout(waitForBody, 100);
+                } catch (_) {
+                    task.observationShell = null;
                 }
-            };
-            waitForBody();
+            }
+        } catch (_) {
+            this._releasePlayerRootObservationTask(task);
+            return false;
         }
+
+        if (
+            this.domObservationSetupGeneration !== setupGeneration ||
+            !this._isPlayerRootObservationTaskCurrent(task)
+        ) {
+            if (!this._releasePlayerRootObservationTask(task)) {
+                try {
+                    observer.disconnect();
+                } catch (_) {}
+            }
+            return false;
+        }
+        return true;
     }
 
     // ========================================
@@ -3118,6 +6609,17 @@ export class BaseContentScript {
      * @returns {boolean} Whether response is handled asynchronously
      */
     handleChromeMessage(request, sender, sendResponse) {
+        if (getAIContextLifecycleState(this)?.terminal) {
+            try {
+                sendResponse(
+                    buildChromeMessageFailureResponse(
+                        request,
+                        'Content script lifecycle is terminal'
+                    )
+                );
+            } catch (_) {}
+            return false;
+        }
         try {
             // Validate request object
             if (!request) {
@@ -3132,13 +6634,13 @@ export class BaseContentScript {
                 return false;
             }
 
-            const action = request.action || request.type;
+            const action = readProtocolMessageAction(request);
 
             if (action !== MessageActions.SIDEPANEL_GET_STATE) {
                 this.logWithFallback('debug', 'Received Chrome message', {
-                    action,
-                    hasUtilities: !!(this.subtitleUtils && this.configService),
-                    hasRegisteredHandler: this.messageHandlers.has(action),
+                    hasUtilities: Boolean(
+                        this.subtitleUtils && this.configService
+                    ),
                 });
             }
 
@@ -3146,12 +6648,12 @@ export class BaseContentScript {
             if (!action) {
                 this.logWithFallback(
                     'warn',
-                    'Received message without action or type',
-                    { requestKeys: Object.keys(request) }
+                    'Received message without a valid protocol action',
+                    { requestKeyCount: Object.keys(request).length }
                 );
                 sendResponse({
                     success: false,
-                    error: 'Message missing action or type',
+                    error: 'Invalid message action',
                 });
                 return false;
             }
@@ -3159,14 +6661,30 @@ export class BaseContentScript {
             // Check if we have a registered handler for this action
             const handlerConfig = this.messageHandlers.get(action);
             if (handlerConfig) {
+                const senderIdentity = classifyExtensionMessageSender(sender);
+                if (
+                    !senderIdentity ||
+                    !handlerConfig.senderRoles.includes(senderIdentity.role)
+                ) {
+                    this.logWithFallback(
+                        'warn',
+                        'Rejected message from unauthorized sender'
+                    );
+                    sendResponse({
+                        success: false,
+                        error: 'Unauthorized message sender',
+                    });
+                    return false;
+                }
+
                 if (action !== MessageActions.SIDEPANEL_GET_STATE) {
                     this.logWithFallback(
                         'debug',
                         'Using registered message handler',
                         {
-                            action,
-                            description: handlerConfig.description,
-                            requiresUtilities: handlerConfig.requiresUtilities,
+                            requiresUtilities: Boolean(
+                                handlerConfig.requiresUtilities
+                            ),
                         }
                     );
                 }
@@ -3178,70 +6696,35 @@ export class BaseContentScript {
                 ) {
                     this.logWithFallback(
                         'error',
-                        'Handler requires utilities but they are not loaded',
-                        { action }
+                        'Handler requires utilities but they are not loaded'
                     );
-                    sendResponse({
-                        success: false,
-                        error: 'Utilities not loaded',
-                    });
+                    sendResponse(
+                        buildChromeMessageFailureResponse(
+                            request,
+                            'Utilities not loaded'
+                        )
+                    );
                     return true; // Return true to indicate async handling (even though it's immediate)
                 }
 
-                return handlerConfig.handler(request, sendResponse);
-            }
-
-            // Check for utilities requirement for unknown actions
-            if (!this.subtitleUtils || !this.configService) {
-                this.logWithFallback(
-                    'error',
-                    'Utilities not loaded, cannot handle message',
-                    { action }
+                return handlerConfig.handler(
+                    request,
+                    sendResponse,
+                    senderIdentity
                 );
-                sendResponse({ success: false, error: 'Utilities not loaded' });
-                return true; // Return true to indicate async handling (even though it's immediate)
             }
 
-            // Delegate to platform-specific handler for unregistered actions
-            this.logWithFallback(
-                'debug',
-                'Delegating to platform-specific handler',
-                { action }
-            );
-            return this.handlePlatformSpecificMessage(request, sendResponse);
-        } catch (error) {
-            this.logWithFallback('error', 'Error in Chrome message handling', {
-                error: error.message,
-                stack: error.stack,
-                action: request.action || request.type,
-            });
-            sendResponse({ success: false, error: error.message });
+            this.logWithFallback('warn', 'Unknown message action');
+            sendResponse({ success: false, error: 'Unknown message action' });
             return false;
-        }
-    }
-
-    /**
-     * Handle toggle subtitles message
-     * @param {Object} request - Message request
-     * @param {Function} sendResponse - Response callback
-     * @returns {boolean} Whether response is handled asynchronously
-     */
-    handleToggleSubtitles(request, sendResponse) {
-        try {
-            this.logWithFallback('info', 'Handling toggle subtitles', {
-                enabled: request.enabled,
-            });
-
-            this.subtitleUtils.setSubtitlesActive(request.enabled);
-
-            return request.enabled
-                ? this._enableSubtitles(sendResponse, request.enabled)
-                : this._disableSubtitles(sendResponse, request.enabled);
-        } catch (error) {
-            this.logWithFallback('error', 'Error in handleToggleSubtitles', {
-                error: error.message,
-            });
-            sendResponse({ success: false, error: error.message });
+        } catch {
+            this.logWithFallback('error', 'Error in Chrome message handling');
+            sendResponse(
+                buildChromeMessageFailureResponse(
+                    request,
+                    'Message handling failed'
+                )
+            );
             return false;
         }
     }
@@ -3252,25 +6735,40 @@ export class BaseContentScript {
      * @param {Function} sendResponse - Response callback
      * @returns {boolean} Whether response is handled asynchronously
      */
-    handleConfigChanged(request, sendResponse) {
+    handleConfigChanged(request, sendResponse, senderIdentity) {
+        const parsedRequest = parseConfigChangedRequestMessage(
+            request,
+            senderIdentity?.role
+        );
+        if (!parsedRequest) {
+            sendResponse(null);
+            return false;
+        }
+
         try {
+            const canonicalChanges = {};
+            for (const key of Object.keys(parsedRequest.changes)) {
+                Object.defineProperty(canonicalChanges, key, {
+                    value: prepareSettingValue(key, parsedRequest.changes[key]),
+                    enumerable: true,
+                    configurable: true,
+                    writable: true,
+                });
+            }
+
             this.logWithFallback('debug', 'Handling config changed', {
-                changedKeys: Object.keys(request.changes || {}),
+                changedKeyCount: Object.keys(canonicalChanges).length,
             });
 
-            if (
-                request.changes &&
-                this.activePlatform &&
-                this.subtitleUtils.subtitlesActive
-            ) {
-                Object.assign(this.currentConfig, request.changes);
+            if (this.activePlatform && this.subtitleUtils.subtitlesActive) {
+                Object.assign(this.currentConfig, canonicalChanges);
 
                 if (
-                    request.changes.useNativeSubtitles !== undefined &&
-                    request.changes.useOfficialTranslations === undefined
+                    canonicalChanges.useNativeSubtitles !== undefined &&
+                    canonicalChanges.useOfficialTranslations === undefined
                 ) {
                     this.currentConfig.useOfficialTranslations =
-                        request.changes.useNativeSubtitles;
+                        canonicalChanges.useNativeSubtitles;
                 }
 
                 this.subtitleUtils.applySubtitleStyling(this.currentConfig);
@@ -3291,17 +6789,24 @@ export class BaseContentScript {
                     'info',
                     'Applied immediate config changes',
                     {
-                        changedKeys: Object.keys(request.changes),
+                        changedKeyCount: Object.keys(canonicalChanges).length,
                     }
                 );
             }
-            sendResponse({ success: true });
+            sendResponse(
+                buildContentControlResponseMessage(parsedRequest, {
+                    success: true,
+                })
+            );
             return false;
         } catch (error) {
-            this.logWithFallback('error', 'Error in handleConfigChanged', {
-                error: error.message,
-            });
-            sendResponse({ success: false, error: error.message });
+            this.logWithFallback('error', 'Error in handleConfigChanged');
+            sendResponse(
+                buildContentControlResponseMessage(parsedRequest, {
+                    success: false,
+                    error: 'Invalid configuration change',
+                })
+            );
             return false;
         }
     }
@@ -3312,266 +6817,337 @@ export class BaseContentScript {
      * @param {Function} sendResponse - Response callback
      * @returns {boolean} Whether response is handled asynchronously
      */
-    handleLoggingLevelChanged(request, sendResponse) {
+    handleLoggingLevelChanged(request, sendResponse, senderIdentity) {
+        const parsedRequest = parseLoggingLevelChangedRequestMessage(
+            request,
+            senderIdentity?.role
+        );
+        if (!parsedRequest) {
+            sendResponse(null);
+            return false;
+        }
+
         try {
-            this.logWithFallback('debug', 'Handling logging level change', {
-                level: request.level,
-            });
+            this.logWithFallback('debug', 'Handling logging level change');
 
             if (this.contentLogger) {
-                this.contentLogger.updateLevel(request.level);
+                this.contentLogger.updateLevel(parsedRequest.level);
                 this.contentLogger.info(
-                    'Logging level updated from background script',
-                    {
-                        newLevel: request.level,
-                    }
+                    'Logging level updated from background script'
                 );
             } else {
                 this.logWithFallback(
                     'info',
-                    'Logging level change received but logger not initialized yet',
-                    {
-                        level: request.level,
-                    }
+                    'Logging level change received but logger not initialized yet'
                 );
             }
-            sendResponse({ success: true });
+            sendResponse(
+                buildContentControlResponseMessage(parsedRequest, {
+                    success: true,
+                })
+            );
             return false;
         } catch (error) {
-            this.logWithFallback(
-                'error',
-                'Error in handleLoggingLevelChanged',
-                { error: error.message }
+            this.logWithFallback('error', 'Error in handleLoggingLevelChanged');
+            sendResponse(
+                buildContentControlResponseMessage(parsedRequest, {
+                    success: false,
+                    error: 'Logging level update failed',
+                })
             );
-            sendResponse({ success: false, error: error.message });
             return false;
         }
     }
-
-    /**
-     * Disable subtitles helper method
-     * @private
-     * @param {Function} sendResponse - Response callback
-     * @param {boolean} enabled - Enabled state
-     * @returns {boolean} Whether response is handled asynchronously
-     */
-    _disableSubtitles(sendResponse, enabled) {
-        this.stopVideoElementDetection();
-        this.subtitleUtils.hideSubtitleContainer();
-        this.subtitleUtils.clearSubtitlesDisplayAndQueue(
-            this.activePlatform,
-            true,
-            this.logPrefix
-        );
-        if (this.activePlatform) {
-            this.activePlatform.cleanup();
-            this.activePlatform = null;
-        }
-        this.platformReady = false;
-        sendResponse({ success: true, subtitlesEnabled: enabled });
-        return false;
-    }
-
-    /**
-     * Enable subtitles helper method
-     * @private
-     * @param {Function} sendResponse - Response callback
-     * @param {boolean} enabled - Enabled state
-     * @returns {boolean} Whether response is handled asynchronously
-     */
 
     /**
      * Handle side panel get state: returns currently highlighted words and languages
      */
     handleSidePanelGetState(request, sendResponse) {
-        try {
-            const selectedElements = document.querySelectorAll(
-                '.dualsub-interactive-word.dualsub-word-selected'
-            );
-            const domWords = Array.from(selectedElements)
-                .map((element) => element.getAttribute('data-word')?.trim())
-                .filter(Boolean);
-            const words =
-                domWords.length > 0
-                    ? domWords
-                    : Array.from(
-                          this.sidePanelIntegration?.selectedWords || []
-                      );
-
-            // Keep this handler lightweight to avoid page lag
-            sendResponse({
-                success: true,
-                selectedWords: words,
-                sourceLanguage: 'auto',
-            });
-            return false;
-        } catch (error) {
-            this.logWithFallback('error', 'Error in handleSidePanelGetState', {
-                error: error.message,
-            });
-            sendResponse({ success: false, error: error.message });
+        const republishRequest =
+            parseSidePanelSelectionRepublishRequestMessage(request);
+        const state = getContentSelectionAuthorityState(this);
+        if (!republishRequest || !state || state.terminal || !state.snapshot) {
+            sendResponse(null);
             return false;
         }
+
+        const snapshot = state.snapshot;
+        const lifecycleGeneration = state.lifecycleGeneration;
+        void queueContentSelectionSnapshot(
+            this,
+            snapshot,
+            () =>
+                !state.terminal &&
+                state.lifecycleGeneration === lifecycleGeneration &&
+                state.snapshot === snapshot
+        ).then(
+            (accepted) => {
+                sendResponse(
+                    accepted &&
+                        !state.terminal &&
+                        state.lifecycleGeneration === lifecycleGeneration &&
+                        state.snapshot === snapshot
+                        ? buildSidePanelSelectionRepublishAck(republishRequest)
+                        : null
+                );
+            },
+            () => sendResponse(null)
+        );
+        return true;
     }
 
     /**
      * Handle side panel update state: clear/apply highlights
      */
     handleSidePanelUpdateState(request, sendResponse) {
-        try {
-            const data = request.data || request; // support both shapes
-            const removeSelectionIndex = Number.isInteger(
-                data.removeSelectionIndex
-            )
-                ? data.removeSelectionIndex
-                : null;
-
-            if (removeSelectionIndex !== null) {
-                const selectedElements = Array.from(
-                    document.querySelectorAll(
-                        '.dualsub-interactive-word.dualsub-word-selected'
-                    )
+        const command = parseSidePanelSelectionRemovalCommandMessage(request);
+        const state = getContentSelectionAuthorityState(this);
+        const reject = () => {
+            try {
+                sendResponse(
+                    command
+                        ? buildSidePanelSelectionRemovalCommandResponse(
+                              command,
+                              'rejected'
+                          )
+                        : null
                 );
-                selectedElements[removeSelectionIndex]?.classList.remove(
-                    'dualsub-word-selected'
-                );
-            } else if (data.clearSelection) {
-                document
-                    .querySelectorAll(
-                        '.dualsub-interactive-word.dualsub-word-selected'
-                    )
-                    .forEach((el) =>
-                        el.classList.remove('dualsub-word-selected')
-                    );
-                if (
-                    this.sidePanelIntegration &&
-                    this.sidePanelIntegration.selectedWords
-                ) {
-                    this.sidePanelIntegration.selectedWords.clear();
-                }
+            } catch (_) {
+                sendResponse(null);
             }
-
-            if (
-                removeSelectionIndex === null &&
-                Array.isArray(data.selectedWords)
-            ) {
-                document
-                    .querySelectorAll(
-                        '.dualsub-interactive-word.dualsub-word-selected'
-                    )
-                    .forEach((element) =>
-                        element.classList.remove('dualsub-word-selected')
-                    );
-                const remainingOccurrences = new Map();
-                data.selectedWords.forEach((word) => {
-                    const normalizedWord = (word || '').trim();
-                    if (!normalizedWord) return;
-                    remainingOccurrences.set(
-                        normalizedWord,
-                        (remainingOccurrences.get(normalizedWord) || 0) + 1
-                    );
-                });
-
-                document
-                    .querySelectorAll('.dualsub-interactive-word')
-                    .forEach((element) => {
-                        const word = element.getAttribute('data-word')?.trim();
-                        const remaining = remainingOccurrences.get(word) || 0;
-                        if (remaining > 0) {
-                            element.classList.add('dualsub-word-selected');
-                            remainingOccurrences.set(word, remaining - 1);
-                        }
-                    });
-
-                if (this.sidePanelIntegration) {
-                    this.sidePanelIntegration.selectedWords = new Set(
-                        data.selectedWords
-                    );
-                }
-            }
-
-            // Broadcast the new state back to background to ensure authoritative state is in sync
-            // We use DOM order here to maintain consistency with handleWordSelection
-            if (this.sidePanelIntegration) {
-                try {
-                    const selectedElements = document.querySelectorAll(
-                        '.dualsub-interactive-word.dualsub-word-selected'
-                    );
-                    const words = Array.from(selectedElements)
-                        .map((el) => el.getAttribute('data-word'))
-                        .filter((w) => w)
-                        .map((w) => w.trim());
-
-                    // If no words found in DOM but we have them in Set (e.g. virtualized/hidden),
-                    // fallback to the Set (which came from the update request)
-                    const finalWords =
-                        words.length > 0 ? words : data.selectedWords || [];
-
-                    this.sidePanelIntegration.selectedWords = new Set(
-                        finalWords
-                    );
-
-                    void this.sidePanelIntegration._send({
-                        action: MessageActions.SIDEPANEL_SELECTION_SYNC,
-                        selectedWords: finalWords,
-                        timestamp: Date.now(),
-                        reason: 'sidepanel-update',
-                    });
-                } catch (_) {}
-            }
-
-            sendResponse({ success: true });
-            return false;
-        } catch (error) {
-            this.logWithFallback(
-                'error',
-                'Error in handleSidePanelUpdateState',
-                {
-                    error: error.message,
-                }
-            );
-            sendResponse({ success: false, error: error.message });
+        };
+        if (!command) {
+            reject();
             return false;
         }
+        const current = state?.snapshot;
+        const entry = current?.entries.find(
+            (candidate) => candidate.wordIndex === command.wordIndex
+        );
+        const positionKey = `original:${command.renderRevision}:${command.wordIndex}`;
+        const element = entry
+            ? this._findPrivateSelectionWordElement({
+                  renderRevision: command.renderRevision,
+                  wordIndex: command.wordIndex,
+                  word: entry.word,
+              })
+            : null;
+        if (
+            !state ||
+            state.terminal ||
+            state.pendingRemoval ||
+            !current ||
+            command.lifecycleGeneration !== state.lifecycleGeneration ||
+            command.selectionRevision !== current.selectionRevision ||
+            command.renderRevision !== current.renderRevision ||
+            !entry ||
+            !element ||
+            !state.selectionModel.has(positionKey)
+        ) {
+            reject();
+            return false;
+        }
+
+        const successorRevision = allocateContentSelectionRevision(state);
+        const successor =
+            successorRevision === null
+                ? null
+                : createCanonicalContentSelectionSnapshot(
+                      state,
+                      successorRevision,
+                      current.renderRevision,
+                      'remove',
+                      current.entries.filter(
+                          (candidate) =>
+                              candidate.wordIndex !== command.wordIndex
+                      )
+                  );
+        if (!successor) {
+            reject();
+            return false;
+        }
+
+        const pending = {
+            command,
+            current,
+            successor,
+            positionKey,
+            entry,
+            element,
+        };
+        state.pendingRemoval = pending;
+        void queueContentSelectionSnapshot(
+            this,
+            successor,
+            () => state.pendingRemoval === pending && state.snapshot === current
+        ).then(
+            async (accepted) => {
+                if (
+                    !accepted ||
+                    state.terminal ||
+                    state.pendingRemoval !== pending ||
+                    state.snapshot !== current ||
+                    state.currentRenderRevision !== current.renderRevision ||
+                    !state.selectionModel.has(positionKey)
+                ) {
+                    if (state.pendingRemoval === pending) {
+                        state.pendingRemoval = null;
+                    }
+                    if (!state.terminal && state.snapshot === current) {
+                        await this._repairCanonicalContentSelection(
+                            state,
+                            current
+                        );
+                    }
+                    reject();
+                    return;
+                }
+
+                const removed = state.selectionModel.remove(
+                    entry.word,
+                    null,
+                    positionKey
+                );
+                if (!removed) {
+                    state.pendingRemoval = null;
+                    await this._repairCanonicalContentSelection(state, current);
+                    reject();
+                    return;
+                }
+                state.snapshot = successor;
+                state.pendingRemoval = null;
+                try {
+                    element.classList.remove('dualsub-word-selected');
+                } catch (_) {}
+                this._clearPrivateSelectionWordProjection({
+                    renderRevision: command.renderRevision,
+                    wordIndex: command.wordIndex,
+                    word: entry.word,
+                });
+                publishSelectionSnapshotToOwner(
+                    this.aiContextFeatureOwner,
+                    successor
+                );
+                sendResponse(
+                    buildSidePanelSelectionRemovalCommandResponse(
+                        command,
+                        'applied'
+                    )
+                );
+            },
+            async () => {
+                if (state.pendingRemoval === pending) {
+                    state.pendingRemoval = null;
+                }
+                if (!state.terminal && state.snapshot === current) {
+                    await this._repairCanonicalContentSelection(state, current);
+                }
+                reject();
+            }
+        );
+        return true;
     }
 
     /**
      * Pause the video using multiple strategies
      */
-    handleSidePanelPauseVideo(_request, sendResponse) {
+    handleSidePanelPauseVideo(request, sendResponse, senderIdentity) {
+        const parsedRequest = parseSidePanelPauseVideoRequestMessage(
+            request,
+            senderIdentity?.role
+        );
+        if (!parsedRequest) {
+            sendResponse(null);
+            return false;
+        }
+
+        const respond = (result) =>
+            sendResponse(
+                buildContentControlResponseMessage(parsedRequest, result)
+            );
+
         void (async () => {
             try {
-                // Use platform-specific pause when available (e.g., Disney+ shadow button)
+                // Prefer the platform action, but only trust an explicitly
+                // verified success. Stateful players may veto the generic
+                // media fallback when bypassing their controller would split
+                // playback and UI state.
+                const playbackPlatform = this.activePlatform;
+                let allowsDirectMediaFallback = true;
                 if (
-                    this.activePlatform &&
-                    typeof this.activePlatform.pausePlayback === 'function'
+                    playbackPlatform &&
+                    typeof playbackPlatform.pausePlayback === 'function'
                 ) {
-                    const ok = await this.activePlatform.pausePlayback();
-                    sendResponse({ success: !!ok });
-                    return;
+                    try {
+                        const fallbackPolicy =
+                            playbackPlatform.allowsDirectMediaPlaybackFallback;
+                        if (typeof fallbackPolicy === 'function') {
+                            allowsDirectMediaFallback =
+                                TRUSTED_REFLECT_APPLY(
+                                    fallbackPolicy,
+                                    playbackPlatform,
+                                    []
+                                ) !== false;
+                        }
+                    } catch (_) {}
+                    try {
+                        const platformPaused =
+                            await playbackPlatform.pausePlayback();
+                        if (platformPaused === true) {
+                            respond({ success: true });
+                            return;
+                        }
+                    } catch {
+                        this.logWithFallback(
+                            'warn',
+                            'Platform-specific pause failed; using fallback'
+                        );
+                    }
+                    if (!allowsDirectMediaFallback) {
+                        respond({
+                            success: false,
+                            error: 'Platform playback control could not pause the video',
+                        });
+                        return;
+                    }
                 }
 
                 const pauseSucceeded = await (async () => {
                     try {
-                        // Strategy 1: Direct HTML5 pause (universal)
-                        const v =
-                            document.querySelector(
+                        const getCurrentVideo = () => {
+                            if (
+                                this.activePlatform &&
+                                typeof this.activePlatform.getVideoElement ===
+                                    'function'
+                            ) {
+                                try {
+                                    const platformVideo =
+                                        this.activePlatform.getVideoElement();
+                                    if (platformVideo) return platformVideo;
+                                } catch (_) {}
+                            }
+
+                            const attachedVideo = document.querySelector(
                                 'video[data-listener-attached="true"]'
-                            ) ||
-                            (this.activePlatform &&
-                            typeof this.activePlatform.getVideoElement ===
-                                'function'
-                                ? this.activePlatform.getVideoElement()
-                                : null) ||
-                            document.querySelector('video');
+                            );
+                            if (attachedVideo) return attachedVideo;
+
+                            return document.querySelector('video');
+                        };
+                        const isStopped = (video) =>
+                            Boolean(video && (video.paused || video.ended));
+
+                        // Strategy 1: Direct HTML5 pause (universal)
+                        const v = getCurrentVideo();
                         if (v) {
+                            if (isStopped(v)) return true;
                             try {
                                 v.pause();
                             } catch (_) {}
                             await new Promise((resolve) =>
                                 setTimeout(resolve, 80)
                             );
-                            if (v.paused) return true;
+                            if (isStopped(getCurrentVideo())) return true;
                         }
 
                         // Strategy 2: Click any visible Pause/Play control (generic platforms)
@@ -3584,32 +7160,22 @@ export class BaseContentScript {
                                 await new Promise((resolve) =>
                                     setTimeout(resolve, 140)
                                 );
-                                const v2 =
-                                    document.querySelector(
-                                        'video[data-listener-attached="true"]'
-                                    ) ||
-                                    (this.activePlatform &&
-                                    typeof this.activePlatform
-                                        .getVideoElement === 'function'
-                                        ? this.activePlatform.getVideoElement()
-                                        : null) ||
-                                    document.querySelector('video');
-                                if (v2?.paused) return true;
+                                if (isStopped(getCurrentVideo())) return true;
                             }
                         } catch (_) {}
 
                         // Strategy 3: As absolute fallback, try another direct pause
                         try {
-                            const v3 =
-                                document.querySelector(
-                                    'video[data-listener-attached="true"]'
-                                ) || document.querySelector('video');
+                            const v3 = getCurrentVideo();
                             if (v3) {
-                                v3.pause();
+                                if (isStopped(v3)) return true;
+                                try {
+                                    v3.pause();
+                                } catch (_) {}
                                 await new Promise((resolve) =>
                                     setTimeout(resolve, 60)
                                 );
-                                if (v3.paused) return true;
+                                if (isStopped(getCurrentVideo())) return true;
                             }
                         } catch (_) {}
                         return false;
@@ -3618,111 +7184,28 @@ export class BaseContentScript {
                     }
                 })();
 
-                sendResponse({ success: pauseSucceeded });
+                respond(
+                    pauseSucceeded
+                        ? { success: true }
+                        : {
+                              success: false,
+                              error: 'No active video could be paused',
+                          }
+                );
             } catch (error) {
                 this.logWithFallback(
                     'warn',
-                    'Error while attempting to pause video',
-                    { error: error.message }
+                    'Error while attempting to pause video'
                 );
-                sendResponse({ success: false, error: error.message });
+                respond({
+                    success: false,
+                    error: 'Video pause failed',
+                });
             }
         })();
 
         // Chrome before 148 requires a literal true to keep sendResponse alive.
         return true;
-    }
-
-    /**
-     * Handle analyzing state update: block/unblock word clicks
-     */
-    handleSidePanelSetAnalyzing(request, sendResponse) {
-        try {
-            const isAnalyzing = !!(
-                request.data?.isAnalyzing ?? request.isAnalyzing
-            );
-
-            if (this.sidePanelIntegration) {
-                this.sidePanelIntegration.isAnalyzing = isAnalyzing;
-                this.logWithFallback('debug', 'Analyzing state updated', {
-                    isAnalyzing,
-                });
-            }
-
-            // 1) Mirror legacy modal signal so interactive subtitle code detects analyzing
-            try {
-                let modalContent = document.getElementById(
-                    'dualsub-modal-content'
-                );
-                if (!modalContent) {
-                    modalContent = document.createElement('div');
-                    modalContent.id = 'dualsub-modal-content';
-                    // keep it invisible and out of layout
-                    Object.assign(modalContent.style, {
-                        display: 'none',
-                    });
-                    document.body.appendChild(modalContent);
-                }
-                if (isAnalyzing) {
-                    modalContent.classList.add('is-analyzing');
-                } else {
-                    modalContent.classList.remove('is-analyzing');
-                }
-            } catch (_) {}
-
-            // 2) Disable/enable pointer interactions on the original subtitle container
-            try {
-                const original = document.getElementById(
-                    'dualsub-original-subtitle'
-                );
-                if (original) {
-                    if (isAnalyzing) {
-                        original.style.pointerEvents = 'none';
-                        original.classList.add('dualsub-subtitles-disabled');
-                    } else {
-                        original.style.removeProperty('pointer-events');
-                        original.classList.remove('dualsub-subtitles-disabled');
-                    }
-                }
-            } catch (_) {}
-
-            sendResponse({ success: true });
-            return false;
-        } catch (error) {
-            this.logWithFallback(
-                'error',
-                'Error in handleSidePanelSetAnalyzing',
-                {
-                    error: error.message,
-                }
-            );
-            sendResponse({ success: false, error: error.message });
-            return false;
-        }
-    }
-
-    _enableSubtitles(sendResponse, enabled) {
-        if (!this.activePlatform) {
-            this.initializePlatform()
-                .then(() =>
-                    sendResponse({ success: true, subtitlesEnabled: enabled })
-                )
-                .catch((error) => {
-                    this.logWithFallback(
-                        'error',
-                        'Error in platform initialization',
-                        { error: error.message }
-                    );
-                    sendResponse({ success: false, error: error.message });
-                });
-            return true;
-        }
-
-        if (this.activePlatform.isPlayerPageActive()) {
-            this.startVideoElementDetection();
-        }
-        sendResponse({ success: true, subtitlesEnabled: enabled });
-        return false;
     }
 
     // ========================================
@@ -3741,39 +7224,94 @@ export class BaseContentScript {
             this.cleanup();
         });
 
-        // Handle page visibility changes
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden) {
-                this.logWithFallback(
-                    'debug',
-                    'Page hidden, pausing operations'
-                );
-            } else {
+        // Handle page visibility changes with tracked cleanup ownership.
+        if (!this.visibilityChangeHandler) {
+            const visibilityChangeHandler = () => {
+                if (document.hidden) {
+                    this._cancelVisibilityVideoSetupRetry();
+                    this.logWithFallback(
+                        'debug',
+                        'Page hidden, pausing operations'
+                    );
+                    return;
+                }
+
                 this.logWithFallback(
                     'debug',
                     'Page visible, resuming operations'
                 );
                 try {
                     finalizeExpiredSubtitleIfNeeded(0.1, this.activePlatform);
-                } catch (err) {
+                } catch (_) {
                     this.logWithFallback(
                         'warn',
-                        'Failed to finalize subtitles after visibility restore',
-                        {
-                            error: err?.message,
-                        }
+                        'Failed to finalize subtitles after visibility restore'
                     );
                 }
-                // Re-check video setup when page becomes visible
                 if (
                     this.activePlatform &&
                     this.subtitleUtils &&
                     this.subtitleUtils.subtitlesActive
                 ) {
-                    setTimeout(() => this.attemptVideoSetup(), 500);
+                    this._scheduleVisibilityVideoSetupRetry();
                 }
-            }
-        });
+                const selectionState = getContentSelectionAuthorityState(this);
+                if (
+                    selectionState &&
+                    !selectionState.terminal &&
+                    selectionState.snapshot
+                ) {
+                    void queueContentSelectionSnapshot(
+                        this,
+                        selectionState.snapshot
+                    );
+                }
+            };
+            this.visibilityChangeHandler = visibilityChangeHandler;
+            document.addEventListener(
+                'visibilitychange',
+                visibilityChangeHandler
+            );
+            this.eventListenerCleanupFunctions.push(() => {
+                document.removeEventListener(
+                    'visibilitychange',
+                    visibilityChangeHandler
+                );
+                if (this.visibilityChangeHandler === visibilityChangeHandler) {
+                    this.visibilityChangeHandler = null;
+                }
+                this._cancelVisibilityVideoSetupRetry();
+            });
+        }
+
+        if (!this.pageShowSelectionHandler) {
+            const pageShowSelectionHandler = () => {
+                const selectionState = getContentSelectionAuthorityState(this);
+                if (
+                    selectionState &&
+                    !selectionState.terminal &&
+                    selectionState.snapshot
+                ) {
+                    void queueContentSelectionSnapshot(
+                        this,
+                        selectionState.snapshot
+                    );
+                }
+            };
+            this.pageShowSelectionHandler = pageShowSelectionHandler;
+            window.addEventListener('pageshow', pageShowSelectionHandler);
+            this.eventListenerCleanupFunctions.push(() => {
+                window.removeEventListener(
+                    'pageshow',
+                    pageShowSelectionHandler
+                );
+                if (
+                    this.pageShowSelectionHandler === pageShowSelectionHandler
+                ) {
+                    this.pageShowSelectionHandler = null;
+                }
+            });
+        }
     }
 
     /**
@@ -3782,51 +7320,154 @@ export class BaseContentScript {
      * @param {boolean} force - Force cleanup even if already cleaned up
      * @returns {Promise<void>}
      */
-    async cleanup(force = false) {
-        if (this.isCleanedUp && !force) {
-            this.logWithFallback(
+    cleanup(force = false) {
+        const lifecycleState = getAIContextLifecycleState(this);
+        if (lifecycleState?.terminalCleanupPromise) {
+            return lifecycleState.terminalCleanupPromise;
+        }
+        if (lifecycleState?.terminal && !force) {
+            logAIContextLifecycleFailure(
+                this,
                 'debug',
                 'Cleanup already performed, skipping'
             );
-            return;
+            return Promise.resolve();
         }
 
-        this.logWithFallback(
-            'info',
-            'Starting comprehensive content script cleanup'
+        const selectionState = getContentSelectionAuthorityState(this);
+        if (selectionState && !selectionState.terminal) {
+            selectionState.terminal = true;
+            selectionState.pendingRemoval = null;
+            selectionState.publisherInstallationGeneration += 1;
+            const publisherCleanup = selectionState.publisherCleanup;
+            selectionState.publisherCleanup = null;
+            try {
+                publisherCleanup?.();
+            } catch (_) {}
+        }
+
+        let resolveTerminalCleanup;
+        let rejectTerminalCleanup;
+        const terminalCleanupPromise = new Promise((resolve, reject) => {
+            resolveTerminalCleanup = resolve;
+            rejectTerminalCleanup = reject;
+        });
+        if (lifecycleState) {
+            // Publish the canonical terminal promise before any destructor or
+            // lifecycle callback can synchronously reenter cleanup().
+            lifecycleState.terminalCleanupPromise = terminalCleanupPromise;
+        }
+
+        const performTerminalCleanup = async () => {
+            const failures = [];
+            const attemptSync = (cleanupPhase) => {
+                try {
+                    return cleanupPhase();
+                } catch (error) {
+                    failures.push(error);
+                    return undefined;
+                }
+            };
+            const attemptAsync = async (cleanupPhase) => {
+                try {
+                    return await cleanupPhase();
+                } catch (error) {
+                    failures.push(error);
+                    return undefined;
+                }
+            };
+            const hadAIContextManager = Boolean(this.aiContextManager);
+            if (lifecycleState) {
+                lifecycleState.terminal = true;
+            }
+            attemptSync(() =>
+                revokeInjectionChannel(this.getInjectScriptConfig())
+            );
+            const terminalAIContextTransition = attemptSync(() =>
+                beginAIContextFeatureLifecycle(this, true)
+            );
+
+            logAIContextLifecycleFailure(
+                this,
+                'info',
+                'Starting comprehensive content script cleanup'
+            );
+
+            attemptSync(() => this._invalidatePlatformInitialization());
+            attemptSync(() => this._cancelEarlyInjectionRetry());
+
+            // 1. Stop all detection and monitoring activities
+            await attemptAsync(() => this._stopAllDetectionActivities());
+
+            // 2. Clean up AI Context Manager
+            await attemptAsync(() =>
+                BaseContentScript.prototype._cleanupAIContextManager.call(
+                    this,
+                    terminalAIContextTransition,
+                    hadAIContextManager
+                )
+            );
+
+            // 3. Clean up platform resources
+            await attemptAsync(() => this._cleanupPlatformResources());
+
+            // 4. Clean up DOM and UI resources
+            await attemptAsync(() => this._cleanupDOMResources());
+
+            // 5. Clean up event handling and listeners
+            await attemptAsync(() => this._cleanupEventHandling());
+
+            // 6. Clean up intervals and timers
+            await attemptAsync(() => this._cleanupTimersAndIntervals());
+
+            // 7. Clean up observers and watchers
+            await attemptAsync(() => this._cleanupObservers());
+
+            // 8. Reset internal state
+            attemptSync(() => this._resetInternalState());
+
+            // Late stale registrations use fresh private groups. Repeat the
+            // terminal join after downstream teardown to catch all of them.
+            await attemptAsync(() => settleAllAIContextTaskGroups(this));
+
+            if (failures.length === 0) {
+                logAIContextLifecycleFailure(
+                    this,
+                    'info',
+                    'Content script cleanup completed successfully'
+                );
+                return;
+            }
+            if (failures.length === 1) {
+                throw failures[0];
+            }
+            throw new AggregateError(
+                failures,
+                'Content script cleanup failed in multiple phases'
+            );
+        };
+
+        void performTerminalCleanup().then(
+            () => {
+                if (
+                    lifecycleState?.terminalCleanupPromise ===
+                    terminalCleanupPromise
+                ) {
+                    lifecycleState.terminalCleanupPromise = null;
+                }
+                resolveTerminalCleanup();
+            },
+            (error) => {
+                if (
+                    lifecycleState?.terminalCleanupPromise ===
+                    terminalCleanupPromise
+                ) {
+                    lifecycleState.terminalCleanupPromise = null;
+                }
+                rejectTerminalCleanup(error);
+            }
         );
-
-        // Mark as cleaning up to prevent concurrent cleanup calls
-        this.isCleanedUp = true;
-
-        // 1. Stop all detection and monitoring activities
-        await this._stopAllDetectionActivities();
-
-        // 2. Clean up AI Context Manager
-        await this._cleanupAIContextManager();
-
-        // 3. Clean up platform resources
-        await this._cleanupPlatformResources();
-
-        // 4. Clean up DOM and UI resources
-        await this._cleanupDOMResources();
-
-        // 5. Clean up event handling and listeners
-        await this._cleanupEventHandling();
-
-        // 6. Clean up intervals and timers
-        await this._cleanupTimersAndIntervals();
-
-        // 7. Clean up observers and watchers
-        await this._cleanupObservers();
-
-        // 7. Reset internal state
-        this._resetInternalState();
-
-        this.logWithFallback(
-            'info',
-            'Content script cleanup completed successfully'
-        );
+        return terminalCleanupPromise;
     }
 
     /**
@@ -3835,23 +7476,33 @@ export class BaseContentScript {
      * @returns {Promise<void>}
      */
     async _stopAllDetectionActivities() {
+        const navigationManager = this.navigationDetectionManager;
+        this.navigationDetectionManager = null;
         try {
-            // Stop video element detection
-            this.stopVideoElementDetection();
-
-            // Stop navigation detection if implemented
-            if (typeof this.stopNavigationDetection === 'function') {
-                this.stopNavigationDetection();
-            }
-
-            this.logWithFallback('debug', 'All detection activities stopped');
-        } catch (error) {
-            this.logWithFallback(
+            navigationManager?.cleanup();
+        } catch {
+            logAIContextLifecycleFailure(
+                this,
                 'warn',
-                'Error stopping detection activities',
-                { error }
+                'Error stopping navigation detection'
             );
         }
+
+        try {
+            this.stopVideoElementDetection();
+        } catch {
+            logAIContextLifecycleFailure(
+                this,
+                'warn',
+                'Error stopping video detection'
+            );
+        }
+
+        logAIContextLifecycleFailure(
+            this,
+            'debug',
+            'All detection activities stopped'
+        );
     }
 
     /**
@@ -3859,28 +7510,36 @@ export class BaseContentScript {
      * @private
      * @returns {Promise<void>}
      */
-    async _cleanupAIContextManager() {
+    async _cleanupAIContextManager(transition = null, hadManager = null) {
+        if (hadManager === null) {
+            hadManager = Boolean(this.aiContextManager);
+        }
+        if (!transition) {
+            transition = beginAIContextFeatureLifecycle(this);
+        }
         try {
-            if (this.aiContextManager) {
-                this.logWithFallback(
+            if (hadManager) {
+                logAIContextLifecycleFailure(
+                    this,
                     'debug',
                     'Cleaning up AI Context Manager...'
                 );
-                await this.aiContextManager.destroy();
-                this.aiContextManager = null;
-                this.logWithFallback(
+            }
+
+            await transition.cleanupPromise;
+
+            if (hadManager) {
+                logAIContextLifecycleFailure(
+                    this,
                     'debug',
                     'AI Context Manager cleaned up successfully'
                 );
             }
-        } catch (error) {
-            this.logWithFallback(
+        } catch {
+            logAIContextLifecycleFailure(
+                this,
                 'error',
-                'Error cleaning up AI Context Manager',
-                {
-                    error: error.message,
-                    stack: error.stack,
-                }
+                'Error cleaning up AI Context Manager'
             );
         }
     }
@@ -3893,24 +7552,29 @@ export class BaseContentScript {
     async _cleanupPlatformResources() {
         try {
             if (this.activePlatform) {
+                const platform = this.activePlatform;
+                this.activePlatform = null;
+                this.platformReady = false;
+
                 // Call platform cleanup with timeout protection
                 const cleanupTimeout =
                     this.currentConfig?.cleanupTimeout ||
                     COMMON_CONSTANTS.CLEANUP_TIMEOUT;
 
-                const cleanupPromise =
-                    typeof this.activePlatform.cleanup === 'function'
-                        ? this.activePlatform.cleanup()
-                        : Promise.resolve();
+                const cleanupPromise = this._cleanupPlatformCandidate(platform);
 
                 let timeoutId;
                 const timeoutPromise = new Promise((resolve) => {
                     timeoutId = setTimeout(() => {
-                        this.logWithFallback(
-                            'warn',
-                            'Platform cleanup timed out'
-                        );
-                        resolve();
+                        try {
+                            logAIContextLifecycleFailure(
+                                this,
+                                'warn',
+                                'Platform cleanup timed out'
+                            );
+                        } finally {
+                            resolve();
+                        }
                     }, cleanupTimeout);
                 });
 
@@ -3919,14 +7583,17 @@ export class BaseContentScript {
                 } finally {
                     clearTimeout(timeoutId);
                 }
-                this.activePlatform = null;
-                this.logWithFallback('debug', 'Platform resources cleaned up');
+                logAIContextLifecycleFailure(
+                    this,
+                    'debug',
+                    'Platform resources cleaned up'
+                );
             }
-        } catch (error) {
-            this.logWithFallback(
+        } catch {
+            logAIContextLifecycleFailure(
+                this,
                 'warn',
-                'Error cleaning up platform resources',
-                { error }
+                'Error cleaning up platform resources'
             );
             this.activePlatform = null;
         }
@@ -3960,17 +7627,24 @@ export class BaseContentScript {
             const injectedScript = document.getElementById(config.tagId);
             if (injectedScript) {
                 injectedScript.remove();
-                this.logWithFallback(
+                logAIContextLifecycleFailure(
+                    this,
                     'debug',
                     'Injected script removed from DOM'
                 );
             }
 
-            this.logWithFallback('debug', 'DOM resources cleaned up');
-        } catch (error) {
-            this.logWithFallback('warn', 'Error cleaning up DOM resources', {
-                error,
-            });
+            logAIContextLifecycleFailure(
+                this,
+                'debug',
+                'DOM resources cleaned up'
+            );
+        } catch {
+            logAIContextLifecycleFailure(
+                this,
+                'warn',
+                'Error cleaning up DOM resources'
+            );
         }
     }
 
@@ -3980,68 +7654,83 @@ export class BaseContentScript {
      * @returns {Promise<void>}
      */
     async _cleanupEventHandling() {
-        try {
-            // Clear event buffer
-            if (this.eventBuffer) {
-                this.eventBuffer.clear();
+        const attemptCleanup = (cleanupPhase, warning) => {
+            try {
+                cleanupPhase();
+            } catch {
+                logAIContextLifecycleFailure(this, 'warn', warning);
             }
+        };
 
-            if (typeof this.configUnsubscribe === 'function') {
-                this.configUnsubscribe();
-                this.configUnsubscribe = null;
-            }
+        attemptCleanup(
+            () => revokeInjectionChannel(this.getInjectScriptConfig()),
+            'Error revoking injected-script channel'
+        );
 
-            // Execute all tracked event listener cleanup functions
-            if (
-                this.eventListenerCleanupFunctions &&
-                this.eventListenerCleanupFunctions.length > 0
-            ) {
-                this.logWithFallback(
-                    'debug',
-                    'Executing event listener cleanup functions',
-                    {
-                        count: this.eventListenerCleanupFunctions.length,
-                    }
+        // Revoke acceptance before any unsubscribe can synchronously
+        // re-enter setup. This teardown is terminal for this instance.
+        this.configurationSubscriptionsAccepted = false;
+        this.configurationSubscriptionGeneration += 1;
+        this.configurationRefreshGeneration += 1;
+        const configUnsubscribe = this.configUnsubscribe;
+        this.configUnsubscribe = null;
+        if (typeof configUnsubscribe === 'function') {
+            attemptCleanup(
+                () => configUnsubscribe(),
+                'Error removing configuration listener'
+            );
+        }
+
+        if (this.eventBuffer) {
+            attemptCleanup(
+                () => this.eventBuffer.clear(),
+                'Error clearing event buffer'
+            );
+        }
+
+        if (
+            this.eventListenerCleanupFunctions &&
+            this.eventListenerCleanupFunctions.length > 0
+        ) {
+            logAIContextLifecycleFailure(
+                this,
+                'debug',
+                'Executing event listener cleanup functions'
+            );
+            const cleanupFunctions = this.eventListenerCleanupFunctions;
+            this.eventListenerCleanupFunctions = [];
+            for (const cleanupFn of cleanupFunctions) {
+                attemptCleanup(
+                    () => cleanupFn(),
+                    'Error in event listener cleanup function'
                 );
-
-                for (const cleanupFn of this.eventListenerCleanupFunctions) {
-                    try {
-                        cleanupFn();
-                    } catch (cleanupError) {
-                        this.logWithFallback(
-                            'warn',
-                            'Error in event listener cleanup function',
-                            {
-                                error: cleanupError.message,
-                            }
-                        );
-                    }
-                }
-                this.eventListenerCleanupFunctions = [];
             }
+        }
 
-            // Clean up Chrome message listener when cleanup happens before page destruction.
+        if (this.chromeMessageListenerAttached) {
+            const listener = this.chromeMessageListener;
+            this.chromeMessageListenerAttached = false;
             if (
-                this.chromeMessageListenerAttached &&
                 typeof chrome !== 'undefined' &&
                 chrome.runtime?.onMessage?.removeListener
             ) {
-                chrome.runtime.onMessage.removeListener(
-                    this.chromeMessageListener
-                );
-                this.chromeMessageListenerAttached = false;
-                this.logWithFallback(
-                    'debug',
-                    'Chrome message listener removed'
+                attemptCleanup(
+                    () => chrome.runtime.onMessage.removeListener(listener),
+                    'Error removing Chrome message listener'
                 );
             }
-
-            this.logWithFallback('debug', 'Event handling cleaned up');
-        } catch (error) {
-            this.logWithFallback('warn', 'Error cleaning up event handling', {
-                error,
-            });
+            logAIContextLifecycleFailure(
+                this,
+                'debug',
+                'Chrome message listener removed'
+            );
         }
+
+        logAIContextLifecycleFailure(
+            this,
+            'debug',
+            'Event handling cleaned up'
+        );
     }
 
     /**
@@ -4051,24 +7740,42 @@ export class BaseContentScript {
      */
     async _cleanupTimersAndIntervals() {
         try {
+            this._cancelVisibilityVideoSetupRetry();
+
             // Stop all managed intervals
             if (this.intervalManager) {
                 this.intervalManager.clearAll();
-                this.logWithFallback('debug', 'All managed intervals cleared');
+                logAIContextLifecycleFailure(
+                    this,
+                    'debug',
+                    'All managed intervals cleared'
+                );
             }
 
             // Clear video detection interval (backup cleanup)
-            if (this.videoDetectionIntervalId) {
-                clearInterval(this.videoDetectionIntervalId);
+            if (this.videoDetectionIntervalId !== null) {
+                const intervalId = this.videoDetectionIntervalId;
+                const intervalOwner = this.videoDetectionIntervalOwner;
                 this.videoDetectionIntervalId = null;
+                this.videoDetectionIntervalOwner = null;
+                if (intervalOwner?.intervalId === intervalId) {
+                    intervalOwner.intervalId = null;
+                }
+                clearInterval(intervalId);
+            } else {
+                this.videoDetectionIntervalOwner = null;
             }
 
-            this.logWithFallback('debug', 'Timers and intervals cleaned up');
+            logAIContextLifecycleFailure(
+                this,
+                'debug',
+                'Timers and intervals cleaned up'
+            );
         } catch (error) {
-            this.logWithFallback(
+            logAIContextLifecycleFailure(
+                this,
                 'warn',
-                'Error cleaning up timers and intervals',
-                { error }
+                'Error cleaning up timers and intervals'
             );
             throw error;
         }
@@ -4086,37 +7793,34 @@ export class BaseContentScript {
                 this.domObserverCleanupFunctions &&
                 this.domObserverCleanupFunctions.length > 0
             ) {
-                this.logWithFallback(
+                logAIContextLifecycleFailure(
+                    this,
                     'debug',
-                    'Executing DOM observer cleanup functions',
-                    {
-                        count: this.domObserverCleanupFunctions.length,
-                    }
+                    'Executing DOM observer cleanup functions'
                 );
 
                 for (const cleanupFn of this.domObserverCleanupFunctions) {
                     try {
                         cleanupFn();
-                    } catch (cleanupError) {
-                        this.logWithFallback(
+                    } catch {
+                        logAIContextLifecycleFailure(
+                            this,
                             'warn',
-                            'Error in DOM observer cleanup function',
-                            {
-                                error: cleanupError.message,
-                            }
+                            'Error in DOM observer cleanup function'
                         );
                     }
                 }
                 this.domObserverCleanupFunctions = [];
             }
 
-            // Disconnect DOM observer (fallback cleanup)
-            if (this.pageObserver) {
-                this.pageObserver.disconnect();
-                this.pageObserver = null;
-                this.logWithFallback(
+            // Disconnect the exactly-owned player-root observer (including its
+            // pending debounce) or one legacy unowned observer.
+            if (this.pageObserverTask || this.pageObserver) {
+                this._cancelPlayerRootObservation();
+                logAIContextLifecycleFailure(
+                    this,
                     'debug',
-                    'Main DOM observer disconnected (fallback)'
+                    'Player-root DOM observer disconnected'
                 );
             }
 
@@ -4124,19 +7828,10 @@ export class BaseContentScript {
             if (this.videoElementObserver) {
                 this.videoElementObserver.disconnect();
                 this.videoElementObserver = null;
-                this.logWithFallback(
+                logAIContextLifecycleFailure(
+                    this,
                     'debug',
                     'Video element observer disconnected (fallback)'
-                );
-            }
-
-            // Disconnect navigation observer (fallback cleanup)
-            if (this.navigationObserver) {
-                this.navigationObserver.disconnect();
-                this.navigationObserver = null;
-                this.logWithFallback(
-                    'debug',
-                    'Navigation observer disconnected (fallback)'
                 );
             }
 
@@ -4144,7 +7839,8 @@ export class BaseContentScript {
             if (this.passiveVideoObserver) {
                 this.passiveVideoObserver.disconnect();
                 this.passiveVideoObserver = null;
-                this.logWithFallback(
+                logAIContextLifecycleFailure(
+                    this,
                     'debug',
                     'Passive video observer disconnected'
                 );
@@ -4156,11 +7852,13 @@ export class BaseContentScript {
                 this.configObserver = null;
             }
 
-            this.logWithFallback('debug', 'Observers cleaned up');
-        } catch (error) {
-            this.logWithFallback('warn', 'Error cleaning up observers', {
-                error,
-            });
+            logAIContextLifecycleFailure(this, 'debug', 'Observers cleaned up');
+        } catch {
+            logAIContextLifecycleFailure(
+                this,
+                'warn',
+                'Error cleaning up observers'
+            );
         }
     }
 
@@ -4177,10 +7875,16 @@ export class BaseContentScript {
             // Reset video detection state
             this.videoDetectionRetries = 0;
             this.videoDetectionIntervalId = null;
-
-            // Reset navigation state
-            this.currentUrl = window.location.href;
-            this.lastKnownPathname = window.location.pathname;
+            this.videoDetectionIntervalOwner = null;
+            this.videoDetectionGeneration += 1;
+            this.videoDetectionTask = null;
+            this.visibilityVideoSetupGeneration += 1;
+            this.visibilityVideoSetupTask = null;
+            this.lastVideoSetupScope = null;
+            this.pageObserverTask = null;
+            this.pageObserver = null;
+            this.domObservationSetupGeneration += 1;
+            this.domObservationCancellationDepth = 0;
 
             // Reset event handling state
             this.eventListenerAttached = false;
@@ -4192,45 +7896,13 @@ export class BaseContentScript {
                 );
             }
 
-            this.logWithFallback('debug', 'Internal state reset');
-        } catch (error) {
-            this.logWithFallback('warn', 'Error resetting internal state', {
-                error,
-            });
+            logAIContextLifecycleFailure(this, 'debug', 'Internal state reset');
+        } catch {
+            logAIContextLifecycleFailure(
+                this,
+                'warn',
+                'Error resetting internal state'
+            );
         }
-    }
-
-    /**
-     * Get default configuration when storage is unavailable
-     * @returns {Object} Default configuration object
-     * @private
-     */
-    _getDefaultConfiguration() {
-        return {
-            // Core settings
-            subtitlesEnabled: true,
-            useOfficialTranslations: true,
-            targetLanguage: 'zh-CN',
-            originalLanguage: 'en',
-
-            // UI settings
-            hideOfficialSubtitles: false,
-            subtitleTimeOffset: 0,
-            subtitleLayoutOrder: 'original_top',
-            subtitleLayoutOrientation: 'column',
-
-            // Translation settings
-            selectedProvider: 'microsoft_edge_auth',
-
-            // AI Context settings
-            aiContextEnabled: false,
-            aiContextTypes: ['cultural', 'historical', 'linguistic'],
-
-            // Logging
-            loggingLevel: 3, // INFO level
-
-            // Other defaults
-            uiLanguage: 'en',
-        };
     }
 }

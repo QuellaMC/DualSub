@@ -251,9 +251,10 @@ describe('ConfigService Multi-Operation Error Handling', () => {
                 }
             );
 
-            await expect(
-                configService.setMultiple(settings)
-            ).resolves.toBeUndefined();
+            await expect(configService.setMultiple(settings)).resolves.toEqual({
+                syncKey1: 'value1',
+                localKey1: 'value2',
+            });
 
             expect(mockChromeStorage.sync.set).toHaveBeenCalledWith(
                 { syncKey1: 'value1' },
