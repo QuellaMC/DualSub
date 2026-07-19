@@ -21,6 +21,33 @@ import { TestHelpers } from '../../test-utils/test-helpers.js';
 import { ChromeApiFixtures } from '../../test-utils/test-fixtures.js';
 import { NetflixContentScript } from '../platforms/NetflixContentScript.js';
 import { DisneyPlusContentScript } from '../platforms/DisneyPlusContentScript.js';
+import {
+    buildConfigChangedRequestMessage,
+    buildLoggingLevelChangedRequestMessage,
+} from '../shared/protocol/messageProtocol.js';
+
+const EXTENSION_ID = 'dualsub-compatibility-integration-test';
+const EXTENSION_PATHS = Object.freeze({
+    background: 'background.js',
+    options: 'options/options.html',
+    popup: 'popup/popup.html',
+    sidepanel: 'sidepanel/sidepanel.html',
+});
+
+function createExtensionSender(path) {
+    chrome.runtime.id = EXTENSION_ID;
+    chrome.runtime.getManifest.mockReturnValue({
+        action: { default_popup: EXTENSION_PATHS.popup },
+        background: { service_worker: EXTENSION_PATHS.background },
+        options_ui: { page: EXTENSION_PATHS.options },
+        side_panel: { default_path: EXTENSION_PATHS.sidepanel },
+    });
+    return {
+        id: EXTENSION_ID,
+        url: chrome.runtime.getURL(path),
+        origin: chrome.runtime.getURL('').replace(/\/+$/u, ''),
+    };
+}
 
 /**
  * Backward Compatibility Test Suite
@@ -37,8 +64,8 @@ describe('Backward Compatibility Integration Tests', () => {
         testHelpers.mockRegistry.cleanup();
     });
 
-    describe('Original Message API Compatibility', () => {
-        describe('Netflix Message Compatibility', () => {
+    describe('Active Message API Contracts', () => {
+        describe('Netflix Message Controls', () => {
             let netflixScript;
             let testEnv;
 
@@ -87,55 +114,19 @@ describe('Backward Compatibility Integration Tests', () => {
                 testEnv.cleanup();
             });
 
-            test('should handle original popup.js toggleSubtitles message format', async () => {
-                // Exact message format from original popup.js
-                const originalMessage = {
-                    action: 'toggleSubtitles',
-                    enabled: true,
-                };
-
-                const mockSendResponse = jest.fn();
-
-                // Should handle through Chrome message system
-                netflixScript.handleChromeMessage(
-                    originalMessage,
-                    {},
-                    mockSendResponse
-                );
-
-                // Verify response format matches original (actual format uses subtitlesEnabled)
-                expect(mockSendResponse).toHaveBeenCalledWith(
-                    expect.objectContaining({
-                        success: true,
-                        subtitlesEnabled: true,
-                    })
-                );
-
-                // Verify subtitle utilities called as in original
-                expect(
-                    netflixScript.subtitleUtils.setSubtitlesActive
-                ).toHaveBeenCalledWith(true);
-                // showSubtitleContainer is called through startVideoElementDetection, not directly
-            });
-
-            test('should handle original options.js configChanged message format', async () => {
-                // Exact message format from original options.js
-                const originalMessage = {
-                    action: 'configChanged',
-                    changes: {
-                        subtitlePosition: 'bottom',
-                        fontSize: '16px',
-                        textColor: '#ffffff',
-                        backgroundColor: '#000000',
-                        useNativeSubtitles: true,
-                    },
-                };
+            test('should handle the canonical popup config message', async () => {
+                const request = buildConfigChangedRequestMessage({
+                    subtitleLayoutOrder: 'translation_top',
+                    subtitleLayoutOrientation: 'row',
+                    subtitleTimeOffset: 125,
+                    useNativeSubtitles: true,
+                });
 
                 const mockSendResponse = jest.fn();
 
                 netflixScript.handleChromeMessage(
-                    originalMessage,
-                    {},
+                    request,
+                    createExtensionSender(EXTENSION_PATHS.popup),
                     mockSendResponse
                 );
 
@@ -151,26 +142,22 @@ describe('Backward Compatibility Integration Tests', () => {
                     netflixScript.subtitleUtils.applySubtitleStyling
                 ).toHaveBeenCalledWith(
                     expect.objectContaining({
-                        subtitlePosition: 'bottom',
-                        fontSize: '16px',
-                        textColor: '#ffffff',
-                        backgroundColor: '#000000',
+                        subtitleLayoutOrder: 'translation_top',
+                        subtitleLayoutOrientation: 'row',
+                        subtitleTimeOffset: 125,
+                        useNativeSubtitles: true,
                     })
                 );
             });
 
-            test('should handle original background.js LOGGING_LEVEL_CHANGED format', () => {
-                // Exact message format from original background.js
-                const originalMessage = {
-                    type: 'LOGGING_LEVEL_CHANGED',
-                    level: 'DEBUG',
-                };
+            test('should handle the canonical background logging message', () => {
+                const request = buildLoggingLevelChangedRequestMessage(4);
 
                 const mockSendResponse = jest.fn();
 
                 netflixScript.handleChromeMessage(
-                    originalMessage,
-                    {},
+                    request,
+                    createExtensionSender(EXTENSION_PATHS.background),
                     mockSendResponse
                 );
 
@@ -183,99 +170,8 @@ describe('Backward Compatibility Integration Tests', () => {
 
                 // Verify logger updated as in original
                 expect(testEnv.mocks.logger.updateLevel).toHaveBeenCalledWith(
-                    'DEBUG'
+                    4
                 );
-            });
-
-            test('should maintain original error response format', () => {
-                // Test with message that causes error by removing utilities
-                netflixScript.subtitleUtils = null;
-
-                const malformedMessage = {
-                    action: 'toggleSubtitles',
-                    enabled: true,
-                };
-
-                const mockSendResponse = jest.fn();
-
-                netflixScript.handleChromeMessage(
-                    malformedMessage,
-                    {},
-                    mockSendResponse
-                );
-
-                // Should handle gracefully and provide error response in original format
-                expect(mockSendResponse).toHaveBeenCalledWith(
-                    expect.objectContaining({
-                        success: false,
-                        error: expect.any(String),
-                    })
-                );
-            });
-        });
-
-        describe('Disney+ Message Compatibility', () => {
-            let disneyScript;
-            let testEnv;
-
-            beforeEach(() => {
-                testEnv = testHelpers.setupTestEnvironment({
-                    platform: 'disneyplus',
-                    enableLogger: true,
-                    enableChromeApi: true,
-                    enableLocation: false,
-                });
-
-                disneyScript = new DisneyPlusContentScript();
-                disneyScript.contentLogger = testEnv.mocks.logger;
-
-                // Mock utilities
-                disneyScript.subtitleUtils = {
-                    setSubtitlesActive: jest.fn(),
-                    applySubtitleStyling: jest.fn(),
-                    hideSubtitleContainer: jest.fn(),
-                    showSubtitleContainer: jest.fn(),
-                    clearSubtitlesDisplayAndQueue: jest.fn(),
-                    subtitlesActive: true,
-                };
-
-                disneyScript.configService = {
-                    getAll: jest
-                        .fn()
-                        .mockResolvedValue(ChromeApiFixtures.storageConfig),
-                };
-            });
-
-            afterEach(() => {
-                testEnv.cleanup();
-            });
-
-            test('should handle identical message formats as Netflix', async () => {
-                // Same message should work on both platforms
-                const message = {
-                    action: 'toggleSubtitles',
-                    enabled: false,
-                };
-
-                const mockSendResponse = jest.fn();
-
-                disneyScript.handleChromeMessage(message, {}, mockSendResponse);
-
-                // Response format should be identical to Netflix (uses subtitlesEnabled)
-                expect(mockSendResponse).toHaveBeenCalledWith(
-                    expect.objectContaining({
-                        success: true,
-                        subtitlesEnabled: false,
-                    })
-                );
-
-                // Behavior should be identical
-                expect(
-                    disneyScript.subtitleUtils.setSubtitlesActive
-                ).toHaveBeenCalledWith(false);
-                expect(
-                    disneyScript.subtitleUtils.hideSubtitleContainer
-                ).toHaveBeenCalled();
             });
         });
     });
@@ -505,54 +401,6 @@ describe('Backward Compatibility Integration Tests', () => {
     });
 
     describe('Original Navigation Behavior Compatibility', () => {
-        test('should handle Netflix navigation identically to original', () => {
-            const testEnv = testHelpers.setupTestEnvironment({
-                platform: 'netflix',
-                enableLogger: true,
-                enableChromeApi: true,
-                enableLocation: false,
-            });
-
-            const netflixScript = new NetflixContentScript();
-            netflixScript.contentLogger = testEnv.mocks.logger;
-
-            // Mock original URL state
-            netflixScript.currentUrl = 'https://www.netflix.com/browse';
-            netflixScript.lastKnownPathname = '/browse';
-
-            // Mock window.location as in original using global
-            global.window = Object.create(window);
-            global.window.location = {
-                href: 'https://www.netflix.com/watch/12345',
-                pathname: '/watch/12345',
-                hostname: 'www.netflix.com',
-            };
-
-            // Mock platform cleanup as in original
-            const mockPlatform = {
-                cleanup: jest.fn(),
-                initialize: jest.fn().mockResolvedValue(true),
-            };
-            netflixScript.activePlatform = mockPlatform;
-
-            // Trigger URL change as in original
-            netflixScript.checkForUrlChange();
-
-            // Verify state updated as in original (URL should be updated from global.window.location)
-            expect(netflixScript.currentUrl).toBe(global.window.location.href);
-            expect(netflixScript.lastKnownPathname).toBe(
-                global.window.location.pathname
-            );
-
-            // Verify logging matches original pattern (with data parameter)
-            expect(testEnv.mocks.logger.info).toHaveBeenCalledWith(
-                'URL change detected.',
-                expect.any(Object)
-            );
-
-            testEnv.cleanup();
-        });
-
         test('should handle Disney+ navigation identically to original', () => {
             const testEnv = testHelpers.setupTestEnvironment({
                 platform: 'disneyplus',
@@ -608,44 +456,6 @@ describe('Backward Compatibility Integration Tests', () => {
             expect(testEnv.mocks.logger.error).toHaveBeenCalledWith(
                 'Required modules not loaded for platform initialization',
                 expect.any(Object)
-            );
-
-            testEnv.cleanup();
-        });
-
-        test('should handle Chrome API errors identically to original', () => {
-            const testEnv = testHelpers.setupTestEnvironment({
-                platform: 'netflix',
-                enableLogger: true,
-                enableChromeApi: true,
-                enableLocation: false,
-            });
-
-            const netflixScript = new NetflixContentScript();
-            netflixScript.contentLogger = testEnv.mocks.logger;
-
-            // Mock Chrome API error as in original
-            testEnv.mocks.chromeApi.runtime.sendMessage.mockImplementation(
-                (message, callback) => {
-                    // Simulate Chrome runtime error
-                    global.chrome.runtime.lastError = {
-                        message: 'Extension context invalidated',
-                    };
-                    callback(null);
-                }
-            );
-
-            const message = { action: 'toggleSubtitles', enabled: true };
-            const mockSendResponse = jest.fn();
-
-            // Should handle Chrome API error as in original
-            netflixScript.handleChromeMessage(message, {}, mockSendResponse);
-
-            // Should provide error response as in original
-            expect(mockSendResponse).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    success: expect.any(Boolean),
-                })
             );
 
             testEnv.cleanup();
@@ -706,7 +516,7 @@ describe('Backward Compatibility Integration Tests', () => {
             testEnv.cleanup();
         });
 
-        test('should maintain original message processing speed', () => {
+        test('should maintain canonical config message processing speed', () => {
             const testEnv = testHelpers.setupTestEnvironment({
                 platform: 'netflix',
                 enableLogger: true,
@@ -716,19 +526,28 @@ describe('Backward Compatibility Integration Tests', () => {
 
             const netflixScript = new NetflixContentScript();
             netflixScript.contentLogger = testEnv.mocks.logger;
+            netflixScript.subtitleUtils = { subtitlesActive: false };
+            netflixScript.configService = {};
 
-            // Process messages as in original
-            const messages = Array.from({ length: 100 }, (_, i) => ({
-                action: 'configChanged',
-                changes: { fontSize: `${14 + i}px` },
-            }));
+            const messages = Array.from({ length: 100 }, (_, i) =>
+                buildConfigChangedRequestMessage({
+                    subtitleTimeOffset: i,
+                })
+            );
 
             const startTime = Date.now();
 
             messages.forEach((message) => {
                 const mockResponse = jest.fn();
-                netflixScript.handleChromeMessage(message, {}, mockResponse);
-                expect(mockResponse).toHaveBeenCalled();
+                netflixScript.handleChromeMessage(
+                    message,
+                    createExtensionSender(EXTENSION_PATHS.popup),
+                    mockResponse
+                );
+                expect(mockResponse).toHaveBeenCalledWith({
+                    action: 'configChanged',
+                    success: true,
+                });
             });
 
             const endTime = Date.now();
@@ -738,69 +557,6 @@ describe('Backward Compatibility Integration Tests', () => {
             expect(duration).toBeLessThan(1000); // Should be fast like original
 
             testEnv.cleanup();
-        });
-    });
-
-    describe('Cross-Platform Consistency Validation', () => {
-        test('should provide identical responses across platforms for same messages', () => {
-            const testEnvNetflix = testHelpers.setupTestEnvironment({
-                platform: 'netflix',
-                enableLogger: true,
-                enableChromeApi: true,
-                enableLocation: false,
-            });
-
-            const testEnvDisney = testHelpers.setupTestEnvironment({
-                platform: 'disneyplus',
-                enableLogger: true,
-                enableChromeApi: true,
-                enableLocation: false,
-            });
-
-            const netflixScript = new NetflixContentScript();
-            const disneyScript = new DisneyPlusContentScript();
-
-            netflixScript.contentLogger = testEnvNetflix.mocks.logger;
-            disneyScript.contentLogger = testEnvDisney.mocks.logger;
-
-            // Test identical message on both platforms
-            const testMessage = {
-                action: 'toggleSubtitles',
-                enabled: true,
-            };
-
-            const netflixResponse = jest.fn();
-            const disneyResponse = jest.fn();
-
-            // Process on both platforms
-            const netflixResult = netflixScript.handleChromeMessage(
-                testMessage,
-                {},
-                netflixResponse
-            );
-            const disneyResult = disneyScript.handleChromeMessage(
-                testMessage,
-                {},
-                disneyResponse
-            );
-
-            // Results should be identical
-            expect(netflixResult).toBe(disneyResult);
-
-            // Responses should have same structure, different platform
-            const netflixResponseCall = netflixResponse.mock.calls[0][0];
-            const disneyResponseCall = disneyResponse.mock.calls[0][0];
-
-            expect(netflixResponseCall.success).toBe(
-                disneyResponseCall.success
-            );
-            expect(netflixResponseCall.subtitlesEnabled).toBe(
-                disneyResponseCall.subtitlesEnabled
-            );
-            // Platform field is not included in the actual response format
-
-            testEnvNetflix.cleanup();
-            testEnvDisney.cleanup();
         });
     });
 });

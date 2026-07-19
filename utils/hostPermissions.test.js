@@ -17,9 +17,12 @@ describe('hostPermissions', () => {
         delete chrome.permissions;
     });
 
-    it('normalizes custom URLs to an exact HTTPS host pattern', () => {
+    it('normalizes custom URLs to one host-wide HTTPS match pattern', () => {
         expect(
             toHostPermissionPattern('https://models.example.test:8443/v1')
+        ).toBe('https://models.example.test/*');
+        expect(
+            toHostPermissionPattern('https://models.example.test:9443/v2')
         ).toBe('https://models.example.test/*');
     });
 
@@ -51,7 +54,7 @@ describe('hostPermissions', () => {
         expect(chrome.permissions.request).not.toHaveBeenCalled();
     });
 
-    it('checks and requests only the selected custom origin', async () => {
+    it('checks and requests only the selected custom scheme and host', async () => {
         const baseUrl = 'https://models.example.test/v1';
 
         await expect(hasHostPermission(baseUrl)).resolves.toBe(false);

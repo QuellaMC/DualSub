@@ -22,6 +22,33 @@ import { TestHelpers } from '../../test-utils/test-helpers.js';
 import { ChromeApiFixtures } from '../../test-utils/test-fixtures.js';
 import { NetflixContentScript } from '../platforms/NetflixContentScript.js';
 import { DisneyPlusContentScript } from '../platforms/DisneyPlusContentScript.js';
+import {
+    buildConfigChangedRequestMessage,
+    buildLoggingLevelChangedRequestMessage,
+} from '../shared/protocol/messageProtocol.js';
+
+const EXTENSION_ID = 'dualsub-content-integration-test';
+const EXTENSION_PATHS = Object.freeze({
+    background: 'background.js',
+    options: 'options/options.html',
+    popup: 'popup/popup.html',
+    sidepanel: 'sidepanel/sidepanel.html',
+});
+
+function createExtensionSender(path) {
+    chrome.runtime.id = EXTENSION_ID;
+    chrome.runtime.getManifest.mockReturnValue({
+        action: { default_popup: EXTENSION_PATHS.popup },
+        background: { service_worker: EXTENSION_PATHS.background },
+        options_ui: { page: EXTENSION_PATHS.options },
+        side_panel: { default_path: EXTENSION_PATHS.sidepanel },
+    });
+    return {
+        id: EXTENSION_ID,
+        url: chrome.runtime.getURL(path),
+        origin: chrome.runtime.getURL('').replace(/\/+$/u, ''),
+    };
+}
 
 /**
  * Integration Test Suite for Content Script Refactoring
@@ -214,20 +241,17 @@ describe('Content Script Integration Tests', () => {
         describe('Configuration Changes Integration', () => {
             test('should handle configuration changes from popup', async () => {
                 const configChanges = {
-                    subtitlePosition: 'top',
-                    fontSize: '18px',
-                    backgroundColor: '#333333',
-                    subtitlesEnabled: true,
+                    subtitleLayoutOrder: 'translation_top',
+                    subtitleLayoutOrientation: 'row',
+                    subtitleTimeOffset: 250,
+                    useNativeSubtitles: false,
                 };
 
                 // Setup Chrome API response
                 testHelpers.setupChromeApiResponses(configChanges);
 
                 // Simulate config change message from popup
-                const message = {
-                    action: 'configChanged',
-                    changes: configChanges,
-                };
+                const message = buildConfigChangedRequestMessage(configChanges);
 
                 const mockSendResponse = jest.fn();
 
@@ -242,7 +266,7 @@ describe('Content Script Integration Tests', () => {
                 // Handle message through Chrome message system
                 netflixScript.handleChromeMessage(
                     message,
-                    {},
+                    createExtensionSender(EXTENSION_PATHS.popup),
                     mockSendResponse
                 );
 
@@ -252,9 +276,10 @@ describe('Content Script Integration Tests', () => {
                         netflixScript.subtitleUtils.applySubtitleStyling
                     ).toHaveBeenCalledWith(
                         expect.objectContaining({
-                            subtitlePosition: 'top',
-                            fontSize: '18px',
-                            backgroundColor: '#333333',
+                            subtitleLayoutOrder: 'translation_top',
+                            subtitleLayoutOrientation: 'row',
+                            subtitleTimeOffset: 250,
+                            useNativeSubtitles: false,
                         })
                     );
                 }
@@ -267,68 +292,21 @@ describe('Content Script Integration Tests', () => {
                 );
             });
 
-            test('should handle toggle subtitles from popup', async () => {
-                const mockPlatform = {
-                    isPlayerPageActive: jest.fn().mockReturnValue(true),
-                    initialize: jest.fn().mockResolvedValue(true),
-                    cleanup: jest.fn(),
-                };
-
-                netflixScript.activePlatform = mockPlatform;
-
-                // Simulate toggle message from popup
-                const message = {
-                    action: 'toggleSubtitles',
-                    enabled: false,
-                };
-
-                const mockSendResponse = jest.fn();
-
-                // Handle message through Chrome message system
-                netflixScript.handleChromeMessage(
-                    message,
-                    {},
-                    mockSendResponse
-                );
-
-                // Verify subtitles were disabled
-                expect(
-                    netflixScript.subtitleUtils.setSubtitlesActive
-                ).toHaveBeenCalledWith(false);
-                expect(
-                    netflixScript.subtitleUtils.hideSubtitleContainer
-                ).toHaveBeenCalled();
-                expect(
-                    netflixScript.subtitleUtils.clearSubtitlesDisplayAndQueue
-                ).toHaveBeenCalled();
-
-                // Verify response (the actual response format)
-                expect(mockSendResponse).toHaveBeenCalledWith(
-                    expect.objectContaining({
-                        success: true,
-                        subtitlesEnabled: false,
-                    })
-                );
-            });
-
             test('should handle logging level changes from background', () => {
-                const message = {
-                    type: 'LOGGING_LEVEL_CHANGED',
-                    level: 'DEBUG',
-                };
+                const message = buildLoggingLevelChangedRequestMessage(4);
 
                 const mockSendResponse = jest.fn();
 
                 // Handle message through Chrome message system
                 netflixScript.handleChromeMessage(
                     message,
-                    {},
+                    createExtensionSender(EXTENSION_PATHS.background),
                     mockSendResponse
                 );
 
                 // Verify logger level was updated
                 expect(testEnv.mocks.logger.updateLevel).toHaveBeenCalledWith(
-                    'DEBUG'
+                    4
                 );
 
                 // Verify response
@@ -341,7 +319,7 @@ describe('Content Script Integration Tests', () => {
         });
 
         describe('Chrome Message Handling Integration', () => {
-            test('should handle complete message flow from popup to platform', async () => {
+            test('should handle canonical popup and background controls', async () => {
                 // Setup complete environment
                 const mockPlatform = {
                     isPlayerPageActive: jest.fn().mockReturnValue(true),
@@ -355,20 +333,27 @@ describe('Content Script Integration Tests', () => {
                 netflixScript.activePlatform = mockPlatform;
                 netflixScript.platformReady = true;
 
-                // Test sequence of messages that popup might send
+                // Test the exact sender and payload contracts for each route.
                 const messageSequence = [
-                    { action: 'configChanged', changes: { theme: 'dark' } },
-                    { action: 'toggleSubtitles', enabled: true },
-                    { type: 'LOGGING_LEVEL_CHANGED', level: 'INFO' },
+                    {
+                        request: buildConfigChangedRequestMessage({
+                            hideOfficialSubtitles: false,
+                        }),
+                        senderPath: EXTENSION_PATHS.popup,
+                    },
+                    {
+                        request: buildLoggingLevelChangedRequestMessage(3),
+                        senderPath: EXTENSION_PATHS.background,
+                    },
                 ];
 
-                for (const message of messageSequence) {
+                for (const { request, senderPath } of messageSequence) {
                     const mockSendResponse = jest.fn();
 
                     // Simulate Chrome message handling
                     const result = netflixScript.handleChromeMessage(
-                        message,
-                        {},
+                        request,
+                        createExtensionSender(senderPath),
                         mockSendResponse
                     );
 
@@ -383,23 +368,13 @@ describe('Content Script Integration Tests', () => {
                 expect(testEnv.mocks.logger.info).toHaveBeenCalled();
             });
 
-            test('should maintain backward compatibility with existing popup integration', () => {
-                // Test exact message formats used by popup.js
+            test('should accept the canonical popup config contract', () => {
                 const popupMessages = [
-                    {
-                        action: 'toggleSubtitles',
-                        enabled: true,
-                        source: 'popup',
-                    },
-                    {
-                        action: 'configChanged',
-                        changes: {
-                            subtitlePosition: 'bottom',
-                            fontSize: '16px',
-                            textColor: '#ffffff',
-                        },
-                        source: 'popup',
-                    },
+                    buildConfigChangedRequestMessage({
+                        subtitleLayoutOrder: 'original_top',
+                        subtitleLayoutOrientation: 'column',
+                        subtitleTimeOffset: 0,
+                    }),
                 ];
 
                 // Ensure utilities are available for message handling
@@ -438,7 +413,7 @@ describe('Content Script Integration Tests', () => {
                     expect(() => {
                         result = netflixScript.handleChromeMessage(
                             message,
-                            {},
+                            createExtensionSender(EXTENSION_PATHS.popup),
                             mockSendResponse
                         );
                     }).not.toThrow();
@@ -453,37 +428,6 @@ describe('Content Script Integration Tests', () => {
         });
 
         describe('Navigation Detection Integration', () => {
-            test('should handle Netflix SPA navigation correctly', () => {
-                // Mock URL change detection
-                netflixScript.currentUrl = 'https://www.netflix.com/browse';
-                netflixScript.lastKnownPathname = '/browse';
-
-                // Mock window.location for navigation test
-                global.window = Object.create(window);
-                global.window.location = {
-                    href: 'https://www.netflix.com/watch/12345',
-                    pathname: '/watch/12345',
-                    hostname: 'www.netflix.com',
-                };
-
-                // Trigger URL change check
-                netflixScript.checkForUrlChange();
-
-                // Verify navigation was detected (URL should be updated from window.location)
-                expect(netflixScript.currentUrl).toBe(
-                    global.window.location.href
-                );
-                expect(netflixScript.lastKnownPathname).toBe(
-                    global.window.location.pathname
-                );
-
-                // Verify logging (with data parameter)
-                expect(testEnv.mocks.logger.info).toHaveBeenCalledWith(
-                    'URL change detected.',
-                    expect.any(Object)
-                );
-            });
-
             test('should handle page transitions correctly', () => {
                 const mockPlatform = {
                     cleanup: jest.fn(),
@@ -627,92 +571,6 @@ describe('Content Script Integration Tests', () => {
         });
     });
 
-    describe('Cross-Platform Backward Compatibility', () => {
-        test('should maintain identical message handling across platforms', () => {
-            const testEnvNetflix = testHelpers.setupTestEnvironment({
-                platform: 'netflix',
-                enableLogger: true,
-                enableChromeApi: true,
-                enableLocation: false,
-            });
-
-            const testEnvDisney = testHelpers.setupTestEnvironment({
-                platform: 'disneyplus',
-                enableLogger: true,
-                enableChromeApi: true,
-                enableLocation: false,
-            });
-
-            const netflixScript = new NetflixContentScript();
-            const disneyScript = new DisneyPlusContentScript();
-
-            // Test same message on both platforms
-            const testMessage = {
-                action: 'configChanged',
-                changes: { fontSize: '20px' },
-            };
-
-            const netflixResponse = jest.fn();
-            const disneyResponse = jest.fn();
-
-            // Both should handle identically
-            const netflixResult = netflixScript.handlePlatformSpecificMessage(
-                testMessage,
-                netflixResponse
-            );
-            const disneyResult = disneyScript.handlePlatformSpecificMessage(
-                testMessage,
-                disneyResponse
-            );
-
-            expect(netflixResult).toBe(disneyResult);
-
-            // Both should provide platform-specific responses
-            expect(netflixResponse).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    success: true,
-                    platform: 'netflix',
-                })
-            );
-
-            expect(disneyResponse).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    success: true,
-                    platform: 'disneyplus',
-                })
-            );
-
-            testEnvNetflix.cleanup();
-            testEnvDisney.cleanup();
-        });
-
-        test('should maintain consistent error handling patterns', () => {
-            const platforms = [
-                { script: new NetflixContentScript(), name: 'netflix' },
-                { script: new DisneyPlusContentScript(), name: 'disneyplus' },
-            ];
-
-            platforms.forEach(({ script, name }) => {
-                const errorMessage = null; // Invalid message
-                const mockResponse = jest.fn();
-
-                // Should handle errors consistently
-                const result = script.handlePlatformSpecificMessage(
-                    errorMessage,
-                    mockResponse
-                );
-
-                expect(result).toBe(false); // Synchronous error handling
-                expect(mockResponse).toHaveBeenCalledWith(
-                    expect.objectContaining({
-                        success: false,
-                        platform: name,
-                    })
-                );
-            });
-        });
-    });
-
     describe('Performance and Memory Integration', () => {
         test('should handle rapid configuration changes without memory leaks', async () => {
             const testEnv = testHelpers.setupTestEnvironment({
@@ -737,17 +595,19 @@ describe('Content Script Integration Tests', () => {
             netflixScript.contentLogger = testEnv.mocks.logger;
 
             // Simulate rapid config changes
-            const configChanges = Array.from({ length: 50 }, (_, i) => ({
-                action: 'configChanged',
-                changes: { fontSize: `${14 + i}px` },
-            }));
+            const configChanges = Array.from({ length: 50 }, (_, i) =>
+                buildConfigChangedRequestMessage({
+                    subtitleTimeOffset: i,
+                })
+            );
 
             const startTime = Date.now();
 
             for (const change of configChanges) {
                 const mockResponse = jest.fn();
-                netflixScript.handlePlatformSpecificMessage(
+                netflixScript.handleChromeMessage(
                     change,
+                    createExtensionSender(EXTENSION_PATHS.popup),
                     mockResponse
                 );
                 expect(mockResponse).toHaveBeenCalled();
@@ -817,7 +677,7 @@ describe('Content Script Integration Tests', () => {
     });
 
     describe('End-to-End Integration Scenarios', () => {
-        test('should handle complete user workflow: enable -> configure -> watch -> disable', async () => {
+        test('should handle complete user workflow: configure -> watch', async () => {
             const testEnv = testHelpers.setupTestEnvironment({
                 platform: 'netflix',
                 enableLogger: true,
@@ -857,33 +717,17 @@ describe('Content Script Integration Tests', () => {
             netflixScript.contentLogger = testEnv.mocks.logger;
             netflixScript.activePlatform = mockPlatform;
 
-            // Step 1: Enable subtitles
-            const enableMessage = { action: 'toggleSubtitles', enabled: true };
-            const enableResponse = jest.fn();
-
-            netflixScript.handleChromeMessage(
-                enableMessage,
-                {},
-                enableResponse
-            );
-            expect(
-                netflixScript.subtitleUtils.setSubtitlesActive
-            ).toHaveBeenCalledWith(true);
-
-            // Step 2: Configure appearance
-            const configMessage = {
-                action: 'configChanged',
-                changes: {
-                    fontSize: '18px',
-                    textColor: '#ffffff',
-                    backgroundColor: '#000000',
-                },
-            };
+            // Step 1: Configure appearance
+            const configMessage = buildConfigChangedRequestMessage({
+                subtitleLayoutOrder: 'translation_top',
+                subtitleLayoutOrientation: 'row',
+                subtitleTimeOffset: 125,
+            });
             const configResponse = jest.fn();
 
             netflixScript.handleChromeMessage(
                 configMessage,
-                {},
+                createExtensionSender(EXTENSION_PATHS.popup),
                 configResponse
             );
 
@@ -894,7 +738,7 @@ describe('Content Script Integration Tests', () => {
                 ).toHaveBeenCalled();
             }
 
-            // Step 3: Process subtitle data (simulate watching)
+            // Step 2: Process subtitle data (simulate watching)
             const subtitleData = {
                 videoId: '12345',
                 sourceLanguage: 'en',
@@ -914,33 +758,8 @@ describe('Content Script Integration Tests', () => {
                 netflixScript.subtitleUtils.handleSubtitleDataFound
             ).toHaveBeenCalled();
 
-            // Step 4: Disable subtitles
-            const disableMessage = {
-                action: 'toggleSubtitles',
-                enabled: false,
-            };
-            const disableResponse = jest.fn();
-
-            netflixScript.handleChromeMessage(
-                disableMessage,
-                {},
-                disableResponse
-            );
-            expect(
-                netflixScript.subtitleUtils.setSubtitlesActive
-            ).toHaveBeenCalledWith(false);
-            expect(
-                netflixScript.subtitleUtils.hideSubtitleContainer
-            ).toHaveBeenCalled();
-
-            // Verify all responses were successful
-            expect(enableResponse).toHaveBeenCalledWith(
-                expect.objectContaining({ success: true })
-            );
+            // Verify the active message response was successful
             expect(configResponse).toHaveBeenCalledWith(
-                expect.objectContaining({ success: true })
-            );
-            expect(disableResponse).toHaveBeenCalledWith(
                 expect.objectContaining({ success: true })
             );
 

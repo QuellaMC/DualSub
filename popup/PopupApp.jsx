@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { getDefaultValue } from '../config/configSchema.js';
+import { POPUP_SETTINGS_KEYS } from '../shared/settingsProjections.js';
 import {
     useSettings,
     useTranslation,
@@ -12,8 +14,13 @@ import { AppearanceSettings } from './components/AppearanceSettings.jsx';
 import { StatusMessage } from './components/StatusMessage.jsx';
 
 export function PopupApp() {
-    const { settings, updateSetting, updateSettings, loading, error } =
-        useSettings();
+    const {
+        settings,
+        updateSetting,
+        updateSettings,
+        loading,
+        initialLoadStatus,
+    } = useSettings(POPUP_SETTINGS_KEYS);
     const { t, loading: translationsLoading } = useTranslation(
         settings.uiLanguage || 'en'
     );
@@ -21,40 +28,45 @@ export function PopupApp() {
     const logger = useLogger('Popup');
 
     const [statusMessage, setStatusMessage] = useState('');
+    const isMountedRef = useRef(false);
     const statusTimeoutRef = useRef(null);
 
     const showStatus = (message, duration = 3000) => {
-        if (statusTimeoutRef.current) {
+        if (!isMountedRef.current) {
+            return;
+        }
+
+        if (statusTimeoutRef.current !== null) {
             clearTimeout(statusTimeoutRef.current);
         }
 
         setStatusMessage(message);
         statusTimeoutRef.current = setTimeout(() => {
+            if (!isMountedRef.current) {
+                return;
+            }
             setStatusMessage('');
             statusTimeoutRef.current = null;
         }, duration);
     };
 
     useEffect(() => {
+        isMountedRef.current = true;
         return () => {
-            if (statusTimeoutRef.current) {
+            isMountedRef.current = false;
+            if (statusTimeoutRef.current !== null) {
                 clearTimeout(statusTimeoutRef.current);
+                statusTimeoutRef.current = null;
             }
         };
     }, []);
 
-    // Show error if settings failed to load
+    // Record only the status boundary; the underlying error may contain secrets.
     useEffect(() => {
-        if (error && logger) {
-            logger.error('Error loading settings', error, {
-                component: 'loadSettings',
-            });
-            showStatus(
-                'Failed to load settings. Please try refreshing the popup.',
-                5000
-            );
+        if (initialLoadStatus === 'unavailable' && logger) {
+            logger.error('Settings initial load unavailable');
         }
-    }, [error, logger]);
+    }, [initialLoadStatus, logger]);
 
     const handleToggleSubtitles = async (enabled) => {
         try {
@@ -196,13 +208,12 @@ export function PopupApp() {
         sendImmediateConfigUpdate({ subtitleFontSize: fontSize });
     };
 
-    const handleFontSizeChangeEnd = async (fontSize) => {
+    const handleFontSizeChangeEnd = async (fontSize, commit) => {
         try {
             await updateSetting('subtitleFontSize', fontSize);
             showStatus(
                 `${t('statusFontSize', 'Font size: ')}${fontSize.toFixed(1)}vw.`
             );
-            sendImmediateConfigUpdate({ subtitleFontSize: fontSize });
         } catch (error) {
             if (logger) {
                 logger.error('Error setting font size', error, {
@@ -211,6 +222,11 @@ export function PopupApp() {
                 });
             }
             showStatus('Failed to update font size. Please try again.');
+            if (commit.isCurrent()) {
+                sendImmediateConfigUpdate({
+                    subtitleFontSize: commit.confirmedValue,
+                });
+            }
             throw error;
         }
     };
@@ -220,13 +236,12 @@ export function PopupApp() {
         sendImmediateConfigUpdate({ subtitleGap: gap });
     };
 
-    const handleGapChangeEnd = async (gap) => {
+    const handleGapChangeEnd = async (gap, commit) => {
         try {
             await updateSetting('subtitleGap', gap);
             showStatus(
                 `${t('statusVerticalGap', 'Vertical gap: ')}${gap.toFixed(1)}em.`
             );
-            sendImmediateConfigUpdate({ subtitleGap: gap });
         } catch (error) {
             if (logger) {
                 logger.error('Error setting subtitle gap', error, {
@@ -235,6 +250,11 @@ export function PopupApp() {
                 });
             }
             showStatus('Failed to update subtitle gap. Please try again.');
+            if (commit.isCurrent()) {
+                sendImmediateConfigUpdate({
+                    subtitleGap: commit.confirmedValue,
+                });
+            }
             throw error;
         }
     };
@@ -246,15 +266,15 @@ export function PopupApp() {
         });
     };
 
-    const handleVerticalPositionChangeEnd = async (verticalPosition) => {
+    const handleVerticalPositionChangeEnd = async (
+        verticalPosition,
+        commit
+    ) => {
         try {
             await updateSetting('subtitleVerticalPosition', verticalPosition);
             showStatus(
                 `${t('statusVerticalPosition', 'Vertical position: ')}${verticalPosition.toFixed(1)}.`
             );
-            sendImmediateConfigUpdate({
-                subtitleVerticalPosition: verticalPosition,
-            });
         } catch (error) {
             if (logger) {
                 logger.error(
@@ -267,6 +287,11 @@ export function PopupApp() {
                 );
             }
             showStatus('Failed to update vertical position. Please try again.');
+            if (commit.isCurrent()) {
+                sendImmediateConfigUpdate({
+                    subtitleVerticalPosition: commit.confirmedValue,
+                });
+            }
             throw error;
         }
     };
@@ -319,12 +344,23 @@ export function PopupApp() {
         return <div role="status">Loading...</div>;
     }
 
+    if (initialLoadStatus === 'unavailable') {
+        return (
+            <div role="alert">
+                {t(
+                    'settingsLoadFailed',
+                    'Failed to load settings. Please try refreshing the popup.'
+                )}
+            </div>
+        );
+    }
+
     const {
-        subtitlesEnabled = false,
+        subtitlesEnabled = getDefaultValue('subtitlesEnabled'),
         useOfficialTranslations,
         useNativeSubtitles,
         originalLanguage = 'en',
-        targetLanguage = 'es',
+        targetLanguage = getDefaultValue('targetLanguage'),
         subtitleLayoutOrder = 'original_top',
         subtitleLayoutOrientation = 'column',
         subtitleFontSize = 1.1,

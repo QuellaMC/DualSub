@@ -1,95 +1,72 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSidePanelContext } from './SidePanelContext.jsx';
 
-function selectionKey(words) {
-    return words.join('\u0000');
-}
-
 /**
  * Requests selection changes from the content script. The content script owns
  * the authoritative highlighted-word state and confirms it through
  * sidePanelSelectionSync; this hook deliberately avoids optimistic mutations.
  */
 export function useWordSelection() {
-    const { activeTabId, communication, selectedWords } = useSidePanelContext();
-    const { sendToTab } = communication;
+    const { communication, selection, selectedWords } = useSidePanelContext();
+    const { requestSelectionRemoval } = communication;
     const [isUpdatingSelection, setIsUpdatingSelection] = useState(false);
     const pendingSelectionRef = useRef(null);
-    const fallbackTimerRef = useRef(null);
-    const currentSelectionKey = selectionKey(selectedWords);
-
-    const clearPendingSelection = useCallback(() => {
-        pendingSelectionRef.current = null;
-        setIsUpdatingSelection(false);
-        if (fallbackTimerRef.current) {
-            clearTimeout(fallbackTimerRef.current);
-            fallbackTimerRef.current = null;
-        }
-    }, []);
+    const mountedRef = useRef(true);
 
     useEffect(() => {
-        if (pendingSelectionRef.current === currentSelectionKey) {
-            clearPendingSelection();
-        }
-    }, [clearPendingSelection, currentSelectionKey]);
+        mountedRef.current = true;
+        return () => {
+            mountedRef.current = false;
+            pendingSelectionRef.current = null;
+        };
+    }, []);
 
-    useEffect(
-        () => () => {
-            if (fallbackTimerRef.current) {
-                clearTimeout(fallbackTimerRef.current);
-            }
-        },
-        []
-    );
+    const clearPendingSelection = useCallback((pending) => {
+        if (pendingSelectionRef.current !== pending) {
+            return;
+        }
+        pendingSelectionRef.current = null;
+        if (mountedRef.current) {
+            setIsUpdatingSelection(false);
+        }
+    }, []);
 
     const removeWordAt = useCallback(
         async (index) => {
             if (
+                pendingSelectionRef.current ||
                 isUpdatingSelection ||
-                typeof activeTabId !== 'number' ||
+                !selection ||
                 !Number.isInteger(index) ||
                 index < 0 ||
-                index >= selectedWords.length
+                index >= selection.entries.length
             ) {
                 return false;
             }
 
-            const nextSelection = selectedWords.filter(
-                (_selectedWord, selectedIndex) => selectedIndex !== index
-            );
-            pendingSelectionRef.current = selectionKey(nextSelection);
+            const occurrence = selection.entries[index];
+            const pending = {};
+            pendingSelectionRef.current = pending;
             setIsUpdatingSelection(true);
 
             try {
-                await sendToTab(activeTabId, 'sidePanelUpdateState', {
-                    removeSelectionIndex: index,
-                    selectedWords: nextSelection,
-                });
-
-                // The authoritative sync normally arrives immediately. Avoid
-                // leaving controls locked if a page unloads before broadcasting.
-                if (pendingSelectionRef.current !== null) {
-                    fallbackTimerRef.current = setTimeout(
-                        clearPendingSelection,
-                        1500
-                    );
-                }
-                return true;
-            } catch (selectionError) {
-                console.error(
-                    'Failed to update content-script selection:',
-                    selectionError
+                const status = await requestSelectionRemoval(
+                    selection,
+                    occurrence.wordIndex
                 );
-                clearPendingSelection();
+                return status === 'applied';
+            } catch (_) {
+                console.error('Failed to update content-script selection');
                 return false;
+            } finally {
+                clearPendingSelection(pending);
             }
         },
         [
-            activeTabId,
             clearPendingSelection,
             isUpdatingSelection,
-            selectedWords,
-            sendToTab,
+            requestSelectionRemoval,
+            selection,
         ]
     );
 

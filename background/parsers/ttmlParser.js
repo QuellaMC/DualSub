@@ -9,6 +9,33 @@
  */
 
 import { loggingManager } from '../utils/loggingManager.js';
+import { normalizeCueText } from '../../utils/cueTextNormalizer.js';
+
+const TTML_CONVERSION_MESSAGES = Object.freeze({
+    generic: 'TTML conversion failed.',
+    noEntries: 'TTML conversion failed: No valid TTML subtitle entries found',
+    unsupportedTimestamp: 'TTML conversion failed: Unsupported TTML timestamp',
+    invalidCueRange: 'TTML conversion failed: Invalid TTML cue range',
+});
+
+const INTERNAL_TTML_FAILURE_MESSAGES = new WeakMap();
+
+function createInternalConversionError(publicMessage) {
+    const error = new Error();
+    INTERNAL_TTML_FAILURE_MESSAGES.set(error, publicMessage);
+    return error;
+}
+
+class TTMLConversionError extends Error {
+    constructor(message = TTML_CONVERSION_MESSAGES.generic) {
+        super(message);
+        this.name = 'TTMLConversionError';
+    }
+}
+
+function createPublicConversionError(error) {
+    return new TTMLConversionError(INTERNAL_TTML_FAILURE_MESSAGES.get(error));
+}
 
 class TTMLParser {
     constructor() {
@@ -47,7 +74,9 @@ class TTMLParser {
 
             if (intermediateCues.length === 0) {
                 this.logger.error('No valid TTML subtitle entries found');
-                throw new Error('No valid TTML subtitle entries found');
+                throw createInternalConversionError(
+                    TTML_CONVERSION_MESSAGES.noEntries
+                );
             }
 
             // Step 3: Group cues by their timestamp
@@ -74,18 +103,15 @@ class TTMLParser {
             this.logger.info('TTML to VTT conversion complete', {
                 finalCueCount: finalCues.length,
                 vttLength: vtt.length,
-                timeRange:
-                    finalCues.length > 0
-                        ? `${this.convertTtmlTimeToVtt(finalCues[0].begin)} to ${this.convertTtmlTimeToVtt(finalCues[finalCues.length - 1].end)}`
-                        : 'N/A',
             });
 
             return vtt;
         } catch (error) {
-            this.logger.error('Error converting TTML to VTT', error, {
+            this.logger.error('TTML conversion failed', {
                 inputLength: ttmlText.length,
+                stage: 'conversion',
             });
-            throw new Error(`TTML conversion failed: ${error.message}`);
+            throw createPublicConversionError(error);
         }
     }
 
@@ -111,7 +137,6 @@ class TTMLParser {
                 }
                 regionLayouts.set(regionId, { x, y });
                 this.logger.debug('Region layout parsed', {
-                    regionId,
                     x,
                     y,
                 });
@@ -144,23 +169,14 @@ class TTMLParser {
             }
             pElementCount++;
 
-            const text = this.decodeEntities(
-                textContent
-                    .replace(/<br\s*\/?>/gi, ' ')
-                    .replace(/<[^>]*>/g, '')
-                    .replace(/\r?\n/g, ' ')
-                    .replace(/\s+/g, ' ')
-                    .trim()
-            );
+            const text = normalizeCueText(textContent, 'ttml');
 
             intermediateCues.push({ begin, end, region, text });
 
             if (pElementCount <= 5) {
                 this.logger.debug('Parsed cue', {
                     cueNumber: pElementCount,
-                    begin,
-                    end,
-                    region,
+                    hasRegion: region.length > 0,
                     textLength: text.length,
                 });
             }
@@ -263,29 +279,37 @@ class TTMLParser {
         let vttCueCount = 0;
 
         for (const cue of finalCues) {
-            const startSeconds = this.parseTtmlTimeToSeconds(cue.begin);
-            const endSeconds = this.parseTtmlTimeToSeconds(cue.end);
+            const startMilliseconds = Math.round(
+                this.parseTtmlTimeToSeconds(cue.begin) * 1000
+            );
+            const endMilliseconds = Math.round(
+                this.parseTtmlTimeToSeconds(cue.end) * 1000
+            );
             if (
-                Number.isFinite(startSeconds) &&
-                Number.isFinite(endSeconds) &&
-                endSeconds <= startSeconds
+                !Number.isFinite(startMilliseconds) ||
+                startMilliseconds < 0 ||
+                !Number.isFinite(endMilliseconds) ||
+                endMilliseconds < 0
             ) {
-                throw new Error(
-                    `Invalid TTML cue range: ${cue.begin} to ${cue.end}`
+                throw createInternalConversionError(
+                    TTML_CONVERSION_MESSAGES.unsupportedTimestamp
                 );
             }
-            const startTime = this.convertTtmlTimeToVtt(cue.begin);
-            const endTime = this.convertTtmlTimeToVtt(cue.end);
+            if (endMilliseconds <= startMilliseconds) {
+                throw createInternalConversionError(
+                    TTML_CONVERSION_MESSAGES.invalidCueRange
+                );
+            }
+            const startTime = this.formatMillisecondsAsVtt(startMilliseconds);
+            const endTime = this.formatMillisecondsAsVtt(endMilliseconds);
 
             vttContent += `${startTime} --> ${endTime}\n`;
-            vttContent += `${cue.text}\n\n`;
+            vttContent += `${this.encodeVttText(cue.text)}\n\n`;
             vttCueCount++;
 
             if (vttCueCount <= 3) {
                 this.logger.debug('VTT Cue created', {
                     cueNumber: vttCueCount,
-                    startTime,
-                    endTime,
                     textLength: cue.text.length,
                 });
             }
@@ -302,7 +326,9 @@ class TTMLParser {
     convertTtmlTimeToVtt(ttmlTime) {
         const seconds = this.parseTtmlTimeToSeconds(ttmlTime);
         if (!Number.isFinite(seconds) || seconds < 0) {
-            throw new Error(`Unsupported TTML timestamp: ${ttmlTime}`);
+            throw createInternalConversionError(
+                TTML_CONVERSION_MESSAGES.unsupportedTimestamp
+            );
         }
         return this.formatSecondsAsVtt(seconds);
     }
@@ -317,19 +343,13 @@ class TTMLParser {
         return attributes;
     }
 
-    decodeEntities(text) {
-        return text
-            .replace(/&#x([0-9a-f]+);/gi, (_match, hex) =>
-                String.fromCodePoint(Number.parseInt(hex, 16))
-            )
-            .replace(/&#(\d+);/g, (_match, decimal) =>
-                String.fromCodePoint(Number.parseInt(decimal, 10))
-            )
-            .replace(/&lt;/gi, '<')
-            .replace(/&gt;/gi, '>')
-            .replace(/&quot;/gi, '"')
-            .replace(/&apos;|&#39;/gi, "'")
-            .replace(/&amp;/gi, '&');
+    encodeVttText(text) {
+        // cue.text is plain TTML semantic text. Encode it for the intermediate
+        // VTT transport so decoded literals such as <tag> cannot become markup.
+        return String(text)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
     }
 
     parseTtmlTimeToSeconds(ttmlTime) {
@@ -359,7 +379,10 @@ class TTMLParser {
     }
 
     formatSecondsAsVtt(seconds) {
-        const totalMilliseconds = Math.round(seconds * 1000);
+        return this.formatMillisecondsAsVtt(Math.round(seconds * 1000));
+    }
+
+    formatMillisecondsAsVtt(totalMilliseconds) {
         const hours = Math.floor(totalMilliseconds / 3_600_000);
         const minutes = Math.floor((totalMilliseconds % 3_600_000) / 60_000);
         const wholeSeconds = Math.floor((totalMilliseconds % 60_000) / 1000);

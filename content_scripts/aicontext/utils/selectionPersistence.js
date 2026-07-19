@@ -18,6 +18,7 @@ import { UI_CONFIG } from '../core/constants.js';
 export class SelectionPersistenceManager {
     constructor(modalCore) {
         this.modalCore = modalCore;
+        this.privateAnalysis = modalCore?.config?.privateAnalysis === true;
         this.isMonitoring = false;
         this.observers = new Map();
         this.lastObservedContent = new Map();
@@ -25,6 +26,10 @@ export class SelectionPersistenceManager {
         // Debounce settings for content monitoring
         this.debounceDelay = 100;
         this.debounceTimers = new Map();
+
+        // Restoration authority belongs to one monitoring lifecycle at a time.
+        this._monitoringLifecycle = null;
+        this._ownedRestorationTimeout = null;
 
         this._log('debug', 'SelectionPersistenceManager initialized');
     }
@@ -44,6 +49,7 @@ export class SelectionPersistenceManager {
         }
 
         this.isMonitoring = true;
+        this._monitoringLifecycle = {};
         this._setupSubtitleObservers();
         this._setupSubtitleChangeListener();
 
@@ -54,15 +60,53 @@ export class SelectionPersistenceManager {
      * Stop monitoring subtitle containers
      */
     stopMonitoring() {
-        if (!this.isMonitoring) {
+        const wasMonitoring = this.isMonitoring;
+        this.isMonitoring = false;
+        this._monitoringLifecycle = null;
+        this._clearOwnedRestorationTimeout();
+
+        if (!wasMonitoring) {
             return;
         }
 
-        this.isMonitoring = false;
         this._cleanupObservers();
         this._cleanupSubtitleChangeListener();
 
         this._log('info', 'Selection persistence monitoring stopped');
+    }
+
+    /**
+     * Clear only the restoration timeout owned by this manager lifecycle.
+     * @private
+     */
+    _clearOwnedRestorationTimeout() {
+        const ownedTimeout = this._ownedRestorationTimeout;
+        this._ownedRestorationTimeout = null;
+        if (ownedTimeout === null) {
+            return;
+        }
+
+        clearTimeout(ownedTimeout);
+        try {
+            const persistence = this.modalCore?.selectionPersistence;
+            if (persistence?.restorationTimeout === ownedTimeout) {
+                persistence.restorationTimeout = null;
+            }
+        } catch (_) {}
+    }
+
+    /**
+     * Check whether a scheduled callback still belongs to the active lifecycle.
+     * @param {Object|null} lifecycle - Captured monitoring lifecycle token
+     * @returns {boolean} True when the token still owns restoration authority
+     * @private
+     */
+    _hasMonitoringAuthority(lifecycle) {
+        return (
+            lifecycle !== null &&
+            this.isMonitoring &&
+            this._monitoringLifecycle === lifecycle
+        );
     }
 
     /**
@@ -115,6 +159,10 @@ export class SelectionPersistenceManager {
      * @private
      */
     _handleSubtitleContentChange(event) {
+        if (this.privateAnalysis) {
+            this._scheduleRestorationDebounced('event');
+            return;
+        }
         const { type, oldContent, newContent } = event.detail;
 
         // Only handle original subtitle changes for AI Context
@@ -277,6 +325,11 @@ export class SelectionPersistenceManager {
             return;
         }
 
+        if (this.privateAnalysis) {
+            this._scheduleRestorationDebounced('mutation');
+            return;
+        }
+
         // Ignore while a visual restoration is pending to prevent loops
         if (this.modalCore?.selectionPersistence?.pendingRestore) {
             this._log(
@@ -308,6 +361,10 @@ export class SelectionPersistenceManager {
      * @private
      */
     _processSubtitleChange(subtitleType, container) {
+        if (this.privateAnalysis) {
+            this._scheduleRestorationDebounced('mutation');
+            return;
+        }
         try {
             // Skip entirely if a visual restoration is pending (avoid triggering loops)
             if (this.modalCore?.selectionPersistence?.pendingRestore) {
@@ -446,6 +503,7 @@ export class SelectionPersistenceManager {
      * Useful for manual state preservation
      */
     captureCurrentState() {
+        if (this.privateAnalysis) return false;
         const originalContainer = document.getElementById(
             'dualsub-original-subtitle'
         );
@@ -458,7 +516,9 @@ export class SelectionPersistenceManager {
                 contentLength: content.length,
                 selectedWordsCount: this.modalCore.selectedWords.size,
             });
+            return true;
         }
+        return false;
     }
 
     /**
@@ -494,6 +554,46 @@ export class SelectionPersistenceManager {
      * @private
      */
     _scheduleRestorationDebounced(source) {
+        const lifecycle = this._monitoringLifecycle;
+        if (!this._hasMonitoringAuthority(lifecycle)) {
+            this._log('debug', 'Monitoring inactive, skipping restoration', {
+                source,
+            });
+            return;
+        }
+
+        if (this.privateAnalysis) {
+            if (this._ownedRestorationTimeout !== null) return;
+
+            const delay = source === 'event' ? 150 : 200;
+            let restorationTimeout = null;
+            restorationTimeout = setTimeout(() => {
+                if (this._ownedRestorationTimeout === restorationTimeout) {
+                    this._ownedRestorationTimeout = null;
+                }
+                if (!this._hasMonitoringAuthority(lifecycle)) return;
+
+                const onSelectionRestored =
+                    this.modalCore?.config?.onSelectionRestored;
+                if (typeof onSelectionRestored !== 'function') return;
+                try {
+                    onSelectionRestored();
+                } catch (error) {
+                    this._log(
+                        'error',
+                        'Canonical selection reapplication failed',
+                        {
+                            source,
+                            errorName: error?.name,
+                            errorLength: error?.message?.length || 0,
+                        }
+                    );
+                }
+            }, delay);
+            this._ownedRestorationTimeout = restorationTimeout;
+            return;
+        }
+
         // Skip if restoration is already in progress
         if (this.modalCore.selectionPersistence.isRestoring) {
             this._log('debug', 'Restoration already in progress, skipping', {
@@ -556,15 +656,30 @@ export class SelectionPersistenceManager {
 
         // Schedule new restoration with appropriate delay
         const delay = source === 'event' ? 150 : 200; // Slightly longer for mutation observer
-        this.modalCore.selectionPersistence.restorationTimeout = setTimeout(
+        let restorationTimeout = null;
+        restorationTimeout = setTimeout(
+            // Keep the exact handle available for compare-and-null cleanup.
             () => {
+                if (this._ownedRestorationTimeout === restorationTimeout) {
+                    this._ownedRestorationTimeout = null;
+                }
+                try {
+                    const persistence = this.modalCore?.selectionPersistence;
+                    if (
+                        persistence?.restorationTimeout === restorationTimeout
+                    ) {
+                        persistence.restorationTimeout = null;
+                    }
+                } catch (_) {}
+
+                if (!this._hasMonitoringAuthority(lifecycle)) {
+                    return;
+                }
+
                 this._log('debug', 'Executing debounced restoration', {
                     source,
                     delay,
                 });
-
-                // Clear the timeout reference before calling restoration
-                this.modalCore.selectionPersistence.restorationTimeout = null;
 
                 // Re-check recent manual selection before actually restoring
                 try {
@@ -635,7 +750,39 @@ export class SelectionPersistenceManager {
                     this._restoreCounts.set(sig, count + 1);
                 } catch (_) {}
 
-                const success = this.modalCore.restoreSelectionState();
+                if (!this._hasMonitoringAuthority(lifecycle)) {
+                    return;
+                }
+
+                let timeoutBeforeRestore = null;
+                try {
+                    timeoutBeforeRestore =
+                        this.modalCore.selectionPersistence.restorationTimeout;
+                } catch (_) {}
+                let success = false;
+                try {
+                    success = this.modalCore.restoreSelectionState() === true;
+                } catch (error) {
+                    try {
+                        this._log('error', 'Debounced restoration failed', {
+                            source,
+                            errorName: error?.name,
+                            errorLength: error?.message?.length || 0,
+                        });
+                    } catch (_) {}
+                }
+                try {
+                    const followUpTimeout =
+                        this.modalCore.selectionPersistence.restorationTimeout;
+                    if (
+                        this._hasMonitoringAuthority(lifecycle) &&
+                        this._ownedRestorationTimeout === null &&
+                        followUpTimeout != null &&
+                        followUpTimeout !== timeoutBeforeRestore
+                    ) {
+                        this._ownedRestorationTimeout = followUpTimeout;
+                    }
+                } catch (_) {}
                 // Mark restore time for cooldown
                 try {
                     this.modalCore.selectionPersistence.lastRestoreAt =
@@ -653,6 +800,9 @@ export class SelectionPersistenceManager {
             },
             delay
         );
+        this._ownedRestorationTimeout = restorationTimeout;
+        this.modalCore.selectionPersistence.restorationTimeout =
+            restorationTimeout;
 
         this._log('debug', 'Scheduled debounced restoration', {
             source,

@@ -1,215 +1,66 @@
 /**
- * Service Interface Definitions
+ * Runtime service error contracts and the active background service registry.
  *
- * Defines clear interfaces and contracts between services to ensure
- * proper separation of concerns and data flow.
- *
- * @author DualSub Extension
- * @version 2.0.0
+ * This module intentionally contains only exports consumed by production code.
  */
-
-/**
- * Translation Service Interface
- *
- * Handles all translation-related operations including provider management,
- * caching, rate limiting, and batch processing preparation.
- */
-export class ITranslationService {
-    /**
-     * Initialize the translation service
-     * @returns {Promise<void>}
-     */
-    async initialize() {
-        throw new Error('Method must be implemented');
-    }
-
-    /**
-     * Translate text using current provider
-     * @param {string} _text - Text to translate
-     * @param {string} _sourceLang - Source language code
-     * @param {string} _targetLang - Target language code
-     * @param {Object} _options - Translation options
-     * @returns {Promise<string>} Translated text
-     */
-    async translate(_text, _sourceLang, _targetLang, _options = {}) {
-        throw new Error('Method must be implemented');
-    }
-
-    /**
-     * Change translation provider
-     * @param {string} _providerId - New provider ID
-     * @returns {Promise<Object>} Result object
-     */
-    async changeProvider(_providerId) {
-        throw new Error('Method must be implemented');
-    }
-
-    /**
-     * Get current provider information
-     * @returns {Object} Provider information
-     */
-    getCurrentProvider() {
-        throw new Error('Method must be implemented');
-    }
-
-    /**
-     * Get performance metrics
-     * @returns {Object} Performance metrics
-     */
-    getPerformanceMetrics() {
-        throw new Error('Method must be implemented');
-    }
-}
-
-/**
- * Subtitle Service Interface
- *
- * Handles subtitle fetching, processing, and platform-specific coordination.
- * Coordinates with parser modules and manages subtitle workflows.
- */
-export class ISubtitleService {
-    /**
-     * Initialize the subtitle service
-     * @returns {Promise<void>}
-     */
-    async initialize() {
-        throw new Error('Method must be implemented');
-    }
-
-    /**
-     * Process Netflix subtitle data
-     * @param {Object} _data - Netflix subtitle data
-     * @param {string} _targetLanguage - Target language code
-     * @param {string} _originalLanguage - Original language code
-     * @param {boolean} _useNativeSubtitles - Whether to use native subtitles
-     * @param {boolean} _useOfficialTranslations - Whether to use official translations
-     * @returns {Promise<Object>} Processed subtitle result
-     */
-    async processNetflixSubtitles(
-        _data,
-        _targetLanguage,
-        _originalLanguage,
-        _useNativeSubtitles,
-        _useOfficialTranslations
-    ) {
-        throw new Error('Method must be implemented');
-    }
-
-    /**
-     * Fetch and process generic subtitles
-     * @param {string} _url - Subtitle URL
-     * @param {string} _targetLanguage - Target language code
-     * @param {string} _originalLanguage - Original language code
-     * @returns {Promise<Object>} Processed subtitle result
-     */
-    async fetchAndProcessSubtitles(_url, _targetLanguage, _originalLanguage) {
-        throw new Error('Method must be implemented');
-    }
-
-    /**
-     * Process subtitles for any supported platform
-     * @param {string} _platform - Platform identifier
-     * @param {Object} _data - Platform-specific data
-     * @param {Object} _options - Processing options
-     * @returns {Promise<Object>} Processed subtitle result
-     */
-    async processSubtitles(_platform, _data, _options = {}) {
-        throw new Error('Method must be implemented');
-    }
-
-    /**
-     * Get available subtitle languages for platform data
-     * @param {string} _platform - Platform identifier
-     * @param {Object} _data - Platform-specific data
-     * @returns {Promise<Array>} Available languages
-     */
-    async getAvailableLanguages(_platform, _data) {
-        throw new Error('Method must be implemented');
-    }
-
-    /**
-     * Get supported platforms
-     * @returns {Array} Supported platform names
-     */
-    getSupportedPlatforms() {
-        throw new Error('Method must be implemented');
-    }
-}
-
-/**
- * Service Communication Protocol
- *
- * Defines the standard message format and response structure
- * for communication between services and external components.
- */
-export class ServiceProtocol {
-    /**
-     * Create a standard service request
-     * @param {string} service - Service name
-     * @param {string} method - Method name
-     * @param {Object} params - Method parameters
-     * @param {Object} metadata - Request metadata
-     * @returns {Object} Standard request object
-     */
-    static createRequest(service, method, params, metadata = {}) {
-        return {
-            service,
-            method,
-            params,
-            metadata: {
-                timestamp: Date.now(),
-                requestId: this.generateRequestId(),
-                ...metadata,
-            },
-        };
-    }
-
-    /**
-     * Create a standard service response
-     * @param {Object} request - Original request
-     * @param {Object} result - Method result
-     * @param {Error} error - Error if any
-     * @returns {Object} Standard response object
-     */
-    static createResponse(request, result = null, error = null) {
-        return {
-            requestId: request.metadata.requestId,
-            service: request.service,
-            method: request.method,
-            success: !error,
-            result,
-            error: error
-                ? {
-                      message: error.message,
-                      type: error.constructor.name,
-                      stack: error.stack,
-                  }
-                : null,
-            metadata: {
-                timestamp: Date.now(),
-                processingTime:
-                    request.metadata &&
-                    typeof request.metadata.timestamp === 'number'
-                        ? Date.now() - request.metadata.timestamp
-                        : 0,
-            },
-        };
-    }
-
-    /**
-     * Generate unique request ID
-     * @returns {string} Request ID
-     */
-    static generateRequestId() {
-        return `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    }
-}
 
 /**
  * Service Error Types
  *
  * Standard error types for service operations
  */
+const translationErrorMetadata = new WeakMap();
+const rateLimitErrorMetadata = new WeakMap();
+
+function isObjectLike(value) {
+    return (
+        value !== null &&
+        (typeof value === 'object' || typeof value === 'function')
+    );
+}
+
+function getOwnDataValue(value, key) {
+    if (!isObjectLike(value)) {
+        return undefined;
+    }
+    try {
+        const descriptor = Object.getOwnPropertyDescriptor(value, key);
+        return descriptor && Object.hasOwn(descriptor, 'value')
+            ? descriptor.value
+            : undefined;
+    } catch (_) {
+        return undefined;
+    }
+}
+
+function snapshotTranslationErrorMetadata(details) {
+    return Object.freeze({
+        retryable: getOwnDataValue(details, 'isRecoverable') === true,
+    });
+}
+
+function appendFiniteResetTime(resetTimes, value) {
+    const resetTime = getOwnDataValue(value, 'resetTime');
+    if (typeof resetTime === 'number' && Number.isFinite(resetTime)) {
+        resetTimes.push(resetTime);
+    }
+}
+
+function snapshotRateLimitErrorMetadata(details) {
+    const resetTimes = [];
+    const status = getOwnDataValue(details, 'rateLimitStatus');
+    if (isObjectLike(status)) {
+        appendFiniteResetTime(resetTimes, status);
+        for (const windowKey of ['shortWindow', 'longWindow']) {
+            const windowStatus = getOwnDataValue(status, windowKey);
+            if (isObjectLike(windowStatus)) {
+                appendFiniteResetTime(resetTimes, windowStatus);
+            }
+        }
+    }
+    return Object.freeze({ resetTimes: Object.freeze(resetTimes) });
+}
+
 export class ServiceError extends Error {
     constructor(message, type = 'SERVICE_ERROR', details = {}) {
         super(message);
@@ -224,6 +75,10 @@ export class TranslationError extends ServiceError {
     constructor(message, details = {}) {
         super(message, 'TRANSLATION_ERROR', details);
         this.name = 'TranslationError';
+        translationErrorMetadata.set(
+            this,
+            snapshotTranslationErrorMetadata(details)
+        );
     }
 }
 
@@ -238,65 +93,44 @@ export class RateLimitError extends ServiceError {
     constructor(message, details = {}) {
         super(message, 'RATE_LIMIT_ERROR', details);
         this.name = 'RateLimitError';
+        rateLimitErrorMetadata.set(
+            this,
+            snapshotRateLimitErrorMetadata(details)
+        );
     }
 }
 
 /**
- * Service Data Flow Contracts
+ * Return a fresh, non-sensitive retry metadata view for a genuine internal
+ * translation error. The constructors are the trust boundary: public details
+ * remain compatible but cannot mutate these private snapshots later.
  *
- * Defines the expected data structures for service interactions
+ * @param {unknown} error
+ * @returns {{retryable: boolean, resetTimes: number[] | null} | null}
  */
-export const DataContracts = {
-    // Translation request/response
-    TranslationRequest: {
-        text: 'string',
-        sourceLang: 'string',
-        targetLang: 'string',
-        options: 'object?',
-    },
+export function getTrustedTranslationFailureMetadata(error) {
+    if (!isObjectLike(error)) {
+        return null;
+    }
 
-    TranslationResponse: {
-        translatedText: 'string',
-        originalText: 'string',
-        sourceLanguage: 'string',
-        targetLanguage: 'string',
-        cached: 'boolean',
-        processingTime: 'number',
-    },
+    const rateLimitSnapshot = rateLimitErrorMetadata.get(error);
+    if (rateLimitSnapshot) {
+        return Object.freeze({
+            retryable: true,
+            resetTimes: Object.freeze([...rateLimitSnapshot.resetTimes]),
+        });
+    }
 
-    // Subtitle processing request/response
-    SubtitleRequest: {
-        platform: 'string',
-        data: 'object',
-        options: 'object?',
-    },
+    const translationSnapshot = translationErrorMetadata.get(error);
+    if (translationSnapshot) {
+        return Object.freeze({
+            retryable: translationSnapshot.retryable,
+            resetTimes: null,
+        });
+    }
 
-    SubtitleResponse: {
-        vttText: 'string',
-        targetVttText: 'string?',
-        sourceLanguage: 'string',
-        targetLanguage: 'string',
-        useNativeTarget: 'boolean',
-        availableLanguages: 'array',
-        url: 'string?',
-    },
-
-    // Netflix-specific data
-    NetflixSubtitleData: {
-        tracks: 'array',
-        videoId: 'string?',
-    },
-
-    // Performance metrics
-    PerformanceMetrics: {
-        totalProcessed: 'number',
-        averageProcessingTime: 'number',
-        cacheHits: 'number',
-        errors: 'number',
-        errorRate: 'number',
-    },
-};
-
+    return null;
+}
 /**
  * Service Registry
  *
@@ -355,66 +189,6 @@ export class ServiceRegistry {
         return deps.every((dep) => this.services.has(dep));
     }
 }
-
-/**
- * AI Context Service Interface
- *
- * Handles AI-powered cultural, historical, and linguistic context analysis
- * for subtitle text with provider management and caching.
- */
-export class IAIContextService {
-    /**
-     * Initialize the AI context service
-     * @returns {Promise<void>}
-     */
-    async initialize() {
-        throw new Error('Method must be implemented');
-    }
-
-    /**
-     * Analyze text for cultural, historical, and linguistic context
-     * @param {string} _text - Text to analyze
-     * @param {string} _contextType - Type of context ('cultural', 'historical', 'linguistic', 'all')
-     * @param {Object} _metadata - Additional context metadata
-     * @returns {Promise<Object>} Context analysis result
-     */
-    async analyzeContext(_text, _contextType = 'all', _metadata = {}) {
-        throw new Error('Method must be implemented');
-    }
-
-    /**
-     * Change context provider
-     * @param {string} _providerId - New provider ID
-     * @returns {Promise<Object>} Result object
-     */
-    async changeProvider(_providerId) {
-        throw new Error('Method must be implemented');
-    }
-
-    /**
-     * Get available context providers
-     * @returns {Array<Object>} Available providers with their capabilities
-     */
-    getAvailableProviders() {
-        throw new Error('Method must be implemented');
-    }
-
-    /**
-     * Clear the context cache
-     */
-    clearCache() {
-        throw new Error('Method must be implemented');
-    }
-
-    /**
-     * Get service status
-     * @returns {Object} Service status information
-     */
-    getStatus() {
-        throw new Error('Method must be implemented');
-    }
-}
-
 /**
  * AI Context Error Classes
  */
@@ -429,15 +203,6 @@ export class AIContextError extends Error {
         this.timestamp = Date.now();
     }
 }
-
-export class ContextProviderError extends AIContextError {
-    constructor(message, provider = null, statusCode = null) {
-        super(message, null, provider);
-        this.name = 'ContextProviderError';
-        this.statusCode = statusCode;
-    }
-}
-
 export class ContextRateLimitError extends AIContextError {
     constructor(message, retryAfter = null, provider = null) {
         super(message, null, provider);
@@ -446,15 +211,5 @@ export class ContextRateLimitError extends AIContextError {
         this.retryAfter = retryAfter;
     }
 }
-
-export class ContextCacheError extends AIContextError {
-    constructor(message, cacheKey = null) {
-        super(message);
-        this.name = 'ContextCacheError';
-        this.severity = 'low';
-        this.cacheKey = cacheKey;
-    }
-}
-
 // Export singleton registry
 export const serviceRegistry = new ServiceRegistry();

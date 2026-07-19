@@ -1,19 +1,35 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { SettingCard } from '../SettingCard.jsx';
 import { ToggleSwitch } from '../ToggleSwitch.jsx';
-import {
-    getAvailableModels as getOpenAIModels,
-    getDefaultModel as getOpenAIDefaultModel,
-} from '../../../context_providers/openaiContextProvider.js';
+import { getAvailableModels as getOpenAIModels } from '../../../context_providers/openaiContextProvider.js';
 import {
     getAvailableModels as getGeminiModels,
     getDefaultModel as getGeminiDefaultModel,
 } from '../../../context_providers/geminiContextProvider.js';
-import { requestHostPermission } from '../../../utils/hostPermissions.js';
+import {
+    configSchema,
+    getDefaultValue,
+    validateSetting,
+} from '../../../config/configSchema.js';
+import {
+    requestHostPermission,
+    toHostPermissionPattern,
+} from '../../../utils/hostPermissions.js';
+import { useCommittedTextField } from '../../hooks/useCommittedTextField.js';
 
 const OPENAI_MODELS = getOpenAIModels();
 const GEMINI_MODELS = getGeminiModels();
-const DEFAULT_OPENAI_BASE_URL = 'https://api.openai.com/v1';
+const AI_CONTEXT_TIMEOUT_SCHEMA = configSchema.aiContextTimeout;
+const AI_CONTEXT_RATE_LIMIT_SCHEMA = configSchema.aiContextRateLimit;
+
+function getNumericDraft(value) {
+    if (value === '') {
+        return value;
+    }
+
+    const numericValue = Number(value);
+    return Number.isFinite(numericValue) ? numericValue : value;
+}
 
 function getConfiguredModel(configuredModel, defaultModel) {
     return typeof configuredModel === 'string' && configuredModel.trim()
@@ -28,11 +44,18 @@ function getUnlistedConfiguredModel(models, configuredModel) {
 }
 
 function getHostLabel(baseUrl) {
-    const configuredUrl = baseUrl || DEFAULT_OPENAI_BASE_URL;
     try {
-        return new URL(configuredUrl).host;
+        return new URL(baseUrl).host;
     } catch {
-        return configuredUrl;
+        return baseUrl;
+    }
+}
+
+function getHostPermissionScope(baseUrl) {
+    try {
+        return toHostPermissionPattern(baseUrl);
+    } catch {
+        return '';
     }
 }
 
@@ -43,8 +66,31 @@ export function AIContextSection({ t, settings, onSettingChange }) {
         linguistic: false,
     });
     const [hostPermissionStatus, setHostPermissionStatus] = useState(null);
-    const configuredOpenAIBaseUrl =
-        settings.openaiBaseUrl || DEFAULT_OPENAI_BASE_URL;
+    const persistedOpenAIBaseUrl =
+        settings.openaiBaseUrl ?? getDefaultValue('openaiBaseUrl');
+    const openAIBaseUrlField = useCommittedTextField({
+        value: persistedOpenAIBaseUrl,
+        validate: (value) => validateSetting('openaiBaseUrl', value),
+        onCommit: (value) => onSettingChange('openaiBaseUrl', value),
+    });
+    const configuredOpenAIBaseUrl = openAIBaseUrlField.value;
+    const openAIModelField = useCommittedTextField({
+        value: settings.openaiModel ?? getDefaultValue('openaiModel'),
+        validate: (value) => validateSetting('openaiModel', value),
+        onCommit: (value) => onSettingChange('openaiModel', value),
+    });
+    const aiContextTimeoutField = useCommittedTextField({
+        value: settings.aiContextTimeout ?? getDefaultValue('aiContextTimeout'),
+        validate: (value) => validateSetting('aiContextTimeout', value),
+        onCommit: (value) => onSettingChange('aiContextTimeout', value),
+    });
+    const aiContextRateLimitField = useCommittedTextField({
+        value:
+            settings.aiContextRateLimit ??
+            getDefaultValue('aiContextRateLimit'),
+        validate: (value) => validateSetting('aiContextRateLimit', value),
+        onCommit: (value) => onSettingChange('aiContextRateLimit', value),
+    });
     const hostPermissionRequestSequence = useRef(0);
     const latestOpenAIBaseUrl = useRef(configuredOpenAIBaseUrl);
     latestOpenAIBaseUrl.current = configuredOpenAIBaseUrl;
@@ -77,6 +123,9 @@ export function AIContextSection({ t, settings, onSettingChange }) {
     };
 
     const handleRequestHostPermission = async () => {
+        if (!openAIBaseUrlField.valid) {
+            return;
+        }
         const requestedBaseUrl = configuredOpenAIBaseUrl;
         const requestSequence = ++hostPermissionRequestSequence.current;
         const isCurrentRequest = () =>
@@ -140,6 +189,9 @@ export function AIContextSection({ t, settings, onSettingChange }) {
     const hostPermissionMessage = currentHostPermissionStatus?.message || '';
     const hostPermissionPending = hostPermissionState === 'pending';
     const configuredOpenAIHost = getHostLabel(configuredOpenAIBaseUrl);
+    const configuredHostPermissionScope = getHostPermissionScope(
+        configuredOpenAIBaseUrl
+    );
 
     return (
         <section id="ai-context">
@@ -232,25 +284,43 @@ export function AIContextSection({ t, settings, onSettingChange }) {
                             <input
                                 type="url"
                                 id="openaiBaseUrl"
-                                value={
-                                    settings.openaiBaseUrl ||
-                                    DEFAULT_OPENAI_BASE_URL
-                                }
+                                value={openAIBaseUrlField.value}
+                                aria-invalid={openAIBaseUrlField.invalid}
                                 aria-describedby={
-                                    currentHostPermissionStatus
-                                        ? 'openaiHostPermissionStatus'
-                                        : undefined
+                                    [
+                                        configuredHostPermissionScope
+                                            ? 'openaiHostPermissionScope'
+                                            : null,
+                                        currentHostPermissionStatus
+                                            ? 'openaiHostPermissionStatus'
+                                            : null,
+                                        openAIBaseUrlField.invalid
+                                            ? 'openaiBaseUrlError'
+                                            : null,
+                                    ]
+                                        .filter(Boolean)
+                                        .join(' ') || undefined
                                 }
                                 onChange={(e) => {
                                     hostPermissionRequestSequence.current += 1;
                                     setHostPermissionStatus(null);
-                                    onSettingChange(
-                                        'openaiBaseUrl',
-                                        e.target.value
-                                    );
+                                    openAIBaseUrlField.change(e.target.value);
                                 }}
+                                onBlur={() => void openAIBaseUrlField.commit()}
+                                onKeyDown={openAIBaseUrlField.handleKeyDown}
                                 placeholder="https://api.openai.com/v1"
                             />
+                            {openAIBaseUrlField.invalid && (
+                                <span
+                                    id="openaiBaseUrlError"
+                                    className="settings-field-error"
+                                >
+                                    {t(
+                                        'invalidSettingValue',
+                                        'Enter a valid value before saving.'
+                                    )}
+                                </span>
+                            )}
                             <div
                                 className={`api-host-permission ${hostPermissionState}`}
                                 role="group"
@@ -294,9 +364,16 @@ export function AIContextSection({ t, settings, onSettingChange }) {
                                     onClick={() =>
                                         void handleRequestHostPermission()
                                     }
-                                    disabled={hostPermissionPending}
+                                    disabled={
+                                        hostPermissionPending ||
+                                        !openAIBaseUrlField.valid
+                                    }
                                     aria-busy={hostPermissionPending}
                                     aria-describedby={`openaiHostPermissionHost${
+                                        configuredHostPermissionScope
+                                            ? ' openaiHostPermissionScope'
+                                            : ''
+                                    }${
                                         currentHostPermissionStatus
                                             ? ' openaiHostPermissionStatus'
                                             : ''
@@ -307,6 +384,19 @@ export function AIContextSection({ t, settings, onSettingChange }) {
                                         'Allow API host'
                                     )}
                                 </button>
+                                {configuredHostPermissionScope && (
+                                    <span
+                                        id="openaiHostPermissionScope"
+                                        className="api-host-permission-status"
+                                    >
+                                        {t(
+                                            'openaiHostPermissionScope',
+                                            'Configured endpoint: %s. Chrome permission scope: %s (all paths and ports on this host).',
+                                            configuredOpenAIBaseUrl,
+                                            configuredHostPermissionScope
+                                        )}
+                                    </span>
+                                )}
                                 <span
                                     id="openaiHostPermissionStatus"
                                     className="api-host-permission-status"
@@ -325,15 +415,31 @@ export function AIContextSection({ t, settings, onSettingChange }) {
                         <input
                             type="text"
                             id="openaiModel"
-                            value={getConfiguredModel(
-                                settings.openaiModel,
-                                getOpenAIDefaultModel()
-                            )}
+                            value={openAIModelField.value}
                             list="openaiModelOptions"
-                            onChange={(e) =>
-                                onSettingChange('openaiModel', e.target.value)
+                            aria-invalid={openAIModelField.invalid}
+                            aria-describedby={
+                                openAIModelField.invalid
+                                    ? 'openaiModelError'
+                                    : undefined
                             }
+                            onChange={(event) =>
+                                openAIModelField.change(event.target.value)
+                            }
+                            onBlur={() => void openAIModelField.commit()}
+                            onKeyDown={openAIModelField.handleKeyDown}
                         />
+                        {openAIModelField.invalid && (
+                            <span
+                                id="openaiModelError"
+                                className="settings-field-error"
+                            >
+                                {t(
+                                    'invalidSettingValue',
+                                    'Enter a valid value before saving.'
+                                )}
+                            </span>
+                        )}
                         <datalist id="openaiModelOptions">
                             {OPENAI_MODELS.map((model) => (
                                 <option
@@ -495,17 +601,35 @@ export function AIContextSection({ t, settings, onSettingChange }) {
                         <input
                             type="number"
                             id="aiContextTimeout"
-                            min="5000"
-                            max="60000"
+                            min={AI_CONTEXT_TIMEOUT_SCHEMA.min}
+                            max={AI_CONTEXT_TIMEOUT_SCHEMA.max}
                             step="1000"
-                            value={settings.aiContextTimeout || 10000}
-                            onChange={(e) =>
-                                onSettingChange(
-                                    'aiContextTimeout',
-                                    parseInt(e.target.value)
+                            value={aiContextTimeoutField.value}
+                            aria-invalid={aiContextTimeoutField.invalid}
+                            aria-describedby={
+                                aiContextTimeoutField.invalid
+                                    ? 'aiContextTimeoutError'
+                                    : undefined
+                            }
+                            onChange={(event) =>
+                                aiContextTimeoutField.change(
+                                    getNumericDraft(event.target.value)
                                 )
                             }
+                            onBlur={() => void aiContextTimeoutField.commit()}
+                            onKeyDown={aiContextTimeoutField.handleKeyDown}
                         />
+                        {aiContextTimeoutField.invalid && (
+                            <span
+                                id="aiContextTimeoutError"
+                                className="settings-field-error"
+                            >
+                                {t(
+                                    'invalidSettingValue',
+                                    'Enter a valid value before saving.'
+                                )}
+                            </span>
+                        )}
                     </div>
 
                     <div className="setting">
@@ -518,17 +642,35 @@ export function AIContextSection({ t, settings, onSettingChange }) {
                         <input
                             type="number"
                             id="aiContextRateLimit"
-                            min="10"
-                            max="300"
+                            min={AI_CONTEXT_RATE_LIMIT_SCHEMA.min}
+                            max={AI_CONTEXT_RATE_LIMIT_SCHEMA.max}
                             step="10"
-                            value={settings.aiContextRateLimit || 60}
-                            onChange={(e) =>
-                                onSettingChange(
-                                    'aiContextRateLimit',
-                                    parseInt(e.target.value)
+                            value={aiContextRateLimitField.value}
+                            aria-invalid={aiContextRateLimitField.invalid}
+                            aria-describedby={
+                                aiContextRateLimitField.invalid
+                                    ? 'aiContextRateLimitError'
+                                    : undefined
+                            }
+                            onChange={(event) =>
+                                aiContextRateLimitField.change(
+                                    getNumericDraft(event.target.value)
                                 )
                             }
+                            onBlur={() => void aiContextRateLimitField.commit()}
+                            onKeyDown={aiContextRateLimitField.handleKeyDown}
                         />
+                        {aiContextRateLimitField.invalid && (
+                            <span
+                                id="aiContextRateLimitError"
+                                className="settings-field-error"
+                            >
+                                {t(
+                                    'invalidSettingValue',
+                                    'Enter a valid value before saving.'
+                                )}
+                            </span>
+                        )}
                     </div>
 
                     <div className="setting">
@@ -537,7 +679,10 @@ export function AIContextSection({ t, settings, onSettingChange }) {
                         </label>
                         <ToggleSwitch
                             id="aiContextCacheEnabled"
-                            checked={settings.aiContextCacheEnabled || false}
+                            checked={
+                                settings.aiContextCacheEnabled ??
+                                getDefaultValue('aiContextCacheEnabled')
+                            }
                             onChange={(checked) =>
                                 onSettingChange(
                                     'aiContextCacheEnabled',
@@ -560,7 +705,10 @@ export function AIContextSection({ t, settings, onSettingChange }) {
                             min="1"
                             max="5"
                             step="1"
-                            value={settings.aiContextRetryAttempts || 2}
+                            value={
+                                settings.aiContextRetryAttempts ??
+                                getDefaultValue('aiContextRetryAttempts')
+                            }
                             onChange={(e) =>
                                 onSettingChange(
                                     'aiContextRetryAttempts',

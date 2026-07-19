@@ -23,10 +23,9 @@
                 '[NetflixContent] Content script initialization failed.'
             );
         }
-    } catch (error) {
+    } catch {
         console.error(
-            '[NetflixContent] An error occurred during initialization:',
-            error
+            '[NetflixContent] An error occurred during initialization.'
         );
     }
 })();

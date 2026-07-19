@@ -1,31 +1,28 @@
 // Centralized message actions used between content scripts and background services
 // Keep this as the single source of truth for cross-context protocol strings.
 
-export const MessageActions = {
+export const MessageActions = Object.freeze({
     TRANSLATE: 'translate',
-    TRANSLATE_BATCH: 'translateBatch',
-    CHECK_BATCH_SUPPORT: 'checkBatchSupport',
     FETCH_VTT: 'fetchVTT',
-    CHANGE_PROVIDER: 'changeProvider',
     ANALYZE_CONTEXT: 'analyzeContext',
-    CHANGE_CONTEXT_PROVIDER: 'changeContextProvider',
-    GET_CONTEXT_STATUS: 'getContextStatus',
-    GET_AVAILABLE_MODELS: 'getAvailableModels',
-    GET_DEFAULT_MODEL: 'getDefaultModel',
-    RELOAD_CONTEXT_PROVIDER_CONFIG: 'reloadContextProviderConfig',
     PING: 'ping',
     CHECK_BACKGROUND_READY: 'checkBackgroundReady',
     // Content-side actions
-    TOGGLE_SUBTITLES: 'toggleSubtitles',
     CONFIG_CHANGED: 'configChanged',
     LOGGING_LEVEL_CHANGED: 'LOGGING_LEVEL_CHANGED',
     // Side Panel actions
-    SIDEPANEL_OPEN: 'sidePanelOpen',
     SIDEPANEL_WORD_SELECTED: 'sidePanelWordSelected',
     SIDEPANEL_PAUSE_VIDEO: 'sidePanelPauseVideo',
     SIDEPANEL_GET_STATE: 'sidePanelGetState',
     SIDEPANEL_UPDATE_STATE: 'sidePanelUpdateState',
     SIDEPANEL_REGISTER: 'sidePanelRegister',
-    SIDEPANEL_SET_ANALYZING: 'sidePanelSetAnalyzing',
     SIDEPANEL_SELECTION_SYNC: 'sidePanelSelectionSync',
-};
+    SIDEPANEL_TAB_ACTIVATED: 'tabActivated',
+    SIDEPANEL_FORCE_BIND_TAB: 'sidePanelForceBindTab',
+    SIDEPANEL_BINDING_CONFIRMED: 'sidePanelBindingConfirmed',
+});
+
+export const SubtitleRequestSources = Object.freeze({
+    DISNEY_PLUS: 'disneyplus',
+    NETFLIX: 'netflix',
+});

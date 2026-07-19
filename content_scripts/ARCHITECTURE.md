@@ -10,7 +10,7 @@ robustness, maintainability, and extensibility:
 
 1.  **Template Method Pattern**: `BaseContentScript` defines the high-level algorithm structure, allowing subclasses to implement platform-specific details without altering the overall workflow.
 2.  **Dependency Injection**: Modules are loaded dynamically, promoting loose coupling and enhancing testability by allowing dependencies to be mocked.
-3.  **Event-Driven Architecture**: An extensible message handling system with action-based routing allows for flexible and decoupled communication.
+3.  **Validated Messaging**: Active extension routes use centralized, exact schemas and explicit sender roles.
 4.  **Resource Management**: A comprehensive cleanup system and memory management practices prevent resource leaks and ensure stability.
 5.  **Error Recovery**: Graceful degradation and retry mechanisms provide resilience against transient failures and unexpected platform changes.
 
@@ -24,7 +24,7 @@ BaseContentScript (abstract)
 ├── Provides common functionality (~80% of the code).
 ├── Defines abstract methods for platform-specific behavior.
 ├── Implements template methods for the initialization flow.
-└── Includes an extensible message handling system.
+└── Owns the closed content-script message route table.
 
 NetflixContentScript extends BaseContentScript
 ├── Implements Netflix-specific configurations.
@@ -98,40 +98,37 @@ getPlatformClass();
 getInjectScriptConfig();
 
 /**
- * Sets up platform-specific navigation detection.
+ * Configures the Base-owned navigation manager for the platform.
  */
 setupNavigationDetection();
-
-/**
- * Checks for URL changes with platform-specific logic.
- */
-checkForUrlChange();
-
-/**
- * Handles platform-specific Chrome messages.
- * @param {Object} request - The Chrome message request.
- * @param {Function} sendResponse - The callback to send a response.
- * @returns {boolean} `true` if the response is sent asynchronously.
- */
-handlePlatformSpecificMessage(request, sendResponse);
 ```
 
 ## Message Handling System
 
-The architecture includes an extensible message handling system that allows for
-decoupled communication and easy addition of new message types.
+The content-script runtime accepts only centralized active actions. Every route has an
+explicit sender role plus an exact request/response contract in
+`content_scripts/shared/protocol/messageProtocol.js`. Unknown actions, extra or malformed
+fields, and unauthorized senders fail closed; platform subclasses do not receive a
+fallback message hook.
 
-### Message Handler Registry
+### Closed Route Table
 
-```javascript
-// Register a new message handler.
-registerMessageHandler(action, handler, options);
+`BaseContentScript` constructs its internal route table from the supported common
+actions. Its registry helpers are setup and diagnostic implementation details, not a
+platform extension API.
 
-// Common handlers are automatically registered for all platforms:
-// - 'toggleSubtitles': Toggles the subtitle display.
-// - 'configChanged': Handles dynamic configuration changes.
-// - 'LOGGING_LEVEL_CHANGED': Updates the logging level.
-```
+The control/readiness boundary is centralized in the shared protocol:
+
+- Configuration updates use `buildConfigChangedRequestMessage()` and
+  `parseConfigChangedRequestMessage()` and accept only the popup sender role.
+- Logging updates and side-panel pause commands use their dedicated builders/parsers
+  and accept only the background sender role.
+- All three content-control routes share `buildContentControlResponseMessage()` and
+  `parseContentControlResponseMessage()`, which bind each response to its request action.
+- `PING` and `CHECK_BACKGROUND_READY` use the background-readiness request/response
+  builders and parsers and accept only content-script or side-panel senders.
+- `readProtocolMessageAction()` recognizes only catalogued `action` values before route
+  selection; there is no `type` alias.
 
 ### Messaging Reliability (MV3)
 
@@ -147,29 +144,24 @@ To communicate with the background service worker reliably under Manifest V3, us
 const handlerConfig = {
     handler: Function, // The function to execute for the message.
     requiresUtilities: boolean, // `true` if utilities must be loaded.
+    senderRoles: string[], // Exact extension roles allowed to invoke the handler.
     description: string, // A description of the handler's purpose.
     registeredAt: string, // The timestamp of registration.
 };
 ```
 
-## Navigation Detection Strategies
+## Navigation Ownership
 
-Different platforms require different navigation detection strategies due to their
-unique SPA implementations.
+`BaseContentScript` is the sole owner of `NavigationDetectionManager`. A platform
+subclass implements `setupNavigationDetection()` by calling the protected
+`_setupNavigationManager(options?)` seam and supplies its route classifier through
+`_isPlayerPath()`.
 
-### Netflix (Complex SPA)
-
-- Interval-based URL checking as a reliable fallback.
-- History API interception (`pushState`/`replaceState`) for programmatic navigation.
-- Browser navigation events (`popstate`, `hashchange`) for user-initiated navigation.
-- Focus and visibility events to detect changes when the tab becomes active.
-- Enhanced page transition handling for complex routing logic.
-
-### Disney+ (Standard SPA)
-
-- Similar strategies to Netflix but with simpler URL patterns.
-- Player page detection for multiple URL variations.
-- Standard page transition handling.
+The manager owns interval, History API, browser-navigation, focus, and visibility
+signals. Base owns manager replacement and cleanup, forwards URL changes to the active
+platform, invalidates stale player identity when the player route changes, and invokes
+the subclass transition handler when entering or leaving a player page. Subclasses do
+not install parallel navigation listeners or timers.
 
 ## Resource Management
 
@@ -207,7 +199,7 @@ without crashing the extension.
 1.  **Module Loading Failures**: Falls back to console logging if the logger fails to load.
 2.  **Platform Initialization Errors**: Cleans up and retries with an exponential backoff.
 3.  **Video Detection Timeouts**: Continues with limited functionality if the video element is not found.
-4.  **Navigation Detection Failures**: Falls back to interval-based checking.
+4.  **Navigation Detection Failures**: Cleans up a failed manager candidate before surfacing the setup error.
 5.  **Extension Context Invalidation**: Cleans up all listeners and stops operations.
 
 ### Retry Mechanisms
@@ -331,24 +323,17 @@ NetflixContentScript.test.js
 ### Adding New Platforms
 
 1.  Extend `BaseContentScript` to create a new platform-specific class.
-2.  Implement all required abstract methods.
+2.  Implement all required abstract methods; `setupNavigationDetection()` should delegate to `_setupNavigationManager()`.
 3.  Add any platform-specific configuration overrides.
 4.  Create an entry point file for the new platform.
 5.  Update `manifest.json` to include the new content script.
 
 ### Adding New Message Types
 
-```javascript
-// Register a custom message handler in the platform-specific class.
-this.registerMessageHandler(
-    'customAction',
-    this.handleCustomAction.bind(this),
-    {
-        requiresUtilities: true,
-        description: 'Handles a custom platform-specific action.',
-    }
-);
-```
+A new runtime action is a shared protocol change, not a platform override. Add the action
+constant, exact request/response builders and parsers, one centralized route with an
+explicit sender role, and positive/negative contract tests. Do not add a platform-only
+action or a generic fallback handler.
 
 ### Adding New Utilities
 
@@ -362,11 +347,11 @@ import { customUtility } from '../shared/customUtils.js';
 
 ## Migration Strategy
 
-### Backward Compatibility
+### Contract Migration
 
-- Maintains the existing Chrome message API to ensure compatibility with popup and options pages.
-- Preserves all current functionality and user experience.
-- Maintains compatibility with existing configuration formats.
+- Migrate active senders and receivers together with their shared protocol contract.
+- Remove dormant actions and source guards once no production sender remains.
+- Do not retain generic platform fallbacks or undocumented compatibility aliases.
 
 ### Rollback Plan
 

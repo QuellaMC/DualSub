@@ -10,9 +10,42 @@
  */
 
 import { PROVIDER_CONFIG } from '../core/constants.js';
+import { MessageActions } from '../../shared/constants/messageActions.js';
+import {
+    isProvenMessagingNonDelivery,
+    sendRuntimeMessageWithRetry,
+} from '../../shared/messaging.js';
+import {
+    buildAnalyzeContextRequestMessage,
+    buildBackgroundReadinessRequestMessage,
+    MessageSenderRoles,
+    parseAnalyzeContextResponseMessage,
+    parseBackgroundReadinessResponseMessage,
+} from '../../shared/protocol/messageProtocol.js';
 import Logger from '../../../utils/logger.js';
 
+const TrustedPromise = Promise;
+const trustedPromiseResolve = TrustedPromise.resolve.bind(TrustedPromise);
 const logger = Logger.create('AIContextProvider');
+const ANALYSIS_CANCELLED_ERROR = 'Analysis request cancelled';
+const ANALYSIS_DELIVERY_ERROR = 'Analysis request could not be delivered';
+const ANALYSIS_INVALID_REQUEST_ERROR = 'Invalid analysis request';
+const ANALYSIS_REQUEST_ERROR = 'Analysis request failed';
+const INVALID_ANALYSIS_RESPONSE_ERROR = 'Invalid analysis response';
+
+function createFailureResponse(requestId, error, shouldRetry) {
+    return Object.freeze({
+        success: false,
+        error,
+        requestId,
+        shouldRetry,
+    });
+}
+
+function elapsedSince(startedAt) {
+    const elapsed = Date.now() - startedAt;
+    return Number.isFinite(elapsed) && elapsed >= 0 ? elapsed : 0;
+}
 
 /**
  * AIContextProvider - Unified AI communication interface
@@ -34,6 +67,9 @@ export class AIContextProvider {
 
         // Provider state
         this.initialized = false;
+        this._destroyed = false;
+        this._initializePromise = null;
+        this._initializationGeneration = 0;
         this.currentProvider = 'background'; // Use background script as provider
         this.availableProviders = ['background'];
 
@@ -56,16 +92,31 @@ export class AIContextProvider {
      * Initialize the provider
      * @returns {Promise<boolean>} Success status
      */
-    async initialize() {
+    initialize() {
+        if (this._destroyed) return trustedPromiseResolve(false);
+        if (this.initialized) return trustedPromiseResolve(true);
+        if (this._initializePromise) return this._initializePromise;
+
+        const generation = ++this._initializationGeneration;
+        this._initializePromise = this._performInitialize(generation);
+        return this._initializePromise;
+    }
+
+    async _performInitialize(generation) {
+        const isCurrent = () =>
+            !this._destroyed && generation === this._initializationGeneration;
         try {
             this._log('info', 'Initializing AI Context Provider');
 
             // Setup provider discovery and rate limiting
             await this._discoverProviders();
+            if (!isCurrent()) return false;
             await this._setupRateLimiting();
+            if (!isCurrent()) return false;
 
             // Test connection to background script
             await this._testBackgroundConnection();
+            if (!isCurrent()) return false;
 
             this.initialized = true;
             this._log('info', 'AI Context Provider initialized successfully', {
@@ -74,8 +125,13 @@ export class AIContextProvider {
             });
             return true;
         } catch (error) {
+            if (!isCurrent()) return false;
             this._log('error', 'Failed to initialize provider', error);
             return false;
+        } finally {
+            if (generation === this._initializationGeneration) {
+                this._initializePromise = null;
+            }
         }
     }
 
@@ -86,16 +142,35 @@ export class AIContextProvider {
      * @returns {Promise<Object>} Analysis result
      */
     async analyzeContext(text, options = {}) {
-        if (!this.initialized) {
+        if (this._destroyed || !this.initialized) {
             throw new Error('Provider not initialized');
         }
 
         const requestId =
-            options.requestId ||
+            options.requestId ??
             `req-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+        const startedAt = Date.now();
+        let activeRequest = null;
+        const isCurrentRequest = () =>
+            this.initialized === true &&
+            this.activeRequests.get(requestId) === activeRequest;
+        const finish = (response) => {
+            const responseTime = elapsedSince(startedAt);
+            this._updateMetrics(responseTime, response.success === true);
+            this._log(
+                response.success === true ? 'info' : 'warn',
+                'Context analysis completed',
+                {
+                    requestId,
+                    responseTime,
+                    success: response.success,
+                }
+            );
+            return response;
+        };
 
         this._log('info', 'Starting context analysis', {
-            textLength: text.length,
+            textLength: typeof text === 'string' ? text.length : 0,
             requestId,
             contextTypeCount: Array.isArray(options.contextTypes)
                 ? options.contextTypes.length
@@ -105,107 +180,148 @@ export class AIContextProvider {
             platform: options.platform || 'unknown',
         });
 
-        // Track request start time
-        this.requestStartTimes.set(requestId, Date.now());
         this.metrics.requestCount++;
 
         try {
             // Respect simple rate limiting to avoid backend overload
             if (!this._checkRateLimit()) {
-                return {
-                    success: false,
-                    error: 'Rate limit exceeded',
-                    requestId,
-                    shouldRetry: true,
-                };
+                return finish(
+                    createFailureResponse(
+                        requestId,
+                        'Rate limit exceeded',
+                        true
+                    )
+                );
             }
+
             // Prepare request data
-            const requestData = {
-                action: 'analyzeContext',
-                text,
-                contextTypes: options.contextTypes || [
-                    'cultural',
-                    'historical',
-                    'linguistic',
-                ],
-                language: options.language || 'auto',
-                targetLanguage: options.targetLanguage || 'en',
-                platform: options.platform || 'unknown',
-                requestId,
-            };
+            let requestData;
+            try {
+                requestData = buildAnalyzeContextRequestMessage(
+                    MessageSenderRoles.CONTENT,
+                    {
+                        text,
+                        contextTypes: options.contextTypes || [
+                            'cultural',
+                            'historical',
+                            'linguistic',
+                        ],
+                        language: options.language || 'auto',
+                        targetLanguage: options.targetLanguage || 'en',
+                        platform: options.platform || 'unknown',
+                        requestId,
+                    }
+                );
+            } catch (_) {
+                return finish(
+                    createFailureResponse(
+                        requestId,
+                        ANALYSIS_INVALID_REQUEST_ERROR,
+                        false
+                    )
+                );
+            }
 
             // Add to active requests
-            this.activeRequests.set(requestId, {
-                startTime: Date.now(),
-                text,
-                options,
+            activeRequest = Object.freeze({
+                requestId,
+                startedAt,
             });
+            this.activeRequests.set(requestId, activeRequest);
+            this.requestStartTimes.set(requestId, startedAt);
 
             // Send request to background script with retry to handle service worker wake-ups
-            let response;
+            let wireResponse;
             try {
-                const { sendRuntimeMessageWithRetry } = await import(
-                    chrome.runtime.getURL('content_scripts/shared/messaging.js')
-                );
-                response = await sendRuntimeMessageWithRetry(requestData, {
+                wireResponse = await sendRuntimeMessageWithRetry(requestData, {
                     retries: 2,
                     baseDelayMs: 120,
+                    pingBeforeRetry: false,
+                    canDispatch: isCurrentRequest,
                 });
-            } catch (_) {
-                // Fallback to direct timeout wrapper if messaging util not available
-                try {
-                    response = await this._sendRequestWithTimeout(
-                        requestData,
-                        this.config.timeout
+            } catch (error) {
+                if (!isCurrentRequest()) {
+                    return finish(
+                        createFailureResponse(
+                            requestId,
+                            ANALYSIS_CANCELLED_ERROR,
+                            false
+                        )
                     );
-                } catch (err) {
-                    // Ensure consistent error shape when messaging rejects so callers can track errors
-                    throw new Error(err?.message || 'Analysis failed');
                 }
+                const shouldRetry = isProvenMessagingNonDelivery(error);
+                return finish(
+                    createFailureResponse(
+                        requestId,
+                        shouldRetry
+                            ? ANALYSIS_DELIVERY_ERROR
+                            : ANALYSIS_REQUEST_ERROR,
+                        shouldRetry
+                    )
+                );
             }
 
-            // Calculate response time
-            const responseTime =
-                Date.now() - this.requestStartTimes.get(requestId);
-            const wasSuccessful = !!(response && response.success === true);
-            this._updateMetrics(responseTime, wasSuccessful);
+            if (!isCurrentRequest()) {
+                return finish(
+                    createFailureResponse(
+                        requestId,
+                        ANALYSIS_CANCELLED_ERROR,
+                        false
+                    )
+                );
+            }
 
-            // Clean up tracking
-            this.activeRequests.delete(requestId);
-            this.requestStartTimes.delete(requestId);
-
-            this._log('info', 'Context analysis completed', {
-                requestId,
-                responseTime,
-                success: response.success,
-            });
-
-            return response;
-        } catch (error) {
-            // Calculate response time even for errors
-            const responseTime =
-                Date.now() - this.requestStartTimes.get(requestId);
-            this._updateMetrics(responseTime, false);
-
-            // Clean up tracking
-            this.activeRequests.delete(requestId);
-            this.requestStartTimes.delete(requestId);
-
-            this._log('error', 'Context analysis failed', {
-                requestId,
-                errorType: error?.name || 'UnknownError',
-                responseTime,
-            });
-
-            const transient = /timeout|network|temporar|rate limit/i.test(
-                error?.message || ''
+            const parsedResponse = parseAnalyzeContextResponseMessage(
+                wireResponse,
+                requestData,
+                MessageSenderRoles.CONTENT
             );
-            return {
-                success: false,
-                error: error.message,
-                requestId,
-                shouldRetry: transient,
-            };
+            const response = !parsedResponse
+                ? createFailureResponse(
+                      requestId,
+                      INVALID_ANALYSIS_RESPONSE_ERROR,
+                      false
+                  )
+                : parsedResponse.status === 'success'
+                  ? Object.freeze({
+                        success: true,
+                        result: parsedResponse.result,
+                        requestId: parsedResponse.requestId,
+                    })
+                  : createFailureResponse(
+                        parsedResponse.requestId,
+                        parsedResponse.error,
+                        parsedResponse.shouldRetry
+                    );
+
+            if (!isCurrentRequest()) {
+                return finish(
+                    createFailureResponse(
+                        requestId,
+                        ANALYSIS_CANCELLED_ERROR,
+                        false
+                    )
+                );
+            }
+            return finish(response);
+        } catch (_) {
+            return finish(
+                createFailureResponse(
+                    requestId,
+                    activeRequest && !isCurrentRequest()
+                        ? ANALYSIS_CANCELLED_ERROR
+                        : ANALYSIS_REQUEST_ERROR,
+                    false
+                )
+            );
+        } finally {
+            if (
+                activeRequest &&
+                this.activeRequests.get(requestId) === activeRequest
+            ) {
+                this.activeRequests.delete(requestId);
+                this.requestStartTimes.delete(requestId);
+            }
         }
     }
 
@@ -254,6 +370,12 @@ export class AIContextProvider {
      * Destroy the provider and cleanup
      */
     async destroy() {
+        if (this._destroyed) return;
+        this._destroyed = true;
+        this._initializationGeneration += 1;
+        this._initializePromise = null;
+        this.initialized = false;
+
         try {
             this._log('info', 'Destroying AI Context Provider');
 
@@ -263,7 +385,6 @@ export class AIContextProvider {
             }
 
             // Reset state
-            this.initialized = false;
             this.activeRequests.clear();
             this.requestQueue = [];
 
@@ -306,13 +427,19 @@ export class AIContextProvider {
 
     async _testBackgroundConnection() {
         try {
-            const response = await chrome.runtime.sendMessage({
-                action: 'ping',
-                timestamp: Date.now(),
-            });
+            const request = buildBackgroundReadinessRequestMessage(
+                MessageActions.PING
+            );
+            const response = await chrome.runtime.sendMessage(request);
+            const parsedResponse = parseBackgroundReadinessResponseMessage(
+                response,
+                request
+            );
 
-            if (response && response.success) {
-                this._log('debug', 'Background connection test successful');
+            if (parsedResponse) {
+                this._log('debug', 'Background connection test successful', {
+                    ready: parsedResponse.ready,
+                });
             } else {
                 throw new Error('Invalid response from background script');
             }

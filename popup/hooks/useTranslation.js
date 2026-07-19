@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 const translationsCache = {};
 
@@ -10,15 +10,23 @@ const translationsCache = {};
 export function useTranslation(locale) {
     const [translations, setTranslations] = useState({});
     const [loading, setLoading] = useState(true);
+    const requestGeneration = useRef(0);
 
     useEffect(() => {
+        const generation = ++requestGeneration.current;
+        let active = true;
+        const isCurrentRequest = () =>
+            active && requestGeneration.current === generation;
+
         const loadTranslations = async () => {
             const normalizedLangCode = locale.replace('-', '_');
 
             // Check cache first
             if (translationsCache[normalizedLangCode]) {
-                setTranslations(translationsCache[normalizedLangCode]);
-                setLoading(false);
+                if (isCurrentRequest()) {
+                    setTranslations(translationsCache[normalizedLangCode]);
+                    setLoading(false);
+                }
                 return;
             }
 
@@ -27,17 +35,27 @@ export function useTranslation(locale) {
             );
 
             try {
-                setLoading(true);
+                if (isCurrentRequest()) {
+                    setLoading(true);
+                }
                 const response = await fetch(translationsPath);
+                if (!isCurrentRequest()) {
+                    return;
+                }
 
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}`);
                 }
 
                 const data = await response.json();
-                translationsCache[normalizedLangCode] = data;
-                setTranslations(data);
+                if (isCurrentRequest()) {
+                    translationsCache[normalizedLangCode] = data;
+                    setTranslations(data);
+                }
             } catch (error) {
+                if (!isCurrentRequest()) {
+                    return;
+                }
                 console.warn(
                     `Could not load '${normalizedLangCode}' translations, falling back to English`,
                     error
@@ -49,24 +67,40 @@ export function useTranslation(locale) {
                         `_locales/en/messages.json`
                     );
                     const fallbackResponse = await fetch(fallbackPath);
+                    if (!isCurrentRequest()) {
+                        return;
+                    }
                     const fallbackData = await fallbackResponse.json();
-                    translationsCache['en'] = fallbackData;
-                    setTranslations(fallbackData);
+                    if (isCurrentRequest()) {
+                        translationsCache['en'] = fallbackData;
+                        setTranslations(fallbackData);
+                    }
                 } catch (fatalError) {
+                    if (!isCurrentRequest()) {
+                        return;
+                    }
                     console.error(
                         'Fatal: Failed to load any translations',
                         fatalError
                     );
-                    setTranslations({});
+                    if (isCurrentRequest()) {
+                        setTranslations({});
+                    }
                 }
             } finally {
-                setLoading(false);
+                if (isCurrentRequest()) {
+                    setLoading(false);
+                }
             }
         };
 
         if (locale) {
             loadTranslations();
         }
+
+        return () => {
+            active = false;
+        };
     }, [locale]);
 
     // Translation function

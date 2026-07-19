@@ -21,6 +21,30 @@ import { TestHelpers } from '../../test-utils/test-helpers.js';
 import { ChromeApiFixtures } from '../../test-utils/test-fixtures.js';
 import { NetflixContentScript } from '../platforms/NetflixContentScript.js';
 import { DisneyPlusContentScript } from '../platforms/DisneyPlusContentScript.js';
+import { buildLoggingLevelChangedRequestMessage } from '../shared/protocol/messageProtocol.js';
+
+const EXTENSION_ID = 'dualsub-content-core-test';
+const EXTENSION_PATHS = Object.freeze({
+    background: 'background.js',
+    options: 'options/options.html',
+    popup: 'popup/popup.html',
+    sidepanel: 'sidepanel/sidepanel.html',
+});
+
+function createExtensionSender(path) {
+    chrome.runtime.id = EXTENSION_ID;
+    chrome.runtime.getManifest.mockReturnValue({
+        action: { default_popup: EXTENSION_PATHS.popup },
+        background: { service_worker: EXTENSION_PATHS.background },
+        options_ui: { page: EXTENSION_PATHS.options },
+        side_panel: { default_path: EXTENSION_PATHS.sidepanel },
+    });
+    return {
+        id: EXTENSION_ID,
+        url: chrome.runtime.getURL(path),
+        origin: chrome.runtime.getURL('').replace(/\/+$/u, ''),
+    };
+}
 
 /**
  * Core Integration Test Suite
@@ -78,43 +102,13 @@ describe('Core Content Script Integration Tests', () => {
             testEnv.cleanup();
         });
 
-        test('should handle toggle subtitles message correctly', () => {
-            const message = { action: 'toggleSubtitles', enabled: false };
-            const mockSendResponse = jest.fn();
-
-            const result = netflixScript.handleChromeMessage(
-                message,
-                {},
-                mockSendResponse
-            );
-
-            // Should handle synchronously
-            expect(typeof result).toBe('boolean');
-
-            // Should call subtitle utilities
-            expect(
-                netflixScript.subtitleUtils.setSubtitlesActive
-            ).toHaveBeenCalledWith(false);
-            expect(
-                netflixScript.subtitleUtils.hideSubtitleContainer
-            ).toHaveBeenCalled();
-
-            // Should provide response
-            expect(mockSendResponse).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    success: true,
-                    subtitlesEnabled: false,
-                })
-            );
-        });
-
         test('should handle logging level change message correctly', () => {
-            const message = { type: 'LOGGING_LEVEL_CHANGED', level: 'DEBUG' };
+            const message = buildLoggingLevelChangedRequestMessage(4);
             const mockSendResponse = jest.fn();
 
             const result = netflixScript.handleChromeMessage(
                 message,
-                {},
+                createExtensionSender(EXTENSION_PATHS.background),
                 mockSendResponse
             );
 
@@ -122,36 +116,12 @@ describe('Core Content Script Integration Tests', () => {
             expect(typeof result).toBe('boolean');
 
             // Should update logger level
-            expect(testEnv.mocks.logger.updateLevel).toHaveBeenCalledWith(
-                'DEBUG'
-            );
+            expect(testEnv.mocks.logger.updateLevel).toHaveBeenCalledWith(4);
 
             // Should provide response
             expect(mockSendResponse).toHaveBeenCalledWith(
                 expect.objectContaining({
                     success: true,
-                })
-            );
-        });
-
-        test('should handle platform-specific messages gracefully', () => {
-            const message = { action: 'netflix-custom-action', data: 'test' };
-            const mockSendResponse = jest.fn();
-
-            const result = netflixScript.handlePlatformSpecificMessage(
-                message,
-                mockSendResponse
-            );
-
-            // Should handle synchronously
-            expect(result).toBe(false);
-
-            // Should provide platform-specific response
-            expect(mockSendResponse).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    success: true,
-                    handled: false,
-                    platform: 'netflix',
                 })
             );
         });
@@ -275,69 +245,6 @@ describe('Core Content Script Integration Tests', () => {
             testEnv.cleanup();
         });
 
-        test('should handle toggle subtitles message correctly', () => {
-            const message = { action: 'toggleSubtitles', enabled: true };
-            const mockSendResponse = jest.fn();
-
-            // Mock platform for enable case
-            const mockPlatform = {
-                isPlayerPageActive: jest.fn().mockReturnValue(true),
-                getVideoElement: jest.fn().mockReturnValue({ currentTime: 0 }),
-                cleanup: jest.fn(),
-            };
-            disneyScript.activePlatform = mockPlatform;
-
-            // Mock video detection methods
-            disneyScript.startVideoElementDetection = jest.fn();
-
-            const result = disneyScript.handleChromeMessage(
-                message,
-                {},
-                mockSendResponse
-            );
-
-            // Should handle synchronously for existing platform
-            expect(typeof result).toBe('boolean');
-
-            // Should call subtitle utilities
-            expect(
-                disneyScript.subtitleUtils.setSubtitlesActive
-            ).toHaveBeenCalledWith(true);
-
-            // Should provide response
-            expect(mockSendResponse).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    success: true,
-                    subtitlesEnabled: true,
-                })
-            );
-        });
-
-        test('should handle platform-specific messages gracefully', () => {
-            const message = {
-                action: 'disneyplus-custom-action',
-                data: 'test',
-            };
-            const mockSendResponse = jest.fn();
-
-            const result = disneyScript.handlePlatformSpecificMessage(
-                message,
-                mockSendResponse
-            );
-
-            // Should handle synchronously
-            expect(result).toBe(false);
-
-            // Should provide platform-specific response
-            expect(mockSendResponse).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    success: true,
-                    handled: false,
-                    platform: 'disneyplus',
-                })
-            );
-        });
-
         test('should provide correct platform identification', () => {
             expect(disneyScript.getPlatformName()).toBe('disneyplus');
             expect(disneyScript.getPlatformClass()).toBe('DisneyPlusPlatform');
@@ -387,164 +294,6 @@ describe('Core Content Script Integration Tests', () => {
         });
     });
 
-    describe('Cross-Platform Compatibility', () => {
-        test('should handle identical messages consistently across platforms', () => {
-            const testEnvNetflix = testHelpers.setupTestEnvironment({
-                platform: 'netflix',
-                enableLogger: true,
-                enableChromeApi: true,
-                enableLocation: false,
-            });
-
-            const testEnvDisney = testHelpers.setupTestEnvironment({
-                platform: 'disneyplus',
-                enableLogger: true,
-                enableChromeApi: true,
-                enableLocation: false,
-            });
-
-            const netflixScript = new NetflixContentScript();
-            const disneyScript = new DisneyPlusContentScript();
-
-            // Setup both scripts
-            [netflixScript, disneyScript].forEach((script) => {
-                script.contentLogger =
-                    script === netflixScript
-                        ? testEnvNetflix.mocks.logger
-                        : testEnvDisney.mocks.logger;
-                script.subtitleUtils = {
-                    setSubtitlesActive: jest.fn(),
-                    hideSubtitleContainer: jest.fn(),
-                    clearSubtitlesDisplayAndQueue: jest.fn(),
-                    subtitlesActive: true,
-                };
-                script.configService = {
-                    getAll: jest
-                        .fn()
-                        .mockResolvedValue(ChromeApiFixtures.storageConfig),
-                };
-
-                // Mock methods needed for message handling
-                script.stopVideoElementDetection = jest.fn();
-            });
-
-            // Test same message on both platforms
-            const message = { action: 'toggleSubtitles', enabled: false };
-            const netflixResponse = jest.fn();
-            const disneyResponse = jest.fn();
-
-            const netflixResult = netflixScript.handleChromeMessage(
-                message,
-                {},
-                netflixResponse
-            );
-            const disneyResult = disneyScript.handleChromeMessage(
-                message,
-                {},
-                disneyResponse
-            );
-
-            // Both should handle synchronously
-            expect(netflixResult).toBe(disneyResult);
-            expect(typeof netflixResult).toBe('boolean');
-
-            // Both should call utilities
-            expect(
-                netflixScript.subtitleUtils.setSubtitlesActive
-            ).toHaveBeenCalledWith(false);
-            expect(
-                disneyScript.subtitleUtils.setSubtitlesActive
-            ).toHaveBeenCalledWith(false);
-
-            // Both should call hide container for disable
-            expect(
-                netflixScript.subtitleUtils.hideSubtitleContainer
-            ).toHaveBeenCalled();
-            expect(
-                disneyScript.subtitleUtils.hideSubtitleContainer
-            ).toHaveBeenCalled();
-
-            // Both should provide successful responses
-            expect(netflixResponse).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    success: true,
-                    subtitlesEnabled: false,
-                })
-            );
-            expect(disneyResponse).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    success: true,
-                    subtitlesEnabled: false,
-                })
-            );
-
-            testEnvNetflix.cleanup();
-            testEnvDisney.cleanup();
-        });
-
-        test('should handle error cases consistently across platforms', () => {
-            const testEnvNetflix = testHelpers.setupTestEnvironment({
-                platform: 'netflix',
-                enableLogger: true,
-                enableChromeApi: true,
-                enableLocation: false,
-            });
-
-            const testEnvDisney = testHelpers.setupTestEnvironment({
-                platform: 'disneyplus',
-                enableLogger: true,
-                enableChromeApi: true,
-                enableLocation: false,
-            });
-
-            const netflixScript = new NetflixContentScript();
-            const disneyScript = new DisneyPlusContentScript();
-
-            // Setup both scripts
-            [netflixScript, disneyScript].forEach((script) => {
-                script.contentLogger =
-                    script === netflixScript
-                        ? testEnvNetflix.mocks.logger
-                        : testEnvDisney.mocks.logger;
-            });
-
-            // Test error handling with invalid message
-            const invalidMessage = null;
-            const netflixResponse = jest.fn();
-            const disneyResponse = jest.fn();
-
-            const netflixResult = netflixScript.handlePlatformSpecificMessage(
-                invalidMessage,
-                netflixResponse
-            );
-            const disneyResult = disneyScript.handlePlatformSpecificMessage(
-                invalidMessage,
-                disneyResponse
-            );
-
-            // Both should handle errors synchronously
-            expect(netflixResult).toBe(false);
-            expect(disneyResult).toBe(false);
-
-            // Both should provide error responses
-            expect(netflixResponse).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    success: false,
-                    platform: 'netflix',
-                })
-            );
-            expect(disneyResponse).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    success: false,
-                    platform: 'disneyplus',
-                })
-            );
-
-            testEnvNetflix.cleanup();
-            testEnvDisney.cleanup();
-        });
-    });
-
     describe('Message Handler Registry', () => {
         test('should register common message handlers correctly', () => {
             const testEnv = testHelpers.setupTestEnvironment({
@@ -559,7 +308,7 @@ describe('Core Content Script Integration Tests', () => {
 
             // Should have registered common handlers
             expect(netflixScript.hasMessageHandler('toggleSubtitles')).toBe(
-                true
+                false
             );
             expect(netflixScript.hasMessageHandler('configChanged')).toBe(true);
             expect(
@@ -570,16 +319,16 @@ describe('Core Content Script Integration Tests', () => {
             const handlers = netflixScript.getRegisteredHandlers();
             expect(handlers.length).toBeGreaterThan(0);
 
-            const toggleHandler = handlers.find(
-                (h) => h.action === 'toggleSubtitles'
+            const configHandler = handlers.find(
+                (handler) => handler.action === 'configChanged'
             );
-            expect(toggleHandler).toBeDefined();
-            expect(toggleHandler.requiresUtilities).toBe(true);
+            expect(configHandler).toBeDefined();
+            expect(configHandler.requiresUtilities).toBe(true);
 
             testEnv.cleanup();
         });
 
-        test('should allow handler registration and unregistration', () => {
+        test('should reject out-of-catalog handler registration', () => {
             const testEnv = testHelpers.setupTestEnvironment({
                 platform: 'netflix',
                 enableLogger: true,
@@ -592,21 +341,16 @@ describe('Core Content Script Integration Tests', () => {
 
             // Register custom handler
             const customHandler = jest.fn();
-            netflixScript.registerMessageHandler(
-                'customAction',
-                customHandler,
-                {
-                    requiresUtilities: false,
-                    description: 'Custom test handler',
-                }
-            );
-
-            expect(netflixScript.hasMessageHandler('customAction')).toBe(true);
-
-            // Unregister handler
-            const removed =
-                netflixScript.unregisterMessageHandler('customAction');
-            expect(removed).toBe(true);
+            expect(() =>
+                netflixScript.registerMessageHandler(
+                    'customAction',
+                    customHandler,
+                    {
+                        requiresUtilities: false,
+                        description: 'Custom test handler',
+                    }
+                )
+            ).toThrow('Action must be present in MessageActions.');
             expect(netflixScript.hasMessageHandler('customAction')).toBe(false);
 
             testEnv.cleanup();
@@ -614,45 +358,6 @@ describe('Core Content Script Integration Tests', () => {
     });
 
     describe('Performance and Reliability', () => {
-        test('should handle rapid message processing without issues', () => {
-            const testEnv = testHelpers.setupTestEnvironment({
-                platform: 'netflix',
-                enableLogger: true,
-                enableChromeApi: true,
-                enableLocation: false,
-            });
-
-            const netflixScript = new NetflixContentScript();
-            netflixScript.contentLogger = testEnv.mocks.logger;
-
-            // Process many platform-specific messages rapidly (these don't require utilities)
-            const messages = Array.from({ length: 50 }, (_, i) => ({
-                action: `custom-action-${i}`,
-                data: `test-data-${i}`,
-            }));
-
-            const startTime = Date.now();
-
-            messages.forEach((message) => {
-                const mockResponse = jest.fn();
-                const result = netflixScript.handlePlatformSpecificMessage(
-                    message,
-                    mockResponse
-                );
-
-                expect(typeof result).toBe('boolean');
-                expect(mockResponse).toHaveBeenCalled();
-            });
-
-            const endTime = Date.now();
-            const duration = endTime - startTime;
-
-            // Should complete quickly
-            expect(duration).toBeLessThan(1000);
-
-            testEnv.cleanup();
-        });
-
         test('should maintain state consistency during concurrent operations', async () => {
             const testEnv = testHelpers.setupTestEnvironment({
                 platform: 'netflix',

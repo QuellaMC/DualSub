@@ -10,6 +10,46 @@
 import { NavigationLogger } from './loggingUtils.js';
 
 /**
+ * Checks whether a pathname starts with a supported player route followed by
+ * a non-empty content identifier segment.
+ * @param {unknown} pathname - The pathname to classify.
+ * @param {string[]} routeSegments - Supported first path segments.
+ * @returns {boolean} Whether the pathname is an exact player-route shape.
+ * @private
+ */
+function hasPlayerRouteShape(pathname, routeSegments) {
+    if (typeof pathname !== 'string') {
+        return false;
+    }
+
+    const segments = pathname.split('/');
+    return (
+        segments[0] === '' &&
+        routeSegments.includes(segments[1]) &&
+        Boolean(segments[2]) &&
+        (segments.length === 3 || (segments.length === 4 && segments[3] === ''))
+    );
+}
+
+/**
+ * Checks whether a pathname is a Netflix `/watch/<id>` player route.
+ * @param {unknown} pathname - The pathname to classify.
+ * @returns {boolean} Whether the pathname is a Netflix player route.
+ */
+export function isNetflixPlayerPath(pathname) {
+    return hasPlayerRouteShape(pathname, ['watch']);
+}
+
+/**
+ * Checks whether a pathname is a Disney+ `/play/<id>` or `/video/<id>` route.
+ * @param {unknown} pathname - The pathname to classify.
+ * @returns {boolean} Whether the pathname is a Disney+ player route.
+ */
+export function isDisneyPlusPlayerPath(pathname) {
+    return hasPlayerRouteShape(pathname, ['play', 'video']);
+}
+
+/**
  * Manages comprehensive navigation detection for streaming platforms, using a
  * combination of strategies to reliably detect URL changes in SPAs.
  */
@@ -51,6 +91,8 @@ export class NavigationDetectionManager {
 
         // Cleanup tracking
         this.intervalId = null;
+        this.pendingUrlCheckTimeoutId = null;
+        this.navigationLifecycleGeneration = 0;
         this.abortController = null;
         this._originalHistoryMethods = null;
         this.isSetup = false;
@@ -87,26 +129,32 @@ export class NavigationDetectionManager {
             options: this.options,
         });
 
-        this.abortController = new AbortController();
+        this.navigationLifecycleGeneration += 1;
+        try {
+            this.abortController = new AbortController();
 
-        if (this.options.useIntervalChecking) {
-            this._setupIntervalBasedDetection();
-        }
-        if (this.options.useHistoryAPI) {
-            this._setupHistoryAPIInterception();
-        }
-        if (this.options.usePopstateEvents) {
-            this._setupBrowserNavigationEvents();
-        }
-        if (this.options.useFocusEvents) {
-            this._setupFocusAndVisibilityEvents();
-        }
+            if (this.options.useIntervalChecking) {
+                this._setupIntervalBasedDetection();
+            }
+            if (this.options.useHistoryAPI) {
+                this._setupHistoryAPIInterception();
+            }
+            if (this.options.usePopstateEvents) {
+                this._setupBrowserNavigationEvents();
+            }
+            if (this.options.useFocusEvents) {
+                this._setupFocusAndVisibilityEvents();
+            }
 
-        this.isSetup = true;
-        this._log(
-            'info',
-            'Comprehensive navigation detection has been set up successfully.'
-        );
+            this.isSetup = true;
+            this._log(
+                'info',
+                'Comprehensive navigation detection has been set up successfully.'
+            );
+        } catch (error) {
+            this.cleanup();
+            throw error;
+        }
     }
 
     /**
@@ -251,11 +299,21 @@ export class NavigationDetectionManager {
      * Cleans up all resources used for navigation detection.
      */
     cleanup() {
-        this._log('info', 'Cleaning up navigation detection resources.');
+        this.navigationLifecycleGeneration += 1;
+        try {
+            this._log('info', 'Cleaning up navigation detection resources.');
+        } catch {
+            // A consumer logger must never prevent navigation resource teardown.
+        }
 
-        if (this.intervalId) {
+        if (this.intervalId !== null) {
             clearInterval(this.intervalId);
             this.intervalId = null;
+        }
+
+        if (this.pendingUrlCheckTimeoutId !== null) {
+            clearTimeout(this.pendingUrlCheckTimeoutId);
+            this.pendingUrlCheckTimeoutId = null;
         }
 
         if (this.abortController) {
@@ -264,13 +322,28 @@ export class NavigationDetectionManager {
         }
 
         if (this._originalHistoryMethods) {
-            history.pushState = this._originalHistoryMethods.pushState;
-            history.replaceState = this._originalHistoryMethods.replaceState;
+            if (
+                history.pushState ===
+                this._originalHistoryMethods.pushStateWrapper
+            ) {
+                history.pushState = this._originalHistoryMethods.pushState;
+            }
+            if (
+                history.replaceState ===
+                this._originalHistoryMethods.replaceStateWrapper
+            ) {
+                history.replaceState =
+                    this._originalHistoryMethods.replaceState;
+            }
             this._originalHistoryMethods = null;
         }
 
         this.isSetup = false;
-        this._log('info', 'Navigation detection cleanup is complete.');
+        try {
+            this._log('info', 'Navigation detection cleanup is complete.');
+        } catch {
+            // Cleanup remains complete even when a consumer logger fails.
+        }
     }
 
     // ========================================
@@ -296,22 +369,57 @@ export class NavigationDetectionManager {
      * @private
      */
     _setupHistoryAPIInterception() {
+        const originalPushState = history.pushState;
+        const originalReplaceState = history.replaceState;
+        const pushStateWrapper = (...args) => {
+            const result = originalPushState.apply(history, args);
+            this._scheduleUrlCheck(this._handleHistoryChange);
+            return result;
+        };
+        const replaceStateWrapper = (...args) => {
+            const result = originalReplaceState.apply(history, args);
+            this._scheduleUrlCheck(this._handleHistoryChange);
+            return result;
+        };
+
         this._originalHistoryMethods = {
-            pushState: history.pushState,
-            replaceState: history.replaceState,
+            pushState: originalPushState,
+            replaceState: originalReplaceState,
+            pushStateWrapper,
+            replaceStateWrapper,
         };
 
-        history.pushState = (...args) => {
-            this._originalHistoryMethods.pushState.apply(history, args);
-            setTimeout(this._handleHistoryChange, 100);
-        };
-
-        history.replaceState = (...args) => {
-            this._originalHistoryMethods.replaceState.apply(history, args);
-            setTimeout(this._handleHistoryChange, 100);
-        };
+        history.pushState = pushStateWrapper;
+        history.replaceState = replaceStateWrapper;
 
         this._log('debug', 'History API interception has been set up.');
+    }
+
+    /**
+     * Coalesces navigation signals into one delayed URL check.
+     * @private
+     * @param {Function} callback - Detection callback owned by the first signal.
+     * @param {number} [delay=100] - Delay before checking the final URL.
+     */
+    _scheduleUrlCheck(callback, delay = 100) {
+        if (!this.isSetup || this.pendingUrlCheckTimeoutId !== null) {
+            return;
+        }
+
+        const generation = this.navigationLifecycleGeneration;
+        let timeoutId = null;
+        timeoutId = setTimeout(() => {
+            if (
+                generation !== this.navigationLifecycleGeneration ||
+                this.pendingUrlCheckTimeoutId !== timeoutId
+            ) {
+                return;
+            }
+
+            this.pendingUrlCheckTimeoutId = null;
+            callback();
+        }, delay);
+        this.pendingUrlCheckTimeoutId = timeoutId;
     }
 
     /**
@@ -326,7 +434,7 @@ export class NavigationDetectionManager {
 
         events.forEach(({ name, delay }) => {
             const handler = () =>
-                setTimeout(this._handleNavigationEvent, delay);
+                this._scheduleUrlCheck(this._handleNavigationEvent, delay);
 
             window.addEventListener(name, handler, {
                 signal: this.abortController.signal,
@@ -446,7 +554,7 @@ export class NavigationDetectionManager {
             );
         }
 
-        setTimeout(this.checkForUrlChange, 100);
+        this._scheduleUrlCheck(this.checkForUrlChange);
     }
 
     /**
@@ -478,16 +586,13 @@ export class NavigationDetectionManager {
         // Default implementations for common platforms
         switch (this.platform.toLowerCase()) {
             case 'netflix':
-                return pathname.includes('/watch/');
+                return isNetflixPlayerPath(pathname);
             case 'disneyplus':
-                return (
-                    pathname.includes('/video/') ||
-                    pathname.includes('/movies/') ||
-                    pathname.includes('/series/')
-                );
+                return isDisneyPlusPlayerPath(pathname);
             default:
                 return (
-                    pathname.includes('/watch/') || pathname.includes('/video/')
+                    isNetflixPlayerPath(pathname) ||
+                    isDisneyPlusPlayerPath(pathname)
                 );
         }
     }
@@ -764,7 +869,7 @@ export const PLATFORM_NAVIGATION_CONFIGS = {
         usePopstateEvents: true,
         useIntervalChecking: true,
         useFocusEvents: true,
-        isPlayerPage: (pathname) => pathname.includes('/watch/'),
+        isPlayerPage: isNetflixPlayerPath,
     },
 
     disneyplus: {
@@ -773,10 +878,7 @@ export const PLATFORM_NAVIGATION_CONFIGS = {
         usePopstateEvents: true,
         useIntervalChecking: true,
         useFocusEvents: true,
-        isPlayerPage: (pathname) =>
-            pathname.includes('/video/') ||
-            pathname.includes('/movies/') ||
-            pathname.includes('/series/'),
+        isPlayerPage: isDisneyPlusPlayerPath,
     },
 };
 

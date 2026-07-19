@@ -2,6 +2,11 @@ import { afterEach, describe, expect, jest, test } from '@jest/globals';
 import { netflixParser } from './netflixParser.js';
 import { ttmlParser } from './ttmlParser.js';
 import { vttParser } from './vttParser.js';
+import {
+    createAuthorizedDisneySubtitleSnapshot,
+    createAuthorizedNetflixSubtitleSnapshot,
+    createSubtitleFetchResponse,
+} from '../../test-utils/subtitle-fetch-fixtures.js';
 
 const originalFetch = global.fetch;
 
@@ -25,7 +30,195 @@ function createNetflixTrack(language, url, trackType = 'PRIMARY') {
     };
 }
 
+function spyOnLoggerMethods(logger) {
+    return Object.fromEntries(
+        ['debug', 'error', 'info', 'warn'].map((method) => [
+            method,
+            jest.spyOn(logger, method).mockImplementation(() => {}),
+        ])
+    );
+}
+
+function collectLoggerCalls(loggerSpies) {
+    return Object.values(loggerSpies).flatMap((spy) => spy.mock.calls);
+}
+
 describe('TTMLParser', () => {
+    test('keeps collaborator failures out of logs and the public parse error', () => {
+        const sensitiveMarker = 'PRIVATE_TTML_COLLABORATOR_FAILURE';
+        const rawError = new Error(`${sensitiveMarker}:message`);
+        rawError.stack = `${sensitiveMarker}:stack`;
+        rawError.cause = new Error(`${sensitiveMarker}:cause`);
+        rawError.url = `https://captions.example/${sensitiveMarker}`;
+        rawError.details = { marker: sensitiveMarker };
+        const loggerSpies = spyOnLoggerMethods(ttmlParser.logger);
+        const ttml = '<tt><body><p begin="0s" end="1s">Private</p></body></tt>';
+        jest.spyOn(ttmlParser, 'parseTtmlTimeToSeconds').mockImplementation(
+            () => {
+                throw rawError;
+            }
+        );
+
+        let publicError;
+        try {
+            ttmlParser.convertTtmlToVtt(ttml);
+        } catch (error) {
+            publicError = error;
+        }
+
+        expect(publicError).toBeInstanceOf(Error);
+        expect(publicError).not.toBe(rawError);
+        expect(publicError).toMatchObject({
+            name: 'TTMLConversionError',
+            message: 'TTML conversion failed.',
+        });
+        expect(Reflect.ownKeys(publicError).map(String).sort()).toEqual([
+            'message',
+            'name',
+            'stack',
+        ]);
+        for (const property of ['cause', 'url', 'details']) {
+            expect(Object.hasOwn(publicError, property)).toBe(false);
+        }
+
+        expect(loggerSpies.error.mock.calls).toEqual([
+            [
+                'TTML conversion failed',
+                {
+                    inputLength: ttml.length,
+                    stage: 'conversion',
+                },
+            ],
+        ]);
+        const loggerCalls = collectLoggerCalls(loggerSpies);
+        expect(loggerCalls.flat()).not.toContain(rawError);
+        const rendered = JSON.stringify(
+            { loggerCalls, publicError },
+            (_key, value) =>
+                value instanceof Error
+                    ? {
+                          name: value.name,
+                          message: value.message,
+                          stack: value.stack,
+                          cause: value.cause,
+                          url: value.url,
+                          details: value.details,
+                      }
+                    : value
+        );
+        expect(rendered).not.toContain(sensitiveMarker);
+    });
+
+    test('does not reflect a hostile thrown value while classifying failures', () => {
+        const sensitiveMarker = 'PRIVATE_TTML_PROXY_TRAP_FAILURE';
+        const trapError = new Error(`${sensitiveMarker}:message`);
+        trapError.stack = `${sensitiveMarker}:stack`;
+        trapError.cause = new Error(`${sensitiveMarker}:cause`);
+        trapError.url = `https://captions.example/${sensitiveMarker}`;
+        trapError.details = { marker: sensitiveMarker };
+        const hostileThrownValue = new Proxy(
+            {},
+            {
+                getPrototypeOf() {
+                    throw trapError;
+                },
+            }
+        );
+        const loggerSpies = spyOnLoggerMethods(ttmlParser.logger);
+        jest.spyOn(ttmlParser, 'parseTtmlTimeToSeconds').mockImplementation(
+            () => {
+                throw hostileThrownValue;
+            }
+        );
+
+        let publicError;
+        try {
+            ttmlParser.convertTtmlToVtt(
+                '<tt><body><p begin="0s" end="1s">Private</p></body></tt>'
+            );
+        } catch (error) {
+            publicError = error;
+        }
+
+        expect(publicError).not.toBe(trapError);
+        expect(publicError).not.toBe(hostileThrownValue);
+        expect(publicError).toMatchObject({
+            name: 'TTMLConversionError',
+            message: 'TTML conversion failed.',
+        });
+        const loggerCalls = collectLoggerCalls(loggerSpies);
+        expect(loggerCalls.flat()).not.toContain(trapError);
+        expect(loggerCalls.flat()).not.toContain(hostileThrownValue);
+        const rendered = JSON.stringify(
+            { loggerCalls, publicError },
+            (_key, value) =>
+                value instanceof Error
+                    ? {
+                          name: value.name,
+                          message: value.message,
+                          stack: value.stack,
+                          cause: value.cause,
+                          url: value.url,
+                          details: value.details,
+                      }
+                    : value
+        );
+        expect(rendered).not.toContain(sensitiveMarker);
+    });
+
+    test('keeps malformed timestamp contents out of logs and parse errors', () => {
+        const sensitiveMarker = 'PRIVATE_TTML_TIMESTAMP';
+        const ttml =
+            `<tt><layout><region xml:id="${sensitiveMarker}" ` +
+            `tts:origin="10% 20%" /></layout><body><p ` +
+            `region="${sensitiveMarker}" begin="${sensitiveMarker}" ` +
+            'end="1s">Private</p></body></tt>';
+        const loggerSpies = spyOnLoggerMethods(ttmlParser.logger);
+
+        let publicError;
+        try {
+            ttmlParser.convertTtmlToVtt(ttml);
+        } catch (error) {
+            publicError = error;
+        }
+
+        expect(publicError).toMatchObject({
+            name: 'TTMLConversionError',
+            message: 'TTML conversion failed: Unsupported TTML timestamp',
+        });
+        expect(loggerSpies.error.mock.calls).toEqual([
+            [
+                'TTML conversion failed',
+                {
+                    inputLength: ttml.length,
+                    stage: 'conversion',
+                },
+            ],
+        ]);
+        const loggerCalls = collectLoggerCalls(loggerSpies);
+        expect(
+            JSON.stringify({ loggerCalls, publicError }, (_key, value) =>
+                value instanceof Error
+                    ? {
+                          name: value.name,
+                          message: value.message,
+                          stack: value.stack,
+                          ownKeys: Reflect.ownKeys(value).map(String),
+                      }
+                    : value
+            )
+        ).not.toContain(sensitiveMarker);
+    });
+
+    test('preserves the exact VTT bytes for a valid TTML fixture', () => {
+        const ttml =
+            '<tt><body><p begin="0s" end="1.25s">Alpha &amp; Beta</p></body></tt>';
+
+        expect(ttmlParser.convertTtmlToVtt(ttml)).toBe(
+            'WEBVTT\n\n00:00:00.000 --> 00:00:01.250\nAlpha &amp; Beta\n\n'
+        );
+    });
+
     test('parses namespaced elements and attributes in any order', () => {
         const ttml = `
             <tt:tt xmlns:tt="urn:tt" xmlns:tts="urn:styles">
@@ -58,7 +251,34 @@ describe('TTMLParser', () => {
         expect(vtt).toContain('00:00:05.000 --> 00:00:06.250\ntick');
     });
 
-    test('decodes named, decimal, and hexadecimal entities after stripping markup', () => {
+    test.each([
+        ['sub-millisecond tick interval', '0t', '1t'],
+        [
+            'distinct timestamps that round to the same millisecond',
+            '5000t',
+            '14999t',
+        ],
+    ])(
+        'rejects %s after converting both endpoints to VTT milliseconds',
+        (_label, begin, end) => {
+            const ttml = `<tt><body><p begin="${begin}" end="${end}">too short</p></body></tt>`;
+
+            expect(() => ttmlParser.convertTtmlToVtt(ttml)).toThrow(
+                'TTML conversion failed: Invalid TTML cue range'
+            );
+        }
+    );
+
+    test('serializes the first tick boundary that rounds to a distinct millisecond', () => {
+        const ttml =
+            '<tt><body><p begin="0t" end="5000t">one millisecond</p></body></tt>';
+
+        expect(ttmlParser.convertTtmlToVtt(ttml)).toContain(
+            '00:00:00.000 --> 00:00:00.001\none millisecond'
+        );
+    });
+
+    test('decodes TTML entities before safely serializing semantic VTT text', () => {
         const ttml = `
             <tt><body><div>
                 <p begin="0s" end="1s">
@@ -68,24 +288,68 @@ describe('TTMLParser', () => {
             </div></body></tt>`;
 
         expect(ttmlParser.convertTtmlToVtt(ttml)).toContain(
-            `Fish & Chips 😀 © "yes" 'ok' <tag>`
+            `Fish &amp; Chips 😀 © "yes" 'ok' &lt;tag&gt;`
+        );
+    });
+
+    test('preserves namespaced and plain TTML breaks as cue line breaks', () => {
+        const ttml = `
+            <tt:tt xmlns:tt="urn:tt"><tt:body><tt:div>
+                <tt:p begin="0s" end="1s">Alpha<tt:br/>Beta<br />Gamma</tt:p>
+            </tt:div></tt:body></tt:tt>`;
+
+        expect(ttmlParser.convertTtmlToVtt(ttml)).toContain(
+            'Alpha\nBeta\nGamma'
+        );
+    });
+
+    test('serializes decoded TTML literals as VTT text rather than cue markup', () => {
+        const ttml = `
+            <tt><body><div>
+                <p begin="0s" end="1s">&lt;tag&gt; Fish &amp; Chips</p>
+            </div></body></tt>`;
+
+        expect(ttmlParser.convertTtmlToVtt(ttml)).toContain(
+            '&lt;tag&gt; Fish &amp; Chips'
+        );
+    });
+
+    test('preserves an out-of-range numeric entity as inert VTT text', () => {
+        const ttml = `
+            <tt><body><div>
+                <p begin="0s" end="1s">invalid &#x110000; entity</p>
+            </div></body></tt>`;
+
+        expect(ttmlParser.convertTtmlToVtt(ttml)).toContain(
+            'invalid &amp;#x110000; entity'
         );
     });
 
     test.each([
-        [null, 'non-empty string'],
-        ['   ', 'non-empty string'],
-        ['<tt><body /></tt>', 'No valid TTML subtitle entries'],
+        [null, 'TTML input must be a non-empty string'],
+        ['   ', 'TTML input must be a non-empty string'],
+        [
+            '<tt><body /></tt>',
+            'TTML conversion failed: No valid TTML subtitle entries found',
+        ],
         [
             '<tt><body><p begin="not-a-tickt" end="1s">bad</p></body></tt>',
-            'Unsupported TTML timestamp',
+            'TTML conversion failed: Unsupported TTML timestamp',
         ],
         [
             '<tt><body><p begin="2s" end="1s">backwards</p></body></tt>',
-            'Invalid TTML cue range',
+            'TTML conversion failed: Invalid TTML cue range',
         ],
-    ])('rejects malformed TTML input %#', (input, message) => {
-        expect(() => ttmlParser.convertTtmlToVtt(input)).toThrow(message);
+    ])('rejects malformed TTML input %#', (input, expectedMessage) => {
+        let publicError;
+        try {
+            ttmlParser.convertTtmlToVtt(input);
+        } catch (error) {
+            publicError = error;
+        }
+
+        expect(publicError).toBeInstanceOf(Error);
+        expect(publicError.message).toBe(expectedMessage);
     });
 });
 
@@ -119,43 +383,41 @@ describe('NetflixParser', () => {
     test('propagates subtitle fetch failures instead of returning an error-shaped success', async () => {
         const track = createNetflixTrack(
             'en-US',
-            'https://example.test/en.ttml'
+            'https://captions.nflxvideo.net/show/en.ttml'
         );
-        global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 503 });
-
-        await expect(
-            netflixParser.processNetflixSubtitleData(
-                { tracks: [track] },
-                'zh-CN',
-                'en',
-                false,
-                false
-            )
-        ).rejects.toThrow('Netflix subtitle fetch failed: 503');
-    });
-
-    test('rejects malformed track collections', async () => {
-        await expect(
-            netflixParser.processNetflixSubtitleData({ tracks: {} })
-        ).rejects.toThrow('tracks must be an array');
-    });
-
-    test('rejects a track collection with no usable subtitle track', async () => {
-        await expect(
-            netflixParser.processNetflixSubtitleData({
-                tracks: [
-                    {
-                        language: 'en',
-                        isForcedNarrative: true,
-                    },
-                ],
+        const snapshot = createAuthorizedNetflixSubtitleSnapshot({
+            tracks: [track],
+            originalLanguage: 'en',
+            useNativeSubtitles: false,
+            useOfficialTranslations: false,
+        });
+        global.fetch = jest.fn(async (url) =>
+            createSubtitleFetchResponse('unavailable', url, {
+                ok: false,
+                status: 503,
             })
-        ).rejects.toThrow('No usable Netflix subtitle track');
+        );
+
+        await expect(
+            netflixParser.processNetflixSubtitleData(snapshot)
+        ).rejects.toMatchObject({
+            message: 'Subtitle response rejected.',
+            code: 'ERR_SUBTITLE_FETCH_HTTP',
+        });
+    });
+
+    test('rejects a raw track collection outside the authorized request boundary', async () => {
+        await expect(
+            netflixParser.processNetflixSubtitleData({ tracks: [] })
+        ).rejects.toMatchObject({
+            name: 'NetflixParserAuthorizationError',
+            code: 'ERR_NETFLIX_SUBTITLE_REQUEST_UNAUTHORIZED',
+        });
     });
 });
 
 describe('VTTParser M3U8 handling', () => {
-    test('resolves every relative media-playlist URI, including extensionless query URLs', () => {
+    test('retains ordered raw media references without resolving them', () => {
         const playlist = `
             #EXTM3U
             #EXTINF:2.0,
@@ -166,91 +428,102 @@ describe('VTTParser M3U8 handling', () => {
             https://other.example/three.vtt`;
 
         expect(
-            vttParser.parsePlaylistForVttSegments(
-                playlist,
-                'https://cdn.example/show/en/index.m3u8'
-            )
+            vttParser.parsePlaylistForVttSegmentReferences(playlist)
         ).toEqual([
-            'https://cdn.example/show/segments/one?token=abc',
-            'https://cdn.example/captions/two.webvtt',
+            '../segments/one?token=abc',
+            '/captions/two.webvtt',
             'https://other.example/three.vtt',
         ]);
     });
 
-    test('keeps successful segments in playlist order when another segment fails', async () => {
+    test('keeps allowed successes in order while a blocked segment stays soft', async () => {
+        const snapshot = createAuthorizedDisneySubtitleSnapshot();
+        const playlistCanonicalUrl =
+            'https://captions.media.dssott.com/show/index.m3u8';
         global.fetch = jest.fn(async (url) => {
-            if (url.endsWith('two.vtt')) {
-                return { ok: false, status: 502 };
-            }
-            return {
-                ok: true,
-                text: async () =>
-                    url.endsWith('one.vtt')
-                        ? 'WEBVTT\n\n00:00:00.000 --> 00:00:01.000\nOne'
-                        : 'WEBVTT\n\n00:00:02.000 --> 00:00:03.000\nThree',
-            };
+            const text = url.endsWith('one.vtt')
+                ? 'WEBVTT\n\n00:00:00.000 --> 00:00:01.000\nOne'
+                : 'WEBVTT\n\n00:00:02.000 --> 00:00:03.000\nThree';
+            return createSubtitleFetchResponse(text, url);
         });
 
-        const result = await vttParser.fetchAndCombineVttSegments([
-            'https://example.test/one.vtt',
-            'https://example.test/two.vtt',
-            'https://example.test/three.vtt',
-        ]);
+        const result = await vttParser.fetchAndCombineVttSegments(
+            snapshot,
+            ['one.vtt', 'https://attacker.example/two.vtt', 'three.vtt'],
+            playlistCanonicalUrl
+        );
 
         expect(result).toContain('One');
         expect(result).toContain('Three');
         expect(result.indexOf('One')).toBeLessThan(result.indexOf('Three'));
+        expect(global.fetch).toHaveBeenCalledTimes(2);
+        expect(global.fetch.mock.calls.map(([url]) => url)).toEqual([
+            'https://captions.media.dssott.com/show/one.vtt',
+            'https://captions.media.dssott.com/show/three.vtt',
+        ]);
     });
 
-    test('throws when every playlist segment fails', async () => {
-        global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 503 });
+    test('fails with a fixed error when every segment is blocked', async () => {
+        const snapshot = createAuthorizedDisneySubtitleSnapshot();
+        global.fetch = jest.fn();
 
         await expect(
-            vttParser.fetchAndCombineVttSegments([
-                'https://example.test/one.vtt',
-                'https://example.test/two.vtt',
-            ])
-        ).rejects.toThrow('Failed to fetch any of the 2 VTT segments');
+            vttParser.fetchAndCombineVttSegments(
+                snapshot,
+                [
+                    'https://attacker.example/one.vtt',
+                    'http://captions.media.dssott.com/two.vtt',
+                ],
+                'https://captions.media.dssott.com/show/index.m3u8'
+            )
+        ).rejects.toMatchObject({
+            message: 'No VTT segments could be fetched.',
+            code: 'ERR_VTT_SEGMENTS_UNAVAILABLE',
+        });
+        expect(global.fetch).not.toHaveBeenCalled();
     });
 
     test('rejects a playlist without segment URIs', async () => {
-        global.fetch = jest.fn().mockResolvedValue({
-            ok: true,
-            text: async () => '#EXTM3U\n#EXT-X-VERSION:6',
-        });
+        const snapshot = createAuthorizedDisneySubtitleSnapshot();
+        global.fetch = jest.fn();
 
         await expect(
-            vttParser.processM3U8Playlist(
-                'https://example.test/empty/index.m3u8'
+            vttParser.processM3U8PlaylistText(
+                snapshot,
+                '#EXTM3U\n#EXT-X-VERSION:6',
+                'https://captions.media.dssott.com/empty/index.m3u8'
             )
         ).rejects.toThrow('No VTT segments found');
-        expect(global.fetch).toHaveBeenCalledTimes(1);
+        expect(global.fetch).not.toHaveBeenCalled();
     });
 
-    test('uses resolved relative segment URLs throughout playlist processing', async () => {
-        global.fetch = jest.fn(async (url) => {
-            if (url.endsWith('index.m3u8')) {
-                return {
-                    ok: true,
-                    text: async () =>
-                        '#EXTM3U\n#EXTINF:2.0,\n../segments/one?token=abc',
-                };
-            }
-            return {
-                ok: true,
-                text: async () =>
-                    'WEBVTT\n\n00:00:00.000 --> 00:00:01.000\nOne',
-            };
-        });
+    test('resolves a raw segment only against the exact canonical playlist parent', async () => {
+        const snapshot = createAuthorizedDisneySubtitleSnapshot();
+        const playlistCanonicalUrl =
+            'https://captions.media.dssott.com/show/en/index.m3u8';
+        const expectedSegmentUrl =
+            'https://captions.media.dssott.com/show/segments/one?token=abc';
+        global.fetch = jest.fn(async (url) =>
+            createSubtitleFetchResponse(
+                'WEBVTT\n\n00:00:00.000 --> 00:00:01.000\nOne',
+                url
+            )
+        );
 
         await expect(
-            vttParser.processM3U8Playlist(
-                'https://cdn.example/show/en/index.m3u8'
+            vttParser.processM3U8PlaylistText(
+                snapshot,
+                '#EXTM3U\n#EXTINF:2.0,\n../segments/one?token=abc',
+                playlistCanonicalUrl
             )
         ).resolves.toContain('One');
-        expect(global.fetch).toHaveBeenCalledWith(
-            'https://cdn.example/show/segments/one?token=abc',
-            expect.objectContaining({ signal: expect.any(AbortSignal) })
-        );
+        expect(global.fetch).toHaveBeenCalledTimes(1);
+        expect(global.fetch.mock.calls[0][0]).toBe(expectedSegmentUrl);
+        expect(global.fetch.mock.calls[0][1]).toMatchObject({
+            credentials: 'omit',
+            method: 'GET',
+            redirect: 'follow',
+            signal: expect.any(AbortSignal),
+        });
     });
 });

@@ -402,15 +402,24 @@ describe('NavigationDetectionManager', () => {
             const manager = new NavigationDetectionManager('netflix');
 
             expect(manager._isPlayerPage('/watch/12345')).toBe(true);
+            expect(manager._isPlayerPage('/watch/12345/')).toBe(true);
             expect(manager._isPlayerPage('/browse')).toBe(false);
+            expect(manager._isPlayerPage('/watch/')).toBe(false);
+            expect(manager._isPlayerPage('/watch/12345/credits')).toBe(false);
+            expect(manager._isPlayerPage('/browse/watch/12345')).toBe(false);
         });
 
         test('should use Disney+ default for disneyplus platform', () => {
             const manager = new NavigationDetectionManager('disneyplus');
 
             expect(manager._isPlayerPage('/video/abc123')).toBe(true);
-            expect(manager._isPlayerPage('/movies/def456')).toBe(true);
-            expect(manager._isPlayerPage('/series/ghi789')).toBe(true);
+            expect(manager._isPlayerPage('/play/abc123')).toBe(true);
+            expect(manager._isPlayerPage('/video/abc123/')).toBe(true);
+            expect(manager._isPlayerPage('/movies/def456')).toBe(false);
+            expect(manager._isPlayerPage('/series/ghi789')).toBe(false);
+            expect(manager._isPlayerPage('/video/')).toBe(false);
+            expect(manager._isPlayerPage('/play/abc123/credits')).toBe(false);
+            expect(manager._isPlayerPage('/browse/video/abc123')).toBe(false);
             expect(manager._isPlayerPage('/home')).toBe(false);
         });
 
@@ -525,6 +534,409 @@ describe('NavigationDetectionManager', () => {
     });
 });
 
+describe('NavigationDetectionManager owned lifecycle', () => {
+    let navigationManager;
+    let originalPushState;
+    let originalReplaceState;
+
+    beforeEach(() => {
+        jest.useFakeTimers();
+        originalPushState = history.pushState;
+        originalReplaceState = history.replaceState;
+        originalReplaceState.call(history, {}, '', '/browse');
+    });
+
+    afterEach(() => {
+        navigationManager?.cleanup();
+        history.pushState = originalPushState;
+        history.replaceState = originalReplaceState;
+        originalReplaceState.call(history, {}, '', '/');
+        jest.useRealTimers();
+    });
+
+    const createManager = (options = {}) => {
+        navigationManager = new NavigationDetectionManager('netflix', {
+            enableNavigationLogging: false,
+            ...options,
+        });
+        return navigationManager;
+    };
+
+    const setupManager = (options = {}) => {
+        createManager(options).setupComprehensiveNavigation();
+        return navigationManager;
+    };
+
+    const expectManagerResourcesCleaned = () => {
+        expect(navigationManager.isSetup).toBe(false);
+        expect(navigationManager.intervalId).toBeNull();
+        expect(navigationManager.pendingUrlCheckTimeoutId).toBeNull();
+        expect(navigationManager.abortController).toBeNull();
+        expect(navigationManager._originalHistoryMethods).toBeNull();
+        expect(history.pushState).toBe(originalPushState);
+        expect(history.replaceState).toBe(originalReplaceState);
+    };
+
+    test.each([
+        ['pushState', (pathname) => history.pushState({}, '', pathname)],
+        ['replaceState', (pathname) => history.replaceState({}, '', pathname)],
+        [
+            'popstate',
+            (pathname) => {
+                originalReplaceState.call(history, {}, '', pathname);
+                window.dispatchEvent(new Event('popstate'));
+            },
+        ],
+        [
+            'hashchange',
+            (pathname) => {
+                originalReplaceState.call(history, {}, '', pathname);
+                window.dispatchEvent(new Event('hashchange'));
+            },
+        ],
+        [
+            'focus',
+            (pathname) => {
+                originalReplaceState.call(history, {}, '', pathname);
+                window.dispatchEvent(new Event('focus'));
+            },
+        ],
+        [
+            'visibilitychange',
+            (pathname) => {
+                originalReplaceState.call(history, {}, '', pathname);
+                document.dispatchEvent(new Event('visibilitychange'));
+            },
+        ],
+    ])(
+        '%s initiates a delayed check of the real final URL',
+        (source, signal) => {
+            const onUrlChange = jest.fn();
+            setupManager({
+                onUrlChange,
+                useIntervalChecking: false,
+            });
+            const initialUrl = window.location.href;
+            const finalPathname = `/watch/from-${source}`;
+
+            signal(finalPathname);
+
+            expect(navigationManager.pendingUrlCheckTimeoutId).not.toBeNull();
+            expect(onUrlChange).not.toHaveBeenCalled();
+
+            jest.advanceTimersByTime(100);
+
+            expect(onUrlChange).toHaveBeenCalledTimes(1);
+            expect(onUrlChange).toHaveBeenCalledWith(
+                initialUrl,
+                `${window.location.origin}${finalPathname}`
+            );
+        }
+    );
+
+    test('the default interval detects a URL change at 1000ms', () => {
+        const onUrlChange = jest.fn();
+        setupManager({
+            onUrlChange,
+            useFocusEvents: false,
+            useHistoryAPI: false,
+            usePopstateEvents: false,
+        });
+        const initialUrl = window.location.href;
+        originalReplaceState.call(history, {}, '', '/watch/from-interval');
+
+        jest.advanceTimersByTime(999);
+        expect(onUrlChange).not.toHaveBeenCalled();
+
+        jest.advanceTimersByTime(1);
+
+        expect(onUrlChange).toHaveBeenCalledTimes(1);
+        expect(onUrlChange).toHaveBeenCalledWith(
+            initialUrl,
+            `${window.location.origin}/watch/from-interval`
+        );
+    });
+
+    test('URL and page-transition callbacks retain their public order', () => {
+        const callbackOrder = [];
+        setupManager({
+            isPlayerPage: (pathname) => pathname.includes('/watch/'),
+            onPageTransition: () => callbackOrder.push('page-transition'),
+            onUrlChange: () => callbackOrder.push('url-change'),
+            useIntervalChecking: false,
+        });
+
+        history.pushState({}, '', '/watch/callback-order');
+        jest.advanceTimersByTime(100);
+
+        expect(callbackOrder).toEqual(['url-change', 'page-transition']);
+    });
+
+    test('coalesces a history burst into one check of the final URL', () => {
+        const onUrlChange = jest.fn();
+        setupManager({
+            isPlayerPage: (pathname) => pathname.includes('/watch/'),
+            onUrlChange,
+            useIntervalChecking: false,
+        });
+        const initialUrl = window.location.href;
+        const checkForUrlChange = jest.spyOn(
+            navigationManager,
+            'checkForUrlChange'
+        );
+
+        history.pushState({}, '', '/watch/0');
+        const pendingCheck = navigationManager.pendingUrlCheckTimeoutId;
+        expect(pendingCheck).not.toBeNull();
+
+        for (let index = 1; index < 100; index++) {
+            const method = index % 2 === 0 ? 'pushState' : 'replaceState';
+            history[method]({}, '', `/watch/${index}`);
+        }
+
+        expect(navigationManager.pendingUrlCheckTimeoutId).toBe(pendingCheck);
+
+        jest.advanceTimersByTime(100);
+
+        expect(checkForUrlChange).toHaveBeenCalledTimes(1);
+        expect(onUrlChange).toHaveBeenCalledTimes(1);
+        expect(onUrlChange).toHaveBeenCalledWith(
+            initialUrl,
+            `${window.location.origin}/watch/99`
+        );
+    });
+
+    test('coalesces browser, focus, and visibility signals into one check', () => {
+        const onUrlChange = jest.fn();
+        setupManager({
+            isPlayerPage: (pathname) => pathname.includes('/watch/'),
+            onUrlChange,
+            useHistoryAPI: false,
+            useIntervalChecking: false,
+        });
+        const initialUrl = window.location.href;
+        const checkForUrlChange = jest.spyOn(
+            navigationManager,
+            'checkForUrlChange'
+        );
+        originalReplaceState.call(history, {}, '', '/watch/mixed-signals');
+
+        window.dispatchEvent(new Event('popstate'));
+        const pendingCheck = navigationManager.pendingUrlCheckTimeoutId;
+        expect(pendingCheck).not.toBeNull();
+        window.dispatchEvent(new Event('hashchange'));
+        window.dispatchEvent(new Event('focus'));
+        document.dispatchEvent(new Event('visibilitychange'));
+
+        expect(navigationManager.pendingUrlCheckTimeoutId).toBe(pendingCheck);
+
+        jest.advanceTimersByTime(100);
+
+        expect(checkForUrlChange).toHaveBeenCalledTimes(1);
+        expect(onUrlChange).toHaveBeenCalledTimes(1);
+        expect(onUrlChange).toHaveBeenCalledWith(
+            initialUrl,
+            `${window.location.origin}/watch/mixed-signals`
+        );
+    });
+
+    test('cleanup cancels a pending URL check before it can notify', () => {
+        const onUrlChange = jest.fn();
+        setupManager({
+            onUrlChange,
+            useIntervalChecking: false,
+        });
+        const checkForUrlChange = jest.spyOn(
+            navigationManager,
+            'checkForUrlChange'
+        );
+
+        history.pushState({}, '', '/watch/cancelled');
+        expect(navigationManager.pendingUrlCheckTimeoutId).not.toBeNull();
+
+        navigationManager.cleanup();
+
+        expect(navigationManager.pendingUrlCheckTimeoutId).toBeNull();
+        jest.advanceTimersByTime(100);
+        expect(checkForUrlChange).not.toHaveBeenCalled();
+        expect(onUrlChange).not.toHaveBeenCalled();
+    });
+
+    test('a stale callback cannot clear or execute a later setup generation', () => {
+        const onUrlChange = jest.fn();
+        const setTimeoutSpy = jest.spyOn(global, 'setTimeout');
+        setupManager({
+            onUrlChange,
+            useIntervalChecking: false,
+        });
+
+        history.pushState({}, '', '/watch/stale');
+        const staleCallback = setTimeoutSpy.mock.calls.at(-1)[0];
+
+        navigationManager.cleanup();
+        navigationManager.setupComprehensiveNavigation();
+        history.pushState({}, '', '/watch/fresh');
+        const freshPendingCheck = navigationManager.pendingUrlCheckTimeoutId;
+
+        staleCallback();
+
+        expect(navigationManager.pendingUrlCheckTimeoutId).toBe(
+            freshPendingCheck
+        );
+        expect(onUrlChange).not.toHaveBeenCalled();
+
+        jest.advanceTimersByTime(100);
+
+        expect(onUrlChange).toHaveBeenCalledTimes(1);
+        expect(onUrlChange).toHaveBeenLastCalledWith(
+            expect.stringContaining('/browse'),
+            `${window.location.origin}/watch/fresh`
+        );
+    });
+
+    test('cleanup preserves later history wrappers and leaves them functional', () => {
+        const onUrlChange = jest.fn();
+        setupManager({
+            onUrlChange,
+            useIntervalChecking: false,
+        });
+        const managerPushState = history.pushState;
+        const managerReplaceState = history.replaceState;
+        const laterPushState = jest.fn((...args) => managerPushState(...args));
+        const laterReplaceState = jest.fn((...args) =>
+            managerReplaceState(...args)
+        );
+        history.pushState = laterPushState;
+        history.replaceState = laterReplaceState;
+
+        navigationManager.cleanup();
+
+        expect(history.pushState).toBe(laterPushState);
+        expect(history.replaceState).toBe(laterReplaceState);
+
+        history.pushState({}, '', '/after-cleanup-push');
+        expect(window.location.pathname).toBe('/after-cleanup-push');
+        history.replaceState({}, '', '/after-cleanup-replace');
+        expect(window.location.pathname).toBe('/after-cleanup-replace');
+        expect(navigationManager.pendingUrlCheckTimeoutId).toBeNull();
+        expect(onUrlChange).not.toHaveBeenCalled();
+    });
+
+    test('a listener registration failure rolls back and permits clean setup', () => {
+        const onUrlChange = jest.fn();
+        createManager({ onUrlChange });
+        const realWindowAddEventListener = window.addEventListener.bind(window);
+        const addEventListenerSpy = jest
+            .spyOn(window, 'addEventListener')
+            .mockImplementation((eventName, ...args) => {
+                if (eventName === 'hashchange') {
+                    throw new Error('hashchange registration failed');
+                }
+                return realWindowAddEventListener(eventName, ...args);
+            });
+
+        expect(() => navigationManager.setupComprehensiveNavigation()).toThrow(
+            'hashchange registration failed'
+        );
+
+        expectManagerResourcesCleaned();
+
+        addEventListenerSpy.mockRestore();
+        navigationManager.setupComprehensiveNavigation();
+        history.pushState({}, '', '/watch/recovered');
+        jest.advanceTimersByTime(100);
+
+        expect(onUrlChange).toHaveBeenCalledTimes(1);
+        expect(onUrlChange).toHaveBeenCalledWith(
+            expect.stringContaining('/browse'),
+            `${window.location.origin}/watch/recovered`
+        );
+    });
+
+    test.each([
+        '_setupIntervalBasedDetection',
+        '_setupHistoryAPIInterception',
+        '_setupBrowserNavigationEvents',
+        '_setupFocusAndVisibilityEvents',
+    ])('%s failure rolls back every previously installed resource', (phase) => {
+        createManager();
+        const runPhase = navigationManager[phase].bind(navigationManager);
+        jest.spyOn(navigationManager, phase).mockImplementation(() => {
+            runPhase();
+            throw new Error(`${phase} failed`);
+        });
+
+        expect(() => navigationManager.setupComprehensiveNavigation()).toThrow(
+            `${phase} failed`
+        );
+
+        expectManagerResourcesCleaned();
+    });
+
+    test('a logger failure after setup rolls back without masking the setup error', () => {
+        const setupError = new Error('setup success logging failed');
+        const cleanupError = new Error('cleanup logging failed');
+        const logger = jest.fn((_level, message) => {
+            if (message.includes('has been set up successfully')) {
+                throw setupError;
+            }
+            if (
+                message.includes('Cleaning up') ||
+                message.includes('cleanup is complete')
+            ) {
+                throw cleanupError;
+            }
+        });
+        createManager({ logger });
+
+        let thrownError;
+        try {
+            try {
+                navigationManager.setupComprehensiveNavigation();
+            } catch (error) {
+                thrownError = error;
+            }
+
+            expect(thrownError).toBe(setupError);
+            expectManagerResourcesCleaned();
+        } finally {
+            navigationManager.options.logger = null;
+        }
+    });
+
+    test('cleanup remains repeat-safe when its logger throws', () => {
+        setupManager();
+        navigationManager.options.logger = jest.fn(() => {
+            throw new Error('cleanup logging failed');
+        });
+
+        try {
+            expect(() => navigationManager.cleanup()).not.toThrow();
+            expectManagerResourcesCleaned();
+            expect(() => navigationManager.cleanup()).not.toThrow();
+        } finally {
+            navigationManager.options.logger = null;
+        }
+    });
+
+    test('cleanup is repeat-safe and leaves no active navigation source', () => {
+        const onUrlChange = jest.fn();
+        setupManager({ onUrlChange });
+        history.pushState({}, '', '/watch/pending-cleanup');
+
+        navigationManager.cleanup();
+
+        expect(() => navigationManager.cleanup()).not.toThrow();
+        expectManagerResourcesCleaned();
+
+        originalReplaceState.call(history, {}, '', '/watch/after-cleanup');
+        window.dispatchEvent(new Event('popstate'));
+        window.dispatchEvent(new Event('focus'));
+        jest.advanceTimersByTime(1000);
+        expect(onUrlChange).not.toHaveBeenCalled();
+    });
+});
+
 describe('NavigationEventHandler', () => {
     let eventHandler;
     let mockOnEnterPlayerPage;
@@ -621,6 +1033,11 @@ describe('Platform Navigation Configurations', () => {
         expect(config.useFocusEvents).toBe(true);
         expect(typeof config.isPlayerPage).toBe('function');
         expect(config.isPlayerPage('/watch/12345')).toBe(true);
+        expect(config.isPlayerPage('/watch/12345/')).toBe(true);
+        expect(config.isPlayerPage('/watch/12345/credits')).toBe(false);
+        expect(config.isPlayerPage('/watch/')).toBe(false);
+        expect(config.isPlayerPage('/watchlist/12345')).toBe(false);
+        expect(config.isPlayerPage('/browse/watch/12345')).toBe(false);
     });
 
     test('should have Disney+ configuration', () => {
@@ -631,8 +1048,16 @@ describe('Platform Navigation Configurations', () => {
         expect(config.useHistoryAPI).toBe(true);
         expect(typeof config.isPlayerPage).toBe('function');
         expect(config.isPlayerPage('/video/abc123')).toBe(true);
-        expect(config.isPlayerPage('/movies/def456')).toBe(true);
-        expect(config.isPlayerPage('/series/ghi789')).toBe(true);
+        expect(config.isPlayerPage('/play/abc123')).toBe(true);
+        expect(config.isPlayerPage('/video/abc123/')).toBe(true);
+        expect(config.isPlayerPage('/video/abc123/credits')).toBe(false);
+        expect(config.isPlayerPage('/movies/def456')).toBe(false);
+        expect(config.isPlayerPage('/series/ghi789')).toBe(false);
+        expect(config.isPlayerPage('/video/')).toBe(false);
+        expect(config.isPlayerPage('/play/')).toBe(false);
+        expect(config.isPlayerPage('/browse/video/abc123')).toBe(false);
+        expect(config.isPlayerPage('/movies/play/abc123')).toBe(false);
+        expect(config.isPlayerPage('/videos/abc123')).toBe(false);
     });
 });
 

@@ -210,4 +210,77 @@ describe('migrateLegacyConfiguration', () => {
         expect(chrome.storage.sync.get).toHaveBeenCalledTimes(1);
         expect(chrome.storage.local.get).toHaveBeenCalledTimes(1);
     });
+
+    it('shares a failed attempt, then lets later callers share one successful retry', async () => {
+        const migrationError = new Error('sync storage unavailable');
+        let rejectFirstAttempt;
+        chrome.storage.sync.get
+            .mockImplementationOnce(
+                () =>
+                    new Promise((resolve, reject) => {
+                        rejectFirstAttempt = reject;
+                    })
+            )
+            .mockResolvedValue({});
+
+        const first = migrateLegacyConfiguration();
+        const concurrent = migrateLegacyConfiguration();
+        const firstRejection = expect(first).rejects.toBe(migrationError);
+        const concurrentRejection =
+            expect(concurrent).rejects.toBe(migrationError);
+
+        expect(concurrent).toBe(first);
+        rejectFirstAttempt(migrationError);
+        await firstRejection;
+        await concurrentRejection;
+
+        const retry = migrateLegacyConfiguration();
+        const concurrentRetry = migrateLegacyConfiguration();
+
+        expect(retry).not.toBe(first);
+        expect(concurrentRetry).toBe(retry);
+        await retry;
+        expect(chrome.storage.sync.get).toHaveBeenCalledTimes(2);
+        expect(chrome.storage.local.get).toHaveBeenCalledTimes(2);
+
+        expect(migrateLegacyConfiguration()).toBe(retry);
+        expect(chrome.storage.sync.get).toHaveBeenCalledTimes(2);
+        expect(chrome.storage.local.get).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not let an older rejection clear a replacement attempt', async () => {
+        const migrationError = new Error('stale migration failed');
+        let rejectOlderAttempt;
+        let resolveReplacementAttempt;
+        chrome.storage.sync.get
+            .mockImplementationOnce(
+                () =>
+                    new Promise((resolve, reject) => {
+                        rejectOlderAttempt = reject;
+                    })
+            )
+            .mockImplementationOnce(
+                () =>
+                    new Promise((resolve) => {
+                        resolveReplacementAttempt = resolve;
+                    })
+            );
+
+        const older = migrateLegacyConfiguration();
+        const olderRejection = expect(older).rejects.toBe(migrationError);
+
+        resetConfigurationMigrationForTests();
+        const replacement = migrateLegacyConfiguration();
+        expect(replacement).not.toBe(older);
+
+        rejectOlderAttempt(migrationError);
+        await olderRejection;
+
+        expect(migrateLegacyConfiguration()).toBe(replacement);
+        expect(chrome.storage.sync.get).toHaveBeenCalledTimes(2);
+
+        resolveReplacementAttempt({});
+        await replacement;
+        expect(migrateLegacyConfiguration()).toBe(replacement);
+    });
 });

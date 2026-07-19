@@ -23,10 +23,9 @@
                 '[DisneyPlusContent] Content script initialization failed.'
             );
         }
-    } catch (error) {
+    } catch {
         console.error(
-            '[DisneyPlusContent] An error occurred during initialization:',
-            error
+            '[DisneyPlusContent] An error occurred during initialization.'
         );
     }
 })();

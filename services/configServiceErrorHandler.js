@@ -1,5 +1,134 @@
 // services/configServiceErrorHandler.js
 
+const CONFIG_STORAGE_AREAS = ['sync', 'local'];
+const OWN_DATA_MISSING = Symbol('own-data-missing');
+
+function readOwnDataValue(record, key) {
+    if (record === null || typeof record !== 'object') {
+        return OWN_DATA_MISSING;
+    }
+
+    try {
+        const descriptor = Object.getOwnPropertyDescriptor(record, key);
+        return descriptor && Object.hasOwn(descriptor, 'value')
+            ? descriptor.value
+            : OWN_DATA_MISSING;
+    } catch {
+        return OWN_DATA_MISSING;
+    }
+}
+
+function readOwnArrayLength(value) {
+    try {
+        if (!Array.isArray(value)) return 0;
+        const descriptor = Object.getOwnPropertyDescriptor(value, 'length');
+        return descriptor &&
+            Object.hasOwn(descriptor, 'value') &&
+            Number.isSafeInteger(descriptor.value) &&
+            descriptor.value >= 0
+            ? descriptor.value
+            : 0;
+    } catch {
+        return 0;
+    }
+}
+
+function readFailedAreas(result) {
+    const value = readOwnDataValue(result, 'failedAreas');
+    const length = readOwnArrayLength(value);
+    const failedAreas = [];
+
+    for (
+        let index = 0;
+        index < Math.min(length, CONFIG_STORAGE_AREAS.length);
+        index += 1
+    ) {
+        const area = readOwnDataValue(value, String(index));
+        if (
+            CONFIG_STORAGE_AREAS.includes(area) &&
+            !failedAreas.includes(area)
+        ) {
+            failedAreas.push(area);
+        }
+    }
+    return failedAreas;
+}
+
+function readAreaStatus(areas, area) {
+    const areaResult = readOwnDataValue(areas, area);
+    const status = readOwnDataValue(areaResult, 'status');
+    return ['ok', 'error', 'not-requested'].includes(status)
+        ? status
+        : 'not-requested';
+}
+
+function createReadResultMetadata(result, failedAreas) {
+    const areas = readOwnDataValue(result, 'areas');
+    const unknownKeys = readOwnDataValue(result, 'unknownKeys');
+    const excludedSensitiveKeys = readOwnDataValue(
+        result,
+        'excludedSensitiveKeys'
+    );
+    return {
+        ok: false,
+        degraded: readOwnDataValue(result, 'degraded') === true,
+        failedAreas,
+        areas: Object.fromEntries(
+            CONFIG_STORAGE_AREAS.map((area) => [
+                area,
+                {
+                    status: readAreaStatus(areas, area),
+                },
+            ])
+        ),
+        unknownKeyCount: readOwnArrayLength(unknownKeys),
+        excludedSensitiveKeyCount: readOwnArrayLength(excludedSensitiveKeys),
+    };
+}
+
+/**
+ * Error raised when a caller requires an authoritative ConfigService read but
+ * one or more requested storage areas could not be read.
+ *
+ * The attached result is metadata-only by design: setting values and display
+ * fallbacks are never copied onto the error object.
+ */
+export class ConfigServiceReadError extends Error {
+    constructor(result) {
+        const failedAreas = readFailedAreas(result);
+        const areas = readOwnDataValue(result, 'areas');
+        const failedAreaResult = readOwnDataValue(areas, failedAreas[0]);
+        const rawCause = readOwnDataValue(failedAreaResult, 'error');
+        const cause = rawCause === OWN_DATA_MISSING ? undefined : rawCause;
+        const areaLabel = failedAreas.join(', ') || 'unknown';
+
+        super(`ConfigService read failed for storage area(s): ${areaLabel}`, {
+            cause,
+        });
+        this.name = 'ConfigServiceReadError';
+        this.failedAreas = failedAreas;
+        this.result = createReadResultMetadata(result, failedAreas);
+    }
+}
+
+/**
+ * Requires a result-oriented ConfigService read to carry an own data `ok`
+ * property whose value is exactly true. Strictness applies only to requested
+ * storage-area failures. Unknown keys and sensitive keys excluded by projection
+ * remain metadata and do not throw. Callers must still verify that every
+ * required key is present in `values`.
+ *
+ * @param {object} result
+ * @returns {object} The same result when no requested storage area failed.
+ * @throws {ConfigServiceReadError}
+ */
+export function requireConfigServiceRead(result) {
+    if (readOwnDataValue(result, 'ok') !== true) {
+        throw new ConfigServiceReadError(result);
+    }
+    return result;
+}
+
 /**
  * Utility class for handling ConfigService errors with enhanced context and recovery suggestions
  */

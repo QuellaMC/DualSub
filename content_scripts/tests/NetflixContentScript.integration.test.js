@@ -1,8 +1,7 @@
 /**
  * NetflixContentScript Integration Tests
  *
- * Integration tests to verify Netflix-specific message handling works correctly
- * with popup and options page integration, ensuring backward compatibility.
+ * Integration tests for Netflix-specific lifecycle and privacy behavior.
  *
  * @author DualSub Extension
  * @version 1.0.0
@@ -17,11 +16,73 @@ import {
     expect,
 } from '@jest/globals';
 import { NetflixContentScript } from '../platforms/NetflixContentScript.js';
+import { BaseContentScript } from '../core/BaseContentScript.js';
 import { ChromeApiMock } from '../../test-utils/chrome-api-mock.js';
 import {
     LocationMock,
     mockWindowLocation,
 } from '../../test-utils/location-mock.js';
+
+const LOG_SENTINEL = '__NETFLIX_CONTENT_LOG_SECRET__';
+const SECRET_PROPERTY = '__netflix_private_property__';
+
+function serializeLogCalls(logSpy) {
+    return JSON.stringify(logSpy.mock.calls, (_key, value) => {
+        if (value instanceof Error) {
+            return {
+                name: value.name,
+                message: value.message,
+                stack: value.stack,
+                cause: value.cause,
+            };
+        }
+        return value;
+    });
+}
+
+function containsReference(value, target, seen = new WeakSet()) {
+    if (value === target) {
+        return true;
+    }
+    if (
+        value === null ||
+        (typeof value !== 'object' && typeof value !== 'function') ||
+        seen.has(value)
+    ) {
+        return false;
+    }
+
+    seen.add(value);
+    return Reflect.ownKeys(value).some((key) => {
+        const descriptor = Object.getOwnPropertyDescriptor(value, key);
+        return (
+            descriptor &&
+            Object.hasOwn(descriptor, 'value') &&
+            containsReference(descriptor.value, target, seen)
+        );
+    });
+}
+
+function expectPrivateLogCalls(
+    logSpy,
+    { sentinels = [], rawValues = [] } = {}
+) {
+    const serialized = serializeLogCalls(logSpy);
+    sentinels.forEach((sentinel) => {
+        expect(serialized).not.toContain(sentinel);
+    });
+    rawValues.forEach((rawValue) => {
+        expect(containsReference(logSpy.mock.calls, rawValue)).toBe(false);
+    });
+}
+
+function createSensitiveError() {
+    const error = new Error(LOG_SENTINEL, {
+        cause: { token: `${LOG_SENTINEL}-cause` },
+    });
+    error.stack = `SensitiveStack: ${LOG_SENTINEL}`;
+    return error;
+}
 
 // Mock Chrome API
 const mockChrome = ChromeApiMock.create();
@@ -51,273 +112,122 @@ describe('NetflixContentScript Integration Tests', () => {
     });
 
     describe('Integration with BaseContentScript message flow', () => {
-        test('should handle complete message flow from popup configChanged', () => {
-            // Mock the required modules for BaseContentScript
+        test('clears the queue and cleans the captured platform once on page leave', async () => {
+            const platform = { cleanup: jest.fn().mockResolvedValue() };
+            netflixScript.activePlatform = platform;
+            netflixScript.platformReady = true;
             netflixScript.subtitleUtils = {
-                setSubtitlesActive: jest.fn(),
-                applySubtitleStyling: jest.fn(),
+                clearSubtitlesDisplayAndQueue: jest.fn(),
+                clearSubtitleDOM: jest.fn(),
             };
-            netflixScript.configService = { getAll: jest.fn() };
-            netflixScript.activePlatform = {
-                getVideoElement: jest.fn().mockReturnValue({ currentTime: 10 }),
-            };
-            netflixScript.currentConfig = { subtitlesEnabled: true };
+            netflixScript.eventBuffer = { clear: jest.fn() };
+            netflixScript.stopVideoElementDetection = jest.fn();
 
-            // Simulate the exact message format sent by popup.js
-            const popupMessage = {
-                action: 'configChanged',
-                changes: {
-                    subtitlePosition: 'bottom',
-                    fontSize: '16px',
-                    backgroundColor: '#000000',
-                },
-            };
+            netflixScript._cleanupOnPageLeave();
 
-            const mockSendResponse = jest.fn();
+            expect(
+                netflixScript.subtitleUtils.clearSubtitlesDisplayAndQueue
+            ).toHaveBeenCalledWith(platform, true, netflixScript.logPrefix);
+            expect(
+                netflixScript.subtitleUtils.clearSubtitleDOM
+            ).toHaveBeenCalledTimes(1);
+            expect(netflixScript.activePlatform).toBeNull();
+            expect(netflixScript.platformReady).toBe(false);
+            expect(netflixScript.eventBuffer.clear).toHaveBeenCalledTimes(1);
+            await Promise.resolve();
+            expect(platform.cleanup).toHaveBeenCalledTimes(1);
 
-            const result = netflixScript.handlePlatformSpecificMessage(
-                popupMessage,
-                mockSendResponse
-            );
-
-            expect(result).toBe(false); // Synchronous handling
-            expect(mockSendResponse).toHaveBeenCalledWith({
-                success: true,
-                handled: false,
-                platform: 'netflix',
-                message: 'No platform-specific handling required.',
-            });
-        });
-
-        test('should handle complete message flow from background LOGGING_LEVEL_CHANGED', () => {
-            // Simulate the exact message format sent by background.js
-            const backgroundMessage = {
-                type: 'LOGGING_LEVEL_CHANGED',
-                level: 'DEBUG',
-            };
-
-            const mockSendResponse = jest.fn();
-
-            // This should also be handled by BaseContentScript's registered handler
-            // but we test the fallback behavior
-            const result = netflixScript.handlePlatformSpecificMessage(
-                backgroundMessage,
-                mockSendResponse
-            );
-
-            expect(result).toBe(false); // Synchronous handling
-            expect(mockSendResponse).toHaveBeenCalledWith({
-                success: true,
-                handled: false,
-                platform: 'netflix',
-                message: 'No platform-specific handling required.',
-            });
-        });
-
-        test('should handle unknown messages that would reach platform-specific handler', () => {
-            // Mock the required modules
-            netflixScript.subtitleUtils = { setSubtitlesActive: jest.fn() };
-            netflixScript.configService = { getAll: jest.fn() };
-
-            // Simulate a message that doesn't have a registered handler
-            const unknownMessage = {
-                action: 'netflix-custom-action',
-                data: { customData: 'test' },
-            };
-
-            const mockSendResponse = jest.fn();
-
-            // This would reach handlePlatformSpecificMessage via BaseContentScript delegation
-            const result = netflixScript.handlePlatformSpecificMessage(
-                unknownMessage,
-                mockSendResponse
-            );
-
-            expect(result).toBe(false); // Synchronous handling
-            expect(mockSendResponse).toHaveBeenCalledWith({
-                success: true,
-                handled: false,
-                platform: 'netflix',
-                message: 'No platform-specific handling required.',
-            });
-
-            // Should log debug information
-            expect(consoleLogSpy).toHaveBeenCalledWith(
-                expect.stringContaining('Processing Netflix-specific message'),
-                expect.objectContaining({
-                    action: 'netflix-custom-action',
-                })
-            );
+            netflixScript._cleanupOnPageLeave();
+            await Promise.resolve();
+            expect(platform.cleanup).toHaveBeenCalledTimes(1);
         });
     });
 
-    describe('Backward compatibility verification', () => {
-        test('should maintain exact response format expected by popup', () => {
-            const testMessages = [
-                { action: 'toggleSubtitles', enabled: true },
-                { action: 'configChanged', changes: { theme: 'dark' } },
-                { type: 'LOGGING_LEVEL_CHANGED', level: 'INFO' },
-                { action: 'unknown-action', data: 'test' },
-            ];
-
-            testMessages.forEach((message) => {
-                const mockSendResponse = jest.fn();
-
-                const result = netflixScript.handlePlatformSpecificMessage(
-                    message,
-                    mockSendResponse
+    describe('Capitalized content-subclass log privacy', () => {
+        test('does not log script error events', () => {
+            const logSpy = jest
+                .spyOn(netflixScript, 'logWithFallback')
+                .mockImplementation(() => {});
+            const scriptErrorEvent = {
+                type: 'error',
+                [SECRET_PROPERTY]: LOG_SENTINEL,
+            };
+            const injectedScript = {
+                id: '',
+                src: '',
+                onload: null,
+                onerror: null,
+            };
+            const createElementSpy = jest
+                .spyOn(document, 'createElement')
+                .mockReturnValueOnce(injectedScript);
+            const appendChildSpy = jest
+                .spyOn(document.head, 'appendChild')
+                .mockImplementationOnce((node) => node);
+            const getURLSpy = jest
+                .spyOn(chrome.runtime, 'getURL')
+                .mockReturnValueOnce(
+                    'chrome-extension://dualsub-test/injected_scripts/netflixInject.js'
                 );
 
-                // All should be handled synchronously
-                expect(result).toBe(false);
+            try {
+                netflixScript._reinjectScript();
+                expect(typeof injectedScript.onerror).toBe('function');
+                injectedScript.onerror(scriptErrorEvent);
 
-                // All should return consistent format
-                expect(mockSendResponse).toHaveBeenCalledWith(
-                    expect.objectContaining({
-                        success: true,
-                        platform: 'netflix',
-                    })
-                );
-            });
-        });
-
-        test('should handle edge cases that popup might send', () => {
-            const edgeCases = [
-                { action: '', data: 'empty action' },
-                { type: '', level: 'empty type' },
-                { action: null, data: 'null action' },
-                { randomField: 'no action or type' },
-            ];
-
-            edgeCases.forEach((message) => {
-                const mockSendResponse = jest.fn();
-
-                const result = netflixScript.handlePlatformSpecificMessage(
-                    message,
-                    mockSendResponse
-                );
-
-                expect(result).toBe(false);
-                expect(mockSendResponse).toHaveBeenCalledWith(
-                    expect.objectContaining({
-                        success: true,
-                        platform: 'netflix',
-                    })
-                );
-            });
-        });
-    });
-
-    describe('Error handling in integration scenarios', () => {
-        test('should handle popup sending malformed messages', () => {
-            const malformedMessages = [
-                null,
-                undefined,
-                'string instead of object',
-                123,
-                [],
-            ];
-
-            malformedMessages.forEach((message) => {
-                const mockSendResponse = jest.fn();
-
-                const result = netflixScript.handlePlatformSpecificMessage(
-                    message,
-                    mockSendResponse
-                );
-
-                expect(result).toBe(false);
-                // Should handle gracefully and log error
-                expect(consoleLogSpy).toHaveBeenCalledWith(
-                    expect.stringContaining(
-                        'Error in Netflix-specific message handling'
-                    ),
-                    expect.any(Object)
-                );
-            });
-        });
-
-        test('should handle popup callback errors gracefully', () => {
-            const errorCallback = jest.fn(() => {
-                throw new Error('Popup callback error');
-            });
-
-            const message = { action: 'test-action' };
-
-            const result = netflixScript.handlePlatformSpecificMessage(
-                message,
-                errorCallback
-            );
-
-            expect(result).toBe(false);
-
-            // Should log both original processing and callback error
-            expect(consoleLogSpy).toHaveBeenCalledWith(
-                expect.stringContaining('Error sending error response'),
-                expect.objectContaining({
-                    responseError: 'Popup callback error',
-                })
-            );
-        });
-    });
-
-    describe('Performance and memory considerations', () => {
-        test('should handle rapid message sequences without memory leaks', () => {
-            const messages = Array.from({ length: 100 }, (_, i) => ({
-                action: `test-action-${i}`,
-                data: `test-data-${i}`,
-            }));
-
-            messages.forEach((message) => {
-                const mockSendResponse = jest.fn();
-                const result = netflixScript.handlePlatformSpecificMessage(
-                    message,
-                    mockSendResponse
-                );
-
-                expect(result).toBe(false);
-                expect(mockSendResponse).toHaveBeenCalledWith(
-                    expect.objectContaining({
-                        success: true,
-                        platform: 'netflix',
-                    })
-                );
-            });
-
-            // Should not accumulate state or memory
-            expect(netflixScript.messageHandlers.size).toBeGreaterThan(0); // Has registered handlers
-        });
-
-        test('should handle concurrent message processing', async () => {
-            const concurrentMessages = Array.from({ length: 10 }, (_, i) => ({
-                action: `concurrent-action-${i}`,
-                data: `concurrent-data-${i}`,
-            }));
-
-            const promises = concurrentMessages.map((message) => {
-                return new Promise((resolve) => {
-                    const mockSendResponse = jest.fn((response) => {
-                        resolve({ message, response });
-                    });
-
-                    const result = netflixScript.handlePlatformSpecificMessage(
-                        message,
-                        mockSendResponse
-                    );
-                    expect(result).toBe(false); // Should be synchronous
+                expectPrivateLogCalls(logSpy, {
+                    sentinels: [LOG_SENTINEL, SECRET_PROPERTY],
+                    rawValues: [scriptErrorEvent],
                 });
-            });
+            } finally {
+                createElementSpy.mockRestore();
+                appendChildSpy.mockRestore();
+                getURLSpy.mockRestore();
+            }
+        });
 
-            const results = await Promise.all(promises);
-
-            // All should complete successfully
-            expect(results).toHaveLength(10);
-            results.forEach(({ response }) => {
-                expect(response).toMatchObject({
-                    success: true,
-                    platform: 'netflix',
+        test('does not log synchronous reinjection errors', () => {
+            const logSpy = jest
+                .spyOn(netflixScript, 'logWithFallback')
+                .mockImplementation(() => {});
+            const reinjectionError = createSensitiveError();
+            const getURLSpy = jest
+                .spyOn(chrome.runtime, 'getURL')
+                .mockImplementationOnce(() => {
+                    throw reinjectionError;
                 });
-            });
+
+            try {
+                expect(() => netflixScript._reinjectScript()).not.toThrow();
+                expectPrivateLogCalls(logSpy, {
+                    sentinels: [LOG_SENTINEL],
+                    rawValues: [reinjectionError, reinjectionError.cause],
+                });
+            } finally {
+                getURLSpy.mockRestore();
+            }
+        });
+
+        test('rethrows cleanup failures without logging the failure object', async () => {
+            const cleanupError = createSensitiveError();
+            const logSpy = jest
+                .spyOn(netflixScript, 'logWithFallback')
+                .mockImplementation(() => {});
+            const baseCleanupSpy = jest
+                .spyOn(BaseContentScript.prototype, 'cleanup')
+                .mockRejectedValueOnce(cleanupError);
+
+            try {
+                await expect(netflixScript.cleanup()).rejects.toBe(
+                    cleanupError
+                );
+                expectPrivateLogCalls(logSpy, {
+                    sentinels: [LOG_SENTINEL],
+                    rawValues: [cleanupError, cleanupError.cause],
+                });
+            } finally {
+                baseCleanupSpy.mockRestore();
+            }
         });
     });
 });

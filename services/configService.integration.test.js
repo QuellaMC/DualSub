@@ -96,6 +96,56 @@ describe('ConfigService Logger Integration', () => {
         });
     });
 
+    describe('Reset Default Resolution', () => {
+        test('resetToDefaults stores the browser-derived UI language', async () => {
+            const languageSpy = jest
+                .spyOn(navigator, 'language', 'get')
+                .mockReturnValue('ja-JP');
+            chrome.storage.sync.set.mockImplementation((items, callback) =>
+                callback()
+            );
+            chrome.storage.local.set.mockImplementation((items, callback) =>
+                callback()
+            );
+
+            try {
+                await configService.resetToDefaults();
+
+                expect(chrome.storage.sync.set).toHaveBeenCalledWith(
+                    expect.objectContaining({ uiLanguage: 'ja' }),
+                    expect.any(Function)
+                );
+            } finally {
+                languageSpy.mockRestore();
+            }
+        });
+
+        test('resetToDefaults preserves static defaults in their storage areas', async () => {
+            chrome.storage.sync.set.mockImplementation((items, callback) =>
+                callback()
+            );
+            chrome.storage.local.set.mockImplementation((items, callback) =>
+                callback()
+            );
+
+            await configService.resetToDefaults();
+
+            const syncDefaults = chrome.storage.sync.set.mock.calls[0][0];
+            const localDefaults = chrome.storage.local.set.mock.calls[0][0];
+
+            expect(chrome.storage.sync.set).toHaveBeenCalledTimes(1);
+            expect(chrome.storage.local.set).toHaveBeenCalledTimes(1);
+            expect(syncDefaults).toEqual(
+                expect.objectContaining({ hideOfficialSubtitles: true })
+            );
+            expect(localDefaults).toEqual(
+                expect.objectContaining({ debugMode: false })
+            );
+            expect(syncDefaults).not.toHaveProperty('debugMode');
+            expect(localDefaults).not.toHaveProperty('hideOfficialSubtitles');
+        });
+    });
+
     describe('Public Method Debug Logging', () => {
         test('should log debug information for get() method', async () => {
             chrome.storage.sync.get.mockImplementation((keys, callback) => {
@@ -362,22 +412,12 @@ describe('ConfigService Logger Integration', () => {
             await configService.getAll();
 
             expect(mockLogger.debug).toHaveBeenCalledWith('getAll() called', {
-                includeSensitive: true,
+                storageAuthoritative: true,
             });
-            expect(mockLogger.debug).toHaveBeenCalledWith(
-                'getAll() storage breakdown',
-                expect.objectContaining({
-                    syncKeyCount: expect.any(Number),
-                    localKeyCount: expect.any(Number),
-                    totalKeys: expect.any(Number),
-                })
-            );
             expect(mockLogger.debug).toHaveBeenCalledWith(
                 'getAll() completed',
                 expect.objectContaining({
                     totalSettings: expect.any(Number),
-                    defaultsUsed: expect.any(Array),
-                    defaultsUsedCount: expect.any(Number),
                 })
             );
         });
@@ -430,10 +470,11 @@ describe('ConfigService Logger Integration', () => {
 
             expect(mockLogger.error).toHaveBeenCalledWith(
                 'Error in change listener callback',
-                expect.any(Error),
+                null,
                 expect.objectContaining({
                     areaName: 'sync',
                     changedKeys: ['uiLanguage'],
+                    category: 'callback-error',
                 })
             );
         });

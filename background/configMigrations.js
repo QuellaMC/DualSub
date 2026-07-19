@@ -1,3 +1,5 @@
+import { VERTEX_LOCATIONS } from '../content_scripts/shared/constants/providers.js';
+
 const RETIRED_GEMINI_MODELS = new Set(['gemini-1.5-flash', 'gemini-1.5-pro']);
 
 const DEVICE_LOCAL_CREDENTIAL_KEYS = [
@@ -8,15 +10,7 @@ const DEVICE_LOCAL_CREDENTIAL_KEYS = [
     'geminiApiKey',
 ];
 
-const ALLOWED_VERTEX_LOCATIONS = new Set([
-    'us-central1',
-    'us-east1',
-    'us-west1',
-    'europe-west1',
-    'europe-west4',
-    'asia-northeast1',
-    'asia-southeast1',
-]);
+const ALLOWED_VERTEX_LOCATIONS = new Set(VERTEX_LOCATIONS);
 
 const RETIRED_SYNC_KEYS = [
     'translationBatchSize',
@@ -61,12 +55,19 @@ let migrationPromise;
 /**
  * Migrate settings whose storage location or provider contract changed.
  * The migration is idempotent and single-flight for a service-worker lifetime.
+ * Failed attempts are cleared so a later caller can explicitly retry.
  *
  * @returns {Promise<{localUpdates: string[], syncUpdates: string[], removed: string[]}>}
  */
 export function migrateLegacyConfiguration() {
     if (!migrationPromise) {
-        migrationPromise = runMigration();
+        const attempt = runMigration().catch((error) => {
+            if (migrationPromise === attempt) {
+                migrationPromise = undefined;
+            }
+            throw error;
+        });
+        migrationPromise = attempt;
     }
 
     return migrationPromise;

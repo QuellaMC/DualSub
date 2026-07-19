@@ -1,3 +1,4 @@
+import { parseAsync } from '@babel/core';
 import { readdir, readFile } from 'node:fs/promises';
 import { dirname, posix, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -44,6 +45,128 @@ async function listFiles(directory, prefix = '') {
 function globToRegExp(pattern) {
     const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&');
     return new RegExp(`^${escaped.replaceAll('*', '.*')}$`);
+}
+
+function resourceGroupMatchesPath(resourceGroup, filePath) {
+    return (resourceGroup.resources ?? []).some((resourcePattern) => {
+        const normalizedPattern = normalizeExtensionPath(resourcePattern);
+        return normalizedPattern.includes('*')
+            ? globToRegExp(normalizedPattern).test(filePath)
+            : normalizedPattern === filePath;
+    });
+}
+
+function resolveStaticExtensionImport(importerPath, specifier) {
+    const cleanSpecifier = specifier.split(/[?#]/, 1)[0];
+    if (
+        !cleanSpecifier.startsWith('./') &&
+        !cleanSpecifier.startsWith('../') &&
+        !cleanSpecifier.startsWith('/')
+    ) {
+        return null;
+    }
+
+    return cleanSpecifier.startsWith('/')
+        ? normalizeExtensionPath(cleanSpecifier)
+        : normalizeExtensionPath(
+              posix.join(posix.dirname(importerPath), cleanSpecifier)
+          );
+}
+
+async function collectStaticExtensionImports(source, filePath) {
+    const ast = await parseAsync(source, {
+        babelrc: false,
+        configFile: false,
+        filename: filePath,
+        sourceType: 'module',
+    });
+    const imports = [];
+
+    for (const statement of ast?.program?.body ?? []) {
+        if (
+            statement.type !== 'ImportDeclaration' &&
+            statement.type !== 'ExportNamedDeclaration' &&
+            statement.type !== 'ExportAllDeclaration'
+        ) {
+            continue;
+        }
+
+        const specifier = statement.source?.value;
+        if (typeof specifier !== 'string') continue;
+        const resolvedPath = resolveStaticExtensionImport(filePath, specifier);
+        if (resolvedPath) imports.push(resolvedPath);
+    }
+
+    return imports;
+}
+
+async function verifyWarStaticImportClosure(manifest, files, errors) {
+    const reportedErrors = new Set();
+    const resourceGroups = manifest.web_accessible_resources ?? [];
+    const reportOnce = (key, message) => {
+        if (reportedErrors.has(key)) return;
+        reportedErrors.add(key);
+        errors.push(message);
+    };
+
+    for (const [index, resourceGroup] of resourceGroups.entries()) {
+        const label = `web_accessible_resources[${index}]`;
+        const queue = [...files]
+            .filter(
+                (filePath) =>
+                    filePath.endsWith('.js') &&
+                    resourceGroupMatchesPath(resourceGroup, filePath)
+            )
+            .sort();
+        const visited = new Set();
+
+        while (queue.length > 0) {
+            const importerPath = queue.shift();
+            if (visited.has(importerPath)) continue;
+            visited.add(importerPath);
+
+            let importedPaths;
+            try {
+                const source = await readFile(
+                    resolve(distDir, importerPath),
+                    'utf8'
+                );
+                importedPaths = await collectStaticExtensionImports(
+                    source,
+                    importerPath
+                );
+            } catch (_) {
+                reportOnce(
+                    `${label}:parse:${importerPath}`,
+                    `${label} could not parse built JavaScript module: ${importerPath}`
+                );
+                continue;
+            }
+
+            for (const importedPath of importedPaths) {
+                if (!files.has(importedPath)) {
+                    reportOnce(
+                        `${label}:missing:${importedPath}`,
+                        `${label} static import dependency is missing from the build: ${importedPath}`
+                    );
+                    continue;
+                }
+                if (!resourceGroupMatchesPath(resourceGroup, importedPath)) {
+                    reportOnce(
+                        `${label}:unexposed:${importedPath}`,
+                        `${label} does not expose static import dependency: ${importedPath}`
+                    );
+                    continue;
+                }
+                if (
+                    importedPath.endsWith('.js') &&
+                    !visited.has(importedPath)
+                ) {
+                    queue.push(importedPath);
+                }
+            }
+        }
+    }
 }
 
 function collectManifestPaths(manifest) {
@@ -162,6 +285,8 @@ async function main() {
             errors.push(`${label} references a missing built file: ${path}`);
         }
     }
+
+    await verifyWarStaticImportClosure(manifest, files, errors);
 
     for (const htmlPath of [...files].filter((filePath) =>
         filePath.endsWith('.html')

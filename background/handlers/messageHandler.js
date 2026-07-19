@@ -13,32 +13,575 @@
 // @ts-check
 
 import { loggingManager } from '../utils/loggingManager.js';
+import { getTrustedTranslationFailureMetadata } from '../services/serviceInterfaces.js';
+import { getDisneySubtitleFailureMetadata } from '../services/subtitleService.js';
 import {
-    ServiceProtocol,
-    TranslationError,
-    SubtitleProcessingError,
-} from '../services/serviceInterfaces.js';
-import { MessageActions } from '../../content_scripts/shared/constants/messageActions.js';
+    MessageActions,
+    SubtitleRequestSources,
+} from '../../content_scripts/shared/constants/messageActions.js';
+import {
+    authorizeSubtitleRequest,
+    isAuthorizedSubtitleRequestSnapshot,
+} from '../utils/subtitleRequestPolicy.js';
 import {
     combineContextAnalyses,
     CONTEXT_TYPES,
 } from '../../context_providers/contextSchemas.js';
+import {
+    buildAnalyzeContextFailureResponse,
+    buildAnalyzeContextSuccessResponse,
+    buildBackgroundReadinessResponseMessage,
+    buildSidePanelContentSelectionSnapshotResponse,
+    buildTranslationFailureResponse,
+    buildTranslationSuccessResponse,
+    classifyExtensionMessageSender,
+    MessageSenderRoles,
+    parseAnalyzeContextRequestMessage,
+    parseBackgroundReadinessRequestMessage,
+    parseSidePanelContentSelectionSnapshotMessage,
+    parseSidePanelWordIntentMessage,
+    parseTranslationRequestMessage,
+    readProtocolMessageAction,
+} from '../../content_scripts/shared/protocol/messageProtocol.js';
 
-const SUPPORTED_CONTEXT_TYPES = new Set(CONTEXT_TYPES);
+const MAX_TRANSLATION_RETRY_AFTER_MS = 30 * 24 * 60 * 60 * 1000;
+const MAX_SUBTITLE_RESPONDERS_PER_FLIGHT = 8;
+const MAX_SUBTITLE_FLIGHTS_PER_TAB_SOURCE = 2;
+const MAX_SUBTITLE_FLIGHTS_GLOBAL = 8;
+const SUBTITLE_PROCESSING_FAILURE_ERROR = 'Subtitle processing failed';
+const SUBTITLE_SERVICE_UNAVAILABLE_ERROR = 'Subtitle service not initialized';
+const SUBTITLE_REQUEST_REJECTED_RESPONSE = Object.freeze({
+    success: false,
+    error: 'Subtitle request rejected',
+});
+const SUBTITLE_READINESS_FAILURE_RESPONSE = Object.freeze({
+    success: false,
+    error: 'Background services unavailable',
+});
+const INVALID_MESSAGE_RESPONSE = Object.freeze({
+    success: false,
+    error: 'Invalid message',
+});
+const SIDEPANEL_WORD_INTENT_ACCEPTED_RESPONSE = Object.freeze({
+    success: true,
+});
+const SIDEPANEL_WORD_INTENT_REJECTED_RESPONSE = Object.freeze({
+    success: false,
+});
+const ANALYZE_CONTEXT_FAILED_ERROR = 'Context analysis failed';
+const ANALYZE_CONTEXT_REJECTED_ERROR = 'Context analysis rejected';
+const ANALYZE_CONTEXT_UNAVAILABLE_ERROR = 'Context analysis unavailable';
+const UNKNOWN_DISNEY_SUBTITLE_FAILURE = Object.freeze({
+    stage: 'unknown',
+    errorCode: 'DISNEY_SUBTITLE_PROCESSING_FAILED',
+});
+const ALLOWED_DISNEY_SUBTITLE_FAILURES = new Map([
+    ['master-fetch', 'DISNEY_MASTER_FETCH_FAILED'],
+    ['master-parse', 'DISNEY_MASTER_PARSE_FAILED'],
+    ['media-fetch', 'DISNEY_MEDIA_FETCH_FAILED'],
+    ['vtt-fetch', 'DISNEY_VTT_FETCH_FAILED'],
+]);
+const UNPINNED_MESSAGE_ACTION = Symbol('unpinned-message-action');
+const DISNEY_AUTHORIZED_SNAPSHOT_KEYS = Object.freeze([
+    'action',
+    'source',
+    'tabId',
+    'videoId',
+    'url',
+    'targetLanguage',
+    'originalLanguage',
+]);
+const NETFLIX_AUTHORIZED_SNAPSHOT_KEYS = Object.freeze([
+    'action',
+    'source',
+    'tabId',
+    'videoId',
+    'targetLanguage',
+    'originalLanguage',
+    'useNativeSubtitles',
+    'useOfficialTranslations',
+    'data',
+]);
+const NETFLIX_TRACK_KEYS = Object.freeze([
+    'language',
+    'displayName',
+    'isNoneTrack',
+    'isForcedNarrative',
+    'ttDownloadables',
+]);
+
+function hasExactOwnKeys(value, expectedKeys) {
+    const keys = Reflect.ownKeys(value);
+    return (
+        keys.length === expectedKeys.length &&
+        expectedKeys.every((key) => Object.hasOwn(value, key))
+    );
+}
+
+function isSameNetflixTrack(left, right) {
+    const leftHasTrackType = Object.hasOwn(left, 'trackType');
+    const rightHasTrackType = Object.hasOwn(right, 'trackType');
+    const expectedTrackKeys = leftHasTrackType
+        ? [...NETFLIX_TRACK_KEYS, 'trackType']
+        : NETFLIX_TRACK_KEYS;
+    if (
+        leftHasTrackType !== rightHasTrackType ||
+        !hasExactOwnKeys(left, expectedTrackKeys) ||
+        !hasExactOwnKeys(right, expectedTrackKeys) ||
+        left.language !== right.language ||
+        left.displayName !== right.displayName ||
+        (leftHasTrackType && left.trackType !== right.trackType) ||
+        left.isNoneTrack !== right.isNoneTrack ||
+        left.isForcedNarrative !== right.isForcedNarrative
+    ) {
+        return false;
+    }
+
+    const leftFormats = Reflect.ownKeys(left.ttDownloadables);
+    const rightFormats = Reflect.ownKeys(right.ttDownloadables);
+    if (
+        leftFormats.length !== 1 ||
+        rightFormats.length !== 1 ||
+        typeof leftFormats[0] !== 'string' ||
+        leftFormats[0] !== rightFormats[0]
+    ) {
+        return false;
+    }
+
+    const leftFormat = left.ttDownloadables[leftFormats[0]];
+    const rightFormat = right.ttDownloadables[rightFormats[0]];
+    if (
+        !hasExactOwnKeys(leftFormat, ['urls']) ||
+        !hasExactOwnKeys(rightFormat, ['urls']) ||
+        !Array.isArray(leftFormat.urls) ||
+        !Array.isArray(rightFormat.urls) ||
+        leftFormat.urls.length !== 1 ||
+        rightFormat.urls.length !== 1 ||
+        Reflect.ownKeys(leftFormat.urls).length !== 2 ||
+        Reflect.ownKeys(rightFormat.urls).length !== 2
+    ) {
+        return false;
+    }
+
+    return leftFormat.urls[0] === rightFormat.urls[0];
+}
+
+function isSameNetflixAuthorizedRequest(left, right) {
+    if (
+        !hasExactOwnKeys(left, NETFLIX_AUTHORIZED_SNAPSHOT_KEYS) ||
+        !hasExactOwnKeys(right, NETFLIX_AUTHORIZED_SNAPSHOT_KEYS) ||
+        !hasExactOwnKeys(left.data, ['tracks']) ||
+        !hasExactOwnKeys(right.data, ['tracks']) ||
+        left.action !== right.action ||
+        left.tabId !== right.tabId ||
+        left.videoId !== right.videoId ||
+        left.targetLanguage !== right.targetLanguage ||
+        left.originalLanguage !== right.originalLanguage ||
+        left.useNativeSubtitles !== right.useNativeSubtitles ||
+        left.useOfficialTranslations !== right.useOfficialTranslations ||
+        left.data.tracks.length !== right.data.tracks.length
+    ) {
+        return false;
+    }
+
+    for (let index = 0; index < left.data.tracks.length; index += 1) {
+        if (
+            !isSameNetflixTrack(
+                left.data.tracks[index],
+                right.data.tracks[index]
+            )
+        ) {
+            return false;
+        }
+    }
+    return true;
+}
+
+function isSameAuthorizedSubtitleRequest(left, right) {
+    if (
+        !isAuthorizedSubtitleRequestSnapshot(left) ||
+        !isAuthorizedSubtitleRequestSnapshot(right) ||
+        left.source !== right.source
+    ) {
+        return false;
+    }
+
+    if (left.source === SubtitleRequestSources.DISNEY_PLUS) {
+        return (
+            hasExactOwnKeys(left, DISNEY_AUTHORIZED_SNAPSHOT_KEYS) &&
+            hasExactOwnKeys(right, DISNEY_AUTHORIZED_SNAPSHOT_KEYS) &&
+            left.action === right.action &&
+            left.tabId === right.tabId &&
+            left.videoId === right.videoId &&
+            left.url === right.url &&
+            left.targetLanguage === right.targetLanguage &&
+            left.originalLanguage === right.originalLanguage
+        );
+    }
+
+    if (left.source === SubtitleRequestSources.NETFLIX) {
+        return isSameNetflixAuthorizedRequest(left, right);
+    }
+
+    return false;
+}
+
+function createSubtitleRequestLease(snapshot) {
+    if (!isAuthorizedSubtitleRequestSnapshot(snapshot)) return null;
+    return Object.freeze({
+        frameId: 0,
+        platform: snapshot.source,
+        tabId: snapshot.tabId,
+        videoId: snapshot.videoId,
+    });
+}
+
+function subtitleRequestLeasesEqual(left, right) {
+    return Boolean(
+        left &&
+        right &&
+        left.frameId === right.frameId &&
+        left.platform === right.platform &&
+        left.tabId === right.tabId &&
+        left.videoId === right.videoId
+    );
+}
 
 /**
- * @typedef {'translate'|'translateBatch'|'checkBatchSupport'|'fetchVTT'|'changeProvider'|'analyzeContext'|'changeContextProvider'|'getContextStatus'|'getAvailableModels'|'getDefaultModel'|'reloadContextProviderConfig'|'ping'|'checkBackgroundReady'} MessageAction
+ * Read an own data property without executing an accessor.
+ *
+ * @param {object} object
+ * @param {PropertyKey} key
+ * @returns {unknown}
+ */
+function getOwnDataProperty(object, key) {
+    const descriptor = Object.getOwnPropertyDescriptor(object, key);
+    if (
+        !descriptor ||
+        !Object.prototype.hasOwnProperty.call(descriptor, 'value')
+    ) {
+        throw new TypeError('Expected an own data property');
+    }
+    return descriptor.value;
+}
+
+function getOptionalOwnDataProperty(object, key) {
+    const descriptor = Object.getOwnPropertyDescriptor(object, key);
+    if (!descriptor) return undefined;
+    if (!Object.prototype.hasOwnProperty.call(descriptor, 'value')) {
+        throw new TypeError('Expected an own data property');
+    }
+    return descriptor.value;
+}
+
+function readInternalSubtitleSignal(options, invalidInputMessage) {
+    if (options === undefined) return undefined;
+    if (
+        options === null ||
+        (typeof options !== 'object' && typeof options !== 'function')
+    ) {
+        throw new TypeError(invalidInputMessage);
+    }
+
+    let descriptor;
+    try {
+        descriptor = Object.getOwnPropertyDescriptor(options, 'signal');
+    } catch (_) {
+        throw new TypeError(invalidInputMessage);
+    }
+    if (!descriptor) return undefined;
+    if (!Object.hasOwn(descriptor, 'value')) {
+        throw new TypeError(invalidInputMessage);
+    }
+    return descriptor.value;
+}
+
+function normalizeRetryAfter(resetTime, now) {
+    if (
+        typeof resetTime !== 'number' ||
+        !Number.isFinite(resetTime) ||
+        resetTime < now
+    ) {
+        return null;
+    }
+    const retryAfter = Math.ceil(resetTime - now);
+    return Number.isSafeInteger(retryAfter) &&
+        retryAfter >= 0 &&
+        retryAfter <= MAX_TRANSLATION_RETRY_AFTER_MS
+        ? retryAfter
+        : null;
+}
+
+function getRateLimitRetryAfter(resetTimes) {
+    const now = Date.now();
+    const applicableResetTimes = resetTimes.filter(
+        (resetTime) =>
+            typeof resetTime === 'number' &&
+            Number.isFinite(resetTime) &&
+            resetTime >= now
+    );
+    if (applicableResetTimes.length === 0) {
+        return null;
+    }
+    return normalizeRetryAfter(Math.max(...applicableResetTimes), now);
+}
+
+function getTranslationFailureMetadata(error) {
+    const safeDefault = { retryable: false, retryAfter: null };
+    try {
+        const metadata = getTrustedTranslationFailureMetadata(error);
+        if (!metadata) {
+            return safeDefault;
+        }
+        if (
+            metadata.resetTimes !== null &&
+            !Array.isArray(metadata.resetTimes)
+        ) {
+            return safeDefault;
+        }
+        return {
+            retryable: metadata.retryable === true,
+            retryAfter:
+                metadata.resetTimes === null
+                    ? null
+                    : getRateLimitRetryAfter(metadata.resetTimes),
+        };
+    } catch (_) {
+        return safeDefault;
+    }
+}
+
+function getSafeDisneySubtitleFailureMetadata(error) {
+    try {
+        const metadata = getDisneySubtitleFailureMetadata(error);
+        if (
+            metadata &&
+            ALLOWED_DISNEY_SUBTITLE_FAILURES.get(metadata.stage) ===
+                metadata.errorCode
+        ) {
+            return metadata;
+        }
+    } catch (_) {}
+    return UNKNOWN_DISNEY_SUBTITLE_FAILURE;
+}
+
+function getSafeProcessingTime(startedAt) {
+    const elapsed = Date.now() - startedAt;
+    return Number.isSafeInteger(elapsed) && elapsed >= 0 ? elapsed : 0;
+}
+
+function getSubtitleDisplayName(result, sourceLanguage) {
+    const availableLanguages = getOptionalOwnDataProperty(
+        result,
+        'availableLanguages'
+    );
+    if (availableLanguages === undefined) return sourceLanguage;
+    if (!Array.isArray(availableLanguages)) {
+        throw new TypeError('Subtitle processing result is invalid');
+    }
+
+    const length = getOwnDataProperty(availableLanguages, 'length');
+    if (!Number.isSafeInteger(length) || length < 0) {
+        throw new TypeError('Subtitle processing result is invalid');
+    }
+
+    for (let index = 0; index < length; index += 1) {
+        const language = getOwnDataProperty(availableLanguages, String(index));
+        if (!language || typeof language !== 'object') {
+            throw new TypeError('Subtitle processing result is invalid');
+        }
+        const languagePrototype = Object.getPrototypeOf(language);
+        if (
+            languagePrototype !== Object.prototype &&
+            languagePrototype !== null
+        ) {
+            throw new TypeError('Subtitle processing result is invalid');
+        }
+        const normalizedCode = getOwnDataProperty(language, 'normalizedCode');
+        if (typeof normalizedCode !== 'string') {
+            throw new TypeError('Subtitle processing result is invalid');
+        }
+        if (normalizedCode !== sourceLanguage) continue;
+
+        const displayName = getOwnDataProperty(language, 'displayName');
+        if (typeof displayName !== 'string') {
+            throw new TypeError('Subtitle processing result is invalid');
+        }
+        return displayName;
+    }
+
+    return sourceLanguage;
+}
+
+function createSubtitleSuccessResponse(result, videoId) {
+    if (!result || typeof result !== 'object') {
+        throw new TypeError('Subtitle processing result is invalid');
+    }
+    const resultPrototype = Object.getPrototypeOf(result);
+    if (resultPrototype !== Object.prototype && resultPrototype !== null) {
+        throw new TypeError('Subtitle processing result is invalid');
+    }
+    const vttText = getOwnDataProperty(result, 'vttText');
+    const targetVttText = getOwnDataProperty(result, 'targetVttText');
+    const sourceLanguage = getOwnDataProperty(result, 'sourceLanguage');
+    const targetLanguage = getOwnDataProperty(result, 'targetLanguage');
+    const useNativeTarget = getOwnDataProperty(result, 'useNativeTarget');
+    if (
+        typeof vttText !== 'string' ||
+        (targetVttText !== null && typeof targetVttText !== 'string') ||
+        typeof sourceLanguage !== 'string' ||
+        typeof targetLanguage !== 'string' ||
+        typeof useNativeTarget !== 'boolean'
+    ) {
+        throw new TypeError('Subtitle processing result is invalid');
+    }
+
+    const displayName = getSubtitleDisplayName(result, sourceLanguage);
+
+    return {
+        success: true,
+        vttText,
+        targetVttText,
+        videoId,
+        sourceLanguage,
+        targetLanguage,
+        useNativeTarget,
+        selectedLanguage: {
+            normalizedCode: sourceLanguage,
+            displayName,
+        },
+    };
+}
+
+function createSubtitleProcessingFailureResponse(videoId) {
+    return {
+        success: false,
+        error: SUBTITLE_PROCESSING_FAILURE_ERROR,
+        videoId,
+    };
+}
+
+function createSubtitleServiceUnavailableResponse(videoId) {
+    return {
+        success: false,
+        error: SUBTITLE_SERVICE_UNAVAILABLE_ERROR,
+        videoId,
+    };
+}
+
+function createSubtitleSuccessResponseForRecipient(response) {
+    return {
+        success: true,
+        vttText: response.vttText,
+        targetVttText: response.targetVttText,
+        videoId: response.videoId,
+        sourceLanguage: response.sourceLanguage,
+        targetLanguage: response.targetLanguage,
+        useNativeTarget: response.useNativeTarget,
+        selectedLanguage: {
+            normalizedCode: response.selectedLanguage.normalizedCode,
+            displayName: response.selectedLanguage.displayName,
+        },
+    };
+}
+
+function createSubtitleResponseForRecipient(response) {
+    if (response?.success === true) {
+        return createSubtitleSuccessResponseForRecipient(response);
+    }
+    if (response?.success === false && Object.hasOwn(response, 'videoId')) {
+        if (response.error === SUBTITLE_PROCESSING_FAILURE_ERROR) {
+            return createSubtitleProcessingFailureResponse(response.videoId);
+        }
+        if (response.error === SUBTITLE_SERVICE_UNAVAILABLE_ERROR) {
+            return createSubtitleServiceUnavailableResponse(response.videoId);
+        }
+    }
+    return response;
+}
+
+function sendResponseSafely(sendResponse, response) {
+    try {
+        sendResponse(response);
+    } catch (_) {}
+}
+
+function createAnalyzeSenderSnapshot(identity) {
+    if (identity?.role === MessageSenderRoles.SIDEPANEL) {
+        return Object.freeze({ role: identity.role });
+    }
+    if (identity?.role !== MessageSenderRoles.CONTENT) return null;
+
+    return Object.freeze({
+        role: identity.role,
+        platform: identity.platform,
+        tabId: identity.tabId,
+        windowId: identity.windowId,
+        documentId: identity.documentId,
+        documentLifecycle: identity.documentLifecycle,
+        frameId: identity.frameId,
+    });
+}
+
+function createSelectionSenderSnapshot(identity) {
+    if (identity?.role !== MessageSenderRoles.CONTENT) return null;
+
+    return Object.freeze({
+        role: identity.role,
+        platform: identity.platform,
+        tabId: identity.tabId,
+        windowId: identity.windowId,
+        documentId: identity.documentId,
+        documentLifecycle: identity.documentLifecycle,
+        frameId: identity.frameId,
+    });
+}
+
+function createAnalyzeMetadata(request, sender) {
+    const metadata = {
+        requestedContextTypes: Object.freeze([...request.contextTypes]),
+        sourceLanguage:
+            sender.role === MessageSenderRoles.CONTENT
+                ? request.language
+                : 'auto',
+        targetLanguage: request.targetLanguage,
+    };
+    if (sender.role === MessageSenderRoles.CONTENT) {
+        metadata.platform = sender.platform;
+    }
+    return Object.freeze(metadata);
+}
+
+function normalizeAnalyzeServiceResult(senderRole, request, result) {
+    try {
+        if (getOwnDataProperty(result, 'success') !== true) {
+            return {
+                success: false,
+                shouldRetry:
+                    getOptionalOwnDataProperty(result, 'shouldRetry') === true,
+            };
+        }
+
+        const response = buildAnalyzeContextSuccessResponse(
+            senderRole,
+            request,
+            { analysis: getOwnDataProperty(result, 'analysis') }
+        );
+        return { success: true, analysis: response.result.analysis };
+    } catch (_) {
+        return { success: false, shouldRetry: false };
+    }
+}
+
+/**
+ * @typedef {'translate'|'fetchVTT'|'analyzeContext'|'ping'|'checkBackgroundReady'} MessageAction
  */
 
 /**
  * @typedef {Object} IncomingMessage
  * @property {MessageAction} action
  * @property {string} [text]
- * @property {string[]} [texts]
  * @property {string} [targetLang]
- * @property {string} [delimiter]
- * @property {string} [batchId]
- * @property {Object} [cueMetadata]
  * @property {string} [url]
  * @property {string} [videoId]
  * @property {Object} [data]
@@ -50,104 +593,48 @@ const SUPPORTED_CONTEXT_TYPES = new Set(CONTEXT_TYPES);
 class MessageHandler {
     /**
      * Validate incoming message payload for critical actions.
-     * Returns { valid: boolean, error?: string }
      * @param {IncomingMessage} message
      */
-    static validateMessagePayload(message) {
+    static validateMessagePayload(
+        message,
+        pinnedAction = UNPINNED_MESSAGE_ACTION
+    ) {
         if (!message || typeof message !== 'object') {
             return { valid: false, error: 'Invalid message object' };
         }
-        const action = /** @type {any} */ (message.action);
+        let action = pinnedAction;
+        if (action === UNPINNED_MESSAGE_ACTION) {
+            try {
+                action = getOwnDataProperty(message, 'action');
+            } catch (_) {
+                return { valid: false, error: 'Missing or invalid action' };
+            }
+        }
         if (!action || typeof action !== 'string') {
             return { valid: false, error: 'Missing or invalid action' };
         }
         switch (action) {
-            case MessageActions.TRANSLATE:
-                if (
-                    typeof message.text !== 'string' ||
-                    typeof message.targetLang !== 'string'
-                ) {
+            case MessageActions.TRANSLATE: {
+                const request = parseTranslationRequestMessage(message);
+                if (!request) {
                     return {
                         valid: false,
-                        error: 'translate requires text and targetLang',
+                        error: 'Invalid translation request',
                     };
                 }
-                break;
-            case MessageActions.TRANSLATE_BATCH:
-                if (
-                    !Array.isArray(message.texts) ||
-                    typeof message.targetLang !== 'string'
-                ) {
-                    return {
-                        valid: false,
-                        error: 'translateBatch requires texts[] and targetLang',
-                    };
-                }
-                break;
+                return { valid: true, action, request };
+            }
             case MessageActions.FETCH_VTT:
-                // Accept either URL-based or Netflix data-based payload shape
-                if (
-                    !message.url &&
-                    !(message.data && Array.isArray(message.data.tracks))
-                ) {
-                    return {
-                        valid: false,
-                        error: 'fetchVTT requires url or data.tracks[]',
-                    };
-                }
+                // Runtime FETCH_VTT messages are validated and copied by the
+                // subtitle request policy before they reach generic dispatch.
+                // Direct calls must reach the private-brand gate without
+                // traversing attacker-controlled URL or track properties.
                 break;
             default:
                 // For other actions, do minimal validation
                 break;
         }
-        return { valid: true };
-    }
-
-    static normalizeContextTypes(
-        contextType,
-        contextTypes,
-        hasExplicitContextTypes = Array.isArray(contextTypes)
-    ) {
-        if (hasExplicitContextTypes) {
-            if (!Array.isArray(contextTypes)) {
-                return {
-                    valid: false,
-                    error: 'Context types must be an array',
-                };
-            }
-
-            const normalized = [...new Set(contextTypes)];
-            if (normalized.length === 0) {
-                return {
-                    valid: false,
-                    error: 'Select at least one context type',
-                };
-            }
-
-            const invalidTypes = normalized.filter(
-                (type) => !SUPPORTED_CONTEXT_TYPES.has(type)
-            );
-            if (invalidTypes.length > 0) {
-                return {
-                    valid: false,
-                    error: `Unsupported context type: ${invalidTypes.join(', ')}`,
-                };
-            }
-
-            return { valid: true, contextTypes: normalized };
-        }
-
-        if (contextType === undefined || contextType === 'all') {
-            return { valid: true, contextTypes: ['all'] };
-        }
-        if (SUPPORTED_CONTEXT_TYPES.has(contextType)) {
-            return { valid: true, contextTypes: [contextType] };
-        }
-
-        return {
-            valid: false,
-            error: `Unsupported context type: ${String(contextType)}`,
-        };
+        return { valid: true, action };
     }
 
     constructor() {
@@ -158,7 +645,10 @@ class MessageHandler {
         this.sidePanelService = null;
         this.serviceReadiness = null;
         this.runtimeMessageListener = null;
-        this.sidePanelGestureOperations = new WeakMap();
+        this.subtitleRequestFlights = new Set();
+        this.translationReadinessFlights = new Set();
+        this.analyzeContextFlights = new Set();
+        this.lifecycleEpoch = 0;
         this.isInitialized = false;
     }
 
@@ -174,13 +664,100 @@ class MessageHandler {
             return;
         }
 
+        const listenerEpoch = this.lifecycleEpoch + 1;
+        this.lifecycleEpoch = listenerEpoch;
+
         this.logger = loggingManager.createLogger('MessageHandler');
 
         this.runtimeMessageListener = (message, sender, sendResponse) => {
-            this.captureSynchronousSidePanelGesture(message, sender);
+            if (!this.isInitialized || this.lifecycleEpoch !== listenerEpoch) {
+                const staleAction = readProtocolMessageAction(message);
+                if (staleAction === MessageActions.SIDEPANEL_SELECTION_SYNC) {
+                    return this.handleSidePanelSelectionSyncIngress(
+                        message,
+                        sender,
+                        sendResponse,
+                        listenerEpoch
+                    );
+                }
+                if (staleAction === MessageActions.SIDEPANEL_WORD_SELECTED) {
+                    return this.handleSidePanelWordIntentIngress(
+                        message,
+                        sender,
+                        sendResponse,
+                        listenerEpoch
+                    );
+                }
+                sendResponseSafely(
+                    sendResponse,
+                    SUBTITLE_REQUEST_REJECTED_RESPONSE
+                );
+                return false;
+            }
+
+            const action = readProtocolMessageAction(message);
+            if (!action) {
+                sendResponseSafely(sendResponse, INVALID_MESSAGE_RESPONSE);
+                return false;
+            }
+            if (action === MessageActions.FETCH_VTT) {
+                return this.handleSubtitleRequestIngress(
+                    message,
+                    sender,
+                    sendResponse,
+                    listenerEpoch
+                );
+            }
+            if (action === MessageActions.TRANSLATE) {
+                return this.handleTranslationRequestIngress(
+                    message,
+                    sender,
+                    sendResponse,
+                    listenerEpoch
+                );
+            }
+            if (action === MessageActions.ANALYZE_CONTEXT) {
+                return this.handleAnalyzeContextRequestIngress(
+                    message,
+                    sender,
+                    sendResponse,
+                    listenerEpoch
+                );
+            }
+            if (action === MessageActions.SIDEPANEL_SELECTION_SYNC) {
+                return this.handleSidePanelSelectionSyncIngress(
+                    message,
+                    sender,
+                    sendResponse,
+                    listenerEpoch
+                );
+            }
+            if (action === MessageActions.SIDEPANEL_WORD_SELECTED) {
+                return this.handleSidePanelWordIntentIngress(
+                    message,
+                    sender,
+                    sendResponse,
+                    listenerEpoch
+                );
+            }
+            if (
+                action === MessageActions.PING ||
+                action === MessageActions.CHECK_BACKGROUND_READY
+            ) {
+                return this.handleBackgroundReadinessIngress(
+                    message,
+                    sender,
+                    sendResponse
+                );
+            }
 
             if (!this.serviceReadiness || this.serviceReadiness.isReady()) {
-                return this.handleMessage(message, sender, sendResponse);
+                return this.handleMessage(
+                    message,
+                    sender,
+                    sendResponse,
+                    action
+                );
             }
 
             this.serviceReadiness
@@ -194,7 +771,8 @@ class MessageHandler {
                     const keepsChannelOpen = this.handleMessage(
                         message,
                         sender,
-                        deferredSendResponse
+                        deferredSendResponse,
+                        action
                     );
                     if (keepsChannelOpen !== true && !responded) {
                         sendResponse();
@@ -204,7 +782,7 @@ class MessageHandler {
                     this.logger.error(
                         'Background services failed before message handling',
                         error,
-                        { action: message?.action }
+                        { action }
                     );
                     try {
                         sendResponse({
@@ -225,7 +803,623 @@ class MessageHandler {
         this.isInitialized = true;
     }
 
+    handleTranslationRequestIngress(
+        message,
+        sender,
+        sendResponse,
+        listenerEpoch = this.lifecycleEpoch
+    ) {
+        const request = parseTranslationRequestMessage(message);
+        if (!request) {
+            // Inexact records have no trusted cue identity to echo. Return the
+            // generic fixed rejection without inspecting individual fields;
+            // sender rejections below can use the detached request envelope.
+            sendResponseSafely(sendResponse, INVALID_MESSAGE_RESPONSE);
+            return false;
+        }
+
+        const classifiedSender = classifyExtensionMessageSender(sender);
+        const senderSnapshot = classifiedSender
+            ? Object.freeze({ role: classifiedSender.role })
+            : null;
+        if (senderSnapshot?.role !== MessageSenderRoles.CONTENT) {
+            sendResponseSafely(
+                sendResponse,
+                buildTranslationFailureResponse(request, {
+                    retryable: false,
+                    retryAfter: null,
+                })
+            );
+            return false;
+        }
+
+        if (!this.isInitialized || this.lifecycleEpoch !== listenerEpoch) {
+            sendResponseSafely(
+                sendResponse,
+                buildTranslationFailureResponse(request, {
+                    retryable: false,
+                    retryAfter: null,
+                })
+            );
+            return false;
+        }
+
+        if (!this.serviceReadiness || this.serviceReadiness.isReady()) {
+            return this.handleTranslateMessage(request, sendResponse);
+        }
+
+        const flight = {
+            accepting: true,
+            listenerEpoch,
+            request,
+            responder: sendResponse,
+            sender: senderSnapshot,
+        };
+        this.translationReadinessFlights.add(flight);
+        this.serviceReadiness
+            .waitUntilReady()
+            .then(() => {
+                if (!flight.accepting) return;
+                if (
+                    !this.isInitialized ||
+                    this.lifecycleEpoch !== flight.listenerEpoch ||
+                    flight.sender.role !== MessageSenderRoles.CONTENT
+                ) {
+                    this.settleTranslationReadinessFlight(
+                        flight,
+                        buildTranslationFailureResponse(flight.request, {
+                            retryable: false,
+                            retryAfter: null,
+                        })
+                    );
+                    return;
+                }
+
+                flight.accepting = false;
+                this.translationReadinessFlights.delete(flight);
+                this.handleTranslateMessage(flight.request, flight.responder);
+            })
+            .catch(() => {
+                if (!flight.accepting) return;
+                try {
+                    this.logger?.error(
+                        'Background services unavailable before translation handling',
+                        { action: MessageActions.TRANSLATE }
+                    );
+                } catch (_) {}
+                this.settleTranslationReadinessFlight(
+                    flight,
+                    buildTranslationFailureResponse(flight.request, {
+                        retryable: false,
+                        retryAfter: null,
+                    })
+                );
+            });
+
+        return true;
+    }
+
+    settleTranslationReadinessFlight(flight, response) {
+        if (!flight.accepting) return;
+        flight.accepting = false;
+        this.translationReadinessFlights.delete(flight);
+        sendResponseSafely(flight.responder, response);
+        flight.request = null;
+        flight.responder = null;
+        flight.sender = null;
+    }
+
+    handleAnalyzeContextRequestIngress(
+        message,
+        sender,
+        sendResponse,
+        listenerEpoch = this.lifecycleEpoch
+    ) {
+        const senderSnapshot = createAnalyzeSenderSnapshot(
+            classifyExtensionMessageSender(sender)
+        );
+        if (!senderSnapshot) {
+            sendResponseSafely(sendResponse, INVALID_MESSAGE_RESPONSE);
+            return false;
+        }
+
+        const request = parseAnalyzeContextRequestMessage(
+            message,
+            senderSnapshot.role
+        );
+        if (!request) {
+            sendResponseSafely(sendResponse, INVALID_MESSAGE_RESPONSE);
+            return false;
+        }
+
+        if (
+            senderSnapshot.role === MessageSenderRoles.CONTENT &&
+            request.platform !== senderSnapshot.platform
+        ) {
+            sendResponseSafely(
+                sendResponse,
+                buildAnalyzeContextFailureResponse(
+                    senderSnapshot.role,
+                    request,
+                    {
+                        error: ANALYZE_CONTEXT_REJECTED_ERROR,
+                        shouldRetry: false,
+                    }
+                )
+            );
+            return false;
+        }
+
+        if (!this.isInitialized || this.lifecycleEpoch !== listenerEpoch) {
+            sendResponseSafely(
+                sendResponse,
+                buildAnalyzeContextFailureResponse(
+                    senderSnapshot.role,
+                    request,
+                    {
+                        error: ANALYZE_CONTEXT_UNAVAILABLE_ERROR,
+                        shouldRetry: false,
+                    }
+                )
+            );
+            return false;
+        }
+
+        const flight = {
+            accepting: true,
+            listenerEpoch,
+            request,
+            responder: sendResponse,
+            sender: senderSnapshot,
+        };
+        this.analyzeContextFlights.add(flight);
+
+        if (!this.serviceReadiness || this.serviceReadiness.isReady()) {
+            this.startAnalyzeContextFlight(flight);
+            return true;
+        }
+
+        this.serviceReadiness
+            .waitUntilReady()
+            .then(() => this.startAnalyzeContextFlight(flight))
+            .catch(() => {
+                if (!flight.accepting) return;
+                try {
+                    this.logger?.error(
+                        'Background services unavailable before context analysis',
+                        { action: MessageActions.ANALYZE_CONTEXT }
+                    );
+                } catch (_) {}
+                this.failAnalyzeContextFlight(
+                    flight,
+                    ANALYZE_CONTEXT_UNAVAILABLE_ERROR,
+                    false
+                );
+            });
+
+        return true;
+    }
+
+    handleSidePanelSelectionSyncIngress(
+        message,
+        sender,
+        sendResponse,
+        listenerEpoch = this.lifecycleEpoch
+    ) {
+        const senderSnapshot = createSelectionSenderSnapshot(
+            classifyExtensionMessageSender(sender)
+        );
+        const snapshot = parseSidePanelContentSelectionSnapshotMessage(message);
+        let accepted = false;
+
+        if (
+            senderSnapshot &&
+            snapshot &&
+            this.isInitialized &&
+            this.lifecycleEpoch === listenerEpoch &&
+            typeof this.sidePanelService?.acceptSelectionSnapshot === 'function'
+        ) {
+            try {
+                accepted =
+                    this.sidePanelService.acceptSelectionSnapshot(
+                        senderSnapshot,
+                        snapshot
+                    ) === true;
+            } catch (_) {}
+        }
+
+        sendResponseSafely(
+            sendResponse,
+            buildSidePanelContentSelectionSnapshotResponse(
+                accepted ? 'accepted' : 'rejected'
+            )
+        );
+        return false;
+    }
+
+    isCurrentAnalyzeContextFlight(flight) {
+        return Boolean(
+            flight?.accepting &&
+            this.analyzeContextFlights.has(flight) &&
+            this.isInitialized &&
+            this.lifecycleEpoch === flight.listenerEpoch
+        );
+    }
+
+    startAnalyzeContextFlight(flight) {
+        if (!flight?.accepting) return;
+        if (!this.isCurrentAnalyzeContextFlight(flight)) {
+            this.failAnalyzeContextFlight(
+                flight,
+                ANALYZE_CONTEXT_UNAVAILABLE_ERROR,
+                false
+            );
+            return;
+        }
+        if (!this.aiContextService) {
+            this.failAnalyzeContextFlight(
+                flight,
+                ANALYZE_CONTEXT_UNAVAILABLE_ERROR,
+                false
+            );
+            return;
+        }
+
+        this.analyzeRequestedContextTypes(flight)
+            .then((result) => {
+                if (!flight.accepting) return;
+                if (!this.isCurrentAnalyzeContextFlight(flight)) {
+                    this.failAnalyzeContextFlight(
+                        flight,
+                        ANALYZE_CONTEXT_UNAVAILABLE_ERROR,
+                        false
+                    );
+                    return;
+                }
+
+                if (result.success !== true) {
+                    this.failAnalyzeContextFlight(
+                        flight,
+                        ANALYZE_CONTEXT_FAILED_ERROR,
+                        result.shouldRetry === true
+                    );
+                    return;
+                }
+
+                let response;
+                try {
+                    response = buildAnalyzeContextSuccessResponse(
+                        flight.sender.role,
+                        flight.request,
+                        { analysis: result.analysis }
+                    );
+                } catch (_) {
+                    this.failAnalyzeContextFlight(
+                        flight,
+                        ANALYZE_CONTEXT_FAILED_ERROR,
+                        false
+                    );
+                    return;
+                }
+                this.settleAnalyzeContextFlight(flight, response);
+            })
+            .catch(() => {
+                if (!flight.accepting) return;
+                try {
+                    this.logger?.error('Context analysis failed', {
+                        action: MessageActions.ANALYZE_CONTEXT,
+                    });
+                } catch (_) {}
+                this.failAnalyzeContextFlight(
+                    flight,
+                    this.isCurrentAnalyzeContextFlight(flight)
+                        ? ANALYZE_CONTEXT_FAILED_ERROR
+                        : ANALYZE_CONTEXT_UNAVAILABLE_ERROR,
+                    false
+                );
+            });
+    }
+
+    failAnalyzeContextFlight(flight, error, shouldRetry) {
+        if (!flight?.accepting) return;
+        const response = buildAnalyzeContextFailureResponse(
+            flight.sender.role,
+            flight.request,
+            { error, shouldRetry: shouldRetry === true }
+        );
+        this.settleAnalyzeContextFlight(flight, response);
+    }
+
+    settleAnalyzeContextFlight(flight, response) {
+        if (!flight?.accepting) return;
+        flight.accepting = false;
+        this.analyzeContextFlights.delete(flight);
+        const responder = flight.responder;
+        flight.request = null;
+        flight.responder = null;
+        flight.sender = null;
+        sendResponseSafely(responder, response);
+    }
+
+    handleSubtitleRequestIngress(
+        message,
+        sender,
+        sendResponse,
+        listenerEpoch = this.lifecycleEpoch
+    ) {
+        let snapshot;
+        try {
+            snapshot = authorizeSubtitleRequest(message, sender);
+        } catch (_) {
+            try {
+                this.logger?.warn('Subtitle request rejected', {
+                    stage: 'authorize',
+                });
+            } catch (_) {}
+            sendResponseSafely(
+                sendResponse,
+                SUBTITLE_REQUEST_REJECTED_RESPONSE
+            );
+            return false;
+        }
+
+        if (!this.isInitialized || this.lifecycleEpoch !== listenerEpoch) {
+            try {
+                this.logger?.warn('Subtitle request rejected', {
+                    stage: 'lifecycle',
+                });
+            } catch (_) {}
+            sendResponseSafely(
+                sendResponse,
+                SUBTITLE_REQUEST_REJECTED_RESPONSE
+            );
+            return false;
+        }
+
+        return this.admitAuthorizedSubtitleRequest(snapshot, sendResponse);
+    }
+
+    admitAuthorizedSubtitleRequest(snapshot, sendResponse) {
+        if (
+            !this.isInitialized ||
+            !isAuthorizedSubtitleRequestSnapshot(snapshot)
+        ) {
+            sendResponseSafely(
+                sendResponse,
+                SUBTITLE_REQUEST_REJECTED_RESPONSE
+            );
+            return false;
+        }
+
+        for (const flight of this.subtitleRequestFlights) {
+            if (
+                flight.accepting &&
+                isSameAuthorizedSubtitleRequest(flight.snapshot, snapshot)
+            ) {
+                if (
+                    flight.responders.length >=
+                    MAX_SUBTITLE_RESPONDERS_PER_FLIGHT
+                ) {
+                    return this.rejectSubtitleRequestAtCapacity(
+                        snapshot,
+                        sendResponse,
+                        'responders',
+                        flight.responders.length
+                    );
+                }
+                flight.responders.push(sendResponse);
+                return true;
+            }
+        }
+
+        const lease = createSubtitleRequestLease(snapshot);
+        if (!lease) {
+            sendResponseSafely(
+                sendResponse,
+                SUBTITLE_REQUEST_REJECTED_RESPONSE
+            );
+            return false;
+        }
+        for (const flight of [...this.subtitleRequestFlights]) {
+            if (
+                flight.accepting &&
+                subtitleRequestLeasesEqual(flight.lease, lease)
+            ) {
+                this.supersedeSubtitleRequestFlight(flight);
+            }
+        }
+
+        let partitionCount = 0;
+        for (const flight of this.subtitleRequestFlights) {
+            if (
+                flight.accepting &&
+                flight.snapshot.tabId === snapshot.tabId &&
+                flight.snapshot.source === snapshot.source
+            ) {
+                partitionCount += 1;
+            }
+        }
+        if (partitionCount >= MAX_SUBTITLE_FLIGHTS_PER_TAB_SOURCE) {
+            return this.rejectSubtitleRequestAtCapacity(
+                snapshot,
+                sendResponse,
+                'tab-source',
+                partitionCount
+            );
+        }
+        if (this.subtitleRequestFlights.size >= MAX_SUBTITLE_FLIGHTS_GLOBAL) {
+            return this.rejectSubtitleRequestAtCapacity(
+                snapshot,
+                sendResponse,
+                'global',
+                this.subtitleRequestFlights.size
+            );
+        }
+
+        const flight = {
+            abortController: new AbortController(),
+            snapshot,
+            lease,
+            responders: [sendResponse],
+            accepting: true,
+            cancelled: false,
+            serviceStarted: false,
+            promise: null,
+        };
+        this.subtitleRequestFlights.add(flight);
+
+        let operation;
+        try {
+            operation = this.handleAuthorizedSubtitleRequestWhenReady(flight);
+        } catch (_) {
+            operation = Promise.reject();
+        }
+        const flightPromise = Promise.resolve(operation)
+            .catch(() => SUBTITLE_REQUEST_REJECTED_RESPONSE)
+            .then((response) => {
+                this.settleSubtitleRequestFlight(flight, response);
+                return response;
+            });
+        if (
+            flight.cancelled ||
+            !flight.accepting ||
+            !this.subtitleRequestFlights.has(flight)
+        ) {
+            flight.promise = null;
+        } else {
+            flight.promise = flightPromise;
+        }
+
+        return true;
+    }
+
+    rejectSubtitleRequestAtCapacity(snapshot, sendResponse, scope, count) {
+        try {
+            this.logger?.warn('Subtitle request capacity reached', {
+                stage: 'admission',
+                scope,
+                tabId: snapshot.tabId,
+                source: snapshot.source,
+                count,
+            });
+        } catch (_) {}
+        sendResponseSafely(sendResponse, SUBTITLE_REQUEST_REJECTED_RESPONSE);
+        return false;
+    }
+
+    handleAuthorizedSubtitleRequestWhenReady(flight) {
+        let readinessOperation;
+        try {
+            readinessOperation =
+                !this.serviceReadiness || this.serviceReadiness.isReady()
+                    ? Promise.resolve()
+                    : this.serviceReadiness.waitUntilReady();
+        } catch (_) {
+            readinessOperation = Promise.reject();
+        }
+
+        return Promise.resolve(readinessOperation).then(
+            () => {
+                if (flight.cancelled) {
+                    return SUBTITLE_READINESS_FAILURE_RESPONSE;
+                }
+                const snapshot = flight.snapshot;
+                if (!isAuthorizedSubtitleRequestSnapshot(snapshot)) {
+                    return SUBTITLE_REQUEST_REJECTED_RESPONSE;
+                }
+                flight.serviceStarted = true;
+                return this.createAuthorizedFetchVTTResponse(snapshot, {
+                    signal: flight.abortController.signal,
+                });
+            },
+            () => {
+                if (flight.cancelled) {
+                    return SUBTITLE_READINESS_FAILURE_RESPONSE;
+                }
+                const snapshot = flight.snapshot;
+                try {
+                    this.logger?.error(
+                        'Background services unavailable for subtitle request',
+                        null,
+                        {
+                            stage: 'readiness',
+                            tabId: snapshot.tabId,
+                            source: snapshot.source,
+                        }
+                    );
+                } catch (_) {}
+                return SUBTITLE_READINESS_FAILURE_RESPONSE;
+            }
+        );
+    }
+
+    createAuthorizedFetchVTTResponse(snapshot, options) {
+        if (!isAuthorizedSubtitleRequestSnapshot(snapshot)) {
+            return Promise.resolve(SUBTITLE_REQUEST_REJECTED_RESPONSE);
+        }
+
+        if (!this.subtitleService) {
+            try {
+                this.logger?.error('Subtitle service not available');
+            } catch (_) {}
+            return Promise.resolve(
+                createSubtitleServiceUnavailableResponse(snapshot.videoId)
+            );
+        }
+
+        if (snapshot.source === SubtitleRequestSources.NETFLIX) {
+            return this.createNetflixVTTResponse(snapshot, options);
+        }
+        if (snapshot.source === SubtitleRequestSources.DISNEY_PLUS) {
+            return this.createGenericVTTResponse(snapshot, options);
+        }
+        return Promise.resolve(SUBTITLE_REQUEST_REJECTED_RESPONSE);
+    }
+
+    settleSubtitleRequestFlight(flight, response) {
+        if (!flight.accepting) return;
+        flight.accepting = false;
+        this.subtitleRequestFlights.delete(flight);
+        const responders = flight.responders.splice(0);
+        flight.abortController = null;
+        flight.lease = null;
+        flight.snapshot = null;
+        flight.promise = null;
+        for (const responder of responders) {
+            sendResponseSafely(
+                responder,
+                createSubtitleResponseForRecipient(response)
+            );
+        }
+    }
+
+    supersedeSubtitleRequestFlight(flight) {
+        if (!flight?.accepting) return false;
+        const abortController = flight.abortController;
+        flight.cancelled = true;
+        flight.accepting = false;
+        this.subtitleRequestFlights.delete(flight);
+        const responders = flight.responders.splice(0);
+        flight.abortController = null;
+        flight.lease = null;
+        flight.snapshot = null;
+        flight.promise = null;
+        try {
+            abortController?.abort();
+        } catch (_) {}
+        for (const responder of responders) {
+            sendResponseSafely(
+                responder,
+                createSubtitleResponseForRecipient(
+                    SUBTITLE_REQUEST_REJECTED_RESPONSE
+                )
+            );
+        }
+        return true;
+    }
+
     destroy() {
+        this.lifecycleEpoch += 1;
         if (
             this.runtimeMessageListener &&
             typeof chrome !== 'undefined' &&
@@ -236,6 +1430,34 @@ class MessageHandler {
             );
         }
         this.runtimeMessageListener = null;
+        for (const flight of this.subtitleRequestFlights) {
+            if (!flight.serviceStarted) {
+                flight.cancelled = true;
+                this.settleSubtitleRequestFlight(
+                    flight,
+                    SUBTITLE_READINESS_FAILURE_RESPONSE
+                );
+            }
+        }
+        this.subtitleRequestFlights.clear();
+        for (const flight of this.translationReadinessFlights) {
+            this.settleTranslationReadinessFlight(
+                flight,
+                buildTranslationFailureResponse(flight.request, {
+                    retryable: false,
+                    retryAfter: null,
+                })
+            );
+        }
+        this.translationReadinessFlights.clear();
+        for (const flight of this.analyzeContextFlights) {
+            this.failAnalyzeContextFlight(
+                flight,
+                ANALYZE_CONTEXT_UNAVAILABLE_ERROR,
+                false
+            );
+        }
+        this.analyzeContextFlights.clear();
         this.isInitialized = false;
     }
 
@@ -295,51 +1517,62 @@ class MessageHandler {
         });
     }
 
-    captureSynchronousSidePanelGesture(message, sender) {
+    handleSidePanelWordIntentIngress(
+        message,
+        sender,
+        sendResponse,
+        listenerEpoch = this.lifecycleEpoch
+    ) {
+        const intent = parseSidePanelWordIntentMessage(message);
+        const senderSnapshot = createSelectionSenderSnapshot(
+            classifyExtensionMessageSender(sender)
+        );
         if (
-            !message ||
-            typeof message !== 'object' ||
-            !this.sidePanelService ||
-            (message.action !== MessageActions.SIDEPANEL_OPEN &&
-                message.action !== MessageActions.SIDEPANEL_WORD_SELECTED)
+            !intent ||
+            !senderSnapshot ||
+            !this.isInitialized ||
+            this.lifecycleEpoch !== listenerEpoch ||
+            typeof this.sidePanelService?.openSidePanelImmediate !== 'function'
         ) {
-            return;
+            sendResponseSafely(
+                sendResponse,
+                SIDEPANEL_WORD_INTENT_REJECTED_RESPONSE
+            );
+            return false;
         }
 
-        const tabId = sender?.tab?.id;
-        if (typeof tabId !== 'number') {
-            return;
-        }
-
-        // Calling the async method itself is deliberate: it invokes
-        // chrome.sidePanel.open before its first await, while the browser's
-        // original click gesture is still active.
         let operation;
         try {
             operation = Promise.resolve(
                 this.sidePanelService.openSidePanelImmediate(
-                    tabId,
-                    message.options || {}
+                    senderSnapshot.tabId,
+                    intent.options
                 )
-            ).catch((error) => ({
-                success: false,
-                error: error.message || 'Failed to open side panel',
-            }));
-        } catch (error) {
-            operation = Promise.resolve({
-                success: false,
-                error: error.message || 'Failed to open side panel',
-            });
+            );
+        } catch (_) {
+            sendResponseSafely(
+                sendResponse,
+                SIDEPANEL_WORD_INTENT_REJECTED_RESPONSE
+            );
+            return false;
         }
-        this.sidePanelGestureOperations.set(message, operation);
-    }
 
-    takeSynchronousSidePanelGesture(message) {
-        const operation = this.sidePanelGestureOperations.get(message) || null;
-        if (operation) {
-            this.sidePanelGestureOperations.delete(message);
-        }
-        return operation;
+        operation
+            .then((result) => {
+                sendResponseSafely(
+                    sendResponse,
+                    result?.success === true
+                        ? SIDEPANEL_WORD_INTENT_ACCEPTED_RESPONSE
+                        : SIDEPANEL_WORD_INTENT_REJECTED_RESPONSE
+                );
+            })
+            .catch(() => {
+                sendResponseSafely(
+                    sendResponse,
+                    SIDEPANEL_WORD_INTENT_REJECTED_RESPONSE
+                );
+            });
+        return true;
     }
 
     /**
@@ -349,105 +1582,54 @@ class MessageHandler {
      * @param {Function} sendResponse - Response callback
      * @returns {boolean} True if response is async
      */
-    handleMessage(message, sender, sendResponse) {
-        this.logger.debug('Received message', {
-            action: message?.action,
-            source: message?.source,
-            tabId: sender?.tab?.id,
-        });
-
-        const validation = MessageHandler.validateMessagePayload(message);
+    handleMessage(
+        message,
+        sender,
+        sendResponse,
+        pinnedAction = UNPINNED_MESSAGE_ACTION
+    ) {
+        const validation = MessageHandler.validateMessagePayload(
+            message,
+            pinnedAction
+        );
         if (!validation.valid) {
-            this.logger.warn('Invalid message payload', {
-                error: validation.error,
-            });
             try {
-                sendResponse({ success: false, error: validation.error });
+                this.logger?.warn('Invalid message payload', {
+                    error: validation.error,
+                });
+            } catch (_) {}
+            try {
+                sendResponse({
+                    success: false,
+                    error: validation.error,
+                });
             } catch (_) {}
             return false;
         }
 
-        switch (message.action) {
+        try {
+            this.logger?.debug('Received message', {
+                action: validation.action,
+                tabId: sender?.tab?.id,
+            });
+        } catch (_) {}
+
+        switch (validation.action) {
             case MessageActions.TRANSLATE:
-                return this.handleTranslateMessage(message, sendResponse);
-
-            case MessageActions.TRANSLATE_BATCH:
-                return this.handleTranslateBatchMessage(message, sendResponse);
-
-            case MessageActions.CHECK_BATCH_SUPPORT:
-                return this.handleCheckBatchSupportMessage(
-                    message,
+                return this.handleTranslateMessage(
+                    validation.request,
                     sendResponse
                 );
 
             case MessageActions.FETCH_VTT:
-                return this.handleFetchVTTMessage(message, sendResponse);
-
-            case MessageActions.CHANGE_PROVIDER:
-                return this.handleChangeProviderMessage(message, sendResponse);
-
-            case MessageActions.ANALYZE_CONTEXT:
-                return this.handleAnalyzeContextMessage(message, sendResponse);
-
-            case MessageActions.CHANGE_CONTEXT_PROVIDER:
-                return this.handleChangeContextProviderMessage(
-                    message,
-                    sendResponse
-                );
-
-            case MessageActions.GET_CONTEXT_STATUS:
-                return this.handleGetContextStatusMessage(
-                    message,
-                    sendResponse
-                );
-
-            case MessageActions.GET_AVAILABLE_MODELS:
-                return this.handleGetAvailableModelsMessage(
-                    message,
-                    sendResponse
-                );
-
-            case MessageActions.GET_DEFAULT_MODEL:
-                return this.handleGetDefaultModelMessage(message, sendResponse);
-
-            case MessageActions.RELOAD_CONTEXT_PROVIDER_CONFIG:
-                return this.handleReloadContextProviderConfigMessage(
+                return this.handleAuthorizedFetchVTTMessage(
                     message,
                     sendResponse
                 );
 
             case MessageActions.PING:
-                return this.handlePingMessage(message, sendResponse);
-
             case MessageActions.CHECK_BACKGROUND_READY:
-                return this.handleCheckBackgroundReadyMessage(
-                    message,
-                    sendResponse
-                );
-
-            case MessageActions.SIDEPANEL_OPEN:
-                return this.handleSidePanelOpenMessage(
-                    message,
-                    sender,
-                    sendResponse
-                );
-
-            case MessageActions.SIDEPANEL_WORD_SELECTED:
-                return this.handleSidePanelWordSelectedMessage(
-                    message,
-                    sender,
-                    sendResponse
-                );
-
-            case MessageActions.SIDEPANEL_SELECTION_SYNC:
-                return this.handleSidePanelSelectionSyncMessage(
-                    message,
-                    sender,
-                    sendResponse
-                );
-
-            case MessageActions.SIDEPANEL_SET_ANALYZING:
-                return this.handleSidePanelSetAnalyzingMessage(
+                return this.handleBackgroundReadinessIngress(
                     message,
                     sender,
                     sendResponse
@@ -455,7 +1637,7 @@ class MessageHandler {
 
             default:
                 this.logger.warn('Unknown message action', {
-                    action: message.action,
+                    action: validation.action,
                 });
                 return false;
         }
@@ -464,220 +1646,88 @@ class MessageHandler {
     /**
      * Handle translation requests using service protocol
      */
-    handleTranslateMessage(message, sendResponse) {
-        const request = ServiceProtocol.createRequest(
-            'translation',
-            'translate',
-            {
-                text: message.text,
-                sourceLang: 'auto',
-                targetLang: message.targetLang,
-                options: {
-                    cueStart: message.cueStart,
-                    cueVideoId: message.cueVideoId,
-                },
-            }
-        );
-
+    handleTranslateMessage(request, sendResponse) {
         if (!this.translationService) {
-            const error = new TranslationError(
-                'Translation service not initialized'
+            sendResponseSafely(
+                sendResponse,
+                buildTranslationFailureResponse(request, {
+                    retryable: false,
+                    retryAfter: null,
+                })
             );
-            const response = ServiceProtocol.createResponse(
-                request,
-                null,
-                error
-            );
-            sendResponse({
-                ...response,
-                originalText: message.text,
-                cueStart: message.cueStart,
-                cueVideoId: message.cueVideoId,
-            });
             return true;
         }
 
-        const { text, targetLang, cueStart, cueVideoId } = message;
+        const { text, targetLang } = request;
+        const startedAt = Date.now();
+        let cached = false;
+        let translationOperation;
+        try {
+            translationOperation = Promise.resolve(
+                this.translationService.translate(text, 'auto', targetLang, {
+                    _onCacheHit: () => {
+                        cached = true;
+                    },
+                })
+            );
+        } catch (error) {
+            translationOperation = Promise.reject(error);
+        }
 
-        this.translationService
-            .translate(text, 'auto', targetLang)
+        translationOperation
             .then((translatedText) => {
-                const response = ServiceProtocol.createResponse(request, {
+                const response = buildTranslationSuccessResponse(request, {
                     translatedText,
-                    originalText: text,
-                    sourceLanguage: 'auto',
-                    targetLanguage: targetLang,
-                    cached: false,
-                    processingTime: Date.now() - request.metadata.timestamp,
+                    cached,
+                    processingTime: getSafeProcessingTime(startedAt),
                 });
 
-                sendResponse({
-                    ...response.result,
-                    cueStart,
-                    cueVideoId,
-                });
+                sendResponseSafely(sendResponse, response);
             })
             .catch((error) => {
-                this.logger.error('Translation failed', error, {
-                    textLength: text.length,
-                    targetLang,
-                });
+                const { retryable, retryAfter } =
+                    getTranslationFailureMetadata(error);
+                try {
+                    this.logger?.error('Translation failed', {
+                        textLength: text.length,
+                        targetLang,
+                        retryable,
+                        retryAfter,
+                    });
+                } catch (_) {}
 
-                const translationError = new TranslationError(
-                    'Translation failed',
-                    {
-                        originalError: error.message,
-                        provider:
-                            this.translationService.getCurrentProvider()?.id,
-                    }
+                sendResponseSafely(
+                    sendResponse,
+                    buildTranslationFailureResponse(request, {
+                        retryable,
+                        retryAfter,
+                    })
                 );
-                const response = ServiceProtocol.createResponse(
-                    request,
-                    null,
-                    translationError
-                );
-
-                sendResponse({
-                    error: response.error.message,
-                    errorType: response.error.type,
-                    details: response.error.details,
-                    originalText: text,
-                    cueStart,
-                    cueVideoId,
-                });
             });
 
         return true; // Async response
-    }
-
-    /**
-     * Handle batch translation requests
-     */
-    handleTranslateBatchMessage(message, sendResponse) {
-        const request = ServiceProtocol.createRequest(
-            'translation',
-            'translateBatch',
-            {
-                texts: message.texts,
-                sourceLang: 'auto',
-                targetLang: message.targetLang,
-                delimiter: message.delimiter,
-                options: {
-                    batchId: message.batchId,
-                    cueMetadata: message.cueMetadata,
-                },
-            }
-        );
-
-        if (!this.translationService) {
-            const error = new TranslationError(
-                'Translation service not initialized'
-            );
-            const response = ServiceProtocol.createResponse(
-                request,
-                null,
-                error
-            );
-            sendResponse({
-                ...response,
-                batchId: message.batchId,
-            });
-            return true;
-        }
-
-        this.translationService
-            .translateBatch(message.texts, 'auto', message.targetLang, {
-                delimiter: message.delimiter,
-                batchId: message.batchId,
-            })
-            .then((translations) => {
-                const response = ServiceProtocol.createResponse(request, {
-                    translations,
-                    batchId: message.batchId,
-                    originalTexts: message.texts,
-                    processingTime: Date.now() - request.metadata.timestamp,
-                });
-
-                sendResponse({
-                    success: true,
-                    translations,
-                    batchId: message.batchId,
-                    processingTime: response.metadata.processingTime,
-                });
-            })
-            .catch((error) => {
-                this.logger.error('Batch translation failed', error, {
-                    batchId: message.batchId,
-                    textCount: message.texts?.length || 0,
-                });
-
-                const translationError = new TranslationError(
-                    'Batch translation failed',
-                    {
-                        originalError: error.message,
-                        batchId: message.batchId,
-                        provider:
-                            this.translationService.getCurrentProvider()?.id,
-                    }
-                );
-                const response = ServiceProtocol.createResponse(
-                    request,
-                    null,
-                    translationError
-                );
-
-                sendResponse({
-                    success: false,
-                    error: response.error.message,
-                    errorType: response.error.type,
-                    batchId: message.batchId,
-                });
-            });
-
-        return true; // Async response
-    }
-
-    /**
-     * Handle batch support check requests
-     */
-    handleCheckBatchSupportMessage(message, sendResponse) {
-        if (!this.translationService) {
-            sendResponse({ supportsBatch: false });
-            return true;
-        }
-
-        const supportsBatch =
-            this.translationService.currentProviderSupportsBatch();
-        const provider = this.translationService.getCurrentProvider();
-
-        sendResponse({
-            supportsBatch,
-            provider: provider?.name || 'Unknown',
-            providerId: this.translationService.currentProviderId,
-        });
-
-        return true;
     }
 
     /**
      * Handle VTT fetching requests
      */
-    handleFetchVTTMessage(message, sendResponse) {
-        if (!this.subtitleService) {
-            this.logger.error('Subtitle service not available');
-            sendResponse({
-                success: false,
-                error: 'Subtitle service not initialized',
-                videoId: message.videoId,
-            });
-            return true;
+    handleAuthorizedFetchVTTMessage(message, sendResponse) {
+        if (!isAuthorizedSubtitleRequestSnapshot(message)) {
+            sendResponseSafely(
+                sendResponse,
+                SUBTITLE_REQUEST_REJECTED_RESPONSE
+            );
+            return false;
         }
 
-        if (message.source === 'netflix') {
-            this.handleNetflixVTTRequest(message, sendResponse);
-        } else {
-            this.handleGenericVTTRequest(message, sendResponse);
-        }
+        this.createAuthorizedFetchVTTResponse(message)
+            .then((response) => sendResponseSafely(sendResponse, response))
+            .catch(() =>
+                sendResponseSafely(
+                    sendResponse,
+                    SUBTITLE_REQUEST_REJECTED_RESPONSE
+                )
+            );
 
         return true; // Async response
     }
@@ -685,786 +1735,188 @@ class MessageHandler {
     /**
      * Handle Netflix-specific VTT requests using service protocol
      */
-    handleNetflixVTTRequest(message, sendResponse) {
-        const {
-            data,
-            videoId,
-            targetLanguage,
-            originalLanguage,
-            useNativeSubtitles,
-            useOfficialTranslations,
-        } = message;
+    createNetflixVTTResponse(snapshot, options) {
+        if (
+            !isAuthorizedSubtitleRequestSnapshot(snapshot) ||
+            snapshot.source !== SubtitleRequestSources.NETFLIX
+        ) {
+            return Promise.resolve(SUBTITLE_REQUEST_REJECTED_RESPONSE);
+        }
 
-        const request = ServiceProtocol.createRequest(
-            'subtitle',
-            'processNetflixSubtitles',
-            {
-                data,
-                targetLanguage,
-                originalLanguage,
-                useNativeSubtitles,
-                useOfficialTranslations,
-            },
-            { videoId }
-        );
+        const { videoId } = snapshot;
 
-        this.subtitleService
-            .processNetflixSubtitles(
-                data,
-                targetLanguage,
-                originalLanguage,
-                useNativeSubtitles,
-                useOfficialTranslations
-            )
+        let serviceOperation;
+        try {
+            const signal = readInternalSubtitleSignal(
+                options,
+                'Netflix subtitle processing input is invalid.'
+            );
+            serviceOperation = Promise.resolve(
+                signal === undefined
+                    ? this.subtitleService.processNetflixSubtitles(snapshot)
+                    : this.subtitleService.processNetflixSubtitles(snapshot, {
+                          signal,
+                      })
+            );
+        } catch (error) {
+            serviceOperation = Promise.reject(error);
+        }
+
+        return serviceOperation
             .then((result) => {
-                const response = ServiceProtocol.createResponse(
-                    request,
-                    result
-                );
-                sendResponse({
-                    success: true,
-                    ...result,
-                    videoId,
-                    processingTime: response.metadata.processingTime,
-                });
+                return createSubtitleSuccessResponse(result, videoId);
             })
-            .catch((error) => {
-                this.logger.error('Netflix VTT processing failed', error, {
-                    videoId,
-                });
+            .catch(() => {
+                try {
+                    this.logger?.error('Netflix VTT processing failed', null, {
+                        stage: 'process',
+                        source: SubtitleRequestSources.NETFLIX,
+                        hasVideoId:
+                            typeof videoId === 'string' && videoId.length > 0,
+                    });
+                } catch (_) {}
 
-                const subtitleError = new SubtitleProcessingError(
-                    `Netflix VTT Processing Error: ${error.message}`,
-                    { platform: 'netflix', videoId }
-                );
-                const response = ServiceProtocol.createResponse(
-                    request,
-                    null,
-                    subtitleError
-                );
-
-                sendResponse({
-                    success: false,
-                    error: response.error.message,
-                    errorType: response.error.type,
-                    videoId,
-                });
-            });
+                return createSubtitleProcessingFailureResponse(videoId);
+            })
+            .catch(() => createSubtitleProcessingFailureResponse(videoId));
     }
 
     /**
      * Handle generic VTT requests
      */
-    handleGenericVTTRequest(message, sendResponse) {
-        const { url, videoId, targetLanguage, originalLanguage } = message;
-
-        this.subtitleService
-            .fetchAndProcessSubtitles(url, targetLanguage, originalLanguage)
-            .then((result) => {
-                sendResponse({
-                    success: true,
-                    vttText: result.vttText,
-                    targetVttText: result.targetVttText,
-                    videoId,
-                    url,
-                    sourceLanguage: result.sourceLanguage,
-                    targetLanguage: result.targetLanguage,
-                    useNativeTarget: result.useNativeTarget,
-                    availableLanguages: result.availableLanguages,
-                    selectedLanguage: result.selectedLanguage,
-                    targetLanguageInfo: result.targetLanguageInfo,
-                });
-            })
-            .catch((error) => {
-                this.logger.error('VTT processing failed', error, {
-                    urlLength: typeof url === 'string' ? url.length : 0,
-                });
-                sendResponse({
-                    success: false,
-                    error: `VTT Processing Error: ${error.message}`,
-                    videoId,
-                    url,
-                });
-            });
-    }
-
-    /**
-     * Handle provider change requests
-     */
-    handleChangeProviderMessage(message, sendResponse) {
-        if (!this.translationService) {
-            this.logger.error('Translation service not available');
-            sendResponse({
-                success: false,
-                message: 'Translation service not initialized',
-            });
-            return true;
+    createGenericVTTResponse(snapshot, options) {
+        if (
+            !isAuthorizedSubtitleRequestSnapshot(snapshot) ||
+            snapshot.source !== SubtitleRequestSources.DISNEY_PLUS
+        ) {
+            return Promise.resolve(SUBTITLE_REQUEST_REJECTED_RESPONSE);
         }
 
-        const { providerId } = message;
+        const { videoId } = snapshot;
 
-        this.translationService
-            .changeProvider(providerId)
-            .then((result) => {
-                sendResponse({
-                    success: true,
-                    message: result.message,
-                });
-            })
-            .catch((error) => {
-                this.logger.error('Provider change failed', error, {
-                    providerId,
-                });
-                sendResponse({
-                    success: false,
-                    message: error.message || 'Failed to change provider',
-                });
-            });
-
-        return true; // Async response
-    }
-
-    /**
-     * Handle AI context analysis requests
-     */
-    handleAnalyzeContextMessage(message, sendResponse) {
-        const {
-            text,
-            metadata = {},
-            targetLanguage,
-            language: sourceLanguage,
-            requestId,
-        } = message;
-        const normalizedContextTypes = MessageHandler.normalizeContextTypes(
-            message.contextType,
-            message.contextTypes,
-            Object.prototype.hasOwnProperty.call(message, 'contextTypes')
-        );
-        const contextTypes = normalizedContextTypes.contextTypes || [];
-        const contextType =
-            contextTypes.length === 1 ? contextTypes[0] : 'combined';
-
-        this.logger.debug('Received context analysis message', {
-            messageKeys: Object.keys(message),
-            textLength: text?.length || 0,
-            contextType,
-            hasMetadata: Object.keys(metadata).length > 0,
-            hasAiContextService: !!this.aiContextService,
-            requestId,
-        });
-
-        if (!normalizedContextTypes.valid) {
-            sendResponse({
-                success: false,
-                error: normalizedContextTypes.error,
-                contextTypes,
-                originalText: text,
-                requestId,
-            });
-            return true;
+        let serviceOperation;
+        try {
+            const signal = readInternalSubtitleSignal(
+                options,
+                'Disney subtitle processing input is invalid.'
+            );
+            serviceOperation = Promise.resolve(
+                signal === undefined
+                    ? this.subtitleService.processDisneyPlusSubtitles(snapshot)
+                    : this.subtitleService.processDisneyPlusSubtitles(
+                          snapshot,
+                          {
+                              signal,
+                          }
+                      )
+            );
+        } catch (error) {
+            serviceOperation = Promise.reject(error);
         }
 
-        if (!this.aiContextService) {
-            const errorResponse = {
-                success: false,
-                error: 'AI Context service not available',
+        return serviceOperation
+            .then((result) => {
+                return createSubtitleSuccessResponse(result, videoId);
+            })
+            .catch((error) => {
+                const failure = getSafeDisneySubtitleFailureMetadata(error);
+                try {
+                    this.logger?.error('Disney VTT processing failed', null, {
+                        stage: failure.stage,
+                        errorCode: failure.errorCode,
+                        source: SubtitleRequestSources.DISNEY_PLUS,
+                        hasVideoId:
+                            typeof videoId === 'string' && videoId.length > 0,
+                    });
+                } catch (_) {}
+                return createSubtitleProcessingFailureResponse(videoId);
+            })
+            .catch(() => createSubtitleProcessingFailureResponse(videoId));
+    }
+
+    async analyzeRequestedContextTypes(flight) {
+        const { request, sender } = flight;
+        const metadata = createAnalyzeMetadata(request, sender);
+        const analyzeOne = async (contextType) => {
+            if (!this.isCurrentAnalyzeContextFlight(flight)) {
+                throw new Error(ANALYZE_CONTEXT_UNAVAILABLE_ERROR);
+            }
+            const rawResult = await this.aiContextService.analyzeContext(
+                request.text,
                 contextType,
-                originalText: text,
-                requestId,
-            };
-            this.logger.error('AI Context service not available', null, {
-                requestId,
-                contextType,
-                textLength: text?.length || 0,
-            });
-            sendResponse(errorResponse);
-            return true;
-        }
-
-        // Include target language in metadata for AI providers
-        const enhancedMetadata = {
-            ...metadata,
-            targetLanguage: targetLanguage || 'en', // Default to English if not provided
-            sourceLanguage: sourceLanguage || 'auto', // Pass source language to AI providers
-            requestedContextTypes: contextTypes,
-        };
-
-        this.logger.debug('Processing context analysis request', {
-            textLength: text?.length || 0,
-            contextType,
-            metadataKeys: Object.keys(enhancedMetadata),
-            sourceLanguage: enhancedMetadata.sourceLanguage,
-            targetLanguage: enhancedMetadata.targetLanguage,
-        });
-
-        this.analyzeRequestedContextTypes(text, contextTypes, enhancedMetadata)
-            .then((result) => {
-                this.logger.debug('AI Context service returned result', {
-                    success: result.success,
-                    hasAnalysis: !!result.analysis,
-                    hasResult: !!result.result,
-                    hasError: !!result.error,
-                    resultKeys: Object.keys(result),
-                    contextType: result.contextType,
-                });
-
-                const response = {
-                    success: result.success,
-                    result: result, // Pass the entire result object
-                    error: result.error,
-                    shouldRetry: result.shouldRetry,
-                    shouldCache: result.shouldCache,
-                    requestId,
-                };
-
-                this.logger.debug('Sending response to content script', {
-                    responseSuccess: response.success,
-                    hasResponseResult: !!response.result,
-                    hasResponseError: !!response.error,
-                    responseKeys: Object.keys(response),
-                });
-
-                sendResponse(response);
-            })
-            .catch((error) => {
-                this.logger.error('Context analysis failed', error, {
-                    textLength: text?.length || 0,
-                    contextType,
-                });
-
-                const errorResponse = {
-                    success: false,
-                    error: error.message || 'Context analysis failed',
-                    result: null,
-                    requestId,
-                };
-
-                this.logger.debug(
-                    'Sending error response to content script',
-                    errorResponse
-                );
-                sendResponse(errorResponse);
-            });
-
-        return true; // Async response
-    }
-
-    async analyzeRequestedContextTypes(text, contextTypes, metadata) {
-        if (contextTypes.length === 1) {
-            return this.aiContextService.analyzeContext(
-                text,
-                contextTypes[0],
                 metadata
             );
+            if (!this.isCurrentAnalyzeContextFlight(flight)) {
+                throw new Error(ANALYZE_CONTEXT_UNAVAILABLE_ERROR);
+            }
+            return normalizeAnalyzeServiceResult(
+                sender.role,
+                request,
+                rawResult
+            );
+        };
+
+        if (request.contextTypes.length === 1) {
+            return analyzeOne(request.contextTypes[0]);
         }
 
         const requestsCanonicalFullSet =
-            contextTypes.length === CONTEXT_TYPES.length &&
-            CONTEXT_TYPES.every((type) => contextTypes.includes(type));
+            request.contextTypes.length === CONTEXT_TYPES.length &&
+            CONTEXT_TYPES.every((type) => request.contextTypes.includes(type));
         if (requestsCanonicalFullSet) {
-            const result = await this.aiContextService.analyzeContext(
-                text,
-                'all',
-                metadata
-            );
-            return { ...result, contextTypes };
+            return analyzeOne('all');
         }
 
         const resultsByType = {};
-        for (const requestedType of contextTypes) {
-            const result = await this.aiContextService.analyzeContext(
-                text,
-                requestedType,
-                metadata
-            );
-            resultsByType[requestedType] = result;
-
-            if (!result?.success) {
-                return {
-                    success: false,
-                    error:
-                        result?.error ||
-                        `${requestedType} context analysis failed`,
-                    contextType: 'combined',
-                    contextTypes,
-                    componentResults: resultsByType,
-                    originalText: text,
-                    metadata,
-                    shouldRetry: result?.shouldRetry,
-                    shouldCache: false,
-                };
-            }
+        for (const requestedType of request.contextTypes) {
+            const result = await analyzeOne(requestedType);
+            if (result.success !== true) return result;
+            resultsByType[requestedType] = { analysis: result.analysis };
         }
 
         return {
             success: true,
-            contextType: 'combined',
-            contextTypes,
-            analysis: combineContextAnalyses(contextTypes, resultsByType),
-            componentResults: resultsByType,
-            originalText: text,
-            metadata,
-            shouldCache: contextTypes.every(
-                (type) => resultsByType[type].shouldCache !== false
+            analysis: combineContextAnalyses(
+                request.contextTypes,
+                resultsByType
             ),
         };
     }
 
-    /**
-     * Handle context provider change requests
-     */
-    handleChangeContextProviderMessage(message, sendResponse) {
-        const { providerId } = message;
-
-        if (!this.aiContextService) {
-            sendResponse({
-                success: false,
-                message: 'AI Context service not available',
-            });
-            return true;
-        }
-
-        this.logger.debug('Processing context provider change', { providerId });
-
-        this.aiContextService
-            .changeProvider(providerId)
-            .then((result) => {
-                sendResponse(result);
-            })
-            .catch((error) => {
-                this.logger.error('Context provider change failed', error, {
-                    providerId,
-                });
-                sendResponse({
-                    success: false,
-                    message:
-                        error.message || 'Failed to change context provider',
-                });
-            });
-
-        return true; // Async response
-    }
-
-    /**
-     * Handle context service status requests
-     */
-    handleGetContextStatusMessage(message, sendResponse) {
-        if (!this.aiContextService) {
-            sendResponse({
-                success: false,
-                error: 'AI Context service not available',
-            });
-            return true;
-        }
-
-        try {
-            const status = this.aiContextService.getStatus();
-            sendResponse({
-                success: true,
-                status,
-            });
-        } catch (error) {
-            this.logger.error('Failed to get context status', error);
-            sendResponse({
-                success: false,
-                error: error.message || 'Failed to get context status',
-            });
-        }
-
-        return true;
-    }
-
-    /**
-     * Handle get available models requests
-     */
-    handleGetAvailableModelsMessage(message, sendResponse) {
-        const { providerId } = message;
-
-        if (!this.aiContextService) {
-            sendResponse({
-                success: false,
-                error: 'AI Context service not available',
-                models: [],
-                needsRetry: true,
-            });
-            return true;
-        }
-
-        // Check if AI context service is fully initialized
-        if (!this.aiContextService.isInitialized) {
-            this.logger.debug(
-                'AI Context service not yet initialized, deferring request',
-                {
-                    providerId,
-                }
-            );
-            sendResponse({
-                success: false,
-                error: 'AI Context service is still initializing',
-                models: [],
-                needsRetry: true,
-            });
-            return true;
-        }
-
-        this.logger.debug('Processing get available models request', {
-            providerId,
-        });
-
-        try {
-            const models = this.aiContextService.getAvailableModels(providerId);
-            sendResponse({
-                success: true,
-                models,
-                providerId:
-                    providerId || this.aiContextService.currentProviderId,
-            });
-        } catch (error) {
-            this.logger.error('Failed to get available models', error, {
-                providerId,
-            });
-            sendResponse({
-                success: false,
-                error: error.message || 'Failed to get available models',
-                models: [],
-                needsRetry: false,
-            });
-        }
-
-        return true;
-    }
-
-    /**
-     * Handle get default model requests
-     */
-    handleGetDefaultModelMessage(message, sendResponse) {
-        const { providerId } = message;
-
-        if (!this.aiContextService) {
-            sendResponse({
-                success: false,
-                error: 'AI Context service not available',
-                defaultModel: null,
-                needsRetry: true,
-            });
-            return true;
-        }
-
-        // Check if AI context service is fully initialized
-        if (!this.aiContextService.isInitialized) {
-            this.logger.debug(
-                'AI Context service not yet initialized, deferring request',
-                {
-                    providerId,
-                }
-            );
-            sendResponse({
-                success: false,
-                error: 'AI Context service is still initializing',
-                defaultModel: null,
-                needsRetry: true,
-            });
-            return true;
-        }
-
-        this.logger.debug('Processing get default model request', {
-            providerId,
-        });
-
-        try {
-            const defaultModel =
-                this.aiContextService.getDefaultModel(providerId);
-            sendResponse({
-                success: true,
-                defaultModel,
-                providerId:
-                    providerId || this.aiContextService.currentProviderId,
-            });
-        } catch (error) {
-            this.logger.error('Failed to get default model', error, {
-                providerId,
-            });
-            sendResponse({
-                success: false,
-                error: error.message || 'Failed to get default model',
-                defaultModel: null,
-                needsRetry: false,
-            });
-        }
-
-        return true;
-    }
-
-    /**
-     * Handle reload context provider configuration requests
-     */
-    handleReloadContextProviderConfigMessage(message, sendResponse) {
-        if (!this.aiContextService) {
-            sendResponse({
-                success: false,
-                error: 'AI Context service not available',
-            });
-            return true;
-        }
-
-        this.logger.debug('Processing reload context provider config request');
-
-        this.aiContextService
-            .reloadProviderConfig()
-            .then(() => {
-                const status = this.aiContextService.getStatus();
-                sendResponse({
-                    success: true,
-                    message: 'Provider configuration reloaded successfully',
-                    currentProvider: status.currentProvider,
-                });
-            })
-            .catch((error) => {
-                this.logger.error(
-                    'Failed to reload provider configuration',
-                    error
-                );
-                sendResponse({
-                    success: false,
-                    error:
-                        error.message ||
-                        'Failed to reload provider configuration',
-                });
-            });
-
-        return true; // Async response
-    }
-
-    /**
-     * Handle ping requests for connection testing (Issue #1: Fixed provider connection)
-     */
-    handlePingMessage(message, sendResponse) {
-        this.logger.debug('Received ping message', {
-            timestamp: message.timestamp,
-            source: message.source,
-        });
-
-        sendResponse({
-            success: true,
-            timestamp: Date.now(),
-            originalTimestamp: message.timestamp,
-            message: 'pong',
-        });
-
-        return true;
-    }
-
-    /**
-     * Handle background readiness check requests
-     */
-    handleCheckBackgroundReadyMessage(message, sendResponse) {
-        this.logger.debug('Received background readiness check', {
-            timestamp: Date.now(),
-        });
-
-        const isReady = !!(
-            this.translationService &&
-            this.subtitleService &&
-            this.aiContextService &&
-            this.aiContextService.isInitialized
+    handleBackgroundReadinessIngress(message, sender, sendResponse) {
+        const classifiedSender = classifyExtensionMessageSender(sender);
+        const request = parseBackgroundReadinessRequestMessage(
+            message,
+            classifiedSender?.role
         );
-
-        sendResponse({
-            success: true,
-            ready: isReady,
-            timestamp: Date.now(),
-            services: {
-                translation: !!this.translationService,
-                subtitle: !!this.subtitleService,
-                aiContext: !!this.aiContextService,
-                aiContextInitialized:
-                    this.aiContextService?.isInitialized || false,
-            },
-        });
-
-        return true;
-    }
-
-    /**
-     * Handle side panel open requests
-     */
-    handleSidePanelOpenMessage(message, sender, sendResponse) {
-        if (!this.sidePanelService) {
-            sendResponse({
-                success: false,
-                error: 'Side panel service not available',
-            });
-            return true;
-        }
-
-        const tabId = sender.tab?.id;
-        if (!tabId) {
-            sendResponse({
-                success: false,
-                error: 'No tab ID available',
-            });
-            return true;
-        }
-
-        this.logger.debug('Handling side panel open request', { tabId });
-
-        // Optionally store open reason before opening (do NOT override activeTab to avoid UI flips)
-        try {
-            if (message.options?.openReason) {
-                this.sidePanelService.updateTabState(tabId, {
-                    ...(message.options.openReason
-                        ? { openReason: message.options.openReason }
-                        : {}),
-                });
-            }
-        } catch (_) {}
-
-        // Attempt to open the side panel immediately to preserve user gesture
-        const openOperation =
-            this.takeSynchronousSidePanelGesture(message) ||
-            this.sidePanelService.openSidePanelImmediate(
-                tabId,
-                message.options || {}
-            );
-        openOperation
-            .then((result) => {
-                sendResponse(result);
-            })
-            .catch((error) => {
-                this.logger.error(
-                    'Failed to open side panel (immediate)',
-                    error,
-                    { tabId }
-                );
-                sendResponse({
-                    success: false,
-                    error: error.message || 'Failed to open side panel',
-                });
-            });
-
-        return true; // Async response
-    }
-
-    /**
-     * Handle word selection events from content scripts
-     */
-    handleSidePanelWordSelectedMessage(message, sender, sendResponse) {
-        if (!this.sidePanelService) {
-            sendResponse({
-                success: false,
-                error: 'Side panel service not available',
-            });
-            return true;
-        }
-
-        const tabId = sender.tab?.id;
-        if (!tabId) {
-            sendResponse({
-                success: false,
-                error: 'No tab ID available',
-            });
-            return true;
-        }
-
-        this.logger.debug('Handling word selection from content script', {
-            tabId,
-            wordLength:
-                typeof message.word === 'string' ? message.word.length : 0,
-        });
-
-        const openOperation = this.takeSynchronousSidePanelGesture(message);
-        this.sidePanelService
-            .forwardWordSelection(tabId, message, openOperation)
-            .then(() => {
-                sendResponse({ success: true });
-            })
-            .catch((error) => {
-                this.logger.error('Failed to forward word selection', error, {
-                    tabId,
-                });
-                sendResponse({
-                    success: false,
-                    error: error.message || 'Failed to forward word selection',
-                });
-            });
-
-        return true; // Async response
-    }
-
-    handleSidePanelSelectionSyncMessage(message, sender, sendResponse) {
-        if (!this.sidePanelService) {
-            sendResponse({
-                success: false,
-                error: 'Side panel service not available',
-            });
-            return true;
-        }
-
-        const tabId = sender.tab?.id;
-        if (!tabId) {
-            sendResponse({
-                success: false,
-                error: 'No tab ID available',
-            });
-            return true;
-        }
-
-        this.sidePanelService
-            .forwardSelectionSync(tabId, message?.data ?? message)
-            .then(() => {
-                sendResponse({ success: true });
-            })
-            .catch((error) => {
-                this.logger.error('Failed to forward selection sync', error, {
-                    tabId,
-                });
-                sendResponse({
-                    success: false,
-                    error: error.message || 'Failed to forward selection sync',
-                });
-            });
-
-        return true;
-    }
-
-    /**
-     * Handle analyzing state update from side panel
-     * Broadcasts to content script to block/unblock word clicks
-     */
-    handleSidePanelSetAnalyzingMessage(message, sender, sendResponse) {
-        const tabId = sender.tab?.id;
-        if (!tabId) {
-            sendResponse({ success: false, error: 'No tab ID available' });
+        if (!request || !this.isInitialized) {
+            sendResponseSafely(sendResponse, INVALID_MESSAGE_RESPONSE);
             return false;
         }
 
-        const isAnalyzing = !!message.isAnalyzing;
-        this.logger.debug('Setting analyzing state', { tabId, isAnalyzing });
-
-        // Store state in side panel service
-        if (this.sidePanelService) {
-            this.sidePanelService.updateTabState(tabId, { isAnalyzing });
-        }
-
-        // Forward to content script to block word clicks
-        chrome.tabs
-            .sendMessage(tabId, {
-                action: MessageActions.SIDEPANEL_SET_ANALYZING,
-                isAnalyzing,
+        const services = {
+            translation: Boolean(this.translationService),
+            subtitle: Boolean(this.subtitleService),
+            aiContext: Boolean(this.aiContextService),
+            aiContextInitialized: Boolean(this.aiContextService?.isInitialized),
+        };
+        const ready =
+            services.translation &&
+            services.subtitle &&
+            services.aiContext &&
+            services.aiContextInitialized;
+        this.logger.debug('Received background readiness request', {
+            action: request.action,
+            ready,
+        });
+        sendResponseSafely(
+            sendResponse,
+            buildBackgroundReadinessResponseMessage(request, {
+                ready,
+                services,
             })
-            .then(() => {
-                sendResponse({ success: true });
-            })
-            .catch((error) => {
-                this.logger.warn(
-                    'Failed to send analyzing state to content script',
-                    error,
-                    { tabId }
-                );
-                sendResponse({ success: true }); // Don't fail the side panel
-            });
-
-        return true; // Async response
+        );
+        return false;
     }
 }
 

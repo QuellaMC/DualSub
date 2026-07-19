@@ -327,16 +327,17 @@ describe('ConfigService Comprehensive Error Handling Tests', () => {
                 callback();
             });
 
-            // getAll should return defaults when storage completely fails
-            const config = await configService.getAll();
+            const error = await configService
+                .getAll()
+                .catch((caught) => caught);
 
-            expect(config).toBeDefined();
-            expect(config.uiLanguage).toBe('en'); // Default value
-            expect(config.debugMode).toBe(false); // Default value
-
-            expect(consoleSpy.error).toHaveBeenCalledWith(
-                expect.stringContaining('Error getting all settings')
-            );
+            expect(error).toMatchObject({
+                name: 'ConfigServiceReadError',
+                failedAreas: ['sync', 'local'],
+            });
+            expect(error).not.toHaveProperty('values');
+            expect(error).not.toHaveProperty('uiLanguage');
+            expect(error).not.toHaveProperty('debugMode');
         });
 
         it('should handle initialization failure and recovery', async () => {

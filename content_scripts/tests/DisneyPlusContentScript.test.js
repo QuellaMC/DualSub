@@ -1,8 +1,8 @@
 /**
  * DisneyPlusContentScript Comprehensive Tests
  *
- * Tests for Disney+ specific content script functionality including navigation detection,
- * URL change handling, SPA routing, injection configuration, and event handling.
+ * Tests for Disney+ specific content script functionality including shared-manager
+ * navigation setup, player-route classification, injection, and event handling.
  *
  * @author DualSub Extension
  * @version 1.0.0
@@ -29,9 +29,6 @@ describe('DisneyPlusContentScript Comprehensive Tests', () => {
     let disneyPlusScript;
     let testHelpers;
     let testEnv;
-    let consoleLogSpy;
-    let originalPushState;
-    let originalReplaceState;
 
     beforeEach(() => {
         testHelpers = new TestHelpers();
@@ -59,13 +56,6 @@ describe('DisneyPlusContentScript Comprehensive Tests', () => {
         jest.spyOn(BaseContentScript.prototype, 'cleanup').mockImplementation(
             () => Promise.resolve()
         );
-
-        originalPushState = window.history.pushState;
-        originalReplaceState = window.history.replaceState;
-        window.history.pushState = jest.fn();
-        window.history.replaceState = jest.fn();
-
-        consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
 
         global.document = {
             getElementById: jest.fn(),
@@ -107,9 +97,6 @@ describe('DisneyPlusContentScript Comprehensive Tests', () => {
             testEnv.cleanup();
         }
         testHelpers.resetAllMocks();
-        consoleLogSpy.mockRestore();
-        window.history.pushState = originalPushState;
-        window.history.replaceState = originalReplaceState;
     });
 
     describe('Initialization', () => {
@@ -125,11 +112,21 @@ describe('DisneyPlusContentScript Comprehensive Tests', () => {
 
         test('should initialize with correct inject script configuration', () => {
             const config = disneyPlusScript.getInjectScriptConfig();
-            expect(config).toEqual({
-                filename: 'injected_scripts/disneyPlusInject.js',
-                tagId: 'disneyplus-dualsub-injector-script-tag',
-                eventId: 'disneyplus-dualsub-injector-event',
-            });
+            expect(config).toEqual(
+                expect.objectContaining({
+                    filename: 'injected_scripts/disneyPlusInject.js',
+                    tagId: 'disneyplus-dualsub-injector-script-tag',
+                    eventId: 'disneyplus-dualsub-injector-event',
+                    channel: expect.objectContaining({
+                        platform: 'disneyplus',
+                        accept: expect.any(Function),
+                        createEventDetail: expect.any(Function),
+                        createScriptUrl: expect.any(Function),
+                        revoke: expect.any(Function),
+                    }),
+                })
+            );
+            expect(Object.hasOwn(config, 'channel')).toBe(true);
         });
 
         test('should initialize with correct URL patterns', () => {
@@ -137,65 +134,46 @@ describe('DisneyPlusContentScript Comprehensive Tests', () => {
         });
     });
 
-    describe('URL Change Detection', () => {
+    describe('Shared Navigation Setup and Player Routes', () => {
         test('distinguishes active player routes from browse and detail routes', () => {
             expect(disneyPlusScript._isPlayerPath('/video/video-id')).toBe(
                 true
             );
             expect(disneyPlusScript._isPlayerPath('/play/video-id')).toBe(true);
+            expect(disneyPlusScript._isPlayerPath('/video/video-id/')).toBe(
+                true
+            );
+            expect(
+                disneyPlusScript._isPlayerPath('/video/video-id/credits')
+            ).toBe(false);
             expect(
                 disneyPlusScript._isPlayerPath('/movies/title/video-id')
             ).toBe(false);
             expect(
                 disneyPlusScript._isPlayerPath('/series/title/series-id')
             ).toBe(false);
+            expect(disneyPlusScript._isPlayerPath('/video/')).toBe(false);
+            expect(disneyPlusScript._isPlayerPath('/play/')).toBe(false);
+            expect(
+                disneyPlusScript._isPlayerPath('/browse/video/video-id')
+            ).toBe(false);
+            expect(
+                disneyPlusScript._isPlayerPath('/movies/play/video-id')
+            ).toBe(false);
+            expect(disneyPlusScript._isPlayerPath('/videos/video-id')).toBe(
+                false
+            );
         });
 
-        test('should handle URL changes with Disney+ SPA routing', () => {
-            // Setup initial state on non-player page
-            disneyPlusScript.currentUrl = 'http://localhost/';
-            disneyPlusScript.lastKnownPathname = '/';
-            // Spy on page transition handler
-            jest.spyOn(
-                disneyPlusScript,
-                '_handlePageTransition'
-            ).mockImplementation(() => {});
-            // Override checkForUrlChange to simulate a SPA navigation
-            disneyPlusScript.checkForUrlChange = jest.fn(() => {
-                const newUrl = 'http://localhost/play/123456';
-                const newPathname = '/play/123456';
-                if (
-                    newUrl !== disneyPlusScript.currentUrl ||
-                    newPathname !== disneyPlusScript.lastKnownPathname
-                ) {
-                    console.log('URL change detected', {
-                        from: disneyPlusScript.currentUrl,
-                        to: newUrl,
-                    });
-                    disneyPlusScript.currentUrl = newUrl;
-                    disneyPlusScript.lastKnownPathname = newPathname;
-                    disneyPlusScript._handlePageTransition(false, true);
-                }
-            });
-            // Invoke detection
-            disneyPlusScript.checkForUrlChange();
-            // Verify state update and handler invocation
-            expect(disneyPlusScript.currentUrl).toBe(
-                'http://localhost/play/123456'
-            );
-            expect(disneyPlusScript.lastKnownPathname).toBe('/play/123456');
-            expect(disneyPlusScript._handlePageTransition).toHaveBeenCalledWith(
-                false,
-                true
-            );
-            // Verify logging via console.log
-            expect(consoleLogSpy).toHaveBeenCalledWith(
-                expect.stringContaining('URL change detected'),
-                expect.objectContaining({
-                    from: 'http://localhost/',
-                    to: 'http://localhost/play/123456',
-                })
-            );
+        test('delegates navigation detection exclusively to the shared manager', () => {
+            const setupManager = jest
+                .spyOn(disneyPlusScript, '_setupNavigationManager')
+                .mockImplementation(() => {});
+
+            disneyPlusScript.setupNavigationDetection();
+
+            expect(setupManager).toHaveBeenCalledTimes(1);
+            expect(disneyPlusScript.intervalManager.set).not.toHaveBeenCalled();
         });
     });
 
@@ -230,23 +208,33 @@ describe('DisneyPlusContentScript Comprehensive Tests', () => {
         });
     });
 
-    test('clears video-bound subtitle resources when leaving the player', () => {
-        disneyPlusScript.subtitleUtils = {
-            clearSubtitleDOM: jest.fn(),
-            clearSubtitlesDisplayAndQueue: jest.fn(),
-        };
-        disneyPlusScript.activePlatform = {
-            cleanup: jest.fn(),
-        };
+    test('delegates player-page cleanup to the shared lifecycle boundary', () => {
+        const cleanupLifecycle = jest
+            .spyOn(disneyPlusScript, '_cleanupOnPlayerPageLeave')
+            .mockImplementation(() => {});
 
         disneyPlusScript._cleanupOnPageLeave();
 
-        expect(
-            disneyPlusScript.subtitleUtils.clearSubtitleDOM
-        ).toHaveBeenCalled();
-        expect(
-            disneyPlusScript.subtitleUtils.clearSubtitlesDisplayAndQueue
-        ).toHaveBeenCalled();
+        expect(cleanupLifecycle).toHaveBeenCalledTimes(1);
+    });
+
+    test('uses the shared page-enter initialization lifecycle', () => {
+        const scheduleInitialization = jest
+            .spyOn(
+                disneyPlusScript,
+                '_schedulePlatformInitializationOnPageEnter'
+            )
+            .mockImplementation(() => {});
+        disneyPlusScript._reinjectScript = jest.fn();
+
+        disneyPlusScript._initializeOnPageEnter();
+
+        expect(disneyPlusScript._reinjectScript).toHaveBeenCalledTimes(1);
+        expect(scheduleInitialization).toHaveBeenCalledWith(
+            expect.any(Function),
+            expect.any(Function),
+            1500
+        );
     });
 
     test('uses the non-sensitive configuration projection on page entry', async () => {
@@ -258,6 +246,7 @@ describe('DisneyPlusContentScript Comprehensive Tests', () => {
                     subtitlesEnabled: false,
                 }),
             };
+            disneyPlusScript._isPlayerPage = jest.fn().mockReturnValue(true);
 
             disneyPlusScript._initializeOnPageEnter();
             await jest.advanceTimersByTimeAsync(1500);
@@ -268,5 +257,61 @@ describe('DisneyPlusContentScript Comprehensive Tests', () => {
         } finally {
             jest.useRealTimers();
         }
+    });
+
+    test('reinjects with the exact stable Disney channel fragment', () => {
+        const firstScript = {
+            id: '',
+            src: '',
+            onload: null,
+            onerror: null,
+        };
+        const secondScript = {
+            id: '',
+            src: '',
+            onload: null,
+            onerror: null,
+        };
+        const createElementSpy = jest
+            .spyOn(document, 'createElement')
+            .mockReturnValueOnce(firstScript)
+            .mockReturnValueOnce(secondScript);
+        const appendChildSpy = jest
+            .spyOn(document.head, 'appendChild')
+            .mockImplementation((node) => node);
+        const getUrlSpy = jest
+            .spyOn(chrome.runtime, 'getURL')
+            .mockReturnValue(
+                'chrome-extension://test-extension/injected_scripts/disneyPlusInject.js'
+            );
+        try {
+            expect(disneyPlusScript._reinjectScript()).toBe(true);
+            expect(disneyPlusScript._reinjectScript()).toBe(true);
+
+            const expectedFragment =
+                /^#dualsub-channel=disneyplus\.[0-9a-f]{64}$/u;
+            expect(new URL(firstScript.src).hash).toMatch(expectedFragment);
+            expect(new URL(secondScript.src).hash).toBe(
+                new URL(firstScript.src).hash
+            );
+            expect(appendChildSpy).toHaveBeenCalledTimes(2);
+        } finally {
+            getUrlSpy.mockRestore();
+            appendChildSpy.mockRestore();
+            createElementSpy.mockRestore();
+        }
+    });
+
+    test('fails closed without appending when its injection channel is absent', () => {
+        const createElementSpy = jest.spyOn(document, 'createElement');
+        const appendChildSpy = jest.spyOn(document.head, 'appendChild');
+        disneyPlusScript.injectConfig.channel = null;
+
+        expect(disneyPlusScript._reinjectScript()).toBe(false);
+
+        expect(createElementSpy).not.toHaveBeenCalled();
+        expect(appendChildSpy).not.toHaveBeenCalled();
+        appendChildSpy.mockRestore();
+        createElementSpy.mockRestore();
     });
 });

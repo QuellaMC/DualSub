@@ -4,9 +4,19 @@ import { configService } from '../services/configService.js';
 // Define constants for the injected script and communication events
 // It is crucial that these values match what you will use in 'netflixInject.js'
 import { Injection } from '../content_scripts/shared/constants/injection.js';
+import { createInjectionChannel } from '../content_scripts/shared/injectionChannel.js';
+import {
+    extractNetflixVideoIdFromPathname,
+    extractNetflixVideoIdFromUrl,
+    normalizeNetflixVideoId,
+    readOwnDataProperty,
+    readOwnPrimitiveDataProperty,
+} from '../content_scripts/shared/subtitleRequestIdentity.js';
 
 const INJECT_SCRIPT_TAG_ID = Injection.netflix.SCRIPT_TAG_ID;
 const INJECT_EVENT_ID = Injection.netflix.EVENT_ID; // Must match netflixInject.js
+const SUBTITLE_OBSERVER_RETRY_DELAY_MS = 250;
+const SUBTITLE_OBSERVER_MAX_ATTEMPTS = 20;
 
 import { BasePlatformAdapter } from './BasePlatformAdapter.js';
 
@@ -22,7 +32,7 @@ export class NetflixPlatform extends BasePlatformAdapter {
 
         try {
             this.logger = Logger.create('NetflixPlatform', configService);
-        } catch (error) {
+        } catch {
             this.logger = {
                 debug: (...args) => console.debug('[NetflixPlatform]', ...args),
                 info: (...args) => console.info('[NetflixPlatform]', ...args),
@@ -30,24 +40,26 @@ export class NetflixPlatform extends BasePlatformAdapter {
                 error: (...args) => console.error('[NetflixPlatform]', ...args),
                 updateLevel: () => Promise.resolve(),
             };
-            this.logger.warn('Failed to create proper logger, using fallback', {
-                errorName: error?.name,
-                errorLength: error?.message?.length || 0,
-            });
+            this._logBestEffort(
+                'warn',
+                'Failed to create proper logger, using fallback',
+                { loggerCreated: false }
+            );
         }
 
         this.currentVideoId = null;
         this.onSubtitleUrlFoundCallback = null;
         this.onVideoIdChangeCallback = null;
-        this.lastKnownVttUrlForVideoId = {}; // To prevent reprocessing the same subtitle data
         this.eventListener = null; // To hold the bound event listener for later removal
+        this.injectionChannel = null;
         // Buffer for preloaded subtitle data keyed by upcoming movieId
         this.preloadedSubtitleBuffer = Object.create(null);
 
-        this.initializeLogger().catch((error) => {
-            this.logger.warn(
+        this.initializeLogger().catch(() => {
+            this._logBestEffort(
+                'warn',
                 'Logger initialization failed, continuing with defaults',
-                { error: error.message }
+                { loggerInitialized: false }
             );
         });
     }
@@ -67,17 +79,21 @@ export class NetflixPlatform extends BasePlatformAdapter {
         try {
             if (this.chromeApiAvailable && this.logger.updateLevel) {
                 await this.logger.updateLevel();
-                this.logger.debug('Logger level updated successfully');
+                this._logBestEffort(
+                    'debug',
+                    'Logger level updated successfully'
+                );
             } else {
-                this.logger.warn(
+                this._logBestEffort(
+                    'warn',
                     'Chrome API not available or logger.updateLevel missing, using default logging level'
                 );
             }
-        } catch (error) {
-            this.logger.warn(
+        } catch {
+            this._logBestEffort(
+                'warn',
                 'Failed to initialize logger level, continuing with defaults',
                 {
-                    error: error.message,
                     chromeApiAvailable: this.chromeApiAvailable,
                 }
             );
@@ -89,16 +105,40 @@ export class NetflixPlatform extends BasePlatformAdapter {
     }
 
     isPlayerPageActive() {
-        // Netflix player pages typically have "/watch/" in the URL path.
-        return window.location.pathname.includes('/watch/');
+        return Boolean(
+            extractNetflixVideoIdFromPathname(window.location.pathname)
+        );
+    }
+
+    hasAdoptedPlayerRoute(url) {
+        const routeVideoId = extractNetflixVideoIdFromUrl(url);
+        return Boolean(routeVideoId && routeVideoId === this.currentVideoId);
     }
 
     async initialize(onSubtitleUrlFound, onVideoIdChange) {
+        this._retirePlatformLifecycle();
+
         if (!this.isPlatformActive()) return;
 
-        this.setCallbacks(onSubtitleUrlFound, onVideoIdChange);
+        const channel = createInjectionChannel('netflix');
+        if (!channel) {
+            this._logBestEffort(
+                'warn',
+                'Netflix injection channel unavailable; platform event bridge disabled'
+            );
+            return;
+        }
+        this.injectionChannel = channel;
 
-        this.eventListener = this.handleInjectorEvents.bind(this);
+        this.setCallbacks(onSubtitleUrlFound, onVideoIdChange);
+        const lifecycleGeneration = this._beginPlatformLifecycle();
+
+        this.eventListener = (event) =>
+            this._handleInjectorEventWithChannel(
+                channel,
+                event,
+                lifecycleGeneration
+            );
         document.addEventListener(INJECT_EVENT_ID, this.eventListener);
 
         const netflixSubtitleSelectors = [
@@ -109,127 +149,184 @@ export class NetflixPlatform extends BasePlatformAdapter {
         ];
         this.setupNativeSubtitleSettingsListener(netflixSubtitleSelectors);
 
-        this.logger.info('Initialized and event listener added', {
+        this._logBestEffort('info', 'Initialized and event listener added', {
             selectors: netflixSubtitleSelectors,
         });
     }
 
-    handleInjectorEvents(e) {
-        const data = e.detail;
-        if (!data || !data.type) return;
+    handleInjectorEvents(event) {
+        return this._handleInjectorEventWithChannel(
+            this.injectionChannel,
+            event,
+            this._lifecycleGeneration
+        );
+    }
 
-        if (data.type === 'INJECT_SCRIPT_READY') {
-            this.logger.info('Inject script is ready');
-        } else if (data.type === 'SUBTITLE_DATA_FOUND') {
-            this.logger.debug('Raw subtitle data received', {
-                payloadKeys: Object.keys(data.payload || {}),
-                trackCount: Array.isArray(data.payload?.timedtexttracks)
-                    ? data.payload.timedtexttracks.length
-                    : 0,
+    _handleInjectorEventWithChannel(
+        channel,
+        event,
+        lifecycleGeneration = this._lifecycleGeneration
+    ) {
+        if (!this._isPlatformLifecycleCurrent(lifecycleGeneration)) return;
+        const data = channel?.accept(event);
+        if (!data || !this._isPlatformLifecycleCurrent(lifecycleGeneration)) {
+            return;
+        }
+        return this._handleAlreadyAuthorizedInjectorData(
+            data,
+            lifecycleGeneration
+        );
+    }
+
+    _handleAlreadyAuthorizedInjectorData(
+        data,
+        lifecycleGeneration = this._lifecycleGeneration
+    ) {
+        const lifecycleIsCurrent = () =>
+            this._isPlatformLifecycleCurrent(lifecycleGeneration);
+        if (!lifecycleIsCurrent()) return;
+
+        const eventType = readOwnPrimitiveDataProperty(data, 'type');
+        if (typeof eventType !== 'string') return;
+
+        if (eventType === 'INJECT_SCRIPT_READY') {
+            this._logBestEffort('info', 'Inject script is ready');
+        } else if (eventType === 'SUBTITLE_DATA_FOUND') {
+            const payload = readOwnDataProperty(data, 'payload');
+            const rawMovieId = readOwnPrimitiveDataProperty(payload, 'movieId');
+            const movieId = normalizeNetflixVideoId(rawMovieId);
+            const timedtexttracks = readOwnDataProperty(
+                payload,
+                'timedtexttracks'
+            );
+            const trackCount = this._getSafeArrayLength(timedtexttracks);
+            this._logBestEffort('debug', 'Raw subtitle data received', {
+                hasPayload: Boolean(payload),
+                trackCount,
             });
 
-            const { movieId, timedtexttracks } = data.payload;
-
             if (!movieId) {
-                this.logger.error(
-                    'SUBTITLE_DATA_FOUND event missing movieId',
+                this._logBestEffort(
+                    'error',
+                    'SUBTITLE_DATA_FOUND event missing a valid movieId',
                     null,
                     {
-                        payloadKeys: Object.keys(data.payload || {}),
+                        hasPayload: Boolean(payload),
+                        receivedType: typeof rawMovieId,
                     }
                 );
                 return;
             }
 
             if (!timedtexttracks) {
-                this.logger.error(
+                this._logBestEffort(
+                    'error',
                     'SUBTITLE_DATA_FOUND event missing timedtexttracks',
                     null,
                     {
-                        payloadKeys: Object.keys(data.payload || {}),
+                        hasPayload: Boolean(payload),
                     }
                 );
                 return;
             }
 
-            this.logger.debug('Netflix SUBTITLE_DATA_FOUND for movieId', {
-                movieId: movieId,
-                dataType: typeof timedtexttracks,
-                trackCount: Array.isArray(timedtexttracks)
-                    ? timedtexttracks.length
-                    : 0,
-            });
+            this._logBestEffort(
+                'debug',
+                'Netflix SUBTITLE_DATA_FOUND for movieId',
+                {
+                    movieIdLength: movieId.length,
+                    dataType: typeof timedtexttracks,
+                    trackCount,
+                }
+            );
 
-            // Extract movieId from current URL to ensure we only process subtitles for the current content
+            // The isolated-world route is authoritative for current state and requests.
             const urlMovieId = this.extractMovieIdFromUrl();
-            if (urlMovieId && String(movieId) !== String(urlMovieId)) {
-                // Netflix often preloads next episode data before navigation. Buffer it.
-                this.logger.info(
-                    'Buffering preloaded subtitle data for upcoming movieId',
+            if (!urlMovieId) {
+                this._logBestEffort(
+                    'warn',
+                    'Rejected subtitle event outside a watch route',
                     {
-                        receivedMovieId: movieId,
-                        receivedType: typeof movieId,
-                        urlMovieId: urlMovieId,
-                        urlType: typeof urlMovieId,
+                        eventMovieIdLength: movieId.length,
+                        trackCount,
                     }
                 );
+                return;
+            }
+
+            if (movieId !== urlMovieId) {
+                if (trackCount === 0) {
+                    this._logBestEffort(
+                        'warn',
+                        'Rejected preloaded subtitle data without tracks',
+                        {
+                            eventMovieIdLength: movieId.length,
+                            routeMovieIdLength: urlMovieId.length,
+                        }
+                    );
+                    return;
+                }
+
+                // Netflix often preloads next episode data before navigation. Buffer it.
+                this._logBestEffort(
+                    'info',
+                    'Buffering preloaded subtitle data for upcoming movieId',
+                    {
+                        eventMovieIdLength: movieId.length,
+                        routeMovieIdLength: urlMovieId.length,
+                        idsMatch: false,
+                        trackCount,
+                    }
+                );
+                if (!lifecycleIsCurrent()) return;
                 this.preloadedSubtitleBuffer[movieId] = timedtexttracks;
                 return;
             }
-            this.logger.debug(
+            this._logBestEffort(
+                'debug',
                 'MovieId matches URL - processing subtitle data',
                 {
-                    movieId: movieId,
-                    urlMovieId: urlMovieId,
+                    movieIdLength: movieId.length,
+                    idsMatch: true,
                 }
             );
 
             // Handle video ID change
-            if (this.currentVideoId !== movieId) {
-                this.logger.info('Video context changing', {
-                    previousVideoId: this.currentVideoId || 'null',
-                    newVideoId: movieId,
-                });
-                if (this.currentVideoId) {
-                    delete this.lastKnownVttUrlForVideoId[this.currentVideoId];
-                }
-                this.setVideoIdAndNotify(movieId);
+            if (this.currentVideoId !== urlMovieId) {
+                if (!lifecycleIsCurrent()) return;
+                this.setVideoIdAndNotify(urlMovieId);
+                if (!lifecycleIsCurrent()) return;
             }
 
             // Check if timedtexttracks is an array and has content
-            if (
-                !Array.isArray(timedtexttracks) ||
-                timedtexttracks.length === 0
-            ) {
-                this.logger.warn(
+            if (trackCount === 0) {
+                this._logBestEffort(
+                    'warn',
                     'No subtitle tracks available in timedtexttracks data'
                 );
                 return;
             }
 
-            this.logger.info('Found subtitle tracks for movieId', {
-                trackCount: timedtexttracks.length,
-                movieId: movieId,
+            this._logBestEffort('info', 'Found subtitle tracks for movieId', {
+                trackCount,
+                hasMovieId: true,
             });
 
             // Filter tracks first: exclude forced narrative tracks and None tracks
             const validTracks = timedtexttracks.filter(
                 (track) => !track.isNoneTrack && !track.isForcedNarrative
             );
+            const validTrackCount = this._getSafeArrayLength(validTracks);
 
-            this.logger.debug('Netflix filtered to valid tracks', {
-                validTrackCount: validTracks.length,
-                originalCount: timedtexttracks.length,
+            this._logBestEffort('debug', 'Netflix filtered to valid tracks', {
+                validTrackCount,
+                originalCount: trackCount,
                 filterCriteria: 'non-forced, non-None',
-                validTrackLanguages: validTracks.map((track) => ({
-                    language: track.language,
-                    displayName: track.displayName,
-                    trackType: track.trackType,
-                })),
             });
 
-            if (validTracks.length === 0) {
-                this.logger.warn(
+            if (validTrackCount === 0) {
+                this._logBestEffort(
+                    'warn',
                     'No valid subtitle tracks available after filtering'
                 );
                 return;
@@ -279,39 +376,52 @@ export class NetflixPlatform extends BasePlatformAdapter {
             }
 
             if (!primaryTrackUrl) {
-                this.logger.warn(
+                this._logBestEffort(
+                    'warn',
                     'No downloadable subtitle URLs found in any track'
                 );
-                this.logger.debug('Full tracks data for debugging', {
-                    trackCount: timedtexttracks.length,
+                this._logBestEffort('debug', 'Full tracks data for debugging', {
+                    trackCount,
                 });
                 return;
             }
 
-            if (
-                this.lastKnownVttUrlForVideoId[this.currentVideoId] ===
-                primaryTrackUrl
-            ) {
-                this.logger.debug('Subtitle data already processed', {
-                    hasVideoId: Boolean(this.currentVideoId),
-                });
+            const requestVideoId = this.currentVideoId;
+            const { request, inFlight } = this.beginVttRequest(
+                primaryTrackUrl,
+                requestVideoId
+            );
+            if (!request) {
+                this._logBestEffort(
+                    'debug',
+                    'Subtitle data already processed',
+                    {
+                        hasVideoId: Boolean(requestVideoId),
+                        inFlight,
+                    }
+                );
                 return;
             }
-            this.lastKnownVttUrlForVideoId[this.currentVideoId] =
-                primaryTrackUrl;
 
-            this.logger.info('Requesting VTT processing from background', {
-                trackCount: validTracks.length,
-            });
+            this._logBestEffort(
+                'info',
+                'Requesting VTT processing from background',
+                {
+                    trackCount: validTrackCount,
+                }
+            );
 
-            configService
-                .getMultiple([
-                    'targetLanguage',
-                    'originalLanguage',
-                    'useNativeSubtitles',
-                    'useOfficialTranslations',
-                ])
+            return Promise.resolve()
+                .then(() =>
+                    configService.getMultiple([
+                        'targetLanguage',
+                        'originalLanguage',
+                        'useNativeSubtitles',
+                        'useOfficialTranslations',
+                    ])
+                )
                 .then((settings) => {
+                    if (!lifecycleIsCurrent()) return;
                     const {
                         targetLanguage = 'zh-CN',
                         originalLanguage = 'en',
@@ -324,278 +434,236 @@ export class NetflixPlatform extends BasePlatformAdapter {
                         useOfficialTranslations !== undefined
                             ? useOfficialTranslations
                             : useNativeSubtitles;
+                    const hasTargetLanguage =
+                        typeof targetLanguage === 'string' &&
+                        targetLanguage.length > 0;
+                    const hasOriginalLanguage =
+                        typeof originalLanguage === 'string' &&
+                        originalLanguage.length > 0;
 
                     // Enhanced logging for debugging official translation functionality
-                    this.logger.info(
+                    this._logBestEffort(
+                        'info',
                         'Netflix subtitle processing mode determined',
                         {
-                            useOfficialTranslations,
-                            useNativeSubtitles,
-                            useOfficialSubtitles,
-                            targetLanguage,
-                            originalLanguage,
-                            movieId: this.currentVideoId,
+                            useOfficialTranslations:
+                                useOfficialTranslations === true,
+                            useNativeSubtitles: useNativeSubtitles === true,
+                            useOfficialSubtitles: useOfficialSubtitles === true,
+                            hasTargetLanguage,
+                            hasOriginalLanguage,
+                            hasMovieId: Boolean(requestVideoId),
                         }
                     );
 
                     if (useOfficialSubtitles) {
-                        this.logger.info(
+                        this._logBestEffort(
+                            'info',
                             'Netflix will attempt to use official subtitles',
                             {
-                                targetLanguage,
-                                originalLanguage,
-                                trackCount: timedtexttracks.length,
+                                hasTargetLanguage,
+                                hasOriginalLanguage,
+                                trackCount,
                             }
                         );
                     } else {
-                        this.logger.info(
+                        this._logBestEffort(
+                            'info',
                             'Netflix will use translation API mode',
                             {
-                                targetLanguage,
-                                originalLanguage,
+                                hasTargetLanguage,
+                                hasOriginalLanguage,
                             }
                         );
                     }
 
-                    this.requestNetflixVttWithTracks(
+                    const dispatchRouteVideoId = this.extractMovieIdFromUrl();
+                    const requestIsCurrent = this.isVttRequestCurrent(request);
+                    if (
+                        !lifecycleIsCurrent() ||
+                        dispatchRouteVideoId !== requestVideoId ||
+                        !requestIsCurrent
+                    ) {
+                        this._logBestEffort(
+                            'warn',
+                            'Discarding stale Netflix subtitle request before background dispatch',
+                            {
+                                hasRouteVideoId: Boolean(dispatchRouteVideoId),
+                                idsMatch:
+                                    dispatchRouteVideoId === requestVideoId,
+                                requestIsCurrent,
+                                trackCount,
+                            }
+                        );
+                        return;
+                    }
+
+                    const canDispatch = () =>
+                        lifecycleIsCurrent() &&
+                        this.extractMovieIdFromUrl() === requestVideoId &&
+                        this.isVttRequestCurrent(request);
+
+                    return this.requestNetflixVttWithTracks(
                         timedtexttracks,
                         targetLanguage,
                         originalLanguage,
-                        useOfficialSubtitles
+                        useOfficialSubtitles,
+                        requestVideoId,
+                        canDispatch
                     )
                         .then((response) => {
-                            if (
-                                response &&
-                                response.success &&
-                                response.videoId === this.currentVideoId
-                            ) {
-                                // Enhanced logging for debugging official translation functionality
-                                this.logger.info(
-                                    'Netflix VTT processed successfully',
+                            if (!lifecycleIsCurrent()) return;
+                            const responseRouteVideoId =
+                                this.extractMovieIdFromUrl();
+                            const requestIsCurrent =
+                                this.isVttRequestCurrent(request);
+                            const routeIsCurrent =
+                                responseRouteVideoId === requestVideoId;
+
+                            if (!routeIsCurrent || !requestIsCurrent) {
+                                this._logBestEffort(
+                                    'warn',
+                                    'Discarding stale Netflix subtitle response after route change',
                                     {
-                                        videoId: this.currentVideoId,
-                                        sourceLanguage: response.sourceLanguage,
-                                        targetLanguage: response.targetLanguage,
-                                        useNativeTarget:
-                                            response.useNativeTarget,
-                                        hasTargetVtt: !!response.targetVttText,
-                                        availableLanguagesCount:
-                                            response.availableLanguages
-                                                ?.length || 0,
+                                        hasRouteVideoId:
+                                            Boolean(responseRouteVideoId),
+                                        idsMatch: routeIsCurrent,
+                                        requestIsCurrent,
+                                        hasReceivedVideoId: Boolean(
+                                            response?.videoId
+                                        ),
+                                        trackCount,
                                     }
                                 );
+                                return;
+                            }
 
-                                if (response.useNativeTarget) {
-                                    this.logger.info(
-                                        'Netflix official subtitles successfully used',
-                                        {
-                                            targetLanguage:
-                                                response.targetLanguage,
-                                            sourceLanguage:
-                                                response.sourceLanguage,
-                                            targetVttLength:
-                                                response.targetVttText
-                                                    ?.length || 0,
-                                        }
-                                    );
-                                } else {
-                                    this.logger.info(
-                                        'Netflix using translation API mode (official subtitles not available or disabled)',
-                                        {
-                                            targetLanguage:
-                                                response.targetLanguage,
-                                            sourceLanguage:
-                                                response.sourceLanguage,
-                                            reason:
-                                                response.useNativeTarget ===
-                                                false
-                                                    ? 'not available'
-                                                    : 'disabled',
-                                        }
-                                    );
+                            if (this.canAcceptVttResponse(request, response)) {
+                                const onSubtitleUrlFound =
+                                    this.onSubtitleUrlFoundCallback;
+                                if (
+                                    !lifecycleIsCurrent() ||
+                                    typeof onSubtitleUrlFound !== 'function'
+                                ) {
+                                    return;
                                 }
 
-                                if (this.onSubtitleUrlFoundCallback) {
-                                    this.logger.info(
-                                        'Netflix subtitle callback is available, preparing data',
-                                        {
-                                            hasCallback:
-                                                !!this
-                                                    .onSubtitleUrlFoundCallback,
-                                            callbackType:
-                                                typeof this
-                                                    .onSubtitleUrlFoundCallback,
-                                            videoId: response.videoId,
-                                        }
-                                    );
+                                const subtitleData = {
+                                    vttText: response.vttText,
+                                    targetVttText: response.targetVttText,
+                                    videoId: response.videoId,
+                                    sourceLanguage: response.sourceLanguage,
+                                    targetLanguage: response.targetLanguage,
+                                    useNativeTarget: response.useNativeTarget,
+                                    selectedLanguage: {
+                                        normalizedCode:
+                                            response.selectedLanguage
+                                                .normalizedCode,
+                                        displayName:
+                                            response.selectedLanguage
+                                                .displayName,
+                                    },
+                                };
+                                const successTelemetry = {
+                                    hasVideoId: Boolean(requestVideoId),
+                                    hasSourceLanguage:
+                                        typeof subtitleData.sourceLanguage ===
+                                            'string' &&
+                                        subtitleData.sourceLanguage.length > 0,
+                                    hasTargetLanguage:
+                                        typeof subtitleData.targetLanguage ===
+                                            'string' &&
+                                        subtitleData.targetLanguage.length > 0,
+                                    useNativeTarget:
+                                        subtitleData.useNativeTarget === true,
+                                    hasTargetVtt: !!subtitleData.targetVttText,
+                                };
 
-                                    // Enhanced logging for subtitle processing pipeline
-                                    const subtitleData = {
-                                        vttText: response.vttText,
-                                        targetVttText: response.targetVttText,
-                                        videoId: response.videoId,
-                                        url: response.url, // URL of the original language subtitle file
-                                        sourceLanguage: response.sourceLanguage,
-                                        targetLanguage: response.targetLanguage,
-                                        useNativeTarget:
-                                            response.useNativeTarget || false,
-                                        availableLanguages:
-                                            response.availableLanguages,
-                                        selectedLanguage: {
-                                            displayName:
-                                                response.sourceLanguage,
-                                            normalizedCode:
-                                                response.sourceLanguage,
-                                        },
-                                    };
+                                if (!lifecycleIsCurrent()) return;
+                                onSubtitleUrlFound.call(this, subtitleData);
 
-                                    this.logger.debug(
-                                        'Netflix subtitle data prepared for dual display',
-                                        {
-                                            hasOriginalVtt:
-                                                !!subtitleData.vttText,
-                                            hasTargetVtt:
-                                                !!subtitleData.targetVttText,
-                                            useNativeTarget:
-                                                subtitleData.useNativeTarget,
-                                            originalVttLength:
-                                                subtitleData.vttText?.length ||
-                                                0,
-                                            targetVttLength:
-                                                subtitleData.targetVttText
-                                                    ?.length || 0,
-                                            displayMode:
-                                                subtitleData.targetVttText
-                                                    ? 'dual'
-                                                    : 'original-only',
-                                        }
-                                    );
-
-                                    // The callback expects a 'SubtitleData' object, as defined in subtitleUtilities.js
-                                    this.logger.info(
-                                        'Calling Netflix subtitle callback with data',
-                                        {
-                                            videoId: subtitleData.videoId,
-                                            hasVttText: !!subtitleData.vttText,
-                                            hasTargetVttText:
-                                                !!subtitleData.targetVttText,
-                                            useNativeTarget:
-                                                subtitleData.useNativeTarget,
-                                            vttTextLength:
-                                                subtitleData.vttText?.length ||
-                                                0,
-                                            targetVttTextLength:
-                                                subtitleData.targetVttText
-                                                    ?.length || 0,
-                                        }
-                                    );
-
-                                    this.onSubtitleUrlFoundCallback(
-                                        subtitleData
-                                    );
-
-                                    this.logger.debug(
-                                        'Netflix subtitle callback completed'
-                                    );
-                                } else {
-                                    this.logger.error(
-                                        'Netflix subtitle callback is not available',
-                                        {
-                                            hasCallback:
-                                                !!this
-                                                    .onSubtitleUrlFoundCallback,
-                                            callbackValue:
-                                                this.onSubtitleUrlFoundCallback,
-                                        }
-                                    );
+                                if (
+                                    !lifecycleIsCurrent() ||
+                                    this.extractMovieIdFromUrl() !==
+                                        request.videoId ||
+                                    !this.acceptVttResponse(request, response)
+                                ) {
+                                    return;
                                 }
+
+                                this._logBestEffort(
+                                    'info',
+                                    'Netflix VTT processed successfully',
+                                    successTelemetry
+                                );
                             } else if (response && !response.success) {
                                 // Enhanced error logging for debugging official translation functionality
-                                this.logger.error(
+                                this._logBestEffort(
+                                    'error',
                                     'Netflix background failed to process VTT',
                                     null,
                                     {
-                                        error: response.error,
-                                        videoId: this.currentVideoId,
-                                        useOfficialSubtitles,
-                                        targetLanguage,
-                                        originalLanguage,
-                                        trackCount: timedtexttracks.length,
+                                        backgroundRejected: true,
+                                        hasVideoId: Boolean(requestVideoId),
+                                        useOfficialSubtitles:
+                                            useOfficialSubtitles === true,
+                                        hasTargetLanguage,
+                                        hasOriginalLanguage,
+                                        trackCount,
                                     }
                                 );
-
-                                // Log specific error details for official subtitle failures
-                                if (useOfficialSubtitles && response.error) {
-                                    if (
-                                        response.error.includes(
-                                            'No downloadable subtitle tracks'
-                                        )
-                                    ) {
-                                        this.logger.warn(
-                                            'Netflix official subtitles not available for this content',
-                                            {
-                                                targetLanguage,
-                                                originalLanguage,
-                                                suggestion:
-                                                    'Try using translation API mode instead',
-                                            }
-                                        );
-                                    } else if (
-                                        response.error.includes(
-                                            'No suitable Netflix subtitle language'
-                                        )
-                                    ) {
-                                        this.logger.warn(
-                                            'Netflix requested languages not found in available tracks',
-                                            {
-                                                targetLanguage,
-                                                originalLanguage,
-                                                availableTrackCount:
-                                                    timedtexttracks.length,
-                                            }
-                                        );
-                                    }
-                                }
-
-                                delete this.lastKnownVttUrlForVideoId[
-                                    this.currentVideoId
-                                ];
                             } else if (
                                 response &&
                                 response.videoId !== this.currentVideoId
                             ) {
-                                this.logger.warn(
+                                this._logBestEffort(
+                                    'warn',
                                     'Received VTT for different video context - discarding',
                                     {
-                                        receivedVideoId: response.videoId,
-                                        currentVideoId: this.currentVideoId,
+                                        hasReceivedVideoId: Boolean(
+                                            response.videoId
+                                        ),
+                                        idsMatch:
+                                            response.videoId ===
+                                            this.currentVideoId,
                                     }
                                 );
                             } else {
                                 // Generic failure path
-                                this.logger.error(
+                                this._logBestEffort(
+                                    'error',
                                     'No/invalid response from background for Netflix fetchVTT',
                                     {
-                                        videoId: this.currentVideoId,
+                                        hasVideoId: Boolean(requestVideoId),
                                     }
                                 );
-                                delete this.lastKnownVttUrlForVideoId[
-                                    this.currentVideoId
-                                ];
                             }
                         })
-                        .catch((_error) => {
-                            // Generic error path; ensure we clear processed URL so future attempts can retry
-                            this.logger.error(
+                        .catch(() => {
+                            if (!lifecycleIsCurrent()) return;
+                            this._logBestEffort(
+                                'error',
                                 'No/invalid response from background for Netflix fetchVTT',
                                 {
-                                    videoId: this.currentVideoId,
+                                    hasVideoId: Boolean(requestVideoId),
                                 }
                             );
-                            delete this.lastKnownVttUrlForVideoId[
-                                this.currentVideoId
-                            ];
                         });
+                })
+                .catch(() => {
+                    if (!lifecycleIsCurrent()) return;
+                    this._logBestEffort(
+                        'error',
+                        'Failed to resolve subtitle request settings',
+                        null,
+                        {
+                            hasVideoId: Boolean(requestVideoId),
+                            trackCount,
+                        }
+                    );
+                })
+                .finally(() => {
+                    this.finishVttRequest(request);
                 });
         }
     }
@@ -607,38 +675,40 @@ export class NetflixPlatform extends BasePlatformAdapter {
      */
     onUrlChange(_newUrl) {
         try {
+            const lifecycleGeneration = this._lifecycleGeneration;
+            if (!this._isPlatformLifecycleCurrent(lifecycleGeneration)) return;
             const urlMovieId = this.extractMovieIdFromUrl();
             if (!urlMovieId) return;
 
             const bufferedTracks = this.preloadedSubtitleBuffer[urlMovieId];
-            if (
-                bufferedTracks &&
-                Array.isArray(bufferedTracks) &&
-                bufferedTracks.length > 0
-            ) {
-                this.logger.info(
+            const bufferedTrackCount = this._getSafeArrayLength(bufferedTracks);
+            if (bufferedTrackCount > 0) {
+                this._logBestEffort(
+                    'info',
                     'Processing buffered preloaded subtitles after navigation',
                     {
-                        movieId: urlMovieId,
-                        trackCount: bufferedTracks.length,
+                        movieIdLength: urlMovieId.length,
+                        trackCount: bufferedTrackCount,
                     }
                 );
                 // Clear buffer for this id before processing to avoid loops
                 delete this.preloadedSubtitleBuffer[urlMovieId];
-                // Reuse the same handler path as real-time events
-                this.handleInjectorEvents({
-                    detail: {
+                // This data crossed the raw event authority gate before it was
+                // buffered, so replay it only through the internal authorized path.
+                this._handleAlreadyAuthorizedInjectorData(
+                    {
                         type: 'SUBTITLE_DATA_FOUND',
                         payload: {
                             movieId: urlMovieId,
                             timedtexttracks: bufferedTracks,
                         },
                     },
-                });
+                    lifecycleGeneration
+                );
             }
-        } catch (e) {
-            this.logger.warn('onUrlChange processing failed', {
-                error: e.message,
+        } catch {
+            this._logBestEffort('warn', 'onUrlChange processing failed', {
+                processingSucceeded: false,
             });
         }
     }
@@ -653,24 +723,25 @@ export class NetflixPlatform extends BasePlatformAdapter {
 
     extractMovieIdFromUrl() {
         try {
-            // Netflix URLs are typically in the format: https://www.netflix.com/watch/MOVIEID or similar
-            const path = window.location.pathname;
-            const match = path.match(/\/watch\/(\d+)/);
-            if (match && match[1]) {
-                const extractedId = match[1];
-                this.logger.debug('Extracted movieId from URL', {
-                    extractedId: extractedId,
+            const extractedId = extractNetflixVideoIdFromUrl(
+                window.location.href
+            );
+            if (extractedId) {
+                this._logBestEffort('debug', 'Extracted movieId from URL', {
+                    movieIdLength: extractedId.length,
                     pathnameLength: window.location.pathname.length,
                 });
                 return extractedId;
             }
 
-            this.logger.warn('Could not extract movieId from URL', {
-                pathnameLength: path.length,
+            this._logBestEffort('warn', 'Could not extract movieId from URL', {
+                pathnameLength: window.location.pathname.length,
             });
             return null;
-        } catch (error) {
-            this.logger.error('Error extracting movieId from URL', error);
+        } catch {
+            this._logBestEffort('error', 'Error extracting movieId from URL', {
+                extractionSucceeded: false,
+            });
             return null;
         }
     }
@@ -693,11 +764,7 @@ export class NetflixPlatform extends BasePlatformAdapter {
 
     isPlaying() {
         try {
-            const video = this.getVideoElement();
-            if (video) {
-                return !video.paused;
-            }
-            return null;
+            return this._getMediaPlayingState();
         } catch (_) {
             return null;
         }
@@ -706,10 +773,12 @@ export class NetflixPlatform extends BasePlatformAdapter {
     async pausePlayback() {
         try {
             const video = this.getVideoElement();
-            if (video && !video.paused) {
-                video.pause();
-            }
-            return true;
+            const state = this._getMediaPlayingState(video);
+            if (state === null) return false;
+            if (state === false) return true;
+
+            video.pause();
+            return this.isPlaying() === false;
         } catch (_) {
             return false;
         }
@@ -718,10 +787,12 @@ export class NetflixPlatform extends BasePlatformAdapter {
     async resumePlayback() {
         try {
             const video = this.getVideoElement();
-            if (video && video.paused) {
-                await video.play();
-            }
-            return true;
+            const state = this._getMediaPlayingState(video);
+            if (state === null) return false;
+            if (state === true) return true;
+
+            await video.play();
+            return this.isPlaying() === true;
         } catch (_) {
             return false;
         }
@@ -764,7 +835,8 @@ export class NetflixPlatform extends BasePlatformAdapter {
         if (!styleElement) {
             // Validate that document.head exists before appending
             if (!document.head || !(document.head instanceof Node)) {
-                console.warn(
+                this._logBestEffort(
+                    'warn',
                     '[NetflixPlatform] document.head not available, cannot inject CSS'
                 );
                 return;
@@ -774,8 +846,11 @@ export class NetflixPlatform extends BasePlatformAdapter {
                 styleElement = document.createElement('style');
                 styleElement.id = cssId;
                 document.head.appendChild(styleElement);
-            } catch (error) {
-                console.error('[NetflixPlatform] Failed to inject CSS:', error);
+            } catch {
+                this._logBestEffort(
+                    'error',
+                    '[NetflixPlatform] Failed to inject CSS'
+                );
                 return;
             }
         }
@@ -803,25 +878,87 @@ export class NetflixPlatform extends BasePlatformAdapter {
     }
 
     setupSubtitleMutationObserver() {
-        // Disconnect any existing observer
-        if (this.subtitleObserver) {
-            this.subtitleObserver.disconnect();
-        }
+        const timerGeneration = this._resetOwnedTimeoutLifecycle();
+        this._disconnectSubtitleMutationObserver();
+        this._attemptSubtitleMutationObserverSetup(timerGeneration, 1);
+    }
 
-        // Validate that document.body exists before setting up observer
-        if (!document.body || !(document.body instanceof Node)) {
-            console.warn(
-                '[NetflixPlatform] document.body not available, retrying in 100ms'
-            );
-            setTimeout(() => {
-                this.setupSubtitleMutationObserver();
-            }, 100);
+    _disconnectSubtitleMutationObserver() {
+        const observer = this.subtitleObserver;
+        this.subtitleObserver = null;
+        if (observer) {
+            try {
+                observer.disconnect();
+            } catch (_) {}
+        }
+    }
+
+    _scheduleSubtitleObserverRetry(timerGeneration, attempt, reason) {
+        if (timerGeneration !== this.ownedTimeoutGeneration) {
             return;
         }
 
+        if (attempt >= SUBTITLE_OBSERVER_MAX_ATTEMPTS) {
+            this._logBestEffort(
+                'warn',
+                'Subtitle observer discovery budget exhausted',
+                {
+                    attempts: Number.isSafeInteger(attempt) ? attempt : 0,
+                    hasReason: typeof reason === 'string',
+                }
+            );
+            return;
+        }
+
+        this._scheduleOwnedTimeout(
+            'subtitle-observer-retry',
+            () =>
+                this._attemptSubtitleMutationObserverSetup(
+                    timerGeneration,
+                    attempt + 1
+                ),
+            SUBTITLE_OBSERVER_RETRY_DELAY_MS,
+            timerGeneration
+        );
+    }
+
+    _attemptSubtitleMutationObserverSetup(timerGeneration, attempt) {
+        if (timerGeneration !== this.ownedTimeoutGeneration) {
+            return;
+        }
+
+        let playerRoot = null;
+        try {
+            playerRoot = this.getPlayerContainerElement();
+        } catch (_) {
+            this._scheduleSubtitleObserverRetry(
+                timerGeneration,
+                attempt,
+                'player-root-lookup-failed'
+            );
+            return;
+        }
+
+        if (!(playerRoot instanceof Node)) {
+            this._scheduleSubtitleObserverRetry(
+                timerGeneration,
+                attempt,
+                'player-root-unavailable'
+            );
+            return;
+        }
+
+        let observer = null;
         try {
             // Set up mutation observer to catch dynamically created subtitle elements
-            this.subtitleObserver = new MutationObserver((mutations) => {
+            observer = new MutationObserver((mutations) => {
+                if (
+                    timerGeneration !== this.ownedTimeoutGeneration ||
+                    this.subtitleObserver !== observer
+                ) {
+                    return;
+                }
+
                 let foundNewSubtitles = false;
 
                 mutations.forEach((mutation) => {
@@ -849,47 +986,39 @@ export class NetflixPlatform extends BasePlatformAdapter {
 
                 if (foundNewSubtitles) {
                     // Reapply hiding rules after a short delay
-                    setTimeout(() => {
-                        this.applyCurrentSubtitleSetting();
-                    }, 100);
+                    this._scheduleOwnedTimeout(
+                        'subtitle-setting-reapply',
+                        () => this.applyCurrentSubtitleSetting(timerGeneration),
+                        100,
+                        timerGeneration
+                    );
                 }
             });
 
-            // Start observing the document body for changes
-            this.subtitleObserver.observe(document.body, {
+            observer.observe(playerRoot, {
                 childList: true,
                 subtree: true,
             });
 
-            console.log(
-                '[NetflixPlatform] Subtitle mutation observer set up successfully'
+            if (timerGeneration !== this.ownedTimeoutGeneration) {
+                observer.disconnect();
+                return;
+            }
+
+            this.subtitleObserver = observer;
+        } catch (_) {
+            try {
+                observer?.disconnect();
+            } catch (_) {}
+            this._scheduleSubtitleObserverRetry(
+                timerGeneration,
+                attempt,
+                'observer-setup-failed'
             );
-        } catch (error) {
-            console.error(
-                '[NetflixPlatform] Failed to set up subtitle mutation observer:',
-                error
-            );
-            // Retry after a delay
-            setTimeout(() => {
-                this.setupSubtitleMutationObserver();
-            }, 500);
         }
     }
 
-    async applyCurrentSubtitleSetting() {
-        // Reuse base class cache when possible to avoid frequent storage calls
-        let hideOfficialSubtitles = this._hideOfficialSubtitles;
-        if (hideOfficialSubtitles === undefined) {
-            try {
-                hideOfficialSubtitles = await configService.get(
-                    'hideOfficialSubtitles'
-                );
-                this._hideOfficialSubtitles = !!hideOfficialSubtitles;
-            } catch (_) {
-                hideOfficialSubtitles = false;
-            }
-        }
-
+    async applyCurrentSubtitleSetting(timerGeneration = null) {
         const netflixSubtitleSelectors = [
             '.player-timedtext',
             '.player-timedtext-text-container',
@@ -897,29 +1026,49 @@ export class NetflixPlatform extends BasePlatformAdapter {
             '.watch-video--bottom-controls-container .timedtext-text-container',
         ];
 
-        if (hideOfficialSubtitles) {
-            this.hideOfficialSubtitleContainers(netflixSubtitleSelectors);
-        } else {
-            this.showOfficialSubtitleContainers();
-        }
+        await this.handleNativeSubtitlesWithSetting(
+            netflixSubtitleSelectors,
+            () =>
+                timerGeneration === null ||
+                timerGeneration === this.ownedTimeoutGeneration
+        );
     }
 
-    cleanup() {
+    _retirePlatformLifecycle() {
+        this._invalidatePlatformLifecycle();
+        this._clearOwnedTimeouts();
+
+        const channel = this.injectionChannel;
+        this.injectionChannel = null;
+        channel?.revoke();
+
         if (this.eventListener) {
             document.removeEventListener(INJECT_EVENT_ID, this.eventListener);
             this.eventListener = null;
-            this.logger.debug('Event listener removed');
+            this._logBestEffort('debug', 'Event listener removed');
         }
 
         // Clean up storage listener for subtitle settings
-        this.cleanupNativeSubtitleSettingsListener();
+        this._cleanupNativeSubtitleSettingsBestEffort();
 
-        // Clean up mutation observer
-        if (this.subtitleObserver) {
-            this.subtitleObserver.disconnect();
-            this.subtitleObserver = null;
-            this.logger.debug('Subtitle mutation observer cleaned up');
+        const hadSubtitleObserver = Boolean(this.subtitleObserver);
+        this._disconnectSubtitleMutationObserver();
+        if (hadSubtitleObserver) {
+            this._logBestEffort(
+                'debug',
+                'Subtitle mutation observer cleaned up'
+            );
         }
+
+        this.currentVideoId = null;
+        this.onSubtitleUrlFoundCallback = null;
+        this.onVideoIdChangeCallback = null;
+        this.resetVttRequestState();
+        this.preloadedSubtitleBuffer = Object.create(null);
+    }
+
+    cleanup() {
+        this._retirePlatformLifecycle();
 
         // Remove our custom CSS
         const cssElement = document.getElementById(
@@ -933,11 +1082,7 @@ export class NetflixPlatform extends BasePlatformAdapter {
         if (scriptTag) {
             scriptTag.remove();
         }
-        this.currentVideoId = null;
-        this.onSubtitleUrlFoundCallback = null;
-        this.onVideoIdChangeCallback = null;
-        this.lastKnownVttUrlForVideoId = {};
-        this.preloadedSubtitleBuffer = Object.create(null);
-        this.logger.info('Platform cleaned up successfully');
+
+        this._logBestEffort('info', 'Platform cleaned up successfully');
     }
 }

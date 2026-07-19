@@ -1,18 +1,11 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import { SettingCard } from '../SettingCard.jsx';
 import { SparkleButton } from '../SparkleButton.jsx';
 import { TestResultDisplay } from '../TestResultDisplay.jsx';
 import { useOpenAITest } from '../../hooks/index.js';
+import { useCommittedTextField } from '../../hooks/useCommittedTextField.js';
 import { fetchAvailableModels } from '../../../translation_providers/openaiCompatibleTranslate.js';
-
-// Debounce utility
-function debounce(func, delay) {
-    let timeoutId;
-    return function (...args) {
-        clearTimeout(timeoutId);
-        timeoutId = setTimeout(() => func.apply(this, args), delay);
-    };
-}
+import { validateSetting } from '../../../config/configSchema.js';
 
 export function OpenAICompatibleProviderCard({
     t,
@@ -31,45 +24,207 @@ export function OpenAICompatibleProviderCard({
         fetchingModels,
         testConnection,
         fetchModels,
+        invalidateRequests,
         initializeStatus,
     } = useOpenAITest(t, fetchAvailableModels);
 
-    // Create debounced model fetching
-    const debouncedFetchRef = useRef(
-        debounce((key, url) => {
-            fetchModels(key, url, onModelsLoaded);
-        }, 1000)
+    const fetchModelsRef = useRef(fetchModels);
+    const testConnectionRef = useRef(testConnection);
+    const invalidateRequestsRef = useRef(invalidateRequests);
+    const initializeStatusRef = useRef(initializeStatus);
+    const onModelsLoadedRef = useRef(onModelsLoaded);
+    const apiKeyRef = useRef(apiKey);
+    const baseUrlRef = useRef(baseUrl);
+    const modelRequestGenerationRef = useRef(0);
+    const currentModelRequestIdentityRef = useRef(null);
+    const renderedIdentityRef = useRef(null);
+    const pendingModelFetchRef = useRef(null);
+    const modelFetchTimerRef = useRef(null);
+    fetchModelsRef.current = fetchModels;
+    testConnectionRef.current = testConnection;
+    invalidateRequestsRef.current = invalidateRequests;
+    initializeStatusRef.current = initializeStatus;
+    onModelsLoadedRef.current = onModelsLoaded;
+    apiKeyRef.current = apiKey;
+    baseUrlRef.current = baseUrl;
+
+    const cancelPendingModelFetch = useCallback(() => {
+        if (modelFetchTimerRef.current !== null) {
+            clearTimeout(modelFetchTimerRef.current);
+            modelFetchTimerRef.current = null;
+        }
+        pendingModelFetchRef.current = null;
+    }, []);
+
+    const createGenerationCallback = useCallback((generation, key, url) => {
+        return (loadedModels) => {
+            if (
+                generation !== modelRequestGenerationRef.current ||
+                key !== apiKeyRef.current ||
+                url !== baseUrlRef.current
+            ) {
+                return;
+            }
+            onModelsLoadedRef.current?.(loadedModels, {
+                apiKey: key,
+                baseUrl: url,
+            });
+        };
+    }, []);
+
+    const invalidateModelRequests = useCallback(() => {
+        cancelPendingModelFetch();
+        modelRequestGenerationRef.current += 1;
+        currentModelRequestIdentityRef.current = null;
+        invalidateRequestsRef.current();
+        return modelRequestGenerationRef.current;
+    }, [cancelPendingModelFetch]);
+
+    const invalidateModelIdentity = useCallback(() => {
+        const generation = invalidateModelRequests();
+        onModelsLoadedRef.current?.([]);
+        return generation;
+    }, [invalidateModelRequests]);
+
+    const fetchModelsNow = useCallback(
+        (key, url) => {
+            const generation = invalidateModelRequests();
+            currentModelRequestIdentityRef.current = {
+                generation,
+                key,
+                url,
+            };
+            void fetchModelsRef.current(
+                key,
+                url,
+                createGenerationCallback(generation, key, url)
+            );
+        },
+        [createGenerationCallback, invalidateModelRequests]
     );
+
+    const scheduleModelFetch = useCallback(
+        (key, url, clearPublishedCatalog = false) => {
+            const generation = clearPublishedCatalog
+                ? invalidateModelIdentity()
+                : invalidateModelRequests();
+            currentModelRequestIdentityRef.current = {
+                generation,
+                key,
+                url,
+            };
+            pendingModelFetchRef.current = { generation, key, url };
+            modelFetchTimerRef.current = setTimeout(() => {
+                modelFetchTimerRef.current = null;
+                const request = pendingModelFetchRef.current;
+                pendingModelFetchRef.current = null;
+                if (
+                    !request ||
+                    request.generation !== modelRequestGenerationRef.current
+                ) {
+                    return;
+                }
+                void fetchModelsRef.current(
+                    request.key,
+                    request.url,
+                    createGenerationCallback(
+                        request.generation,
+                        request.key,
+                        request.url
+                    )
+                );
+            }, 1000);
+        },
+        [
+            createGenerationCallback,
+            invalidateModelIdentity,
+            invalidateModelRequests,
+        ]
+    );
+
+    const testModelsNow = useCallback(
+        (key, url) => {
+            const generation = invalidateModelRequests();
+            currentModelRequestIdentityRef.current = {
+                generation,
+                key,
+                url,
+            };
+            void testConnectionRef.current(
+                key,
+                url,
+                createGenerationCallback(generation, key, url)
+            );
+        },
+        [createGenerationCallback, invalidateModelRequests]
+    );
+
+    const baseUrlField = useCommittedTextField({
+        value: baseUrl,
+        validate: (value) => validateSetting('openaiCompatibleBaseUrl', value),
+        onCommit: async (value) => {
+            const committed = await onBaseUrlChange(value);
+            if (committed === false) {
+                return false;
+            }
+            return true;
+        },
+    });
 
     // Initialize status
     useEffect(() => {
-        initializeStatus(apiKey);
+        initializeStatusRef.current(apiKeyRef.current);
 
         // Auto-fetch models if API key exists
-        if (apiKey) {
-            fetchModels(apiKey, baseUrl, onModelsLoaded);
+        if (apiKeyRef.current) {
+            fetchModelsNow(apiKeyRef.current, baseUrlRef.current);
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []); // Only on mount - intentionally not including dependencies
+        return invalidateModelRequests;
+    }, [fetchModelsNow, invalidateModelRequests]);
+
+    useLayoutEffect(() => {
+        const previousIdentity = renderedIdentityRef.current;
+        const isInitialIdentity = previousIdentity === null;
+        if (
+            previousIdentity?.apiKey === apiKey &&
+            previousIdentity.baseUrl === baseUrl
+        ) {
+            return;
+        }
+        renderedIdentityRef.current = { apiKey, baseUrl };
+        if (isInitialIdentity) {
+            invalidateModelIdentity();
+            return;
+        }
+        const currentRequest = currentModelRequestIdentityRef.current;
+        if (
+            currentRequest &&
+            currentRequest.generation === modelRequestGenerationRef.current &&
+            currentRequest.key === apiKey &&
+            currentRequest.url === baseUrl
+        ) {
+            return;
+        }
+        if (apiKey.trim()) {
+            scheduleModelFetch(apiKey, baseUrl, true);
+        } else {
+            invalidateModelIdentity();
+        }
+    }, [apiKey, baseUrl, invalidateModelIdentity, scheduleModelFetch]);
 
     // Handle API key changes with debounced model fetching
     const handleApiKeyChange = (value) => {
+        apiKeyRef.current = value;
         onApiKeyChange(value);
         if (value.trim()) {
-            debouncedFetchRef.current(value, baseUrl);
-        }
-    };
-
-    // Handle base URL changes with debounced model fetching
-    const handleBaseUrlChange = (value) => {
-        onBaseUrlChange(value);
-        if (apiKey.trim()) {
-            debouncedFetchRef.current(apiKey, value);
+            scheduleModelFetch(value, baseUrlRef.current, true);
+        } else {
+            invalidateModelIdentity();
         }
     };
 
     const handleTest = () => {
-        testConnection(apiKey, baseUrl, onModelsLoaded);
+        testModelsNow(apiKeyRef.current, baseUrlRef.current);
     };
 
     return (
@@ -110,9 +265,31 @@ export function OpenAICompatibleProviderCard({
                         'openaiBaseUrlPlaceholder',
                         'e.g., https://api.openai.com/v1'
                     )}
-                    value={baseUrl}
-                    onChange={(e) => handleBaseUrlChange(e.target.value)}
+                    value={baseUrlField.value}
+                    aria-invalid={baseUrlField.invalid}
+                    aria-describedby={
+                        baseUrlField.invalid
+                            ? 'openaiCompatibleBaseUrlError'
+                            : undefined
+                    }
+                    onChange={(event) => {
+                        invalidateModelIdentity();
+                        baseUrlField.change(event.target.value);
+                    }}
+                    onBlur={() => void baseUrlField.commit()}
+                    onKeyDown={baseUrlField.handleKeyDown}
                 />
+                {baseUrlField.invalid && (
+                    <span
+                        id="openaiCompatibleBaseUrlError"
+                        className="settings-field-error"
+                    >
+                        {t(
+                            'invalidSettingValue',
+                            'Enter a valid value before saving.'
+                        )}
+                    </span>
+                )}
             </div>
 
             <div className="setting">

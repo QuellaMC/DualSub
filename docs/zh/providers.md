@@ -15,13 +15,13 @@
 ## 请求处理
 
 - 内容脚本会逐条翻译字幕。
-- 后台协议仍为 OpenAI 兼容与 Vertex 服务商保留显式多文本请求；其他服务商会逐条处理该协议。
+- 当前后台翻译契约对所有服务商均为每次请求仅接受一段文本。
 
-## 内部速率限制（可能调整）
+## 请求间隔与工作进程本地保护（可能调整）
 
 - Google（免费）：基于字节窗口 + 强制延迟
-- Microsoft（免费）：字符滑动窗口（每分钟与每小时）
-- DeepL API：按月字符限制
-- OpenAI 兼容：每分钟请求数限制 + 小延迟；支持显式多文本请求
+- Microsoft（免费）：仅当前后台工作进程的一分钟字符保护与强制延迟；不代表持久化的 Microsoft 账户配额
+- DeepL API：仅在本地执行请求间隔；配额以 DeepL 服务端响应为准
+- OpenAI 兼容：每分钟请求数限制 + 小延迟
 
-当前服务商限制与显式多文本请求路径参见 `background/services/translationService.js`。
+当前服务商限制与单文本请求路径参见 `background/services/translationService.js`。

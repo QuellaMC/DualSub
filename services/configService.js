@@ -1,16 +1,314 @@
 import {
     configSchema,
     getKeysByScope,
-    validateSetting,
+    prepareSettingValue,
     getDefaultValue,
-    getStorageScope,
 } from '../config/configSchema.js';
-import { ConfigServiceErrorHandler } from './configServiceErrorHandler.js';
+import {
+    ConfigServiceErrorHandler,
+    ConfigServiceReadError,
+    requireConfigServiceRead,
+} from './configServiceErrorHandler.js';
 import Logger from '../utils/logger.js';
+
+export { ConfigServiceReadError, requireConfigServiceRead };
+
+const STORED_BOOLEAN_UNAVAILABLE_MESSAGE =
+    'Stored boolean configuration is unavailable';
+const RESULT_READ_KEYS_MESSAGE =
+    'ConfigService result reads require an array of string keys';
+const MULTIPLE_READ_KEYS_MESSAGE =
+    'ConfigService getMultiple requires an array of string keys';
+const RESULT_STORAGE_AREAS = Object.freeze(['sync', 'local']);
+const TRUSTED_CONFIG_KEYS = Object.freeze(Object.keys(configSchema));
+// Only exact identities created by _readResultBundle receive immutable
+// decision snapshots. Public result objects remain compatibility metadata.
+const CONFIG_READ_SNAPSHOTS = new WeakMap();
+const CONFIG_READ_SNAPSHOT_BRAND = Symbol('ConfigServiceReadSnapshot');
+// Only errors created by the synchronous strict adapter are trusted for
+// rethrow. Constructor identity and prototype shape are intentionally ignored.
+const TRUSTED_STRICT_READ_ERRORS = new WeakSet();
+const UNTRUSTED_STRICT_READ_RESULT = Object.freeze({
+    ok: false,
+    degraded: true,
+    failedAreas: Object.freeze([]),
+    areas: Object.freeze({
+        sync: Object.freeze({ status: 'not-requested' }),
+        local: Object.freeze({ status: 'not-requested' }),
+    }),
+    unknownKeys: Object.freeze([]),
+    excludedSensitiveKeys: Object.freeze([]),
+});
+
+function isOwnConfigKey(key) {
+    return typeof key === 'string' && Object.hasOwn(configSchema, key);
+}
+
+function getOwnDataKeys(items, requestedKeys) {
+    const keys = [];
+    for (const key of requestedKeys) {
+        try {
+            const descriptor = Object.getOwnPropertyDescriptor(items, key);
+            if (
+                descriptor !== undefined &&
+                Object.hasOwn(descriptor, 'value') &&
+                !keys.includes(key)
+            ) {
+                keys.push(key);
+            }
+        } catch {
+            // Inaccessible storage properties are resolved as invalid later.
+        }
+    }
+    return keys;
+}
+
+function snapshotDenseStringKeys(keys, errorMessage) {
+    try {
+        if (
+            !Array.isArray(keys) ||
+            Object.getPrototypeOf(keys) !== Array.prototype
+        ) {
+            throw new TypeError(errorMessage);
+        }
+
+        const lengthDescriptor = Object.getOwnPropertyDescriptor(
+            keys,
+            'length'
+        );
+        if (
+            lengthDescriptor === undefined ||
+            !Object.hasOwn(lengthDescriptor, 'value') ||
+            lengthDescriptor.enumerable ||
+            lengthDescriptor.configurable ||
+            !Number.isSafeInteger(lengthDescriptor.value) ||
+            lengthDescriptor.value < 0
+        ) {
+            throw new TypeError(errorMessage);
+        }
+
+        const length = lengthDescriptor.value;
+        const ownKeys = Reflect.ownKeys(keys);
+        if (ownKeys.length !== length + 1) {
+            throw new TypeError(errorMessage);
+        }
+
+        const expectedKeys = new Set(['length']);
+        for (let index = 0; index < length; index += 1) {
+            expectedKeys.add(String(index));
+        }
+        for (let index = 0; index < ownKeys.length; index += 1) {
+            const ownKey = ownKeys[index];
+            if (typeof ownKey !== 'string' || !expectedKeys.has(ownKey)) {
+                throw new TypeError(errorMessage);
+            }
+        }
+
+        const snapshot = [];
+        for (let index = 0; index < length; index += 1) {
+            const descriptor = Object.getOwnPropertyDescriptor(
+                keys,
+                String(index)
+            );
+            if (
+                descriptor === undefined ||
+                !Object.hasOwn(descriptor, 'value') ||
+                !descriptor.enumerable ||
+                typeof descriptor.value !== 'string'
+            ) {
+                throw new TypeError(errorMessage);
+            }
+            snapshot.push(descriptor.value);
+        }
+        return snapshot;
+    } catch {
+        throw new TypeError(errorMessage);
+    }
+}
+
+function dedupeStringKeys(keys) {
+    const uniqueKeys = [];
+    const seen = new Set();
+    for (let index = 0; index < keys.length; index += 1) {
+        const key = keys[index];
+        if (!seen.has(key)) {
+            seen.add(key);
+            uniqueKeys.push(key);
+        }
+    }
+    return uniqueKeys;
+}
+
+function createStoredBooleanUnavailableError() {
+    return new Error(STORED_BOOLEAN_UNAVAILABLE_MESSAGE);
+}
+
+function createUntrustedStrictReadError() {
+    const error = new ConfigServiceReadError(UNTRUSTED_STRICT_READ_RESULT);
+    // ConfigServiceReadError preserves a cause slot for compatibility. An
+    // unauthenticated result has no producer cause, so omit the slot entirely.
+    Reflect.deleteProperty(error, 'cause');
+    return error;
+}
+
+function isCompleteConfigReadSnapshot(snapshot) {
+    if (
+        snapshot === null ||
+        typeof snapshot !== 'object' ||
+        snapshot[CONFIG_READ_SNAPSHOT_BRAND] !== true ||
+        !Object.isFrozen(snapshot) ||
+        typeof snapshot.ok !== 'boolean' ||
+        typeof snapshot.degraded !== 'boolean' ||
+        !Array.isArray(snapshot.failedAreas) ||
+        !Object.isFrozen(snapshot.failedAreas) ||
+        snapshot.failedAreas.length > RESULT_STORAGE_AREAS.length ||
+        snapshot.ok !== (snapshot.failedAreas.length === 0) ||
+        snapshot.degraded !== !snapshot.ok ||
+        !Number.isSafeInteger(snapshot.unknownKeyCount) ||
+        snapshot.unknownKeyCount < 0 ||
+        !Number.isSafeInteger(snapshot.excludedSensitiveKeyCount) ||
+        snapshot.excludedSensitiveKeyCount < 0 ||
+        snapshot.areaStates === null ||
+        typeof snapshot.areaStates !== 'object' ||
+        !Object.isFrozen(snapshot.areaStates) ||
+        snapshot.booleanStates === null ||
+        typeof snapshot.booleanStates !== 'object' ||
+        !Object.isFrozen(snapshot.booleanStates)
+    ) {
+        return false;
+    }
+
+    const failedAreas = new Set(snapshot.failedAreas);
+    if (failedAreas.size !== snapshot.failedAreas.length) return false;
+
+    for (const area of RESULT_STORAGE_AREAS) {
+        const state = snapshot.areaStates[area];
+        if (
+            state === null ||
+            typeof state !== 'object' ||
+            !Object.isFrozen(state) ||
+            !['ok', 'error', 'not-requested'].includes(state.status) ||
+            (state.status === 'error') !== failedAreas.has(area)
+        ) {
+            return false;
+        }
+    }
+
+    return [...failedAreas].every((area) =>
+        RESULT_STORAGE_AREAS.includes(area)
+    );
+}
+
+function createStrictResultFromSnapshot(snapshot) {
+    const areas = Object.create(null);
+    for (const area of RESULT_STORAGE_AREAS) {
+        const state = snapshot.areaStates[area];
+        const areaResult = { status: state.status };
+        if (state.status === 'error') {
+            Object.defineProperty(areaResult, 'error', {
+                value: state.error,
+                enumerable: false,
+            });
+        }
+        areas[area] = areaResult;
+    }
+
+    return {
+        ok: snapshot.ok,
+        degraded: snapshot.degraded,
+        failedAreas: [...snapshot.failedAreas],
+        areas,
+        unknownKeys: new Array(snapshot.unknownKeyCount),
+        excludedSensitiveKeys: new Array(snapshot.excludedSensitiveKeyCount),
+    };
+}
+
+function requireProducerConfigServiceRead(result) {
+    const snapshot = CONFIG_READ_SNAPSHOTS.get(result);
+    if (!isCompleteConfigReadSnapshot(snapshot)) {
+        throw createUntrustedStrictReadError();
+    }
+    if (snapshot.ok) return result;
+
+    try {
+        return requireConfigServiceRead(
+            createStrictResultFromSnapshot(snapshot)
+        );
+    } catch (error) {
+        if (
+            error !== null &&
+            (typeof error === 'object' || typeof error === 'function')
+        ) {
+            TRUSTED_STRICT_READ_ERRORS.add(error);
+        }
+        throw error;
+    }
+}
+
+/**
+ * Recognizes the explicit capability to include sensitive settings without
+ * reading or traversing any unrelated option value. A same-realm Proxy that
+ * supplies a consistent descriptor is outside this security boundary;
+ * throwing or revoked descriptor proxies still fail closed.
+ */
+export function isSensitiveAccessExplicitlyEnabled(options) {
+    if (
+        options === null ||
+        (typeof options !== 'object' && typeof options !== 'function')
+    ) {
+        return false;
+    }
+
+    try {
+        const descriptor = Object.getOwnPropertyDescriptor(
+            options,
+            'includeSensitive'
+        );
+        return (
+            descriptor !== undefined &&
+            Object.hasOwn(descriptor, 'value') &&
+            descriptor.value === true
+        );
+    } catch {
+        return false;
+    }
+}
+
+function cloneConfigReadValue(value) {
+    if (value === null || typeof value !== 'object') return value;
+
+    if (typeof globalThis.structuredClone === 'function') {
+        return globalThis.structuredClone(value);
+    }
+
+    const seen = new WeakMap();
+    const clonePlainValue = (current) => {
+        if (current === null || typeof current !== 'object') return current;
+        if (seen.has(current)) return seen.get(current);
+
+        const clone = Array.isArray(current)
+            ? new Array(current.length)
+            : Object.create(Object.getPrototypeOf(current));
+        seen.set(current, clone);
+
+        for (const key of Object.keys(current)) {
+            Object.defineProperty(clone, key, {
+                value: clonePlainValue(current[key]),
+                enumerable: true,
+                configurable: true,
+                writable: true,
+            });
+        }
+        return clone;
+    };
+
+    return clonePlainValue(value);
+}
 
 class ConfigService {
     constructor() {
         this.changeListeners = new Set();
+        this.changeListenerRecords = new WeakMap();
         this.isInitialized = false;
         this.logger = Logger.create('ConfigService', this);
         this.initializeLogger();
@@ -29,6 +327,27 @@ class ConfigService {
                 'ConfigService: Failed to initialize logger level:',
                 error
             );
+        }
+    }
+
+    async _updateLoggingLevelAfterPersistedWrite(level, method) {
+        try {
+            await this.logger.updateLevel(level);
+            return true;
+        } catch {
+            try {
+                this.logger.error(
+                    'Failed to update logging level after persisted configuration write',
+                    null,
+                    {
+                        method,
+                        category: 'update-failed',
+                    }
+                );
+            } catch {
+                // Persisted configuration remains authoritative even if logging fails.
+            }
+            return false;
         }
     }
 
@@ -100,11 +419,11 @@ class ConfigService {
                     this.logger.debug(
                         `setDefaultsForMissingKeys() sync items retrieved`,
                         {
-                            syncItemsCount: Object.keys(syncItems).length,
-                            syncKeys: Object.keys(syncItems),
+                            requestedKeyCount: syncKeys.length,
                         }
                     );
                 } catch (error) {
+                    syncReadSucceeded = false;
                     this.logger.error(
                         'Failed to retrieve sync items during initialization',
                         error,
@@ -135,11 +454,11 @@ class ConfigService {
                     this.logger.debug(
                         `setDefaultsForMissingKeys() local items retrieved`,
                         {
-                            localItemsCount: Object.keys(localItems).length,
-                            localKeys: Object.keys(localItems),
+                            requestedKeyCount: localKeys.length,
                         }
                     );
                 } catch (error) {
+                    localReadSucceeded = false;
                     this.logger.error(
                         'Failed to retrieve local items during initialization',
                         error,
@@ -166,11 +485,9 @@ class ConfigService {
             // Set missing sync defaults
             if (syncReadSucceeded) {
                 for (const key of syncKeys) {
-                    if (
-                        !(key in syncItems) ||
-                        !validateSetting(key, syncItems[key])
-                    ) {
-                        syncDefaults[key] = getDefaultValue(key);
+                    const resolved = this._resolveStoredValue(key, syncItems);
+                    if (resolved.needsRepair) {
+                        syncDefaults[key] = resolved.value;
                     }
                 }
             }
@@ -178,11 +495,9 @@ class ConfigService {
             // Set missing local defaults
             if (localReadSucceeded) {
                 for (const key of localKeys) {
-                    if (
-                        !(key in localItems) ||
-                        !validateSetting(key, localItems[key])
-                    ) {
-                        localDefaults[key] = getDefaultValue(key);
+                    const resolved = this._resolveStoredValue(key, localItems);
+                    if (resolved.needsRepair) {
+                        localDefaults[key] = resolved.value;
                     }
                 }
             }
@@ -421,10 +736,16 @@ class ConfigService {
      * @param {string} area - 'sync' or 'local'
      * @param {string} operation - The operation being performed (for error messages)
      * @param {object} logContext - Additional context for logging
+     * @param {{privacySafeLogs?: boolean, keyCount?: number}} logOptions
      * @returns {boolean} True if available, false otherwise
      * @private
      */
-    _checkChromeStorageAvailability(area, operation, logContext = {}) {
+    _checkChromeStorageAvailability(
+        area,
+        operation,
+        logContext = {},
+        logOptions = {}
+    ) {
         const chromeAvailable = typeof chrome !== 'undefined';
         const storageAvailable = chromeAvailable && Boolean(chrome.storage);
         const areaAvailable = storageAvailable && Boolean(chrome.storage[area]);
@@ -433,18 +754,31 @@ class ConfigService {
             const error = new Error(
                 `Chrome storage API not available for ${operation} operation (area: ${area})`
             );
-            this.logger.error(
-                `Chrome storage API unavailable for ${operation}`,
-                error,
-                {
-                    area,
-                    operation,
-                    ...logContext,
-                    chromeAvailable,
-                    storageAvailable,
-                    areaAvailable,
-                }
-            );
+            if (logOptions?.privacySafeLogs === true) {
+                this.logger.error(
+                    `Chrome storage API unavailable for ${operation}`,
+                    null,
+                    {
+                        operation,
+                        area,
+                        keyCount: logOptions.keyCount,
+                        category: 'unavailable',
+                    }
+                );
+            } else {
+                this.logger.error(
+                    `Chrome storage API unavailable for ${operation}`,
+                    error,
+                    {
+                        area,
+                        operation,
+                        ...logContext,
+                        chromeAvailable,
+                        storageAvailable,
+                        areaAvailable,
+                    }
+                );
+            }
             return false;
         }
         return true;
@@ -455,18 +789,36 @@ class ConfigService {
      * @param {string} area - 'sync' or 'local'
      * @param {string[]} keys - Array of keys to retrieve
      * @param {object} context - Additional context for error handling
+     * @param {{privacySafeLogs?: boolean}} logOptions - Redacts key names and
+     * raw error details from this operation's logs when enabled.
      * @returns {Promise<object>}
      */
-    async getFromStorage(area, keys, context = {}) {
+    async getFromStorage(area, keys, context = {}, logOptions = {}) {
         const normalizedKeys = Array.isArray(keys) ? keys : [keys];
         const startTime = Date.now();
+        const privacySafeLogs = logOptions?.privacySafeLogs === true;
+        const createPrivacySafeLogData = (category, details = {}) => ({
+            operation: 'get',
+            area,
+            keyCount: normalizedKeys.length,
+            ...details,
+            category,
+        });
 
         // Check if chrome.storage is available
         if (
-            !this._checkChromeStorageAvailability(area, 'get', {
-                keys: normalizedKeys,
-                context,
-            })
+            !this._checkChromeStorageAvailability(
+                area,
+                'get',
+                {
+                    keys: normalizedKeys,
+                    context,
+                },
+                {
+                    privacySafeLogs,
+                    keyCount: normalizedKeys.length,
+                }
+            )
         ) {
             throw ConfigServiceErrorHandler.createStorageError(
                 'get',
@@ -482,11 +834,16 @@ class ConfigService {
             );
         }
 
-        this.logger.debug(`Starting get operation`, {
-            area,
-            keys: normalizedKeys,
-            context,
-        });
+        this.logger.debug(
+            `Starting get operation`,
+            privacySafeLogs
+                ? createPrivacySafeLogData('start')
+                : {
+                      area,
+                      keys: normalizedKeys,
+                      context,
+                  }
+        );
 
         return new Promise((resolve, reject) => {
             try {
@@ -508,7 +865,20 @@ class ConfigService {
                             );
 
                         // Special handling for quota exceeded errors
-                        if (error.isQuotaError) {
+                        if (privacySafeLogs) {
+                            this.logger.error(
+                                error.isQuotaError
+                                    ? `Storage quota exceeded during get operation`
+                                    : `Storage get operation failed`,
+                                null,
+                                createPrivacySafeLogData(
+                                    error.isQuotaError
+                                        ? 'quota-error'
+                                        : 'runtime-error',
+                                    { duration }
+                                )
+                            );
+                        } else if (error.isQuotaError) {
                             this.logger.error(
                                 `Storage quota exceeded during get operation`,
                                 error,
@@ -536,17 +906,31 @@ class ConfigService {
 
                         reject(error);
                     } else {
-                        this.logger.debug(`Storage get operation completed`, {
-                            area,
-                            keys: normalizedKeys,
-                            duration,
-                            resultKeys: Object.keys(items || {}),
-                        });
+                        const resultKeys = getOwnDataKeys(
+                            items,
+                            normalizedKeys
+                        );
+                        this.logger.debug(
+                            `Storage get operation completed`,
+                            privacySafeLogs
+                                ? createPrivacySafeLogData('success', {
+                                      resultCount: resultKeys.length,
+                                      duration,
+                                  })
+                                : {
+                                      area,
+                                      keys: normalizedKeys,
+                                      keyCount: normalizedKeys.length,
+                                      duration,
+                                      resultKeys,
+                                  }
+                        );
 
                         resolve(items);
                     }
                 });
             } catch (error) {
+                const duration = Date.now() - startTime;
                 const storageError =
                     ConfigServiceErrorHandler.createStorageError(
                         'get',
@@ -555,20 +939,30 @@ class ConfigService {
                         error,
                         {
                             ...context,
-                            duration: Date.now() - startTime,
+                            duration,
                             method: 'getFromStorage',
                             synchronousFailure: true,
                         }
                     );
-                this.logger.error(
-                    'Chrome storage access failed',
-                    storageError,
-                    {
-                        area,
-                        keys: normalizedKeys,
-                        context,
-                    }
-                );
+                if (privacySafeLogs) {
+                    this.logger.error(
+                        'Chrome storage access failed',
+                        null,
+                        createPrivacySafeLogData('synchronous-error', {
+                            duration,
+                        })
+                    );
+                } else {
+                    this.logger.error(
+                        'Chrome storage access failed',
+                        storageError,
+                        {
+                            area,
+                            keys: normalizedKeys,
+                            context,
+                        }
+                    );
+                }
                 reject(storageError);
             }
         });
@@ -841,19 +1235,424 @@ class ConfigService {
 
     _resolveStoredValue(key, storedItems) {
         const schemaEntry = configSchema[key];
-        const hasStoredValue = Object.prototype.hasOwnProperty.call(
-            storedItems,
-            key
-        );
-        const storedValueIsValid =
-            hasStoredValue && validateSetting(key, storedItems[key]);
+        let storedDescriptor;
+        let descriptorInspectionFailed = false;
+
+        try {
+            storedDescriptor = Object.getOwnPropertyDescriptor(
+                storedItems,
+                key
+            );
+        } catch {
+            descriptorInspectionFailed = true;
+        }
+
+        const hasOwnStoredProperty = storedDescriptor !== undefined;
+        const hasStoredDataValue =
+            hasOwnStoredProperty && Object.hasOwn(storedDescriptor, 'value');
+        const preparedValue = hasStoredDataValue
+            ? this._prepareSettingValue(key, storedDescriptor.value)
+            : { ok: false };
+        const resolution = preparedValue.ok
+            ? Object.is(preparedValue.value, storedDescriptor.value)
+                ? 'stored-exact'
+                : 'stored-normalized'
+            : hasOwnStoredProperty || descriptorInspectionFailed
+              ? 'default-invalid'
+              : 'default-missing';
+        const usedDefault = !preparedValue.ok;
 
         return {
-            value: storedValueIsValid ? storedItems[key] : getDefaultValue(key),
-            usedDefault: !storedValueIsValid,
-            invalidStoredValue: hasStoredValue && !storedValueIsValid,
+            value: usedDefault ? getDefaultValue(key) : preparedValue.value,
+            usedDefault,
+            invalidStoredValue: resolution === 'default-invalid',
+            needsRepair: resolution !== 'stored-exact',
+            resolution,
             scope: schemaEntry?.scope,
         };
+    }
+
+    _prepareSettingValue(key, value, { detach = false } = {}) {
+        try {
+            const preparedValue = prepareSettingValue(key, value);
+            const detachedValue =
+                detach &&
+                preparedValue !== null &&
+                typeof preparedValue === 'object'
+                    ? globalThis.structuredClone(preparedValue)
+                    : preparedValue;
+            return {
+                ok: true,
+                value: detachedValue,
+            };
+        } catch {
+            return { ok: false };
+        }
+    }
+
+    _projectStorageChanges(changes, areaName) {
+        const projectedChanges = {};
+
+        for (const key of TRUSTED_CONFIG_KEYS) {
+            const schemaEntry = configSchema[key];
+            if (schemaEntry.scope !== areaName) continue;
+
+            let changeDescriptor;
+            try {
+                changeDescriptor = Object.getOwnPropertyDescriptor(
+                    changes,
+                    key
+                );
+            } catch {
+                continue;
+            }
+            if (changeDescriptor === undefined) continue;
+
+            let preparedValue = { ok: false };
+            if (Object.hasOwn(changeDescriptor, 'value')) {
+                try {
+                    const newValueDescriptor = Object.getOwnPropertyDescriptor(
+                        changeDescriptor.value,
+                        'newValue'
+                    );
+                    if (
+                        newValueDescriptor !== undefined &&
+                        Object.hasOwn(newValueDescriptor, 'value')
+                    ) {
+                        preparedValue = this._prepareSettingValue(
+                            key,
+                            newValueDescriptor.value,
+                            { detach: true }
+                        );
+                    }
+                } catch {
+                    // An inaccessible record is projected as the fresh default.
+                }
+            }
+
+            projectedChanges[key] = preparedValue.ok
+                ? preparedValue.value
+                : getDefaultValue(key);
+        }
+
+        // Startup repair owns canonical persistence. Live projection is
+        // deliberately read-only so storage changes cannot form repair loops.
+        return projectedChanges;
+    }
+
+    _projectChangesForListener(changes, includeSensitive) {
+        const listenerChanges = {};
+
+        for (const key of TRUSTED_CONFIG_KEYS) {
+            if (!includeSensitive && configSchema[key].sensitive) continue;
+
+            let descriptor;
+            try {
+                descriptor = Object.getOwnPropertyDescriptor(changes, key);
+            } catch {
+                continue;
+            }
+            if (
+                descriptor === undefined ||
+                !Object.hasOwn(descriptor, 'value')
+            ) {
+                continue;
+            }
+
+            try {
+                listenerChanges[key] = cloneConfigReadValue(descriptor.value);
+            } catch {
+                // Canonical projected collections are cloneable. If that
+                // invariant is ever broken, omit the value from this listener.
+            }
+        }
+
+        return listenerChanges;
+    }
+
+    /**
+     * Reads a configuration bundle while preserving storage provenance.
+     *
+     * This is the single storage-read seam for the result-oriented APIs. It is
+     * intentionally separate from the legacy getters so their compatibility
+     * behavior can remain unchanged while callers migrate.
+     * `ok` describes storage authority only: it is true when every area needed
+     * by readable requested keys succeeds. Unknown and sensitivity-excluded
+     * keys remain metadata and do not make the result non-authoritative.
+     *
+     * @param {string[]} keys
+     * @param {{includeSensitive?: boolean}} options - Sensitive access requires
+     * an own `includeSensitive` property whose value is exactly `true`.
+     * @returns {Promise<object>}
+     * @private
+     */
+    async _readResultBundle(keys, options = {}) {
+        const keySnapshot = snapshotDenseStringKeys(
+            keys,
+            RESULT_READ_KEYS_MESSAGE
+        );
+
+        const sensitiveAllowed = isSensitiveAccessExplicitlyEnabled(options);
+        const requestedKeys = dedupeStringKeys(keySnapshot);
+        const unknownKeys = requestedKeys.filter(
+            (key) => !Object.hasOwn(configSchema, key)
+        );
+        const excludedSensitiveKeys = requestedKeys.filter(
+            (key) =>
+                Object.hasOwn(configSchema, key) &&
+                configSchema[key].sensitive &&
+                !sensitiveAllowed
+        );
+        const readableKeys = requestedKeys.filter(
+            (key) =>
+                Object.hasOwn(configSchema, key) &&
+                (sensitiveAllowed || !configSchema[key].sensitive)
+        );
+        const privacySafeRead = requestedKeys.some(
+            (key) =>
+                Object.hasOwn(configSchema, key) && configSchema[key].sensitive
+        );
+        const keysByArea = {
+            sync: readableKeys.filter(
+                (key) => configSchema[key].scope === 'sync'
+            ),
+            local: readableKeys.filter(
+                (key) => configSchema[key].scope === 'local'
+            ),
+        };
+        const result = {
+            ok: true,
+            values: Object.create(null),
+            sources: Object.create(null),
+            displayFallbacks: Object.create(null),
+            areas: {
+                sync: { status: 'not-requested' },
+                local: { status: 'not-requested' },
+            },
+            degraded: false,
+            failedAreas: [],
+            unknownKeys,
+            excludedSensitiveKeys,
+        };
+        const booleanStates = Object.create(null);
+        const areaStates = Object.create(null);
+        for (const area of RESULT_STORAGE_AREAS) {
+            areaStates[area] = Object.freeze({
+                status: 'not-requested',
+                error: undefined,
+            });
+        }
+
+        const areas = RESULT_STORAGE_AREAS;
+        const areaReads = await Promise.allSettled(
+            areas.map((area) => {
+                const areaKeys = keysByArea[area];
+                return areaKeys.length > 0
+                    ? this.getFromStorage(
+                          area,
+                          areaKeys,
+                          privacySafeRead
+                              ? { method: '_readResultBundle' }
+                              : {
+                                    method: '_readResultBundle',
+                                    requestedKeys: areaKeys,
+                                },
+                          { privacySafeLogs: privacySafeRead }
+                      )
+                    : Promise.resolve({});
+            })
+        );
+
+        for (const [index, area] of areas.entries()) {
+            const areaKeys = keysByArea[area];
+            if (areaKeys.length === 0) continue;
+
+            const areaRead = areaReads[index];
+            if (areaRead.status === 'rejected') {
+                const areaStatus = { status: 'error' };
+                Object.defineProperty(areaStatus, 'error', {
+                    value: areaRead.reason,
+                    enumerable: false,
+                });
+                result.areas[area] = areaStatus;
+                areaStates[area] = Object.freeze({
+                    status: 'error',
+                    error: areaRead.reason,
+                });
+                result.ok = false;
+                result.degraded = true;
+                result.failedAreas.push(area);
+
+                for (const key of areaKeys) {
+                    if (configSchema[key].type === Boolean) {
+                        booleanStates[key] = Object.freeze({
+                            value: undefined,
+                            scope: area,
+                            source: undefined,
+                        });
+                    }
+                    if (!configSchema[key].sensitive) {
+                        result.displayFallbacks[key] = cloneConfigReadValue(
+                            getDefaultValue(key)
+                        );
+                    }
+                }
+                continue;
+            }
+
+            const storedItems = areaRead.value;
+            result.areas[area] = { status: 'ok' };
+            areaStates[area] = Object.freeze({
+                status: 'ok',
+                error: undefined,
+            });
+
+            for (const key of areaKeys) {
+                const { value, usedDefault, invalidStoredValue } =
+                    this._resolveStoredValue(key, storedItems);
+                const source = usedDefault
+                    ? invalidStoredValue
+                        ? 'schema-default-invalid'
+                        : 'schema-default-missing'
+                    : 'stored';
+                result.values[key] = cloneConfigReadValue(value);
+                result.sources[key] = {
+                    scope: area,
+                    source,
+                };
+                if (configSchema[key].type === Boolean) {
+                    booleanStates[key] = Object.freeze({
+                        value:
+                            value === true || value === false
+                                ? value
+                                : undefined,
+                        scope: area,
+                        source,
+                    });
+                }
+            }
+        }
+
+        CONFIG_READ_SNAPSHOTS.set(
+            result,
+            Object.freeze({
+                [CONFIG_READ_SNAPSHOT_BRAND]: true,
+                ok: result.ok,
+                degraded: result.degraded,
+                failedAreas: Object.freeze([...result.failedAreas]),
+                areaStates: Object.freeze(areaStates),
+                unknownKeyCount: unknownKeys.length,
+                excludedSensitiveKeyCount: excludedSensitiveKeys.length,
+                booleanStates: Object.freeze(booleanStates),
+            })
+        );
+        return result;
+    }
+
+    /**
+     * Retrieves one setting with authoritative/degraded read metadata.
+     * Sensitive settings require an own, exact `includeSensitive: true` option.
+     *
+     * @param {string} key
+     * @param {{includeSensitive?: boolean}} options
+     * @returns {Promise<object>}
+     */
+    async readResult(key, options = {}) {
+        return this._readResultBundle([key], options);
+    }
+
+    /**
+     * Retrieves selected settings with authoritative/degraded read metadata.
+     * Sensitive settings require an own, exact `includeSensitive: true` option.
+     *
+     * @param {string[]} keys
+     * @param {{includeSensitive?: boolean}} options
+     * @returns {Promise<object>}
+     */
+    async readMultipleResult(keys, options = {}) {
+        return this._readResultBundle(keys, options);
+    }
+
+    /**
+     * Retrieves the full schema projection with authoritative/degraded metadata.
+     * Sensitive settings require an own, exact `includeSensitive: true` option.
+     *
+     * @param {{includeSensitive?: boolean}} options
+     * @returns {Promise<object>}
+     */
+    async readAllResult(options = {}) {
+        return this._readResultBundle(Object.keys(configSchema), options);
+    }
+
+    /**
+     * Storage-authoritative form of {@link readResult}. Unknown and excluded
+     * sensitive keys remain metadata and do not make the read fail; callers
+     * must verify that every key they require is present in `values`.
+     */
+    async readResultStrict(key, options = {}) {
+        return requireProducerConfigServiceRead(
+            await this.readResult(key, options)
+        );
+    }
+
+    /**
+     * Reads one stored Boolean from the immutable snapshot attached to the
+     * exact result identity produced by this service.
+     * @param {string} key
+     * @returns {Promise<boolean>}
+     * @throws {ConfigServiceReadError|Error}
+     */
+    async readStoredBooleanStrict(key) {
+        if (!isOwnConfigKey(key) || configSchema[key].type !== Boolean) {
+            throw createStoredBooleanUnavailableError();
+        }
+
+        try {
+            const result = await this.readResultStrict(key);
+            const snapshot = CONFIG_READ_SNAPSHOTS.get(result);
+            const scope = configSchema[key].scope;
+            const state = snapshot?.booleanStates[key];
+            const value = state?.value;
+
+            if (
+                snapshot?.ok !== true ||
+                snapshot.degraded !== false ||
+                snapshot.failedAreas.length !== 0 ||
+                snapshot.areaStates[scope]?.status !== 'ok' ||
+                (value !== true && value !== false) ||
+                state?.scope !== scope ||
+                state?.source !== 'stored'
+            ) {
+                throw createStoredBooleanUnavailableError();
+            }
+
+            return value;
+        } catch (error) {
+            if (TRUSTED_STRICT_READ_ERRORS.has(error)) throw error;
+            throw createStoredBooleanUnavailableError();
+        }
+    }
+
+    /**
+     * Storage-authoritative form of {@link readMultipleResult}. Unknown and
+     * excluded sensitive keys remain metadata and do not make the read fail;
+     * callers must verify that every key they require is present in `values`.
+     */
+    async readMultipleResultStrict(keys, options = {}) {
+        return requireProducerConfigServiceRead(
+            await this.readMultipleResult(keys, options)
+        );
+    }
+
+    /**
+     * Storage-authoritative form of {@link readAllResult}. Excluded sensitive
+     * keys remain metadata and do not make the read fail; callers must verify
+     * that every key they require is present in `values`.
+     */
+    async readAllResultStrict(options = {}) {
+        return requireProducerConfigServiceRead(
+            await this.readAllResult(options)
+        );
     }
 
     /**
@@ -862,17 +1661,25 @@ class ConfigService {
      * @returns {Promise<any>} A promise that resolves with the setting's value.
      */
     async get(key) {
+        if (!isOwnConfigKey(key)) {
+            const keyType = typeof key;
+            const errorMsg =
+                keyType === 'string'
+                    ? `Invalid key "${key}" requested`
+                    : `Invalid key of type "${keyType}" requested`;
+            const context = {
+                method: 'get',
+                ...(keyType === 'string'
+                    ? { requestedKey: key }
+                    : { requestedKeyType: keyType }),
+            };
+            this.logger.error(errorMsg, null, context);
+            return undefined;
+        }
+
         this.logger.debug(`get() called`, { key });
 
         const schemaEntry = configSchema[key];
-        if (!schemaEntry) {
-            const errorMsg = `Invalid key "${key}" requested`;
-            this.logger.error(errorMsg, null, {
-                method: 'get',
-                requestedKey: key,
-            });
-            return undefined;
-        }
 
         try {
             const items = await this.getFromStorage(schemaEntry.scope, [key], {
@@ -890,7 +1697,7 @@ class ConfigService {
                 scope: schemaEntry.scope,
             });
 
-            return value;
+            return cloneConfigReadValue(value);
         } catch (error) {
             this.logger.error(`Error getting key "${key}"`, error, {
                 method: 'get',
@@ -908,22 +1715,29 @@ class ConfigService {
      * @returns {Promise<object>} A promise that resolves with an object containing the requested settings
      */
     async getMultiple(keys) {
-        this.logger.debug(`getMultiple() called`, {
+        const keySnapshot = snapshotDenseStringKeys(
             keys,
-            keyCount: keys.length,
+            MULTIPLE_READ_KEYS_MESSAGE
+        );
+        this.logger.debug(`getMultiple() called`, {
+            keys: keySnapshot,
+            keyCount: keySnapshot.length,
         });
 
-        const syncKeys = keys.filter((key) => getStorageScope(key) === 'sync');
-        const localKeys = keys.filter(
-            (key) => getStorageScope(key) === 'local'
+        const validKeys = keySnapshot.filter((key) => isOwnConfigKey(key));
+        const invalidKeys = keySnapshot.filter((key) => !isOwnConfigKey(key));
+        const syncKeys = validKeys.filter(
+            (key) => configSchema[key].scope === 'sync'
         );
-        const invalidKeys = keys.filter((key) => !configSchema[key]);
+        const localKeys = validKeys.filter(
+            (key) => configSchema[key].scope === 'local'
+        );
 
         if (invalidKeys.length > 0) {
             this.logger.error(`Invalid keys requested in getMultiple`, null, {
                 method: 'getMultiple',
                 invalidKeys,
-                validKeys: keys.filter((key) => configSchema[key]),
+                validKeys,
             });
         }
 
@@ -946,24 +1760,15 @@ class ConfigService {
             const result = {};
             const defaultsUsed = [];
 
-            keys.forEach((key) => {
+            validKeys.forEach((key) => {
                 const schemaEntry = configSchema[key];
-                if (!schemaEntry) {
-                    this.logger.error(
-                        `Invalid key "${key}" requested in getMultiple`,
-                        null,
-                        { method: 'getMultiple', invalidKey: key }
-                    );
-                    return;
-                }
-
                 const storedItems =
                     schemaEntry.scope === 'sync' ? syncItems : localItems;
                 const { value, usedDefault } = this._resolveStoredValue(
                     key,
                     storedItems
                 );
-                result[key] = value;
+                result[key] = cloneConfigReadValue(value);
 
                 if (usedDefault) {
                     defaultsUsed.push(key);
@@ -971,7 +1776,7 @@ class ConfigService {
             });
 
             this.logger.debug(`getMultiple() completed`, {
-                requestedKeys: keys,
+                requestedKeys: keySnapshot,
                 syncKeys,
                 localKeys,
                 defaultsUsed,
@@ -982,7 +1787,7 @@ class ConfigService {
         } catch (error) {
             this.logger.error(`Error in getMultiple`, error, {
                 method: 'getMultiple',
-                requestedKeys: keys,
+                requestedKeys: keySnapshot,
                 syncKeys,
                 localKeys,
             });
@@ -992,142 +1797,56 @@ class ConfigService {
 
     /**
      * Retrieves all settings, applying defaults for any unset values.
+     * Sensitive settings require an own, exact `includeSensitive: true` data
+     * property; all other option shapes are treated as non-sensitive.
      * @param {{includeSensitive?: boolean}} options - Retrieval options.
      * @returns {Promise<object>} A promise that resolves with an object of all requested settings.
+     * @throws {ConfigServiceReadError} If either required storage area cannot be read.
      */
-    async getAll({ includeSensitive = true } = {}) {
-        this.logger.debug(`getAll() called`, { includeSensitive });
+    async getAll(options = {}) {
+        this.logger.debug(`getAll() called`, { storageAuthoritative: true });
 
-        const visibleKeys = Object.keys(configSchema).filter(
-            (key) => includeSensitive || !configSchema[key].sensitive
-        );
-        const syncKeys = visibleKeys.filter(
-            (key) => configSchema[key].scope === 'sync'
-        );
-        const localKeys = visibleKeys.filter(
-            (key) => configSchema[key].scope === 'local'
-        );
-
-        this.logger.debug(`getAll() storage breakdown`, {
-            syncKeyCount: syncKeys.length,
-            localKeyCount: localKeys.length,
-            totalKeys: syncKeys.length + localKeys.length,
+        const { values } = await this.readAllResultStrict(options);
+        this.logger.debug(`getAll() completed`, {
+            totalSettings: Object.keys(values).length,
         });
-
-        try {
-            const [syncResult, localResult] = await Promise.allSettled([
-                this.getFromStorage('sync', syncKeys, {
-                    method: 'getAll',
-                    operation: 'bulk-retrieve',
-                }),
-                this.getFromStorage('local', localKeys, {
-                    method: 'getAll',
-                    operation: 'bulk-retrieve',
-                }),
-            ]);
-            const syncItems =
-                syncResult.status === 'fulfilled' ? syncResult.value : {};
-            const localItems =
-                localResult.status === 'fulfilled' ? localResult.value : {};
-            const failedAreas = [];
-
-            if (syncResult.status === 'rejected') {
-                failedAreas.push('sync');
-                this.logger.error(
-                    'Error getting all settings',
-                    syncResult.reason,
-                    {
-                        method: 'getAll',
-                        failedArea: 'sync',
-                        fallbackToDefaults: true,
-                    }
-                );
-            }
-            if (localResult.status === 'rejected') {
-                failedAreas.push('local');
-                this.logger.error(
-                    'Error getting all settings',
-                    localResult.reason,
-                    {
-                        method: 'getAll',
-                        failedArea: 'local',
-                        fallbackToDefaults: true,
-                    }
-                );
-            }
-
-            const fullConfig = {};
-            const defaultsUsed = [];
-
-            for (const key of visibleKeys) {
-                const entry = configSchema[key];
-                const storedItems =
-                    entry.scope === 'sync' ? syncItems : localItems;
-                const { value, usedDefault } = this._resolveStoredValue(
-                    key,
-                    storedItems
-                );
-                fullConfig[key] = value;
-
-                if (usedDefault) {
-                    defaultsUsed.push(key);
-                }
-            }
-
-            this.logger.debug(`getAll() completed`, {
-                totalSettings: Object.keys(fullConfig).length,
-                defaultsUsed,
-                defaultsUsedCount: defaultsUsed.length,
-                syncItemsRetrieved: Object.keys(syncItems).length,
-                localItemsRetrieved: Object.keys(localItems).length,
-                failedAreas,
-            });
-
-            return fullConfig;
-        } catch (error) {
-            this.logger.error('Error getting all settings', error, {
-                method: 'getAll',
-                syncKeyCount: syncKeys.length,
-                localKeyCount: localKeys.length,
-                fallbackToDefaults: true,
-            });
-
-            // Return defaults if storage fails
-            const defaults = {};
-            for (const key of visibleKeys) {
-                defaults[key] = getDefaultValue(key);
-            }
-
-            this.logger.debug(`getAll() returning defaults due to error`, {
-                defaultCount: Object.keys(defaults).length,
-            });
-
-            return defaults;
-        }
+        return values;
     }
 
     /**
      * Saves a single setting's value to the appropriate storage area.
      * @param {string} key - The setting key to save.
      * @param {any} value - The value to save.
-     * @returns {Promise<void>}
+     * @returns {Promise<any>} The detached canonical value that was persisted.
      * @throws {Error} If the key is invalid or the value doesn't match the schema
      */
     async set(key, value) {
-        this.logger.debug(`set() called`, { key, valueType: typeof value });
-
-        const schemaEntry = configSchema[key];
-        if (!schemaEntry) {
-            const error = new Error(`Invalid key "${key}" provided for set`);
-            this.logger.error(error.message, error, {
+        if (!isOwnConfigKey(key)) {
+            const keyDescription =
+                typeof key === 'string'
+                    ? `"${key}"`
+                    : `of type "${typeof key}"`;
+            const error = new Error(
+                `Invalid key ${keyDescription} provided for set`
+            );
+            const context = {
                 method: 'set',
-                requestedKey: key,
-            });
+                ...(typeof key === 'string'
+                    ? { requestedKey: key }
+                    : { requestedKeyType: typeof key }),
+            };
+            this.logger.error(error.message, error, context);
             throw error;
         }
 
-        // Validate the value
-        if (!validateSetting(key, value)) {
+        this.logger.debug(`set() called`, { key, valueType: typeof value });
+
+        const schemaEntry = configSchema[key];
+
+        const preparedValue = this._prepareSettingValue(key, value, {
+            detach: true,
+        });
+        if (!preparedValue.ok) {
             const error = new Error(
                 `Invalid value for key "${key}". Expected type: ${schemaEntry.type.name}`
             );
@@ -1143,23 +1862,31 @@ class ConfigService {
         try {
             await this.setToStorage(
                 schemaEntry.scope,
-                { [key]: value },
+                { [key]: preparedValue.value },
                 { method: 'set', requestedKey: key }
             );
 
             this.logger.debug(`set() completed`, {
                 key,
-                valueType: typeof value,
+                valueType: typeof preparedValue.value,
                 scope: schemaEntry.scope,
             });
 
             // Update logging level if this was the loggingLevel setting
             if (key === 'loggingLevel') {
-                await this.logger.updateLevel();
-                this.logger.debug(`Logging level updated`, {
-                    loggingLevel: value,
-                });
+                const loggingLevelUpdated =
+                    await this._updateLoggingLevelAfterPersistedWrite(
+                        preparedValue.value,
+                        'set'
+                    );
+                if (loggingLevelUpdated) {
+                    this.logger.debug(`Logging level updated`, {
+                        loggingLevel: preparedValue.value,
+                    });
+                }
             }
+
+            return cloneConfigReadValue(preparedValue.value);
         } catch (error) {
             this.logger.error(`Error setting key "${key}"`, error, {
                 method: 'set',
@@ -1173,11 +1900,22 @@ class ConfigService {
     /**
      * Saves multiple settings at once
      * @param {object} settings - Object with key-value pairs to save
-     * @returns {Promise<void>}
+     * @returns {Promise<object>} Detached canonical values that were persisted.
      * @throws {Error} If any key is invalid or any value doesn't match the schema
      */
     async setMultiple(settings) {
-        const settingsKeys = Object.keys(settings);
+        let settingsKeys;
+        try {
+            settingsKeys = Object.keys(settings);
+        } catch {
+            const error = new Error(
+                'Invalid settings provided for setMultiple'
+            );
+            this.logger.error(error.message, error, {
+                method: 'setMultiple',
+            });
+            throw error;
+        }
         this.logger.debug(`setMultiple() called`, {
             settingsKeys,
             settingCount: settingsKeys.length,
@@ -1185,12 +1923,12 @@ class ConfigService {
 
         const syncSettings = {};
         const localSettings = {};
+        const preparedSettings = {};
         const validationErrors = [];
 
         // Validate and categorize settings
-        for (const [key, value] of Object.entries(settings)) {
-            const schemaEntry = configSchema[key];
-            if (!schemaEntry) {
+        for (const key of settingsKeys) {
+            if (!isOwnConfigKey(key)) {
                 const error = `Invalid key "${key}" provided for setMultiple`;
                 this.logger.error(error, null, {
                     method: 'setMultiple',
@@ -1200,29 +1938,58 @@ class ConfigService {
                 continue;
             }
 
-            if (!validateSetting(key, value)) {
+            const schemaEntry = configSchema[key];
+            let valueDescriptor;
+            let descriptorInspectionFailed = false;
+            try {
+                valueDescriptor = Object.getOwnPropertyDescriptor(
+                    settings,
+                    key
+                );
+            } catch {
+                descriptorInspectionFailed = true;
+            }
+            const hasDataValue =
+                valueDescriptor && Object.hasOwn(valueDescriptor, 'value');
+            const value = hasDataValue ? valueDescriptor.value : undefined;
+            const preparedValue = hasDataValue
+                ? this._prepareSettingValue(key, value, { detach: true })
+                : { ok: false };
+
+            if (!preparedValue.ok) {
+                const actualType = descriptorInspectionFailed
+                    ? 'inaccessible'
+                    : hasDataValue
+                      ? typeof value
+                      : 'accessor';
                 const error = `Invalid value for key "${key}". Expected type: ${schemaEntry.type.name}`;
                 this.logger.error(error, null, {
                     method: 'setMultiple',
                     invalidKey: key,
                     expectedType: schemaEntry.type.name,
-                    actualType: typeof value,
+                    actualType,
                 });
                 validationErrors.push({
                     key,
                     error,
                     type: 'invalid_value',
                     expectedType: schemaEntry.type.name,
-                    actualType: typeof value,
+                    actualType,
                 });
                 continue;
             }
 
             if (schemaEntry.scope === 'sync') {
-                syncSettings[key] = value;
+                syncSettings[key] = preparedValue.value;
             } else {
-                localSettings[key] = value;
+                localSettings[key] = preparedValue.value;
             }
+            Object.defineProperty(preparedSettings, key, {
+                value: preparedValue.value,
+                enumerable: true,
+                configurable: true,
+                writable: true,
+            });
         }
 
         // If there were validation errors, throw them
@@ -1324,6 +2091,22 @@ class ConfigService {
             }
         }
 
+        const loggingLevelPersisted =
+            Object.hasOwn(syncSettings, 'loggingLevel') &&
+            results.successful.some((result) => result.area === 'sync');
+        if (loggingLevelPersisted) {
+            const loggingLevelUpdated =
+                await this._updateLoggingLevelAfterPersistedWrite(
+                    syncSettings.loggingLevel,
+                    'setMultiple'
+                );
+            if (loggingLevelUpdated) {
+                this.logger.debug(`Logging level updated via setMultiple`, {
+                    loggingLevel: syncSettings.loggingLevel,
+                });
+            }
+        }
+
         // Handle results and provide detailed error information
         if (results.errors.length > 0) {
             const totalKeysAttempted = settingsKeys.length;
@@ -1392,23 +2175,26 @@ class ConfigService {
                 successfulAreas: results.successful.map((s) => s.area),
             });
 
-            // Update logging level if loggingLevel was changed
-            if ('loggingLevel' in settings) {
-                await this.logger.updateLevel();
-                this.logger.debug(`Logging level updated via setMultiple`, {
-                    loggingLevel: settings.loggingLevel,
-                });
-            }
+            return cloneConfigReadValue(preparedSettings);
         }
     }
 
     /**
      * Listens for changes to any settings defined in the schema.
      * @param {function(object)} callback - The function to call with an object of the changed keys and their new values.
-     * @param {{includeSensitive?: boolean}} options - Listener projection options.
+     * @param {{includeSensitive?: boolean}} options - Listener projection
+     * options. Sensitive changes require an own, exact
+     * `includeSensitive: true` data property.
      * @returns {function} A function to remove the listener
      */
-    onChanged(callback, { includeSensitive = true } = {}) {
+    onChanged(callback, options = {}) {
+        if (typeof callback !== 'function') {
+            throw new TypeError(
+                'ConfigService onChanged requires a callable callback'
+            );
+        }
+
+        const includeSensitive = isSensitiveAccessExplicitlyEnabled(options);
         this.logger.debug(`onChanged() called`, {
             currentListenerCount: this.changeListeners.size,
         });
@@ -1416,17 +2202,21 @@ class ConfigService {
         const projectedCallback = includeSensitive
             ? callback
             : (changes) => {
-                  const safeChanges = Object.fromEntries(
-                      Object.entries(changes).filter(
-                          ([key]) => !configSchema[key]?.sensitive
-                      )
+                  const safeChanges = this._projectChangesForListener(
+                      changes,
+                      false
                   );
                   if (Object.keys(safeChanges).length > 0) {
-                      callback(safeChanges);
+                      return callback(safeChanges);
                   }
+                  return undefined;
               };
 
         this.changeListeners.add(projectedCallback);
+        this.changeListenerRecords.set(
+            projectedCallback,
+            Object.freeze({ includeSensitive, projectedCallback })
+        );
 
         this.logger.debug(`Change listener added`, {
             totalListeners: this.changeListeners.size,
@@ -1450,46 +2240,99 @@ class ConfigService {
         this.logger.debug(`Initializing change listener`);
 
         chrome.storage.onChanged.addListener((changes, areaName) => {
-            const relevantChanges = {};
-            let hasRelevantChanges = false;
+            const relevantChanges = this._projectStorageChanges(
+                changes,
+                areaName
+            );
+            const changedKeys = Object.keys(relevantChanges);
 
-            for (const key in changes) {
-                if (configSchema[key] && configSchema[key].scope === areaName) {
-                    relevantChanges[key] = changes[key].newValue;
-                    hasRelevantChanges = true;
-                }
-            }
-
-            if (hasRelevantChanges) {
+            if (changedKeys.length > 0) {
                 this.logger.debug(`Storage changes detected`, {
                     areaName,
-                    changedKeys: Object.keys(relevantChanges),
+                    changedKeys,
                     listenerCount: this.changeListeners.size,
                 });
 
-                this.changeListeners.forEach((callback) => {
+                const listenerSnapshot = [];
+                // Subscription mutations made by callbacks take effect on the
+                // next storage event, not midway through the current event.
+                this.changeListeners.forEach((projectedCallback) => {
+                    listenerSnapshot.push(
+                        this.changeListenerRecords.get(projectedCallback) ??
+                            Object.freeze({
+                                includeSensitive: false,
+                                projectedCallback,
+                            })
+                    );
+                });
+
+                const logListenerFailure = () => {
                     try {
-                        callback(relevantChanges);
-                    } catch (error) {
                         this.logger.error(
                             'Error in change listener callback',
-                            error,
+                            null,
                             {
                                 areaName,
-                                changedKeys: Object.keys(relevantChanges),
+                                changedKeys,
+                                category: 'callback-error',
                             }
                         );
+                    } catch {
+                        // Listener isolation must not depend on logging health.
+                    }
+                };
+
+                listenerSnapshot.forEach((listenerRecord) => {
+                    const listenerChanges = this._projectChangesForListener(
+                        relevantChanges,
+                        listenerRecord.includeSensitive
+                    );
+                    if (Object.keys(listenerChanges).length === 0) return;
+
+                    let callbackResult;
+                    try {
+                        callbackResult =
+                            listenerRecord.projectedCallback(listenerChanges);
+                    } catch {
+                        logListenerFailure();
+                        return;
+                    }
+
+                    try {
+                        Promise.resolve(callbackResult).catch(
+                            logListenerFailure
+                        );
+                    } catch {
+                        logListenerFailure();
                     }
                 });
 
                 // Update logging level if loggingLevel changed
-                if ('loggingLevel' in relevantChanges) {
-                    this.logger.updateLevel().catch((error) => {
-                        this.logger.error(
-                            'Failed to update logging level after change',
-                            error
+                if (Object.hasOwn(relevantChanges, 'loggingLevel')) {
+                    const logUpdateFailure = () => {
+                        try {
+                            this.logger.error(
+                                'Failed to update logging level after change',
+                                null,
+                                {
+                                    areaName,
+                                    changedKey: 'loggingLevel',
+                                    category: 'update-failed',
+                                }
+                            );
+                        } catch {
+                            // Live projection remains isolated if logging fails.
+                        }
+                    };
+
+                    try {
+                        const updateResult = this.logger.updateLevel(
+                            relevantChanges.loggingLevel
                         );
-                    });
+                        Promise.resolve(updateResult).catch(logUpdateFailure);
+                    } catch {
+                        logUpdateFailure();
+                    }
                 }
             }
         });
@@ -1510,10 +2353,11 @@ class ConfigService {
 
         for (const key in configSchema) {
             const entry = configSchema[key];
+            const defaultValue = getDefaultValue(key);
             if (entry.scope === 'sync') {
-                syncDefaults[key] = entry.defaultValue;
+                syncDefaults[key] = defaultValue;
             } else {
-                localDefaults[key] = entry.defaultValue;
+                localDefaults[key] = defaultValue;
             }
         }
 

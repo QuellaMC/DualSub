@@ -4,16 +4,11 @@ import { SparkleButton } from '../SparkleButton.jsx';
 import { AppleStyleFileButton } from '../AppleStyleFileButton.jsx';
 import { TestResultDisplay } from '../TestResultDisplay.jsx';
 import { useVertexTest } from '../../hooks/useVertexTest.js';
+import { useCommittedTextField } from '../../hooks/useCommittedTextField.js';
+import { VERTEX_LOCATIONS as SHARED_VERTEX_LOCATIONS } from '../../../content_scripts/shared/constants/providers.js';
+import { validateSetting } from '../../../config/configSchema.js';
 
-export const VERTEX_LOCATIONS = [
-    'us-central1',
-    'us-east1',
-    'us-west1',
-    'europe-west1',
-    'europe-west4',
-    'asia-northeast1',
-    'asia-southeast1',
-];
+export const VERTEX_LOCATIONS = SHARED_VERTEX_LOCATIONS;
 
 export function VertexProviderCard({
     t,
@@ -45,6 +40,16 @@ export function VertexProviderCard({
         onProviderChange,
         onCredentialsChange
     );
+    const modelField = useCommittedTextField({
+        value: model,
+        validate: (value) => validateSetting('vertexModel', value),
+        onCommit: onModelChange,
+    });
+    const projectIdField = useCommittedTextField({
+        value: projectId,
+        validate: (value) => validateSetting('vertexProjectId', value),
+        onCommit: onProjectIdChange,
+    });
 
     useEffect(() => {
         void initializeStatus(accessToken, projectId);
@@ -149,9 +154,30 @@ export function VertexProviderCard({
                     type="text"
                     id="vertexProjectId"
                     placeholder="your-gcp-project-id"
-                    value={projectId}
-                    onChange={(e) => onProjectIdChange(e.target.value)}
+                    value={projectIdField.value}
+                    aria-invalid={projectIdField.invalid}
+                    aria-describedby={
+                        projectIdField.invalid
+                            ? 'vertexProjectIdError'
+                            : undefined
+                    }
+                    onChange={(event) =>
+                        projectIdField.change(event.target.value)
+                    }
+                    onBlur={() => void projectIdField.commit()}
+                    onKeyDown={projectIdField.handleKeyDown}
                 />
+                {projectIdField.invalid && (
+                    <span
+                        id="vertexProjectIdError"
+                        className="settings-field-error"
+                    >
+                        {t(
+                            'invalidSettingValue',
+                            'Enter a valid value before saving.'
+                        )}
+                    </span>
+                )}
             </div>
 
             <div className="setting">
@@ -179,9 +205,26 @@ export function VertexProviderCard({
                     type="text"
                     id="vertexModel"
                     placeholder="gemini-2.5-flash"
-                    value={model}
-                    onChange={(e) => onModelChange(e.target.value)}
+                    value={modelField.value}
+                    aria-invalid={modelField.invalid}
+                    aria-describedby={
+                        modelField.invalid ? 'vertexModelError' : undefined
+                    }
+                    onChange={(event) => modelField.change(event.target.value)}
+                    onBlur={() => void modelField.commit()}
+                    onKeyDown={modelField.handleKeyDown}
                 />
+                {modelField.invalid && (
+                    <span
+                        id="vertexModelError"
+                        className="settings-field-error"
+                    >
+                        {t(
+                            'invalidSettingValue',
+                            'Enter a valid value before saving.'
+                        )}
+                    </span>
+                )}
             </div>
 
             {/* Test Connection */}

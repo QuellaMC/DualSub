@@ -1,71 +1,138 @@
 // injected_scripts/netflixInject.js
 
-// Guard against multiple script executions
-if (window.netflixDualSubInjectorLoaded) {
-    console.log(
-        'Netflix Inject script: Already loaded, skipping initialization.'
-    );
-} else {
-    window.netflixDualSubInjectorLoaded = true;
+(() => {
+    const INJECT_EVENT_ID = 'netflix-dualsub-injector-event';
+    const INJECT_SCRIPT_TAG_ID = 'netflix-dualsub-injector-script-tag';
+    const INJECTOR_STATE_KEY = 'netflixDualSubInjectorLoaded';
+    const INJECT_SCRIPT_PATH = '/injected_scripts/netflixInject.js';
+    const MAX_INJECT_SCRIPT_SRC_LENGTH = 512;
+    const CHANNEL_HASH_PATTERN = /^#dualsub-channel=netflix\.([0-9a-f]{64})$/u;
 
-    console.log('Netflix Inject script: Starting execution.');
+    let capability;
+    try {
+        const script = document.getElementById(INJECT_SCRIPT_TAG_ID);
+        if (
+            !(script instanceof HTMLScriptElement) ||
+            script.id !== INJECT_SCRIPT_TAG_ID ||
+            script.localName !== 'script'
+        ) {
+            return;
+        }
+        const rawSrc = script.getAttribute('src');
+        if (
+            typeof rawSrc !== 'string' ||
+            rawSrc.length === 0 ||
+            rawSrc.length > MAX_INJECT_SCRIPT_SRC_LENGTH ||
+            rawSrc !== rawSrc.trim() ||
+            !rawSrc.startsWith('chrome-extension://')
+        ) {
+            return;
+        }
+        const scriptUrl = new URL(rawSrc);
+        if (
+            scriptUrl.protocol !== 'chrome-extension:' ||
+            !scriptUrl.hostname ||
+            scriptUrl.username ||
+            scriptUrl.password ||
+            scriptUrl.port ||
+            scriptUrl.search ||
+            scriptUrl.pathname !== INJECT_SCRIPT_PATH ||
+            rawSrc !==
+                `chrome-extension://${scriptUrl.hostname}${INJECT_SCRIPT_PATH}${scriptUrl.hash}`
+        ) {
+            return;
+        }
+        const match = CHANNEL_HASH_PATTERN.exec(scriptUrl.hash);
+        if (!match) return;
+        capability = match[1];
+    } catch {
+        return;
+    }
 
-    const INJECT_EVENT_ID = 'netflix-dualsub-injector-event'; // Must match netflixPlatform.js
-    const originalJSONParse = JSON.parse;
+    const createEventDetail = (type, payload) => {
+        const detail = {
+            type,
+            dualsubChannel: {
+                platform: 'netflix',
+                capability,
+            },
+        };
+        if (payload !== undefined) detail.payload = payload;
+        return detail;
+    };
 
-    console.log(
-        'Netflix Inject script: Overriding JSON.parse to intercept subtitle data.'
-    );
+    const announceReady = () => {
+        document.dispatchEvent(
+            new CustomEvent(INJECT_EVENT_ID, {
+                detail: createEventDetail('INJECT_SCRIPT_READY'),
+            })
+        );
+        console.log('Netflix Inject script: Dispatched ready event.');
+    };
 
-    JSON.parse = function (text, reviver) {
-        let parsedObject;
-        parsedObject = originalJSONParse(text, reviver);
-
-        try {
-            // Look for the specific structure of Netflix subtitle data
+    try {
+        const stateDescriptor = Object.getOwnPropertyDescriptor(
+            window,
+            INJECTOR_STATE_KEY
+        );
+        if (stateDescriptor) {
+            if (!Object.hasOwn(stateDescriptor, 'value')) return;
+            const state = stateDescriptor.value;
             if (
-                parsedObject &&
-                parsedObject.result &&
-                parsedObject.result.timedtexttracks &&
-                parsedObject.result.movieId
+                state?.capability !== capability ||
+                typeof state?.announceReady !== 'function'
             ) {
-                console.log(
-                    `%c[Netflix Inject] Found Netflix subtitle data for movieId: %s`,
-                    'color: blue; font-weight: bold;',
-                    parsedObject.result.movieId
-                );
+                return;
+            }
+            state.announceReady();
+            return;
+        }
 
-                // Dispatch event using the same pattern as Disney+
-                document.dispatchEvent(
-                    new CustomEvent(INJECT_EVENT_ID, {
-                        detail: {
-                            type: 'SUBTITLE_DATA_FOUND',
-                            payload: {
+        const originalJSONParse = JSON.parse;
+        const installedJSONParse = function (text, reviver) {
+            const parsedObject = originalJSONParse(text, reviver);
+
+            try {
+                if (
+                    parsedObject &&
+                    parsedObject.result &&
+                    parsedObject.result.timedtexttracks &&
+                    parsedObject.result.movieId
+                ) {
+                    document.dispatchEvent(
+                        new CustomEvent(INJECT_EVENT_ID, {
+                            detail: createEventDetail('SUBTITLE_DATA_FOUND', {
                                 movieId: parsedObject.result.movieId,
                                 timedtexttracks:
                                     parsedObject.result.timedtexttracks,
-                            },
-                        },
-                    })
-                );
-                console.log(
-                    '[Netflix Inject] Dispatched SUBTITLE_DATA_FOUND event.'
-                );
+                            }),
+                        })
+                    );
+                    console.log(
+                        'Netflix Inject script: Dispatched subtitle event.'
+                    );
+                }
+            } catch {
+                // JSON parsing must remain transparent when inspection fails.
             }
-        } catch (e) {
-            // Do not log error for every JSON.parse to avoid console spam.
-            // console.error('[Netflix Inject] Error inspecting JSON object for subtitles:', e);
-        }
-        return parsedObject; // Always return the original parsed object
-    };
+            return parsedObject;
+        };
 
-    console.log('Netflix Inject script: JSON.parse has been overridden.');
-
-    // Dispatch an event to let the content script know the inject script is ready
-    document.dispatchEvent(
-        new CustomEvent(INJECT_EVENT_ID, {
-            detail: { type: 'INJECT_SCRIPT_READY' },
-        })
-    );
-    console.log('Netflix Inject script: Dispatched INJECT_SCRIPT_READY event.');
-}
+        const state = Object.freeze({
+            announceReady,
+            capability,
+            installedJSONParse,
+        });
+        Object.defineProperty(window, INJECTOR_STATE_KEY, {
+            configurable: true,
+            enumerable: false,
+            value: state,
+            writable: false,
+        });
+        JSON.parse = installedJSONParse;
+        console.log('Netflix Inject script: JSON interception installed.');
+        announceReady();
+    } catch {
+        console.error('Netflix Inject script: Initialization failed.');
+    }
+})();

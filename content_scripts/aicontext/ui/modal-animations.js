@@ -22,6 +22,23 @@ export class AIContextModalAnimations {
         this.heightMonitorInterval = null;
         this.resizeObserver = null;
         this.mutationObserver = null;
+        this._destroyed = false;
+    }
+
+    _scheduleAnimationTimeout(key, callback, delay) {
+        if (this._destroyed) return null;
+        const previous = this.animationTimeouts.get(key);
+        if (previous !== undefined) clearTimeout(previous);
+
+        let timeout = null;
+        timeout = setTimeout(() => {
+            if (this.animationTimeouts.get(key) !== timeout) return;
+            this.animationTimeouts.delete(key);
+            if (this._destroyed) return;
+            callback();
+        }, delay);
+        this.animationTimeouts.set(key, timeout);
+        return timeout;
     }
 
     /**
@@ -30,6 +47,7 @@ export class AIContextModalAnimations {
      * @returns {boolean} Success status
      */
     showModal(options = {}) {
+        if (this._destroyed || !this.core) return false;
         this.core._log('info', 'Showing modal with animation', options);
 
         if (!this.core.element) {
@@ -70,9 +88,13 @@ export class AIContextModalAnimations {
         this._setupDynamicHeightMonitoring();
 
         // Apply height again after a short delay to ensure layout is settled
-        setTimeout(() => {
-            this._applyDynamicModalHeight();
-        }, 50);
+        this._scheduleAnimationTimeout(
+            'layout-settle',
+            () => {
+                this._applyDynamicModalHeight();
+            },
+            50
+        );
 
         // Show modal element via transitions utility (class-only)
         Transitions.showContainer(this.core.element);
@@ -101,9 +123,13 @@ export class AIContextModalAnimations {
                     this.core.selectedWords &&
                     this.core.selectedWords.size > 0
                 ) {
-                    setTimeout(() => {
-                        this.ui.updateSelectionDisplay();
-                    }, 0);
+                    this._scheduleAnimationTimeout(
+                        'selection-display-settle',
+                        () => {
+                            this.ui.updateSelectionDisplay();
+                        },
+                        0
+                    );
                 }
             } catch (_) {}
         }
@@ -143,6 +169,8 @@ export class AIContextModalAnimations {
      * Hide modal with animation
      */
     hideModal() {
+        if (this._destroyed || !this.core) return;
+        this.ui.clearTerminalRetryActions?.();
         this.core._log('info', 'Hiding modal with animation');
 
         if (!this.core.isVisible || !this.core.element) {
@@ -216,6 +244,7 @@ export class AIContextModalAnimations {
      * Transition to processing state with animation
      */
     showProcessingState() {
+        if (this._destroyed || !this.core) return;
         this.core._log('debug', 'Transitioning to processing state');
 
         this.core.currentMode = 'processing';
@@ -277,11 +306,15 @@ export class AIContextModalAnimations {
             this.core.contentElement?.classList.add(
                 'dualsub-processing-sticky'
             );
-            setTimeout(() => {
-                this.core.contentElement?.classList.remove(
-                    'dualsub-processing-sticky'
-                );
-            }, 150);
+            this._scheduleAnimationTimeout(
+                'processing-sticky',
+                () => {
+                    this.core.contentElement?.classList.remove(
+                        'dualsub-processing-sticky'
+                    );
+                },
+                150
+            );
         }
     }
 
@@ -392,7 +425,7 @@ export class AIContextModalAnimations {
      * @private
      */
     _applyDynamicModalHeight() {
-        if (!this.core.element) return;
+        if (this._destroyed || !this.core?.element) return;
 
         try {
             // Get modal content from UI root container (new architecture)
@@ -420,38 +453,42 @@ export class AIContextModalAnimations {
             );
 
             // Set modal body height after a small delay to ensure header is rendered
-            setTimeout(() => {
-                const modalBody = modalContent.querySelector(
-                    '.dualsub-modal-body'
-                );
-                if (modalBody) {
-                    const modalHeader = modalContent.querySelector(
-                        '.dualsub-modal-header'
+            this._scheduleAnimationTimeout(
+                'modal-body-height',
+                () => {
+                    const modalBody = modalContent.querySelector(
+                        '.dualsub-modal-body'
                     );
-                    const headerHeight = modalHeader
-                        ? modalHeader.offsetHeight
-                        : 60; // Fallback to 60px
-                    const bodyHeight = heightData.height - headerHeight;
+                    if (modalBody) {
+                        const modalHeader = modalContent.querySelector(
+                            '.dualsub-modal-header'
+                        );
+                        const headerHeight = modalHeader
+                            ? modalHeader.offsetHeight
+                            : 60; // Fallback to 60px
+                        const bodyHeight = heightData.height - headerHeight;
 
-                    modalBody.style.setProperty(
-                        'height',
-                        `${bodyHeight}px`,
-                        'important'
-                    );
-                    modalBody.style.setProperty(
-                        'max-height',
-                        `${bodyHeight}px`,
-                        'important'
-                    );
+                        modalBody.style.setProperty(
+                            'height',
+                            `${bodyHeight}px`,
+                            'important'
+                        );
+                        modalBody.style.setProperty(
+                            'max-height',
+                            `${bodyHeight}px`,
+                            'important'
+                        );
 
-                    // this.core._log('debug', 'Modal body height explicitly set', {
-                    //     totalHeight: heightData.height,
-                    //     headerHeight: headerHeight,
-                    //     bodyHeight: bodyHeight,
-                    //     modalBodyOffsetHeight: modalBody.offsetHeight
-                    // });
-                }
-            }, 10);
+                        // this.core._log('debug', 'Modal body height explicitly set', {
+                        //     totalHeight: heightData.height,
+                        //     headerHeight: headerHeight,
+                        //     bodyHeight: bodyHeight,
+                        //     modalBodyOffsetHeight: modalBody.offsetHeight
+                        // });
+                    }
+                },
+                10
+            );
 
             // this.core._log('debug', 'Dynamic height applied', {
             //     height: heightData.height,
@@ -680,12 +717,14 @@ export class AIContextModalAnimations {
      * @private
      */
     _setupDynamicHeightMonitoring() {
+        if (this._destroyed || !this.core) return;
         this._stopDynamicHeightMonitoring();
 
         try {
             // Setup ResizeObserver for window resize events
             if (window.ResizeObserver) {
                 this.resizeObserver = new ResizeObserver(() => {
+                    if (this._destroyed) return;
                     this._applyDynamicModalHeight();
                 });
                 this.resizeObserver.observe(document.body);
@@ -694,6 +733,7 @@ export class AIContextModalAnimations {
             // Setup MutationObserver for DOM changes that might affect subtitle position
             if (window.MutationObserver) {
                 this.mutationObserver = new MutationObserver((mutations) => {
+                    if (this._destroyed) return;
                     let shouldUpdate = false;
 
                     mutations.forEach((mutation) => {
@@ -738,18 +778,21 @@ export class AIContextModalAnimations {
 
                     if (shouldUpdate) {
                         // Debounce updates to avoid excessive recalculations
-                        clearTimeout(this._mutationUpdateTimeout);
-                        this._mutationUpdateTimeout = setTimeout(() => {
-                            this._applyDynamicModalHeight();
+                        this._scheduleAnimationTimeout(
+                            'mutation-height-update',
+                            () => {
+                                this._applyDynamicModalHeight();
 
-                            // Re-sync word selection visuals when subtitles change
-                            if (this.core.selectedWords.size > 0) {
-                                try {
-                                    this.core.syncSelectionHighlights();
-                                } catch (_) {}
-                                // this.core._log('debug', 'Re-synced word selection visuals after subtitle change');
-                            }
-                        }, 100);
+                                // Re-sync word selection visuals when subtitles change
+                                if (this.core.selectedWords.size > 0) {
+                                    try {
+                                        this.core.syncSelectionHighlights();
+                                    } catch (_) {}
+                                    // this.core._log('debug', 'Re-synced word selection visuals after subtitle change');
+                                }
+                            },
+                            100
+                        );
                     }
                 });
 
@@ -765,6 +808,7 @@ export class AIContextModalAnimations {
             // Fallback interval monitoring (legacy compatibility): only if observers are not available
             if (!this.resizeObserver && !this.mutationObserver) {
                 this.heightMonitorInterval = setInterval(() => {
+                    if (this._destroyed) return;
                     this._applyDynamicModalHeight();
                 }, 2000);
             }
@@ -784,6 +828,7 @@ export class AIContextModalAnimations {
 
             // Fallback to simple interval monitoring
             this.heightMonitorInterval = setInterval(() => {
+                if (this._destroyed) return;
                 this._applyDynamicModalHeight();
             }, 1000);
         }
@@ -841,12 +886,6 @@ export class AIContextModalAnimations {
             this.heightMonitorInterval = null;
         }
 
-        // Clear mutation update timeout
-        if (this._mutationUpdateTimeout) {
-            clearTimeout(this._mutationUpdateTimeout);
-            this._mutationUpdateTimeout = null;
-        }
-
         // Disconnect ResizeObserver
         if (this.resizeObserver) {
             this.resizeObserver.disconnect();
@@ -895,11 +934,13 @@ export class AIContextModalAnimations {
         if (rightPane) {
             rightPane.style.opacity = '0';
 
-            const transitionTimeout = setTimeout(() => {
-                rightPane.style.opacity = '1';
-            }, 150);
-
-            this.animationTimeouts.set('content-transition', transitionTimeout);
+            this._scheduleAnimationTimeout(
+                'content-transition',
+                () => {
+                    rightPane.style.opacity = '1';
+                },
+                150
+            );
         }
     }
 
@@ -915,14 +956,16 @@ export class AIContextModalAnimations {
             errorElement.style.opacity = '0';
             errorElement.style.transform = 'translateY(20px)';
 
-            const errorTimeout = setTimeout(() => {
-                errorElement.style.opacity = '1';
-                errorElement.style.transform = 'translateY(0)';
-                errorElement.style.transition =
-                    'opacity 0.3s ease, transform 0.3s ease';
-            }, 100);
-
-            this.animationTimeouts.set('error-animation', errorTimeout);
+            this._scheduleAnimationTimeout(
+                'error-animation',
+                () => {
+                    errorElement.style.opacity = '1';
+                    errorElement.style.transform = 'translateY(0)';
+                    errorElement.style.transition =
+                        'opacity 0.3s ease, transform 0.3s ease';
+                },
+                100
+            );
         }
     }
 
@@ -1022,11 +1065,19 @@ export class AIContextModalAnimations {
      * Cleanup animations
      */
     cleanup() {
-        this.core._log('debug', 'Cleaning up animations');
+        if (this._destroyed) return;
+        const core = this.core;
+        this._destroyed = true;
+        core?._log?.('debug', 'Cleaning up animations');
 
         this._clearAnimationTimeouts();
         this._stopDynamicHeightMonitoring();
+        try {
+            core?.selectionPersistenceManager?.stopMonitoring?.();
+        } catch (_) {}
 
-        this.core._log('debug', 'Animations cleanup complete');
+        core?._log?.('debug', 'Animations cleanup complete');
+        this.core = null;
+        this.ui = null;
     }
 }

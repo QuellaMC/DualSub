@@ -27,6 +27,43 @@ export class VideoPlatform {
         this.unsubscribeFromChanges = null;
         // Cache for frequently-read settings to avoid repetitive storage calls
         this._hideOfficialSubtitles = undefined;
+        this._lifecycleGeneration = 0;
+        this._activeLifecycleGeneration = 0;
+        this._platformLifecycleStarted = false;
+        this._nativeSubtitleSettingsGeneration = 0;
+        this._activeNativeSubtitleSettingsGeneration = null;
+        this._nativeSubtitleSettingOperationGeneration = 0;
+    }
+
+    _beginPlatformLifecycle() {
+        const generation = ++this._lifecycleGeneration;
+        this._activeLifecycleGeneration = generation;
+        this._platformLifecycleStarted = true;
+        return generation;
+    }
+
+    _invalidatePlatformLifecycle() {
+        this._activeLifecycleGeneration = null;
+        this._platformLifecycleStarted = false;
+        this._lifecycleGeneration += 1;
+    }
+
+    _isPlatformLifecycleCurrent(generation) {
+        return (
+            this._activeLifecycleGeneration === generation &&
+            this._lifecycleGeneration === generation
+        );
+    }
+
+    _logBestEffort(level, ...args) {
+        try {
+            const log = this.logger?.[level];
+            if (typeof log === 'function') {
+                log.call(this.logger, ...args);
+            }
+        } catch {
+            // Telemetry must never alter subtitle behavior or ownership.
+        }
     }
     /**
      * Checks if the current page is relevant to this platform.
@@ -84,6 +121,28 @@ export class VideoPlatform {
      */
     getCurrentVideoId() {
         throw new Error("Method 'getCurrentVideoId()' must be implemented.");
+    }
+
+    /**
+     * Proves that the adapter has already adopted the player identity in a
+     * newly observed SPA route. The default is fail-closed so navigation can
+     * safely retire stale playback state for adapters without this proof.
+     * @param {string} _url The newly observed player URL.
+     * @returns {boolean} True only when the route matches current adapter state.
+     */
+    hasAdoptedPlayerRoute(_url) {
+        return false;
+    }
+
+    /**
+     * Declares whether the content script may call HTMLMediaElement.pause()
+     * after a platform playback action fails. Platforms whose controller owns
+     * playback state must override this and return false so controller and
+     * media state cannot diverge.
+     * @returns {boolean} True when a raw media-element fallback is safe.
+     */
+    allowsDirectMediaPlaybackFallback() {
+        return true;
     }
 
     /**
@@ -155,15 +214,17 @@ export class VideoPlatform {
         const hiddenContainers = document.querySelectorAll(
             '[data-dualsub-hidden="true"]'
         );
+        let restoredContainerCount = 0;
         hiddenContainers.forEach((container) => {
             container.style.display = '';
             container.style.visibility = '';
             container.style.opacity = '';
             container.removeAttribute('data-dualsub-hidden');
-            this.logger.debug('Restored official subtitle container', {
-                className: this.constructor.name,
-                containerElement: container.tagName,
-            });
+            restoredContainerCount += 1;
+        });
+        this._logBestEffort('debug', 'Restored official subtitle containers', {
+            restoredContainerCount,
+            restoredAny: restoredContainerCount > 0,
         });
     }
 
@@ -171,7 +232,27 @@ export class VideoPlatform {
      * Utility method: Handle native subtitles based on user setting
      * @param {string[]} selectors - Array of CSS selectors for subtitle containers
      */
-    async handleNativeSubtitlesWithSetting(selectors) {
+    async handleNativeSubtitlesWithSetting(
+        selectors,
+        additionalCurrentnessCheck = null
+    ) {
+        const lifecycleGeneration = this._lifecycleGeneration;
+        const nativeSettingsGeneration =
+            this._activeNativeSubtitleSettingsGeneration;
+        const operationGeneration = ++this
+            ._nativeSubtitleSettingOperationGeneration;
+        const isCurrent = () =>
+            this._isPlatformLifecycleCurrent(lifecycleGeneration) &&
+            (nativeSettingsGeneration === null ||
+                this._activeNativeSubtitleSettingsGeneration ===
+                    nativeSettingsGeneration) &&
+            this._nativeSubtitleSettingOperationGeneration ===
+                operationGeneration &&
+            (typeof additionalCurrentnessCheck !== 'function' ||
+                additionalCurrentnessCheck());
+
+        if (!isCurrent()) return;
+
         // Use cached value when available to avoid repeated storage reads
         let hideOfficialSubtitles = this._hideOfficialSubtitles;
         if (hideOfficialSubtitles === undefined) {
@@ -179,11 +260,15 @@ export class VideoPlatform {
                 hideOfficialSubtitles = await configService.get(
                     'hideOfficialSubtitles'
                 );
+                if (!isCurrent()) return;
                 this._hideOfficialSubtitles = !!hideOfficialSubtitles;
-            } catch (e) {
+            } catch (_) {
+                if (!isCurrent()) return;
                 hideOfficialSubtitles = false;
             }
         }
+
+        if (!isCurrent()) return;
 
         if (hideOfficialSubtitles) {
             this.hideOfficialSubtitleContainers(selectors);
@@ -197,11 +282,24 @@ export class VideoPlatform {
      * @param {string[]} selectors - Array of CSS selectors for subtitle containers
      */
     setupNativeSubtitleSettingsListener(selectors) {
+        this.cleanupNativeSubtitleSettingsListener();
+
+        const lifecycleGeneration = this._lifecycleGeneration;
+        const nativeSettingsGeneration = ++this
+            ._nativeSubtitleSettingsGeneration;
+        this._activeNativeSubtitleSettingsGeneration = nativeSettingsGeneration;
         this.subtitleSelectors = selectors;
 
+        const isCurrent = () =>
+            this._isPlatformLifecycleCurrent(lifecycleGeneration) &&
+            this._activeNativeSubtitleSettingsGeneration ===
+                nativeSettingsGeneration;
+
         this.storageListener = (changes) => {
+            if (!isCurrent()) return;
             if (changes.hideOfficialSubtitles !== undefined) {
                 const newValue = changes.hideOfficialSubtitles;
+                this._nativeSubtitleSettingOperationGeneration += 1;
                 // Cache the latest value
                 this._hideOfficialSubtitles = !!newValue;
                 if (newValue) {
@@ -214,21 +312,48 @@ export class VideoPlatform {
 
         // Use configService to listen for changes
         if (configService && configService.onChanged) {
-            this.unsubscribeFromChanges = configService.onChanged(
+            const unsubscribeFromChanges = configService.onChanged(
                 this.storageListener
             );
-            this.logger?.debug(
+            if (!isCurrent()) {
+                if (typeof unsubscribeFromChanges === 'function') {
+                    try {
+                        unsubscribeFromChanges();
+                    } catch (_) {}
+                }
+                return;
+            }
+            this.unsubscribeFromChanges = unsubscribeFromChanges;
+            this._logBestEffort(
+                'debug',
                 'configService change listener added successfully'
             );
             // Warm up cache asynchronously without spamming logs
             (async () => {
+                const operationGeneration = ++this
+                    ._nativeSubtitleSettingOperationGeneration;
                 try {
                     const v = await configService.get('hideOfficialSubtitles');
+                    if (
+                        !isCurrent() ||
+                        this._nativeSubtitleSettingOperationGeneration !==
+                            operationGeneration
+                    ) {
+                        return;
+                    }
                     this._hideOfficialSubtitles = !!v;
+                    if (v) {
+                        this.hideOfficialSubtitleContainers(
+                            this.subtitleSelectors
+                        );
+                    } else {
+                        this.showOfficialSubtitleContainers();
+                    }
                 } catch (_) {}
             })();
         } else {
-            this.logger?.warn(
+            this._logBestEffort(
+                'warn',
                 'configService.onChanged API not available, skipping listener setup'
             );
         }
@@ -249,16 +374,31 @@ export class VideoPlatform {
      * Utility method: Clean up storage listener for subtitle settings
      */
     cleanupNativeSubtitleSettingsListener() {
-        if (this.storageListener) {
-            if (this.unsubscribeFromChanges) {
-                this.unsubscribeFromChanges();
-                this.logger?.debug(
+        this._activeNativeSubtitleSettingsGeneration = null;
+        this._nativeSubtitleSettingsGeneration += 1;
+        this._nativeSubtitleSettingOperationGeneration += 1;
+        this._hideOfficialSubtitles = undefined;
+
+        this.showOfficialSubtitleContainers();
+
+        const unsubscribeFromChanges = this.unsubscribeFromChanges;
+        this.storageListener = null;
+        this.subtitleSelectors = null;
+        this.unsubscribeFromChanges = null;
+
+        if (typeof unsubscribeFromChanges === 'function') {
+            try {
+                unsubscribeFromChanges();
+                this._logBestEffort(
+                    'debug',
                     'configService change listener removed successfully'
                 );
+            } catch (_) {
+                this._logBestEffort(
+                    'warn',
+                    'configService change listener removal failed'
+                );
             }
-            this.storageListener = null;
-            this.subtitleSelectors = null;
-            this.unsubscribeFromChanges = null;
         }
     }
 

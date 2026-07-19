@@ -1,4 +1,10 @@
 import { useCallback, useEffect, useRef } from 'react';
+import {
+    buildAnalyzeContextRequestMessage,
+    MessageSenderRoles,
+    parseAnalyzeContextResponseMessage,
+} from '../../content_scripts/shared/protocol/messageProtocol.js';
+import { sendRuntimeMessageWithRetry } from '../../content_scripts/shared/messaging.js';
 import { useSidePanelContext } from './SidePanelContext.jsx';
 import { useSettings } from './useSettings.js';
 import { CONTEXT_TYPES } from '../../context_providers/contextSchemas.js';
@@ -7,6 +13,7 @@ const AI_SETTINGS_KEYS = [
     'aiContextEnabled',
     'aiContextProvider',
     'aiContextTypes',
+    'targetLanguage',
 ];
 
 const ALLOWED_CONTEXT_TYPES = new Set(CONTEXT_TYPES);
@@ -35,6 +42,16 @@ function normalizeContextTypes(contextTypes) {
         : [];
 }
 
+function createSelectionAuthorityKey(selection) {
+    return selection
+        ? [
+              selection.selectionOwnerGeneration,
+              selection.selectionRevision,
+              selection.renderRevision,
+          ].join(':')
+        : 'none';
+}
+
 function getMessage(key, fallback) {
     return chrome.i18n.getMessage(key) || fallback;
 }
@@ -48,37 +65,28 @@ export function useAIAnalysis() {
     const {
         activeTabId,
         analysisResult,
-        communication,
         error,
         isAnalyzing,
+        selection,
         selectedWords,
-        targetLanguage,
         updateTabState,
     } = useSidePanelContext();
-    const { sendToBoundTab, sendToTab } = communication;
     const {
         settings,
         loading: settingsLoading,
         error: settingsError,
     } = useSettings(AI_SETTINGS_KEYS);
+    const targetLanguage = settings.targetLanguage;
+    const settingsReady = !settingsLoading && !settingsError;
     const activeRequestRef = useRef(null);
+    const confirmedTargetLanguageRef = useRef(null);
     const requestCounterRef = useRef(0);
-
-    const notifyAnalyzingState = useCallback(
-        async (tabId, nextIsAnalyzing) => {
-            const data = { isAnalyzing: nextIsAnalyzing };
-            if (typeof tabId === 'number') {
-                return sendToTab(tabId, 'sidePanelSetAnalyzing', data);
-            }
-            return sendToBoundTab('sidePanelSetAnalyzing', data);
-        },
-        [sendToBoundTab, sendToTab]
-    );
+    const requestAuthorityRef = useRef(null);
 
     const invalidateRequest = useCallback(
         (request) => {
             if (!request || request.cancelled) {
-                return Promise.resolve();
+                return;
             }
 
             request.cancelled = true;
@@ -86,35 +94,43 @@ export function useAIAnalysis() {
                 updateTabState(request.tabId, { isAnalyzing: false });
             }
 
-            const notification = notifyAnalyzingState(
-                request.tabId,
-                false
-            ).catch((notificationError) =>
-                console.warn(
-                    'Failed to clear analyzing state:',
-                    notificationError
-                )
-            );
-
             if (activeRequestRef.current === request) {
                 activeRequestRef.current = null;
             }
-
-            return notification;
         },
-        [notifyAnalyzingState, updateTabState]
+        [updateTabState]
     );
 
-    const selectedWordsKey = normalizeWords(selectedWords).join('\u0000');
+    const selectedWordsKey = selectedWords.join('\u0000');
     const contextTypesKey = normalizeContextTypes(settings.aiContextTypes).join(
         ','
     );
     const requestConfigurationKey = [
+        settingsReady,
         settings.aiContextEnabled,
         settings.aiContextProvider,
         contextTypesKey,
         targetLanguage,
     ].join('|');
+    const selectionAuthorityKey = createSelectionAuthorityKey(selection);
+    requestAuthorityRef.current = {
+        configurationKey: requestConfigurationKey,
+        selectionAuthorityKey,
+        tabId: activeTabId,
+    };
+
+    const hasRequestAuthority = useCallback((request) => {
+        const currentAuthority = requestAuthorityRef.current;
+        return Boolean(
+            request &&
+            request.cancelled === false &&
+            activeRequestRef.current === request &&
+            currentAuthority?.tabId === request.tabId &&
+            currentAuthority.configurationKey === request.configurationKey &&
+            currentAuthority.selectionAuthorityKey ===
+                request.selectionAuthorityKey
+        );
+    }, []);
 
     useEffect(() => {
         const request = activeRequestRef.current;
@@ -122,6 +138,7 @@ export function useAIAnalysis() {
             request &&
             (request.tabId !== activeTabId ||
                 request.wordsKey !== selectedWordsKey ||
+                request.selectionAuthorityKey !== selectionAuthorityKey ||
                 request.configurationKey !== requestConfigurationKey)
         ) {
             void invalidateRequest(request);
@@ -130,7 +147,37 @@ export function useAIAnalysis() {
         activeTabId,
         invalidateRequest,
         requestConfigurationKey,
+        selectionAuthorityKey,
         selectedWordsKey,
+    ]);
+
+    useEffect(() => {
+        if (!settingsReady || typeof targetLanguage !== 'string') {
+            return;
+        }
+
+        const previousTargetLanguage = confirmedTargetLanguageRef.current;
+        confirmedTargetLanguageRef.current = targetLanguage;
+        if (
+            previousTargetLanguage === null ||
+            previousTargetLanguage === targetLanguage
+        ) {
+            return;
+        }
+
+        invalidateRequest(activeRequestRef.current);
+        if (typeof activeTabId === 'number') {
+            updateTabState(activeTabId, {
+                analysisResult: null,
+                error: null,
+            });
+        }
+    }, [
+        activeTabId,
+        invalidateRequest,
+        settingsReady,
+        targetLanguage,
+        updateTabState,
     ]);
 
     useEffect(
@@ -142,7 +189,10 @@ export function useAIAnalysis() {
 
     const analyzeWords = useCallback(
         async (customWords = null) => {
-            const wordsToAnalyze = normalizeWords(customWords ?? selectedWords);
+            const wordsToAnalyze =
+                customWords === null
+                    ? [...selectedWords]
+                    : normalizeWords(customWords);
             const requestTabId = activeTabId;
 
             if (wordsToAnalyze.length === 0) {
@@ -151,6 +201,10 @@ export function useAIAnalysis() {
                         error: chrome.i18n.getMessage('sidepanelErrorNoWords'),
                     });
                 }
+                return null;
+            }
+
+            if (!settingsReady) {
                 return null;
             }
 
@@ -173,12 +227,13 @@ export function useAIAnalysis() {
                 return null;
             }
 
-            await invalidateRequest(activeRequestRef.current);
+            invalidateRequest(activeRequestRef.current);
 
             const request = {
                 cancelled: false,
                 configurationKey: requestConfigurationKey,
                 id: ++requestCounterRef.current,
+                selectionAuthorityKey,
                 tabId: requestTabId,
                 wordsKey: wordsToAnalyze.join('\u0000'),
             };
@@ -190,96 +245,75 @@ export function useAIAnalysis() {
                 isAnalyzing: true,
             });
 
-            try {
-                await notifyAnalyzingState(requestTabId, true);
-            } catch (notificationError) {
-                console.warn(
-                    'Failed to set analyzing state:',
-                    notificationError
-                );
-            }
-
-            if (request.cancelled || activeRequestRef.current !== request) {
+            if (!hasRequestAuthority(request)) {
                 return null;
             }
 
             try {
-                const message = {
-                    action: 'analyzeContext',
-                    text: wordsToAnalyze.join(' '),
-                    contextTypes,
-                    targetLanguage,
-                    requestId: `sidepanel-${Date.now()}-${request.id}`,
-                };
-                if (contextTypes.length === 1) {
-                    message.contextType = contextTypes[0];
-                }
-                const response = await chrome.runtime.sendMessage(message);
+                const message = buildAnalyzeContextRequestMessage(
+                    MessageSenderRoles.SIDEPANEL,
+                    {
+                        text: wordsToAnalyze.join(' '),
+                        contextTypes,
+                        targetLanguage,
+                        requestId: `sidepanel-${Date.now()}-${request.id}`,
+                    }
+                );
+                const response = await sendRuntimeMessageWithRetry(message, {
+                    retries: 0,
+                    pingBeforeRetry: false,
+                    canDispatch: () => hasRequestAuthority(request),
+                });
 
-                if (request.cancelled || activeRequestRef.current !== request) {
+                if (!hasRequestAuthority(request)) {
                     return null;
                 }
 
-                if (!response?.success) {
-                    updateTabState(requestTabId, {
-                        error:
-                            response?.error ||
-                            chrome.i18n.getMessage('sidepanelErrorGeneric'),
-                    });
-                    return null;
-                }
-
-                const payload = response.result || response;
-                const normalizedResult =
-                    payload?.analysis || payload?.result || null;
-
-                if (!normalizedResult) {
+                const parsedResponse = parseAnalyzeContextResponseMessage(
+                    response,
+                    message,
+                    MessageSenderRoles.SIDEPANEL
+                );
+                if (parsedResponse?.status !== 'success') {
                     updateTabState(requestTabId, {
                         error: chrome.i18n.getMessage('sidepanelErrorGeneric'),
                     });
                     return null;
                 }
 
+                const normalizedResult = parsedResponse.result.analysis;
+
                 updateTabState(requestTabId, {
                     analysisResult: normalizedResult,
                     error: null,
                 });
                 return normalizedResult;
-            } catch (requestError) {
-                if (request.cancelled || activeRequestRef.current !== request) {
+            } catch (_) {
+                if (!hasRequestAuthority(request)) {
                     return null;
                 }
 
-                console.error('AI analysis error:', requestError);
+                console.error('AI analysis request failed');
                 updateTabState(requestTabId, {
-                    error:
-                        requestError.message ||
-                        chrome.i18n.getMessage('sidepanelErrorGeneric'),
+                    error: chrome.i18n.getMessage('sidepanelErrorGeneric'),
                 });
                 return null;
             } finally {
                 if (activeRequestRef.current === request) {
                     activeRequestRef.current = null;
                     updateTabState(requestTabId, { isAnalyzing: false });
-
-                    try {
-                        await notifyAnalyzingState(requestTabId, false);
-                    } catch (notificationError) {
-                        console.warn(
-                            'Failed to clear analyzing state:',
-                            notificationError
-                        );
-                    }
                 }
             }
         },
         [
             activeTabId,
+            hasRequestAuthority,
             invalidateRequest,
-            notifyAnalyzingState,
             requestConfigurationKey,
+            selectionAuthorityKey,
             selectedWords,
             settings,
+            settingsReady,
             targetLanguage,
             updateTabState,
         ]

@@ -1,4 +1,5 @@
 import { afterEach, jest } from '@jest/globals';
+import { configService } from '../services/configService.js';
 import {
     analyzeContext as analyzeOpenAIContext,
     getAvailableModels as getOpenAIModels,
@@ -38,13 +39,33 @@ function hasSchemaKeyword(value, keyword) {
     );
 }
 
+function createAuthoritativeConfigResult(values) {
+    return {
+        ok: true,
+        values,
+        degraded: false,
+        failedAreas: [],
+        areas: {
+            sync: { status: 'ok' },
+            local: { status: 'ok' },
+        },
+    };
+}
+
 describe('AI context provider request contracts', () => {
+    let strictConfigRead;
+
     afterEach(() => {
+        strictConfigRead?.mockRestore();
         jest.useRealTimers();
     });
 
     beforeEach(() => {
         global.fetch = jest.fn();
+        strictConfigRead = jest.spyOn(
+            configService,
+            'readMultipleResultStrict'
+        );
     });
 
     test('OpenAI uses the v1 chat-completions URL and requested GPT-5.6 model', async () => {
@@ -73,6 +94,16 @@ describe('AI context provider request contracts', () => {
         });
 
         expect(result.success).toBe(true);
+        expect(strictConfigRead).toHaveBeenCalledTimes(1);
+        expect(strictConfigRead).toHaveBeenCalledWith(
+            [
+                'openaiApiKey',
+                'openaiBaseUrl',
+                'openaiModel',
+                'aiContextTimeout',
+            ],
+            { includeSensitive: true }
+        );
         expect(fetch).toHaveBeenCalledTimes(1);
         const [url, request] = fetch.mock.calls[0];
         const body = JSON.parse(request.body);
@@ -95,6 +126,30 @@ describe('AI context provider request contracts', () => {
             'gpt-5.6',
         ]);
         expect(getOpenAIDefaultModel()).toBe('gpt-5.6-luna');
+    });
+
+    test('OpenAI rejects an authoritative malformed base URL before fetch', async () => {
+        strictConfigRead.mockResolvedValue(
+            createAuthoritativeConfigResult({
+                openaiApiKey: 'test-openai-key',
+                openaiBaseUrl: 'not a provider URL',
+                openaiModel: 'gpt-5.6-luna',
+                aiContextTimeout: 30_000,
+            })
+        );
+
+        await expect(
+            analyzeOpenAIContext('hello', 'cultural', {
+                targetLanguage: 'en',
+            })
+        ).resolves.toMatchObject({
+            success: false,
+            error: 'OpenAI provider configuration is invalid',
+            shouldRetry: false,
+            shouldCache: false,
+        });
+        expect(strictConfigRead).toHaveBeenCalledTimes(1);
+        expect(fetch).not.toHaveBeenCalled();
     });
 
     test('Gemini uses 3.5 Flash and caps generated output at 8192 tokens', async () => {
@@ -126,6 +181,11 @@ describe('AI context provider request contracts', () => {
         });
 
         expect(result.success).toBe(true);
+        expect(strictConfigRead).toHaveBeenCalledTimes(1);
+        expect(strictConfigRead).toHaveBeenCalledWith(
+            ['geminiApiKey', 'geminiModel', 'aiContextTimeout'],
+            { includeSensitive: true }
+        );
         const [url, request] = fetch.mock.calls[0];
         const body = JSON.parse(request.body);
         expect(url).toContain(
@@ -248,6 +308,241 @@ describe('AI context provider request contracts', () => {
         expect(getGeminiDefaultModel()).toBe('gemini-3.5-flash');
     });
 
+    test('Gemini rejects an authoritative blank model before fetch', async () => {
+        strictConfigRead.mockResolvedValue(
+            createAuthoritativeConfigResult({
+                geminiApiKey: 'test-gemini-key',
+                geminiModel: '   ',
+                aiContextTimeout: 30_000,
+            })
+        );
+
+        await expect(
+            analyzeGeminiContext('hello', 'cultural', {
+                targetLanguage: 'en',
+            })
+        ).resolves.toMatchObject({
+            success: false,
+            error: 'Gemini provider configuration is invalid',
+            shouldRetry: false,
+            shouldCache: false,
+        });
+        expect(strictConfigRead).toHaveBeenCalledTimes(1);
+        expect(fetch).not.toHaveBeenCalled();
+    });
+
+    test.each([
+        {
+            name: 'OpenAI local area',
+            analyze: analyzeOpenAIContext,
+            failedArea: 'local',
+        },
+        {
+            name: 'Gemini sync area',
+            analyze: analyzeGeminiContext,
+            failedArea: 'sync',
+        },
+    ])(
+        '$name fails closed when the strict cross-area read rejects',
+        async ({ analyze, failedArea }) => {
+            strictConfigRead.mockRejectedValue(
+                Object.assign(
+                    new Error(
+                        `storage failure with provider-secret in ${failedArea}`
+                    ),
+                    { failedAreas: [failedArea] }
+                )
+            );
+
+            await expect(
+                analyze('hello', 'cultural', { targetLanguage: 'en' })
+            ).resolves.toMatchObject({
+                success: false,
+                error: 'Required provider configuration is unavailable',
+                shouldRetry: false,
+                shouldCache: false,
+            });
+            expect(strictConfigRead).toHaveBeenCalledTimes(1);
+            expect(fetch).not.toHaveBeenCalled();
+        }
+    );
+
+    test.each([
+        {
+            name: 'OpenAI model',
+            analyze: analyzeOpenAIContext,
+            values: {
+                openaiApiKey: 'test-openai-key',
+                openaiBaseUrl: 'https://api.openai.com/v1',
+                aiContextTimeout: 30_000,
+            },
+        },
+        {
+            name: 'Gemini credential',
+            analyze: analyzeGeminiContext,
+            values: {
+                geminiModel: 'gemini-3.5-flash',
+                aiContextTimeout: 30_000,
+            },
+        },
+    ])(
+        '$name fails closed when the authoritative result omits a required key',
+        async ({ analyze, values }) => {
+            strictConfigRead.mockResolvedValue(
+                createAuthoritativeConfigResult(values)
+            );
+
+            await expect(
+                analyze('hello', 'cultural', { targetLanguage: 'en' })
+            ).resolves.toMatchObject({
+                success: false,
+                error: 'Required provider configuration is unavailable',
+                shouldRetry: false,
+                shouldCache: false,
+            });
+            expect(strictConfigRead).toHaveBeenCalledTimes(1);
+            expect(fetch).not.toHaveBeenCalled();
+        }
+    );
+
+    test.each([
+        {
+            name: 'OpenAI empty credential',
+            analyze: analyzeOpenAIContext,
+            values: {
+                openaiApiKey: '',
+                openaiBaseUrl: 'https://api.openai.com/v1',
+                openaiModel: 'gpt-5.6-luna',
+                aiContextTimeout: 30_000,
+            },
+            error: 'OpenAI API key not configured',
+        },
+        {
+            name: 'OpenAI non-string credential',
+            analyze: analyzeOpenAIContext,
+            values: {
+                openaiApiKey: 7,
+                openaiBaseUrl: 'https://api.openai.com/v1',
+                openaiModel: 'gpt-5.6-luna',
+                aiContextTimeout: 30_000,
+            },
+            error: 'OpenAI API key not configured',
+        },
+        {
+            name: 'OpenAI blank model',
+            analyze: analyzeOpenAIContext,
+            values: {
+                openaiApiKey: 'test-openai-key',
+                openaiBaseUrl: 'https://api.openai.com/v1',
+                openaiModel: '   ',
+                aiContextTimeout: 30_000,
+            },
+            error: 'OpenAI provider configuration is invalid',
+        },
+        {
+            name: 'OpenAI out-of-range timeout',
+            analyze: analyzeOpenAIContext,
+            values: {
+                openaiApiKey: 'test-openai-key',
+                openaiBaseUrl: 'https://api.openai.com/v1',
+                openaiModel: 'gpt-5.6-luna',
+                aiContextTimeout: 100,
+            },
+            error: 'OpenAI provider configuration is invalid',
+        },
+        {
+            name: 'Gemini empty credential',
+            analyze: analyzeGeminiContext,
+            values: {
+                geminiApiKey: '',
+                geminiModel: 'gemini-3.5-flash',
+                aiContextTimeout: 30_000,
+            },
+            error: 'Gemini API key not configured',
+        },
+        {
+            name: 'Gemini non-string credential',
+            analyze: analyzeGeminiContext,
+            values: {
+                geminiApiKey: {},
+                geminiModel: 'gemini-3.5-flash',
+                aiContextTimeout: 30_000,
+            },
+            error: 'Gemini API key not configured',
+        },
+        {
+            name: 'Gemini out-of-range timeout',
+            analyze: analyzeGeminiContext,
+            values: {
+                geminiApiKey: 'test-gemini-key',
+                geminiModel: 'gemini-3.5-flash',
+                aiContextTimeout: 100,
+            },
+            error: 'Gemini provider configuration is invalid',
+        },
+    ])(
+        '$name is rejected before network use',
+        async ({ analyze, values, error }) => {
+            strictConfigRead.mockResolvedValue(
+                createAuthoritativeConfigResult(values)
+            );
+
+            await expect(
+                analyze('hello', 'cultural', { targetLanguage: 'en' })
+            ).resolves.toMatchObject({
+                success: false,
+                error,
+                shouldRetry: false,
+                shouldCache: false,
+            });
+            expect(strictConfigRead).toHaveBeenCalledTimes(1);
+            expect(fetch).not.toHaveBeenCalled();
+        }
+    );
+
+    test('OpenAI request materialization is isolated from fetch-side source mutation', async () => {
+        const sourceValues = {
+            openaiApiKey: 'initial-openai-key',
+            openaiBaseUrl: 'https://initial.example/v1',
+            openaiModel: 'gpt-5.6-terra',
+            aiContextTimeout: 30_000,
+        };
+        strictConfigRead.mockResolvedValue(
+            createAuthoritativeConfigResult(sourceValues)
+        );
+        fetch.mockImplementation(async () => {
+            Object.assign(sourceValues, {
+                openaiApiKey: 'mutated-openai-key',
+                openaiBaseUrl: 'https://mutated.example/v1',
+                openaiModel: 'mutated-model',
+            });
+            return {
+                ok: true,
+                json: async () => ({
+                    choices: [
+                        {
+                            message: {
+                                content: JSON.stringify(culturalAnalysis()),
+                            },
+                        },
+                    ],
+                }),
+            };
+        });
+
+        await expect(
+            analyzeOpenAIContext('hello', 'cultural', {
+                targetLanguage: 'en',
+            })
+        ).resolves.toMatchObject({ success: true });
+
+        const [url, request] = fetch.mock.calls[0];
+        expect(url).toBe('https://initial.example/v1/chat/completions');
+        expect(request.headers.Authorization).toBe('Bearer initial-openai-key');
+        expect(JSON.parse(request.body).model).toBe('gpt-5.6-terra');
+        expect(sourceValues.openaiApiKey).toBe('mutated-openai-key');
+    });
+
     test.each([
         {
             name: 'OpenAI',
@@ -292,7 +587,7 @@ describe('AI context provider request contracts', () => {
                 openaiApiKey: 'test-openai-key',
                 openaiBaseUrl: 'https://api.openai.com/v1',
                 openaiModel: 'gpt-5.6-luna',
-                aiContextTimeout: 25,
+                aiContextTimeout: 5_000,
             },
         },
         {
@@ -301,7 +596,7 @@ describe('AI context provider request contracts', () => {
             config: {
                 geminiApiKey: 'test-gemini-key',
                 geminiModel: 'gemini-3.5-flash',
-                aiContextTimeout: 25,
+                aiContextTimeout: 5_000,
             },
         },
     ])(
@@ -326,7 +621,7 @@ describe('AI context provider request contracts', () => {
             await jest.advanceTimersByTimeAsync(0);
             expect(fetch).toHaveBeenCalledTimes(1);
 
-            await jest.advanceTimersByTimeAsync(25);
+            await jest.advanceTimersByTimeAsync(5_000);
 
             await expectation;
         }

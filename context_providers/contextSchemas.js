@@ -1,9 +1,7 @@
+import { CONTEXT_TYPES } from '../content_scripts/shared/constants/contextTypes.js';
+
 export const CONTEXT_SCHEMA_NAME = 'context_analysis';
-export const CONTEXT_TYPES = Object.freeze([
-    'cultural',
-    'historical',
-    'linguistic',
-]);
+export { CONTEXT_TYPES };
 
 const CONTEXT_SECTION_KEYS = Object.freeze({
     cultural: 'cultural_analysis',

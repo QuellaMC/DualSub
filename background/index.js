@@ -16,7 +16,6 @@ import { loggingManager } from './utils/loggingManager.js';
 import { messageHandler } from './handlers/messageHandler.js';
 import { configService } from '../services/configService.js';
 import { serviceRegistry } from './services/serviceInterfaces.js';
-import { performanceMonitor } from './utils/performanceMonitor.js';
 import { backgroundServiceReadiness } from './serviceReadiness.js';
 import { migrateLegacyConfiguration } from './configMigrations.js';
 import Logger from '../utils/logger.js';
@@ -123,10 +122,6 @@ async function initializeServices() {
         backgroundLogger.info('Service dependency validation completed', {
             services: dependencyValidation,
         });
-
-        // Start performance monitoring
-        performanceMonitor.startMonitoring();
-        backgroundLogger.info('Performance monitoring started');
 
         backgroundServiceReadiness.markReady();
 
