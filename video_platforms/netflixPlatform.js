@@ -1,10 +1,13 @@
+import { VideoPlatform } from './platform_interface.js';
 import Logger from '../utils/logger.js';
 import { configService } from '../services/configService.js';
+import { MessageActions } from '../content_scripts/shared/constants/messageActions.js';
 
 // Define constants for the injected script and communication events
 // It is crucial that these values match what you will use in 'netflixInject.js'
 import { Injection } from '../content_scripts/shared/constants/injection.js';
 
+const INJECT_SCRIPT_FILENAME = Injection.netflix.SCRIPT_FILENAME;
 const INJECT_SCRIPT_TAG_ID = Injection.netflix.SCRIPT_TAG_ID;
 const INJECT_EVENT_ID = Injection.netflix.EVENT_ID; // Must match netflixInject.js
 
@@ -31,8 +34,7 @@ export class NetflixPlatform extends BasePlatformAdapter {
                 updateLevel: () => Promise.resolve(),
             };
             this.logger.warn('Failed to create proper logger, using fallback', {
-                errorName: error?.name,
-                errorLength: error?.message?.length || 0,
+                error: error.message,
             });
         }
 
@@ -122,10 +124,7 @@ export class NetflixPlatform extends BasePlatformAdapter {
             this.logger.info('Inject script is ready');
         } else if (data.type === 'SUBTITLE_DATA_FOUND') {
             this.logger.debug('Raw subtitle data received', {
-                payloadKeys: Object.keys(data.payload || {}),
-                trackCount: Array.isArray(data.payload?.timedtexttracks)
-                    ? data.payload.timedtexttracks.length
-                    : 0,
+                payload: data.payload,
             });
 
             const { movieId, timedtexttracks } = data.payload;
@@ -135,7 +134,7 @@ export class NetflixPlatform extends BasePlatformAdapter {
                     'SUBTITLE_DATA_FOUND event missing movieId',
                     null,
                     {
-                        payloadKeys: Object.keys(data.payload || {}),
+                        payload: data.payload,
                     }
                 );
                 return;
@@ -146,7 +145,7 @@ export class NetflixPlatform extends BasePlatformAdapter {
                     'SUBTITLE_DATA_FOUND event missing timedtexttracks',
                     null,
                     {
-                        payloadKeys: Object.keys(data.payload || {}),
+                        payload: data.payload,
                     }
                 );
                 return;
@@ -158,6 +157,7 @@ export class NetflixPlatform extends BasePlatformAdapter {
                 trackCount: Array.isArray(timedtexttracks)
                     ? timedtexttracks.length
                     : 0,
+                content: timedtexttracks,
             });
 
             // Extract movieId from current URL to ensure we only process subtitles for the current content
@@ -283,7 +283,7 @@ export class NetflixPlatform extends BasePlatformAdapter {
                     'No downloadable subtitle URLs found in any track'
                 );
                 this.logger.debug('Full tracks data for debugging', {
-                    trackCount: timedtexttracks.length,
+                    tracksData: JSON.stringify(timedtexttracks, null, 2),
                 });
                 return;
             }
@@ -293,7 +293,8 @@ export class NetflixPlatform extends BasePlatformAdapter {
                 primaryTrackUrl
             ) {
                 this.logger.debug('Subtitle data already processed', {
-                    hasVideoId: Boolean(this.currentVideoId),
+                    videoId: this.currentVideoId,
+                    url: primaryTrackUrl,
                 });
                 return;
             }
@@ -301,7 +302,8 @@ export class NetflixPlatform extends BasePlatformAdapter {
                 primaryTrackUrl;
 
             this.logger.info('Requesting VTT processing from background', {
-                trackCount: validTracks.length,
+                videoId: this.currentVideoId,
+                primaryTrackUrl: primaryTrackUrl,
             });
 
             configService
@@ -603,9 +605,9 @@ export class NetflixPlatform extends BasePlatformAdapter {
     /**
      * Called by content script when URL changes (SPA navigation). If we buffered
      * subtitle data for the new movieId, process it now.
-     * @param {string} _newUrl
+     * @param {string} newUrl
      */
-    onUrlChange(_newUrl) {
+    onUrlChange(newUrl) {
         try {
             const urlMovieId = this.extractMovieIdFromUrl();
             if (!urlMovieId) return;
@@ -660,17 +662,20 @@ export class NetflixPlatform extends BasePlatformAdapter {
                 const extractedId = match[1];
                 this.logger.debug('Extracted movieId from URL', {
                     extractedId: extractedId,
-                    pathnameLength: window.location.pathname.length,
+                    url: window.location.href,
                 });
                 return extractedId;
             }
 
             this.logger.warn('Could not extract movieId from URL', {
-                pathnameLength: path.length,
+                url: window.location.href,
+                pathname: path,
             });
             return null;
         } catch (error) {
-            this.logger.error('Error extracting movieId from URL', error);
+            this.logger.error('Error extracting movieId from URL', error, {
+                url: window.location.href,
+            });
             return null;
         }
     }
@@ -685,46 +690,6 @@ export class NetflixPlatform extends BasePlatformAdapter {
     getProgressBarElement() {
         // Netflix: We don't use progress bar tracking since HTML5 video currentTime is reliable
         return null;
-    }
-
-    /**
-     * Platform-specific playback helpers for Netflix
-     */
-
-    isPlaying() {
-        try {
-            const video = this.getVideoElement();
-            if (video) {
-                return !video.paused;
-            }
-            return null;
-        } catch (_) {
-            return null;
-        }
-    }
-
-    async pausePlayback() {
-        try {
-            const video = this.getVideoElement();
-            if (video && !video.paused) {
-                video.pause();
-            }
-            return true;
-        } catch (_) {
-            return false;
-        }
-    }
-
-    async resumePlayback() {
-        try {
-            const video = this.getVideoElement();
-            if (video && video.paused) {
-                await video.play();
-            }
-            return true;
-        } catch (_) {
-            return false;
-        }
     }
 
     supportsProgressBarTracking() {

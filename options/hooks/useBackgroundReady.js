@@ -20,38 +20,30 @@ export function useBackgroundReady() {
         }
     }, []);
 
-    const waitForBackgroundReady = useCallback(
-        async (maxRetries = 10, delay = 500) => {
-            setChecking(true);
-
-            for (let i = 0; i < maxRetries; i++) {
-                if (await checkBackgroundReady()) {
-                    console.debug('Background script is ready', {
-                        attempt: i + 1,
-                    });
-                    setIsReady(true);
-                    setChecking(false);
-                    return true;
-                }
-                console.debug('Background script not ready, retrying...', {
-                    attempt: i + 1,
-                    maxRetries,
-                });
-                await new Promise((resolve) => setTimeout(resolve, delay));
+    const waitForBackgroundReady = useCallback(async (maxRetries = 10, delay = 500) => {
+        setChecking(true);
+        
+        for (let i = 0; i < maxRetries; i++) {
+            if (await checkBackgroundReady()) {
+                console.debug('Background script is ready', { attempt: i + 1 });
+                setIsReady(true);
+                setChecking(false);
+                return true;
             }
-
-            console.warn(
-                'Background script did not become ready within timeout',
-                {
-                    maxRetries,
-                    totalWaitTime: maxRetries * delay,
-                }
-            );
-            setChecking(false);
-            return false;
-        },
-        [checkBackgroundReady]
-    );
+            console.debug('Background script not ready, retrying...', {
+                attempt: i + 1,
+                maxRetries,
+            });
+            await new Promise((resolve) => setTimeout(resolve, delay));
+        }
+        
+        console.warn('Background script did not become ready within timeout', {
+            maxRetries,
+            totalWaitTime: maxRetries * delay,
+        });
+        setChecking(false);
+        return false;
+    }, [checkBackgroundReady]);
 
     return {
         isReady,

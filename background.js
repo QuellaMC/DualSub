@@ -5,10 +5,10 @@
  * Imports and initializes the modular background system.
  *
  * All functionality is now handled by the modular background services:
- * - Translation Service: Manages providers, caching, and multi-text requests
+ * - Translation Service: Manages providers, caching, batch processing
  * - Subtitle Service: Handles subtitle fetching and processing
  * - Message Handler: Processes content script requests
- * - AI Context Service: Coordinates provider analysis, caching, and limits
+ * - Batch Queue: Optimizes translation performance
  *
  * @author DualSub Extension
  * @version 2.0.0

@@ -1,9 +1,7 @@
 // disneyplus-dualsub-chrome-extension/translation_providers/openaiCompatibleTranslate.js
 
 import Logger from '../utils/logger.js';
-import { fetchWithTimeout } from '../utils/fetchWithTimeout.js';
 import { configService } from '../services/configService.js';
-import { parseTranslationArray } from './batchResponseParser.js';
 
 // Initialize logger for OpenAI-compatible translation provider
 const logger = Logger.create('OpenAICompatibleTranslate');
@@ -41,8 +39,9 @@ function normalizeBaseUrl(url) {
     const normalized = url.replace(/[/\\]+$/, '');
 
     logger.debug('Base URL normalized', {
+        originalUrl: url,
+        normalizedUrl: normalized,
         hadTrailingSlash: url !== normalized,
-        provider: getProviderType(normalized),
     });
 
     return normalized;
@@ -67,6 +66,8 @@ function normalizeModelName(model, baseUrl) {
             : model;
 
         logger.debug('Model name normalized for Gemini', {
+            originalModel: model,
+            normalizedModel: normalized,
             hadModelsPrefix: model.startsWith('models/'),
         });
 
@@ -86,10 +87,11 @@ export async function fetchAvailableModels(apiKey, baseUrl) {
     const headers = {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${apiKey}`,
+        'User-Agent': 'Dualsub/1.0.0',
     };
 
     try {
-        const response = await fetchWithTimeout(modelsUrl, {
+        const response = await fetch(modelsUrl, {
             method: 'GET',
             headers,
         });
@@ -101,8 +103,9 @@ export async function fetchAvailableModels(apiKey, baseUrl) {
                 `HTTP error! status: ${response.status}`;
             logger.error('Failed to fetch models', {
                 status: response.status,
+                errorMessage,
+                url: modelsUrl,
                 provider,
-                contentType: response.headers?.get?.('content-type') || null,
             });
             throw new Error(errorMessage);
         }
@@ -123,15 +126,13 @@ export async function fetchAvailableModels(apiKey, baseUrl) {
             throw new Error('Unsupported models format');
         }
 
-        logger.info('Successfully fetched models', {
-            modelCount: models.length,
-            provider,
-        });
+        logger.info('Successfully fetched models', { models, provider });
         return models;
     } catch (error) {
         logger.error('Error fetching available models:', {
-            errorType: error?.name || 'UnknownError',
+            message: error.message,
             provider,
+            url: modelsUrl,
         });
         throw error;
     }
@@ -158,8 +159,8 @@ async function getConfig() {
 
     logger.debug('Configuration retrieved successfully via configService', {
         hasApiKey: !!result.apiKey,
-        hasBaseUrl: !!result.baseUrl,
-        hasModel: !!result.model,
+        baseUrl: result.baseUrl,
+        model: result.model,
     });
 
     return result;
@@ -167,9 +168,15 @@ async function getConfig() {
 
 // -----------------------------------------
 
+// Constants for API key validation
+const GEMINI_API_KEY_PREFIX = 'AIza';
+const GEMINI_API_KEY_MIN_LENGTH = 35;
+
 // Constants for token calculation
 const TOKEN_MULTIPLIER = 3; // Approximate tokens per character ratio for text estimation
 const MAX_TOKENS = 4000;
+const ERROR_TEXT_PREVIEW_LENGTH = 500;
+const ERROR_TEXT_TRUNCATION_LIMIT = 200;
 
 /**
  * Translates text using OpenAI-compatible API with Gemini models.
@@ -187,6 +194,7 @@ export async function translate(text, sourceLang, targetLang) {
         sourceLang,
         targetLang,
         textLength: text?.length || 0,
+        textPreview: text?.substring(0, 50) + (text?.length > 50 ? '...' : ''),
     });
 
     // Get configuration from storage
@@ -195,8 +203,9 @@ export async function translate(text, sourceLang, targetLang) {
     // Enhanced logging for configuration debugging
     logger.debug('Configuration retrieved for translation', {
         hasApiKey: !!config.apiKey,
-        hasBaseUrl: !!config.baseUrl,
-        hasModel: !!config.model,
+        apiKeyLength: config.apiKey ? config.apiKey.length : 0,
+        baseUrl: config.baseUrl,
+        model: config.model,
     });
 
     if (!config.apiKey) {
@@ -206,6 +215,7 @@ export async function translate(text, sourceLang, targetLang) {
         logger.error('API key not configured', error, {
             hasBaseUrl: !!config.baseUrl,
             hasModel: !!config.model,
+            configDetails: JSON.stringify(config, null, 2),
         });
         throw error;
     }
@@ -213,12 +223,17 @@ export async function translate(text, sourceLang, targetLang) {
     // Normalize baseUrl to remove trailing slashes/backslashes
     const normalizedBaseUrl =
         normalizeBaseUrl(config.baseUrl) || 'https://api.openai.com/v1';
-    const rawModel = config.model || 'gemini-3.5-flash';
+    const rawModel = config.model || 'gemini-1.5-flash';
     const model = normalizeModelName(rawModel, normalizedBaseUrl);
     const OPENAI_COMPATIBLE_URL = `${normalizedBaseUrl}/chat/completions`;
     const provider = getProviderType(normalizedBaseUrl);
 
     logger.debug('API configuration prepared', {
+        baseUrl: normalizedBaseUrl,
+        rawModel: rawModel,
+        normalizedModel: model,
+        endpointUrl: OPENAI_COMPATIBLE_URL,
+        originalBaseUrl: config.baseUrl,
         provider,
         modelNormalized: rawModel !== model,
     });
@@ -279,6 +294,7 @@ export async function translate(text, sourceLang, targetLang) {
     const headers = {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${config.apiKey}`,
+        'User-Agent': 'Dualsub/1.0.0',
     };
 
     try {
@@ -287,11 +303,12 @@ export async function translate(text, sourceLang, targetLang) {
             temperature: requestBody.temperature,
             maxTokens: requestBody.max_tokens,
             messageCount: requestBody.messages.length,
+            endpointUrl: OPENAI_COMPATIBLE_URL,
             requestSize: JSON.stringify(requestBody).length,
             provider,
         });
 
-        const response = await fetchWithTimeout(OPENAI_COMPATIBLE_URL, {
+        const response = await fetch(OPENAI_COMPATIBLE_URL, {
             method: 'POST',
             headers: headers,
             body: JSON.stringify(requestBody),
@@ -305,10 +322,17 @@ export async function translate(text, sourceLang, targetLang) {
         });
 
         if (!response.ok) {
+            const errorText = await response.text();
             logger.error('OpenAI-Compatible API HTTP error', null, {
                 status: response.status,
-                contentType: response.headers?.get?.('content-type') || null,
-                responseSize: response.headers?.get?.('content-length') || null,
+                statusText: response.statusText,
+                responsePreview: errorText.substring(
+                    0,
+                    ERROR_TEXT_PREVIEW_LENGTH
+                ),
+                endpointUrl: OPENAI_COMPATIBLE_URL,
+                fullErrorText: errorText,
+                requestModel: model,
                 provider,
             });
 
@@ -342,7 +366,7 @@ export async function translate(text, sourceLang, targetLang) {
                     );
                 }
                 throw new Error(
-                    'Translation API endpoint not found. Please verify the configured base URL.'
+                    `Translation API endpoint not found. Please verify the base URL: ${normalizedBaseUrl}`
                 );
             } else if (response.status >= 500) {
                 if (provider === 'google') {
@@ -355,7 +379,9 @@ export async function translate(text, sourceLang, targetLang) {
                 );
             }
 
-            throw new Error(`Translation API HTTP error ${response.status}.`);
+            throw new Error(
+                `Translation API HTTP error ${response.status}: ${errorText.substring(0, ERROR_TEXT_TRUNCATION_LIMIT)}`
+            );
         }
 
         const data = await response.json();
@@ -365,8 +391,7 @@ export async function translate(text, sourceLang, targetLang) {
             choicesLength: data?.choices?.length || 0,
             hasUsage: !!data?.usage,
             tokensUsed: data?.usage?.total_tokens || 'unknown',
-            topLevelKeyCount:
-                data && typeof data === 'object' ? Object.keys(data).length : 0,
+            responseStructure: Object.keys(data),
         });
 
         if (
@@ -385,14 +410,15 @@ export async function translate(text, sourceLang, targetLang) {
                     translatedLength: translatedText.length,
                     model: model,
                     tokensUsed: data.usage?.total_tokens || 'unknown',
+                    originalPreview: text.substring(0, 30),
+                    translatedPreview: translatedText.substring(0, 30),
                 });
                 return translatedText;
             } else {
                 logger.error('Empty translation received', null, {
-                    originalLength: text.length,
-                    hasChoices: true,
-                    choicesLength: data.choices.length,
-                    hasUsage: !!data.usage,
+                    responseData: data,
+                    originalText: text.substring(0, 100),
+                    fullResponse: JSON.stringify(data),
                 });
                 throw new Error(
                     'Translation Error: Empty response from translation service.'
@@ -413,8 +439,8 @@ export async function translate(text, sourceLang, targetLang) {
                 logger.info(
                     'Parsed translation from OpenAI "Responses" API format (flexible).',
                     {
+                        responseObjectId: data.id,
                         status: data.status,
-                        outputCount: data.output.length,
                     }
                 );
                 if (translatedText.length > 0) {
@@ -423,14 +449,15 @@ export async function translate(text, sourceLang, targetLang) {
                         translatedLength: translatedText.length,
                         model: model,
                         tokensUsed: data.usage?.total_tokens || 'unknown',
+                        originalPreview: text.substring(0, 30),
+                        translatedPreview: translatedText.substring(0, 30),
                     });
                     return translatedText;
                 } else {
                     logger.error('Empty translation received', null, {
-                        originalLength: text.length,
-                        hasOutput: true,
-                        outputCount: data.output.length,
-                        hasUsage: !!data.usage,
+                        responseData: data,
+                        originalText: text.substring(0, 100),
+                        fullResponse: JSON.stringify(data),
                     });
                     throw new Error(
                         'Translation Error: Empty response from translation service.'
@@ -442,13 +469,10 @@ export async function translate(text, sourceLang, targetLang) {
                 'Translation JSON parsing failed or unexpected structure',
                 null,
                 {
+                    responseData: data,
                     hasChoices: !!data?.choices,
                     choicesLength: data?.choices?.length || 0,
-                    hasOutput: Array.isArray(data?.output),
-                    outputCount: Array.isArray(data?.output)
-                        ? data.output.length
-                        : 0,
-                    responseType: Array.isArray(data) ? 'array' : typeof data,
+                    fullResponse: JSON.stringify(data),
                     expectedStructure:
                         'data.choices[0].message.content or data.output[0].content[0].text',
                 }
@@ -458,33 +482,34 @@ export async function translate(text, sourceLang, targetLang) {
             );
         }
     } catch (error) {
-        const errorMessage =
-            typeof error?.message === 'string' ? error.message : '';
-        logger.error('API request/processing error occurred', null, {
-            errorType: error?.name || 'UnknownError',
+        logger.error('API request/processing error occurred', error, {
+            errorName: error.name,
+            errorMessage: error.message,
+            errorStack: error.stack,
             sourceLang,
             targetLang,
             textLength: text?.length || 0,
+            textPreview: text?.substring(0, 50),
+            endpointUrl: OPENAI_COMPATIBLE_URL,
+            model: model,
             isNetworkError:
-                error?.name === 'TypeError' && errorMessage.includes('fetch'),
-            isCorsError: errorMessage.includes('CORS'),
-            provider,
+                error.name === 'TypeError' && error.message.includes('fetch'),
             configSnapshot: {
                 hasApiKey: !!config.apiKey,
-                hasBaseUrl: !!config.baseUrl,
-                hasModel: !!config.model,
+                baseUrl: config.baseUrl,
+                model: config.model,
             },
         });
 
         // Provide more specific error messages for common network issues
-        if (error?.name === 'TypeError' && errorMessage.includes('fetch')) {
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
             throw new Error(
                 'Translation Error: Network connection failed. Please check your internet connection and verify the API endpoint URL.'
             );
         }
 
         // Check for CORS issues
-        if (errorMessage.includes('CORS')) {
+        if (error.message.includes('CORS')) {
             throw new Error(
                 'Translation Error: CORS policy violation. This may indicate an incorrect API endpoint URL.'
             );
@@ -508,12 +533,13 @@ export async function translateBatch(
     texts,
     sourceLang,
     targetLang,
-    _delimiter = '|SUBTITLE_BREAK|'
+    delimiter = '|SUBTITLE_BREAK|'
 ) {
     logger.info('Batch translation request initiated', {
         sourceLang,
         targetLang,
         textCount: texts.length,
+        delimiter,
         totalLength: texts.reduce((sum, text) => sum + (text?.length || 0), 0),
     });
 
@@ -535,11 +561,11 @@ export async function translateBatch(
             );
         }
 
-        const combinedText = JSON.stringify(texts);
+        const combinedText = texts.join(delimiter);
         const normalizedBaseUrl =
             normalizeBaseUrl(config.baseUrl) || 'https://api.openai.com/v1';
         const model = normalizeModelName(
-            config.model || 'gemini-3.5-flash',
+            config.model || 'gemini-1.5-flash',
             normalizedBaseUrl
         );
         const OPENAI_COMPATIBLE_URL = `${normalizedBaseUrl}/chat/completions`;
@@ -549,20 +575,21 @@ export async function translateBatch(
             textCount: texts.length,
             combinedLength: combinedText.length,
             model,
+            endpointUrl: OPENAI_COMPATIBLE_URL,
             provider,
         });
 
         const sourceLanguageName = getLanguageName(sourceLang);
         const targetLanguageName = getLanguageName(targetLang);
 
-        const systemPrompt = `You are a professional translator. The user will provide a JSON array of subtitle strings. Translate every array item from ${sourceLanguageName} to ${targetLanguageName}.
+        const systemPrompt = `You are a professional translator. Translate the following subtitle texts from ${sourceLanguageName} to ${targetLanguageName}. The texts are separated by "${delimiter}". Please translate each text segment individually and return the translations in the same order, separated by the same delimiter "${delimiter}".
 
 Important instructions:
-1. Return one valid JSON array containing exactly ${texts.length} strings in the original order.
+1. Maintain the exact same number of text segments in your response as in the input.
 2. Preserve the meaning and context of each subtitle.
 3. Keep the translations natural and appropriate for subtitles.
-4. Return only the JSON array with no explanations or markdown.
-5. Preserve an empty input item as an empty string at the same index.`;
+4. Only return the translated texts, separated by the delimiter. Do not add any additional text, explanations, or the delimiter at the start or end of your response.
+5. If a segment is empty or just whitespace, return an empty segment.`;
 
         const requestBody = {
             model: model,
@@ -586,6 +613,7 @@ Important instructions:
         const headers = {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${config.apiKey}`,
+            'User-Agent': 'Dualsub/1.0.0',
         };
 
         logger.debug('Sending batch translation request', {
@@ -595,20 +623,21 @@ Important instructions:
             textCount: texts.length,
         });
 
-        const response = await fetchWithTimeout(OPENAI_COMPATIBLE_URL, {
+        const response = await fetch(OPENAI_COMPATIBLE_URL, {
             method: 'POST',
             headers: headers,
             body: JSON.stringify(requestBody),
         });
 
         if (!response.ok) {
+            const errorText = await response.text();
             const error = new Error(
-                `Batch translation API request failed: ${response.status}.`
+                `Batch translation API request failed: ${response.status} ${response.statusText}. Response: ${errorText}`
             );
-            logger.error('Batch translation API request failed', null, {
+            logger.error('Batch translation API request failed', error, {
                 status: response.status,
-                contentType: response.headers?.get?.('content-type') || null,
-                responseSize: response.headers?.get?.('content-length') || null,
+                statusText: response.statusText,
+                responseText: errorText.substring(0, 500),
                 textCount: texts.length,
             });
             throw error;
@@ -625,18 +654,21 @@ Important instructions:
             const error = new Error(
                 'Invalid batch translation response structure'
             );
-            logger.error('Invalid batch translation response', null, {
+            logger.error('Invalid batch translation response', error, {
                 hasChoices: !!data.choices,
                 choicesLength: data.choices?.length || 0,
-                responseType: Array.isArray(data) ? 'array' : typeof data,
-                hasUsage: !!data.usage,
+                responseStructure: JSON.stringify(data, null, 2).substring(
+                    0,
+                    500
+                ),
             });
             throw error;
         }
 
         const translatedContent = data.choices[0].message.content;
-        const translatedTexts = parseTranslationArray(
+        const translatedTexts = parseBatchTranslationResponse(
             translatedContent,
+            delimiter,
             texts.length
         );
 
@@ -648,11 +680,21 @@ Important instructions:
 
         return translatedTexts;
     } catch (error) {
-        logger.error('Batch translation failed', null, {
-            textCount: texts.length,
-            errorType: error?.name || 'UnknownError',
-        });
-        throw error;
+        logger.error(
+            'Batch translation failed, falling back to individual translations',
+            error,
+            {
+                textCount: texts.length,
+                errorType: error.constructor.name,
+                errorMessage: error.message,
+            }
+        );
+
+        return await fallbackToIndividualTranslations(
+            texts,
+            sourceLang,
+            targetLang
+        );
     }
 }
 
@@ -741,4 +783,89 @@ function getLanguageName(langCode) {
     };
 
     return languageMap[langCode] || langCode;
+}
+
+/**
+ * Parse batch translation response
+ * @param {string} response API response content
+ * @param {string} delimiter Delimiter used
+ * @param {number} expectedCount Expected number of translations
+ * @returns {Array<string>} Array of translated texts
+ */
+function parseBatchTranslationResponse(response, delimiter, expectedCount) {
+    if (!response || typeof response !== 'string') {
+        throw new Error('Invalid batch translation response content');
+    }
+
+    // Split by delimiter and clean up
+    const translations = response
+        .split(delimiter)
+        .map((text) => text.trim())
+        .filter((text) => text.length > 0);
+
+    logger.debug('Parsed batch translation response', {
+        expectedCount,
+        actualCount: translations.length,
+        delimiter,
+        responseLength: response.length,
+    });
+
+    // Validate count
+    if (translations.length !== expectedCount) {
+        logger.warn('Batch translation count mismatch', {
+            expected: expectedCount,
+            actual: translations.length,
+            response: response.substring(0, 200),
+        });
+
+        // Pad with empty strings if we got fewer translations
+        while (translations.length < expectedCount) {
+            translations.push('');
+        }
+
+        // Trim if we got more translations
+        if (translations.length > expectedCount) {
+            translations.splice(expectedCount);
+        }
+    }
+
+    return translations;
+}
+
+/**
+ * Fallback to individual translations when batch fails
+ * @param {Array<string>} texts Texts to translate
+ * @param {string} sourceLang Source language
+ * @param {string} targetLang Target language
+ * @returns {Promise<Array<string>>} Array of translated texts
+ */
+async function fallbackToIndividualTranslations(texts, sourceLang, targetLang) {
+    logger.info('Processing individual translations as fallback', {
+        textCount: texts.length,
+    });
+
+    const results = [];
+    for (let i = 0; i < texts.length; i++) {
+        try {
+            const translated = await translate(
+                texts[i],
+                sourceLang,
+                targetLang
+            );
+            results.push(translated);
+
+            // Add small delay between requests to avoid rate limiting
+            if (i < texts.length - 1) {
+                await new Promise((resolve) => setTimeout(resolve, 100));
+            }
+        } catch (error) {
+            logger.error('Individual translation failed in fallback', error, {
+                textIndex: i,
+                text: texts[i].substring(0, 50),
+            });
+            results.push(texts[i]); // Use original text as fallback
+        }
+    }
+
+    return results;
 }

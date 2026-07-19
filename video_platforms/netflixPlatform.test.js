@@ -1,5 +1,16 @@
-import { describe, expect, beforeEach, afterEach, jest } from '@jest/globals';
+import {
+    describe,
+    it,
+    expect,
+    beforeEach,
+    afterEach,
+    jest,
+} from '@jest/globals';
 import { NetflixPlatform } from './netflixPlatform.js';
+import {
+    mockWindowLocation,
+    LocationMock,
+} from '../test-utils/location-mock.js';
 import { mockChromeApi, ChromeApiMock } from '../test-utils/chrome-api-mock.js';
 import { createLoggerMock } from '../test-utils/logger-mock.js';
 import Logger from '../utils/logger.js';
@@ -139,8 +150,7 @@ describe('NetflixPlatform Logging Integration', () => {
             expect(mockLogger.debug).toHaveBeenCalledWith(
                 'Raw subtitle data received',
                 expect.objectContaining({
-                    payloadKeys: ['movieId', 'timedtexttracks'],
-                    trackCount: 1,
+                    payload: mockEvent.detail.payload,
                 })
             );
         });
@@ -161,7 +171,7 @@ describe('NetflixPlatform Logging Integration', () => {
                 'SUBTITLE_DATA_FOUND event missing movieId',
                 null,
                 expect.objectContaining({
-                    payloadKeys: ['timedtexttracks'],
+                    payload: mockEvent.detail.payload,
                 })
             );
         });
@@ -182,7 +192,7 @@ describe('NetflixPlatform Logging Integration', () => {
                 'SUBTITLE_DATA_FOUND event missing timedtexttracks',
                 null,
                 expect.objectContaining({
-                    payloadKeys: ['movieId'],
+                    payload: mockEvent.detail.payload,
                 })
             );
         });
@@ -320,7 +330,8 @@ describe('NetflixPlatform Logging Integration', () => {
             expect(mockLogger.info).toHaveBeenCalledWith(
                 'Requesting VTT processing from background',
                 expect.objectContaining({
-                    trackCount: 1,
+                    videoId: '12345',
+                    primaryTrackUrl: 'http://example.com/subtitle.vtt',
                 })
             );
         });

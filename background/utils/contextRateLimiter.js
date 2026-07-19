@@ -32,7 +32,6 @@ export class ContextRateLimiter {
         this.lastRequest = 0;
         this.burstCount = 0;
         this.burstWindow = 10000; // 10 seconds for burst detection
-        this.acquisitionQueue = Promise.resolve();
 
         logger.info('Rate limiter initialized', {
             providerId: this.providerId,
@@ -46,26 +45,12 @@ export class ContextRateLimiter {
      * @returns {Promise<boolean>} True if request is allowed
      */
     async checkLimit(contextType = 'default') {
-        const acquisition = this.acquisitionQueue.then(() =>
-            this.acquire(contextType)
-        );
-        this.acquisitionQueue = acquisition.catch(() => undefined);
-        return acquisition;
-    }
-
-    /**
-     * Serialize and record one request-slot acquisition.
-     * @param {string} contextType
-     * @returns {Promise<boolean>}
-     * @private
-     */
-    async acquire(contextType) {
-        const checkedAt = Date.now();
+        const now = Date.now();
 
         try {
-            this.cleanOldRequests(checkedAt);
+            this.cleanOldRequests(now);
 
-            if (this.isBurstLimited(checkedAt)) {
+            if (this.isBurstLimited(now)) {
                 logger.warn('Burst limit exceeded', {
                     providerId: this.providerId,
                     burstCount: this.burstCount,
@@ -78,8 +63,8 @@ export class ContextRateLimiter {
                 );
             }
 
-            if (this.isRateLimited(checkedAt)) {
-                const waitTime = this.getWaitTime(checkedAt);
+            if (this.isRateLimited(now)) {
+                const waitTime = this.getWaitTime(now);
                 logger.warn('Rate limit exceeded', {
                     providerId: this.providerId,
                     requestCount: this.requests.length,
@@ -94,7 +79,7 @@ export class ContextRateLimiter {
             }
 
             // Check mandatory delay
-            const delayNeeded = this.getMandatoryDelay(checkedAt);
+            const delayNeeded = this.getMandatoryDelay(now);
             if (delayNeeded > 0) {
                 logger.debug('Applying mandatory delay', {
                     providerId: this.providerId,
@@ -103,9 +88,7 @@ export class ContextRateLimiter {
                 await this.wait(delayNeeded);
             }
 
-            const recordedAt = Date.now();
-            this.cleanOldRequests(recordedAt);
-            this.recordRequest(recordedAt, contextType);
+            this.recordRequest(now, contextType);
 
             return true;
         } catch (error) {
@@ -127,7 +110,7 @@ export class ContextRateLimiter {
 
     /**
      * Clean requests outside the current window
-     * @param {number} _now - Current timestamp (kept for a consistent limiter API)
+     * @param {number} now - Current timestamp
      */
     cleanOldRequests(now) {
         const windowStart = now - this.config.window;
@@ -155,7 +138,7 @@ export class ContextRateLimiter {
      * @param {number} now - Current timestamp
      * @returns {boolean} True if rate limited
      */
-    isRateLimited(_now) {
+    isRateLimited(now) {
         return this.requests.length >= this.config.requests;
     }
 
@@ -273,7 +256,6 @@ export class ContextRateLimiter {
         this.requests = [];
         this.lastRequest = 0;
         this.burstCount = 0;
-        this.acquisitionQueue = Promise.resolve();
 
         logger.info('Rate limiter reset', {
             providerId: this.providerId,
@@ -315,8 +297,6 @@ export class ContextRateLimiterManager {
                 providerId,
                 new ContextRateLimiter(providerId, config)
             );
-        } else if (Object.keys(config).length > 0) {
-            this.limiters.get(providerId).updateConfig(config);
         }
         return this.limiters.get(providerId);
     }

@@ -36,25 +36,14 @@ class ConfigService {
      * Sets default values on first install by reading from the schema.
      * This should be called from the background script.
      */
-    initializeDefaults(beforeDefaults) {
-        chrome.runtime.onInstalled.addListener(async (details) => {
+    initializeDefaults() {
+        chrome.runtime.onInstalled.addListener((details) => {
             if (details.reason === 'install' || details.reason === 'update') {
                 this.logger.info('Setting default configuration from schema', {
                     reason: details.reason,
                     method: 'initializeDefaults',
                 });
-                try {
-                    await beforeDefaults?.();
-                } catch (error) {
-                    this.logger.warn(
-                        'Pre-default configuration migration failed; continuing with schema defaults',
-                        {
-                            reason: details.reason,
-                            errorName: error?.name,
-                        }
-                    );
-                }
-                await this.setDefaultsForMissingKeys();
+                this.setDefaultsForMissingKeys();
             }
         });
     }
@@ -86,8 +75,6 @@ class ConfigService {
             // Get current values from storage with individual error handling
             let syncItems = {};
             let localItems = {};
-            let syncReadSucceeded = syncKeys.length === 0;
-            let localReadSucceeded = localKeys.length === 0;
 
             // Get sync items with error handling
             if (syncKeys.length > 0) {
@@ -96,7 +83,6 @@ class ConfigService {
                         method: 'setDefaultsForMissingKeys',
                         operation: 'initialization-get-sync',
                     });
-                    syncReadSucceeded = true;
                     this.logger.debug(
                         `setDefaultsForMissingKeys() sync items retrieved`,
                         {
@@ -131,7 +117,6 @@ class ConfigService {
                         method: 'setDefaultsForMissingKeys',
                         operation: 'initialization-get-local',
                     });
-                    localReadSucceeded = true;
                     this.logger.debug(
                         `setDefaultsForMissingKeys() local items retrieved`,
                         {
@@ -164,26 +149,16 @@ class ConfigService {
             const localDefaults = {};
 
             // Set missing sync defaults
-            if (syncReadSucceeded) {
-                for (const key of syncKeys) {
-                    if (
-                        !(key in syncItems) ||
-                        !validateSetting(key, syncItems[key])
-                    ) {
-                        syncDefaults[key] = getDefaultValue(key);
-                    }
+            for (const key of syncKeys) {
+                if (!(key in syncItems)) {
+                    syncDefaults[key] = getDefaultValue(key);
                 }
             }
 
             // Set missing local defaults
-            if (localReadSucceeded) {
-                for (const key of localKeys) {
-                    if (
-                        !(key in localItems) ||
-                        !validateSetting(key, localItems[key])
-                    ) {
-                        localDefaults[key] = getDefaultValue(key);
-                    }
+            for (const key of localKeys) {
+                if (!(key in localItems)) {
+                    localDefaults[key] = getDefaultValue(key);
                 }
             }
 
@@ -425,11 +400,7 @@ class ConfigService {
      * @private
      */
     _checkChromeStorageAvailability(area, operation, logContext = {}) {
-        const chromeAvailable = typeof chrome !== 'undefined';
-        const storageAvailable = chromeAvailable && Boolean(chrome.storage);
-        const areaAvailable = storageAvailable && Boolean(chrome.storage[area]);
-
-        if (!areaAvailable) {
+        if (!chrome || !chrome.storage || !chrome.storage[area]) {
             const error = new Error(
                 `Chrome storage API not available for ${operation} operation (area: ${area})`
             );
@@ -440,9 +411,13 @@ class ConfigService {
                     area,
                     operation,
                     ...logContext,
-                    chromeAvailable,
-                    storageAvailable,
-                    areaAvailable,
+                    chromeAvailable: !!chrome,
+                    storageAvailable: !!(chrome && chrome.storage),
+                    areaAvailable: !!(
+                        chrome &&
+                        chrome.storage &&
+                        chrome.storage[area]
+                    ),
                 }
             );
             return false;
@@ -468,18 +443,7 @@ class ConfigService {
                 context,
             })
         ) {
-            throw ConfigServiceErrorHandler.createStorageError(
-                'get',
-                area,
-                normalizedKeys,
-                new Error('Chrome storage API is unavailable'),
-                {
-                    ...context,
-                    duration: Date.now() - startTime,
-                    method: 'getFromStorage',
-                    storageUnavailable: true,
-                }
-            );
+            return {};
         }
 
         this.logger.debug(`Starting get operation`, {
@@ -547,29 +511,12 @@ class ConfigService {
                     }
                 });
             } catch (error) {
-                const storageError =
-                    ConfigServiceErrorHandler.createStorageError(
-                        'get',
-                        area,
-                        normalizedKeys,
-                        error,
-                        {
-                            ...context,
-                            duration: Date.now() - startTime,
-                            method: 'getFromStorage',
-                            synchronousFailure: true,
-                        }
-                    );
-                this.logger.error(
-                    'Chrome storage access failed',
-                    storageError,
-                    {
-                        area,
-                        keys: normalizedKeys,
-                        context,
-                    }
-                );
-                reject(storageError);
+                this.logger.error('Chrome storage access failed', error, {
+                    area,
+                    keys: normalizedKeys,
+                    context,
+                });
+                resolve({});
             }
         });
     }
@@ -593,19 +540,7 @@ class ConfigService {
                 context,
             })
         ) {
-            throw ConfigServiceErrorHandler.createStorageError(
-                'set',
-                area,
-                keys,
-                new Error('Chrome storage API is unavailable'),
-                {
-                    ...context,
-                    duration: Date.now() - startTime,
-                    method: 'setToStorage',
-                    itemCount: keys.length,
-                    storageUnavailable: true,
-                }
-            );
+            return;
         }
 
         this.logger.debug(`Starting set operation`, {
@@ -677,30 +612,17 @@ class ConfigService {
                     }
                 });
             } catch (error) {
-                const storageError =
-                    ConfigServiceErrorHandler.createStorageError(
-                        'set',
-                        area,
-                        keys,
-                        error,
-                        {
-                            ...context,
-                            duration: Date.now() - startTime,
-                            method: 'setToStorage',
-                            itemCount: keys.length,
-                            synchronousFailure: true,
-                        }
-                    );
                 this.logger.error(
                     'Chrome storage set operation failed',
-                    storageError,
+                    error,
                     {
                         area,
                         keys,
                         context,
                     }
                 );
-                reject(storageError);
+                // Resolve silently to prevent cascading failures
+                resolve();
             }
         });
     }
@@ -724,19 +646,7 @@ class ConfigService {
                 context,
             })
         ) {
-            throw ConfigServiceErrorHandler.createStorageError(
-                'remove',
-                area,
-                normalizedKeys,
-                new Error('Chrome storage API is unavailable'),
-                {
-                    ...context,
-                    duration: Date.now() - startTime,
-                    method: 'removeFromStorage',
-                    keyCount: normalizedKeys.length,
-                    storageUnavailable: true,
-                }
-            );
+            return;
         }
 
         this.logger.debug(`Starting remove operation`, {
@@ -747,113 +657,65 @@ class ConfigService {
         });
 
         return new Promise((resolve, reject) => {
-            try {
-                chrome.storage[area].remove(keys, () => {
-                    const duration = Date.now() - startTime;
+            chrome.storage[area].remove(keys, () => {
+                const duration = Date.now() - startTime;
 
-                    if (chrome.runtime.lastError) {
-                        const error =
-                            ConfigServiceErrorHandler.createStorageError(
-                                'remove',
-                                area,
-                                normalizedKeys,
-                                chrome.runtime.lastError,
-                                {
-                                    ...context,
-                                    duration,
-                                    method: 'removeFromStorage',
-                                    keyCount: normalizedKeys.length,
-                                }
-                            );
-
-                        // Special handling for quota exceeded errors
-                        if (error.isQuotaError) {
-                            this.logger.error(
-                                `Storage quota exceeded during remove operation`,
-                                error,
-                                {
-                                    area,
-                                    keys: normalizedKeys,
-                                    duration,
-                                    keyCount: normalizedKeys.length,
-                                    context,
-                                    quotaError: true,
-                                    recoveryAction: error.recoveryAction,
-                                }
-                            );
-                        } else {
-                            this.logger.error(
-                                `Storage remove operation failed`,
-                                error,
-                                {
-                                    area,
-                                    keys: normalizedKeys,
-                                    duration,
-                                    keyCount: normalizedKeys.length,
-                                    context,
-                                }
-                            );
+                if (chrome.runtime.lastError) {
+                    const error = ConfigServiceErrorHandler.createStorageError(
+                        'remove',
+                        area,
+                        normalizedKeys,
+                        chrome.runtime.lastError,
+                        {
+                            ...context,
+                            duration,
+                            method: 'removeFromStorage',
+                            keyCount: normalizedKeys.length,
                         }
+                    );
 
-                        reject(error);
-                    } else {
-                        this.logger.debug(
-                            `Storage remove operation completed`,
+                    // Special handling for quota exceeded errors
+                    if (error.isQuotaError) {
+                        this.logger.error(
+                            `Storage quota exceeded during remove operation`,
+                            error,
                             {
                                 area,
                                 keys: normalizedKeys,
                                 duration,
                                 keyCount: normalizedKeys.length,
+                                context,
+                                quotaError: true,
+                                recoveryAction: error.recoveryAction,
                             }
                         );
-
-                        resolve();
+                    } else {
+                        this.logger.error(
+                            `Storage remove operation failed`,
+                            error,
+                            {
+                                area,
+                                keys: normalizedKeys,
+                                duration,
+                                keyCount: normalizedKeys.length,
+                                context,
+                            }
+                        );
                     }
-                });
-            } catch (error) {
-                const storageError =
-                    ConfigServiceErrorHandler.createStorageError(
-                        'remove',
-                        area,
-                        normalizedKeys,
-                        error,
-                        {
-                            ...context,
-                            duration: Date.now() - startTime,
-                            method: 'removeFromStorage',
-                            keyCount: normalizedKeys.length,
-                            synchronousFailure: true,
-                        }
-                    );
-                this.logger.error(
-                    'Chrome storage remove operation failed',
-                    storageError,
-                    {
+
+                    reject(error);
+                } else {
+                    this.logger.debug(`Storage remove operation completed`, {
                         area,
                         keys: normalizedKeys,
-                        context,
-                    }
-                );
-                reject(storageError);
-            }
+                        duration,
+                        keyCount: normalizedKeys.length,
+                    });
+
+                    resolve();
+                }
+            });
         });
-    }
-
-    _resolveStoredValue(key, storedItems) {
-        const schemaEntry = configSchema[key];
-        const hasStoredValue = Object.prototype.hasOwnProperty.call(
-            storedItems,
-            key
-        );
-        const storedValueIsValid =
-            hasStoredValue && validateSetting(key, storedItems[key]);
-
-        return {
-            value: storedValueIsValid ? storedItems[key] : getDefaultValue(key),
-            usedDefault: !storedValueIsValid,
-            invalidStoredValue: hasStoredValue && !storedValueIsValid,
-            scope: schemaEntry?.scope,
-        };
     }
 
     /**
@@ -879,14 +741,18 @@ class ConfigService {
                 method: 'get',
                 requestedKey: key,
             });
-            const { value, usedDefault, invalidStoredValue } =
-                this._resolveStoredValue(key, items);
+            const value = Object.prototype.hasOwnProperty.call(items, key)
+                ? items[key]
+                : schemaEntry.defaultValue;
+            const usedDefault = !Object.prototype.hasOwnProperty.call(
+                items,
+                key
+            );
 
             this.logger.debug(`get() completed`, {
                 key,
                 value: typeof value,
                 usedDefault,
-                invalidStoredValue,
                 scope: schemaEntry.scope,
             });
 
@@ -896,9 +762,9 @@ class ConfigService {
                 method: 'get',
                 requestedKey: key,
                 scope: schemaEntry.scope,
-                fallbackValue: getDefaultValue(key),
+                fallbackValue: schemaEntry.defaultValue,
             });
-            return getDefaultValue(key);
+            return schemaEntry.defaultValue;
         }
     }
 
@@ -959,13 +825,15 @@ class ConfigService {
 
                 const storedItems =
                     schemaEntry.scope === 'sync' ? syncItems : localItems;
-                const { value, usedDefault } = this._resolveStoredValue(
-                    key,
-                    storedItems
+                const hasStoredValue = Object.prototype.hasOwnProperty.call(
+                    storedItems,
+                    key
                 );
-                result[key] = value;
+                result[key] = hasStoredValue
+                    ? storedItems[key]
+                    : schemaEntry.defaultValue;
 
-                if (usedDefault) {
+                if (!hasStoredValue) {
                     defaultsUsed.push(key);
                 }
             });
@@ -992,21 +860,13 @@ class ConfigService {
 
     /**
      * Retrieves all settings, applying defaults for any unset values.
-     * @param {{includeSensitive?: boolean}} options - Retrieval options.
-     * @returns {Promise<object>} A promise that resolves with an object of all requested settings.
+     * @returns {Promise<object>} A promise that resolves with an object of all settings.
      */
-    async getAll({ includeSensitive = true } = {}) {
-        this.logger.debug(`getAll() called`, { includeSensitive });
+    async getAll() {
+        this.logger.debug(`getAll() called`);
 
-        const visibleKeys = Object.keys(configSchema).filter(
-            (key) => includeSensitive || !configSchema[key].sensitive
-        );
-        const syncKeys = visibleKeys.filter(
-            (key) => configSchema[key].scope === 'sync'
-        );
-        const localKeys = visibleKeys.filter(
-            (key) => configSchema[key].scope === 'local'
-        );
+        const syncKeys = getKeysByScope('sync');
+        const localKeys = getKeysByScope('local');
 
         this.logger.debug(`getAll() storage breakdown`, {
             syncKeyCount: syncKeys.length,
@@ -1015,7 +875,7 @@ class ConfigService {
         });
 
         try {
-            const [syncResult, localResult] = await Promise.allSettled([
+            const [syncItems, localItems] = await Promise.all([
                 this.getFromStorage('sync', syncKeys, {
                     method: 'getAll',
                     operation: 'bulk-retrieve',
@@ -1025,51 +885,23 @@ class ConfigService {
                     operation: 'bulk-retrieve',
                 }),
             ]);
-            const syncItems =
-                syncResult.status === 'fulfilled' ? syncResult.value : {};
-            const localItems =
-                localResult.status === 'fulfilled' ? localResult.value : {};
-            const failedAreas = [];
-
-            if (syncResult.status === 'rejected') {
-                failedAreas.push('sync');
-                this.logger.error(
-                    'Error getting all settings',
-                    syncResult.reason,
-                    {
-                        method: 'getAll',
-                        failedArea: 'sync',
-                        fallbackToDefaults: true,
-                    }
-                );
-            }
-            if (localResult.status === 'rejected') {
-                failedAreas.push('local');
-                this.logger.error(
-                    'Error getting all settings',
-                    localResult.reason,
-                    {
-                        method: 'getAll',
-                        failedArea: 'local',
-                        fallbackToDefaults: true,
-                    }
-                );
-            }
 
             const fullConfig = {};
             const defaultsUsed = [];
 
-            for (const key of visibleKeys) {
+            for (const key in configSchema) {
                 const entry = configSchema[key];
                 const storedItems =
                     entry.scope === 'sync' ? syncItems : localItems;
-                const { value, usedDefault } = this._resolveStoredValue(
-                    key,
-                    storedItems
+                const hasStoredValue = Object.prototype.hasOwnProperty.call(
+                    storedItems,
+                    key
                 );
-                fullConfig[key] = value;
+                fullConfig[key] = hasStoredValue
+                    ? storedItems[key]
+                    : entry.defaultValue;
 
-                if (usedDefault) {
+                if (!hasStoredValue) {
                     defaultsUsed.push(key);
                 }
             }
@@ -1080,7 +912,6 @@ class ConfigService {
                 defaultsUsedCount: defaultsUsed.length,
                 syncItemsRetrieved: Object.keys(syncItems).length,
                 localItemsRetrieved: Object.keys(localItems).length,
-                failedAreas,
             });
 
             return fullConfig;
@@ -1094,8 +925,8 @@ class ConfigService {
 
             // Return defaults if storage fails
             const defaults = {};
-            for (const key of visibleKeys) {
-                defaults[key] = getDefaultValue(key);
+            for (const key in configSchema) {
+                defaults[key] = configSchema[key].defaultValue;
             }
 
             this.logger.debug(`getAll() returning defaults due to error`, {
@@ -1122,6 +953,7 @@ class ConfigService {
             this.logger.error(error.message, error, {
                 method: 'set',
                 requestedKey: key,
+                providedValue: value,
             });
             throw error;
         }
@@ -1129,11 +961,12 @@ class ConfigService {
         // Validate the value
         if (!validateSetting(key, value)) {
             const error = new Error(
-                `Invalid value for key "${key}". Expected type: ${schemaEntry.type.name}`
+                `Invalid value for key "${key}": ${JSON.stringify(value)}. Expected type: ${schemaEntry.type.name}`
             );
             this.logger.error(error.message, error, {
                 method: 'set',
                 requestedKey: key,
+                providedValue: value,
                 expectedType: schemaEntry.type.name,
                 actualType: typeof value,
             });
@@ -1164,6 +997,7 @@ class ConfigService {
             this.logger.error(`Error setting key "${key}"`, error, {
                 method: 'set',
                 requestedKey: key,
+                providedValue: value,
                 scope: schemaEntry.scope,
             });
             throw error;
@@ -1195,16 +1029,18 @@ class ConfigService {
                 this.logger.error(error, null, {
                     method: 'setMultiple',
                     invalidKey: key,
+                    providedValue: value,
                 });
                 validationErrors.push({ key, error, type: 'invalid_key' });
                 continue;
             }
 
             if (!validateSetting(key, value)) {
-                const error = `Invalid value for key "${key}". Expected type: ${schemaEntry.type.name}`;
+                const error = `Invalid value for key "${key}": ${JSON.stringify(value)}. Expected type: ${schemaEntry.type.name}`;
                 this.logger.error(error, null, {
                     method: 'setMultiple',
                     invalidKey: key,
+                    providedValue: value,
                     expectedType: schemaEntry.type.name,
                     actualType: typeof value,
                 });
@@ -1405,28 +1241,14 @@ class ConfigService {
     /**
      * Listens for changes to any settings defined in the schema.
      * @param {function(object)} callback - The function to call with an object of the changed keys and their new values.
-     * @param {{includeSensitive?: boolean}} options - Listener projection options.
      * @returns {function} A function to remove the listener
      */
-    onChanged(callback, { includeSensitive = true } = {}) {
+    onChanged(callback) {
         this.logger.debug(`onChanged() called`, {
             currentListenerCount: this.changeListeners.size,
         });
 
-        const projectedCallback = includeSensitive
-            ? callback
-            : (changes) => {
-                  const safeChanges = Object.fromEntries(
-                      Object.entries(changes).filter(
-                          ([key]) => !configSchema[key]?.sensitive
-                      )
-                  );
-                  if (Object.keys(safeChanges).length > 0) {
-                      callback(safeChanges);
-                  }
-              };
-
-        this.changeListeners.add(projectedCallback);
+        this.changeListeners.add(callback);
 
         this.logger.debug(`Change listener added`, {
             totalListeners: this.changeListeners.size,
@@ -1434,7 +1256,7 @@ class ConfigService {
 
         // Return a function to remove the listener
         return () => {
-            this.changeListeners.delete(projectedCallback);
+            this.changeListeners.delete(callback);
             this.logger.debug(`Change listener removed`, {
                 remainingListeners: this.changeListeners.size,
             });

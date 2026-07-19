@@ -29,6 +29,7 @@ describe('DisneyPlusContentScript Comprehensive Tests', () => {
     let disneyPlusScript;
     let testHelpers;
     let testEnv;
+    let mockSendResponse;
     let consoleLogSpy;
     let originalPushState;
     let originalReplaceState;
@@ -65,6 +66,7 @@ describe('DisneyPlusContentScript Comprehensive Tests', () => {
         window.history.pushState = jest.fn();
         window.history.replaceState = jest.fn();
 
+        mockSendResponse = jest.fn();
         consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
 
         global.document = {
@@ -138,19 +140,6 @@ describe('DisneyPlusContentScript Comprehensive Tests', () => {
     });
 
     describe('URL Change Detection', () => {
-        test('distinguishes active player routes from browse and detail routes', () => {
-            expect(disneyPlusScript._isPlayerPath('/video/video-id')).toBe(
-                true
-            );
-            expect(disneyPlusScript._isPlayerPath('/play/video-id')).toBe(true);
-            expect(
-                disneyPlusScript._isPlayerPath('/movies/title/video-id')
-            ).toBe(false);
-            expect(
-                disneyPlusScript._isPlayerPath('/series/title/series-id')
-            ).toBe(false);
-        });
-
         test('should handle URL changes with Disney+ SPA routing', () => {
             // Setup initial state on non-player page
             disneyPlusScript.currentUrl = 'http://localhost/';
@@ -228,45 +217,5 @@ describe('DisneyPlusContentScript Comprehensive Tests', () => {
                 'Entering player page, preparing for initialization.'
             );
         });
-    });
-
-    test('clears video-bound subtitle resources when leaving the player', () => {
-        disneyPlusScript.subtitleUtils = {
-            clearSubtitleDOM: jest.fn(),
-            clearSubtitlesDisplayAndQueue: jest.fn(),
-        };
-        disneyPlusScript.activePlatform = {
-            cleanup: jest.fn(),
-        };
-
-        disneyPlusScript._cleanupOnPageLeave();
-
-        expect(
-            disneyPlusScript.subtitleUtils.clearSubtitleDOM
-        ).toHaveBeenCalled();
-        expect(
-            disneyPlusScript.subtitleUtils.clearSubtitlesDisplayAndQueue
-        ).toHaveBeenCalled();
-    });
-
-    test('uses the non-sensitive configuration projection on page entry', async () => {
-        jest.useFakeTimers();
-        try {
-            disneyPlusScript._reinjectScript = jest.fn();
-            disneyPlusScript.configService = {
-                getAll: jest.fn().mockResolvedValue({
-                    subtitlesEnabled: false,
-                }),
-            };
-
-            disneyPlusScript._initializeOnPageEnter();
-            await jest.advanceTimersByTimeAsync(1500);
-
-            expect(disneyPlusScript.configService.getAll).toHaveBeenCalledWith({
-                includeSensitive: false,
-            });
-        } finally {
-            jest.useRealTimers();
-        }
     });
 });

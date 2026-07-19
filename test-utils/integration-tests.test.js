@@ -13,8 +13,14 @@ import {
     afterEach,
     jest,
 } from '@jest/globals';
-import { TestHelpers } from './test-helpers.js';
-import { TestScenarioGenerator } from './test-fixtures.js';
+import { TestHelpers, PlatformTestSuiteGenerator } from './test-helpers.js';
+import {
+    NetflixFixtures,
+    DisneyPlusFixtures,
+    ChromeApiFixtures,
+    TestScenarioGenerator,
+    MockResponseBuilder,
+} from './test-fixtures.js';
 
 /**
  * Integration Test Suite for Platform Test Infrastructure

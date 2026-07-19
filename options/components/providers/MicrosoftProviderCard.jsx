@@ -22,15 +22,8 @@ export function MicrosoftProviderCard({ t }) {
                     <ul>
                         <li>{t('featureFree', 'Free to use')}</li>
                         <li>{t('featureNoApiKey', 'No API key required')}</li>
-                        <li>
-                            {t(
-                                'featureHighQuality',
-                                'High quality translation'
-                            )}
-                        </li>
-                        <li>
-                            {t('featureGoodPerformance', 'Good performance')}
-                        </li>
+                        <li>{t('featureHighQuality', 'High quality translation')}</li>
+                        <li>{t('featureGoodPerformance', 'Good performance')}</li>
                     </ul>
                 </div>
             </div>

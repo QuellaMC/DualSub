@@ -1,8 +1,4 @@
 import { useState, useCallback } from 'react';
-import {
-    hasHostPermission,
-    requestHostPermission,
-} from '../../utils/hostPermissions.js';
 
 /**
  * Hook for testing OpenAI API and fetching models
@@ -27,120 +23,82 @@ export function useOpenAITest(t, fetchAvailableModels) {
         });
     }, []);
 
-    const testConnection = useCallback(
-        async (apiKey, baseUrl, onModelsLoaded) => {
-            if (!apiKey) {
-                showTestResult(
-                    t('openaiApiKeyError', 'Please enter an API key first.'),
-                    'error'
-                );
-                return;
-            }
-
-            setTesting(true);
+    const testConnection = useCallback(async (apiKey, baseUrl) => {
+        if (!apiKey) {
             showTestResult(
-                t('openaiTestingConnection', 'Testing connection...'),
-                'info'
+                t('openaiApiKeyError', 'Please enter an API key first.'),
+                'error'
             );
+            return;
+        }
 
-            try {
-                const permissionGranted = await requestHostPermission(baseUrl);
-                if (!permissionGranted) {
-                    throw new Error('Endpoint access was not granted.');
-                }
-                const models = await fetchAvailableModels(apiKey, baseUrl);
-                onModelsLoaded?.(models);
-                showTestResult(
-                    t('openaiConnectionSuccessful', 'Connection successful!'),
-                    'success'
-                );
-            } catch (error) {
-                showTestResult(
-                    t(
-                        'openaiConnectionFailed',
-                        'Connection failed: %s',
-                        error.message
-                    ),
-                    'error'
-                );
-            } finally {
-                setTesting(false);
-            }
-        },
-        [t, fetchAvailableModels, showTestResult]
-    );
+        setTesting(true);
+        showTestResult(
+            t('openaiTestingConnection', 'Testing connection...'),
+            'info'
+        );
 
-    const fetchModels = useCallback(
-        async (apiKey, baseUrl, onModelsLoaded) => {
-            if (!apiKey) {
-                return;
-            }
-
-            setFetchingModels(true);
+        try {
+            await fetchAvailableModels(apiKey, baseUrl);
             showTestResult(
-                t('openaieFetchingModels', 'Fetching models...'),
-                'info'
+                t('openaiConnectionSuccessful', 'Connection successful!'),
+                'success'
             );
+        } catch (error) {
+            showTestResult(
+                t('openaiConnectionFailed', 'Connection failed: %s', error.message),
+                'error'
+            );
+        } finally {
+            setTesting(false);
+        }
+    }, [t, fetchAvailableModels, showTestResult]);
 
-            try {
-                if (!(await hasHostPermission(baseUrl))) {
-                    showTestResult(
-                        t(
-                            'openaiEndpointPermissionRequired',
-                            'Use Test Connection to grant access to this endpoint.'
-                        ),
-                        'warning'
-                    );
-                    return;
-                }
-                const models = await fetchAvailableModels(apiKey, baseUrl);
+    const fetchModels = useCallback(async (apiKey, baseUrl, onModelsLoaded) => {
+        if (!apiKey) {
+            return;
+        }
 
-                if (onModelsLoaded) {
-                    onModelsLoaded(models);
-                }
+        setFetchingModels(true);
+        showTestResult(
+            t('openaieFetchingModels', 'Fetching models...'),
+            'info'
+        );
 
-                showTestResult(
-                    t(
-                        'openaiModelsFetchedSuccessfully',
-                        'Models fetched successfully.'
-                    ),
-                    'success'
-                );
-            } catch (error) {
-                showTestResult(
-                    t(
-                        'openaiFailedToFetchModels',
-                        'Failed to fetch models: %s',
-                        error.message
-                    ),
-                    'error'
-                );
-            } finally {
-                setFetchingModels(false);
+        try {
+            const models = await fetchAvailableModels(apiKey, baseUrl);
+            
+            if (onModelsLoaded) {
+                onModelsLoaded(models);
             }
-        },
-        [t, fetchAvailableModels, showTestResult]
-    );
 
-    const initializeStatus = useCallback(
-        (apiKey) => {
-            if (apiKey) {
-                showTestResult(
-                    t(
-                        'openaiTestNeedsTesting',
-                        '⚠️ OpenAI-compatible API key needs testing.'
-                    ),
-                    'warning'
-                );
-            } else {
-                showTestResult(
-                    t('openaiApiKeyError', 'Please enter your API key first.'),
-                    'error'
-                );
-            }
-        },
-        [t, showTestResult]
-    );
+            showTestResult(
+                t('openaiModelsFetchedSuccessfully', 'Models fetched successfully.'),
+                'success'
+            );
+        } catch (error) {
+            showTestResult(
+                t('openaiFailedToFetchModels', 'Failed to fetch models: %s', error.message),
+                'error'
+            );
+        } finally {
+            setFetchingModels(false);
+        }
+    }, [t, fetchAvailableModels, showTestResult]);
+
+    const initializeStatus = useCallback((apiKey) => {
+        if (apiKey) {
+            showTestResult(
+                t('openaiTestNeedsTesting', '⚠️ OpenAI-compatible API key needs testing.'),
+                'warning'
+            );
+        } else {
+            showTestResult(
+                t('openaiApiKeyError', 'Please enter your API key first.'),
+                'error'
+            );
+        }
+    }, [t, showTestResult]);
 
     return {
         testResult,

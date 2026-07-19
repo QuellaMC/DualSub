@@ -35,6 +35,13 @@ global.chrome = {
 // Mock fetch for translations
 global.fetch = jest.fn();
 
+// Mock DeepL API
+global.window = {
+    DeepLAPI: {
+        testDeepLConnection: jest.fn(),
+    },
+};
+
 describe('Options Logging Integration', () => {
     let optionsLogger;
     let consoleSpy;
@@ -69,6 +76,8 @@ describe('Options Logging Integration', () => {
             </section>
             <section id="translation" class="hidden">
                 <select id="translationProvider"></select>
+                <input id="translationBatchSize" type="range">
+                <span id="translationBatchSizeValue"></span>
                 <input id="translationDelay" type="range">
                 <span id="translationDelayValue"></span>
             </section>
@@ -81,6 +90,7 @@ describe('Options Logging Integration', () => {
                     <button id="testDeepLButton">Test</button>
                     <div id="deeplTestResult"></div>
                 </div>
+                <div id="deeplFreeProviderCard"></div>
             </section>
             <section id="about" class="hidden">
                 <span id="extensionVersion"></span>
@@ -285,6 +295,22 @@ describe('Options Logging Integration', () => {
             );
             expect(consoleSpy.error).toHaveBeenCalledWith(
                 expect.stringContaining('"apiPlan":"free"')
+            );
+        });
+
+        test('should log DeepL API unavailability', () => {
+            optionsLogger.error(
+                'DeepLAPI is not available. Disabling testDeepLButton.',
+                null,
+                {
+                    component: 'testDeepLButton',
+                }
+            );
+
+            expect(consoleSpy.error).toHaveBeenCalledWith(
+                expect.stringContaining(
+                    '[ERROR] [Options] DeepLAPI is not available'
+                )
             );
         });
     });

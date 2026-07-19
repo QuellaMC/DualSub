@@ -5,16 +5,6 @@ import { AppleStyleFileButton } from '../AppleStyleFileButton.jsx';
 import { TestResultDisplay } from '../TestResultDisplay.jsx';
 import { useVertexTest } from '../../hooks/useVertexTest.js';
 
-export const VERTEX_LOCATIONS = [
-    'us-central1',
-    'us-east1',
-    'us-west1',
-    'europe-west1',
-    'europe-west4',
-    'asia-northeast1',
-    'asia-southeast1',
-];
-
 export function VertexProviderCard({
     t,
     accessToken,
@@ -26,29 +16,51 @@ export function VertexProviderCard({
     onLocationChange,
     onModelChange,
     onProviderChange,
-    onCredentialsChange,
 }) {
     const fileInputRef = useRef(null);
-    const {
-        testResult,
-        importResult,
-        testing,
+    const { 
+        testResult, 
+        importResult, 
+        testing, 
         importing,
-        testConnection,
+        testConnection, 
         importServiceAccountJson,
-        initializeStatus,
-        updateManualAccessToken,
-    } = useVertexTest(
-        t,
-        onAccessTokenChange,
-        onProjectIdChange,
-        onProviderChange,
-        onCredentialsChange
-    );
+        refreshToken,
+        checkTokenExpiration,
+        initializeStatus 
+    } = useVertexTest(t, onAccessTokenChange, onProjectIdChange, onProviderChange);
 
+    // Initialize status and setup auto-refresh on mount
     useEffect(() => {
-        void initializeStatus(accessToken, projectId);
-    }, [accessToken, projectId, initializeStatus]);
+        const checkAndRefreshToken = async () => {
+            const expirationInfo = await checkTokenExpiration();
+            
+            if (expirationInfo) {
+                // Auto-refresh if token is expired or will expire in less than 5 minutes
+                if (expirationInfo.isExpired || expirationInfo.shouldRefresh) {
+                    try {
+                        // Silent refresh - don't show UI notifications
+                        await refreshToken(true);
+                        console.log('[Vertex AI] Token auto-refreshed');
+                    } catch (error) {
+                        // Error already handled in hook
+                        console.error('[Vertex AI] Auto-refresh failed:', error);
+                    }
+                }
+            }
+        };
+
+        // Initial check
+        initializeStatus(accessToken, projectId);
+        checkAndRefreshToken();
+
+        // Setup periodic check every 5 minutes
+        const interval = setInterval(() => {
+            checkAndRefreshToken();
+        }, 5 * 60 * 1000); // Check every 5 minutes
+
+        return () => clearInterval(interval);
+    }, [accessToken, projectId, initializeStatus, checkTokenExpiration, refreshToken]);
 
     const handleTest = () => {
         const loc = location || 'us-central1';
@@ -60,19 +72,14 @@ export function VertexProviderCard({
         const file = e.target.files?.[0];
         if (file) {
             try {
-                const importedCredentials =
-                    await importServiceAccountJson(file);
-                if (importedCredentials) {
+                await importServiceAccountJson(file);
+                // Auto-test connection after successful import
+                setTimeout(() => {
                     const loc = location || 'us-central1';
                     const mdl = model || 'gemini-2.5-flash';
-                    await testConnection(
-                        importedCredentials.accessToken,
-                        importedCredentials.projectId,
-                        loc,
-                        mdl
-                    );
-                }
-            } catch {
+                    testConnection(accessToken, projectId, loc, mdl);
+                }, 300);
+            } catch (error) {
                 // Error already handled in hook
             }
             // Clear file input so same file can be re-selected
@@ -86,15 +93,20 @@ export function VertexProviderCard({
         fileInputRef.current?.click();
     };
 
+    const handleRefreshToken = async () => {
+        try {
+            await refreshToken();
+        } catch (error) {
+            // Error already handled in hook
+        }
+    };
+
     return (
         <SettingCard
-            title={t(
-                'cardVertexGeminiTitle',
-                'Vertex AI Gemini (API Key Required)'
-            )}
+            title={t('cardVertexGeminiTitle', 'Vertex AI Gemini (API Key Required)')}
             description={t(
-                'cardVertexGeminiEphemeralDesc',
-                'Enter a short-lived access token, or import a service account JSON once to generate one. The service-account key is never stored.'
+                'cardVertexGeminiDesc',
+                'Enter your access token and Vertex project settings, or import a service account JSON file.'
             )}
         >
             {/* Hidden file input for service account JSON */}
@@ -109,9 +121,7 @@ export function VertexProviderCard({
 
             {/* Service Account Import Section */}
             <div className="setting">
-                <label>
-                    {t('vertexServiceAccountLabel', 'Service Account JSON:')}
-                </label>
+                <label>{t('vertexServiceAccountLabel', 'Service Account JSON:')}</label>
                 <AppleStyleFileButton
                     onClick={handleImportClick}
                     disabled={importing}
@@ -120,7 +130,8 @@ export function VertexProviderCard({
                 >
                     {importing
                         ? t('vertexImporting', 'Importing...')
-                        : t('vertexImportButton', 'Import JSON File')}
+                        : t('vertexImportButton', 'Import JSON File')
+                    }
                 </AppleStyleFileButton>
                 <TestResultDisplay result={importResult} />
             </div>
@@ -135,9 +146,7 @@ export function VertexProviderCard({
                     id="vertexAccessToken"
                     placeholder="ya29...."
                     value={accessToken}
-                    onChange={(e) =>
-                        void updateManualAccessToken(e.target.value)
-                    }
+                    onChange={(e) => onAccessTokenChange(e.target.value)}
                 />
             </div>
 
@@ -158,17 +167,13 @@ export function VertexProviderCard({
                 <label htmlFor="vertexLocation">
                     {t('vertexLocationLabel', 'Location:')}
                 </label>
-                <select
+                <input
+                    type="text"
                     id="vertexLocation"
-                    value={location || 'us-central1'}
+                    placeholder="us-central1"
+                    value={location}
                     onChange={(e) => onLocationChange(e.target.value)}
-                >
-                    {VERTEX_LOCATIONS.map((region) => (
-                        <option key={region} value={region}>
-                            {region}
-                        </option>
-                    ))}
-                </select>
+                />
             </div>
 
             <div className="setting">
@@ -193,7 +198,8 @@ export function VertexProviderCard({
                 >
                     {testing
                         ? t('testingButton', 'Testing...')
-                        : t('testConnectionButton', 'Test Connection')}
+                        : t('testConnectionButton', 'Test Connection')
+                    }
                 </SparkleButton>
             </div>
 
@@ -202,33 +208,14 @@ export function VertexProviderCard({
                 <div className="info-item">
                     <strong>{t('providerFeatures', 'Features:')}</strong>
                     <ul>
-                        <li>
-                            {t(
-                                'featureVertexServiceAccount',
-                                'Service account JSON import'
-                            )}
-                        </li>
-                        <li>
-                            {t(
-                                'featureVertexEphemeralToken',
-                                'One-time token generation without storing the service-account key'
-                            )}
-                        </li>
-                        <li>
-                            {t(
-                                'featureVertexGemini',
-                                'Google Gemini models via Vertex AI'
-                            )}
-                        </li>
-                        <li>
-                            {t(
-                                'featureWideLanguageSupport',
-                                'Wide language support'
-                            )}
-                        </li>
+                        <li>{t('featureVertexServiceAccount', 'Service account JSON import')}</li>
+                        <li>{t('featureVertexAutoToken', 'Automatic token generation')}</li>
+                        <li>{t('featureVertexGemini', 'Google Gemini models via Vertex AI')}</li>
+                        <li>{t('featureWideLanguageSupport', 'Wide language support')}</li>
                     </ul>
                 </div>
             </div>
         </SettingCard>
     );
 }
+

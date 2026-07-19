@@ -36,14 +36,13 @@ export const PerformanceThresholds = {
 /**
  * Performance Monitor
  */
-export class PerformanceMonitor {
+class PerformanceMonitor {
     constructor() {
         this.logger = loggingManager.createLogger('PerformanceMonitor');
         this.metrics = new Map();
         this.timers = new Map();
         this.memoryBaseline = this.getMemoryUsage();
         this.startTime = Date.now();
-        this.monitoringIntervals = [];
         this.optimizations = new Map();
         this.setupOptimizations();
     }
@@ -58,6 +57,14 @@ export class PerformanceMonitor {
             maxSize: 1000,
             ttl: 300000, // 5 minutes
             cleanupInterval: 60000, // 1 minute
+        });
+
+        // Batch processing optimization
+        this.optimizations.set('batch', {
+            enabled: true,
+            maxBatchSize: 10,
+            batchTimeout: 100, // ms
+            concurrentBatches: 2,
         });
 
         // Memory optimization
@@ -78,7 +85,6 @@ export class PerformanceMonitor {
         this.timers.set(timerId, {
             name,
             startTime: performance.now(),
-            startedAt: Date.now(),
             context,
         });
         return timerId;
@@ -141,8 +147,10 @@ export class PerformanceMonitor {
 
         // Keep only last 1000 values to prevent memory bloat
         if (metric.values.length > 1000) {
-            metric.values.shift();
-            this.recomputeMetric(metric);
+            const removed = metric.values.shift();
+            metric.total -= removed.value;
+            metric.count--;
+            metric.average = metric.total / metric.count;
         }
 
         this.logger.debug('Performance metric recorded', {
@@ -151,15 +159,6 @@ export class PerformanceMonitor {
             type,
             average: metric.average,
         });
-    }
-
-    recomputeMetric(metric) {
-        const values = metric.values.map(({ value }) => value);
-        metric.count = values.length;
-        metric.total = values.reduce((sum, value) => sum + value, 0);
-        metric.min = values.length > 0 ? Math.min(...values) : Infinity;
-        metric.max = values.length > 0 ? Math.max(...values) : -Infinity;
-        metric.average = metric.count > 0 ? metric.total / metric.count : 0;
     }
 
     /**
@@ -200,9 +199,9 @@ export class PerformanceMonitor {
             metricName === 'batch_processing' &&
             value > PerformanceThresholds.BATCH_PROCESSING_TIME
         ) {
-            suggestions.push(
-                'Check provider response time and network latency'
-            );
+            suggestions.push('Consider reducing batch size');
+            suggestions.push('Enable batch processing optimizations');
+            suggestions.push('Check network latency');
         }
 
         if (
@@ -301,14 +300,15 @@ export class PerformanceMonitor {
         const oneHourAgo = Date.now() - 3600000;
         let clearedCount = 0;
 
-        for (const metric of this.metrics.values()) {
-            const retainedValues = metric.values.filter(
-                (value) => value.timestamp >= oneHourAgo
+        for (const [name, metric] of this.metrics.entries()) {
+            const oldValues = metric.values.filter(
+                (v) => v.timestamp < oneHourAgo
             );
-            if (retainedValues.length !== metric.values.length) {
-                clearedCount += metric.values.length - retainedValues.length;
-                metric.values = retainedValues;
-                this.recomputeMetric(metric);
+            if (oldValues.length > 0) {
+                metric.values = metric.values.filter(
+                    (v) => v.timestamp >= oneHourAgo
+                );
+                clearedCount += oldValues.length;
             }
         }
 
@@ -323,7 +323,7 @@ export class PerformanceMonitor {
         let clearedCount = 0;
 
         for (const [timerId, timer] of this.timers.entries()) {
-            if (timer.startedAt < fiveMinutesAgo) {
+            if (timer.startTime < fiveMinutesAgo) {
                 this.timers.delete(timerId);
                 clearedCount++;
             }
@@ -412,24 +412,16 @@ export class PerformanceMonitor {
      * Start periodic monitoring
      */
     startMonitoring() {
-        if (this.monitoringIntervals.length > 0) {
-            return;
-        }
-
         // Monitor memory every 30 seconds
-        this.monitoringIntervals.push(
-            setInterval(() => {
-                this.monitorMemory();
-            }, 30000)
-        );
+        setInterval(() => {
+            this.monitorMemory();
+        }, 30000);
 
         // Clean up old data every 5 minutes
-        this.monitoringIntervals.push(
-            setInterval(() => {
-                this.clearOldMetrics();
-                this.clearOldTimers();
-            }, 300000)
-        );
+        setInterval(() => {
+            this.clearOldMetrics();
+            this.clearOldTimers();
+        }, 300000);
 
         this.logger.info('Performance monitoring started');
     }
@@ -438,10 +430,6 @@ export class PerformanceMonitor {
      * Stop monitoring and cleanup
      */
     stopMonitoring() {
-        for (const interval of this.monitoringIntervals) {
-            clearInterval(interval);
-        }
-        this.monitoringIntervals = [];
         this.metrics.clear();
         this.timers.clear();
         this.logger.info('Performance monitoring stopped');

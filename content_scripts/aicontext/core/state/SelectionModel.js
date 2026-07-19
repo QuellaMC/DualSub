@@ -47,11 +47,11 @@ export class SelectionModel {
      * Remove a selection. If positionKey provided, remove that entry only.
      * Otherwise, remove all occurrences of the word.
      * @param {string} word
-     * @param {Object|null} _position - Reserved for positional removal
+     * @param {Object|null} position
      * @param {string|null} positionKey
      * @returns {boolean} True if any removal happened
      */
-    remove(word, _position = null, positionKey = null) {
+    remove(word, position = null, positionKey = null) {
         let removed = false;
 
         if (positionKey) {

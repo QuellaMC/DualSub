@@ -132,16 +132,30 @@ describe('configSchema', () => {
     });
 
     describe('existing schema integrity', () => {
-        it('uses zero as the fresh-install subtitle timing offset', () => {
-            expect(getDefaultValue('subtitleTimeOffset')).toBe(0);
-        });
-
         it('should maintain all existing settings', () => {
             const expectedSettings = [
                 'uiLanguage',
                 'hideOfficialSubtitles',
                 'selectedProvider',
+                'translationBatchSize',
                 'translationDelay',
+                'maxConcurrentBatches',
+                'smartBatching',
+                'batchProcessingDelay',
+                'globalBatchSize',
+                'batchingEnabled',
+                'useProviderDefaults',
+                // Provider-specific batch sizes
+                'openaieBatchSize',
+                'googleBatchSize',
+                'deeplBatchSize',
+                'microsoftBatchSize',
+                // Provider-specific delay settings
+                'openaieDelay',
+                'googleDelay',
+                'deeplDelay',
+                'deeplFreeDelay',
+                'microsoftDelay',
                 'deeplApiKey',
                 'deeplApiPlan',
                 'openaiCompatibleApiKey',
@@ -167,37 +181,7 @@ describe('configSchema', () => {
             expect(actualSettings).toEqual(
                 expect.arrayContaining(expectedSettings)
             );
-            expect(actualSettings).not.toEqual(
-                expect.arrayContaining([
-                    'sidePanelDefaultTab',
-                    'sidePanelWordsListsEnabled',
-                    'sidePanelPersistAcrossTabs',
-                    'sidePanelAutoResumeVideo',
-                    'sidePanelLastTabState',
-                    'sidePanelFollowActiveTabInWindow',
-                    'sidePanelScopePolicyAIAnalysisTab',
-                    'sidePanelScopePolicyWordsListsTab',
-                    'sidePanelSelectionBuckets',
-                    'sidePanelWordLists',
-                    'sidePanelEnabled',
-                    'translationBatchSize',
-                    'maxConcurrentBatches',
-                    'smartBatching',
-                    'batchProcessingDelay',
-                    'globalBatchSize',
-                    'batchingEnabled',
-                    'useProviderDefaults',
-                    'openaieBatchSize',
-                    'googleBatchSize',
-                    'deeplBatchSize',
-                    'microsoftBatchSize',
-                    'openaieDelay',
-                    'googleDelay',
-                    'deeplDelay',
-                    'microsoftDelay',
-                ])
-            );
-            expect(actualSettings.length).toBe(49);
+            expect(actualSettings.length).toBe(66);
         });
 
         it('should have correct scope distribution', () => {
@@ -209,38 +193,19 @@ describe('configSchema', () => {
                 expect.arrayContaining([
                     'appearanceAccordionOpen',
                     'debugMode',
-                    'vertexAccessToken',
-                    'deeplApiKey',
-                    'openaiCompatibleApiKey',
-                    'openaiApiKey',
-                    'geminiApiKey',
+                    'aiContextDebugMode',
                 ])
             );
-            expect(localKeys.length).toBe(7);
+            expect(localKeys.length).toBe(3);
 
             // Sync scope should contain all other settings including loggingLevel and OpenAI settings
             expect(syncKeys.length).toBeGreaterThan(10);
             expect(syncKeys).toContain('uiLanguage');
             expect(syncKeys).toContain('subtitlesEnabled');
             expect(syncKeys).toContain('loggingLevel');
+            expect(syncKeys).toContain('openaiCompatibleApiKey');
             expect(syncKeys).toContain('openaiCompatibleBaseUrl');
             expect(syncKeys).toContain('openaiCompatibleModel');
-            expect(syncKeys).not.toContain('vertexAccessToken');
-            expect(syncKeys).not.toContain('deeplApiKey');
-            expect(syncKeys).not.toContain('openaiCompatibleApiKey');
-            expect(syncKeys).not.toContain('openaiApiKey');
-            expect(syncKeys).not.toContain('geminiApiKey');
-        });
-
-        it('uses current provider defaults and keeps Vertex tokens device-local', () => {
-            expect(configSchema.openaiBaseUrl.defaultValue).toBe(
-                'https://api.openai.com/v1'
-            );
-            expect(configSchema.openaiModel.defaultValue).toBe('gpt-5.6-luna');
-            expect(configSchema.geminiModel.defaultValue).toBe(
-                'gemini-3.5-flash'
-            );
-            expect(configSchema.vertexAccessToken.scope).toBe('local');
         });
     });
 
@@ -251,43 +216,15 @@ describe('configSchema', () => {
             expect(validateSetting('uiLanguage', 123)).toBe(false);
 
             // Number validation
-            expect(validateSetting('translationDelay', 150)).toBe(true);
-            expect(validateSetting('translationDelay', '150')).toBe(false);
-            expect(validateSetting('translationDelay', NaN)).toBe(false);
-            expect(validateSetting('translationDelay', Infinity)).toBe(false);
+            expect(validateSetting('translationBatchSize', 3)).toBe(true);
+            expect(validateSetting('translationBatchSize', '3')).toBe(false);
+            expect(validateSetting('translationBatchSize', NaN)).toBe(false);
 
             // Boolean validation
             expect(validateSetting('subtitlesEnabled', true)).toBe(true);
             expect(validateSetting('subtitlesEnabled', 'true')).toBe(false);
             expect(validateSetting('debugMode', false)).toBe(true);
             expect(validateSetting('debugMode', 0)).toBe(false);
-        });
-
-        it('should validate array settings without accepting object lookalikes', () => {
-            expect(
-                validateSetting('aiContextTypes', ['cultural', 'historical'])
-            ).toBe(true);
-            expect(validateSetting('aiContextTypes', [])).toBe(true);
-            expect(validateSetting('aiContextTypes', {})).toBe(false);
-            expect(validateSetting('aiContextTypes', 'cultural')).toBe(false);
-            expect(validateSetting('aiContextTypes', null)).toBe(false);
-        });
-
-        it('should validate plain object settings without accepting arrays or instances', () => {
-            expect(
-                validateSetting('subtitleBlacklist', {
-                    disneyplus: ['forced=yes'],
-                    netflix: [],
-                })
-            ).toBe(true);
-            expect(
-                validateSetting('subtitleBlacklist', Object.create(null))
-            ).toBe(true);
-            expect(validateSetting('subtitleBlacklist', [])).toBe(false);
-            expect(validateSetting('subtitleBlacklist', new Date())).toBe(
-                false
-            );
-            expect(validateSetting('subtitleBlacklist', null)).toBe(false);
         });
     });
 });

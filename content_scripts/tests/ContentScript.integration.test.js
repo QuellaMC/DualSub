@@ -19,7 +19,13 @@ import {
     expect,
 } from '@jest/globals';
 import { TestHelpers } from '../../test-utils/test-helpers.js';
-import { ChromeApiFixtures } from '../../test-utils/test-fixtures.js';
+import {
+    NetflixFixtures,
+    DisneyPlusFixtures,
+    ChromeApiFixtures,
+    TestScenarioGenerator,
+    MockResponseBuilder,
+} from '../../test-utils/test-fixtures.js';
 import { NetflixContentScript } from '../platforms/NetflixContentScript.js';
 import { DisneyPlusContentScript } from '../platforms/DisneyPlusContentScript.js';
 
@@ -455,6 +461,7 @@ describe('Content Script Integration Tests', () => {
         describe('Navigation Detection Integration', () => {
             test('should handle Netflix SPA navigation correctly', () => {
                 // Mock URL change detection
+                const originalUrl = netflixScript.currentUrl;
                 netflixScript.currentUrl = 'https://www.netflix.com/browse';
                 netflixScript.lastKnownPathname = '/browse';
 

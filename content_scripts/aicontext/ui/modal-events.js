@@ -9,7 +9,6 @@
  */
 
 import { EVENT_TYPES, MODAL_STATES } from '../core/constants.js';
-import { MessageActions } from '../../shared/constants/messageActions.js';
 
 /**
  * Modal event handling and user interactions
@@ -359,7 +358,7 @@ export class AIContextModalEvents {
         // Allow clicks on interactive words for word selection (Issue #1)
         if (event.target.classList.contains('dualsub-interactive-word')) {
             this.core._log('debug', 'Allowing interactive word click', {
-                wordLength: event.target.getAttribute('data-word')?.length || 0,
+                word: event.target.getAttribute('data-word'),
                 target: event.target.tagName,
                 targetClass: event.target.className,
             });
@@ -393,7 +392,7 @@ export class AIContextModalEvents {
                     this.core._log(
                         'debug',
                         'Word removal blocked - analysis in progress',
-                        { wordLength: word?.length || 0 }
+                        { word }
                     );
                     return;
                 }
@@ -402,8 +401,8 @@ export class AIContextModalEvents {
                     'debug',
                     'Word removal requested (position-based)',
                     {
-                        wordLength: word?.length || 0,
-                        hasPositionKey: Boolean(positionKey),
+                        word,
+                        positionKey,
                         totalPositions: this.core.selectedWordPositions.size,
                     }
                 );
@@ -422,10 +421,11 @@ export class AIContextModalEvents {
                             'warn',
                             'Position data not found for removal',
                             {
-                                wordLength: word?.length || 0,
-                                hasPositionKey: Boolean(positionKey),
-                                availablePositionCount:
-                                    this.core.selectedWordPositions.size,
+                                word,
+                                positionKey,
+                                availableKeys: Array.from(
+                                    this.core.selectedWordPositions.keys()
+                                ),
                             }
                         );
                         // Fallback to removing all instances of the word
@@ -631,18 +631,17 @@ export class AIContextModalEvents {
             this.core._log('debug', 'Language preferences resolved', {
                 sourceLanguage,
                 targetLanguage,
-                selectedTextLength: this.core.selectedText.length,
+                selectedText: this.core.selectedText,
             });
         } catch (error) {
             this.core._log(
                 'warn',
                 'Failed to get language preferences, using defaults',
                 {
-                    errorName: error?.name,
-                    errorLength: error?.message?.length || 0,
+                    error: error.message,
                     sourceLanguage,
                     targetLanguage,
-                    selectedTextLength: this.core.selectedText.length,
+                    selectedText: this.core.selectedText,
                 }
             );
         }
@@ -668,7 +667,7 @@ export class AIContextModalEvents {
         );
 
         this.core._log('info', 'Context analysis started', {
-            textLength: this.core.selectedText.length,
+            text: this.core.selectedText,
             selectedWordsCount: this.core.selectedWords.size,
             requestId,
         });
@@ -716,7 +715,6 @@ export class AIContextModalEvents {
      * @private
      */
     _handleWordSelectionEvent(event) {
-        this._pauseVideo();
         const { word, action, position, element, subtitleType } = event.detail;
 
         // Handle legacy event format (from interactiveSubtitleFormatter.js)
@@ -726,9 +724,9 @@ export class AIContextModalEvents {
         const effectivePosition = position || 0; // Default position for legacy compatibility
 
         this.core._log('info', 'Word selection event received', {
-            wordLength: word?.length || 0,
+            word,
             action: effectiveAction,
-            hasPosition: Boolean(effectivePosition),
+            position: effectivePosition,
             subtitleType,
             currentMode: this.core.currentMode,
             isLegacyFormat: !action && !position,
@@ -740,7 +738,7 @@ export class AIContextModalEvents {
                 'debug',
                 'Word selection blocked - analysis in progress',
                 {
-                    wordLength: word?.length || 0,
+                    word,
                     subtitleType,
                 }
             );
@@ -816,30 +814,11 @@ export class AIContextModalEvents {
             this.core.syncSelectionHighlights();
         } catch (_) {}
 
-        // Send a message to the background to update the side panel state
-        try {
-            chrome.runtime.sendMessage({
-                action: MessageActions.SIDEPANEL_WORD_SELECTED,
-                word,
-                selectionAction: effectiveAction,
-                subtitleType,
-                reason: 'word-click',
-            });
-        } catch (error) {
-            this.core._log(
-                'warn',
-                'Failed to send word selection to background',
-                {
-                    error: error.message,
-                }
-            );
-        }
-
         // If modal isn't visible yet, show it now only when there is an active selection
         if (!this.core.isVisible) {
             if (this.core.selectedWords.size > 0) {
                 this.core._log('debug', 'Showing modal for word selection', {
-                    wordLength: word?.length || 0,
+                    word,
                     subtitleType,
                 });
                 this.core._dispatchEvent(EVENT_TYPES.MODAL_SHOW_REQUESTED, {
@@ -876,29 +855,6 @@ export class AIContextModalEvents {
                 } catch (_) {}
             } catch (_) {}
         }, 16);
-    }
-
-    /**
-     * Pause video playback via content script integration
-     * @private
-     */
-    async _pauseVideo() {
-        try {
-            if (
-                this.core &&
-                this.core.contentScript &&
-                this.core.contentScript.activePlatform &&
-                typeof this.core.contentScript.activePlatform.pausePlayback ===
-                    'function'
-            ) {
-                this.core._log('debug', 'Pausing video for modal display');
-                await this.core.contentScript.activePlatform.pausePlayback();
-            }
-        } catch (error) {
-            this.core._log('warn', 'Failed to pause video for modal', {
-                error: error.message,
-            });
-        }
     }
 
     /**
@@ -1026,8 +982,8 @@ export class AIContextModalEvents {
             'Updated selected text with position order (delegated to core)',
             {
                 selectedPositions: this.core.selectedWordPositions.size,
-                orderedWordCount: this.core.selectedWordsOrder.length,
-                selectedTextLength: this.core.selectedText.length,
+                orderKeys: this.core.selectedWordsOrder,
+                selectedText: this.core.selectedText,
             }
         );
     }
@@ -1099,11 +1055,7 @@ export class AIContextModalEvents {
             success,
             hasResult: !!result,
             hasError: !!error,
-            errorName: error?.name,
-            errorLength:
-                typeof error === 'string'
-                    ? error.length
-                    : error?.message?.length || 0,
+            error,
             eventDetailKeys: Object.keys(event.detail),
             resultKeys: result ? Object.keys(result) : null,
         });
@@ -1148,7 +1100,7 @@ export class AIContextModalEvents {
             success,
             hasResult: !!result,
             hasError: !!error,
-            errorName: error?.name,
+            error,
         });
 
         if (success && result) {
@@ -1156,7 +1108,7 @@ export class AIContextModalEvents {
             let html = '';
 
             this.core._log('debug', 'Processing analysis result', {
-                resultKeys: Object.keys(result),
+                result,
                 hasAnalysis: !!result.analysis,
                 hasCultural: !!result.cultural,
                 contextType: result.contextType,
@@ -1262,10 +1214,7 @@ export class AIContextModalEvents {
                 }, 50);
             } else {
                 this.core._log('warn', 'No analysis content to display', {
-                    resultKeys:
-                        result && typeof result === 'object'
-                            ? Object.keys(result)
-                            : [],
+                    result,
                 });
                 const noContentTitle =
                     this._getLocalizedMessage('aiContextNoContent');
@@ -1290,17 +1239,11 @@ export class AIContextModalEvents {
             // Display error (EXACT legacy behavior)
             this.core._log('error', 'Analysis failed', {
                 success,
-                hasError: Boolean(error),
-                errorName: error?.name,
-                errorLength:
-                    typeof error === 'string'
-                        ? error.length
-                        : error?.message?.length || 0,
+                error,
                 hasResult: !!result,
-                resultKeys:
-                    result && typeof result === 'object'
-                        ? Object.keys(result)
-                        : [],
+                result,
+                errorType: typeof error,
+                errorMessage: error?.message || error,
             });
 
             const errorMessage =
@@ -2019,14 +1962,8 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
     _handleInvalidAnalysisResponse(requestId, result, error) {
         this.core._log('warn', 'Invalid analysis response detected', {
             requestId,
-            errorName: error?.name,
-            errorLength:
-                typeof error === 'string'
-                    ? error.length
-                    : error?.message?.length || 0,
-            resultType: typeof result,
-            resultKeys:
-                result && typeof result === 'object' ? Object.keys(result) : [],
+            error,
+            resultPreview: JSON.stringify(result, null, 2).substring(0, 300),
             retryAttempt: this.core.retryState.currentAttempt,
             canRetry: this.core.canRetryAnalysis(),
         });
@@ -2202,7 +2139,7 @@ Result: ${result ? JSON.stringify(result, null, 2) : 'null'}</pre>
 
         this.core._log('info', 'Dispatched retry analysis request', {
             requestId,
-            selectedTextLength: selectedText.length,
+            selectedText,
             retryAttempt: this.core.retryState.currentAttempt,
         });
     }

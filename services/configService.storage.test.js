@@ -241,44 +241,6 @@ describe('ConfigService Enhanced Storage Operations', () => {
                 expect(error.recoveryAction).toContain('sync storage');
             }
         });
-
-        it('rejects a public single-setting write when its storage area is unavailable', async () => {
-            const originalSyncStorage = mockChromeStorage.sync;
-            delete mockChromeStorage.sync;
-
-            try {
-                await expect(
-                    configService.set('uiLanguage', 'es')
-                ).rejects.toMatchObject({
-                    name: 'ConfigServiceStorageError',
-                    context: expect.objectContaining({
-                        operation: 'set',
-                        area: 'sync',
-                        storageUnavailable: true,
-                    }),
-                });
-            } finally {
-                mockChromeStorage.sync = originalSyncStorage;
-            }
-        });
-
-        it('rejects a public single-setting write when Chrome throws synchronously', async () => {
-            mockChromeStorage.sync.set.mockImplementation(() => {
-                throw new Error('synchronous storage failure');
-            });
-
-            await expect(
-                configService.set('uiLanguage', 'es')
-            ).rejects.toMatchObject({
-                name: 'ConfigServiceStorageError',
-                message: expect.stringContaining('synchronous storage failure'),
-                context: expect.objectContaining({
-                    operation: 'set',
-                    area: 'sync',
-                    synchronousFailure: true,
-                }),
-            });
-        });
     });
 
     describe('removeFromStorage', () => {
@@ -311,23 +273,6 @@ describe('ConfigService Enhanced Storage Operations', () => {
                 'key1',
                 expect.any(Function)
             );
-        });
-
-        it('rejects a remove when Chrome throws synchronously', async () => {
-            mockChromeStorage.local.remove.mockImplementation(() => {
-                throw new Error('synchronous remove failure');
-            });
-
-            await expect(
-                configService.removeFromStorage('local', 'key1')
-            ).rejects.toMatchObject({
-                name: 'ConfigServiceStorageError',
-                context: expect.objectContaining({
-                    operation: 'remove',
-                    area: 'local',
-                    synchronousFailure: true,
-                }),
-            });
         });
 
         it('should reject with enhanced error when Chrome storage fails', async () => {

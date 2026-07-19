@@ -9,14 +9,12 @@
  */
 
 import { AI_CONTEXT_CONFIG } from '../core/constants.js';
-import Logger from '../../../utils/logger.js';
 
 /**
  * TextSelectionHandler - Modular text selection management
  */
 export class TextSelectionHandler {
     constructor(config = {}) {
-        this.logger = Logger.create('TextSelectionHandler');
         this.config = {
             maxSelectionLength: 500,
             minSelectionLength: 2,
@@ -155,10 +153,7 @@ export class TextSelectionHandler {
         const word = target.textContent.trim();
         const position = parseInt(target.dataset.position) || 0;
 
-        this._log('debug', 'Word clicked', {
-            wordLength: word.length,
-            position,
-        });
+        this._log('debug', 'Word clicked', { word, position });
 
         // Dispatch word selection event
         const enrichedPosition = {
@@ -235,7 +230,7 @@ export class TextSelectionHandler {
         this.selectionState.lastSelection = enhancedSelection;
 
         this._log('info', 'Selection processed', {
-            textLength: enhancedSelection.text.length,
+            text: enhancedSelection.text,
             hasMetadata: !!enhancedSelection.metadata,
         });
 
@@ -410,7 +405,7 @@ export class TextSelectionHandler {
             this.selectionState.lastSelection = enhancedSelection;
 
             this._log('info', 'Text selection processed', {
-                selectedTextLength: enhancedSelection.text.length,
+                selectedText: enhancedSelection.text,
                 hasContext: !!enhancedSelection.context,
                 source: event.type,
             });
@@ -532,8 +527,8 @@ export class TextSelectionHandler {
         }
 
         this._log('debug', 'Selection boundaries optimized', {
-            originalLength: selectedText.length,
-            optimizedLength: optimizedText.length,
+            original: selectedText,
+            optimized: optimizedText,
             expanded: optimizedText !== selectedText,
         });
 
@@ -636,22 +631,15 @@ export class TextSelectionHandler {
         // This could be used to enable/disable word click handling
     }
 
-    setLogger(logger) {
-        if (logger) {
-            this.logger = logger;
-        }
-    }
-
     _log(level, message, data = {}) {
-        const method = this.logger?.[level];
-        if (typeof method !== 'function') {
-            return;
-        }
-        method.call(this.logger, message, {
+        const logData = {
             component: 'TextSelectionHandler',
             initialized: this.initialized,
             hasSelection: !!this.currentSelection,
+            timestamp: new Date().toISOString(),
             ...data,
-        });
+        };
+
+        console[level](`[AIContext:TextSelection] ${message}`, logData);
     }
 }

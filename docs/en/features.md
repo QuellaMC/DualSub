@@ -5,7 +5,7 @@
 - Dual Subtitle Display: Show original and translated subtitles simultaneously
 - Multi-Platform Support: Works on Netflix and Disney+ with platform-specific optimizations
 - Multiple Translation Providers: Google, Microsoft, DeepL, and OpenAI-compatible
-- Resilient Translation: Provider-aware rate limits, retries, and caching
+- Smart Translation: Automatic fallback between providers and intelligent batching
 
 ## Customization Options
 
@@ -18,7 +18,7 @@
 ## Advanced Features
 
 - AI Context Analysis: Cultural, historical, and linguistic explanations (OpenAI or Google Gemini)
-- Performance Tuning: Configurable delay between subtitle translation requests
+- Performance Tuning: Configurable batch sizes and request delays
 - Advanced Options: Provider-specific settings and comprehensive UI
 - Logging System: Detailed debugging with configurable log levels
 - Official Subtitle Integration: Uses platform native subtitles when available (Netflix)

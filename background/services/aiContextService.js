@@ -23,23 +23,7 @@ import { loggingManager } from '../utils/loggingManager.js';
 import { ContextCache } from '../utils/contextCache.js';
 import { ContextRateLimiterManager } from '../utils/contextRateLimiter.js';
 
-const RUNTIME_CONFIG_KEYS = Object.freeze([
-    'aiContextProvider',
-    'openaiBaseUrl',
-    'openaiModel',
-    'geminiModel',
-    'aiContextCacheEnabled',
-    'aiContextCacheTTL',
-    'aiContextMaxCacheSize',
-    'aiContextRateLimit',
-    'aiContextBurstLimit',
-    'aiContextMandatoryDelay',
-    'aiContextRetryAttempts',
-    'aiContextRetryDelay',
-]);
-const RUNTIME_CONFIG_KEY_SET = new Set(RUNTIME_CONFIG_KEYS);
-
-export class AIContextService {
+class AIContextService {
     constructor() {
         this.logger = null;
         this.currentProviderId = 'openai';
@@ -82,23 +66,6 @@ export class AIContextService {
             cleanupInterval: 300000, // 5 minutes
         });
         this.rateLimiterManager = new ContextRateLimiterManager();
-        this.runtimeConfig = {
-            cacheEnabled: true,
-            cacheTTL: 3600000,
-            cacheMaxSize: 200,
-            rateLimit: 60,
-            burstLimit: 10,
-            mandatoryDelay: 1000,
-            retryAttempts: 3,
-            retryDelay: 2000,
-        };
-        this.configSnapshot = {
-            openaiBaseUrl: 'https://api.openai.com/v1',
-            openaiModel: 'gpt-5.6-luna',
-            geminiModel: 'gemini-3.5-flash',
-        };
-        this.credentialGeneration = 0;
-        this.removeConfigListener = null;
         this.isInitialized = false;
     }
 
@@ -110,9 +77,17 @@ export class AIContextService {
         try {
             this.logger = loggingManager.createLogger('AIContextService');
 
+            for (const [providerId, provider] of Object.entries(
+                this.providers
+            )) {
+                this.rateLimiterManager.getLimiter(
+                    providerId,
+                    provider.rateLimit
+                );
+            }
+
             // Load provider configuration from storage
-            const config = await this._loadRuntimeConfiguration();
-            this._applyRuntimeConfiguration(config);
+            const config = await configService.getAll();
             const savedProvider = config.aiContextProvider;
 
             this.logger.debug('Loading AI Context provider configuration', {
@@ -156,154 +131,6 @@ export class AIContextService {
         }
     }
 
-    _positiveNumber(value, fallback, { integer = false } = {}) {
-        if (!Number.isFinite(value) || value <= 0) {
-            return fallback;
-        }
-        return integer ? Math.floor(value) : value;
-    }
-
-    _selectRuntimeConfiguration(config = {}) {
-        return Object.fromEntries(
-            Object.entries(config).filter(([key]) =>
-                RUNTIME_CONFIG_KEY_SET.has(key)
-            )
-        );
-    }
-
-    async _loadRuntimeConfiguration() {
-        return configService.getMultiple(RUNTIME_CONFIG_KEYS);
-    }
-
-    /**
-     * Apply the persisted cache, rate-limit, retry, and provider identity
-     * settings used by the service.
-     * @param {Object} config
-     * @private
-     */
-    _applyRuntimeConfiguration(config = {}) {
-        this.configSnapshot = {
-            ...this.configSnapshot,
-            ...this._selectRuntimeConfiguration(config),
-        };
-        const effectiveConfig = this.configSnapshot;
-        this.runtimeConfig = {
-            cacheEnabled: effectiveConfig.aiContextCacheEnabled !== false,
-            cacheTTL: this._positiveNumber(
-                effectiveConfig.aiContextCacheTTL,
-                this.runtimeConfig.cacheTTL
-            ),
-            cacheMaxSize: this._positiveNumber(
-                effectiveConfig.aiContextMaxCacheSize,
-                this.runtimeConfig.cacheMaxSize,
-                { integer: true }
-            ),
-            rateLimit: this._positiveNumber(
-                effectiveConfig.aiContextRateLimit,
-                this.runtimeConfig.rateLimit,
-                { integer: true }
-            ),
-            burstLimit: this._positiveNumber(
-                effectiveConfig.aiContextBurstLimit,
-                this.runtimeConfig.burstLimit,
-                { integer: true }
-            ),
-            mandatoryDelay: this._positiveNumber(
-                effectiveConfig.aiContextMandatoryDelay,
-                this.runtimeConfig.mandatoryDelay
-            ),
-            retryAttempts: Math.min(
-                5,
-                this._positiveNumber(
-                    effectiveConfig.aiContextRetryAttempts,
-                    this.runtimeConfig.retryAttempts,
-                    { integer: true }
-                )
-            ),
-            retryDelay: this._positiveNumber(
-                effectiveConfig.aiContextRetryDelay,
-                this.runtimeConfig.retryDelay
-            ),
-        };
-
-        this.cache.updateConfig({
-            maxSize: this.runtimeConfig.cacheMaxSize,
-            defaultTTL: this.runtimeConfig.cacheTTL,
-        });
-        if (!this.runtimeConfig.cacheEnabled) {
-            this.cache.clear();
-        }
-
-        for (const [providerId, provider] of Object.entries(this.providers)) {
-            this.rateLimiterManager.getLimiter(
-                providerId,
-                this._getEffectiveRateLimit(provider)
-            );
-        }
-    }
-
-    _getEffectiveRateLimit(provider) {
-        return {
-            ...provider.rateLimit,
-            requests: this.runtimeConfig.rateLimit,
-            mandatoryDelay: this.runtimeConfig.mandatoryDelay,
-            burstLimit: this.runtimeConfig.burstLimit,
-        };
-    }
-
-    _getProviderCacheIdentity() {
-        if (this.currentProviderId === 'openai') {
-            return `openai:${this.configSnapshot.openaiBaseUrl}:${this.configSnapshot.openaiModel}:credential-generation-${this.credentialGeneration}`;
-        }
-        if (this.currentProviderId === 'gemini') {
-            return `gemini:${this.configSnapshot.geminiModel}:credential-generation-${this.credentialGeneration}`;
-        }
-        return `${this.currentProviderId}:credential-generation-${this.credentialGeneration}`;
-    }
-
-    async _analyzeWithRetry(provider, text, contextType, metadata) {
-        let lastResult;
-        let lastError;
-
-        for (
-            let attempt = 1;
-            attempt <= this.runtimeConfig.retryAttempts;
-            attempt++
-        ) {
-            await this.checkRateLimit(this.currentProviderId, contextType);
-            try {
-                lastResult = await provider.analyzeContext(
-                    text,
-                    contextType,
-                    metadata
-                );
-                if (lastResult.success || lastResult.shouldRetry !== true) {
-                    return lastResult;
-                }
-            } catch (error) {
-                lastError = error;
-            }
-
-            if (attempt < this.runtimeConfig.retryAttempts) {
-                const delay =
-                    this.runtimeConfig.retryDelay * 2 ** (attempt - 1);
-                this.logger.warn('Retrying context analysis', {
-                    provider: this.currentProviderId,
-                    contextType,
-                    attempt: attempt + 1,
-                    maxAttempts: this.runtimeConfig.retryAttempts,
-                    delay,
-                });
-                await new Promise((resolve) => setTimeout(resolve, delay));
-            }
-        }
-
-        if (lastError) {
-            throw lastError;
-        }
-        return lastResult;
-    }
-
     /**
      * Get available context providers
      * @returns {Object} Available providers with their capabilities
@@ -338,7 +165,6 @@ export class AIContextService {
 
         const previousProvider = this.currentProviderId;
         this.currentProviderId = providerId;
-        this.cache.clear();
 
         // Save to configuration
         await configService.set('aiContextProvider', providerId);
@@ -364,8 +190,7 @@ export class AIContextService {
      */
     async reloadProviderConfig() {
         try {
-            const config = await this._loadRuntimeConfiguration();
-            this._applyRuntimeConfiguration(config);
+            const config = await configService.getAll();
             const savedProvider = config.aiContextProvider;
 
             this.logger.debug('Reloading provider configuration', {
@@ -410,7 +235,7 @@ export class AIContextService {
             await this.rateLimiterManager.checkLimit(
                 providerId,
                 contextType,
-                this._getEffectiveRateLimit(provider)
+                provider.rateLimit
             );
             return true;
         } catch (error) {
@@ -434,7 +259,7 @@ export class AIContextService {
         return this.cache.generateKey(
             text,
             contextType,
-            this._getProviderCacheIdentity(),
+            this.currentProviderId,
             metadata
         );
     }
@@ -454,7 +279,7 @@ export class AIContextService {
         // Validate input text
         if (!text || typeof text !== 'string' || text.trim() === '') {
             this.logger.warn('Invalid text provided for context analysis', {
-                textLength: typeof text === 'string' ? text.length : 0,
+                text: text?.substring(0, 50),
                 type: typeof text,
                 contextType,
             });
@@ -478,21 +303,19 @@ export class AIContextService {
             targetLanguage: metadata.targetLanguage,
         });
 
-        const requestCredentialGeneration = this.credentialGeneration;
         const cacheKey = this.generateCacheKey(text, contextType, metadata);
-        const cachedResult = this.runtimeConfig.cacheEnabled
-            ? this.cache.get(cacheKey)
-            : null;
+        const cachedResult = this.cache.get(cacheKey);
         if (cachedResult) {
             this.logger.debug('Returning cached context analysis', {
-                provider: this.currentProviderId,
-                contextType,
+                cacheKey,
             });
             return {
                 ...cachedResult,
                 cached: true,
             };
         }
+
+        await this.checkRateLimit(this.currentProviderId, contextType);
 
         try {
             const provider = this.providers[this.currentProviderId];
@@ -505,8 +328,7 @@ export class AIContextService {
                 hasMetadata: Object.keys(metadata).length > 0,
             });
 
-            const result = await this._analyzeWithRetry(
-                provider,
+            const result = await provider.analyzeContext(
                 text,
                 contextType,
                 metadata
@@ -526,17 +348,9 @@ export class AIContextService {
             });
 
             // Cache successful results
-            if (
-                this.runtimeConfig.cacheEnabled &&
-                result.success &&
-                result.shouldCache !== false &&
-                this.credentialGeneration === requestCredentialGeneration
-            ) {
-                this.cache.set(cacheKey, result, this.runtimeConfig.cacheTTL);
-                this.logger.debug('Result cached successfully', {
-                    provider: this.currentProviderId,
-                    contextType,
-                });
+            if (result.success && result.shouldCache !== false) {
+                this.cache.set(cacheKey, result);
+                this.logger.debug('Result cached successfully', { cacheKey });
             }
 
             this.logger.info('Context analysis completed', {
@@ -678,62 +492,50 @@ export class AIContextService {
      * @private
      */
     _setupConfigurationListener() {
-        this.removeConfigListener?.();
-        this.removeConfigListener = configService.onChanged((changes) => {
-            const cacheIdentityKeys = new Set([
-                'aiContextProvider',
-                'openaiBaseUrl',
-                'openaiModel',
-                'geminiModel',
-                'openaiApiKey',
-                'geminiApiKey',
-            ]);
-            const cacheConfigurationKeys = new Set([
-                'aiContextCacheEnabled',
-                'aiContextCacheTTL',
-                'aiContextMaxCacheSize',
-            ]);
-            const credentialKeys = new Set(['openaiApiKey', 'geminiApiKey']);
-            const changedKeys = Object.keys(changes);
+        // Listen for configuration changes
+        if (
+            typeof chrome !== 'undefined' &&
+            chrome.storage &&
+            chrome.storage.onChanged
+        ) {
+            chrome.storage.onChanged.addListener((changes, areaName) => {
+                if (changes.aiContextProvider && areaName === 'sync') {
+                    const newProvider = changes.aiContextProvider.newValue;
+                    const oldProvider = changes.aiContextProvider.oldValue;
 
-            if (
-                changes.aiContextProvider &&
-                this.providers[changes.aiContextProvider]
-            ) {
-                this.currentProviderId = changes.aiContextProvider;
-            }
+                    this.logger.debug(
+                        'AI Context provider configuration changed',
+                        {
+                            oldProvider,
+                            newProvider,
+                            currentProvider: this.currentProviderId,
+                        }
+                    );
 
-            this._applyRuntimeConfiguration(
-                this._selectRuntimeConfiguration(changes)
-            );
-
-            if (changedKeys.some((key) => credentialKeys.has(key))) {
-                this.credentialGeneration++;
-            }
-
-            if (
-                changedKeys.some(
-                    (key) =>
-                        cacheIdentityKeys.has(key) ||
-                        cacheConfigurationKeys.has(key)
-                )
-            ) {
-                this.cache.clear();
-            }
-
-            this.logger.info('AI Context configuration updated', {
-                changedKeys,
-                currentProvider: this.currentProviderId,
+                    if (
+                        newProvider &&
+                        this.providers[newProvider] &&
+                        newProvider !== this.currentProviderId
+                    ) {
+                        this.currentProviderId = newProvider;
+                        this.logger.info(
+                            'AI Context provider automatically updated from configuration change',
+                            {
+                                oldProvider,
+                                newProvider,
+                                providerName: this.providers[newProvider].name,
+                            }
+                        );
+                    }
+                }
             });
-        });
+        }
     }
 
     /**
      * Cleanup service resources
      */
     cleanup() {
-        this.removeConfigListener?.();
-        this.removeConfigListener = null;
         this.cache.destroy();
         this.rateLimiterManager.cleanup();
         this.isInitialized = false;

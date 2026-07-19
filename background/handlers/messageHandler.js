@@ -17,14 +17,9 @@ import {
     ServiceProtocol,
     TranslationError,
     SubtitleProcessingError,
+    AIContextError,
 } from '../services/serviceInterfaces.js';
 import { MessageActions } from '../../content_scripts/shared/constants/messageActions.js';
-import {
-    combineContextAnalyses,
-    CONTEXT_TYPES,
-} from '../../context_providers/contextSchemas.js';
-
-const SUPPORTED_CONTEXT_TYPES = new Set(CONTEXT_TYPES);
 
 /**
  * @typedef {'translate'|'translateBatch'|'checkBatchSupport'|'fetchVTT'|'changeProvider'|'analyzeContext'|'changeContextProvider'|'getContextStatus'|'getAvailableModels'|'getDefaultModel'|'reloadContextProviderConfig'|'ping'|'checkBackgroundReady'} MessageAction
@@ -43,8 +38,6 @@ const SUPPORTED_CONTEXT_TYPES = new Set(CONTEXT_TYPES);
  * @property {string} [videoId]
  * @property {Object} [data]
  * @property {string} [source]
- * @property {string} [contextType]
- * @property {string[]} [contextTypes]
  */
 
 class MessageHandler {
@@ -102,244 +95,42 @@ class MessageHandler {
         }
         return { valid: true };
     }
-
-    static normalizeContextTypes(
-        contextType,
-        contextTypes,
-        hasExplicitContextTypes = Array.isArray(contextTypes)
-    ) {
-        if (hasExplicitContextTypes) {
-            if (!Array.isArray(contextTypes)) {
-                return {
-                    valid: false,
-                    error: 'Context types must be an array',
-                };
-            }
-
-            const normalized = [...new Set(contextTypes)];
-            if (normalized.length === 0) {
-                return {
-                    valid: false,
-                    error: 'Select at least one context type',
-                };
-            }
-
-            const invalidTypes = normalized.filter(
-                (type) => !SUPPORTED_CONTEXT_TYPES.has(type)
-            );
-            if (invalidTypes.length > 0) {
-                return {
-                    valid: false,
-                    error: `Unsupported context type: ${invalidTypes.join(', ')}`,
-                };
-            }
-
-            return { valid: true, contextTypes: normalized };
-        }
-
-        if (contextType === undefined || contextType === 'all') {
-            return { valid: true, contextTypes: ['all'] };
-        }
-        if (SUPPORTED_CONTEXT_TYPES.has(contextType)) {
-            return { valid: true, contextTypes: [contextType] };
-        }
-
-        return {
-            valid: false,
-            error: `Unsupported context type: ${String(contextType)}`,
-        };
-    }
-
     constructor() {
         this.logger = null;
         this.translationService = null;
         this.subtitleService = null;
         this.aiContextService = null;
-        this.sidePanelService = null;
-        this.serviceReadiness = null;
-        this.runtimeMessageListener = null;
-        this.sidePanelGestureOperations = new WeakMap();
         this.isInitialized = false;
     }
 
     /**
      * Initialize message handler with service dependencies
      */
-    initialize(serviceReadiness = null) {
-        if (serviceReadiness) {
-            this.serviceReadiness = serviceReadiness;
-        }
-
+    initialize() {
         if (this.isInitialized) {
             return;
         }
 
         this.logger = loggingManager.createLogger('MessageHandler');
 
-        this.runtimeMessageListener = (message, sender, sendResponse) => {
-            this.captureSynchronousSidePanelGesture(message, sender);
-
-            if (!this.serviceReadiness || this.serviceReadiness.isReady()) {
-                return this.handleMessage(message, sender, sendResponse);
-            }
-
-            this.serviceReadiness
-                .waitUntilReady()
-                .then(() => {
-                    let responded = false;
-                    const deferredSendResponse = (response) => {
-                        responded = true;
-                        return sendResponse(response);
-                    };
-                    const keepsChannelOpen = this.handleMessage(
-                        message,
-                        sender,
-                        deferredSendResponse
-                    );
-                    if (keepsChannelOpen !== true && !responded) {
-                        sendResponse();
-                    }
-                })
-                .catch((error) => {
-                    this.logger.error(
-                        'Background services failed before message handling',
-                        error,
-                        { action: message?.action }
-                    );
-                    try {
-                        sendResponse({
-                            success: false,
-                            error:
-                                error?.message ||
-                                'Background services failed to initialize',
-                        });
-                    } catch (_) {}
-                });
-
-            return true;
-        };
-
-        chrome.runtime.onMessage.addListener(this.runtimeMessageListener);
+        chrome.runtime.onMessage.addListener(this.handleMessage.bind(this));
 
         this.logger.info('Message handler initialized');
         this.isInitialized = true;
     }
 
-    destroy() {
-        if (
-            this.runtimeMessageListener &&
-            typeof chrome !== 'undefined' &&
-            chrome.runtime?.onMessage?.removeListener
-        ) {
-            chrome.runtime.onMessage.removeListener(
-                this.runtimeMessageListener
-            );
-        }
-        this.runtimeMessageListener = null;
-        this.isInitialized = false;
-    }
-
     /**
      * Set service dependencies (will be injected after services are created)
-     * Supports either positional args or an options object:
-     *   setServices({ translationService, subtitleService, aiContextService?, sidePanelService? })
-     * For backward compatibility, the positional signature remains supported.
      */
-    setServices(
-        translationService,
-        subtitleService,
-        aiContextService = null,
-        sidePanelService = null
-    ) {
-        /** @type {{translationService?: any, subtitleService?: any, aiContextService?: any, sidePanelService?: any}} */
-        let services;
-        if (
-            arguments.length === 1 &&
-            translationService &&
-            typeof translationService === 'object' &&
-            [
-                'translationService',
-                'subtitleService',
-                'aiContextService',
-                'sidePanelService',
-            ].some((key) =>
-                Object.prototype.hasOwnProperty.call(translationService, key)
-            )
-        ) {
-            services = translationService;
-        } else {
-            services = {
-                translationService,
-                subtitleService,
-                aiContextService,
-                sidePanelService,
-            };
-        }
-
-        for (const serviceName of [
-            'translationService',
-            'subtitleService',
-            'aiContextService',
-            'sidePanelService',
-        ]) {
-            if (Object.prototype.hasOwnProperty.call(services, serviceName)) {
-                this[serviceName] = services[serviceName] || null;
-            }
-        }
-
-        this.logger?.debug('Services injected into message handler', {
-            hasTranslation: !!this.translationService,
-            hasSubtitle: !!this.subtitleService,
-            hasAIContext: !!this.aiContextService,
-            hasSidePanel: !!this.sidePanelService,
+    setServices(translationService, subtitleService, aiContextService = null) {
+        this.translationService = translationService;
+        this.subtitleService = subtitleService;
+        this.aiContextService = aiContextService;
+        this.logger.debug('Services injected into message handler', {
+            hasTranslation: !!translationService,
+            hasSubtitle: !!subtitleService,
+            hasAIContext: !!aiContextService,
         });
-    }
-
-    captureSynchronousSidePanelGesture(message, sender) {
-        if (
-            !message ||
-            typeof message !== 'object' ||
-            !this.sidePanelService ||
-            (message.action !== MessageActions.SIDEPANEL_OPEN &&
-                message.action !== MessageActions.SIDEPANEL_WORD_SELECTED)
-        ) {
-            return;
-        }
-
-        const tabId = sender?.tab?.id;
-        if (typeof tabId !== 'number') {
-            return;
-        }
-
-        // Calling the async method itself is deliberate: it invokes
-        // chrome.sidePanel.open before its first await, while the browser's
-        // original click gesture is still active.
-        let operation;
-        try {
-            operation = Promise.resolve(
-                this.sidePanelService.openSidePanelImmediate(
-                    tabId,
-                    message.options || {}
-                )
-            ).catch((error) => ({
-                success: false,
-                error: error.message || 'Failed to open side panel',
-            }));
-        } catch (error) {
-            operation = Promise.resolve({
-                success: false,
-                error: error.message || 'Failed to open side panel',
-            });
-        }
-        this.sidePanelGestureOperations.set(message, operation);
-    }
-
-    takeSynchronousSidePanelGesture(message) {
-        const operation = this.sidePanelGestureOperations.get(message) || null;
-        if (operation) {
-            this.sidePanelGestureOperations.delete(message);
-        }
-        return operation;
     }
 
     /**
@@ -425,34 +216,6 @@ class MessageHandler {
                     sendResponse
                 );
 
-            case MessageActions.SIDEPANEL_OPEN:
-                return this.handleSidePanelOpenMessage(
-                    message,
-                    sender,
-                    sendResponse
-                );
-
-            case MessageActions.SIDEPANEL_WORD_SELECTED:
-                return this.handleSidePanelWordSelectedMessage(
-                    message,
-                    sender,
-                    sendResponse
-                );
-
-            case MessageActions.SIDEPANEL_SELECTION_SYNC:
-                return this.handleSidePanelSelectionSyncMessage(
-                    message,
-                    sender,
-                    sendResponse
-                );
-
-            case MessageActions.SIDEPANEL_SET_ANALYZING:
-                return this.handleSidePanelSetAnalyzingMessage(
-                    message,
-                    sender,
-                    sendResponse
-                );
-
             default:
                 this.logger.warn('Unknown message action', {
                     action: message.action,
@@ -507,7 +270,7 @@ class MessageHandler {
                     originalText: text,
                     sourceLanguage: 'auto',
                     targetLanguage: targetLang,
-                    cached: false,
+                    cached: false, // TODO: Get from service
                     processingTime: Date.now() - request.metadata.timestamp,
                 });
 
@@ -519,7 +282,7 @@ class MessageHandler {
             })
             .catch((error) => {
                 this.logger.error('Translation failed', error, {
-                    textLength: text.length,
+                    text: text.substring(0, 50),
                     targetLang,
                 });
 
@@ -776,9 +539,7 @@ class MessageHandler {
                 });
             })
             .catch((error) => {
-                this.logger.error('VTT processing failed', error, {
-                    urlLength: typeof url === 'string' ? url.length : 0,
-                });
+                this.logger.error('VTT processing failed', error, { url });
                 sendResponse({
                     success: false,
                     error: `VTT Processing Error: ${error.message}`,
@@ -830,19 +591,12 @@ class MessageHandler {
     handleAnalyzeContextMessage(message, sendResponse) {
         const {
             text,
+            contextType = 'all',
             metadata = {},
             targetLanguage,
             language: sourceLanguage,
             requestId,
         } = message;
-        const normalizedContextTypes = MessageHandler.normalizeContextTypes(
-            message.contextType,
-            message.contextTypes,
-            Object.prototype.hasOwnProperty.call(message, 'contextTypes')
-        );
-        const contextTypes = normalizedContextTypes.contextTypes || [];
-        const contextType =
-            contextTypes.length === 1 ? contextTypes[0] : 'combined';
 
         this.logger.debug('Received context analysis message', {
             messageKeys: Object.keys(message),
@@ -853,17 +607,6 @@ class MessageHandler {
             requestId,
         });
 
-        if (!normalizedContextTypes.valid) {
-            sendResponse({
-                success: false,
-                error: normalizedContextTypes.error,
-                contextTypes,
-                originalText: text,
-                requestId,
-            });
-            return true;
-        }
-
         if (!this.aiContextService) {
             const errorResponse = {
                 success: false,
@@ -872,11 +615,10 @@ class MessageHandler {
                 originalText: text,
                 requestId,
             };
-            this.logger.error('AI Context service not available', null, {
-                requestId,
-                contextType,
-                textLength: text?.length || 0,
-            });
+            this.logger.error(
+                'AI Context service not available',
+                errorResponse
+            );
             sendResponse(errorResponse);
             return true;
         }
@@ -886,18 +628,18 @@ class MessageHandler {
             ...metadata,
             targetLanguage: targetLanguage || 'en', // Default to English if not provided
             sourceLanguage: sourceLanguage || 'auto', // Pass source language to AI providers
-            requestedContextTypes: contextTypes,
         };
 
         this.logger.debug('Processing context analysis request', {
             textLength: text?.length || 0,
             contextType,
-            metadataKeys: Object.keys(enhancedMetadata),
+            metadata: enhancedMetadata,
             sourceLanguage: enhancedMetadata.sourceLanguage,
             targetLanguage: enhancedMetadata.targetLanguage,
         });
 
-        this.analyzeRequestedContextTypes(text, contextTypes, enhancedMetadata)
+        this.aiContextService
+            .analyzeContext(text, contextType, enhancedMetadata)
             .then((result) => {
                 this.logger.debug('AI Context service returned result', {
                     success: result.success,
@@ -930,6 +672,8 @@ class MessageHandler {
                 this.logger.error('Context analysis failed', error, {
                     textLength: text?.length || 0,
                     contextType,
+                    errorMessage: error.message,
+                    errorStack: error.stack,
                 });
 
                 const errorResponse = {
@@ -947,67 +691,6 @@ class MessageHandler {
             });
 
         return true; // Async response
-    }
-
-    async analyzeRequestedContextTypes(text, contextTypes, metadata) {
-        if (contextTypes.length === 1) {
-            return this.aiContextService.analyzeContext(
-                text,
-                contextTypes[0],
-                metadata
-            );
-        }
-
-        const requestsCanonicalFullSet =
-            contextTypes.length === CONTEXT_TYPES.length &&
-            CONTEXT_TYPES.every((type) => contextTypes.includes(type));
-        if (requestsCanonicalFullSet) {
-            const result = await this.aiContextService.analyzeContext(
-                text,
-                'all',
-                metadata
-            );
-            return { ...result, contextTypes };
-        }
-
-        const resultsByType = {};
-        for (const requestedType of contextTypes) {
-            const result = await this.aiContextService.analyzeContext(
-                text,
-                requestedType,
-                metadata
-            );
-            resultsByType[requestedType] = result;
-
-            if (!result?.success) {
-                return {
-                    success: false,
-                    error:
-                        result?.error ||
-                        `${requestedType} context analysis failed`,
-                    contextType: 'combined',
-                    contextTypes,
-                    componentResults: resultsByType,
-                    originalText: text,
-                    metadata,
-                    shouldRetry: result?.shouldRetry,
-                    shouldCache: false,
-                };
-            }
-        }
-
-        return {
-            success: true,
-            contextType: 'combined',
-            contextTypes,
-            analysis: combineContextAnalyses(contextTypes, resultsByType),
-            componentResults: resultsByType,
-            originalText: text,
-            metadata,
-            shouldCache: contextTypes.every(
-                (type) => resultsByType[type].shouldCache !== false
-            ),
-        };
     }
 
     /**
@@ -1283,188 +966,6 @@ class MessageHandler {
         });
 
         return true;
-    }
-
-    /**
-     * Handle side panel open requests
-     */
-    handleSidePanelOpenMessage(message, sender, sendResponse) {
-        if (!this.sidePanelService) {
-            sendResponse({
-                success: false,
-                error: 'Side panel service not available',
-            });
-            return true;
-        }
-
-        const tabId = sender.tab?.id;
-        if (!tabId) {
-            sendResponse({
-                success: false,
-                error: 'No tab ID available',
-            });
-            return true;
-        }
-
-        this.logger.debug('Handling side panel open request', { tabId });
-
-        // Optionally store open reason before opening (do NOT override activeTab to avoid UI flips)
-        try {
-            if (message.options?.openReason) {
-                this.sidePanelService.updateTabState(tabId, {
-                    ...(message.options.openReason
-                        ? { openReason: message.options.openReason }
-                        : {}),
-                });
-            }
-        } catch (_) {}
-
-        // Attempt to open the side panel immediately to preserve user gesture
-        const openOperation =
-            this.takeSynchronousSidePanelGesture(message) ||
-            this.sidePanelService.openSidePanelImmediate(
-                tabId,
-                message.options || {}
-            );
-        openOperation
-            .then((result) => {
-                sendResponse(result);
-            })
-            .catch((error) => {
-                this.logger.error(
-                    'Failed to open side panel (immediate)',
-                    error,
-                    { tabId }
-                );
-                sendResponse({
-                    success: false,
-                    error: error.message || 'Failed to open side panel',
-                });
-            });
-
-        return true; // Async response
-    }
-
-    /**
-     * Handle word selection events from content scripts
-     */
-    handleSidePanelWordSelectedMessage(message, sender, sendResponse) {
-        if (!this.sidePanelService) {
-            sendResponse({
-                success: false,
-                error: 'Side panel service not available',
-            });
-            return true;
-        }
-
-        const tabId = sender.tab?.id;
-        if (!tabId) {
-            sendResponse({
-                success: false,
-                error: 'No tab ID available',
-            });
-            return true;
-        }
-
-        this.logger.debug('Handling word selection from content script', {
-            tabId,
-            wordLength:
-                typeof message.word === 'string' ? message.word.length : 0,
-        });
-
-        const openOperation = this.takeSynchronousSidePanelGesture(message);
-        this.sidePanelService
-            .forwardWordSelection(tabId, message, openOperation)
-            .then(() => {
-                sendResponse({ success: true });
-            })
-            .catch((error) => {
-                this.logger.error('Failed to forward word selection', error, {
-                    tabId,
-                });
-                sendResponse({
-                    success: false,
-                    error: error.message || 'Failed to forward word selection',
-                });
-            });
-
-        return true; // Async response
-    }
-
-    handleSidePanelSelectionSyncMessage(message, sender, sendResponse) {
-        if (!this.sidePanelService) {
-            sendResponse({
-                success: false,
-                error: 'Side panel service not available',
-            });
-            return true;
-        }
-
-        const tabId = sender.tab?.id;
-        if (!tabId) {
-            sendResponse({
-                success: false,
-                error: 'No tab ID available',
-            });
-            return true;
-        }
-
-        this.sidePanelService
-            .forwardSelectionSync(tabId, message?.data ?? message)
-            .then(() => {
-                sendResponse({ success: true });
-            })
-            .catch((error) => {
-                this.logger.error('Failed to forward selection sync', error, {
-                    tabId,
-                });
-                sendResponse({
-                    success: false,
-                    error: error.message || 'Failed to forward selection sync',
-                });
-            });
-
-        return true;
-    }
-
-    /**
-     * Handle analyzing state update from side panel
-     * Broadcasts to content script to block/unblock word clicks
-     */
-    handleSidePanelSetAnalyzingMessage(message, sender, sendResponse) {
-        const tabId = sender.tab?.id;
-        if (!tabId) {
-            sendResponse({ success: false, error: 'No tab ID available' });
-            return false;
-        }
-
-        const isAnalyzing = !!message.isAnalyzing;
-        this.logger.debug('Setting analyzing state', { tabId, isAnalyzing });
-
-        // Store state in side panel service
-        if (this.sidePanelService) {
-            this.sidePanelService.updateTabState(tabId, { isAnalyzing });
-        }
-
-        // Forward to content script to block word clicks
-        chrome.tabs
-            .sendMessage(tabId, {
-                action: MessageActions.SIDEPANEL_SET_ANALYZING,
-                isAnalyzing,
-            })
-            .then(() => {
-                sendResponse({ success: true });
-            })
-            .catch((error) => {
-                this.logger.warn(
-                    'Failed to send analyzing state to content script',
-                    error,
-                    { tabId }
-                );
-                sendResponse({ success: true }); // Don't fail the side panel
-            });
-
-        return true; // Async response
     }
 }
 

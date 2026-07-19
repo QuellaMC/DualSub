@@ -4,7 +4,6 @@
  */
 
 import { jest } from '@jest/globals';
-import { configService } from '../services/configService.js';
 
 // Mock fetch globally
 global.fetch = jest.fn();
@@ -30,14 +29,20 @@ global.chrome = {
     },
 };
 
-function mockProviderConfig(config) {
-    return jest.spyOn(configService, 'getMultiple').mockResolvedValue(config);
-}
+// Mock configService
+const mockConfigService = {
+    getMultiple: jest.fn(),
+    set: jest.fn(),
+};
 
 describe('Translation Provider Logging Integration', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         global.chrome.runtime.lastError = null;
+
+        // Reset configService mocks
+        mockConfigService.getMultiple.mockReset();
+        mockConfigService.set.mockReset();
 
         // Mock console methods to capture logging calls
         jest.spyOn(console, 'debug').mockImplementation(() => {});
@@ -54,10 +59,12 @@ describe('Translation Provider Logging Integration', () => {
         test('should use structured logging instead of direct console calls', async () => {
             const { translate } = await import('./deeplTranslate.js');
 
-            mockProviderConfig({
-                deeplApiKey: 'test-key',
-                deeplApiPlan: 'free',
-            });
+            // Mock successful storage response
+            global.chrome.storage.sync.get.mockImplementation(
+                (keys, callback) => {
+                    callback({ deeplApiKey: 'test-key', deeplApiPlan: 'free' });
+                }
+            );
 
             // Mock successful API response
             global.fetch.mockResolvedValue({
@@ -133,8 +140,9 @@ describe('Translation Provider Logging Integration', () => {
 
     describe('Microsoft Translate Provider', () => {
         test('should use structured logging instead of direct console calls', async () => {
-            const { translate } =
-                await import('./microsoftTranslateEdgeAuth.js');
+            const { translate } = await import(
+                './microsoftTranslateEdgeAuth.js'
+            );
 
             // Mock JWT token
             const mockJwtToken =
@@ -178,13 +186,54 @@ describe('Translation Provider Logging Integration', () => {
         });
     });
 
+    describe('DeepL Free Translation Provider', () => {
+        test('should use structured logging instead of direct console calls', async () => {
+            const { translate } = await import('./deeplTranslateFree.js');
+
+            // Mock successful web API response
+            global.fetch.mockResolvedValue({
+                ok: true,
+                json: () =>
+                    Promise.resolve({
+                        result: {
+                            texts: [{ text: 'texto traducido' }],
+                        },
+                    }),
+            });
+
+            await translate('Hello world', 'en', 'es');
+
+            // Verify that structured logging is used
+            const logCalls = [
+                ...console.debug.mock.calls,
+                ...console.info.mock.calls,
+                ...console.warn.mock.calls,
+                ...console.error.mock.calls,
+            ].flat();
+
+            // Check that log messages contain structured format with component name
+            const structuredLogs = logCalls.filter(
+                (call) =>
+                    typeof call === 'string' &&
+                    call.includes('[DeepLTranslateFree]')
+            );
+
+            expect(structuredLogs.length).toBeGreaterThan(0);
+        });
+    });
+
     describe('OpenAI Compatible Translation Provider', () => {
         test('should use structured logging instead of direct console calls', async () => {
-            mockProviderConfig({
-                openaiCompatibleApiKey: 'test-api-key',
-                openaiCompatibleBaseUrl: 'https://api.test.com/v1',
-                openaiCompatibleModel: 'test-model-1',
-            });
+            // Mock chrome.storage response since configService import will fail and fallback to chrome.storage
+            global.chrome.storage.sync.get.mockImplementation(
+                (keys, callback) => {
+                    callback({
+                        openaiCompatibleApiKey: 'test-api-key',
+                        openaiCompatibleBaseUrl: 'https://api.test.com/v1',
+                        openaiCompatibleModel: 'test-model-1',
+                    });
+                }
+            );
 
             // Mock successful API response
             global.fetch.mockResolvedValue({
@@ -208,8 +257,9 @@ describe('Translation Provider Logging Integration', () => {
                     }),
             });
 
-            const { translate } =
-                await import('./openaiCompatibleTranslate.js');
+            const { translate } = await import(
+                './openaiCompatibleTranslate.js'
+            );
             await translate('Hello world', 'en', 'es');
 
             // Verify that structured logging is used
@@ -231,11 +281,16 @@ describe('Translation Provider Logging Integration', () => {
         });
 
         test('should normalize baseUrl and log the normalization', async () => {
-            mockProviderConfig({
-                openaiCompatibleApiKey: 'test-api-key',
-                openaiCompatibleBaseUrl: 'https://api.test.com/v1//\\',
-                openaiCompatibleModel: 'test-model-1',
-            });
+            // Mock chrome.storage response with trailing slashes
+            global.chrome.storage.sync.get.mockImplementation(
+                (keys, callback) => {
+                    callback({
+                        openaiCompatibleApiKey: 'test-api-key',
+                        openaiCompatibleBaseUrl: 'https://api.test.com/v1//\\',
+                        openaiCompatibleModel: 'test-model-1',
+                    });
+                }
+            );
 
             // Mock successful API response
             global.fetch.mockResolvedValue({
@@ -259,8 +314,9 @@ describe('Translation Provider Logging Integration', () => {
                     }),
             });
 
-            const { translate } =
-                await import('./openaiCompatibleTranslate.js');
+            const { translate } = await import(
+                './openaiCompatibleTranslate.js'
+            );
             await translate('Hello world', 'en', 'es');
 
             // Verify that translation was successful (INFO level logs are recorded)
@@ -282,11 +338,16 @@ describe('Translation Provider Logging Integration', () => {
         });
 
         test('should log configuration details during API setup', async () => {
-            mockProviderConfig({
-                openaiCompatibleApiKey: 'test-api-key',
-                openaiCompatibleBaseUrl: 'https://api.test.com/v1',
-                openaiCompatibleModel: 'test-model-1',
-            });
+            // Mock chrome.storage response
+            global.chrome.storage.sync.get.mockImplementation(
+                (keys, callback) => {
+                    callback({
+                        openaiCompatibleApiKey: 'test-api-key',
+                        openaiCompatibleBaseUrl: 'https://api.test.com/v1',
+                        openaiCompatibleModel: 'test-model-1',
+                    });
+                }
+            );
 
             // Mock successful API response
             global.fetch.mockResolvedValue({
@@ -307,8 +368,9 @@ describe('Translation Provider Logging Integration', () => {
                     }),
             });
 
-            const { translate } =
-                await import('./openaiCompatibleTranslate.js');
+            const { translate } = await import(
+                './openaiCompatibleTranslate.js'
+            );
             await translate('Hello world', 'en', 'es');
 
             // Verify that translation request was logged
@@ -323,12 +385,17 @@ describe('Translation Provider Logging Integration', () => {
             expect(requestLogs.length).toBeGreaterThan(0);
         });
 
-        test('should use configuration resolved by configService', async () => {
-            mockProviderConfig({
-                openaiCompatibleApiKey: 'service-api-key',
-                openaiCompatibleBaseUrl: 'https://service.api.com/v1',
-                openaiCompatibleModel: 'service-model',
-            });
+        test('should use chrome.storage fallback when configService fails', async () => {
+            // Since configService import already fails, it will directly use chrome.storage fallback
+            global.chrome.storage.sync.get.mockImplementation(
+                (keys, callback) => {
+                    callback({
+                        openaiCompatibleApiKey: 'fallback-api-key',
+                        openaiCompatibleBaseUrl: 'https://fallback.api.com/v1',
+                        openaiCompatibleModel: 'fallback-model',
+                    });
+                }
+            );
 
             // Mock successful API response
             global.fetch.mockResolvedValue({
@@ -349,8 +416,9 @@ describe('Translation Provider Logging Integration', () => {
                     }),
             });
 
-            const { translate } =
-                await import('./openaiCompatibleTranslate.js');
+            const { translate } = await import(
+                './openaiCompatibleTranslate.js'
+            );
             await translate('Hello world', 'en', 'es');
 
             // Verify that translation was completed (INFO level logs are recorded)
@@ -395,11 +463,16 @@ describe('Translation Provider Logging Integration', () => {
         });
 
         test('should log OpenAI provider errors with structured format', async () => {
-            mockProviderConfig({
-                openaiCompatibleApiKey: 'test-api-key',
-                openaiCompatibleBaseUrl: 'https://api.test.com/v1',
-                openaiCompatibleModel: 'test-model-1',
-            });
+            // Mock chrome.storage response
+            global.chrome.storage.sync.get.mockImplementation(
+                (keys, callback) => {
+                    callback({
+                        openaiCompatibleApiKey: 'test-api-key',
+                        openaiCompatibleBaseUrl: 'https://api.test.com/v1',
+                        openaiCompatibleModel: 'test-model-1',
+                    });
+                }
+            );
 
             // Mock API failure
             global.fetch.mockResolvedValue({
@@ -409,8 +482,9 @@ describe('Translation Provider Logging Integration', () => {
                 text: () => Promise.resolve('Invalid API key'),
             });
 
-            const { translate } =
-                await import('./openaiCompatibleTranslate.js');
+            const { translate } = await import(
+                './openaiCompatibleTranslate.js'
+            );
 
             await expect(
                 translate('Hello world', 'en', 'es')
@@ -429,14 +503,20 @@ describe('Translation Provider Logging Integration', () => {
         });
 
         test('should log missing API key error with structured format', async () => {
-            mockProviderConfig({
-                openaiCompatibleApiKey: '',
-                openaiCompatibleBaseUrl: 'https://api.test.com/v1',
-                openaiCompatibleModel: 'test-model-1',
-            });
+            // Mock chrome.storage response with no API key
+            global.chrome.storage.sync.get.mockImplementation(
+                (keys, callback) => {
+                    callback({
+                        openaiCompatibleApiKey: '',
+                        openaiCompatibleBaseUrl: 'https://api.test.com/v1',
+                        openaiCompatibleModel: 'test-model-1',
+                    });
+                }
+            );
 
-            const { translate } =
-                await import('./openaiCompatibleTranslate.js');
+            const { translate } = await import(
+                './openaiCompatibleTranslate.js'
+            );
 
             await expect(translate('Hello world', 'en', 'es')).rejects.toThrow(
                 'OpenAI-compatible API key not configured'

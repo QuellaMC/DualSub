@@ -4,7 +4,7 @@
 
 - Google Chrome 或其它基于 Chromium 的浏览器（建议最新版本）
 - 网络连接（用于翻译与 AI 上下文）
-- 开发用途：需要 Node.js 24 LTS 与 npm 11+
+- 开发用途：需要 Node.js 18+ 与 npm
 
 ---
 
@@ -62,21 +62,21 @@
 2. 安装依赖
 
     ```bash
-    npm ci
+    npm install
     ```
 
 3. 构建扩展
-
+    
     扩展使用 React 开发，使用前需要构建：
-
+    
     ```bash
     npm run build
     ```
-
+    
     这将创建 `dist/` 文件夹，其中包含编译后的扩展。
-
+    
     开发模式下自动重新构建：
-
+    
     ```bash
     npm run dev
     ```
@@ -100,7 +100,7 @@
     - 拉取最新代码：
         ```bash
         git pull
-        npm ci  # 根据 package-lock.json 精确重新安装
+        npm install  # 如果依赖项发生变化
         npm run build
         ```
     - 在 `chrome://extensions` 中点击 DualSub 卡片的刷新按钮
@@ -111,11 +111,11 @@
 
 - 扩展不可见：在 `chrome://extensions` 确认已启用，并可选择固定到工具栏
 - "无法加载 manifest"：
-    - GitHub 发布版：确保已解压 ZIP 并选择解压后的文件夹
-    - 开发版：确保选择的是 `dist/` 文件夹（不是项目根目录！）并且已运行 `npm run build`
-- 构建错误：确保已安装 Node.js 24 LTS，并在 `npm run build` 之前运行 `npm ci`
+  - GitHub 发布版：确保已解压 ZIP 并选择解压后的文件夹
+  - 开发版：确保选择的是 `dist/` 文件夹（不是项目根目录！）并且已运行 `npm run build`
+- 构建错误：确保已安装 Node.js 18+，并在 `npm run build` 之前运行 `npm install`
 - 无字幕可用：确认平台本身提供字幕并在播放器中已开启
 - AI 上下文无响应：在高级设置中配置 API 密钥与模型；检查速率限制与网络
-- 翻译服务异常：检查服务商凭据与端点，尝试更换服务商，或在高级设置中增大请求延迟
+- 翻译服务异常：尝试更换服务商，或在高级设置中调小批处理、增大请求延迟
 
 如仍有问题，请提交 Issue： [GitHub Issues](https://github.com/QuellaMC/DualSub/issues)

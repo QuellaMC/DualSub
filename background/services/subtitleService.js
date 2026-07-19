@@ -29,6 +29,7 @@ import { configService } from '../../services/configService.js';
  * @property {boolean} useNativeTarget
  * @property {Array<Object>} availableLanguages
  * @property {string|null} url
+ * @property {string} [error]
  */
 
 class SubtitleService {
@@ -36,10 +37,11 @@ class SubtitleService {
         this.logger = null;
         this.isInitialized = false;
         this.supportedPlatforms = new Set(['netflix', 'disneyplus', 'generic']);
+        this.processingCache = new Map();
         this.performanceMetrics = {
             totalProcessed: 0,
-            successfulProcessed: 0,
             averageProcessingTime: 0,
+            cacheHits: 0,
             errors: 0,
         };
     }
@@ -72,6 +74,7 @@ class SubtitleService {
             // Initialize Netflix parser with default configuration
             netflixParser.initialize({
                 useOfficialTranslations: false,
+                enableCaching: true,
             });
 
             this.logger.debug('Parser modules initialized successfully');
@@ -146,7 +149,7 @@ class SubtitleService {
      */
     async fetchAndProcessSubtitles(url, targetLanguage, originalLanguage) {
         this.logger.info('Fetching and processing subtitles', {
-            urlLength: url.length,
+            url: url.substring(0, 100),
             targetLanguage,
             originalLanguage,
         });
@@ -160,7 +163,7 @@ class SubtitleService {
             );
         } catch (error) {
             this.logger.error('Disney+ subtitle processing failed', error, {
-                urlLength: url.length,
+                url: url.substring(0, 100),
             });
             throw error;
         }
@@ -176,7 +179,7 @@ class SubtitleService {
         originalLanguage
     ) {
         this.logger.info('Processing Disney+ subtitles with complete logic', {
-            masterPlaylistUrlLength: masterPlaylistUrl.length,
+            masterPlaylistUrl: masterPlaylistUrl.substring(0, 100),
             originalLanguage,
             targetLanguage,
         });
@@ -466,16 +469,11 @@ class SubtitleService {
         this.performanceMetrics.totalProcessed++;
 
         if (success) {
-            // Failures are tracked separately and must not dilute the average.
-            const successfulProcessed =
-                this.performanceMetrics.successfulProcessed || 0;
-            const nextSuccessfulProcessed = successfulProcessed + 1;
+            // Update average processing time
+            const total = this.performanceMetrics.totalProcessed;
             const currentAvg = this.performanceMetrics.averageProcessingTime;
             this.performanceMetrics.averageProcessingTime =
-                (currentAvg * successfulProcessed + processingTime) /
-                nextSuccessfulProcessed;
-            this.performanceMetrics.successfulProcessed =
-                nextSuccessfulProcessed;
+                (currentAvg * (total - 1) + processingTime) / total;
         } else {
             this.performanceMetrics.errors++;
         }
@@ -498,6 +496,14 @@ class SubtitleService {
     }
 
     /**
+     * Clear processing cache
+     */
+    clearCache() {
+        this.processingCache.clear();
+        this.logger.debug('Processing cache cleared');
+    }
+
+    /**
      * Get supported platforms
      * @returns {Array} Supported platform names
      */
@@ -511,7 +517,7 @@ class SubtitleService {
     async fetchLanguageSpecificSubtitles(uri, masterPlaylistUrl) {
         const fullSubtitleUrl = new URL(uri, masterPlaylistUrl).href;
         this.logger.info('Fetching language-specific subtitle playlist', {
-            urlLength: fullSubtitleUrl.length,
+            url: fullSubtitleUrl.substring(0, 100),
         });
 
         const subtitleText = await vttParser.fetchText(fullSubtitleUrl);

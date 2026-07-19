@@ -70,18 +70,14 @@ describe('MessageHandler.validateMessagePayload', () => {
 });
 
 describe('ProviderBatchConfigs', () => {
-    test('only declares providers with a real multi-text request', () => {
-        expect(Object.keys(ProviderBatchConfigs)).toEqual([
-            Providers.OPENAI_COMPATIBLE,
-            Providers.VERTEX_GEMINI,
-        ]);
-        expect(Object.keys(Providers)).toEqual([
-            'GOOGLE',
-            'MICROSOFT_EDGE_AUTH',
-            'DEEPL',
-            'OPENAI_COMPATIBLE',
-            'VERTEX_GEMINI',
-        ]);
+    test('has configs for known providers', () => {
+        expect(ProviderBatchConfigs[Providers.OPENAI_COMPATIBLE]).toBeDefined();
+        expect(ProviderBatchConfigs[Providers.GOOGLE]).toBeDefined();
+        expect(ProviderBatchConfigs[Providers.DEEPL]).toBeDefined();
+        expect(ProviderBatchConfigs[Providers.DEEPL_FREE]).toBeDefined();
+        expect(
+            ProviderBatchConfigs[Providers.MICROSOFT_EDGE_AUTH]
+        ).toBeDefined();
     });
 
     test('openai_compatible has delimiter and maxBatchSize', () => {

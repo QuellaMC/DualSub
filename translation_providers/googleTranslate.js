@@ -1,7 +1,6 @@
 // disneyplus-dualsub-chrome-extension/translation_providers/googleTranslate.js
 
 import Logger from '../utils/logger.js';
-import { fetchWithTimeout } from '../utils/fetchWithTimeout.js';
 
 // Initialize logger for Google Translate provider
 const logger = Logger.create('GoogleTranslate');
@@ -24,11 +23,13 @@ export async function translate(text, sourceLang, targetLang) {
     const G_TRANSLATE_URL = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceLang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
 
     try {
-        const response = await fetchWithTimeout(G_TRANSLATE_URL);
+        const response = await fetch(G_TRANSLATE_URL);
         if (!response.ok) {
+            const errorText = await response.text();
             logger.error('Google Translate API HTTP error', null, {
                 status: response.status,
-                contentType: response.headers?.get?.('content-type') || null,
+                statusText: response.statusText,
+                responsePreview: errorText.substring(0, 200),
             });
             throw new Error(`Translation API HTTP error ${response.status}.`);
         }
@@ -56,12 +57,7 @@ export async function translate(text, sourceLang, targetLang) {
                     'Translation JSON parsing failed or unexpected structure',
                     null,
                     {
-                        responseType: Array.isArray(data)
-                            ? 'array'
-                            : typeof data,
-                        topLevelItemCount: Array.isArray(data)
-                            ? data.length
-                            : 0,
+                        responseData: data,
                     }
                 );
                 throw new Error(
@@ -72,7 +68,7 @@ export async function translate(text, sourceLang, targetLang) {
             const textResponse = await response.text();
             logger.error('Google Translate API did not return JSON', null, {
                 contentType,
-                responseLength: textResponse.length,
+                responsePreview: textResponse.substring(0, 500),
             });
             if (
                 textResponse.includes('<title>Google</title>') &&
@@ -87,8 +83,7 @@ export async function translate(text, sourceLang, targetLang) {
             );
         }
     } catch (error) {
-        logger.error('API request/processing error occurred', null, {
-            errorType: error?.name || 'UnknownError',
+        logger.error('API request/processing error occurred', error, {
             sourceLang,
             targetLang,
             textLength: text?.length || 0,

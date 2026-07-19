@@ -5,5 +5,9 @@ export function TestResultDisplay({ result }) {
         return null;
     }
 
-    return <div className={`test-result ${result.type}`}>{result.message}</div>;
+    return (
+        <div className={`test-result ${result.type}`}>
+            {result.message}
+        </div>
+    );
 }

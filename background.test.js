@@ -157,6 +157,8 @@ describe('Background Script Logging Level Synchronization', () => {
 
         // Import the broadcastLoggingLevelChange function (would need to be exported)
         // For now, we'll test the concept
+        const newLevel = Logger.LEVELS.DEBUG;
+
         // This would be the actual function call
         // await broadcastLoggingLevelChange(newLevel);
 

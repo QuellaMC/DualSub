@@ -10,9 +10,6 @@
  */
 
 import { PROVIDER_CONFIG } from '../core/constants.js';
-import Logger from '../../../utils/logger.js';
-
-const logger = Logger.create('AIContextProvider');
 
 /**
  * AIContextProvider - Unified AI communication interface
@@ -95,14 +92,9 @@ export class AIContextProvider {
             `req-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
 
         this._log('info', 'Starting context analysis', {
-            textLength: text.length,
+            text: text.substring(0, 100) + (text.length > 100 ? '...' : ''),
             requestId,
-            contextTypeCount: Array.isArray(options.contextTypes)
-                ? options.contextTypes.length
-                : 3,
-            language: options.language || 'auto',
-            targetLanguage: options.targetLanguage || 'en',
-            platform: options.platform || 'unknown',
+            options,
         });
 
         // Track request start time
@@ -193,7 +185,7 @@ export class AIContextProvider {
 
             this._log('error', 'Context analysis failed', {
                 requestId,
-                errorType: error?.name || 'UnknownError',
+                error: error.message,
                 responseTime,
             });
 
@@ -234,6 +226,61 @@ export class AIContextProvider {
 
         this._log('info', 'Request canceled', { requestId });
         return true;
+    }
+
+    /**
+     * Analyze multiple texts in batch
+     * @param {string[]} texts - Array of texts to analyze
+     * @param {Object} options - Analysis options
+     * @returns {Promise<Object[]>} Array of analysis results
+     */
+    async analyzeBatch(texts, options = {}) {
+        if (!this.initialized) {
+            throw new Error('Provider not initialized');
+        }
+
+        this._log('info', 'Starting batch analysis', {
+            count: texts.length,
+            batchSize: this.config.batchSize,
+        });
+
+        const results = [];
+        const batchSize = this.config.batchSize;
+
+        // Process in batches to avoid overwhelming the system
+        for (let i = 0; i < texts.length; i += batchSize) {
+            const batch = texts.slice(i, i + batchSize);
+            const batchPromises = batch.map((text, index) =>
+                this.analyzeContext(text, {
+                    ...options,
+                    requestId: `batch-${Date.now()}-${i + index}`,
+                })
+            );
+
+            try {
+                const batchResults = await Promise.all(batchPromises);
+                results.push(...batchResults);
+            } catch (error) {
+                this._log('error', 'Batch analysis failed', {
+                    batchIndex: Math.floor(i / batchSize),
+                    error: error.message,
+                });
+                // Add error results for failed batch
+                batch.forEach(() => {
+                    results.push({
+                        success: false,
+                        error: error.message,
+                    });
+                });
+            }
+        }
+
+        this._log('info', 'Batch analysis completed', {
+            total: texts.length,
+            successful: results.filter((r) => r.success).length,
+        });
+
+        return results;
     }
 
     /**
@@ -387,22 +434,14 @@ export class AIContextProvider {
     }
 
     _log(level, message, data = {}) {
-        const safeData =
-            data instanceof Error
-                ? { errorType: data.name || 'UnknownError' }
-                : data;
         const logData = {
+            component: 'AIContextProvider',
             initialized: this.initialized,
             activeRequests: this.activeRequests.size,
-            ...safeData,
+            timestamp: new Date().toISOString(),
+            ...data,
         };
 
-        if (level === 'error') {
-            logger.error(message, null, logData);
-            return;
-        }
-
-        const logMethod = logger[level] || logger.info;
-        logMethod.call(logger, message, logData);
+        console[level](`[AIContext:Provider] ${message}`, logData);
     }
 }

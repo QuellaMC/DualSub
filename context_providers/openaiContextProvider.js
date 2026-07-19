@@ -15,8 +15,6 @@ import {
     CONTEXT_SCHEMA_NAME,
     validateAgainstSchema,
 } from './contextSchemas.js';
-import { isRetryableContextError } from './retryPolicy.js';
-import { fetchWithTimeout } from '../utils/fetchWithTimeout.js';
 
 const logger = Logger.create('OpenAIContextProvider');
 
@@ -25,24 +23,31 @@ const logger = Logger.create('OpenAIContextProvider');
  */
 export const OPENAI_MODELS = [
     {
-        id: 'gpt-5.6-luna',
-        name: 'GPT-5.6 Luna',
-        description: 'Optimized for cost-sensitive context analysis',
-        contextWindow: 1050000,
-        recommended: true,
-    },
-    {
-        id: 'gpt-5.6-terra',
-        name: 'GPT-5.6 Terra',
-        description: 'Balances analysis quality and cost',
-        contextWindow: 1050000,
+        id: 'gpt-4.1-nano-2025-04-14',
+        name: 'GPT-4.1 Nano',
+        description: 'Cost-effective for most context analysis tasks',
+        contextWindow: 8192,
         recommended: false,
     },
     {
-        id: 'gpt-5.6',
-        name: 'GPT-5.6',
-        description: 'Frontier model for the most demanding analysis',
-        contextWindow: 1050000,
+        id: 'gpt-4.1-mini-2025-04-14',
+        name: 'GPT-4.1 Mini',
+        description: 'High-quality analysis with better cultural understanding',
+        contextWindow: 128000,
+        recommended: true,
+    },
+    {
+        id: 'gpt-4o-mini-2024-07-18',
+        name: 'GPT-4o Mini',
+        description: 'Optimized for speed and efficiency',
+        contextWindow: 128000,
+        recommended: false,
+    },
+    {
+        id: 'gpt-4o-2024-08-06',
+        name: 'GPT-4o',
+        description: 'Optimized for speed and efficiency',
+        contextWindow: 128000,
         recommended: false,
     },
 ];
@@ -65,25 +70,21 @@ export function getDefaultModel() {
 }
 
 /**
- * Normalizes a provider base URL to the versioned OpenAI-compatible API root.
+ * Normalizes baseUrl by removing trailing slashes and backslashes
  * @param {string} url - The base URL to normalize
- * @returns {string} Normalized URL ending in /v1
+ * @returns {string} Normalized URL without trailing slashes
  */
 function normalizeBaseUrl(url) {
     if (!url || typeof url !== 'string') {
         return url;
     }
 
-    const withoutTrailingSeparators = url.replace(/[/\\]+$/, '');
-    const normalized = /\/v1$/i.test(withoutTrailingSeparators)
-        ? withoutTrailingSeparators
-        : `${withoutTrailingSeparators}/v1`;
+    const normalized = url.replace(/[/\\]+$/, '');
 
     logger.debug('Base URL normalized', {
-        changed: url !== normalized,
-        isGoogleEndpoint: normalized.includes(
-            'generativelanguage.googleapis.com'
-        ),
+        originalUrl: url,
+        normalizedUrl: normalized,
+        hadTrailingSlash: url !== normalized,
     });
 
     return normalized;
@@ -106,7 +107,8 @@ function normalizeModelName(model, baseUrl) {
             : model;
 
         logger.debug('Model name normalized for Gemini', {
-            hadModelsPrefix: model.startsWith('models/'),
+            originalModel: model,
+            normalizedModel: normalized,
         });
 
         return normalized;
@@ -161,27 +163,32 @@ function getLanguageName(langCode) {
  * @returns {string} Formatted prompt for the AI model
  */
 function createContextPrompt(text, contextType, metadata = {}) {
-    const { targetLanguage = 'unknown', surroundingContext = '' } = metadata;
+    const {
+        sourceLanguage = 'unknown',
+        targetLanguage = 'unknown',
+        surroundingContext = '',
+    } = metadata;
 
     // Get language name for the target language code
     const targetLanguageName = getLanguageName(targetLanguage);
+    const sourceLanguageName = getLanguageName(sourceLanguage);
 
     const baseContext = `
-Analyze this text for ${contextType} context:
+Analyze this ${sourceLanguageName} text for ${contextType} context:
 
 Text to analyze: "${text}"
+Source language: ${sourceLanguage} (${sourceLanguageName})
 Target language for response: ${targetLanguage} (${targetLanguageName})
 ${surroundingContext ? `Context: "${surroundingContext}"` : ''}
 
 CRITICAL INSTRUCTIONS:
-1. First, IDENTIFY the language of the "Text to analyze"
-2. Write your ENTIRE response in ${targetLanguageName} language
-3. Analyze and discuss the content, culture, and context of the identified source language
-4. Explain cultural/historical/linguistic aspects TO a ${targetLanguageName} speaker
-5. Do NOT analyze ${targetLanguageName} language or culture - focus on the source material
-6. Help ${targetLanguageName} speakers understand this text better
+1. Write your ENTIRE response in ${targetLanguageName} language
+2. Analyze and discuss the ${sourceLanguageName} language content, culture, and context
+3. Explain ${sourceLanguageName} cultural/historical/linguistic aspects TO a ${targetLanguageName} speaker
+4. Do NOT analyze ${targetLanguageName} language or culture - focus on the ${sourceLanguageName} source material
+5. Help ${targetLanguageName} speakers understand this ${sourceLanguageName} text better
 
-Provide a clear, educational explanation that helps ${targetLanguageName} speakers understand the deeper meaning of this content.
+Provide a clear, educational explanation that helps ${targetLanguageName} speakers understand the deeper meaning of this ${sourceLanguageName} content.
 `;
 
     switch (contextType) {
@@ -189,116 +196,116 @@ Provide a clear, educational explanation that helps ${targetLanguageName} speake
             return (
                 baseContext +
                 `
-Provide a comprehensive cultural analysis of this text in the following JSON structure:
+Provide a comprehensive cultural analysis of this ${sourceLanguageName} text in the following JSON structure:
 {
-  "definition": "Clear definition or meaning of this expression",
+  "definition": "Clear definition or meaning of this ${sourceLanguageName} expression",
   "cultural_context": {
-    "origins": "Cultural origins and background of this expression",
-    "social_context": "How this is used in the source culture and conversational context",
-    "regional_variations": "How this expression varies across different regions speaking the source language"
+    "origins": "${sourceLanguageName} cultural origins and background of this expression",
+    "social_context": "How this is used in ${sourceLanguageName} society and conversational context",
+    "regional_variations": "How this ${sourceLanguageName} expression varies across different ${sourceLanguageName}-speaking regions"
   },
   "usage": {
-    "examples": ["Usage example 1", "Usage example 2", "Usage example 3"],
-    "when_to_use": "When speakers of the source language use this expression",
-    "formality_level": "Formality level in the source culture"
+    "examples": ["${sourceLanguageName} usage example 1", "${sourceLanguageName} usage example 2", "${sourceLanguageName} usage example 3"],
+    "when_to_use": "When ${sourceLanguageName} speakers use this expression",
+    "formality_level": "Formality level in ${sourceLanguageName} culture"
   },
-  "cultural_significance": "Why this expression is culturally important in the source culture",
-  "learning_tips": "Practical advice for ${targetLanguageName} speakers learning the source language",
-  "related_expressions": ["Similar expression 1", "Similar expression 2"],
-  "sensitivities": "Cultural sensitivities ${targetLanguageName} speakers should know about this expression"
+  "cultural_significance": "Why this expression is culturally important in ${sourceLanguageName} culture",
+  "learning_tips": "Practical advice for ${targetLanguageName} speakers learning ${sourceLanguageName}",
+  "related_expressions": ["Similar ${sourceLanguageName} expression 1", "Similar ${sourceLanguageName} expression 2"],
+  "sensitivities": "Cultural sensitivities ${targetLanguageName} speakers should know about this ${sourceLanguageName} expression"
 }
 
-Respond ONLY with valid JSON in this exact structure. All text content within the JSON must be written in ${targetLanguageName} but analyze the source content.`
+Respond ONLY with valid JSON in this exact structure. All text content within the JSON must be written in ${targetLanguageName} but analyze the ${sourceLanguageName} content.`
             );
 
         case 'historical':
             return (
                 baseContext +
                 `
-Provide a detailed historical analysis of this text in the following JSON structure:
+Provide a detailed historical analysis of this ${sourceLanguageName} text in the following JSON structure:
 {
-  "definition": "Clear definition or meaning of this expression",
+  "definition": "Clear definition or meaning of this ${sourceLanguageName} expression",
   "historical_context": {
-    "time_period": "Historical period relevant to this expression",
-    "historical_figures": "Important historical figures connected to this expression",
-    "events": "Historical events that shaped this expression"
+    "time_period": "Historical period relevant to this ${sourceLanguageName} expression",
+    "historical_figures": "Important ${sourceLanguageName} historical figures connected to this expression",
+    "events": "${sourceLanguageName} historical events that shaped this expression"
   },
   "evolution": {
-    "original_meaning": "How this expression was originally used",
-    "changes_over_time": "How this expression's meaning evolved",
-    "modern_usage": "How this expression is used today"
+    "original_meaning": "How this ${sourceLanguageName} expression was originally used",
+    "changes_over_time": "How this ${sourceLanguageName} expression's meaning evolved",
+    "modern_usage": "How this ${sourceLanguageName} expression is used today"
   },
-  "historical_significance": "Why this expression is historically important in the source culture/history",
-  "examples": ["Historical usage example 1", "Historical usage example 2"],
-  "related_terms": ["Related historical term 1", "Related historical term 2"],
-  "learning_context": "How understanding the source history helps ${targetLanguageName} speakers learn this expression"
+  "historical_significance": "Why this expression is historically important in ${sourceLanguageName} culture/history",
+  "examples": ["${sourceLanguageName} historical usage example 1", "${sourceLanguageName} historical usage example 2"],
+  "related_terms": ["Related ${sourceLanguageName} historical term 1", "Related ${sourceLanguageName} historical term 2"],
+  "learning_context": "How understanding ${sourceLanguageName} history helps ${targetLanguageName} speakers learn this expression"
 }
 
-Respond ONLY with valid JSON in this exact structure. All text content within the JSON must be written in ${targetLanguageName} but analyze the historical context of the source.`
+Respond ONLY with valid JSON in this exact structure. All text content within the JSON must be written in ${targetLanguageName} but analyze the ${sourceLanguageName} historical context.`
             );
 
         case 'linguistic':
             return (
                 baseContext +
                 `
-Provide an in-depth linguistic analysis of this text in the following JSON structure:
+Provide an in-depth linguistic analysis of this ${sourceLanguageName} text in the following JSON structure:
 {
-  "definition": "Clear definition or meaning of this expression",
+  "definition": "Clear definition or meaning of this ${sourceLanguageName} expression",
   "etymology": {
-    "word_origins": "Language family and root origins of this expression",
-    "historical_development": "How this word/phrase developed linguistically"
+    "word_origins": "${sourceLanguageName} language family and root origins of this expression",
+    "historical_development": "How this ${sourceLanguageName} word/phrase developed linguistically"
   },
   "grammar": {
-    "structure": "Grammatical structure and patterns of this expression",
-    "usage_rules": "Grammar rules for proper usage"
+    "structure": "${sourceLanguageName} grammatical structure and patterns of this expression",
+    "usage_rules": "${sourceLanguageName} grammar rules for proper usage"
   },
   "semantics": {
-    "literal_meaning": "Literal meaning before translation",
-    "connotations": "Implied meanings and connotations",
-    "register": "Formal/informal/technical classification"
+    "literal_meaning": "Literal ${sourceLanguageName} meaning before translation",
+    "connotations": "Implied meanings and connotations in ${sourceLanguageName}",
+    "register": "Formal/informal/technical classification in ${sourceLanguageName}"
   },
-  "translation_notes": "Why this expression is challenging to translate to ${targetLanguageName}",
-  "examples": ["Linguistic example 1", "Linguistic example 2"],
-  "related_forms": ["Related word 1", "Related word 2"],
-  "learning_tips": "Specific tips for ${targetLanguageName} speakers to master this expression linguistically"
+  "translation_notes": "Why this ${sourceLanguageName} expression is challenging to translate to ${targetLanguageName}",
+  "examples": ["${sourceLanguageName} linguistic example 1", "${sourceLanguageName} linguistic example 2"],
+  "related_forms": ["Related ${sourceLanguageName} word 1", "Related ${sourceLanguageName} word 2"],
+  "learning_tips": "Specific tips for ${targetLanguageName} speakers to master this ${sourceLanguageName} expression linguistically"
 }
 
-Respond ONLY with valid JSON in this exact structure. All text content within the JSON must be written in ${targetLanguageName} but analyze the linguistic aspects of the source.`
+Respond ONLY with valid JSON in this exact structure. All text content within the JSON must be written in ${targetLanguageName} but analyze the ${sourceLanguageName} linguistic aspects.`
             );
 
         default:
             return (
                 baseContext +
                 `
-Provide a comprehensive analysis of this text covering cultural, historical, and linguistic aspects in the following JSON structure:
+Provide a comprehensive analysis of this ${sourceLanguageName} text covering cultural, historical, and linguistic aspects in the following JSON structure:
 {
-  "definition": "Clear definition or meaning of this expression",
+  "definition": "Clear definition or meaning of this ${sourceLanguageName} expression",
   "cultural_analysis": {
-    "cultural_context": "Cultural background and significance",
-    "social_usage": "How this is used socially in the source culture",
-    "regional_notes": "Regional or cultural variations within the source language-speaking areas"
+    "cultural_context": "${sourceLanguageName} cultural background and significance",
+    "social_usage": "How this is used socially in ${sourceLanguageName} culture",
+    "regional_notes": "Regional or cultural variations within ${sourceLanguageName}-speaking areas"
   },
   "historical_analysis": {
-    "origins": "Historical origins and background",
-    "evolution": "How this expression evolved over time",
-    "historical_significance": "Historical importance in the source culture"
+    "origins": "${sourceLanguageName} historical origins and background",
+    "evolution": "How this ${sourceLanguageName} expression evolved over time",
+    "historical_significance": "Historical importance in ${sourceLanguageName} culture"
   },
   "linguistic_analysis": {
-    "etymology": "Word origins and linguistic development",
-    "grammar_notes": "Grammatical considerations",
-    "translation_notes": "Why this expression is challenging to translate to ${targetLanguageName}"
+    "etymology": "${sourceLanguageName} word origins and linguistic development",
+    "grammar_notes": "${sourceLanguageName} grammatical considerations",
+    "translation_notes": "Why this ${sourceLanguageName} expression is challenging to translate to ${targetLanguageName}"
   },
   "practical_usage": {
-    "examples": ["Example 1", "Example 2", "Example 3"],
-    "when_to_use": "When speakers of the source language use this expression",
-    "formality": "Formality level in the source culture"
+    "examples": ["${sourceLanguageName} example 1", "${sourceLanguageName} example 2", "${sourceLanguageName} example 3"],
+    "when_to_use": "When ${sourceLanguageName} speakers use this expression",
+    "formality": "Formality level in ${sourceLanguageName} culture"
   },
-  "learning_tips": "Comprehensive advice for ${targetLanguageName} speakers learning the source language",
-  "related_expressions": ["Related expression 1", "Related expression 2"],
-  "key_insights": "Most important things for ${targetLanguageName} speakers to understand about this expression"
+  "learning_tips": "Comprehensive advice for ${targetLanguageName} speakers learning ${sourceLanguageName}",
+  "related_expressions": ["Related ${sourceLanguageName} expression 1", "Related ${sourceLanguageName} expression 2"],
+  "key_insights": "Most important things for ${targetLanguageName} speakers to understand about this ${sourceLanguageName} expression"
 }
 
-Respond ONLY with valid JSON in this exact structure. All text content within the JSON must be written in ${targetLanguageName} but analyze the source content.`
+Respond ONLY with valid JSON in this exact structure. All text content within the JSON must be written in ${targetLanguageName} but analyze the ${sourceLanguageName} content.`
             );
     }
 }
@@ -321,8 +328,7 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
     // Validate input
     if (!text || typeof text !== 'string' || text.trim() === '') {
         logger.warn('Empty or invalid text provided for context analysis', {
-            valueType: typeof text,
-            textLength: typeof text === 'string' ? text.length : 0,
+            text: text?.substring(0, 50),
         });
         return {
             success: false,
@@ -336,8 +342,8 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
         const config = await configService.getAll();
         const {
             openaiApiKey,
-            openaiBaseUrl = 'https://api.openai.com/v1',
-            openaiModel = 'gpt-5.6-luna',
+            openaiBaseUrl = 'https://api.openai.com',
+            openaiModel = 'gpt-4.1-mini-2025-04-14',
             aiContextTimeout = 30000,
         } = config;
 
@@ -379,43 +385,47 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
         };
 
         logger.debug('Making context analysis request', {
+            apiUrl,
+            model: normalizedModel,
             contextType,
             promptLength: prompt.length,
-            isGoogleEndpoint: normalizedBaseUrl.includes(
-                'generativelanguage.googleapis.com'
-            ),
         });
 
-        const response = await fetchWithTimeout(
-            apiUrl,
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${openaiApiKey}`,
-                },
-                body: JSON.stringify(requestBody),
-            },
+        const controller = new AbortController();
+        const timeoutId = setTimeout(
+            () => controller.abort(),
             aiContextTimeout
         );
 
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${openaiApiKey}`,
+            },
+            body: JSON.stringify(requestBody),
+            signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
         if (!response.ok) {
+            const errorText = await response.text();
             logger.error('Context analysis API request failed', {
                 status: response.status,
-                contentType: response.headers?.get?.('content-type') || null,
+                statusText: response.statusText,
+                errorText: errorText.substring(0, 500),
             });
-            throw new Error(`API request failed: ${response.status}`);
+            throw new Error(
+                `API request failed: ${response.status} ${response.statusText} - ${errorText.substring(0, 500)}`
+            );
         }
 
         const data = await response.json();
 
         if (!data.choices || !data.choices[0] || !data.choices[0].message) {
             logger.error('Invalid response format from context analysis API', {
-                responseType: Array.isArray(data) ? 'array' : typeof data,
-                hasChoices: Array.isArray(data?.choices),
-                choicesLength: Array.isArray(data?.choices)
-                    ? data.choices.length
-                    : 0,
+                data,
             });
             throw new Error('Invalid response format from API');
         }
@@ -423,15 +433,13 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
         const rawResponse = data.choices[0].message.content.trim();
 
         let structuredAnalysis;
+        let isStructured = true;
 
         try {
             structuredAnalysis = JSON.parse(rawResponse);
             if (!validateAgainstSchema(jsonSchema, structuredAnalysis)) {
                 logger.warn('Schema validation failed', {
-                    responseLength: rawResponse.length,
-                    analysisType: Array.isArray(structuredAnalysis)
-                        ? 'array'
-                        : typeof structuredAnalysis,
+                    rawResponsePreview: rawResponse.substring(0, 200),
                 });
                 return {
                     success: false,
@@ -445,8 +453,8 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
             }
         } catch (error) {
             logger.warn('Failed to parse JSON response', {
-                errorType: error?.name || 'UnknownError',
-                responseLength: rawResponse.length,
+                error: error.message,
+                rawResponsePreview: rawResponse.substring(0, 200),
             });
             return {
                 success: false,
@@ -476,11 +484,10 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
             shouldCache: true,
         };
     } catch (error) {
-        logger.error('Context analysis failed', null, {
-            errorType: error?.name || 'UnknownError',
+        logger.error('Context analysis failed', error, {
             textLength: text?.length || 0,
             contextType,
-            shouldRetry: isRetryableContextError(error),
+            errorMessage: error.message,
         });
 
         return {
@@ -489,8 +496,36 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
             contextType,
             originalText: text,
             metadata,
-            shouldRetry: isRetryableContextError(error),
-            shouldCache: false,
         };
     }
+}
+
+/**
+ * Batch context analysis for multiple texts (future enhancement)
+ * @param {Array<Object>} requests - Array of context analysis requests
+ * @returns {Promise<Array<Object>>} Array of context analysis results
+ */
+export async function analyzeBatchContext(requests) {
+    logger.info('Batch context analysis initiated', {
+        requestCount: requests.length,
+    });
+
+    // For now, process sequentially to avoid rate limits
+    // Future enhancement: implement proper batching with rate limiting
+    const results = [];
+    for (const request of requests) {
+        const result = await analyzeContext(
+            request.text,
+            request.contextType,
+            request.metadata
+        );
+        results.push(result);
+    }
+
+    logger.info('Batch context analysis completed', {
+        requestCount: requests.length,
+        successCount: results.filter((r) => r.success).length,
+    });
+
+    return results;
 }

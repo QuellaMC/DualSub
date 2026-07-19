@@ -18,8 +18,6 @@
     --font-family:
         -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue',
         Arial, sans-serif;
-    --color-warning: #f59e0b;
-    --spacing-2: 0.5rem;
 }
 
 body {
@@ -228,15 +226,7 @@ body {
 }
 
 .toggle-input {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
+    display: none;
 }
 
 .toggle-label {
@@ -278,7 +268,7 @@ body {
     box-shadow: 0 0 0 8px rgba(0, 122, 255, 0.08);
 }
 
-.toggle-input:focus-visible + .toggle-label {
+.toggle-input:focus + .toggle-label {
     box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.2);
 }
 
@@ -750,14 +740,12 @@ button#testDeepLButton.btn-sparkle:hover span.text {
     border-radius: 8px;
     background: linear-gradient(180deg, #007aff 0%, #0051d5 100%);
     color: white;
-    font-family:
-        -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue',
-        sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-    box-shadow:
+    box-shadow: 
         0 1px 2px rgba(0, 122, 255, 0.3),
         0 2px 4px rgba(0, 0, 0, 0.1);
     position: relative;
@@ -771,17 +759,13 @@ button#testDeepLButton.btn-sparkle:hover span.text {
     left: 0;
     right: 0;
     height: 50%;
-    background: linear-gradient(
-        180deg,
-        rgba(255, 255, 255, 0.15) 0%,
-        rgba(255, 255, 255, 0) 100%
-    );
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 100%);
     pointer-events: none;
 }
 
 .apple-file-btn:hover {
     background: linear-gradient(180deg, #0077ed 0%, #004fc7 100%);
-    box-shadow:
+    box-shadow: 
         0 2px 4px rgba(0, 122, 255, 0.4),
         0 4px 8px rgba(0, 0, 0, 0.15);
     transform: translateY(-1px);
@@ -789,7 +773,7 @@ button#testDeepLButton.btn-sparkle:hover span.text {
 
 .apple-file-btn:active {
     background: linear-gradient(180deg, #0051d5 0%, #003fa8 100%);
-    box-shadow:
+    box-shadow: 
         0 1px 2px rgba(0, 122, 255, 0.3),
         0 1px 3px rgba(0, 0, 0, 0.2);
     transform: translateY(0);
@@ -798,7 +782,8 @@ button#testDeepLButton.btn-sparkle:hover span.text {
 .apple-file-btn:disabled {
     background: linear-gradient(180deg, #c7c7cc 0%, #aeaeb2 100%);
     cursor: not-allowed;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    box-shadow: 
+        0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .apple-file-btn:disabled::before {
@@ -868,181 +853,6 @@ button#testDeepLButton.btn-sparkle:hover span.text {
 .vertex-import-btn {
     width: 100%;
     justify-content: center;
-}
-
-/* OpenAI custom-host permission */
-.api-host-control {
-    display: grid;
-    min-width: 0;
-    gap: 8px;
-}
-
-.api-host-permission {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 7px 10px;
-    padding: 9px 10px;
-    border: 1px solid rgba(0, 122, 255, 0.16);
-    border-radius: 8px;
-    background-color: rgba(0, 122, 255, 0.035);
-    transition:
-        border-color 0.2s ease,
-        background-color 0.2s ease;
-}
-
-.api-host-permission-heading {
-    display: inline-flex;
-    min-width: 0;
-    align-items: center;
-    gap: 7px;
-}
-
-.api-host-permission-icon {
-    display: inline-flex;
-    width: 24px;
-    height: 24px;
-    flex: 0 0 24px;
-    align-items: center;
-    justify-content: center;
-    border-radius: 7px;
-    background-color: rgba(0, 122, 255, 0.1);
-    color: var(--link-color);
-}
-
-.api-host-permission-icon svg {
-    width: 15px;
-    height: 15px;
-    overflow: visible;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 1.6;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-}
-
-.api-host-permission-mark {
-    stroke-width: 1.9;
-}
-
-.api-host-permission-title {
-    overflow: hidden;
-    color: var(--text-color);
-    font-size: 12.5px;
-    font-weight: 600;
-    line-height: 1.2;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.api-host-permission-button {
-    min-height: 30px;
-    padding: 6px 9px;
-    border: 1px solid rgba(0, 122, 255, 0.24);
-    border-radius: 7px;
-    background-color: var(--card-bg);
-    color: var(--link-color);
-    cursor: pointer;
-    font-family: var(--font-family);
-    font-size: 12px;
-    font-weight: 600;
-    line-height: 1.2;
-    white-space: nowrap;
-    transition:
-        border-color 0.2s ease,
-        background-color 0.2s ease,
-        box-shadow 0.2s ease,
-        transform 0.2s ease;
-}
-
-.api-host-permission-button:hover:not(:disabled) {
-    border-color: rgba(0, 122, 255, 0.42);
-    background-color: rgba(0, 122, 255, 0.07);
-    box-shadow: 0 1px 3px rgba(0, 122, 255, 0.12);
-    transform: translateY(-1px);
-}
-
-.api-host-permission-button:active:not(:disabled) {
-    box-shadow: none;
-    transform: translateY(0);
-}
-
-.api-host-permission-button:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.2);
-}
-
-.api-host-permission-button:disabled {
-    cursor: wait;
-    opacity: 0.55;
-}
-
-.api-host-permission-status {
-    grid-column: 1 / -1;
-    color: var(--secondary-text-color);
-    font-size: 11.5px;
-    line-height: 1.35;
-    overflow-wrap: anywhere;
-}
-
-.api-host-permission-status:empty {
-    display: none;
-}
-
-.api-host-permission.pending .api-host-permission-icon {
-    animation: api-host-permission-pulse 1.2s ease-in-out infinite;
-}
-
-.api-host-permission.granted {
-    border-color: rgba(52, 199, 89, 0.24);
-    background-color: rgba(52, 199, 89, 0.05);
-}
-
-.api-host-permission.granted .api-host-permission-icon {
-    background-color: rgba(52, 199, 89, 0.12);
-    color: #238636;
-}
-
-.api-host-permission.granted .api-host-permission-status {
-    color: #237a3b;
-}
-
-.api-host-permission.denied,
-.api-host-permission.error {
-    border-color: rgba(255, 59, 48, 0.24);
-    background-color: rgba(255, 59, 48, 0.045);
-}
-
-.api-host-permission.denied .api-host-permission-icon,
-.api-host-permission.error .api-host-permission-icon {
-    background-color: rgba(255, 59, 48, 0.11);
-    color: #c0392b;
-}
-
-.api-host-permission.denied .api-host-permission-status,
-.api-host-permission.error .api-host-permission-status {
-    color: #b3342b;
-}
-
-@keyframes api-host-permission-pulse {
-    0%,
-    100% {
-        opacity: 0.55;
-    }
-    50% {
-        opacity: 1;
-    }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .api-host-permission,
-    .api-host-permission-button {
-        transition: none;
-    }
-
-    .api-host-permission.pending .api-host-permission-icon {
-        animation: none;
-    }
 }
 
 /* AI Context Settings Styles */

@@ -116,8 +116,9 @@ export class StreamingServiceContentScript extends BaseContentScript {
 // streamingServiceContent.js
 (async () => {
     try {
-        const { StreamingServiceContentScript } =
-            await import('./StreamingServiceContentScript.js');
+        const { StreamingServiceContentScript } = await import(
+            './StreamingServiceContentScript.js'
+        );
         const contentScript = new StreamingServiceContentScript();
         const success = await contentScript.initialize();
 

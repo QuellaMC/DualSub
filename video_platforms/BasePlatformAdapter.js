@@ -84,16 +84,11 @@ export class BasePlatformAdapter extends VideoPlatform {
         });
     }
 
-    async requestVttViaMessaging(
-        vttUrl,
-        targetLanguage,
-        originalLanguage,
-        videoId = this.currentVideoId
-    ) {
+    async requestVttViaMessaging(vttUrl, targetLanguage, originalLanguage) {
         const message = {
             action: MessageActions.FETCH_VTT,
             url: vttUrl,
-            videoId,
+            videoId: this.currentVideoId,
             targetLanguage,
             originalLanguage,
         };

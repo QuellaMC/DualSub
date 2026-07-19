@@ -221,12 +221,8 @@ export class AIContextModal {
      */
     showAnalysisResult(analysisResult, metadata = {}) {
         this.core._log('info', 'Showing analysis result', {
-            hasAnalysisResult: Boolean(analysisResult),
-            analysisResultKeys:
-                analysisResult && typeof analysisResult === 'object'
-                    ? Object.keys(analysisResult)
-                    : [],
-            metadataKeys: Object.keys(metadata || {}),
+            analysisResult,
+            metadata,
         });
 
         if (!this.core.element) {
@@ -256,14 +252,7 @@ export class AIContextModal {
      * @returns {boolean} Success status
      */
     showError(error, metadata = {}) {
-        this.core._log('info', 'Showing error state', {
-            errorName: error?.name,
-            errorLength:
-                typeof error === 'string'
-                    ? error.length
-                    : error?.message?.length || 0,
-            metadataKeys: Object.keys(metadata || {}),
-        });
+        this.core._log('info', 'Showing error state', { error, metadata });
 
         if (!this.core.element) {
             this.core._log('error', 'Modal not initialized');

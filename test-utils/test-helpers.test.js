@@ -4,7 +4,14 @@
  * Tests to verify the test helper utilities work correctly
  */
 
-import { describe, expect, beforeEach, afterEach, jest } from '@jest/globals';
+import {
+    describe,
+    it,
+    expect,
+    beforeEach,
+    afterEach,
+    jest,
+} from '@jest/globals';
 import {
     TestHelpers,
     MockStateRegistry,

@@ -1,167 +1,3 @@
-const REDACTED_VALUE = '[REDACTED]';
-const CIRCULAR_VALUE = '[Circular]';
-const UNSERIALIZABLE_VALUE = '[Unserializable]';
-
-const SENSITIVE_KEY_FRAGMENTS = [
-    'apikey',
-    'accesstoken',
-    'privatekey',
-    'authorization',
-    'password',
-    'secret',
-    'credential',
-    'serviceaccount',
-];
-
-function isSensitiveKey(key) {
-    const normalizedKey = String(key)
-        .toLowerCase()
-        .replace(/[^a-z0-9]/g, '');
-
-    return SENSITIVE_KEY_FRAGMENTS.some((fragment) =>
-        normalizedKey.includes(fragment)
-    );
-}
-
-function redactUrlQueryDetails(value) {
-    return value.replace(/\bhttps?:\/\/[^\s<>"']+/gi, (candidate) => {
-        try {
-            const url = new URL(candidate);
-            if (!url.search && !url.hash) {
-                return candidate;
-            }
-            return `${url.origin}${url.pathname}${url.search ? `?${REDACTED_VALUE}` : ''}${url.hash ? `#${REDACTED_VALUE}` : ''}`;
-        } catch {
-            return candidate;
-        }
-    });
-}
-
-function redactSensitiveText(value) {
-    const redacted = String(value)
-        .replace(
-            /-----BEGIN(?: [A-Z]+)* PRIVATE KEY-----[\s\S]*?-----END(?: [A-Z]+)* PRIVATE KEY-----/g,
-            REDACTED_VALUE
-        )
-        .replace(/\bBearer\s+[^\s,;]+/gi, `Bearer ${REDACTED_VALUE}`)
-        .replace(
-            /([?&](?:api[_-]?key|access[_-]?token|authorization|password|secret|credential)=)[^&#\s]*/gi,
-            `$1${REDACTED_VALUE}`
-        )
-        .replace(
-            /(\b(?:api[_ -]?key|access[_ -]?token|private[_ -]?key|authorization|password|secret|credential|service[_ -]?account)\b\s*[:=]\s*)(?:"[^"]*"|'[^']*'|[^\s,;}]+)/gi,
-            `$1${REDACTED_VALUE}`
-        );
-    return redactUrlQueryDetails(redacted);
-}
-
-function redactSensitiveData(value, seen = new WeakSet()) {
-    if (typeof value === 'string') {
-        return redactSensitiveText(value);
-    }
-
-    if (
-        value === null ||
-        typeof value === 'number' ||
-        typeof value === 'boolean'
-    ) {
-        return value;
-    }
-
-    if (typeof value === 'undefined') {
-        return undefined;
-    }
-
-    if (typeof value === 'bigint' || typeof value === 'symbol') {
-        return String(value);
-    }
-
-    if (typeof value === 'function') {
-        return `[Function ${value.name || 'anonymous'}]`;
-    }
-
-    if (seen.has(value)) {
-        return CIRCULAR_VALUE;
-    }
-
-    if (value instanceof Date) {
-        return Number.isNaN(value.getTime())
-            ? 'Invalid Date'
-            : value.toISOString();
-    }
-
-    seen.add(value);
-
-    try {
-        if (value instanceof Error) {
-            const redactedError = {
-                name: redactSensitiveText(value.name),
-                message: redactSensitiveText(value.message),
-                ...(value.stack && {
-                    stack: redactSensitiveText(value.stack),
-                }),
-            };
-
-            for (const key of Object.keys(value)) {
-                if (key in redactedError) {
-                    continue;
-                }
-                redactedError[key] = isSensitiveKey(key)
-                    ? REDACTED_VALUE
-                    : redactSensitiveData(value[key], seen);
-            }
-
-            return redactedError;
-        }
-
-        if (Array.isArray(value)) {
-            return value.map((item) => redactSensitiveData(item, seen));
-        }
-
-        const redactedObject = Object.create(null);
-        for (const key of Object.keys(value)) {
-            if (isSensitiveKey(key)) {
-                redactedObject[key] = REDACTED_VALUE;
-                continue;
-            }
-
-            try {
-                redactedObject[key] = redactSensitiveData(value[key], seen);
-            } catch {
-                redactedObject[key] = UNSERIALIZABLE_VALUE;
-            }
-        }
-        return redactedObject;
-    } catch {
-        return UNSERIALIZABLE_VALUE;
-    } finally {
-        seen.delete(value);
-    }
-}
-
-function hasLogData(data) {
-    if (data === null || typeof data === 'undefined') {
-        return false;
-    }
-
-    if (Array.isArray(data)) {
-        return data.length > 0;
-    }
-
-    return typeof data !== 'object' || Object.keys(data).length > 0;
-}
-
-function isErrorLike(value) {
-    return (
-        value instanceof Error ||
-        (value !== null &&
-            typeof value === 'object' &&
-            typeof value.message === 'string' &&
-            (typeof value.stack === 'string' ||
-                String(value.name || '').endsWith('Error')))
-    );
-}
-
 /**
  * Global logging framework for the extension
  * Provides component-based logging with configurable logging levels
@@ -287,17 +123,12 @@ class Logger {
             return;
         }
 
-        const actualError = isErrorLike(error) ? error : null;
-        const actualContext =
-            error !== null && typeof error === 'object' && !actualError
-                ? { ...error, ...context }
-                : context;
         const errorData = {
-            ...actualContext,
-            ...(actualError && {
-                errorMessage: actualError.message,
-                errorStack: actualError.stack,
-                errorName: actualError.name,
+            ...context,
+            ...(error && {
+                errorMessage: error.message,
+                errorStack: error.stack,
+                errorName: error.name,
             }),
         };
 
@@ -318,16 +149,21 @@ class Logger {
      */
     formatMessage(level, message, data) {
         const timestamp = new Date().toISOString();
-        const safeMessage = redactSensitiveText(message);
-        const baseMessage = `[${timestamp}] [${level}] [${this.component}] ${safeMessage}`;
-        const safeData = redactSensitiveData(data);
+        const baseMessage = `[${timestamp}] [${level}] [${this.component}] ${message}`;
 
-        if (hasLogData(safeData)) {
-            return `${baseMessage} | Data: ${JSON.stringify(safeData)}`;
+        if (Object.keys(data).length > 0) {
+            return `${baseMessage} | Data: ${JSON.stringify(data)}`;
         }
 
         return baseMessage;
     }
 }
 
+// Export for both CommonJS and ES modules
 export default Logger;
+
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = Logger;
+} else if (typeof window !== 'undefined') {
+    window.Logger = Logger;
+}

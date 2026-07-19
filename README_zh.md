@@ -44,7 +44,7 @@
 
 - 双语字幕：同时显示原文与翻译
 - 多平台支持：Netflix、Disney+
-- 多服务商：Google、Microsoft、DeepL、OpenAI 兼容（含速率限制与缓存）
+- 多服务商：Google、Microsoft、DeepL、OpenAI 兼容（自动回退与批处理）
 - 自定义：布局、外观、垂直位置、时间偏移
 - AI 上下文：OpenAI 与 Gemini，文化/历史/语言解读
 
@@ -63,7 +63,7 @@
 
 ### 先决条件
 
-- **Node.js** 24 LTS 和 npm 11+
+- **Node.js** 18+ 和 npm
 - **Google Chrome** 启用开发者模式
 - **Git** 用于版本控制
 
@@ -74,7 +74,7 @@
     ```bash
     git clone https://github.com/QuellaMC/DualSub.git
     cd DualSub
-    npm ci
+    npm install
     ```
 
 2. **构建扩展**
@@ -84,27 +84,32 @@
     ```bash
     # 生产构建
     npm run build
-
+    
     # 开发模式（自动重新构建）
     npm run dev
     ```
 
 3. **开发命令**
 
+提示：本项目使用 JSDoc `@ts-check` 进行类型检查。如需在编辑器中获得更好的 Chrome 扩展 API 智能提示，可选择性安装：
+
+```bash
+npm i -D chrome-types
+```
+
+可在文件顶部添加 `/// <reference types="chrome" />` 启用类型提示。可靠的消息通信工具位于 `content_scripts/shared/messaging.js`。
+
     ```bash
-    # 检查代码格式但不修改文件
-    npm run format:check
+    # 代码格式化
+    npm run format
 
     # 代码检查
     npm run lint
+    npm run lint:fix
 
     # 测试
     npm test
     npm run test:watch
-
-    # 生产构建与扩展包验证
-    npm run build
-    npm run verify:build
     ```
 
 4. **加载扩展进行测试**
@@ -122,7 +127,6 @@ DualSub/
 ├── services/           # 核心服务（配置、日志）
 ├── popup/             # 扩展弹出界面（React）
 ├── options/           # 高级设置页面（React）
-├── sidepanel/         # AI 分析侧边栏（React）
 ├── utils/             # 共享工具
 ├── test-utils/        # 测试基础设施
 ├── _locales/          # 国际化文件
@@ -145,7 +149,7 @@ DualSub 使用基于几个关键设计模式的现代模块化架构：
 ### 关键组件
 
 - **内容脚本**：扩展 `BaseContentScript` 的平台特定实现
-- **翻译服务商**：支持明确选择与有限重试的模块化翻译服务
+- **翻译服务商**：具有自动回退的模块化翻译服务
 - **配置服务**：具有验证的集中设置管理
 - **日志系统**：具有可配置级别的跨上下文日志记录
 
@@ -184,8 +188,8 @@ DualSub 使用基于几个关键设计模式的现代模块化架构：
 
 1. 在 `translation_providers/` 目录中创建服务商
 2. 实现 `async function translate(text, sourceLang, targetLang)`
-3. 在 `background/services/translationService.js` 与共享服务商常量中注册
-4. 更新用于展示该服务商的 React 弹窗/设置区或服务商卡片
+3. 添加到 `background.js` 服务商对象
+4. 更新 `popup/popup.js` 和 `options/options.js`
 5. 添加全面的测试
 
 #### 新流媒体平台
@@ -220,7 +224,7 @@ npm run test:watch
 npm test -- background.test.js
 
 # 运行带覆盖率的测试
-npm run test:coverage
+npm test -- --coverage
 ```
 
 ### 测试结构
@@ -232,7 +236,7 @@ npm run test:coverage
 
 ### 测试指导原则
 
-- **覆盖率**：保持 CI 覆盖率门槛通过，并为变更行为补充针对性回归测试
+- **覆盖率**：目标 >80% 代码覆盖率
 - **隔离**：测试不应相互依赖
 - **模拟**：为 Chrome API 使用提供的模拟
 - **断言**：清晰、描述性的测试断言
@@ -255,13 +259,7 @@ npm run test:coverage
 
 ## 📋 更新日志
 
-### 版本 2.5.0（当前）
-
-- 🤖 **统一 AI 体验**：将 AI 上下文分析集成到侧边栏中，提供无缝、持久的工作空间。
-- 🐛 **稳定性改进**：修复了切换视频或在侧边栏中取消选择单词时的不同步问题。
-- ✨ **体验优化**：改进了单词选择排序，使其始终与句子结构匹配。
-
-### 版本 2.4.0
+### 版本 2.4.0（当前）
 
 - ⚛️ **React 迁移**：将弹出窗口和选项页面完全迁移到 React
 - 🏗️ **现代化构建**：使用 Vite 进行快速开发和优化构建
@@ -303,7 +301,18 @@ npm run test:coverage
 - 🤖 **新功能**：AI 上下文分析功能，支持 OpenAI 和 Google Gemini
 - 🎯 交互式字幕文本选择，提供文化、历史和语言解释
 - 🔑 全面的 API 密钥管理和服务商配置
+- 🚀 实现了通用批量翻译系统以提高性能
+- ⚡ 添加了服务商特定的批处理大小优化（API 调用减少 80-90%）
+- 🔧 通过智能批处理和分隔符方法增强翻译效率
+- 📊 通过可配置的批处理大小和并发处理改进字幕处理
 - 🧠 AI 上下文请求的高级缓存和速率限制
+
+### 版本 1.5.0
+
+- 🚀 实现了通用批量翻译系统以提高性能
+- ⚡ 添加了服务商特定的批处理大小优化（API 调用减少 80-90%）
+- 🔧 通过智能批处理和分隔符方法增强翻译效率
+- 📊 通过可配置的批处理大小和并发处理改进字幕处理
 
 ### 版本 1.4.0
 

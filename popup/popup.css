@@ -120,8 +120,7 @@ input[type='number'] {
 
 select:focus,
 input[type='number']:focus {
-    outline: 2px solid var(--slider-progress-bg);
-    outline-offset: 2px;
+    outline: none;
 }
 
 /* Custom Switch */
@@ -132,20 +131,7 @@ input[type='number']:focus {
     height: 31px;
 }
 .switch input {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
-}
-
-.switch input:focus-visible + .slider {
-    outline: 2px solid var(--slider-progress-bg);
-    outline-offset: 2px;
+    display: none;
 }
 
 .slider {

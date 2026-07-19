@@ -18,7 +18,12 @@ import {
     expect,
 } from '@jest/globals';
 import { TestHelpers } from '../../test-utils/test-helpers.js';
-import { ChromeApiFixtures } from '../../test-utils/test-fixtures.js';
+import {
+    NetflixFixtures,
+    DisneyPlusFixtures,
+    ChromeApiFixtures,
+    MockResponseBuilder,
+} from '../../test-utils/test-fixtures.js';
 import { NetflixContentScript } from '../platforms/NetflixContentScript.js';
 import { DisneyPlusContentScript } from '../platforms/DisneyPlusContentScript.js';
 
@@ -97,7 +102,7 @@ describe('Backward Compatibility Integration Tests', () => {
                 const mockSendResponse = jest.fn();
 
                 // Should handle through Chrome message system
-                netflixScript.handleChromeMessage(
+                const result = netflixScript.handleChromeMessage(
                     originalMessage,
                     {},
                     mockSendResponse
@@ -133,7 +138,7 @@ describe('Backward Compatibility Integration Tests', () => {
 
                 const mockSendResponse = jest.fn();
 
-                netflixScript.handleChromeMessage(
+                const result = netflixScript.handleChromeMessage(
                     originalMessage,
                     {},
                     mockSendResponse
@@ -168,7 +173,7 @@ describe('Backward Compatibility Integration Tests', () => {
 
                 const mockSendResponse = jest.fn();
 
-                netflixScript.handleChromeMessage(
+                const result = netflixScript.handleChromeMessage(
                     originalMessage,
                     {},
                     mockSendResponse
@@ -198,7 +203,7 @@ describe('Backward Compatibility Integration Tests', () => {
 
                 const mockSendResponse = jest.fn();
 
-                netflixScript.handleChromeMessage(
+                const result = netflixScript.handleChromeMessage(
                     malformedMessage,
                     {},
                     mockSendResponse
@@ -259,7 +264,11 @@ describe('Backward Compatibility Integration Tests', () => {
 
                 const mockSendResponse = jest.fn();
 
-                disneyScript.handleChromeMessage(message, {}, mockSendResponse);
+                const result = disneyScript.handleChromeMessage(
+                    message,
+                    {},
+                    mockSendResponse
+                );
 
                 // Response format should be identical to Netflix (uses subtitlesEnabled)
                 expect(mockSendResponse).toHaveBeenCalledWith(
@@ -639,7 +648,11 @@ describe('Backward Compatibility Integration Tests', () => {
             const mockSendResponse = jest.fn();
 
             // Should handle Chrome API error as in original
-            netflixScript.handleChromeMessage(message, {}, mockSendResponse);
+            const result = netflixScript.handleChromeMessage(
+                message,
+                {},
+                mockSendResponse
+            );
 
             // Should provide error response as in original
             expect(mockSendResponse).toHaveBeenCalledWith(

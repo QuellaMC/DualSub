@@ -12,7 +12,6 @@ import { MODAL_STATES, EVENT_TYPES, UI_CONFIG } from '../core/constants.js';
 import { createSelectionPersistenceManager } from '../utils/selectionPersistence.js';
 import { SelectionModel } from '../core/state/SelectionModel.js';
 import { ModalStore } from '../core/state/ModalStore.js';
-import Logger from '../../../utils/logger.js';
 
 /**
  * Core modal state management and lifecycle
@@ -75,8 +74,8 @@ export class AIContextModalCore {
         this.eventHandlers = new Map();
         this.eventListeners = new Map();
 
-        // Logger reference (replaced by the parent when available)
-        this.logger = Logger.create('AIContextModalCore');
+        // Logger reference (will be set by parent)
+        this.logger = null;
 
         // Selection persistence manager
         this.selectionPersistenceManager = null;
@@ -247,8 +246,7 @@ export class AIContextModalCore {
             }
         } catch (error) {
             this._log('warn', 'Failed to render modal state', {
-                errorName: error?.name,
-                errorLength: error?.message?.length || 0,
+                error: error.message,
                 state: this.state,
             });
         }
@@ -307,10 +305,11 @@ export class AIContextModalCore {
             removed = this.selectionModel.remove(word, position, positionKey);
             if (!removed) {
                 this._log('debug', 'Word position not found for removal', {
-                    wordLength: word.length,
-                    hasPositionKey: Boolean(positionKey),
-                    availablePositionCount:
-                        this.selectionModel.getPositionsMap().size,
+                    word,
+                    positionKey,
+                    availableKeys: Array.from(
+                        this.selectionModel.getPositionsMap().keys()
+                    ),
                 });
             }
         } else {
@@ -639,9 +638,9 @@ export class AIContextModalCore {
         this.selectionPersistence.lastSelectionState = selectionState;
 
         this._log('debug', 'Selection state captured for persistence', {
-            subtitleContentLength: subtitleContent.length,
+            subtitleContent: subtitleContent.substring(0, 100),
             selectedWordsCount: this.selectedWords.size,
-            selectedTextLength: this.selectedText.length,
+            selectedText: this.selectedText,
         });
     }
 
@@ -756,7 +755,7 @@ export class AIContextModalCore {
                 'Selection state restored after subtitle refresh',
                 {
                     restoredWordsCount: this.selectedWords.size,
-                    restoredTextLength: this.selectedText.length,
+                    restoredText: this.selectedText,
                 }
             );
 
@@ -881,11 +880,9 @@ export class AIContextModalCore {
                                             'debug',
                                             'Word position updated during restoration',
                                             {
-                                                wordLength: word.length,
-                                                hadOldKey:
-                                                    Boolean(storedPositionKey),
-                                                hasNewKey:
-                                                    Boolean(newPositionKey),
+                                                word,
+                                                oldKey: storedPositionKey,
+                                                newKey: newPositionKey,
                                                 orderUpdated: orderIndex !== -1,
                                             }
                                         );
@@ -938,8 +935,8 @@ export class AIContextModalCore {
                                 'debug',
                                 'Word restored with new position',
                                 {
-                                    wordLength: word.length,
-                                    hasPositionKey: Boolean(positionKey),
+                                    word,
+                                    positionKey,
                                     subtitleType,
                                     addedToOrder:
                                         !this.selectedWordsOrder.includes(
@@ -963,7 +960,7 @@ export class AIContextModalCore {
                 restoredHighlights: restoredCount,
                 selectedWordsCount: this.selectedWords.size,
                 restorationMethod: 'flexible_matching',
-                selectedTextLength: this.selectedText.length,
+                selectedText: this.selectedText,
             });
 
             // Update modal display if visible
@@ -1041,9 +1038,9 @@ export class AIContextModalCore {
         this.selectionModel.updateSelectedText();
         this._syncSelectionSnapshotFromModel();
         this._log('debug', 'Selected text updated with subtitle order', {
-            orderedWordCount: this.selectedWordsOrder.length,
-            uniqueWordCount: this.selectedWords.size,
-            selectedTextLength: this.selectedText.length,
+            originalOrder: this.selectedWordsOrder,
+            words: Array.from(this.selectedWords),
+            selectedText: this.selectedText,
         });
         // Keep visuals in sync with model
         try {
@@ -1081,7 +1078,7 @@ export class AIContextModalCore {
 
         this._log('debug', 'Event dispatched', {
             eventType,
-            detailKeys: Object.keys(detail),
+            detail: detail,
         });
     }
 
@@ -1093,17 +1090,20 @@ export class AIContextModalCore {
      * @private
      */
     _log(level, message, data = {}) {
-        const method = this.logger?.[level];
-        if (typeof method !== 'function') {
-            return;
+        if (this.logger) {
+            this.logger[level](message, {
+                component: 'AIContextModal:Core',
+                state: this.state,
+                visible: this.isVisible,
+                mode: this.currentMode,
+                ...data,
+            });
+        } else {
+            console.log(
+                `[AIContextModal:Core] [${level.toUpperCase()}] ${message}`,
+                data
+            );
         }
-        method.call(this.logger, message, {
-            component: 'AIContextModal:Core',
-            state: this.state,
-            visible: this.isVisible,
-            mode: this.currentMode,
-            ...data,
-        });
     }
 
     /**

@@ -17,6 +17,7 @@ import {
     expect,
 } from '@jest/globals';
 import { NetflixContentScript } from '../platforms/NetflixContentScript.js';
+import { BaseContentScript } from '../core/BaseContentScript.js';
 import { TestHelpers } from '../../test-utils/test-helpers.js';
 
 jest.mock('@content_scripts/core/BaseContentScript.js');
@@ -107,7 +108,7 @@ describe('NetflixContentScript Comprehensive Tests', () => {
         global.window.addEventListener = jest.fn((type, listener, options) => {
             // Call without the signal option to avoid JSDOM issues
             if (options && options.signal) {
-                const { signal: _signal, ...optionsWithoutSignal } = options;
+                const { signal, ...optionsWithoutSignal } = options;
                 return originalAddEventListener.call(
                     global.window,
                     type,
@@ -130,8 +131,7 @@ describe('NetflixContentScript Comprehensive Tests', () => {
             (type, listener, options) => {
                 // Call without the signal option to avoid JSDOM issues
                 if (options && options.signal) {
-                    const { signal: _signal, ...optionsWithoutSignal } =
-                        options;
+                    const { signal, ...optionsWithoutSignal } = options;
                     return originalDocumentAddEventListener.call(
                         global.document,
                         type,
@@ -327,6 +327,7 @@ describe('NetflixContentScript Comprehensive Tests', () => {
             ).mockImplementation(() => {});
 
             // Mock the checkForUrlChange method to simulate URL change detection
+            const originalCheckForUrlChange = netflixScript.checkForUrlChange;
             netflixScript.checkForUrlChange = jest.fn(() => {
                 const newUrl = 'https://www.netflix.com/watch/123456';
                 const newPathname = '/watch/123456';

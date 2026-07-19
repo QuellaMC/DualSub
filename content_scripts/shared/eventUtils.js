@@ -398,6 +398,7 @@ export class EventDebouncer {
         let timeoutId = null;
 
         const debouncedFunction = (...args) => {
+            const now = Date.now();
             const callNow = immediate && !timeoutId;
 
             // Clear existing timeout

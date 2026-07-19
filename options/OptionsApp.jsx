@@ -5,14 +5,11 @@ import { GeneralSection } from './components/sections/GeneralSection.jsx';
 import { TranslationSection } from './components/sections/TranslationSection.jsx';
 import { ProvidersSection } from './components/sections/ProvidersSection.jsx';
 import { AIContextSection } from './components/sections/AIContextSection.jsx';
-import { AdvancedSection } from './components/sections/AdvancedSection.jsx';
 import { AboutSection } from './components/sections/AboutSection.jsx';
 
 export function OptionsApp() {
     const [activeSection, setActiveSection] = useState('general');
-    const { settings, updateSetting, updateSettings, loading, error } =
-        useSettings();
-    const [saveError, setSaveError] = useState(null);
+    const { settings, updateSetting, loading } = useSettings();
     const [currentLanguage, setCurrentLanguage] = useState(
         settings.uiLanguage || 'en'
     );
@@ -26,29 +23,11 @@ export function OptionsApp() {
     }, [settings.uiLanguage, currentLanguage]);
 
     const handleSettingChange = async (key, value) => {
-        try {
-            await updateSetting(key, value);
-            setSaveError(null);
-        } catch (updateError) {
-            setSaveError(updateError);
-            return false;
-        }
-
+        await updateSetting(key, value);
+        
         // If language changes, reload translations
         if (key === 'uiLanguage') {
             setCurrentLanguage(value);
-        }
-        return true;
-    };
-
-    const handleSettingsChange = async (updates) => {
-        try {
-            await updateSettings(updates);
-            setSaveError(null);
-            return true;
-        } catch (updateError) {
-            setSaveError(updateError);
-            return false;
         }
     };
 
@@ -56,7 +35,7 @@ export function OptionsApp() {
         return (
             <div className="container">
                 <div className="content">
-                    <p role="status">Loading...</p>
+                    <p>Loading...</p>
                 </div>
             </div>
         );
@@ -70,11 +49,6 @@ export function OptionsApp() {
                 onSectionChange={setActiveSection}
             />
             <main className="content">
-                {(error || saveError) && (
-                    <p role="alert" className="settings-error">
-                        Unable to save settings. Please try again.
-                    </p>
-                )}
                 {activeSection === 'general' && (
                     <GeneralSection
                         t={t}
@@ -94,18 +68,10 @@ export function OptionsApp() {
                         t={t}
                         settings={settings}
                         onSettingChange={handleSettingChange}
-                        onSettingsChange={handleSettingsChange}
                     />
                 )}
                 {activeSection === 'ai-context' && (
                     <AIContextSection
-                        t={t}
-                        settings={settings}
-                        onSettingChange={handleSettingChange}
-                    />
-                )}
-                {activeSection === 'advanced' && (
-                    <AdvancedSection
                         t={t}
                         settings={settings}
                         onSettingChange={handleSettingChange}

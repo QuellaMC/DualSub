@@ -68,7 +68,8 @@ content_scripts/
 ├── core/
 │   ├── BaseContentScript.js           # Abstract base class
 │   ├── constants.js                   # Common constants
-│   └── utils.js                       # Core utilities
+│   ├── utils.js                       # Core utilities
+│   └── index.js                       # Core module exports
 ├── platforms/
 │   ├── NetflixContentScript.js        # Netflix implementation
 │   ├── DisneyPlusContentScript.js     # Disney+ implementation

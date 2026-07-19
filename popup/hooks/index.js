@@ -1,6 +1,4 @@
-import { useSettings } from '@shared/hooks/useSettings.js';
-import { useTranslation } from './useTranslation.js';
-import { useLogger } from './useLogger.js';
-import { useChromeMessage } from './useChromeMessage.js';
-
-export { useSettings, useTranslation, useChromeMessage, useLogger };
+export { useSettings } from './useSettings.js';
+export { useTranslation } from './useTranslation.js';
+export { useChromeMessage } from './useChromeMessage.js';
+export { useLogger } from './useLogger.js';

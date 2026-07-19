@@ -4,8 +4,8 @@ Get cultural, historical, and linguistic explanations for selected subtitle text
 
 ## Supported Providers
 
-- OpenAI GPT: GPT-5.6 Luna (recommended), GPT-5.6 Terra, GPT-5.6
-- Google Gemini: Gemini 3.5 Flash (recommended), Gemini 2.5 Flash, Gemini 2.5 Pro
+- OpenAI GPT: GPT-4.1 Mini, GPT-4o, GPT-4o Mini, GPT-4.1 Nano
+- Google Gemini: Gemini 2.5 Flash (recommended), Gemini 2.5 Pro, Gemini 1.5 (legacy)
 
 ## Rate Limiting & Caching
 
@@ -15,18 +15,17 @@ Get cultural, historical, and linguistic explanations for selected subtitle text
 ## Setup
 
 1. Enable AI Context Analysis in Advanced Settings
-2. Choose a provider (OpenAI or Gemini), then set its API key and model
-3. For a custom OpenAI-compatible host, use **Allow API host** to grant that exact origin
+2. Choose provider (OpenAI or Gemini), set API key and model
+3. Use Test Connection to verify
 
 ## Usage
 
-- Click subtitle words to build a phrase and open analysis in the Chrome side panel
-- Enable any exact combination of Cultural, Historical, and Linguistic analysis
-- The legacy modal remains available when **Use Side Panel** is disabled
+- Select text in subtitles to open the context modal
+- Choose analysis type: Cultural, Historical, Linguistic, or All
 
 ## Privacy
 
-- Selected text, language metadata, and limited surrounding subtitle context are sent to the configured AI provider
-- Results use a bounded in-memory cache when caching is enabled; they are not permanently stored by DualSub
+- Only selected text is sent to the AI provider
+- Results are cached locally; no permanent storage
 
 See also: `context_providers/openaiContextProvider.js` and `context_providers/geminiContextProvider.js` for technical details.

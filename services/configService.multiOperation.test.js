@@ -270,43 +270,10 @@ describe('ConfigService Multi-Operation Error Handling', () => {
             );
             Object.assign(configSchema, originalSchema);
         });
-
-        test('reports a grouped write partial failure when one storage area throws synchronously', async () => {
-            mockChromeStorage.sync.set.mockImplementation(() => {
-                throw new Error('sync area threw');
-            });
-            mockChromeStorage.local.set.mockImplementation((_items, callback) =>
-                callback()
-            );
-
-            await expect(
-                configService.setMultiple({
-                    uiLanguage: 'es',
-                    debugMode: true,
-                })
-            ).rejects.toMatchObject({
-                partialFailure: true,
-                successful: [
-                    expect.objectContaining({ area: 'local', count: 1 }),
-                ],
-                failed: [expect.objectContaining({ area: 'sync', count: 1 })],
-                errors: [
-                    expect.objectContaining({
-                        area: 'sync',
-                        error: expect.objectContaining({
-                            name: 'ConfigServiceStorageError',
-                            context: expect.objectContaining({
-                                synchronousFailure: true,
-                            }),
-                        }),
-                    }),
-                ],
-            });
-        });
     });
 
     describe('setDefaultsForMissingKeys() error handling', () => {
-        test('skips defaults for a storage area whose read failed', async () => {
+        test('should handle retrieval errors and continue with setting defaults', async () => {
             // Mock schema
             const originalSchema = { ...configSchema };
             Object.keys(configSchema).forEach(
@@ -352,7 +319,10 @@ describe('ConfigService Multi-Operation Error Handling', () => {
             await configService.setDefaultsForMissingKeys();
 
             expect(configService.isInitialized).toBe(true);
-            expect(mockChromeStorage.sync.set).not.toHaveBeenCalled();
+            expect(mockChromeStorage.sync.set).toHaveBeenCalledWith(
+                { syncKey1: 'syncDefault1' },
+                expect.any(Function)
+            );
             expect(mockChromeStorage.local.set).toHaveBeenCalledWith(
                 { localKey1: 'localDefault1' },
                 expect.any(Function)
