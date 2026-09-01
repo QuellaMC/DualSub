@@ -1,0 +1,84 @@
+{
+    "manifest_version": 3,
+    "name": "__MSG_appName__",
+    "description": "__MSG_appDesc__",
+    "icons": {
+        "16": "icons/icon16.png",
+        "48": "icons/icon48.png",
+        "128": "icons/icon128.png"
+    },
+    "default_locale": "en",
+    "minimum_chrome_version": "116",
+    "permissions": ["storage", "activeTab", "sidePanel"],
+    "host_permissions": [
+        "https://*.disneyplus.com/*",
+        "https://*.netflix.com/*",
+        "https://*.media.dssott.com/*",
+        "https://*.dssedge.com/*",
+        "https://*.nflxvideo.net/*",
+        "https://translate.googleapis.com/*",
+        "https://api.cognitive.microsofttranslator.com/*",
+        "https://edge.microsoft.com/*",
+        "https://api-free.deepl.com/*",
+        "https://api.deepl.com/*",
+        "https://aiplatform.googleapis.com/*",
+        "https://us-central1-aiplatform.googleapis.com/*",
+        "https://us-east1-aiplatform.googleapis.com/*",
+        "https://us-west1-aiplatform.googleapis.com/*",
+        "https://europe-west1-aiplatform.googleapis.com/*",
+        "https://europe-west4-aiplatform.googleapis.com/*",
+        "https://asia-northeast1-aiplatform.googleapis.com/*",
+        "https://asia-southeast1-aiplatform.googleapis.com/*",
+        "https://oauth2.googleapis.com/*",
+        "https://api.openai.com/*",
+        "https://generativelanguage.googleapis.com/*"
+    ],
+    "optional_host_permissions": [
+        "https://*/*",
+        "http://localhost/*",
+        "http://127.0.0.1/*"
+    ],
+    "action": {
+        "default_icon": {
+            "16": "icons/icon16.png",
+            "48": "icons/icon48.png",
+            "128": "icons/icon128.png"
+        },
+        "default_title": "DualSub",
+        "default_popup": "popup.html"
+    },
+    "background": {
+        "service_worker": "background.js"
+    },
+    "options_ui": {
+        "open_in_tab": true,
+        "page": "options.html"
+    },
+    "side_panel": {
+        "default_path": "sidepanel.html"
+    },
+    "content_scripts": [
+        {
+            "matches": ["https://*.disneyplus.com/*"],
+            "run_at": "document_start",
+            "js": ["content-scripts/disneyplus-main.js"],
+            "world": "MAIN"
+        },
+        {
+            "matches": ["https://*.disneyplus.com/*"],
+            "run_at": "document_start",
+            "js": ["content-scripts/disneyplus.js"]
+        },
+        {
+            "matches": ["https://*.netflix.com/*"],
+            "run_at": "document_start",
+            "js": ["content-scripts/netflix-main.js"],
+            "world": "MAIN"
+        },
+        {
+            "matches": ["https://*.netflix.com/*"],
+            "run_at": "document_start",
+            "js": ["content-scripts/netflix.js"]
+        }
+    ]
+}

@@ -2,6 +2,8 @@
 node_modules/
 dist/
 coverage/
+.wxt/
+.output/
 
-# Generated local audit artifact; updated as a single report at handoff.
-dualsub-pr62-audit-report.html
+# Generated audit artifact preserved as reference
+docs/reference/pr62-audit-report.html

@@ -11,18 +11,21 @@
     "description": "Displays dual language subtitles on streaming platforms.",
     "main": "background.js",
     "scripts": {
+        "postinstall": "wxt prepare",
+        "dev": "wxt",
+        "build": "wxt build",
+        "zip": "wxt zip",
+        "compile": "tsc --noEmit",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "test:coverage": "vitest run --coverage",
         "format": "prettier --write --ignore-unknown .",
         "format:check": "prettier --check --ignore-unknown .",
         "lint": "eslint . --max-warnings=0",
         "lint:fix": "eslint . --fix --max-warnings=0",
-        "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
-        "test:ci": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand",
-        "test:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage --runInBand",
-        "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",
-        "build": "vite build",
-        "verify:build": "node scripts/verify-extension-build.mjs",
-        "dev": "vite build --watch",
-        "preview": "vite preview"
+        "legacy:build": "vite build",
+        "legacy:verify": "node scripts/verify-extension-build.mjs",
+        "legacy:test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand"
     },
     "repository": {
         "type": "git",
@@ -47,20 +50,31 @@
         "@testing-library/jest-dom": "^6.9.1",
         "@testing-library/react": "^16.3.2",
         "@testing-library/user-event": "^14.6.1",
+        "@types/react": "^19.2.18",
+        "@types/react-dom": "^19.2.5",
         "@vitejs/plugin-react": "^6.0.3",
+        "@vitest/coverage-v8": "^4.1.11",
+        "@wxt-dev/module-react": "^1.2.2",
         "babel-jest": "^30.4.1",
         "eslint": "^9.39.5",
         "eslint-config-prettier": "^10.1.8",
         "eslint-plugin-react": "^7.37.5",
         "eslint-plugin-react-hooks": "^7.1.1",
         "globals": "^17.7.0",
+        "happy-dom": "^20.12.0",
         "jest": "^30.4.2",
         "jest-environment-jsdom": "^30.4.1",
         "prettier": "^3.9.5",
-        "vite": "^8.1.4"
+        "tsx": "^4.23.13",
+        "typescript": "^6.0.3",
+        "typescript-eslint": "^8.69.0",
+        "vite": "^8.1.4",
+        "vitest": "^4.1.11",
+        "wxt": "^0.21.4"
     },
     "dependencies": {
         "react": "^19.2.7",
-        "react-dom": "^19.2.7"
+        "react-dom": "^19.2.7",
+        "zod": "^4.5.4"
     }
 }

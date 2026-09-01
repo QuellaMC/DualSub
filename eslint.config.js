@@ -4,6 +4,7 @@ import { defineConfig } from 'eslint/config';
 import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 import globals from 'globals';
+import tseslint from 'typescript-eslint';
 
 const unusedVariablesRule = [
     'warn',
@@ -24,6 +25,8 @@ export default defineConfig([
             'coverage/**',
             'temp/**',
             'DualSub/**',
+            '.wxt/**',
+            '.output/**',
         ],
     },
     {
@@ -49,7 +52,26 @@ export default defineConfig([
         },
     },
     {
-        files: ['**/*.jsx'],
+        files: ['src/**/*.{ts,tsx}', 'wxt.config.ts', 'vitest.config.ts'],
+        extends: [tseslint.configs.recommendedTypeChecked],
+        languageOptions: {
+            parserOptions: {
+                projectService: true,
+                tsconfigRootDir: import.meta.dirname,
+            },
+            globals: {
+                ...globals.browser,
+                ...globals.webextensions,
+                ...globals.node,
+            },
+        },
+        rules: {
+            'no-console': 'off',
+            '@typescript-eslint/no-unused-vars': unusedVariablesRule,
+        },
+    },
+    {
+        files: ['**/*.{jsx,tsx}'],
         languageOptions: {
             parserOptions: {
                 ecmaFeatures: {
@@ -72,7 +94,7 @@ export default defineConfig([
         },
     },
     {
-        files: ['**/*.{js,jsx}'],
+        files: ['**/*.{js,jsx,ts,tsx}'],
         plugins: {
             'react-hooks': reactHooks,
         },

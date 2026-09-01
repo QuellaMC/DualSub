@@ -3,7 +3,7 @@ name: CI
 on:
     pull_request:
     push:
-        branches: [main]
+        branches: [main, rebuild/v3]
 
 permissions:
     contents: read
@@ -42,11 +42,17 @@ jobs:
             - name: Lint
               run: npm run lint
 
-            - name: Test with coverage ratchet
-              run: npm run test:coverage
+            - name: Type-check
+              run: npm run compile
 
             - name: Build extension
               run: npm run build
 
-            - name: Verify extension artifact
-              run: npm run verify:build
+            - name: Test
+              run: npm test
+
+            - name: Build legacy extension
+              run: npm run legacy:build
+
+            - name: Verify legacy extension artifact
+              run: npm run legacy:verify
