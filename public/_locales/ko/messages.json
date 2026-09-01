@@ -850,5 +850,11 @@
     },
     "aiContextUsageExamples": {
         "message": "용법과 예시:"
+    },
+    "translationApiError": {
+        "message": "[번역 API 오류. 설정을 확인하거나 다른 제공업체를 시도해보세요.]"
+    },
+    "translationRequestError": {
+        "message": "[번역 요청 오류. 다시 시도해주세요.]"
     }
 }

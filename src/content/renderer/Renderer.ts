@@ -35,9 +35,15 @@ export class Renderer {
             signal: AbortSignal;
             logger: Logger;
             onNavigationMismatch: () => void;
+            onSeek?: () => void;
         }
     ) {
         this.container = new SessionContainer(deps.uiRoot);
+    }
+
+    /** Playback time with the user offset applied; null without a clock. */
+    get currentTime(): number | null {
+        return this.media ? this.playbackTime(this.media) : null;
     }
 
     attachMedia(media: MediaScope): void {
@@ -52,6 +58,7 @@ export class Renderer {
                 onSeek: () => {
                     this.deps.adapter.onClockInvalidated();
                     this.deps.state.invalidateMemo();
+                    this.deps.onSeek?.();
                 },
             },
             this.mediaScope.signal
@@ -96,6 +103,11 @@ export class Renderer {
         this.container.destroy();
     }
 
+    private playbackTime(media: MediaScope): number | null {
+        const raw = this.deps.adapter.getPlaybackTime(media.video);
+        return raw === null ? null : raw + this.deps.state.display.timeOffset;
+    }
+
     /** Live elements; a rebuild resets painted text so the next commit paints. */
     private ensureElements(media: MediaScope): SubtitleElements {
         const { state } = this.deps;
@@ -124,13 +136,12 @@ export class Renderer {
         if (media.video.readyState < media.video.HAVE_CURRENT_DATA) {
             return;
         }
-        const raw = this.deps.adapter.getPlaybackTime(media.video);
-        if (raw === null) {
+        const time = this.playbackTime(media);
+        if (time === null) {
             this.hide();
             this.deps.state.invalidateMemo();
             return;
         }
-        const time = raw + this.deps.state.display.timeOffset;
         if (
             this.deps.state.shouldRender(
                 time,
@@ -145,19 +156,18 @@ export class Renderer {
     }
 
     private render(): void {
-        const { state, adapter, descriptor, videoId } = this.deps;
+        const { state, descriptor, videoId } = this.deps;
         const media = this.media;
         if (!media || !this.visible) {
             this.hide();
             return;
         }
-        const raw = adapter.getPlaybackTime(media.video);
-        if (raw === null) {
+        const time = this.playbackTime(media);
+        if (time === null) {
             this.hide();
             state.invalidateMemo();
             return;
         }
-        const time = raw + state.display.timeOffset;
         const href = location.href;
 
         // Belt-and-braces navigation guard: never paint this session's cues

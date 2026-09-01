@@ -7,7 +7,7 @@ import {
     nonNegativeSafeInteger,
 } from './primitives';
 
-const MAX_TRANSLATION_RETRY_AFTER_MS = 30 * 24 * 60 * 60 * 1000;
+export const MAX_TRANSLATION_RETRY_AFTER_MS = 30 * 24 * 60 * 60 * 1000;
 
 // The response never echoes request identity: the sendMessage promise binds a
 // reply to its request, and the caller's closure carries the cue.
@@ -39,3 +39,6 @@ export const translate = defineContract({
         }),
     ]),
 });
+
+export type TranslateRequest = z.infer<typeof translate.request>;
+export type TranslateResponse = z.infer<typeof translate.response>;

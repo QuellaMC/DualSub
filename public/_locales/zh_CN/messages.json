@@ -850,5 +850,11 @@
     },
     "aiContextRelatedExpressionsLabel": {
         "message": "🔗 相关表达"
+    },
+    "translationApiError": {
+        "message": "[翻译API错误。请检查设置或尝试其他翻译源。]"
+    },
+    "translationRequestError": {
+        "message": "[翻译请求错误。请重试。]"
     }
 }

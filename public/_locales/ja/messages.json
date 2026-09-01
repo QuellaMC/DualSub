@@ -850,5 +850,11 @@
     },
     "aiContextRelatedExpressionsLabel": {
         "message": "🔗 関連表現"
+    },
+    "translationApiError": {
+        "message": "[翻訳API エラー。設定を確認するか、他のプロバイダーを試してください。]"
+    },
+    "translationRequestError": {
+        "message": "[翻訳リクエスト エラー。もう一度お試しください。]"
     }
 }

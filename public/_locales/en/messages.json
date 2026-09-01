@@ -850,5 +850,11 @@
     },
     "videoControlTitle": {
         "message": "Video Control"
+    },
+    "translationApiError": {
+        "message": "[Translation API Error. Check settings or try another provider.]"
+    },
+    "translationRequestError": {
+        "message": "[Translation Request Error. Please try again.]"
     }
 }

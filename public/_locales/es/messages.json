@@ -850,5 +850,11 @@
     },
     "aiContextUsageExamples": {
         "message": "Uso y Ejemplos:"
+    },
+    "translationApiError": {
+        "message": "[Error de API de Traducción. Revisa la configuración o prueba otro proveedor.]"
+    },
+    "translationRequestError": {
+        "message": "[Error en la Solicitud de Traducción. Por favor, inténtalo de nuevo.]"
     }
 }

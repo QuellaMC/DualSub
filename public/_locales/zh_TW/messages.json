@@ -850,5 +850,11 @@
     },
     "aiContextUsageExamples": {
         "message": "用法與例句:"
+    },
+    "translationApiError": {
+        "message": "[翻譯API錯誤。請檢查設定或嘗試其他翻譯源。]"
+    },
+    "translationRequestError": {
+        "message": "[翻譯請求錯誤。請重試。]"
     }
 }

@@ -201,3 +201,16 @@ describe('Renderer', () => {
         expect(container()).toBeNull();
     });
 });
+
+describe('Renderer.currentTime', () => {
+    it('is null without media and offset-adjusted once attached', () => {
+        const { renderer, video } = setup();
+        expect(renderer.currentTime).toBeNull();
+        renderer.setDisplay({ ...display, timeOffset: 0.5 });
+        renderer.attachMedia({ root: null, video });
+        video.time = 10;
+        expect(renderer.currentTime).toBe(10.5);
+        renderer.detachMedia();
+        expect(renderer.currentTime).toBeNull();
+    });
+});

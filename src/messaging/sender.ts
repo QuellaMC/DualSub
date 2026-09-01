@@ -62,7 +62,7 @@ interface RuntimeEndpoints {
 interface RuntimeLike {
     id?: unknown;
     getManifest?: () => unknown;
-    getURL?: (path: string) => string;
+    getURL?(path: string): string;
 }
 
 function readRuntimeEndpoints(runtime: RuntimeLike): RuntimeEndpoints | null {

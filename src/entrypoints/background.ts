@@ -6,6 +6,9 @@ import { MessageRouter } from '@/messaging/router';
 import { checkBackgroundReady, ping } from '@/messaging/contracts';
 import { markServiceReady, readinessSnapshot } from '@/background/readiness';
 import { registerSubtitleHandlers } from '@/background/subtitle/handler';
+import { registerTranslationHandler } from '@/background/translation/handler';
+import { TRANSLATION_PROVIDERS } from '@/background/translation/providers';
+import { TranslationService } from '@/background/translation/service';
 
 export default defineBackground(() => {
     // Cold-start discipline: every listener must be registered synchronously
@@ -13,10 +16,15 @@ export default defineBackground(() => {
     // it otherwise.
     const logger = createLogger('Background');
     const router = new MessageRouter();
+    const translationService = new TranslationService({
+        providers: TRANSLATION_PROVIDERS,
+        config: configService,
+    });
 
     router.handle(ping, () => readinessSnapshot());
     router.handle(checkBackgroundReady, () => readinessSnapshot());
     registerSubtitleHandlers(router);
+    registerTranslationHandler(router, translationService);
     router.listen();
 
     markServiceReady('subtitle');
@@ -36,6 +44,10 @@ export default defineBackground(() => {
         } catch (error) {
             logger.error('Failed to initialize logging level', error);
         }
+        // Migration precedes initialization so a relocated provider setting
+        // is what the service reads; readiness parks requests until then.
+        await translationService.initialize();
+        markServiceReady('translation');
         logger.info('Background service worker initialized');
     })();
 });

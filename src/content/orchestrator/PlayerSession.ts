@@ -3,6 +3,11 @@ import { configService } from '@/config/service';
 import type { SettingsValues } from '@/config/schema';
 import { sendWithRetry } from '@/messaging/client';
 import { fetchVtt, type FetchVttRequest } from '@/messaging/contracts/fetchVtt';
+import {
+    translate,
+    type TranslateRequest,
+    type TranslateResponse,
+} from '@/messaging/contracts/translate';
 import type { CapturedEvent } from '../bridge/protocol';
 import type { SubtitleEventCache } from '../bridge/SubtitleEventCache';
 import type {
@@ -17,7 +22,8 @@ import { Renderer } from '../renderer/Renderer';
 import { RendererState } from '../renderer/RendererState';
 import type { UiRoot } from '../renderer/domLayer';
 import type { DisplaySettings } from '../renderer/styling';
-import { buildCueSet } from '../subtitles/cueModel';
+import { buildCueSet, type CueSet } from '../subtitles/cueModel';
+import { TranslationScheduler } from '../translation/TranslationScheduler';
 import { MediaBinding } from './MediaBinding';
 import { childScope, ensureLive, runScoped } from './scope';
 
@@ -99,6 +105,11 @@ export class PlayerSession {
     private latestSubtitleEvent: CapturedEvent | null = null;
     private inFlightKey: string | null = null;
     private completedKey: string | null = null;
+    /** Translate-mode loop for the current cue set; one scope per cue set. */
+    private translation: {
+        readonly scheduler: TranslationScheduler;
+        readonly scope: AbortController;
+    } | null = null;
 
     constructor(private readonly deps: PlayerSessionDeps) {
         this.id = deps.id;
@@ -131,6 +142,7 @@ export class PlayerSession {
             signal: this.signal,
             logger: this.logger,
             onNavigationMismatch: deps.onNavigationMismatch,
+            onSeek: () => this.translation?.scheduler.kick(),
         });
         this.mediaBinding = new MediaBinding({
             adapter: this.adapter,
@@ -147,6 +159,7 @@ export class PlayerSession {
                     config: configService,
                     logger: this.logger,
                 });
+                this.translation?.scheduler.kick();
             },
             onLost: () => {
                 this.mediaScope?.abort();
@@ -221,6 +234,7 @@ export class PlayerSession {
         }
         if (changes.subtitlesEnabled !== undefined) {
             this.renderer.setVisible(changes.subtitlesEnabled);
+            this.translation?.scheduler.setActive(changes.subtitlesEnabled);
             if (
                 changes.subtitlesEnabled &&
                 this.rendererState.cues.length === 0 &&
@@ -273,11 +287,13 @@ export class PlayerSession {
 
             if (response.success) {
                 this.completedKey = key;
-                this.rendererState.loadCues(buildCueSet(response));
+                const cueSet = buildCueSet(response);
+                this.rendererState.loadCues(cueSet);
                 this.renderer.cuesChanged();
+                this.startTranslation(cueSet);
                 this.logger.info('Subtitles loaded', {
-                    cueCount: this.rendererState.cues.length,
-                    useNativeTarget: response.useNativeTarget,
+                    cueCount: cueSet.cues.length,
+                    useNativeTarget: cueSet.useNativeTarget,
                 });
             } else {
                 this.logger.warn('Subtitle request failed', {
@@ -298,6 +314,46 @@ export class PlayerSession {
             if (this.inFlightKey === key) {
                 this.inFlightKey = null;
             }
+        }
+    }
+
+    private startTranslation(cueSet: CueSet): void {
+        this.translation?.scope.abort();
+        this.translation = null;
+        if (cueSet.useNativeTarget) {
+            return;
+        }
+        const scope = childScope(this.signal);
+        const scheduler = new TranslationScheduler({
+            cues: cueSet.cues,
+            videoId: this.videoId,
+            targetLanguage: cueSet.targetLanguage,
+            currentTime: () => this.renderer.currentTime,
+            send: (request) => this.sendTranslate(request, scope.signal),
+            onTranslated: () => this.renderer.cuesChanged(),
+            signal: scope.signal,
+            logger: this.logger,
+        });
+        this.translation = { scheduler, scope };
+        scheduler.start();
+        scheduler.setActive(this.settings.subtitlesEnabled);
+    }
+
+    private async sendTranslate(
+        request: TranslateRequest,
+        signal: AbortSignal
+    ): Promise<TranslateResponse> {
+        try {
+            return await sendWithRetry(translate, request, {
+                retries: 1,
+                baseDelayMs: 500,
+                canDispatch: () => !signal.aborted,
+            });
+        } catch (error) {
+            if (!signal.aborted && isContextInvalidated(error)) {
+                this.deps.onContextInvalidated();
+            }
+            throw error;
         }
     }
 
