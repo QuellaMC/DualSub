@@ -1,0 +1,1868 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src 'unsafe-inline' blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>DualSub PR62 Audit Reconciliation</title>
+<style>:root{color-scheme:light dark;background:light-dark(rgb(255 255 255), rgb(24 24 24))}html,body{margin:0}body{box-sizing:border-box;padding:1rem;background:inherit}iframe{display:block;width:100%;max-width:736px;height:calc(100vh - 2rem);margin:0 auto;border:0}</style>
+</head>
+<body>
+<iframe sandbox="allow-scripts" referrerpolicy="no-referrer" title="DualSub PR62 Audit Reconciliation" srcdoc="&lt;!doctype html&gt;
+&lt;html lang=&quot;en&quot;&gt;
+&lt;head&gt;
+&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;
+&lt;meta name=&quot;referrer&quot; content=&quot;no-referrer&quot;&gt;
+&lt;meta http-equiv=&quot;Content-Security-Policy&quot; content=&quot;default-src &#x27;none&#x27;; script-src &#x27;unsafe-inline&#x27; &#x27;unsafe-eval&#x27; &#x27;wasm-unsafe-eval&#x27; blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; style-src &#x27;unsafe-inline&#x27; blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; img-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; font-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; media-src blob: data: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://esm.sh https://fonts.bunny.net https://fonts.googleapis.com https://fonts.gstatic.com https://unpkg.com; worker-src blob:; connect-src blob: data:; frame-src &#x27;none&#x27;; object-src &#x27;none&#x27;; base-uri &#x27;none&#x27;; form-action &#x27;none&#x27;&quot;&gt;
+&lt;title&gt;DualSub PR62 Audit Reconciliation&lt;/title&gt;
+&lt;style&gt;:root {
+  color-scheme: light dark;
+  background-color: var(--background) !important;
+
+  /* Agent-facing contract; keep in sync with SKILL.md. */
+  --background: light-dark(rgb(255 255 255), rgb(24 24 24));
+  --foreground: light-dark(rgb(26 28 31), rgb(255 255 255));
+  --card: color-mix(in oklab, var(--foreground) 5%, transparent);
+  --card-foreground: var(--foreground);
+  --popover: light-dark(rgb(255 255 255), rgb(45 45 45));
+  --popover-foreground: var(--foreground);
+  --primary: light-dark(rgb(51 156 255), rgb(131 195 255));
+  --primary-foreground: light-dark(rgb(255 255 255), rgb(13 13 13));
+  --secondary: light-dark(rgb(255 255 255 / 96%), rgb(54 54 54 / 96%));
+  --secondary-foreground: var(--foreground);
+  --muted: color-mix(in srgb, var(--foreground) 10%, transparent);
+  --muted-foreground: light-dark(
+    rgb(26 28 31 / 49.4%),
+    rgb(255 255 255 / 49.8%)
+  );
+  --accent: light-dark(rgb(229 242 255), rgb(13 39 63));
+  --accent-foreground: var(--primary);
+  --destructive: light-dark(rgb(226 85 7), rgb(255 133 73));
+  --border: light-dark(rgb(26 28 31 / 8%), rgb(255 255 255 / 8.2%));
+  --input: light-dark(
+    rgb(26 28 31 / 11.8%),
+    color-mix(in oklab, rgb(0 0 0) 10%, transparent)
+  );
+  --ring: light-dark(rgb(51 156 255), rgb(131 195 255 / 76%));
+  --font-size-base: 14px;
+  --viz-series-1: var(--primary);
+  --viz-series-2: light-dark(rgb(243 136 59), rgb(245 154 86));
+  --viz-series-3: light-dark(rgb(93 201 119), rgb(116 213 139));
+  --viz-series-4: light-dark(rgb(235 119 177), rgb(240 143 192));
+  --viz-series-5: light-dark(rgb(155 121 236), rgb(170 145 239));
+  --viz-series-6: light-dark(rgb(58 185 177), rgb(90 203 194));
+
+  /* Internal implementation variables; not part of the agent contract. */
+  --font-sans: -apple-system, system-ui, &quot;Segoe UI&quot;, sans-serif;
+  --font-mono:
+    ui-monospace, SFMono-Regular, &quot;SF Mono&quot;, Menlo, Consolas, &quot;Liberation Mono&quot;,
+    monospace;
+  --font-size-normal: max(11px, var(--font-size-base));
+  --font-size-tooltip: calc(var(--font-size-base) - 1px);
+  --font-size-small: max(11px, calc(var(--font-size-base) - 2px));
+  --font-size-h1: calc(var(--font-size-normal) * 1.7142857143);
+  --font-size-h2: calc(var(--font-size-normal) * 1.4285714286);
+  --font-size-h3: calc(var(--font-size-normal) * 1.2857142857);
+  --font-weight-normal: 430;
+  --font-weight-medium: 500;
+  --line-height-normal: calc(var(--font-size-normal) * 1.5);
+  --line-height-tooltip: calc(var(--font-size-tooltip) * 1.4285714286);
+  --line-height-small: calc(var(--font-size-small) + 4px);
+  --radius: 12.5px;
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-2xl: calc(var(--radius) * 1.6);
+  --radius-full: 9999px;
+  --shadow-sm: 0 1px 2px -1px rgb(0 0 0 / 8%);
+  --checkmark-image: url(&quot;data:image/svg+xml,%3Csvg xmlns=&#x27;http://www.w3.org/2000/svg&#x27; viewBox=&#x27;0 0 17 17&#x27;%3E%3Cpath d=&#x27;M12.8961 3.64101C13.1297 3.41418 13.4984 3.37523 13.7779 3.56581C14.0571 3.75635 14.1554 4.11331 14.0299 4.41347L13.9615 4.53847L7.71151 13.7045C7.59411 13.8767 7.4063 13.9877 7.19881 14.0072C6.99136 14.0267 6.78564 13.9533 6.63826 13.806L2.88826 10.056L2.79842 9.9457C2.6192 9.67407 2.64927 9.30496 2.88826 9.06581C3.12738 8.82669 3.49647 8.79676 3.76815 8.97597L3.8785 9.06581L7.03084 12.2182L12.8053 3.74941L12.8961 3.64101Z&#x27;/%3E%3C/svg%3E&quot;);
+
+  /* Legacy aliases; not part of the current agent contract. */
+  --viz-bg: transparent;
+  --viz-panel: var(--card);
+  --viz-border: var(--border);
+  --viz-text: var(--foreground);
+  --viz-muted: var(--muted-foreground);
+  --viz-accent: var(--primary);
+  --viz-accent-text: var(--primary-foreground);
+  --viz-accent-bg: var(--accent);
+  --viz-font-size: var(--font-size-base);
+  --viz-warning: var(--destructive);
+  --color-background-primary: var(--background);
+  --color-text-primary: var(--foreground);
+  --color-border-secondary: var(--border);
+}
+
+:root[data-theme=&quot;light&quot;] {
+  color-scheme: light;
+}
+
+:root[data-theme=&quot;dark&quot;] {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html &gt; body {
+  margin: 0;
+  padding: 5px;
+  color: var(--foreground);
+  background: transparent !important;
+  font-family: var(--font-sans);
+  font-size: var(--font-size-normal);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-normal);
+}
+
+a {
+  color: color-mix(in srgb, var(--viz-accent) 80%, var(--viz-text) 20%);
+  cursor: pointer;
+  font-weight: var(--viz-font-weight-medium);
+  text-decoration: none;
+  text-underline-offset: 2px;
+}
+
+a:is(:hover, :focus-visible) {
+  text-decoration-line: underline;
+  text-decoration-style: dashed;
+  text-decoration-thickness: 0.5px;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p {
+  margin-block: 0;
+}
+
+h1 {
+  font-size: var(--font-size-h1);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+h2 {
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+h3,
+h4,
+h5,
+h6 {
+  font-size: var(--font-size-h3);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.3;
+}
+
+b,
+strong,
+th {
+  font-weight: var(--font-weight-medium);
+}
+
+code:not(pre code) {
+  display: inline;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  corner-shape: superellipse(1.5);
+  background: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  overflow-wrap: anywhere;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  word-break: break-word;
+}
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--foreground);
+  font: inherit;
+  text-align: start;
+}
+
+.table :is(th, td) {
+  padding-block: 10px;
+  padding-inline: 0 24px;
+  overflow-wrap: anywhere;
+  border-bottom: 1px solid var(--border);
+  text-align: start;
+  vertical-align: top;
+}
+
+.table-responsive &gt; .table :is(th, td) {
+  overflow-wrap: break-word;
+}
+
+.table :is(th, td):last-child {
+  padding-inline-end: 0;
+}
+
+.table :is(caption, thead th) {
+  font-weight: 600;
+}
+
+.table thead th {
+  padding-block: 8px;
+  border-bottom-color: color-mix(in srgb, var(--foreground) 16%, transparent);
+}
+
+.table tbody tr:last-child :is(th, td) {
+  border-bottom: 0;
+}
+
+.table.table-sm :is(th, td) {
+  padding-block: 6px;
+}
+
+.table.table-sm :is(th, td):not(:last-child) {
+  padding-inline-end: 16px;
+}
+
+.table :is(.text-end, [align=&quot;right&quot;]) {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.table :is(.text-center, [align=&quot;center&quot;]) {
+  text-align: center;
+}
+
+.table .text-nowrap {
+  white-space: nowrap;
+}
+
+#widget {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  padding: 0;
+  background: transparent !important;
+}
+
+.card {
+  min-width: 0;
+  padding: 12px;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  border-radius: var(--radius-2xl);
+  corner-shape: superellipse(1.5);
+  color: var(--card-foreground);
+  background: var(--card);
+}
+
+#widget &gt; :not(.card) {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.tooltip {
+  position: fixed;
+  z-index: 50;
+  top: 0;
+  left: 0;
+  width: max-content;
+  max-width: min(
+    20rem,
+    var(--tooltip-available-width, calc(100vw - 10px)),
+    calc(100vw - 10px)
+  );
+  max-height: min(
+    var(--tooltip-available-height, calc(100vh - 10px)),
+    calc(100vh - 10px)
+  );
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--popover-foreground);
+  background: var(--popover);
+  box-shadow: none;
+  font-size: var(--font-size-tooltip);
+  line-height: var(--line-height-tooltip);
+  overflow-wrap: break-word;
+  white-space: normal;
+  pointer-events: none;
+  user-select: none;
+}
+
+.viz-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(max(180px, 24%), 1fr));
+  gap: 10px;
+}
+
+.viz-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.viz-stat-value {
+  font-size: var(--font-size-h2);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.25;
+}
+
+.viz-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.viz-badge {
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  color: var(--accent-foreground);
+  background: var(--accent);
+  font-weight: var(--font-weight-medium);
+}
+
+small,
+.text-small,
+.viz-badge {
+  font-size: var(--font-size-small);
+  line-height: var(--line-height-small);
+}
+
+.text-muted {
+  color: var(--muted-foreground);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.viz-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.viz-controls &gt; .form-label {
+  display: grid;
+  min-width: min(100%, 260px);
+  flex: 1 1 280px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 2px 12px;
+  margin-bottom: 0;
+}
+
+.viz-controls &gt; .form-label &gt; :is(.form-control, .form-range, .form-select) {
+  grid-column: 1 / -1;
+}
+
+.btn,
+.form-check-input,
+.form-control,
+.form-range,
+.form-select {
+  font: inherit;
+}
+
+.btn {
+  appearance: button;
+  display: inline-flex;
+  inline-size: fit-content;
+  max-inline-size: 100%;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0 8px;
+  -webkit-app-region: no-drag;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--secondary-foreground);
+  background: var(--secondary);
+  cursor: var(--cursor-interaction, pointer);
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+.btn:is(.btn-block, .viz-tile) {
+  inline-size: 100%;
+}
+
+.btn.viz-tile {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+a.btn {
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.btn:not(:disabled):hover {
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.btn-primary {
+  border-color: transparent;
+  color: var(--primary-foreground);
+  background: var(--foreground);
+  background-clip: padding-box;
+}
+
+.btn-primary .text-muted {
+  color: color-mix(in srgb, var(--primary-foreground) 50%, transparent);
+}
+
+.btn-primary:not(:disabled):hover {
+  background: color-mix(in srgb, var(--foreground) 80%, transparent);
+  background-clip: padding-box;
+}
+
+.btn-ghost {
+  border-color: transparent;
+  color: var(--muted-foreground);
+  background: transparent;
+}
+
+.btn-ghost:not(:disabled):hover {
+  color: var(--foreground);
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+[data-lucide] {
+  stroke-width: 1.6;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--foreground);
+}
+
+.form-control {
+  display: block;
+  width: 100%;
+  min-height: 28px;
+  padding: 0 8px;
+  outline: none;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--foreground);
+  background: var(--secondary);
+}
+
+.form-control::placeholder {
+  color: var(--muted-foreground);
+}
+
+.form-control[type=&quot;file&quot;] {
+  padding: 0;
+  overflow: hidden;
+  cursor: var(--cursor-interaction, pointer);
+}
+
+.form-control[type=&quot;file&quot;]::file-selector-button {
+  min-height: 26px;
+  margin-right: 8px;
+  padding: 0 8px;
+  border: 0;
+  border-right: 1px solid var(--input);
+  color: var(--secondary-foreground);
+  background: var(--secondary);
+  cursor: inherit;
+  font: inherit;
+}
+
+.form-control[type=&quot;file&quot;]:not(:disabled):hover::file-selector-button {
+  background: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.form-control-color[type=&quot;color&quot;] {
+  width: 40px;
+  height: 28px;
+  padding: 3px;
+  cursor: var(--cursor-interaction, pointer);
+}
+
+.form-control-color[type=&quot;color&quot;]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.form-control-color[type=&quot;color&quot;]::-webkit-color-swatch {
+  border: 0;
+  border-radius: calc(var(--radius-lg) - 4px);
+  corner-shape: superellipse(1.5);
+}
+
+textarea.form-control {
+  height: auto;
+  min-height: 72px;
+  padding: 8px 10px;
+  resize: vertical;
+}
+
+.form-control:focus-visible {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-control:disabled,
+.form-select:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.form-select {
+  appearance: none;
+  display: block;
+  width: 100%;
+  min-height: 28px;
+  margin: 0;
+  padding: 0 32px 0 8px;
+  outline: none;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  corner-shape: superellipse(1.5);
+  color: var(--foreground);
+  background-color: var(--secondary);
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--muted-foreground) 50%),
+    linear-gradient(135deg, var(--muted-foreground) 50%, transparent 50%);
+  background-position:
+    calc(100% - 14px) 50%,
+    calc(100% - 10px) 50%;
+  background-repeat: no-repeat;
+  background-size: 4px 4px;
+  cursor: var(--cursor-interaction, default);
+}
+
+.form-select:not(:disabled):hover {
+  background-color: color-mix(in srgb, var(--foreground) 6%, var(--secondary));
+}
+
+.form-select:focus-visible {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-check {
+  display: flex;
+  min-height: 20px;
+  align-items: center;
+  gap: 6px;
+}
+
+.form-check-input {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  margin: 0;
+  border: 1px solid var(--input);
+  color: var(--primary-foreground);
+  background-color: transparent;
+  cursor: var(--cursor-interaction, default);
+  transition:
+    background-color 150ms,
+    border-color 150ms,
+    box-shadow 150ms;
+}
+
+.form-check:not(.form-switch) .form-check-input[type=&quot;checkbox&quot;] {
+  border-color: var(--input);
+  border-radius: var(--radius-sm);
+  corner-shape: superellipse(1.5);
+  background-color: var(--secondary);
+  box-shadow: var(--shadow-sm);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input:not(:disabled):not(:checked):hover {
+  background-color: var(--card);
+}
+
+.form-check:not(.form-switch) .form-check-input[type=&quot;checkbox&quot;]:checked {
+  border-color: var(--primary);
+  background-color: var(--primary);
+}
+
+.form-check:not(.form-switch)
+  .form-check-input[type=&quot;checkbox&quot;]:checked::before {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--primary-foreground);
+  content: &quot;&quot;;
+  mask: var(--checkmark-image) center / 12px 12px no-repeat;
+}
+
+.form-check-input[type=&quot;radio&quot;] {
+  width: 14px;
+  height: 14px;
+  border-radius: var(--radius-full);
+}
+
+.form-check-input[type=&quot;radio&quot;]:checked {
+  border: 2px solid var(--primary);
+  background:
+    radial-gradient(circle, var(--primary-foreground) 0 2.5px, transparent 3px),
+    var(--primary);
+}
+
+.form-check:not(.form-switch) .form-check-input:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.form-check:not(.form-switch) .form-check-input:disabled {
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.form-check:not(.form-switch) .form-check-input:disabled + .form-check-label {
+  cursor: not-allowed;
+}
+
+.form-switch .form-check-input:disabled,
+.form-switch .form-check-input:disabled + .form-check-label {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.form-check-label {
+  color: var(--foreground);
+  cursor: var(--cursor-interaction, default);
+}
+
+.form-switch .form-check-input {
+  position: relative;
+  width: 32px;
+  height: 20px;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--muted);
+  box-shadow: none;
+  transition: background-color 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.form-switch .form-check-input::before {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 16px;
+  height: 16px;
+  box-sizing: border-box;
+  border: 1px solid light-dark(var(--primary-foreground), var(--foreground));
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+  box-shadow: var(--shadow-sm);
+  content: &quot;&quot;;
+  transform: translate(2px, -50%);
+  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.form-switch .form-check-input:checked {
+  background: var(--primary);
+}
+
+.form-switch .form-check-input:checked::before {
+  transform: translate(14px, -50%);
+}
+
+.form-switch .form-check-input:focus-visible {
+  box-shadow: 0 0 0 2px var(--ring);
+}
+
+.form-range {
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: 28px;
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  outline: none;
+  border: 0;
+  accent-color: var(--primary);
+  background: linear-gradient(
+      color-mix(in srgb, var(--foreground) 7%, transparent),
+      color-mix(in srgb, var(--foreground) 7%, transparent)
+    )
+    center / 100% 2px no-repeat;
+}
+
+.form-range::-webkit-slider-runnable-track {
+  height: 28px;
+  background: transparent;
+}
+
+.form-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+}
+
+.form-range:focus-visible::-webkit-slider-thumb {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-range::-moz-range-track {
+  height: 28px;
+  background: transparent;
+}
+
+.form-range::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: light-dark(var(--primary-foreground), var(--foreground));
+}
+
+.form-range:focus-visible::-moz-range-thumb {
+  border-color: var(--ring);
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.form-range:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.btn:not(.btn-primary, .viz-tile):is(
+    [aria-pressed=&quot;true&quot;],
+    [aria-selected=&quot;true&quot;],
+    .is-selected
+  ) {
+  border-color: var(--primary);
+  color: var(--primary-foreground);
+  background: var(--primary);
+}
+
+.btn.viz-tile:is([aria-pressed=&quot;true&quot;], [aria-selected=&quot;true&quot;], .is-selected) {
+  border-color: var(--primary);
+  box-shadow: inset 0 0 0 1px var(--primary);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+#widget &gt; svg {
+  width: 100%;
+}
+
+.text-warning,
+.text-destructive {
+  color: var(--destructive);
+}
+
+html&gt;body{padding:0}&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;main id=&quot;dualsub-audit&quot;&gt;
+  &lt;style&gt;
+    #dualsub-audit {
+      color-scheme: light dark;
+      box-sizing: border-box;
+      max-width: 78rem;
+      margin-inline: auto;
+      padding: clamp(1rem, 3vw, 2.5rem);
+      background: var(--background);
+      color: var(--foreground);
+      font-size: var(--font-size-base);
+      overflow-wrap: anywhere;
+      --audit-muted: color-mix(in srgb, var(--foreground) 78%, var(--background));
+      --audit-rule: color-mix(in srgb, var(--foreground) 24%, var(--background));
+      --audit-soft: color-mix(in srgb, var(--foreground) 6%, var(--background));
+    }
+
+    #dualsub-audit *,
+    #dualsub-audit *::before,
+    #dualsub-audit *::after {
+      box-sizing: inherit;
+    }
+
+    #dualsub-audit .audit-skip {
+      position: absolute;
+      inset-block-start: 0;
+      inset-inline-start: 1rem;
+      transform: translateY(-160%);
+      z-index: 1;
+      padding: 0.75rem 1rem;
+      background: var(--foreground);
+      color: var(--background);
+    }
+
+    #dualsub-audit .audit-skip:focus {
+      transform: translateY(0);
+    }
+
+    #dualsub-audit a {
+      color: inherit;
+      text-decoration-line: underline;
+      text-decoration-thickness: 0.12em;
+      text-underline-offset: 0.18em;
+    }
+
+    #dualsub-audit a:focus-visible,
+    #dualsub-audit summary:focus-visible {
+      outline: 0.2rem solid var(--foreground);
+      outline-offset: 0.2rem;
+    }
+
+    #dualsub-audit .audit-masthead {
+      border-block-end: 0.12rem solid var(--audit-rule);
+      padding-block-end: 1rem;
+    }
+
+    #dualsub-audit .audit-kicker,
+    #dualsub-audit .audit-caption-note {
+      color: var(--audit-muted);
+    }
+
+    #dualsub-audit .audit-kicker {
+      margin: 0;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    #dualsub-audit .audit-lede {
+      max-width: 74ch;
+      margin-block: 0.5rem 0;
+    }
+
+    #dualsub-audit .audit-nav ul {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 1.25rem;
+      margin: 1rem 0 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    #dualsub-audit section {
+      scroll-margin-block-start: 1rem;
+      margin-block: 2.25rem;
+    }
+
+    #dualsub-audit h2,
+    #dualsub-audit h3 {
+      font-weight: 500;
+    }
+
+    #dualsub-audit h2 {
+      margin-block: 0 0.75rem;
+      padding-block-end: 0.45rem;
+      border-block-end: 0.08rem solid var(--audit-rule);
+    }
+
+    #dualsub-audit h3 {
+      margin-block: 1.25rem 0.5rem;
+    }
+
+    #dualsub-audit p,
+    #dualsub-audit ul,
+    #dualsub-audit dl {
+      max-width: 82ch;
+    }
+
+    #dualsub-audit code {
+      overflow-wrap: anywhere;
+    }
+
+    #dualsub-audit .audit-alert {
+      margin-block: 1rem;
+      padding: 0.85rem 1rem;
+      border-inline-start: 0.35rem solid var(--destructive);
+      background: var(--audit-soft);
+    }
+
+    #dualsub-audit .audit-alert p {
+      margin: 0;
+    }
+
+    #dualsub-audit .audit-status-counts {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(7rem, 1fr));
+      gap: 0;
+      margin: 1rem 0 1.5rem;
+      border-block: 0.08rem solid var(--audit-rule);
+    }
+
+    #dualsub-audit .audit-status-counts div {
+      padding: 0.8rem 1rem;
+      border-inline-end: 0.08rem solid var(--audit-rule);
+    }
+
+    #dualsub-audit .audit-status-counts div:last-child {
+      border-inline-end: 0;
+    }
+
+    #dualsub-audit .audit-status-counts dt {
+      color: var(--audit-muted);
+    }
+
+    #dualsub-audit .audit-status-counts dd {
+      margin: 0.25rem 0 0;
+      font-weight: 500;
+      font-variant-numeric: tabular-nums;
+    }
+
+    #dualsub-audit .audit-distribution {
+      max-width: 46rem;
+      margin: 1rem 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    #dualsub-audit .audit-distribution li {
+      display: grid;
+      grid-template-columns: minmax(5rem, 7rem) minmax(8rem, 1fr) minmax(9rem, auto);
+      gap: 0.75rem;
+      align-items: center;
+      margin-block: 0.6rem;
+    }
+
+    #dualsub-audit .audit-track {
+      min-height: 0.75rem;
+      border: 0.08rem solid var(--audit-rule);
+      background: var(--audit-soft);
+    }
+
+    #dualsub-audit .audit-fill {
+      display: block;
+      width: var(--share);
+      min-height: calc(0.75rem - 0.16rem);
+      background: var(--series);
+    }
+
+    #dualsub-audit .audit-high {
+      --series: var(--viz-series-1);
+    }
+
+    #dualsub-audit .audit-medium {
+      --series: var(--viz-series-2);
+    }
+
+    #dualsub-audit .audit-low {
+      --series: var(--viz-series-3);
+    }
+
+    #dualsub-audit .audit-distribution strong,
+    #dualsub-audit .audit-distribution span:last-child {
+      font-variant-numeric: tabular-nums;
+    }
+
+    #dualsub-audit .table-responsive {
+      max-width: 100%;
+      overflow-x: auto;
+      overscroll-behavior-inline: contain;
+    }
+
+    #dualsub-audit table {
+      width: 100%;
+      border-collapse: collapse;
+      color: inherit;
+    }
+
+    #dualsub-audit caption {
+      padding-block: 0.4rem 0.65rem;
+      color: var(--audit-muted);
+      text-align: start;
+      font-weight: 500;
+    }
+
+    #dualsub-audit th,
+    #dualsub-audit td {
+      padding: 0.65rem 0.7rem;
+      border-block-end: 0.08rem solid var(--audit-rule);
+      text-align: start;
+      vertical-align: top;
+    }
+
+    #dualsub-audit thead th {
+      border-block-end-width: 0.16rem;
+      font-weight: 500;
+    }
+
+    #dualsub-audit tbody th[scope=&quot;row&quot;] {
+      white-space: nowrap;
+      font-weight: 500;
+    }
+
+    #dualsub-audit .audit-baseline-table {
+      min-width: 42rem;
+    }
+
+    #dualsub-audit .audit-ledger {
+      min-width: 72rem;
+    }
+
+    #dualsub-audit .audit-ledger .audit-col-id {
+      width: 5.5rem;
+    }
+
+    #dualsub-audit .audit-ledger .audit-col-severity {
+      width: 6.5rem;
+    }
+
+    #dualsub-audit .audit-ledger .audit-col-title {
+      width: 24%;
+    }
+
+    #dualsub-audit .audit-ledger .audit-col-status {
+      width: 8.5rem;
+    }
+
+    #dualsub-audit .audit-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      white-space: nowrap;
+      font-weight: 500;
+    }
+
+    #dualsub-audit .audit-status::before {
+      content: &quot;&quot;;
+      display: inline-block;
+      inline-size: 0.7rem;
+      block-size: 0.7rem;
+      border: 0.12rem solid currentColor;
+      flex: 0 0 auto;
+    }
+
+    #dualsub-audit .audit-status[data-kind=&quot;fixed&quot;]::before {
+      background: currentColor;
+    }
+
+    #dualsub-audit .audit-status[data-kind=&quot;residual&quot;]::before {
+      background: linear-gradient(135deg, currentColor 0 50%, transparent 50% 100%);
+    }
+
+    #dualsub-audit .audit-status[data-kind=&quot;pending&quot;]::before {
+      background: transparent;
+    }
+
+    #dualsub-audit .audit-evidence-table {
+      min-width: 49rem;
+    }
+
+    #dualsub-audit .audit-list {
+      padding-inline-start: 1.25rem;
+    }
+
+    #dualsub-audit .audit-list li + li {
+      margin-block-start: 0.65rem;
+    }
+
+    #dualsub-audit .audit-rule {
+      padding: 0.8rem 1rem;
+      border-inline-start: 0.35rem solid var(--foreground);
+      background: var(--audit-soft);
+      font-weight: 500;
+    }
+
+    #dualsub-audit .audit-note {
+      padding-block: 1rem;
+      border-block: 0.08rem solid var(--audit-rule);
+      color: var(--audit-muted);
+    }
+
+    #dualsub-audit .audit-foot {
+      margin-block-end: 0;
+    }
+
+    @media (max-width: 48rem) {
+      #dualsub-audit .audit-status-counts {
+        grid-template-columns: repeat(2, minmax(7rem, 1fr));
+      }
+
+      #dualsub-audit .audit-status-counts div:nth-child(2) {
+        border-inline-end: 0;
+      }
+
+      #dualsub-audit .audit-status-counts div:nth-child(-n + 2) {
+        border-block-end: 0.08rem solid var(--audit-rule);
+      }
+    }
+
+    @media (max-width: 31rem) {
+      #dualsub-audit {
+        padding-inline: 0.8rem;
+      }
+
+      #dualsub-audit .audit-distribution li {
+        grid-template-columns: 1fr;
+        gap: 0.3rem;
+      }
+
+      #dualsub-audit .audit-distribution span:last-child {
+        justify-self: start;
+      }
+    }
+  &lt;/style&gt;
+
+  &lt;a class=&quot;audit-skip&quot; href=&quot;#status&quot;&gt;Skip to remediation status&lt;/a&gt;
+
+  &lt;header id=&quot;top&quot; class=&quot;audit-masthead&quot;&gt;
+    &lt;h1 class=&quot;sr-only&quot;&gt;DualSub PR 62 audit reconciliation&lt;/h1&gt;
+    &lt;p class=&quot;audit-kicker&quot;&gt;DualSub PR 62 · audit reconciliation&lt;/p&gt;
+    &lt;p class=&quot;audit-lede&quot;&gt;One evidence-led register separates the immutable audited baseline from the final remediation snapshot. It reports all 35 original findings once, records the completed root gates and post-audit runtime fixes, and preserves explicit operational or language-level boundaries without expanding into SES-style hardening.&lt;/p&gt;
+    &lt;nav class=&quot;audit-nav&quot; aria-label=&quot;Audit sections&quot;&gt;
+      &lt;ul&gt;
+        &lt;li&gt;&lt;a href=&quot;#baseline&quot;&gt;Audited baseline&lt;/a&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;a href=&quot;#status&quot;&gt;Final status&lt;/a&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;a href=&quot;#ledger&quot;&gt;Finding ledger&lt;/a&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;a href=&quot;#addendum&quot;&gt;Addendum&lt;/a&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;a href=&quot;#residuals&quot;&gt;Residuals&lt;/a&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;a href=&quot;#evidence&quot;&gt;Root evidence&lt;/a&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;a href=&quot;#reproducibility&quot;&gt;Reproducibility&lt;/a&gt;&lt;/li&gt;
+        &lt;li&gt;&lt;a href=&quot;#limits&quot;&gt;Limits&lt;/a&gt;&lt;/li&gt;
+      &lt;/ul&gt;
+    &lt;/nav&gt;
+  &lt;/header&gt;
+
+  &lt;section id=&quot;baseline&quot; aria-labelledby=&quot;baseline-title&quot;&gt;
+    &lt;h2 id=&quot;baseline-title&quot;&gt;Audited baseline — immutable&lt;/h2&gt;
+    &lt;p&gt;Every value in this section describes the repository state audited on 2026-07-17. None is a current-remediation metric.&lt;/p&gt;
+    &lt;div class=&quot;table-responsive&quot;&gt;
+      &lt;table class=&quot;audit-baseline-table&quot;&gt;
+        &lt;caption&gt;Audited baseline identity and measured scope&lt;/caption&gt;
+        &lt;thead&gt;
+          &lt;tr&gt;
+            &lt;th scope=&quot;col&quot;&gt;Baseline field&lt;/th&gt;
+            &lt;th scope=&quot;col&quot;&gt;Audited value&lt;/th&gt;
+          &lt;/tr&gt;
+        &lt;/thead&gt;
+        &lt;tbody&gt;
+          &lt;tr&gt;&lt;th scope=&quot;row&quot;&gt;Audit date&lt;/th&gt;&lt;td&gt;2026-07-17, Asia/Shanghai&lt;/td&gt;&lt;/tr&gt;
+          &lt;tr&gt;&lt;th scope=&quot;row&quot;&gt;Branch&lt;/th&gt;&lt;td&gt;&lt;code&gt;migrate/ai-analysis-modal-to-sidebar&lt;/code&gt;&lt;/td&gt;&lt;/tr&gt;
+          &lt;tr&gt;&lt;th scope=&quot;row&quot;&gt;Audited HEAD&lt;/th&gt;&lt;td&gt;&lt;code&gt;fa1ca8fe479ee0ec36891495a21f3503836c1490&lt;/code&gt;&lt;/td&gt;&lt;/tr&gt;
+          &lt;tr&gt;&lt;th scope=&quot;row&quot;&gt;Merge-base&lt;/th&gt;&lt;td&gt;&lt;code&gt;8fbe975bd148c768035ba742dcf55c6fee983d1d&lt;/code&gt;&lt;/td&gt;&lt;/tr&gt;
+          &lt;tr&gt;&lt;th scope=&quot;row&quot;&gt;Diff&lt;/th&gt;&lt;td&gt;239 files; +26,356 / -20,437&lt;/td&gt;&lt;/tr&gt;
+          &lt;tr&gt;&lt;th scope=&quot;row&quot;&gt;Original test result&lt;/th&gt;&lt;td&gt;80 suites; 1,122 tests&lt;/td&gt;&lt;/tr&gt;
+          &lt;tr&gt;&lt;th scope=&quot;row&quot;&gt;Locale parity&lt;/th&gt;&lt;td&gt;6 locales × 281 keys&lt;/td&gt;&lt;/tr&gt;
+          &lt;tr&gt;&lt;th scope=&quot;row&quot;&gt;&lt;code&gt;BaseContentScript.js&lt;/code&gt;&lt;/th&gt;&lt;td&gt;4,236 lines of code&lt;/td&gt;&lt;/tr&gt;
+          &lt;tr&gt;&lt;th scope=&quot;row&quot;&gt;Lockfile SHA-256&lt;/th&gt;&lt;td&gt;&lt;code&gt;6c54862f375bcabd119fc2bdfa9755fd0c58b61ceb9c9c8b4961bed1a7de5de9&lt;/code&gt;&lt;/td&gt;&lt;/tr&gt;
+        &lt;/tbody&gt;
+      &lt;/table&gt;
+    &lt;/div&gt;
+
+    &lt;h3&gt;Original severity distribution&lt;/h3&gt;
+    &lt;ul class=&quot;audit-distribution&quot; aria-label=&quot;Original findings by severity&quot;&gt;
+      &lt;li class=&quot;audit-high&quot;&gt;
+        &lt;strong&gt;High&lt;/strong&gt;
+        &lt;span class=&quot;audit-track&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;audit-fill&quot; style=&quot;--share: 14.29%&quot;&gt;&lt;/span&gt;&lt;/span&gt;
+        &lt;span&gt;5 of 35 · 14.29%&lt;/span&gt;
+      &lt;/li&gt;
+      &lt;li class=&quot;audit-medium&quot;&gt;
+        &lt;strong&gt;Medium&lt;/strong&gt;
+        &lt;span class=&quot;audit-track&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;audit-fill&quot; style=&quot;--share: 54.29%&quot;&gt;&lt;/span&gt;&lt;/span&gt;
+        &lt;span&gt;19 of 35 · 54.29%&lt;/span&gt;
+      &lt;/li&gt;
+      &lt;li class=&quot;audit-low&quot;&gt;
+        &lt;strong&gt;Low&lt;/strong&gt;
+        &lt;span class=&quot;audit-track&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;audit-fill&quot; style=&quot;--share: 31.43%&quot;&gt;&lt;/span&gt;&lt;/span&gt;
+        &lt;span&gt;11 of 35 · 31.43%&lt;/span&gt;
+      &lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/section&gt;
+
+  &lt;section id=&quot;status&quot; aria-labelledby=&quot;status-title&quot;&gt;
+    &lt;h2 id=&quot;status-title&quot;&gt;Final remediation status&lt;/h2&gt;
+    &lt;div class=&quot;audit-alert&quot; aria-live=&quot;polite&quot;&gt;
+      &lt;p&gt;&lt;strong&gt;Root verification complete.&lt;/strong&gt; Thirty-four original findings are fixed. M-14 is the single accepted bounded residual; no original finding remains pending or deferred.&lt;/p&gt;
+    &lt;/div&gt;
+    &lt;!-- ROOT STATUS BLOCK: Fixed 34 | Residual 1 | Pending 0 | Deferred 0 | denominator 35 --&gt;
+    &lt;dl class=&quot;audit-status-counts&quot; aria-label=&quot;Final status totals for the 35 original findings&quot;&gt;
+      &lt;div&gt;&lt;dt&gt;Fixed&lt;/dt&gt;&lt;dd&gt;34&lt;/dd&gt;&lt;/div&gt;
+      &lt;div&gt;&lt;dt&gt;Residual&lt;/dt&gt;&lt;dd&gt;1&lt;/dd&gt;&lt;/div&gt;
+      &lt;div&gt;&lt;dt&gt;Pending&lt;/dt&gt;&lt;dd&gt;0&lt;/dd&gt;&lt;/div&gt;
+      &lt;div&gt;&lt;dt&gt;Deferred&lt;/dt&gt;&lt;dd&gt;0&lt;/dd&gt;&lt;/div&gt;
+    &lt;/dl&gt;
+    &lt;p class=&quot;audit-rule&quot;&gt;Audit conclusion: the remediation gate is satisfied in this exact unstaged worktree. Integration still requires deliberate custody of the recorded snapshot and ordinary PR review; no live provider, CDN catalog, or browser-store validation is implied.&lt;/p&gt;
+  &lt;/section&gt;
+
+  &lt;section id=&quot;ledger&quot; aria-labelledby=&quot;ledger-title&quot;&gt;
+    &lt;h2 id=&quot;ledger-title&quot;&gt;Unified original-finding ledger&lt;/h2&gt;
+    &lt;p class=&quot;audit-caption-note&quot;&gt;Exactly 35 original findings, in original severity and identifier order. These statuses are frozen to the root-verified 2026-07-19 remediation snapshot.&lt;/p&gt;
+    &lt;div class=&quot;table-responsive&quot;&gt;
+      &lt;table class=&quot;audit-ledger&quot;&gt;
+        &lt;caption&gt;Original findings with final status and root-verified evidence or accepted residual&lt;/caption&gt;
+        &lt;thead&gt;
+          &lt;tr&gt;
+            &lt;th class=&quot;audit-col-id&quot; scope=&quot;col&quot;&gt;ID&lt;/th&gt;
+            &lt;th class=&quot;audit-col-severity&quot; scope=&quot;col&quot;&gt;Severity&lt;/th&gt;
+            &lt;th class=&quot;audit-col-title&quot; scope=&quot;col&quot;&gt;Exact original title&lt;/th&gt;
+            &lt;th class=&quot;audit-col-status&quot; scope=&quot;col&quot;&gt;Final status&lt;/th&gt;
+            &lt;th scope=&quot;col&quot;&gt;Root evidence or accepted residual&lt;/th&gt;
+          &lt;/tr&gt;
+        &lt;/thead&gt;
+        &lt;tbody&gt;
+          &lt;tr data-finding=&quot;H-01&quot; data-status=&quot;fixed&quot;&gt;
+            &lt;th scope=&quot;row&quot;&gt;&lt;code&gt;H-01&lt;/code&gt;&lt;/th&gt;
+            &lt;td&gt;High&lt;/td&gt;
+            &lt;td&gt;AI enablement fails open when storage reads fail&lt;/td&gt;
+            &lt;td&gt;&lt;span class=&quot;audit-status&quot; data-kind=&quot;fixed&quot;&gt;Fixed&lt;/span&gt;&lt;/td&gt;
+            &lt;td&gt;Schema defaults remain fail-closed, Base requires a strict AI projection, and background rechecks stored enablement before work and around every provider attempt. Storage-rejection regressions pass.&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr data-finding=&quot;H-02&quot; data-status=&quot;fixed&quot;&gt;
+            &lt;th scope=&quot;row&quot;&gt;&lt;code&gt;H-02&lt;/code&gt;&lt;/th&gt;
+            &lt;td&gt;High&lt;/td&gt;
+            &lt;td&gt;Netflix can install episode A subtitles under episode B&lt;/td&gt;
+            &lt;td&gt;&lt;span class=&quot;audit-status&quot; data-kind=&quot;fixed&quot;&gt;Fixed&lt;/span&gt;&lt;/td&gt;
+            &lt;td&gt;Root-reviewed request identity capture, stale-completion rejection, and marker cleanup bind subtitle installation to the initiating video.&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr data-finding=&quot;H-03&quot; data-status=&quot;fixed&quot;&gt;
+            &lt;th scope=&quot;row&quot;&gt;&lt;code&gt;H-03&lt;/code&gt;&lt;/th&gt;
+            &lt;td&gt;High&lt;/td&gt;
+            &lt;td&gt;Duplicate cue identity can create an endless translation loop&lt;/td&gt;
+            &lt;td&gt;&lt;span class=&quot;audit-status&quot; data-kind=&quot;fixed&quot;&gt;Fixed&lt;/span&gt;&lt;/td&gt;
+            &lt;td&gt;Root-reviewed occurrence identity removes the ambiguous cue lookup; regression coverage bounds duplicate-cue provider submissions.&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr data-finding=&quot;H-04&quot; data-status=&quot;fixed&quot;&gt;
+            &lt;th scope=&quot;row&quot;&gt;&lt;code&gt;H-04&lt;/code&gt;&lt;/th&gt;
+            &lt;td&gt;High&lt;/td&gt;
+            &lt;td&gt;Disney playback state is English-only and can invert the action&lt;/td&gt;
+            &lt;td&gt;&lt;span class=&quot;audit-status&quot; data-kind=&quot;fixed&quot;&gt;Fixed&lt;/span&gt;&lt;/td&gt;
+            &lt;td&gt;The media element state is authoritative and controls are only an action mechanism; localized-label regressions are covered.&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr data-finding=&quot;H-05&quot; data-status=&quot;fixed&quot;&gt;
+            &lt;th scope=&quot;row&quot;&gt;&lt;code&gt;H-05&lt;/code&gt;&lt;/th&gt;
+            &lt;td&gt;High&lt;/td&gt;
+            &lt;td&gt;Platform initialization is not single-flight&lt;/td&gt;
+            &lt;td&gt;&lt;span class=&quot;audit-status&quot; data-kind=&quot;fixed&quot;&gt;Fixed&lt;/span&gt;&lt;/td&gt;
+            &lt;td&gt;A root-reviewed lifecycle generation and single-flight guard reject stale initialization completions and clean up only their own attempt.&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr data-finding=&quot;M-01&quot; data-status=&quot;fixed&quot;&gt;
+            &lt;th scope=&quot;row&quot;&gt;&lt;code&gt;M-01&lt;/code&gt;&lt;/th&gt;
+            &lt;td&gt;Medium&lt;/td&gt;
+            &lt;td&gt;Final-retry controls are removed by the sanitizer.&lt;/td&gt;
+            &lt;td&gt;&lt;span class=&quot;audit-status&quot; data-kind=&quot;fixed&quot;&gt;Fixed&lt;/span&gt;&lt;/td&gt;
+            &lt;td&gt;Terminal retry controls are created through DOM APIs with programmatic listeners after sanitized content; the exact final-attempt path is covered.&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr data-finding=&quot;M-02&quot; data-status=&quot;fixed&quot;&gt;
+            &lt;th scope=&quot;row&quot;&gt;&lt;code&gt;M-02&lt;/code&gt;&lt;/th&gt;
+            &lt;td&gt;Medium&lt;/td&gt;
+            &lt;td&gt;AI-context restarts leak five Base-owned listeners.&lt;/td&gt;
+            &lt;td&gt;&lt;span class=&quot;audit-status&quot; data-kind=&quot;fixed&quot;&gt;Fixed&lt;/span&gt;&lt;/td&gt;
+            &lt;td&gt;AI feature listeners now have feature-lifecycle ownership and are drained before restart or disable; repeated-change coverage checks listener counts.&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr data-finding=&quot;M-03&quot; data-status=&quot;fixed&quot;&gt;
+            &lt;th scope=&quot;row&quot;&gt;&lt;code&gt;M-03&lt;/code&gt;&lt;/th&gt;
+            &lt;td&gt;Medium&lt;/td&gt;
+            &lt;td&gt;Platform pause failure prevents generic fallback.&lt;/td&gt;
+            &lt;td&gt;&lt;span class=&quot;audit-status&quot; data-kind=&quot;fixed&quot;&gt;Fixed&lt;/span&gt;&lt;/td&gt;
+            &lt;td&gt;Platform pause/resume returns early only after verified success. Generic media-element fallback is used only when the adapter explicitly allows direct playback control; Disney fails closed when its native controller is unavailable, preventing media/UI split-brain.&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr data-finding=&quot;M-04&quot; data-status=&quot;fixed&quot;&gt;
+            &lt;th scope=&quot;row&quot;&gt;&lt;code&gt;M-04&lt;/code&gt;&lt;/th&gt;
+            &lt;td&gt;Medium&lt;/td&gt;
+            &lt;td&gt;Netflix settings-read failure poisons the subtitle URL.&lt;/td&gt;
+            &lt;td&gt;&lt;span class=&quot;audit-status&quot; data-kind=&quot;fixed&quot;&gt;Fixed&lt;/span&gt;&lt;/td&gt;
+            &lt;td&gt;Rejected settings reads are handled, and only the initiating request may remove its processed marker and reopen retry.&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr data-finding=&quot;M-05&quot; data-status=&quot;fixed&quot;&gt;
+            &lt;th scope=&quot;row&quot;&gt;&lt;code&gt;M-05&lt;/code&gt;&lt;/th&gt;
+            &lt;td&gt;Medium&lt;/td&gt;
+            &lt;td&gt;An optional Netflix target-track failure discards a valid original.&lt;/td&gt;
+            &lt;td&gt;&lt;span class=&quot;audit-status&quot; data-kind=&quot;fixed&quot;&gt;Fixed&lt;/span&gt;&lt;/td&gt;
+            &lt;td&gt;Optional target-track fetch and parse failures fall back to the already-valid original track instead of aborting the operation.&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr data-finding=&quot;M-06&quot; data-status=&quot;fixed&quot;&gt;
+            &lt;th scope=&quot;row&quot;&gt;&lt;code&gt;M-06&lt;/code&gt;&lt;/th&gt;
+            &lt;td&gt;Medium&lt;/td&gt;
+            &lt;td&gt;Malformed WebVTT timestamps become time zero.&lt;/td&gt;
+            &lt;td&gt;&lt;span class=&quot;audit-status&quot; data-kind=&quot;fixed&quot;&gt;Fixed&lt;/span&gt;&lt;/td&gt;
+            &lt;td&gt;Timestamp parsing now rejects malformed, non-finite, and non-increasing cue ranges rather than coercing them to zero.&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr data-finding=&quot;M-07&quot; data-status=&quot;fixed&quot;&gt;
+            &lt;th scope=&quot;row&quot;&gt;&lt;code&gt;M-07&lt;/code&gt;&lt;/th&gt;
+            &lt;td&gt;Medium&lt;/td&gt;
+            &lt;td&gt;The TTML/WebVTT boundary corrupts valid text.&lt;/td&gt;
+            &lt;td&gt;&lt;span class=&quot;audit-status&quot; data-kind=&quot;fixed&quot;&gt;Fixed&lt;/span&gt;&lt;/td&gt;
+            &lt;td&gt;Shared cue-text normalization preserves intended breaks and literals while escaping once at rendering; parser-to-DOM cases are covered.&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr data-finding=&quot;M-08&quot; data-status=&quot;fixed&quot;&gt;
+            &lt;th scope=&quot;row&quot;&gt;&lt;code&gt;M-08&lt;/code&gt;&lt;/th&gt;
+            &lt;td&gt;Medium&lt;/td&gt;
+            &lt;td&gt;&lt;code&gt;SliderSetting&lt;/code&gt; drops the latest overlapping commit.&lt;/td&gt;
+            &lt;td&gt;&lt;span class=&quot;audit-status&quot; data-kind=&quot;fixed&quot;&gt;Fixed&lt;/span&gt;&lt;/td&gt;
+            &lt;td&gt;A last-write-wins serialized commit path retains the newest release while an earlier write is pending.&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr data-finding=&quot;M-09&quot; data-status=&quot;fixed&quot;&gt;
+            &lt;th scope=&quot;row&quot;&gt;&lt;code&gt;M-09&lt;/code&gt;&lt;/th&gt;
+            &lt;td&gt;Medium&lt;/td&gt;
+            &lt;td&gt;Optimistic settings are not reconciled after storage failure.&lt;/td&gt;
+            &lt;td&gt;&lt;span class=&quot;audit-status&quot; data-kind=&quot;fixed&quot;&gt;Fixed&lt;/span&gt;&lt;/td&gt;
+            &lt;td&gt;Write generations reconcile failure without rolling back a newer value. Missing or malformed producer acknowledgements remove optimistic raw input and trigger exact-key strict readback, so only canonical persisted values become authority.&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr data-finding=&quot;M-10&quot; data-status=&quot;fixed&quot;&gt;
+            &lt;th scope=&quot;row&quot;&gt;&lt;code&gt;M-10&lt;/code&gt;&lt;/th&gt;
+            &lt;td&gt;Medium&lt;/td&gt;
+            &lt;td&gt;&lt;code&gt;getAll()&lt;/code&gt; hides storage failure as successful defaults.&lt;/td&gt;
+            &lt;td&gt;&lt;span class=&quot;audit-status&quot; data-kind=&quot;fixed&quot;&gt;Fixed&lt;/span&gt;&lt;/td&gt;
+            &lt;td&gt;&lt;code&gt;getAll()&lt;/code&gt; and strict reads reject degraded storage instead of promoting defaults; callers preserve prior authoritative state and recover on later valid storage events.&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr data-finding=&quot;M-11&quot; data-status=&quot;fixed&quot;&gt;
+            &lt;th scope=&quot;row&quot;&gt;&lt;code&gt;M-11&lt;/code&gt;&lt;/th&gt;
+            &lt;td&gt;Medium&lt;/td&gt;
+            &lt;td&gt;Configuration validation is type-only.&lt;/td&gt;
+            &lt;td&gt;&lt;span class=&quot;audit-status&quot; data-kind=&quot;fixed&quot;&gt;Fixed&lt;/span&gt;&lt;/td&gt;
+            &lt;td&gt;Canonical schema constraints, repair projection, listener isolation, and safe error logging were root-replayed across 16 suites / 436 tests, plus 25 AI-context tests.&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr data-finding=&quot;M-12&quot; data-status=&quot;fixed&quot;&gt;
+            &lt;th scope=&quot;row&quot;&gt;&lt;code&gt;M-12&lt;/code&gt;&lt;/th&gt;
+            &lt;td&gt;Medium&lt;/td&gt;
+            &lt;td&gt;Batch fallback repeats already-successful provider calls.&lt;/td&gt;
+            &lt;td&gt;&lt;span class=&quot;audit-status&quot; data-kind=&quot;fixed&quot;&gt;Fixed&lt;/span&gt;&lt;/td&gt;
+            &lt;td&gt;The dormant batch surface and its duplicate fallback ownership were removed. Catalog and source guards prevent &lt;code&gt;translateBatch&lt;/code&gt; or &lt;code&gt;checkBatchSupport&lt;/code&gt; from returning to production.&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr data-finding=&quot;M-13&quot; data-status=&quot;fixed&quot;&gt;
+            &lt;th scope=&quot;row&quot;&gt;&lt;code&gt;M-13&lt;/code&gt;&lt;/th&gt;
+            &lt;td&gt;Medium&lt;/td&gt;
+            &lt;td&gt;Platform observer retries can resurrect after cleanup.&lt;/td&gt;
+            &lt;td&gt;&lt;span class=&quot;audit-status&quot; data-kind=&quot;fixed&quot;&gt;Fixed&lt;/span&gt;&lt;/td&gt;
+            &lt;td&gt;Retry timers are lifecycle-owned, canceled during cleanup, and prevented from reviving a stale platform generation.&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr data-finding=&quot;M-14&quot; data-status=&quot;residual&quot;&gt;
+            &lt;th scope=&quot;row&quot;&gt;&lt;code&gt;M-14&lt;/code&gt;&lt;/th&gt;
+            &lt;td&gt;Medium&lt;/td&gt;
+            &lt;td&gt;Public page events can drive privileged cross-origin fetches.&lt;/td&gt;
+            &lt;td&gt;&lt;span class=&quot;audit-status&quot; data-kind=&quot;residual&quot;&gt;Residual&lt;/span&gt;&lt;/td&gt;
+            &lt;td&gt;Capability minting, exact-copy authorization, revocation, route identity, top-frame sender binding, fixed CDN allowlists, Disney-only redirect following with final-response validation, non-Disney redirect rejection, and streaming byte limits are enforced. Accepted residuals are page-observable same-document token replay, transparent proxies or monkey-patched page primitives, never-settling thenables, and the Netflix 2 MiB ceiling without live-catalog validation.&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr data-finding=&quot;M-15&quot; data-status=&quot;fixed&quot;&gt;
+            &lt;th scope=&quot;row&quot;&gt;&lt;code&gt;M-15&lt;/code&gt;&lt;/th&gt;
+            &lt;td&gt;Medium&lt;/td&gt;
+            &lt;td&gt;Playlist fan-out is unbounded.&lt;/td&gt;
+            &lt;td&gt;&lt;span class=&quot;audit-status&quot; data-kind=&quot;fixed&quot;&gt;Fixed&lt;/span&gt;&lt;/td&gt;
+            &lt;td&gt;Playlist, line, segment, and aggregate byte limits combine with bounded concurrency and terminal abort behavior.&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr data-finding=&quot;M-16&quot; data-status=&quot;fixed&quot;&gt;
+            &lt;th scope=&quot;row&quot;&gt;&lt;code&gt;M-16&lt;/code&gt;&lt;/th&gt;
+            &lt;td&gt;Medium&lt;/td&gt;
+            &lt;td&gt;Retry ownership permits up to six provider calls per cue.&lt;/td&gt;
+            &lt;td&gt;&lt;span class=&quot;audit-status&quot; data-kind=&quot;fixed&quot;&gt;Fixed&lt;/span&gt;&lt;/td&gt;
+            &lt;td&gt;The background owns provider retry and pacing; content retries only explicit transport non-acceptance with structured retry metadata.&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr data-finding=&quot;M-17&quot; data-status=&quot;fixed&quot;&gt;
+            &lt;th scope=&quot;row&quot;&gt;&lt;code&gt;M-17&lt;/code&gt;&lt;/th&gt;
+            &lt;td&gt;Medium&lt;/td&gt;
+            &lt;td&gt;Long-window quota controls reset with the MV3 worker.&lt;/td&gt;
+            &lt;td&gt;&lt;span class=&quot;audit-status&quot; data-kind=&quot;fixed&quot;&gt;Fixed&lt;/span&gt;&lt;/td&gt;
+            &lt;td&gt;False long-window guarantees were removed. Microsoft is explicitly a worker-instance one-minute guard, while DeepL quota truth comes from provider responses; provider documentation matches the active contract.&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr data-finding=&quot;M-18&quot; data-status=&quot;fixed&quot;&gt;
+            &lt;th scope=&quot;row&quot;&gt;&lt;code&gt;M-18&lt;/code&gt;&lt;/th&gt;
+            &lt;td&gt;Medium&lt;/td&gt;
+            &lt;td&gt;The cross-context protocol is no longer authoritative.&lt;/td&gt;
+            &lt;td&gt;&lt;span class=&quot;audit-status&quot; data-kind=&quot;fixed&quot;&gt;Fixed&lt;/span&gt;&lt;/td&gt;
+            &lt;td&gt;Every active cross-context route is catalogued and uses exact builders/parsers, sender-role classification, and correlated response parsing. Base owns semantic config preparation; legacy type fallback, zero-sender toggle actions, platform hooks, dormant actions, and their compatibility tests are removed and source-guarded.&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr data-finding=&quot;M-19&quot; data-status=&quot;fixed&quot;&gt;
+            &lt;th scope=&quot;row&quot;&gt;&lt;code&gt;M-19&lt;/code&gt;&lt;/th&gt;
+            &lt;td&gt;Medium&lt;/td&gt;
+            &lt;td&gt;Navigation and DOM observation multiply work.&lt;/td&gt;
+            &lt;td&gt;&lt;span class=&quot;audit-status&quot; data-kind=&quot;fixed&quot;&gt;Fixed&lt;/span&gt;&lt;/td&gt;
+            &lt;td&gt;Base owns and replaces the sole navigation manager; platform subclasses only delegate setup. URL checks are coalesced, cleanup is terminal, player observers are restricted to verified roots and a bounded shell, and frame presentation performs constant-time checks between cue boundaries instead of rescanning the episode queue.&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr data-finding=&quot;L-01&quot; data-status=&quot;fixed&quot;&gt;
+            &lt;th scope=&quot;row&quot;&gt;&lt;code&gt;L-01&lt;/code&gt;&lt;/th&gt;
+            &lt;td&gt;Low&lt;/td&gt;
+            &lt;td&gt;Reset bypasses dynamic defaults.&lt;/td&gt;
+            &lt;td&gt;&lt;span class=&quot;audit-status&quot; data-kind=&quot;fixed&quot;&gt;Fixed&lt;/span&gt;&lt;/td&gt;
+            &lt;td&gt;Reset resolves the schema’s dynamic default instead of copying a static default value.&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr data-finding=&quot;L-02&quot; data-status=&quot;fixed&quot;&gt;
+            &lt;th scope=&quot;row&quot;&gt;&lt;code&gt;L-02&lt;/code&gt;&lt;/th&gt;
+            &lt;td&gt;Low&lt;/td&gt;
+            &lt;td&gt;Popup localization has an async stale-response race.&lt;/td&gt;
+            &lt;td&gt;&lt;span class=&quot;audit-status&quot; data-kind=&quot;fixed&quot;&gt;Fixed&lt;/span&gt;&lt;/td&gt;
+            &lt;td&gt;Locale loading commits only the latest request generation and reuses the shared cached loader.&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr data-finding=&quot;L-03&quot; data-status=&quot;fixed&quot;&gt;
+            &lt;th scope=&quot;row&quot;&gt;&lt;code&gt;L-03&lt;/code&gt;&lt;/th&gt;
+            &lt;td&gt;Low&lt;/td&gt;
+            &lt;td&gt;Popup range controls remove visible keyboard focus.&lt;/td&gt;
+            &lt;td&gt;&lt;span class=&quot;audit-status&quot; data-kind=&quot;fixed&quot;&gt;Fixed&lt;/span&gt;&lt;/td&gt;
+            &lt;td&gt;Range controls retain a visible &lt;code&gt;:focus-visible&lt;/code&gt; indicator for keyboard navigation.&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr data-finding=&quot;L-04&quot; data-status=&quot;fixed&quot;&gt;
+            &lt;th scope=&quot;row&quot;&gt;&lt;code&gt;L-04&lt;/code&gt;&lt;/th&gt;
+            &lt;td&gt;Low&lt;/td&gt;
+            &lt;td&gt;Disney media playlists are fetched twice.&lt;/td&gt;
+            &lt;td&gt;&lt;span class=&quot;audit-status&quot; data-kind=&quot;fixed&quot;&gt;Fixed&lt;/span&gt;&lt;/td&gt;
+            &lt;td&gt;The parser accepts the already-fetched playlist text and base URL, avoiding a second signed-URL request.&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr data-finding=&quot;L-05&quot; data-status=&quot;fixed&quot;&gt;
+            &lt;th scope=&quot;row&quot;&gt;&lt;code&gt;L-05&lt;/code&gt;&lt;/th&gt;
+            &lt;td&gt;Low&lt;/td&gt;
+            &lt;td&gt;Individual batch fallback double-applies mandatory throttling.&lt;/td&gt;
+            &lt;td&gt;&lt;span class=&quot;audit-status&quot; data-kind=&quot;fixed&quot;&gt;Fixed&lt;/span&gt;&lt;/td&gt;
+            &lt;td&gt;The central provider gate is the sole owner of mandatory delay during individual fallback.&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr data-finding=&quot;L-06&quot; data-status=&quot;fixed&quot;&gt;
+            &lt;th scope=&quot;row&quot;&gt;&lt;code&gt;L-06&lt;/code&gt;&lt;/th&gt;
+            &lt;td&gt;Low&lt;/td&gt;
+            &lt;td&gt;Rate-limit reset time is always “now.”&lt;/td&gt;
+            &lt;td&gt;&lt;span class=&quot;audit-status&quot; data-kind=&quot;fixed&quot;&gt;Fixed&lt;/span&gt;&lt;/td&gt;
+            &lt;td&gt;Reset time is derived from the oldest retained request plus its governing window.&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr data-finding=&quot;L-07&quot; data-status=&quot;fixed&quot;&gt;
+            &lt;th scope=&quot;row&quot;&gt;&lt;code&gt;L-07&lt;/code&gt;&lt;/th&gt;
+            &lt;td&gt;Low&lt;/td&gt;
+            &lt;td&gt;Netflix retains the full cue queue after leaving playback.&lt;/td&gt;
+            &lt;td&gt;&lt;span class=&quot;audit-status&quot; data-kind=&quot;fixed&quot;&gt;Fixed&lt;/span&gt;&lt;/td&gt;
+            &lt;td&gt;Shared page-leave cleanup clears retained subtitle cues consistently across platforms.&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr data-finding=&quot;L-08&quot; data-status=&quot;fixed&quot;&gt;
+            &lt;th scope=&quot;row&quot;&gt;&lt;code&gt;L-08&lt;/code&gt;&lt;/th&gt;
+            &lt;td&gt;Low&lt;/td&gt;
+            &lt;td&gt;Popup loads and subscribes to every credential.&lt;/td&gt;
+            &lt;td&gt;&lt;span class=&quot;audit-status&quot; data-kind=&quot;fixed&quot;&gt;Fixed&lt;/span&gt;&lt;/td&gt;
+            &lt;td&gt;Sensitive inclusion is opt-in, and popup subscriptions receive an explicit non-sensitive key projection.&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr data-finding=&quot;L-09&quot; data-status=&quot;fixed&quot;&gt;
+            &lt;th scope=&quot;row&quot;&gt;&lt;code&gt;L-09&lt;/code&gt;&lt;/th&gt;
+            &lt;td&gt;Low&lt;/td&gt;
+            &lt;td&gt;Dormant batch translation bypasses cache and can report total failure as success.&lt;/td&gt;
+            &lt;td&gt;&lt;span class=&quot;audit-status&quot; data-kind=&quot;fixed&quot;&gt;Fixed&lt;/span&gt;&lt;/td&gt;
+            &lt;td&gt;The dormant duplicate surface was removed or routed through the cache-aware per-item result contract; total failure is no longer reported as success.&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr data-finding=&quot;L-10&quot; data-status=&quot;fixed&quot;&gt;
+            &lt;th scope=&quot;row&quot;&gt;&lt;code&gt;L-10&lt;/code&gt;&lt;/th&gt;
+            &lt;td&gt;Low&lt;/td&gt;
+            &lt;td&gt;AI manager metrics erase their own values.&lt;/td&gt;
+            &lt;td&gt;&lt;span class=&quot;audit-status&quot; data-kind=&quot;fixed&quot;&gt;Fixed&lt;/span&gt;&lt;/td&gt;
+            &lt;td&gt;Teardown records metrics before clearing state and retains the resulting summary.&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr data-finding=&quot;L-11&quot; data-status=&quot;fixed&quot;&gt;
+            &lt;th scope=&quot;row&quot;&gt;&lt;code&gt;L-11&lt;/code&gt;&lt;/th&gt;
+            &lt;td&gt;Low&lt;/td&gt;
+            &lt;td&gt;Performance monitoring is mostly unconsumed overhead.&lt;/td&gt;
+            &lt;td&gt;&lt;span class=&quot;audit-status&quot; data-kind=&quot;fixed&quot;&gt;Fixed&lt;/span&gt;&lt;/td&gt;
+            &lt;td&gt;Unconsumed recommendation/timer work was removed or bounded behind an actual diagnostics consumer.&lt;/td&gt;
+          &lt;/tr&gt;
+        &lt;/tbody&gt;
+      &lt;/table&gt;
+    &lt;/div&gt;
+  &lt;/section&gt;
+
+  &lt;section id=&quot;addendum&quot; aria-labelledby=&quot;addendum-title&quot;&gt;
+    &lt;h2 id=&quot;addendum-title&quot;&gt;Post-audit runtime and transactional addenda&lt;/h2&gt;
+    &lt;p&gt;&lt;strong&gt;Medium / Fixed — transactional subtitle acceptance previously committed before delivery.&lt;/strong&gt; Acceptance now follows one ordered transaction: validate, project and invoke the callback, recheck the live route and request generation, then commit. Regression coverage proves a thrown callback leaves the request retryable and a stale route cannot commit.&lt;/p&gt;
+    &lt;h3&gt;Runtime validation fixes completed after the original ledger&lt;/h3&gt;
+    &lt;ul class=&quot;audit-list&quot;&gt;
+      &lt;li&gt;&lt;strong&gt;Disney subtitle transport:&lt;/strong&gt; Disney-only requests may follow redirects with omitted credentials after pre-validating the signed request. The final response must remain on the fixed CDN authority and retain the exact path/query; original subtitles remain mandatory, target subtitles optional, and failure telemetry exposes only fixed stages and error codes.&lt;/li&gt;
+      &lt;li&gt;&lt;strong&gt;SPA player ownership:&lt;/strong&gt; delayed navigation cleanup preserves a destination player that the adapter already adopted, while non-adopted navigation clears the old request, queue, DOM, event buffer, and canonical word selection before rearming detection.&lt;/li&gt;
+      &lt;li&gt;&lt;strong&gt;Subtitle presentation latency and cost:&lt;/strong&gt; Disney uses one lifecycle-owned &lt;code&gt;requestVideoFrameCallback&lt;/code&gt; chain so ready cues appear on the first presented frame after start/end boundaries. A cached next boundary avoids an episode-wide scan on intervening frames; &lt;code&gt;timeupdate&lt;/code&gt; remains the fallback.&lt;/li&gt;
+      &lt;li&gt;&lt;strong&gt;AI word-selection playback UX:&lt;/strong&gt; Disney pause goes through its native play/pause controller and never falls back to raw media pause. Side-panel selection clears on subtitle render/refresh/expiry; legacy modal close clears canonical selection. Exact side-panel rejection or proven non-delivery falls back once to the modal after owner/snapshot revalidation, while ambiguous channel closure does not duplicate UI.&lt;/li&gt;
+      &lt;li&gt;&lt;strong&gt;Configuration and dormant-route closure:&lt;/strong&gt; unconfirmed single/batch writes can no longer promote raw input, logging refresh failure cannot redefine a persisted write, provider catalogs remain generation/identity bound, and orphaned provider-switch/model-enumeration plus &lt;code&gt;batch_processing&lt;/code&gt; branches were removed after zero-caller verification.&lt;/li&gt;
+    &lt;/ul&gt;
+    &lt;p&gt;These addenda are fixed and root-replayed but remain excluded from the original 35-finding denominator.&lt;/p&gt;
+  &lt;/section&gt;
+
+  &lt;section id=&quot;residuals&quot; aria-labelledby=&quot;residuals-title&quot;&gt;
+    &lt;h2 id=&quot;residuals-title&quot;&gt;Residual and boundary register&lt;/h2&gt;
+    &lt;ul class=&quot;audit-list&quot;&gt;
+      &lt;li&gt;&lt;strong&gt;Page-observable token replay:&lt;/strong&gt; a same-document page script may observe and replay the current injection capability while it remains valid. Revocation, exact copying, route identity, sender binding, and destination policy bound the effect but do not make page-world data confidential.&lt;/li&gt;
+      &lt;li&gt;&lt;strong&gt;Transparent proxies and monkey-patched primitives:&lt;/strong&gt; JavaScript cannot prove that an apparently ordinary page-world value or primitive is non-hostile without executing potentially trapped behavior. Explicit authority-critical records are copied and validated; full SES-style hardening is out of scope.&lt;/li&gt;
+      &lt;li&gt;&lt;strong&gt;Never-settling thenables:&lt;/strong&gt; an accepted external thenable can delay its own lifecycle settlement indefinitely. Generations prevent stale completion from committing, but the language cannot force arbitrary thenables to settle.&lt;/li&gt;
+      &lt;li&gt;&lt;strong&gt;Live Disney CDN shape:&lt;/strong&gt; deterministic regressions cover the reported 538-character signed request and same-path/query redirect chain, but the failing live response was not available. Browser redirect following exposes only the final response, so intermediate hops cannot be inspected before following.&lt;/li&gt;
+      &lt;li&gt;&lt;strong&gt;Live Disney player controls:&lt;/strong&gt; tests cover localized labels and current open-shadow native controls. A closed shadow root or temporarily absent control fails safely without raw &lt;code&gt;video.pause()&lt;/code&gt;, but the current signed-in player DOM still requires a manual smoke test.&lt;/li&gt;
+      &lt;li&gt;&lt;strong&gt;Identical adjacent cues:&lt;/strong&gt; distinct adjacent cues that retain the same rendered identity can keep a word selected across that invisible boundary until a later refresh or expiry.&lt;/li&gt;
+      &lt;li&gt;&lt;strong&gt;Frame-cache mutation boundary:&lt;/strong&gt; production queue writers replace the queue, change its length, or explicitly invalidate after translation. A hypothetical external in-place timing mutation of a middle cue with unchanged array identity, length, and edge cues is not detected in constant time; continuous reverse playback intentionally rescans decreasing frames for correctness.&lt;/li&gt;
+      &lt;li&gt;&lt;strong&gt;Netflix response ceiling:&lt;/strong&gt; the 2 MiB TTML/body ceiling is enforced, but it has not been validated against the live Netflix catalog.&lt;/li&gt;
+      &lt;li&gt;&lt;strong&gt;Chrome host permission breadth:&lt;/strong&gt; match patterns grant the configured scheme and host across paths and ports. The UI now discloses this host-wide/all-port authority while retaining the precise configured endpoint.&lt;/li&gt;
+      &lt;li&gt;&lt;strong&gt;Already-dispatched provider work:&lt;/strong&gt; browser messaging cannot cancel a provider fetch already accepted by the background worker. Cancellation and generation checks guarantee that its stale completion cannot commit.&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/section&gt;
+
+  &lt;section id=&quot;evidence&quot; aria-labelledby=&quot;evidence-title&quot;&gt;
+    &lt;h2 id=&quot;evidence-title&quot;&gt;Root-replayed remediation evidence&lt;/h2&gt;
+    &lt;p&gt;Agent reports were treated as leads only. Every accepted packet received a root source/diff pass, focused replay, or hash comparison before the final repository gates.&lt;/p&gt;
+    &lt;div class=&quot;table-responsive&quot;&gt;
+      &lt;table class=&quot;audit-evidence-table&quot;&gt;
+        &lt;caption&gt;Final remediation checks, separate from the immutable audited baseline&lt;/caption&gt;
+        &lt;thead&gt;
+          &lt;tr&gt;
+            &lt;th scope=&quot;col&quot;&gt;Scope&lt;/th&gt;
+            &lt;th scope=&quot;col&quot;&gt;Final root evidence&lt;/th&gt;
+            &lt;th scope=&quot;col&quot;&gt;Result&lt;/th&gt;
+          &lt;/tr&gt;
+        &lt;/thead&gt;
+        &lt;tbody&gt;
+          &lt;tr&gt;
+            &lt;th scope=&quot;row&quot;&gt;Original ledger re-audit&lt;/th&gt;
+            &lt;td&gt;H-01–H-05 plus M-01–M-06: 11 fixed. M-07–M-19: 12 fixed and M-14 accepted residual. L-01–L-11: 11 fixed. The unnumbered addendum is fixed.&lt;/td&gt;
+            &lt;td&gt;34 fixed / 1 residual / 0 pending.&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr&gt;
+            &lt;th scope=&quot;row&quot;&gt;M-18 final route packet&lt;/th&gt;
+            &lt;td&gt;21 suites / 1,387 tests in 3.036 s; scoped ESLint, Prettier check, syntax, diff, sender/response inspection, and retired-route negative searches passed.&lt;/td&gt;
+            &lt;td&gt;Fixed and frozen.&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr&gt;
+            &lt;th scope=&quot;row&quot;&gt;Post-audit runtime closure&lt;/th&gt;
+            &lt;td&gt;Root replays covered AI selection/playback (8 suites / 288 tests), subtitle timing and queue boundaries (7 suites / 162 tests), settings authority (160 hook tests plus 14 ConfigService suites / 365 tests), and dormant cleanup (4 suites / 77 tests). Four read-only closure reviewers found no remaining Critical or Important issue.&lt;/td&gt;
+            &lt;td&gt;Fixed and frozen.&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr&gt;
+            &lt;th scope=&quot;row&quot;&gt;Full repository tests&lt;/th&gt;
+            &lt;td&gt;&lt;code&gt;npm run test:ci&lt;/code&gt;: 138 suites / 4,204 tests / 0 failures in 37.481 s.&lt;/td&gt;
+            &lt;td&gt;Passed.&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr&gt;
+            &lt;th scope=&quot;row&quot;&gt;Static and build gates&lt;/th&gt;
+            &lt;td&gt;Repository ESLint, full Prettier check, and &lt;code&gt;git diff --check&lt;/code&gt; passed. Vite 8.1.4 built 86 modules in 98 ms; build verification accepted 107 production files, and all seven closure-sampled copied files were byte-identical to source.&lt;/td&gt;
+            &lt;td&gt;Passed.&lt;/td&gt;
+          &lt;/tr&gt;
+          &lt;tr&gt;
+            &lt;th scope=&quot;row&quot;&gt;Final worktree custody&lt;/th&gt;
+            &lt;td&gt;HEAD remains &lt;code&gt;fa1ca8fe479ee0ec36891495a21f3503836c1490&lt;/code&gt;. Status records 215 paths: 143 tracked changes (135 modified, 8 deleted) and 72 untracked; 0 staged. Tracked diff: +66,700 / -23,355. The compiled &lt;code&gt;dist/&lt;/code&gt; contains 107 ignored files; no package/lockfile change, coverage, source map, archive, CRX, or dependency artifact appears in status.&lt;/td&gt;
+            &lt;td&gt;Frozen, unstaged, uncommitted, unpushed.&lt;/td&gt;
+          &lt;/tr&gt;
+        &lt;/tbody&gt;
+      &lt;/table&gt;
+    &lt;/div&gt;
+
+    &lt;h3&gt;Frozen checkpoint hashes&lt;/h3&gt;
+    &lt;div class=&quot;table-responsive&quot;&gt;
+      &lt;table class=&quot;audit-evidence-table&quot;&gt;
+        &lt;caption&gt;Representative SHA-256 custody anchors for the final source snapshot&lt;/caption&gt;
+        &lt;thead&gt;
+          &lt;tr&gt;&lt;th scope=&quot;col&quot;&gt;Boundary&lt;/th&gt;&lt;th scope=&quot;col&quot;&gt;File&lt;/th&gt;&lt;th scope=&quot;col&quot;&gt;SHA-256&lt;/th&gt;&lt;/tr&gt;
+        &lt;/thead&gt;
+        &lt;tbody&gt;
+          &lt;tr&gt;&lt;th scope=&quot;row&quot;&gt;Base integration&lt;/th&gt;&lt;td&gt;&lt;code&gt;content_scripts/core/BaseContentScript.js&lt;/code&gt;&lt;/td&gt;&lt;td&gt;&lt;code&gt;3b861e55f872145f7f0a8428e0fd4fdf0e4278ec5c4a180a8733c39953459110&lt;/code&gt;&lt;/td&gt;&lt;/tr&gt;
+          &lt;tr&gt;&lt;th scope=&quot;row&quot;&gt;Base regression&lt;/th&gt;&lt;td&gt;&lt;code&gt;content_scripts/tests/BaseContentScript.test.js&lt;/code&gt;&lt;/td&gt;&lt;td&gt;&lt;code&gt;50a4fb00654d8dbf49ba0b8c2330b0c054bd387dccaa94859d32417a08f57e4e&lt;/code&gt;&lt;/td&gt;&lt;/tr&gt;
+          &lt;tr&gt;&lt;th scope=&quot;row&quot;&gt;Selection authority regression&lt;/th&gt;&lt;td&gt;&lt;code&gt;content_scripts/tests/BaseContentScript.selectionAuthority.test.js&lt;/code&gt;&lt;/td&gt;&lt;td&gt;&lt;code&gt;785d2c9e8564ecac94129c9348c0c7636bc749b57e3e40bc1dd5a00bcd0929aa&lt;/code&gt;&lt;/td&gt;&lt;/tr&gt;
+          &lt;tr&gt;&lt;th scope=&quot;row&quot;&gt;Private analysis owner&lt;/th&gt;&lt;td&gt;&lt;code&gt;content_scripts/aicontext/core/AIContextManager.js&lt;/code&gt;&lt;/td&gt;&lt;td&gt;&lt;code&gt;952ce60ca12cd4ea7b8f6e2c72de427880f386557c476b4dffa4e4ff0cf6ae85&lt;/code&gt;&lt;/td&gt;&lt;/tr&gt;
+          &lt;tr&gt;&lt;th scope=&quot;row&quot;&gt;Subtitle publisher&lt;/th&gt;&lt;td&gt;&lt;code&gt;content_scripts/shared/interactiveSubtitleFormatter.js&lt;/code&gt;&lt;/td&gt;&lt;td&gt;&lt;code&gt;f74552bf4477ee5206020f5266ad2c8a0b1d4c42b18325ab7ed66ceab80007bc&lt;/code&gt;&lt;/td&gt;&lt;/tr&gt;
+          &lt;tr&gt;&lt;th scope=&quot;row&quot;&gt;Subtitle scheduler&lt;/th&gt;&lt;td&gt;&lt;code&gt;content_scripts/shared/subtitleUtilities.js&lt;/code&gt;&lt;/td&gt;&lt;td&gt;&lt;code&gt;7ee9e9987ca18352de3346033936022385bff306fe3a6e72ea9f9e3e3c0439c9&lt;/code&gt;&lt;/td&gt;&lt;/tr&gt;
+          &lt;tr&gt;&lt;th scope=&quot;row&quot;&gt;Settings authority&lt;/th&gt;&lt;td&gt;&lt;code&gt;shared/hooks/useSettings.js&lt;/code&gt;&lt;/td&gt;&lt;td&gt;&lt;code&gt;f0c75aa5cbaa5ec1a708462c0b694da6c59270e7d1420c3d18d3a7a679c8e129&lt;/code&gt;&lt;/td&gt;&lt;/tr&gt;
+          &lt;tr&gt;&lt;th scope=&quot;row&quot;&gt;Config service&lt;/th&gt;&lt;td&gt;&lt;code&gt;services/configService.js&lt;/code&gt;&lt;/td&gt;&lt;td&gt;&lt;code&gt;3b4b9dc0aa8d7ad804a219e7ef3c87b0bee56eda8334cfe910c4bbb1f8c72f81&lt;/code&gt;&lt;/td&gt;&lt;/tr&gt;
+          &lt;tr&gt;&lt;th scope=&quot;row&quot;&gt;Protocol schema&lt;/th&gt;&lt;td&gt;&lt;code&gt;content_scripts/shared/protocol/messageProtocol.js&lt;/code&gt;&lt;/td&gt;&lt;td&gt;&lt;code&gt;8fd6d0e1814e694e75e1894fd0f9daa0065177d7e7868cb08c69b845ac2e4d3e&lt;/code&gt;&lt;/td&gt;&lt;/tr&gt;
+          &lt;tr&gt;&lt;th scope=&quot;row&quot;&gt;Background ingress&lt;/th&gt;&lt;td&gt;&lt;code&gt;background/handlers/messageHandler.js&lt;/code&gt;&lt;/td&gt;&lt;td&gt;&lt;code&gt;4b11328d946d2eea9ebb8a60ba86d65cdbb949b19b1106d04669ecb25b76390f&lt;/code&gt;&lt;/td&gt;&lt;/tr&gt;
+          &lt;tr&gt;&lt;th scope=&quot;row&quot;&gt;Side-panel routing&lt;/th&gt;&lt;td&gt;&lt;code&gt;background/services/sidePanelService.js&lt;/code&gt;&lt;/td&gt;&lt;td&gt;&lt;code&gt;71601c11608248e310941eac7138947e6cc1ab742f2df27479feeab74b5ee9d3&lt;/code&gt;&lt;/td&gt;&lt;/tr&gt;
+          &lt;tr&gt;&lt;th scope=&quot;row&quot;&gt;Disney subtitle transport&lt;/th&gt;&lt;td&gt;&lt;code&gt;background/utils/subtitleFetch.js&lt;/code&gt;&lt;/td&gt;&lt;td&gt;&lt;code&gt;54828c5f6b2f3348a88bd7d7a330012754d6bad44e49ebac4849cf977f2b5ca8&lt;/code&gt;&lt;/td&gt;&lt;/tr&gt;
+          &lt;tr&gt;&lt;th scope=&quot;row&quot;&gt;Negative route guard&lt;/th&gt;&lt;td&gt;&lt;code&gt;tests/message-route-source-guard.test.js&lt;/code&gt;&lt;/td&gt;&lt;td&gt;&lt;code&gt;64459ec6219fa0785804d77940c09e5fe57b8152148fc2d89a2cfb67e21e88ea&lt;/code&gt;&lt;/td&gt;&lt;/tr&gt;
+          &lt;tr&gt;&lt;th scope=&quot;row&quot;&gt;Route documentation&lt;/th&gt;&lt;td&gt;&lt;code&gt;content_scripts/API_REFERENCE.md&lt;/code&gt;&lt;/td&gt;&lt;td&gt;&lt;code&gt;6d8e5ed3d8b7168c3672c4ebefbeca4ab6187020752a0f303df155d54dc2c6e8&lt;/code&gt;&lt;/td&gt;&lt;/tr&gt;
+        &lt;/tbody&gt;
+      &lt;/table&gt;
+    &lt;/div&gt;
+  &lt;/section&gt;
+
+  &lt;section id=&quot;reproducibility&quot; aria-labelledby=&quot;reproducibility-title&quot;&gt;
+    &lt;h2 id=&quot;reproducibility-title&quot;&gt;Reproducibility and custody&lt;/h2&gt;
+    &lt;p&gt;The audited baseline is immutable: branch, commit identities, diff totals, original test totals, locale count, file size, and lock hash describe only the 2026-07-17 audit point. The final remediation evidence describes the frozen 2026-07-19 dirty worktree and does not replace those baseline measurements.&lt;/p&gt;
+    &lt;p&gt;No remediation file was staged, committed, or pushed by this audit orchestration. The hashes above, final status counts, and gate outputs identify the exact reviewed snapshot for deliberate later custody.&lt;/p&gt;
+  &lt;/section&gt;
+
+  &lt;section id=&quot;limits&quot; class=&quot;audit-foot&quot; aria-labelledby=&quot;limits-title&quot;&gt;
+    &lt;h2 id=&quot;limits-title&quot;&gt;Audit limits&lt;/h2&gt;
+    &lt;p class=&quot;audit-note&quot;&gt;This reconciliation covers repository code, checked fixtures, deterministic local tests, static analysis, and the production build available to the root review. It does not prove the failing live Disney redirect shape, Disney’s current native-control DOM, live provider behavior, live Netflix catalog compatibility with the 2 MiB ceiling, deployed extension behavior, browser-store packaging, or confidentiality for content rendered into the streaming page DOM. No signed-in real-browser replay is claimed.&lt;/p&gt;
+    &lt;p&gt;&lt;a href=&quot;#top&quot;&gt;Return to audit navigation&lt;/a&gt;&lt;/p&gt;
+  &lt;/section&gt;
+&lt;/main&gt;
+
+&lt;script src=&quot;https://unpkg.com/@floating-ui/core@1.7.3/dist/floating-ui.core.umd.min.js&quot;&gt;&lt;/script&gt;
+&lt;script src=&quot;https://unpkg.com/@floating-ui/dom@1.7.4/dist/floating-ui.dom.umd.min.js&quot;&gt;&lt;/script&gt;
+&lt;script&gt;
+(() =&gt; {
+  if (window.FloatingUIDOM == null) {
+    return;
+  }
+  const { autoUpdate, computePosition, flip, offset, shift, size } =
+    window.FloatingUIDOM;
+  const tooltipPlacements = new Set([&quot;top&quot;, &quot;right&quot;, &quot;bottom&quot;, &quot;left&quot;]);
+  const tooltipId = `codex-visualization-tooltip-${
+    window.crypto?.randomUUID?.() ?? Date.now().toString(36)
+  }`;
+  const tooltipGap = 5;
+  const hoverDelay = 700;
+  const skipDelay = 300;
+  let activeTrigger = null;
+  let pendingTrigger = null;
+  let tooltip = null;
+  let openTimeout = null;
+  let autoUpdateCleanup = null;
+  let positionRequest = 0;
+  let skipDelayUntil = 0;
+
+  const getTrigger = (target) =&gt;
+    target?.nodeType === Node.ELEMENT_NODE
+      ? target.closest(&quot;[data-tooltip]&quot;)
+      : null;
+  const containsTarget = (trigger, target) =&gt;
+    target?.nodeType != null &amp;&amp; trigger.contains(target);
+  const getContent = (trigger) =&gt;
+    trigger.getAttribute(&quot;data-tooltip&quot;)?.trim() ?? &quot;&quot;;
+  const getPlacement = (trigger) =&gt; {
+    const placement = trigger.getAttribute(&quot;data-tooltip-placement&quot;);
+    return tooltipPlacements.has(placement) ? placement : &quot;top&quot;;
+  };
+  const getTooltip = () =&gt; {
+    if (tooltip == null) {
+      tooltip = document.createElement(&quot;div&quot;);
+      tooltip.id = tooltipId;
+      tooltip.className = &quot;tooltip&quot;;
+      tooltip.setAttribute(&quot;role&quot;, &quot;tooltip&quot;);
+    }
+    return tooltip;
+  };
+  const setDescribedBy = (trigger, described) =&gt; {
+    const ids = new Set(
+      (trigger.getAttribute(&quot;aria-describedby&quot;) ?? &quot;&quot;)
+        .split(/\s+/)
+        .filter(Boolean),
+    );
+    if (described) {
+      ids.add(tooltipId);
+    } else {
+      ids.delete(tooltipId);
+    }
+    if (ids.size === 0) {
+      trigger.removeAttribute(&quot;aria-describedby&quot;);
+    } else {
+      trigger.setAttribute(&quot;aria-describedby&quot;, [...ids].join(&quot; &quot;));
+    }
+  };
+  const clearOpenTimeout = () =&gt; {
+    if (openTimeout != null) {
+      window.clearTimeout(openTimeout);
+      openTimeout = null;
+    }
+    pendingTrigger = null;
+  };
+  const closeTooltip = (activateSkipDelay = true) =&gt; {
+    clearOpenTimeout();
+    positionRequest += 1;
+    autoUpdateCleanup?.();
+    autoUpdateCleanup = null;
+    if (activeTrigger == null) {
+      return;
+    }
+    setDescribedBy(activeTrigger, false);
+    activeTrigger = null;
+    tooltip?.remove();
+    if (activateSkipDelay) {
+      skipDelayUntil = Date.now() + skipDelay;
+    }
+  };
+  const updatePosition = (trigger, floating) =&gt; {
+    const request = ++positionRequest;
+    void computePosition(trigger, floating, {
+      middleware: [
+        offset(tooltipGap),
+        flip({ padding: tooltipGap }),
+        shift({ padding: tooltipGap }),
+        size({
+          padding: tooltipGap,
+          apply({ availableHeight, availableWidth, elements }) {
+            elements.floating.style.setProperty(
+              &quot;--tooltip-available-width&quot;,
+              `${Math.max(0, availableWidth)}px`,
+            );
+            elements.floating.style.setProperty(
+              &quot;--tooltip-available-height&quot;,
+              `${Math.max(0, availableHeight)}px`,
+            );
+          },
+        }),
+      ],
+      placement: getPlacement(trigger),
+      strategy: &quot;fixed&quot;,
+    })
+      .then(({ x, y }) =&gt; {
+        if (activeTrigger !== trigger || request !== positionRequest) {
+          return;
+        }
+        const scale = window.devicePixelRatio || 1;
+        floating.style.transform = `translate(${Math.round(x * scale) / scale}px, ${Math.round(y * scale) / scale}px)`;
+        floating.style.visibility = &quot;visible&quot;;
+      })
+      .catch(() =&gt; {
+        if (activeTrigger === trigger &amp;&amp; request === positionRequest) {
+          closeTooltip(false);
+        }
+      });
+  };
+  const openTooltip = (trigger) =&gt; {
+    const content = getContent(trigger);
+    if (!trigger.isConnected || content.length === 0) {
+      return;
+    }
+    clearOpenTimeout();
+    if (activeTrigger === trigger) {
+      return;
+    }
+    closeTooltip();
+    const floating = getTooltip();
+    floating.textContent = content;
+    floating.style.visibility = &quot;hidden&quot;;
+    floating.style.transform = &quot;translate(0, 0)&quot;;
+    document.body.appendChild(floating);
+    activeTrigger = trigger;
+    setDescribedBy(trigger, true);
+    autoUpdateCleanup = autoUpdate(trigger, floating, () =&gt; {
+      updatePosition(trigger, floating);
+    });
+  };
+  const requestOpen = (trigger, immediate = false) =&gt; {
+    if (
+      getContent(trigger).length === 0 ||
+      activeTrigger === trigger ||
+      pendingTrigger === trigger
+    ) {
+      return;
+    }
+    clearOpenTimeout();
+    pendingTrigger = trigger;
+    const delay =
+      immediate || activeTrigger != null || Date.now() &lt; skipDelayUntil
+        ? 0
+        : hoverDelay;
+    if (delay === 0) {
+      openTooltip(trigger);
+      return;
+    }
+    openTimeout = window.setTimeout(() =&gt; {
+      openTimeout = null;
+      pendingTrigger = null;
+      openTooltip(trigger);
+    }, delay);
+  };
+  const handlePointerOpen = (event) =&gt; {
+    if (event.pointerType === &quot;touch&quot;) {
+      return;
+    }
+    const trigger = getTrigger(event.target);
+    if (trigger == null || containsTarget(trigger, event.relatedTarget)) {
+      return;
+    }
+    requestOpen(trigger);
+  };
+  const handleLeave = (event) =&gt; {
+    const trigger = getTrigger(event.target);
+    if (trigger == null || containsTarget(trigger, event.relatedTarget)) {
+      return;
+    }
+    if (activeTrigger === trigger || pendingTrigger === trigger) {
+      closeTooltip();
+    }
+  };
+  const handleFocusIn = (event) =&gt; {
+    const trigger = getTrigger(event.target);
+    if (trigger?.matches(&quot;:focus-visible&quot;)) {
+      requestOpen(trigger, true);
+    }
+  };
+  const handleKeyDown = (event) =&gt; {
+    if (event.key === &quot;Escape&quot;) {
+      closeTooltip();
+    }
+  };
+  const handleContextMenu = (event) =&gt; {
+    const trigger = getTrigger(event.target);
+    if (activeTrigger === trigger || pendingTrigger === trigger) {
+      closeTooltip();
+    }
+  };
+  const destroy = () =&gt; {
+    closeTooltip(false);
+    document.removeEventListener(&quot;pointerover&quot;, handlePointerOpen);
+    document.removeEventListener(&quot;pointerout&quot;, handleLeave);
+    document.removeEventListener(&quot;focusin&quot;, handleFocusIn);
+    document.removeEventListener(&quot;focusout&quot;, handleLeave);
+    document.removeEventListener(&quot;keydown&quot;, handleKeyDown);
+    document.removeEventListener(&quot;contextmenu&quot;, handleContextMenu);
+    tooltip = null;
+  };
+
+  document.addEventListener(&quot;pointerover&quot;, handlePointerOpen);
+  document.addEventListener(&quot;pointerout&quot;, handleLeave);
+  document.addEventListener(&quot;focusin&quot;, handleFocusIn);
+  document.addEventListener(&quot;focusout&quot;, handleLeave);
+  document.addEventListener(&quot;keydown&quot;, handleKeyDown);
+  document.addEventListener(&quot;contextmenu&quot;, handleContextMenu);
+  window.addEventListener(&quot;pagehide&quot;, destroy, { once: true });
+})();
+&lt;/script&gt;
+&lt;script id=&quot;codex-visualization-lucide&quot; async src=&quot;https://unpkg.com/lucide@1.17.0/dist/umd/lucide.js&quot;&gt;&lt;/script&gt;
+&lt;script&gt;
+(() =&gt; {
+  const initialize = () =&gt; {
+    globalThis.lucide?.createIcons({ attrs: { width: 16, height: 16 } });
+  };
+  if (globalThis.lucide != null) {
+    initialize();
+    return;
+  }
+  document
+    .getElementById(&quot;codex-visualization-lucide&quot;)
+    ?.addEventListener(&quot;load&quot;, initialize, { once: true });
+})();
+&lt;/script&gt;
+
+&lt;/body&gt;
+&lt;/html&gt;
+"></iframe>
+</body>
+</html>
