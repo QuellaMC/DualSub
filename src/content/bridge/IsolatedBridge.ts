@@ -27,7 +27,7 @@ function mintCapability(): string {
  */
 export class IsolatedBridge implements BridgeControlSender {
     private port: MessagePort | null = null;
-    private connected = false;
+    private ready = false;
     private capability = '';
     private readonly listeners = new AbortController();
 
@@ -35,6 +35,7 @@ export class IsolatedBridge implements BridgeControlSender {
         private readonly platform: BridgePlatform,
         private readonly options: {
             onEvent: (event: CapturedEvent) => void;
+            onConnected?: () => void;
             logger: Logger;
         }
     ) {}
@@ -68,8 +69,12 @@ export class IsolatedBridge implements BridgeControlSender {
         this.handshake();
     }
 
+    get connected(): boolean {
+        return this.ready;
+    }
+
     sendControl(message: IsolatedToMain): boolean {
-        if (!this.port || !this.connected) {
+        if (!this.port || !this.ready) {
             return false;
         }
         try {
@@ -84,7 +89,7 @@ export class IsolatedBridge implements BridgeControlSender {
         this.sendControl({ t: 'close' });
         this.port?.close();
         this.port = null;
-        this.connected = false;
+        this.ready = false;
         this.listeners.abort();
     }
 
@@ -96,7 +101,7 @@ export class IsolatedBridge implements BridgeControlSender {
         const channel = new MessageChannel();
         this.port?.close();
         this.port = channel.port1;
-        this.connected = false;
+        this.ready = false;
         this.capability = capability;
         channel.port1.onmessage = (event: MessageEvent<unknown>) =>
             this.onPortMessage(channel.port1, event.data);
@@ -117,7 +122,8 @@ export class IsolatedBridge implements BridgeControlSender {
             if (data.capability !== this.capability) {
                 return;
             }
-            this.connected = true;
+            this.ready = true;
+            this.options.onConnected?.();
             this.options.logger.debug('Page bridge connected', {
                 buffered: data.buffered.length,
             });
@@ -126,7 +132,7 @@ export class IsolatedBridge implements BridgeControlSender {
             }
             return;
         }
-        if (!this.connected) {
+        if (!this.ready) {
             return;
         }
         this.options.onEvent(data);

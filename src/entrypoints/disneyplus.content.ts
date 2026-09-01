@@ -1,12 +1,11 @@
 import { defineContentScript } from 'wxt/utils/define-content-script';
+import { ContentOrchestrator } from '@/content/orchestrator/ContentOrchestrator';
+import { disneyPlusDescriptor } from '@/content/platform/disneyplus/descriptor';
 
 export default defineContentScript({
     matches: ['https://*.disneyplus.com/*'],
     runAt: 'document_start',
     main() {
-        console.debug(
-            '[DualSub:disneyplus] isolated content script started',
-            `readyState=${document.readyState}`
-        );
+        new ContentOrchestrator(disneyPlusDescriptor).start();
     },
 });

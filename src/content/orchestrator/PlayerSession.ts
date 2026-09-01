@@ -173,8 +173,17 @@ export class PlayerSession {
             this.signal
         );
         this.mediaBinding.start();
+        if (this.deps.bridge.connected) {
+            this.adapter.onBridgeConnected?.();
+        }
         this.state = 'active';
         this.logger.info('Session started', { videoId: this.videoId });
+    }
+
+    onBridgeConnected(): void {
+        if (this.state === 'active') {
+            this.adapter.onBridgeConnected?.();
+        }
     }
 
     onSubtitleEvent(event: CapturedEvent): void {

@@ -43,6 +43,7 @@ export class ContentOrchestrator {
         this.uiRoot = new UiRoot(this.controller.signal);
         this.bridge = new IsolatedBridge(descriptor.id, {
             onEvent: (event) => this.onBridgeEvent(event),
+            onConnected: () => this.activeSession?.onBridgeConnected(),
             logger: this.logger,
         });
     }

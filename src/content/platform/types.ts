@@ -19,6 +19,7 @@ export type BridgeEventClassification =
     | { kind: 'platform'; videoId: string | null };
 
 export interface BridgeControlSender {
+    readonly connected: boolean;
     sendControl(message: IsolatedToMain): boolean;
 }
 
@@ -83,6 +84,8 @@ export interface PlatformAdapter {
     interpretSubtitleEvent(event: CapturedEvent): SubtitleFetchSpec | null;
     /** Non-subtitle platform events (Disney timeline updates). */
     onPlatformEvent(event: CapturedEvent): void;
+    /** The page bridge (re)connected: send any page-world setup traffic. */
+    onBridgeConnected?(): void;
     /** Program time in seconds for cue lookup, or null meaning "suppress
      *  subtitles this frame" (Disney interstitials, untrustworthy clock). */
     getPlaybackTime(video: HTMLVideoElement): number | null;
