@@ -16,3 +16,6 @@ UI_DESIGN/
 # WXT (v3 build system)
 .wxt/
 .output/
+
+# Stray unpacked-load copy of the build
+output/

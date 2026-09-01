@@ -1,5 +1,6 @@
 import { defineContentScript } from 'wxt/utils/define-content-script';
-import { installSpikeProbe } from '@/content/bridge/main-world/spikeProbe';
+import { installInterceptor } from '@/content/bridge/main-world/interceptor-core';
+import { disneyRecipe } from '@/content/bridge/main-world/disney-recipe';
 
 export default defineContentScript({
     matches: ['https://*.disneyplus.com/*'],
@@ -8,6 +9,6 @@ export default defineContentScript({
     registration: 'manifest',
     noScriptStartedPostMessage: true,
     main() {
-        installSpikeProbe('disneyplus');
+        installInterceptor(disneyRecipe);
     },
 });

@@ -1,12 +1,11 @@
 import { defineContentScript } from 'wxt/utils/define-content-script';
+import { ContentOrchestrator } from '@/content/orchestrator/ContentOrchestrator';
+import { netflixDescriptor } from '@/content/platform/netflix/descriptor';
 
 export default defineContentScript({
     matches: ['https://*.netflix.com/*'],
     runAt: 'document_start',
     main() {
-        console.debug(
-            '[DualSub:netflix] isolated content script started',
-            `readyState=${document.readyState}`
-        );
+        new ContentOrchestrator(netflixDescriptor).start();
     },
 });

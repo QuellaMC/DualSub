@@ -7,3 +7,4 @@ coverage/
 
 # Generated audit artifact preserved as reference
 docs/reference/pr62-audit-report.html
+output/
