@@ -4,7 +4,8 @@ import { migrateLegacyConfiguration } from '@/config/migrations';
 import { createLogger, setLoggingLevel } from '@/shared/logger';
 import { MessageRouter } from '@/messaging/router';
 import { checkBackgroundReady, ping } from '@/messaging/contracts';
-import { readinessSnapshot } from '@/background/readiness';
+import { markServiceReady, readinessSnapshot } from '@/background/readiness';
+import { registerSubtitleHandlers } from '@/background/subtitle/handler';
 
 export default defineBackground(() => {
     // Cold-start discipline: every listener must be registered synchronously
@@ -15,7 +16,10 @@ export default defineBackground(() => {
 
     router.handle(ping, () => readinessSnapshot());
     router.handle(checkBackgroundReady, () => readinessSnapshot());
+    registerSubtitleHandlers(router);
     router.listen();
+
+    markServiceReady('subtitle');
 
     configService.initializeDefaults(async () => {
         await migrateLegacyConfiguration();

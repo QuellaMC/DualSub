@@ -21,5 +21,16 @@ export const boundedText = (maxBytes: number) =>
                 utf8ByteLength(value) <= maxBytes
         );
 
+/** Non-blank, well-formed, UTF-8 byte-capped string (padding allowed). */
+export const boundedNonBlankString = (maxBytes: number) =>
+    z
+        .string()
+        .refine(
+            (value) =>
+                value.trim().length > 0 &&
+                value.isWellFormed() &&
+                utf8ByteLength(value) <= maxBytes
+        );
+
 export const positiveSafeInteger = z.number().int().safe().positive();
 export const nonNegativeSafeInteger = z.number().int().safe().nonnegative();
