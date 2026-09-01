@@ -71,6 +71,37 @@ export default defineConfig([
         },
     },
     {
+        files: ['src/messaging/**/*.ts'],
+        rules: {
+            'no-restricted-syntax': [
+                'error',
+                {
+                    selector:
+                        "CallExpression[callee.object.name='z'][callee.property.name='any']",
+                    message:
+                        'z.any() bypasses the contract layer; model the shape.',
+                },
+                {
+                    selector:
+                        "CallExpression[callee.object.name='z'][callee.property.name='looseObject']",
+                    message:
+                        'Loose objects accept unknown keys; use z.strictObject.',
+                },
+                {
+                    selector:
+                        "CallExpression[callee.property.name='passthrough']",
+                    message:
+                        'passthrough() accepts unknown keys; use z.strictObject.',
+                },
+                {
+                    selector: "CallExpression[callee.property.name='loose']",
+                    message:
+                        'loose() accepts unknown keys; use z.strictObject.',
+                },
+            ],
+        },
+    },
+    {
         files: ['**/*.{jsx,tsx}'],
         languageOptions: {
             parserOptions: {
