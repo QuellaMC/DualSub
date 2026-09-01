@@ -25,32 +25,15 @@ export function OptionsApp() {
     );
     const { t } = useTranslation(currentLanguage);
 
-    // Update language when settings change
     useEffect(() => {
         if (settings.uiLanguage && settings.uiLanguage !== currentLanguage) {
             setCurrentLanguage(settings.uiLanguage);
         }
     }, [settings.uiLanguage, currentLanguage]);
 
-    const handleSettingChange = async (key, value) => {
+    const persist = async (write) => {
         try {
-            await updateSetting(key, value);
-            setSaveFailed(false);
-        } catch {
-            setSaveFailed(true);
-            return false;
-        }
-
-        // If language changes, reload translations
-        if (key === 'uiLanguage') {
-            setCurrentLanguage(value);
-        }
-        return true;
-    };
-
-    const handleSettingsChange = async (updates) => {
-        try {
-            await updateSettings(updates);
+            await write();
             setSaveFailed(false);
             return true;
         } catch {
@@ -58,6 +41,17 @@ export function OptionsApp() {
             return false;
         }
     };
+
+    const handleSettingChange = async (key, value) => {
+        const saved = await persist(() => updateSetting(key, value));
+        if (saved && key === 'uiLanguage') {
+            setCurrentLanguage(value);
+        }
+        return saved;
+    };
+
+    const handleSettingsChange = (updates) =>
+        persist(() => updateSettings(updates));
 
     if (loading) {
         return (

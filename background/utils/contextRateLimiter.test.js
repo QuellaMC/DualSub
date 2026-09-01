@@ -1,5 +1,9 @@
 import { jest } from '@jest/globals';
-import { ContextRateLimiter } from './contextRateLimiter.js';
+import { RateLimitError } from '../services/serviceInterfaces.js';
+import {
+    ContextRateLimiter,
+    ContextRateLimiterManager,
+} from './contextRateLimiter.js';
 
 describe('ContextRateLimiter', () => {
     beforeEach(() => {
@@ -11,43 +15,66 @@ describe('ContextRateLimiter', () => {
         jest.useRealTimers();
     });
 
-    it('records the timestamp after a mandatory wait', async () => {
+    it('serializes concurrent acquisitions around the mandatory delay', async () => {
         const limiter = new ContextRateLimiter('openai', {
             mandatoryDelay: 100,
             requests: 60,
             burstLimit: 10,
         });
 
-        await limiter.checkLimit('cultural');
-        const second = limiter.checkLimit('historical');
+        await limiter.checkLimit();
+        const second = limiter.checkLimit();
+        const third = limiter.checkLimit();
         await jest.advanceTimersByTimeAsync(100);
         await second;
-
-        expect(limiter.requests.map(({ timestamp }) => timestamp)).toEqual([
-            1_000, 1_100,
-        ]);
-        expect(limiter.lastRequest).toBe(1_100);
-    });
-
-    it('serializes concurrent acquisitions instead of releasing a burst', async () => {
-        const limiter = new ContextRateLimiter('gemini', {
-            mandatoryDelay: 100,
-            requests: 60,
-            burstLimit: 10,
-        });
-
-        await limiter.checkLimit('cultural');
-        const second = limiter.checkLimit('historical');
-        const third = limiter.checkLimit('linguistic');
-
-        await jest.advanceTimersByTimeAsync(100);
-        await second;
-        expect(limiter.requests.at(-1).timestamp).toBe(1_100);
-
         await jest.advanceTimersByTimeAsync(100);
         await third;
-        expect(limiter.requests.map(({ timestamp }) => timestamp)).toEqual([
-            1_000, 1_100, 1_200,
-        ]);
+
+        expect(limiter.requests).toEqual([1_000, 1_100, 1_200]);
+    });
+
+    it('returns a typed window-limit error with safe retry metadata', async () => {
+        const limiter = new ContextRateLimiter('gemini', {
+            mandatoryDelay: 0,
+            requests: 1,
+            burstLimit: 10,
+            window: 5_000,
+        });
+        await limiter.checkLimit();
+
+        await expect(limiter.checkLimit()).rejects.toMatchObject({
+            name: 'RateLimitError',
+            details: { retryAfter: 5_000, provider: 'gemini' },
+        });
+        await expect(limiter.checkLimit()).rejects.toBeInstanceOf(
+            RateLimitError
+        );
+    });
+
+    it('enforces the burst limit before the larger request window', async () => {
+        const limiter = new ContextRateLimiter('openai', {
+            mandatoryDelay: 0,
+            requests: 20,
+            burstLimit: 2,
+        });
+        await limiter.checkLimit();
+        await limiter.checkLimit();
+
+        await expect(limiter.checkLimit()).rejects.toMatchObject({
+            name: 'RateLimitError',
+            message: 'Too many requests in a short time. Please slow down.',
+            details: { retryAfter: 10_000, provider: 'openai' },
+        });
+    });
+
+    it('reuses a provider limiter while applying live configuration', () => {
+        const manager = new ContextRateLimiterManager();
+        const first = manager.getLimiter('openai', { requests: 60 });
+        const updated = manager.getLimiter('openai', { requests: 25 });
+
+        expect(updated).toBe(first);
+        expect(updated.config.requests).toBe(25);
+        manager.cleanup();
+        expect(manager.limiters.size).toBe(0);
     });
 });

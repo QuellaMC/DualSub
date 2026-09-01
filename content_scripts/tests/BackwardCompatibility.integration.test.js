@@ -545,7 +545,6 @@ describe('Backward Compatibility Integration Tests', () => {
                     mockResponse
                 );
                 expect(mockResponse).toHaveBeenCalledWith({
-                    action: 'configChanged',
                     success: true,
                 });
             });

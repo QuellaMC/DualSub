@@ -261,7 +261,6 @@ export function useAIAnalysis() {
                 );
                 const response = await sendRuntimeMessageWithRetry(message, {
                     retries: 0,
-                    pingBeforeRetry: false,
                     canDispatch: () => hasRequestAuthority(request),
                 });
 

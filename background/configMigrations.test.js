@@ -1,11 +1,12 @@
-import {
-    migrateLegacyConfiguration,
-    resetConfigurationMigrationForTests,
-} from './configMigrations.js';
+import { jest } from '@jest/globals';
+
+let migrateLegacyConfiguration;
 
 describe('migrateLegacyConfiguration', () => {
-    beforeEach(() => {
-        resetConfigurationMigrationForTests();
+    beforeEach(async () => {
+        jest.resetModules();
+        ({ migrateLegacyConfiguration } =
+            await import('./configMigrations.js'));
         chrome.storage.sync.get.mockResolvedValue({});
         chrome.storage.local.get.mockResolvedValue({});
         chrome.storage.sync.set.mockResolvedValue();
@@ -246,41 +247,5 @@ describe('migrateLegacyConfiguration', () => {
         expect(migrateLegacyConfiguration()).toBe(retry);
         expect(chrome.storage.sync.get).toHaveBeenCalledTimes(2);
         expect(chrome.storage.local.get).toHaveBeenCalledTimes(2);
-    });
-
-    it('does not let an older rejection clear a replacement attempt', async () => {
-        const migrationError = new Error('stale migration failed');
-        let rejectOlderAttempt;
-        let resolveReplacementAttempt;
-        chrome.storage.sync.get
-            .mockImplementationOnce(
-                () =>
-                    new Promise((resolve, reject) => {
-                        rejectOlderAttempt = reject;
-                    })
-            )
-            .mockImplementationOnce(
-                () =>
-                    new Promise((resolve) => {
-                        resolveReplacementAttempt = resolve;
-                    })
-            );
-
-        const older = migrateLegacyConfiguration();
-        const olderRejection = expect(older).rejects.toBe(migrationError);
-
-        resetConfigurationMigrationForTests();
-        const replacement = migrateLegacyConfiguration();
-        expect(replacement).not.toBe(older);
-
-        rejectOlderAttempt(migrationError);
-        await olderRejection;
-
-        expect(migrateLegacyConfiguration()).toBe(replacement);
-        expect(chrome.storage.sync.get).toHaveBeenCalledTimes(2);
-
-        resolveReplacementAttempt({});
-        await replacement;
-        expect(migrateLegacyConfiguration()).toBe(replacement);
     });
 });

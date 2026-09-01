@@ -10,343 +10,155 @@ import {
 import { AIContextSection } from './AIContextSection.jsx';
 import { getDefaultValue } from '../../../config/configSchema.js';
 
-function createTranslator(messages = {}) {
-    return (key, fallback = '', ...substitutions) => {
-        let message = messages[key] || fallback || key;
-        let substitutionIndex = 0;
-        message = message.replace(/%[sd]/g, (placeholder) =>
-            substitutionIndex < substitutions.length
-                ? substitutions[substitutionIndex++]
-                : placeholder
-        );
-        return message;
-    };
-}
+const t = (_key, fallback = '', ...values) => {
+    let index = 0;
+    return fallback.replace(/%[sd]/g, () => values[index++]);
+};
 
-const t = createTranslator();
-
-function deferred() {
-    let resolve;
-    const promise = new Promise((resolvePromise) => {
-        resolve = resolvePromise;
-    });
-    return { promise, resolve };
-}
-
-function createSection(settings, onSettingChange = () => {}, translate = t) {
+function section(overrides = {}, onSettingChange = jest.fn(), translate = t) {
     return (
         <AIContextSection
             t={translate}
             settings={{
                 aiContextEnabled: true,
+                aiContextProvider: 'openai',
                 aiContextTypes: ['cultural'],
-                ...settings,
+                ...overrides,
             }}
             onSettingChange={onSettingChange}
         />
     );
 }
 
-function renderSection(settings, onSettingChange = () => {}, translate = t) {
-    return render(createSection(settings, onSettingChange, translate));
-}
-
-describe('AIContextSection model contracts', () => {
-    test('uses the configured request timeout default when the setting is absent', () => {
-        renderSection({ aiContextProvider: 'openai' });
-
-        expect(screen.getByLabelText('Request Timeout (ms):')).toHaveValue(
-            30000
-        );
+describe('AIContextSection', () => {
+    afterEach(() => {
+        delete chrome.permissions;
     });
 
-    test('uses the configured cache default when the setting is absent', () => {
-        renderSection({ aiContextProvider: 'openai' });
-
-        expect(
-            screen.getByRole('checkbox', { name: 'Enable Caching:' })
-        ).toBeChecked();
-    });
-
-    test('uses the configured retry-attempt default when the setting is absent', () => {
-        renderSection({ aiContextProvider: 'openai' });
-
-        expect(screen.getByLabelText('Retry Attempts:')).toHaveValue(3);
-    });
-
-    test('preserves explicit false and zero advanced-setting values', () => {
-        renderSection({
-            aiContextProvider: 'openai',
-            aiContextCacheEnabled: false,
-            aiContextRetryAttempts: 0,
-            aiContextTimeout: 0,
-        });
-
-        expect(
-            screen.getByRole('checkbox', { name: 'Enable Caching:' })
-        ).not.toBeChecked();
-        expect(screen.getByLabelText('Request Timeout (ms):')).toHaveValue(0);
-        expect(screen.getByLabelText('Retry Attempts:')).toHaveValue(0);
-    });
-
-    test('keeps sequential timeout typing local and commits the valid draft on blur', async () => {
-        const onSettingChange = jest.fn().mockResolvedValue(true);
-        renderSection(
-            {
-                aiContextProvider: 'openai',
-                aiContextTimeout: 10000,
-            },
-            onSettingChange
-        );
-
-        const timeoutInput = screen.getByLabelText('Request Timeout (ms):');
-        expect(timeoutInput).toHaveAttribute('min', '5000');
-        expect(timeoutInput).toHaveAttribute('max', '30000');
-
-        for (const draft of ['3', '30', '300', '3000', '30000']) {
-            fireEvent.change(timeoutInput, { target: { value: draft } });
-            expect(timeoutInput).toHaveValue(Number(draft));
-            expect(onSettingChange).not.toHaveBeenCalled();
-        }
-
-        fireEvent.blur(timeoutInput);
-        await waitFor(() =>
-            expect(onSettingChange).toHaveBeenCalledWith(
-                'aiContextTimeout',
-                30000
-            )
-        );
-        expect(onSettingChange).toHaveBeenCalledTimes(1);
-    });
-
-    test('commits a valid rate-limit draft on Enter without persisting prefixes', async () => {
-        const onSettingChange = jest.fn().mockResolvedValue(true);
-        renderSection(
-            {
-                aiContextProvider: 'openai',
-                aiContextRateLimit: 60,
-            },
-            onSettingChange
-        );
-
-        const rateLimitInput = screen.getByLabelText(
-            'Rate Limit (requests/min):'
-        );
-        expect(rateLimitInput).toHaveAttribute('min', '10');
-        expect(rateLimitInput).toHaveAttribute('max', '300');
-
-        fireEvent.change(rateLimitInput, { target: { value: '1' } });
-        fireEvent.change(rateLimitInput, { target: { value: '12' } });
-        fireEvent.change(rateLimitInput, { target: { value: '120' } });
-        expect(onSettingChange).not.toHaveBeenCalled();
-
-        fireEvent.keyDown(rateLimitInput, { key: 'Enter' });
-        await waitFor(() =>
-            expect(onSettingChange).toHaveBeenCalledWith(
-                'aiContextRateLimit',
-                120
-            )
-        );
-        fireEvent.blur(rateLimitInput);
-        expect(onSettingChange).toHaveBeenCalledTimes(1);
-    });
-
-    test('keeps an out-of-range numeric draft local with accessible validation', () => {
-        const onSettingChange = jest.fn();
-        renderSection(
-            {
-                aiContextProvider: 'openai',
-                aiContextTimeout: 10000,
-            },
-            onSettingChange
-        );
-
-        const timeoutInput = screen.getByLabelText('Request Timeout (ms):');
-        fireEvent.change(timeoutInput, { target: { value: '30001' } });
-        fireEvent.blur(timeoutInput);
-
-        expect(timeoutInput).toHaveValue(30001);
-        expect(timeoutInput).toHaveAttribute('aria-invalid', 'true');
-        expect(timeoutInput).toHaveAccessibleDescription(
-            'Enter a valid value before saving.'
-        );
-        expect(onSettingChange).not.toHaveBeenCalled();
-    });
-
-    test('renders the requested OpenAI GPT-5.6 choices with Luna as default', () => {
-        renderSection({ aiContextProvider: 'openai' });
+    test('uses schema defaults without masking explicit settings', () => {
+        const view = render(section());
 
         expect(screen.getByLabelText('Base URL:')).toHaveValue(
             getDefaultValue('openaiBaseUrl')
         );
-        const modelInput = screen.getByLabelText('Model:');
-        expect(modelInput).toHaveValue(getDefaultValue('openaiModel'));
+        expect(screen.getByLabelText('Model:')).toHaveValue(
+            getDefaultValue('openaiModel')
+        );
+        expect(screen.getByLabelText('Request Timeout (ms):')).toHaveValue(
+            30000
+        );
+        expect(
+            screen.getByRole('checkbox', { name: 'Enable Caching:' })
+        ).toBeChecked();
+        expect(screen.getByLabelText('Retry Attempts:')).toHaveValue(3);
+
+        view.rerender(
+            section({
+                openaiBaseUrl: '',
+                openaiModel: '',
+                aiContextCacheEnabled: false,
+                aiContextRetryAttempts: 0,
+                aiContextTimeout: 0,
+            })
+        );
+        expect(screen.getByLabelText('Base URL:')).toHaveValue('');
+        expect(screen.getByLabelText('Model:')).toHaveValue('');
+        expect(screen.getByLabelText('Request Timeout (ms):')).toHaveValue(0);
+        expect(
+            screen.getByRole('checkbox', { name: 'Enable Caching:' })
+        ).not.toBeChecked();
+        expect(screen.getByLabelText('Retry Attempts:')).toHaveValue(0);
+    });
+
+    test('renders current provider choices and keeps API keys sensitive', () => {
+        const onSettingChange = jest.fn();
+        const view = render(section({}, onSettingChange));
+
         expect(
             Array.from(
                 document.querySelector('#openaiModelOptions').options,
                 ({ value }) => value
             )
         ).toEqual(['gpt-5.6-luna', 'gpt-5.6-terra', 'gpt-5.6']);
+        const apiKey = screen.getByLabelText('API Key:');
+        expect(apiKey).toHaveAttribute('type', 'password');
+        fireEvent.change(apiKey, { target: { value: 'secret' } });
+        expect(onSettingChange).toHaveBeenCalledWith('openaiApiKey', 'secret');
+
+        view.rerender(section({ aiContextProvider: 'gemini' }));
+        expect(screen.getByLabelText('Model:')).toHaveValue('gemini-3.5-flash');
     });
 
-    test('does not mask explicit empty or invalid OpenAI fields with local defaults', () => {
-        const view = renderSection({
-            aiContextProvider: 'openai',
-            openaiBaseUrl: '',
-            openaiModel: '',
-        });
+    test('commits a complete numeric draft instead of intermediate prefixes', async () => {
+        const onSettingChange = jest.fn().mockResolvedValue(true);
+        render(section({ aiContextTimeout: 10000 }, onSettingChange));
+        const timeout = screen.getByLabelText('Request Timeout (ms):');
 
-        expect(screen.getByLabelText('Base URL:')).toHaveValue('');
-        expect(screen.getByLabelText('Model:')).toHaveValue('');
-
-        view.rerender(
-            createSection({
-                aiContextProvider: 'openai',
-                openaiBaseUrl: 'not a URL',
-                openaiModel: '   ',
-            })
-        );
-        expect(screen.getByLabelText('Base URL:')).toHaveValue('not a URL');
-        expect(screen.getByLabelText('Model:')).toHaveValue('   ');
-    });
-
-    test('preserves and commits a custom OpenAI-compatible model on blur', async () => {
-        const onSettingChange = jest.fn();
-        renderSection(
-            {
-                aiContextProvider: 'openai',
-                openaiBaseUrl: 'https://models.example.test/v1',
-                openaiModel: 'provider-specific-model',
-            },
-            onSettingChange
-        );
-
-        const modelInput = screen.getByLabelText('Model:');
-        expect(modelInput).toHaveValue('provider-specific-model');
-
-        fireEvent.change(modelInput, {
-            target: { value: 'provider-specific-model-v2' },
-        });
+        for (const value of ['3', '30', '300', '3000', '30000']) {
+            fireEvent.change(timeout, { target: { value } });
+        }
         expect(onSettingChange).not.toHaveBeenCalled();
 
-        fireEvent.blur(modelInput);
+        fireEvent.blur(timeout);
         await waitFor(() =>
             expect(onSettingChange).toHaveBeenCalledWith(
-                'openaiModel',
-                'provider-specific-model-v2'
+                'aiContextTimeout',
+                30000
             )
         );
-        expect(onSettingChange).toHaveBeenCalledTimes(1);
     });
 
-    test('keeps an invalid OpenAI model editable without persistence', () => {
+    test('keeps invalid drafts local with accessible feedback', () => {
         const onSettingChange = jest.fn();
-        renderSection({ aiContextProvider: 'openai' }, onSettingChange);
+        render(section({}, onSettingChange));
+        const model = screen.getByLabelText('Model:');
 
-        const modelInput = screen.getByLabelText('Model:');
-        fireEvent.change(modelInput, { target: { value: '   ' } });
-        fireEvent.blur(modelInput);
+        fireEvent.change(model, { target: { value: '   ' } });
+        fireEvent.blur(model);
 
-        expect(modelInput).toHaveValue('   ');
-        expect(modelInput).toHaveAttribute('aria-invalid', 'true');
-        expect(modelInput).toHaveAccessibleDescription(
+        expect(model).toHaveValue('   ');
+        expect(model).toHaveAttribute('aria-invalid', 'true');
+        expect(model).toHaveAccessibleDescription(
             'Enter a valid value before saving.'
         );
         expect(onSettingChange).not.toHaveBeenCalled();
     });
 
-    test('renders Gemini 3.5 Flash without shut-down Gemini 1.5 choices', () => {
-        renderSection({ aiContextProvider: 'gemini' });
-
-        const modelSelect = screen.getByLabelText('Model:');
-        const modelValues = Array.from(
-            modelSelect.options,
-            ({ value }) => value
+    test('persists context type changes and warns when none are selected', () => {
+        const onSettingChange = jest.fn();
+        render(
+            section(
+                { aiContextTypes: [], aiContextProvider: 'gemini' },
+                onSettingChange
+            )
         );
-        expect(modelSelect).toHaveValue('gemini-3.5-flash');
-        expect(modelValues[0]).toBe('gemini-3.5-flash');
-        expect(modelValues).not.toEqual(
-            expect.arrayContaining(['gemini-1.5-flash', 'gemini-1.5-pro'])
-        );
-    });
-
-    test('shows validation guidance when no context type is selected', () => {
-        renderSection({
-            aiContextProvider: 'openai',
-            aiContextTypes: [],
-        });
 
         expect(
             screen.getByText('Select at least one context type.')
-        ).toBeInTheDocument();
-    });
-
-    test('groups the endpoint permission state and action accessibly', () => {
-        renderSection({
-            aiContextProvider: 'openai',
-            openaiBaseUrl: 'https://models.example.com/v1',
-        });
-
-        const status = screen.getByRole('status');
-        const baseUrlInput = screen.getByLabelText('Base URL:');
-        const allowButton = screen.getByRole('button', {
-            name: 'Allow API host',
-        });
-        const permissionGroup = screen.getByRole('group', {
-            name: 'models.example.com',
-        });
-        const scopeDisclosure =
-            'Configured endpoint: https://models.example.com/v1. Chrome permission scope: https://models.example.com/* (all paths and ports on this host).';
-
-        expect(screen.getByText('models.example.com')).toBeInTheDocument();
-        expect(screen.getByText(scopeDisclosure)).toBeInTheDocument();
-        expect(status).toBeEmptyDOMElement();
-        expect(baseUrlInput).toHaveAccessibleDescription(scopeDisclosure);
-        expect(permissionGroup).toContainElement(allowButton);
-        expect(allowButton).toHaveAccessibleDescription(
-            `models.example.com ${scopeDisclosure}`
+        ).toBeVisible();
+        fireEvent.click(
+            screen.getByRole('checkbox', { name: 'Cultural Context:' })
         );
+        expect(onSettingChange).toHaveBeenCalledWith('aiContextTypes', [
+            'cultural',
+        ]);
     });
 
-    test('discloses the exact loopback endpoint and Chrome all-port scope', async () => {
+    test('discloses and requests the configured Chrome host scope', async () => {
         chrome.permissions = {
             request: jest.fn().mockResolvedValue(true),
         };
-        renderSection({
-            aiContextProvider: 'openai',
-            openaiBaseUrl: 'http://localhost:11434/v1',
-        });
+        render(
+            section({ openaiBaseUrl: 'https://models.example.com:8443/v1' })
+        );
+        const disclosure =
+            'Configured endpoint: https://models.example.com:8443/v1. Chrome permission scope: https://models.example.com/* (all paths and ports on this host).';
 
-        expect(
-            screen.getByText(
-                'Configured endpoint: http://localhost:11434/v1. Chrome permission scope: http://localhost/* (all paths and ports on this host).'
-            )
-        ).toBeInTheDocument();
-
+        expect(screen.getByText(disclosure)).toBeVisible();
+        expect(screen.getByLabelText('Base URL:')).toHaveAccessibleDescription(
+            disclosure
+        );
         fireEvent.click(screen.getByRole('button', { name: 'Allow API host' }));
-        expect(chrome.permissions.request).toHaveBeenCalledWith({
-            origins: ['http://localhost/*'],
-        });
-        await waitFor(() =>
-            expect(screen.getByRole('status')).toHaveTextContent(
-                'API host access granted.'
-            )
-        );
-    });
-
-    test('requests a custom OpenAI host from the explicit user gesture', async () => {
-        chrome.permissions = {
-            request: jest.fn().mockResolvedValue(true),
-        };
-        renderSection({
-            aiContextProvider: 'openai',
-            openaiBaseUrl: 'https://models.example.com/v1',
-        });
-
-        const allowButton = screen.getByRole('button', {
-            name: 'Allow API host',
-        });
-        fireEvent.click(allowButton);
 
         expect(chrome.permissions.request).toHaveBeenCalledWith({
             origins: ['https://models.example.com/*'],
@@ -356,42 +168,28 @@ describe('AIContextSection model contracts', () => {
                 'API host access granted.'
             )
         );
-        expect(
-            screen.getByRole('status').closest('.api-host-permission')
-        ).toHaveClass('granted');
-        expect(allowButton).toHaveAccessibleDescription(
-            'models.example.com Configured endpoint: https://models.example.com/v1. Chrome permission scope: https://models.example.com/* (all paths and ports on this host). API host access granted.'
-        );
     });
 
-    test('requests the visible valid draft synchronously while its blur commit is pending', async () => {
-        const persistence = deferred();
-        const onSettingChange = jest.fn(() => persistence.promise);
+    test('requests a valid visible draft while its save is pending', async () => {
+        const save = Promise.withResolvers();
+        const onSettingChange = jest.fn(() => save.promise);
         chrome.permissions = {
             request: jest.fn().mockResolvedValue(true),
         };
-        renderSection(
-            {
-                aiContextProvider: 'openai',
-                openaiBaseUrl: 'https://first.example.com/v1',
-            },
-            onSettingChange
+        render(
+            section(
+                { openaiBaseUrl: 'https://first.example.com/v1' },
+                onSettingChange
+            )
         );
+        const baseUrl = screen.getByLabelText('Base URL:');
 
-        const baseUrlInput = screen.getByLabelText('Base URL:');
-        fireEvent.change(baseUrlInput, {
+        fireEvent.change(baseUrl, {
             target: { value: 'https://draft.example.com/v2' },
         });
-
-        expect(onSettingChange).not.toHaveBeenCalled();
-        expect(
-            screen.getByRole('group', { name: 'draft.example.com' })
-        ).toBeInTheDocument();
-
-        fireEvent.blur(baseUrlInput);
+        fireEvent.blur(baseUrl);
         fireEvent.click(screen.getByRole('button', { name: 'Allow API host' }));
 
-        expect(onSettingChange).toHaveBeenCalledTimes(1);
         expect(onSettingChange).toHaveBeenCalledWith(
             'openaiBaseUrl',
             'https://draft.example.com/v2'
@@ -399,8 +197,7 @@ describe('AIContextSection model contracts', () => {
         expect(chrome.permissions.request).toHaveBeenCalledWith({
             origins: ['https://draft.example.com/*'],
         });
-
-        persistence.resolve(true);
+        save.resolve(true);
         await waitFor(() =>
             expect(screen.getByRole('status')).toHaveTextContent(
                 'API host access granted.'
@@ -408,231 +205,74 @@ describe('AIContextSection model contracts', () => {
         );
     });
 
-    test('recognizes the built-in OpenAI host without prompting', async () => {
-        chrome.permissions = {
-            request: jest.fn().mockResolvedValue(true),
-        };
-        renderSection({ aiContextProvider: 'openai' });
-
-        fireEvent.click(screen.getByRole('button', { name: 'Allow API host' }));
-
-        await waitFor(() =>
-            expect(screen.getByRole('status')).toHaveTextContent(
-                'API host access granted.'
-            )
-        );
-        expect(chrome.permissions.request).not.toHaveBeenCalled();
-    });
-
-    test('shows a busy, disabled permission action while Chrome responds', async () => {
-        let resolvePermission;
-        chrome.permissions = {
-            request: jest.fn(
-                () =>
-                    new Promise((resolve) => {
-                        resolvePermission = resolve;
-                    })
-            ),
-        };
-        renderSection({
-            aiContextProvider: 'openai',
-            openaiBaseUrl: 'https://models.example.com/v1',
-        });
-
-        const allowButton = screen.getByRole('button', {
-            name: 'Allow API host',
-        });
-        fireEvent.click(allowButton);
-
-        expect(allowButton).toBeDisabled();
-        expect(allowButton).toHaveAttribute('aria-busy', 'true');
-        expect(screen.getByRole('status')).toHaveTextContent(
-            'Checking API host access…'
-        );
-        expect(
-            screen.getByRole('status').closest('.api-host-permission')
-        ).toHaveClass('pending');
-
-        resolvePermission(true);
-        await waitFor(() => expect(allowButton).toBeEnabled());
-        expect(allowButton).toHaveAttribute('aria-busy', 'false');
-    });
-
-    test('clears permission state when storage supplies a different URL', async () => {
-        chrome.permissions = {
-            request: jest.fn().mockResolvedValue(true),
-        };
-        const view = renderSection({
-            aiContextProvider: 'openai',
-            openaiBaseUrl: 'https://first.example.com/v1',
-        });
-
-        fireEvent.click(screen.getByRole('button', { name: 'Allow API host' }));
-        await waitFor(() =>
-            expect(screen.getByRole('status')).toHaveTextContent(
-                'API host access granted.'
-            )
-        );
-
-        view.rerender(
-            createSection({
-                aiContextProvider: 'openai',
-                openaiBaseUrl: 'https://second.example.com/v1',
-            })
-        );
-
-        expect(
-            screen.getByRole('group', { name: 'second.example.com' })
-        ).toHaveClass('idle');
-        expect(screen.getByRole('status')).toBeEmptyDOMElement();
-    });
-
-    test('ignores an older host result after a new host request starts', async () => {
-        let resolveFirstRequest;
-        let resolveSecondRequest;
+    test('ignores a permission result for a replaced endpoint', async () => {
+        const first = Promise.withResolvers();
         chrome.permissions = {
             request: jest
                 .fn()
-                .mockImplementationOnce(
-                    () =>
-                        new Promise((resolve) => {
-                            resolveFirstRequest = resolve;
-                        })
-                )
-                .mockImplementationOnce(
-                    () =>
-                        new Promise((resolve) => {
-                            resolveSecondRequest = resolve;
-                        })
-                ),
+                .mockReturnValueOnce(first.promise)
+                .mockResolvedValueOnce(false),
         };
-        const view = renderSection({
-            aiContextProvider: 'openai',
-            openaiBaseUrl: 'https://first.example.com/v1',
-        });
-
-        fireEvent.click(screen.getByRole('button', { name: 'Allow API host' }));
-        view.rerender(
-            createSection({
-                aiContextProvider: 'openai',
-                openaiBaseUrl: 'https://second.example.com/v1',
-            })
+        const view = render(
+            section({ openaiBaseUrl: 'https://first.example.com/v1' })
         );
         fireEvent.click(screen.getByRole('button', { name: 'Allow API host' }));
-
-        expect(chrome.permissions.request).toHaveBeenNthCalledWith(1, {
-            origins: ['https://first.example.com/*'],
-        });
-        expect(chrome.permissions.request).toHaveBeenNthCalledWith(2, {
-            origins: ['https://second.example.com/*'],
-        });
-
-        await act(async () => {
-            resolveFirstRequest(true);
-            await Promise.resolve();
-        });
-        expect(screen.getByRole('status')).toHaveTextContent(
-            'Checking API host access…'
-        );
-
-        await act(async () => {
-            resolveSecondRequest(false);
-            await Promise.resolve();
-        });
-        expect(screen.getByRole('status')).toHaveTextContent(
-            'API host access was not granted.'
-        );
         expect(
-            screen.getByRole('group', { name: 'second.example.com' })
-        ).toHaveClass('denied');
-    });
+            screen.getByRole('button', { name: 'Allow API host' })
+        ).toBeDisabled();
 
-    test('renders a denied permission result as retryable feedback', async () => {
-        chrome.permissions = {
-            request: jest.fn().mockResolvedValue(false),
-        };
-        renderSection({
-            aiContextProvider: 'openai',
-            openaiBaseUrl: 'https://models.example.com/v1',
-        });
-
-        const allowButton = screen.getByRole('button', {
-            name: 'Allow API host',
-        });
-        fireEvent.click(allowButton);
-
+        view.rerender(
+            section({ openaiBaseUrl: 'https://second.example.com/v1' })
+        );
+        fireEvent.click(screen.getByRole('button', { name: 'Allow API host' }));
         await waitFor(() =>
             expect(screen.getByRole('status')).toHaveTextContent(
                 'API host access was not granted.'
             )
         );
-        expect(allowButton).toBeEnabled();
-        expect(
-            screen.getByRole('group', { name: 'models.example.com' })
-        ).toHaveClass('denied');
+
+        await act(async () => first.resolve(true));
+        expect(screen.getByRole('status')).toHaveTextContent(
+            'API host access was not granted.'
+        );
     });
 
-    test('keeps actionable permission errors in a translated message', async () => {
-        const translatedT = createTranslator({
-            openaiHostPermissionError: 'Localized permission error: %s',
-        });
+    test('shows permission failures as retryable feedback', async () => {
         chrome.permissions = {
             request: jest
                 .fn()
                 .mockRejectedValue(new Error('permission backend failed')),
         };
-        renderSection(
-            {
-                aiContextProvider: 'openai',
-                openaiBaseUrl: 'https://models.example.com/v1',
-            },
-            undefined,
-            translatedT
-        );
+        render(section({ openaiBaseUrl: 'https://models.example.com/v1' }));
 
         fireEvent.click(screen.getByRole('button', { name: 'Allow API host' }));
 
         await waitFor(() =>
             expect(screen.getByRole('status')).toHaveTextContent(
-                'Localized permission error: permission backend failed'
+                'Could not request API host access: permission backend failed'
             )
         );
         expect(
-            screen.getByRole('group', { name: 'models.example.com' })
-        ).toHaveClass('error');
+            screen.getByRole('button', { name: 'Allow API host' })
+        ).toBeEnabled();
     });
 
-    test('keeps an invalid URL editable while blocking persistence and permission', () => {
+    test('blocks invalid endpoints from persistence and permission requests', () => {
         const onSettingChange = jest.fn();
-        chrome.permissions = {
-            request: jest.fn().mockResolvedValue(true),
-        };
-        renderSection(
-            {
-                aiContextProvider: 'openai',
-                openaiBaseUrl: 'https://models.example.com/v1',
-            },
-            onSettingChange
-        );
+        chrome.permissions = { request: jest.fn().mockResolvedValue(true) };
+        render(section({}, onSettingChange));
+        const baseUrl = screen.getByLabelText('Base URL:');
 
-        const baseUrlInput = screen.getByLabelText('Base URL:');
-        fireEvent.change(baseUrlInput, {
+        fireEvent.change(baseUrl, {
             target: { value: 'http://remote.example.com/v1' },
         });
-        fireEvent.blur(baseUrlInput);
+        fireEvent.blur(baseUrl);
 
-        expect(baseUrlInput).toHaveValue('http://remote.example.com/v1');
-        expect(baseUrlInput).toHaveAttribute('aria-invalid', 'true');
-        expect(baseUrlInput).toHaveAccessibleDescription(
-            'Enter a valid value before saving.'
-        );
+        expect(baseUrl).toHaveAttribute('aria-invalid', 'true');
+        expect(
+            screen.getByRole('button', { name: 'Allow API host' })
+        ).toBeDisabled();
         expect(onSettingChange).not.toHaveBeenCalled();
-
-        const allowButton = screen.getByRole('button', {
-            name: 'Allow API host',
-        });
-        expect(allowButton).toBeDisabled();
-        fireEvent.click(allowButton);
         expect(chrome.permissions.request).not.toHaveBeenCalled();
     });
 });

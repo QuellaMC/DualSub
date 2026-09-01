@@ -1,475 +1,105 @@
-# Test Pattern Documentation and Examples
+# Test patterns
 
-This document provides comprehensive documentation and examples for the test infrastructure patterns used in the DualSub browser extension project.
+Tests should protect observable extension behavior at the boundary that owns it.
+Prefer a few representative success, rejection, cancellation, and cleanup cases
+over a matrix of equivalent object shapes or private implementation details.
 
-## Overview
+## Shared fixtures
 
-The test infrastructure provides standardized patterns for testing platform-specific functionality, Chrome extension APIs, and browser environment interactions. It addresses common testing challenges including JSDOM limitations, mock management, and test isolation.
+- `chrome-api-mock.js`: Chrome storage, runtime, and tab mocks
+- `location-mock.js`: restorable JSDOM location state
+- `logger-mock.js`: logger spies
+- `test-fixtures.js`: representative Netflix, Disney+, and Chrome payloads
+- `subtitle-fetch-fixtures.js`: subtitle response fixtures
+- `test-helpers.js`: shared environment setup and cleanup
+- `flush-promises.js`: drains queued Promise work when the public operation has
+  no completion Promise
 
-## Core Components
+Use only the helpers that make the behavior clearer. Local fixtures are preferable
+when a shared generator hides the input that matters to the assertion.
 
-### 1. Test Helpers (`test-helpers.js`)
+## Isolation
 
-The `TestHelpers` class provides centralized test setup and utilities:
-
-```javascript
-import { TestHelpers } from './test-utils/test-helpers.js';
-
-const testHelpers = new TestHelpers();
-
-// Setup complete test environment
-const env = testHelpers.setupTestEnvironment({
-    platform: 'netflix', // 'netflix' | 'disneyplus'
-    enableLogger: true, // Enable logger mocking
-    enableChromeApi: true, // Enable Chrome API mocking
-    enableLocation: true, // Enable location mocking
-    loggerDebugMode: false, // Logger debug mode
-});
-
-// Use mocks in tests
-expect(env.mocks.logger).toBeDefined();
-expect(env.mocks.chromeApi).toBeDefined();
-expect(env.mocks.location).toBeDefined();
-
-// Cleanup after test
-env.cleanup();
-```
-
-### 2. Mock State Registry
-
-Centralized mock management with automatic cleanup:
+Create fresh state per test and restore all browser globals, listeners, timers,
+spies, and DOM nodes in `afterEach`.
 
 ```javascript
-import { MockStateRegistry } from './test-utils/test-helpers.js';
+let helpers;
+let env;
 
-const registry = new MockStateRegistry();
-
-// Register mocks with cleanup functions
-registry.register('myMock', mockObject, cleanupFunction);
-
-// Reset all mocks
-registry.resetAll();
-
-// Run all cleanup functions
-registry.cleanup();
-```
-
-### 3. Test Fixtures (`test-fixtures.js`)
-
-Standardized test data for consistent testing:
-
-```javascript
-import {
-    NetflixFixtures,
-    DisneyPlusFixtures,
-    ChromeApiFixtures,
-} from './test-utils/test-fixtures.js';
-
-// Use predefined Netflix events
-const subtitleEvent = NetflixFixtures.subtitleDataEvent;
-const readyEvent = NetflixFixtures.injectReadyEvent;
-
-// Use predefined Chrome API responses
-const successResponse = ChromeApiFixtures.successfulVttResponse;
-const errorResponse = ChromeApiFixtures.failedVttResponse;
-```
-
-## Testing Patterns
-
-### 1. Platform Test Pattern
-
-Standard pattern for testing platform classes:
-
-```javascript
-import { describe, test, expect, beforeEach, afterEach } from '@jest/globals';
-import { TestHelpers } from './test-utils/test-helpers.js';
-import { NetflixPlatform } from './netflixPlatform.js';
-
-describe('NetflixPlatform Tests', () => {
-    let testHelpers;
-    let platform;
-    let testEnv;
-
-    beforeEach(() => {
-        testHelpers = new TestHelpers();
-        testEnv = testHelpers.setupTestEnvironment({
-            platform: 'netflix',
-            enableLogger: true,
-            enableChromeApi: true,
-            enableLocation: true,
-        });
-
-        platform = new NetflixPlatform();
-    });
-
-    afterEach(() => {
-        if (platform && typeof platform.cleanup === 'function') {
-            platform.cleanup();
-        }
-        testEnv.cleanup();
-        testHelpers.resetAllMocks();
-    });
-
-    test('should initialize correctly', async () => {
-        const mockOnSubtitleFound = jest.fn();
-        const mockOnVideoIdChange = jest.fn();
-
-        await platform.initialize(mockOnSubtitleFound, mockOnVideoIdChange);
-
-        testHelpers.assertions.expectPlatformInitialized(
-            platform,
-            testEnv.mocks.logger
-        );
-    });
-});
-```
-
-### 2. Event Handling Pattern
-
-Testing platform event handling:
-
-```javascript
-test('should handle subtitle data events', () => {
-    const subtitleEvent = testHelpers.createNetflixEvent('subtitleData', {
-        movieId: '12345',
-        timedtexttracks: [{ language: 'en' }],
-    });
-
-    testHelpers.setupChromeApiResponses();
-    platform.handleInjectorEvents(subtitleEvent);
-
-    testHelpers.assertions.expectLoggerCalled(
-        testEnv.mocks.logger,
-        'debug',
-        'Raw subtitle data received'
-    );
-});
-```
-
-### 3. Chrome API Testing Pattern
-
-Testing Chrome extension API interactions:
-
-Note: The runtime messaging layer uses a resilient retry wrapper in `content_scripts/shared/messaging.js`. In tests, you can either mock `env.mocks.chromeApi.runtime.sendMessage` directly (callback or promise forms are both supported by the wrapper) or mock `sendRuntimeMessageWithRetry` if you want to focus on call sites.
-
-```javascript
-test('should communicate with background script', () => {
-    // Setup Chrome API responses
-    testHelpers.setupChromeApiResponses(
-        { targetLanguage: 'zh-CN' }, // Storage response
-        { success: true, videoId: '12345' } // Runtime response
-    );
-
-    // Trigger functionality that uses Chrome APIs
-    platform.processSubtitleData(mockData);
-
-    // Verify API calls
-    testHelpers.assertions.expectStorageAccessed(
-        testEnv.mocks.chromeApi,
-        'get',
-        ['targetLanguage', 'originalLanguage']
-    );
-
-    testHelpers.assertions.expectRuntimeMessageSent(testEnv.mocks.chromeApi, {
-        type: 'PROCESS_VTT',
-    });
-});
-```
-
-### 4. Location Mocking Pattern
-
-Testing URL-dependent functionality:
-
-```javascript
-test('should extract video ID from URL', () => {
-    // Set specific location
-    testEnv.mocks.location.setLocation({
-        hostname: 'www.netflix.com',
-        pathname: '/watch/67890',
-    });
-
-    const videoId = platform.extractMovieIdFromUrl();
-
-    expect(videoId).toBe('67890');
-    testHelpers.assertions.expectLoggerCalled(
-        testEnv.mocks.logger,
-        'debug',
-        'Extracted movieId from URL'
-    );
-});
-```
-
-### 5. Error Handling Pattern
-
-Testing error scenarios:
-
-```javascript
-test('should handle Chrome API errors', () => {
-    // Setup error response
-    testEnv.mocks.chromeApi.runtime.sendMessage.mockImplementation(
-        (message, callback) => {
-            callback({ success: false, error: 'Network timeout' });
-        }
-    );
-
-    platform.processSubtitleData(mockData);
-
-    testHelpers.assertions.expectLoggerCalled(
-        testEnv.mocks.logger,
-        'error',
-        'Background failed to process VTT'
-    );
-});
-```
-
-## Advanced Patterns
-
-### 1. Platform Test Suite Generator
-
-Automated test suite generation for consistent platform testing:
-
-```javascript
-import { PlatformTestSuiteGenerator } from './test-utils/test-helpers.js';
-
-describe(
-    'Netflix Platform',
-    PlatformTestSuiteGenerator.generateNetflixTestSuite(NetflixPlatform)
-);
-```
-
-### 2. Scenario-Based Testing
-
-Using test fixtures for comprehensive scenario coverage:
-
-```javascript
-import { TestScenarioGenerator } from './test-utils/test-fixtures.js';
-
-const scenarios = TestScenarioGenerator.generateNetflixScenarios();
-
-scenarios.forEach((scenario) => {
-    test(`should handle ${scenario.name}`, () => {
-        // Setup environment for scenario
-        testEnv.mocks.location.setLocation(scenario.location);
-
-        if (scenario.chromeResponse) {
-            testHelpers.setupChromeApiResponses({}, scenario.chromeResponse);
-        }
-
-        // Execute scenario
-        platform.handleInjectorEvents(scenario.event);
-
-        // Verify expected outcome
-        if (scenario.expectedOutcome === 'success') {
-            expect(/* success condition */).toBeTruthy();
-        } else {
-            expect(/* error condition */).toBeTruthy();
-        }
-    });
-});
-```
-
-### 3. Integration Testing Pattern
-
-Testing complete workflows:
-
-```javascript
-test('should handle complete subtitle processing workflow', async () => {
-    // Setup initial state
-    testHelpers.setupChromeApiResponses(
-        { targetLanguage: 'zh-CN', originalLanguage: 'en' },
-        {
-            success: true,
-            vttText: 'WEBVTT\n\n1\n00:00:01.000 --> 00:00:02.000\nTest',
-        }
-    );
-
-    // Initialize platform
-    const onSubtitleFound = jest.fn();
-    await platform.initialize(onSubtitleFound, jest.fn());
-
-    // Trigger subtitle data event
-    const subtitleEvent = testHelpers.createNetflixEvent('subtitleData');
-    platform.handleInjectorEvents(subtitleEvent);
-
-    // Verify complete workflow
-    expect(onSubtitleFound).toHaveBeenCalled();
-    testHelpers.assertions.expectLoggerCalled(
-        testEnv.mocks.logger,
-        'info',
-        'VTT processed successfully'
-    );
-});
-```
-
-## Best Practices
-
-### 1. Test Isolation
-
-Always ensure tests are isolated and don't affect each other:
-
-```javascript
 beforeEach(() => {
-    // Setup fresh environment for each test
-    testEnv = testHelpers.setupTestEnvironment(/* config */);
+    helpers = new TestHelpers();
+    env = helpers.setupTestEnvironment({ platform: 'netflix' });
 });
 
 afterEach(() => {
-    // Clean up after each test
-    testEnv.cleanup();
-    testHelpers.resetAllMocks();
+    env.cleanup();
+    helpers.resetAllMocks();
+    jest.useRealTimers();
 });
 ```
 
-### 2. Mock Management
+Use `LocationMock` instead of assigning `window.location`; JSDOM treats direct
+navigation as an unsupported browser operation.
 
-Use the centralized mock registry for consistent cleanup:
+## Runtime messaging
 
-```javascript
-// Register custom mocks with cleanup
-testHelpers.mockRegistry.register('customMock', mockObject, () => {
-    // Custom cleanup logic
-});
-```
-
-### 3. Assertion Helpers
-
-Use provided assertion helpers for consistent verification:
+Production runtime sends use Chrome's Promise API. A direct mock should resolve or
+reject a Promise:
 
 ```javascript
-// Instead of manual Jest assertions
-testHelpers.assertions.expectLoggerCalled(logger, 'info', 'Expected message');
-testHelpers.assertions.expectStorageAccessed(chromeApi, 'get', ['key']);
-testHelpers.assertions.expectRuntimeMessageSent(chromeApi, { type: 'MESSAGE' });
+chrome.runtime.sendMessage.mockResolvedValue({ success: true });
+
+await expect(sendOperation()).resolves.toEqual(expectedResult);
+expect(chrome.runtime.sendMessage).toHaveBeenCalledWith(expectedRequest);
 ```
 
-### 4. Error Testing
+Use the route-specific protocol builder for `expectedRequest` and parse the mock
+response through the matching parser when testing a caller end to end. Mock
+`sendRuntimeMessageWithRetry` only when the caller's response handling, rather than
+messaging delivery, is the behavior under test.
 
-Always test error scenarios:
+For retry tests, distinguish proven non-delivery from terminal failures. Do not
+expect retries for ambiguous channel closure or unknown errors.
+
+## Lifecycle tests
+
+For platform, subtitle, modal, or side-panel lifecycles, cover the state changes a
+user can observe:
+
+- current work commits normally
+- stale work cannot commit after navigation, replacement, disable, or cleanup
+- cleanup detaches the actual listener/subscription once
+- re-entry starts one fresh lifecycle without duplicate cues or handlers
+
+Prefer deferred Promises to source inspection or private-field assertions:
 
 ```javascript
-test('should handle missing data gracefully', () => {
-    const invalidEvent = { detail: { type: 'INVALID' } };
+const pending = Promise.withResolvers();
+dependency.mockReturnValueOnce(pending.promise);
 
-    expect(() => {
-        platform.handleInjectorEvents(invalidEvent);
-    }).not.toThrow();
+const first = subject.start();
+subject.replace();
+pending.resolve(staleResult);
+await first;
 
-    testHelpers.assertions.expectLoggerCalled(
-        testEnv.mocks.logger,
-        'error',
-        'Unknown event type'
-    );
-});
+expect(render).not.toHaveBeenCalledWith(staleResult);
 ```
 
-### 5. Performance Considerations
+## Fake timers
 
-Be mindful of test performance:
+Use fake timers only for behavior controlled by a real debounce, deadline, retry,
+or pacing interval. Advance to the public boundary and then await Promise work.
+Restore real timers in cleanup.
 
-```javascript
-test('should handle large data efficiently', () => {
-    const startTime = Date.now();
+## What not to test
 
-    // Test with large dataset
-    platform.processLargeDataset(largeData);
+- source strings, comments, or exact private helper names
+- generated documentation examples
+- every permutation of getters, proxies, descriptors, and frozen objects when one
+  ordinary malformed payload proves the same public rejection
+- platform behavior already covered by the shared host
+- legacy runtime-messaging forms for Promise-only production callers
+- arbitrary coverage targets without an unprotected behavior
 
-    const duration = Date.now() - startTime;
-    expect(duration).toBeLessThan(1000); // Should complete within 1 second
-});
-```
-
-## Common Pitfalls and Solutions
-
-### 1. JSDOM Navigation Errors
-
-**Problem**: Setting `window.location` properties triggers JSDOM navigation errors.
-
-**Solution**: Use the centralized location mock:
-
-```javascript
-// ❌ Don't do this
-window.location.href = 'https://netflix.com/watch/12345';
-
-// ✅ Do this instead
-testEnv.mocks.location.setLocation({
-    href: 'https://netflix.com/watch/12345',
-});
-```
-
-### 2. Mock Persistence Between Tests
-
-**Problem**: Mocks persist between tests causing interference.
-
-**Solution**: Always cleanup and reset:
-
-```javascript
-afterEach(() => {
-    testEnv.cleanup();
-    testHelpers.resetAllMocks();
-});
-```
-
-### 3. Chrome API Mock Configuration
-
-**Problem**: Chrome API mocks not configured correctly.
-
-**Solution**: Use the helper methods:
-
-```javascript
-// ❌ Manual mock setup
-chrome.storage.sync.get.mockImplementation(/* ... */);
-
-// ✅ Use helper
-testHelpers.setupChromeApiResponses(storageData, runtimeResponse);
-```
-
-### 4. Async Test Handling
-
-**Problem**: Async operations not properly awaited in tests.
-
-**Solution**: Always await async operations:
-
-```javascript
-test('should handle async initialization', async () => {
-    await platform.initialize(mockCallback, mockCallback);
-
-    // Assertions after async completion
-    expect(platform.isInitialized).toBe(true);
-});
-```
-
-## Integration with CI/CD
-
-The test infrastructure is designed to work reliably in CI/CD environments:
-
-1. **Deterministic**: Tests produce consistent results across environments
-2. **Isolated**: No external dependencies or side effects
-3. **Fast**: Efficient mock management and cleanup
-4. **Comprehensive**: Full coverage of platform-specific functionality
-
-## Extending the Test Infrastructure
-
-To add support for new platforms or functionality:
-
-1. **Add Platform Configuration**: Update `PlatformTestConfig` in `test-helpers.js`
-2. **Create Fixtures**: Add platform-specific fixtures to `test-fixtures.js`
-3. **Generate Test Suites**: Create platform-specific test suite generators
-4. **Document Patterns**: Update this documentation with new patterns
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Tests failing intermittently**: Check for proper cleanup and mock reset
-2. **JSDOM errors**: Ensure using location mock instead of direct window.location
-3. **Chrome API errors**: Verify Chrome API mock is properly configured
-4. **Memory leaks**: Ensure all cleanup functions are called
-
-### Debug Tips
-
-1. Enable debug logging in test environment
-2. Use `console.log` in mock implementations to trace calls
-3. Check mock call counts and arguments
-4. Verify cleanup is working by running tests multiple times
-
-This documentation provides a comprehensive guide to the test infrastructure patterns. Follow these patterns for consistent, reliable, and maintainable tests.
+Run a focused suite while editing, then use `npm run test:ci` before handoff.

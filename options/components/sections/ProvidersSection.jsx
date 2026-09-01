@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { GoogleProviderCard } from '../providers/GoogleProviderCard.jsx';
 import { MicrosoftProviderCard } from '../providers/MicrosoftProviderCard.jsx';
 import { DeepLProviderCard } from '../providers/DeepLProviderCard.jsx';
@@ -17,56 +17,68 @@ export function ProvidersSection({
     const selectedProvider = SUPPORTED_PROVIDERS.has(settings.selectedProvider)
         ? settings.selectedProvider
         : Providers.MICROSOFT_EDGE_AUTH;
-    const currentOpenAIIdentity = {
-        apiKey: settings.openaiCompatibleApiKey || '',
-        baseUrl: settings.openaiCompatibleBaseUrl || '',
-    };
+    const openAIApiKey = settings.openaiCompatibleApiKey || '';
+    const openAIBaseUrl = settings.openaiCompatibleBaseUrl || '';
+    const savedOpenAIModel = settings.openaiCompatibleModel;
+    const hasSavedOpenAIModel =
+        typeof savedOpenAIModel === 'string' &&
+        savedOpenAIModel.trim().length > 0;
+    const openAIPublicationRef = useRef({
+        apiKey: openAIApiKey,
+        baseUrl: openAIBaseUrl,
+        hasSavedModel: hasSavedOpenAIModel,
+        onSettingChange,
+    });
+    useLayoutEffect(() => {
+        openAIPublicationRef.current = {
+            apiKey: openAIApiKey,
+            baseUrl: openAIBaseUrl,
+            hasSavedModel: hasSavedOpenAIModel,
+            onSettingChange,
+        };
+    }, [hasSavedOpenAIModel, onSettingChange, openAIApiKey, openAIBaseUrl]);
     const [openAIModelCatalog, setOpenAIModelCatalog] = useState({
         apiKey: null,
         baseUrl: null,
         models: [],
     });
     const fetchedOpenAIModels =
-        openAIModelCatalog.apiKey === currentOpenAIIdentity.apiKey &&
-        openAIModelCatalog.baseUrl === currentOpenAIIdentity.baseUrl
+        openAIModelCatalog.apiKey === openAIApiKey &&
+        openAIModelCatalog.baseUrl === openAIBaseUrl
             ? openAIModelCatalog.models
             : [];
-    const savedOpenAIModel = settings.openaiCompatibleModel;
     const openaiModels =
-        savedOpenAIModel && !fetchedOpenAIModels.includes(savedOpenAIModel)
+        hasSavedOpenAIModel && !fetchedOpenAIModels.includes(savedOpenAIModel)
             ? [savedOpenAIModel, ...fetchedOpenAIModels]
             : fetchedOpenAIModels;
 
-    const handleOpenAIModelsLoaded = async (models, requestIdentity) => {
-        const publishedIdentity = requestIdentity ?? currentOpenAIIdentity;
-        if (
-            publishedIdentity?.apiKey !== currentOpenAIIdentity.apiKey ||
-            publishedIdentity?.baseUrl !== currentOpenAIIdentity.baseUrl
-        ) {
-            return false;
-        }
-        const publishedModels = Array.isArray(models) ? models : [];
-        setOpenAIModelCatalog({
-            ...currentOpenAIIdentity,
-            models: publishedModels,
-        });
+    const handleOpenAIModelsLoaded = useCallback(
+        async (models, requestIdentity) => {
+            const current = openAIPublicationRef.current;
+            if (
+                requestIdentity?.apiKey !== current.apiKey ||
+                requestIdentity?.baseUrl !== current.baseUrl
+            ) {
+                return false;
+            }
 
-        // Save the first model as default if no model is currently selected
-        if (publishedModels.length > 0) {
-            const savedModel = settings.openaiCompatibleModel;
-            const hasSavedModel =
-                typeof savedModel === 'string' && savedModel.trim().length > 0;
+            const publishedModels = Array.isArray(models) ? models : [];
+            setOpenAIModelCatalog({
+                apiKey: current.apiKey,
+                baseUrl: current.baseUrl,
+                models: publishedModels,
+            });
 
-            if (!hasSavedModel) {
-                // Use first model as default
-                await onSettingChange(
+            if (!current.hasSavedModel && publishedModels.length > 0) {
+                await current.onSettingChange(
                     'openaiCompatibleModel',
                     publishedModels[0]
                 );
             }
-        }
-        return true;
-    };
+            return true;
+        },
+        []
+    );
 
     return (
         <section id="providers">
@@ -97,8 +109,8 @@ export function ProvidersSection({
             {selectedProvider === Providers.OPENAI_COMPATIBLE && (
                 <OpenAICompatibleProviderCard
                     t={t}
-                    apiKey={settings.openaiCompatibleApiKey || ''}
-                    baseUrl={settings.openaiCompatibleBaseUrl || ''}
+                    apiKey={openAIApiKey}
+                    baseUrl={openAIBaseUrl}
                     model={settings.openaiCompatibleModel || ''}
                     models={openaiModels}
                     onApiKeyChange={(value) =>

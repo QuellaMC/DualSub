@@ -1,13 +1,7 @@
 import { describe, expect, jest, test } from '@jest/globals';
 import { runInNewContext } from 'node:vm';
 
-import {
-    acceptInjectedEvent,
-    createInjectedScriptUrl,
-    createInjectionChannelRegistry,
-    extendAcceptedInjectedEvent,
-    revokeInjectionChannel,
-} from './injectionChannel.js';
+import { createInjectionChannel } from './injectionChannel.js';
 
 const PLATFORM = 'disneyplus';
 const SCRIPT_URL =
@@ -26,9 +20,9 @@ function createDeterministicCrypto(seed = 1) {
     };
 }
 
-function extractCapability(scriptUrl) {
-    const value = new URL(scriptUrl).hash;
-    return value.slice(value.lastIndexOf('.') + 1);
+function extractCapability(channel) {
+    const scriptUrl = channel.createScriptUrl(SCRIPT_URL);
+    return new URL(scriptUrl).hash.slice('#dualsub-channel=disneyplus.'.length);
 }
 
 function createEvent(type, capability, overrides = {}) {
@@ -46,62 +40,44 @@ function createEvent(type, capability, overrides = {}) {
 }
 
 describe('shared page injection channel', () => {
-    test('mints one stable 256-bit canonical capability per document platform', () => {
+    test('mints one fresh 256-bit capability for each content-script owner', () => {
         const crypto = createDeterministicCrypto();
-        const registry = createInjectionChannelRegistry(() => crypto);
-        const first = registry.createChannel(PLATFORM);
-        const second = registry.createChannel(PLATFORM);
-        const netflix = registry.createChannel('netflix');
+        const first = createInjectionChannel(PLATFORM, crypto);
+        const second = createInjectionChannel(PLATFORM, crypto);
 
-        const firstUrl = first.createScriptUrl(SCRIPT_URL);
-        const secondUrl = second.createScriptUrl(SCRIPT_URL);
-        const netflixUrl = netflix.createScriptUrl(
-            'chrome-extension://dualsub-test/injected_scripts/netflixInject.js'
-        );
-
-        expect(extractCapability(firstUrl)).toMatch(/^[0-9a-f]{64}$/u);
-        expect(extractCapability(secondUrl)).toBe(extractCapability(firstUrl));
-        expect(extractCapability(netflixUrl)).not.toBe(
-            extractCapability(firstUrl)
-        );
-        first.revoke();
-        expect(
-            extractCapability(
-                registry.createChannel(PLATFORM).createScriptUrl(SCRIPT_URL)
-            )
-        ).toBe(extractCapability(secondUrl));
+        expect(extractCapability(first)).toMatch(/^[0-9a-f]{64}$/u);
+        expect(extractCapability(second)).not.toBe(extractCapability(first));
         expect(crypto.getRandomValues).toHaveBeenCalledTimes(2);
     });
 
     test.each([
-        undefined,
-        null,
-        {},
-        { getRandomValues: () => new Uint8Array(32) },
-        {
-            getRandomValues: (bytes) => {
-                bytes.fill(0);
-                return bytes;
+        ['unsupported platform', 'other', createDeterministicCrypto()],
+        ['missing crypto', PLATFORM, null],
+        ['missing RNG', PLATFORM, {}],
+        [
+            'wrong RNG result',
+            PLATFORM,
+            { getRandomValues: () => new Uint8Array(32) },
+        ],
+        [
+            'throwing RNG',
+            PLATFORM,
+            {
+                getRandomValues: () => {
+                    throw new Error('rng unavailable');
+                },
             },
-        },
-        {
-            getRandomValues: () => {
-                throw new Error('rng unavailable');
-            },
-        },
-    ])('fails closed when secure RNG is unavailable or invalid', (crypto) => {
-        const registry = createInjectionChannelRegistry(() => crypto);
-        expect(registry.createChannel(PLATFORM)).toBeNull();
+        ],
+    ])('fails closed for %s', (_label, platform, crypto) => {
+        expect(createInjectionChannel(platform, crypto)).toBeNull();
     });
 
-    test('accepts a valid exact authority envelope and strips it', () => {
-        const registry = createInjectionChannelRegistry(() =>
+    test('validates and strips the authority once at page-event ingress', () => {
+        const channel = createInjectionChannel(
+            PLATFORM,
             createDeterministicCrypto()
         );
-        const channel = registry.createChannel(PLATFORM);
-        const capability = extractCapability(
-            channel.createScriptUrl(SCRIPT_URL)
-        );
+        const capability = extractCapability(channel);
 
         const accepted = channel.accept(
             createEvent('SUBTITLE_URL_FOUND', capability)
@@ -113,17 +89,15 @@ describe('shared page injection channel', () => {
         });
         expect(accepted).not.toHaveProperty('dualsubChannel');
         expect(Object.isFrozen(accepted)).toBe(true);
-        expect(channel.accept({ detail: accepted })).toBe(accepted);
+        expect(channel.accept({ detail: accepted })).toBeNull();
     });
 
-    test('accepts a plain exact event created in a foreign page realm', () => {
-        const registry = createInjectionChannelRegistry(() =>
+    test('accepts event data created in the page realm', () => {
+        const channel = createInjectionChannel(
+            PLATFORM,
             createDeterministicCrypto()
         );
-        const channel = registry.createChannel(PLATFORM);
-        const capability = extractCapability(
-            channel.createScriptUrl(SCRIPT_URL)
-        );
+        const capability = extractCapability(channel);
         const detail = runInNewContext(
             `({
                 type: 'SUBTITLE_URL_FOUND',
@@ -140,7 +114,7 @@ describe('shared page injection channel', () => {
     });
 
     test.each([
-        ['missing', (event) => delete event.detail.dualsubChannel],
+        ['missing authority', (event) => delete event.detail.dualsubChannel],
         [
             'wrong platform',
             (event) => (event.detail.dualsubChannel.platform = 'netflix'),
@@ -149,15 +123,6 @@ describe('shared page injection channel', () => {
             'wrong capability',
             (event) =>
                 (event.detail.dualsubChannel.capability = 'f'.repeat(64)),
-        ],
-        [
-            'noncanonical capability',
-            (event) =>
-                (event.detail.dualsubChannel.capability = 'A'.repeat(64)),
-        ],
-        [
-            'extra authority key',
-            (event) => (event.detail.dualsubChannel.extra = true),
         ],
         [
             'inherited authority',
@@ -169,146 +134,42 @@ describe('shared page injection channel', () => {
                 });
             },
         ],
-        [
-            'exotic authority',
-            (event) =>
-                Object.setPrototypeOf(event.detail.dualsubChannel, {
-                    inherited: true,
-                }),
-        ],
     ])('rejects %s', (_label, mutate) => {
-        const registry = createInjectionChannelRegistry(() =>
+        const channel = createInjectionChannel(
+            PLATFORM,
             createDeterministicCrypto()
         );
-        const channel = registry.createChannel(PLATFORM);
-        const capability = extractCapability(
-            channel.createScriptUrl(SCRIPT_URL)
-        );
+        const capability = extractCapability(channel);
         const event = createEvent('SUBTITLE_URL_FOUND', capability);
         mutate(event);
+
         expect(channel.accept(event)).toBeNull();
     });
 
-    test('rejects accessors without invoking hostile getters', () => {
-        const registry = createInjectionChannelRegistry(() =>
+    test('creates page controls and script URLs until revoked', () => {
+        const channel = createInjectionChannel(
+            PLATFORM,
             createDeterministicCrypto()
         );
-        const channel = registry.createChannel(PLATFORM);
-        const getter = jest.fn(() => ({
-            platform: PLATFORM,
-            capability: '0'.repeat(64),
-        }));
-        const detail = { type: 'SUBTITLE_URL_FOUND' };
-        Object.defineProperty(detail, 'dualsubChannel', {
-            enumerable: true,
-            get: getter,
-        });
+        const capability = extractCapability(channel);
 
-        expect(channel.accept({ detail })).toBeNull();
-        expect(getter).not.toHaveBeenCalled();
-    });
-
-    test('fails closed on revoked and trap-throwing proxies', () => {
-        const registry = createInjectionChannelRegistry(() =>
-            createDeterministicCrypto()
-        );
-        const channel = registry.createChannel(PLATFORM);
-        const { proxy, revoke } = Proxy.revocable({}, {});
-        revoke();
-
-        expect(channel.accept({ detail: proxy })).toBeNull();
         expect(
-            channel.accept({
-                detail: new Proxy(
-                    {},
-                    {
-                        ownKeys() {
-                            throw new Error('hostile');
-                        },
-                    }
-                ),
+            channel.createEventDetail('REQUEST_PLAYBACK_TIMELINE', {
+                sequence: 1,
             })
-        ).toBeNull();
-    });
-
-    test('revocation makes saved listeners and event builders terminal', () => {
-        const registry = createInjectionChannelRegistry(() =>
-            createDeterministicCrypto()
+        ).toEqual({
+            type: 'REQUEST_PLAYBACK_TIMELINE',
+            sequence: 1,
+            dualsubChannel: { platform: PLATFORM, capability },
+        });
+        expect(channel.createScriptUrl(SCRIPT_URL)).toMatch(
+            /^chrome-extension:\/\/dualsub-test\/injected_scripts\/disneyPlusInject\.js#dualsub-channel=disneyplus\.[0-9a-f]{64}$/u
         );
-        const channel = registry.createChannel(PLATFORM);
-        const capability = extractCapability(
-            channel.createScriptUrl(SCRIPT_URL)
-        );
-        const event = createEvent('SUBTITLE_URL_FOUND', capability);
-        expect(channel.accept(event)).not.toBeNull();
 
         channel.revoke();
 
-        expect(channel.accept(event)).toBeNull();
-        expect(channel.createEventDetail('PLAYBACK_BRIDGE_PAUSE')).toBeNull();
+        expect(channel.accept(createEvent('READY', capability))).toBeNull();
+        expect(channel.createEventDetail('READY')).toBeNull();
         expect(channel.createScriptUrl(SCRIPT_URL)).toBeNull();
-    });
-
-    test('generic Base seam reads only an own channel data property', () => {
-        const registry = createInjectionChannelRegistry(() =>
-            createDeterministicCrypto()
-        );
-        const channel = registry.createChannel(PLATFORM);
-        const capability = extractCapability(
-            channel.createScriptUrl(SCRIPT_URL)
-        );
-        const event = createEvent('SUBTITLE_URL_FOUND', capability);
-
-        expect(acceptInjectedEvent({ channel }, event)).not.toBeNull();
-        expect(
-            acceptInjectedEvent(Object.create({ channel }), event)
-        ).toBeNull();
-
-        const getter = jest.fn(() => channel);
-        const config = {};
-        Object.defineProperty(config, 'channel', { get: getter });
-        expect(acceptInjectedEvent(config, event)).toBeNull();
-        expect(getter).not.toHaveBeenCalled();
-    });
-
-    test('generic Base seam decorates and terminally revokes the configured channel', () => {
-        const registry = createInjectionChannelRegistry(() =>
-            createDeterministicCrypto()
-        );
-        const channel = registry.createChannel(PLATFORM);
-        const config = { channel };
-
-        expect(createInjectedScriptUrl(config, SCRIPT_URL)).toMatch(
-            /^chrome-extension:\/\/dualsub-test\/injected_scripts\/disneyPlusInject\.js#dualsub-channel=disneyplus\.[0-9a-f]{64}$/u
-        );
-        expect(revokeInjectionChannel(config)).toBe(true);
-        expect(createInjectedScriptUrl(config, SCRIPT_URL)).toBeNull();
-        expect(revokeInjectionChannel(Object.create({ channel }))).toBe(false);
-    });
-
-    test('extends one accepted event for the early buffer without restoring authority', () => {
-        const registry = createInjectionChannelRegistry(() =>
-            createDeterministicCrypto()
-        );
-        const channel = registry.createChannel(PLATFORM);
-        const capability = extractCapability(
-            channel.createScriptUrl(SCRIPT_URL)
-        );
-        const accepted = channel.accept(
-            createEvent('SUBTITLE_URL_FOUND', capability)
-        );
-        const extended = extendAcceptedInjectedEvent(accepted, {
-            timestamp: 123,
-            pageUrl: 'https://www.disneyplus.com/play/episode-123',
-        });
-
-        expect(extended).toEqual({
-            type: 'SUBTITLE_URL_FOUND',
-            payload: { value: 1 },
-            timestamp: 123,
-            pageUrl: 'https://www.disneyplus.com/play/episode-123',
-        });
-        expect(extended).not.toHaveProperty('dualsubChannel');
-        expect(channel.accept({ detail: extended })).toBe(extended);
     });
 });

@@ -1,15 +1,3 @@
-/**
- * Logging Manager for Background Services
- *
- * Coordinates logging across all background modules and handles
- * cross-context logging level synchronization.
- *
- * Reuses existing Logger.create() from utils/logger.js
- *
- * @author DualSub Extension
- * @version 2.0.0
- */
-
 import Logger from '../../utils/logger.js';
 import { configService } from '../../services/configService.js';
 import {
@@ -17,142 +5,84 @@ import {
     parseContentControlResponseMessage,
 } from '../../content_scripts/shared/protocol/messageProtocol.js';
 
-export class LoggingManager {
+class LoggingManager {
     constructor() {
         this.logger = Logger.create('LoggingManager', configService);
-        this.currentLoggingLevel = Logger.LEVELS.INFO; // Default level
+        this.currentLoggingLevel = Logger.LEVELS.INFO;
         this.isInitialized = false;
     }
 
-    /**
-     * Initialize logging level synchronization system
-     */
     async initialize() {
-        if (this.isInitialized) {
-            return;
-        }
+        if (this.isInitialized) return;
 
         try {
-            // Initialize logging level from configuration
             this.currentLoggingLevel = await configService.get('loggingLevel');
             this.logger.updateLevel(this.currentLoggingLevel);
-            this.logger.info('Logging manager initialized', {
-                level: this.currentLoggingLevel,
-            });
-
-            // Listen for logging level changes and broadcast to all contexts
             configService.onChanged((changes) => {
-                if ('loggingLevel' in changes) {
-                    const newLevel = changes.loggingLevel;
-                    this.currentLoggingLevel = newLevel;
-                    this.logger.updateLevel(newLevel);
-                    this.logger.info(
-                        'Logging level changed, broadcasting to all contexts',
-                        {
-                            newLevel,
-                        }
-                    );
-
-                    // Broadcast logging level change to all active tabs
-                    this.broadcastLoggingLevelChange(newLevel);
-                }
+                if (!Object.hasOwn(changes, 'loggingLevel')) return;
+                this.currentLoggingLevel = changes.loggingLevel;
+                this.logger.updateLevel(this.currentLoggingLevel);
+                void this.broadcastLoggingLevelChange(this.currentLoggingLevel);
             });
-
             this.isInitialized = true;
         } catch (error) {
-            this.logger.error('Failed to initialize logging level', error);
-            // Use default level on error
             this.currentLoggingLevel = Logger.LEVELS.INFO;
             this.logger.updateLevel(this.currentLoggingLevel);
+            this.logger.error('Failed to initialize logging level', error);
         }
     }
 
-    /**
-     * Broadcasts logging level changes to all active extension contexts
-     * @param {number} newLevel - The new logging level to broadcast
-     */
-    async broadcastLoggingLevelChange(newLevel) {
+    async broadcastLoggingLevelChange(level) {
         try {
-            const request = buildLoggingLevelChangedRequestMessage(newLevel);
-            // Get all tabs to send message to content scripts
             const tabs = await chrome.tabs.query({});
-            const messagePromises = [];
-
-            for (const tab of tabs) {
-                // Only send to tabs that might have our content scripts
-                if (
-                    tab.url &&
-                    (tab.url.includes('netflix.com') ||
-                        tab.url.includes('disneyplus.com'))
-                ) {
-                    const messagePromise = chrome.tabs
-                        .sendMessage(tab.id, request)
-                        .then((response) => {
-                            const parsed = parseContentControlResponseMessage(
-                                response,
-                                request
-                            );
-                            if (!parsed) {
-                                throw new Error(
+            const request = buildLoggingLevelChangedRequestMessage(level);
+            const deliveries = tabs
+                .filter((tab) =>
+                    /netflix\.com|disneyplus\.com/.test(tab.url ?? '')
+                )
+                .map(async (tab) => {
+                    try {
+                        const response = await chrome.tabs.sendMessage(
+                            tab.id,
+                            request
+                        );
+                        const parsed = parseContentControlResponseMessage(
+                            response,
+                            request
+                        );
+                        if (!parsed?.success) {
+                            throw new Error(
+                                parsed?.error ??
                                     'Invalid logging-level response'
-                                );
-                            }
-                            if (!parsed.success) {
-                                throw new Error(parsed.error);
-                            }
-                        })
-                        .catch((error) => {
-                            // Content script might not be loaded, ignore these errors
-                            this.logger.debug(
-                                'Failed to send logging level to tab',
-                                error,
-                                {
-                                    tabId: tab.id,
-                                }
                             );
-                        });
-                    messagePromises.push(messagePromise);
-                }
-            }
-
-            // Wait for all messages to be sent (or fail)
-            await Promise.allSettled(messagePromises);
-
-            this.logger.debug('Logging level broadcast completed', {
-                level: newLevel,
-                tabCount: tabs.length,
-            });
+                        }
+                    } catch (error) {
+                        this.logger.debug(
+                            'Failed to send logging level to tab',
+                            error,
+                            { tabId: tab.id }
+                        );
+                    }
+                });
+            await Promise.all(deliveries);
         } catch (error) {
             this.logger.error(
                 'Error broadcasting logging level change',
                 error,
-                {
-                    level: newLevel,
-                }
+                { level }
             );
         }
     }
 
-    /**
-     * Create a logger instance for a specific component
-     * @param {string} component - The component name
-     * @returns {Logger} Logger instance
-     */
     createLogger(component) {
         const logger = Logger.create(component, configService);
-        // Set current logging level
         logger.updateLevel(this.currentLoggingLevel);
         return logger;
     }
 
-    /**
-     * Get current logging level
-     * @returns {number} Current logging level
-     */
     getCurrentLevel() {
         return this.currentLoggingLevel;
     }
 }
 
-// Export singleton instance
 export const loggingManager = new LoggingManager();

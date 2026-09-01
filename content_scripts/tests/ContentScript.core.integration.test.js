@@ -187,21 +187,9 @@ describe('Core Content Script Integration Tests', () => {
         });
 
         test('should handle navigation detection setup', () => {
-            // Mock the intervalManager since it's not fully initialized in test
-            netflixScript.intervalManager = {
-                set: jest.fn(),
-                clearAll: jest.fn(),
-            };
-
-            // Should not throw when setting up navigation
-            expect(() => {
-                netflixScript.setupNavigationDetection();
-            }).not.toThrow();
-
-            // Should log setup completion
-            expect(testEnv.mocks.logger.info).toHaveBeenCalledWith(
-                'Enhanced Netflix navigation detection is set up.',
-                expect.any(Object)
+            netflixScript.setupNavigationDetection();
+            expect(netflixScript.navigationDetectionManager?.isSetup).toBe(
+                true
             );
         });
     });
@@ -275,85 +263,8 @@ describe('Core Content Script Integration Tests', () => {
         });
 
         test('should handle navigation detection setup', () => {
-            // Mock the intervalManager since it's not fully initialized in test
-            disneyScript.intervalManager = {
-                set: jest.fn(),
-                clearAll: jest.fn(),
-            };
-
-            // Should not throw when setting up navigation
-            expect(() => {
-                disneyScript.setupNavigationDetection();
-            }).not.toThrow();
-
-            // Should log setup completion
-            expect(testEnv.mocks.logger.info).toHaveBeenCalledWith(
-                'Enhanced Disney+ navigation detection is set up.',
-                expect.any(Object)
-            );
-        });
-    });
-
-    describe('Message Handler Registry', () => {
-        test('should register common message handlers correctly', () => {
-            const testEnv = testHelpers.setupTestEnvironment({
-                platform: 'netflix',
-                enableLogger: true,
-                enableChromeApi: true,
-                enableLocation: false,
-            });
-
-            const netflixScript = new NetflixContentScript();
-            netflixScript.contentLogger = testEnv.mocks.logger;
-
-            // Should have registered common handlers
-            expect(netflixScript.hasMessageHandler('toggleSubtitles')).toBe(
-                false
-            );
-            expect(netflixScript.hasMessageHandler('configChanged')).toBe(true);
-            expect(
-                netflixScript.hasMessageHandler('LOGGING_LEVEL_CHANGED')
-            ).toBe(true);
-
-            // Should provide handler information
-            const handlers = netflixScript.getRegisteredHandlers();
-            expect(handlers.length).toBeGreaterThan(0);
-
-            const configHandler = handlers.find(
-                (handler) => handler.action === 'configChanged'
-            );
-            expect(configHandler).toBeDefined();
-            expect(configHandler.requiresUtilities).toBe(true);
-
-            testEnv.cleanup();
-        });
-
-        test('should reject out-of-catalog handler registration', () => {
-            const testEnv = testHelpers.setupTestEnvironment({
-                platform: 'netflix',
-                enableLogger: true,
-                enableChromeApi: true,
-                enableLocation: false,
-            });
-
-            const netflixScript = new NetflixContentScript();
-            netflixScript.contentLogger = testEnv.mocks.logger;
-
-            // Register custom handler
-            const customHandler = jest.fn();
-            expect(() =>
-                netflixScript.registerMessageHandler(
-                    'customAction',
-                    customHandler,
-                    {
-                        requiresUtilities: false,
-                        description: 'Custom test handler',
-                    }
-                )
-            ).toThrow('Action must be present in MessageActions.');
-            expect(netflixScript.hasMessageHandler('customAction')).toBe(false);
-
-            testEnv.cleanup();
+            disneyScript.setupNavigationDetection();
+            expect(disneyScript.navigationDetectionManager?.isSetup).toBe(true);
         });
     });
 

@@ -23,5 +23,6 @@
 - Microsoft（免费）：仅当前后台工作进程的一分钟字符保护与强制延迟；不代表持久化的 Microsoft 账户配额
 - DeepL API：仅在本地执行请求间隔；配额以 DeepL 服务端响应为准
 - OpenAI 兼容：每分钟请求数限制 + 小延迟
+- Vertex AI Gemini：每分钟请求数限制 + 小延迟
 
 当前服务商限制与单文本请求路径参见 `background/services/translationService.js`。

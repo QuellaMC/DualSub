@@ -1,15 +1,4 @@
-/**
- * OpenAI Context Provider
- *
- * Provides AI-powered cultural, historical, and linguistic context analysis
- * using OpenAI's GPT models through OpenAI-compatible endpoints.
- *
- * @author DualSub Extension
- * @version 1.0.0
- */
-
 import Logger from '../utils/logger.js';
-import { validateSetting } from '../config/configSchema.js';
 import {
     getContextSchema,
     CONTEXT_SCHEMA_NAME,
@@ -20,8 +9,6 @@ import { fetchWithTimeout } from '../utils/fetchWithTimeout.js';
 import { readRequiredProviderConfig } from './providerConfig.js';
 
 const logger = Logger.create('OpenAIContextProvider');
-const OPENAI_CONFIGURATION_ERROR_MESSAGE =
-    'OpenAI provider configuration is invalid';
 const OPENAI_REQUIRED_CONFIG_KEYS = Object.freeze([
     'openaiApiKey',
     'openaiBaseUrl',
@@ -29,9 +16,6 @@ const OPENAI_REQUIRED_CONFIG_KEYS = Object.freeze([
     'aiContextTimeout',
 ]);
 
-/**
- * Available OpenAI models for context analysis
- */
 export const OPENAI_MODELS = [
     {
         id: 'gpt-5.6-luna',
@@ -56,28 +40,15 @@ export const OPENAI_MODELS = [
     },
 ];
 
-/**
- * Get available models for this provider
- * @returns {Array} Array of model objects
- */
 export function getAvailableModels() {
     return OPENAI_MODELS;
 }
 
-/**
- * Get the default model for this provider
- * @returns {string} Default model ID
- */
 export function getDefaultModel() {
     const recommended = OPENAI_MODELS.find((model) => model.recommended);
     return recommended ? recommended.id : OPENAI_MODELS[0].id;
 }
 
-/**
- * Normalizes a provider base URL to the versioned OpenAI-compatible API root.
- * @param {string} url - The base URL to normalize
- * @returns {string} Normalized URL ending in /v1
- */
 function normalizeBaseUrl(url) {
     if (!url || typeof url !== 'string') {
         return url;
@@ -98,12 +69,6 @@ function normalizeBaseUrl(url) {
     return normalized;
 }
 
-/**
- * Normalizes model name for OpenAI-compatible endpoints
- * @param {string} model - The model name to normalize
- * @param {string} baseUrl - The base URL to determine provider type
- * @returns {string} Normalized model name
- */
 function normalizeModelName(model, baseUrl) {
     if (!model || typeof model !== 'string') {
         return model;
@@ -124,11 +89,6 @@ function normalizeModelName(model, baseUrl) {
     return model;
 }
 
-/**
- * Get language name for the target language code
- * @param {string} langCode - Language code (e.g., 'en', 'es', 'fr')
- * @returns {string} Human-readable language name
- */
 function getLanguageName(langCode) {
     const languageNames = {
         en: 'English',
@@ -162,17 +122,9 @@ function getLanguageName(langCode) {
     );
 }
 
-/**
- * Creates specialized prompts for different types of context analysis
- * @param {string} text - The text to analyze
- * @param {string} contextType - Type of context ('cultural', 'historical', 'linguistic')
- * @param {Object} metadata - Additional context metadata
- * @returns {string} Formatted prompt for the AI model
- */
 function createContextPrompt(text, contextType, metadata = {}) {
     const { targetLanguage = 'unknown', surroundingContext = '' } = metadata;
 
-    // Get language name for the target language code
     const targetLanguageName = getLanguageName(targetLanguage);
 
     const baseContext = `
@@ -312,13 +264,6 @@ Respond ONLY with valid JSON in this exact structure. All text content within th
     }
 }
 
-/**
- * Analyzes text for cultural, historical, and linguistic context using OpenAI-compatible API
- * @param {string} text - The text to analyze
- * @param {string} contextType - Type of context analysis ('cultural', 'historical', 'linguistic', 'all')
- * @param {Object} metadata - Additional context metadata
- * @returns {Promise<Object>} Context analysis result
- */
 export async function analyzeContext(text, contextType = 'all', metadata = {}) {
     logger.info('Context analysis request initiated', {
         textLength: text?.length || 0,
@@ -327,7 +272,6 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
         targetLanguage: metadata.targetLanguage,
     });
 
-    // Validate input
     if (!text || typeof text !== 'string' || text.trim() === '') {
         logger.warn('Empty or invalid text provided for context analysis', {
             valueType: typeof text,
@@ -348,18 +292,8 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
         const { openaiApiKey, openaiBaseUrl, openaiModel, aiContextTimeout } =
             config;
 
-        if (
-            !validateSetting('openaiApiKey', openaiApiKey) ||
-            openaiApiKey.trim() === ''
-        ) {
+        if (typeof openaiApiKey !== 'string' || openaiApiKey.trim() === '') {
             throw new Error('OpenAI API key not configured');
-        }
-        if (
-            !validateSetting('openaiBaseUrl', openaiBaseUrl) ||
-            !validateSetting('openaiModel', openaiModel) ||
-            !validateSetting('aiContextTimeout', aiContextTimeout)
-        ) {
-            throw new Error(OPENAI_CONFIGURATION_ERROR_MESSAGE);
         }
 
         const normalizedBaseUrl = normalizeBaseUrl(openaiBaseUrl);

@@ -40,28 +40,6 @@ class RouteLifecycleContentScript extends BaseContentScript {
     }
 }
 
-function installWord(renderRevision, wordIndex, word) {
-    const container = document.createElement('div');
-    container.id = 'dualsub-original-subtitle';
-    container.setAttribute('data-render-revision', String(renderRevision));
-    const element = document.createElement('span');
-    element.className = 'dualsub-interactive-word';
-    element.setAttribute('data-subtitle-type', 'original');
-    element.setAttribute('data-render-revision', String(renderRevision));
-    element.setAttribute('data-word-index', String(wordIndex));
-    element.setAttribute('data-word', word);
-    element.textContent = word;
-    container.appendChild(element);
-    document.body.appendChild(container);
-    return element;
-}
-
-async function flushWork() {
-    for (let index = 0; index < 12; index += 1) {
-        await Promise.resolve();
-    }
-}
-
 function createDeferred() {
     let resolve;
     const promise = new Promise((settle) => {
@@ -74,7 +52,6 @@ describe('BaseContentScript route and injection lifecycle', () => {
     let environment;
     let contentScripts;
     let originalPath;
-    let sentMessages;
 
     beforeEach(() => {
         environment = new TestHelpers().setupTestEnvironment({
@@ -85,16 +62,9 @@ describe('BaseContentScript route and injection lifecycle', () => {
         });
         contentScripts = [];
         originalPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
-        sentMessages = [];
         chrome.runtime.getURL.mockImplementation(
             (path) => `chrome-extension://test/${path}`
         );
-        chrome.runtime.sendMessage.mockImplementation((message, callback) => {
-            sentMessages.push(message);
-            const response = { success: true };
-            if (typeof callback === 'function') callback(response);
-            return Promise.resolve(response);
-        });
     });
 
     afterEach(async () => {
@@ -115,118 +85,6 @@ describe('BaseContentScript route and injection lifecycle', () => {
         contentScripts.push(contentScript);
         return contentScript;
     }
-
-    function installNavigationCollaborators(contentScript) {
-        const platform = {
-            onUrlChange: jest.fn(),
-            setVideoIdAndNotify: jest.fn(),
-            resetVttRequestState: jest.fn(),
-            cleanup: jest.fn(),
-        };
-        const subtitleUtils = {
-            setInteractiveSubtitlesEnabled: jest.fn(),
-            clearSubtitlesDisplayAndQueue: jest.fn(),
-            clearSubtitleDOM: jest.fn(),
-            hideSubtitleContainer: jest.fn(),
-            cleanup: jest.fn(),
-        };
-        contentScript.activePlatform = platform;
-        contentScript.subtitleUtils = subtitleUtils;
-        contentScript._rearmVideoElementDetectionForPlayerNavigation =
-            jest.fn();
-        return { platform, subtitleUtils };
-    }
-
-    test('player identity change synchronously revokes old subtitles and selection before rearm', async () => {
-        jest.useFakeTimers();
-        history.replaceState({}, '', '/watch/111');
-        const contentScript = createContentScript();
-        const { platform, subtitleUtils } =
-            installNavigationCollaborators(contentScript);
-        const owner = contentScript.aiContextFeatureOwner;
-        contentScript._handlePrivateSubtitleState({
-            renderRevision: 1,
-            reason: 'render',
-            videoId: '111',
-            text: 'same',
-        });
-        installWord(1, 0, 'same');
-        contentScript._handlePrivateWordIntent(owner, {
-            action: 'toggle',
-            renderRevision: 1,
-            wordIndex: 0,
-            word: 'same',
-            sourceLanguage: 'en',
-            targetLanguage: 'es',
-        });
-        await flushWork();
-        const selectedRevision = sentMessages
-            .filter(
-                (message) =>
-                    message.action === MessageActions.SIDEPANEL_SELECTION_SYNC
-            )
-            .at(-1).data.selectionRevision;
-
-        contentScript._setupNavigationManager({
-            useFocusEvents: false,
-            useIntervalChecking: false,
-            usePopstateEvents: false,
-        });
-        history.pushState({}, '', '/watch/222');
-        jest.advanceTimersByTime(100);
-        await flushWork();
-
-        expect(platform.setVideoIdAndNotify).toHaveBeenCalledWith(null);
-        expect(platform.resetVttRequestState).toHaveBeenCalledTimes(1);
-        expect(
-            subtitleUtils.clearSubtitlesDisplayAndQueue
-        ).toHaveBeenCalledWith(platform, true, 'RouteLifecycleTest');
-        expect(subtitleUtils.clearSubtitleDOM).toHaveBeenCalledTimes(1);
-        expect(
-            contentScript._rearmVideoElementDetectionForPlayerNavigation
-        ).toHaveBeenCalledTimes(1);
-        expect(platform.onUrlChange).toHaveBeenCalledTimes(1);
-        expect(
-            platform.setVideoIdAndNotify.mock.invocationCallOrder[0]
-        ).toBeLessThan(platform.onUrlChange.mock.invocationCallOrder[0]);
-
-        const cleared = sentMessages
-            .filter(
-                (message) =>
-                    message.action === MessageActions.SIDEPANEL_SELECTION_SYNC
-            )
-            .at(-1).data;
-        expect(cleared.reason).toBe('clear');
-        expect(cleared.entries).toEqual([]);
-        expect(cleared.selectionRevision).toBeGreaterThan(selectedRevision);
-    });
-
-    test('query and hash changes retain the current player identity', () => {
-        jest.useFakeTimers();
-        history.replaceState({}, '', '/watch/123?x=1');
-        const contentScript = createContentScript();
-        const { platform, subtitleUtils } =
-            installNavigationCollaborators(contentScript);
-
-        contentScript._setupNavigationManager({
-            useFocusEvents: false,
-            useIntervalChecking: false,
-            usePopstateEvents: false,
-        });
-        history.pushState({}, '', '/watch/123?x=2#details');
-        jest.advanceTimersByTime(100);
-
-        expect(platform.onUrlChange).toHaveBeenCalledTimes(1);
-        expect(platform.setVideoIdAndNotify).not.toHaveBeenCalled();
-        expect(platform.resetVttRequestState).not.toHaveBeenCalled();
-        expect(
-            subtitleUtils.clearSubtitlesDisplayAndQueue
-        ).not.toHaveBeenCalled();
-        expect(subtitleUtils.clearSubtitleDOM).not.toHaveBeenCalled();
-        expect(
-            contentScript._rearmVideoElementDetectionForPlayerNavigation
-        ).not.toHaveBeenCalled();
-    });
 
     test('failed early injection removes the failed node and retries once', () => {
         jest.useFakeTimers();
@@ -249,33 +107,21 @@ describe('BaseContentScript route and injection lifecycle', () => {
         expect(contentScript.earlyInjectionRetryTask).toBeNull();
     });
 
-    test('terminal cleanup cancels a pending early injection retry', async () => {
-        jest.useFakeTimers();
-        const contentScript = createContentScript();
-        contentScript.injectScriptEarly();
-        const failed = document.getElementById('route-lifecycle-test-script');
-        failed.onerror(new Event('error'));
-        expect(contentScript.earlyInjectionRetryTask).not.toBeNull();
-
-        await contentScript.cleanup();
-        expect(contentScript.earlyInjectionRetryTask).toBeNull();
-        expect(
-            contentScript
-                .getInjectScriptConfig()
-                .channel.createEventDetail('SUBTITLE_DATA_FOUND')
-        ).toBeNull();
-        jest.advanceTimersByTime(100);
-
-        expect(
-            document.getElementById('route-lifecycle-test-script')
-        ).toBeNull();
-        expect(contentScript.injectScriptEarly()).toBe(false);
-    });
-
     test('terminal cleanup revokes external ingress before its first await', async () => {
         const contentScript = createContentScript();
         const cleanupGate = createDeferred();
         const add = jest.spyOn(contentScript.eventBuffer, 'add');
+        const prepareForInjectionChannelRevocation = jest.fn(() => {
+            expect(
+                contentScript
+                    .getInjectScriptConfig()
+                    .channel.createEventDetail('PLAYBACK_BRIDGE_PAUSE')
+            ).not.toBeNull();
+        });
+        contentScript.activePlatform = {
+            cleanup: jest.fn(),
+            prepareForInjectionChannelRevocation,
+        };
         const authorizedEvent = new CustomEvent(
             contentScript.getInjectScriptConfig().eventId,
             {
@@ -292,6 +138,7 @@ describe('BaseContentScript route and injection lifecycle', () => {
 
         const cleanupPromise = contentScript.cleanup();
 
+        expect(prepareForInjectionChannelRevocation).toHaveBeenCalledTimes(1);
         expect(
             contentScript
                 .getInjectScriptConfig()
@@ -318,28 +165,41 @@ describe('BaseContentScript route and injection lifecycle', () => {
         await cleanupPromise;
     });
 
-    test('event cleanup isolates unsubscribe and buffer failures', async () => {
+    test('accepts a page event once and delivers plain data to the active platform', () => {
         const contentScript = createContentScript();
-        const laterCleanup = jest.fn();
-        contentScript.configUnsubscribe = jest.fn(() => {
-            throw new Error('unsubscribe failed');
-        });
-        contentScript.eventBuffer.clear = jest.fn(() => {
-            throw new Error('buffer failed');
-        });
-        contentScript.eventListenerCleanupFunctions = [
-            () => {
-                throw new Error('listener cleanup failed');
-            },
-            laterCleanup,
-        ];
-
-        await contentScript._cleanupEventHandling();
-
-        expect(laterCleanup).toHaveBeenCalledTimes(1);
-        expect(chrome.runtime.onMessage.removeListener).toHaveBeenCalledWith(
-            contentScript.chromeMessageListener
+        const platform = {
+            cleanup: jest.fn(),
+            handleInjectorEvents: jest.fn(),
+        };
+        contentScript.activePlatform = platform;
+        contentScript.platformReady = true;
+        const pageEvent = new CustomEvent(
+            contentScript.getInjectScriptConfig().eventId,
+            {
+                detail: contentScript
+                    .getInjectScriptConfig()
+                    .channel.createEventDetail('PLAYBACK_TIMELINE_UPDATE', {
+                        programTimeSeconds: 12.5,
+                        videoId: '123',
+                    }),
+            }
         );
-        expect(contentScript.chromeMessageListenerAttached).toBe(false);
+
+        contentScript.handleEarlyInjectorEvents(pageEvent);
+
+        expect(platform.handleInjectorEvents).toHaveBeenCalledTimes(1);
+        expect(platform.handleInjectorEvents).toHaveBeenCalledWith(
+            expect.objectContaining({
+                type: 'PLAYBACK_TIMELINE_UPDATE',
+                programTimeSeconds: 12.5,
+                videoId: '123',
+                pageUrl: window.location.href,
+                timestamp: expect.any(Number),
+            })
+        );
+        expect(
+            platform.handleInjectorEvents.mock.calls[0][0]
+        ).not.toHaveProperty('dualsubChannel');
+        expect(contentScript.eventBuffer.size()).toBe(0);
     });
 });

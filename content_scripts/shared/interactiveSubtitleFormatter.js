@@ -1,14 +1,3 @@
-/**
- * Interactive Subtitle Formatter
- *
- * Enhances subtitle text with clickable elements for AI context analysis.
- * Provides word/phrase selection, visual feedback, and context interaction.
- *
- * @author DualSub Extension
- * @version 1.0.0
- */
-
-// Robust logging function that's always available
 const logWithFallback = (() => {
     let currentLogger = (level, message, data) => {
         console.log(
@@ -31,61 +20,22 @@ const logWithFallback = (() => {
     return logWrapper;
 })();
 
-/**
- * Configuration for interactive subtitle formatting
- */
 const INTERACTIVE_CONFIG = {
     enabled: false,
     highlightOnHover: true,
     clickableWords: true,
-    minWordLength: 1, // Allow single character words for better phrase support
-    excludeWords: [], // Include all words for phrase analysis (including function words)
-    contextTypes: ['cultural', 'historical', 'linguistic'],
     debounceDelay: 300,
-    // Gate verbose debug logs to reduce hot-path noise (Phase 7)
     debugLogging: false,
 };
 
-/**
- * State management for interactive subtitles
- */
 const interactiveState = {
     isEnabled: false,
-    currentSelection: null,
-    pendingRequests: new Map(),
-    contextModal: null,
     lastClickTime: 0,
 };
 
 let activeInteractiveLifecycle = null;
 
 function resetInteractiveLifecycleState() {
-    for (const pendingRequest of interactiveState.pendingRequests.values()) {
-        try {
-            let timeoutId = null;
-            if (typeof pendingRequest === 'number') {
-                timeoutId = pendingRequest;
-            } else if (pendingRequest && typeof pendingRequest === 'object') {
-                const timeoutDescriptor = Object.getOwnPropertyDescriptor(
-                    pendingRequest,
-                    'timeoutId'
-                );
-                if (
-                    timeoutDescriptor &&
-                    Object.hasOwn(timeoutDescriptor, 'value') &&
-                    typeof timeoutDescriptor.value === 'number'
-                ) {
-                    timeoutId = timeoutDescriptor.value;
-                }
-            }
-            if (timeoutId !== null) {
-                clearTimeout(timeoutId);
-            }
-        } catch (_) {}
-    }
-
-    interactiveState.pendingRequests.clear();
-    interactiveState.currentSelection = null;
     interactiveState.lastClickTime = 0;
 }
 
@@ -329,9 +279,6 @@ function createInteractiveWordSpan(word, metadata) {
     const index = Number.isFinite(metadata.wordIndex) ? metadata.wordIndex : 0;
     const spanId = getStableSpanId(type, index);
     const safeWord = escapeHtml(word);
-    const encodedContext = encodeURIComponent(
-        String(metadata.originalText).toWellFormed()
-    );
     const revisionAttribute =
         type === 'original' &&
         Number.isSafeInteger(metadata.renderRevision) &&
@@ -339,7 +286,7 @@ function createInteractiveWordSpan(word, metadata) {
             ? ` data-render-revision="${metadata.renderRevision}"`
             : '';
 
-    return `<span class="dualsub-interactive-word" id="${escapeHtml(spanId)}" data-word="${safeWord}" data-source-lang="${escapeHtml(metadata.sourceLanguage)}" data-target-lang="${escapeHtml(metadata.targetLanguage)}" data-context="${escapeHtml(encodedContext)}" data-subtitle-type="${escapeHtml(type)}" data-word-index="${index}"${revisionAttribute} tabindex="0" role="button" aria-label="Click for context analysis of '${safeWord}'" title="Click for cultural, historical, or linguistic context">${safeWord}</span>`;
+    return `<span class="dualsub-interactive-word" id="${escapeHtml(spanId)}" data-word="${safeWord}" data-source-lang="${escapeHtml(metadata.sourceLanguage)}" data-target-lang="${escapeHtml(metadata.targetLanguage)}" data-subtitle-type="${escapeHtml(type)}" data-word-index="${index}"${revisionAttribute} tabindex="0" role="button" aria-label="Click for context analysis of '${safeWord}'" title="Click for cultural, historical, or linguistic context">${safeWord}</span>`;
 }
 
 function escapeHtml(value) {
@@ -576,52 +523,34 @@ export function projectInteractiveWordIntent(event) {
  * @returns {HTMLElement | null}
  */
 export function resolveInteractiveOriginalWordOccurrence(intent) {
-    try {
-        const lifecycle = activeInteractiveLifecycle;
-        const renderRevisionDescriptor = Object.getOwnPropertyDescriptor(
-            intent || {},
-            'renderRevision'
-        );
-        const wordIndexDescriptor = Object.getOwnPropertyDescriptor(
-            intent || {},
-            'wordIndex'
-        );
-        const wordDescriptor = Object.getOwnPropertyDescriptor(
-            intent || {},
-            'word'
-        );
-        const renderRevision = renderRevisionDescriptor?.value;
-        const wordIndex = wordIndexDescriptor?.value;
-        const word = wordDescriptor?.value;
-        if (
-            !lifecycle ||
-            !intent ||
-            !Number.isSafeInteger(renderRevision) ||
-            renderRevision <= 0 ||
-            !Number.isSafeInteger(wordIndex) ||
-            wordIndex < 0 ||
-            typeof word !== 'string' ||
-            word.length === 0
-        ) {
-            return null;
-        }
+    const lifecycle = activeInteractiveLifecycle;
+    if (!lifecycle || !intent || typeof intent !== 'object') return null;
 
-        let resolvedElement = null;
-        for (const [element, metadata] of lifecycle.originalWordRegistry) {
-            if (
-                metadata.renderRevision === renderRevision &&
-                metadata.wordIndex === wordIndex &&
-                metadata.word === word &&
-                isRegisteredOriginalWordCurrent(lifecycle, element, metadata)
-            ) {
-                if (resolvedElement !== null) return null;
-                resolvedElement = element;
-            }
-        }
-        return resolvedElement;
-    } catch (_) {
+    const { renderRevision, wordIndex, word } = intent;
+    if (
+        !Number.isSafeInteger(renderRevision) ||
+        renderRevision <= 0 ||
+        !Number.isSafeInteger(wordIndex) ||
+        wordIndex < 0 ||
+        typeof word !== 'string' ||
+        word.length === 0
+    ) {
         return null;
     }
+
+    let resolvedElement = null;
+    for (const [element, metadata] of lifecycle.originalWordRegistry) {
+        if (
+            metadata.renderRevision === renderRevision &&
+            metadata.wordIndex === wordIndex &&
+            metadata.word === word &&
+            isRegisteredOriginalWordCurrent(lifecycle, element, metadata)
+        ) {
+            if (resolvedElement !== null) return null;
+            resolvedElement = element;
+        }
+    }
+    return resolvedElement;
 }
 
 /**
@@ -832,106 +761,26 @@ export function removeInteractiveEventListeners(subtitleElement) {
 }
 
 /**
- * Determine subtitle type from element's container
- * @param {HTMLElement} element - The clicked element
- * @returns {string} 'original' or 'translated'
- */
-function getSubtitleTypeFromElement(element) {
-    // Walk up the DOM tree to find subtitle container
-    let current = element;
-    while (current && current !== document.body) {
-        // Check for DualSub subtitle container IDs
-        if (current.id) {
-            if (current.id.includes('original')) {
-                return 'original';
-            }
-            if (current.id.includes('translated')) {
-                return 'translated';
-            }
-        }
-
-        // Check for DualSub subtitle container classes
-        if (current.className) {
-            if (current.className.includes('original')) {
-                return 'original';
-            }
-            if (current.className.includes('translated')) {
-                return 'translated';
-            }
-        }
-
-        current = current.parentElement;
-    }
-
-    // Default to original if we can't determine
-    logWithFallback(
-        'warn',
-        'Could not determine subtitle type, defaulting to original',
-        {
-            elementId: element.id,
-            elementClass: element.className,
-        }
-    );
-    return 'original';
-}
-
-/**
  * Handle click events on interactive words
  * @param {Event} event - Click event
  */
 function handleInteractiveWordClick(event) {
     const lifecycle = activeInteractiveLifecycle;
-    if (!lifecycle) return;
+    if (!lifecycle?.publishWordIntent) return;
 
-    if (lifecycle.publishWordIntent) {
-        const intent = projectInteractiveWordIntent(event);
-        if (!intent) return;
-
-        event.preventDefault();
-        event.stopPropagation();
-
-        if (isAnalyzingActive()) {
-            try {
-                event.target.classList.remove(
-                    'dualsub-interactive-word--hover'
-                );
-            } catch (_) {}
-            return;
-        }
-
-        const now = Date.now();
-        if (
-            now - interactiveState.lastClickTime <
-            INTERACTIVE_CONFIG.debounceDelay
-        ) {
-            return;
-        }
-        interactiveState.lastClickTime = now;
-
-        try {
-            lifecycle.publishWordIntent(intent);
-        } catch (_) {}
-        return;
-    }
-
-    const target = event.target;
-
-    if (!target.classList.contains('dualsub-interactive-word')) {
-        return;
-    }
+    const intent = projectInteractiveWordIntent(event);
+    if (!intent) return;
 
     event.preventDefault();
     event.stopPropagation();
 
-    // Block interactions globally while analyzing to prevent de-selections during processing
     if (isAnalyzingActive()) {
         try {
-            target.classList.remove('dualsub-interactive-word--hover');
+            event.target.classList.remove('dualsub-interactive-word--hover');
         } catch (_) {}
         return;
     }
 
-    // Debounce rapid clicks
     const now = Date.now();
     if (
         now - interactiveState.lastClickTime <
@@ -941,45 +790,9 @@ function handleInteractiveWordClick(event) {
     }
     interactiveState.lastClickTime = now;
 
-    const word = target.getAttribute('data-word');
-    const sourceLanguage = target.getAttribute('data-source-lang');
-    const targetLanguage = target.getAttribute('data-target-lang');
-    const context = decodeURIComponent(
-        target.getAttribute('data-context') || ''
-    );
-
-    logWithFallback('info', 'Interactive word clicked', {
-        wordLength: word?.length || 0,
-        sourceLanguage,
-        targetLanguage,
-    });
-
-    // Enhanced selection mode - dispatch word selection event
-    // Determine subtitle type from element's container
-    const subtitleType = getSubtitleTypeFromElement(target);
-
-    logWithFallback('info', 'Dispatching word selection event', {
-        wordLength: word?.length || 0,
-        subtitleType,
-    });
-
-    document.dispatchEvent(
-        new CustomEvent('dualsub-word-selected', {
-            detail: {
-                word,
-                element: target,
-                sourceLanguage,
-                targetLanguage,
-                context,
-                subtitleType,
-            },
-        })
-    );
-
-    logWithFallback('debug', 'Word selection event dispatched (video paused)', {
-        wordLength: word?.length || 0,
-        subtitleType,
-    });
+    try {
+        lifecycle.publishWordIntent(intent);
+    } catch (_) {}
 }
 
 /**
@@ -1042,28 +855,4 @@ function handleInteractiveWordKeydown(event) {
     if (event.key === 'Enter' || event.key === ' ') {
         handleInteractiveWordClick(event);
     }
-}
-
-/**
- * Get current interactive subtitle configuration
- * @returns {Object} Current configuration
- */
-export function getInteractiveConfig() {
-    return { ...INTERACTIVE_CONFIG };
-}
-
-/**
- * Update interactive subtitle configuration
- * @param {Object} newConfig - New configuration options
- */
-export function updateInteractiveConfig(newConfig) {
-    Object.assign(INTERACTIVE_CONFIG, newConfig);
-    interactiveState.isEnabled = INTERACTIVE_CONFIG.enabled;
-
-    logWithFallback('info', 'Interactive subtitle configuration updated', {
-        enabled: interactiveState.isEnabled,
-        clickableWords: INTERACTIVE_CONFIG.clickableWords,
-        highlightOnHover: INTERACTIVE_CONFIG.highlightOnHover,
-        debugLogging: INTERACTIVE_CONFIG.debugLogging,
-    });
 }

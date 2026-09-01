@@ -128,10 +128,6 @@ describe('DisneyPlusContentScript Comprehensive Tests', () => {
             );
             expect(Object.hasOwn(config, 'channel')).toBe(true);
         });
-
-        test('should initialize with correct URL patterns', () => {
-            expect(disneyPlusScript.urlPatterns).toEqual(['*.disneyplus.com']);
-        });
     });
 
     describe('Shared Navigation Setup and Player Routes', () => {

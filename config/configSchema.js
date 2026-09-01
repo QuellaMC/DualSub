@@ -1,10 +1,3 @@
-/**
- * The single source of truth for all extension settings.
- * - defaultValue: The value for a fresh installation.
- * - type: The expected data type (for validation).
- * - scope: 'sync' for settings that sync across devices, 'local' for device-specific settings.
- */
-
 import {
     Providers,
     VERTEX_LOCATIONS,
@@ -14,17 +7,8 @@ import { toHostPermissionPattern } from '../utils/hostPermissions.js';
 
 const DNS_LABEL_PATTERN = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
 const VERTEX_PROJECT_ID_PATTERN = /^[a-z][a-z0-9-]{4,28}[a-z0-9]$/;
-const DANGEROUS_OBJECT_KEYS = new Set([
-    '__proto__',
-    'constructor',
-    'prototype',
-]);
+const RESERVED_OBJECT_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 const INVALID_SETTING_VALUE_MESSAGE = 'Invalid setting value.';
-const hasOwnProperty = Object.prototype.hasOwnProperty;
-
-function hasOwn(object, key) {
-    return hasOwnProperty.call(object, key);
-}
 
 function isPlausibleLanguageTag(value) {
     if (!value || value.trim() !== value) {
@@ -39,10 +23,6 @@ function isPlausibleLanguageTag(value) {
 }
 
 function normalizeLanguageTag(value) {
-    if (typeof value !== 'string' || value.trim() !== value) {
-        throw new TypeError(INVALID_SETTING_VALUE_MESSAGE);
-    }
-
     return Intl.getCanonicalLocales(value)[0];
 }
 
@@ -87,248 +67,41 @@ function isAllowedProviderBaseUrl(value) {
 }
 
 function normalizeProviderBaseUrl(value) {
-    if (!isAllowedProviderBaseUrl(value)) {
-        throw new TypeError(INVALID_SETTING_VALUE_MESSAGE);
-    }
-
     const url = new URL(value);
     const basePath = url.pathname.replace(/\/+$/, '');
     return `${url.origin}${basePath}`;
 }
 
-function isDenseUniqueStringArray(value, isAllowed) {
-    try {
-        if (Object.getPrototypeOf(value) !== Array.prototype) {
-            return false;
-        }
-
-        const ownKeys = Reflect.ownKeys(value);
-        const lengthDescriptor = Object.getOwnPropertyDescriptor(
-            value,
-            'length'
-        );
-        if (
-            !lengthDescriptor ||
-            !('value' in lengthDescriptor) ||
-            lengthDescriptor.enumerable ||
-            lengthDescriptor.configurable
-        ) {
-            return false;
-        }
-
-        const length = lengthDescriptor.value;
-        if (!Number.isInteger(length) || ownKeys.length !== length + 1) {
-            return false;
-        }
-
-        const seen = new Set();
-        for (let index = 0; index < length; index += 1) {
-            const itemDescriptor = Object.getOwnPropertyDescriptor(
-                value,
-                String(index)
-            );
-            if (
-                !itemDescriptor ||
-                !('value' in itemDescriptor) ||
-                !itemDescriptor.enumerable
-            ) {
-                return false;
-            }
-
-            const item = itemDescriptor.value;
-            if (
-                typeof item !== 'string' ||
-                seen.has(item) ||
-                !isAllowed(item)
-            ) {
-                return false;
-            }
-            seen.add(item);
-        }
-        return true;
-    } catch {
+function hasUniqueStrings(value, isAllowed) {
+    if (!Array.isArray(value)) {
         return false;
     }
-}
 
-function tryStructuredClone(value) {
-    try {
-        const structuredClone = globalThis.structuredClone;
-        if (typeof structuredClone !== 'function') {
-            return { ok: false, value: undefined };
+    const seen = new Set();
+    for (const item of value) {
+        if (typeof item !== 'string' || seen.has(item) || !isAllowed(item)) {
+            return false;
         }
-
-        return { ok: true, value: structuredClone(value) };
-    } catch {
-        return { ok: false, value: undefined };
+        seen.add(item);
     }
-}
-
-function isStructuredCloneable(value) {
-    return tryStructuredClone(value).ok;
-}
-
-function cloneTrustedDefaultCollection(value) {
-    const activeNodes = new WeakSet();
-
-    function cloneNode(node) {
-        if (node === null || typeof node !== 'object') {
-            return { ok: true, value: node };
-        }
-        if (activeNodes.has(node)) {
-            return { ok: false, value: undefined };
-        }
-
-        activeNodes.add(node);
-        try {
-            const prototype = Object.getPrototypeOf(node);
-            if (Array.isArray(node)) {
-                if (prototype !== Array.prototype) {
-                    return { ok: false, value: undefined };
-                }
-
-                const ownKeys = Reflect.ownKeys(node);
-                const lengthDescriptor = Object.getOwnPropertyDescriptor(
-                    node,
-                    'length'
-                );
-                if (
-                    !lengthDescriptor ||
-                    !('value' in lengthDescriptor) ||
-                    lengthDescriptor.enumerable ||
-                    lengthDescriptor.configurable ||
-                    !Number.isSafeInteger(lengthDescriptor.value) ||
-                    lengthDescriptor.value < 0 ||
-                    ownKeys.length !== lengthDescriptor.value + 1
-                ) {
-                    return { ok: false, value: undefined };
-                }
-
-                const clone = [];
-                for (
-                    let index = 0;
-                    index < lengthDescriptor.value;
-                    index += 1
-                ) {
-                    const itemDescriptor = Object.getOwnPropertyDescriptor(
-                        node,
-                        String(index)
-                    );
-                    if (
-                        !itemDescriptor ||
-                        !('value' in itemDescriptor) ||
-                        !itemDescriptor.enumerable
-                    ) {
-                        return { ok: false, value: undefined };
-                    }
-
-                    const clonedItem = cloneNode(itemDescriptor.value);
-                    if (!clonedItem.ok) {
-                        return clonedItem;
-                    }
-                    Object.defineProperty(clone, String(index), {
-                        configurable: true,
-                        enumerable: true,
-                        value: clonedItem.value,
-                        writable: true,
-                    });
-                }
-                return { ok: true, value: clone };
-            }
-
-            if (prototype !== Object.prototype && prototype !== null) {
-                return { ok: false, value: undefined };
-            }
-
-            const clone = prototype === null ? Object.create(null) : {};
-            for (const key of Reflect.ownKeys(node)) {
-                if (typeof key !== 'string' || DANGEROUS_OBJECT_KEYS.has(key)) {
-                    return { ok: false, value: undefined };
-                }
-
-                const propertyDescriptor = Object.getOwnPropertyDescriptor(
-                    node,
-                    key
-                );
-                if (
-                    !propertyDescriptor ||
-                    !('value' in propertyDescriptor) ||
-                    !propertyDescriptor.enumerable
-                ) {
-                    return { ok: false, value: undefined };
-                }
-
-                const clonedProperty = cloneNode(propertyDescriptor.value);
-                if (!clonedProperty.ok) {
-                    return clonedProperty;
-                }
-                Object.defineProperty(clone, key, {
-                    configurable: true,
-                    enumerable: true,
-                    value: clonedProperty.value,
-                    writable: true,
-                });
-            }
-            return { ok: true, value: clone };
-        } catch {
-            return { ok: false, value: undefined };
-        } finally {
-            activeNodes.delete(node);
-        }
-    }
-
-    return cloneNode(value);
+    return true;
 }
 
 function hasAllowedAIContextTypes(value) {
-    return (
-        isDenseUniqueStringArray(value, (item) =>
-            CONTEXT_TYPES.includes(item)
-        ) && isStructuredCloneable(value)
-    );
+    return hasUniqueStrings(value, (item) => CONTEXT_TYPES.includes(item));
 }
 
 function hasValidSubtitleBlacklist(value) {
-    try {
-        for (const platform of Reflect.ownKeys(value)) {
-            if (
-                typeof platform !== 'string' ||
-                DANGEROUS_OBJECT_KEYS.has(platform)
-            ) {
-                return false;
-            }
-
-            const rulesDescriptor = Object.getOwnPropertyDescriptor(
-                value,
-                platform
-            );
-            if (
-                !rulesDescriptor ||
-                !('value' in rulesDescriptor) ||
-                !rulesDescriptor.enumerable ||
-                !Array.isArray(rulesDescriptor.value) ||
-                !isDenseUniqueStringArray(
-                    rulesDescriptor.value,
-                    isNonblankString
-                )
-            ) {
-                return false;
-            }
-        }
-        return isStructuredCloneable(value);
-    } catch {
-        return false;
-    }
+    return Object.entries(value).every(
+        ([platform, rules]) =>
+            !RESERVED_OBJECT_KEYS.has(platform) &&
+            hasUniqueStrings(rules, isNonblankString)
+    );
 }
 
-/**
- * Detect browser language for UI language default
- * @returns {string} Detected browser language code
- */
 function detectBrowserLanguage() {
-    // Check if we're in a browser environment
     if (typeof navigator === 'undefined') {
-        return 'en'; // Fallback for non-browser environments (like tests)
+        return 'en';
     }
 
     const lang = (
@@ -346,7 +119,7 @@ function detectBrowserLanguage() {
     return 'en';
 }
 export const configSchema = {
-    // --- General Settings (from options.js) ---
+    // General
     uiLanguage: {
         defaultValue: 'en',
         type: String,
@@ -359,7 +132,7 @@ export const configSchema = {
         scope: 'sync',
     },
 
-    // --- Translation & Provider Settings (from background.js & options.js) ---
+    // Translation and providers
     selectedProvider: {
         defaultValue: 'microsoft_edge_auth',
         type: String,
@@ -374,7 +147,6 @@ export const configSchema = {
         max: 5000,
     },
 
-    // DeepL API Settings
     deeplApiKey: {
         defaultValue: '',
         type: String,
@@ -388,7 +160,6 @@ export const configSchema = {
         allowedValues: ['free', 'pro'],
     },
 
-    // OpenAI-compatible API Settings (for Gemini and other compatible endpoints)
     openaiCompatibleApiKey: {
         defaultValue: '',
         type: String,
@@ -409,8 +180,6 @@ export const configSchema = {
         validate: isNonblankString,
     },
 
-    // Vertex AI Gemini Translation Settings
-    // Access tokens are short-lived device credentials and must not sync.
     vertexAccessToken: {
         defaultValue: '',
         type: String,
@@ -436,14 +205,14 @@ export const configSchema = {
         validate: isNonblankString,
     },
 
-    // --- Subtitle Settings (from popup.js & background.js defaults) ---
+    // Subtitles
     subtitlesEnabled: { defaultValue: true, type: Boolean, scope: 'sync' },
     useNativeSubtitles: { defaultValue: true, type: Boolean, scope: 'sync' },
     useOfficialTranslations: {
         defaultValue: true,
         type: Boolean,
         scope: 'sync',
-    }, // New unified setting
+    },
     targetLanguage: {
         defaultValue: 'zh-CN',
         type: String,
@@ -493,7 +262,6 @@ export const configSchema = {
         max: 9.9,
     },
 
-    // Platform-specific subtitle blacklist
     subtitleBlacklist: {
         defaultValue: {
             disneyplus: ['--forced--', 'forced=yes'],
@@ -505,18 +273,16 @@ export const configSchema = {
         validate: hasValidSubtitleBlacklist,
     },
 
-    // --- UI State Settings (local storage for better performance) ---
+    // UI state
     appearanceAccordionOpen: {
         defaultValue: false,
         type: Boolean,
         scope: 'local',
-    }, // UI state, doesn't need to sync
+    },
 
-    // --- AI Context Settings ---
-    // Feature toggle
+    // AI context
     aiContextEnabled: { defaultValue: false, type: Boolean, scope: 'sync' },
 
-    // Provider selection
     aiContextProvider: {
         defaultValue: 'openai',
         type: String,
@@ -524,7 +290,6 @@ export const configSchema = {
         allowedValues: ['openai', 'gemini'],
     },
 
-    // Context types to enable
     aiContextTypes: {
         defaultValue: CONTEXT_TYPES,
         type: Array,
@@ -532,7 +297,6 @@ export const configSchema = {
         validate: hasAllowedAIContextTypes,
     },
 
-    // OpenAI Context API Settings
     openaiApiKey: {
         defaultValue: '',
         type: String,
@@ -553,7 +317,6 @@ export const configSchema = {
         validate: isNonblankString,
     },
 
-    // Google Gemini Context API Settings
     geminiApiKey: {
         defaultValue: '',
         type: String,
@@ -567,7 +330,6 @@ export const configSchema = {
         validate: isNonblankString,
     },
 
-    // Context analysis settings
     aiContextTimeout: {
         defaultValue: 30000,
         type: Number,
@@ -575,7 +337,7 @@ export const configSchema = {
         integer: true,
         min: 5000,
         max: 30000,
-    }, // 30 seconds
+    },
     aiContextCacheEnabled: { defaultValue: true, type: Boolean, scope: 'sync' },
     aiContextCacheTTL: {
         defaultValue: 3600000,
@@ -584,7 +346,7 @@ export const configSchema = {
         integer: true,
         min: 1,
         max: 2_592_000_000,
-    }, // 1 hour
+    },
     aiContextMaxCacheSize: {
         defaultValue: 200,
         type: Number,
@@ -594,7 +356,6 @@ export const configSchema = {
         max: 1_000,
     },
 
-    // Rate limiting settings
     aiContextRateLimit: {
         defaultValue: 60,
         type: Number,
@@ -602,7 +363,7 @@ export const configSchema = {
         integer: true,
         min: 10,
         max: 300,
-    }, // requests per minute
+    },
     aiContextBurstLimit: {
         defaultValue: 10,
         type: Number,
@@ -610,7 +371,7 @@ export const configSchema = {
         integer: true,
         min: 1,
         max: 300,
-    }, // burst protection
+    },
     aiContextMandatoryDelay: {
         defaultValue: 1000,
         type: Number,
@@ -618,9 +379,8 @@ export const configSchema = {
         integer: true,
         min: 1,
         max: 30_000,
-    }, // ms between requests
+    },
 
-    // Advanced settings
     aiContextRetryAttempts: {
         defaultValue: 3,
         type: Number,
@@ -638,11 +398,9 @@ export const configSchema = {
         max: 3_750,
     },
 
-    // --- Side Panel Settings ---
-    // Core side panel toggles
-    sidePanelUseSidePanel: { defaultValue: true, type: Boolean, scope: 'sync' }, // Use side panel instead of modal
+    // Side panel
+    sidePanelUseSidePanel: { defaultValue: true, type: Boolean, scope: 'sync' },
 
-    // UI preferences
     sidePanelTheme: {
         defaultValue: 'auto',
         type: String,
@@ -650,16 +408,15 @@ export const configSchema = {
         allowedValues: ['auto', 'light', 'dark'],
     },
 
-    // Advanced behavior settings
     sidePanelAutoPauseVideo: {
         defaultValue: true,
         type: Boolean,
         scope: 'sync',
     },
-    sidePanelAutoOpen: { defaultValue: true, type: Boolean, scope: 'sync' }, // Auto-open on word click
+    sidePanelAutoOpen: { defaultValue: true, type: Boolean, scope: 'sync' },
 
-    // --- Debug Settings (local storage for immediate availability) ---
-    debugMode: { defaultValue: false, type: Boolean, scope: 'local' }, // Debug logging mode
+    // Diagnostics
+    debugMode: { defaultValue: false, type: Boolean, scope: 'local' },
     loggingLevel: {
         defaultValue: 3,
         type: Number,
@@ -667,48 +424,29 @@ export const configSchema = {
         integer: true,
         min: 0,
         max: 4,
-    }, // Logging level: 0=OFF, 1=ERROR, 2=WARN, 3=INFO, 4=DEBUG
+    },
 };
 
-/**
- * Helper function to get all keys for a specific storage scope
- * @param {string} scope - 'sync' or 'local'
- * @returns {string[]} Array of keys for the specified scope
- */
 export function getKeysByScope(scope) {
     return Object.keys(configSchema).filter(
         (key) => configSchema[key].scope === scope
     );
 }
 
-/**
- * Validate an already-normalized value against one schema entry.
- * @param {object} schemaEntry - The setting schema entry
- * @param {any} value - The normalized value
- * @returns {boolean} True if valid, false otherwise
- */
-function isPreparedSettingValueValid(schemaEntry, value) {
-    if (!hasOwn(schemaEntry, 'type')) {
-        return false;
-    }
-
+function hasExpectedType(schemaEntry, value) {
     if (schemaEntry.type === String) {
-        if (typeof value !== 'string') {
-            return false;
-        }
-    } else if (schemaEntry.type === Number) {
-        if (typeof value !== 'number' || !Number.isFinite(value)) {
-            return false;
-        }
-    } else if (schemaEntry.type === Boolean) {
-        if (typeof value !== 'boolean') {
-            return false;
-        }
-    } else if (schemaEntry.type === Array) {
-        if (!Array.isArray(value)) {
-            return false;
-        }
-    } else if (schemaEntry.type === Object) {
+        return typeof value === 'string';
+    }
+    if (schemaEntry.type === Number) {
+        return typeof value === 'number' && Number.isFinite(value);
+    }
+    if (schemaEntry.type === Boolean) {
+        return typeof value === 'boolean';
+    }
+    if (schemaEntry.type === Array) {
+        return Array.isArray(value);
+    }
+    if (schemaEntry.type === Object) {
         if (
             value === null ||
             typeof value !== 'object' ||
@@ -717,74 +455,52 @@ function isPreparedSettingValueValid(schemaEntry, value) {
             return false;
         }
         const prototype = Object.getPrototypeOf(value);
-        if (prototype !== Object.prototype && prototype !== null) {
-            return false;
-        }
-    } else {
-        return false;
+        return (
+            prototype === null ||
+            (Object.getPrototypeOf(prototype) === null &&
+                prototype.constructor?.name === 'Object')
+        );
     }
-
-    if (
-        hasOwn(schemaEntry, 'allowedValues') &&
-        !schemaEntry.allowedValues.includes(value)
-    ) {
-        return false;
-    }
-
-    if (
-        hasOwn(schemaEntry, 'integer') &&
-        schemaEntry.integer &&
-        !Number.isSafeInteger(value)
-    ) {
-        return false;
-    }
-    if (hasOwn(schemaEntry, 'min') && value < schemaEntry.min) {
-        return false;
-    }
-    if (hasOwn(schemaEntry, 'max') && value > schemaEntry.max) {
-        return false;
-    }
-    if (hasOwn(schemaEntry, 'validate') && !schemaEntry.validate(value)) {
-        return false;
-    }
-
-    return true;
+    return false;
 }
 
-/**
- * Normalize and validate a setting value through its schema entry.
- * @param {string} key - The setting key
- * @param {any} value - The candidate value
- * @returns {any} The prepared value
- * @throws {TypeError} When the key or value is invalid
- */
+function isSettingValueValid(schemaEntry, value) {
+    if (!hasExpectedType(schemaEntry, value)) {
+        return false;
+    }
+
+    if (schemaEntry.allowedValues?.includes(value) === false) {
+        return false;
+    }
+    if (schemaEntry.integer && !Number.isSafeInteger(value)) {
+        return false;
+    }
+    if (schemaEntry.min !== undefined && value < schemaEntry.min) {
+        return false;
+    }
+    if (schemaEntry.max !== undefined && value > schemaEntry.max) {
+        return false;
+    }
+    return schemaEntry.validate ? schemaEntry.validate(value) : true;
+}
+
 export function prepareSettingValue(key, value) {
     try {
-        if (!hasOwn(configSchema, key)) {
+        if (!Object.hasOwn(configSchema, key)) {
             throw new TypeError(INVALID_SETTING_VALUE_MESSAGE);
         }
 
         const schemaEntry = configSchema[key];
-        const preparedValue = hasOwn(schemaEntry, 'normalize')
-            ? schemaEntry.normalize(value)
-            : value;
-
-        if (!isPreparedSettingValueValid(schemaEntry, preparedValue)) {
+        if (!isSettingValueValid(schemaEntry, value)) {
             throw new TypeError(INVALID_SETTING_VALUE_MESSAGE);
         }
 
-        return preparedValue;
+        return schemaEntry.normalize ? schemaEntry.normalize(value) : value;
     } catch {
         throw new TypeError(INVALID_SETTING_VALUE_MESSAGE);
     }
 }
 
-/**
- * Helper function to validate a setting value against its schema
- * @param {string} key - The setting key
- * @param {any} value - The value to validate
- * @returns {boolean} True if valid, false otherwise
- */
 export function validateSetting(key, value) {
     try {
         prepareSettingValue(key, value);
@@ -794,63 +510,23 @@ export function validateSetting(key, value) {
     }
 }
 
-/**
- * Get the default value for a setting
- * @param {string} key - The setting key
- * @returns {any} The default value or undefined if key doesn't exist
- */
 export function getDefaultValue(key) {
-    try {
-        if (!hasOwn(configSchema, key)) {
-            return undefined;
-        }
-
-        // Special case: automatically detect browser language for UI language.
-        if (key === 'uiLanguage') {
-            return detectBrowserLanguage();
-        }
-
-        const schemaEntry = configSchema[key];
-        const defaultDescriptor = Object.getOwnPropertyDescriptor(
-            schemaEntry,
-            'defaultValue'
-        );
-        if (!defaultDescriptor || !('value' in defaultDescriptor)) {
-            return undefined;
-        }
-
-        const defaultValue = defaultDescriptor.value;
-        if (defaultValue === null || typeof defaultValue !== 'object') {
-            return defaultValue;
-        }
-
-        const clonedDefault = cloneTrustedDefaultCollection(defaultValue);
-        return clonedDefault.ok ? clonedDefault.value : undefined;
-    } catch {
+    if (!Object.hasOwn(configSchema, key)) {
         return undefined;
     }
+
+    if (key === 'uiLanguage') {
+        return detectBrowserLanguage();
+    }
+
+    const defaultValue = configSchema[key].defaultValue;
+    return defaultValue !== null && typeof defaultValue === 'object'
+        ? structuredClone(defaultValue)
+        : defaultValue;
 }
 
-/**
- * Get the storage scope for a setting
- * @param {string} key - The setting key
- * @returns {string} 'sync' or 'local', or undefined if key doesn't exist
- */
 export function getStorageScope(key) {
-    try {
-        if (!hasOwn(configSchema, key)) {
-            return undefined;
-        }
-
-        const schemaEntry = configSchema[key];
-        const scopeDescriptor = Object.getOwnPropertyDescriptor(
-            schemaEntry,
-            'scope'
-        );
-        return scopeDescriptor && 'value' in scopeDescriptor
-            ? scopeDescriptor.value
-            : undefined;
-    } catch {
-        return undefined;
-    }
+    return Object.hasOwn(configSchema, key)
+        ? configSchema[key].scope
+        : undefined;
 }

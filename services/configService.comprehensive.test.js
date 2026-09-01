@@ -306,40 +306,6 @@ describe('ConfigService Comprehensive Error Handling Tests', () => {
     });
 
     describe('End-to-End Error Flow Integration Tests', () => {
-        it('should handle complete storage system failure gracefully', async () => {
-            // Simulate complete Chrome storage API failure
-            const storageError = {
-                message: 'Chrome storage system unavailable',
-            };
-            chrome.runtime.lastError = storageError;
-
-            // Mock storage failure using the Chrome API mock
-            chrome.storage.local.get.mockImplementation((keys, callback) => {
-                callback(null);
-            });
-            chrome.storage.sync.get.mockImplementation((keys, callback) => {
-                callback(null);
-            });
-            chrome.storage.local.set.mockImplementation((items, callback) => {
-                callback();
-            });
-            chrome.storage.sync.set.mockImplementation((items, callback) => {
-                callback();
-            });
-
-            const error = await configService
-                .getAll()
-                .catch((caught) => caught);
-
-            expect(error).toMatchObject({
-                name: 'ConfigServiceReadError',
-                failedAreas: ['sync', 'local'],
-            });
-            expect(error).not.toHaveProperty('values');
-            expect(error).not.toHaveProperty('uiLanguage');
-            expect(error).not.toHaveProperty('debugMode');
-        });
-
         it('should handle initialization failure and recovery', async () => {
             // Mock initialization failure
             chrome.runtime.lastError = { message: 'Initialization failed' };

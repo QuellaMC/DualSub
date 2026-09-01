@@ -22,9 +22,9 @@ jest.unstable_mockModule('../../services/configService.js', () => ({
     },
 }));
 
-const { LoggingManager } = await import('./loggingManager.js');
+const { loggingManager } = await import('./loggingManager.js');
 
-describe('LoggingManager message protocol', () => {
+describe('loggingManager message protocol', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         global.chrome = {
@@ -34,20 +34,13 @@ describe('LoggingManager message protocol', () => {
                     { id: 8, url: 'https://www.disneyplus.com/video/2' },
                     { id: 9, url: 'https://example.com/' },
                 ]),
-                sendMessage: jest.fn((_tabId, request) =>
-                    Promise.resolve({
-                        action: request.action,
-                        success: true,
-                    })
-                ),
+                sendMessage: jest.fn().mockResolvedValue({ success: true }),
             },
         };
     });
 
     test('broadcasts the exact logging control and accepts only correlated responses', async () => {
-        const manager = new LoggingManager();
-
-        await manager.broadcastLoggingLevelChange(3);
+        await loggingManager.broadcastLoggingLevelChange(3);
 
         expect(chrome.tabs.sendMessage).toHaveBeenCalledTimes(2);
         expect(chrome.tabs.sendMessage).toHaveBeenNthCalledWith(1, 7, {
@@ -58,10 +51,7 @@ describe('LoggingManager message protocol', () => {
             action: MessageActions.LOGGING_LEVEL_CHANGED,
             level: 3,
         });
-        expect(logger.debug).toHaveBeenCalledWith(
-            'Logging level broadcast completed',
-            { level: 3, tabCount: 3 }
-        );
+        expect(logger.debug).not.toHaveBeenCalled();
     });
 
     test('contains an uncorrelated content response as a failed tab delivery', async () => {
@@ -69,9 +59,7 @@ describe('LoggingManager message protocol', () => {
             action: MessageActions.CONFIG_CHANGED,
             success: true,
         });
-        const manager = new LoggingManager();
-
-        await manager.broadcastLoggingLevelChange(2);
+        await loggingManager.broadcastLoggingLevelChange(2);
 
         expect(logger.debug).toHaveBeenCalledWith(
             'Failed to send logging level to tab',

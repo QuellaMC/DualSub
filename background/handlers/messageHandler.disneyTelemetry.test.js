@@ -2,12 +2,15 @@ import { afterEach, beforeAll, expect, jest, test } from '@jest/globals';
 import { MessageHandler } from './messageHandler.js';
 import { subtitleService } from '../services/subtitleService.js';
 import { configService } from '../../services/configService.js';
+import { createSubtitleFetchResponse } from '../../test-utils/subtitle-fetch-fixtures.js';
 import {
-    createAuthorizedDisneySubtitleSnapshot,
-    createSubtitleFetchResponse,
-} from '../../test-utils/subtitle-fetch-fixtures.js';
+    MessageActions,
+    SubtitleRequestSources,
+} from '../../content_scripts/shared/constants/messageActions.js';
 
 const originalFetch = globalThis.fetch;
+const EXTENSION_ID = 'dualsub-subtitle-fetch-fixture';
+const DISNEY_PAGE_URL = 'https://www.disneyplus.com/video/episode-123';
 
 beforeAll(async () => {
     await subtitleService.initialize();
@@ -18,234 +21,166 @@ afterEach(() => {
     jest.restoreAllMocks();
 });
 
-test('reports a fixed master-fetch diagnostic without retaining the transport failure', async () => {
-    const signedUrl =
-        'https://captions.media.dssott.com/show/master.m3u8?token=PRIVATE_MASTER_TOKEN';
-    const transportSecret = 'PRIVATE_MASTER_TRANSPORT_FAILURE';
-    const snapshot = createAuthorizedDisneySubtitleSnapshot({
-        subtitleUrl: signedUrl,
-    });
-    globalThis.fetch = jest.fn(async () => {
-        throw new TypeError(transportSecret);
-    });
+function createHandler(service = subtitleService) {
+    const listeners = [];
+    globalThis.chrome = {
+        ...globalThis.chrome,
+        runtime: {
+            ...globalThis.chrome?.runtime,
+            id: EXTENSION_ID,
+            onMessage: {
+                addListener: jest.fn((listener) => listeners.push(listener)),
+                removeListener: jest.fn(),
+            },
+        },
+    };
     const handler = new MessageHandler();
-    handler.setServices({ subtitleService });
+    handler.setServices({ subtitleService: service });
+    handler.initialize();
     handler.logger = {
         debug: jest.fn(),
         info: jest.fn(),
         warn: jest.fn(),
         error: jest.fn(),
     };
+    return { handler, listener: listeners[0] };
+}
 
-    const response = await handler.createGenericVTTResponse(snapshot);
-
-    expect(response).toEqual({
-        success: false,
-        error: 'Subtitle processing failed',
+function createDisneyMessage(subtitleUrl) {
+    return {
+        action: MessageActions.FETCH_VTT,
+        source: SubtitleRequestSources.DISNEY_PLUS,
+        url: subtitleUrl,
         videoId: 'episode-123',
-    });
-    expect(handler.logger.error).toHaveBeenCalledWith(
-        'Disney VTT processing failed',
-        null,
-        {
-            stage: 'master-fetch',
-            errorCode: 'DISNEY_MASTER_FETCH_FAILED',
-            source: 'disneyplus',
-            hasVideoId: true,
-        }
-    );
-    const serializedLogs = JSON.stringify(handler.logger.error.mock.calls);
-    expect(serializedLogs).not.toContain(transportSecret);
-    expect(serializedLogs).not.toContain('PRIVATE_MASTER_TOKEN');
-    expect(serializedLogs).not.toContain('/show/master.m3u8');
-    expect(serializedLogs).not.toContain('token=');
-});
-
-test('reports a fixed master-parse diagnostic for an unrecognized master body', async () => {
-    const signedUrl =
-        'https://captions.media.dssott.com/show/master.m3u8?token=PRIVATE_PARSE_TOKEN';
-    const bodySecret = 'PRIVATE_UNRECOGNIZED_MASTER_BODY';
-    const snapshot = createAuthorizedDisneySubtitleSnapshot({
-        subtitleUrl: signedUrl,
-    });
-    globalThis.fetch = jest.fn(async () =>
-        createSubtitleFetchResponse(bodySecret, signedUrl)
-    );
-    const handler = new MessageHandler();
-    handler.setServices({ subtitleService });
-    handler.logger = {
-        debug: jest.fn(),
-        info: jest.fn(),
-        warn: jest.fn(),
-        error: jest.fn(),
+        targetLanguage: 'zh-CN',
+        originalLanguage: 'en',
     };
+}
 
-    await expect(handler.createGenericVTTResponse(snapshot)).resolves.toEqual({
-        success: false,
-        error: 'Subtitle processing failed',
-        videoId: 'episode-123',
+function createDisneySender() {
+    return {
+        id: EXTENSION_ID,
+        tab: { id: 17, url: DISNEY_PAGE_URL },
+        frameId: 0,
+        url: DISNEY_PAGE_URL,
+        origin: new URL(DISNEY_PAGE_URL).origin,
+    };
+}
+
+function dispatch(listener, message) {
+    let resolveResponse;
+    const response = new Promise((resolve) => {
+        resolveResponse = resolve;
     });
-    expect(handler.logger.error).toHaveBeenCalledWith(
-        'Disney VTT processing failed',
-        null,
-        {
-            stage: 'master-parse',
-            errorCode: 'DISNEY_MASTER_PARSE_FAILED',
-            source: 'disneyplus',
-            hasVideoId: true,
-        }
-    );
-    const serializedLogs = JSON.stringify(handler.logger.error.mock.calls);
-    expect(serializedLogs).not.toContain(bodySecret);
-    expect(serializedLogs).not.toContain('PRIVATE_PARSE_TOKEN');
-});
+    const sendResponse = jest.fn(resolveResponse);
+    expect(listener(message, createDisneySender(), sendResponse)).toBe(true);
+    return response;
+}
 
-test('reports a fixed media-fetch diagnostic for the mandatory original playlist', async () => {
-    const masterUrl =
-        'https://captions.media.dssott.com/show/master.m3u8?token=PRIVATE_MEDIA_MASTER_TOKEN';
-    const mediaUri = 'tracks/en/index.m3u8?token=PRIVATE_MEDIA_PLAYLIST_TOKEN';
+function arrangeFailure(stage) {
+    const masterUrl = `https://captions.media.dssott.com/show/master.m3u8?token=PRIVATE_${stage}_MASTER`;
+    const mediaUri = `tracks/en/index.m3u8?token=PRIVATE_${stage}_MEDIA`;
     const mediaUrl = new URL(mediaUri, masterUrl).href;
-    const masterPlaylist = [
-        '#EXTM3U',
-        `#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="English",LANGUAGE="en",URI="${mediaUri}"`,
-    ].join('\n');
-    const transportSecret = 'PRIVATE_MEDIA_TRANSPORT_FAILURE';
-    const snapshot = createAuthorizedDisneySubtitleSnapshot({
-        subtitleUrl: masterUrl,
-    });
-    jest.spyOn(configService, 'get').mockResolvedValue({ disneyplus: [] });
-    jest.spyOn(configService, 'getMultiple').mockResolvedValue({
-        useNativeSubtitles: false,
-        useOfficialTranslations: false,
-    });
-    globalThis.fetch = jest.fn(async (url) => {
-        if (url === masterUrl) {
-            return createSubtitleFetchResponse(masterPlaylist, url);
-        }
-        if (url === mediaUrl) throw new TypeError(transportSecret);
-        throw new Error('Unexpected subtitle request');
-    });
-    const handler = new MessageHandler();
-    handler.setServices({ subtitleService });
-    handler.logger = {
-        debug: jest.fn(),
-        info: jest.fn(),
-        warn: jest.fn(),
-        error: jest.fn(),
-    };
-
-    await expect(handler.createGenericVTTResponse(snapshot)).resolves.toEqual({
-        success: false,
-        error: 'Subtitle processing failed',
-        videoId: 'episode-123',
-    });
-    expect(handler.logger.error).toHaveBeenCalledWith(
-        'Disney VTT processing failed',
-        null,
-        {
-            stage: 'media-fetch',
-            errorCode: 'DISNEY_MEDIA_FETCH_FAILED',
-            source: 'disneyplus',
-            hasVideoId: true,
-        }
-    );
-    const serializedLogs = JSON.stringify(handler.logger.error.mock.calls);
-    expect(serializedLogs).not.toContain(transportSecret);
-    expect(serializedLogs).not.toContain('PRIVATE_MEDIA_MASTER_TOKEN');
-    expect(serializedLogs).not.toContain('PRIVATE_MEDIA_PLAYLIST_TOKEN');
-});
-
-test('reports a fixed VTT-fetch diagnostic when every mandatory segment is unavailable', async () => {
-    const masterUrl =
-        'https://captions.media.dssott.com/show/master.m3u8?token=PRIVATE_VTT_MASTER_TOKEN';
-    const mediaUri = 'tracks/en/index.m3u8?token=PRIVATE_VTT_PLAYLIST_TOKEN';
-    const mediaUrl = new URL(mediaUri, masterUrl).href;
-    const segmentUri = 'cue-1.vtt?token=PRIVATE_VTT_SEGMENT_TOKEN';
+    const segmentUri = `cue-1.vtt?token=PRIVATE_${stage}_SEGMENT`;
     const segmentUrl = new URL(segmentUri, mediaUrl).href;
     const masterPlaylist = [
         '#EXTM3U',
         `#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="English",LANGUAGE="en",URI="${mediaUri}"`,
     ].join('\n');
     const mediaPlaylist = `#EXTM3U\n#EXTINF:2.0,\n${segmentUri}`;
-    const transportSecret = 'PRIVATE_VTT_TRANSPORT_FAILURE';
-    const snapshot = createAuthorizedDisneySubtitleSnapshot({
-        subtitleUrl: masterUrl,
-    });
-    jest.spyOn(configService, 'get').mockResolvedValue({ disneyplus: [] });
-    jest.spyOn(configService, 'getMultiple').mockResolvedValue({
-        useNativeSubtitles: false,
-        useOfficialTranslations: false,
-    });
+    const transportSecret = `PRIVATE_${stage}_TRANSPORT`;
+
+    if (stage === 'media-fetch' || stage === 'vtt-fetch') {
+        jest.spyOn(configService, 'get').mockResolvedValue({ disneyplus: [] });
+        jest.spyOn(configService, 'getMultiple').mockResolvedValue({
+            useNativeSubtitles: false,
+            useOfficialTranslations: false,
+        });
+    }
+
     globalThis.fetch = jest.fn(async (url) => {
+        if (stage === 'master-fetch') throw new TypeError(transportSecret);
         if (url === masterUrl) {
-            return createSubtitleFetchResponse(masterPlaylist, url);
+            return createSubtitleFetchResponse(
+                stage === 'master-parse'
+                    ? `PRIVATE_${stage}_BODY`
+                    : masterPlaylist,
+                url
+            );
         }
         if (url === mediaUrl) {
+            if (stage === 'media-fetch') throw new TypeError(transportSecret);
             return createSubtitleFetchResponse(mediaPlaylist, url);
         }
-        if (url === segmentUrl) throw new TypeError(transportSecret);
+        if (url === segmentUrl && stage === 'vtt-fetch') {
+            throw new TypeError(transportSecret);
+        }
         throw new Error('Unexpected subtitle request');
     });
-    const handler = new MessageHandler();
-    handler.setServices({ subtitleService });
-    handler.logger = {
-        debug: jest.fn(),
-        info: jest.fn(),
-        warn: jest.fn(),
-        error: jest.fn(),
+
+    return {
+        message: createDisneyMessage(masterUrl),
+        forbidden: [
+            transportSecret,
+            `PRIVATE_${stage}_MASTER`,
+            `PRIVATE_${stage}_MEDIA`,
+            `PRIVATE_${stage}_SEGMENT`,
+            `PRIVATE_${stage}_BODY`,
+        ],
     };
+}
 
-    await expect(handler.createGenericVTTResponse(snapshot)).resolves.toEqual({
-        success: false,
-        error: 'Subtitle processing failed',
-        videoId: 'episode-123',
-    });
-    expect(handler.logger.error).toHaveBeenCalledWith(
-        'Disney VTT processing failed',
-        null,
-        {
-            stage: 'vtt-fetch',
-            errorCode: 'DISNEY_VTT_FETCH_FAILED',
-            source: 'disneyplus',
-            hasVideoId: true,
+test.each([
+    ['master-fetch', 'DISNEY_MASTER_FETCH_FAILED'],
+    ['master-parse', 'DISNEY_MASTER_PARSE_FAILED'],
+    ['media-fetch', 'DISNEY_MEDIA_FETCH_FAILED'],
+    ['vtt-fetch', 'DISNEY_VTT_FETCH_FAILED'],
+])(
+    'reports a fixed %s diagnostic without raw transport data',
+    async (stage, errorCode) => {
+        const { message, forbidden } = arrangeFailure(stage);
+        const { handler, listener } = createHandler();
+
+        await expect(dispatch(listener, message)).resolves.toEqual({
+            success: false,
+            error: 'Subtitle processing failed',
+            videoId: 'episode-123',
+        });
+        expect(handler.logger.error).toHaveBeenCalledWith(
+            'Disney VTT processing failed',
+            null,
+            {
+                stage,
+                errorCode,
+                source: 'disneyplus',
+                hasVideoId: true,
+            }
+        );
+
+        const serializedLogs = JSON.stringify(handler.logger.error.mock.calls);
+        for (const value of forbidden) {
+            expect(serializedLogs).not.toContain(value);
         }
-    );
-    const serializedLogs = JSON.stringify(handler.logger.error.mock.calls);
-    expect(serializedLogs).not.toContain(transportSecret);
-    expect(serializedLogs).not.toContain('PRIVATE_VTT_MASTER_TOKEN');
-    expect(serializedLogs).not.toContain('PRIVATE_VTT_PLAYLIST_TOKEN');
-    expect(serializedLogs).not.toContain('PRIVATE_VTT_SEGMENT_TOKEN');
-});
+        expect(serializedLogs).not.toContain('token=');
+    }
+);
 
-test('collapses an untrusted service exception to the fixed unknown diagnostic', async () => {
-    const snapshot = createAuthorizedDisneySubtitleSnapshot();
-    const hostileReads = jest.fn(() => {
-        throw new Error('PRIVATE_UNKNOWN_ERROR_TRAP');
+test('collapses an untrusted exception to the fixed unknown diagnostic', async () => {
+    const secret = 'PRIVATE_UNKNOWN_ERROR';
+    const { handler, listener } = createHandler({
+        processDisneyPlusSubtitles: jest.fn(() => {
+            throw new Error(secret);
+        }),
     });
-    const hostileError = new Proxy(
-        {},
-        {
-            get: hostileReads,
-            getOwnPropertyDescriptor: hostileReads,
-            ownKeys: hostileReads,
-        }
-    );
-    const handler = new MessageHandler();
-    handler.setServices({
-        subtitleService: {
-            processDisneyPlusSubtitles: jest.fn(() => {
-                throw hostileError;
-            }),
-        },
-    });
-    handler.logger = {
-        debug: jest.fn(),
-        info: jest.fn(),
-        warn: jest.fn(),
-        error: jest.fn(),
-    };
 
-    await expect(handler.createGenericVTTResponse(snapshot)).resolves.toEqual({
+    await expect(
+        dispatch(
+            listener,
+            createDisneyMessage(
+                'https://captions.media.dssott.com/show/master.m3u8'
+            )
+        )
+    ).resolves.toEqual({
         success: false,
         error: 'Subtitle processing failed',
         videoId: 'episode-123',
@@ -260,8 +195,7 @@ test('collapses an untrusted service exception to the fixed unknown diagnostic',
             hasVideoId: true,
         }
     );
-    expect(hostileReads).not.toHaveBeenCalled();
     expect(JSON.stringify(handler.logger.error.mock.calls)).not.toContain(
-        'PRIVATE_UNKNOWN_ERROR_TRAP'
+        secret
     );
 });

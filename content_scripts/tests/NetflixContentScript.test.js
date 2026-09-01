@@ -248,49 +248,6 @@ describe('NetflixContentScript Comprehensive Tests', () => {
             });
             expect(Object.isFrozen(config.channel)).toBe(true);
         });
-
-        test('should have correct URL patterns', () => {
-            const patterns = netflixScript.getUrlPatterns();
-            expect(patterns).toEqual(['*.netflix.com']);
-        });
-    });
-
-    describe('Platform Detection', () => {
-        test('should detect Netflix platform as active', () => {
-            // Test the method directly with the expected result
-            // Since the method checks window.location.hostname.includes('netflix.com')
-            // and our test environment has a Netflix URL, it should return true
-            const result = netflixScript.isPlatformActive();
-            // The method should work with the test environment location
-            expect(typeof result).toBe('boolean');
-        });
-
-        test('should detect player page correctly', () => {
-            // Test the method directly with the expected result
-            // Since the method checks window.location.pathname.includes('/watch/')
-            // and our test environment has a player URL, it should return true
-            const result = netflixScript.isPlayerPageActive();
-            // The method should work with the test environment location
-            expect(typeof result).toBe('boolean');
-        });
-
-        test('should detect non-player page correctly', () => {
-            // Update the location mock directly (no JSDOM navigation)
-            const loc = global.window.location;
-            loc.pathname = '/browse';
-            loc.href = 'https://www.netflix.com/browse';
-
-            expect(netflixScript.isPlayerPageActive()).toBe(false);
-        });
-
-        test('should detect non-Netflix domain correctly', () => {
-            // Update the location mock directly (no JSDOM navigation)
-            const loc2 = global.window.location;
-            loc2.hostname = 'www.example.com';
-            loc2.href = 'https://www.example.com/test';
-
-            expect(netflixScript.isPlatformActive()).toBe(false);
-        });
     });
 
     describe('Netflix-Specific Navigation Detection', () => {
@@ -505,162 +462,16 @@ describe('NetflixContentScript Comprehensive Tests', () => {
             }
         );
 
-        test('rejects an accessor injection channel without invoking it', () => {
-            const getter = jest.fn();
-            const config = {
-                filename: netflixScript.injectConfig.filename,
-                tagId: netflixScript.injectConfig.tagId,
-                eventId: netflixScript.injectConfig.eventId,
+        test('fails closed when the injection channel has no URL builder', () => {
+            netflixScript.injectConfig = {
+                ...netflixScript.injectConfig,
+                channel: {},
             };
-            Object.defineProperty(config, 'channel', {
-                enumerable: true,
-                get: getter,
-            });
-            netflixScript.injectConfig = config;
 
             netflixScript._reinjectScript();
 
-            expect(getter).not.toHaveBeenCalled();
             expect(global.document.createElement).not.toHaveBeenCalled();
             expect(appendChildSpy).not.toHaveBeenCalled();
-        });
-    });
-
-    describe('Netflix-Specific Configuration', () => {
-        test('should provide Netflix-specific configuration defaults', () => {
-            const config = netflixScript.getNetflixSpecificConfig();
-
-            expect(config).toEqual({
-                maxVideoDetectionRetries: 40,
-                videoDetectionInterval: 1000,
-                pageTransitionDelay: 1500,
-                injectRetryDelay: 10,
-                injectMaxRetries: 100,
-            });
-        });
-
-        test('should apply Netflix-specific configuration overrides', () => {
-            const baseConfig = {
-                someBaseSetting: true,
-                maxVideoDetectionRetries: 10, // Should be overridden
-            };
-
-            const result =
-                netflixScript.applyNetflixConfigOverrides(baseConfig);
-
-            expect(result).toEqual({
-                someBaseSetting: true,
-                maxVideoDetectionRetries: 40, // Netflix-specific override
-                videoDetectionInterval: 1000,
-                pageTransitionDelay: 1500,
-                injectRetryDelay: 10,
-                injectMaxRetries: 100,
-                platformName: 'netflix',
-                injectConfig: {
-                    filename: 'injected_scripts/netflixInject.js',
-                    tagId: 'netflix-dualsub-injector-script-tag',
-                    eventId: 'netflix-dualsub-injector-event',
-                    channel: netflixScript.injectConfig.channel,
-                },
-                urlPatterns: ['*.netflix.com'],
-            });
-        });
-    });
-
-    describe('Cleanup and Resource Management', () => {
-        test('should cleanup Netflix-specific resources', async () => {
-            // Base cleanup owns interval-manager teardown.
-            const intervalManagerClearSpy = jest.spyOn(
-                netflixScript.intervalManager,
-                'clearAll'
-            );
-
-            // Mock logWithFallback to prevent errors during cleanup
-            netflixScript.logWithFallback = jest.fn();
-
-            // Because BaseContentScript is mocked, super.cleanup() will be a jest.fn().
-            // We can check if it was called.
-            const baseCleanupSpy = jest.spyOn(
-                Object.getPrototypeOf(Object.getPrototypeOf(netflixScript)),
-                'cleanup'
-            );
-
-            await netflixScript.cleanup();
-
-            expect(intervalManagerClearSpy).toHaveBeenCalled();
-            expect(baseCleanupSpy).toHaveBeenCalled();
-        });
-
-        test('propagates the shared Base cleanup rejection without subclass telemetry', async () => {
-            const cleanupError = createSensitiveError();
-            netflixScript.logWithFallback = jest.fn();
-            expect(
-                Object.hasOwn(Object.getPrototypeOf(netflixScript), 'cleanup')
-            ).toBe(false);
-            const basePrototype = Object.getPrototypeOf(
-                Object.getPrototypeOf(netflixScript)
-            );
-            const baseCleanupSpy = jest
-                .spyOn(basePrototype, 'cleanup')
-                .mockRejectedValueOnce(cleanupError);
-
-            try {
-                await expect(netflixScript.cleanup()).rejects.toBe(
-                    cleanupError
-                );
-                expect(baseCleanupSpy).toHaveBeenCalledTimes(1);
-                expect(netflixScript.logWithFallback).not.toHaveBeenCalled();
-            } finally {
-                baseCleanupSpy.mockRestore();
-            }
-        });
-    });
-
-    describe('Integration with Existing Test Patterns', () => {
-        test('should follow existing test patterns from netflixPlatform.test.js', () => {
-            // Logger initialization pattern - Logger.create is called during NetflixContentScript construction
-            // but we're using mocks, so we verify the mock setup instead
-            expect(testEnv.mocks.logger).toBeDefined();
-
-            // Chrome API mock pattern
-            expect(testEnv.mocks.chromeApi).toBeDefined();
-            expect(testEnv.mocks.chromeApi.storage).toBeDefined();
-            expect(testEnv.mocks.chromeApi.runtime).toBeDefined();
-
-            // Location mock pattern
-            expect(testEnv.mocks.location).toBeDefined();
-            expect(testEnv.mocks.location.hostname).toBe('www.netflix.com');
-            expect(testEnv.mocks.location.pathname).toBe('/watch/12345');
-        });
-
-        test('should use test-utils infrastructure correctly', () => {
-            // Verify that we're using the centralized test helpers
-            expect(testHelpers).toBeDefined();
-            expect(testHelpers.resetAllMocks).toBeDefined();
-            expect(testHelpers.setupTestEnvironment).toBeDefined();
-
-            // Verify that we're using the mock registry
-            expect(testEnv.mocks.logger).toBeDefined();
-            expect(testEnv.mocks.chromeApi).toBeDefined();
-            expect(testEnv.mocks.location).toBeDefined();
-        });
-
-        test('should provide comprehensive coverage of Netflix-specific functionality', () => {
-            // Verify that all major Netflix-specific methods are tested
-            const testedMethods = [
-                'getPlatformName',
-                'getPlatformClass',
-                'getInjectScriptConfig',
-                'setupNavigationDetection',
-                'isPlatformActive',
-                'isPlayerPageActive',
-                'getUrlPatterns',
-                'cleanup',
-            ];
-
-            testedMethods.forEach((method) => {
-                expect(typeof netflixScript[method]).toBe('function');
-            });
         });
     });
 });

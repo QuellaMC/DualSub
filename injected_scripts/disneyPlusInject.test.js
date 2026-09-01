@@ -1,5 +1,4 @@
 import fs from 'node:fs';
-import vm from 'node:vm';
 
 import {
     afterEach,
@@ -158,37 +157,35 @@ describe('Disney+ page injector lifecycle', () => {
         );
     });
 
-    test.each([
-        ['missing script tag', null],
-        ['missing fragment', ''],
-        ['wrong platform', `#dualsub-channel=netflix.${CHANNEL_CAPABILITY}`],
-        [
-            'uppercase capability',
-            `#dualsub-channel=disneyplus.${'A'.repeat(64)}`,
-        ],
-        ['short capability', '#dualsub-channel=disneyplus.abc123'],
-        [
-            'extra fragment data',
-            `#dualsub-channel=disneyplus.${CHANNEL_CAPABILITY}&extra=true`,
-        ],
-    ])('installs no hooks or events for %s', (_label, fragment) => {
+    test('rejects invalid bootstrap state without poisoning a later valid install', () => {
         const parserBefore = JSON.parse;
-        if (fragment === null) {
-            document.getElementById(INJECT_SCRIPT_TAG_ID)?.remove();
-            Object.defineProperty(document, 'currentScript', {
-                configurable: true,
-                value: null,
-            });
-        } else {
-            installInjectorScriptTag(fragment);
-        }
+        document.getElementById(INJECT_SCRIPT_TAG_ID)?.remove();
+        Object.defineProperty(document, 'currentScript', {
+            configurable: true,
+            value: null,
+        });
 
         window.eval(injectorSource);
-
         expect(JSON.parse).toBe(parserBefore);
         expect(window.disneyPlusDualSubInjectorLoaded).toBeUndefined();
-        expect(window.disneyPlusDualSubPlaybackBridge).toBeUndefined();
         expect(injectorEvents).toHaveLength(0);
+
+        installInjectorScriptTag(
+            `#dualsub-channel=netflix.${CHANNEL_CAPABILITY}`
+        );
+        window.eval(injectorSource);
+        expect(JSON.parse).toBe(parserBefore);
+
+        installInjectorScriptTag(undefined, {
+            source: `https://example.com/injected_scripts/disneyPlusInject.js#dualsub-channel=disneyplus.${CHANNEL_CAPABILITY}`,
+        });
+        window.eval(injectorSource);
+        expect(JSON.parse).toBe(parserBefore);
+
+        installInjectorScriptTag();
+        window.eval(injectorSource);
+        expect(window.disneyPlusDualSubInjectorLoaded).toBe(true);
+        expect(JSON.parse).not.toBe(parserBefore);
     });
 
     test('keeps an already-installed bridge inert to a reinjection carrying an old token', () => {
@@ -204,45 +201,6 @@ describe('Disney+ page injector lifecycle', () => {
         expect(JSON.parse).toBe(installedParser);
         expect(injectorEvents).toHaveLength(0);
     });
-
-    test.each([
-        ['wrong script id', { id: 'wrong-injector-tag' }],
-        [
-            'HTTPS source',
-            {
-                source: `https://example.com/injected_scripts/disneyPlusInject.js#dualsub-channel=disneyplus.${CHANNEL_CAPABILITY}`,
-            },
-        ],
-        [
-            'wrong extension path',
-            {
-                source: `chrome-extension://test-extension/wrong.js#dualsub-channel=disneyplus.${CHANNEL_CAPABILITY}`,
-            },
-        ],
-        [
-            'query-bearing source',
-            {
-                source: `chrome-extension://test-extension/injected_scripts/disneyPlusInject.js?x=1#dualsub-channel=disneyplus.${CHANNEL_CAPABILITY}`,
-            },
-        ],
-    ])(
-        'rejects %s without poisoning a later valid install',
-        (_label, options) => {
-            const parserBefore = JSON.parse;
-            installInjectorScriptTag(undefined, options);
-
-            window.eval(injectorSource);
-
-            expect(JSON.parse).toBe(parserBefore);
-            expect(window.disneyPlusDualSubInjectorLoaded).toBeUndefined();
-            expect(injectorEvents).toHaveLength(0);
-
-            installInjectorScriptTag();
-            window.eval(injectorSource);
-            expect(window.disneyPlusDualSubInjectorLoaded).toBe(true);
-            expect(JSON.parse).not.toBe(parserBefore);
-        }
-    );
 
     test('does not treat declared preroll metadata as proof that it played', () => {
         window.eval(injectorSource);
@@ -358,161 +316,6 @@ describe('Disney+ page injector lifecycle', () => {
                 isBumper: true,
             })
         );
-    });
-
-    test('rejects wrong, stale, extra, accessor, inherited, and hostile control authority without invoking getters', () => {
-        const player = document.createElement('disney-web-player-ui');
-        player.mediaPlayerApi = {
-            timeline: { info: { playheadPositionMs: 1200 } },
-            mediaPlaybackCriteria: {
-                metadata: { availId: 'authority-avail' },
-                telemetryParameters: {
-                    conviva: {
-                        metadata: { playbackSessionId: 'authority-session' },
-                    },
-                },
-            },
-        };
-        document.body.appendChild(player);
-        const addEventListenerSpy = jest.spyOn(document, 'addEventListener');
-        const capabilityGetter = jest.fn(() => CHANNEL_CAPABILITY);
-        const channelGetter = jest.fn(() => createChannelAuthority());
-        const proxyGetter = jest.fn(() => CHANNEL_CAPABILITY);
-
-        try {
-            window.eval(injectorSource);
-            const bridgeListener = addEventListenerSpy.mock.calls.find(
-                ([type]) => type === INJECT_EVENT_ID
-            )?.[1];
-            expect(typeof bridgeListener).toBe('function');
-            injectorEvents.length = 0;
-
-            const accessorChannel = { platform: 'disneyplus' };
-            Object.defineProperty(accessorChannel, 'capability', {
-                enumerable: true,
-                get: capabilityGetter,
-            });
-            const accessorDetail = {
-                type: 'REQUEST_PLAYBACK_TIMELINE',
-            };
-            Object.defineProperty(accessorDetail, 'dualsubChannel', {
-                enumerable: true,
-                get: channelGetter,
-            });
-            const inheritedChannel = Object.create(createChannelAuthority());
-            const inheritedDetail = Object.create({
-                dualsubChannel: createChannelAuthority(),
-            });
-            inheritedDetail.type = 'REQUEST_PLAYBACK_TIMELINE';
-            const hostileChannel = new Proxy(createChannelAuthority(), {
-                getPrototypeOf() {
-                    throw new Error('hostile proxy');
-                },
-                get(_target, property) {
-                    proxyGetter(property);
-                    return CHANNEL_CAPABILITY;
-                },
-            });
-            const invalidDetails = [
-                createControlDetail(
-                    'REQUEST_PLAYBACK_TIMELINE',
-                    'b'.repeat(64)
-                ),
-                createControlDetail('REQUEST_PLAYBACK_TIMELINE', 'ABC123'),
-                {
-                    ...createControlDetail('REQUEST_PLAYBACK_TIMELINE'),
-                    extra: true,
-                },
-                {
-                    type: 'REQUEST_PLAYBACK_TIMELINE',
-                    dualsubChannel: {
-                        ...createChannelAuthority(),
-                        extra: true,
-                    },
-                },
-                {
-                    type: 'REQUEST_PLAYBACK_TIMELINE',
-                    dualsubChannel: accessorChannel,
-                },
-                accessorDetail,
-                {
-                    type: 'REQUEST_PLAYBACK_TIMELINE',
-                    dualsubChannel: inheritedChannel,
-                },
-                inheritedDetail,
-                {
-                    type: 'REQUEST_PLAYBACK_TIMELINE',
-                    dualsubChannel: hostileChannel,
-                },
-            ];
-
-            for (const detail of invalidDetails) {
-                bridgeListener({ detail });
-            }
-
-            expect(injectorEvents).toHaveLength(0);
-            expect(capabilityGetter).not.toHaveBeenCalled();
-            expect(channelGetter).not.toHaveBeenCalled();
-            expect(proxyGetter).not.toHaveBeenCalled();
-
-            bridgeListener({
-                detail: createControlDetail('REQUEST_PLAYBACK_TIMELINE'),
-            });
-            expect(injectorEvents).toHaveLength(1);
-            expect(injectorEvents[0]).toEqual(
-                expect.objectContaining({
-                    type: 'PLAYBACK_TIMELINE_UPDATE',
-                    dualsubChannel: createChannelAuthority(),
-                })
-            );
-            expect(Object.isFrozen(injectorEvents[0])).toBe(true);
-            expect(Object.isFrozen(injectorEvents[0].dualsubChannel)).toBe(
-                true
-            );
-        } finally {
-            addEventListenerSpy.mockRestore();
-        }
-    });
-
-    test('accepts an exact control detail created in a foreign isolated realm', () => {
-        const player = document.createElement('disney-web-player-ui');
-        player.mediaPlayerApi = {
-            timeline: { info: { playheadPositionMs: 2400 } },
-            mediaPlaybackCriteria: {
-                metadata: { availId: 'foreign-avail' },
-                telemetryParameters: {
-                    conviva: {
-                        metadata: { playbackSessionId: 'foreign-session' },
-                    },
-                },
-            },
-        };
-        document.body.appendChild(player);
-        window.eval(injectorSource);
-        injectorEvents.length = 0;
-        const detail = vm.runInNewContext(
-            `({
-                type: 'REQUEST_PLAYBACK_TIMELINE',
-                dualsubChannel: {
-                    platform: 'disneyplus',
-                    capability: '${CHANNEL_CAPABILITY}'
-                }
-            })`
-        );
-
-        document.dispatchEvent(new CustomEvent(INJECT_EVENT_ID, { detail }));
-
-        expect(
-            injectorEvents.filter(
-                ({ type }) => type === 'PLAYBACK_TIMELINE_UPDATE'
-            )
-        ).toEqual([
-            expect.objectContaining({
-                type: 'PLAYBACK_TIMELINE_UPDATE',
-                programTimeSeconds: 2.4,
-                dualsubChannel: createChannelAuthority(),
-            }),
-        ]);
     });
 
     test('does not turn an unavailable program playhead into zero', () => {

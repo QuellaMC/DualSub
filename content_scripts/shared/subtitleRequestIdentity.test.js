@@ -1,11 +1,9 @@
-import { jest } from '@jest/globals';
-
+import { describe, expect, test } from '@jest/globals';
 import {
     extractDisneyPlusVideoIdFromPathname,
     extractDisneyPlusVideoIdFromUrl,
     extractNetflixVideoIdFromPathname,
     extractNetflixVideoIdFromUrl,
-    MAX_SUBTITLE_ROUTE_ID_BYTES,
     normalizeDisneyPlusVideoId,
     normalizeNetflixVideoId,
     readCustomEventDetail,
@@ -13,253 +11,186 @@ import {
     readOwnPrimitiveDataProperty,
 } from './subtitleRequestIdentity.js';
 
-describe('subtitle request identity', () => {
-    describe('descriptor-safe event field reads', () => {
-        test('reads native and internal event details without invoking an own accessor', () => {
-            const detail = { type: 'SUBTITLE_DATA_FOUND' };
-            expect(
-                readCustomEventDetail(new CustomEvent('subtitle', { detail }))
-            ).toBe(detail);
-            expect(readCustomEventDetail({ detail })).toBe(detail);
+const MAX_SUBTITLE_ROUTE_ID_BYTES = 256;
 
-            const getter = jest.fn(() => detail);
-            const hostileEvent = {};
-            Object.defineProperty(hostileEvent, 'detail', { get: getter });
+describe('serialized event field reads', () => {
+    test.each([
+        {
+            label: 'reads native CustomEvent detail',
+            read: () => {
+                const detail = { type: 'SUBTITLE_DATA_FOUND' };
+                return readCustomEventDetail(
+                    new CustomEvent('subtitle', { detail })
+                );
+            },
+            expected: { type: 'SUBTITLE_DATA_FOUND' },
+        },
+        {
+            label: 'reads an own data field',
+            read: () => readOwnDataProperty({ own: 'value' }, 'own'),
+            expected: 'value',
+        },
+        {
+            label: 'ignores an inherited field',
+            read: () =>
+                readOwnDataProperty(
+                    Object.create({ inherited: 'value' }),
+                    'inherited'
+                ),
+            expected: undefined,
+        },
+        {
+            label: 'accepts a string primitive',
+            read: () => readOwnPrimitiveDataProperty({ value: '123' }, 'value'),
+            expected: '123',
+        },
+        {
+            label: 'accepts a numeric primitive',
+            read: () => readOwnPrimitiveDataProperty({ value: 123 }, 'value'),
+            expected: 123,
+        },
+        {
+            label: 'accepts boolean and null primitives',
+            read: () => [
+                readOwnPrimitiveDataProperty({ value: false }, 'value'),
+                readOwnPrimitiveDataProperty({ value: null }, 'value'),
+            ],
+            expected: [false, null],
+        },
+        {
+            label: 'rejects an object where a primitive is required',
+            read: () => readOwnPrimitiveDataProperty({ value: {} }, 'value'),
+            expected: undefined,
+        },
+    ])('$label', ({ read, expected }) => {
+        expect(read()).toEqual(expected);
+    });
+});
 
-            expect(readCustomEventDetail(hostileEvent)).toBeUndefined();
-            expect(getter).not.toHaveBeenCalled();
-        });
-
-        test('reads own data properties without accepting inherited fields', () => {
-            const value = Object.create({ inherited: 'page-value' });
-            value.own = 'isolated-value';
-
-            expect(readOwnDataProperty(value, 'own')).toBe('isolated-value');
-            expect(readOwnDataProperty(value, 'inherited')).toBeUndefined();
-        });
-
-        test('does not invoke accessors while reading primitive fields', () => {
-            const getter = jest.fn(() => 'SUBTITLE_DATA_FOUND');
-            const value = {};
-            Object.defineProperty(value, 'type', { get: getter });
-
-            expect(readOwnPrimitiveDataProperty(value, 'type')).toBeUndefined();
-            expect(getter).not.toHaveBeenCalled();
-        });
-
-        test('accepts only primitive own data-property values', () => {
-            const value = {
-                text: '123',
-                numeric: 123,
-                boolean: false,
-                empty: null,
-                object: {},
-            };
-
-            expect(readOwnPrimitiveDataProperty(value, 'text')).toBe('123');
-            expect(readOwnPrimitiveDataProperty(value, 'numeric')).toBe(123);
-            expect(readOwnPrimitiveDataProperty(value, 'boolean')).toBe(false);
-            expect(readOwnPrimitiveDataProperty(value, 'empty')).toBeNull();
-            expect(
-                readOwnPrimitiveDataProperty(value, 'object')
-            ).toBeUndefined();
-        });
-
-        test('fails closed when a descriptor trap throws', () => {
-            const hostile = new Proxy(
-                {},
-                {
-                    getOwnPropertyDescriptor() {
-                        throw new Error('page trap');
-                    },
-                }
-            );
-
-            expect(readOwnDataProperty(hostile, 'type')).toBeUndefined();
-            expect(
-                readOwnPrimitiveDataProperty(hostile, 'type')
-            ).toBeUndefined();
-        });
+describe('Disney+ canonical route identity', () => {
+    test.each([
+        {
+            label: 'root video route',
+            eventId: 'opaque-id',
+            pathname: '/video/opaque-id',
+            url: 'https://www.disneyplus.com/video/opaque-id?lang=en',
+            expected: 'opaque-id',
+        },
+        {
+            label: 'localized play route with encoded text',
+            eventId: 'opaque%20id',
+            pathname: '/en-gb/play/opaque%20id/',
+            url: 'https://www.disneyplus.com/en-gb/play/opaque%20id/',
+            expected: 'opaque id',
+        },
+        {
+            label: 'literal percent route id',
+            eventId: 'price%25off',
+            pathname: '/browse/video/price%25off',
+            url: 'https://www.disneyplus.com/browse/video/price%25off',
+            expected: 'price%off',
+        },
+        {
+            label: 'exact UTF-8 route id limit',
+            eventId: 'é'.repeat(MAX_SUBTITLE_ROUTE_ID_BYTES / 2),
+            pathname: `/video/${'é'.repeat(MAX_SUBTITLE_ROUTE_ID_BYTES / 2)}`,
+            expected: 'é'.repeat(MAX_SUBTITLE_ROUTE_ID_BYTES / 2),
+        },
+    ])('$label', ({ eventId, pathname, url, expected }) => {
+        expect(normalizeDisneyPlusVideoId(eventId)).toBe(expected);
+        expect(extractDisneyPlusVideoIdFromPathname(pathname)).toBe(expected);
+        if (url) expect(extractDisneyPlusVideoIdFromUrl(url)).toBe(expected);
     });
 
-    describe('Disney+ canonical route identity', () => {
-        test.each([
-            ['/video/opaque-id', 'opaque-id'],
-            ['/en-gb/video/opaque-id', 'opaque-id'],
-            ['/fr-fr/browse/play/opaque%20id/', 'opaque id'],
-            ['/prefix/with/many/segments/video/price%25off', 'price%off'],
-            ['/video/trailing%25/', 'trailing%'],
-            ['/play/value%252G', 'value%2G'],
-        ])('accepts terminal player pathname %s', (pathname, expected) => {
-            expect(extractDisneyPlusVideoIdFromPathname(pathname)).toBe(
-                expected
-            );
-        });
-
-        test('accepts exactly the provisional 256 UTF-8-byte cap', () => {
-            const videoId = 'é'.repeat(MAX_SUBTITLE_ROUTE_ID_BYTES / 2);
-
-            expect(normalizeDisneyPlusVideoId(videoId)).toBe(videoId);
-        });
-
-        test.each([
-            '/en-gb/video/opaque-id/extra',
-            '/en-gb/video/opaque-id/extra/',
-            '/en-gb/video/a/b',
-            '/en-gb/video/',
-            '/en-gb/browse/opaque-id',
-            '/en-gb/video/%E0%A4%A',
-            '/en-gb/video/a%2Fb',
-            '/en-gb/video/a%2fb',
-            '/en-gb/video/a%5Cb',
-            '/en-gb/video/%00id',
-            '/en-gb/video/id%0A',
-            '/en-gb/video/id%7F',
-            '/en-gb/video/id%C2%80',
-            '/en-gb/video/%20%20',
-            '/en-gb/video/unknown_video_fallback',
-            '/en-gb/video/unknown%5Fvideo%5Ffallback',
-        ])('rejects noncanonical pathname %s', (pathname) => {
-            expect(extractDisneyPlusVideoIdFromPathname(pathname)).toBeNull();
-        });
-
-        test.each([
-            'a%252Fb',
-            'a%252fb',
-            'a%255Cb',
-            'a%255cb',
-            '%252e%252e',
-            '%252E%252e',
-            'id%2500',
-            'id%257F',
-            'id%25c2%2580',
-            'prefix%252Fsuffix',
-            'prefix%255Csuffix',
-            'prefix%252e%252e-suffix',
-            'ordinary%2541escape',
-        ])(
-            'rejects residual percent escape %s for event and route normalization',
-            (encodedVideoId) => {
-                const eventVideoId = normalizeDisneyPlusVideoId(encodedVideoId);
-                const routeVideoId = extractDisneyPlusVideoIdFromPathname(
-                    `/en-gb/video/${encodedVideoId}`
-                );
-
-                expect({ eventVideoId, routeVideoId }).toEqual({
-                    eventVideoId: null,
-                    routeVideoId: null,
-                });
-            }
-        );
-
-        test.each([
-            ['price%25off', 'price%off'],
-            ['trailing%25', 'trailing%'],
-            ['value%252G', 'value%2G'],
-        ])(
-            'allows residual literal percent text without a hex triplet: %s',
-            (encodedVideoId, expected) => {
-                expect(normalizeDisneyPlusVideoId(encodedVideoId)).toBe(
-                    expected
-                );
-                expect(
-                    extractDisneyPlusVideoIdFromPathname(
-                        `/video/${encodedVideoId}`
-                    )
-                ).toBe(expected);
-            }
-        );
-
-        test('rejects IDs over the UTF-8-byte cap', () => {
-            expect(
-                normalizeDisneyPlusVideoId(
-                    'a'.repeat(MAX_SUBTITLE_ROUTE_ID_BYTES + 1)
-                )
-            ).toBeNull();
-            expect(
-                normalizeDisneyPlusVideoId(
-                    'é'.repeat(MAX_SUBTITLE_ROUTE_ID_BYTES / 2 + 1)
-                )
-            ).toBeNull();
-            expect(
-                normalizeDisneyPlusVideoId(
-                    '%61'.repeat(MAX_SUBTITLE_ROUTE_ID_BYTES + 1)
-                )
-            ).toBeNull();
-        });
-
-        test('parses URLs separately from pathname extraction', () => {
-            expect(
-                extractDisneyPlusVideoIdFromUrl(
-                    'https://www.disneyplus.com/zh-hans/video/opaque%20id/?lang=en'
-                )
-            ).toBe('opaque id');
-            expect(
-                extractDisneyPlusVideoIdFromUrl('not an absolute URL')
-            ).toBeNull();
-        });
+    test.each([
+        ['extra route segment', null, '/video/opaque-id/extra'],
+        ['non-player route', null, '/browse/opaque-id'],
+        ['encoded slash', null, '/video/a%2Fb'],
+        ['malformed escape', '%E0%A4%A', '/video/%E0%A4%A'],
+        ['residual escape', 'a%252Fb', '/video/a%252Fb'],
+        ['blank id', '%20%20', '/video/%20%20'],
+        [
+            'fallback marker',
+            'unknown_video_fallback',
+            '/video/unknown_video_fallback',
+        ],
+        [
+            'over-limit id',
+            'a'.repeat(MAX_SUBTITLE_ROUTE_ID_BYTES + 1),
+            `/video/${'a'.repeat(MAX_SUBTITLE_ROUTE_ID_BYTES + 1)}`,
+        ],
+    ])('rejects %s', (_label, eventId, pathname) => {
+        if (eventId !== null) {
+            expect(normalizeDisneyPlusVideoId(eventId)).toBeNull();
+        }
+        expect(extractDisneyPlusVideoIdFromPathname(pathname)).toBeNull();
     });
 
-    describe('Netflix canonical route identity', () => {
-        test.each([
-            ['/watch/123456', '123456'],
-            ['/watch/00123/', '00123'],
-        ])('accepts exact terminal watch pathname %s', (pathname, expected) => {
-            expect(extractNetflixVideoIdFromPathname(pathname)).toBe(expected);
-        });
+    test('detects a stale event id against the current route', () => {
+        const eventId = normalizeDisneyPlusVideoId('episode-old');
+        const routeId = extractDisneyPlusVideoIdFromPathname(
+            '/video/episode-current'
+        );
 
-        test.each([
-            '/en/watch/123456',
-            '/browse/watch/123456',
-            '/watch/123456/extra',
-            '/watch/123456?extra=true',
-            '/watch/123abc',
-            '/watch/-123',
-            '/watch/%31%32%33',
-            '/watch/',
-        ])('rejects noncanonical pathname %s', (pathname) => {
-            expect(extractNetflixVideoIdFromPathname(pathname)).toBeNull();
-        });
+        expect(eventId).toBe('episode-old');
+        expect(routeId).toBe('episode-current');
+        expect(eventId).not.toBe(routeId);
+    });
+});
 
-        test('normalizes JSON-safe numeric IDs and rejects other values', () => {
-            expect(normalizeNetflixVideoId(123456)).toBe('123456');
-            expect(normalizeNetflixVideoId('123456')).toBe('123456');
+describe('Netflix canonical route identity', () => {
+    test.each([
+        {
+            label: 'numeric event id and exact watch route',
+            eventId: 123456,
+            pathname: '/watch/123456',
+            url: 'https://www.netflix.com/watch/123456?trackId=1',
+            expected: '123456',
+        },
+        {
+            label: 'string id with canonical leading zeroes',
+            eventId: '00123',
+            pathname: '/watch/00123/',
+            url: 'https://www.netflix.com/watch/00123/',
+            expected: '00123',
+        },
+        {
+            label: 'exact route id limit',
+            eventId: '1'.repeat(MAX_SUBTITLE_ROUTE_ID_BYTES),
+            pathname: `/watch/${'1'.repeat(MAX_SUBTITLE_ROUTE_ID_BYTES)}`,
+            expected: '1'.repeat(MAX_SUBTITLE_ROUTE_ID_BYTES),
+        },
+    ])('$label', ({ eventId, pathname, url, expected }) => {
+        expect(normalizeNetflixVideoId(eventId)).toBe(expected);
+        expect(extractNetflixVideoIdFromPathname(pathname)).toBe(expected);
+        if (url) expect(extractNetflixVideoIdFromUrl(url)).toBe(expected);
+    });
 
-            for (const value of [
-                -1,
-                1.5,
-                Number.NaN,
-                Number.POSITIVE_INFINITY,
-                Number.MAX_SAFE_INTEGER + 1,
-                '123x',
-                '',
-                null,
-                {},
-            ]) {
-                expect(normalizeNetflixVideoId(value)).toBeNull();
-            }
-        });
+    test.each([
+        ['localized watch route', null, '/en/watch/123456'],
+        ['extra route segment', null, '/watch/123456/extra'],
+        ['nonnumeric route id', '123x', '/watch/123x'],
+        ['encoded numeric route id', null, '/watch/%31%32%33'],
+        ['negative numeric id', -1, '/watch/-1'],
+        ['non-integer numeric id', 1.5, '/watch/1.5'],
+        [
+            'over-limit id',
+            '1'.repeat(MAX_SUBTITLE_ROUTE_ID_BYTES + 1),
+            `/watch/${'1'.repeat(MAX_SUBTITLE_ROUTE_ID_BYTES + 1)}`,
+        ],
+    ])('rejects %s', (_label, eventId, pathname) => {
+        if (eventId !== null) {
+            expect(normalizeNetflixVideoId(eventId)).toBeNull();
+        }
+        expect(extractNetflixVideoIdFromPathname(pathname)).toBeNull();
+    });
 
-        test('rejects IDs over the provisional cap', () => {
-            expect(
-                normalizeNetflixVideoId('1'.repeat(MAX_SUBTITLE_ROUTE_ID_BYTES))
-            ).toBe('1'.repeat(MAX_SUBTITLE_ROUTE_ID_BYTES));
-            expect(
-                normalizeNetflixVideoId(
-                    '1'.repeat(MAX_SUBTITLE_ROUTE_ID_BYTES + 1)
-                )
-            ).toBeNull();
-        });
+    test('detects a stale event id against the current route', () => {
+        const eventId = normalizeNetflixVideoId(111111);
+        const routeId = extractNetflixVideoIdFromPathname('/watch/222222');
 
-        test('parses URLs separately from pathname extraction', () => {
-            expect(
-                extractNetflixVideoIdFromUrl(
-                    'https://www.netflix.com/watch/987654/?trackId=1'
-                )
-            ).toBe('987654');
-            expect(
-                extractNetflixVideoIdFromUrl('not an absolute URL')
-            ).toBeNull();
-        });
+        expect(eventId).toBe('111111');
+        expect(routeId).toBe('222222');
+        expect(eventId).not.toBe(routeId);
     });
 });

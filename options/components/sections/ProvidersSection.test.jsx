@@ -1,47 +1,49 @@
 import { jest } from '@jest/globals';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+    act,
+    fireEvent,
+    render,
+    screen,
+    waitFor,
+} from '@testing-library/react';
 
+let publishFromKeyA;
 const openAICompatibleProviderCard = jest.fn(
-    ({ apiKey, baseUrl, model, models, onModelChange, onModelsLoaded }) => (
-        <div>
-            <output data-testid="openai-model-catalog">
-                {models.join(',')}
-            </output>
-            <select
-                aria-label="OpenAI model"
-                value={model}
-                onChange={(event) => onModelChange(event.target.value)}
-            >
-                {models.map((availableModel) => (
-                    <option key={availableModel} value={availableModel}>
-                        {availableModel}
-                    </option>
-                ))}
-            </select>
-            <button
-                type="button"
-                onClick={() =>
-                    onModelsLoaded(['catalog-model-a', 'catalog-model-b'], {
-                        apiKey,
-                        baseUrl,
-                    })
-                }
-            >
-                Publish catalog
-            </button>
-            <button
-                type="button"
-                onClick={() =>
-                    onModelsLoaded(['stale-model'], {
-                        apiKey: 'key-a',
-                        baseUrl: 'https://a.example.com/v1',
-                    })
-                }
-            >
-                Publish stale catalog
-            </button>
-        </div>
-    )
+    ({ apiKey, baseUrl, model, models, onModelChange, onModelsLoaded }) => {
+        if (apiKey === 'key-a' && !publishFromKeyA) {
+            publishFromKeyA = () =>
+                onModelsLoaded(['stale-model'], { apiKey, baseUrl });
+        }
+        return (
+            <div>
+                <output data-testid="openai-model-catalog">
+                    {models.join(',')}
+                </output>
+                <select
+                    aria-label="OpenAI model"
+                    value={model}
+                    onChange={(event) => onModelChange(event.target.value)}
+                >
+                    {models.map((availableModel) => (
+                        <option key={availableModel} value={availableModel}>
+                            {availableModel}
+                        </option>
+                    ))}
+                </select>
+                <button
+                    type="button"
+                    onClick={() =>
+                        onModelsLoaded(['catalog-model-a', 'catalog-model-b'], {
+                            apiKey,
+                            baseUrl,
+                        })
+                    }
+                >
+                    Publish catalog
+                </button>
+            </div>
+        );
+    }
 );
 
 jest.unstable_mockModule(
@@ -78,7 +80,12 @@ function getSection(settings, onSettingChange) {
     );
 }
 
-test('selecting a saved model does not collapse the fetched catalog', () => {
+beforeEach(() => {
+    publishFromKeyA = null;
+    openAICompatibleProviderCard.mockClear();
+});
+
+test('changing the selected model preserves the fetched catalog', () => {
     const onSettingChange = jest.fn();
     const settings = {
         selectedProvider: Providers.OPENAI_COMPATIBLE,
@@ -87,10 +94,6 @@ test('selecting a saved model does not collapse the fetched catalog', () => {
     const { rerender } = render(getSection(settings, onSettingChange));
 
     fireEvent.click(screen.getByRole('button', { name: 'Publish catalog' }));
-    expect(screen.getByTestId('openai-model-catalog')).toHaveTextContent(
-        'catalog-model-a,catalog-model-b'
-    );
-
     fireEvent.change(screen.getByLabelText('OpenAI model'), {
         target: { value: 'catalog-model-b' },
     });
@@ -110,17 +113,18 @@ test('selecting a saved model does not collapse the fetched catalog', () => {
     );
 });
 
-test('a custom saved model remains selected when it is absent from the catalog', () => {
-    const onSettingChange = jest.fn().mockResolvedValue(true);
-    const settings = {
-        selectedProvider: Providers.OPENAI_COMPATIBLE,
-        openaiCompatibleModel: 'saved-model',
-    };
-    render(getSection(settings, onSettingChange));
-
-    expect(screen.getByTestId('openai-model-catalog')).toHaveTextContent(
-        'saved-model'
+test('a saved custom model remains available when the provider omits it', () => {
+    const onSettingChange = jest.fn();
+    render(
+        getSection(
+            {
+                selectedProvider: Providers.OPENAI_COMPATIBLE,
+                openaiCompatibleModel: 'saved-model',
+            },
+            onSettingChange
+        )
     );
+
     fireEvent.click(screen.getByRole('button', { name: 'Publish catalog' }));
 
     expect(screen.getByTestId('openai-model-catalog')).toHaveTextContent(
@@ -130,7 +134,7 @@ test('a custom saved model remains selected when it is absent from the catalog',
     expect(onSettingChange).not.toHaveBeenCalled();
 });
 
-test('the first catalog model is persisted only when the saved model is blank', async () => {
+test('the first catalog model becomes the default only when none is saved', async () => {
     const onSettingChange = jest.fn().mockResolvedValue(true);
     render(
         getSection(
@@ -152,7 +156,7 @@ test('the first catalog model is persisted only when the saved model is blank', 
     );
 });
 
-test('catalog entries stay scoped to the exact credential and endpoint identity', () => {
+test('a catalog response for an old credential identity cannot publish or choose a default', async () => {
     const onSettingChange = jest.fn().mockResolvedValue(true);
     const { rerender } = render(
         getSection(
@@ -160,15 +164,10 @@ test('catalog entries stay scoped to the exact credential and endpoint identity'
                 selectedProvider: Providers.OPENAI_COMPATIBLE,
                 openaiCompatibleApiKey: 'key-a',
                 openaiCompatibleBaseUrl: 'https://a.example.com/v1',
-                openaiCompatibleModel: 'saved-a',
+                openaiCompatibleModel: '',
             },
             onSettingChange
         )
-    );
-
-    fireEvent.click(screen.getByRole('button', { name: 'Publish catalog' }));
-    expect(screen.getByTestId('openai-model-catalog')).toHaveTextContent(
-        'saved-a,catalog-model-a,catalog-model-b'
     );
 
     rerender(
@@ -177,19 +176,15 @@ test('catalog entries stay scoped to the exact credential and endpoint identity'
                 selectedProvider: Providers.OPENAI_COMPATIBLE,
                 openaiCompatibleApiKey: 'key-b',
                 openaiCompatibleBaseUrl: 'https://b.example.com/v1',
-                openaiCompatibleModel: 'saved-b',
+                openaiCompatibleModel: '',
             },
             onSettingChange
         )
     );
-    expect(screen.getByTestId('openai-model-catalog')).toHaveTextContent(
-        /^saved-b$/
-    );
+    await act(async () => {
+        await publishFromKeyA();
+    });
 
-    fireEvent.click(
-        screen.getByRole('button', { name: 'Publish stale catalog' })
-    );
-    expect(screen.getByTestId('openai-model-catalog')).toHaveTextContent(
-        /^saved-b$/
-    );
+    expect(screen.getByTestId('openai-model-catalog')).toBeEmptyDOMElement();
+    expect(onSettingChange).not.toHaveBeenCalled();
 });

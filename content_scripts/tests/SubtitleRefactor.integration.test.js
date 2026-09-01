@@ -1,7 +1,3 @@
-/**
- * Subtitle Refactor Integration Tests
- */
-
 import {
     initializeInteractiveSubtitles,
     formatInteractiveSubtitleText,
@@ -12,8 +8,8 @@ import {
     resolvePlaybackTime,
 } from '../shared/subtitleUtilities.js';
 
-describe('Subtitle Refactor - Deterministic Spans and Signatures', () => {
-    test('Deterministic spans: stable IDs and data attributes', () => {
+describe('subtitle formatting helpers', () => {
+    test('uses stable span IDs and data attributes', () => {
         initializeInteractiveSubtitles({ enabled: true, clickableWords: true });
         const text = 'Hello 世界 123';
         const html = formatInteractiveSubtitleText(text, {
@@ -28,7 +24,6 @@ describe('Subtitle Refactor - Deterministic Spans and Signatures', () => {
             container.querySelectorAll('.dualsub-interactive-word')
         );
 
-        // Expect 3 tokens: Hello, 世界, 123
         expect(spans.length).toBe(3);
 
         spans.forEach((span, i) => {
@@ -38,7 +33,7 @@ describe('Subtitle Refactor - Deterministic Spans and Signatures', () => {
         });
     });
 
-    test('computeTextSignature: ignores random IDs/HTML differences', () => {
+    test('text signatures ignore HTML IDs and equivalent punctuation', () => {
         const a = "Hello <span id='x123'>world</span> &nbsp;!";
         const b = "Hello <span id='y456'>world</span>!";
         const sigA = computeTextSignature(a);
@@ -48,21 +43,21 @@ describe('Subtitle Refactor - Deterministic Spans and Signatures', () => {
         expect(sigA).toBe('Hello world');
     });
 
-    test('resolvePlaybackTime prefers the platform clock over raw video time', () => {
-        const video = { currentTime: 401 };
-        const platform = {
-            getPlaybackTime: () => 1001,
-            getVideoElement: () => video,
-        };
-
-        expect(resolvePlaybackTime(platform, video)).toBe(1001);
-    });
-
-    test('resolvePlaybackTime falls back to raw video time for older adapters', () => {
-        const video = { currentTime: 25 };
-
-        expect(resolvePlaybackTime({ getVideoElement: () => video })).toBe(25);
-    });
+    test.each([
+        ['platform clock', { getPlaybackTime: () => 1001 }, 401, 1001],
+        ['video fallback', {}, 25, 25],
+    ])(
+        'resolves playback time from the %s',
+        (_label, platform, videoTime, expected) => {
+            const video = { currentTime: videoTime };
+            expect(
+                resolvePlaybackTime(
+                    { ...platform, getVideoElement: () => video },
+                    video
+                )
+            ).toBe(expected);
+        }
+    );
 
     test.each([
         ['Tom & Jerry', ['Tom', 'Jerry']],

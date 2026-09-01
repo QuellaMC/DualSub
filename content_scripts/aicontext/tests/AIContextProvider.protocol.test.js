@@ -2,137 +2,80 @@ import { jest } from '@jest/globals';
 
 import { AIContextProvider } from '../providers/AIContextProvider.js';
 import { MessageActions } from '../../shared/constants/messageActions.js';
+import {
+    buildAnalyzeContextSuccessResponse,
+    MessageSenderRoles,
+    parseAnalyzeContextResponseMessage,
+} from '../../shared/protocol/messageProtocol.js';
 
-function createProvider() {
-    const provider = new AIContextProvider();
-    provider.initialized = true;
-    return provider;
-}
+const OPTIONS = Object.freeze({
+    contextTypes: ['cultural'],
+    language: 'en',
+    targetLanguage: 'es',
+    platform: 'netflix',
+});
 
-function createDeferred() {
+function deferred() {
     let resolve;
-    const promise = new Promise((resolvePromise) => {
-        resolve = resolvePromise;
+    const promise = new Promise((settle) => {
+        resolve = settle;
     });
     return { promise, resolve };
 }
 
-function createSuccessWire(request, analysis = { summary: 'Valid analysis' }) {
-    return {
-        success: true,
-        result: {
-            analysis,
-            contextType: 'cultural',
-            contextTypes: ['cultural'],
-            isStructured: true,
-        },
-        requestId: request.requestId,
-    };
+async function initializedProvider() {
+    const provider = new AIContextProvider();
+    await provider.initialize();
+    return provider;
 }
 
-describe('AIContextProvider ANALYZE_CONTEXT protocol', () => {
+function analyze(provider, requestId, text = 'hello') {
+    return provider.analyzeContext(text, { ...OPTIONS, requestId });
+}
+
+function successResponse(request, summary = 'Cultural explanation') {
+    return buildAnalyzeContextSuccessResponse(
+        MessageSenderRoles.CONTENT,
+        request,
+        { analysis: { summary } }
+    );
+}
+
+describe('AIContextProvider analysis transport', () => {
     beforeEach(() => {
-        delete chrome.runtime.lastError;
-        chrome.runtime.sendMessage.mockImplementation((_message, callback) => {
-            const response = { success: true };
-            if (typeof callback === 'function') callback(response);
-            return Promise.resolve(response);
-        });
+        chrome.runtime.sendMessage.mockResolvedValue({ success: true });
     });
 
     afterEach(() => {
         jest.useRealTimers();
-        delete chrome.runtime.lastError;
     });
 
-    test('uses an exact ping request and parses the correlated readiness response', async () => {
+    test('initializes once and cannot be revived after destruction', async () => {
         const provider = new AIContextProvider();
-        chrome.runtime.sendMessage.mockImplementation((request) =>
-            Promise.resolve({
-                action: request.action,
-                ready: true,
-                services: {
-                    translation: true,
-                    subtitle: true,
-                    aiContext: true,
-                    aiContextInitialized: true,
-                },
-            })
-        );
 
-        await provider._testBackgroundConnection();
+        await expect(provider.initialize()).resolves.toBe(true);
+        expect(provider.initialized).toBe(true);
 
-        expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
-            action: MessageActions.PING,
-        });
-    });
+        provider.destroy();
 
-    test('single-flights initialization and terminal destroy revokes a deferred commit', async () => {
-        const provider = new AIContextProvider();
-        const connection = createDeferred();
-        const discoverProviders = jest
-            .spyOn(provider, '_discoverProviders')
-            .mockResolvedValue(undefined);
-        const setupRateLimiting = jest
-            .spyOn(provider, '_setupRateLimiting')
-            .mockResolvedValue(undefined);
-        const testBackgroundConnection = jest
-            .spyOn(provider, '_testBackgroundConnection')
-            .mockReturnValue(connection.promise);
-
-        const firstInitialization = provider.initialize();
-        const simultaneousInitialization = provider.initialize();
-
-        expect(simultaneousInitialization).toBe(firstInitialization);
-        await Promise.resolve();
-        await Promise.resolve();
-        expect(testBackgroundConnection).toHaveBeenCalledTimes(1);
-
-        await provider.destroy();
-        connection.resolve();
-
-        await expect(firstInitialization).resolves.toBe(false);
         expect(provider.initialized).toBe(false);
-        expect(discoverProviders).toHaveBeenCalledTimes(1);
-        expect(setupRateLimiting).toHaveBeenCalledTimes(1);
         await expect(provider.initialize()).resolves.toBe(false);
-        await expect(
-            provider.analyzeContext('must not dispatch', {
-                requestId: 'destroyed-provider',
-            })
-        ).rejects.toThrow('Provider not initialized');
-        expect(chrome.runtime.sendMessage).not.toHaveBeenCalled();
+        await expect(analyze(provider, 'destroyed')).rejects.toThrow(
+            'Provider not initialized'
+        );
     });
 
-    test('sends an exact request and returns detached success', async () => {
-        const provider = createProvider();
-        let sentRequest;
-        const wireAnalysis = { summary: 'Cultural explanation' };
-
-        chrome.runtime.sendMessage.mockImplementation((message, callback) => {
-            sentRequest = message;
-            const response = {
-                success: true,
-                result: {
-                    analysis: wireAnalysis,
-                    contextType: 'cultural',
-                    contextTypes: ['cultural'],
-                    isStructured: true,
-                },
-                requestId: message.requestId,
-            };
-            callback(response);
+    test('sends the canonical request and leaves response parsing to the controller', async () => {
+        const provider = await initializedProvider();
+        let request;
+        chrome.runtime.sendMessage.mockImplementation((message) => {
+            request = message;
+            return Promise.resolve(successResponse(message));
         });
 
-        const result = await provider.analyzeContext('hello', {
-            contextTypes: ['cultural'],
-            language: 'en',
-            targetLanguage: 'es',
-            platform: 'netflix',
-            requestId: 'analysis-1',
-        });
+        const response = await analyze(provider, 'analysis-1');
 
-        expect(sentRequest).toEqual({
+        expect(request).toEqual({
             action: MessageActions.ANALYZE_CONTEXT,
             text: 'hello',
             contextTypes: ['cultural'],
@@ -141,582 +84,171 @@ describe('AIContextProvider ANALYZE_CONTEXT protocol', () => {
             platform: 'netflix',
             requestId: 'analysis-1',
         });
-        expect(Object.isFrozen(sentRequest)).toBe(true);
-        expect(Object.isFrozen(sentRequest.contextTypes)).toBe(true);
-        expect(result).toEqual({
+        expect(response).toEqual({
             success: true,
+            result: { analysis: { summary: 'Cultural explanation' } },
+        });
+        expect(
+            parseAnalyzeContextResponseMessage(
+                response,
+                request,
+                MessageSenderRoles.CONTENT
+            )
+        ).toEqual({
+            status: 'success',
+            requestId: 'analysis-1',
             result: {
                 analysis: { summary: 'Cultural explanation' },
                 contextType: 'cultural',
                 contextTypes: ['cultural'],
                 isStructured: true,
             },
-            requestId: 'analysis-1',
         });
-        expect(Object.isFrozen(result)).toBe(true);
-        expect(Object.isFrozen(result.result)).toBe(true);
-
-        wireAnalysis.summary = 'mutated after settlement';
-        expect(result.result.analysis.summary).toBe('Cultural explanation');
     });
 
-    test('rejects a success with the wrong request ID', async () => {
-        const provider = createProvider();
+    test('rejects an invalid request before dispatch', async () => {
+        const provider = await initializedProvider();
 
-        chrome.runtime.sendMessage.mockImplementation((message, callback) => {
-            callback({
-                success: true,
-                result: {
-                    analysis: { summary: 'Must not escape' },
-                    contextType: 'cultural',
-                    contextTypes: ['cultural'],
-                    isStructured: true,
-                },
-                requestId: `${message.requestId}-forged`,
-            });
-        });
-
-        const result = await provider.analyzeContext('hello', {
-            contextTypes: ['cultural'],
-            language: 'en',
-            targetLanguage: 'es',
-            platform: 'netflix',
-            requestId: 'analysis-2',
-        });
-
-        expect(result).toEqual({
+        await expect(analyze(provider, 'analysis-2', '   ')).resolves.toEqual({
             success: false,
-            error: 'Invalid analysis response',
-            requestId: 'analysis-2',
+            error: 'Invalid analysis request',
             shouldRetry: false,
         });
-        expect(Object.isFrozen(result)).toBe(true);
-        expect(JSON.stringify(result)).not.toContain('Must not escape');
+        expect(chrome.runtime.sendMessage).not.toHaveBeenCalled();
     });
 
-    test('does not resend ambiguous acceptance or leak its error', async () => {
-        const provider = createProvider();
-        const directFallback = jest.spyOn(provider, '_sendRequestWithTimeout');
-        const privateRuntimeError =
-            'The message port closed before a response was received. PRIVATE';
+    test('does not retry or expose an ambiguous runtime failure', async () => {
+        const provider = await initializedProvider();
+        chrome.runtime.sendMessage.mockRejectedValue(
+            new Error('The message port closed. PRIVATE')
+        );
 
-        chrome.runtime.sendMessage.mockImplementation((_message, callback) => {
-            chrome.runtime.lastError = { message: privateRuntimeError };
-            callback(undefined);
-            delete chrome.runtime.lastError;
-        });
-
-        const result = await provider.analyzeContext('hello', {
-            contextTypes: ['cultural'],
-            language: 'en',
-            targetLanguage: 'es',
-            platform: 'netflix',
-            requestId: 'analysis-3',
-        });
+        const response = await analyze(provider, 'analysis-3');
 
         expect(chrome.runtime.sendMessage).toHaveBeenCalledTimes(1);
-        expect(directFallback).not.toHaveBeenCalled();
-        expect(result).toEqual({
+        expect(response).toEqual({
             success: false,
             error: 'Analysis request failed',
-            requestId: 'analysis-3',
             shouldRetry: false,
         });
-        expect(Object.isFrozen(result)).toBe(true);
-        expect(JSON.stringify(result)).not.toContain(privateRuntimeError);
+        expect(JSON.stringify(response)).not.toContain('PRIVATE');
     });
 
-    test('retries proven non-delivery without wake-up messages', async () => {
+    test('retries proven non-delivery and returns the minimal response', async () => {
         jest.useFakeTimers();
-        const provider = createProvider();
-        const actions = [];
-        let analyzeDispatches = 0;
+        const provider = await initializedProvider();
+        chrome.runtime.sendMessage
+            .mockRejectedValueOnce(
+                new Error(
+                    'Could not establish connection. Receiving end does not exist.'
+                )
+            )
+            .mockImplementation((message) =>
+                Promise.resolve(successResponse(message, 'Delivered'))
+            );
 
-        chrome.runtime.sendMessage.mockImplementation((message, callback) => {
-            actions.push(message.action);
-            if (message.action !== MessageActions.ANALYZE_CONTEXT) {
-                callback({ success: true });
-                return;
-            }
-
-            analyzeDispatches++;
-            if (analyzeDispatches === 1) {
-                chrome.runtime.lastError = {
-                    message:
-                        'Could not establish connection. Receiving end does not exist.',
-                };
-                callback(undefined);
-                delete chrome.runtime.lastError;
-                return;
-            }
-
-            callback({
-                success: true,
-                result: {
-                    analysis: { summary: 'Delivered once' },
-                    contextType: 'cultural',
-                    contextTypes: ['cultural'],
-                    isStructured: true,
-                },
-                requestId: message.requestId,
-            });
-        });
-
-        const resultPromise = provider.analyzeContext('hello', {
-            contextTypes: ['cultural'],
-            language: 'en',
-            targetLanguage: 'es',
-            platform: 'netflix',
-            requestId: 'analysis-4',
-        });
+        const responsePromise = analyze(provider, 'analysis-4');
         await jest.advanceTimersByTimeAsync(120);
 
-        await expect(resultPromise).resolves.toEqual({
+        await expect(responsePromise).resolves.toEqual({
             success: true,
-            result: {
-                analysis: { summary: 'Delivered once' },
-                contextType: 'cultural',
-                contextTypes: ['cultural'],
-                isStructured: true,
-            },
-            requestId: 'analysis-4',
+            result: { analysis: { summary: 'Delivered' } },
         });
-        expect(actions).toEqual([
-            MessageActions.ANALYZE_CONTEXT,
-            MessageActions.ANALYZE_CONTEXT,
-        ]);
+        expect(chrome.runtime.sendMessage).toHaveBeenCalledTimes(2);
         expect(jest.getTimerCount()).toBe(0);
     });
 
-    test('cancellation blocks retry and keeps metrics finite', async () => {
+    test('bounds persistent non-delivery and returns fixed retry advice', async () => {
         jest.useFakeTimers();
-        const provider = createProvider();
-        let analyzeDispatches = 0;
-
-        chrome.runtime.sendMessage.mockImplementation((message, callback) => {
-            analyzeDispatches++;
-            if (analyzeDispatches === 1) {
-                chrome.runtime.lastError = {
-                    message:
-                        'Could not establish connection. Receiving end does not exist.',
-                };
-                callback(undefined);
-                delete chrome.runtime.lastError;
-                return;
-            }
-            callback({
-                success: true,
-                result: {
-                    analysis: { summary: 'Must be suppressed' },
-                    contextType: 'cultural',
-                    contextTypes: ['cultural'],
-                    isStructured: true,
-                },
-                requestId: message.requestId,
-            });
-        });
-
-        const resultPromise = provider.analyzeContext('hello', {
-            contextTypes: ['cultural'],
-            language: 'en',
-            targetLanguage: 'es',
-            platform: 'netflix',
-            requestId: 'analysis-5',
-        });
-        expect(provider.cancelRequest('analysis-5')).toBe(true);
-        await jest.advanceTimersByTimeAsync(120);
-
-        await expect(resultPromise).resolves.toEqual({
-            success: false,
-            error: 'Analysis request cancelled',
-            requestId: 'analysis-5',
-            shouldRetry: false,
-        });
-        expect(analyzeDispatches).toBe(1);
-        expect(Number.isFinite(provider.metrics.totalResponseTime)).toBe(true);
-        expect(Number.isFinite(provider.metrics.averageResponseTime)).toBe(
-            true
+        const provider = await initializedProvider();
+        chrome.runtime.sendMessage.mockRejectedValue(
+            new Error('No matching service worker. PRIVATE')
         );
-        expect(provider.activeRequests.size).toBe(0);
-        expect(provider.requestStartTimes.size).toBe(0);
-        expect(jest.getTimerCount()).toBe(0);
-    });
 
-    test('suppresses a result that settles after cancellation', async () => {
-        const provider = createProvider();
-        const response = createDeferred();
-        let request;
-
-        chrome.runtime.sendMessage.mockImplementation((message) => {
-            request = message;
-            return response.promise;
-        });
-
-        const resultPromise = provider.analyzeContext('hello', {
-            contextTypes: ['cultural'],
-            language: 'en',
-            targetLanguage: 'es',
-            platform: 'netflix',
-            requestId: 'analysis-6',
-        });
-        const activeRequest = provider.activeRequests.get('analysis-6');
-        expect(Object.keys(activeRequest)).toEqual(['requestId', 'startedAt']);
-        expect(Object.isFrozen(activeRequest)).toBe(true);
-        expect(JSON.stringify(activeRequest)).not.toContain('hello');
-        expect(provider.cancelRequest('analysis-6')).toBe(true);
-        response.resolve({
-            success: true,
-            result: {
-                analysis: { summary: 'Must be discarded' },
-                contextType: 'cultural',
-                contextTypes: ['cultural'],
-                isStructured: true,
-            },
-            requestId: request.requestId,
-        });
-
-        await expect(resultPromise).resolves.toEqual({
-            success: false,
-            error: 'Analysis request cancelled',
-            requestId: 'analysis-6',
-            shouldRetry: false,
-        });
-        expect(Number.isFinite(provider.metrics.totalResponseTime)).toBe(true);
-        expect(Number.isFinite(provider.metrics.averageResponseTime)).toBe(
-            true
-        );
-        expect(provider.metrics.successCount).toBe(0);
-        expect(provider.metrics.errorCount).toBe(1);
-    });
-
-    test('suppresses a result that settles after provider destruction', async () => {
-        const provider = createProvider();
-        const response = createDeferred();
-        let request;
-        chrome.runtime.sendMessage.mockImplementation((message) => {
-            request = message;
-            return response.promise;
-        });
-
-        const resultPromise = provider.analyzeContext('hello', {
-            contextTypes: ['cultural'],
-            language: 'en',
-            targetLanguage: 'es',
-            platform: 'netflix',
-            requestId: 'analysis-destroyed',
-        });
-        await provider.destroy();
-        response.resolve(createSuccessWire(request, { summary: 'Too late' }));
-
-        await expect(resultPromise).resolves.toEqual({
-            success: false,
-            error: 'Analysis request cancelled',
-            requestId: 'analysis-destroyed',
-            shouldRetry: false,
-        });
-        expect(provider.initialized).toBe(false);
-        expect(provider.activeRequests.size).toBe(0);
-        expect(provider.requestStartTimes.size).toBe(0);
-    });
-
-    test('bounds persistent non-delivery with fixed retry advice', async () => {
-        jest.useFakeTimers();
-        const provider = createProvider();
-        const privateRuntimeError =
-            'No matching service worker for this scope. PRIVATE';
-
-        chrome.runtime.sendMessage.mockImplementation((_message, callback) => {
-            chrome.runtime.lastError = { message: privateRuntimeError };
-            callback(undefined);
-            delete chrome.runtime.lastError;
-        });
-
-        const resultPromise = provider.analyzeContext('hello', {
-            contextTypes: ['cultural'],
-            language: 'en',
-            targetLanguage: 'es',
-            platform: 'netflix',
-            requestId: 'analysis-7',
-        });
+        const responsePromise = analyze(provider, 'analysis-5');
         await jest.advanceTimersByTimeAsync(360);
+        const response = await responsePromise;
 
-        await expect(resultPromise).resolves.toEqual({
+        expect(chrome.runtime.sendMessage).toHaveBeenCalledTimes(3);
+        expect(response).toEqual({
             success: false,
             error: 'Analysis request could not be delivered',
-            requestId: 'analysis-7',
             shouldRetry: true,
         });
-        expect(chrome.runtime.sendMessage).toHaveBeenCalledTimes(3);
-        expect(JSON.stringify(await resultPromise)).not.toContain(
-            privateRuntimeError
-        );
-        expect(jest.getTimerCount()).toBe(0);
+        expect(JSON.stringify(response)).not.toContain('PRIVATE');
     });
 
-    test('does not retry an unbranded lookalike rejection', async () => {
-        const provider = createProvider();
-        const privateFailure = new Error(
-            'Could not establish connection. Receiving end does not exist. PRIVATE'
+    test('cancellation stops a scheduled retry', async () => {
+        jest.useFakeTimers();
+        const provider = await initializedProvider();
+        chrome.runtime.sendMessage.mockRejectedValue(
+            new Error('No matching service worker')
         );
-        chrome.runtime.sendMessage.mockRejectedValue(privateFailure);
 
-        const result = await provider.analyzeContext('hello', {
-            contextTypes: ['cultural'],
-            language: 'en',
-            targetLanguage: 'es',
-            platform: 'netflix',
-            requestId: 'analysis-8',
+        const responsePromise = analyze(provider, 'analysis-6');
+        expect(provider.cancelRequest('analysis-6')).toBe(true);
+        await jest.advanceTimersByTimeAsync(120);
+
+        await expect(responsePromise).resolves.toEqual({
+            success: false,
+            error: 'Analysis request cancelled',
+            shouldRetry: false,
         });
-
         expect(chrome.runtime.sendMessage).toHaveBeenCalledTimes(1);
-        expect(result).toEqual({
-            success: false,
-            error: 'Analysis request failed',
-            requestId: 'analysis-8',
-            shouldRetry: false,
-        });
-        expect(JSON.stringify(result)).not.toContain(privateFailure.message);
-    });
-
-    test('rejects an invalid request without dispatch', async () => {
-        const provider = createProvider();
-
-        const result = await provider.analyzeContext('   ', {
-            contextTypes: ['cultural'],
-            language: 'en',
-            targetLanguage: 'es',
-            platform: 'netflix',
-            requestId: 'analysis-9',
-        });
-
-        expect(chrome.runtime.sendMessage).not.toHaveBeenCalled();
-        expect(result).toEqual({
-            success: false,
-            error: 'Invalid analysis request',
-            requestId: 'analysis-9',
-            shouldRetry: false,
-        });
-        expect(Object.isFrozen(result)).toBe(true);
-        expect(provider.metrics).toMatchObject({
-            requestCount: 1,
-            successCount: 0,
-            errorCount: 1,
-        });
-        expect(Number.isFinite(provider.metrics.totalResponseTime)).toBe(true);
-        expect(Number.isFinite(provider.metrics.averageResponseTime)).toBe(
-            true
-        );
-    });
-
-    test('does not replace an explicitly empty request ID', async () => {
-        const provider = createProvider();
-
-        const result = await provider.analyzeContext('hello', {
-            contextTypes: ['cultural'],
-            language: 'en',
-            targetLanguage: 'es',
-            platform: 'netflix',
-            requestId: '',
-        });
-
-        expect(chrome.runtime.sendMessage).not.toHaveBeenCalled();
-        expect(result).toEqual({
-            success: false,
-            error: 'Invalid analysis request',
-            requestId: '',
-            shouldRetry: false,
-        });
-    });
-
-    test('records finite metrics for a rate-limited request', async () => {
-        const provider = createProvider();
-        provider.rateLimiter = {
-            requests: [Date.now()],
-            maxRequests: 1,
-            windowMs: 60_000,
-        };
-
-        const result = await provider.analyzeContext('hello', {
-            contextTypes: ['cultural'],
-            language: 'en',
-            targetLanguage: 'es',
-            platform: 'netflix',
-            requestId: 'analysis-10',
-        });
-
-        expect(chrome.runtime.sendMessage).not.toHaveBeenCalled();
-        expect(result).toEqual({
-            success: false,
-            error: 'Rate limit exceeded',
-            requestId: 'analysis-10',
-            shouldRetry: true,
-        });
-        expect(Object.isFrozen(result)).toBe(true);
-        expect(provider.metrics).toMatchObject({
-            requestCount: 1,
-            successCount: 0,
-            errorCount: 1,
-        });
-        expect(Number.isFinite(provider.metrics.totalResponseTime)).toBe(true);
-        expect(Number.isFinite(provider.metrics.averageResponseTime)).toBe(
-            true
-        );
         expect(provider.activeRequests.size).toBe(0);
-        expect(provider.requestStartTimes.size).toBe(0);
     });
 
-    test.each([
-        [
-            'outer extras',
-            (request) => ({ ...createSuccessWire(request), extra: true }),
-        ],
-        [
-            'wrong context projection',
-            (request) => ({
-                ...createSuccessWire(request),
-                result: {
-                    ...createSuccessWire(request).result,
-                    contextType: 'historical',
-                },
-            }),
-        ],
-        [
-            'non-record analysis',
-            (request) => createSuccessWire(request, 'PRIVATE STRING'),
-        ],
-        [
-            'accessor properties',
-            () => {
-                const response = {};
-                Object.defineProperty(response, 'success', {
-                    enumerable: true,
-                    get() {
-                        throw new Error('PRIVATE ACCESSOR');
-                    },
-                });
-                return response;
-            },
-        ],
-        [
-            'exotic response objects',
-            (request) => Object.assign(new Date(0), createSuccessWire(request)),
-        ],
-    ])('fixed-rejects %s in a success response', async (_label, makeWire) => {
-        const provider = createProvider();
-        chrome.runtime.sendMessage.mockImplementation((message, callback) => {
-            callback(makeWire(message));
-        });
-
-        const result = await provider.analyzeContext('hello', {
-            contextTypes: ['cultural'],
-            language: 'en',
-            targetLanguage: 'es',
-            platform: 'netflix',
-            requestId: 'analysis-11',
-        });
-
-        expect(result).toEqual({
-            success: false,
-            error: 'Invalid analysis response',
-            requestId: 'analysis-11',
-            shouldRetry: false,
-        });
-        expect(Object.isFrozen(result)).toBe(true);
-        expect(JSON.stringify(result)).not.toMatch(/PRIVATE|extra/);
-    });
-
-    test('projects a validated failure without inference', async () => {
-        const provider = createProvider();
-        chrome.runtime.sendMessage.mockImplementation((message, callback) => {
-            callback({
-                success: false,
-                error: 'Provider is temporarily busy',
-                shouldRetry: false,
-                requestId: message.requestId,
-            });
-        });
-
-        const result = await provider.analyzeContext('hello', {
-            contextTypes: ['cultural'],
-            language: 'en',
-            targetLanguage: 'es',
-            platform: 'netflix',
-            requestId: 'analysis-12',
-        });
-
-        expect(result).toEqual({
-            success: false,
-            error: 'Provider is temporarily busy',
-            requestId: 'analysis-12',
-            shouldRetry: false,
-        });
-        expect(Object.isFrozen(result)).toBe(true);
-        expect(provider.metrics.successCount).toBe(0);
-        expect(provider.metrics.errorCount).toBe(1);
-    });
-
-    test('stale same-ID settlement cannot clear its replacement', async () => {
-        const provider = createProvider();
-        const firstResponse = createDeferred();
-        const secondResponse = createDeferred();
-        const requests = [];
-
+    test('suppresses a response that arrives after cancellation or destruction', async () => {
+        const provider = await initializedProvider();
+        const cancelled = deferred();
+        const destroyed = deferred();
         chrome.runtime.sendMessage
-            .mockImplementationOnce((message) => {
-                requests.push(message);
-                return firstResponse.promise;
-            })
-            .mockImplementationOnce((message) => {
-                requests.push(message);
-                return secondResponse.promise;
-            });
+            .mockReturnValueOnce(cancelled.promise)
+            .mockReturnValueOnce(destroyed.promise);
 
-        const firstResult = provider.analyzeContext('first text', {
-            contextTypes: ['cultural'],
-            language: 'en',
-            targetLanguage: 'es',
-            platform: 'netflix',
-            requestId: 'analysis-shared',
-        });
-        const secondResult = provider.analyzeContext('second text', {
-            contextTypes: ['cultural'],
-            language: 'en',
-            targetLanguage: 'es',
-            platform: 'netflix',
-            requestId: 'analysis-shared',
+        const cancelledResult = analyze(provider, 'analysis-7');
+        provider.cancelRequest('analysis-7');
+        cancelled.resolve({ success: true });
+        await expect(cancelledResult).resolves.toEqual({
+            success: false,
+            error: 'Analysis request cancelled',
+            shouldRetry: false,
         });
 
-        firstResponse.resolve(
-            createSuccessWire(requests[0], { summary: 'Stale result' })
-        );
+        const destroyedResult = analyze(provider, 'analysis-8');
+        provider.destroy();
+        destroyed.resolve({ success: true });
+        await expect(destroyedResult).resolves.toEqual({
+            success: false,
+            error: 'Analysis request cancelled',
+            shouldRetry: false,
+        });
+    });
+
+    test('a stale same-ID completion cannot clear its replacement', async () => {
+        const provider = await initializedProvider();
+        const first = deferred();
+        const second = deferred();
+        chrome.runtime.sendMessage
+            .mockReturnValueOnce(first.promise)
+            .mockReturnValueOnce(second.promise);
+
+        const firstResult = analyze(provider, 'shared');
+        const secondResult = analyze(provider, 'shared');
+
+        first.resolve({ success: true, result: { analysis: {} } });
         await expect(firstResult).resolves.toEqual({
             success: false,
             error: 'Analysis request cancelled',
-            requestId: 'analysis-shared',
             shouldRetry: false,
         });
         expect(provider.activeRequests.size).toBe(1);
-        expect(provider.requestStartTimes.size).toBe(1);
 
-        secondResponse.resolve(
-            createSuccessWire(requests[1], { summary: 'Current result' })
-        );
+        second.resolve({ success: true, result: { analysis: {} } });
         await expect(secondResult).resolves.toEqual({
             success: true,
-            result: {
-                analysis: { summary: 'Current result' },
-                contextType: 'cultural',
-                contextTypes: ['cultural'],
-                isStructured: true,
-            },
-            requestId: 'analysis-shared',
+            result: { analysis: {} },
         });
         expect(provider.activeRequests.size).toBe(0);
-        expect(provider.requestStartTimes.size).toBe(0);
-        expect(provider.metrics).toMatchObject({
-            requestCount: 2,
-            successCount: 1,
-            errorCount: 1,
-        });
     });
 });

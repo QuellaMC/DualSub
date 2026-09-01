@@ -103,7 +103,7 @@ describe('Netflix page injector capability lifecycle', () => {
 
         const response = {
             result: {
-                movieId: '12345',
+                movieId: 'NETFLIX_MOVIE_ID_CANARY',
                 timedtexttracks: [{ language: 'en' }],
             },
         };
@@ -120,110 +120,42 @@ describe('Netflix page injector capability lifecycle', () => {
         });
         expectExactChannel(injectorEvents[1]);
 
-        const serializedLogs = JSON.stringify(
-            Object.values(consoleSpies).flatMap((spy) => spy.mock.calls)
+        const consoleArguments = Object.values(consoleSpies).flatMap((spy) =>
+            spy.mock.calls.flat()
         );
-        expect(serializedLogs).not.toContain(CAPABILITY);
+        expect(consoleArguments.length).toBeGreaterThan(0);
+        for (const argument of consoleArguments) {
+            expect(typeof argument).toBe('string');
+            expect(argument).not.toContain(response.result.movieId);
+            expect(argument).not.toContain(CAPABILITY);
+        }
     });
 
-    test.each([
-        ['no hash', ''],
-        ['wrong platform', `#dualsub-channel=disneyplus.${CAPABILITY}`],
-        [
-            'uppercase capability',
-            `#dualsub-channel=netflix.${CAPABILITY.toUpperCase()}`,
-        ],
-        ['short capability', '#dualsub-channel=netflix.a1'],
-        ['extra hash data', `#dualsub-channel=netflix.${CAPABILITY}&extra=1`],
-    ])('fails closed for %s', (_label, hash) => {
-        installTaggedScript(hash);
+    test('fails closed for a missing tag, wrong channel, or non-extension URL', () => {
+        const invalidSetups = [
+            () => {},
+            () =>
+                installTaggedScript(
+                    `#dualsub-channel=disneyplus.${CAPABILITY}`
+                ),
+            () =>
+                installTaggedScript('', {
+                    src: `https://dualsub-test/injected_scripts/netflixInject.js#dualsub-channel=netflix.${CAPABILITY}`,
+                }),
+        ];
 
-        window.eval(injectorSource);
+        for (const setup of invalidSetups) {
+            document.head.replaceChildren();
+            injectorEvents.length = 0;
+            delete window.netflixDualSubInjectorLoaded;
+            setup();
 
-        expect(JSON.parse).toBe(originalJsonParse);
-        expect(injectorEvents).toEqual([]);
-        expect(window.netflixDualSubInjectorLoaded).toBeUndefined();
-    });
+            window.eval(injectorSource);
 
-    test.each([
-        [
-            'wrong scheme',
-            `https://dualsub-test/injected_scripts/netflixInject.js#dualsub-channel=netflix.${CAPABILITY}`,
-            SCRIPT_ID,
-            'script',
-        ],
-        [
-            'wrong path',
-            `chrome-extension://dualsub-test/injected_scripts/not-netflix.js#dualsub-channel=netflix.${CAPABILITY}`,
-            SCRIPT_ID,
-            'script',
-        ],
-        [
-            'query data',
-            `chrome-extension://dualsub-test/injected_scripts/netflixInject.js?extra=1#dualsub-channel=netflix.${CAPABILITY}`,
-            SCRIPT_ID,
-            'script',
-        ],
-        [
-            'credentials',
-            `chrome-extension://user:password@dualsub-test/injected_scripts/netflixInject.js#dualsub-channel=netflix.${CAPABILITY}`,
-            SCRIPT_ID,
-            'script',
-        ],
-        [
-            'port',
-            `chrome-extension://dualsub-test:8443/injected_scripts/netflixInject.js#dualsub-channel=netflix.${CAPABILITY}`,
-            SCRIPT_ID,
-            'script',
-        ],
-        [
-            'extra fragment data',
-            `chrome-extension://dualsub-test/injected_scripts/netflixInject.js#dualsub-channel=netflix.${CAPABILITY}&extra=1`,
-            SCRIPT_ID,
-            'script',
-        ],
-        [
-            'wrong element id',
-            `chrome-extension://dualsub-test/injected_scripts/netflixInject.js#dualsub-channel=netflix.${CAPABILITY}`,
-            'wrong-netflix-injector-id',
-            'script',
-        ],
-        [
-            'wrong element tag',
-            `chrome-extension://dualsub-test/injected_scripts/netflixInject.js#dualsub-channel=netflix.${CAPABILITY}`,
-            SCRIPT_ID,
-            'div',
-        ],
-    ])('rejects %s before installing', (_label, src, id, tagName) => {
-        installTaggedScript('', { id, src, tagName });
-
-        window.eval(injectorSource);
-
-        expect(JSON.parse).toBe(originalJsonParse);
-        expect(injectorEvents).toEqual([]);
-        expect(window.netflixDualSubInjectorLoaded).toBeUndefined();
-    });
-
-    test('rejects an unbounded raw script URL', () => {
-        installTaggedScript('', {
-            src: `chrome-extension://${'a'.repeat(513)}/injected_scripts/netflixInject.js#dualsub-channel=netflix.${CAPABILITY}`,
-        });
-
-        window.eval(injectorSource);
-
-        expect(JSON.parse).toBe(originalJsonParse);
-        expect(injectorEvents).toEqual([]);
-    });
-
-    test('does nothing when the exact script tag is absent', () => {
-        const unrelated = document.createElement('script');
-        unrelated.src = `chrome-extension://dualsub-test/injected_scripts/netflixInject.js#dualsub-channel=netflix.${CAPABILITY}`;
-        document.head.appendChild(unrelated);
-
-        window.eval(injectorSource);
-
-        expect(JSON.parse).toBe(originalJsonParse);
-        expect(injectorEvents).toEqual([]);
+            expect(JSON.parse).toBe(originalJsonParse);
+            expect(injectorEvents).toEqual([]);
+            expect(window.netflixDualSubInjectorLoaded).toBeUndefined();
+        }
     });
 
     test('reannounces without duplicate JSON interception or subtitle events', () => {

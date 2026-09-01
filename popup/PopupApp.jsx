@@ -203,98 +203,70 @@ export function PopupApp() {
         }
     };
 
-    const handleFontSizeChange = (fontSize) => {
-        // Real-time update without saving
-        sendImmediateConfigUpdate({ subtitleFontSize: fontSize });
-    };
-
-    const handleFontSizeChangeEnd = async (fontSize, commit) => {
-        try {
-            await updateSetting('subtitleFontSize', fontSize);
-            showStatus(
-                `${t('statusFontSize', 'Font size: ')}${fontSize.toFixed(1)}vw.`
-            );
-        } catch (error) {
-            if (logger) {
-                logger.error('Error setting font size', error, {
-                    fontSize,
-                    component: 'subtitleFontSizeInput',
-                });
-            }
-            showStatus('Failed to update font size. Please try again.');
-            if (commit.isCurrent()) {
-                sendImmediateConfigUpdate({
-                    subtitleFontSize: commit.confirmedValue,
-                });
-            }
-            throw error;
-        }
-    };
-
-    const handleGapChange = (gap) => {
-        // Real-time update without saving
-        sendImmediateConfigUpdate({ subtitleGap: gap });
-    };
-
-    const handleGapChangeEnd = async (gap, commit) => {
-        try {
-            await updateSetting('subtitleGap', gap);
-            showStatus(
-                `${t('statusVerticalGap', 'Vertical gap: ')}${gap.toFixed(1)}em.`
-            );
-        } catch (error) {
-            if (logger) {
-                logger.error('Error setting subtitle gap', error, {
-                    gap,
-                    component: 'subtitleGapInput',
-                });
-            }
-            showStatus('Failed to update subtitle gap. Please try again.');
-            if (commit.isCurrent()) {
-                sendImmediateConfigUpdate({
-                    subtitleGap: commit.confirmedValue,
-                });
-            }
-            throw error;
-        }
-    };
-
-    const handleVerticalPositionChange = (verticalPosition) => {
-        // Real-time update without saving
-        sendImmediateConfigUpdate({
-            subtitleVerticalPosition: verticalPosition,
-        });
-    };
-
-    const handleVerticalPositionChangeEnd = async (
-        verticalPosition,
-        commit
+    const persistSlider = async (
+        key,
+        value,
+        commit,
+        successMessage,
+        failureMessage,
+        component
     ) => {
         try {
-            await updateSetting('subtitleVerticalPosition', verticalPosition);
-            showStatus(
-                `${t('statusVerticalPosition', 'Vertical position: ')}${verticalPosition.toFixed(1)}.`
-            );
+            await updateSetting(key, value);
+            showStatus(successMessage);
         } catch (error) {
-            if (logger) {
-                logger.error(
-                    'Error setting subtitle vertical position',
-                    error,
-                    {
-                        verticalPosition,
-                        component: 'subtitleVerticalPositionInput',
-                    }
-                );
-            }
-            showStatus('Failed to update vertical position. Please try again.');
+            logger?.error('Error updating slider setting', error, {
+                component,
+                key,
+                value,
+            });
+            showStatus(failureMessage);
             if (commit.isCurrent()) {
                 sendImmediateConfigUpdate({
-                    subtitleVerticalPosition: commit.confirmedValue,
+                    [key]: commit.getConfirmedValue(),
                 });
             }
             throw error;
         }
     };
+
+    const handleFontSizeChange = (value) =>
+        sendImmediateConfigUpdate({ subtitleFontSize: value });
+    const handleFontSizeChangeEnd = (value, commit) =>
+        persistSlider(
+            'subtitleFontSize',
+            value,
+            commit,
+            `${t('statusFontSize', 'Font size: ')}${value.toFixed(1)}vw.`,
+            'Failed to update font size. Please try again.',
+            'subtitleFontSizeInput'
+        );
+
+    const handleGapChange = (value) =>
+        sendImmediateConfigUpdate({ subtitleGap: value });
+    const handleGapChangeEnd = (value, commit) =>
+        persistSlider(
+            'subtitleGap',
+            value,
+            commit,
+            `${t('statusVerticalGap', 'Vertical gap: ')}${value.toFixed(1)}em.`,
+            'Failed to update subtitle gap. Please try again.',
+            'subtitleGapInput'
+        );
+
+    const handleVerticalPositionChange = (value) =>
+        sendImmediateConfigUpdate({
+            subtitleVerticalPosition: value,
+        });
+    const handleVerticalPositionChangeEnd = (value, commit) =>
+        persistSlider(
+            'subtitleVerticalPosition',
+            value,
+            commit,
+            `${t('statusVerticalPosition', 'Vertical position: ')}${value.toFixed(1)}.`,
+            'Failed to update vertical position. Please try again.',
+            'subtitleVerticalPositionInput'
+        );
 
     const handleTimeOffsetChange = async (value) => {
         try {

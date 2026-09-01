@@ -5,10 +5,39 @@ import { AppleStyleFileButton } from '../AppleStyleFileButton.jsx';
 import { TestResultDisplay } from '../TestResultDisplay.jsx';
 import { useVertexTest } from '../../hooks/useVertexTest.js';
 import { useCommittedTextField } from '../../hooks/useCommittedTextField.js';
-import { VERTEX_LOCATIONS as SHARED_VERTEX_LOCATIONS } from '../../../content_scripts/shared/constants/providers.js';
+import { VERTEX_LOCATIONS } from '../../../content_scripts/shared/constants/providers.js';
 import { validateSetting } from '../../../config/configSchema.js';
 
-export const VERTEX_LOCATIONS = SHARED_VERTEX_LOCATIONS;
+const DEFAULT_LOCATION = 'us-central1';
+const DEFAULT_MODEL = 'gemini-2.5-flash';
+
+function CommittedProviderField({ t, id, label, placeholder, field }) {
+    const errorId = `${id}Error`;
+    return (
+        <div className="setting">
+            <label htmlFor={id}>{label}</label>
+            <input
+                type="text"
+                id={id}
+                placeholder={placeholder}
+                value={field.value}
+                aria-invalid={field.invalid}
+                aria-describedby={field.invalid ? errorId : undefined}
+                onChange={(event) => field.change(event.target.value)}
+                onBlur={() => void field.commit()}
+                onKeyDown={field.handleKeyDown}
+            />
+            {field.invalid && (
+                <span id={errorId} className="settings-field-error">
+                    {t(
+                        'invalidSettingValue',
+                        'Enter a valid value before saving.'
+                    )}
+                </span>
+            )}
+        </div>
+    );
+}
 
 export function VertexProviderCard({
     t,
@@ -55,32 +84,29 @@ export function VertexProviderCard({
         void initializeStatus(accessToken, projectId);
     }, [accessToken, projectId, initializeStatus]);
 
-    const handleTest = () => {
-        const loc = location || 'us-central1';
-        const mdl = model || 'gemini-2.5-flash';
-        testConnection(accessToken, projectId, loc, mdl);
-    };
+    const testCredentials = (token, importedProjectId) =>
+        testConnection(
+            token,
+            importedProjectId,
+            location || DEFAULT_LOCATION,
+            model || DEFAULT_MODEL
+        );
 
     const handleFileSelect = async (e) => {
         const file = e.target.files?.[0];
-        if (file) {
-            try {
-                const importedCredentials =
-                    await importServiceAccountJson(file);
-                if (importedCredentials) {
-                    const loc = location || 'us-central1';
-                    const mdl = model || 'gemini-2.5-flash';
-                    await testConnection(
-                        importedCredentials.accessToken,
-                        importedCredentials.projectId,
-                        loc,
-                        mdl
-                    );
-                }
-            } catch {
-                // Error already handled in hook
+        if (!file) return;
+
+        try {
+            const credentials = await importServiceAccountJson(file);
+            if (credentials) {
+                await testCredentials(
+                    credentials.accessToken,
+                    credentials.projectId
+                );
             }
-            // Clear file input so same file can be re-selected
+        } catch {
+            // The hook owns import feedback.
+        } finally {
             if (fileInputRef.current) {
                 fileInputRef.current.value = '';
             }
@@ -102,7 +128,6 @@ export function VertexProviderCard({
                 'Enter a short-lived access token, or import a service account JSON once to generate one. The service-account key is never stored.'
             )}
         >
-            {/* Hidden file input for service account JSON */}
             <input
                 ref={fileInputRef}
                 type="file"
@@ -112,7 +137,6 @@ export function VertexProviderCard({
                 aria-label="Upload service account JSON"
             />
 
-            {/* Service Account Import Section */}
             <div className="setting">
                 <label>
                     {t('vertexServiceAccountLabel', 'Service Account JSON:')}
@@ -130,7 +154,6 @@ export function VertexProviderCard({
                 <TestResultDisplay result={importResult} />
             </div>
 
-            {/* Manual Configuration */}
             <div className="setting">
                 <label htmlFor="vertexAccessToken">
                     {t('vertexAccessTokenLabel', 'Access Token:')}
@@ -146,39 +169,13 @@ export function VertexProviderCard({
                 />
             </div>
 
-            <div className="setting">
-                <label htmlFor="vertexProjectId">
-                    {t('vertexProjectIdLabel', 'Project ID:')}
-                </label>
-                <input
-                    type="text"
-                    id="vertexProjectId"
-                    placeholder="your-gcp-project-id"
-                    value={projectIdField.value}
-                    aria-invalid={projectIdField.invalid}
-                    aria-describedby={
-                        projectIdField.invalid
-                            ? 'vertexProjectIdError'
-                            : undefined
-                    }
-                    onChange={(event) =>
-                        projectIdField.change(event.target.value)
-                    }
-                    onBlur={() => void projectIdField.commit()}
-                    onKeyDown={projectIdField.handleKeyDown}
-                />
-                {projectIdField.invalid && (
-                    <span
-                        id="vertexProjectIdError"
-                        className="settings-field-error"
-                    >
-                        {t(
-                            'invalidSettingValue',
-                            'Enter a valid value before saving.'
-                        )}
-                    </span>
-                )}
-            </div>
+            <CommittedProviderField
+                t={t}
+                id="vertexProjectId"
+                label={t('vertexProjectIdLabel', 'Project ID:')}
+                placeholder="your-gcp-project-id"
+                field={projectIdField}
+            />
 
             <div className="setting">
                 <label htmlFor="vertexLocation">
@@ -186,7 +183,7 @@ export function VertexProviderCard({
                 </label>
                 <select
                     id="vertexLocation"
-                    value={location || 'us-central1'}
+                    value={location || DEFAULT_LOCATION}
                     onChange={(e) => onLocationChange(e.target.value)}
                 >
                     {VERTEX_LOCATIONS.map((region) => (
@@ -197,41 +194,18 @@ export function VertexProviderCard({
                 </select>
             </div>
 
-            <div className="setting">
-                <label htmlFor="vertexModel">
-                    {t('vertexModelLabel', 'Model:')}
-                </label>
-                <input
-                    type="text"
-                    id="vertexModel"
-                    placeholder="gemini-2.5-flash"
-                    value={modelField.value}
-                    aria-invalid={modelField.invalid}
-                    aria-describedby={
-                        modelField.invalid ? 'vertexModelError' : undefined
-                    }
-                    onChange={(event) => modelField.change(event.target.value)}
-                    onBlur={() => void modelField.commit()}
-                    onKeyDown={modelField.handleKeyDown}
-                />
-                {modelField.invalid && (
-                    <span
-                        id="vertexModelError"
-                        className="settings-field-error"
-                    >
-                        {t(
-                            'invalidSettingValue',
-                            'Enter a valid value before saving.'
-                        )}
-                    </span>
-                )}
-            </div>
+            <CommittedProviderField
+                t={t}
+                id="vertexModel"
+                label={t('vertexModelLabel', 'Model:')}
+                placeholder={DEFAULT_MODEL}
+                field={modelField}
+            />
 
-            {/* Test Connection */}
             <div className="setting openai-test-setting">
                 <TestResultDisplay result={testResult} />
                 <SparkleButton
-                    onClick={handleTest}
+                    onClick={() => testCredentials(accessToken, projectId)}
                     disabled={testing || !accessToken || !projectId}
                 >
                     {testing
@@ -240,7 +214,6 @@ export function VertexProviderCard({
                 </SparkleButton>
             </div>
 
-            {/* Provider Info */}
             <div className="provider-info">
                 <div className="info-item">
                     <strong>{t('providerFeatures', 'Features:')}</strong>

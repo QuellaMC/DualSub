@@ -161,8 +161,3 @@ async function runMigration() {
         removed,
     };
 }
-
-/** Reset single-flight state for isolated tests. */
-export function resetConfigurationMigrationForTests() {
-    migrationPromise = undefined;
-}

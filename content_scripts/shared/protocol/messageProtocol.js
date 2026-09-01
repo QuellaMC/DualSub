@@ -16,39 +16,95 @@ export const MessageSenderRoles = Object.freeze({
 
 const ABSENT_OWN_PROPERTY = Symbol('absent-own-property');
 const INVALID_OWN_PROPERTY = Symbol('invalid-own-property');
-const MESSAGE_ACTION_CATALOG = new Set(Object.values(MessageActions));
+const MESSAGE_ACTIONS = new Set(Object.values(MessageActions));
 const MAX_PROTOCOL_ENVELOPE_KEYS = 32;
 
-const REGISTRATION_MESSAGE_KEYS = Object.freeze([
-    'action',
-    'data',
-    'source',
-    'timestamp',
-]);
-const BINDING_CONFIRMATION_MESSAGE_KEYS = Object.freeze(['action', 'data']);
-const BINDING_KEYS = Object.freeze(['registrationId', 'tabId', 'windowId']);
-const SIDEPANEL_MESSAGE_KEYS = Object.freeze(['action', 'data']);
-const SIDEPANEL_TAB_BINDING_KEYS = Object.freeze(['tabId', 'windowId']);
-const CONTENT_SELECTION_SNAPSHOT_KEYS = Object.freeze([
-    'lifecycleGeneration',
-    'selectionRevision',
-    'renderRevision',
-    'reason',
-    'entries',
-]);
-const SELECTION_SNAPSHOT_RESPONSE_KEYS = Object.freeze(['success']);
-const SIDEPANEL_WORD_INTENT_MESSAGE_KEYS = Object.freeze(['action', 'options']);
-const SIDEPANEL_WORD_INTENT_OPTIONS_KEYS = Object.freeze([
-    'autoOpen',
-    'pauseVideo',
-]);
+const ROUTES = Object.freeze({
+    [MessageActions.TRANSLATE]: Object.freeze({
+        roles: Object.freeze([MessageSenderRoles.CONTENT]),
+        keys: Object.freeze([
+            'action',
+            'text',
+            'targetLang',
+            'cueStart',
+            'cueVideoId',
+        ]),
+    }),
+    [MessageActions.ANALYZE_CONTEXT]: Object.freeze({
+        roles: Object.freeze([
+            MessageSenderRoles.CONTENT,
+            MessageSenderRoles.SIDEPANEL,
+        ]),
+        keysByRole: Object.freeze({
+            [MessageSenderRoles.CONTENT]: Object.freeze([
+                'action',
+                'text',
+                'contextTypes',
+                'language',
+                'targetLanguage',
+                'platform',
+                'requestId',
+            ]),
+            [MessageSenderRoles.SIDEPANEL]: Object.freeze([
+                'action',
+                'text',
+                'contextTypes',
+                'targetLanguage',
+                'requestId',
+            ]),
+        }),
+    }),
+    [MessageActions.CONFIG_CHANGED]: Object.freeze({
+        roles: Object.freeze([MessageSenderRoles.POPUP]),
+        keys: Object.freeze(['action', 'changes']),
+    }),
+    [MessageActions.LOGGING_LEVEL_CHANGED]: Object.freeze({
+        roles: Object.freeze([MessageSenderRoles.BACKGROUND]),
+        keys: Object.freeze(['action', 'level']),
+    }),
+    [MessageActions.SIDEPANEL_PAUSE_VIDEO]: Object.freeze({
+        roles: Object.freeze([MessageSenderRoles.BACKGROUND]),
+        keys: Object.freeze(['action']),
+    }),
+    [MessageActions.SIDEPANEL_WORD_SELECTED]: Object.freeze({
+        roles: Object.freeze([MessageSenderRoles.CONTENT]),
+        keys: Object.freeze(['action', 'options']),
+    }),
+});
+
+const ANALYZE_SNAPSHOT_LIMITS = Object.freeze({
+    maxDepth: 8,
+    maxEntries: 256,
+    maxStringBytes: 65536,
+    maxTotalBytes: 65536,
+});
+const CONFIG_CHANGED_LIMITS = Object.freeze({
+    maxDepth: 6,
+    maxEntries: 64,
+    maxStringBytes: 4096,
+    maxTotalBytes: 16384,
+});
 const SIDEPANEL_WORD_INTENT_LIMITS = Object.freeze({
     maxDepth: 2,
     maxEntries: 8,
     maxStringBytes: 64,
     maxTotalBytes: 256,
 });
-const SELECTION_STATE_DATA_KEYS = Object.freeze(['binding', 'selection']);
+const SELECTION_SNAPSHOT_LIMITS = Object.freeze({
+    maxDepth: 4,
+    maxEntries: 256,
+    maxStringBytes: 4096,
+    maxTotalBytes: 6144,
+});
+
+const BINDING_KEYS = Object.freeze(['registrationId', 'tabId', 'windowId']);
+const CONTENT_SELECTION_KEYS = Object.freeze([
+    'lifecycleGeneration',
+    'selectionRevision',
+    'renderRevision',
+    'reason',
+    'entries',
+]);
 const SELECTION_STATE_KEYS = Object.freeze([
     'selectionOwnerGeneration',
     'selectionRevision',
@@ -56,7 +112,6 @@ const SELECTION_STATE_KEYS = Object.freeze([
     'reason',
     'entries',
 ]);
-const REQUEST_ID_KEYS = Object.freeze(['requestId']);
 const SELECTION_REMOVAL_REQUEST_KEYS = Object.freeze([
     'binding',
     'requestId',
@@ -72,18 +127,13 @@ const SELECTION_REMOVAL_COMMAND_KEYS = Object.freeze([
     'renderRevision',
     'wordIndex',
 ]);
-const SELECTION_REMOVAL_COMMAND_RESPONSE_KEYS = Object.freeze([
-    'success',
-    'requestId',
-]);
 const SELECTION_REMOVAL_RESULT_KEYS = Object.freeze([
     'binding',
     'requestId',
     'selectionOwnerGeneration',
     'status',
 ]);
-const SELECTION_ENTRY_KEYS = Object.freeze(['wordIndex', 'word']);
-const SELECTION_REASONS = Object.freeze([
+const SELECTION_REASONS = new Set([
     'toggle',
     'add',
     'remove',
@@ -91,150 +141,74 @@ const SELECTION_REASONS = Object.freeze([
     'restore',
     'subtitle-change',
 ]);
-const SELECTION_SNAPSHOT_LIMITS = Object.freeze({
-    maxDepth: 4,
-    maxEntries: 256,
-    maxStringBytes: 4096,
-    maxTotalBytes: 6144,
-});
+const MAX_CONFIG_CHANGED_KEYS = 32;
 const MAX_SELECTION_ENTRIES = 64;
 const MAX_SELECTION_WORD_BYTES = 256;
 const MAX_SELECTION_JOINED_CODE_UNITS = 500;
 const MAX_SELECTION_JOINED_BYTES = 4096;
-const TRANSLATION_REQUEST_KEYS = Object.freeze([
-    'action',
-    'text',
-    'targetLang',
-    'cueStart',
-    'cueVideoId',
-]);
-const TRANSLATION_REQUEST_INPUT_KEYS = Object.freeze([
-    'text',
-    'targetLang',
-    'cueStart',
-    'cueVideoId',
-]);
-const TRANSLATION_SUCCESS_INPUT_KEYS = Object.freeze([
-    'translatedText',
-    'cached',
-    'processingTime',
-]);
-const TRANSLATION_FAILURE_INPUT_KEYS = Object.freeze([
-    'retryable',
-    'retryAfter',
-]);
-const MAX_TRANSLATION_RETRY_AFTER_MS = 30 * 24 * 60 * 60 * 1000;
-const TRANSLATION_SUCCESS_RESPONSE_KEYS = Object.freeze([
-    'translatedText',
-    'originalText',
-    'sourceLanguage',
-    'targetLanguage',
-    'cached',
-    'processingTime',
-    'cueStart',
-    'cueVideoId',
-]);
-const TRANSLATION_FAILURE_RESPONSE_KEYS = Object.freeze([
-    'error',
-    'errorType',
-    'retryable',
-    'retryAfter',
-    'cueStart',
-    'cueVideoId',
-]);
-const ANALYZE_CONTENT_REQUEST_KEYS = Object.freeze([
-    'action',
-    'text',
-    'contextTypes',
-    'language',
-    'targetLanguage',
-    'platform',
-    'requestId',
-]);
-const ANALYZE_CONTENT_REQUEST_INPUT_KEYS = Object.freeze([
-    'text',
-    'contextTypes',
-    'language',
-    'targetLanguage',
-    'platform',
-    'requestId',
-]);
-const ANALYZE_SIDEPANEL_REQUEST_KEYS = Object.freeze([
-    'action',
-    'text',
-    'contextTypes',
-    'targetLanguage',
-    'requestId',
-]);
-const ANALYZE_SIDEPANEL_SINGLE_REQUEST_KEYS = Object.freeze([
-    ...ANALYZE_SIDEPANEL_REQUEST_KEYS,
-    'contextType',
-]);
-const ANALYZE_SIDEPANEL_REQUEST_INPUT_KEYS = Object.freeze([
-    'text',
-    'contextTypes',
-    'targetLanguage',
-    'requestId',
-]);
-const ANALYZE_SUCCESS_INPUT_KEYS = Object.freeze(['analysis']);
-const ANALYZE_FAILURE_INPUT_KEYS = Object.freeze(['error', 'shouldRetry']);
-const ANALYZE_SUCCESS_RESPONSE_KEYS = Object.freeze([
-    'success',
-    'result',
-    'requestId',
-]);
-const ANALYZE_SUCCESS_RESULT_KEYS = Object.freeze([
-    'analysis',
-    'contextType',
-    'contextTypes',
-    'isStructured',
-]);
-const ANALYZE_FAILURE_RESPONSE_KEYS = Object.freeze([
-    'success',
-    'error',
-    'shouldRetry',
-    'requestId',
-]);
-const ANALYZE_SNAPSHOT_LIMITS = Object.freeze({
-    maxDepth: 8,
-    maxEntries: 256,
-    maxStringBytes: 65536,
-    maxTotalBytes: 65536,
-});
-const CONFIG_CHANGED_MESSAGE_KEYS = Object.freeze(['action', 'changes']);
-const LOGGING_LEVEL_CHANGED_MESSAGE_KEYS = Object.freeze(['action', 'level']);
-const SIDEPANEL_PAUSE_VIDEO_MESSAGE_KEYS = Object.freeze(['action']);
-const CONTENT_CONTROL_SUCCESS_RESULT_KEYS = Object.freeze(['success']);
-const CONTENT_CONTROL_FAILURE_RESULT_KEYS = Object.freeze(['success', 'error']);
-const CONTENT_CONTROL_SUCCESS_RESPONSE_KEYS = Object.freeze([
-    'action',
-    'success',
-]);
-const CONTENT_CONTROL_FAILURE_RESPONSE_KEYS = Object.freeze([
-    'action',
-    'success',
-    'error',
-]);
-const BACKGROUND_READINESS_REQUEST_KEYS = Object.freeze(['action']);
-const BACKGROUND_READINESS_RESULT_KEYS = Object.freeze(['ready', 'services']);
-const BACKGROUND_READINESS_RESPONSE_KEYS = Object.freeze([
-    'action',
-    'ready',
-    'services',
-]);
-const BACKGROUND_SERVICE_STATE_KEYS = Object.freeze([
-    'translation',
-    'subtitle',
-    'aiContext',
-    'aiContextInitialized',
-]);
-const CONFIG_CHANGED_LIMITS = Object.freeze({
-    maxDepth: 6,
-    maxEntries: 64,
-    maxStringBytes: 4096,
-    maxTotalBytes: 16384,
-});
-const MAX_CONFIG_CHANGED_KEYS = 32;
+
+function isPlainRecord(value) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        return false;
+    }
+    try {
+        const prototype = Object.getPrototypeOf(value);
+        return prototype === Object.prototype || prototype === null;
+    } catch (_) {
+        return false;
+    }
+}
+
+function readExactRecord(record, expectedKeys) {
+    if (!isPlainRecord(record)) return null;
+    try {
+        const keys = Reflect.ownKeys(record);
+        if (
+            keys.length !== expectedKeys.length ||
+            keys.some((key) => typeof key !== 'string') ||
+            !expectedKeys.every((key) => Object.hasOwn(record, key))
+        ) {
+            return null;
+        }
+        return record;
+    } catch (_) {
+        return null;
+    }
+}
+
+function readRoute(message, action, senderRole) {
+    const route = ROUTES[action];
+    if (!route) return null;
+    if (senderRole !== undefined && !route.roles.includes(senderRole)) {
+        return null;
+    }
+    const expectedKeys = route.keysByRole?.[senderRole] ?? route.keys;
+    if (!expectedKeys) return null;
+    const record = readExactRecord(message, expectedKeys);
+    return record?.action === action ? record : null;
+}
+
+function readDenseArray(value) {
+    try {
+        if (
+            !Array.isArray(value) ||
+            Object.getPrototypeOf(value) !== Array.prototype ||
+            Object.getOwnPropertySymbols(value).length > 0
+        ) {
+            return null;
+        }
+        const keys = Object.keys(value);
+        if (
+            keys.length !== value.length ||
+            keys.some((key, index) => key !== String(index))
+        ) {
+            return null;
+        }
+        return [...value];
+    } catch (_) {
+        return null;
+    }
+}
 
 function isNonBlankString(value) {
     return typeof value === 'string' && value.trim().length > 0;
@@ -244,428 +218,205 @@ function isNonBlankTrimmedString(value) {
     return isNonBlankString(value) && value === value.trim();
 }
 
-function isValidTranslationRequestValues(values) {
+function isPositiveSafeInteger(value) {
+    return Number.isSafeInteger(value) && value > 0;
+}
+
+function isNonnegativeSafeInteger(value) {
+    return Number.isSafeInteger(value) && value >= 0;
+}
+
+function isBoundedError(value) {
     return (
-        values.action === MessageActions.TRANSLATE &&
-        isNonBlankString(values.text) &&
-        isNonBlankTrimmedString(values.targetLang) &&
-        Number.isFinite(values.cueStart) &&
-        values.cueStart >= 0 &&
-        isNonBlankTrimmedString(values.cueVideoId)
+        isNonBlankTrimmedString(value) &&
+        String.prototype.isWellFormed.call(value) &&
+        utf8ByteLength(value) <= 512
     );
 }
 
-function isValidTranslationSuccessResultValues(values) {
-    return (
-        isNonBlankString(values.translatedText) &&
-        typeof values.cached === 'boolean' &&
-        Number.isSafeInteger(values.processingTime) &&
-        values.processingTime >= 0
-    );
-}
-
-function isValidTranslationSuccessValues(values, request) {
-    return (
-        isValidTranslationSuccessResultValues(values) &&
-        values.originalText === request.text &&
-        values.sourceLanguage === 'auto' &&
-        values.targetLanguage === request.targetLang &&
-        Object.is(values.cueStart, request.cueStart) &&
-        values.cueVideoId === request.cueVideoId
-    );
-}
-
-function isValidTranslationRetryAfter(value) {
-    return (
-        value === null ||
-        (Number.isSafeInteger(value) &&
-            value >= 0 &&
-            value <= MAX_TRANSLATION_RETRY_AFTER_MS)
-    );
-}
-
-function isValidTranslationFailureResultValues(values) {
-    return (
-        typeof values.retryable === 'boolean' &&
-        isValidTranslationRetryAfter(values.retryAfter)
-    );
-}
-
-function isValidTranslationFailureValues(values, request) {
-    return (
-        values.error === 'Translation failed' &&
-        values.errorType === 'TranslationError' &&
-        isValidTranslationFailureResultValues(values) &&
-        Object.is(values.cueStart, request.cueStart) &&
-        values.cueVideoId === request.cueVideoId
-    );
-}
-
-function copyTranslationRequest(values) {
-    return {
-        action: MessageActions.TRANSLATE,
-        text: values.text,
-        targetLang: values.targetLang,
-        cueStart: values.cueStart,
-        cueVideoId: values.cueVideoId,
-    };
-}
-
-function copyTranslationSuccessResponse(request, values) {
-    return {
-        translatedText: values.translatedText,
-        originalText: request.text,
-        sourceLanguage: 'auto',
-        targetLanguage: request.targetLang,
-        cached: values.cached,
-        processingTime: values.processingTime,
-        cueStart: request.cueStart,
-        cueVideoId: request.cueVideoId,
-    };
-}
-
-function copyTranslationFailureResponse(request, values) {
-    return {
-        error: 'Translation failed',
-        errorType: 'TranslationError',
-        retryable: values.retryable,
-        retryAfter: values.retryAfter,
-        cueStart: request.cueStart,
-        cueVideoId: request.cueVideoId,
-    };
-}
-
-export function buildTranslationRequestMessage(input) {
-    const values = readExactOwnDataRecord(
-        input,
-        TRANSLATION_REQUEST_INPUT_KEYS
-    );
-    const request = values && copyTranslationRequest(values);
-    if (!request || !isValidTranslationRequestValues(request)) {
-        throw new TypeError('Invalid translation request');
-    }
-    return Object.freeze(request);
-}
-
-export function parseTranslationRequestMessage(message) {
-    const values = readExactOwnDataRecord(message, TRANSLATION_REQUEST_KEYS);
-    if (!values || !isValidTranslationRequestValues(values)) return null;
-
-    return Object.freeze(copyTranslationRequest(values));
-}
-
-export function buildTranslationSuccessResponse(expectedRequest, result) {
-    const request = parseTranslationRequestMessage(expectedRequest);
-    if (!request) throw new TypeError('Invalid expected translation request');
-    const values = readExactOwnDataRecord(
-        result,
-        TRANSLATION_SUCCESS_INPUT_KEYS
-    );
-    if (!values || !isValidTranslationSuccessResultValues(values)) {
-        throw new TypeError('Invalid translation success result');
-    }
-
-    return Object.freeze(copyTranslationSuccessResponse(request, values));
-}
-
-export function buildTranslationFailureResponse(expectedRequest, failure) {
-    const request = parseTranslationRequestMessage(expectedRequest);
-    if (!request) throw new TypeError('Invalid expected translation request');
-    const values = readExactOwnDataRecord(
-        failure,
-        TRANSLATION_FAILURE_INPUT_KEYS
-    );
-    if (!values || !isValidTranslationFailureResultValues(values)) {
-        throw new TypeError('Invalid translation failure result');
-    }
-
-    return Object.freeze(copyTranslationFailureResponse(request, values));
-}
-
-export function parseTranslationResponseMessage(message, expectedRequest) {
-    const request = parseTranslationRequestMessage(expectedRequest);
-    if (!request) return null;
-    const successValues = readExactOwnDataRecord(
-        message,
-        TRANSLATION_SUCCESS_RESPONSE_KEYS
-    );
+function normalizeTranslationRequest(value, exact = false) {
+    const input = exact
+        ? readRoute(value, MessageActions.TRANSLATE)
+        : isPlainRecord(value)
+          ? value
+          : null;
     if (
-        successValues &&
-        isValidTranslationSuccessValues(successValues, request)
-    ) {
-        return Object.freeze({
-            status: 'success',
-            ...copyTranslationSuccessResponse(request, successValues),
-        });
-    }
-
-    const failureValues = readExactOwnDataRecord(
-        message,
-        TRANSLATION_FAILURE_RESPONSE_KEYS
-    );
-    if (
-        !failureValues ||
-        !isValidTranslationFailureValues(failureValues, request)
+        !input ||
+        (exact && input.action !== MessageActions.TRANSLATE) ||
+        !isNonBlankString(input.text) ||
+        !isNonBlankTrimmedString(input.targetLang) ||
+        !Number.isFinite(input.cueStart) ||
+        input.cueStart < 0 ||
+        !isNonBlankTrimmedString(input.cueVideoId)
     ) {
         return null;
     }
-
     return Object.freeze({
-        status: 'failure',
-        ...copyTranslationFailureResponse(request, failureValues),
+        action: MessageActions.TRANSLATE,
+        text: input.text,
+        targetLang: input.targetLang,
+        cueStart: input.cueStart,
+        cueVideoId: input.cueVideoId,
     });
 }
 
-function readDensePlainArray(value) {
-    try {
-        if (
-            !Array.isArray(value) ||
-            Object.getPrototypeOf(value) !== Array.prototype
-        ) {
-            return null;
-        }
-
-        const lengthDescriptor = Object.getOwnPropertyDescriptor(
-            value,
-            'length'
-        );
-        if (
-            !lengthDescriptor ||
-            !Object.hasOwn(lengthDescriptor, 'value') ||
-            !Number.isSafeInteger(lengthDescriptor.value) ||
-            lengthDescriptor.value < 0
-        ) {
-            return null;
-        }
-
-        const length = lengthDescriptor.value;
-        const keys = Reflect.ownKeys(value);
-        if (keys.length !== length + 1 || !keys.includes('length')) return null;
-
-        for (const key of keys) {
-            if (key === 'length') continue;
-            if (typeof key !== 'string') return null;
-            const index = Number(key);
-            if (
-                !Number.isSafeInteger(index) ||
-                index < 0 ||
-                index >= length ||
-                String(index) !== key
-            ) {
-                return null;
-            }
-        }
-
-        const values = [];
-        for (let index = 0; index < length; index += 1) {
-            const descriptor = Object.getOwnPropertyDescriptor(
-                value,
-                String(index)
-            );
-            if (!descriptor || !Object.hasOwn(descriptor, 'value')) return null;
-            values.push(descriptor.value);
-        }
-        return values;
-    } catch (_) {
-        return null;
-    }
-}
-
-function normalizeAnalyzeContextTypesForBuilder(value) {
-    const inputTypes = readDensePlainArray(value);
-    if (!inputTypes) return null;
-
-    const normalizedTypes = [];
-    for (const type of inputTypes) {
-        if (CONTEXT_TYPES.includes(type) && !normalizedTypes.includes(type)) {
-            normalizedTypes.push(type);
-        }
-    }
-    if (normalizedTypes.length < 1 || normalizedTypes.length > 3) return null;
-    return normalizedTypes;
-}
-
-function parseCanonicalAnalyzeContextTypes(value) {
-    const contextTypes = readDensePlainArray(value);
-    if (!contextTypes || contextTypes.length < 1 || contextTypes.length > 3) {
-        return null;
-    }
-
-    const seen = new Set();
-    for (const type of contextTypes) {
-        if (!CONTEXT_TYPES.includes(type) || seen.has(type)) return null;
-        seen.add(type);
-    }
-    return contextTypes;
-}
-
-function isValidAnalyzeContentValues(values) {
-    return (
-        isNonBlankString(values.text) &&
-        isNonBlankString(values.language) &&
-        isNonBlankString(values.targetLanguage) &&
-        isNonBlankString(values.platform) &&
-        isNonBlankString(values.requestId)
-    );
-}
-
-function isValidAnalyzeSidePanelValues(values) {
-    return (
-        isNonBlankString(values.text) &&
-        isNonBlankString(values.targetLanguage) &&
-        isNonBlankString(values.requestId)
-    );
-}
-
-function copyAnalyzeContentRequest(values, contextTypes) {
-    return {
-        action: MessageActions.ANALYZE_CONTEXT,
-        text: values.text,
-        contextTypes: Object.freeze([...contextTypes]),
-        language: values.language,
-        targetLanguage: values.targetLanguage,
-        platform: values.platform,
-        requestId: values.requestId,
-    };
-}
-
-function copyAnalyzeSidePanelRequest(values, contextTypes) {
-    const request = {
-        action: MessageActions.ANALYZE_CONTEXT,
-        text: values.text,
-        contextTypes: Object.freeze([...contextTypes]),
-        targetLanguage: values.targetLanguage,
-        requestId: values.requestId,
-    };
-    if (contextTypes.length === 1) request.contextType = contextTypes[0];
+export function buildTranslationRequestMessage(input) {
+    const request = normalizeTranslationRequest(input);
+    if (!request) throw new TypeError('Invalid translation request');
     return request;
 }
 
-export function buildAnalyzeContextRequestMessage(senderRole, input) {
-    let values;
-    if (senderRole === MessageSenderRoles.CONTENT) {
-        values = readExactOwnDataRecord(
-            input,
-            ANALYZE_CONTENT_REQUEST_INPUT_KEYS
-        );
-        const contextTypes =
-            values &&
-            isValidAnalyzeContentValues(values) &&
-            normalizeAnalyzeContextTypesForBuilder(values.contextTypes);
-        if (!contextTypes) {
-            throw new TypeError('Invalid content analyze-context request');
-        }
-        return Object.freeze(copyAnalyzeContentRequest(values, contextTypes));
-    }
-
-    if (senderRole === MessageSenderRoles.SIDEPANEL) {
-        values = readExactOwnDataRecord(
-            input,
-            ANALYZE_SIDEPANEL_REQUEST_INPUT_KEYS
-        );
-        const contextTypes =
-            values &&
-            isValidAnalyzeSidePanelValues(values) &&
-            normalizeAnalyzeContextTypesForBuilder(values.contextTypes);
-        if (!contextTypes) {
-            throw new TypeError('Invalid side-panel analyze-context request');
-        }
-        return Object.freeze(copyAnalyzeSidePanelRequest(values, contextTypes));
-    }
-
-    throw new TypeError('Invalid analyze-context sender role');
+export function parseTranslationRequestMessage(message) {
+    return normalizeTranslationRequest(message, true);
 }
 
-export function parseAnalyzeContextRequestMessage(message, senderRole) {
-    if (senderRole === MessageSenderRoles.CONTENT) {
-        const values = readExactOwnDataRecord(
-            message,
-            ANALYZE_CONTENT_REQUEST_KEYS
-        );
-        const contextTypes =
-            values &&
-            values.action === MessageActions.ANALYZE_CONTEXT &&
-            isValidAnalyzeContentValues(values) &&
-            parseCanonicalAnalyzeContextTypes(values.contextTypes);
-        if (!contextTypes) return null;
-        return Object.freeze(copyAnalyzeContentRequest(values, contextTypes));
-    }
-
-    if (senderRole !== MessageSenderRoles.SIDEPANEL) return null;
-
-    let hasContextType = true;
-    let values = readExactOwnDataRecord(
-        message,
-        ANALYZE_SIDEPANEL_SINGLE_REQUEST_KEYS
-    );
-    if (!values) {
-        hasContextType = false;
-        values = readExactOwnDataRecord(
-            message,
-            ANALYZE_SIDEPANEL_REQUEST_KEYS
-        );
-    }
-    const contextTypes =
-        values &&
-        values.action === MessageActions.ANALYZE_CONTEXT &&
-        isValidAnalyzeSidePanelValues(values) &&
-        parseCanonicalAnalyzeContextTypes(values.contextTypes);
+export function buildTranslationSuccessResponse(expectedRequest, result) {
+    const request = normalizeTranslationRequest(expectedRequest, true);
     if (
-        !contextTypes ||
-        hasContextType !== (contextTypes.length === 1) ||
-        (hasContextType && values.contextType !== contextTypes[0])
+        !request ||
+        !isPlainRecord(result) ||
+        !isNonBlankString(result.translatedText)
+    ) {
+        throw new TypeError('Invalid translation success result');
+    }
+    return Object.freeze({ translatedText: result.translatedText });
+}
+
+export function buildTranslationFailureResponse(expectedRequest, failure) {
+    const request = normalizeTranslationRequest(expectedRequest, true);
+    if (!request || !isPlainRecord(failure)) {
+        throw new TypeError('Invalid translation failure result');
+    }
+    return Object.freeze({ error: 'Translation failed' });
+}
+
+export function parseTranslationResponseMessage(message, expectedRequest) {
+    const request = normalizeTranslationRequest(expectedRequest, true);
+    if (!request) return null;
+
+    const success = readExactRecord(message, ['translatedText']);
+    if (success && isNonBlankString(success.translatedText)) {
+        return Object.freeze({
+            status: 'success',
+            translatedText: success.translatedText,
+            cueVideoId: request.cueVideoId,
+        });
+    }
+
+    const failure = readExactRecord(message, ['error']);
+    return failure?.error === 'Translation failed'
+        ? Object.freeze({
+              status: 'failure',
+              error: 'Translation failed',
+              cueVideoId: request.cueVideoId,
+          })
+        : null;
+}
+
+function normalizeContextTypes(value, filterInvalid) {
+    const input = readDenseArray(value);
+    if (!input) return null;
+
+    const normalized = filterInvalid
+        ? input.filter(
+              (type, index) =>
+                  CONTEXT_TYPES.includes(type) && input.indexOf(type) === index
+          )
+        : input;
+    if (normalized.length < 1 || normalized.length > CONTEXT_TYPES.length) {
+        return null;
+    }
+    if (
+        !filterInvalid &&
+        normalized.some(
+            (type, index) =>
+                !CONTEXT_TYPES.includes(type) ||
+                normalized.indexOf(type) !== index
+        )
     ) {
         return null;
     }
-    return Object.freeze(copyAnalyzeSidePanelRequest(values, contextTypes));
+    return Object.freeze([...normalized]);
+}
+
+function normalizeAnalyzeRequest(senderRole, value, exact = false) {
+    if (
+        senderRole !== MessageSenderRoles.CONTENT &&
+        senderRole !== MessageSenderRoles.SIDEPANEL
+    ) {
+        return null;
+    }
+    const input = exact
+        ? readRoute(value, MessageActions.ANALYZE_CONTEXT, senderRole)
+        : isPlainRecord(value)
+          ? value
+          : null;
+    const contextTypes = input
+        ? normalizeContextTypes(input.contextTypes, !exact)
+        : null;
+    if (
+        !input ||
+        !contextTypes ||
+        !isNonBlankString(input.text) ||
+        !isNonBlankString(input.targetLanguage) ||
+        !isNonBlankString(input.requestId)
+    ) {
+        return null;
+    }
+
+    if (senderRole === MessageSenderRoles.CONTENT) {
+        if (
+            !isNonBlankString(input.language) ||
+            !isNonBlankString(input.platform)
+        ) {
+            return null;
+        }
+        return Object.freeze({
+            action: MessageActions.ANALYZE_CONTEXT,
+            text: input.text,
+            contextTypes,
+            language: input.language,
+            targetLanguage: input.targetLanguage,
+            platform: input.platform,
+            requestId: input.requestId,
+        });
+    }
+
+    return Object.freeze({
+        action: MessageActions.ANALYZE_CONTEXT,
+        text: input.text,
+        contextTypes,
+        targetLanguage: input.targetLanguage,
+        requestId: input.requestId,
+    });
+}
+
+export function buildAnalyzeContextRequestMessage(senderRole, input) {
+    const request = normalizeAnalyzeRequest(senderRole, input);
+    if (!request) throw new TypeError('Invalid analyze-context request');
+    return request;
+}
+
+export function parseAnalyzeContextRequestMessage(message, senderRole) {
+    return normalizeAnalyzeRequest(senderRole, message, true);
 }
 
 function deriveAnalyzeContextType(contextTypes) {
     if (contextTypes.length === 1) return contextTypes[0];
-    if (
-        contextTypes.length === CONTEXT_TYPES.length &&
+    return contextTypes.length === CONTEXT_TYPES.length &&
         CONTEXT_TYPES.every((type) => contextTypes.includes(type))
-    ) {
-        return 'all';
-    }
-    return 'combined';
+        ? 'all'
+        : 'combined';
 }
 
-function isPlainRecord(value) {
-    try {
-        if (!value || typeof value !== 'object' || Array.isArray(value)) {
-            return false;
-        }
-        const prototype = Object.getPrototypeOf(value);
-        return prototype === Object.prototype || prototype === null;
-    } catch (_) {
-        return false;
-    }
-}
-
-function snapshotAnalyzeResult(value) {
+function snapshotAnalysis(value) {
     if (!isPlainRecord(value)) {
         throw new TypeError('Invalid analyze-context analysis');
     }
     return createPlainDataSnapshot(value, ANALYZE_SNAPSHOT_LIMITS).value;
 }
 
-function isValidAnalyzeFailureValues(values) {
-    if (
-        !values ||
-        typeof values.error !== 'string' ||
-        values.error.length === 0 ||
-        values.error !== values.error.trim() ||
-        !String.prototype.isWellFormed.call(values.error) ||
-        utf8ByteLength(values.error) > 512 ||
-        typeof values.shouldRetry !== 'boolean'
-    ) {
-        return false;
-    }
-    return true;
-}
-
-function copyAnalyzeSuccessResult(request, analysis) {
+function createAnalyzeResultProjection(request, analysis) {
     return Object.freeze({
         analysis,
         contextType: deriveAnalyzeContextType(request.contextTypes),
@@ -679,29 +430,19 @@ export function buildAnalyzeContextSuccessResponse(
     expectedRequest,
     result
 ) {
-    const request = parseAnalyzeContextRequestMessage(
-        expectedRequest,
-        senderRole
-    );
-    const values = readExactOwnDataRecord(
-        result,
-        ANALYZE_SUCCESS_INPUT_KEYS,
-        true
-    );
-    if (!request || !values) {
+    const request = normalizeAnalyzeRequest(senderRole, expectedRequest, true);
+    if (!request || !isPlainRecord(result)) {
         throw new TypeError('Invalid analyze-context success response');
     }
-
     let analysis;
     try {
-        analysis = snapshotAnalyzeResult(values.analysis);
+        analysis = snapshotAnalysis(result.analysis);
     } catch (_) {
         throw new TypeError('Invalid analyze-context success response');
     }
     return Object.freeze({
         success: true,
-        result: copyAnalyzeSuccessResult(request, analysis),
-        requestId: request.requestId,
+        result: Object.freeze({ analysis }),
     });
 }
 
@@ -710,34 +451,20 @@ export function buildAnalyzeContextFailureResponse(
     expectedRequest,
     failure
 ) {
-    const request = parseAnalyzeContextRequestMessage(
-        expectedRequest,
-        senderRole
-    );
-    const values = readExactOwnDataRecord(
-        failure,
-        ANALYZE_FAILURE_INPUT_KEYS,
-        true
-    );
-    if (!request || !isValidAnalyzeFailureValues(values)) {
+    const request = normalizeAnalyzeRequest(senderRole, expectedRequest, true);
+    if (
+        !request ||
+        !isPlainRecord(failure) ||
+        !isBoundedError(failure.error) ||
+        typeof failure.shouldRetry !== 'boolean'
+    ) {
         throw new TypeError('Invalid analyze-context failure response');
     }
-
     return Object.freeze({
         success: false,
-        error: values.error,
-        shouldRetry: values.shouldRetry,
-        requestId: request.requestId,
+        error: failure.error,
+        shouldRetry: failure.shouldRetry,
     });
-}
-
-function contextTypesMatchExpected(value, expectedTypes) {
-    const parsedTypes = parseCanonicalAnalyzeContextTypes(value);
-    return (
-        parsedTypes &&
-        parsedTypes.length === expectedTypes.length &&
-        parsedTypes.every((type, index) => type === expectedTypes[index])
-    );
 }
 
 export function parseAnalyzeContextResponseMessage(
@@ -745,57 +472,32 @@ export function parseAnalyzeContextResponseMessage(
     expectedRequest,
     senderRole
 ) {
-    const request = parseAnalyzeContextRequestMessage(
-        expectedRequest,
-        senderRole
-    );
+    const request = normalizeAnalyzeRequest(senderRole, expectedRequest, true);
     if (!request) return null;
 
     try {
-        const success = readExactOwnDataRecord(
-            message,
-            ANALYZE_SUCCESS_RESPONSE_KEYS,
-            true
-        );
-        if (
-            success &&
-            success.success === true &&
-            success.requestId === request.requestId
-        ) {
-            const result = readExactOwnDataRecord(
-                success.result,
-                ANALYZE_SUCCESS_RESULT_KEYS,
-                true
-            );
-            if (
-                result &&
-                result.contextType ===
-                    deriveAnalyzeContextType(request.contextTypes) &&
-                contextTypesMatchExpected(
-                    result.contextTypes,
-                    request.contextTypes
-                ) &&
-                result.isStructured === true
-            ) {
-                const analysis = snapshotAnalyzeResult(result.analysis);
+        const success = readExactRecord(message, ['success', 'result']);
+        if (success?.success === true) {
+            const result = readExactRecord(success.result, ['analysis']);
+            if (result) {
+                const analysis = snapshotAnalysis(result.analysis);
                 return Object.freeze({
                     status: 'success',
                     requestId: request.requestId,
-                    result: copyAnalyzeSuccessResult(request, analysis),
+                    result: createAnalyzeResultProjection(request, analysis),
                 });
             }
         }
 
-        const failure = readExactOwnDataRecord(
-            message,
-            ANALYZE_FAILURE_RESPONSE_KEYS,
-            true
-        );
+        const failure = readExactRecord(message, [
+            'success',
+            'error',
+            'shouldRetry',
+        ]);
         if (
-            !failure ||
-            failure.success !== false ||
-            failure.requestId !== request.requestId ||
-            !isValidAnalyzeFailureValues(failure)
+            failure?.success !== false ||
+            !isBoundedError(failure?.error) ||
+            typeof failure.shouldRetry !== 'boolean'
         ) {
             return null;
         }
@@ -819,7 +521,6 @@ function readOwnDataValue(
     if (record === null || typeof record !== 'object') {
         return INVALID_OWN_PROPERTY;
     }
-
     const descriptor = Object.getOwnPropertyDescriptor(record, key);
     if (!descriptor) {
         return required ? INVALID_OWN_PROPERTY : ABSENT_OWN_PROPERTY;
@@ -843,7 +544,6 @@ function readRuntimeEndpoints(runtime) {
     ) {
         return null;
     }
-
     const manifest = runtime.getManifest();
     const paths = {
         background: manifest?.background?.service_worker,
@@ -860,33 +560,26 @@ function readRuntimeEndpoints(runtime) {
     }
 
     const extensionRoot = runtime.getURL('');
-    const backgroundUrl = runtime.getURL(paths.background);
-    const optionsUrl = runtime.getURL(paths.options);
-    const popupUrl = runtime.getURL(paths.popup);
-    const sidepanelUrl = runtime.getURL(paths.sidepanel);
-    if (
-        typeof extensionRoot !== 'string' ||
-        typeof backgroundUrl !== 'string' ||
-        typeof optionsUrl !== 'string' ||
-        typeof popupUrl !== 'string' ||
-        typeof sidepanelUrl !== 'string'
-    ) {
-        return null;
-    }
-
-    return {
-        backgroundUrl,
+    const endpoints = {
+        backgroundUrl: runtime.getURL(paths.background),
         extensionId: runtime.id,
-        extensionOrigin: extensionRoot.replace(/\/+$/u, ''),
-        optionsUrl,
-        popupUrl,
-        sidepanelUrl,
+        extensionOrigin:
+            typeof extensionRoot === 'string'
+                ? extensionRoot.replace(/\/+$/u, '')
+                : null,
+        optionsUrl: runtime.getURL(paths.options),
+        popupUrl: runtime.getURL(paths.popup),
+        sidepanelUrl: runtime.getURL(paths.sidepanel),
     };
+    return Object.values(endpoints).every(
+        (value) => typeof value === 'string' && value.length > 0
+    )
+        ? endpoints
+        : null;
 }
 
 function parseSupportedContentUrl(rawUrl) {
     if (typeof rawUrl !== 'string') return null;
-
     const parsedUrl = new URL(rawUrl);
     if (
         parsedUrl.protocol !== 'https:' ||
@@ -898,25 +591,21 @@ function parseSupportedContentUrl(rawUrl) {
         return null;
     }
 
-    let platform = null;
-    if (
+    const platform =
         parsedUrl.hostname === 'netflix.com' ||
         parsedUrl.hostname.endsWith('.netflix.com')
-    ) {
-        platform = 'netflix';
-    } else if (
-        parsedUrl.hostname === 'disneyplus.com' ||
-        parsedUrl.hostname.endsWith('.disneyplus.com')
-    ) {
-        platform = 'disneyplus';
-    }
-
-    if (!platform) return null;
-    return {
-        href: parsedUrl.href,
-        origin: parsedUrl.origin,
-        platform,
-    };
+            ? 'netflix'
+            : parsedUrl.hostname === 'disneyplus.com' ||
+                parsedUrl.hostname.endsWith('.disneyplus.com')
+              ? 'disneyplus'
+              : null;
+    return platform
+        ? {
+              href: parsedUrl.href,
+              origin: parsedUrl.origin,
+              platform,
+          }
+        : null;
 }
 
 export function classifyExtensionMessageSender(
@@ -927,9 +616,6 @@ export function classifyExtensionMessageSender(
         const endpoints = readRuntimeEndpoints(runtime);
         if (!endpoints) return null;
 
-        // JavaScript cannot distinguish a fully transparent Proxy from its
-        // target. Read only known data descriptors and return a detached,
-        // frozen primitive snapshot; revoked or throwing traps fail closed.
         const id = readOwnDataValue(sender, 'id');
         const url = readOwnDataValue(sender, 'url');
         const origin = readOwnDataValue(sender, 'origin', false);
@@ -943,18 +629,18 @@ export function classifyExtensionMessageSender(
             return null;
         }
 
-        let role = null;
-        if (url === endpoints.backgroundUrl) {
-            role = MessageSenderRoles.BACKGROUND;
-        } else if (url === endpoints.sidepanelUrl) {
-            role = MessageSenderRoles.SIDEPANEL;
-        } else if (url === endpoints.popupUrl) {
-            role = MessageSenderRoles.POPUP;
-        } else if (url === endpoints.optionsUrl) {
-            role = MessageSenderRoles.OPTIONS;
-        }
+        const extensionRole =
+            url === endpoints.backgroundUrl
+                ? MessageSenderRoles.BACKGROUND
+                : url === endpoints.sidepanelUrl
+                  ? MessageSenderRoles.SIDEPANEL
+                  : url === endpoints.popupUrl
+                    ? MessageSenderRoles.POPUP
+                    : url === endpoints.optionsUrl
+                      ? MessageSenderRoles.OPTIONS
+                      : null;
 
-        if (role === MessageSenderRoles.OPTIONS) {
+        if (extensionRole === MessageSenderRoles.OPTIONS) {
             if (
                 origin !== ABSENT_OWN_PROPERTY &&
                 origin !== null &&
@@ -963,10 +649,11 @@ export function classifyExtensionMessageSender(
                 return null;
             }
             if (tab !== ABSENT_OWN_PROPERTY && tab !== null) {
-                const tabUrl = readOwnDataValue(tab, 'url');
-                if (tabUrl !== endpoints.optionsUrl) return null;
+                if (readOwnDataValue(tab, 'url') !== endpoints.optionsUrl) {
+                    return null;
+                }
             }
-        } else if (role) {
+        } else if (extensionRole) {
             if (
                 (origin !== ABSENT_OWN_PROPERTY &&
                     origin !== null &&
@@ -976,9 +663,7 @@ export function classifyExtensionMessageSender(
                 return null;
             }
         }
-
-        if (role) return Object.freeze({ role });
-
+        if (extensionRole) return Object.freeze({ role: extensionRole });
         if (tab === ABSENT_OWN_PROPERTY || tab === null) return null;
 
         const documentId = readOwnDataValue(sender, 'documentId');
@@ -994,14 +679,11 @@ export function classifyExtensionMessageSender(
         const active = readOwnDataValue(tab, 'active');
         const tabUrl = readOwnDataValue(tab, 'url');
         if (
-            typeof documentId !== 'string' ||
-            documentId.length === 0 ||
+            !isNonBlankString(documentId) ||
             documentLifecycle !== 'active' ||
             frameId !== 0 ||
-            !Number.isSafeInteger(tabId) ||
-            tabId < 0 ||
-            !Number.isSafeInteger(windowId) ||
-            windowId < 0 ||
+            !isNonnegativeSafeInteger(tabId) ||
+            !isNonnegativeSafeInteger(windowId) ||
             active !== true
         ) {
             return null;
@@ -1038,51 +720,9 @@ export function classifyExtensionMessageSender(
     }
 }
 
-function readExactOwnDataRecord(
-    record,
-    expectedKeys,
-    requireEnumerable = false
-) {
-    if (!record || typeof record !== 'object') return null;
-
-    try {
-        // A faithful transparent Proxy cannot be distinguished from its
-        // target through these reflective operations. Callers only copy
-        // validated primitives into new frozen records and retain no input.
-        const prototype = Object.getPrototypeOf(record);
-        if (prototype !== Object.prototype && prototype !== null) return null;
-
-        const keys = Reflect.ownKeys(record);
-        if (
-            keys.length !== expectedKeys.length ||
-            !keys.every(
-                (key) => typeof key === 'string' && expectedKeys.includes(key)
-            )
-        ) {
-            return null;
-        }
-
-        const values = Object.create(null);
-        for (const key of expectedKeys) {
-            const descriptor = Object.getOwnPropertyDescriptor(record, key);
-            if (
-                !descriptor ||
-                !Object.hasOwn(descriptor, 'value') ||
-                (requireEnumerable && descriptor.enumerable !== true)
-            ) {
-                return null;
-            }
-            values[key] = descriptor.value;
-        }
-        return values;
-    } catch (_) {
-        return null;
-    }
-}
-
 export function readProtocolMessageAction(message) {
+    if (!isPlainRecord(message)) return null;
     try {
-        if (!isPlainRecord(message)) return null;
         const keys = Reflect.ownKeys(message);
         if (
             keys.length < 1 ||
@@ -1092,7 +732,7 @@ export function readProtocolMessageAction(message) {
             return null;
         }
         const action = readOwnDataValue(message, 'action', true, true);
-        return typeof action === 'string' && MESSAGE_ACTION_CATALOG.has(action)
+        return typeof action === 'string' && MESSAGE_ACTIONS.has(action)
             ? action
             : null;
     } catch (_) {
@@ -1103,41 +743,10 @@ export function readProtocolMessageAction(message) {
 function normalizeConfigChanges(input) {
     const snapshot = tryCreatePlainDataSnapshot(input, CONFIG_CHANGED_LIMITS);
     if (!snapshot.accepted || !isPlainRecord(snapshot.value)) return null;
-
-    try {
-        const keys = Reflect.ownKeys(snapshot.value);
-        if (
-            keys.length < 1 ||
-            keys.length > MAX_CONFIG_CHANGED_KEYS ||
-            keys.some((key) => typeof key !== 'string')
-        ) {
-            return null;
-        }
-
-        for (const key of keys) {
-            const descriptor = Object.getOwnPropertyDescriptor(
-                snapshot.value,
-                key
-            );
-            if (
-                !descriptor ||
-                !Object.hasOwn(descriptor, 'value') ||
-                descriptor.enumerable !== true
-            ) {
-                return null;
-            }
-        }
-        return snapshot.value;
-    } catch (_) {
-        return null;
-    }
-}
-
-function copyConfigChangedRequest(changes) {
-    return Object.freeze({
-        action: MessageActions.CONFIG_CHANGED,
-        changes,
-    });
+    const keys = Object.keys(snapshot.value);
+    return keys.length >= 1 && keys.length <= MAX_CONFIG_CHANGED_KEYS
+        ? snapshot.value
+        : null;
 }
 
 export function buildConfigChangedRequestMessage(changes) {
@@ -1145,22 +754,25 @@ export function buildConfigChangedRequestMessage(changes) {
     if (!normalizedChanges) {
         throw new TypeError('Invalid config-change request');
     }
-    return copyConfigChangedRequest(normalizedChanges);
+    return Object.freeze({
+        action: MessageActions.CONFIG_CHANGED,
+        changes: normalizedChanges,
+    });
 }
 
 export function parseConfigChangedRequestMessage(message, senderRole) {
-    if (senderRole !== MessageSenderRoles.POPUP) return null;
-
-    const values = readExactOwnDataRecord(
+    const envelope = readRoute(
         message,
-        CONFIG_CHANGED_MESSAGE_KEYS,
-        true
+        MessageActions.CONFIG_CHANGED,
+        senderRole
     );
-    const changes =
-        values?.action === MessageActions.CONFIG_CHANGED
-            ? normalizeConfigChanges(values.changes)
-            : null;
-    return changes ? copyConfigChangedRequest(changes) : null;
+    const changes = envelope ? normalizeConfigChanges(envelope.changes) : null;
+    return changes
+        ? Object.freeze({
+              action: MessageActions.CONFIG_CHANGED,
+              changes,
+          })
+        : null;
 }
 
 export function buildLoggingLevelChangedRequestMessage(level) {
@@ -1174,65 +786,48 @@ export function buildLoggingLevelChangedRequestMessage(level) {
 }
 
 export function parseLoggingLevelChangedRequestMessage(message, senderRole) {
-    if (senderRole !== MessageSenderRoles.BACKGROUND) return null;
-    const values = readExactOwnDataRecord(
+    const envelope = readRoute(
         message,
-        LOGGING_LEVEL_CHANGED_MESSAGE_KEYS,
-        true
+        MessageActions.LOGGING_LEVEL_CHANGED,
+        senderRole
     );
-    if (
-        values?.action !== MessageActions.LOGGING_LEVEL_CHANGED ||
-        !Number.isSafeInteger(values.level) ||
-        values.level < 0 ||
-        values.level > 4
-    ) {
-        return null;
-    }
-    return Object.freeze({
-        action: MessageActions.LOGGING_LEVEL_CHANGED,
-        level: values.level,
-    });
+    return envelope &&
+        Number.isSafeInteger(envelope.level) &&
+        envelope.level >= 0 &&
+        envelope.level <= 4
+        ? Object.freeze({
+              action: MessageActions.LOGGING_LEVEL_CHANGED,
+              level: envelope.level,
+          })
+        : null;
 }
 
 export function buildSidePanelPauseVideoRequestMessage() {
-    return Object.freeze({
-        action: MessageActions.SIDEPANEL_PAUSE_VIDEO,
-    });
+    return Object.freeze({ action: MessageActions.SIDEPANEL_PAUSE_VIDEO });
 }
 
 export function parseSidePanelPauseVideoRequestMessage(message, senderRole) {
-    if (senderRole !== MessageSenderRoles.BACKGROUND) return null;
-    const values = readExactOwnDataRecord(
-        message,
-        SIDEPANEL_PAUSE_VIDEO_MESSAGE_KEYS,
-        true
-    );
-    if (values?.action !== MessageActions.SIDEPANEL_PAUSE_VIDEO) return null;
-    return buildSidePanelPauseVideoRequestMessage();
+    return readRoute(message, MessageActions.SIDEPANEL_PAUSE_VIDEO, senderRole)
+        ? buildSidePanelPauseVideoRequestMessage()
+        : null;
 }
 
 function normalizeContentControlRequest(expectedRequest) {
-    const snapshot = tryCreatePlainDataSnapshot(
-        expectedRequest,
-        CONFIG_CHANGED_LIMITS
-    );
-    if (!snapshot.accepted) return null;
-
-    const action = readOwnDataValue(snapshot.value, 'action', true, true);
+    const action = readProtocolMessageAction(expectedRequest);
     switch (action) {
         case MessageActions.CONFIG_CHANGED:
             return parseConfigChangedRequestMessage(
-                snapshot.value,
+                expectedRequest,
                 MessageSenderRoles.POPUP
             );
         case MessageActions.LOGGING_LEVEL_CHANGED:
             return parseLoggingLevelChangedRequestMessage(
-                snapshot.value,
+                expectedRequest,
                 MessageSenderRoles.BACKGROUND
             );
         case MessageActions.SIDEPANEL_PAUSE_VIDEO:
             return parseSidePanelPauseVideoRequestMessage(
-                snapshot.value,
+                expectedRequest,
                 MessageSenderRoles.BACKGROUND
             );
         default:
@@ -1240,257 +835,84 @@ function normalizeContentControlRequest(expectedRequest) {
     }
 }
 
-function isValidContentControlError(error) {
-    return (
-        typeof error === 'string' &&
-        error.length > 0 &&
-        error === error.trim() &&
-        String.prototype.isWellFormed.call(error) &&
-        utf8ByteLength(error) <= 512
-    );
-}
-
-function normalizeContentControlResponse(response, expectedRequest) {
-    const request = normalizeContentControlRequest(expectedRequest);
-    if (!request) return null;
-
-    const successValues = readExactOwnDataRecord(
-        response,
-        CONTENT_CONTROL_SUCCESS_RESPONSE_KEYS,
-        true
-    );
-    if (
-        successValues?.action === request.action &&
-        successValues.success === true
-    ) {
-        return Object.freeze({ action: request.action, success: true });
-    }
-
-    const failureValues = readExactOwnDataRecord(
-        response,
-        CONTENT_CONTROL_FAILURE_RESPONSE_KEYS,
-        true
-    );
-    if (
-        failureValues?.action !== request.action ||
-        failureValues.success !== false ||
-        !isValidContentControlError(failureValues.error)
-    ) {
-        return null;
-    }
-    return Object.freeze({
-        action: request.action,
-        success: false,
-        error: failureValues.error,
-    });
-}
-
 export function buildContentControlResponseMessage(expectedRequest, result) {
     const request = normalizeContentControlRequest(expectedRequest);
-    if (!request) {
-        throw new TypeError('Invalid content-control request');
-    }
-
-    const successValues = readExactOwnDataRecord(
-        result,
-        CONTENT_CONTROL_SUCCESS_RESULT_KEYS,
-        true
-    );
-    if (successValues?.success === true) {
-        return Object.freeze({ action: request.action, success: true });
-    }
-
-    const failureValues = readExactOwnDataRecord(
-        result,
-        CONTENT_CONTROL_FAILURE_RESULT_KEYS,
-        true
-    );
-    if (
-        failureValues?.success !== false ||
-        !isValidContentControlError(failureValues.error)
-    ) {
+    if (!request || !isPlainRecord(result)) {
         throw new TypeError('Invalid content-control response');
     }
-    return Object.freeze({
-        action: request.action,
-        success: false,
-        error: failureValues.error,
-    });
+    if (result.success === true) {
+        return Object.freeze({ success: true });
+    }
+    if (result.success !== false || !isBoundedError(result.error)) {
+        throw new TypeError('Invalid content-control response');
+    }
+    return Object.freeze({ success: false, error: result.error });
 }
 
 export function parseContentControlResponseMessage(response, expectedRequest) {
-    try {
-        return normalizeContentControlResponse(response, expectedRequest);
-    } catch (_) {
-        return null;
+    const request = normalizeContentControlRequest(expectedRequest);
+    if (!request) return null;
+
+    const success = readExactRecord(response, ['success']);
+    if (success?.success === true) {
+        return Object.freeze({ action: request.action, success: true });
     }
-}
-
-function isBackgroundReadinessAction(action) {
-    return (
-        action === MessageActions.PING ||
-        action === MessageActions.CHECK_BACKGROUND_READY
-    );
-}
-
-function normalizeBackgroundServiceState(services) {
-    const values = readExactOwnDataRecord(
-        services,
-        BACKGROUND_SERVICE_STATE_KEYS,
-        true
-    );
-    if (
-        !values ||
-        BACKGROUND_SERVICE_STATE_KEYS.some(
-            (key) => typeof values[key] !== 'boolean'
-        ) ||
-        (values.aiContextInitialized && !values.aiContext)
-    ) {
-        return null;
-    }
-    return Object.freeze({
-        translation: values.translation,
-        subtitle: values.subtitle,
-        aiContext: values.aiContext,
-        aiContextInitialized: values.aiContextInitialized,
-    });
-}
-
-function serviceStateIsReady(services) {
-    return (
-        services.translation &&
-        services.subtitle &&
-        services.aiContext &&
-        services.aiContextInitialized
-    );
-}
-
-export function buildBackgroundReadinessRequestMessage(action) {
-    if (!isBackgroundReadinessAction(action)) {
-        throw new TypeError('Invalid background-readiness action');
-    }
-    return Object.freeze({ action });
-}
-
-export function parseBackgroundReadinessRequestMessage(message, senderRole) {
-    if (
-        senderRole !== MessageSenderRoles.CONTENT &&
-        senderRole !== MessageSenderRoles.SIDEPANEL
-    ) {
-        return null;
-    }
-    const values = readExactOwnDataRecord(
-        message,
-        BACKGROUND_READINESS_REQUEST_KEYS,
-        true
-    );
-    return isBackgroundReadinessAction(values?.action)
-        ? Object.freeze({ action: values.action })
+    const failure = readExactRecord(response, ['success', 'error']);
+    return failure?.success === false && isBoundedError(failure.error)
+        ? Object.freeze({
+              action: request.action,
+              success: false,
+              error: failure.error,
+          })
         : null;
 }
 
-export function buildBackgroundReadinessResponseMessage(
-    expectedRequest,
-    result
-) {
-    const request = parseBackgroundReadinessRequestMessage(
-        expectedRequest,
-        MessageSenderRoles.CONTENT
-    );
-    const values = readExactOwnDataRecord(
-        result,
-        BACKGROUND_READINESS_RESULT_KEYS,
-        true
-    );
-    const services = values && normalizeBackgroundServiceState(values.services);
-    if (
-        !request ||
-        !services ||
-        typeof values.ready !== 'boolean' ||
-        values.ready !== serviceStateIsReady(services)
-    ) {
-        throw new TypeError('Invalid background-readiness response');
-    }
-    return Object.freeze({
-        action: request.action,
-        ready: values.ready,
-        services,
-    });
-}
-
-export function parseBackgroundReadinessResponseMessage(
-    response,
-    expectedRequest
-) {
-    try {
-        const request = parseBackgroundReadinessRequestMessage(
-            expectedRequest,
-            MessageSenderRoles.CONTENT
-        );
-        const values = readExactOwnDataRecord(
-            response,
-            BACKGROUND_READINESS_RESPONSE_KEYS,
-            true
-        );
-        const services =
-            values && normalizeBackgroundServiceState(values.services);
-        if (
-            !request ||
-            !services ||
-            values.action !== request.action ||
-            typeof values.ready !== 'boolean' ||
-            values.ready !== serviceStateIsReady(services)
-        ) {
-            return null;
-        }
-        return Object.freeze({
-            action: request.action,
-            ready: values.ready,
-            services,
-        });
-    } catch (_) {
-        return null;
-    }
-}
-
-function normalizeSidePanelWordIntentOptions(input) {
+function normalizeSidePanelWordIntentOptions(input, exact = false) {
+    const source = exact
+        ? input
+        : isPlainRecord(input)
+          ? {
+                autoOpen: input.autoOpen,
+                pauseVideo: input.pauseVideo,
+            }
+          : null;
     const snapshot = tryCreatePlainDataSnapshot(
-        input,
+        source,
         SIDEPANEL_WORD_INTENT_LIMITS
     );
-    if (!snapshot.accepted) return null;
-    const values = readExactOwnDataRecord(
-        snapshot.value,
-        SIDEPANEL_WORD_INTENT_OPTIONS_KEYS,
-        true
-    );
-    if (
-        !values ||
-        typeof values.autoOpen !== 'boolean' ||
-        typeof values.pauseVideo !== 'boolean'
-    ) {
-        return null;
-    }
+    const options = snapshot.accepted
+        ? readExactRecord(snapshot.value, ['autoOpen', 'pauseVideo'])
+        : null;
+    return options &&
+        typeof options.autoOpen === 'boolean' &&
+        typeof options.pauseVideo === 'boolean'
+        ? Object.freeze({
+              autoOpen: options.autoOpen,
+              pauseVideo: options.pauseVideo,
+          })
+        : null;
+}
+
+export function buildSidePanelWordIntentMessage(input) {
+    const options = normalizeSidePanelWordIntentOptions(input);
+    if (!options) throw new TypeError('Invalid side-panel word intent');
     return Object.freeze({
-        autoOpen: values.autoOpen,
-        pauseVideo: values.pauseVideo,
+        action: MessageActions.SIDEPANEL_WORD_SELECTED,
+        options,
     });
 }
 
-function copyBinding(binding) {
-    return {
-        registrationId: binding.registrationId,
-        tabId: binding.tabId,
-        windowId: binding.windowId,
-    };
-}
-
-function isPositiveSafeInteger(value) {
-    return Number.isSafeInteger(value) && value > 0;
-}
-
-function isNonnegativeSafeInteger(value) {
-    return Number.isSafeInteger(value) && value >= 0;
+export function parseSidePanelWordIntentMessage(message) {
+    const envelope = readRoute(message, MessageActions.SIDEPANEL_WORD_SELECTED);
+    const options = envelope
+        ? normalizeSidePanelWordIntentOptions(envelope.options, true)
+        : null;
+    return options
+        ? Object.freeze({
+              action: MessageActions.SIDEPANEL_WORD_SELECTED,
+              options,
+          })
+        : null;
 }
 
 function isWellFormedSelectionWord(value) {
@@ -1502,165 +924,134 @@ function isWellFormedSelectionWord(value) {
     );
 }
 
-function readSelectionEntries(value) {
-    try {
+function normalizeSelectionEntries(value, exact = false) {
+    const input = readDenseArray(value);
+    if (!input || input.length > MAX_SELECTION_ENTRIES) return null;
+
+    const entries = [];
+    let previousWordIndex = -1;
+    let joinedCodeUnits = 0;
+    let joinedBytes = 0;
+    for (const [index, entry] of input.entries()) {
+        const values = exact
+            ? readExactRecord(entry, ['wordIndex', 'word'])
+            : isPlainRecord(entry)
+              ? entry
+              : null;
         if (
-            !Array.isArray(value) ||
-            Object.getPrototypeOf(value) !== Array.prototype
+            !values ||
+            !isNonnegativeSafeInteger(values.wordIndex) ||
+            values.wordIndex <= previousWordIndex ||
+            !isWellFormedSelectionWord(values.word)
         ) {
             return null;
         }
-
-        const lengthDescriptor = Object.getOwnPropertyDescriptor(
-            value,
-            'length'
+        if (index > 0) {
+            joinedCodeUnits += 1;
+            joinedBytes += 1;
+        }
+        joinedCodeUnits += values.word.length;
+        joinedBytes += utf8ByteLength(values.word);
+        if (
+            joinedCodeUnits > MAX_SELECTION_JOINED_CODE_UNITS ||
+            joinedBytes > MAX_SELECTION_JOINED_BYTES
+        ) {
+            return null;
+        }
+        entries.push(
+            Object.freeze({
+                wordIndex: values.wordIndex,
+                word: values.word,
+            })
         );
-        const length = lengthDescriptor?.value;
-        if (
-            !lengthDescriptor ||
-            !Object.hasOwn(lengthDescriptor, 'value') ||
-            !Number.isSafeInteger(length) ||
-            length < 0 ||
-            length > MAX_SELECTION_ENTRIES
-        ) {
-            return null;
-        }
-
-        const keys = Reflect.ownKeys(value);
-        if (keys.length !== length + 1 || !keys.includes('length')) return null;
-
-        const entries = [];
-        let previousWordIndex = -1;
-        let joinedCodeUnits = 0;
-        let joinedBytes = 0;
-        for (let index = 0; index < length; index += 1) {
-            const key = String(index);
-            const descriptor = Object.getOwnPropertyDescriptor(value, key);
-            if (
-                !descriptor ||
-                descriptor.enumerable !== true ||
-                !Object.hasOwn(descriptor, 'value')
-            ) {
-                return null;
-            }
-
-            const entryValues = readExactOwnDataRecord(
-                descriptor.value,
-                SELECTION_ENTRY_KEYS,
-                true
-            );
-            if (
-                !entryValues ||
-                !isNonnegativeSafeInteger(entryValues.wordIndex) ||
-                entryValues.wordIndex <= previousWordIndex ||
-                !isWellFormedSelectionWord(entryValues.word)
-            ) {
-                return null;
-            }
-
-            if (index > 0) {
-                joinedCodeUnits += 1;
-                joinedBytes += 1;
-            }
-            joinedCodeUnits += entryValues.word.length;
-            joinedBytes += utf8ByteLength(entryValues.word);
-            if (
-                joinedCodeUnits > MAX_SELECTION_JOINED_CODE_UNITS ||
-                joinedBytes > MAX_SELECTION_JOINED_BYTES
-            ) {
-                return null;
-            }
-
-            entries.push(
-                Object.freeze({
-                    wordIndex: entryValues.wordIndex,
-                    word: entryValues.word,
-                })
-            );
-            previousWordIndex = entryValues.wordIndex;
-        }
-
-        if (
-            !keys.every(
-                (key) =>
-                    key === 'length' ||
-                    (typeof key === 'string' &&
-                        /^(0|[1-9]\d*)$/.test(key) &&
-                        Number(key) < length)
-            )
-        ) {
-            return null;
-        }
-
-        return Object.freeze(entries);
-    } catch (_) {
-        return null;
+        previousWordIndex = values.wordIndex;
     }
+    return Object.freeze(entries);
 }
 
-function normalizeSelectionSnapshotData(input, { includeLifecycle }) {
+function normalizeSelectionSnapshotData(
+    input,
+    includeLifecycle,
+    exact = false
+) {
+    const source = exact
+        ? input
+        : isPlainRecord(input)
+          ? {
+                ...(includeLifecycle
+                    ? { lifecycleGeneration: input.lifecycleGeneration }
+                    : {}),
+                selectionRevision: input.selectionRevision,
+                renderRevision: input.renderRevision,
+                reason: input.reason,
+                entries: input.entries,
+            }
+          : null;
     const snapshot = tryCreatePlainDataSnapshot(
-        input,
+        source,
         SELECTION_SNAPSHOT_LIMITS
     );
     if (!snapshot.accepted) return null;
-
-    const expectedKeys = includeLifecycle
-        ? CONTENT_SELECTION_SNAPSHOT_KEYS
-        : CONTENT_SELECTION_SNAPSHOT_KEYS.slice(1);
-    const values = readExactOwnDataRecord(snapshot.value, expectedKeys, true);
+    const keys = includeLifecycle
+        ? CONTENT_SELECTION_KEYS
+        : CONTENT_SELECTION_KEYS.slice(1);
+    const values = readExactRecord(snapshot.value, keys);
     if (
         !values ||
         (includeLifecycle &&
             !isPositiveSafeInteger(values.lifecycleGeneration)) ||
         !isPositiveSafeInteger(values.selectionRevision) ||
         !isPositiveSafeInteger(values.renderRevision) ||
-        !SELECTION_REASONS.includes(values.reason)
+        !SELECTION_REASONS.has(values.reason)
     ) {
         return null;
     }
-
-    const entries = readSelectionEntries(values.entries);
+    const entries = normalizeSelectionEntries(values.entries, exact);
     if (!entries) return null;
-    const requiresEmptyEntries =
-        values.reason === 'clear' || values.reason === 'subtitle-change';
-    const requiresNonemptyEntries =
-        values.reason === 'add' || values.reason === 'restore';
     if (
-        (requiresEmptyEntries && entries.length !== 0) ||
-        (requiresNonemptyEntries && entries.length === 0)
+        ((values.reason === 'clear' || values.reason === 'subtitle-change') &&
+            entries.length !== 0) ||
+        ((values.reason === 'add' || values.reason === 'restore') &&
+            entries.length === 0)
     ) {
         return null;
     }
 
-    const normalized = {};
+    const normalized = {
+        selectionRevision: values.selectionRevision,
+        renderRevision: values.renderRevision,
+        reason: values.reason,
+        entries,
+    };
     if (includeLifecycle) {
         normalized.lifecycleGeneration = values.lifecycleGeneration;
+        return Object.freeze({
+            lifecycleGeneration: normalized.lifecycleGeneration,
+            selectionRevision: normalized.selectionRevision,
+            renderRevision: normalized.renderRevision,
+            reason: normalized.reason,
+            entries: normalized.entries,
+        });
     }
-    normalized.selectionRevision = values.selectionRevision;
-    normalized.renderRevision = values.renderRevision;
-    normalized.reason = values.reason;
-    normalized.entries = entries;
     return Object.freeze(normalized);
+}
+
+export function parseContentSelectionSnapshot(snapshot) {
+    return normalizeSelectionSnapshotData(snapshot, false);
 }
 
 function normalizeSelectionState(selection) {
     if (selection === null) return null;
-
     const snapshot = tryCreatePlainDataSnapshot(
         selection,
         SELECTION_SNAPSHOT_LIMITS
     );
-    if (!snapshot.accepted) return undefined;
-    const values = readExactOwnDataRecord(
-        snapshot.value,
-        SELECTION_STATE_KEYS,
-        true
-    );
+    const values = snapshot.accepted
+        ? readExactRecord(snapshot.value, SELECTION_STATE_KEYS)
+        : null;
     if (!values || !isPositiveSafeInteger(values.selectionOwnerGeneration)) {
         return undefined;
     }
-
     const state = normalizeSelectionSnapshotData(
         {
             selectionRevision: values.selectionRevision,
@@ -1668,17 +1059,67 @@ function normalizeSelectionState(selection) {
             reason: values.reason,
             entries: values.entries,
         },
-        { includeLifecycle: false }
+        false
     );
-    if (!state) return undefined;
+    return state
+        ? Object.freeze({
+              selectionOwnerGeneration: values.selectionOwnerGeneration,
+              selectionRevision: state.selectionRevision,
+              renderRevision: state.renderRevision,
+              reason: state.reason,
+              entries: state.entries,
+          })
+        : undefined;
+}
 
+export function buildSidePanelContentSelectionSnapshotMessage(input) {
+    const data = normalizeSelectionSnapshotData(input, true);
+    if (!data) throw new TypeError('Invalid side-panel selection snapshot');
     return Object.freeze({
-        selectionOwnerGeneration: values.selectionOwnerGeneration,
-        selectionRevision: state.selectionRevision,
-        renderRevision: state.renderRevision,
-        reason: state.reason,
-        entries: state.entries,
+        action: MessageActions.SIDEPANEL_SELECTION_SYNC,
+        data,
     });
+}
+
+export function parseSidePanelContentSelectionSnapshotMessage(message) {
+    const envelope = readExactRecord(message, ['action', 'data']);
+    return envelope?.action === MessageActions.SIDEPANEL_SELECTION_SYNC
+        ? normalizeSelectionSnapshotData(envelope.data, true, true)
+        : null;
+}
+
+export function buildSidePanelContentSelectionSnapshotResponse(status) {
+    if (status !== 'accepted' && status !== 'rejected') {
+        throw new TypeError('Invalid side-panel selection snapshot status');
+    }
+    return Object.freeze({ success: status === 'accepted' });
+}
+
+export function parseSidePanelContentSelectionSnapshotResponse(response) {
+    const values = readExactRecord(response, ['success']);
+    return values && typeof values.success === 'boolean'
+        ? Object.freeze({
+              status: values.success ? 'accepted' : 'rejected',
+          })
+        : null;
+}
+
+function copyBinding(binding) {
+    return {
+        registrationId: binding.registrationId,
+        tabId: binding.tabId,
+        windowId: binding.windowId,
+    };
+}
+
+function parseSidePanelBindingTuple(binding) {
+    const values = readExactRecord(binding, BINDING_KEYS);
+    return values &&
+        isPositiveSafeInteger(values.registrationId) &&
+        isNonnegativeSafeInteger(values.tabId) &&
+        isNonnegativeSafeInteger(values.windowId)
+        ? Object.freeze(copyBinding(values))
+        : null;
 }
 
 function bindingsEqual(left, right) {
@@ -1691,195 +1132,12 @@ function bindingsEqual(left, right) {
     );
 }
 
-function normalizeRequestIdRecord(value) {
-    const values = readExactOwnDataRecord(value, REQUEST_ID_KEYS, true);
-    if (!values || !isPositiveSafeInteger(values.requestId)) return null;
-    return Object.freeze({ requestId: values.requestId });
-}
-
-function normalizeSelectionRemovalRequestData(value) {
-    const values = readExactOwnDataRecord(
-        value,
-        SELECTION_REMOVAL_REQUEST_KEYS,
-        true
-    );
-    const binding = values && parseSidePanelBindingTuple(values.binding);
-    if (
-        !binding ||
-        !isPositiveSafeInteger(values.requestId) ||
-        !isPositiveSafeInteger(values.selectionOwnerGeneration) ||
-        !isPositiveSafeInteger(values.selectionRevision) ||
-        !isPositiveSafeInteger(values.renderRevision) ||
-        !isNonnegativeSafeInteger(values.wordIndex)
-    ) {
-        return null;
-    }
-
-    return Object.freeze({
-        binding,
-        requestId: values.requestId,
-        selectionOwnerGeneration: values.selectionOwnerGeneration,
-        selectionRevision: values.selectionRevision,
-        renderRevision: values.renderRevision,
-        wordIndex: values.wordIndex,
-    });
-}
-
-function normalizeSelectionRemovalCommandData(value) {
-    const values = readExactOwnDataRecord(
-        value,
-        SELECTION_REMOVAL_COMMAND_KEYS,
-        true
-    );
-    if (
-        !values ||
-        !isPositiveSafeInteger(values.requestId) ||
-        !isPositiveSafeInteger(values.lifecycleGeneration) ||
-        !isPositiveSafeInteger(values.selectionRevision) ||
-        !isPositiveSafeInteger(values.renderRevision) ||
-        !isNonnegativeSafeInteger(values.wordIndex)
-    ) {
-        return null;
-    }
-
-    return Object.freeze({
-        requestId: values.requestId,
-        lifecycleGeneration: values.lifecycleGeneration,
-        selectionRevision: values.selectionRevision,
-        renderRevision: values.renderRevision,
-        wordIndex: values.wordIndex,
-    });
-}
-
-function isSelectionRemovalStatus(value) {
-    return value === 'applied' || value === 'rejected';
-}
-
-function normalizeSelectionRemovalResultData(value) {
-    const values = readExactOwnDataRecord(
-        value,
-        SELECTION_REMOVAL_RESULT_KEYS,
-        true
-    );
-    const binding = values && parseSidePanelBindingTuple(values.binding);
-    if (
-        !binding ||
-        !isPositiveSafeInteger(values.requestId) ||
-        !isPositiveSafeInteger(values.selectionOwnerGeneration) ||
-        !isSelectionRemovalStatus(values.status)
-    ) {
-        return null;
-    }
-    return Object.freeze({
-        binding,
-        requestId: values.requestId,
-        selectionOwnerGeneration: values.selectionOwnerGeneration,
-        status: values.status,
-    });
-}
-
-export function buildSidePanelContentSelectionSnapshotMessage(input) {
-    const data = normalizeSelectionSnapshotData(input, {
-        includeLifecycle: true,
-    });
-    if (!data) throw new TypeError('Invalid side-panel selection snapshot');
-
-    return Object.freeze({
-        action: MessageActions.SIDEPANEL_SELECTION_SYNC,
-        data,
-    });
-}
-
-export function buildSidePanelWordIntentMessage(input) {
-    const options = normalizeSidePanelWordIntentOptions(input);
-    if (!options) throw new TypeError('Invalid side-panel word intent');
-
-    return Object.freeze({
-        action: MessageActions.SIDEPANEL_WORD_SELECTED,
-        options,
-    });
-}
-
-export function parseSidePanelWordIntentMessage(message) {
-    try {
-        const snapshot = tryCreatePlainDataSnapshot(
-            message,
-            SIDEPANEL_WORD_INTENT_LIMITS
-        );
-        if (!snapshot.accepted) return null;
-        const envelope = readExactOwnDataRecord(
-            snapshot.value,
-            SIDEPANEL_WORD_INTENT_MESSAGE_KEYS,
-            true
-        );
-        if (
-            !envelope ||
-            envelope.action !== MessageActions.SIDEPANEL_WORD_SELECTED
-        ) {
-            return null;
-        }
-        const options = normalizeSidePanelWordIntentOptions(envelope.options);
-        if (!options) return null;
-        return Object.freeze({
-            action: MessageActions.SIDEPANEL_WORD_SELECTED,
-            options,
-        });
-    } catch (_) {
-        return null;
-    }
-}
-
-export function parseSidePanelContentSelectionSnapshotMessage(message) {
-    try {
-        const envelope = readExactOwnDataRecord(
-            message,
-            SIDEPANEL_MESSAGE_KEYS,
-            true
-        );
-        if (
-            !envelope ||
-            envelope.action !== MessageActions.SIDEPANEL_SELECTION_SYNC
-        ) {
-            return null;
-        }
-        return normalizeSelectionSnapshotData(envelope.data, {
-            includeLifecycle: true,
-        });
-    } catch (_) {
-        return null;
-    }
-}
-
-export function buildSidePanelContentSelectionSnapshotResponse(status) {
-    if (status !== 'accepted' && status !== 'rejected') {
-        throw new TypeError('Invalid side-panel selection snapshot status');
-    }
-    return Object.freeze({ success: status === 'accepted' });
-}
-
-export function parseSidePanelContentSelectionSnapshotResponse(response) {
-    try {
-        const values = readExactOwnDataRecord(
-            response,
-            SELECTION_SNAPSHOT_RESPONSE_KEYS,
-            true
-        );
-        if (!values || typeof values.success !== 'boolean') return null;
-        return Object.freeze({
-            status: values.success ? 'accepted' : 'rejected',
-        });
-    } catch (_) {
-        return null;
-    }
-}
-
 export function buildSidePanelSelectionStateMessage(binding, selection) {
     const normalizedBinding = parseSidePanelBindingTuple(binding);
     const normalizedSelection = normalizeSelectionState(selection);
     if (!normalizedBinding || normalizedSelection === undefined) {
         throw new TypeError('Invalid side-panel selection state');
     }
-
     return Object.freeze({
         action: MessageActions.SIDEPANEL_SELECTION_SYNC,
         data: Object.freeze({
@@ -1890,36 +1148,27 @@ export function buildSidePanelSelectionStateMessage(binding, selection) {
 }
 
 export function parseSidePanelSelectionStateMessage(message, expectedBinding) {
-    try {
-        const normalizedExpectedBinding =
-            parseSidePanelBindingTuple(expectedBinding);
-        const envelope = readExactOwnDataRecord(
-            message,
-            SIDEPANEL_MESSAGE_KEYS,
-            true
-        );
-        const data =
-            envelope?.action === MessageActions.SIDEPANEL_SELECTION_SYNC
-                ? readExactOwnDataRecord(
-                      envelope.data,
-                      SELECTION_STATE_DATA_KEYS,
-                      true
-                  )
-                : null;
-        const binding = data && parseSidePanelBindingTuple(data.binding);
-        const selection = data ? normalizeSelectionState(data.selection) : null;
-        if (
-            !normalizedExpectedBinding ||
-            !binding ||
-            !bindingsEqual(binding, normalizedExpectedBinding) ||
-            selection === undefined
-        ) {
-            return null;
-        }
-        return Object.freeze({ binding, selection });
-    } catch (_) {
-        return null;
-    }
+    const expected = parseSidePanelBindingTuple(expectedBinding);
+    const envelope = readExactRecord(message, ['action', 'data']);
+    const data =
+        envelope?.action === MessageActions.SIDEPANEL_SELECTION_SYNC
+            ? readExactRecord(envelope.data, ['binding', 'selection'])
+            : null;
+    const binding = data ? parseSidePanelBindingTuple(data.binding) : null;
+    const selection = data ? normalizeSelectionState(data.selection) : null;
+    return expected &&
+        binding &&
+        bindingsEqual(binding, expected) &&
+        selection !== undefined
+        ? Object.freeze({ binding, selection })
+        : null;
+}
+
+function normalizeRequestId(value) {
+    const record = readExactRecord(value, ['requestId']);
+    return record && isPositiveSafeInteger(record.requestId)
+        ? Object.freeze({ requestId: record.requestId })
+        : null;
 }
 
 export function buildSidePanelSelectionRepublishRequestMessage(requestId) {
@@ -1933,51 +1182,89 @@ export function buildSidePanelSelectionRepublishRequestMessage(requestId) {
 }
 
 export function parseSidePanelSelectionRepublishRequestMessage(message) {
-    try {
-        const envelope = readExactOwnDataRecord(
-            message,
-            SIDEPANEL_MESSAGE_KEYS,
-            true
-        );
-        if (
-            !envelope ||
-            envelope.action !== MessageActions.SIDEPANEL_GET_STATE
-        ) {
-            return null;
-        }
-        return normalizeRequestIdRecord(envelope.data);
-    } catch (_) {
-        return null;
-    }
+    const envelope = readExactRecord(message, ['action', 'data']);
+    return envelope?.action === MessageActions.SIDEPANEL_GET_STATE
+        ? normalizeRequestId(envelope.data)
+        : null;
 }
 
 export function buildSidePanelSelectionRepublishAck(expectedRequest) {
-    const request = normalizeRequestIdRecord(expectedRequest);
-    if (!request) {
+    if (!normalizeRequestId(expectedRequest)) {
         throw new TypeError('Invalid side-panel selection republish request');
     }
-    return Object.freeze({ requestId: request.requestId });
+    return Object.freeze({ success: true });
 }
 
 export function parseSidePanelSelectionRepublishAck(response, expectedRequest) {
-    try {
-        const request = normalizeRequestIdRecord(expectedRequest);
-        const acknowledgement = normalizeRequestIdRecord(response);
-        if (
-            !request ||
-            !acknowledgement ||
-            acknowledgement.requestId !== request.requestId
-        ) {
-            return null;
-        }
-        return acknowledgement;
-    } catch (_) {
-        return null;
-    }
+    const request = normalizeRequestId(expectedRequest);
+    const acknowledgement = readExactRecord(response, ['success']);
+    return request && acknowledgement?.success === true ? request : null;
+}
+
+function normalizeSelectionRemovalRequest(value, exact = false) {
+    const values = exact
+        ? readExactRecord(value, SELECTION_REMOVAL_REQUEST_KEYS)
+        : isPlainRecord(value)
+          ? value
+          : null;
+    const binding = values ? parseSidePanelBindingTuple(values.binding) : null;
+    return binding &&
+        isPositiveSafeInteger(values.requestId) &&
+        isPositiveSafeInteger(values.selectionOwnerGeneration) &&
+        isPositiveSafeInteger(values.selectionRevision) &&
+        isPositiveSafeInteger(values.renderRevision) &&
+        isNonnegativeSafeInteger(values.wordIndex)
+        ? Object.freeze({
+              binding,
+              requestId: values.requestId,
+              selectionOwnerGeneration: values.selectionOwnerGeneration,
+              selectionRevision: values.selectionRevision,
+              renderRevision: values.renderRevision,
+              wordIndex: values.wordIndex,
+          })
+        : null;
+}
+
+function normalizeSelectionRemovalCommand(value) {
+    const values = readExactRecord(value, SELECTION_REMOVAL_COMMAND_KEYS);
+    return values &&
+        isPositiveSafeInteger(values.requestId) &&
+        isPositiveSafeInteger(values.lifecycleGeneration) &&
+        isPositiveSafeInteger(values.selectionRevision) &&
+        isPositiveSafeInteger(values.renderRevision) &&
+        isNonnegativeSafeInteger(values.wordIndex)
+        ? Object.freeze({
+              requestId: values.requestId,
+              lifecycleGeneration: values.lifecycleGeneration,
+              selectionRevision: values.selectionRevision,
+              renderRevision: values.renderRevision,
+              wordIndex: values.wordIndex,
+          })
+        : null;
+}
+
+function isSelectionRemovalStatus(value) {
+    return value === 'applied' || value === 'rejected';
+}
+
+function normalizeSelectionRemovalResult(value) {
+    const values = readExactRecord(value, SELECTION_REMOVAL_RESULT_KEYS);
+    const binding = values ? parseSidePanelBindingTuple(values.binding) : null;
+    return binding &&
+        isPositiveSafeInteger(values.requestId) &&
+        isPositiveSafeInteger(values.selectionOwnerGeneration) &&
+        isSelectionRemovalStatus(values.status)
+        ? Object.freeze({
+              binding,
+              requestId: values.requestId,
+              selectionOwnerGeneration: values.selectionOwnerGeneration,
+              status: values.status,
+          })
+        : null;
 }
 
 export function buildSidePanelSelectionRemovalRequestMessage(input) {
-    const data = normalizeSelectionRemovalRequestData(input);
+    const data = normalizeSelectionRemovalRequest(input);
     if (!data) {
         throw new TypeError('Invalid side-panel selection removal request');
     }
@@ -1988,29 +1275,17 @@ export function buildSidePanelSelectionRemovalRequestMessage(input) {
 }
 
 export function parseSidePanelSelectionRemovalRequestMessage(message) {
-    try {
-        const envelope = readExactOwnDataRecord(
-            message,
-            SIDEPANEL_MESSAGE_KEYS,
-            true
-        );
-        if (
-            !envelope ||
-            envelope.action !== MessageActions.SIDEPANEL_UPDATE_STATE
-        ) {
-            return null;
-        }
-        return normalizeSelectionRemovalRequestData(envelope.data);
-    } catch (_) {
-        return null;
-    }
+    const envelope = readExactRecord(message, ['action', 'data']);
+    return envelope?.action === MessageActions.SIDEPANEL_UPDATE_STATE
+        ? normalizeSelectionRemovalRequest(envelope.data, true)
+        : null;
 }
 
 export function buildSidePanelSelectionRemovalCommandMessage(
     removalRequest,
     lifecycleGeneration
 ) {
-    const removal = normalizeSelectionRemovalRequestData(removalRequest);
+    const removal = normalizeSelectionRemovalRequest(removalRequest);
     if (!removal || !isPositiveSafeInteger(lifecycleGeneration)) {
         throw new TypeError('Invalid side-panel selection removal command');
     }
@@ -2027,75 +1302,46 @@ export function buildSidePanelSelectionRemovalCommandMessage(
 }
 
 export function parseSidePanelSelectionRemovalCommandMessage(message) {
-    try {
-        const envelope = readExactOwnDataRecord(
-            message,
-            SIDEPANEL_MESSAGE_KEYS,
-            true
-        );
-        if (
-            !envelope ||
-            envelope.action !== MessageActions.SIDEPANEL_UPDATE_STATE
-        ) {
-            return null;
-        }
-        return normalizeSelectionRemovalCommandData(envelope.data);
-    } catch (_) {
-        return null;
-    }
+    const envelope = readExactRecord(message, ['action', 'data']);
+    return envelope?.action === MessageActions.SIDEPANEL_UPDATE_STATE
+        ? normalizeSelectionRemovalCommand(envelope.data)
+        : null;
 }
 
 export function buildSidePanelSelectionRemovalCommandResponse(
     expectedCommand,
     status
 ) {
-    const command = normalizeSelectionRemovalCommandData(expectedCommand);
-    if (!command || !isSelectionRemovalStatus(status)) {
+    if (
+        !normalizeSelectionRemovalCommand(expectedCommand) ||
+        !isSelectionRemovalStatus(status)
+    ) {
         throw new TypeError(
             'Invalid side-panel selection removal command response'
         );
     }
-    return Object.freeze({
-        success: status === 'applied',
-        requestId: command.requestId,
-    });
+    return Object.freeze({ success: status === 'applied' });
 }
 
 export function parseSidePanelSelectionRemovalCommandResponse(
     response,
     expectedCommand
 ) {
-    try {
-        const command = normalizeSelectionRemovalCommandData(expectedCommand);
-        const values = readExactOwnDataRecord(
-            response,
-            SELECTION_REMOVAL_COMMAND_RESPONSE_KEYS,
-            true
-        );
-        if (
-            !command ||
-            !values ||
-            typeof values.success !== 'boolean' ||
-            values.requestId !== command.requestId
-        ) {
-            return null;
-        }
-        return Object.freeze({
-            requestId: command.requestId,
-            status: values.success ? 'applied' : 'rejected',
-        });
-    } catch (_) {
-        return null;
-    }
+    const command = normalizeSelectionRemovalCommand(expectedCommand);
+    const values = readExactRecord(response, ['success']);
+    return command && values && typeof values.success === 'boolean'
+        ? Object.freeze({
+              requestId: command.requestId,
+              status: values.success ? 'applied' : 'rejected',
+          })
+        : null;
 }
 
 export function buildSidePanelSelectionRemovalResultMessage(
     expectedRemovalRequest,
     status
 ) {
-    const removal = normalizeSelectionRemovalRequestData(
-        expectedRemovalRequest
-    );
+    const removal = normalizeSelectionRemovalRequest(expectedRemovalRequest);
     if (!removal || !isSelectionRemovalStatus(status)) {
         throw new TypeError('Invalid side-panel selection removal result');
     }
@@ -2114,171 +1360,109 @@ export function parseSidePanelSelectionRemovalResultMessage(
     message,
     expectedRemovalRequest
 ) {
-    try {
-        const removal = normalizeSelectionRemovalRequestData(
-            expectedRemovalRequest
-        );
-        const envelope = readExactOwnDataRecord(
-            message,
-            SIDEPANEL_MESSAGE_KEYS,
-            true
-        );
-        const result =
-            envelope?.action === MessageActions.SIDEPANEL_UPDATE_STATE
-                ? normalizeSelectionRemovalResultData(envelope.data)
-                : null;
-        if (
-            !removal ||
-            !result ||
-            !bindingsEqual(result.binding, removal.binding) ||
-            result.requestId !== removal.requestId ||
-            result.selectionOwnerGeneration !== removal.selectionOwnerGeneration
-        ) {
-            return null;
-        }
-        return result;
-    } catch (_) {
-        return null;
-    }
+    const removal = normalizeSelectionRemovalRequest(expectedRemovalRequest);
+    const envelope = readExactRecord(message, ['action', 'data']);
+    const result =
+        envelope?.action === MessageActions.SIDEPANEL_UPDATE_STATE
+            ? normalizeSelectionRemovalResult(envelope.data)
+            : null;
+    return removal &&
+        result &&
+        bindingsEqual(result.binding, removal.binding) &&
+        result.requestId === removal.requestId &&
+        result.selectionOwnerGeneration === removal.selectionOwnerGeneration
+        ? result
+        : null;
 }
 
-function isStructuredCloneableRecord(record) {
-    if (typeof globalThis.structuredClone !== 'function') return false;
-    try {
-        globalThis.structuredClone(record);
-        return true;
-    } catch (_) {
-        return false;
-    }
+function normalizeTabBinding(input, exact = false) {
+    const values = exact
+        ? readExactRecord(input, ['tabId', 'windowId'])
+        : isPlainRecord(input)
+          ? input
+          : null;
+    return values &&
+        isNonnegativeSafeInteger(values.tabId) &&
+        isNonnegativeSafeInteger(values.windowId)
+        ? Object.freeze({ tabId: values.tabId, windowId: values.windowId })
+        : null;
 }
 
-function normalizeSidePanelTabBinding(input) {
-    const values = readExactOwnDataRecord(
-        input,
-        SIDEPANEL_TAB_BINDING_KEYS,
-        true
-    );
-    if (
-        !values ||
-        !Number.isSafeInteger(values.tabId) ||
-        values.tabId < 0 ||
-        !Number.isSafeInteger(values.windowId) ||
-        values.windowId < 0 ||
-        !isStructuredCloneableRecord(input)
-    ) {
-        return null;
-    }
+function buildTabBindingMessage(action, input) {
+    const binding = normalizeTabBinding(input);
+    if (!binding) throw new TypeError('Invalid side-panel tab binding');
     return Object.freeze({
-        tabId: values.tabId,
-        windowId: values.windowId,
+        action,
+        data: Object.freeze({
+            tabId: binding.tabId,
+            windowId: binding.windowId,
+        }),
     });
 }
 
-function buildSidePanelTabBindingMessage(action, input) {
-    const binding = normalizeSidePanelTabBinding(input);
-    if (!binding) {
-        throw new TypeError('Invalid side-panel tab binding');
-    }
-    return {
-        action,
-        data: { tabId: binding.tabId, windowId: binding.windowId },
-    };
-}
-
-function parseSidePanelTabBindingMessage(message, expectedAction) {
-    try {
-        const envelope = readExactOwnDataRecord(
-            message,
-            SIDEPANEL_MESSAGE_KEYS,
-            true
-        );
-        if (envelope?.action !== expectedAction) return null;
-        const binding = normalizeSidePanelTabBinding(envelope.data);
-        if (!binding || !isStructuredCloneableRecord(message)) return null;
-        return binding;
-    } catch (_) {
-        return null;
-    }
+function parseTabBindingMessage(message, expectedAction) {
+    const envelope = readExactRecord(message, ['action', 'data']);
+    return envelope?.action === expectedAction
+        ? normalizeTabBinding(envelope.data, true)
+        : null;
 }
 
 export function buildSidePanelTabActivatedMessage(input) {
-    return buildSidePanelTabBindingMessage(
+    return buildTabBindingMessage(
         MessageActions.SIDEPANEL_TAB_ACTIVATED,
         input
     );
 }
 
 export function parseSidePanelTabActivatedMessage(message) {
-    return parseSidePanelTabBindingMessage(
+    return parseTabBindingMessage(
         message,
         MessageActions.SIDEPANEL_TAB_ACTIVATED
     );
 }
 
 export function buildSidePanelForceBindTabMessage(input) {
-    return buildSidePanelTabBindingMessage(
+    return buildTabBindingMessage(
         MessageActions.SIDEPANEL_FORCE_BIND_TAB,
         input
     );
 }
 
 export function parseSidePanelForceBindTabMessage(message) {
-    return parseSidePanelTabBindingMessage(
+    return parseTabBindingMessage(
         message,
         MessageActions.SIDEPANEL_FORCE_BIND_TAB
     );
 }
 
-export function parseSidePanelBindingTuple(binding) {
-    const values = readExactOwnDataRecord(binding, BINDING_KEYS, true);
-    if (!values) return null;
-    if (
-        !Number.isSafeInteger(values.registrationId) ||
-        values.registrationId <= 0 ||
-        !Number.isSafeInteger(values.tabId) ||
-        values.tabId < 0 ||
-        !Number.isSafeInteger(values.windowId) ||
-        values.windowId < 0
-    ) {
-        return null;
-    }
-    if (!isStructuredCloneableRecord(binding)) return null;
-
-    return Object.freeze(copyBinding(values));
-}
-
 export function buildSidePanelRegistrationMessage(binding, timestamp) {
-    if (!Number.isSafeInteger(timestamp) || timestamp < 0) {
-        throw new TypeError('Invalid side-panel registration timestamp');
-    }
     const normalizedBinding = parseSidePanelBindingTuple(binding);
-    if (!normalizedBinding) {
-        throw new TypeError('Invalid side-panel registration binding');
+    if (!normalizedBinding || !isNonnegativeSafeInteger(timestamp)) {
+        throw new TypeError('Invalid side-panel registration');
     }
-    return {
+    return Object.freeze({
         action: MessageActions.SIDEPANEL_REGISTER,
-        data: copyBinding(normalizedBinding),
+        data: Object.freeze(copyBinding(normalizedBinding)),
         source: 'sidepanel',
         timestamp,
-    };
+    });
 }
 
 export function parseSidePanelRegistrationMessage(message) {
-    const envelope = readExactOwnDataRecord(message, REGISTRATION_MESSAGE_KEYS);
-    if (!envelope) return null;
+    const envelope = readExactRecord(message, [
+        'action',
+        'data',
+        'source',
+        'timestamp',
+    ]);
     if (
-        envelope.action !== MessageActions.SIDEPANEL_REGISTER ||
+        envelope?.action !== MessageActions.SIDEPANEL_REGISTER ||
         envelope.source !== 'sidepanel' ||
-        !Number.isSafeInteger(envelope.timestamp) ||
-        envelope.timestamp < 0
+        !isNonnegativeSafeInteger(envelope.timestamp)
     ) {
         return null;
     }
-
-    const binding = parseSidePanelBindingTuple(envelope.data);
-    if (!binding || !isStructuredCloneableRecord(message)) return null;
-
-    return binding;
+    return parseSidePanelBindingTuple(envelope.data);
 }
 
 export function buildSidePanelBindingConfirmationMessage(binding) {
@@ -2286,26 +1470,15 @@ export function buildSidePanelBindingConfirmationMessage(binding) {
     if (!normalizedBinding) {
         throw new TypeError('Invalid side-panel binding confirmation');
     }
-    return {
+    return Object.freeze({
         action: MessageActions.SIDEPANEL_BINDING_CONFIRMED,
-        data: copyBinding(normalizedBinding),
-    };
+        data: Object.freeze(copyBinding(normalizedBinding)),
+    });
 }
 
 export function parseSidePanelBindingConfirmationMessage(message) {
-    const envelope = readExactOwnDataRecord(
-        message,
-        BINDING_CONFIRMATION_MESSAGE_KEYS
-    );
-    if (
-        !envelope ||
-        envelope.action !== MessageActions.SIDEPANEL_BINDING_CONFIRMED
-    ) {
-        return null;
-    }
-
-    const binding = parseSidePanelBindingTuple(envelope.data);
-    if (!binding || !isStructuredCloneableRecord(message)) return null;
-
-    return binding;
+    const envelope = readExactRecord(message, ['action', 'data']);
+    return envelope?.action === MessageActions.SIDEPANEL_BINDING_CONFIRMED
+        ? parseSidePanelBindingTuple(envelope.data)
+        : null;
 }

@@ -1,10 +1,12 @@
 import { jest } from '@jest/globals';
-import * as contentScriptUtils from '../core/utils.js';
+import {
+    EventBuffer,
+    IntervalManager,
+    injectScript,
+    logWithFallback,
+} from '../core/utils.js';
 
-const { EventBuffer, IntervalManager, injectScript, logWithFallback } =
-    contentScriptUtils;
-
-describe('active content-script runtime utilities', () => {
+describe('content-script runtime utilities', () => {
     afterEach(() => {
         document
             .querySelectorAll('script[id^="content-script-utils-test-"]')
@@ -13,157 +15,146 @@ describe('active content-script runtime utilities', () => {
         jest.restoreAllMocks();
     });
 
-    test('exports only production-consumed utility seams', () => {
-        expect(Object.keys(contentScriptUtils).sort()).toEqual([
-            'EventBuffer',
-            'IntervalManager',
-            'injectScript',
-            'logWithFallback',
+    test('injects one script and reports its lifecycle', () => {
+        const onLoad = jest.fn();
+        const onError = jest.fn();
+        const logger = jest.fn();
+
+        expect(
+            injectScript(
+                'runtime-test.js',
+                'content-script-utils-test-runtime',
+                onLoad,
+                onError,
+                logger,
+                true
+            )
+        ).toBe(true);
+
+        const script = document.getElementById(
+            'content-script-utils-test-runtime'
+        );
+        expect(script.type).toBe('module');
+        expect(script.src).toContain('runtime-test.js');
+
+        script.onload();
+        expect(onLoad).toHaveBeenCalledTimes(1);
+
+        const loadError = new Error('load failed');
+        script.onerror(loadError);
+        expect(logger).toHaveBeenCalledWith(
+            'Failed to load script content-script-utils-test-runtime',
+            loadError
+        );
+        expect(onError).toHaveBeenCalledWith(loadError);
+    });
+
+    test('does not replace an existing script', () => {
+        const existing = document.createElement('script');
+        existing.id = 'content-script-utils-test-existing';
+        document.head.appendChild(existing);
+
+        expect(
+            injectScript(
+                'replacement.js',
+                existing.id,
+                jest.fn(),
+                jest.fn(),
+                jest.fn()
+            )
+        ).toBe(false);
+        expect(document.getElementById(existing.id)).toBe(existing);
+    });
+
+    test('buffers current events in insertion order and then drains them', () => {
+        const buffer = new EventBuffer(jest.fn());
+        const processor = jest.fn();
+        buffer.add({ type: 'first' });
+        buffer.add({ type: 'second' });
+
+        buffer.processAll(processor);
+
+        expect(processor.mock.calls.map(([event]) => event.type)).toEqual([
+            'first',
+            'second',
+        ]);
+        expect(buffer.size()).toBe(0);
+    });
+
+    test('bounds the buffer and discards stale events', () => {
+        const now = Date.now();
+        const buffer = new EventBuffer(jest.fn(), 2, 100);
+        buffer.add({ type: 'stale', timestamp: now - 101 });
+        buffer.add({ type: 'first', timestamp: now });
+        buffer.add({ type: 'second', timestamp: now });
+        buffer.add({ type: 'latest', timestamp: now });
+        const processor = jest.fn();
+
+        expect(buffer.size()).toBe(2);
+        buffer.processAll(processor);
+
+        expect(processor.mock.calls.map(([event]) => event.type)).toEqual([
+            'second',
+            'latest',
         ]);
     });
 
-    describe('injectScript', () => {
-        test('injects an exact script and reports its load', () => {
-            const onLoad = jest.fn();
-            const logger = jest.fn();
+    test('isolates one buffered-event failure and continues draining', () => {
+        const logger = jest.fn();
+        const buffer = new EventBuffer(logger);
+        buffer.add({ type: 'first' });
+        buffer.add({ type: 'second' });
+        const processed = [];
 
-            expect(
-                injectScript(
-                    'runtime-test.js',
-                    'content-script-utils-test-runtime',
-                    onLoad,
-                    jest.fn(),
-                    logger,
-                    true
-                )
-            ).toBe(true);
-
-            const script = document.getElementById(
-                'content-script-utils-test-runtime'
-            );
-            expect(script?.type).toBe('module');
-            expect(script?.src).toContain('runtime-test.js');
-
-            script.onload();
-            expect(onLoad).toHaveBeenCalledTimes(1);
+        buffer.processAll((event) => {
+            if (event.type === 'first') throw new Error('bad event');
+            processed.push(event.type);
         });
 
-        test('does not replace an existing owned script', () => {
-            const existing = document.createElement('script');
-            existing.id = 'content-script-utils-test-existing';
-            document.head.appendChild(existing);
-
-            expect(
-                injectScript(
-                    'replacement.js',
-                    'content-script-utils-test-existing',
-                    jest.fn(),
-                    jest.fn(),
-                    jest.fn()
-                )
-            ).toBe(false);
-            expect(document.getElementById(existing.id)).toBe(existing);
-        });
-
-        test('returns false and reports a creation failure', () => {
-            const originalCreateElement = document.createElement.bind(document);
-            jest.spyOn(document, 'createElement').mockImplementation(
-                (tagName) => {
-                    if (tagName === 'script') {
-                        throw new Error('creation failed');
-                    }
-                    return originalCreateElement(tagName);
-                }
-            );
-            const onError = jest.fn();
-
-            expect(
-                injectScript(
-                    'broken.js',
-                    'content-script-utils-test-broken',
-                    jest.fn(),
-                    onError,
-                    jest.fn()
-                )
-            ).toBe(false);
-            expect(onError).toHaveBeenCalledWith(expect.any(Error));
-        });
+        expect(processed).toEqual(['second']);
+        expect(logger).toHaveBeenCalledTimes(1);
+        expect(buffer.size()).toBe(0);
     });
 
-    describe('EventBuffer', () => {
-        test('buffers and drains current events in insertion order', () => {
-            const buffer = new EventBuffer(jest.fn());
-            const processor = jest.fn();
-            const first = { type: 'first' };
-            const second = { type: 'second' };
+    test('clears buffered events', () => {
+        const buffer = new EventBuffer(jest.fn());
+        buffer.add({ type: 'queued' });
 
-            buffer.add(first);
-            buffer.add(second);
-            buffer.processAll(processor);
+        buffer.clear();
 
-            expect(processor.mock.calls).toEqual([
-                [first, 0],
-                [second, 1],
-            ]);
-            expect(buffer.size()).toBe(0);
-        });
-
-        test('drops stale events before processing', () => {
-            const buffer = new EventBuffer(jest.fn(), 10, 100);
-            const processor = jest.fn();
-            buffer.add({ type: 'stale', timestamp: Date.now() - 101 });
-            buffer.add({ type: 'current', timestamp: Date.now() });
-
-            buffer.processAll(processor);
-
-            expect(processor).toHaveBeenCalledTimes(1);
-            expect(processor).toHaveBeenCalledWith(
-                expect.objectContaining({ type: 'current' }),
-                0
-            );
-        });
-
-        test('clears buffered events terminally', () => {
-            const buffer = new EventBuffer(jest.fn());
-            buffer.add({ type: 'queued' });
-
-            buffer.clear();
-
-            expect(buffer.size()).toBe(0);
-        });
+        expect(buffer.size()).toBe(0);
     });
 
-    describe('IntervalManager', () => {
-        test('owns and clears named intervals', () => {
-            jest.useFakeTimers();
-            const manager = new IntervalManager();
-            const callback = jest.fn();
+    test('replaces and clears named intervals', () => {
+        jest.useFakeTimers();
+        const manager = new IntervalManager();
+        const first = jest.fn();
+        const replacement = jest.fn();
 
-            expect(manager.set('poll', callback, 100)).toBe(true);
-            expect(manager.has('poll')).toBe(true);
-            jest.advanceTimersByTime(100);
-            expect(callback).toHaveBeenCalledTimes(1);
+        manager.set('poll', first, 100);
+        manager.set('poll', replacement, 100);
+        jest.advanceTimersByTime(100);
 
-            manager.clear('poll');
-            jest.advanceTimersByTime(100);
-            expect(callback).toHaveBeenCalledTimes(1);
-            expect(manager.count()).toBe(0);
-        });
+        expect(first).not.toHaveBeenCalled();
+        expect(replacement).toHaveBeenCalledTimes(1);
 
-        test('clears every owned interval', () => {
-            jest.useFakeTimers();
-            const manager = new IntervalManager();
-            manager.set('first', jest.fn(), 100);
-            manager.set('second', jest.fn(), 200);
-
-            manager.clearAll();
-
-            expect(manager.count()).toBe(0);
-            expect(jest.getTimerCount()).toBe(0);
-        });
+        manager.clear('poll');
+        jest.advanceTimersByTime(100);
+        expect(replacement).toHaveBeenCalledTimes(1);
     });
 
-    test('logWithFallback preserves the startup logger contract', () => {
+    test('clears all managed intervals', () => {
+        jest.useFakeTimers();
+        const manager = new IntervalManager();
+        manager.set('first', jest.fn(), 100);
+        manager.set('second', jest.fn(), 200);
+
+        manager.clearAll();
+
+        expect(jest.getTimerCount()).toBe(0);
+    });
+
+    test('uses the startup logging contract', () => {
         const log = jest.spyOn(console, 'log').mockImplementation(() => {});
 
         logWithFallback('warn', 'startup message', { ready: false }, 'Test');

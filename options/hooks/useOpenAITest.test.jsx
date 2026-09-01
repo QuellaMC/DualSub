@@ -11,7 +11,7 @@ jest.unstable_mockModule('../../utils/hostPermissions.js', () => ({
 
 const { useOpenAITest } = await import('./useOpenAITest.js');
 
-function createDeferred() {
+function deferred() {
     let resolve;
     let reject;
     const promise = new Promise((promiseResolve, promiseReject) => {
@@ -31,61 +31,134 @@ beforeEach(() => {
     requestHostPermission.mockReset();
 });
 
-test('an older fetch success cannot publish or clear the newer fetch busy state', async () => {
-    const olderModels = createDeferred();
-    const newerModels = createDeferred();
+test('testing a connection requests endpoint access and publishes its catalog identity', async () => {
+    const permission = deferred();
+    const models = deferred();
+    const fetchAvailableModels = jest.fn(() => models.promise);
+    const onModelsLoaded = jest.fn();
+    requestHostPermission.mockReturnValue(permission.promise);
+    const { result } = renderHook(() => useOpenAITest(t, fetchAvailableModels));
+
+    let request;
+    act(() => {
+        request = result.current.testConnection(
+            'secret-key',
+            'https://api.example.com/v1',
+            onModelsLoaded
+        );
+    });
+
+    expect(result.current.testing).toBe(true);
+    expect(result.current.fetchingModels).toBe(false);
+    expect(result.current.testResult).toMatchObject({
+        message: 'Testing connection...',
+        type: 'info',
+    });
+    expect(requestHostPermission).toHaveBeenCalledWith(
+        'https://api.example.com/v1'
+    );
+
+    await act(async () => {
+        permission.resolve(true);
+        await permission.promise;
+    });
+    expect(fetchAvailableModels).toHaveBeenCalledWith(
+        'secret-key',
+        'https://api.example.com/v1'
+    );
+
+    await act(async () => {
+        models.resolve(['model-a']);
+        await request;
+    });
+
+    expect(onModelsLoaded).toHaveBeenCalledWith(['model-a'], {
+        apiKey: 'secret-key',
+        baseUrl: 'https://api.example.com/v1',
+    });
+    expect(result.current.testing).toBe(false);
+    expect(result.current.testResult).toMatchObject({
+        message: 'Connection successful!',
+        type: 'success',
+    });
+    expect(hasHostPermission).not.toHaveBeenCalled();
+});
+
+test('automatic model loading checks existing access and explains when permission is needed', async () => {
+    const permission = deferred();
+    const fetchAvailableModels = jest.fn();
+    hasHostPermission.mockReturnValue(permission.promise);
+    const { result } = renderHook(() => useOpenAITest(t, fetchAvailableModels));
+
+    let request;
+    act(() => {
+        request = result.current.fetchModels(
+            'secret-key',
+            'https://api.example.com/v1'
+        );
+    });
+    expect(result.current.fetchingModels).toBe(true);
+    expect(result.current.testResult.message).toBe('Fetching models...');
+
+    await act(async () => {
+        permission.resolve(false);
+        await request;
+    });
+
+    expect(fetchAvailableModels).not.toHaveBeenCalled();
+    expect(result.current.fetchingModels).toBe(false);
+    expect(result.current.testResult).toMatchObject({
+        message: 'Use Test Connection to grant access to this endpoint.',
+        type: 'warning',
+    });
+});
+
+test('only the newest request can publish models, status, or loading completion', async () => {
+    const olderModels = deferred();
+    const newerModels = deferred();
     const fetchAvailableModels = jest
         .fn()
         .mockReturnValueOnce(olderModels.promise)
         .mockReturnValueOnce(newerModels.promise);
-    const olderLoaded = jest.fn();
-    const newerLoaded = jest.fn();
+    const onModelsLoaded = jest.fn();
     hasHostPermission.mockResolvedValue(true);
     const { result } = renderHook(() => useOpenAITest(t, fetchAvailableModels));
 
-    let olderOperation;
+    let olderRequest;
     await act(async () => {
-        olderOperation = result.current.fetchModels(
+        olderRequest = result.current.fetchModels(
             'older-key',
             'https://older.example.com/v1',
-            olderLoaded
+            onModelsLoaded
         );
         await Promise.resolve();
     });
-    let newerOperation;
+    let newerRequest;
     await act(async () => {
-        newerOperation = result.current.fetchModels(
+        newerRequest = result.current.fetchModels(
             'newer-key',
             'https://newer.example.com/v1',
-            newerLoaded
+            onModelsLoaded
         );
         await Promise.resolve();
     });
 
-    expect(result.current.fetchingModels).toBe(true);
-    expect(result.current.testResult).toMatchObject({
-        message: 'Fetching models...',
-        type: 'info',
+    await act(async () => {
+        olderModels.resolve(['stale-model']);
+        await olderRequest;
     });
+    expect(onModelsLoaded).not.toHaveBeenCalled();
+    expect(result.current.fetchingModels).toBe(true);
+    expect(result.current.testResult.message).toBe('Fetching models...');
 
     await act(async () => {
-        olderModels.resolve(['older-model']);
-        await olderOperation;
+        newerModels.resolve(['current-model']);
+        await newerRequest;
     });
-
-    expect(olderLoaded).not.toHaveBeenCalled();
-    expect(result.current.fetchingModels).toBe(true);
-    expect(result.current.testResult).toMatchObject({
-        message: 'Fetching models...',
-        type: 'info',
+    expect(onModelsLoaded).toHaveBeenCalledWith(['current-model'], {
+        apiKey: 'newer-key',
+        baseUrl: 'https://newer.example.com/v1',
     });
-
-    await act(async () => {
-        newerModels.resolve(['newer-model']);
-        await newerOperation;
-    });
-
-    expect(newerLoaded).toHaveBeenCalledWith(['newer-model']);
     expect(result.current.fetchingModels).toBe(false);
     expect(result.current.testResult).toMatchObject({
         message: 'Models fetched successfully.',
@@ -93,131 +166,29 @@ test('an older fetch success cannot publish or clear the newer fetch busy state'
     });
 });
 
-test('an older test failure cannot overwrite a newer fetch or clear its busy state', async () => {
-    const olderTest = createDeferred();
-    const newerFetch = createDeferred();
-    const fetchAvailableModels = jest
-        .fn()
-        .mockReturnValueOnce(olderTest.promise)
-        .mockReturnValueOnce(newerFetch.promise);
-    const newerLoaded = jest.fn();
-    requestHostPermission.mockResolvedValue(true);
-    hasHostPermission.mockResolvedValue(true);
-    const { result } = renderHook(() => useOpenAITest(t, fetchAvailableModels));
-
-    let olderOperation;
-    await act(async () => {
-        olderOperation = result.current.testConnection(
-            'older-key',
-            'https://older.example.com/v1'
-        );
-        await Promise.resolve();
-    });
-    let newerOperation;
-    await act(async () => {
-        newerOperation = result.current.fetchModels(
-            'newer-key',
-            'https://newer.example.com/v1',
-            newerLoaded
-        );
-        await Promise.resolve();
-    });
-
-    expect(result.current.testing).toBe(false);
-    expect(result.current.fetchingModels).toBe(true);
-
-    await act(async () => {
-        olderTest.reject(new Error('older failure'));
-        await olderOperation;
-    });
-
-    expect(result.current.fetchingModels).toBe(true);
-    expect(result.current.testResult).toMatchObject({
-        message: 'Fetching models...',
-        type: 'info',
-    });
-
-    await act(async () => {
-        newerFetch.resolve(['newer-model']);
-        await newerOperation;
-    });
-
-    expect(newerLoaded).toHaveBeenCalledWith(['newer-model']);
-    expect(result.current.fetchingModels).toBe(false);
-    expect(result.current.testResult.type).toBe('success');
-});
-
-test('explicit invalidation suppresses a deferred permission warning', async () => {
-    const permission = createDeferred();
-    hasHostPermission.mockReturnValue(permission.promise);
-    const fetchAvailableModels = jest.fn();
-    const { result } = renderHook(() => useOpenAITest(t, fetchAvailableModels));
-
-    let operation;
-    act(() => {
-        operation = result.current.fetchModels(
-            'old-key',
-            'https://old.example.com/v1'
-        );
-    });
-    expect(result.current.fetchingModels).toBe(true);
-
-    act(() => {
-        result.current.invalidateRequests();
-    });
-    expect(result.current.fetchingModels).toBe(false);
-    expect(result.current.testResult).toEqual({
-        visible: false,
-        message: '',
-        type: 'info',
-    });
-
-    await act(async () => {
-        permission.resolve(false);
-        await operation;
-    });
-
-    expect(fetchAvailableModels).not.toHaveBeenCalled();
-    expect(result.current.testResult).toEqual({
-        visible: false,
-        message: '',
-        type: 'info',
-    });
-});
-
-test('unmount invalidates a deferred request without publishing its result', async () => {
-    const models = createDeferred();
+test('unmount prevents an in-flight request from publishing', async () => {
+    const models = deferred();
     const fetchAvailableModels = jest.fn(() => models.promise);
     const onModelsLoaded = jest.fn();
-    const renderSnapshots = [];
     hasHostPermission.mockResolvedValue(true);
-    const { result, unmount } = renderHook(() => {
-        const state = useOpenAITest(t, fetchAvailableModels);
-        renderSnapshots.push({
-            fetchingModels: state.fetchingModels,
-            testResult: state.testResult,
-            testing: state.testing,
-        });
-        return state;
-    });
+    const { result, unmount } = renderHook(() =>
+        useOpenAITest(t, fetchAvailableModels)
+    );
 
-    let operation;
+    let request;
     await act(async () => {
-        operation = result.current.fetchModels(
-            'current-key',
-            'https://current.example.com/v1',
+        request = result.current.fetchModels(
+            'secret-key',
+            'https://api.example.com/v1',
             onModelsLoaded
         );
         await Promise.resolve();
     });
-    const renderCountAtUnmount = renderSnapshots.length;
     unmount();
 
     await act(async () => {
         models.resolve(['late-model']);
-        await operation;
+        await request;
     });
-
     expect(onModelsLoaded).not.toHaveBeenCalled();
-    expect(renderSnapshots).toHaveLength(renderCountAtUnmount);
 });

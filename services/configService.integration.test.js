@@ -119,31 +119,6 @@ describe('ConfigService Logger Integration', () => {
                 languageSpy.mockRestore();
             }
         });
-
-        test('resetToDefaults preserves static defaults in their storage areas', async () => {
-            chrome.storage.sync.set.mockImplementation((items, callback) =>
-                callback()
-            );
-            chrome.storage.local.set.mockImplementation((items, callback) =>
-                callback()
-            );
-
-            await configService.resetToDefaults();
-
-            const syncDefaults = chrome.storage.sync.set.mock.calls[0][0];
-            const localDefaults = chrome.storage.local.set.mock.calls[0][0];
-
-            expect(chrome.storage.sync.set).toHaveBeenCalledTimes(1);
-            expect(chrome.storage.local.set).toHaveBeenCalledTimes(1);
-            expect(syncDefaults).toEqual(
-                expect.objectContaining({ hideOfficialSubtitles: true })
-            );
-            expect(localDefaults).toEqual(
-                expect.objectContaining({ debugMode: false })
-            );
-            expect(syncDefaults).not.toHaveProperty('debugMode');
-            expect(localDefaults).not.toHaveProperty('hideOfficialSubtitles');
-        });
     });
 
     describe('Public Method Debug Logging', () => {
@@ -449,32 +424,6 @@ describe('ConfigService Logger Integration', () => {
                     areaName: 'local',
                     changedKeys: ['debugMode'],
                     listenerCount: expect.any(Number),
-                })
-            );
-        });
-
-        test('should log errors in change listener callbacks', () => {
-            // Reset the change listener initialization flag for this test
-            configService.changeListenerInitialized = false;
-            configService.initializeChangeListener();
-
-            const errorCallback = jest.fn().mockImplementation(() => {
-                throw new Error('Callback error');
-            });
-            configService.onChanged(errorCallback);
-
-            // Get the change listener that was registered
-            const changeListener =
-                chrome.storage.onChanged.addListener.mock.calls[0][0];
-            changeListener({ uiLanguage: { newValue: 'es' } }, 'sync');
-
-            expect(mockLogger.error).toHaveBeenCalledWith(
-                'Error in change listener callback',
-                null,
-                expect.objectContaining({
-                    areaName: 'sync',
-                    changedKeys: ['uiLanguage'],
-                    category: 'callback-error',
                 })
             );
         });

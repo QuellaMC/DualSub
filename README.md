@@ -146,14 +146,10 @@ DualSub/
 
 ## 🏗️ Architecture
 
-DualSub uses a modern, modular architecture built on several key design patterns:
-
-### Core Architecture
-
-- **📐 Template Method Pattern**: `BaseContentScript` provides common functionality with platform-specific implementations
-- **🔌 Dependency Injection**: Dynamic module loading for better testability and loose coupling
-- **📡 Event-Driven Design**: Extensible message handling with action-based routing
-- **🧹 Resource Management**: Comprehensive cleanup system preventing memory leaks
+`BaseContentScript` owns the shared content-script lifecycle. Netflix and Disney+
+adapters provide only site-specific route, injection, and player behavior.
+Extension contexts communicate through exact, sender-aware protocol contracts;
+runtime sends use Chrome's Promise API and retry only proven non-delivery.
 
 ### Key Components
 
@@ -176,17 +172,17 @@ We welcome contributions! Please follow these guidelines:
 
 - **ESLint + Prettier**: Code must pass linting and formatting checks
 - **ES Modules**: Use modern JavaScript module syntax
-- **Testing**: All new features require comprehensive tests
+- **Testing**: Add focused regression tests for changed behavior
 - **Documentation**: Update relevant documentation for changes
 
 ### Development Workflow
 
 1. **Fork** the repository
 2. **Create** a feature branch (`git checkout -b feature/amazing-feature`)
-3. **Write** tests for your changes
-4. **Ensure** all tests pass (`npm test`)
+3. **Write** focused tests for changed behavior
+4. **Ensure** all tests pass (`npm run test:ci`)
 5. **Format** code (`npm run format`)
-6. **Lint** code (`npm run lint:fix`)
+6. **Lint** code (`npm run lint`)
 7. **Commit** changes (`git commit -m 'Add amazing feature'`)
 8. **Push** to branch (`git push origin feature/amazing-feature`)
 9. **Open** a Pull Request
@@ -199,7 +195,7 @@ We welcome contributions! Please follow these guidelines:
 2. Implement `async function translate(text, sourceLang, targetLang)`
 3. Register it in `background/services/translationService.js` and the shared provider constants
 4. Update the React popup/options section or provider card that exposes it
-5. Add comprehensive tests
+5. Add focused provider and integration tests
 
 #### New Streaming Platforms
 
@@ -218,13 +214,13 @@ We welcome contributions! Please follow these guidelines:
 
 ## 🧪 Testing
 
-DualSub includes a comprehensive testing framework:
+DualSub uses Jest with shared Chrome, DOM, and platform fixtures.
 
 ### Running Tests
 
 ```bash
-# Run all tests
-npm test
+# Run the CI suite serially
+npm run test:ci
 
 # Watch mode for development
 npm run test:watch
@@ -286,9 +282,9 @@ See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
 
 ### Version 2.3.2
 
-- Messaging reliability: Refactored messaging utilities to support both callback- and promise-style chrome.runtime.sendMessage, with wake-up retries for MV3 service worker.
+- Messaging reliability: Unified on Promise-based `chrome.runtime.sendMessage` with bounded retries for proven non-delivery.
 - Unified resilient message sending across platform adapters (BasePlatformAdapter + Netflix), improving background communication stability and test determinism.
-- AI Context: Provider metrics now correctly reflect success/error; tests updated to tolerate callback/promise messaging; dynamic chrome access prevents stale mocks between tests.
+- AI Context: Provider metrics now correctly reflect success and error outcomes.
 - Internal refactors and stability improvements.
 
 ### Version 2.3.1

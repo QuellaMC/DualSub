@@ -1,10 +1,4 @@
-import React, {
-    useCallback,
-    useEffect,
-    useLayoutEffect,
-    useRef,
-    useState,
-} from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 export function SliderSetting({
     label,
@@ -18,15 +12,10 @@ export function SliderSetting({
 }) {
     const sliderRef = useRef(null);
     const confirmedValueRef = useRef(value);
-    const lastRequestedValueRef = useRef(value);
-    const commitWorkerRef = useRef(null);
-    const pendingCommitRef = useRef(null);
+    const lastReleasedValueRef = useRef(value);
     const activeCommitRef = useRef(null);
-    // Authoritative props advance the generation so stale queued releases are
-    // discarded without cancelling persistence that has already started.
-    const propGenerationRef = useRef(0);
-    const previewGenerationRef = useRef(0);
-    const onChangeEndRef = useRef(onChangeEnd);
+    const authorityRevisionRef = useRef(0);
+    const previewRevisionRef = useRef(0);
     const [draftValue, setDraftValue] = useState(value);
 
     const updateSliderProgress = useCallback(
@@ -39,26 +28,22 @@ export function SliderSetting({
         [min, max]
     );
 
-    useLayoutEffect(() => {
-        onChangeEndRef.current = onChangeEnd;
-    }, [onChangeEnd]);
-
-    useLayoutEffect(() => {
+    useEffect(() => {
         const activeCommit = activeCommitRef.current;
         const isOptimisticEcho =
             activeCommit !== null &&
-            activeCommit.generation === propGenerationRef.current &&
+            activeCommit.authorityRevision === authorityRevisionRef.current &&
             Object.is(value, activeCommit.value) &&
             !Object.is(value, confirmedValueRef.current);
         if (isOptimisticEcho) {
             return;
         }
 
-        propGenerationRef.current += 1;
-        pendingCommitRef.current = null;
+        authorityRevisionRef.current += 1;
+        activeCommitRef.current = null;
         setDraftValue(value);
         confirmedValueRef.current = value;
-        lastRequestedValueRef.current = value;
+        lastReleasedValueRef.current = value;
     }, [value]);
 
     useEffect(() => {
@@ -69,91 +54,50 @@ export function SliderSetting({
 
     const handleInput = (e) => {
         const newValue = parseFloat(e.target.value);
-        previewGenerationRef.current += 1;
+        previewRevisionRef.current += 1;
         setDraftValue(newValue);
         updateSliderProgress(e.target, newValue);
         onChange(newValue);
     };
 
-    const drainCommitQueue = useCallback(async (initialCommit) => {
-        let commit = initialCommit;
-
-        try {
-            while (commit !== null) {
-                let persisted = false;
-                activeCommitRef.current = commit;
-                try {
-                    await onChangeEndRef.current(commit.value, {
-                        confirmedValue: confirmedValueRef.current,
-                        isCurrent: () =>
-                            commit.generation === propGenerationRef.current &&
-                            commit.previewGeneration ===
-                                previewGenerationRef.current,
-                    });
-                    if (commit.generation === propGenerationRef.current) {
-                        confirmedValueRef.current = commit.value;
-                    }
-                    persisted = true;
-                } catch {
-                    // Keep the previous committed value so this draft can be retried.
-                }
-
-                const pendingCommit = pendingCommitRef.current;
-                pendingCommitRef.current = null;
-
-                if (
-                    !persisted &&
-                    pendingCommit === null &&
-                    commit.generation === propGenerationRef.current &&
-                    lastRequestedValueRef.current === commit.value
-                ) {
-                    lastRequestedValueRef.current = confirmedValueRef.current;
-                }
-
-                commit =
-                    pendingCommit !== null &&
-                    pendingCommit.generation === propGenerationRef.current &&
-                    pendingCommit.value !== confirmedValueRef.current
-                        ? pendingCommit
-                        : null;
-            }
-        } finally {
-            activeCommitRef.current = null;
-            commitWorkerRef.current = null;
-        }
-    }, []);
-
     const commitValue = useCallback(() => {
         if (
-            !onChangeEndRef.current ||
-            draftValue === lastRequestedValueRef.current
+            !onChangeEnd ||
+            Object.is(draftValue, lastReleasedValueRef.current)
         ) {
-            return commitWorkerRef.current?.promise ?? null;
+            return;
         }
 
-        lastRequestedValueRef.current = draftValue;
-        if (commitWorkerRef.current) {
-            pendingCommitRef.current = {
-                generation: propGenerationRef.current,
-                previewGeneration: previewGenerationRef.current,
-                value: draftValue,
-            };
-            return commitWorkerRef.current.promise;
-        }
-
-        // Released persistence intentionally survives React component unmount
-        // while this document remains alive. The worker only mutates refs and
-        // invokes the supplied callback; it never schedules component state or
-        // timers.
-        const commitWorker = {};
-        commitWorkerRef.current = commitWorker;
-        commitWorker.promise = drainCommitQueue({
-            generation: propGenerationRef.current,
-            previewGeneration: previewGenerationRef.current,
+        const commit = {
+            authorityRevision: authorityRevisionRef.current,
+            previewRevision: previewRevisionRef.current,
             value: draftValue,
-        });
-        return commitWorker.promise;
-    }, [draftValue, drainCommitQueue]);
+        };
+        activeCommitRef.current = commit;
+        lastReleasedValueRef.current = draftValue;
+
+        const isCurrent = () =>
+            activeCommitRef.current === commit &&
+            commit.authorityRevision === authorityRevisionRef.current &&
+            commit.previewRevision === previewRevisionRef.current;
+
+        Promise.resolve(
+            onChangeEnd(draftValue, {
+                getConfirmedValue: () => confirmedValueRef.current,
+                isCurrent,
+            })
+        )
+            .then(() => {
+                if (commit.authorityRevision === authorityRevisionRef.current) {
+                    confirmedValueRef.current = commit.value;
+                }
+            })
+            .catch(() => {
+                if (isCurrent()) {
+                    lastReleasedValueRef.current = confirmedValueRef.current;
+                }
+            });
+    }, [draftValue, onChangeEnd]);
 
     const formatValue = (val) => {
         return parseFloat(val).toFixed(1);

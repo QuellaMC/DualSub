@@ -16,11 +16,33 @@ import {
     toHostPermissionPattern,
 } from '../../../utils/hostPermissions.js';
 import { useCommittedTextField } from '../../hooks/useCommittedTextField.js';
+import { CONTEXT_TYPES as SHARED_CONTEXT_TYPES } from '../../../content_scripts/shared/constants/contextTypes.js';
 
 const OPENAI_MODELS = getOpenAIModels();
 const GEMINI_MODELS = getGeminiModels();
 const AI_CONTEXT_TIMEOUT_SCHEMA = configSchema.aiContextTimeout;
 const AI_CONTEXT_RATE_LIMIT_SCHEMA = configSchema.aiContextRateLimit;
+const CONTEXT_TYPE_LABELS = Object.freeze({
+    cultural: [
+        'contextTypeCultural',
+        'contextTypeCulturalLabel',
+        'Cultural Context:',
+    ],
+    historical: [
+        'contextTypeHistorical',
+        'contextTypeHistoricalLabel',
+        'Historical Context:',
+    ],
+    linguistic: [
+        'contextTypeLinguistic',
+        'contextTypeLinguisticLabel',
+        'Linguistic Context:',
+    ],
+});
+const CONTEXT_TYPES = SHARED_CONTEXT_TYPES.map((type) => [
+    type,
+    ...CONTEXT_TYPE_LABELS[type],
+]);
 
 function getNumericDraft(value) {
     if (value === '') {
@@ -59,6 +81,40 @@ function getHostPermissionScope(baseUrl) {
     }
 }
 
+function CommittedInput({
+    t,
+    id,
+    label,
+    field,
+    parse = (value) => value,
+    ...inputProps
+}) {
+    const errorId = `${id}Error`;
+    return (
+        <div className="setting">
+            <label htmlFor={id}>{label}</label>
+            <input
+                id={id}
+                {...inputProps}
+                value={field.value}
+                aria-invalid={field.invalid}
+                aria-describedby={field.invalid ? errorId : undefined}
+                onChange={(event) => field.change(parse(event.target.value))}
+                onBlur={() => void field.commit()}
+                onKeyDown={field.handleKeyDown}
+            />
+            {field.invalid && (
+                <span id={errorId} className="settings-field-error">
+                    {t(
+                        'invalidSettingValue',
+                        'Enter a valid value before saving.'
+                    )}
+                </span>
+            )}
+        </div>
+    );
+}
+
 export function AIContextSection({ t, settings, onSettingChange }) {
     const [contextTypes, setContextTypes] = useState({
         cultural: false,
@@ -95,7 +151,6 @@ export function AIContextSection({ t, settings, onSettingChange }) {
     const latestOpenAIBaseUrl = useRef(configuredOpenAIBaseUrl);
     latestOpenAIBaseUrl.current = configuredOpenAIBaseUrl;
 
-    // Load context types from settings
     useEffect(() => {
         const types = settings.aiContextTypes || [];
         setContextTypes({
@@ -114,7 +169,6 @@ export function AIContextSection({ t, settings, onSettingChange }) {
         const newTypes = { ...contextTypes, [type]: checked };
         setContextTypes(newTypes);
 
-        // Convert to array for storage
         const typesArray = Object.entries(newTypes)
             .filter(([_, enabled]) => enabled)
             .map(([type]) => type);
@@ -197,7 +251,6 @@ export function AIContextSection({ t, settings, onSettingChange }) {
         <section id="ai-context">
             <h2>{t('sectionAIContext', 'AI Context Assistant')}</h2>
 
-            {/* Card 1: Feature Toggle */}
             <SettingCard
                 title={t(
                     'cardAIContextToggleTitle',
@@ -222,7 +275,6 @@ export function AIContextSection({ t, settings, onSettingChange }) {
                 </div>
             </SettingCard>
 
-            {/* Card 2: Provider Selection */}
             {aiContextEnabled && (
                 <SettingCard
                     title={t('cardAIContextProviderTitle', 'AI Provider')}
@@ -252,7 +304,6 @@ export function AIContextSection({ t, settings, onSettingChange }) {
                 </SettingCard>
             )}
 
-            {/* Card 3: OpenAI Configuration */}
             {aiContextEnabled && aiContextProvider === 'openai' && (
                 <SettingCard
                     title={t('cardOpenAIContextTitle', 'OpenAI Configuration')}
@@ -408,53 +459,27 @@ export function AIContextSection({ t, settings, onSettingChange }) {
                         </div>
                     </div>
 
-                    <div className="setting">
-                        <label htmlFor="openaiModel">
-                            {t('openaiModelLabel', 'Model:')}
-                        </label>
-                        <input
-                            type="text"
-                            id="openaiModel"
-                            value={openAIModelField.value}
-                            list="openaiModelOptions"
-                            aria-invalid={openAIModelField.invalid}
-                            aria-describedby={
-                                openAIModelField.invalid
-                                    ? 'openaiModelError'
-                                    : undefined
-                            }
-                            onChange={(event) =>
-                                openAIModelField.change(event.target.value)
-                            }
-                            onBlur={() => void openAIModelField.commit()}
-                            onKeyDown={openAIModelField.handleKeyDown}
-                        />
-                        {openAIModelField.invalid && (
-                            <span
-                                id="openaiModelError"
-                                className="settings-field-error"
-                            >
-                                {t(
-                                    'invalidSettingValue',
-                                    'Enter a valid value before saving.'
-                                )}
-                            </span>
-                        )}
-                        <datalist id="openaiModelOptions">
-                            {OPENAI_MODELS.map((model) => (
-                                <option
-                                    key={model.id}
-                                    value={model.id}
-                                    title={model.description}
-                                    label={`${model.name}${model.recommended ? ' (Recommended)' : ''}`}
-                                />
-                            ))}
-                        </datalist>
-                    </div>
+                    <CommittedInput
+                        t={t}
+                        id="openaiModel"
+                        label={t('openaiModelLabel', 'Model:')}
+                        type="text"
+                        list="openaiModelOptions"
+                        field={openAIModelField}
+                    />
+                    <datalist id="openaiModelOptions">
+                        {OPENAI_MODELS.map((model) => (
+                            <option
+                                key={model.id}
+                                value={model.id}
+                                title={model.description}
+                                label={`${model.name}${model.recommended ? ' (Recommended)' : ''}`}
+                            />
+                        ))}
+                    </datalist>
                 </SettingCard>
             )}
 
-            {/* Card 4: Gemini Configuration */}
             {aiContextEnabled && aiContextProvider === 'gemini' && (
                 <SettingCard
                     title={t(
@@ -518,7 +543,6 @@ export function AIContextSection({ t, settings, onSettingChange }) {
                 </SettingCard>
             )}
 
-            {/* Card 5: Context Types */}
             {aiContextEnabled && (
                 <SettingCard
                     title={t('cardAIContextTypesTitle', 'Context Types')}
@@ -527,50 +551,22 @@ export function AIContextSection({ t, settings, onSettingChange }) {
                         'Enable the types of context analysis you want to use. You can enable multiple types.'
                     )}
                 >
-                    <div className="setting">
-                        <label htmlFor="contextTypeCultural">
-                            {t('contextTypeCulturalLabel', 'Cultural Context:')}
-                        </label>
-                        <ToggleSwitch
-                            id="contextTypeCultural"
-                            checked={contextTypes.cultural}
-                            onChange={(checked) =>
-                                handleContextTypeChange('cultural', checked)
-                            }
-                        />
-                    </div>
-
-                    <div className="setting">
-                        <label htmlFor="contextTypeHistorical">
-                            {t(
-                                'contextTypeHistoricalLabel',
-                                'Historical Context:'
-                            )}
-                        </label>
-                        <ToggleSwitch
-                            id="contextTypeHistorical"
-                            checked={contextTypes.historical}
-                            onChange={(checked) =>
-                                handleContextTypeChange('historical', checked)
-                            }
-                        />
-                    </div>
-
-                    <div className="setting">
-                        <label htmlFor="contextTypeLinguistic">
-                            {t(
-                                'contextTypeLinguisticLabel',
-                                'Linguistic Context:'
-                            )}
-                        </label>
-                        <ToggleSwitch
-                            id="contextTypeLinguistic"
-                            checked={contextTypes.linguistic}
-                            onChange={(checked) =>
-                                handleContextTypeChange('linguistic', checked)
-                            }
-                        />
-                    </div>
+                    {CONTEXT_TYPES.map(
+                        ([type, id, labelKey, fallbackLabel]) => (
+                            <div className="setting" key={type}>
+                                <label htmlFor={id}>
+                                    {t(labelKey, fallbackLabel)}
+                                </label>
+                                <ToggleSwitch
+                                    id={id}
+                                    checked={contextTypes[type]}
+                                    onChange={(checked) =>
+                                        handleContextTypeChange(type, checked)
+                                    }
+                                />
+                            </div>
+                        )
+                    )}
                     {!hasSelectedContextType && (
                         <p className="setting-help" role="alert">
                             {t(
@@ -582,7 +578,6 @@ export function AIContextSection({ t, settings, onSettingChange }) {
                 </SettingCard>
             )}
 
-            {/* Card 6: Advanced Settings */}
             {aiContextEnabled && (
                 <SettingCard
                     title={t('cardAIContextAdvancedTitle', 'Advanced Settings')}
@@ -591,87 +586,35 @@ export function AIContextSection({ t, settings, onSettingChange }) {
                         'Configure advanced options for AI context analysis behavior.'
                     )}
                 >
-                    <div className="setting">
-                        <label htmlFor="aiContextTimeout">
-                            {t(
-                                'aiContextTimeoutLabel',
-                                'Request Timeout (ms):'
-                            )}
-                        </label>
-                        <input
-                            type="number"
-                            id="aiContextTimeout"
-                            min={AI_CONTEXT_TIMEOUT_SCHEMA.min}
-                            max={AI_CONTEXT_TIMEOUT_SCHEMA.max}
-                            step="1000"
-                            value={aiContextTimeoutField.value}
-                            aria-invalid={aiContextTimeoutField.invalid}
-                            aria-describedby={
-                                aiContextTimeoutField.invalid
-                                    ? 'aiContextTimeoutError'
-                                    : undefined
-                            }
-                            onChange={(event) =>
-                                aiContextTimeoutField.change(
-                                    getNumericDraft(event.target.value)
-                                )
-                            }
-                            onBlur={() => void aiContextTimeoutField.commit()}
-                            onKeyDown={aiContextTimeoutField.handleKeyDown}
-                        />
-                        {aiContextTimeoutField.invalid && (
-                            <span
-                                id="aiContextTimeoutError"
-                                className="settings-field-error"
-                            >
-                                {t(
-                                    'invalidSettingValue',
-                                    'Enter a valid value before saving.'
-                                )}
-                            </span>
+                    <CommittedInput
+                        t={t}
+                        id="aiContextTimeout"
+                        label={t(
+                            'aiContextTimeoutLabel',
+                            'Request Timeout (ms):'
                         )}
-                    </div>
+                        type="number"
+                        min={AI_CONTEXT_TIMEOUT_SCHEMA.min}
+                        max={AI_CONTEXT_TIMEOUT_SCHEMA.max}
+                        step="1000"
+                        parse={getNumericDraft}
+                        field={aiContextTimeoutField}
+                    />
 
-                    <div className="setting">
-                        <label htmlFor="aiContextRateLimit">
-                            {t(
-                                'aiContextRateLimitLabel',
-                                'Rate Limit (requests/min):'
-                            )}
-                        </label>
-                        <input
-                            type="number"
-                            id="aiContextRateLimit"
-                            min={AI_CONTEXT_RATE_LIMIT_SCHEMA.min}
-                            max={AI_CONTEXT_RATE_LIMIT_SCHEMA.max}
-                            step="10"
-                            value={aiContextRateLimitField.value}
-                            aria-invalid={aiContextRateLimitField.invalid}
-                            aria-describedby={
-                                aiContextRateLimitField.invalid
-                                    ? 'aiContextRateLimitError'
-                                    : undefined
-                            }
-                            onChange={(event) =>
-                                aiContextRateLimitField.change(
-                                    getNumericDraft(event.target.value)
-                                )
-                            }
-                            onBlur={() => void aiContextRateLimitField.commit()}
-                            onKeyDown={aiContextRateLimitField.handleKeyDown}
-                        />
-                        {aiContextRateLimitField.invalid && (
-                            <span
-                                id="aiContextRateLimitError"
-                                className="settings-field-error"
-                            >
-                                {t(
-                                    'invalidSettingValue',
-                                    'Enter a valid value before saving.'
-                                )}
-                            </span>
+                    <CommittedInput
+                        t={t}
+                        id="aiContextRateLimit"
+                        label={t(
+                            'aiContextRateLimitLabel',
+                            'Rate Limit (requests/min):'
                         )}
-                    </div>
+                        type="number"
+                        min={AI_CONTEXT_RATE_LIMIT_SCHEMA.min}
+                        max={AI_CONTEXT_RATE_LIMIT_SCHEMA.max}
+                        step="10"
+                        parse={getNumericDraft}
+                        field={aiContextRateLimitField}
+                    />
 
                     <div className="setting">
                         <label htmlFor="aiContextCacheEnabled">

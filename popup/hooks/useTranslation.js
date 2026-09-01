@@ -1,59 +1,48 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
-const translationsCache = {};
+const translationsCache = new Map();
 
-/**
- * Hook for managing i18n translations
- * @param {string} locale - Locale code (e.g., 'en', 'zh-CN')
- * @returns {Object} Translation function and loading state
- */
+async function loadLocale(locale) {
+    if (translationsCache.has(locale)) {
+        return translationsCache.get(locale);
+    }
+
+    const response = await fetch(
+        chrome.runtime.getURL(`_locales/${locale}/messages.json`)
+    );
+    if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+    }
+
+    const messages = await response.json();
+    translationsCache.set(locale, messages);
+    return messages;
+}
+
 export function useTranslation(locale) {
     const [translations, setTranslations] = useState({});
     const [loading, setLoading] = useState(true);
-    const requestGeneration = useRef(0);
 
     useEffect(() => {
-        const generation = ++requestGeneration.current;
         let active = true;
-        const isCurrentRequest = () =>
-            active && requestGeneration.current === generation;
 
-        const loadTranslations = async () => {
-            const normalizedLangCode = locale.replace('-', '_');
-
-            // Check cache first
-            if (translationsCache[normalizedLangCode]) {
-                if (isCurrentRequest()) {
-                    setTranslations(translationsCache[normalizedLangCode]);
-                    setLoading(false);
-                }
+        async function loadTranslations() {
+            if (!locale) {
+                setTranslations({});
+                setLoading(false);
                 return;
             }
 
-            const translationsPath = chrome.runtime.getURL(
-                `_locales/${normalizedLangCode}/messages.json`
-            );
+            const normalizedLangCode = locale.replace('-', '_');
+            setLoading(true);
 
             try {
-                if (isCurrentRequest()) {
-                    setLoading(true);
-                }
-                const response = await fetch(translationsPath);
-                if (!isCurrentRequest()) {
-                    return;
-                }
-
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-
-                const data = await response.json();
-                if (isCurrentRequest()) {
-                    translationsCache[normalizedLangCode] = data;
-                    setTranslations(data);
+                const messages = await loadLocale(normalizedLangCode);
+                if (active) {
+                    setTranslations(messages);
                 }
             } catch (error) {
-                if (!isCurrentRequest()) {
+                if (!active) {
                     return;
                 }
                 console.warn(
@@ -61,49 +50,34 @@ export function useTranslation(locale) {
                     error
                 );
 
-                // Fallback to English
                 try {
-                    const fallbackPath = chrome.runtime.getURL(
-                        `_locales/en/messages.json`
-                    );
-                    const fallbackResponse = await fetch(fallbackPath);
-                    if (!isCurrentRequest()) {
-                        return;
-                    }
-                    const fallbackData = await fallbackResponse.json();
-                    if (isCurrentRequest()) {
-                        translationsCache['en'] = fallbackData;
-                        setTranslations(fallbackData);
+                    const fallbackMessages = await loadLocale('en');
+                    if (active) {
+                        setTranslations(fallbackMessages);
                     }
                 } catch (fatalError) {
-                    if (!isCurrentRequest()) {
-                        return;
-                    }
-                    console.error(
-                        'Fatal: Failed to load any translations',
-                        fatalError
-                    );
-                    if (isCurrentRequest()) {
+                    if (active) {
+                        console.error(
+                            'Fatal: Failed to load any translations',
+                            fatalError
+                        );
                         setTranslations({});
                     }
                 }
             } finally {
-                if (isCurrentRequest()) {
+                if (active) {
                     setLoading(false);
                 }
             }
-        };
-
-        if (locale) {
-            loadTranslations();
         }
+
+        void loadTranslations();
 
         return () => {
             active = false;
         };
     }, [locale]);
 
-    // Translation function
     const t = useCallback(
         (key, fallback = '', ...substitutions) => {
             let message = translations[key]?.message || fallback || key;

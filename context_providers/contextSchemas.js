@@ -202,17 +202,17 @@ const allSchema = {
     additionalProperties: false,
 };
 
+const CONTEXT_SCHEMAS = Object.freeze({
+    cultural: culturalSchema,
+    historical: historicalSchema,
+    linguistic: linguisticSchema,
+    all: allSchema,
+});
+
 export function getContextSchema(contextType = 'all') {
-    switch (contextType) {
-        case 'cultural':
-            return culturalSchema;
-        case 'historical':
-            return historicalSchema;
-        case 'linguistic':
-            return linguisticSchema;
-        default:
-            return allSchema;
-    }
+    const schema = CONTEXT_SCHEMAS[contextType];
+    if (!schema) throw new TypeError('Unsupported AI context type');
+    return schema;
 }
 
 /**
@@ -252,16 +252,17 @@ export function validateAgainstSchema(schema, data) {
                 Array.isArray(value)
             )
                 return false;
-            if (node.required) {
-                for (const key of node.required) {
-                    if (!(key in value)) return false;
-                }
+            if (node.required?.some((key) => !Object.hasOwn(value, key))) {
+                return false;
             }
             if (node.properties) {
                 for (const [key, schemaChild] of Object.entries(
                     node.properties
                 )) {
-                    if (key in value && !validate(schemaChild, value[key]))
+                    if (
+                        Object.hasOwn(value, key) &&
+                        !validate(schemaChild, value[key])
+                    )
                         return false;
                 }
             }
@@ -283,7 +284,6 @@ export function validateAgainstSchema(schema, data) {
         if (node.type === 'string') {
             return typeof value === 'string';
         }
-        // Basic handling for other primitive types
         if (node.type === 'number') {
             return typeof value === 'number';
         }

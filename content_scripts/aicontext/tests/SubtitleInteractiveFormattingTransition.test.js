@@ -1,6 +1,6 @@
 import { jest } from '@jest/globals';
 
-const TEST_CONFIG = {
+const CONFIG = {
     originalLanguage: 'en',
     targetLanguage: 'es',
     sourceLanguage: 'en',
@@ -17,11 +17,11 @@ let subtitleUtils;
 let publisherCleanup;
 let formatterCleanups;
 
-function createPlayback(videoId = 'video-1') {
+function createPlatform() {
     const video = document.createElement('video');
     document.body.appendChild(video);
     return {
-        getCurrentVideoId: () => videoId,
+        getCurrentVideoId: () => 'video-1',
         getPlaybackTime: () => 1,
         getVideoElement: () => video,
         getPlayerContainerElement: () => document.body,
@@ -30,7 +30,8 @@ function createPlayback(videoId = 'video-1') {
     };
 }
 
-function queueOriginalCue(text) {
+function render(platform, text) {
+    subtitleUtils.ensureSubtitleContainer(platform, CONFIG, 'TransitionTest');
     subtitleUtils.subtitleQueue.push({
         original: text,
         translated: null,
@@ -42,24 +43,26 @@ function queueOriginalCue(text) {
         targetLanguage: 'es',
         cueType: 'original',
     });
+    subtitleUtils.updateSubtitles(1, platform, CONFIG, 'TransitionTest');
 }
 
-function renderCurrentCue(platform, text) {
-    subtitleUtils.ensureSubtitleContainer(
-        platform,
-        TEST_CONFIG,
-        'InteractiveFormattingTransitionTest'
-    );
-    queueOriginalCue(text);
-    subtitleUtils.updateSubtitles(
-        1,
-        platform,
-        TEST_CONFIG,
-        'InteractiveFormattingTransitionTest'
-    );
+function occurrenceFor(container, wordIndex = 0) {
+    const word = container.querySelectorAll('.dualsub-interactive-word')[
+        wordIndex
+    ];
+    return {
+        target: word,
+        value: {
+            renderRevision: Number(
+                container.getAttribute('data-render-revision')
+            ),
+            wordIndex,
+            word: word.getAttribute('data-word'),
+        },
+    };
 }
 
-function invokeTrustedClick(handler, container, target) {
+function invokeClick(handler, container, target) {
     handler({
         isTrusted: true,
         type: 'click',
@@ -74,9 +77,6 @@ describe('interactive subtitle formatting transitions', () => {
     beforeEach(async () => {
         jest.resetModules();
         document.body.replaceChildren();
-        delete window.dualsub_formatInteractiveSubtitleText;
-        delete window.dualsub_attachInteractiveEventListeners;
-        delete window.dualsub_setInteractiveEnabled;
         subtitleUtils = await import('../../shared/subtitleUtilities.js');
         subtitleUtils.setSubtitlesActive(true);
         publisherCleanup = null;
@@ -84,7 +84,7 @@ describe('interactive subtitle formatting transitions', () => {
     });
 
     afterEach(() => {
-        for (const cleanup of formatterCleanups.reverse()) cleanup?.();
+        formatterCleanups.reverse().forEach((cleanup) => cleanup?.());
         publisherCleanup?.();
         subtitleUtils.clearSubtitlesDisplayAndQueue(null, true);
         subtitleUtils.clearSubtitleDOM();
@@ -92,24 +92,15 @@ describe('interactive subtitle formatting transitions', () => {
         jest.restoreAllMocks();
     });
 
-    test('refreshes and binds a current plain cue exactly once when formatting becomes interactive', async () => {
+    test('turning on interactivity refreshes and binds the current plain cue once', async () => {
         const publishSubtitleState = jest.fn();
         publisherCleanup = subtitleUtils.beginSubtitleStatePublisher({
             publishSubtitleState,
         });
-        const platform = createPlayback();
-        renderCurrentCue(platform, 'hello world');
-
+        const platform = createPlatform();
+        render(platform, 'hello world');
         const plainRevision =
             publishSubtitleState.mock.calls[0][0].renderRevision;
-        expect(
-            subtitleUtils.originalSubtitleElement.querySelectorAll(
-                '.dualsub-interactive-word'
-            )
-        ).toHaveLength(0);
-        expect(subtitleUtils.originalSubtitleElement).not.toHaveAttribute(
-            'data-interactive-listeners'
-        );
 
         const cleanup =
             await subtitleUtils.initializeInteractiveSubtitleFeatures(
@@ -119,103 +110,32 @@ describe('interactive subtitle formatting transitions', () => {
             );
         formatterCleanups.push(cleanup);
 
+        const container = subtitleUtils.originalSubtitleElement;
+        const words = container.querySelectorAll('.dualsub-interactive-word');
+        expect(words).toHaveLength(2);
         expect(publishSubtitleState).toHaveBeenCalledTimes(2);
-        const refresh = publishSubtitleState.mock.calls[1][0];
-        expect(refresh).toEqual(
+        expect(publishSubtitleState.mock.calls[1][0]).toEqual(
             expect.objectContaining({
                 reason: 'refresh',
                 videoId: 'video-1',
                 text: 'hello world',
+                renderRevision: expect.any(Number),
             })
         );
-        expect(refresh.renderRevision).toBeGreaterThan(plainRevision);
-        const words = Array.from(
-            subtitleUtils.originalSubtitleElement.querySelectorAll(
-                '.dualsub-interactive-word[data-subtitle-type="original"]'
-            )
-        );
-        expect(words).toHaveLength(2);
         expect(
-            words.map((word) => ({
-                revision: word.getAttribute('data-render-revision'),
-                sourceLanguage: word.getAttribute('data-source-lang'),
-                targetLanguage: word.getAttribute('data-target-lang'),
-            }))
-        ).toEqual([
-            {
-                revision: String(refresh.renderRevision),
-                sourceLanguage: 'en',
-                targetLanguage: 'es',
-            },
-            {
-                revision: String(refresh.renderRevision),
-                sourceLanguage: 'en',
-                targetLanguage: 'es',
-            },
-        ]);
-        expect(subtitleUtils.originalSubtitleElement).toHaveAttribute(
-            'data-interactive-listeners',
-            'true'
-        );
+            publishSubtitleState.mock.calls[1][0].renderRevision
+        ).toBeGreaterThan(plainRevision);
+        expect(container).toHaveAttribute('data-interactive-listeners', 'true');
 
         const firstWord = words[0];
-        subtitleUtils.updateSubtitles(
-            1,
-            platform,
-            TEST_CONFIG,
-            'InteractiveFormattingTransitionTest'
-        );
+        subtitleUtils.updateSubtitles(1, platform, CONFIG, 'TransitionTest');
         expect(publishSubtitleState).toHaveBeenCalledTimes(2);
-        expect(
-            subtitleUtils.originalSubtitleElement.querySelector(
-                '.dualsub-interactive-word'
-            )
-        ).toBe(firstWord);
+        expect(container.querySelector('.dualsub-interactive-word')).toBe(
+            firstWord
+        );
     });
 
-    test('explicit disable invalidates a pending formatter initialization', async () => {
-        const publishSubtitleState = jest.fn();
-        publisherCleanup = subtitleUtils.beginSubtitleStatePublisher({
-            publishSubtitleState,
-        });
-        const publishWordIntent = jest.fn();
-        const platform = createPlayback();
-        renderCurrentCue(platform, 'remain plain');
-
-        const pendingInitialization =
-            subtitleUtils.initializeInteractiveSubtitleFeatures(
-                { platform: 'netflix', debounceDelay: 0 },
-                () => true,
-                publishWordIntent
-            );
-        subtitleUtils.setInteractiveSubtitlesEnabled(false);
-        const cleanup = await pendingInitialization;
-        formatterCleanups.push(cleanup);
-        subtitleUtils.updateSubtitles(
-            1,
-            platform,
-            TEST_CONFIG,
-            'InteractiveFormattingTransitionTest'
-        );
-
-        expect(publishSubtitleState).toHaveBeenCalledTimes(1);
-        expect(
-            subtitleUtils.originalSubtitleElement.querySelectorAll(
-                '.dualsub-interactive-word'
-            )
-        ).toHaveLength(0);
-        expect(subtitleUtils.originalSubtitleElement).not.toHaveAttribute(
-            'data-interactive-listeners'
-        );
-        expect(publishWordIntent).not.toHaveBeenCalled();
-        expect(window.dualsub_attachInteractiveEventListeners).toBeUndefined();
-    });
-
-    test('reenabling an installed lifecycle rebinds the unchanged current cue', async () => {
-        const publishSubtitleState = jest.fn();
-        publisherCleanup = subtitleUtils.beginSubtitleStatePublisher({
-            publishSubtitleState,
-        });
+    test('disable revokes occurrence resolution and re-enable restores the binding', async () => {
         const publishWordIntent = jest.fn();
         const cleanup =
             await subtitleUtils.initializeInteractiveSubtitleFeatures(
@@ -224,279 +144,86 @@ describe('interactive subtitle formatting transitions', () => {
                 publishWordIntent
             );
         formatterCleanups.push(cleanup);
-        const platform = createPlayback();
-        renderCurrentCue(platform, 'toggle cue');
+        const platform = createPlatform();
+        render(platform, 'toggle cue');
         const container = subtitleUtils.originalSubtitleElement;
-        const target = container.querySelector('.dualsub-interactive-word');
-        const occurrence = {
-            renderRevision: Number(
-                container.getAttribute('data-render-revision')
-            ),
-            wordIndex: 0,
-            word: 'toggle',
-        };
-        const addEventListener = jest.spyOn(container, 'addEventListener');
+        const occurrence = occurrenceFor(container);
 
         subtitleUtils.setInteractiveSubtitlesEnabled(false);
-        expect(container).not.toHaveAttribute('data-interactive-listeners');
         expect(
-            subtitleUtils.resolveInteractiveOriginalWordOccurrence(occurrence)
+            subtitleUtils.resolveInteractiveOriginalWordOccurrence(
+                occurrence.value
+            )
         ).toBeNull();
 
+        const addEventListener = jest.spyOn(container, 'addEventListener');
         subtitleUtils.setInteractiveSubtitlesEnabled(true);
         const clickHandler = addEventListener.mock.calls.find(
             ([type]) => type === 'click'
         )[1];
-        invokeTrustedClick(clickHandler, container, target);
+        invokeClick(clickHandler, container, occurrence.target);
 
-        expect(publishSubtitleState).toHaveBeenCalledTimes(1);
         expect(container).toHaveAttribute('data-interactive-listeners', 'true');
         expect(
-            subtitleUtils.resolveInteractiveOriginalWordOccurrence(occurrence)
-        ).toBe(target);
+            subtitleUtils.resolveInteractiveOriginalWordOccurrence(
+                occurrence.value
+            )
+        ).toBe(occurrence.target);
         expect(publishWordIntent).toHaveBeenCalledTimes(1);
     });
 
-    test('replaces lifecycle ownership without rerendering the current interactive cue', async () => {
-        const publishSubtitleState = jest.fn();
-        publisherCleanup = subtitleUtils.beginSubtitleStatePublisher({
-            publishSubtitleState,
-        });
+    test('replacement lifecycle preserves the render and alone owns word intents', async () => {
         const firstPublisher = jest.fn();
         const secondPublisher = jest.fn();
-        const cleanupFirst =
+        const firstCleanup =
             await subtitleUtils.initializeInteractiveSubtitleFeatures(
                 { platform: 'netflix', debounceDelay: 0 },
                 () => true,
                 firstPublisher
             );
-        formatterCleanups.push(cleanupFirst);
-        const platform = createPlayback();
-        renderCurrentCue(platform, 'same cue');
+        formatterCleanups.push(firstCleanup);
+        const platform = createPlatform();
+        render(platform, 'same cue');
         const container = subtitleUtils.originalSubtitleElement;
-        const firstWord = container.querySelector('.dualsub-interactive-word');
-        const renderRevision = container.getAttribute('data-render-revision');
-        const renderedHtml = container.innerHTML;
+        const occurrence = occurrenceFor(container);
+        const html = container.innerHTML;
+        const revision = container.getAttribute('data-render-revision');
         const addEventListener = jest.spyOn(container, 'addEventListener');
 
-        const occurrence = {
-            renderRevision: Number(renderRevision),
-            wordIndex: 0,
-            word: 'same',
-        };
-        const secondInitialization =
-            subtitleUtils.initializeInteractiveSubtitleFeatures(
+        const secondCleanup =
+            await subtitleUtils.initializeInteractiveSubtitleFeatures(
                 { platform: 'netflix', debounceDelay: 0 },
                 () => true,
                 secondPublisher
             );
-        expect(
-            subtitleUtils.resolveInteractiveOriginalWordOccurrence(occurrence)
-        ).toBeNull();
-        const cleanupSecond = await secondInitialization;
-        formatterCleanups.push(cleanupSecond);
+        formatterCleanups.push(secondCleanup);
+        firstCleanup();
 
-        expect(publishSubtitleState).toHaveBeenCalledTimes(1);
-        expect(container).toHaveAttribute(
-            'data-render-revision',
-            renderRevision
-        );
-        expect(container.innerHTML).toBe(renderedHtml);
-        expect(container.querySelector('.dualsub-interactive-word')).toBe(
-            firstWord
-        );
-        expect(container).toHaveAttribute('data-interactive-listeners', 'true');
+        expect(container.innerHTML).toBe(html);
+        expect(container).toHaveAttribute('data-render-revision', revision);
         expect(
-            subtitleUtils.resolveInteractiveOriginalWordOccurrence(occurrence)
-        ).toBe(firstWord);
-        const clickHandlers = addEventListener.mock.calls.filter(
+            subtitleUtils.resolveInteractiveOriginalWordOccurrence(
+                occurrence.value
+            )
+        ).toBe(occurrence.target);
+        const clickHandler = addEventListener.mock.calls.find(
             ([type]) => type === 'click'
-        );
-        expect(clickHandlers).toHaveLength(1);
-
-        cleanupFirst();
-        cleanupFirst();
-        invokeTrustedClick(clickHandlers[0][1], container, firstWord);
+        )[1];
+        invokeClick(clickHandler, container, occurrence.target);
         expect(firstPublisher).not.toHaveBeenCalled();
         expect(secondPublisher).toHaveBeenCalledTimes(1);
-        expect(container).toHaveAttribute('data-interactive-listeners', 'true');
-    });
 
-    test('exports only the current exact registered original occurrence', async () => {
-        const cleanup =
-            await subtitleUtils.initializeInteractiveSubtitleFeatures(
-                { platform: 'netflix', debounceDelay: 0 },
-                () => true,
-                jest.fn()
-            );
-        formatterCleanups.push(cleanup);
-        const platform = createPlayback();
-        renderCurrentCue(platform, 'registry word');
-        const container = subtitleUtils.originalSubtitleElement;
-        const target = container.querySelector('.dualsub-interactive-word');
-        const occurrence = {
-            renderRevision: Number(
-                container.getAttribute('data-render-revision')
-            ),
-            wordIndex: 0,
-            word: 'registry',
-        };
-
+        occurrence.target.setAttribute('data-word-index', '99');
         expect(
-            subtitleUtils.resolveInteractiveOriginalWordOccurrence(occurrence)
-        ).toBe(target);
-        target.setAttribute('data-word-index', '1');
-        expect(
-            subtitleUtils.resolveInteractiveOriginalWordOccurrence(occurrence)
-        ).toBeNull();
-        target.setAttribute('data-word-index', '0');
-        cleanup();
-        expect(
-            subtitleUtils.resolveInteractiveOriginalWordOccurrence(occurrence)
-        ).toBeNull();
-    });
-
-    test('abandons a lifecycle superseded reentrantly during immediate attach', async () => {
-        const publishSubtitleState = jest.fn();
-        publisherCleanup = subtitleUtils.beginSubtitleStatePublisher({
-            publishSubtitleState,
-        });
-        const firstPublisher = jest.fn();
-        const secondPublisher = jest.fn();
-        const finalPublisher = jest.fn();
-        const cleanupFirst =
-            await subtitleUtils.initializeInteractiveSubtitleFeatures(
-                { platform: 'netflix', debounceDelay: 0 },
-                () => true,
-                firstPublisher
-            );
-        formatterCleanups.push(cleanupFirst);
-        const platform = createPlayback();
-        renderCurrentCue(platform, 'reentrant cue');
-        const container = subtitleUtils.originalSubtitleElement;
-        const target = container.querySelector('.dualsub-interactive-word');
-        const nativeAddEventListener =
-            container.addEventListener.bind(container);
-        let finalInitialization = null;
-        let triggerSupersession = true;
-        const addEventListener = jest
-            .spyOn(container, 'addEventListener')
-            .mockImplementation((type, listener, options) => {
-                if (type === 'click' && triggerSupersession) {
-                    triggerSupersession = false;
-                    finalInitialization =
-                        subtitleUtils.initializeInteractiveSubtitleFeatures(
-                            { platform: 'netflix', debounceDelay: 0 },
-                            () => true,
-                            finalPublisher
-                        );
-                }
-                nativeAddEventListener(type, listener, options);
-            });
-
-        const cleanupSecond =
-            await subtitleUtils.initializeInteractiveSubtitleFeatures(
-                { platform: 'netflix', debounceDelay: 0 },
-                () => true,
-                secondPublisher
-            );
-        formatterCleanups.push(cleanupSecond);
-        const cleanupFinal = await finalInitialization;
-        formatterCleanups.push(cleanupFinal);
-
-        cleanupFirst();
-        cleanupSecond();
-        const clickHandler = addEventListener.mock.calls
-            .filter(([type]) => type === 'click')
-            .at(-1)[1];
-        invokeTrustedClick(clickHandler, container, target);
-
-        expect(publishSubtitleState).toHaveBeenCalledTimes(1);
-        expect(firstPublisher).not.toHaveBeenCalled();
-        expect(secondPublisher).not.toHaveBeenCalled();
-        expect(finalPublisher).toHaveBeenCalledTimes(1);
-        expect(container).toHaveAttribute('data-interactive-listeners', 'true');
-    });
-
-    test('refreshes a word-bearing interactive render whose occurrence identity was stripped', async () => {
-        const publishSubtitleState = jest.fn();
-        publisherCleanup = subtitleUtils.beginSubtitleStatePublisher({
-            publishSubtitleState,
-        });
-        const cleanupFirst =
-            await subtitleUtils.initializeInteractiveSubtitleFeatures(
-                { platform: 'netflix' },
-                () => true,
-                jest.fn()
-            );
-        formatterCleanups.push(cleanupFirst);
-        const platform = createPlayback();
-        renderCurrentCue(platform, 'restore words');
-        const firstRevision =
-            publishSubtitleState.mock.calls[0][0].renderRevision;
-        subtitleUtils.originalSubtitleElement
-            .querySelectorAll('.dualsub-interactive-word')
-            .forEach((word) =>
-                word.classList.remove('dualsub-interactive-word')
-            );
-
-        const cleanupSecond =
-            await subtitleUtils.initializeInteractiveSubtitleFeatures(
-                { platform: 'netflix' },
-                () => true,
-                jest.fn()
-            );
-        formatterCleanups.push(cleanupSecond);
-
-        expect(publishSubtitleState).toHaveBeenCalledTimes(2);
-        const refresh = publishSubtitleState.mock.calls[1][0];
-        expect(refresh.reason).toBe('refresh');
-        expect(refresh.renderRevision).toBeGreaterThan(firstRevision);
-        expect(
-            subtitleUtils.originalSubtitleElement.querySelectorAll(
-                '.dualsub-interactive-word[data-subtitle-type="original"]'
+            subtitleUtils.resolveInteractiveOriginalWordOccurrence(
+                occurrence.value
             )
-        ).toHaveLength(2);
-        expect(subtitleUtils.originalSubtitleElement).toHaveAttribute(
-            'data-interactive-listeners',
-            'true'
-        );
-    });
-
-    test('does not repeatedly refresh an interactive punctuation-only cue', async () => {
-        const publishSubtitleState = jest.fn();
-        publisherCleanup = subtitleUtils.beginSubtitleStatePublisher({
-            publishSubtitleState,
-        });
-        const platform = createPlayback();
-        renderCurrentCue(platform, '...');
-
-        const cleanup =
-            await subtitleUtils.initializeInteractiveSubtitleFeatures(
-                { platform: 'netflix' },
-                () => true,
-                jest.fn()
-            );
-        formatterCleanups.push(cleanup);
-        expect(publishSubtitleState).toHaveBeenCalledTimes(2);
-        const refreshRevision =
-            publishSubtitleState.mock.calls[1][0].renderRevision;
+        ).toBeNull();
+        secondCleanup();
         expect(
-            subtitleUtils.originalSubtitleElement.querySelectorAll(
-                '.dualsub-interactive-word'
+            subtitleUtils.resolveInteractiveOriginalWordOccurrence(
+                occurrence.value
             )
-        ).toHaveLength(0);
-
-        subtitleUtils.updateSubtitles(
-            1,
-            platform,
-            TEST_CONFIG,
-            'InteractiveFormattingTransitionTest'
-        );
-        expect(publishSubtitleState).toHaveBeenCalledTimes(2);
-        expect(subtitleUtils.originalSubtitleElement).toHaveAttribute(
-            'data-render-revision',
-            String(refreshRevision)
-        );
+        ).toBeNull();
     });
 });

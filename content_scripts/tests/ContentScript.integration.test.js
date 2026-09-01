@@ -552,22 +552,6 @@ describe('Content Script Integration Tests', () => {
                     expect(disneyScript._isPlayerPath(pathname)).toBe(false);
                 });
             });
-
-            test('should handle Disney+ configuration overrides', () => {
-                const baseConfig = {
-                    maxVideoDetectionRetries: 20,
-                    videoDetectionInterval: 2000,
-                };
-
-                const disneyConfig =
-                    disneyScript.applyDisneyPlusConfigOverrides(baseConfig);
-
-                // Verify Disney+ specific values
-                expect(disneyConfig.maxVideoDetectionRetries).toBe(40); // Disney+ specific
-                expect(disneyConfig.videoDetectionInterval).toBe(1000); // Disney+ specific
-                expect(disneyConfig.platformName).toBe('disneyplus');
-                expect(disneyConfig.pageTransitionDelay).toBe(1500); // Less than Netflix
-            });
         });
     });
 

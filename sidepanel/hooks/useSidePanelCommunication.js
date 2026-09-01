@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MessageActions } from '../../content_scripts/shared/constants/messageActions.js';
 import {
     buildSidePanelRegistrationMessage,
@@ -11,24 +11,9 @@ import {
 } from '../../content_scripts/shared/protocol/messageProtocol.js';
 
 const REGISTRATION_ACK_TIMEOUT_MS = 2000;
-const REGISTRATION_NOT_CONFIRMED_ERROR =
-    'Side panel registration was not confirmed';
-
-function getOwnDataProperty(record, key) {
-    if (!record || typeof record !== 'object') return undefined;
-    try {
-        const descriptor = Object.getOwnPropertyDescriptor(record, key);
-        return descriptor &&
-            Object.prototype.hasOwnProperty.call(descriptor, 'value')
-            ? descriptor.value
-            : undefined;
-    } catch (_) {
-        return undefined;
-    }
-}
 
 function isValidTabBinding(tabId, windowId) {
-    return Boolean(
+    return (
         Number.isSafeInteger(tabId) &&
         tabId >= 0 &&
         Number.isSafeInteger(windowId) &&
@@ -36,22 +21,7 @@ function isValidTabBinding(tabId, windowId) {
     );
 }
 
-function createSelectionStateProjection(tabId, selection) {
-    return Object.freeze({ selection, tabId });
-}
-
-function selectionEntriesEqual(left, right) {
-    return (
-        left.length === right.length &&
-        left.every(
-            (entry, index) =>
-                entry.wordIndex === right[index].wordIndex &&
-                entry.word === right[index].word
-        )
-    );
-}
-
-function selectionStatesEqual(left, right) {
+function selectionsEqual(left, right) {
     return Boolean(
         left &&
         right &&
@@ -59,359 +29,269 @@ function selectionStatesEqual(left, right) {
         left.selectionRevision === right.selectionRevision &&
         left.renderRevision === right.renderRevision &&
         left.reason === right.reason &&
-        selectionEntriesEqual(left.entries, right.entries)
+        left.entries.length === right.entries.length &&
+        left.entries.every(
+            (entry, index) =>
+                entry.wordIndex === right.entries[index].wordIndex &&
+                entry.word === right.entries[index].word
+        )
     );
 }
 
-function advanceSelectionCursor(cursor, selection) {
+function acceptSelection(cursor, selection) {
     if (selection === null) {
-        return Object.freeze({ accepted: true, cursor });
+        return { accepted: true, changed: cursor !== null, cursor: null };
     }
     if (!cursor) {
-        return Object.freeze({ accepted: true, cursor: selection });
+        return { accepted: true, changed: true, cursor: selection };
     }
-    if (selection.selectionOwnerGeneration < cursor.selectionOwnerGeneration) {
-        return Object.freeze({ accepted: false, cursor });
+    if (
+        selection.selectionOwnerGeneration < cursor.selectionOwnerGeneration ||
+        (selection.selectionOwnerGeneration ===
+            cursor.selectionOwnerGeneration &&
+            selection.selectionRevision < cursor.selectionRevision) ||
+        (selection.selectionOwnerGeneration ===
+            cursor.selectionOwnerGeneration &&
+            selection.selectionRevision > cursor.selectionRevision &&
+            selection.renderRevision < cursor.renderRevision)
+    ) {
+        return { accepted: false, changed: false, cursor };
     }
-    if (selection.selectionOwnerGeneration > cursor.selectionOwnerGeneration) {
-        return Object.freeze({ accepted: true, cursor: selection });
-    }
-    if (selection.selectionRevision < cursor.selectionRevision) {
-        return Object.freeze({ accepted: false, cursor });
-    }
-    if (selection.selectionRevision === cursor.selectionRevision) {
-        return Object.freeze({
-            accepted: selectionStatesEqual(cursor, selection),
+    if (
+        selection.selectionOwnerGeneration ===
+            cursor.selectionOwnerGeneration &&
+        selection.selectionRevision === cursor.selectionRevision
+    ) {
+        return {
+            accepted: selectionsEqual(cursor, selection),
+            changed: false,
             cursor,
-        });
+        };
     }
-    if (selection.renderRevision < cursor.renderRevision) {
-        return Object.freeze({ accepted: false, cursor });
-    }
-    return Object.freeze({ accepted: true, cursor: selection });
+    return { accepted: true, changed: true, cursor: selection };
 }
 
-/**
- * Owns the side panel's single long-lived connection to the background worker.
- * Consumers receive this instance through SidePanelContext; mounting this hook in
- * individual feature hooks would create competing registrations for the same tab.
- */
 export function useSidePanelCommunication() {
     const [isConnected, setIsConnected] = useState(false);
     const [error, setError] = useState(null);
-    const messageListeners = useRef(new Map());
-    const selectionStateListeners = useRef(new Set());
-    const portRef = useRef(null);
-    const connectPortRef = useRef(null);
-    const connectionGenerationRef = useRef(0);
-    const bindingIntentEpochRef = useRef(0);
-    const authorityTransitionRef = useRef(null);
-    const registrationCounterRef = useRef(0);
-    const activeTabLookupRef = useRef(null);
-    const pendingRegistrationRef = useRef(null);
-    const pendingSelectionRemovalRef = useRef(null);
-    const confirmedBindingRef = useRef(null);
-    const selectionCursorRef = useRef(null);
-    const selectionRemovalCounterRef = useRef(0);
-    const reconnectTimerRef = useRef(null);
-    const intentionalDisconnectRef = useRef(false);
-    const bindingRef = useRef({
-        boundTabId: null,
-        boundWindowId: null,
-    });
     const mountedRef = useRef(false);
+    const connectionRef = useRef(null);
+    const bindingIntentRef = useRef(0);
+    const registrationCounterRef = useRef(0);
+    const removalCounterRef = useRef(0);
+    const pendingRegistrationRef = useRef(null);
+    const bindingRef = useRef(null);
+    const selectionCursorRef = useRef(null);
+    const pendingRemovalRef = useRef(null);
+    const reconnectTimerRef = useRef(null);
+    const activeTabLookupRef = useRef(null);
+    const connectRef = useRef(null);
+    const messageListenersRef = useRef(new Map());
+    const selectionListenersRef = useRef(new Set());
 
-    useEffect(() => {
-        mountedRef.current = true;
+    const isCurrentConnection = useCallback(
+        (connection) =>
+            Boolean(
+                mountedRef.current &&
+                connection &&
+                connectionRef.current === connection
+            ),
+        []
+    );
 
-        return () => {
-            mountedRef.current = false;
-        };
+    const isCurrentBinding = useCallback(
+        (binding) =>
+            Boolean(
+                binding &&
+                bindingRef.current === binding &&
+                isCurrentConnection(binding.connection)
+            ),
+        [isCurrentConnection]
+    );
+
+    const notifySelection = useCallback((tabId, selection) => {
+        for (const listener of [...selectionListenersRef.current]) {
+            if (!selectionListenersRef.current.has(listener)) continue;
+            try {
+                listener(Object.freeze({ selection, tabId }));
+            } catch (listenerError) {
+                console.error(
+                    'Error in side panel selection listener:',
+                    listenerError
+                );
+            }
+        }
     }, []);
 
-    const settlePendingSelectionRemoval = useCallback((pending, status) => {
-        if (!pending || pendingSelectionRemovalRef.current !== pending) {
-            return false;
-        }
-
-        pendingSelectionRemovalRef.current = null;
+    const settleRemoval = useCallback((pending, status) => {
+        if (!pending || pendingRemovalRef.current !== pending) return false;
+        pendingRemovalRef.current = null;
         pending.resolve(status);
         return true;
     }, []);
 
-    const clearConfirmedBinding = useCallback(() => {
-        settlePendingSelectionRemoval(
-            pendingSelectionRemovalRef.current,
-            'rejected'
-        );
-        confirmedBindingRef.current = null;
-        selectionCursorRef.current = null;
-        bindingRef.current = {
-            boundTabId: null,
-            boundWindowId: null,
-        };
-    }, [settlePendingSelectionRemoval]);
-
-    const settlePendingRegistration = useCallback((pending, outcome, value) => {
-        if (!pending || pendingRegistrationRef.current !== pending) {
-            return false;
-        }
-
+    const clearRegistration = useCallback(() => {
+        const pending = pendingRegistrationRef.current;
         pendingRegistrationRef.current = null;
-        const timeoutOwner = pending.timeoutOwner;
-        pending.timeoutOwner = null;
-        if (timeoutOwner?.id != null) {
-            clearTimeout(timeoutOwner.id);
-        }
-
-        if (outcome === 'resolve') {
-            pending.resolve(value);
-        } else {
-            pending.reject(new Error(value));
-        }
-        return true;
+        if (pending?.timeoutId != null) clearTimeout(pending.timeoutId);
     }, []);
 
-    const isCurrentPort = useCallback((port, generation) => {
-        return Boolean(
-            mountedRef.current &&
-            !intentionalDisconnectRef.current &&
-            port &&
-            portRef.current === port &&
-            connectionGenerationRef.current === generation
-        );
-    }, []);
-
-    const isCurrentBindingIntent = useCallback(
-        (port, generation, bindingIntentEpoch) => {
-            return Boolean(
-                isCurrentPort(port, generation) &&
-                bindingIntentEpochRef.current === bindingIntentEpoch
-            );
+    const clearBinding = useCallback(
+        (notify = true) => {
+            const binding = bindingRef.current;
+            bindingRef.current = null;
+            selectionCursorRef.current = null;
+            settleRemoval(pendingRemovalRef.current, 'rejected');
+            if (notify && binding) notifySelection(binding.tabId, null);
         },
-        [isCurrentPort]
+        [notifySelection, settleRemoval]
     );
 
-    const isExactConfirmedBinding = useCallback(
-        (binding) =>
-            Boolean(
-                binding &&
-                confirmedBindingRef.current === binding &&
-                isCurrentBindingIntent(
-                    binding.port,
-                    binding.generation,
-                    binding.bindingIntentEpoch
-                ) &&
-                bindingRef.current.boundTabId === binding.tabId &&
-                bindingRef.current.boundWindowId === binding.windowId
-            ),
-        [isCurrentBindingIntent]
-    );
-
-    const notifySelectionState = useCallback(
-        (tabId, selection, canDeliver = () => true) => {
-            const listeners = Array.from(selectionStateListeners.current);
-            for (const callback of listeners) {
-                if (!canDeliver()) {
-                    return;
-                }
-                if (!selectionStateListeners.current.has(callback)) {
-                    continue;
-                }
-                try {
-                    callback(createSelectionStateProjection(tabId, selection));
-                } catch (listenerError) {
-                    console.error(
-                        'Error in side panel selection listener:',
-                        listenerError
-                    );
-                }
-            }
-        },
-        []
-    );
-
-    const scheduleReconnect = useCallback((ownerGeneration, delay) => {
-        if (
-            !mountedRef.current ||
-            intentionalDisconnectRef.current ||
-            portRef.current ||
-            connectionGenerationRef.current !== ownerGeneration
-        ) {
-            return;
+    const scheduleReconnect = useCallback((delay) => {
+        if (!mountedRef.current || connectionRef.current) return;
+        if (reconnectTimerRef.current != null) {
+            clearTimeout(reconnectTimerRef.current);
         }
-
-        const existingTimer = reconnectTimerRef.current;
-        if (existingTimer) {
-            clearTimeout(existingTimer.id);
-        }
-
-        const timerOwner = { id: null };
-        reconnectTimerRef.current = timerOwner;
-        timerOwner.id = setTimeout(() => {
-            if (
-                reconnectTimerRef.current !== timerOwner ||
-                connectionGenerationRef.current !== ownerGeneration ||
-                !mountedRef.current ||
-                intentionalDisconnectRef.current ||
-                portRef.current
-            ) {
-                return;
-            }
-
+        reconnectTimerRef.current = setTimeout(() => {
             reconnectTimerRef.current = null;
-            connectPortRef.current?.();
+            connectRef.current?.();
         }, delay);
     }, []);
 
-    const retireCurrentPort = useCallback(
-        (
-            port,
-            generation,
-            { disconnect = false, reconnectDelay = 1000 } = {}
-        ) => {
-            const activeTransition = authorityTransitionRef.current;
-            if (
-                activeTransition?.kind === 'retire' &&
-                activeTransition.port === port &&
-                activeTransition.generation === generation
-            ) {
-                return false;
+    const retireConnection = useCallback(
+        (connection, { disconnect = false, reconnectDelay = 1000 } = {}) => {
+            if (!isCurrentConnection(connection)) return false;
+            connectionRef.current = null;
+            bindingIntentRef.current += 1;
+            activeTabLookupRef.current = null;
+            clearRegistration();
+            clearBinding();
+            setIsConnected(false);
+            if (disconnect) {
+                try {
+                    connection.port.disconnect();
+                } catch (_) {}
             }
-            if (!isCurrentPort(port, generation)) {
-                return false;
-            }
-
-            const transition = { generation, kind: 'retire', port };
-            authorityTransitionRef.current = transition;
-            try {
-                const binding = confirmedBindingRef.current;
-                if (isExactConfirmedBinding(binding)) {
-                    notifySelectionState(binding.tabId, null, () =>
-                        Boolean(
-                            authorityTransitionRef.current === transition &&
-                            confirmedBindingRef.current === binding
-                        )
-                    );
-                }
-                if (authorityTransitionRef.current !== transition) {
-                    return false;
-                }
-
-                clearConfirmedBinding();
-                settlePendingRegistration(
-                    pendingRegistrationRef.current,
-                    'reject',
-                    REGISTRATION_NOT_CONFIRMED_ERROR
-                );
-                activeTabLookupRef.current = null;
-                portRef.current = null;
-                connectionGenerationRef.current += 1;
-                const reconnectGeneration = connectionGenerationRef.current;
-                setIsConnected(false);
-
-                if (disconnect) {
-                    try {
-                        port.disconnect();
-                    } catch {
-                        // The browser may already have retired the port.
-                    }
-                }
-                scheduleReconnect(reconnectGeneration, reconnectDelay);
-                return true;
-            } finally {
-                if (authorityTransitionRef.current === transition) {
-                    authorityTransitionRef.current = null;
-                }
-            }
+            scheduleReconnect(reconnectDelay);
+            return true;
         },
         [
-            clearConfirmedBinding,
-            isCurrentPort,
-            isExactConfirmedBinding,
-            notifySelectionState,
+            clearBinding,
+            clearRegistration,
+            isCurrentConnection,
             scheduleReconnect,
-            settlePendingRegistration,
         ]
     );
 
-    const scheduleRegistrationTimeout = useCallback(
-        (pending) => {
-            if (pendingRegistrationRef.current !== pending) {
-                return;
+    const getActiveTab = useCallback(async () => {
+        if (!activeTabLookupRef.current) {
+            const lookup = Promise.resolve()
+                .then(() =>
+                    chrome.tabs.query({ active: true, currentWindow: true })
+                )
+                .then(([tab]) => tab || null)
+                .catch((lookupError) => {
+                    console.error('getActiveTab failed:', lookupError);
+                    return null;
+                })
+                .finally(() => {
+                    if (activeTabLookupRef.current === lookup) {
+                        activeTabLookupRef.current = null;
+                    }
+                });
+            activeTabLookupRef.current = lookup;
+        }
+        return activeTabLookupRef.current;
+    }, []);
+
+    const registerOnConnection = useCallback(
+        (connection, tabId, windowId) => {
+            if (
+                !isCurrentConnection(connection) ||
+                !isValidTabBinding(tabId, windowId)
+            ) {
+                return false;
             }
 
-            const timeoutOwner = { id: null };
-            pending.timeoutOwner = timeoutOwner;
-            const expireRegistration = () => {
-                if (
-                    pendingRegistrationRef.current !== pending ||
-                    pending.timeoutOwner !== timeoutOwner
-                ) {
-                    return;
-                }
-                const expired = settlePendingRegistration(
-                    pending,
-                    'reject',
-                    REGISTRATION_NOT_CONFIRMED_ERROR
-                );
-                if (expired) {
-                    retireCurrentPort(pending.port, pending.generation, {
-                        disconnect: true,
-                    });
-                }
+            const registrationId = registrationCounterRef.current + 1;
+            if (!Number.isSafeInteger(registrationId)) return false;
+            registrationCounterRef.current = registrationId;
+            bindingIntentRef.current += 1;
+
+            clearRegistration();
+            const previousTabId = bindingRef.current?.tabId;
+            clearBinding();
+            if (previousTabId !== tabId) notifySelection(tabId, null);
+
+            const pending = {
+                connection,
+                registrationId,
+                tabId,
+                timeoutId: null,
+                windowId,
             };
+            pendingRegistrationRef.current = pending;
+
             try {
-                timeoutOwner.id = setTimeout(
-                    expireRegistration,
-                    REGISTRATION_ACK_TIMEOUT_MS
+                connection.port.postMessage(
+                    buildSidePanelRegistrationMessage(
+                        { registrationId, tabId, windowId },
+                        Date.now()
+                    )
                 );
-            } catch (_) {
-                expireRegistration();
-            }
-        },
-        [retireCurrentPort, settlePendingRegistration]
-    );
-
-    const postMessageEnvelopeToPort = useCallback(
-        (port, generation, action, buildMessage) => {
-            if (!isCurrentPort(port, generation)) {
+            } catch (postError) {
+                console.error('Side panel registration failed:', postError);
+                clearRegistration();
+                retireConnection(connection, { disconnect: true });
                 return false;
             }
 
-            try {
-                port.postMessage(buildMessage());
-                return isCurrentPort(port, generation);
-            } catch (err) {
-                console.error(`postMessage failed (${action}):`, err);
-                return false;
+            if (pendingRegistrationRef.current === pending) {
+                pending.timeoutId = setTimeout(() => {
+                    if (pendingRegistrationRef.current !== pending) return;
+                    clearRegistration();
+                    retireConnection(connection, { disconnect: true });
+                }, REGISTRATION_ACK_TIMEOUT_MS);
             }
+            return isCurrentConnection(connection);
         },
-        [isCurrentPort]
+        [
+            clearBinding,
+            clearRegistration,
+            isCurrentConnection,
+            notifySelection,
+            retireConnection,
+        ]
     );
 
-    const postRegistrationToPort = useCallback(
-        (port, generation, binding) =>
-            postMessageEnvelopeToPort(
-                port,
-                generation,
-                MessageActions.SIDEPANEL_REGISTER,
-                () => buildSidePanelRegistrationMessage(binding, Date.now())
-            ),
-        [postMessageEnvelopeToPort]
+    const registerTab = useCallback(
+        (tabId, windowId = bindingRef.current?.windowId) =>
+            registerOnConnection(connectionRef.current, tabId, windowId),
+        [registerOnConnection]
+    );
+
+    const registerActiveTab = useCallback(
+        async (connection) => {
+            const bindingIntent = bindingIntentRef.current;
+            const tab = await getActiveTab();
+            if (
+                isCurrentConnection(connection) &&
+                bindingIntentRef.current === bindingIntent
+            ) {
+                registerOnConnection(connection, tab?.id, tab?.windowId);
+            }
+        },
+        [getActiveTab, isCurrentConnection, registerOnConnection]
     );
 
     const requestSelectionRemoval = useCallback(
         (selection, wordIndex) => {
-            const binding = confirmedBindingRef.current;
-            if (
-                pendingSelectionRemovalRef.current ||
-                !isExactConfirmedBinding(binding)
-            ) {
+            const binding = bindingRef.current;
+            if (pendingRemovalRef.current || !isCurrentBinding(binding)) {
                 return Promise.resolve('rejected');
             }
 
-            const requestId = selectionRemovalCounterRef.current + 1;
+            const requestId = removalCounterRef.current + 1;
             if (!Number.isSafeInteger(requestId)) {
                 return Promise.resolve('rejected');
             }
@@ -435,533 +315,222 @@ export function useSidePanelCommunication() {
                 return Promise.resolve('rejected');
             }
 
-            selectionRemovalCounterRef.current = requestId;
-            let resolveRemoval;
-            const promise = new Promise((resolve) => {
-                resolveRemoval = resolve;
+            removalCounterRef.current = requestId;
+            let resolve;
+            const promise = new Promise((settle) => {
+                resolve = settle;
             });
             const pending = {
-                authoritativeSuccessorObserved: false,
                 binding,
                 message,
-                promise,
-                resolve: resolveRemoval,
-                terminalStatus: null,
+                resolve,
+                successorObserved: false,
             };
-            pendingSelectionRemovalRef.current = pending;
+            pendingRemovalRef.current = pending;
 
-            const posted = postMessageEnvelopeToPort(
-                binding.port,
-                binding.generation,
-                MessageActions.SIDEPANEL_UPDATE_STATE,
-                () => message
-            );
-            if (!posted) {
-                settlePendingSelectionRemoval(pending, 'rejected');
+            try {
+                binding.connection.port.postMessage(message);
+            } catch (_) {
+                settleRemoval(pending, 'rejected');
             }
             return promise;
         },
-        [
-            isExactConfirmedBinding,
-            postMessageEnvelopeToPort,
-            settlePendingSelectionRemoval,
-        ]
+        [isCurrentBinding, settleRemoval]
     );
 
-    const registerTabOnPort = useCallback(
-        (port, generation, tabId, windowId) => {
-            if (
-                !isValidTabBinding(tabId, windowId) ||
-                !isCurrentPort(port, generation) ||
-                authorityTransitionRef.current?.kind === 'retire'
+    const handleSelection = useCallback(
+        (message) => {
+            const binding = bindingRef.current;
+            if (!isCurrentBinding(binding)) return;
+            const parsed = parseSidePanelSelectionStateMessage(message, {
+                registrationId: binding.registrationId,
+                tabId: binding.tabId,
+                windowId: binding.windowId,
+            });
+            if (!parsed || !isCurrentBinding(binding)) return;
+
+            const next = acceptSelection(
+                selectionCursorRef.current,
+                parsed.selection
+            );
+            if (!next.accepted) return;
+            selectionCursorRef.current = next.cursor;
+            if (next.changed) notifySelection(binding.tabId, parsed.selection);
+
+            const pending = pendingRemovalRef.current;
+            if (!pending || pending.binding !== binding) return;
+            const expected = pending.message.data;
+            const selection = parsed.selection;
+            const isSuccessor = Boolean(
+                selection &&
+                selection.selectionOwnerGeneration ===
+                    expected.selectionOwnerGeneration &&
+                selection.selectionRevision > expected.selectionRevision &&
+                selection.renderRevision === expected.renderRevision &&
+                selection.reason === 'remove' &&
+                !selection.entries.some(
+                    (entry) => entry.wordIndex === expected.wordIndex
+                )
+            );
+            if (isSuccessor) {
+                pending.successorObserved = true;
+            } else if (
+                selection === null ||
+                selection.selectionOwnerGeneration !==
+                    expected.selectionOwnerGeneration ||
+                selection.selectionRevision > expected.selectionRevision ||
+                selection.renderRevision !== expected.renderRevision
             ) {
-                return null;
-            }
-
-            const transition = { generation, kind: 'register', port };
-            authorityTransitionRef.current = transition;
-            try {
-                const priorBinding = confirmedBindingRef.current;
-                const hadExactBinding = isExactConfirmedBinding(priorBinding);
-                const canNotify = () =>
-                    Boolean(
-                        authorityTransitionRef.current === transition &&
-                        isCurrentPort(port, generation)
-                    );
-                if (hadExactBinding) {
-                    notifySelectionState(priorBinding.tabId, null, canNotify);
-                }
-                if (!hadExactBinding || priorBinding.tabId !== tabId) {
-                    notifySelectionState(tabId, null, canNotify);
-                }
-                if (!canNotify()) {
-                    return null;
-                }
-
-                const priorPending = pendingRegistrationRef.current;
-                const bindingIntentEpoch = bindingIntentEpochRef.current + 1;
-                bindingIntentEpochRef.current = bindingIntentEpoch;
-                activeTabLookupRef.current = null;
-                clearConfirmedBinding();
-                settlePendingRegistration(
-                    priorPending,
-                    'reject',
-                    REGISTRATION_NOT_CONFIRMED_ERROR
-                );
-
-                const registrationId = registrationCounterRef.current + 1;
-                if (!Number.isSafeInteger(registrationId)) {
-                    return null;
-                }
-                registrationCounterRef.current = registrationId;
-
-                let resolveRegistration;
-                let rejectRegistration;
-                const promise = new Promise((resolve, reject) => {
-                    resolveRegistration = resolve;
-                    rejectRegistration = reject;
-                });
-                void promise.catch(() => undefined);
-                const pending = {
-                    bindingIntentEpoch,
-                    generation,
-                    port,
-                    promise,
-                    registrationId,
-                    reject: rejectRegistration,
-                    resolve: resolveRegistration,
-                    tabId,
-                    timeoutOwner: null,
-                    windowId,
-                };
-                pendingRegistrationRef.current = pending;
-
-                const posted = postRegistrationToPort(port, generation, {
-                    registrationId,
-                    tabId,
-                    windowId,
-                });
-                if (
-                    authorityTransitionRef.current !== transition ||
-                    !posted ||
-                    !isCurrentBindingIntent(
-                        port,
-                        generation,
-                        bindingIntentEpoch
-                    )
-                ) {
-                    const confirmed = confirmedBindingRef.current;
-                    if (
-                        authorityTransitionRef.current === transition &&
-                        confirmed?.port === pending.port &&
-                        confirmed.generation === pending.generation &&
-                        confirmed.bindingIntentEpoch ===
-                            pending.bindingIntentEpoch &&
-                        confirmed.registrationId === pending.registrationId &&
-                        confirmed.tabId === pending.tabId &&
-                        confirmed.windowId === pending.windowId
-                    ) {
-                        notifySelectionState(confirmed.tabId, null, () =>
-                            Boolean(
-                                authorityTransitionRef.current === transition &&
-                                confirmedBindingRef.current === confirmed
-                            )
-                        );
-                        if (confirmedBindingRef.current === confirmed) {
-                            clearConfirmedBinding();
-                        }
-                    }
-                    settlePendingRegistration(
-                        pending,
-                        'reject',
-                        REGISTRATION_NOT_CONFIRMED_ERROR
-                    );
-                    return null;
-                }
-
-                scheduleRegistrationTimeout(pending);
-                return pending;
-            } finally {
-                if (authorityTransitionRef.current === transition) {
-                    authorityTransitionRef.current = null;
-                }
+                settleRemoval(pending, 'rejected');
             }
         },
-        [
-            clearConfirmedBinding,
-            isCurrentBindingIntent,
-            isCurrentPort,
-            isExactConfirmedBinding,
-            notifySelectionState,
-            postRegistrationToPort,
-            scheduleRegistrationTimeout,
-            settlePendingRegistration,
-        ]
+        [isCurrentBinding, notifySelection, settleRemoval]
     );
 
-    /**
-     * Register this panel against a tab and update the local binding only after
-     * the current port accepts the registration message.
-     */
-    const registerTab = useCallback(
-        (tabId, windowId = bindingRef.current.boundWindowId) => {
-            if (!isValidTabBinding(tabId, windowId)) {
-                return false;
-            }
-            const port = portRef.current;
-            const generation = connectionGenerationRef.current;
-            return Boolean(
-                registerTabOnPort(port, generation, tabId, windowId)
+    const handleRemovalResult = useCallback(
+        (message) => {
+            const pending = pendingRemovalRef.current;
+            if (!pending || !isCurrentBinding(pending.binding)) return;
+            const result = parseSidePanelSelectionRemovalResultMessage(
+                message,
+                pending.message.data
+            );
+            if (!result) return;
+            settleRemoval(
+                pending,
+                result.status === 'applied' && pending.successorObserved
+                    ? 'applied'
+                    : 'rejected'
             );
         },
-        [registerTabOnPort]
+        [isCurrentBinding, settleRemoval]
     );
 
-    const getActiveTab = useCallback(async () => {
-        const port = portRef.current;
-        const generation = connectionGenerationRef.current;
-        const bindingIntentEpoch = bindingIntentEpochRef.current;
-        let lookup = activeTabLookupRef.current;
-        if (
-            !lookup ||
-            lookup.port !== port ||
-            lookup.generation !== generation ||
-            lookup.bindingIntentEpoch !== bindingIntentEpoch
-        ) {
-            lookup = {
-                bindingIntentEpoch,
-                generation,
-                port,
-                promise: null,
-            };
-            activeTabLookupRef.current = lookup;
-            lookup.promise = (async () => {
-                const [tab] = await chrome.tabs.query({
-                    active: true,
-                    currentWindow: true,
-                });
-                return tab || null;
-            })().finally(() => {
-                if (activeTabLookupRef.current === lookup) {
-                    activeTabLookupRef.current = null;
+    const handleMessage = useCallback(
+        (connection, message) => {
+            if (!isCurrentConnection(connection)) return;
+
+            const confirmation =
+                parseSidePanelBindingConfirmationMessage(message);
+            if (confirmation) {
+                const pending = pendingRegistrationRef.current;
+                if (
+                    pending?.connection === connection &&
+                    confirmation.registrationId === pending.registrationId &&
+                    confirmation.tabId === pending.tabId &&
+                    confirmation.windowId === pending.windowId
+                ) {
+                    clearRegistration();
+                    bindingRef.current = Object.freeze({
+                        ...confirmation,
+                        connection,
+                    });
                 }
-            });
-        }
-
-        try {
-            const tab = await lookup.promise;
-            if (!isCurrentBindingIntent(port, generation, bindingIntentEpoch)) {
-                return null;
-            }
-            return tab;
-        } catch (err) {
-            if (isCurrentBindingIntent(port, generation, bindingIntentEpoch)) {
-                console.error('getActiveTab failed:', err);
-            }
-            return null;
-        }
-    }, [isCurrentBindingIntent]);
-
-    const registerWithActiveTab = useCallback(
-        async (port, generation) => {
-            const bindingIntentEpoch = bindingIntentEpochRef.current;
-            const tab = await getActiveTab();
-            if (!isCurrentBindingIntent(port, generation, bindingIntentEpoch)) {
-                return null;
-            }
-            if (!registerTabOnPort(port, generation, tab?.id, tab?.windowId)) {
-                return null;
+                return;
             }
 
-            return tab;
+            if (message?.action === MessageActions.SIDEPANEL_SELECTION_SYNC) {
+                handleSelection(message);
+                return;
+            }
+            if (message?.action === MessageActions.SIDEPANEL_UPDATE_STATE) {
+                handleRemovalResult(message);
+                return;
+            }
+
+            const tabBinding =
+                parseSidePanelTabActivatedMessage(message) ||
+                parseSidePanelForceBindTabMessage(message);
+            if (
+                !tabBinding &&
+                (message?.action === MessageActions.SIDEPANEL_TAB_ACTIVATED ||
+                    message?.action === MessageActions.SIDEPANEL_FORCE_BIND_TAB)
+            ) {
+                return;
+            }
+
+            const listeners = messageListenersRef.current.get(message?.action);
+            for (const listener of listeners ? [...listeners] : []) {
+                if (!listeners.has(listener)) continue;
+                try {
+                    listener(tabBinding ?? message?.data);
+                } catch (listenerError) {
+                    console.error(
+                        `Error in listener for ${message?.action}:`,
+                        listenerError
+                    );
+                }
+            }
         },
-        [getActiveTab, isCurrentBindingIntent, registerTabOnPort]
+        [
+            clearRegistration,
+            handleRemovalResult,
+            handleSelection,
+            isCurrentConnection,
+        ]
     );
 
-    const connectPort = useCallback(() => {
-        if (
-            portRef.current ||
-            !mountedRef.current ||
-            intentionalDisconnectRef.current
-        ) {
-            return;
-        }
-
-        const generation = connectionGenerationRef.current + 1;
-        connectionGenerationRef.current = generation;
+    const connect = useCallback(() => {
+        if (!mountedRef.current || connectionRef.current) return;
         try {
             const port = chrome.runtime.connect({ name: 'sidepanel' });
-            portRef.current = port;
+            const connection = { port };
+            connectionRef.current = connection;
             setIsConnected(true);
             setError(null);
 
-            port.onMessage.addListener((message) => {
-                if (!isCurrentPort(port, generation)) {
-                    return;
-                }
-                const action = getOwnDataProperty(message, 'action');
-                const isTabActivated =
-                    action === MessageActions.SIDEPANEL_TAB_ACTIVATED;
-                const isForceBind =
-                    action === MessageActions.SIDEPANEL_FORCE_BIND_TAB;
-                const tabBinding = isTabActivated
-                    ? parseSidePanelTabActivatedMessage(message)
-                    : isForceBind
-                      ? parseSidePanelForceBindTabMessage(message)
-                      : null;
-                if ((isTabActivated || isForceBind) && !tabBinding) {
-                    return;
-                }
-                if (action === MessageActions.SIDEPANEL_SELECTION_SYNC) {
-                    const binding = confirmedBindingRef.current;
-                    if (!isExactConfirmedBinding(binding)) {
-                        return;
-                    }
-                    const expectedBinding = {
-                        registrationId: binding.registrationId,
-                        tabId: binding.tabId,
-                        windowId: binding.windowId,
-                    };
-                    const parsedSelection = parseSidePanelSelectionStateMessage(
-                        message,
-                        expectedBinding
-                    );
-                    if (!parsedSelection || !isExactConfirmedBinding(binding)) {
-                        return;
-                    }
-                    const cursorAdvance = advanceSelectionCursor(
-                        selectionCursorRef.current,
-                        parsedSelection.selection
-                    );
-                    if (!cursorAdvance.accepted) return;
-                    selectionCursorRef.current = cursorAdvance.cursor;
-                    notifySelectionState(
-                        binding.tabId,
-                        parsedSelection.selection,
-                        () => isExactConfirmedBinding(binding)
-                    );
-
-                    const pendingRemoval = pendingSelectionRemovalRef.current;
-                    if (
-                        pendingRemoval?.binding === binding &&
-                        isExactConfirmedBinding(binding)
-                    ) {
-                        const expected = pendingRemoval.message.data;
-                        const selection = parsedSelection.selection;
-                        const isAppliedSuccessor = Boolean(
-                            selection &&
-                            selection.selectionOwnerGeneration ===
-                                expected.selectionOwnerGeneration &&
-                            selection.renderRevision ===
-                                expected.renderRevision &&
-                            selection.selectionRevision >
-                                expected.selectionRevision &&
-                            selection.reason === 'remove' &&
-                            !selection.entries.some(
-                                ({ wordIndex }) =>
-                                    wordIndex === expected.wordIndex
-                            )
-                        );
-                        const invalidatesRemoval = Boolean(
-                            selection === null ||
-                            selection.selectionOwnerGeneration !==
-                                expected.selectionOwnerGeneration ||
-                            selection.renderRevision !==
-                                expected.renderRevision ||
-                            selection.selectionRevision >
-                                expected.selectionRevision
-                        );
-                        if (isAppliedSuccessor) {
-                            pendingRemoval.authoritativeSuccessorObserved = true;
-                            if (pendingRemoval.terminalStatus === 'applied') {
-                                settlePendingSelectionRemoval(
-                                    pendingRemoval,
-                                    'applied'
-                                );
-                            }
-                        } else if (invalidatesRemoval) {
-                            settlePendingSelectionRemoval(
-                                pendingRemoval,
-                                'rejected'
-                            );
-                        }
-                    }
-                    return;
-                }
-                if (action === MessageActions.SIDEPANEL_UPDATE_STATE) {
-                    const pendingRemoval = pendingSelectionRemovalRef.current;
-                    const binding = confirmedBindingRef.current;
-                    if (
-                        !pendingRemoval ||
-                        pendingRemoval.binding !== binding ||
-                        !isExactConfirmedBinding(binding)
-                    ) {
-                        return;
-                    }
-                    const result = parseSidePanelSelectionRemovalResultMessage(
-                        message,
-                        pendingRemoval.message.data
-                    );
-                    if (
-                        !result ||
-                        pendingSelectionRemovalRef.current !== pendingRemoval ||
-                        !isExactConfirmedBinding(binding)
-                    ) {
-                        return;
-                    }
-                    pendingRemoval.terminalStatus = result.status;
-                    if (result.status === 'rejected') {
-                        settlePendingSelectionRemoval(
-                            pendingRemoval,
-                            'rejected'
-                        );
-                    } else if (pendingRemoval.authoritativeSuccessorObserved) {
-                        settlePendingSelectionRemoval(
-                            pendingRemoval,
-                            'applied'
-                        );
-                    }
-                    return;
-                }
-                const bindingConfirmation =
-                    parseSidePanelBindingConfirmationMessage(message);
-                if (bindingConfirmation) {
-                    const pending = pendingRegistrationRef.current;
-                    if (
-                        pending &&
-                        pendingRegistrationRef.current === pending &&
-                        isCurrentPort(port, generation) &&
-                        pending.port === port &&
-                        pending.generation === generation &&
-                        pending.bindingIntentEpoch ===
-                            bindingIntentEpochRef.current &&
-                        bindingConfirmation.registrationId ===
-                            pending.registrationId &&
-                        bindingConfirmation.tabId === pending.tabId &&
-                        bindingConfirmation.windowId === pending.windowId
-                    ) {
-                        const confirmedBinding = {
-                            bindingIntentEpoch: pending.bindingIntentEpoch,
-                            generation,
-                            port,
-                            registrationId: pending.registrationId,
-                            tabId: pending.tabId,
-                            windowId: pending.windowId,
-                        };
-                        confirmedBindingRef.current = confirmedBinding;
-                        bindingRef.current = {
-                            boundTabId: pending.tabId,
-                            boundWindowId: pending.windowId,
-                        };
-                        settlePendingRegistration(
-                            pending,
-                            'resolve',
-                            confirmedBinding
-                        );
-                    }
-                    return;
-                }
-                if (action === MessageActions.SIDEPANEL_BINDING_CONFIRMED) {
-                    return;
-                }
-                const listeners = messageListeners.current.get(action);
-                listeners?.forEach((callback) => {
-                    try {
-                        callback(
-                            tabBinding ?? getOwnDataProperty(message, 'data')
-                        );
-                    } catch (listenerError) {
-                        console.error(
-                            `Error in listener for ${action}:`,
-                            listenerError
-                        );
-                    }
-                });
-            });
-
-            port.onDisconnect.addListener(() => {
-                retireCurrentPort(port, generation);
-            });
-
-            void registerWithActiveTab(port, generation);
+            port.onMessage.addListener((message) =>
+                handleMessage(connection, message)
+            );
+            port.onDisconnect.addListener(() => retireConnection(connection));
+            void registerActiveTab(connection);
         } catch (connectionError) {
-            if (
-                mountedRef.current &&
-                !intentionalDisconnectRef.current &&
-                !portRef.current &&
-                connectionGenerationRef.current === generation
-            ) {
-                console.error('Side panel connection failed:', connectionError);
-                setError(connectionError);
-                setIsConnected(false);
-                scheduleReconnect(generation, 2000);
-            }
+            console.error('Side panel connection failed:', connectionError);
+            setError(connectionError);
+            setIsConnected(false);
+            scheduleReconnect(2000);
         }
-    }, [
-        isCurrentPort,
-        isExactConfirmedBinding,
-        notifySelectionState,
-        registerWithActiveTab,
-        retireCurrentPort,
-        scheduleReconnect,
-        settlePendingSelectionRemoval,
-        settlePendingRegistration,
-    ]);
-
-    connectPortRef.current = connectPort;
+    }, [handleMessage, registerActiveTab, retireConnection, scheduleReconnect]);
+    connectRef.current = connect;
 
     useEffect(() => {
-        intentionalDisconnectRef.current = false;
-        connectPort();
-
+        mountedRef.current = true;
+        connect();
         return () => {
-            intentionalDisconnectRef.current = true;
-            clearConfirmedBinding();
-            settlePendingRegistration(
-                pendingRegistrationRef.current,
-                'reject',
-                REGISTRATION_NOT_CONFIRMED_ERROR
-            );
-            activeTabLookupRef.current = null;
-            connectionGenerationRef.current += 1;
-            if (reconnectTimerRef.current) {
-                clearTimeout(reconnectTimerRef.current.id);
+            mountedRef.current = false;
+            if (reconnectTimerRef.current != null) {
+                clearTimeout(reconnectTimerRef.current);
                 reconnectTimerRef.current = null;
             }
-
-            const port = portRef.current;
-            portRef.current = null;
-            if (port) {
+            clearRegistration();
+            clearBinding(false);
+            activeTabLookupRef.current = null;
+            const connection = connectionRef.current;
+            connectionRef.current = null;
+            if (connection) {
                 try {
-                    port.disconnect();
-                } catch {
-                    // The worker may already have disconnected the port.
-                }
+                    connection.port.disconnect();
+                } catch (_) {}
             }
         };
-    }, [clearConfirmedBinding, connectPort, settlePendingRegistration]);
+    }, [clearBinding, clearRegistration, connect]);
 
-    const onMessage = useCallback((action, callback) => {
-        if (!messageListeners.current.has(action)) {
-            messageListeners.current.set(action, new Set());
+    const onMessage = useCallback((action, listener) => {
+        if (!messageListenersRef.current.has(action)) {
+            messageListenersRef.current.set(action, new Set());
         }
-        messageListeners.current.get(action).add(callback);
-
+        const listeners = messageListenersRef.current.get(action);
+        listeners.add(listener);
         return () => {
-            const listeners = messageListeners.current.get(action);
-            listeners?.delete(callback);
-            if (listeners?.size === 0) {
-                messageListeners.current.delete(action);
-            }
+            listeners.delete(listener);
+            if (listeners.size === 0)
+                messageListenersRef.current.delete(action);
         };
     }, []);
 
-    const onSelectionState = useCallback((callback) => {
-        selectionStateListeners.current.add(callback);
-
-        return () => {
-            selectionStateListeners.current.delete(callback);
-        };
+    const onSelectionState = useCallback((listener) => {
+        selectionListenersRef.current.add(listener);
+        return () => selectionListenersRef.current.delete(listener);
     }, []);
 
     return useMemo(

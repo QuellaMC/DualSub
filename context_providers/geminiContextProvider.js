@@ -1,32 +1,16 @@
-/**
- * Google Gemini Context Provider
- *
- * Provides AI-powered cultural, historical, and linguistic context analysis
- * using Google's Gemini models through the Generative AI API.
- *
- * @author DualSub Extension
- * @version 1.0.0
- */
-
 import Logger from '../utils/logger.js';
-import { validateSetting } from '../config/configSchema.js';
 import { getContextSchema, validateAgainstSchema } from './contextSchemas.js';
 import { isRetryableContextError } from './retryPolicy.js';
 import { fetchWithTimeout } from '../utils/fetchWithTimeout.js';
 import { readRequiredProviderConfig } from './providerConfig.js';
 
 const logger = Logger.create('GeminiContextProvider');
-const GEMINI_CONFIGURATION_ERROR_MESSAGE =
-    'Gemini provider configuration is invalid';
 const GEMINI_REQUIRED_CONFIG_KEYS = Object.freeze([
     'geminiApiKey',
     'geminiModel',
     'aiContextTimeout',
 ]);
 
-/**
- * Available Gemini models for context analysis
- */
 export const GEMINI_MODELS = [
     {
         id: 'gemini-3.5-flash',
@@ -52,34 +36,18 @@ export const GEMINI_MODELS = [
     },
 ];
 
-/**
- * Get available models for this provider
- * @returns {Array} Array of model objects
- */
 export function getAvailableModels() {
     return GEMINI_MODELS;
 }
 
-/**
- * Get the default model for this provider
- * @returns {string} Default model ID
- */
 export function getDefaultModel() {
     const recommended = GEMINI_MODELS.find((model) => model.recommended);
     return recommended ? recommended.id : GEMINI_MODELS[0].id;
 }
 
-/**
- * Creates specialized prompts for different types of context analysis
- * @param {string} text - The text to analyze
- * @param {string} contextType - Type of context ('cultural', 'historical', 'linguistic')
- * @param {Object} metadata - Additional context metadata
- * @returns {string} Formatted prompt for the AI model
- */
 function createContextPrompt(text, contextType, metadata = {}) {
     const { targetLanguage = 'unknown', surroundingContext = '' } = metadata;
 
-    // Get language name for the target language code
     const getLanguageName = (langCode) => {
         const languageNames = {
             en: 'English',
@@ -253,13 +221,6 @@ Respond ONLY with valid JSON in this exact structure. All text content within th
     }
 }
 
-/**
- * Analyzes text for cultural, historical, and linguistic context using Google Gemini API
- * @param {string} text - The text to analyze
- * @param {string} contextType - Type of context analysis ('cultural', 'historical', 'linguistic', 'all')
- * @param {Object} metadata - Additional context metadata
- * @returns {Promise<Object>} Context analysis result
- */
 export async function analyzeContext(text, contextType = 'all', metadata = {}) {
     logger.info('Gemini context analysis request initiated', {
         textLength: text?.length || 0,
@@ -268,7 +229,6 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
         targetLanguage: metadata.targetLanguage,
     });
 
-    // Validate input
     if (!text || typeof text !== 'string' || text.trim() === '') {
         logger.warn('Empty or invalid text provided for context analysis', {
             valueType: typeof text,
@@ -288,20 +248,10 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
         );
         const { geminiApiKey, geminiModel, aiContextTimeout } = config;
 
-        if (
-            !validateSetting('geminiApiKey', geminiApiKey) ||
-            geminiApiKey.trim() === ''
-        ) {
+        if (typeof geminiApiKey !== 'string' || geminiApiKey.trim() === '') {
             throw new Error('Gemini API key not configured');
         }
-        if (
-            !validateSetting('geminiModel', geminiModel) ||
-            !validateSetting('aiContextTimeout', aiContextTimeout)
-        ) {
-            throw new Error(GEMINI_CONFIGURATION_ERROR_MESSAGE);
-        }
 
-        // Create context-specific prompt
         const prompt = createContextPrompt(text, contextType, metadata);
         const jsonSchema = getContextSchema(contextType);
 
@@ -393,7 +343,6 @@ export async function analyzeContext(text, contextType = 'all', metadata = {}) {
 
         const candidate = data.candidates[0];
 
-        // Check for safety blocks
         if (candidate.finishReason === 'SAFETY') {
             logger.warn('Gemini response blocked for safety reasons', {
                 safetyRatingCount: Array.isArray(candidate.safetyRatings)

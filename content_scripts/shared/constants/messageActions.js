@@ -5,8 +5,6 @@ export const MessageActions = Object.freeze({
     TRANSLATE: 'translate',
     FETCH_VTT: 'fetchVTT',
     ANALYZE_CONTEXT: 'analyzeContext',
-    PING: 'ping',
-    CHECK_BACKGROUND_READY: 'checkBackgroundReady',
     // Content-side actions
     CONFIG_CHANGED: 'configChanged',
     LOGGING_LEVEL_CHANGED: 'LOGGING_LEVEL_CHANGED',

@@ -12,15 +12,13 @@ export function useCommittedTextField({ value, onCommit, validate }) {
     const [draft, setDraft] = useState(value);
     const [validationAttempted, setValidationAttempted] = useState(false);
     const draftRef = useRef(value);
-    const authoritativeValueRef = useRef(value);
+    const authorityRef = useRef(value);
+    const dirtyRef = useRef(false);
+    const revisionRef = useRef(0);
+    const lastCommittedRef = useRef(value);
+    const mountedRef = useRef(true);
     const onCommitRef = useRef(onCommit);
     const validateRef = useRef(validate);
-    const draftRevisionRef = useRef(0);
-    const localChangeRevisionRef = useRef(0);
-    const authoritativeRevisionRef = useRef(0);
-    const committedRevisionRef = useRef(-1);
-    const externalSyncRevisionRef = useRef(-1);
-    const mountedRef = useRef(true);
     onCommitRef.current = onCommit;
     validateRef.current = validate;
 
@@ -32,100 +30,96 @@ export function useCommittedTextField({ value, onCommit, validate }) {
     }, []);
 
     useEffect(() => {
-        authoritativeValueRef.current = value;
-        authoritativeRevisionRef.current += 1;
-        const hasLocallyOwnedDraft =
-            draftRevisionRef.current !== externalSyncRevisionRef.current;
-        if (hasLocallyOwnedDraft && !Object.is(draftRef.current, value)) {
-            return;
-        }
-        draftRevisionRef.current += 1;
-        committedRevisionRef.current = draftRevisionRef.current;
-        externalSyncRevisionRef.current = draftRevisionRef.current;
+        authorityRef.current = value;
+        if (dirtyRef.current) return;
+
         draftRef.current = value;
+        lastCommittedRef.current = value;
         setDraft(value);
         setValidationAttempted(false);
     }, [value]);
 
     const change = useCallback((nextValue) => {
-        draftRevisionRef.current += 1;
-        localChangeRevisionRef.current += 1;
+        revisionRef.current += 1;
+        dirtyRef.current = true;
         draftRef.current = nextValue;
         setDraft(nextValue);
     }, []);
 
-    const commit = useCallback(async () => {
-        if (!isAccepted(validateRef.current, draftRef.current)) {
+    const commit = useCallback(() => {
+        const committedDraft = draftRef.current;
+        if (!isAccepted(validateRef.current, committedDraft)) {
             setValidationAttempted(true);
-            return false;
+            return Promise.resolve(false);
         }
         setValidationAttempted(false);
-        if (committedRevisionRef.current === draftRevisionRef.current) {
-            return true;
-        }
-        const committedRevision = draftRevisionRef.current;
-        const committedLocalChangeRevision = localChangeRevisionRef.current;
-        const committedDraft = draftRef.current;
-        const authoritativeValueAtStart = authoritativeValueRef.current;
-        const authoritativeRevisionAtStart = authoritativeRevisionRef.current;
-        committedRevisionRef.current = committedRevision;
 
-        let result;
-        try {
-            result = await onCommitRef.current(committedDraft);
-        } catch {
-            result = false;
+        if (!dirtyRef.current) {
+            return Promise.resolve(true);
         }
-        if (result !== false) {
-            if (
-                mountedRef.current &&
-                draftRevisionRef.current === committedRevision &&
-                localChangeRevisionRef.current === committedLocalChangeRevision
-            ) {
-                if (
-                    authoritativeRevisionRef.current !==
-                    authoritativeRevisionAtStart
-                ) {
-                    const latestExternalValue = authoritativeValueRef.current;
-                    draftRevisionRef.current += 1;
-                    committedRevisionRef.current = draftRevisionRef.current;
-                    externalSyncRevisionRef.current = draftRevisionRef.current;
-                    draftRef.current = latestExternalValue;
-                    setDraft(latestExternalValue);
-                    setValidationAttempted(false);
-                } else {
-                    externalSyncRevisionRef.current = committedRevision;
-                }
+        if (Object.is(authorityRef.current, committedDraft)) {
+            dirtyRef.current = false;
+            lastCommittedRef.current = committedDraft;
+            return Promise.resolve(true);
+        }
+        if (Object.is(lastCommittedRef.current, committedDraft)) {
+            return Promise.resolve(true);
+        }
+
+        const committedRevision = revisionRef.current;
+        const authorityAtStart = authorityRef.current;
+        lastCommittedRef.current = committedDraft;
+
+        const run = async () => {
+            let accepted = false;
+            try {
+                accepted =
+                    (await onCommitRef.current(committedDraft)) !== false;
+            } catch {
+                accepted = false;
             }
-            return true;
-        }
 
-        if (
-            mountedRef.current &&
-            localChangeRevisionRef.current === committedLocalChangeRevision
-        ) {
-            const latestExternalValue = authoritativeValueRef.current;
-            const rollbackValue = Object.is(latestExternalValue, committedDraft)
-                ? authoritativeValueAtStart
-                : latestExternalValue;
-            draftRevisionRef.current += 1;
-            localChangeRevisionRef.current += 1;
-            committedRevisionRef.current = draftRevisionRef.current;
-            externalSyncRevisionRef.current = draftRevisionRef.current;
+            if (
+                !mountedRef.current ||
+                revisionRef.current !== committedRevision
+            ) {
+                return accepted;
+            }
+
+            if (accepted) {
+                dirtyRef.current = false;
+                if (!Object.is(authorityRef.current, authorityAtStart)) {
+                    draftRef.current = authorityRef.current;
+                    lastCommittedRef.current = authorityRef.current;
+                    setDraft(authorityRef.current);
+                }
+                return true;
+            }
+
+            const rollbackValue = Object.is(
+                authorityRef.current,
+                committedDraft
+            )
+                ? authorityAtStart
+                : authorityRef.current;
+            revisionRef.current += 1;
+            dirtyRef.current = false;
             draftRef.current = rollbackValue;
+            lastCommittedRef.current = rollbackValue;
             setDraft(rollbackValue);
             setValidationAttempted(false);
-        }
-        return false;
+            return false;
+        };
+
+        return run();
     }, []);
 
     const reset = useCallback(() => {
-        draftRevisionRef.current += 1;
-        localChangeRevisionRef.current += 1;
-        committedRevisionRef.current = draftRevisionRef.current;
-        externalSyncRevisionRef.current = draftRevisionRef.current;
-        draftRef.current = authoritativeValueRef.current;
-        setDraft(authoritativeValueRef.current);
+        revisionRef.current += 1;
+        dirtyRef.current = false;
+        draftRef.current = authorityRef.current;
+        lastCommittedRef.current = authorityRef.current;
+        setDraft(authorityRef.current);
         setValidationAttempted(false);
     }, []);
 
@@ -143,7 +137,6 @@ export function useCommittedTextField({ value, onCommit, validate }) {
     );
 
     const valid = isAccepted(validateRef.current, draft);
-
     return {
         value: draft,
         valid,

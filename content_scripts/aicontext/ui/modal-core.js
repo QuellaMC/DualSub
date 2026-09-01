@@ -12,152 +12,19 @@ import { MODAL_STATES, EVENT_TYPES, UI_CONFIG } from '../core/constants.js';
 import { createSelectionPersistenceManager } from '../utils/selectionPersistence.js';
 import { SelectionModel } from '../core/state/SelectionModel.js';
 import { ModalStore } from '../core/state/ModalStore.js';
+import { parseContentSelectionSnapshot } from '../../shared/protocol/messageProtocol.js';
 import Logger from '../../../utils/logger.js';
-
-const PRIVATE_SELECTION_REASONS = Object.freeze([
-    'toggle',
-    'add',
-    'remove',
-    'clear',
-    'restore',
-    'subtitle-change',
-]);
-
-function hasExactEnumerableDataKeys(value, expectedKeys) {
-    try {
-        if (
-            value === null ||
-            typeof value !== 'object' ||
-            Array.isArray(value)
-        ) {
-            return false;
-        }
-        const ownKeys = Reflect.ownKeys(value);
-        if (ownKeys.length !== expectedKeys.length) return false;
-        return ownKeys.every((key) => {
-            if (typeof key !== 'string' || !expectedKeys.includes(key)) {
-                return false;
-            }
-            const descriptor = Object.getOwnPropertyDescriptor(value, key);
-            return (
-                descriptor?.enumerable === true &&
-                Object.hasOwn(descriptor, 'value')
-            );
-        });
-    } catch (_) {
-        return false;
-    }
-}
-
-function createPrivateSelectionSnapshot(snapshot) {
-    try {
-        if (
-            !hasExactEnumerableDataKeys(snapshot, [
-                'selectionRevision',
-                'renderRevision',
-                'reason',
-                'entries',
-            ])
-        ) {
-            return null;
-        }
-
-        const descriptors = Object.fromEntries(
-            ['selectionRevision', 'renderRevision', 'reason', 'entries'].map(
-                (key) => [key, Object.getOwnPropertyDescriptor(snapshot, key)]
-            )
-        );
-        const selectionRevision = descriptors.selectionRevision.value;
-        const renderRevision = descriptors.renderRevision.value;
-        const reason = descriptors.reason.value;
-        const entries = descriptors.entries.value;
-        if (
-            !Number.isSafeInteger(selectionRevision) ||
-            selectionRevision <= 0 ||
-            !Number.isSafeInteger(renderRevision) ||
-            renderRevision <= 0 ||
-            !PRIVATE_SELECTION_REASONS.includes(reason) ||
-            !Array.isArray(entries) ||
-            entries.length > 64 ||
-            Reflect.ownKeys(entries).length !== entries.length + 1
-        ) {
-            return null;
-        }
-
-        if (
-            (['clear', 'subtitle-change'].includes(reason) &&
-                entries.length !== 0) ||
-            (['add', 'restore'].includes(reason) && entries.length === 0)
-        ) {
-            return null;
-        }
-
-        const canonicalEntries = [];
-        let previousWordIndex = -1;
-        let joinedLength = 0;
-        for (let index = 0; index < entries.length; index += 1) {
-            const entryDescriptor = Object.getOwnPropertyDescriptor(
-                entries,
-                String(index)
-            );
-            const entry = entryDescriptor?.value;
-            if (
-                entryDescriptor?.enumerable !== true ||
-                !hasExactEnumerableDataKeys(entry, ['wordIndex', 'word'])
-            ) {
-                return null;
-            }
-            const wordIndex = Object.getOwnPropertyDescriptor(
-                entry,
-                'wordIndex'
-            ).value;
-            const word = Object.getOwnPropertyDescriptor(entry, 'word').value;
-            if (
-                !Number.isSafeInteger(wordIndex) ||
-                wordIndex < 0 ||
-                wordIndex <= previousWordIndex ||
-                typeof word !== 'string' ||
-                word.length === 0 ||
-                word.length > 256
-            ) {
-                return null;
-            }
-            joinedLength +=
-                (canonicalEntries.length === 0 ? 0 : 1) + word.length;
-            if (joinedLength > 500) return null;
-            canonicalEntries.push(Object.freeze({ wordIndex, word }));
-            previousWordIndex = wordIndex;
-        }
-
-        return Object.freeze({
-            selectionRevision,
-            renderRevision,
-            reason,
-            entries: Object.freeze(canonicalEntries),
-        });
-    } catch (_) {
-        return null;
-    }
-}
 
 /**
  * Core modal state management and lifecycle
  */
 export class AIContextModalCore {
     constructor(config = {}) {
-        this.config = {
-            ...UI_CONFIG.MODAL,
-            animationDuration: 300,
-            maxHeight: '75vh',
-            maxWidth: 'min(95vw, 1000px)',
-            Z_INDEX: 9998,
-            ...config,
-        };
-        Object.defineProperty(this.config, 'privateAnalysis', {
-            value: config.privateAnalysis === true,
-            enumerable: true,
-            configurable: false,
-            writable: false,
+        const suppliedConfig =
+            config && typeof config === 'object' ? config : {};
+        this.config = Object.freeze({
+            ...suppliedConfig,
+            privateAnalysis: suppliedConfig.privateAnalysis === true,
         });
 
         // Core state
@@ -169,7 +36,7 @@ export class AIContextModalCore {
         this.currentMode = null;
 
         // Content script reference for config access
-        this.contentScript = config.contentScript || null;
+        this.contentScript = suppliedConfig.contentScript || null;
 
         // Selection state (legacy compatibility) - now driven by SelectionModel
         this.selectionModel = new SelectionModel();
@@ -528,7 +395,7 @@ export class AIContextModalCore {
      */
     applyPrivateSelectionSnapshot(snapshot) {
         if (this.config.privateAnalysis !== true) return false;
-        const canonical = createPrivateSelectionSnapshot(snapshot);
+        const canonical = parseContentSelectionSnapshot(snapshot);
         if (!canonical) return false;
 
         this.selectionModel.clear();
@@ -649,13 +516,7 @@ export class AIContextModalCore {
         this.store.set({ analysisResult: result, analyzing: false });
     }
 
-    /**
-     * Commit a result leased through the private analysis capability. Unlike
-     * the legacy setter, this never publishes the raw result on document.
-     *
-     * @param {Object} result - Validated analysis result
-     * @returns {boolean} Whether private mode accepted the result
-     */
+    /** Commit a validated result from the private analysis capability. */
     setPrivateAnalysisResult(result) {
         if (this.config.privateAnalysis !== true) return false;
         this.analysisResult = result;
@@ -1196,15 +1057,6 @@ export class AIContextModalCore {
                 restorationMethod: 'flexible_matching',
                 selectedTextLength: this.selectedText.length,
             });
-
-            // Update modal display if visible
-            if (this.isVisible) {
-                this._dispatchEvent(EVENT_TYPES.SELECTION_UPDATED, {
-                    selectedWords: Array.from(this.selectedWords),
-                    selectedText: this.selectedText,
-                    restored: true,
-                });
-            }
 
             // Phase 3: Centralized highlight sync after restoration
             try {

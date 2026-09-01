@@ -4,46 +4,23 @@ import { GeneralSection } from './GeneralSection.jsx';
 
 const t = (_key, fallback) => fallback;
 
-function renderSection(settings = {}) {
-    return render(
+function section(settings) {
+    return (
         <GeneralSection t={t} settings={settings} onSettingChange={() => {}} />
     );
 }
 
-describe('GeneralSection defaults', () => {
-    test('uses the configured default when hideOfficialSubtitles is absent', () => {
-        renderSection();
-
-        expect(
-            screen.getByRole('checkbox', {
-                name: 'Hide official subtitles:',
-            })
-        ).toBeChecked();
+test('uses schema defaults without masking explicit falsy settings', () => {
+    const view = render(section({}));
+    const subtitles = screen.getByRole('checkbox', {
+        name: 'Hide official subtitles:',
     });
+    const logging = screen.getByRole('combobox', { name: 'Logging Level:' });
 
-    test('preserves an explicit false hideOfficialSubtitles setting', () => {
-        renderSection({ hideOfficialSubtitles: false });
+    expect(subtitles).toBeChecked();
+    expect(logging).toHaveValue('3');
 
-        expect(
-            screen.getByRole('checkbox', {
-                name: 'Hide official subtitles:',
-            })
-        ).not.toBeChecked();
-    });
-
-    test('uses the configured logging default when the setting is absent', () => {
-        renderSection();
-
-        expect(
-            screen.getByRole('combobox', { name: 'Logging Level:' })
-        ).toHaveValue('3');
-    });
-
-    test('preserves the explicit off logging level', () => {
-        renderSection({ loggingLevel: 0 });
-
-        expect(
-            screen.getByRole('combobox', { name: 'Logging Level:' })
-        ).toHaveValue('0');
-    });
+    view.rerender(section({ hideOfficialSubtitles: false, loggingLevel: 0 }));
+    expect(subtitles).not.toBeChecked();
+    expect(logging).toHaveValue('0');
 });

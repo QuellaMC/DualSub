@@ -1,41 +1,25 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSidePanelContext } from './SidePanelContext.jsx';
 
-/**
- * Requests selection changes from the content script. The content script owns
- * the authoritative highlighted-word state and confirms it through
- * sidePanelSelectionSync; this hook deliberately avoids optimistic mutations.
- */
 export function useWordSelection() {
     const { communication, selection, selectedWords } = useSidePanelContext();
     const { requestSelectionRemoval } = communication;
     const [isUpdatingSelection, setIsUpdatingSelection] = useState(false);
-    const pendingSelectionRef = useRef(null);
+    const pendingRef = useRef(null);
     const mountedRef = useRef(true);
 
     useEffect(() => {
         mountedRef.current = true;
         return () => {
             mountedRef.current = false;
-            pendingSelectionRef.current = null;
+            pendingRef.current = null;
         };
-    }, []);
-
-    const clearPendingSelection = useCallback((pending) => {
-        if (pendingSelectionRef.current !== pending) {
-            return;
-        }
-        pendingSelectionRef.current = null;
-        if (mountedRef.current) {
-            setIsUpdatingSelection(false);
-        }
     }, []);
 
     const removeWordAt = useCallback(
         async (index) => {
             if (
-                pendingSelectionRef.current ||
-                isUpdatingSelection ||
+                pendingRef.current ||
                 !selection ||
                 !Number.isInteger(index) ||
                 index < 0 ||
@@ -46,7 +30,7 @@ export function useWordSelection() {
 
             const occurrence = selection.entries[index];
             const pending = {};
-            pendingSelectionRef.current = pending;
+            pendingRef.current = pending;
             setIsUpdatingSelection(true);
 
             try {
@@ -59,15 +43,13 @@ export function useWordSelection() {
                 console.error('Failed to update content-script selection');
                 return false;
             } finally {
-                clearPendingSelection(pending);
+                if (pendingRef.current === pending) {
+                    pendingRef.current = null;
+                    if (mountedRef.current) setIsUpdatingSelection(false);
+                }
             }
         },
-        [
-            clearPendingSelection,
-            isUpdatingSelection,
-            requestSelectionRemoval,
-            selection,
-        ]
+        [requestSelectionRemoval, selection]
     );
 
     return {

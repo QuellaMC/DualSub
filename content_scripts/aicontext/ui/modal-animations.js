@@ -478,29 +478,10 @@ export class AIContextModalAnimations {
                             `${bodyHeight}px`,
                             'important'
                         );
-
-                        // this.core._log('debug', 'Modal body height explicitly set', {
-                        //     totalHeight: heightData.height,
-                        //     headerHeight: headerHeight,
-                        //     bodyHeight: bodyHeight,
-                        //     modalBodyOffsetHeight: modalBody.offsetHeight
-                        // });
                     }
                 },
                 10
             );
-
-            // this.core._log('debug', 'Dynamic height applied', {
-            //     height: heightData.height,
-            //     heightVh: heightData.heightVh,
-            //     subtitleTop: heightData.subtitleTop,
-            //     hasSubtitles: heightData.hasSubtitles,
-            //     modalContentPosition: modalContent.style.position,
-            //     modalContentParent: modalContent.parentElement?.id,
-            //     modalContentActualHeight: modalContent.offsetHeight,
-            //     modalContentStyleHeight: modalContent.style.height,
-            //     modalContentStyleMaxHeight: modalContent.style.maxHeight
-            // });
         } catch (error) {
             this.core._log('warn', 'Failed to apply dynamic height', {
                 error: error.message,
@@ -788,7 +769,6 @@ export class AIContextModalAnimations {
                                     try {
                                         this.core.syncSelectionHighlights();
                                     } catch (_) {}
-                                    // this.core._log('debug', 'Re-synced word selection visuals after subtitle change');
                                 }
                             },
                             100

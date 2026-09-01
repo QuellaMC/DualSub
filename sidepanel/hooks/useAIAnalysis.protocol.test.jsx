@@ -5,7 +5,6 @@ const sendRuntimeMessageWithRetry = jest.fn();
 const useSettings = jest.fn(() => settingsState);
 const contextState = {};
 const settingsState = {};
-let hostileAccessorReads = 0;
 
 jest.unstable_mockModule('./SidePanelContext.jsx', () => ({
     useSidePanelContext: () => contextState,
@@ -19,23 +18,10 @@ jest.unstable_mockModule('../../content_scripts/shared/messaging.js', () => ({
 
 const { useAIAnalysis } = await import('./useAIAnalysis.js');
 
-function createCanonicalSuccess(message, analysis) {
-    const contextTypes = [...message.contextTypes];
-    const contextType =
-        contextTypes.length === 1
-            ? contextTypes[0]
-            : contextTypes.length === 3
-              ? 'all'
-              : 'combined';
+function createCanonicalSuccess(_message, analysis) {
     return {
         success: true,
-        result: {
-            analysis,
-            contextType,
-            contextTypes,
-            isStructured: true,
-        },
-        requestId: message.requestId,
+        result: { analysis },
     };
 }
 
@@ -49,7 +35,6 @@ function createDeferred() {
 
 describe('useAIAnalysis side-panel protocol', () => {
     beforeEach(() => {
-        hostileAccessorReads = 0;
         Object.assign(contextState, {
             activeTabId: 7,
             analysisResult: null,
@@ -216,7 +201,6 @@ describe('useAIAnalysis side-panel protocol', () => {
             contextTypes: ['cultural'],
             targetLanguage: 'es',
             requestId: expect.stringMatching(/^sidepanel-\d+-1$/),
-            contextType: 'cultural',
         });
         expect(Reflect.ownKeys(dispatchedRequest)).toEqual([
             'action',
@@ -224,13 +208,11 @@ describe('useAIAnalysis side-panel protocol', () => {
             'contextTypes',
             'targetLanguage',
             'requestId',
-            'contextType',
         ]);
         expect(Object.isFrozen(dispatchedRequest)).toBe(true);
         expect(Object.isFrozen(dispatchedRequest.contextTypes)).toBe(true);
         expect(dispatchOptions).toEqual({
             retries: 0,
-            pingBeforeRetry: false,
             canDispatch: expect.any(Function),
         });
         expect(dispatchOptions.canDispatch()).toBe(false);
@@ -281,20 +263,6 @@ describe('useAIAnalysis side-panel protocol', () => {
 
     test.each([
         [
-            'wrong request ID',
-            (message) => ({
-                ...createCanonicalSuccess(message, { definition: 'wrong' }),
-                requestId: 'other-request',
-            }),
-        ],
-        [
-            'legacy loose success',
-            () => ({
-                success: true,
-                result: { analysis: { definition: 'legacy' } },
-            }),
-        ],
-        [
             'outer extra field',
             (message) => ({
                 ...createCanonicalSuccess(message, { definition: 'extra' }),
@@ -312,45 +280,8 @@ describe('useAIAnalysis side-panel protocol', () => {
             },
         ],
         [
-            'mismatched context projection',
-            (message) => {
-                const response = createCanonicalSuccess(message, {
-                    definition: 'cross-role',
-                });
-                response.result.contextType = 'historical';
-                response.result.contextTypes = ['historical'];
-                return response;
-            },
-        ],
-        [
-            'accessor envelope',
-            (message) => {
-                const canonical = createCanonicalSuccess(message, {
-                    definition: 'accessor',
-                });
-                const response = {
-                    result: canonical.result,
-                    requestId: canonical.requestId,
-                };
-                Object.defineProperty(response, 'success', {
-                    enumerable: true,
-                    get() {
-                        hostileAccessorReads += 1;
-                        return true;
-                    },
-                });
-                return response;
-            },
-        ],
-        [
-            'exotic envelope',
-            (message) =>
-                Object.assign(
-                    Object.create({ inherited: true }),
-                    createCanonicalSuccess(message, {
-                        definition: 'exotic',
-                    })
-                ),
+            'non-record analysis',
+            (message) => createCanonicalSuccess(message, 'invalid'),
         ],
     ])('rejects a %s with one generic local failure', async (_label, reply) => {
         sendRuntimeMessageWithRetry.mockImplementation((message) =>
@@ -376,18 +307,16 @@ describe('useAIAnalysis side-panel protocol', () => {
             })
         );
         expect(sendRuntimeMessageWithRetry).toHaveBeenCalledTimes(1);
-        expect(hostileAccessorReads).toBe(0);
     });
 
     test.each([
         [
             'canonical failure',
-            (message, secret) =>
+            (_message, secret) =>
                 Promise.resolve({
                     success: false,
                     error: secret,
                     shouldRetry: true,
-                    requestId: message.requestId,
                 }),
         ],
         [

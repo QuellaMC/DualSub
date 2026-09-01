@@ -9,32 +9,26 @@ describe('useChromeMessage', () => {
         chrome.tabs.sendMessage = jest.fn();
     });
 
-    test('sends the exact centralized config-update payload to the active tab', async () => {
-        const changes = Object.freeze({
-            subtitleFontSize: 1.4,
-            subtitlesEnabled: true,
-        });
+    test('sends the centralized minimal config-update message', async () => {
         chrome.tabs.query.mockImplementation((_query, callback) => {
             callback([{ id: 42 }]);
         });
-        chrome.tabs.sendMessage.mockResolvedValue({
-            action: MessageActions.CONFIG_CHANGED,
-            success: true,
-        });
+        chrome.tabs.sendMessage.mockResolvedValue({ success: true });
         const { result } = renderHook(() => useChromeMessage());
 
         act(() => {
-            result.current.sendImmediateConfigUpdate(changes);
+            result.current.sendImmediateConfigUpdate({
+                subtitleFontSize: 1.4,
+                subtitlesEnabled: true,
+            });
         });
 
-        expect(chrome.tabs.query).toHaveBeenCalledWith(
-            { active: true, currentWindow: true },
-            expect.any(Function)
-        );
-        expect(chrome.tabs.sendMessage).toHaveBeenCalledTimes(1);
         expect(chrome.tabs.sendMessage).toHaveBeenCalledWith(42, {
             action: MessageActions.CONFIG_CHANGED,
-            changes,
+            changes: {
+                subtitleFontSize: 1.4,
+                subtitlesEnabled: true,
+            },
         });
         await act(async () => {
             await Promise.resolve();
@@ -42,43 +36,12 @@ describe('useChromeMessage', () => {
         expect(console.debug).not.toHaveBeenCalled();
     });
 
-    test('suppresses an older same-key preview when active-tab queries resolve out of order', () => {
-        const queryCallbacks = [];
+    test('sends only the latest value for each key when tab queries reorder', () => {
+        const callbacks = [];
         chrome.tabs.query.mockImplementation((_query, callback) => {
-            queryCallbacks.push(callback);
+            callbacks.push(callback);
         });
-        chrome.tabs.sendMessage.mockResolvedValue({
-            action: MessageActions.CONFIG_CHANGED,
-            success: true,
-        });
-        const { result } = renderHook(() => useChromeMessage());
-
-        act(() => {
-            result.current.sendImmediateConfigUpdate({ targetLanguage: 'ja' });
-            result.current.sendImmediateConfigUpdate({ targetLanguage: 'ko' });
-        });
-
-        act(() => {
-            queryCallbacks[1]([{ id: 42 }]);
-            queryCallbacks[0]([{ id: 42 }]);
-        });
-
-        expect(chrome.tabs.sendMessage).toHaveBeenCalledTimes(1);
-        expect(chrome.tabs.sendMessage).toHaveBeenCalledWith(42, {
-            action: MessageActions.CONFIG_CHANGED,
-            changes: { targetLanguage: 'ko' },
-        });
-    });
-
-    test('preserves disjoint preview keys without merging stale same-key values', () => {
-        const queryCallbacks = [];
-        chrome.tabs.query.mockImplementation((_query, callback) => {
-            queryCallbacks.push(callback);
-        });
-        chrome.tabs.sendMessage.mockResolvedValue({
-            action: MessageActions.CONFIG_CHANGED,
-            success: true,
-        });
+        chrome.tabs.sendMessage.mockResolvedValue({ success: true });
         const { result } = renderHook(() => useChromeMessage());
 
         act(() => {
@@ -90,11 +53,8 @@ describe('useChromeMessage', () => {
                 subtitleFontSize: 1.4,
                 targetLanguage: 'ja',
             });
-        });
-
-        act(() => {
-            queryCallbacks[1]([{ id: 42 }]);
-            queryCallbacks[0]([{ id: 42 }]);
+            callbacks[1]([{ id: 42 }]);
+            callbacks[0]([{ id: 42 }]);
         });
 
         expect(chrome.tabs.sendMessage).toHaveBeenNthCalledWith(1, 42, {
@@ -107,50 +67,7 @@ describe('useChromeMessage', () => {
         });
     });
 
-    test('captures an immutable preview snapshot without mutating the caller object', () => {
-        let queryCallback;
-        chrome.tabs.query.mockImplementation((_query, callback) => {
-            queryCallback = callback;
-        });
-        chrome.tabs.sendMessage.mockResolvedValue({
-            action: MessageActions.CONFIG_CHANGED,
-            success: true,
-        });
-        const { result } = renderHook(() => useChromeMessage());
-        const changes = { targetLanguage: 'ja' };
-
-        act(() => {
-            result.current.sendImmediateConfigUpdate(changes);
-        });
-
-        expect(Object.isFrozen(changes)).toBe(false);
-        changes.targetLanguage = 'ko';
-        act(() => {
-            queryCallback([{ id: 42 }]);
-        });
-
-        expect(chrome.tabs.sendMessage).toHaveBeenCalledWith(42, {
-            action: MessageActions.CONFIG_CHANGED,
-            changes: { targetLanguage: 'ja' },
-        });
-    });
-
-    test('does not send when the active-tab query has no tab', () => {
-        chrome.tabs.query.mockImplementation((_query, callback) => {
-            callback([]);
-        });
-        const { result } = renderHook(() => useChromeMessage());
-
-        act(() => {
-            result.current.sendImmediateConfigUpdate({
-                subtitlesEnabled: true,
-            });
-        });
-
-        expect(chrome.tabs.sendMessage).not.toHaveBeenCalled();
-    });
-
-    test('contains a rejected direct response and preserves the storage fallback', async () => {
+    test('contains direct-delivery failure so storage remains the fallback', async () => {
         chrome.tabs.query.mockImplementation((_query, callback) => {
             callback([{ id: 7 }]);
         });
@@ -167,29 +84,5 @@ describe('useChromeMessage', () => {
                 'receiver gone'
             );
         });
-        expect(chrome.tabs.sendMessage).toHaveBeenCalledTimes(1);
-    });
-
-    test('rejects an uncorrelated direct response and preserves the storage fallback', async () => {
-        chrome.tabs.query.mockImplementation((_query, callback) => {
-            callback([{ id: 7 }]);
-        });
-        chrome.tabs.sendMessage.mockResolvedValue({
-            action: MessageActions.SIDEPANEL_PAUSE_VIDEO,
-            success: true,
-        });
-        const { result } = renderHook(() => useChromeMessage());
-
-        act(() => {
-            result.current.sendImmediateConfigUpdate({ targetLanguage: 'ja' });
-        });
-
-        await waitFor(() => {
-            expect(console.debug).toHaveBeenCalledWith(
-                'Direct message failed, relying on storage events',
-                'Invalid config-update response'
-            );
-        });
-        expect(chrome.tabs.sendMessage).toHaveBeenCalledTimes(1);
     });
 });

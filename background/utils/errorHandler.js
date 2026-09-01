@@ -1,13 +1,3 @@
-/**
- * Comprehensive Error Handling System
- *
- * Provides centralized error handling, classification, and recovery
- * mechanisms for the background services.
- *
- * @author DualSub Extension
- * @version 2.0.0
- */
-
 import { loggingManager } from './loggingManager.js';
 import {
     ServiceError,
@@ -17,20 +7,13 @@ import {
 } from '../services/serviceInterfaces.js';
 import { getTrustedTranslationProviderErrorMetadata } from '../../translation_providers/translationProviderError.js';
 
-/**
- * Error severity levels
- */
-export const ErrorSeverity = {
-    LOW: 'low',
+export const ErrorSeverity = Object.freeze({
     MEDIUM: 'medium',
     HIGH: 'high',
     CRITICAL: 'critical',
-};
+});
 
-/**
- * Error categories for classification
- */
-export const ErrorCategory = {
+export const ErrorCategory = Object.freeze({
     NETWORK: 'network',
     TRANSLATION: 'translation',
     SUBTITLE: 'subtitle',
@@ -38,620 +21,341 @@ export const ErrorCategory = {
     RATE_LIMIT: 'rate_limit',
     VALIDATION: 'validation',
     SYSTEM: 'system',
+});
+
+const PROVIDER_ERROR_MESSAGE = 'Translation provider request failed.';
+const SERVICE_ERROR_MESSAGE = 'Service request failed.';
+const RECOVERY = {
+    [ErrorCategory.NETWORK]: {
+        maxRetries: 2,
+        baseDelay: 1000,
+        backoffMultiplier: 2,
+        strategy: 'exponential_backoff',
+    },
+    [ErrorCategory.TRANSLATION]: {
+        maxRetries: 2,
+        baseDelay: 1000,
+        strategy: 'fixed_delay',
+    },
+    [ErrorCategory.RATE_LIMIT]: {
+        maxRetries: 1,
+        baseDelay: 5000,
+        backoffMultiplier: 2,
+        strategy: 'exponential_backoff',
+    },
+    [ErrorCategory.SUBTITLE]: {
+        maxRetries: 2,
+        strategy: 'graceful_degradation',
+    },
+};
+const USER_MESSAGES = {
+    [ErrorCategory.NETWORK]:
+        'Network connection issue. Please check your internet connection and try again.',
+    [ErrorCategory.TRANSLATION]:
+        'Translation provider temporarily unavailable.',
+    [ErrorCategory.SUBTITLE]:
+        'Subtitle processing failed. Some subtitles may not be available.',
+    [ErrorCategory.RATE_LIMIT]:
+        'Request rate limit reached. Please wait a moment before trying again.',
+    [ErrorCategory.CONFIGURATION]:
+        'Configuration error. Please check your provider settings.',
+    [ErrorCategory.VALIDATION]:
+        'Invalid data received. Please refresh the page and try again.',
+    [ErrorCategory.SYSTEM]: 'System error occurred. Please try again later.',
 };
 
-/**
- * Time conversion constants
- */
-const MILLISECONDS_TO_SECONDS = 1000;
-const TRUSTED_PROVIDER_ERROR_MESSAGE = 'Translation provider request failed.';
-const MAX_TRUSTED_RETRY_COUNT = 2;
-const OWN_DATA_MISSING = Symbol('own-data-missing');
-const TRUSTED_CONTEXT_OPERATIONS = new Set([
-    'translate',
-    'processNetflixSubtitles',
-]);
-
-function readOwnDataValue(record, key) {
-    if (
-        record === null ||
-        (typeof record !== 'object' && typeof record !== 'function')
-    ) {
-        return OWN_DATA_MISSING;
-    }
-
-    try {
-        const descriptor = Object.getOwnPropertyDescriptor(record, key);
-        return descriptor && Object.hasOwn(descriptor, 'value')
-            ? descriptor.value
-            : OWN_DATA_MISSING;
-    } catch {
-        return OWN_DATA_MISSING;
-    }
-}
-
-function createTrustedProviderContext(context, provider) {
-    const safeContext = { provider };
-    const operation = readOwnDataValue(context, 'operation');
-    if (
-        typeof operation === 'string' &&
-        TRUSTED_CONTEXT_OPERATIONS.has(operation)
-    ) {
-        safeContext.operation = operation;
-    }
-
-    const textLength = readOwnDataValue(context, 'textLength');
-    if (Number.isSafeInteger(textLength) && textLength >= 0) {
-        safeContext.textLength = textLength;
-    }
-
-    const retryCount = readOwnDataValue(context, 'retryCount');
-    if (Number.isSafeInteger(retryCount) && retryCount >= 0) {
-        safeContext.retryCount = Math.min(retryCount, MAX_TRUSTED_RETRY_COUNT);
-    }
-
-    for (const key of ['hasUserImpact', 'isCriticalPath']) {
-        const value = readOwnDataValue(context, key);
-        if (typeof value === 'boolean') safeContext[key] = value;
-    }
-
-    return Object.freeze(safeContext);
-}
-
-function mapTrustedProviderMetadata(metadata) {
+function providerClassification(metadata) {
     if (metadata.status === 401 || metadata.status === 403) {
-        return {
-            category: ErrorCategory.CONFIGURATION,
-            severity: ErrorSeverity.CRITICAL,
-            isRecoverable: false,
-            errorCode: 'AUTHENTICATION_ERROR',
-        };
+        return [
+            ErrorCategory.CONFIGURATION,
+            ErrorSeverity.CRITICAL,
+            'AUTHENTICATION_ERROR',
+        ];
     }
     if (metadata.status === 429) {
-        return {
-            category: ErrorCategory.RATE_LIMIT,
-            severity: ErrorSeverity.HIGH,
-            isRecoverable: metadata.retryable,
-            errorCode: 'RATE_LIMIT_EXCEEDED',
-        };
+        return [
+            ErrorCategory.RATE_LIMIT,
+            ErrorSeverity.HIGH,
+            'RATE_LIMIT_EXCEEDED',
+        ];
     }
-    if (metadata.status !== undefined && metadata.status >= 500) {
-        return {
-            category: ErrorCategory.NETWORK,
-            severity: ErrorSeverity.HIGH,
-            isRecoverable: metadata.retryable,
-            errorCode: 'UPSTREAM_ERROR',
-        };
+    if (metadata.status >= 500) {
+        return [ErrorCategory.NETWORK, ErrorSeverity.HIGH, 'UPSTREAM_ERROR'];
     }
 
     switch (metadata.code) {
         case 'AUTHENTICATION_ERROR':
-            return {
-                category: ErrorCategory.CONFIGURATION,
-                severity: ErrorSeverity.CRITICAL,
-                isRecoverable: false,
-                errorCode: 'AUTHENTICATION_ERROR',
-            };
+            return [
+                ErrorCategory.CONFIGURATION,
+                ErrorSeverity.CRITICAL,
+                metadata.code,
+            ];
         case 'RATE_LIMIT_EXCEEDED':
-            return {
-                category: ErrorCategory.RATE_LIMIT,
-                severity: ErrorSeverity.HIGH,
-                isRecoverable: metadata.retryable,
-                errorCode: 'RATE_LIMIT_EXCEEDED',
-            };
+            return [
+                ErrorCategory.RATE_LIMIT,
+                ErrorSeverity.HIGH,
+                metadata.code,
+            ];
         case 'UPSTREAM_ERROR':
-            return {
-                category: ErrorCategory.NETWORK,
-                severity: ErrorSeverity.HIGH,
-                isRecoverable: metadata.retryable,
-                errorCode: 'UPSTREAM_ERROR',
-            };
         case 'NETWORK_ERROR':
-            return {
-                category: ErrorCategory.NETWORK,
-                severity: ErrorSeverity.HIGH,
-                isRecoverable: metadata.retryable,
-                errorCode: 'NETWORK_ERROR',
-            };
+            return [ErrorCategory.NETWORK, ErrorSeverity.HIGH, metadata.code];
         default:
-            return {
-                category: ErrorCategory.TRANSLATION,
-                severity: ErrorSeverity.MEDIUM,
-                isRecoverable: metadata.retryable,
-                errorCode: 'REQUEST_FAILED',
-            };
+            return [
+                ErrorCategory.TRANSLATION,
+                ErrorSeverity.MEDIUM,
+                'REQUEST_FAILED',
+            ];
     }
 }
 
-/**
- * Comprehensive Error Handler
- */
+function safeOperationalContext(context, provider) {
+    const safe = {};
+    const safeProvider = provider ?? context?.provider;
+    if (
+        typeof safeProvider === 'string' &&
+        /^[a-z][a-z0-9_-]{0,63}$/.test(safeProvider)
+    ) {
+        safe.provider = safeProvider;
+    }
+    if (
+        context?.operation === 'translate' ||
+        context?.operation === 'analyzeContext'
+    ) {
+        safe.operation = context.operation;
+    }
+    if (Number.isSafeInteger(context?.textLength) && context.textLength >= 0) {
+        safe.textLength = context.textLength;
+    }
+    if (Number.isSafeInteger(context?.retryCount) && context.retryCount >= 0) {
+        safe.retryCount = context.retryCount;
+    }
+    if (typeof context?.hasUserImpact === 'boolean') {
+        safe.hasUserImpact = context.hasUserImpact;
+    }
+    if (typeof context?.isCriticalPath === 'boolean') {
+        safe.isCriticalPath = context.isCriticalPath;
+    }
+    return Object.freeze(safe);
+}
+
+function classifyProviderError(metadata, context) {
+    const safeContext = safeOperationalContext(context, metadata.provider);
+    const [category, mappedSeverity, errorCode] =
+        providerClassification(metadata);
+    const severity = safeContext.isCriticalPath
+        ? ErrorSeverity.CRITICAL
+        : safeContext.hasUserImpact && mappedSeverity === ErrorSeverity.MEDIUM
+          ? ErrorSeverity.HIGH
+          : mappedSeverity;
+
+    return {
+        originalError: null,
+        message: PROVIDER_ERROR_MESSAGE,
+        context: safeContext,
+        provider: metadata.provider,
+        category,
+        severity,
+        isRecoverable: metadata.retryable,
+        errorCode,
+        httpStatus: metadata.status ?? null,
+    };
+}
+
+function collectErrorChain(error) {
+    const chain = [];
+    const seen = new Set();
+    let current = error;
+    while (current && typeof current === 'object' && !seen.has(current)) {
+        chain.push(current);
+        seen.add(current);
+        current = current.cause;
+    }
+    return chain;
+}
+
+function classifyGenericError(error, context) {
+    const safeContext = safeOperationalContext(context);
+    const chain = collectErrorChain(error);
+    const messages = chain
+        .map((item) => item?.message)
+        .filter((message) => typeof message === 'string')
+        .join(' ')
+        .toLowerCase();
+    const httpStatus = chain
+        .map((item) =>
+            Number(item?.status ?? item?.statusCode ?? item?.response?.status)
+        )
+        .find(Number.isFinite);
+    const retryable = chain
+        .map((item) => item?.retryable ?? item?.shouldRetry)
+        .find((value) => typeof value === 'boolean');
+    const info = {
+        originalError: null,
+        message: SERVICE_ERROR_MESSAGE,
+        context: safeContext,
+        category: ErrorCategory.SYSTEM,
+        severity: ErrorSeverity.MEDIUM,
+        isRecoverable: retryable ?? true,
+        errorCode: null,
+        httpStatus,
+    };
+
+    if (error instanceof TranslationError) {
+        Object.assign(info, {
+            category: ErrorCategory.TRANSLATION,
+            errorCode: 'TRANSLATION_FAILED',
+        });
+    } else if (error instanceof SubtitleProcessingError) {
+        Object.assign(info, {
+            category: ErrorCategory.SUBTITLE,
+            errorCode: 'SUBTITLE_PROCESSING_FAILED',
+        });
+    } else if (error instanceof RateLimitError) {
+        Object.assign(info, {
+            category: ErrorCategory.RATE_LIMIT,
+            severity: ErrorSeverity.HIGH,
+            errorCode: 'RATE_LIMIT_EXCEEDED',
+        });
+    } else if (error instanceof ServiceError) {
+        Object.assign(info, {
+            severity: ErrorSeverity.HIGH,
+            errorCode: 'SERVICE_ERROR',
+        });
+    }
+
+    if (httpStatus === 401 || httpStatus === 403) {
+        Object.assign(info, {
+            category: ErrorCategory.CONFIGURATION,
+            severity: ErrorSeverity.CRITICAL,
+            isRecoverable: false,
+            errorCode: 'AUTHENTICATION_ERROR',
+        });
+    } else if (httpStatus === 429) {
+        Object.assign(info, {
+            category: ErrorCategory.RATE_LIMIT,
+            severity: ErrorSeverity.HIGH,
+            errorCode: 'RATE_LIMIT_EXCEEDED',
+        });
+    } else if (httpStatus >= 500) {
+        Object.assign(info, {
+            category: ErrorCategory.NETWORK,
+            severity: ErrorSeverity.HIGH,
+            errorCode: 'UPSTREAM_ERROR',
+        });
+    } else if (
+        chain.some((item) => item instanceof TypeError) ||
+        /network|fetch|connection|offline/.test(messages)
+    ) {
+        Object.assign(info, {
+            category: ErrorCategory.NETWORK,
+            severity: ErrorSeverity.HIGH,
+            errorCode: 'NETWORK_ERROR',
+        });
+    } else if (
+        /api key|access token|authentication|not configured/.test(messages)
+    ) {
+        Object.assign(info, {
+            category: ErrorCategory.CONFIGURATION,
+            severity: ErrorSeverity.CRITICAL,
+            isRecoverable: false,
+            errorCode: 'AUTHENTICATION_ERROR',
+        });
+    } else if (/rate limit|quota/.test(messages)) {
+        Object.assign(info, {
+            category: ErrorCategory.RATE_LIMIT,
+            severity: ErrorSeverity.HIGH,
+            errorCode: 'RATE_LIMIT_EXCEEDED',
+        });
+    } else if (/validation|invalid/.test(messages)) {
+        Object.assign(info, {
+            category: ErrorCategory.VALIDATION,
+            errorCode: 'VALIDATION_ERROR',
+        });
+    }
+
+    if (safeContext.isCriticalPath) info.severity = ErrorSeverity.CRITICAL;
+    else if (safeContext.hasUserImpact) info.severity = ErrorSeverity.HIGH;
+    return info;
+}
+
+function recoveryFor(errorInfo) {
+    const strategy = RECOVERY[errorInfo.category] ?? {
+        maxRetries: 1,
+        strategy: 'none',
+    };
+    const retryCount = errorInfo.context?.retryCount ?? 0;
+    const shouldRetry =
+        errorInfo.isRecoverable && retryCount < strategy.maxRetries;
+    let retryDelay = 0;
+    if (shouldRetry) {
+        retryDelay =
+            strategy.strategy === 'exponential_backoff'
+                ? strategy.baseDelay *
+                  Math.pow(strategy.backoffMultiplier, retryCount)
+                : (strategy.baseDelay ?? 1000);
+    }
+    return {
+        shouldRetry,
+        retryDelay,
+        strategy: strategy.strategy,
+        maxRetries: strategy.maxRetries,
+    };
+}
+
+function userMessageFor(errorInfo, recovery) {
+    let message = USER_MESSAGES[errorInfo.category];
+    if (recovery.shouldRetry) {
+        message += ` Retrying automatically in ${Math.ceil(recovery.retryDelay / 1000)} seconds.`;
+    }
+    return message;
+}
+
 class ErrorHandler {
     constructor() {
         this.logger = loggingManager.createLogger('ErrorHandler');
-        this.errorStats = {
-            total: 0,
-            byCategory: {},
-            bySeverity: {},
-            recentErrors: [],
-        };
-        this.recoveryStrategies = new Map();
-        this.setupRecoveryStrategies();
     }
 
-    /**
-     * Setup default recovery strategies
-     */
-    setupRecoveryStrategies() {
-        // Network error recovery
-        this.recoveryStrategies.set(ErrorCategory.NETWORK, {
-            maxRetries: 3,
-            backoffMultiplier: 2,
-            baseDelay: 1000,
-            strategy: 'exponential_backoff',
-        });
-
-        // Translation error recovery
-        this.recoveryStrategies.set(ErrorCategory.TRANSLATION, {
-            maxRetries: 2,
-            baseDelay: 1000,
-            strategy: 'fixed_delay',
-        });
-
-        // Rate limit error recovery
-        this.recoveryStrategies.set(ErrorCategory.RATE_LIMIT, {
-            maxRetries: 1,
-            backoffMultiplier: 2,
-            baseDelay: 5000,
-            strategy: 'exponential_backoff',
-        });
-
-        // Subtitle processing error recovery
-        this.recoveryStrategies.set(ErrorCategory.SUBTITLE, {
-            maxRetries: 2,
-            strategy: 'graceful_degradation',
-        });
-    }
-
-    /**
-     * Handle and classify errors
-     * @param {Error} error - Error to handle
-     * @param {Object} context - Error context
-     * @returns {Object} Error handling result
-     */
     handleError(error, context = {}) {
-        const errorInfo = this.classifyError(error, context);
-        this.updateErrorStats(errorInfo);
-        try {
-            this.logError(errorInfo);
-        } catch (loggingError) {
-            if (errorInfo.originalError !== null) throw loggingError;
-        }
-
-        // Determine recovery strategy
-        const recovery = this.determineRecoveryStrategy(errorInfo);
-
+        const metadata = getTrustedTranslationProviderErrorMetadata(error);
+        const info = metadata
+            ? classifyProviderError(metadata, context)
+            : classifyGenericError(error, context);
+        const recovery = recoveryFor(info);
+        this.log(info);
         return {
-            ...errorInfo,
+            ...info,
             recovery,
-            userMessage: this.generateUserMessage(errorInfo),
+            userMessage: userMessageFor(info, recovery),
             shouldRetry: recovery.shouldRetry,
             retryDelay: recovery.retryDelay,
         };
     }
 
-    /**
-     * Classify error by type, severity, and category
-     * @param {Error} error - Error to classify
-     * @param {Object} context - Error context
-     * @returns {Object} Error classification
-     */
-    classifyError(error, context) {
-        const trustedMetadata =
-            getTrustedTranslationProviderErrorMetadata(error);
-        if (trustedMetadata !== null) {
-            return this.classifyTrustedProviderError(trustedMetadata, context);
-        }
-
-        const errorChain = [];
-        const seenErrors = new Set();
-        let currentError = error;
-        while (
-            currentError &&
-            typeof currentError === 'object' &&
-            !seenErrors.has(currentError)
-        ) {
-            errorChain.push(currentError);
-            seenErrors.add(currentError);
-            currentError = currentError.cause;
-        }
-        const messages = errorChain
-            .map((entry) => entry?.message)
-            .filter((message) => typeof message === 'string')
-            .join(' ')
-            .toLowerCase();
-        const httpStatus = errorChain
-            .map((entry) =>
-                Number(
-                    entry?.status ??
-                        entry?.statusCode ??
-                        entry?.response?.status
-                )
-            )
-            .find((status) => Number.isFinite(status));
-        const retryableHint = errorChain
-            .map((entry) => entry?.retryable ?? entry?.shouldRetry)
-            .find((value) => typeof value === 'boolean');
-
-        const classification = {
-            originalError: error,
-            message: error.message,
-            stack: error.stack,
-            timestamp: Date.now(),
-            context,
-            category: ErrorCategory.SYSTEM,
-            severity: ErrorSeverity.MEDIUM,
-            isRecoverable: true,
-            errorCode: null,
-            httpStatus,
+    log(info) {
+        const data = {
+            category: info.category,
+            severity: info.severity,
+            errorCode: info.errorCode,
+            isRecoverable: info.isRecoverable,
+            context: info.context,
         };
-
-        if (typeof retryableHint === 'boolean') {
-            classification.isRecoverable = retryableHint;
-        }
-
-        // Classify by error type
-        if (error instanceof TranslationError) {
-            classification.category = ErrorCategory.TRANSLATION;
-            classification.severity = ErrorSeverity.MEDIUM;
-            classification.errorCode = 'TRANSLATION_FAILED';
-        } else if (error instanceof SubtitleProcessingError) {
-            classification.category = ErrorCategory.SUBTITLE;
-            classification.severity = ErrorSeverity.MEDIUM;
-            classification.errorCode = 'SUBTITLE_PROCESSING_FAILED';
-        } else if (error instanceof RateLimitError) {
-            classification.category = ErrorCategory.RATE_LIMIT;
-            classification.severity = ErrorSeverity.HIGH;
-            classification.errorCode = 'RATE_LIMIT_EXCEEDED';
-        } else if (error instanceof ServiceError) {
-            classification.category = ErrorCategory.SYSTEM;
-            classification.severity = ErrorSeverity.HIGH;
-            classification.errorCode = 'SERVICE_ERROR';
-        }
-
-        // HTTP semantics and nested provider causes take precedence over the
-        // generic wrapper message.
-        if (httpStatus === 401 || httpStatus === 403) {
-            classification.category = ErrorCategory.CONFIGURATION;
-            classification.severity = ErrorSeverity.CRITICAL;
-            classification.isRecoverable = false;
-            classification.errorCode = 'AUTHENTICATION_ERROR';
-        } else if (httpStatus === 429) {
-            classification.category = ErrorCategory.RATE_LIMIT;
-            classification.severity = ErrorSeverity.HIGH;
-            classification.isRecoverable = true;
-            classification.errorCode = 'RATE_LIMIT_EXCEEDED';
-        } else if (httpStatus >= 500) {
-            classification.category = ErrorCategory.NETWORK;
-            classification.severity = ErrorSeverity.HIGH;
-            classification.isRecoverable = true;
-            classification.errorCode = 'UPSTREAM_ERROR';
-        } else if (
-            errorChain.some((entry) => entry instanceof TypeError) ||
-            messages.includes('network') ||
-            messages.includes('fetch') ||
-            messages.includes('connection') ||
-            messages.includes('offline')
-        ) {
-            classification.category = ErrorCategory.NETWORK;
-            classification.severity = ErrorSeverity.HIGH;
-            classification.isRecoverable = retryableHint !== false;
-            classification.errorCode = 'NETWORK_ERROR';
-        } else if (
-            messages.includes('api key') ||
-            messages.includes('access token') ||
-            messages.includes('authentication') ||
-            messages.includes('not configured')
-        ) {
-            classification.category = ErrorCategory.CONFIGURATION;
-            classification.severity = ErrorSeverity.CRITICAL;
-            classification.isRecoverable = false;
-            classification.errorCode = 'AUTHENTICATION_ERROR';
-        } else if (
-            messages.includes('rate limit') ||
-            messages.includes('quota')
-        ) {
-            classification.category = ErrorCategory.RATE_LIMIT;
-            classification.severity = ErrorSeverity.HIGH;
-            classification.errorCode = 'RATE_LIMIT_EXCEEDED';
-        } else if (
-            messages.includes('validation') ||
-            messages.includes('invalid')
-        ) {
-            classification.category = ErrorCategory.VALIDATION;
-            classification.severity = ErrorSeverity.MEDIUM;
-            classification.errorCode = 'VALIDATION_ERROR';
-        }
-
-        // Adjust severity based on context
-        if (context.isCriticalPath) {
-            classification.severity = ErrorSeverity.CRITICAL;
-        } else if (context.hasUserImpact) {
-            classification.severity = ErrorSeverity.HIGH;
-        }
-
-        return classification;
-    }
-
-    /**
-     * Classify an exact WeakMap-authenticated provider error without touching
-     * its mutable public fields or retaining its identity.
-     * @param {Object} metadata - Trusted provider metadata snapshot
-     * @param {Object} context - Untrusted caller context
-     * @returns {Object} Safe error classification
-     */
-    classifyTrustedProviderError(metadata, context) {
-        const safeContext = createTrustedProviderContext(
-            context,
-            metadata.provider
-        );
-        const mapped = mapTrustedProviderMetadata(metadata);
-        let severity = mapped.severity;
-        if (safeContext.isCriticalPath === true) {
-            severity = ErrorSeverity.CRITICAL;
-        } else if (
-            safeContext.hasUserImpact === true &&
-            severity === ErrorSeverity.MEDIUM
-        ) {
-            severity = ErrorSeverity.HIGH;
-        }
-
-        return {
-            originalError: null,
-            message: TRUSTED_PROVIDER_ERROR_MESSAGE,
-            timestamp: Date.now(),
-            context: safeContext,
-            provider: metadata.provider,
-            category: mapped.category,
-            severity,
-            isRecoverable: mapped.isRecoverable,
-            errorCode: mapped.errorCode,
-            httpStatus: metadata.status ?? null,
-        };
-    }
-
-    /**
-     * Determine recovery strategy for error
-     * @param {Object} errorInfo - Classified error information
-     * @returns {Object} Recovery strategy
-     */
-    determineRecoveryStrategy(errorInfo) {
-        const strategy = this.recoveryStrategies.get(errorInfo.category) || {
-            maxRetries: 1,
-            strategy: 'none',
-        };
-
-        const recovery = {
-            shouldRetry:
-                errorInfo.isRecoverable &&
-                (errorInfo.context.retryCount || 0) < strategy.maxRetries,
-            retryDelay: 0,
-            strategy: strategy.strategy,
-            maxRetries: strategy.maxRetries,
-        };
-
-        // Calculate retry delay
-        if (recovery.shouldRetry) {
-            const retryCount = errorInfo.context.retryCount || 0;
-
-            switch (strategy.strategy) {
-                case 'exponential_backoff':
-                    recovery.retryDelay =
-                        strategy.baseDelay *
-                        Math.pow(strategy.backoffMultiplier, retryCount);
-                    break;
-                case 'linear_backoff':
-                    recovery.retryDelay = strategy.baseDelay * (retryCount + 1);
-                    break;
-                case 'fixed_delay':
-                    recovery.retryDelay = strategy.baseDelay;
-                    break;
-                default:
-                    recovery.retryDelay = 1000; // Default 1 second
+        try {
+            if (
+                info.severity === ErrorSeverity.CRITICAL ||
+                info.severity === ErrorSeverity.HIGH
+            ) {
+                this.logger.error(info.message, info.originalError, data);
+            } else {
+                this.logger.warn(info.message, data);
             }
+        } catch {
+            // Logging must not change retry or user-facing behavior.
         }
-
-        return recovery;
-    }
-
-    /**
-     * Generate user-friendly error message
-     * @param {Object} errorInfo - Classified error information
-     * @returns {string} User-friendly message
-     */
-    generateUserMessage(errorInfo) {
-        const messages = {
-            [ErrorCategory.NETWORK]:
-                'Network connection issue. Please check your internet connection and try again.',
-            [ErrorCategory.TRANSLATION]:
-                'Translation service temporarily unavailable.',
-            [ErrorCategory.SUBTITLE]:
-                'Subtitle processing failed. Some subtitles may not be available.',
-            [ErrorCategory.RATE_LIMIT]:
-                'Translation rate limit reached. Please wait a moment before trying again.',
-            [ErrorCategory.CONFIGURATION]:
-                'Configuration error. Please check your API key settings.',
-            [ErrorCategory.VALIDATION]:
-                'Invalid data received. Please refresh the page and try again.',
-            [ErrorCategory.SYSTEM]:
-                'System error occurred. Please try again later.',
-        };
-
-        let message =
-            messages[errorInfo.category] || 'An unexpected error occurred.';
-
-        // Add recovery information
-        if (errorInfo.recovery?.shouldRetry) {
-            message += ` Retrying automatically in ${Math.ceil(errorInfo.recovery.retryDelay / MILLISECONDS_TO_SECONDS)} seconds.`;
-        }
-
-        return message;
-    }
-
-    /**
-     * Log error with appropriate level
-     * @param {Object} errorInfo - Classified error information
-     */
-    logError(errorInfo) {
-        const logData = {
-            category: errorInfo.category,
-            severity: errorInfo.severity,
-            errorCode: errorInfo.errorCode,
-            isRecoverable: errorInfo.isRecoverable,
-            context: errorInfo.context,
-            ...(errorInfo.originalError === null
-                ? {}
-                : { stack: errorInfo.stack }),
-        };
-
-        switch (errorInfo.severity) {
-            case ErrorSeverity.CRITICAL:
-                this.logger.error(
-                    `CRITICAL ERROR: ${errorInfo.message}`,
-                    errorInfo.originalError,
-                    logData
-                );
-                break;
-            case ErrorSeverity.HIGH:
-                this.logger.error(
-                    `HIGH SEVERITY: ${errorInfo.message}`,
-                    errorInfo.originalError,
-                    logData
-                );
-                break;
-            case ErrorSeverity.MEDIUM:
-                this.logger.warn(
-                    `MEDIUM SEVERITY: ${errorInfo.message}`,
-                    logData
-                );
-                break;
-            case ErrorSeverity.LOW:
-                this.logger.debug(
-                    `LOW SEVERITY: ${errorInfo.message}`,
-                    logData
-                );
-                break;
-        }
-    }
-
-    /**
-     * Update error statistics
-     * @param {Object} errorInfo - Classified error information
-     */
-    updateErrorStats(errorInfo) {
-        this.errorStats.total++;
-
-        // Update category stats
-        if (!this.errorStats.byCategory[errorInfo.category]) {
-            this.errorStats.byCategory[errorInfo.category] = 0;
-        }
-        this.errorStats.byCategory[errorInfo.category]++;
-
-        // Update severity stats
-        if (!this.errorStats.bySeverity[errorInfo.severity]) {
-            this.errorStats.bySeverity[errorInfo.severity] = 0;
-        }
-        this.errorStats.bySeverity[errorInfo.severity]++;
-
-        // Keep recent errors (last 50)
-        this.errorStats.recentErrors.push({
-            timestamp: errorInfo.timestamp,
-            category: errorInfo.category,
-            severity: errorInfo.severity,
-            message: errorInfo.message,
-            errorCode: errorInfo.errorCode,
-        });
-
-        if (this.errorStats.recentErrors.length > 50) {
-            this.errorStats.recentErrors.shift();
-        }
-    }
-
-    /**
-     * Get error statistics
-     * @returns {Object} Error statistics
-     */
-    getErrorStats() {
-        return {
-            ...this.errorStats,
-            errorRate: this.calculateErrorRate(),
-            topCategories: this.getTopErrorCategories(),
-            recentTrends: this.getRecentErrorTrends(),
-        };
-    }
-
-    /**
-     * Calculate error rate (errors per minute)
-     * @returns {number} Error rate
-     */
-    calculateErrorRate() {
-        const oneMinuteAgo = Date.now() - 60000;
-        const recentErrors = this.errorStats.recentErrors.filter(
-            (error) => error.timestamp > oneMinuteAgo
-        );
-        return recentErrors.length;
-    }
-
-    /**
-     * Get top error categories
-     * @returns {Array} Top error categories
-     */
-    getTopErrorCategories() {
-        return Object.entries(this.errorStats.byCategory)
-            .sort(([, a], [, b]) => b - a)
-            .slice(0, 5)
-            .map(([category, count]) => ({ category, count }));
-    }
-
-    /**
-     * Get recent error trends
-     * @returns {Object} Error trends
-     */
-    getRecentErrorTrends() {
-        const fiveMinutesAgo = Date.now() - 300000;
-        const recentErrors = this.errorStats.recentErrors.filter(
-            (error) => error.timestamp > fiveMinutesAgo
-        );
-
-        const trends = {};
-        recentErrors.forEach((error) => {
-            if (!trends[error.category]) {
-                trends[error.category] = 0;
-            }
-            trends[error.category]++;
-        });
-
-        return trends;
-    }
-
-    /**
-     * Clear error statistics
-     */
-    clearStats() {
-        this.errorStats = {
-            total: 0,
-            byCategory: {},
-            bySeverity: {},
-            recentErrors: [],
-        };
-        this.logger.debug('Error statistics cleared');
     }
 }
 
-// Export singleton instance
 export const errorHandler = new ErrorHandler();
 
-// Export error types for convenience
 export {
     ServiceError,
     TranslationError,

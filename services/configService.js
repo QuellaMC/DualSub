@@ -11,7 +11,7 @@ import {
 } from './configServiceErrorHandler.js';
 import Logger from '../utils/logger.js';
 
-export { ConfigServiceReadError, requireConfigServiceRead };
+export { ConfigServiceReadError };
 
 const STORED_BOOLEAN_UNAVAILABLE_MESSAGE =
     'Stored boolean configuration is unavailable';
@@ -19,111 +19,18 @@ const RESULT_READ_KEYS_MESSAGE =
     'ConfigService result reads require an array of string keys';
 const MULTIPLE_READ_KEYS_MESSAGE =
     'ConfigService getMultiple requires an array of string keys';
-const RESULT_STORAGE_AREAS = Object.freeze(['sync', 'local']);
-const TRUSTED_CONFIG_KEYS = Object.freeze(Object.keys(configSchema));
-// Only exact identities created by _readResultBundle receive immutable
-// decision snapshots. Public result objects remain compatibility metadata.
-const CONFIG_READ_SNAPSHOTS = new WeakMap();
-const CONFIG_READ_SNAPSHOT_BRAND = Symbol('ConfigServiceReadSnapshot');
-// Only errors created by the synchronous strict adapter are trusted for
-// rethrow. Constructor identity and prototype shape are intentionally ignored.
-const TRUSTED_STRICT_READ_ERRORS = new WeakSet();
-const UNTRUSTED_STRICT_READ_RESULT = Object.freeze({
-    ok: false,
-    degraded: true,
-    failedAreas: Object.freeze([]),
-    areas: Object.freeze({
-        sync: Object.freeze({ status: 'not-requested' }),
-        local: Object.freeze({ status: 'not-requested' }),
-    }),
-    unknownKeys: Object.freeze([]),
-    excludedSensitiveKeys: Object.freeze([]),
-});
+const STORAGE_AREAS = ['sync', 'local'];
+const CONFIG_KEYS = Object.keys(configSchema);
 
 function isOwnConfigKey(key) {
     return typeof key === 'string' && Object.hasOwn(configSchema, key);
 }
 
-function getOwnDataKeys(items, requestedKeys) {
-    const keys = [];
-    for (const key of requestedKeys) {
-        try {
-            const descriptor = Object.getOwnPropertyDescriptor(items, key);
-            if (
-                descriptor !== undefined &&
-                Object.hasOwn(descriptor, 'value') &&
-                !keys.includes(key)
-            ) {
-                keys.push(key);
-            }
-        } catch {
-            // Inaccessible storage properties are resolved as invalid later.
-        }
-    }
-    return keys;
-}
-
-function snapshotDenseStringKeys(keys, errorMessage) {
-    try {
-        if (
-            !Array.isArray(keys) ||
-            Object.getPrototypeOf(keys) !== Array.prototype
-        ) {
-            throw new TypeError(errorMessage);
-        }
-
-        const lengthDescriptor = Object.getOwnPropertyDescriptor(
-            keys,
-            'length'
-        );
-        if (
-            lengthDescriptor === undefined ||
-            !Object.hasOwn(lengthDescriptor, 'value') ||
-            lengthDescriptor.enumerable ||
-            lengthDescriptor.configurable ||
-            !Number.isSafeInteger(lengthDescriptor.value) ||
-            lengthDescriptor.value < 0
-        ) {
-            throw new TypeError(errorMessage);
-        }
-
-        const length = lengthDescriptor.value;
-        const ownKeys = Reflect.ownKeys(keys);
-        if (ownKeys.length !== length + 1) {
-            throw new TypeError(errorMessage);
-        }
-
-        const expectedKeys = new Set(['length']);
-        for (let index = 0; index < length; index += 1) {
-            expectedKeys.add(String(index));
-        }
-        for (let index = 0; index < ownKeys.length; index += 1) {
-            const ownKey = ownKeys[index];
-            if (typeof ownKey !== 'string' || !expectedKeys.has(ownKey)) {
-                throw new TypeError(errorMessage);
-            }
-        }
-
-        const snapshot = [];
-        for (let index = 0; index < length; index += 1) {
-            const descriptor = Object.getOwnPropertyDescriptor(
-                keys,
-                String(index)
-            );
-            if (
-                descriptor === undefined ||
-                !Object.hasOwn(descriptor, 'value') ||
-                !descriptor.enumerable ||
-                typeof descriptor.value !== 'string'
-            ) {
-                throw new TypeError(errorMessage);
-            }
-            snapshot.push(descriptor.value);
-        }
-        return snapshot;
-    } catch {
+function snapshotStringKeys(keys, errorMessage) {
+    if (!Array.isArray(keys) || keys.some((key) => typeof key !== 'string')) {
         throw new TypeError(errorMessage);
     }
+    return [...keys];
 }
 
 function dedupeStringKeys(keys) {
@@ -139,176 +46,24 @@ function dedupeStringKeys(keys) {
     return uniqueKeys;
 }
 
-function createStoredBooleanUnavailableError() {
-    return new Error(STORED_BOOLEAN_UNAVAILABLE_MESSAGE);
-}
-
-function createUntrustedStrictReadError() {
-    const error = new ConfigServiceReadError(UNTRUSTED_STRICT_READ_RESULT);
-    // ConfigServiceReadError preserves a cause slot for compatibility. An
-    // unauthenticated result has no producer cause, so omit the slot entirely.
-    Reflect.deleteProperty(error, 'cause');
-    return error;
-}
-
-function isCompleteConfigReadSnapshot(snapshot) {
-    if (
-        snapshot === null ||
-        typeof snapshot !== 'object' ||
-        snapshot[CONFIG_READ_SNAPSHOT_BRAND] !== true ||
-        !Object.isFrozen(snapshot) ||
-        typeof snapshot.ok !== 'boolean' ||
-        typeof snapshot.degraded !== 'boolean' ||
-        !Array.isArray(snapshot.failedAreas) ||
-        !Object.isFrozen(snapshot.failedAreas) ||
-        snapshot.failedAreas.length > RESULT_STORAGE_AREAS.length ||
-        snapshot.ok !== (snapshot.failedAreas.length === 0) ||
-        snapshot.degraded !== !snapshot.ok ||
-        !Number.isSafeInteger(snapshot.unknownKeyCount) ||
-        snapshot.unknownKeyCount < 0 ||
-        !Number.isSafeInteger(snapshot.excludedSensitiveKeyCount) ||
-        snapshot.excludedSensitiveKeyCount < 0 ||
-        snapshot.areaStates === null ||
-        typeof snapshot.areaStates !== 'object' ||
-        !Object.isFrozen(snapshot.areaStates) ||
-        snapshot.booleanStates === null ||
-        typeof snapshot.booleanStates !== 'object' ||
-        !Object.isFrozen(snapshot.booleanStates)
-    ) {
-        return false;
-    }
-
-    const failedAreas = new Set(snapshot.failedAreas);
-    if (failedAreas.size !== snapshot.failedAreas.length) return false;
-
-    for (const area of RESULT_STORAGE_AREAS) {
-        const state = snapshot.areaStates[area];
-        if (
-            state === null ||
-            typeof state !== 'object' ||
-            !Object.isFrozen(state) ||
-            !['ok', 'error', 'not-requested'].includes(state.status) ||
-            (state.status === 'error') !== failedAreas.has(area)
-        ) {
-            return false;
-        }
-    }
-
-    return [...failedAreas].every((area) =>
-        RESULT_STORAGE_AREAS.includes(area)
-    );
-}
-
-function createStrictResultFromSnapshot(snapshot) {
-    const areas = Object.create(null);
-    for (const area of RESULT_STORAGE_AREAS) {
-        const state = snapshot.areaStates[area];
-        const areaResult = { status: state.status };
-        if (state.status === 'error') {
-            Object.defineProperty(areaResult, 'error', {
-                value: state.error,
-                enumerable: false,
-            });
-        }
-        areas[area] = areaResult;
-    }
-
-    return {
-        ok: snapshot.ok,
-        degraded: snapshot.degraded,
-        failedAreas: [...snapshot.failedAreas],
-        areas,
-        unknownKeys: new Array(snapshot.unknownKeyCount),
-        excludedSensitiveKeys: new Array(snapshot.excludedSensitiveKeyCount),
-    };
-}
-
-function requireProducerConfigServiceRead(result) {
-    const snapshot = CONFIG_READ_SNAPSHOTS.get(result);
-    if (!isCompleteConfigReadSnapshot(snapshot)) {
-        throw createUntrustedStrictReadError();
-    }
-    if (snapshot.ok) return result;
-
-    try {
-        return requireConfigServiceRead(
-            createStrictResultFromSnapshot(snapshot)
-        );
-    } catch (error) {
-        if (
-            error !== null &&
-            (typeof error === 'object' || typeof error === 'function')
-        ) {
-            TRUSTED_STRICT_READ_ERRORS.add(error);
-        }
-        throw error;
-    }
-}
-
-/**
- * Recognizes the explicit capability to include sensitive settings without
- * reading or traversing any unrelated option value. A same-realm Proxy that
- * supplies a consistent descriptor is outside this security boundary;
- * throwing or revoked descriptor proxies still fail closed.
- */
 export function isSensitiveAccessExplicitlyEnabled(options) {
-    if (
-        options === null ||
-        (typeof options !== 'object' && typeof options !== 'function')
-    ) {
-        return false;
-    }
-
-    try {
-        const descriptor = Object.getOwnPropertyDescriptor(
-            options,
-            'includeSensitive'
-        );
-        return (
-            descriptor !== undefined &&
-            Object.hasOwn(descriptor, 'value') &&
-            descriptor.value === true
-        );
-    } catch {
-        return false;
-    }
+    return (
+        options !== null &&
+        (typeof options === 'object' || typeof options === 'function') &&
+        Object.hasOwn(options, 'includeSensitive') &&
+        options.includeSensitive === true
+    );
 }
 
 function cloneConfigReadValue(value) {
     if (value === null || typeof value !== 'object') return value;
 
-    if (typeof globalThis.structuredClone === 'function') {
-        return globalThis.structuredClone(value);
-    }
-
-    const seen = new WeakMap();
-    const clonePlainValue = (current) => {
-        if (current === null || typeof current !== 'object') return current;
-        if (seen.has(current)) return seen.get(current);
-
-        const clone = Array.isArray(current)
-            ? new Array(current.length)
-            : Object.create(Object.getPrototypeOf(current));
-        seen.set(current, clone);
-
-        for (const key of Object.keys(current)) {
-            Object.defineProperty(clone, key, {
-                value: clonePlainValue(current[key]),
-                enumerable: true,
-                configurable: true,
-                writable: true,
-            });
-        }
-        return clone;
-    };
-
-    return clonePlainValue(value);
+    return globalThis.structuredClone(value);
 }
 
 class ConfigService {
     constructor() {
         this.changeListeners = new Set();
-        this.changeListenerRecords = new WeakMap();
         this.isInitialized = false;
         this.logger = Logger.create('ConfigService', this);
         this.initializeLogger();
@@ -906,9 +661,8 @@ class ConfigService {
 
                         reject(error);
                     } else {
-                        const resultKeys = getOwnDataKeys(
-                            items,
-                            normalizedKeys
+                        const resultKeys = normalizedKeys.filter((key) =>
+                            Object.hasOwn(items ?? {}, key)
                         );
                         this.logger.debug(
                             `Storage get operation completed`,
@@ -1235,29 +989,16 @@ class ConfigService {
 
     _resolveStoredValue(key, storedItems) {
         const schemaEntry = configSchema[key];
-        let storedDescriptor;
-        let descriptorInspectionFailed = false;
-
-        try {
-            storedDescriptor = Object.getOwnPropertyDescriptor(
-                storedItems,
-                key
-            );
-        } catch {
-            descriptorInspectionFailed = true;
-        }
-
-        const hasOwnStoredProperty = storedDescriptor !== undefined;
-        const hasStoredDataValue =
-            hasOwnStoredProperty && Object.hasOwn(storedDescriptor, 'value');
-        const preparedValue = hasStoredDataValue
-            ? this._prepareSettingValue(key, storedDescriptor.value)
+        const hasStoredValue = Object.hasOwn(storedItems, key);
+        const storedValue = hasStoredValue ? storedItems[key] : undefined;
+        const preparedValue = hasStoredValue
+            ? this._prepareSettingValue(key, storedValue)
             : { ok: false };
         const resolution = preparedValue.ok
-            ? Object.is(preparedValue.value, storedDescriptor.value)
+            ? Object.is(preparedValue.value, storedValue)
                 ? 'stored-exact'
                 : 'stored-normalized'
-            : hasOwnStoredProperty || descriptorInspectionFailed
+            : hasStoredValue
               ? 'default-invalid'
               : 'default-missing';
         const usedDefault = !preparedValue.ok;
@@ -1293,124 +1034,45 @@ class ConfigService {
     _projectStorageChanges(changes, areaName) {
         const projectedChanges = {};
 
-        for (const key of TRUSTED_CONFIG_KEYS) {
+        for (const [key, change] of Object.entries(changes)) {
             const schemaEntry = configSchema[key];
-            if (schemaEntry.scope !== areaName) continue;
+            if (!schemaEntry || schemaEntry.scope !== areaName) continue;
 
-            let changeDescriptor;
-            try {
-                changeDescriptor = Object.getOwnPropertyDescriptor(
-                    changes,
-                    key
-                );
-            } catch {
-                continue;
-            }
-            if (changeDescriptor === undefined) continue;
-
-            let preparedValue = { ok: false };
-            if (Object.hasOwn(changeDescriptor, 'value')) {
-                try {
-                    const newValueDescriptor = Object.getOwnPropertyDescriptor(
-                        changeDescriptor.value,
-                        'newValue'
-                    );
-                    if (
-                        newValueDescriptor !== undefined &&
-                        Object.hasOwn(newValueDescriptor, 'value')
-                    ) {
-                        preparedValue = this._prepareSettingValue(
-                            key,
-                            newValueDescriptor.value,
-                            { detach: true }
-                        );
-                    }
-                } catch {
-                    // An inaccessible record is projected as the fresh default.
-                }
-            }
+            const preparedValue = this._prepareSettingValue(
+                key,
+                change?.newValue,
+                { detach: true }
+            );
 
             projectedChanges[key] = preparedValue.ok
                 ? preparedValue.value
                 : getDefaultValue(key);
         }
-
-        // Startup repair owns canonical persistence. Live projection is
-        // deliberately read-only so storage changes cannot form repair loops.
         return projectedChanges;
     }
 
     _projectChangesForListener(changes, includeSensitive) {
         const listenerChanges = {};
 
-        for (const key of TRUSTED_CONFIG_KEYS) {
-            if (!includeSensitive && configSchema[key].sensitive) continue;
-
-            let descriptor;
-            try {
-                descriptor = Object.getOwnPropertyDescriptor(changes, key);
-            } catch {
-                continue;
-            }
-            if (
-                descriptor === undefined ||
-                !Object.hasOwn(descriptor, 'value')
-            ) {
-                continue;
-            }
-
-            try {
-                listenerChanges[key] = cloneConfigReadValue(descriptor.value);
-            } catch {
-                // Canonical projected collections are cloneable. If that
-                // invariant is ever broken, omit the value from this listener.
-            }
+        for (const [key, value] of Object.entries(changes)) {
+            if (!includeSensitive && configSchema[key]?.sensitive) continue;
+            listenerChanges[key] = cloneConfigReadValue(value);
         }
 
         return listenerChanges;
     }
 
-    /**
-     * Reads a configuration bundle while preserving storage provenance.
-     *
-     * This is the single storage-read seam for the result-oriented APIs. It is
-     * intentionally separate from the legacy getters so their compatibility
-     * behavior can remain unchanged while callers migrate.
-     * `ok` describes storage authority only: it is true when every area needed
-     * by readable requested keys succeeds. Unknown and sensitivity-excluded
-     * keys remain metadata and do not make the result non-authoritative.
-     *
-     * @param {string[]} keys
-     * @param {{includeSensitive?: boolean}} options - Sensitive access requires
-     * an own `includeSensitive` property whose value is exactly `true`.
-     * @returns {Promise<object>}
-     * @private
-     */
     async _readResultBundle(keys, options = {}) {
-        const keySnapshot = snapshotDenseStringKeys(
-            keys,
-            RESULT_READ_KEYS_MESSAGE
-        );
-
+        const keySnapshot = snapshotStringKeys(keys, RESULT_READ_KEYS_MESSAGE);
         const sensitiveAllowed = isSensitiveAccessExplicitlyEnabled(options);
         const requestedKeys = dedupeStringKeys(keySnapshot);
-        const unknownKeys = requestedKeys.filter(
-            (key) => !Object.hasOwn(configSchema, key)
-        );
-        const excludedSensitiveKeys = requestedKeys.filter(
-            (key) =>
-                Object.hasOwn(configSchema, key) &&
-                configSchema[key].sensitive &&
-                !sensitiveAllowed
-        );
         const readableKeys = requestedKeys.filter(
             (key) =>
-                Object.hasOwn(configSchema, key) &&
+                isOwnConfigKey(key) &&
                 (sensitiveAllowed || !configSchema[key].sensitive)
         );
         const privacySafeRead = requestedKeys.some(
-            (key) =>
-                Object.hasOwn(configSchema, key) && configSchema[key].sensitive
+            (key) => isOwnConfigKey(key) && configSchema[key].sensitive
         );
         const keysByArea = {
             sync: readableKeys.filter(
@@ -1422,30 +1084,17 @@ class ConfigService {
         };
         const result = {
             ok: true,
-            values: Object.create(null),
-            sources: Object.create(null),
-            displayFallbacks: Object.create(null),
+            values: {},
+            sources: {},
             areas: {
                 sync: { status: 'not-requested' },
                 local: { status: 'not-requested' },
             },
             degraded: false,
             failedAreas: [],
-            unknownKeys,
-            excludedSensitiveKeys,
         };
-        const booleanStates = Object.create(null);
-        const areaStates = Object.create(null);
-        for (const area of RESULT_STORAGE_AREAS) {
-            areaStates[area] = Object.freeze({
-                status: 'not-requested',
-                error: undefined,
-            });
-        }
-
-        const areas = RESULT_STORAGE_AREAS;
         const areaReads = await Promise.allSettled(
-            areas.map((area) => {
+            STORAGE_AREAS.map((area) => {
                 const areaKeys = keysByArea[area];
                 return areaKeys.length > 0
                     ? this.getFromStorage(
@@ -1463,49 +1112,21 @@ class ConfigService {
             })
         );
 
-        for (const [index, area] of areas.entries()) {
+        for (const [index, area] of STORAGE_AREAS.entries()) {
             const areaKeys = keysByArea[area];
             if (areaKeys.length === 0) continue;
 
             const areaRead = areaReads[index];
             if (areaRead.status === 'rejected') {
-                const areaStatus = { status: 'error' };
-                Object.defineProperty(areaStatus, 'error', {
-                    value: areaRead.reason,
-                    enumerable: false,
-                });
-                result.areas[area] = areaStatus;
-                areaStates[area] = Object.freeze({
-                    status: 'error',
-                    error: areaRead.reason,
-                });
+                result.areas[area] = { status: 'error' };
                 result.ok = false;
                 result.degraded = true;
                 result.failedAreas.push(area);
-
-                for (const key of areaKeys) {
-                    if (configSchema[key].type === Boolean) {
-                        booleanStates[key] = Object.freeze({
-                            value: undefined,
-                            scope: area,
-                            source: undefined,
-                        });
-                    }
-                    if (!configSchema[key].sensitive) {
-                        result.displayFallbacks[key] = cloneConfigReadValue(
-                            getDefaultValue(key)
-                        );
-                    }
-                }
                 continue;
             }
 
             const storedItems = areaRead.value;
             result.areas[area] = { status: 'ok' };
-            areaStates[area] = Object.freeze({
-                status: 'ok',
-                error: undefined,
-            });
 
             for (const key of areaKeys) {
                 const { value, usedDefault, invalidStoredValue } =
@@ -1520,138 +1141,42 @@ class ConfigService {
                     scope: area,
                     source,
                 };
-                if (configSchema[key].type === Boolean) {
-                    booleanStates[key] = Object.freeze({
-                        value:
-                            value === true || value === false
-                                ? value
-                                : undefined,
-                        scope: area,
-                        source,
-                    });
-                }
             }
         }
-
-        CONFIG_READ_SNAPSHOTS.set(
-            result,
-            Object.freeze({
-                [CONFIG_READ_SNAPSHOT_BRAND]: true,
-                ok: result.ok,
-                degraded: result.degraded,
-                failedAreas: Object.freeze([...result.failedAreas]),
-                areaStates: Object.freeze(areaStates),
-                unknownKeyCount: unknownKeys.length,
-                excludedSensitiveKeyCount: excludedSensitiveKeys.length,
-                booleanStates: Object.freeze(booleanStates),
-            })
-        );
         return result;
     }
 
-    /**
-     * Retrieves one setting with authoritative/degraded read metadata.
-     * Sensitive settings require an own, exact `includeSensitive: true` option.
-     *
-     * @param {string} key
-     * @param {{includeSensitive?: boolean}} options
-     * @returns {Promise<object>}
-     */
-    async readResult(key, options = {}) {
-        return this._readResultBundle([key], options);
-    }
-
-    /**
-     * Retrieves selected settings with authoritative/degraded read metadata.
-     * Sensitive settings require an own, exact `includeSensitive: true` option.
-     *
-     * @param {string[]} keys
-     * @param {{includeSensitive?: boolean}} options
-     * @returns {Promise<object>}
-     */
-    async readMultipleResult(keys, options = {}) {
-        return this._readResultBundle(keys, options);
-    }
-
-    /**
-     * Retrieves the full schema projection with authoritative/degraded metadata.
-     * Sensitive settings require an own, exact `includeSensitive: true` option.
-     *
-     * @param {{includeSensitive?: boolean}} options
-     * @returns {Promise<object>}
-     */
-    async readAllResult(options = {}) {
-        return this._readResultBundle(Object.keys(configSchema), options);
-    }
-
-    /**
-     * Storage-authoritative form of {@link readResult}. Unknown and excluded
-     * sensitive keys remain metadata and do not make the read fail; callers
-     * must verify that every key they require is present in `values`.
-     */
     async readResultStrict(key, options = {}) {
-        return requireProducerConfigServiceRead(
-            await this.readResult(key, options)
+        return requireConfigServiceRead(
+            await this._readResultBundle([key], options)
         );
     }
 
-    /**
-     * Reads one stored Boolean from the immutable snapshot attached to the
-     * exact result identity produced by this service.
-     * @param {string} key
-     * @returns {Promise<boolean>}
-     * @throws {ConfigServiceReadError|Error}
-     */
     async readStoredBooleanStrict(key) {
         if (!isOwnConfigKey(key) || configSchema[key].type !== Boolean) {
-            throw createStoredBooleanUnavailableError();
+            throw new Error(STORED_BOOLEAN_UNAVAILABLE_MESSAGE);
         }
 
-        try {
-            const result = await this.readResultStrict(key);
-            const snapshot = CONFIG_READ_SNAPSHOTS.get(result);
-            const scope = configSchema[key].scope;
-            const state = snapshot?.booleanStates[key];
-            const value = state?.value;
-
-            if (
-                snapshot?.ok !== true ||
-                snapshot.degraded !== false ||
-                snapshot.failedAreas.length !== 0 ||
-                snapshot.areaStates[scope]?.status !== 'ok' ||
-                (value !== true && value !== false) ||
-                state?.scope !== scope ||
-                state?.source !== 'stored'
-            ) {
-                throw createStoredBooleanUnavailableError();
-            }
-
-            return value;
-        } catch (error) {
-            if (TRUSTED_STRICT_READ_ERRORS.has(error)) throw error;
-            throw createStoredBooleanUnavailableError();
+        const result = await this.readResultStrict(key);
+        const value = result.values[key];
+        if (
+            (value !== true && value !== false) ||
+            result.sources[key]?.source !== 'stored'
+        ) {
+            throw new Error(STORED_BOOLEAN_UNAVAILABLE_MESSAGE);
         }
+        return value;
     }
 
-    /**
-     * Storage-authoritative form of {@link readMultipleResult}. Unknown and
-     * excluded sensitive keys remain metadata and do not make the read fail;
-     * callers must verify that every key they require is present in `values`.
-     */
     async readMultipleResultStrict(keys, options = {}) {
-        return requireProducerConfigServiceRead(
-            await this.readMultipleResult(keys, options)
+        return requireConfigServiceRead(
+            await this._readResultBundle(keys, options)
         );
     }
 
-    /**
-     * Storage-authoritative form of {@link readAllResult}. Excluded sensitive
-     * keys remain metadata and do not make the read fail; callers must verify
-     * that every key they require is present in `values`.
-     */
     async readAllResultStrict(options = {}) {
-        return requireProducerConfigServiceRead(
-            await this.readAllResult(options)
+        return requireConfigServiceRead(
+            await this._readResultBundle(CONFIG_KEYS, options)
         );
     }
 
@@ -1715,7 +1240,7 @@ class ConfigService {
      * @returns {Promise<object>} A promise that resolves with an object containing the requested settings
      */
     async getMultiple(keys) {
-        const keySnapshot = snapshotDenseStringKeys(
+        const keySnapshot = snapshotStringKeys(
             keys,
             MULTIPLE_READ_KEYS_MESSAGE
         );
@@ -1939,29 +1464,13 @@ class ConfigService {
             }
 
             const schemaEntry = configSchema[key];
-            let valueDescriptor;
-            let descriptorInspectionFailed = false;
-            try {
-                valueDescriptor = Object.getOwnPropertyDescriptor(
-                    settings,
-                    key
-                );
-            } catch {
-                descriptorInspectionFailed = true;
-            }
-            const hasDataValue =
-                valueDescriptor && Object.hasOwn(valueDescriptor, 'value');
-            const value = hasDataValue ? valueDescriptor.value : undefined;
-            const preparedValue = hasDataValue
-                ? this._prepareSettingValue(key, value, { detach: true })
-                : { ok: false };
+            const value = settings[key];
+            const preparedValue = this._prepareSettingValue(key, value, {
+                detach: true,
+            });
 
             if (!preparedValue.ok) {
-                const actualType = descriptorInspectionFailed
-                    ? 'inaccessible'
-                    : hasDataValue
-                      ? typeof value
-                      : 'accessor';
+                const actualType = typeof value;
                 const error = `Invalid value for key "${key}". Expected type: ${schemaEntry.type.name}`;
                 this.logger.error(error, null, {
                     method: 'setMultiple',
@@ -1984,12 +1493,7 @@ class ConfigService {
             } else {
                 localSettings[key] = preparedValue.value;
             }
-            Object.defineProperty(preparedSettings, key, {
-                value: preparedValue.value,
-                enumerable: true,
-                configurable: true,
-                writable: true,
-            });
+            preparedSettings[key] = preparedValue.value;
         }
 
         // If there were validation errors, throw them
@@ -2199,24 +1703,8 @@ class ConfigService {
             currentListenerCount: this.changeListeners.size,
         });
 
-        const projectedCallback = includeSensitive
-            ? callback
-            : (changes) => {
-                  const safeChanges = this._projectChangesForListener(
-                      changes,
-                      false
-                  );
-                  if (Object.keys(safeChanges).length > 0) {
-                      return callback(safeChanges);
-                  }
-                  return undefined;
-              };
-
-        this.changeListeners.add(projectedCallback);
-        this.changeListenerRecords.set(
-            projectedCallback,
-            Object.freeze({ includeSensitive, projectedCallback })
-        );
+        const listener = { callback, includeSensitive };
+        this.changeListeners.add(listener);
 
         this.logger.debug(`Change listener added`, {
             totalListeners: this.changeListeners.size,
@@ -2224,7 +1712,7 @@ class ConfigService {
 
         // Return a function to remove the listener
         return () => {
-            this.changeListeners.delete(projectedCallback);
+            this.changeListeners.delete(listener);
             this.logger.debug(`Change listener removed`, {
                 remainingListeners: this.changeListeners.size,
             });
@@ -2253,18 +1741,7 @@ class ConfigService {
                     listenerCount: this.changeListeners.size,
                 });
 
-                const listenerSnapshot = [];
-                // Subscription mutations made by callbacks take effect on the
-                // next storage event, not midway through the current event.
-                this.changeListeners.forEach((projectedCallback) => {
-                    listenerSnapshot.push(
-                        this.changeListenerRecords.get(projectedCallback) ??
-                            Object.freeze({
-                                includeSensitive: false,
-                                projectedCallback,
-                            })
-                    );
-                });
+                const listenerSnapshot = [...this.changeListeners];
 
                 const logListenerFailure = () => {
                     try {
@@ -2282,17 +1759,16 @@ class ConfigService {
                     }
                 };
 
-                listenerSnapshot.forEach((listenerRecord) => {
+                listenerSnapshot.forEach(({ callback, includeSensitive }) => {
                     const listenerChanges = this._projectChangesForListener(
                         relevantChanges,
-                        listenerRecord.includeSensitive
+                        includeSensitive
                     );
                     if (Object.keys(listenerChanges).length === 0) return;
 
                     let callbackResult;
                     try {
-                        callbackResult =
-                            listenerRecord.projectedCallback(listenerChanges);
+                        callbackResult = callback(listenerChanges);
                     } catch {
                         logListenerFailure();
                         return;

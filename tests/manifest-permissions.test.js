@@ -39,4 +39,37 @@ describe('Manifest runtime host permissions', () => {
         );
         expect(manifest.host_permissions).not.toContain('https://*/*');
     });
+
+    test('exposes the cue normalizer only to supported platform pages', () => {
+        const expectedMatches = [
+            'https://*.disneyplus.com/*',
+            'https://*.netflix.com/*',
+        ];
+        const subtitleUtilityGroups = manifest.web_accessible_resources.filter(
+            ({ resources = [] }) =>
+                resources.includes(
+                    'content_scripts/shared/subtitleUtilities.js'
+                )
+        );
+
+        expect(
+            manifest.host_permissions.filter(
+                (match) =>
+                    match.includes('disneyplus.com') ||
+                    match.includes('netflix.com')
+            )
+        ).toEqual(expectedMatches);
+        expect(manifest.content_scripts.map(({ matches }) => matches)).toEqual(
+            expectedMatches.map((match) => [match])
+        );
+        expect(subtitleUtilityGroups).toHaveLength(1);
+        expect(subtitleUtilityGroups[0]).toMatchObject({
+            matches: expectedMatches,
+        });
+        expect(
+            subtitleUtilityGroups[0].resources.filter(
+                (resource) => resource === 'utils/cueTextNormalizer.js'
+            )
+        ).toHaveLength(1);
+    });
 });

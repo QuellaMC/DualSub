@@ -1,4 +1,3 @@
-import { VideoPlatform } from './platform_interface.js';
 import Logger from '../utils/logger.js';
 import { configService } from '../services/configService.js';
 import {
@@ -6,155 +5,260 @@ import {
     SubtitleRequestSources,
 } from '../content_scripts/shared/constants/messageActions.js';
 
-/**
- * BasePlatformAdapter - shared wiring for platform adapters
- * Provides common logger initialization, videoId tracking, and VTT request helpers.
- */
-export class BasePlatformAdapter extends VideoPlatform {
+const OBSERVER_RETRY_DELAY_MS = 250;
+const OBSERVER_MAX_ATTEMPTS = 20;
+
+const createFallbackLogger = () => ({
+    debug() {},
+    info() {},
+    warn() {},
+    error() {},
+    async updateLevel() {},
+});
+
+export class BasePlatformAdapter {
     constructor(adapterName = 'BasePlatformAdapter') {
-        super();
         try {
             this.logger = Logger.create(adapterName, configService);
-        } catch (error) {
-            // Fallback logger to avoid hard failures in non-extension contexts
-            this.logger = {
-                debug: (...args) => console.debug(`[${adapterName}]`, ...args),
-                info: (...args) => console.info(`[${adapterName}]`, ...args),
-                warn: (...args) => console.warn(`[${adapterName}]`, ...args),
-                error: (...args) => console.error(`[${adapterName}]`, ...args),
-                updateLevel: () => Promise.resolve(),
-            };
+        } catch {
+            this.logger = createFallbackLogger();
         }
 
+        this._lifecycleGeneration = 0;
+        this._platformLifecycleStarted = false;
+        this._nativeSubtitleSettings = null;
+        this._hideOfficialSubtitles = undefined;
         this.currentVideoId = null;
         this.onSubtitleUrlFoundCallback = null;
         this.onVideoIdChangeCallback = null;
         this.lastKnownVttUrlForVideoId = Object.create(null);
         this.pendingVttUrlForVideoId = Object.create(null);
-        this.eventListener = null;
         this.ownedTimeouts = new Map();
         this.ownedTimeoutGeneration = 0;
+        void this.initializeLogger();
     }
 
-    /**
-     * Start a new adapter-owned timeout lifecycle and cancel older work.
-     * @protected
-     * @returns {number} The new timeout lifecycle generation.
-     */
+    _beginPlatformLifecycle() {
+        this._platformLifecycleStarted = true;
+        return ++this._lifecycleGeneration;
+    }
+
+    _invalidatePlatformLifecycle() {
+        this._platformLifecycleStarted = false;
+        this._lifecycleGeneration += 1;
+    }
+
+    _isPlatformLifecycleCurrent(generation) {
+        return (
+            this._platformLifecycleStarted &&
+            generation === this._lifecycleGeneration
+        );
+    }
+
+    _logBestEffort(level, ...args) {
+        try {
+            this.logger?.[level]?.call(this.logger, ...args);
+        } catch {}
+    }
+
+    async initializeLogger() {
+        try {
+            await this.logger?.updateLevel?.();
+        } catch {
+            this._logBestEffort('warn', 'Logger level update failed');
+        }
+    }
+
+    getPlaybackTime(preferredVideoElement = null) {
+        const video = preferredVideoElement || this.getVideoElement();
+        return Number.isFinite(video?.currentTime) ? video.currentTime : null;
+    }
+
+    invalidatePlaybackClockCalibration() {}
+
+    hasAdoptedPlayerRoute() {
+        return false;
+    }
+
+    allowsDirectMediaPlaybackFallback() {
+        return true;
+    }
+
+    getProgressBarElement() {
+        return null;
+    }
+
+    supportsProgressBarTracking() {
+        return true;
+    }
+
+    hideOfficialSubtitleContainers(selectors) {
+        for (const selector of selectors) {
+            for (const container of document.querySelectorAll(selector)) {
+                container.style.display = 'none';
+                container.style.visibility = 'hidden';
+                container.style.opacity = '0';
+                container.setAttribute('data-dualsub-hidden', 'true');
+            }
+        }
+    }
+
+    showOfficialSubtitleContainers() {
+        const containers = document.querySelectorAll(
+            '[data-dualsub-hidden="true"]'
+        );
+        for (const container of containers) {
+            container.style.display = '';
+            container.style.visibility = '';
+            container.style.opacity = '';
+            container.removeAttribute('data-dualsub-hidden');
+        }
+        this._logBestEffort('debug', 'Restored official subtitle containers', {
+            restoredContainerCount: containers.length,
+        });
+    }
+
+    async handleNativeSubtitlesWithSetting(
+        selectors,
+        additionalCurrentnessCheck = null
+    ) {
+        const generation = this._lifecycleGeneration;
+        const session = this._nativeSubtitleSettings;
+        const operation = session ? ++session.operation : 0;
+        const isCurrent = () =>
+            this._isPlatformLifecycleCurrent(generation) &&
+            this._nativeSubtitleSettings === session &&
+            (!session || session.operation === operation) &&
+            (typeof additionalCurrentnessCheck !== 'function' ||
+                additionalCurrentnessCheck());
+
+        if (!isCurrent()) return;
+
+        let shouldHide = this._hideOfficialSubtitles;
+        if (shouldHide === undefined) {
+            try {
+                shouldHide = Boolean(
+                    await configService.get('hideOfficialSubtitles')
+                );
+            } catch {
+                shouldHide = false;
+            }
+            if (!isCurrent()) return;
+            this._hideOfficialSubtitles = shouldHide;
+        }
+
+        if (!isCurrent()) return;
+        if (shouldHide) this.hideOfficialSubtitleContainers(selectors);
+        else this.showOfficialSubtitleContainers();
+    }
+
+    setupNativeSubtitleSettingsListener(selectors) {
+        this.cleanupNativeSubtitleSettingsListener();
+
+        const generation = this._lifecycleGeneration;
+        const session = {
+            selectors,
+            operation: 0,
+            unsubscribe: null,
+        };
+        this._nativeSubtitleSettings = session;
+        const isCurrent = () =>
+            this._nativeSubtitleSettings === session &&
+            this._isPlatformLifecycleCurrent(generation);
+        const apply = (shouldHide) => {
+            if (!isCurrent()) return;
+            this._hideOfficialSubtitles = Boolean(shouldHide);
+            if (shouldHide) this.hideOfficialSubtitleContainers(selectors);
+            else this.showOfficialSubtitleContainers();
+        };
+
+        session.listener = (changes) => {
+            if (!isCurrent() || changes.hideOfficialSubtitles === undefined) {
+                return;
+            }
+            session.operation += 1;
+            apply(changes.hideOfficialSubtitles);
+        };
+
+        if (typeof configService?.onChanged !== 'function') return;
+        try {
+            session.unsubscribe = configService.onChanged(session.listener);
+        } catch {
+            return;
+        }
+        if (!isCurrent()) {
+            try {
+                session.unsubscribe?.();
+            } catch {}
+            return;
+        }
+
+        const operation = ++session.operation;
+        Promise.resolve()
+            .then(() => configService.get('hideOfficialSubtitles'))
+            .then((value) => {
+                if (isCurrent() && operation === session.operation) {
+                    apply(value);
+                }
+            })
+            .catch(() => {});
+    }
+
+    cleanupNativeSubtitleSettingsListener() {
+        const session = this._nativeSubtitleSettings;
+        this._nativeSubtitleSettings = null;
+        this._hideOfficialSubtitles = undefined;
+        this.showOfficialSubtitleContainers();
+        try {
+            session?.unsubscribe?.();
+        } catch {}
+    }
+
     _resetOwnedTimeoutLifecycle() {
         this._clearOwnedTimeouts();
         return this.ownedTimeoutGeneration;
     }
 
-    /**
-     * Schedule one keyed timeout owned by the captured adapter lifecycle.
-     * Reusing a key replaces the prior pending timeout.
-     * @protected
-     * @param {string} key - Stable ownership key.
-     * @param {Function} callback - Work to run while the lifecycle is current.
-     * @param {number} delay - Delay in milliseconds.
-     * @param {number} generation - Captured timeout lifecycle generation.
-     * @returns {*} The timeout identifier, or null when already stale.
-     */
     _scheduleOwnedTimeout(
         key,
         callback,
         delay,
         generation = this.ownedTimeoutGeneration
     ) {
-        if (generation !== this.ownedTimeoutGeneration) {
-            return null;
-        }
-
-        const existingTask = this.ownedTimeouts.get(key);
-        if (
-            existingTask?.timeoutId !== null &&
-            existingTask?.timeoutId !== undefined
-        ) {
-            clearTimeout(existingTask.timeoutId);
-        }
-
-        const task = { timeoutId: null };
-        this.ownedTimeouts.set(key, task);
-        task.timeoutId = setTimeout(() => {
+        if (generation !== this.ownedTimeoutGeneration) return null;
+        clearTimeout(this.ownedTimeouts.get(key));
+        const timeoutId = setTimeout(() => {
             if (
-                this.ownedTimeouts.get(key) !== task ||
-                generation !== this.ownedTimeoutGeneration
+                generation !== this.ownedTimeoutGeneration ||
+                this.ownedTimeouts.get(key) !== timeoutId
             ) {
                 return;
             }
-
             this.ownedTimeouts.delete(key);
             callback();
         }, delay);
-        return task.timeoutId;
+        this.ownedTimeouts.set(key, timeoutId);
+        return timeoutId;
     }
 
-    /**
-     * Cancel and invalidate every adapter-owned timeout.
-     * @protected
-     */
     _clearOwnedTimeouts() {
         this.ownedTimeoutGeneration += 1;
-        for (const task of this.ownedTimeouts.values()) {
-            if (task.timeoutId !== null && task.timeoutId !== undefined) {
-                clearTimeout(task.timeoutId);
-            }
+        for (const timeoutId of this.ownedTimeouts.values()) {
+            clearTimeout(timeoutId);
         }
         this.ownedTimeouts.clear();
-    }
-
-    async initializeLogger() {
-        try {
-            if (this.logger && this.logger.updateLevel) {
-                await this.logger.updateLevel();
-            }
-        } catch {
-            this._logBestEffort(
-                'warn',
-                'Failed to initialize logger level, continuing with defaults',
-                { loggerInitialized: false }
-            );
-        }
-    }
-
-    /**
-     * Snapshot one array length without trusting a page-owned Proxy result.
-     * Callers reuse the returned primitive instead of reflecting the source.
-     * @protected
-     * @param {*} value Potentially untrusted array value.
-     * @returns {number} A non-negative safe integer, or zero when unsafe.
-     */
-    _getSafeArrayLength(value) {
-        try {
-            if (!Array.isArray(value)) return 0;
-            const length = value.length;
-            return Number.isSafeInteger(length) && length >= 0 ? length : 0;
-        } catch {
-            return 0;
-        }
     }
 
     _cleanupNativeSubtitleSettingsBestEffort() {
         try {
             this.cleanupNativeSubtitleSettingsListener();
         } catch {
-            this.storageListener = null;
-            this.subtitleSelectors = null;
-            this.unsubscribeFromChanges = null;
+            this._nativeSubtitleSettings = null;
         }
     }
 
-    /**
-     * Read the authoritative HTML media playback state.
-     * @protected
-     * @param {HTMLVideoElement|null} video - Video element to inspect.
-     * @returns {boolean|null} True only while media is actively playing, or
-     * null when no video is available.
-     */
     _getMediaPlayingState(video = this.getVideoElement()) {
-        if (!video) return null;
-        return !video.paused && !video.ended;
+        return video ? !video.paused && !video.ended : null;
     }
 
     setCallbacks(onSubtitleUrlFound, onVideoIdChange) {
@@ -162,30 +266,26 @@ export class BasePlatformAdapter extends VideoPlatform {
         this.onVideoIdChangeCallback = onVideoIdChange;
     }
 
-    setVideoIdAndNotify(newVideoId) {
-        if (this.currentVideoId !== newVideoId) {
-            const previousVideoId = this.currentVideoId;
-            this._logBestEffort('info', 'Video context changing', {
-                hadPreviousVideoId: Boolean(previousVideoId),
-                hasNewVideoId: Boolean(newVideoId),
-            });
-            if (previousVideoId) {
-                delete this.lastKnownVttUrlForVideoId[previousVideoId];
-                delete this.pendingVttUrlForVideoId[previousVideoId];
-            }
-            this.currentVideoId = newVideoId;
-            this.onVideoIdChangeCallback?.(this.currentVideoId);
+    setVideoIdAndNotify(videoId) {
+        if (this.currentVideoId === videoId) return;
+        const previousVideoId = this.currentVideoId;
+        if (previousVideoId) {
+            delete this.lastKnownVttUrlForVideoId[previousVideoId];
+            delete this.pendingVttUrlForVideoId[previousVideoId];
         }
+        this.currentVideoId = videoId;
+        this.onVideoIdChangeCallback?.(videoId);
     }
 
     beginVttRequest(url, videoId = this.currentVideoId) {
-        const pendingRequest = this.pendingVttUrlForVideoId[videoId];
-        const inFlight = pendingRequest?.url === url;
-        if (this.lastKnownVttUrlForVideoId[videoId] === url || inFlight) {
-            return { request: null, inFlight };
+        const pending = this.pendingVttUrlForVideoId[videoId];
+        if (
+            this.lastKnownVttUrlForVideoId[videoId] === url ||
+            pending?.url === url
+        ) {
+            return { request: null, inFlight: pending?.url === url };
         }
-
-        const request = Object.freeze({ url, videoId });
+        const request = { url, videoId };
         this.pendingVttUrlForVideoId[videoId] = request;
         return { request, inFlight: false };
     }
@@ -208,16 +308,37 @@ export class BasePlatformAdapter extends VideoPlatform {
 
     acceptVttResponse(request, response) {
         if (!this.canAcceptVttResponse(request, response)) return false;
-
         this.lastKnownVttUrlForVideoId[request.videoId] = request.url;
         return true;
     }
 
-    finishVttRequest(request) {
+    deliverVttResponse(request, response, isCurrent) {
         if (
-            request &&
-            this.pendingVttUrlForVideoId[request.videoId] === request
+            !isCurrent() ||
+            !this.canAcceptVttResponse(request, response) ||
+            typeof this.onSubtitleUrlFoundCallback !== 'function'
         ) {
+            return false;
+        }
+
+        this.onSubtitleUrlFoundCallback({
+            vttText: response.vttText,
+            targetVttText: response.targetVttText,
+            videoId: response.videoId,
+            sourceLanguage: response.sourceLanguage,
+            targetLanguage: response.targetLanguage,
+            useNativeTarget: response.useNativeTarget,
+            selectedLanguage: {
+                normalizedCode: response.selectedLanguage.normalizedCode,
+                displayName: response.selectedLanguage.displayName,
+            },
+        });
+
+        return isCurrent() && this.acceptVttResponse(request, response);
+    }
+
+    finishVttRequest(request) {
+        if (this.pendingVttUrlForVideoId[request?.videoId] === request) {
             delete this.pendingVttUrlForVideoId[request.videoId];
         }
     }
@@ -227,65 +348,168 @@ export class BasePlatformAdapter extends VideoPlatform {
         this.pendingVttUrlForVideoId = Object.create(null);
     }
 
-    async _sendMessageResilient(
-        message,
-        { retries = 3, baseDelayMs = 150, canDispatch } = {}
-    ) {
-        // Delegate to shared resilient messaging wrapper which handles callback vs. promise paths and retries.
+    installSubtitleHidingStyle(id, css) {
+        let style = document.getElementById(id);
+        if (!style) {
+            if (!document.head) return;
+            style = document.createElement('style');
+            style.id = id;
+            document.head.appendChild(style);
+        }
+        style.textContent = css;
+    }
+
+    setupSubtitleObserver({ getRoots, matches, reapply }) {
+        const generation = this._resetOwnedTimeoutLifecycle();
+        this._disconnectSubtitleMutationObserver();
+
+        const attemptSetup = (attempt) => {
+            if (generation !== this.ownedTimeoutGeneration) return;
+
+            let roots = [];
+            try {
+                roots = [...new Set(getRoots())].filter(
+                    (root) => root instanceof Node && root !== document.body
+                );
+            } catch {}
+
+            if (roots.length === 0) {
+                scheduleRetry(attempt);
+                return;
+            }
+
+            let observer;
+            try {
+                observer = new MutationObserver((mutations) => {
+                    if (
+                        generation !== this.ownedTimeoutGeneration ||
+                        this.subtitleObserver !== observer
+                    ) {
+                        return;
+                    }
+                    const found = mutations.some(
+                        (mutation) =>
+                            mutation.type === 'childList' &&
+                            [...mutation.addedNodes].some(matches)
+                    );
+                    if (found) {
+                        this._scheduleOwnedTimeout(
+                            'subtitle-setting-reapply',
+                            () => {
+                                Promise.resolve(reapply(generation)).catch(
+                                    () => {}
+                                );
+                            },
+                            100,
+                            generation
+                        );
+                    }
+                });
+            } catch {
+                scheduleRetry(attempt);
+                return;
+            }
+
+            let attached = false;
+            for (const root of roots) {
+                try {
+                    observer.observe(root, { childList: true, subtree: true });
+                    attached = true;
+                } catch {}
+            }
+
+            if (!attached || generation !== this.ownedTimeoutGeneration) {
+                try {
+                    observer.disconnect();
+                } catch {}
+                if (!attached) scheduleRetry(attempt);
+                return;
+            }
+            this.subtitleObserver = observer;
+        };
+
+        const scheduleRetry = (attempt) => {
+            if (attempt >= OBSERVER_MAX_ATTEMPTS) return;
+            this._scheduleOwnedTimeout(
+                'subtitle-observer-retry',
+                () => attemptSetup(attempt + 1),
+                OBSERVER_RETRY_DELAY_MS,
+                generation
+            );
+        };
+
+        attemptSetup(1);
+    }
+
+    _disconnectSubtitleMutationObserver() {
+        try {
+            this.subtitleObserver?.disconnect();
+        } catch {}
+        this.subtitleObserver = null;
+    }
+
+    _retireAdapterLifecycle() {
+        this._invalidatePlatformLifecycle();
+        this._clearOwnedTimeouts();
+        this._cleanupNativeSubtitleSettingsBestEffort();
+        this._disconnectSubtitleMutationObserver();
+        this.currentVideoId = null;
+        this.onSubtitleUrlFoundCallback = null;
+        this.onVideoIdChangeCallback = null;
+        this.resetVttRequestState();
+    }
+
+    async _sendMessageResilient(message, options = {}) {
         const { sendRuntimeMessageWithRetry } = await import(
             chrome.runtime.getURL('content_scripts/shared/messaging.js')
         );
-        return await sendRuntimeMessageWithRetry(message, {
-            retries,
-            baseDelayMs,
-            canDispatch,
+        return sendRuntimeMessageWithRetry(message, {
+            retries: 3,
+            baseDelayMs: 150,
+            ...options,
         });
     }
 
-    async requestVttViaMessaging(
-        vttUrl,
+    requestVttViaMessaging(
+        url,
         targetLanguage,
         originalLanguage,
         videoId = this.currentVideoId,
         canDispatch
     ) {
-        const message = {
-            action: MessageActions.FETCH_VTT,
-            url: vttUrl,
-            videoId,
-            targetLanguage,
-            originalLanguage,
-            source: SubtitleRequestSources.DISNEY_PLUS,
-        };
-        return await this._sendMessageResilient(message, {
-            retries: 3,
-            baseDelayMs: 150,
-            canDispatch,
-        });
+        return this._sendMessageResilient(
+            {
+                action: MessageActions.FETCH_VTT,
+                url,
+                videoId,
+                targetLanguage,
+                originalLanguage,
+                source: SubtitleRequestSources.DISNEY_PLUS,
+            },
+            { canDispatch }
+        );
     }
 
-    async requestNetflixVttWithTracks(
-        timedtexttracks,
+    requestNetflixVttWithTracks(
+        tracks,
         targetLanguage,
         originalLanguage,
         useOfficialSubtitles,
         videoId = this.currentVideoId,
         canDispatch
     ) {
-        const message = {
-            action: MessageActions.FETCH_VTT,
-            data: { tracks: timedtexttracks },
-            videoId,
-            targetLanguage,
-            originalLanguage,
-            useNativeSubtitles: useOfficialSubtitles,
-            useOfficialTranslations: useOfficialSubtitles,
-            source: SubtitleRequestSources.NETFLIX,
-        };
-        return await this._sendMessageResilient(message, {
-            retries: 3,
-            baseDelayMs: 150,
-            canDispatch,
-        });
+        return this._sendMessageResilient(
+            {
+                action: MessageActions.FETCH_VTT,
+                data: { tracks },
+                videoId,
+                targetLanguage,
+                originalLanguage,
+                useNativeSubtitles: useOfficialSubtitles,
+                useOfficialTranslations: useOfficialSubtitles,
+                source: SubtitleRequestSources.NETFLIX,
+            },
+            { canDispatch }
+        );
     }
 }
