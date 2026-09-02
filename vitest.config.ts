@@ -6,6 +6,7 @@ export default defineConfig({
     test: {
         include: ['src/**/*.test.{ts,tsx}'],
         environment: 'node',
+        setupFiles: ['src/test-utils/setup.ts'],
         coverage: {
             provider: 'v8',
             include: ['src/**/*.{ts,tsx}'],
