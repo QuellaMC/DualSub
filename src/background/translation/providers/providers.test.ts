@@ -9,6 +9,7 @@ import {
     geminiVertexProvider,
 } from './geminiVertex';
 import { googleProvider } from './google';
+import { microsoftEdgeProvider } from './microsoftEdge';
 import {
     fetchAvailableModels,
     normalizeModelName,
@@ -163,6 +164,53 @@ describe('google provider', () => {
         );
         expect(error.code).toBe('NETWORK_ERROR');
         expect(error.retryable).toBe(true);
+    });
+});
+
+describe('microsoft edge provider', () => {
+    const translation = [
+        {
+            detectedLanguage: { language: 'en', score: 1 },
+            translations: [{ text: 'Hola', to: 'es' }],
+        },
+    ];
+
+    it('posts a bare string array to the unauthenticated Edge endpoint', async () => {
+        fetchMock.mockResolvedValueOnce(jsonResponse(translation));
+        await expect(
+            microsoftEdgeProvider.translate('Hello', 'auto', 'es')
+        ).resolves.toBe('Hola');
+        const request = requestAt(0);
+        expect(request.url).toBe(
+            'https://edge.microsoft.com/translate/translatetext?from=&to=es&isEnterpriseClient=false'
+        );
+        expect(request.init.method).toBe('POST');
+        expect(headersOf(request.init)).toEqual({
+            'Content-Type': 'application/json',
+        });
+        expect(request.init.body).toBe(JSON.stringify(['Hello']));
+    });
+
+    it('names the source language when it is known', async () => {
+        fetchMock.mockResolvedValueOnce(jsonResponse(translation));
+        await microsoftEdgeProvider.translate('Hello', 'en', 'zh-CN');
+        expect(requestAt(0).url).toBe(
+            'https://edge.microsoft.com/translate/translatetext?from=en&to=zh-CN&isEnterpriseClient=false'
+        );
+    });
+
+    it('classifies HTTP failures and rejects a payload without a translation', async () => {
+        fetchMock.mockResolvedValueOnce(textResponse('', 429));
+        const limited = await failure(
+            microsoftEdgeProvider.translate('Hello', 'auto', 'es')
+        );
+        expect(limited.code).toBe('RATE_LIMIT_EXCEEDED');
+
+        fetchMock.mockResolvedValueOnce(jsonResponse([{ translations: [] }]));
+        const malformed = await failure(
+            microsoftEdgeProvider.translate('Hello', 'auto', 'es')
+        );
+        expect(malformed.code).toBe('REQUEST_FAILED');
     });
 });
 

@@ -266,6 +266,12 @@
     "cardGoogleDesc": {
         "message": "Google에서 제공하는 무료 번역 서비스입니다. 추가 설정이 필요하지 않습니다."
     },
+    "cardMicrosoftTitle": {
+        "message": "Microsoft 번역"
+    },
+    "cardMicrosoftDesc": {
+        "message": "Microsoft Edge에서 제공하는 무료 번역 서비스입니다. 추가 설정이 필요하지 않습니다."
+    },
     "providerStatus": {
         "message": "상태:"
     },
@@ -307,6 +313,9 @@
     },
     "providerGoogleName": {
         "message": "Google 번역 (무료)"
+    },
+    "providerMicrosoftName": {
+        "message": "Microsoft 번역 (무료)"
     },
     "providerDeepLName": {
         "message": "DeepL (API 키 필요)"

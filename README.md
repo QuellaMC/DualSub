@@ -60,7 +60,7 @@ Configuration reference: [configuration.md](docs/en/configuration.md). AI docs: 
 **For Language Learning:**
 
 ```
-Translation Provider: Google Translate (Free)
+Translation Provider: Microsoft Translate (Free)
 Layout: Top/Bottom
 Display Order: Original First
 Font Size: Large

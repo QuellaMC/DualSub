@@ -1,5 +1,6 @@
 export const PROVIDER_IDS = [
     'google',
+    'microsoft_edge',
     'deepl',
     'openai_compatible',
     'vertex_gemini',
@@ -9,6 +10,7 @@ export type ProviderId = (typeof PROVIDER_IDS)[number];
 
 export const PROVIDER_NAMES: Record<ProviderId, string> = {
     google: 'Google Translate (Free)',
+    microsoft_edge: 'Microsoft Translate (Free)',
     deepl: 'DeepL Translate (API Key Required)',
     openai_compatible: 'OpenAI Compatible (API Key Required)',
     vertex_gemini: 'Vertex AI Gemini (API Key Required)',
