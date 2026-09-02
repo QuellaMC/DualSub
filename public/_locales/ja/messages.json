@@ -365,20 +365,11 @@
     "vertexGeneratingToken": {
         "message": "アクセストークンを生成中..."
     },
-    "vertexImportSuccess": {
-        "message": "サービスアカウントがインポートされ、トークンが生成されました。"
-    },
     "vertexImportFailed": {
         "message": "インポートに失敗しました：%s"
     },
-    "vertexTokenExpired": {
-        "message": "⚠️ アクセストークンが期限切れです。更新をクリックして更新してください。"
-    },
     "vertexConfigured": {
         "message": "⚠️ Vertex AIが設定されています。接続をテストしてください。"
-    },
-    "vertexNotConfigured": {
-        "message": "サービスアカウントJSONをインポートするか、認証情報を入力してください。"
     },
     "featureVertexServiceAccount": {
         "message": "サービスアカウントJSONのインポート"
@@ -455,69 +446,6 @@
     "deeplTestNeedsTesting": {
         "message": "⚠️ DeepL APIキーのテストが必要です。"
     },
-    "aiContextModalTitle": {
-        "message": "AIコンテキスト分析"
-    },
-    "aiContextSelectedWords": {
-        "message": "選択された単語"
-    },
-    "aiContextNoWordsSelected": {
-        "message": "単語が選択されていません"
-    },
-    "aiContextClickHint": {
-        "message": "💡 単語をクリックして追加または削除します。"
-    },
-    "aiContextStartAnalysis": {
-        "message": "分析開始"
-    },
-    "aiContextPauseAnalysis": {
-        "message": "⏸ 一時停止"
-    },
-    "aiContextPauseAnalysisTitle": {
-        "message": "分析を一時停止"
-    },
-    "aiContextInitialMessage": {
-        "message": "字幕から単語を選択して分析を開始してください。"
-    },
-    "aiContextAnalyzing": {
-        "message": "コンテキストを分析中..."
-    },
-    "aiContextPauseNote": {
-        "message": "⏸ をクリックして分析を一時停止"
-    },
-    "aiContextAnalysisFailed": {
-        "message": "分析失敗"
-    },
-    "aiContextNoContent": {
-        "message": "分析コンテンツなし"
-    },
-    "aiContextNoContentMessage": {
-        "message": "分析は完了しましたが、コンテンツが返されませんでした。"
-    },
-    "aiContextDefinition": {
-        "message": "📖 定義"
-    },
-    "aiContextCultural": {
-        "message": "🌍 文化的コンテキスト"
-    },
-    "aiContextCulturalSignificance": {
-        "message": "⭐ 文化的意義"
-    },
-    "aiContextHistorical": {
-        "message": "📜 歴史的コンテキスト"
-    },
-    "aiContextHistoricalSignificance": {
-        "message": "📜 歴史的意義"
-    },
-    "aiContextEvolution": {
-        "message": "🔄 時代による変遷"
-    },
-    "aiContextLinguistic": {
-        "message": "🔤 言語学的分析"
-    },
-    "aiContextGrammar": {
-        "message": "📝 文法と意味論"
-    },
     "aiContextUsage": {
         "message": "💡 使用法と例"
     },
@@ -529,72 +457,6 @@
     },
     "aiContextKeyInsights": {
         "message": "🔑 重要な洞察"
-    },
-    "aiContextTypeCultural": {
-        "message": "文化的"
-    },
-    "aiContextTypeHistorical": {
-        "message": "歴史的"
-    },
-    "aiContextTypeLinguistic": {
-        "message": "言語学的"
-    },
-    "aiContextTypeComprehensive": {
-        "message": "包括的"
-    },
-    "aiContextTypeGeneric": {
-        "message": "コンテキスト"
-    },
-    "aiContextClose": {
-        "message": "閉じる"
-    },
-    "aiContextAnalysisResults": {
-        "message": "分析結果"
-    },
-    "aiContextRetrying": {
-        "message": "分析に失敗しました、再生成中..."
-    },
-    "aiContextRetryNotification": {
-        "message": "分析に失敗しました、再試行中..."
-    },
-    "aiContextRetryButton": {
-        "message": "再試行"
-    },
-    "aiContextMalformedResponse": {
-        "message": "AIサービスが無効な応答形式を返しました。これは一時的なサービスの問題が原因である可能性があります。"
-    },
-    "aiContextCulturalContext": {
-        "message": "文化的背景:"
-    },
-    "aiContextSocialUsage": {
-        "message": "社会的用法:"
-    },
-    "aiContextRegionalNotes": {
-        "message": "地域的特徴:"
-    },
-    "aiContextOrigins": {
-        "message": "語源:"
-    },
-    "aiContextHistoricalContext": {
-        "message": "歴史的背景:"
-    },
-    "aiContextEtymology": {
-        "message": "語源学:"
-    },
-    "aiContextGrammarNotes": {
-        "message": "文法注記:"
-    },
-    "aiContextTranslationNotes": {
-        "message": "翻訳注記:"
-    },
-    "aiContextLinguisticAnalysis": {
-        "message": "言語学的分析:"
-    },
-    "aiContextGrammarSemantics": {
-        "message": "文法と意味論:"
-    },
-    "aiContextUsageExamples": {
-        "message": "用法と例:"
     },
     "navAIContext": {
         "message": "AIコンテキスト"
@@ -694,6 +556,9 @@
     },
     "sidepanelWordsToAnalyze": {
         "message": "分析する単語"
+    },
+    "sidepanelRemoveWordLabel": {
+        "message": "%s（%d 番目）を削除"
     },
     "sidepanelWordInputPlaceholder": {
         "message": "字幕の単語をクリックして分析に追加..."
@@ -803,20 +668,11 @@
     "themeLight": {
         "message": "Light"
     },
-    "useSidePanel": {
-        "message": "Use Side Panel:"
-    },
-    "useSidePanelDescription": {
-        "message": "Use Chrome Side Panel instead of the modal for AI context analysis. Disable to use the legacy modal."
-    },
     "vertexImportSuccessEphemeral": {
         "message": "Access token generated. The service-account key was not stored; re-import the JSON when the token expires."
     },
     "vertexNotConfiguredEphemeral": {
         "message": "Import a service account JSON once to generate a short-lived token, or paste a token manually."
-    },
-    "vertexManualTokenSaveFailed": {
-        "message": "アクセストークンを保存できませんでした: %s"
     },
     "vertexTokenExpiredReimport": {
         "message": "⚠️ Access token expired. Re-import the service account JSON or paste a new access token."
@@ -835,21 +691,6 @@
     },
     "videoControlTitle": {
         "message": "Video Control"
-    },
-    "aiContextEvolutionLabel": {
-        "message": "🔄 時代による変遷"
-    },
-    "aiContextHistoricalSignificanceLabel": {
-        "message": "📜 歴史的意義"
-    },
-    "aiContextKeyInsightsLabel": {
-        "message": "🔑 重要な洞察"
-    },
-    "aiContextLearningTipsLabel": {
-        "message": "🎯 学習のヒント"
-    },
-    "aiContextRelatedExpressionsLabel": {
-        "message": "🔗 関連表現"
     },
     "translationApiError": {
         "message": "[翻訳API エラー。設定を確認するか、他のプロバイダーを試してください。]"

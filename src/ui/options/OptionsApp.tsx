@@ -36,6 +36,12 @@ export function OptionsApp() {
         }
     }, [status]);
 
+    useEffect(() => {
+        if (loadedLocale !== null) {
+            document.title = t('optionsPageTitle');
+        }
+    }, [loadedLocale, t]);
+
     if (status === 'unavailable') {
         return (
             <div className="container">

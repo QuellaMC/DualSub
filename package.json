@@ -1,6 +1,6 @@
 {
     "name": "dualsub",
-    "version": "2.5.0",
+    "version": "3.0.0-beta.1",
     "private": true,
     "packageManager": "npm@11.6.2",
     "engines": {
@@ -15,6 +15,7 @@
         "dev": "wxt",
         "build": "wxt build",
         "zip": "wxt zip",
+        "verify:release": "node scripts/verify-release.mjs",
         "compile": "tsc --noEmit",
         "test": "vitest run",
         "test:watch": "vitest",

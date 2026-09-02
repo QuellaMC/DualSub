@@ -365,20 +365,11 @@
     "vertexGeneratingToken": {
         "message": "正在產生存取權杖..."
     },
-    "vertexImportSuccess": {
-        "message": "服務帳戶已匯入並產生權杖。"
-    },
     "vertexImportFailed": {
         "message": "匯入失敗：%s"
     },
-    "vertexTokenExpired": {
-        "message": "⚠️ 存取權杖已過期。點擊重新整理以更新。"
-    },
     "vertexConfigured": {
         "message": "⚠️ Vertex AI 已設定。請測試連線。"
-    },
-    "vertexNotConfigured": {
-        "message": "請匯入服務帳戶 JSON 或輸入憑證。"
     },
     "featureVertexServiceAccount": {
         "message": "服務帳戶 JSON 匯入"
@@ -455,69 +446,6 @@
     "deeplTestNeedsTesting": {
         "message": "⚠️ DeepL API 金鑰需要測試。"
     },
-    "aiContextModalTitle": {
-        "message": "AI 上下文分析"
-    },
-    "aiContextSelectedWords": {
-        "message": "選中的詞語"
-    },
-    "aiContextNoWordsSelected": {
-        "message": "未選擇詞語"
-    },
-    "aiContextClickHint": {
-        "message": "💡 點擊詞語來新增或移除。"
-    },
-    "aiContextStartAnalysis": {
-        "message": "開始分析"
-    },
-    "aiContextPauseAnalysis": {
-        "message": "⏸ 暫停"
-    },
-    "aiContextPauseAnalysisTitle": {
-        "message": "暫停分析"
-    },
-    "aiContextInitialMessage": {
-        "message": "從字幕中選擇詞語開始分析。"
-    },
-    "aiContextAnalyzing": {
-        "message": "正在分析上下文..."
-    },
-    "aiContextPauseNote": {
-        "message": "點擊 ⏸ 暫停分析"
-    },
-    "aiContextAnalysisFailed": {
-        "message": "分析失敗"
-    },
-    "aiContextNoContent": {
-        "message": "無分析內容"
-    },
-    "aiContextNoContentMessage": {
-        "message": "分析已完成但未返回內容。"
-    },
-    "aiContextDefinition": {
-        "message": "📖 定義"
-    },
-    "aiContextCultural": {
-        "message": "🌍 文化背景"
-    },
-    "aiContextCulturalSignificance": {
-        "message": "⭐ 文化意義"
-    },
-    "aiContextHistorical": {
-        "message": "📜 歷史背景"
-    },
-    "aiContextHistoricalSignificance": {
-        "message": "📜 歷史意義"
-    },
-    "aiContextEvolution": {
-        "message": "🔄 歷史演變"
-    },
-    "aiContextLinguistic": {
-        "message": "🔤 語言學分析"
-    },
-    "aiContextGrammar": {
-        "message": "📝 語法與語義"
-    },
     "aiContextUsage": {
         "message": "💡 用法與例句"
     },
@@ -529,72 +457,6 @@
     },
     "aiContextKeyInsights": {
         "message": "🔑 關鍵見解"
-    },
-    "aiContextTypeCultural": {
-        "message": "文化"
-    },
-    "aiContextTypeHistorical": {
-        "message": "歷史"
-    },
-    "aiContextTypeLinguistic": {
-        "message": "語言學"
-    },
-    "aiContextTypeComprehensive": {
-        "message": "綜合"
-    },
-    "aiContextTypeGeneric": {
-        "message": "上下文"
-    },
-    "aiContextClose": {
-        "message": "關閉"
-    },
-    "aiContextAnalysisResults": {
-        "message": "分析結果"
-    },
-    "aiContextRetrying": {
-        "message": "分析失敗，正在重新生成..."
-    },
-    "aiContextRetryNotification": {
-        "message": "分析失敗，正在重試..."
-    },
-    "aiContextRetryButton": {
-        "message": "重試"
-    },
-    "aiContextMalformedResponse": {
-        "message": "AI 服務返回了無效的回應格式。這可能是由於臨時服務問題。"
-    },
-    "aiContextCulturalContext": {
-        "message": "文化背景:"
-    },
-    "aiContextSocialUsage": {
-        "message": "社會用法:"
-    },
-    "aiContextRegionalNotes": {
-        "message": "地區特色:"
-    },
-    "aiContextOrigins": {
-        "message": "詞源:"
-    },
-    "aiContextHistoricalContext": {
-        "message": "歷史背景:"
-    },
-    "aiContextHistoricalSignificanceLabel": {
-        "message": "歷史意義:"
-    },
-    "aiContextEvolutionLabel": {
-        "message": "演變過程:"
-    },
-    "aiContextEtymology": {
-        "message": "詞源學:"
-    },
-    "aiContextLearningTipsLabel": {
-        "message": "學習技巧:"
-    },
-    "aiContextRelatedExpressionsLabel": {
-        "message": "相關表達:"
-    },
-    "aiContextKeyInsightsLabel": {
-        "message": "關鍵要點:"
     },
     "navAIContext": {
         "message": "AI 上下文"
@@ -694,6 +556,9 @@
     },
     "sidepanelWordsToAnalyze": {
         "message": "待分析單字"
+    },
+    "sidepanelRemoveWordLabel": {
+        "message": "移除 %s（第 %d 個）"
     },
     "sidepanelWordInputPlaceholder": {
         "message": "點擊字幕中的單字以新增至分析..."
@@ -803,20 +668,11 @@
     "themeLight": {
         "message": "Light"
     },
-    "useSidePanel": {
-        "message": "Use Side Panel:"
-    },
-    "useSidePanelDescription": {
-        "message": "Use Chrome Side Panel instead of the modal for AI context analysis. Disable to use the legacy modal."
-    },
     "vertexImportSuccessEphemeral": {
         "message": "Access token generated. The service-account key was not stored; re-import the JSON when the token expires."
     },
     "vertexNotConfiguredEphemeral": {
         "message": "Import a service account JSON once to generate a short-lived token, or paste a token manually."
-    },
-    "vertexManualTokenSaveFailed": {
-        "message": "無法儲存存取權杖：%s"
     },
     "vertexTokenExpiredReimport": {
         "message": "⚠️ Access token expired. Re-import the service account JSON or paste a new access token."
@@ -835,21 +691,6 @@
     },
     "videoControlTitle": {
         "message": "Video Control"
-    },
-    "aiContextGrammarNotes": {
-        "message": "語法註釋:"
-    },
-    "aiContextGrammarSemantics": {
-        "message": "語法與語義:"
-    },
-    "aiContextLinguisticAnalysis": {
-        "message": "語言學分析:"
-    },
-    "aiContextTranslationNotes": {
-        "message": "翻譯註釋:"
-    },
-    "aiContextUsageExamples": {
-        "message": "用法與例句:"
     },
     "translationApiError": {
         "message": "[翻譯API錯誤。請檢查設定或嘗試其他翻譯源。]"

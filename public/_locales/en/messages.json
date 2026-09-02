@@ -365,20 +365,11 @@
     "vertexGeneratingToken": {
         "message": "Generating access token..."
     },
-    "vertexImportSuccess": {
-        "message": "Service account imported and token generated."
-    },
     "vertexImportFailed": {
         "message": "Import failed: %s"
     },
-    "vertexTokenExpired": {
-        "message": "⚠️ Access token expired. Click refresh to renew."
-    },
     "vertexConfigured": {
         "message": "⚠️ Vertex AI configured. Please test connection."
-    },
-    "vertexNotConfigured": {
-        "message": "Please import service account JSON or enter credentials."
     },
     "featureVertexServiceAccount": {
         "message": "Service account JSON import"
@@ -452,69 +443,6 @@
     "loggingLevelDebug": {
         "message": "Debug (All)"
     },
-    "aiContextModalTitle": {
-        "message": "AI Context Analysis"
-    },
-    "aiContextSelectedWords": {
-        "message": "Selected Words"
-    },
-    "aiContextNoWordsSelected": {
-        "message": "No words selected"
-    },
-    "aiContextClickHint": {
-        "message": "💡 Click a word to add or remove it."
-    },
-    "aiContextStartAnalysis": {
-        "message": "Start Analysis"
-    },
-    "aiContextPauseAnalysis": {
-        "message": "⏸ Pause"
-    },
-    "aiContextPauseAnalysisTitle": {
-        "message": "Pause Analysis"
-    },
-    "aiContextInitialMessage": {
-        "message": "Select words from the subtitles to begin analysis."
-    },
-    "aiContextAnalyzing": {
-        "message": "Analyzing context..."
-    },
-    "aiContextPauseNote": {
-        "message": "Click ⏸ to pause analysis"
-    },
-    "aiContextAnalysisFailed": {
-        "message": "Analysis Failed"
-    },
-    "aiContextNoContent": {
-        "message": "No Analysis Content"
-    },
-    "aiContextNoContentMessage": {
-        "message": "Analysis completed but no content was returned."
-    },
-    "aiContextDefinition": {
-        "message": "📖 Definition"
-    },
-    "aiContextCultural": {
-        "message": "🌍 Cultural Context"
-    },
-    "aiContextCulturalSignificance": {
-        "message": "⭐ Cultural Significance"
-    },
-    "aiContextHistorical": {
-        "message": "📜 Historical Context"
-    },
-    "aiContextHistoricalSignificance": {
-        "message": "📜 Historical Significance"
-    },
-    "aiContextEvolution": {
-        "message": "🔄 Evolution Over Time"
-    },
-    "aiContextLinguistic": {
-        "message": "🔤 Linguistic Analysis"
-    },
-    "aiContextGrammar": {
-        "message": "📝 Grammar & Semantics"
-    },
     "aiContextUsage": {
         "message": "💡 Usage & Examples"
     },
@@ -526,87 +454,6 @@
     },
     "aiContextKeyInsights": {
         "message": "🔑 Key Insights"
-    },
-    "aiContextTypeCultural": {
-        "message": "Cultural"
-    },
-    "aiContextTypeHistorical": {
-        "message": "Historical"
-    },
-    "aiContextTypeLinguistic": {
-        "message": "Linguistic"
-    },
-    "aiContextTypeComprehensive": {
-        "message": "Comprehensive"
-    },
-    "aiContextTypeGeneric": {
-        "message": "Context"
-    },
-    "aiContextClose": {
-        "message": "Close"
-    },
-    "aiContextAnalysisResults": {
-        "message": "Analysis Results"
-    },
-    "aiContextRetrying": {
-        "message": "Analysis failed, regenerating..."
-    },
-    "aiContextRetryNotification": {
-        "message": "Analysis failed, retrying..."
-    },
-    "aiContextRetryButton": {
-        "message": "Try Again"
-    },
-    "aiContextMalformedResponse": {
-        "message": "The AI service returned an invalid response format. This may be due to temporary service issues."
-    },
-    "aiContextCulturalContext": {
-        "message": "Cultural Context:"
-    },
-    "aiContextSocialUsage": {
-        "message": "Social Usage:"
-    },
-    "aiContextRegionalNotes": {
-        "message": "Regional Notes:"
-    },
-    "aiContextOrigins": {
-        "message": "Origins:"
-    },
-    "aiContextHistoricalContext": {
-        "message": "Historical Context:"
-    },
-    "aiContextHistoricalSignificanceLabel": {
-        "message": "Historical Significance:"
-    },
-    "aiContextEvolutionLabel": {
-        "message": "Evolution:"
-    },
-    "aiContextEtymology": {
-        "message": "Etymology:"
-    },
-    "aiContextGrammarNotes": {
-        "message": "Grammar Notes:"
-    },
-    "aiContextTranslationNotes": {
-        "message": "Translation Notes:"
-    },
-    "aiContextLinguisticAnalysis": {
-        "message": "Linguistic Analysis:"
-    },
-    "aiContextGrammarSemantics": {
-        "message": "Grammar & Semantics:"
-    },
-    "aiContextUsageExamples": {
-        "message": "Usage & Examples:"
-    },
-    "aiContextLearningTipsLabel": {
-        "message": "Learning Tips:"
-    },
-    "aiContextRelatedExpressionsLabel": {
-        "message": "Related Expressions:"
-    },
-    "aiContextKeyInsightsLabel": {
-        "message": "Key Insights:"
     },
     "navAIContext": {
         "message": "AI Context"
@@ -706,6 +553,9 @@
     },
     "sidepanelWordsToAnalyze": {
         "message": "Words to Analyze"
+    },
+    "sidepanelRemoveWordLabel": {
+        "message": "Remove %s at position %d"
     },
     "sidepanelWordInputPlaceholder": {
         "message": "Click on subtitle words to add them for analysis..."
@@ -818,20 +668,11 @@
     "themeLight": {
         "message": "Light"
     },
-    "useSidePanel": {
-        "message": "Use Side Panel:"
-    },
-    "useSidePanelDescription": {
-        "message": "Use Chrome Side Panel instead of the modal for AI context analysis. Disable to use the legacy modal."
-    },
     "vertexImportSuccessEphemeral": {
         "message": "Access token generated. The service-account key was not stored; re-import the JSON when the token expires."
     },
     "vertexNotConfiguredEphemeral": {
         "message": "Import a service account JSON once to generate a short-lived token, or paste a token manually."
-    },
-    "vertexManualTokenSaveFailed": {
-        "message": "Could not save the access token: %s"
     },
     "vertexTokenExpiredReimport": {
         "message": "⚠️ Access token expired. Re-import the service account JSON or paste a new access token."

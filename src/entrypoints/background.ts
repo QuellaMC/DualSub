@@ -52,8 +52,9 @@ export default defineBackground(() => {
     void (async () => {
         try {
             await migrateLegacyConfiguration();
+            await configService.setDefaultsForMissingKeys();
         } catch (error) {
-            logger.error('Legacy configuration migration failed', error);
+            logger.error('Configuration migration or repair failed', error);
         }
         try {
             setLoggingLevel(await configService.get('loggingLevel'));

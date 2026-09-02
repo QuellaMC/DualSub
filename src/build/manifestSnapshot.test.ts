@@ -12,11 +12,12 @@ const builtManifestPath = fileURLToPath(
 );
 
 describe.skipIf(!existsSync(builtManifestPath))('built manifest', () => {
-    it('matches the golden snapshot (ignoring version)', () => {
+    it('matches the golden snapshot (ignoring version fields)', () => {
         const built = JSON.parse(
             readFileSync(builtManifestPath, 'utf8')
         ) as Record<string, unknown>;
         delete built.version;
+        delete built.version_name;
         expect(built).toEqual(golden);
     });
 });

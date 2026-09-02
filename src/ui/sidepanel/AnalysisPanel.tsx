@@ -74,7 +74,11 @@ export function AnalysisPanel({ t }: { t: Translate }) {
                                     type="button"
                                     onClick={() => void removeAt(index)}
                                     disabled={locked}
-                                    aria-label={`Remove ${word} at position ${index + 1}`}
+                                    aria-label={t(
+                                        'sidepanelRemoveWordLabel',
+                                        word,
+                                        index + 1
+                                    )}
                                 >
                                     <span aria-hidden="true">×</span>
                                 </button>

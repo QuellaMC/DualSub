@@ -3,12 +3,13 @@ name: Release
 on:
     push:
         branches: [main]
+    workflow_dispatch:
 
 permissions:
     contents: write
 
 concurrency:
-    group: release-main
+    group: release-${{ github.ref }}
     cancel-in-progress: false
 
 jobs:
@@ -20,10 +21,10 @@ jobs:
             GH_TOKEN: ${{ github.token }}
         steps:
             - name: Check out repository
-              uses: actions/checkout@v7
+              uses: actions/checkout@v4
 
             - name: Set up Node.js
-              uses: actions/setup-node@v6
+              uses: actions/setup-node@v4
               with:
                   node-version: '24'
                   cache: npm
@@ -43,14 +44,20 @@ jobs:
             - name: Lint
               run: npm run lint
 
-            - name: Test with coverage ratchet
-              run: npm run test:coverage
+            - name: Type-check
+              run: npm run compile
 
             - name: Build extension
               run: npm run build
 
-            - name: Verify extension artifact
-              run: npm run verify:build
+            - name: Test with coverage floors
+              run: npm run test:coverage
+
+            - name: Package extension
+              run: npm run zip
+
+            - name: Verify release artifact
+              run: npm run verify:release
 
             - name: Read release version
               id: version
@@ -59,6 +66,11 @@ jobs:
                   version=$(node -p "JSON.parse(require('node:fs').readFileSync('package.json', 'utf8')).version")
                   echo "version=$version" >> "$GITHUB_OUTPUT"
                   echo "tag=v$version" >> "$GITHUB_OUTPUT"
+                  if [[ "$version" == *-* ]]; then
+                    echo "prerelease=true" >> "$GITHUB_OUTPUT"
+                  else
+                    echo "prerelease=false" >> "$GITHUB_OUTPUT"
+                  fi
 
             - name: Check for an existing release
               id: existing_release
@@ -70,21 +82,19 @@ jobs:
                     echo "exists=false" >> "$GITHUB_OUTPUT"
                   fi
 
-            - name: Package extension
-              if: steps.existing_release.outputs.exists == 'false'
-              shell: bash
-              run: |
-                  archive="dualsub-${{ steps.version.outputs.tag }}.zip"
-                  (cd dist && zip -qr "../$archive" .)
-                  unzip -t "$archive"
-
             - name: Create GitHub release
               if: steps.existing_release.outputs.exists == 'false'
               shell: bash
               run: |
                   archive="dualsub-${{ steps.version.outputs.tag }}.zip"
+                  cp ".output/dualsub-${{ steps.version.outputs.version }}-chrome.zip" "$archive"
+                  if [[ "${{ steps.version.outputs.prerelease }}" == "true" ]]; then
+                    flags=(--prerelease)
+                  else
+                    flags=(--latest)
+                  fi
                   gh release create "${{ steps.version.outputs.tag }}" "$archive" \
                     --generate-notes \
-                    --latest \
                     --target "$GITHUB_SHA" \
-                    --title "Release ${{ steps.version.outputs.tag }}"
+                    --title "Release ${{ steps.version.outputs.tag }}" \
+                    "${flags[@]}"

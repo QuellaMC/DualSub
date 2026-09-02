@@ -365,20 +365,11 @@
     "vertexGeneratingToken": {
         "message": "액세스 토큰 생성 중..."
     },
-    "vertexImportSuccess": {
-        "message": "서비스 계정을 가져오고 토큰을 생성했습니다."
-    },
     "vertexImportFailed": {
         "message": "가져오기 실패: %s"
     },
-    "vertexTokenExpired": {
-        "message": "⚠️ 액세스 토큰이 만료되었습니다. 새로고침을 클릭하여 갱신하세요."
-    },
     "vertexConfigured": {
         "message": "⚠️ Vertex AI가 구성되었습니다. 연결을 테스트하세요."
-    },
-    "vertexNotConfigured": {
-        "message": "서비스 계정 JSON을 가져오거나 자격 증명을 입력하세요."
     },
     "featureVertexServiceAccount": {
         "message": "서비스 계정 JSON 가져오기"
@@ -455,69 +446,6 @@
     "deeplTestNeedsTesting": {
         "message": "⚠️ DeepL API 키 테스트가 필요합니다."
     },
-    "aiContextModalTitle": {
-        "message": "AI 컨텍스트 분석"
-    },
-    "aiContextSelectedWords": {
-        "message": "선택된 단어"
-    },
-    "aiContextNoWordsSelected": {
-        "message": "선택된 단어가 없습니다"
-    },
-    "aiContextClickHint": {
-        "message": "💡 단어를 클릭하여 추가하거나 제거하세요."
-    },
-    "aiContextStartAnalysis": {
-        "message": "분석 시작"
-    },
-    "aiContextPauseAnalysis": {
-        "message": "⏸ 일시정지"
-    },
-    "aiContextPauseAnalysisTitle": {
-        "message": "분석 일시정지"
-    },
-    "aiContextInitialMessage": {
-        "message": "자막에서 단어를 선택하여 분석을 시작하세요."
-    },
-    "aiContextAnalyzing": {
-        "message": "컨텍스트 분석 중..."
-    },
-    "aiContextPauseNote": {
-        "message": "⏸ 를 클릭하여 분석 일시정지"
-    },
-    "aiContextAnalysisFailed": {
-        "message": "분석 실패"
-    },
-    "aiContextNoContent": {
-        "message": "분석 콘텐츠 없음"
-    },
-    "aiContextNoContentMessage": {
-        "message": "분석이 완료되었지만 콘텐츠가 반환되지 않았습니다."
-    },
-    "aiContextDefinition": {
-        "message": "📖 정의"
-    },
-    "aiContextCultural": {
-        "message": "🌍 문화적 맥락"
-    },
-    "aiContextCulturalSignificance": {
-        "message": "⭐ 문화적 의미"
-    },
-    "aiContextHistorical": {
-        "message": "📜 역사적 맥락"
-    },
-    "aiContextHistoricalSignificance": {
-        "message": "📜 역사적 의미"
-    },
-    "aiContextEvolution": {
-        "message": "🔄 시대별 변화"
-    },
-    "aiContextLinguistic": {
-        "message": "🔤 언어학적 분석"
-    },
-    "aiContextGrammar": {
-        "message": "📝 문법 및 의미론"
-    },
     "aiContextUsage": {
         "message": "💡 사용법 및 예시"
     },
@@ -529,72 +457,6 @@
     },
     "aiContextKeyInsights": {
         "message": "🔑 핵심 통찰"
-    },
-    "aiContextTypeCultural": {
-        "message": "문화적"
-    },
-    "aiContextTypeHistorical": {
-        "message": "역사적"
-    },
-    "aiContextTypeLinguistic": {
-        "message": "언어학적"
-    },
-    "aiContextTypeComprehensive": {
-        "message": "포괄적"
-    },
-    "aiContextTypeGeneric": {
-        "message": "맥락"
-    },
-    "aiContextClose": {
-        "message": "닫기"
-    },
-    "aiContextAnalysisResults": {
-        "message": "분석 결과"
-    },
-    "aiContextRetrying": {
-        "message": "분석 실패, 재생성 중..."
-    },
-    "aiContextRetryNotification": {
-        "message": "분석 실패, 재시도 중..."
-    },
-    "aiContextRetryButton": {
-        "message": "다시 시도"
-    },
-    "aiContextMalformedResponse": {
-        "message": "AI 서비스가 잘못된 응답 형식을 반환했습니다. 이는 일시적인 서비스 문제로 인한 것일 수 있습니다."
-    },
-    "aiContextCulturalContext": {
-        "message": "문화적 맥락:"
-    },
-    "aiContextSocialUsage": {
-        "message": "사회적 용법:"
-    },
-    "aiContextRegionalNotes": {
-        "message": "지역적 특징:"
-    },
-    "aiContextOrigins": {
-        "message": "어원:"
-    },
-    "aiContextHistoricalContext": {
-        "message": "역사적 배경:"
-    },
-    "aiContextHistoricalSignificanceLabel": {
-        "message": "역사적 의미:"
-    },
-    "aiContextEvolutionLabel": {
-        "message": "변화 과정:"
-    },
-    "aiContextEtymology": {
-        "message": "어원학:"
-    },
-    "aiContextLearningTipsLabel": {
-        "message": "학습 팁:"
-    },
-    "aiContextRelatedExpressionsLabel": {
-        "message": "관련 표현:"
-    },
-    "aiContextKeyInsightsLabel": {
-        "message": "핵심 통찰:"
     },
     "navAIContext": {
         "message": "AI 컨텍스트"
@@ -694,6 +556,9 @@
     },
     "sidepanelWordsToAnalyze": {
         "message": "분석할 단어"
+    },
+    "sidepanelRemoveWordLabel": {
+        "message": "%s (%d번째) 제거"
     },
     "sidepanelWordInputPlaceholder": {
         "message": "자막의 단어를 클릭하여 분석에 추가하세요..."
@@ -803,20 +668,11 @@
     "themeLight": {
         "message": "Light"
     },
-    "useSidePanel": {
-        "message": "Use Side Panel:"
-    },
-    "useSidePanelDescription": {
-        "message": "Use Chrome Side Panel instead of the modal for AI context analysis. Disable to use the legacy modal."
-    },
     "vertexImportSuccessEphemeral": {
         "message": "Access token generated. The service-account key was not stored; re-import the JSON when the token expires."
     },
     "vertexNotConfiguredEphemeral": {
         "message": "Import a service account JSON once to generate a short-lived token, or paste a token manually."
-    },
-    "vertexManualTokenSaveFailed": {
-        "message": "액세스 토큰을 저장하지 못했습니다: %s"
     },
     "vertexTokenExpiredReimport": {
         "message": "⚠️ Access token expired. Re-import the service account JSON or paste a new access token."
@@ -835,21 +691,6 @@
     },
     "videoControlTitle": {
         "message": "Video Control"
-    },
-    "aiContextGrammarNotes": {
-        "message": "문법 주석:"
-    },
-    "aiContextGrammarSemantics": {
-        "message": "문법과 의미론:"
-    },
-    "aiContextLinguisticAnalysis": {
-        "message": "언어학적 분석:"
-    },
-    "aiContextTranslationNotes": {
-        "message": "번역 주석:"
-    },
-    "aiContextUsageExamples": {
-        "message": "용법과 예시:"
     },
     "translationApiError": {
         "message": "[번역 API 오류. 설정을 확인하거나 다른 제공업체를 시도해보세요.]"
