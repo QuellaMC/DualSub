@@ -59,6 +59,53 @@ export function readCompletionText(data: unknown): string | null {
     return null;
 }
 
+function readModelIds(data: unknown): string[] | null {
+    if (!isRecord(data)) {
+        return null;
+    }
+    const openai = data['data'];
+    if (Array.isArray(openai)) {
+        return openai.flatMap((entry: unknown) =>
+            isRecord(entry) && typeof entry['id'] === 'string'
+                ? [entry['id']]
+                : []
+        );
+    }
+    const gemini = data['models'];
+    if (Array.isArray(gemini)) {
+        return gemini.flatMap((entry: unknown) =>
+            isRecord(entry) &&
+            typeof entry['name'] === 'string' &&
+            entry['name'].includes('models/gemini')
+                ? [entry['name']]
+                : []
+        );
+    }
+    return null;
+}
+
+/** The model ids an endpoint advertises: OpenAI's `data[].id`, or the
+ *  Gemini models from Google's `models[].name`. */
+export async function fetchAvailableModels(
+    apiKey: string,
+    baseUrl: string
+): Promise<string[]> {
+    const response = await providerFetch(PROVIDER, `${baseUrl}/models`, {
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${apiKey}`,
+        },
+    });
+    if (!response.ok) {
+        throw httpFailureFrom(PROVIDER, response);
+    }
+    const models = readModelIds(await readProviderJson(PROVIDER, response));
+    if (models === null) {
+        throw malformedResponse(PROVIDER);
+    }
+    return models;
+}
+
 export const openaiCompatibleProvider: TranslationProvider = {
     id: PROVIDER,
     pacing: {

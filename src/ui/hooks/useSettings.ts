@@ -41,9 +41,11 @@ function pickWatched<K extends SettingsKey>(
  * unavailable surface retries on the next storage change.
  */
 export function useSettings<K extends SettingsKey>(
-    keys: readonly K[]
+    keys: readonly K[],
+    options: { readonly includeSensitive?: boolean } = {}
 ): SettingsHandle<K> {
     const keyList = keys.join(' ');
+    const includeSensitive = options.includeSensitive === true;
     const [state, setState] = useState<SettingsState<K>>({
         status: 'loading',
         settings: null,
@@ -61,8 +63,10 @@ export function useSettings<K extends SettingsKey>(
         const load = async (): Promise<void> => {
             let next: SettingsState<K>;
             try {
-                const { values } =
-                    await configService.readMultipleResultStrict(watched);
+                const { values } = await configService.readMultipleResultStrict(
+                    watched,
+                    { includeSensitive }
+                );
                 next = {
                     status: 'ready',
                     settings: values as SettingsProjection<K>,
@@ -77,6 +81,7 @@ export function useSettings<K extends SettingsKey>(
 
         const unsubscribe = configService.onChanged(
             (changes: SettingsChanges) => {
+                // Credential changes reach only surfaces that asked for them.
                 if (!active) {
                     return;
                 }
@@ -96,7 +101,8 @@ export function useSettings<K extends SettingsKey>(
                           }
                         : previous
                 );
-            }
+            },
+            { includeSensitive }
         );
         void load();
 
@@ -104,7 +110,7 @@ export function useSettings<K extends SettingsKey>(
             active = false;
             unsubscribe();
         };
-    }, [keyList]);
+    }, [keyList, includeSensitive]);
 
     const save = useCallback(
         async (changes: Partial<SettingsProjection<K>>): Promise<void> => {

@@ -54,7 +54,10 @@ export type Translate = (
  */
 export function useI18n(locale: string | null): {
     readonly t: Translate;
+    /** The current locale's catalog is in place. */
     readonly ready: boolean;
+    /** Some catalog is in place (an older locale's while a new one loads). */
+    readonly loadedLocale: string | null;
 } {
     const [loaded, setLoaded] = useState<{
         locale: string;
@@ -99,5 +102,9 @@ export function useI18n(locale: string | null): {
         [catalog]
     );
 
-    return { t, ready: loaded !== null && loaded.locale === locale };
+    return {
+        t,
+        ready: loaded !== null && loaded.locale === locale,
+        loadedLocale: loaded?.locale ?? null,
+    };
 }

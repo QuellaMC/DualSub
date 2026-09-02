@@ -8,7 +8,10 @@ import {
     readProviderSettings,
     type TranslationProvider,
 } from '../provider';
-import type { ProviderErrorDetails } from '../providerError';
+import {
+    TranslationProviderError,
+    type ProviderErrorDetails,
+} from '../providerError';
 
 const PROVIDER = 'deepl';
 const ENDPOINTS = {
@@ -64,6 +67,52 @@ function readTranslatedText(data: unknown): string | null {
     return typeof text === 'string' ? text : null;
 }
 
+export interface DeepLCredentials {
+    readonly apiKey: string;
+    readonly plan: 'free' | 'pro';
+}
+
+async function translateWithDeepL(
+    credentials: DeepLCredentials,
+    text: string,
+    sourceLang: string,
+    targetLang: string
+): Promise<string> {
+    const body = [`text=${encodeURIComponent(text)}`];
+    if (sourceLang !== 'auto') {
+        body.push(
+            `source_lang=${encodeURIComponent(toDeepLLanguage(sourceLang))}`
+        );
+    }
+    body.push(`target_lang=${encodeURIComponent(toDeepLLanguage(targetLang))}`);
+    const response = await providerFetch(
+        PROVIDER,
+        ENDPOINTS[credentials.plan],
+        {
+            method: 'POST',
+            headers: {
+                Authorization: `DeepL-Auth-Key ${credentials.apiKey}`,
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: body.join('&'),
+        }
+    );
+    if (!response.ok) {
+        throw httpFailureFrom(
+            PROVIDER,
+            response,
+            failureOverrides(response.status)
+        );
+    }
+    const translated = readTranslatedText(
+        await readProviderJson(PROVIDER, response)
+    );
+    if (translated === null) {
+        throw malformedResponse(PROVIDER);
+    }
+    return translated;
+}
+
 export const deeplProvider: TranslationProvider = {
     id: PROVIDER,
     pacing: { policy: { kind: 'provider' }, minDelayMs: 500 },
@@ -75,40 +124,48 @@ export const deeplProvider: TranslationProvider = {
         if (deeplApiKey.trim() === '') {
             throw missingCredential(PROVIDER, 'DeepL API key');
         }
-        const body = [`text=${encodeURIComponent(text)}`];
-        if (sourceLang !== 'auto') {
-            body.push(
-                `source_lang=${encodeURIComponent(toDeepLLanguage(sourceLang))}`
-            );
-        }
-        body.push(
-            `target_lang=${encodeURIComponent(toDeepLLanguage(targetLang))}`
+        return translateWithDeepL(
+            { apiKey: deeplApiKey, plan: deeplApiPlan },
+            text,
+            sourceLang,
+            targetLang
         );
-        const response = await providerFetch(
-            PROVIDER,
-            ENDPOINTS[deeplApiPlan],
-            {
-                method: 'POST',
-                headers: {
-                    Authorization: `DeepL-Auth-Key ${deeplApiKey}`,
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: body.join('&'),
-            }
-        );
-        if (!response.ok) {
-            throw httpFailureFrom(
-                PROVIDER,
-                response,
-                failureOverrides(response.status)
-            );
-        }
-        const translated = readTranslatedText(
-            await readProviderJson(PROVIDER, response)
-        );
-        if (translated === null) {
-            throw malformedResponse(PROVIDER);
-        }
-        return translated;
     },
 };
+
+export type DeepLCheck =
+    | { readonly ok: true }
+    | {
+          readonly ok: false;
+          readonly reason:
+              'invalid-key' | 'quota' | 'network' | 'malformed' | 'http';
+          readonly status: number | null;
+      };
+
+/** Options-page connection check: one small translation with the given key. */
+export async function checkDeepLConnection(
+    credentials: DeepLCredentials
+): Promise<DeepLCheck> {
+    try {
+        await translateWithDeepL(credentials, 'Hello', 'auto', 'zh-CN');
+        return { ok: true };
+    } catch (error) {
+        if (!(error instanceof TranslationProviderError)) {
+            throw error;
+        }
+        const status = error.status;
+        if (status === 403) {
+            return { ok: false, reason: 'invalid-key', status };
+        }
+        if (status === 456) {
+            return { ok: false, reason: 'quota', status };
+        }
+        if (error.code === 'NETWORK_ERROR') {
+            return { ok: false, reason: 'network', status };
+        }
+        if (status === null) {
+            return { ok: false, reason: 'malformed', status };
+        }
+        return { ok: false, reason: 'http', status };
+    }
+}

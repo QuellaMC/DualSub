@@ -2,14 +2,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { browser } from 'wxt/browser';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { TranslationProviderError } from '../providerError';
-import { deeplProvider, toDeepLLanguage } from './deepl';
-import { buildVertexEndpoint, geminiVertexProvider } from './geminiVertex';
+import { checkDeepLConnection, deeplProvider, toDeepLLanguage } from './deepl';
+import {
+    buildVertexEndpoint,
+    checkVertexConnection,
+    geminiVertexProvider,
+} from './geminiVertex';
 import { googleProvider } from './google';
 import {
     createMicrosoftEdgeAuthProvider,
     readJwtExpiry,
 } from './microsoftEdgeAuth';
 import {
+    fetchAvailableModels,
     normalizeModelName,
     openaiCompatibleProvider,
 } from './openaiCompatible';
@@ -556,5 +561,117 @@ describe('vertex gemini provider', () => {
             geminiVertexProvider.translate('Hello', 'en', 'ja')
         );
         expect(error.code).toBe('REQUEST_FAILED');
+    });
+});
+
+describe('provider connection checks', () => {
+    it('reports a working DeepL key after one small translation', async () => {
+        fetchMock.mockResolvedValueOnce(
+            jsonResponse({ translations: [{ text: '你好' }] })
+        );
+        await expect(
+            checkDeepLConnection({ apiKey: 'k', plan: 'pro' })
+        ).resolves.toEqual({ ok: true });
+        const { url, init } = requestAt(0);
+        expect(url).toBe('https://api.deepl.com/v2/translate');
+        expect(headersOf(init).Authorization).toBe('DeepL-Auth-Key k');
+        expect(init.body).toBe('text=Hello&target_lang=ZH-HANS');
+        expect(await fakeBrowser.storage.local.get('deeplApiKey')).toEqual({});
+    });
+
+    it.each([
+        [403, 'invalid-key'],
+        [456, 'quota'],
+        [500, 'http'],
+    ] as const)('classifies a DeepL %i as %s', async (status, reason) => {
+        fetchMock.mockResolvedValueOnce(textResponse('', status));
+        await expect(
+            checkDeepLConnection({ apiKey: 'k', plan: 'free' })
+        ).resolves.toEqual({ ok: false, reason, status });
+    });
+
+    it('classifies DeepL transport and shape failures', async () => {
+        fetchMock.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+        await expect(
+            checkDeepLConnection({ apiKey: 'k', plan: 'free' })
+        ).resolves.toEqual({ ok: false, reason: 'network', status: null });
+
+        fetchMock.mockResolvedValueOnce(jsonResponse({ translations: [] }));
+        await expect(
+            checkDeepLConnection({ apiKey: 'k', plan: 'free' })
+        ).resolves.toEqual({ ok: false, reason: 'malformed', status: null });
+    });
+
+    it('lists OpenAI and Gemini model ids from the models endpoint', async () => {
+        fetchMock.mockResolvedValueOnce(
+            jsonResponse({
+                data: [{ id: 'gpt-a' }, { id: 'gpt-b' }, { noId: 1 }],
+            })
+        );
+        await expect(
+            fetchAvailableModels('sk', 'https://api.openai.com/v1')
+        ).resolves.toEqual(['gpt-a', 'gpt-b']);
+        const { url, init } = requestAt(0);
+        expect(url).toBe('https://api.openai.com/v1/models');
+        expect(headersOf(init).Authorization).toBe('Bearer sk');
+
+        fetchMock.mockResolvedValueOnce(
+            jsonResponse({
+                models: [
+                    { name: 'models/gemini-2.5-flash' },
+                    { name: 'models/text-bison' },
+                ],
+            })
+        );
+        await expect(
+            fetchAvailableModels(
+                'key',
+                'https://generativelanguage.googleapis.com/v1beta/openai'
+            )
+        ).resolves.toEqual(['models/gemini-2.5-flash']);
+    });
+
+    it('rejects a model listing failure with the provider error', async () => {
+        fetchMock.mockResolvedValueOnce(textResponse('', 401));
+        const error = await failure(
+            fetchAvailableModels('sk', 'https://api.openai.com/v1')
+        );
+        expect(error.code).toBe('AUTHENTICATION_ERROR');
+
+        fetchMock.mockResolvedValueOnce(jsonResponse({ unexpected: true }));
+        const malformed = await failure(
+            fetchAvailableModels('sk', 'https://api.openai.com/v1')
+        );
+        expect(malformed.code).toBe('REQUEST_FAILED');
+    });
+
+    it('checks Vertex with the given credentials without touching storage', async () => {
+        fetchMock.mockResolvedValueOnce(
+            jsonResponse({
+                candidates: [{ content: { parts: [{ text: 'pong' }] } }],
+            })
+        );
+        await expect(
+            checkVertexConnection({
+                accessToken: 'tok',
+                projectId: 'p',
+                location: 'us-central1',
+                model: 'gemini-2.5-flash',
+            })
+        ).resolves.toBeUndefined();
+        const { url, init } = requestAt(0);
+        expect(url).toContain('/projects/p/locations/us-central1/');
+        expect(headersOf(init).Authorization).toBe('Bearer tok');
+
+        fetchMock.mockResolvedValueOnce(textResponse('', 403));
+        const error = await failure(
+            checkVertexConnection({
+                accessToken: 'tok',
+                projectId: 'p',
+                location: 'us-central1',
+                model: 'gemini-2.5-flash',
+            })
+        );
+        expect(error.code).toBe('AUTHENTICATION_ERROR');
     });
 });

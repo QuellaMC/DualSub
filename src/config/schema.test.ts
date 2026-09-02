@@ -13,8 +13,8 @@ import {
 } from './schema';
 
 describe('registry shape', () => {
-    it('has exactly the 47 v3 keys', () => {
-        expect(SETTINGS_KEYS).toHaveLength(47);
+    it('has exactly the 48 v3 keys', () => {
+        expect(SETTINGS_KEYS).toHaveLength(48);
     });
 
     it('retired v2 keys are gone', () => {
@@ -46,7 +46,12 @@ describe('registry shape', () => {
         const local = getKeysByScope('local');
         expect(sync.length + local.length).toBe(SETTINGS_KEYS.length);
         expect(local.sort()).toEqual(
-            ['appearanceAccordionOpen', 'debugMode', ...SENSITIVE_KEYS].sort()
+            [
+                'appearanceAccordionOpen',
+                'debugMode',
+                'vertexTokenExpiresAt',
+                ...SENSITIVE_KEYS,
+            ].sort()
         );
     });
 });

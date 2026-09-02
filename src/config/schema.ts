@@ -12,6 +12,14 @@ const DANGEROUS_OBJECT_KEYS = new Set([
 ]);
 const INVALID_SETTING_VALUE_MESSAGE = 'Invalid setting value.';
 
+/** Numeric limits shared by the schema and the controls that edit them. */
+export const SETTING_BOUNDS = {
+    translationDelay: { min: 0, max: 5000 },
+    aiContextTimeout: { min: 5000, max: 30000 },
+    aiContextRateLimit: { min: 10, max: 300 },
+    aiContextRetryAttempts: { min: 1, max: 5 },
+} as const;
+
 function isPlausibleLanguageTag(value: string): boolean {
     if (!value || value.trim() !== value) {
         return false;
@@ -195,7 +203,11 @@ export const configSchema = {
         scope: 'sync',
     }),
     translationDelay: setting({
-        schema: z.number().finite().min(0).max(5000),
+        schema: z
+            .number()
+            .finite()
+            .min(SETTING_BOUNDS.translationDelay.min)
+            .max(SETTING_BOUNDS.translationDelay.max),
         default: 150,
         scope: 'sync',
     }),
@@ -251,6 +263,13 @@ export const configSchema = {
         schema: nonblankString,
         default: 'gemini-2.5-flash',
         scope: 'sync',
+    }),
+    /** When an access token minted from an imported service account
+     *  expires (epoch ms); 0 for a manually pasted token. */
+    vertexTokenExpiresAt: setting({
+        schema: z.number().int().nonnegative(),
+        default: 0,
+        scope: 'local',
     }),
 
     subtitlesEnabled: setting({
@@ -369,7 +388,11 @@ export const configSchema = {
     }),
 
     aiContextTimeout: setting({
-        schema: z.number().int().min(5000).max(30000),
+        schema: z
+            .number()
+            .int()
+            .min(SETTING_BOUNDS.aiContextTimeout.min)
+            .max(SETTING_BOUNDS.aiContextTimeout.max),
         default: 30000,
         scope: 'sync',
     }),
@@ -390,7 +413,11 @@ export const configSchema = {
     }),
 
     aiContextRateLimit: setting({
-        schema: z.number().int().min(10).max(300),
+        schema: z
+            .number()
+            .int()
+            .min(SETTING_BOUNDS.aiContextRateLimit.min)
+            .max(SETTING_BOUNDS.aiContextRateLimit.max),
         default: 60,
         scope: 'sync',
     }),
@@ -406,7 +433,11 @@ export const configSchema = {
     }),
 
     aiContextRetryAttempts: setting({
-        schema: z.number().int().min(1).max(5),
+        schema: z
+            .number()
+            .int()
+            .min(SETTING_BOUNDS.aiContextRetryAttempts.min)
+            .max(SETTING_BOUNDS.aiContextRetryAttempts.max),
         default: 3,
         scope: 'sync',
     }),

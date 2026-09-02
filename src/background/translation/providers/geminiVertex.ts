@@ -56,6 +56,64 @@ export function readCandidateText(data: unknown): string | null {
     return text === '' ? null : text;
 }
 
+export interface VertexCredentials {
+    readonly accessToken: string;
+    readonly projectId: string;
+    readonly location: string;
+    readonly model: string;
+}
+
+async function translateWithVertex(
+    credentials: VertexCredentials,
+    text: string,
+    sourceLang: string,
+    targetLang: string
+): Promise<string> {
+    const response = await providerFetch(
+        PROVIDER,
+        buildVertexEndpoint(
+            credentials.projectId,
+            credentials.location,
+            credentials.model
+        ),
+        {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${credentials.accessToken}`,
+            },
+            body: JSON.stringify({
+                contents: [
+                    {
+                        role: 'user',
+                        parts: [
+                            {
+                                text: `${translationInstruction(sourceLang, targetLang)}\n\n${text}`,
+                            },
+                        ],
+                    },
+                ],
+                generationConfig: {
+                    maxOutputTokens: Math.max(
+                        256,
+                        Math.min(2048, Math.ceil(text.length * 3))
+                    ),
+                },
+            }),
+        }
+    );
+    if (!response.ok) {
+        throw httpFailureFrom(PROVIDER, response);
+    }
+    const translated = readCandidateText(
+        await readProviderJson(PROVIDER, response)
+    );
+    if (translated === null) {
+        throw malformedResponse(PROVIDER);
+    }
+    return translated;
+}
+
 export const geminiVertexProvider: TranslationProvider = {
     id: PROVIDER,
     pacing: {
@@ -67,48 +125,23 @@ export const geminiVertexProvider: TranslationProvider = {
         if (SETTINGS_KEYS.some((key) => settings[key].trim() === '')) {
             throw missingCredential(PROVIDER, 'Vertex AI configuration');
         }
-        const response = await providerFetch(
-            PROVIDER,
-            buildVertexEndpoint(
-                settings.vertexProjectId,
-                settings.vertexLocation,
-                settings.vertexModel
-            ),
+        return translateWithVertex(
             {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${settings.vertexAccessToken}`,
-                },
-                body: JSON.stringify({
-                    contents: [
-                        {
-                            role: 'user',
-                            parts: [
-                                {
-                                    text: `${translationInstruction(sourceLang, targetLang)}\n\n${text}`,
-                                },
-                            ],
-                        },
-                    ],
-                    generationConfig: {
-                        maxOutputTokens: Math.max(
-                            256,
-                            Math.min(2048, Math.ceil(text.length * 3))
-                        ),
-                    },
-                }),
-            }
+                accessToken: settings.vertexAccessToken,
+                projectId: settings.vertexProjectId,
+                location: settings.vertexLocation,
+                model: settings.vertexModel,
+            },
+            text,
+            sourceLang,
+            targetLang
         );
-        if (!response.ok) {
-            throw httpFailureFrom(PROVIDER, response);
-        }
-        const translated = readCandidateText(
-            await readProviderJson(PROVIDER, response)
-        );
-        if (translated === null) {
-            throw malformedResponse(PROVIDER);
-        }
-        return translated;
     },
 };
+
+/** Options-page connection check; rejects with the provider error. */
+export async function checkVertexConnection(
+    credentials: VertexCredentials
+): Promise<void> {
+    await translateWithVertex(credentials, 'ping', 'en', 'en');
+}

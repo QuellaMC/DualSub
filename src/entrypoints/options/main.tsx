@@ -1,7 +1,13 @@
+import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { configService } from '@/config/service';
+import { OptionsApp } from '@/ui/options/OptionsApp';
+import '@/ui/options/options.css';
 
-function OptionsApp() {
-    return <h1>DualSub Settings</h1>;
-}
+void configService.syncLoggingLevel();
 
-createRoot(document.getElementById('root')!).render(<OptionsApp />);
+createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+        <OptionsApp />
+    </StrictMode>
+);
