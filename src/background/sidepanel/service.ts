@@ -574,14 +574,14 @@ export class SidePanelService {
 
     /**
      * Confirmed panels start from a bound null state, then content is asked
-     * to republish. The republished owner is projected only when it is a
-     * fresher receipt than what was known when the request went out, for
-     * the same document unless a navigation happened meanwhile, and only
-     * while this exact binding still stands. When content has nothing to
-     * republish, or the tab provably has no content script, and no
-     * snapshot arrived meanwhile, the panel hears a second null: the tab
-     * is empty. An ambiguous failure or an uncorrelated reply says
-     * nothing, so the panel hears what was already known, if anything.
+     * to republish. An owner accepted after the request went out is the
+     * tab's current truth, whatever document or lifecycle it belongs to
+     * (the router vouches for its provenance), and is projected while this
+     * exact binding still stands. When content has nothing to republish,
+     * or the tab provably has no content script, and no snapshot arrived
+     * meanwhile, the panel hears a second null: the tab is empty. An
+     * ambiguous failure or an uncorrelated reply says nothing, so the
+     * panel hears what was already known, if anything.
      */
     private async synchronizeRegisteredPort(
         connection: Connection,
@@ -626,8 +626,6 @@ export class SidePanelService {
             return ownsBinding();
         }
         const capturedReceiptEpoch = this.selectionReceiptEpoch;
-        const capturedInvalidationEpoch =
-            this.selectionInvalidationEpochByTab.get(tabId) ?? 0;
 
         let reply: 'accepted' | 'declined' | 'unknown';
         try {
@@ -661,15 +659,8 @@ export class SidePanelService {
 
         const currentOwner = this.selectionOwnersByTab.get(tabId);
         const known = currentOwner?.windowId === windowId ? currentOwner : null;
-        const navigated =
-            (this.selectionInvalidationEpochByTab.get(tabId) ?? 0) !==
-            capturedInvalidationEpoch;
         const republished =
-            known &&
-            known.acceptedReceiptEpoch > capturedReceiptEpoch &&
-            (navigated ||
-                !capturedOwner ||
-                ownerIdentityEquals(known, capturedOwner))
+            known && known.acceptedReceiptEpoch > capturedReceiptEpoch
                 ? known
                 : null;
         if (republished) {

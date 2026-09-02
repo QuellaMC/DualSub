@@ -342,6 +342,30 @@ describe('SidePanelService registration', () => {
         });
     });
 
+    it('projects a higher lifecycle of the same document accepted during synchronization', async () => {
+        const { service, sendToTab } = harness();
+        service.acceptSelectionSnapshot(contentSender(), snapshot());
+        sendToTab.mockImplementation((contract, _tabId, request) => {
+            if (contract.action === 'sidePanelGetState') {
+                service.acceptSelectionSnapshot(
+                    contentSender(),
+                    snapshot({ lifecycleGeneration: 2, entries: [] })
+                );
+                const { data } = request as { data: { requestId: number } };
+                return Promise.resolve({
+                    requestId: data.requestId,
+                    accepted: true,
+                } as never);
+            }
+            return Promise.resolve({ success: true } as never);
+        });
+        const panel = await bound(service);
+        expect(panel.posted[2]!.data.selection).toMatchObject({
+            selectionOwnerGeneration: 2,
+            entries: [],
+        });
+    });
+
     it('projects the owner a navigation during synchronization left behind', async () => {
         const { service, sendToTab } = harness();
         service.acceptSelectionSnapshot(contentSender(), snapshot());
