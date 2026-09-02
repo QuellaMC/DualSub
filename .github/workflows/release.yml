@@ -82,6 +82,18 @@ jobs:
                     echo "exists=false" >> "$GITHUB_OUTPUT"
                   fi
 
+            - name: Write release notes from the changelog
+              if: steps.existing_release.outputs.exists == 'false'
+              shell: bash
+              run: |
+                  awk -v v="${{ steps.version.outputs.version }}" \
+                    'BEGIN { p = 0 } /^## \[/ { if (p) exit; p = ($2 == "[" v "]") } p' \
+                    CHANGELOG.md > release-notes.md
+                  if [[ ! -s release-notes.md ]]; then
+                    echo "CHANGELOG.md has no section for ${{ steps.version.outputs.version }}" >&2
+                    exit 1
+                  fi
+
             - name: Create GitHub release
               if: steps.existing_release.outputs.exists == 'false'
               shell: bash
@@ -94,6 +106,7 @@ jobs:
                     flags=(--latest)
                   fi
                   gh release create "${{ steps.version.outputs.tag }}" "$archive" \
+                    --notes-file release-notes.md \
                     --generate-notes \
                     --target "$GITHUB_SHA" \
                     --title "Release ${{ steps.version.outputs.tag }}" \
