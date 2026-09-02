@@ -120,20 +120,26 @@ export class SelectionAuthority {
         void this.queue(this.commit('clear', this.renderRevision));
     }
 
-    /** Background asks for the current snapshot again; the ack is true only
-     *  once that exact snapshot was accepted. */
+    /** Background asks for the current snapshot again. The ack is true once
+     *  the snapshot that is current here has been accepted there, following
+     *  the selection through any change that overtakes a replay; it is false
+     *  only when there is nothing to publish or the background refused it. */
     async handleRepublish(
         requestId: number
     ): Promise<{ requestId: number; accepted: boolean }> {
-        const snapshot = this.snapshot;
-        if (!snapshot) {
-            return { requestId, accepted: false };
+        for (;;) {
+            const snapshot = this.snapshot;
+            if (!snapshot) {
+                return { requestId, accepted: false };
+            }
+            const accepted = await this.queue(
+                snapshot,
+                () => this.snapshot === snapshot
+            );
+            if (this.snapshot === snapshot) {
+                return { requestId, accepted };
+            }
         }
-        const accepted = await this.queue(
-            snapshot,
-            () => this.snapshot === snapshot
-        );
-        return { requestId, accepted: accepted && this.snapshot === snapshot };
     }
 
     /**

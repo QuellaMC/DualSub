@@ -184,11 +184,14 @@ export function useAnalysis(panel: PanelHandle): {
             if (request.cancelled) {
                 return;
             }
-            // Judged against the state React is about to commit, so a
-            // selection that changed in the same tick wins over the answer.
+            // Judged against the state React is about to commit, so a tab
+            // cleared or reselected in the same tick wins over the answer.
             updateTab(tabId, (current) => {
                 const shown = selectionWords(current.selection);
-                if (shown.length > 0 && !sameWords(shown, words)) {
+                if (
+                    current.selection === null ||
+                    (shown.length > 0 && !sameWords(shown, words))
+                ) {
                     return null;
                 }
                 return response.success

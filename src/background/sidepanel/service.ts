@@ -574,7 +574,8 @@ export class SidePanelService {
      * fresher receipt for the same document than what was known when the
      * request went out, and only while this exact binding still stands.
      * When content has nothing to republish, or the tab has no content
-     * script at all, the panel hears a second null: the tab is empty.
+     * script at all, and no snapshot arrived meanwhile, the panel hears a
+     * second null: the tab is empty.
      */
     private async synchronizeRegisteredPort(
         connection: Connection,
@@ -642,25 +643,26 @@ export class SidePanelService {
         if (!ownsBinding()) {
             return false;
         }
-        if (!accepted) {
-            return this.projectSelectionNull(tabId);
-        }
 
         const currentOwner = this.selectionOwnersByTab.get(tabId);
-        if (
-            !currentOwner ||
-            currentOwner.windowId !== windowId ||
-            currentOwner.acceptedReceiptEpoch <= capturedReceiptEpoch ||
-            (this.selectionInvalidationEpochByTab.get(tabId) ?? 0) !==
-                capturedInvalidationEpoch ||
-            (capturedOwner && !ownerIdentityEquals(currentOwner, capturedOwner))
-        ) {
-            return ownsBinding();
+        const republished =
+            currentOwner &&
+            currentOwner.windowId === windowId &&
+            currentOwner.acceptedReceiptEpoch > capturedReceiptEpoch &&
+            (this.selectionInvalidationEpochByTab.get(tabId) ?? 0) ===
+                capturedInvalidationEpoch &&
+            (!capturedOwner || ownerIdentityEquals(currentOwner, capturedOwner))
+                ? currentOwner
+                : null;
+        if (!republished) {
+            // Acknowledged but not received yet: the replay's own broadcast
+            // follows. Not acknowledged: the tab has nothing to show.
+            return accepted ? ownsBinding() : this.projectSelectionNull(tabId);
         }
         if (
             !this.post(connection, {
                 action: MessageActions.SIDEPANEL_SELECTION_SYNC,
-                data: { binding, selection: projectOwner(currentOwner) },
+                data: { binding, selection: projectOwner(republished) },
             })
         ) {
             return false;
@@ -669,7 +671,7 @@ export class SidePanelService {
             return false;
         }
         const afterPost = this.selectionOwnersByTab.get(tabId);
-        if (!afterPost || !ownerStateEquals(afterPost, currentOwner)) {
+        if (!afterPost || !ownerStateEquals(afterPost, republished)) {
             this.projectSelectionNull(tabId);
         }
         return ownsBinding();

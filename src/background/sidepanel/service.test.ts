@@ -243,6 +243,26 @@ describe('SidePanelService registration', () => {
         expect(panel.alive).toBe(true);
     });
 
+    it('projects a snapshot that arrived during synchronization over a negative ack', async () => {
+        const { service, sendToTab } = harness();
+        sendToTab.mockImplementation((contract, _tabId, request) => {
+            if (contract.action === 'sidePanelGetState') {
+                service.acceptSelectionSnapshot(contentSender(), snapshot());
+                const { data } = request as { data: { requestId: number } };
+                return Promise.resolve({
+                    requestId: data.requestId,
+                    accepted: false,
+                } as never);
+            }
+            return Promise.resolve({ success: true } as never);
+        });
+        const panel = await bound(service);
+        expect(panel.posted[2]!.data.selection).toMatchObject({
+            selectionOwnerGeneration: 1,
+            entries: [{ wordIndex: 0, word: 'hola' }],
+        });
+    });
+
     it('reports an empty tab when the tab has no content script', async () => {
         const { service, sendToTab } = harness();
         sendToTab.mockRejectedValue(new Error('no receiver'));

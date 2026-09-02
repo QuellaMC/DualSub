@@ -144,8 +144,8 @@ describe('SelectionAuthority', () => {
         expect(published).toHaveLength(3);
     });
 
-    it('does not acknowledge a replay that a newer snapshot overtook', async () => {
-        const { authority, hold, release } = harness();
+    it('follows the selection when a newer snapshot overtakes the replay', async () => {
+        const { authority, published, hold, release } = harness();
         authority.onSubtitleChange(1);
         authority.toggle(intent(0, 'hola'));
         await flush();
@@ -153,7 +153,19 @@ describe('SelectionAuthority', () => {
         const pending = authority.handleRepublish(1);
         authority.toggle(intent(1, 'amigo'));
         release();
-        expect(await pending).toEqual({ requestId: 1, accepted: false });
+        expect(await pending).toEqual({ requestId: 1, accepted: true });
+        // The overtaking snapshot went out on its own, then again as the
+        // replay the ack stands for.
+        expect(published.slice(-2)).toMatchObject([
+            {
+                selectionRevision: 3,
+                entries: [
+                    { wordIndex: 0, word: 'hola' },
+                    { wordIndex: 1, word: 'amigo' },
+                ],
+            },
+            { selectionRevision: 3 },
+        ]);
     });
 
     it('removes one exact occurrence only after the successor snapshot is accepted', async () => {
