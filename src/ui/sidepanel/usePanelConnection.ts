@@ -14,25 +14,24 @@ export type PanelError =
     | { readonly kind: 'key'; readonly key: string }
     | { readonly kind: 'text'; readonly text: string };
 
-/** An answer, the words it was computed for, and the analysis settings
- *  it was produced under (the configuration key of useAnalysis). */
-export interface AnalysisRecord {
+/** What one analysis produced for some words under some analysis settings
+ *  (the configuration key of useAnalysis): an answer or an error. */
+export interface AnalysisOutcome {
     readonly words: readonly string[];
     readonly configuration: string;
-    readonly result: Analysis;
+    readonly answer: Analysis | null;
+    readonly error: PanelError | null;
 }
 
 export interface TabState {
     readonly selection: SelectionState | null;
-    readonly analysis: AnalysisRecord | null;
-    readonly error: PanelError | null;
+    readonly outcome: AnalysisOutcome | null;
     readonly analyzing: boolean;
 }
 
 export const EMPTY_TAB_STATE: TabState = {
     selection: null,
-    analysis: null,
-    error: null,
+    outcome: null,
     analyzing: false,
 };
 
@@ -69,6 +68,25 @@ export function sameWords(
     );
 }
 
+/** The same document, or the same snapshot replayed under a new owner
+ *  generation (a worker restart). Anything else is another document. */
+function continues(
+    previous: SelectionState | null,
+    next: SelectionState
+): boolean {
+    if (previous === null) {
+        return false;
+    }
+    if (previous.selectionOwnerGeneration === next.selectionOwnerGeneration) {
+        return true;
+    }
+    return (
+        previous.selectionRevision === next.selectionRevision &&
+        previous.renderRevision === next.renderRevision &&
+        sameWords(selectionWords(previous), selectionWords(next))
+    );
+}
+
 async function queryActiveTab(): Promise<TabBinding | null> {
     const [tab] = await browser.tabs.query({
         active: true,
@@ -81,9 +99,9 @@ async function queryActiveTab(): Promise<TabBinding | null> {
 
 /**
  * React view of the panel's port. State is kept per tab so switching away
- * and back restores that tab's words and answer; the bound tab is
- * whichever the connection registered last. An answer is keyed by its
- * words: it stays while the tab shows those words, or none at all in the
+ * and back restores that tab's words and outcome; the bound tab is
+ * whichever the connection registered last. An outcome is keyed by its
+ * words: it stays while the tab shows those words, or none at all, in the
  * same document, and goes when the tab shows other words, another
  * document, or nothing at all.
  */
@@ -125,27 +143,17 @@ export function usePanelConnection(): PanelHandle {
                     }
                     const current = previous[tabId] ?? EMPTY_TAB_STATE;
                     const words = selectionWords(selection);
-                    const sameDocument =
-                        current.selection?.selectionOwnerGeneration ===
-                        selection.selectionOwnerGeneration;
-                    const keepsAnswer =
-                        current.analysis !== null &&
-                        (sameWords(words, current.analysis.words) ||
-                            (sameDocument && words.length === 0));
-                    const keepsError =
-                        sameDocument &&
+                    const keepsOutcome =
+                        current.outcome !== null &&
+                        continues(current.selection, selection) &&
                         (words.length === 0 ||
-                            sameWords(
-                                words,
-                                selectionWords(current.selection)
-                            ));
+                            sameWords(words, current.outcome.words));
                     return {
                         ...previous,
                         [tabId]: {
                             ...current,
                             selection,
-                            analysis: keepsAnswer ? current.analysis : null,
-                            error: keepsError ? current.error : null,
+                            outcome: keepsOutcome ? current.outcome : null,
                         },
                     };
                 });

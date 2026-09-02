@@ -1,7 +1,11 @@
 import { browser } from 'wxt/browser';
 import { createLogger } from '@/shared/logger';
 import { MessageActions } from '@/messaging/actions';
-import { sendToTab } from '@/messaging/client';
+import {
+    MessagingError,
+    MessagingFailureClass,
+    sendToTab,
+} from '@/messaging/client';
 import { framePort, type FramedPort, type PortLike } from '@/messaging/port';
 import { sidePanelPauseVideo } from '@/messaging/contracts/control';
 import {
@@ -571,11 +575,12 @@ export class SidePanelService {
     /**
      * Confirmed panels start from a bound null state, then content is asked
      * to republish. The republished owner is projected only when it is a
-     * fresher receipt for the same document than what was known when the
-     * request went out, and only while this exact binding still stands.
-     * When content has nothing to republish, or the tab has no content
-     * script at all, and no snapshot arrived meanwhile, the panel hears a
-     * second null: the tab is empty.
+     * fresher receipt than what was known when the request went out, for
+     * the same document unless a navigation happened meanwhile, and only
+     * while this exact binding still stands. When content has nothing to
+     * republish, or the tab provably has no content script, and no
+     * snapshot arrived meanwhile, the panel hears a second null: the tab
+     * is empty. An ambiguous failure says nothing, and changes nothing.
      */
     private async synchronizeRegisteredPort(
         connection: Connection,
@@ -637,7 +642,13 @@ export class SidePanelService {
                     : { frameId: 0 }
             );
             accepted = response.requestId === requestId && response.accepted;
-        } catch {
+        } catch (error) {
+            if (
+                !(error instanceof MessagingError) ||
+                error.failureClass !== MessagingFailureClass.PROVEN_NON_DELIVERY
+            ) {
+                return ownsBinding();
+            }
             accepted = false;
         }
         if (!ownsBinding()) {
@@ -645,13 +656,16 @@ export class SidePanelService {
         }
 
         const currentOwner = this.selectionOwnersByTab.get(tabId);
+        const navigated =
+            (this.selectionInvalidationEpochByTab.get(tabId) ?? 0) !==
+            capturedInvalidationEpoch;
         const republished =
             currentOwner &&
             currentOwner.windowId === windowId &&
             currentOwner.acceptedReceiptEpoch > capturedReceiptEpoch &&
-            (this.selectionInvalidationEpochByTab.get(tabId) ?? 0) ===
-                capturedInvalidationEpoch &&
-            (!capturedOwner || ownerIdentityEquals(currentOwner, capturedOwner))
+            (navigated ||
+                !capturedOwner ||
+                ownerIdentityEquals(currentOwner, capturedOwner))
                 ? currentOwner
                 : null;
         if (!republished) {

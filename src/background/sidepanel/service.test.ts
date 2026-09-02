@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { MessagingError, MessagingFailureClass } from '@/messaging/client';
 import type { ClassifiedContentSender } from '@/messaging/sender';
 import type { ContentSelectionSnapshot } from '@/messaging/contracts/selection';
 import {
@@ -263,12 +264,76 @@ describe('SidePanelService registration', () => {
         });
     });
 
-    it('reports an empty tab when the tab has no content script', async () => {
+    it('reports an empty tab when the tab provably has no content script', async () => {
         const { service, sendToTab } = harness();
-        sendToTab.mockRejectedValue(new Error('no receiver'));
+        sendToTab.mockRejectedValue(
+            new MessagingError(
+                'no receiver',
+                MessagingFailureClass.PROVEN_NON_DELIVERY,
+                null
+            )
+        );
         const panel = await bound(service);
         expect(panel.posted[2]!.data.selection).toBeNull();
         expect(panel.alive).toBe(true);
+    });
+
+    it('changes nothing when the republish failed ambiguously', async () => {
+        const { service, sendToTab } = harness();
+        service.acceptSelectionSnapshot(contentSender(), snapshot());
+        sendToTab.mockRejectedValue(
+            new MessagingError(
+                'closed',
+                MessagingFailureClass.AMBIGUOUS_ACCEPTANCE,
+                null
+            )
+        );
+        const panel = fakePort();
+        service.handleConnect(panel.port);
+        panel.register(1, 12, 3);
+        await vi.waitFor(() => expect(panel.posted).toHaveLength(2));
+        await settled();
+        expect(panel.posted).toHaveLength(2);
+        expect(panel.alive).toBe(true);
+        expect(
+            service.acceptSelectionSnapshot(
+                contentSender(),
+                snapshot({ selectionRevision: 2, entries: [] })
+            )
+        ).toBe(true);
+        expect(panel.posted[2]!.data.selection).toMatchObject({
+            selectionOwnerGeneration: 1,
+            selectionRevision: 2,
+        });
+    });
+
+    it('projects the owner a navigation during synchronization left behind', async () => {
+        const { service, sendToTab } = harness();
+        service.acceptSelectionSnapshot(contentSender(), snapshot());
+        sendToTab.mockImplementation((contract, _tabId, request) => {
+            if (contract.action === 'sidePanelGetState') {
+                service.handleTabNavigation(12);
+                service.acceptSelectionSnapshot(
+                    contentSender({ documentId: 'doc-2' }),
+                    snapshot()
+                );
+                const { data } = request as { data: { requestId: number } };
+                return Promise.resolve({
+                    requestId: data.requestId,
+                    accepted: true,
+                } as never);
+            }
+            return Promise.resolve({ success: true } as never);
+        });
+        const panel = fakePort();
+        service.handleConnect(panel.port);
+        panel.register(1, 12, 3);
+        await vi.waitFor(() => expect(panel.posted).toHaveLength(4));
+        expect(panel.posted[2]!.data.selection).toBeNull();
+        expect(panel.posted[3]!.data.selection).toMatchObject({
+            selectionOwnerGeneration: 2,
+            entries: [{ wordIndex: 0, word: 'hola' }],
+        });
     });
 
     it('ignores a removal request from an unregistered panel', async () => {

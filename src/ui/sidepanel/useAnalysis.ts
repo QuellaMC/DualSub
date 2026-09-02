@@ -6,15 +6,20 @@ import { useSettings, type SettingsStatus } from '../hooks/useSettings';
 import {
     sameWords,
     selectionWords,
-    type AnalysisRecord,
+    type AnalysisOutcome,
     type PanelHandle,
-    type TabState,
 } from './usePanelConnection';
 
+/** Everything that can change an answer: what is asked of the provider,
+ *  and the provider identity the background caches by (its credentials
+ *  aside, which no surface reads). */
 export const ANALYSIS_SETTINGS_KEYS = [
     'aiContextEnabled',
     'aiContextTypes',
     'aiContextProvider',
+    'openaiBaseUrl',
+    'openaiModel',
+    'geminiModel',
     'targetLanguage',
 ] as const;
 
@@ -40,16 +45,16 @@ let requestCounter = 0;
 /**
  * Runs one analysis per tab. A request belongs to its tab, not to the
  * panel's current view: switching tabs while it runs neither cancels it
- * nor loses its answer. It is dropped only when its tab's words change to
+ * nor loses its outcome. It is dropped only when its tab's words change to
  * other words, its tab's document goes away, or the analysis settings
- * change underneath it. An answer is shown only under the analysis
+ * change underneath it. An outcome is shown only under the analysis
  * settings it was made with; changing them hides it and changing them
  * back shows it again.
  */
 export function useAnalysis(panel: PanelHandle): {
     readonly settingsStatus: SettingsStatus;
     readonly enabled: boolean;
-    readonly answer: AnalysisRecord | null;
+    readonly outcome: AnalysisOutcome | null;
     readonly analyze: () => Promise<void>;
 } {
     const { settings, status } = useSettings(ANALYSIS_SETTINGS_KEYS);
@@ -61,14 +66,17 @@ export function useAnalysis(panel: PanelHandle): {
         status,
         settings?.aiContextEnabled,
         settings?.aiContextProvider,
+        settings?.openaiBaseUrl,
+        settings?.openaiModel,
+        settings?.geminiModel,
         contextTypes,
         settings?.targetLanguage,
     ]);
     const selectedWordsKey = JSON.stringify(selectionWords(tab.selection));
     const selectionCleared = tab.selection === null;
-    const answer =
-        tab.analysis !== null && tab.analysis.configuration === configurationKey
-            ? tab.analysis
+    const outcome =
+        tab.outcome !== null && tab.outcome.configuration === configurationKey
+            ? tab.outcome
             : null;
 
     const invalidate = useCallback(
@@ -129,23 +137,25 @@ export function useAnalysis(panel: PanelHandle): {
             return;
         }
         const words = JSON.parse(selectedWordsKey) as string[];
-        if (words.length === 0) {
+        const refuse = (key: string) =>
             updateTab(tabId, {
-                error: { kind: 'key', key: 'sidepanelErrorNoWords' },
+                outcome: {
+                    words,
+                    configuration: configurationKey,
+                    answer: null,
+                    error: { kind: 'key', key },
+                },
             });
+        if (words.length === 0) {
+            refuse('sidepanelErrorNoWords');
             return;
         }
         if (!settings.aiContextEnabled) {
-            updateTab(tabId, {
-                error: { kind: 'key', key: 'sidepanelErrorDisabled' },
-            });
+            refuse('sidepanelErrorDisabled');
             return;
         }
         if (contextTypes.length === 0) {
-            updateTab(tabId, {
-                analysis: null,
-                error: { kind: 'key', key: 'sidepanelErrorNoContextTypes' },
-            });
+            refuse('sidepanelErrorNoContextTypes');
             return;
         }
 
@@ -160,16 +170,26 @@ export function useAnalysis(panel: PanelHandle): {
             cancelled: false,
         };
         requests.current.set(tabId, request);
-        updateTab(tabId, { analysis: null, error: null, analyzing: true });
+        updateTab(tabId, { outcome: null, analyzing: true });
         // Judged against the state React is about to commit, so a tab
         // cleared or reselected in the same tick wins over the outcome.
-        const settle = (fields: Partial<TabState>) =>
+        const settle = (
+            answer: AnalysisOutcome['answer'],
+            error: AnalysisOutcome['error']
+        ) =>
             updateTab(tabId, (current) => {
                 const shown = selectionWords(current.selection);
                 return current.selection === null ||
                     (shown.length > 0 && !sameWords(shown, words))
                     ? null
-                    : fields;
+                    : {
+                          outcome: {
+                              words,
+                              configuration: configurationKey,
+                              answer,
+                              error,
+                          },
+                      };
             });
         requestCounter += 1;
         try {
@@ -194,27 +214,19 @@ export function useAnalysis(panel: PanelHandle): {
             if (request.cancelled) {
                 return;
             }
-            settle(
-                response.success
-                    ? {
-                          analysis: {
-                              words,
-                              configuration: configurationKey,
-                              result: response.result.analysis,
-                          },
-                          error: null,
-                      }
-                    : {
-                          error: response.error
-                              ? { kind: 'text', text: response.error }
-                              : { kind: 'key', key: 'sidepanelErrorGeneric' },
-                      }
-            );
+            if (response.success) {
+                settle(response.result.analysis, null);
+            } else {
+                settle(
+                    null,
+                    response.error
+                        ? { kind: 'text', text: response.error }
+                        : { kind: 'key', key: 'sidepanelErrorGeneric' }
+                );
+            }
         } catch {
             if (!request.cancelled) {
-                settle({
-                    error: { kind: 'key', key: 'sidepanelErrorGeneric' },
-                });
+                settle(null, { kind: 'key', key: 'sidepanelErrorGeneric' });
             }
         } finally {
             if (requests.current.get(tabId) === request) {
@@ -235,7 +247,7 @@ export function useAnalysis(panel: PanelHandle): {
     return {
         settingsStatus: status,
         enabled: settings?.aiContextEnabled === true,
-        answer,
+        outcome,
         analyze,
     };
 }

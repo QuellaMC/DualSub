@@ -503,6 +503,20 @@ describe('SidePanelApp', () => {
         ).toBeInTheDocument();
     });
 
+    it('hides an error produced under previous analysis settings', async () => {
+        await renderBound();
+        vi.spyOn(browser.runtime, 'sendMessage').mockResolvedValue({
+            success: false,
+            error: 'OpenAI API key not configured',
+            shouldRetry: false,
+        } as never);
+        fireEvent.click(screen.getByRole('button', { name: /Analyze/ }));
+        await screen.findByRole('alert');
+
+        await configService.setMultiple({ aiContextProvider: 'gemini' });
+        await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
+    });
+
     it('keeps the analyze action disabled while the feature is off', async () => {
         await configService.setMultiple({ aiContextEnabled: false });
         await renderBound();
