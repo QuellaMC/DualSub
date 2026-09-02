@@ -35,6 +35,10 @@ export interface PanelConnectionDeps {
     readonly onBindTab: (binding: TabBinding) => void;
     /** A registration for this tab was just posted. */
     readonly onRegister: (binding: TabBinding) => void;
+    /** Whether the port holds a confirmed binding. False while a
+     *  registration is pending or the port is down: what the panel shows
+     *  then is remembered, not confirmed, and must not be acted on. */
+    readonly onBound: (bound: boolean) => void;
     readonly onConnected: (connected: boolean) => void;
     readonly now?: () => number;
 }
@@ -350,6 +354,7 @@ export class PanelConnection {
                     session.confirmed = { ...frame.data };
                     session.baselineSeen = false;
                     session.cursor = null;
+                    this.deps.onBound(true);
                 }
                 return;
             }
@@ -481,6 +486,7 @@ export class PanelConnection {
         }
         session.confirmed = null;
         session.cursor = null;
+        this.deps.onBound(false);
     }
 
     private retire(

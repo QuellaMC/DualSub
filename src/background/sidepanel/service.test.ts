@@ -119,7 +119,7 @@ function harness(tabs: Record<number, TabRecord> = {}) {
             const { data } = request as { data: { requestId: number } };
             return Promise.resolve({
                 requestId: data.requestId,
-                accepted: false,
+                result: 'empty',
             } as never);
         }
         return Promise.resolve({ success: true } as never);
@@ -207,7 +207,7 @@ describe('SidePanelService registration', () => {
                 const { data } = request as { data: { requestId: number } };
                 return Promise.resolve({
                     requestId: data.requestId,
-                    accepted: true,
+                    result: 'replayed',
                 } as never);
             }
             return Promise.resolve({ success: true } as never);
@@ -221,6 +221,7 @@ describe('SidePanelService registration', () => {
             data: {
                 binding: { registrationId: 1, tabId: 12, windowId: 3 },
                 selection: {
+                    session: 'doc-1:1',
                     selectionOwnerGeneration: 1,
                     selectionRevision: 1,
                     renderRevision: 1,
@@ -252,7 +253,7 @@ describe('SidePanelService registration', () => {
                 const { data } = request as { data: { requestId: number } };
                 return Promise.resolve({
                     requestId: data.requestId,
-                    accepted: false,
+                    result: 'empty',
                 } as never);
             }
             return Promise.resolve({ success: true } as never);
@@ -323,6 +324,39 @@ describe('SidePanelService registration', () => {
         expect(panel.alive).toBe(true);
     });
 
+    it('retires the owner when content says the tab is empty', async () => {
+        const { service } = harness();
+        service.acceptSelectionSnapshot(contentSender(), snapshot());
+        const panel = await bound(service);
+        expect(panel.posted[2]!.data.selection).toBeNull();
+        expect(
+            service.acceptSelectionSnapshot(contentSender(), snapshot())
+        ).toBe(true);
+        expect(panel.posted[3]!.data.selection).toMatchObject({
+            selectionOwnerGeneration: 2,
+        });
+    });
+
+    it('projects the owner it holds when content could not publish', async () => {
+        const { service, sendToTab } = harness();
+        service.acceptSelectionSnapshot(contentSender(), snapshot());
+        sendToTab.mockImplementation((contract, _tabId, request) => {
+            if (contract.action === 'sidePanelGetState') {
+                const { data } = request as { data: { requestId: number } };
+                return Promise.resolve({
+                    requestId: data.requestId,
+                    result: 'failed',
+                } as never);
+            }
+            return Promise.resolve({ success: true } as never);
+        });
+        const panel = await bound(service);
+        expect(panel.posted[2]!.data.selection).toMatchObject({
+            selectionOwnerGeneration: 1,
+            entries: [{ wordIndex: 0, word: 'hola' }],
+        });
+    });
+
     it('treats an uncorrelated acknowledgement as unknown, not as an empty tab', async () => {
         const { service, sendToTab } = harness();
         service.acceptSelectionSnapshot(contentSender(), snapshot());
@@ -331,7 +365,7 @@ describe('SidePanelService registration', () => {
                 const { data } = request as { data: { requestId: number } };
                 return Promise.resolve({
                     requestId: data.requestId + 1,
-                    accepted: false,
+                    result: 'empty',
                 } as never);
             }
             return Promise.resolve({ success: true } as never);
@@ -354,7 +388,7 @@ describe('SidePanelService registration', () => {
                 const { data } = request as { data: { requestId: number } };
                 return Promise.resolve({
                     requestId: data.requestId,
-                    accepted: true,
+                    result: 'replayed',
                 } as never);
             }
             return Promise.resolve({ success: true } as never);
@@ -379,7 +413,7 @@ describe('SidePanelService registration', () => {
                 const { data } = request as { data: { requestId: number } };
                 return Promise.resolve({
                     requestId: data.requestId,
-                    accepted: true,
+                    result: 'replayed',
                 } as never);
             }
             return Promise.resolve({ success: true } as never);
@@ -611,7 +645,7 @@ describe('SidePanelService selection ownership', () => {
                 const { data } = request as { data: { requestId: number } };
                 return Promise.resolve({
                     requestId: data.requestId,
-                    accepted: true,
+                    result: 'replayed',
                 } as never);
             }
             return Promise.resolve({ success: true } as never);

@@ -16,9 +16,13 @@ export function AnalysisPanel({ t }: { t: Translate }) {
     const { selection, analyzing } = panel.tab;
     const error = outcome?.error ?? null;
     const words = selection?.entries.map((entry) => entry.word) ?? [];
-    const locked = analyzing || removing;
+    const locked = analyzing || removing || !panel.bound;
     const canAnalyze =
-        words.length > 0 && !analyzing && settingsStatus === 'ready' && enabled;
+        words.length > 0 &&
+        !analyzing &&
+        panel.bound &&
+        settingsStatus === 'ready' &&
+        enabled;
 
     const removeAt = async (index: number): Promise<void> => {
         const entry = selection?.entries[index];

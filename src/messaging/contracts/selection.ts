@@ -109,8 +109,13 @@ export const contentSelectionSnapshot = z
 export type ContentSelectionSnapshot = z.infer<typeof contentSelectionSnapshot>;
 
 /** Panel-facing state: owner generation instead of raw lifecycle. */
+/** The content document and lifecycle a selection belongs to, opaque to
+ *  the panel: equal strings mean the same session, so the same words. */
+const selectionSession = z.string().min(1).max(256);
+
 export const selectionState = z
     .strictObject({
+        session: selectionSession,
         selectionOwnerGeneration: positiveSafeInteger,
         selectionRevision: positiveSafeInteger,
         renderRevision: positiveSafeInteger,
@@ -153,8 +158,14 @@ export const sidePanelWordSelected = defineContract({
     response: z.strictObject({ success: z.boolean() }),
 });
 
-/** Background asks content to republish its authoritative selection;
- *  `accepted` says the replay reached the background before the ack. */
+/** What a republish request found: the current snapshot was replayed and
+ *  accepted before the reply, there is no snapshot at all, or there is one
+ *  but publishing it failed (so nothing is known either way). */
+export const selectionRepublishResult = z.enum(['replayed', 'empty', 'failed']);
+
+export type SelectionRepublishResult = z.infer<typeof selectionRepublishResult>;
+
+/** Background asks content to republish its authoritative selection. */
 export const selectionRepublishRequest = defineContract({
     action: MessageActions.SIDEPANEL_GET_STATE,
     transport: 'tab',
@@ -165,7 +176,7 @@ export const selectionRepublishRequest = defineContract({
     }),
     response: z.strictObject({
         requestId: positiveSafeInteger,
-        accepted: z.boolean(),
+        result: selectionRepublishResult,
     }),
 });
 

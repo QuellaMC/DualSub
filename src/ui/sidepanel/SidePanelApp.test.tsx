@@ -60,6 +60,7 @@ function fakePort() {
 const BINDING = { registrationId: 1, tabId: 12, windowId: 3 };
 
 const SELECTION = {
+    session: 'doc-1:1',
     selectionOwnerGeneration: 1,
     selectionRevision: 2,
     renderRevision: 1,
@@ -456,6 +457,7 @@ describe('SidePanelApp', () => {
                 binding: BINDING,
                 selection: {
                     ...SELECTION,
+                    session: 'doc-2:1',
                     selectionOwnerGeneration: 2,
                     selectionRevision: 1,
                     entries: [],
@@ -515,6 +517,31 @@ describe('SidePanelApp', () => {
 
         await configService.setMultiple({ aiContextProvider: 'gemini' });
         await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
+    });
+
+    it('keeps actions disabled while a rebind is unconfirmed', async () => {
+        const fake = await renderBound();
+        await switchTab(fake, 2, 13);
+        fake.emit({ action: 'tabActivated', data: { tabId: 12, windowId: 3 } });
+        await waitFor(() =>
+            expect(fake.posted.at(-1)).toMatchObject({
+                action: 'sidePanelRegister',
+                data: { registrationId: 3, tabId: 12, windowId: 3 },
+            })
+        );
+        // The remembered words are back on screen; nothing may act on
+        // them until the background confirms the binding.
+        expect(screen.getAllByRole('listitem')).toHaveLength(2);
+        expect(screen.getByRole('button', { name: /Analyze/ })).toBeDisabled();
+        fake.emit({
+            action: 'sidePanelBindingConfirmed',
+            data: { registrationId: 3, tabId: 12, windowId: 3 },
+        });
+        await waitFor(() =>
+            expect(
+                screen.getByRole('button', { name: /Analyze/ })
+            ).toBeEnabled()
+        );
     });
 
     it('keeps the analyze action disabled while the feature is off', async () => {

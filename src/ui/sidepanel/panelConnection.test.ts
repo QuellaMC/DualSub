@@ -49,6 +49,7 @@ const BINDING = { registrationId: 1, tabId: 12, windowId: 3 };
 
 function selection(overrides: Partial<SelectionState> = {}): SelectionState {
     return {
+        session: 'doc-1:1',
         selectionOwnerGeneration: 1,
         selectionRevision: 3,
         renderRevision: 1,
@@ -81,6 +82,7 @@ function harness(
             connection.registerTab(binding.tabId, binding.windowId);
         }),
         onRegister: vi.fn(),
+        onBound: vi.fn(),
         onConnected: vi.fn(),
         now: () => 5,
     };

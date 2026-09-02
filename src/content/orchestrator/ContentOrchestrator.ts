@@ -87,7 +87,10 @@ export class ContentOrchestrator {
             (request) =>
                 this.activeSession?.selection.handleRepublish(
                     request.data.requestId
-                ) ?? { requestId: request.data.requestId, accepted: false }
+                ) ?? {
+                    requestId: request.data.requestId,
+                    result: 'empty' as const,
+                }
         );
         this.router.handle(
             selectionRemovalCommand,

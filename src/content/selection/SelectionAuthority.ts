@@ -2,6 +2,7 @@ import type {
     ContentSelectionSnapshot,
     SelectionEntry,
     SelectionReason,
+    SelectionRepublishResult,
 } from '@/messaging/contracts/selection';
 import type { WordIntent } from '../renderer/wordLayer';
 
@@ -120,24 +121,25 @@ export class SelectionAuthority {
         void this.queue(this.commit('clear', this.renderRevision));
     }
 
-    /** Background asks for the current snapshot again. The ack is true once
+    /** Background asks for the current snapshot again. "replayed" means
      *  the snapshot that is current here has been accepted there, following
-     *  the selection through any change that overtakes a replay; it is false
-     *  only when there is nothing to publish or the background refused it. */
+     *  the selection through any change that overtakes a replay; "empty"
+     *  that there is nothing to publish; "failed" that publishing it did not
+     *  go through, which says nothing about what the background holds. */
     async handleRepublish(
         requestId: number
-    ): Promise<{ requestId: number; accepted: boolean }> {
+    ): Promise<{ requestId: number; result: SelectionRepublishResult }> {
         for (;;) {
             const snapshot = this.snapshot;
             if (!snapshot) {
-                return { requestId, accepted: false };
+                return { requestId, result: 'empty' };
             }
             const accepted = await this.queue(
                 snapshot,
                 () => this.snapshot === snapshot
             );
             if (this.snapshot === snapshot) {
-                return { requestId, accepted };
+                return { requestId, result: accepted ? 'replayed' : 'failed' };
             }
         }
     }

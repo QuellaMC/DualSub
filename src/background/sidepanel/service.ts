@@ -13,6 +13,7 @@ import {
     selectionRepublishRequest,
     type ContentSelectionSnapshot,
     type SelectionEntry,
+    type SelectionRepublishResult,
     type SelectionState,
 } from '@/messaging/contracts/selection';
 import {
@@ -149,6 +150,7 @@ function entriesEqual(
 
 function projectOwner(owner: SelectionOwner): SelectionState {
     return {
+        session: `${owner.documentId}:${owner.lifecycleGeneration}`,
         selectionOwnerGeneration: owner.selectionOwnerGeneration,
         selectionRevision: owner.selectionRevision,
         renderRevision: owner.renderRevision,
@@ -180,10 +182,6 @@ export class SidePanelService {
     private readonly activationByWindow = new Map<number, WindowActivation>();
     private readonly tabLifecycleEpochByTab = new Map<number, number>();
     private readonly selectionOwnersByTab = new Map<number, SelectionOwner>();
-    private readonly selectionInvalidationEpochByTab = new Map<
-        number,
-        number
-    >();
     private readonly removalFlights = new Map<Connection, RemovalFlight>();
     private authorizationEpoch = 0;
     private selectionOwnerGeneration = 0;
@@ -577,11 +575,11 @@ export class SidePanelService {
      * to republish. An owner accepted after the request went out is the
      * tab's current truth, whatever document or lifecycle it belongs to
      * (the router vouches for its provenance), and is projected while this
-     * exact binding still stands. When content has nothing to republish,
-     * or the tab provably has no content script, and no snapshot arrived
-     * meanwhile, the panel hears a second null: the tab is empty. An
-     * ambiguous failure or an uncorrelated reply says nothing, so the
-     * panel hears what was already known, if anything.
+     * exact binding still stands. When content has nothing to publish, or
+     * the tab provably has no content script, the tab is empty: what was
+     * known about it is retired and the panel hears a second null. A
+     * failed publication, an ambiguous failure, or an uncorrelated reply
+     * says nothing, so the panel hears what was already known, if anything.
      */
     private async synchronizeRegisteredPort(
         connection: Connection,
@@ -627,7 +625,7 @@ export class SidePanelService {
         }
         const capturedReceiptEpoch = this.selectionReceiptEpoch;
 
-        let reply: 'accepted' | 'declined' | 'unknown';
+        let reply: SelectionRepublishResult | 'unknown';
         try {
             const response = await this.deps.sendToTab(
                 selectionRepublishRequest,
@@ -641,16 +639,12 @@ export class SidePanelService {
                     : { frameId: 0 }
             );
             reply =
-                response.requestId !== requestId
-                    ? 'unknown'
-                    : response.accepted
-                      ? 'accepted'
-                      : 'declined';
+                response.requestId === requestId ? response.result : 'unknown';
         } catch (error) {
             reply =
                 error instanceof MessagingError &&
                 error.failureClass === MessagingFailureClass.PROVEN_NON_DELIVERY
-                    ? 'declined'
+                    ? 'empty'
                     : 'unknown';
         }
         if (!ownsBinding()) {
@@ -659,19 +653,17 @@ export class SidePanelService {
 
         const currentOwner = this.selectionOwnersByTab.get(tabId);
         const known = currentOwner?.windowId === windowId ? currentOwner : null;
-        const republished =
-            known && known.acceptedReceiptEpoch > capturedReceiptEpoch
-                ? known
-                : null;
-        if (republished) {
-            return this.projectOwnerTo(connection, binding, republished);
+        if (known && known.acceptedReceiptEpoch > capturedReceiptEpoch) {
+            return this.projectOwnerTo(connection, binding, known);
         }
         switch (reply) {
-            case 'accepted':
-                // Received before the replay: its own broadcast follows.
+            case 'replayed':
+                // Not received yet: the replay's own broadcast follows.
                 return ownsBinding();
-            case 'declined':
+            case 'empty':
+                this.selectionOwnersByTab.delete(tabId);
                 return this.projectSelectionNull(tabId);
+            case 'failed':
             case 'unknown':
                 // Nothing was learned; what was known still stands.
                 return known
@@ -1376,7 +1368,6 @@ export class SidePanelService {
     handleTabRemoved(tabId: number): void {
         const removalEpoch = this.nextAuthorizationEpoch();
         this.tabLifecycleEpochByTab.set(tabId, removalEpoch);
-        this.selectionInvalidationEpochByTab.delete(tabId);
         this.selectionOwnersByTab.delete(tabId);
         for (const [windowId, activation] of this.activationByWindow) {
             if (activation.tabId === tabId) {
@@ -1433,10 +1424,6 @@ export class SidePanelService {
     /** A navigation invalidates the tab's selection owner and any removal in
      *  flight; a bound panel sees null until the new document publishes. */
     handleTabNavigation(tabId: number): void {
-        this.selectionInvalidationEpochByTab.set(
-            tabId,
-            this.nextAuthorizationEpoch()
-        );
         this.selectionOwnersByTab.delete(tabId);
         const connection = this.connectionByTab.get(tabId);
         if (connection) {
@@ -1460,7 +1447,6 @@ export class SidePanelService {
         this.claimByConnection.clear();
         this.activationByWindow.clear();
         this.selectionOwnersByTab.clear();
-        this.selectionInvalidationEpochByTab.clear();
         this.removalFlights.clear();
     }
 }

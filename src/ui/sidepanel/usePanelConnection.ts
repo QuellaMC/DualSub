@@ -42,6 +42,8 @@ export type TabPatch =
 
 export interface PanelHandle {
     readonly connected: boolean;
+    /** The bound tab's state is confirmed, not merely remembered. */
+    readonly bound: boolean;
     readonly activeTabId: number | null;
     /** The bound tab's state. */
     readonly tab: TabState;
@@ -68,23 +70,14 @@ export function sameWords(
     );
 }
 
-/** The same document, or the same snapshot replayed under a new owner
- *  generation (a worker restart). Anything else is another document. */
+/** The same content session: the background names it, so a worker
+ *  restart (a new owner generation) keeps it and a new document or
+ *  player session does not. */
 function continues(
     previous: SelectionState | null,
     next: SelectionState
 ): boolean {
-    if (previous === null) {
-        return false;
-    }
-    if (previous.selectionOwnerGeneration === next.selectionOwnerGeneration) {
-        return true;
-    }
-    return (
-        previous.selectionRevision === next.selectionRevision &&
-        previous.renderRevision === next.renderRevision &&
-        sameWords(selectionWords(previous), selectionWords(next))
-    );
+    return previous !== null && previous.session === next.session;
 }
 
 async function queryActiveTab(): Promise<TabBinding | null> {
@@ -107,6 +100,7 @@ async function queryActiveTab(): Promise<TabBinding | null> {
  */
 export function usePanelConnection(): PanelHandle {
     const [connected, setConnected] = useState(false);
+    const [bound, setBound] = useState(false);
     const [activeTabId, setActiveTabId] = useState<number | null>(null);
     const [tabs, setTabs] = useState<Record<number, TabState>>({});
     const connectionRef = useRef<PanelConnection | null>(null);
@@ -132,6 +126,7 @@ export function usePanelConnection(): PanelHandle {
                 browser.runtime.connect({ name: SIDEPANEL_PORT_NAME }),
             queryActiveTab,
             onConnected: setConnected,
+            onBound: setBound,
             onRegister: ({ tabId }) => setActiveTabId(tabId),
             onBindTab: ({ tabId, windowId }) => {
                 connection.registerTab(tabId, windowId);
@@ -178,6 +173,7 @@ export function usePanelConnection(): PanelHandle {
 
     return {
         connected,
+        bound,
         activeTabId,
         tab:
             activeTabId === null
