@@ -23,8 +23,11 @@ export const ANALYSIS_SETTINGS_KEYS = [
     'targetLanguage',
 ] as const;
 
+/** A request belongs to the tab, the content session, and the words it
+ *  was started for, under the settings of that moment. */
 interface ActiveRequest {
     readonly tabId: number;
+    readonly session: string;
     readonly words: readonly string[];
     readonly configurationKey: string;
     cancelled: boolean;
@@ -46,10 +49,10 @@ let requestCounter = 0;
  * Runs one analysis per tab. A request belongs to its tab, not to the
  * panel's current view: switching tabs while it runs neither cancels it
  * nor loses its outcome. It is dropped only when its tab's words change to
- * other words, its tab's document goes away, or the analysis settings
- * change underneath it. An outcome is shown only under the analysis
- * settings it was made with; changing them hides it and changing them
- * back shows it again.
+ * other words, its tab moves to another content session or has nothing
+ * to show, or the analysis settings change underneath it. An outcome is
+ * shown only under the analysis settings it was made with; changing them
+ * hides it and changing them back shows it again.
  */
 export function useAnalysis(panel: PanelHandle): {
     readonly settingsStatus: SettingsStatus;
@@ -73,7 +76,7 @@ export function useAnalysis(panel: PanelHandle): {
         settings?.targetLanguage,
     ]);
     const selectedWordsKey = JSON.stringify(selectionWords(tab.selection));
-    const selectionCleared = tab.selection === null;
+    const selectionSession = tab.selection?.session ?? null;
     const outcome =
         tab.outcome !== null && tab.outcome.configuration === configurationKey
             ? tab.outcome
@@ -93,8 +96,8 @@ export function useAnalysis(panel: PanelHandle): {
         [updateTab]
     );
 
-    // Settings changes end every flight; new words, or the tab's document
-    // going away, end the active tab's. Other tabs cannot change their
+    // Settings changes end every flight; new words, another session, or
+    // nothing to show end the active tab's. Other tabs cannot change their
     // words while inactive: the background accepts snapshots only from the
     // active tab.
     useEffect(() => {
@@ -115,12 +118,12 @@ export function useAnalysis(panel: PanelHandle): {
         }
         const words = JSON.parse(selectedWordsKey) as string[];
         if (
-            selectionCleared ||
+            selectionSession !== request.session ||
             (words.length > 0 && !sameWords(words, request.words))
         ) {
             invalidate(request);
         }
-    }, [activeTabId, invalidate, selectedWordsKey, selectionCleared]);
+    }, [activeTabId, invalidate, selectedWordsKey, selectionSession]);
 
     useEffect(
         () => () => {
@@ -146,7 +149,7 @@ export function useAnalysis(panel: PanelHandle): {
                     error: { kind: 'key', key },
                 },
             });
-        if (words.length === 0) {
+        if (words.length === 0 || selectionSession === null) {
             refuse('sidepanelErrorNoWords');
             return;
         }
@@ -165,6 +168,7 @@ export function useAnalysis(panel: PanelHandle): {
         }
         const request: ActiveRequest = {
             tabId,
+            session: selectionSession,
             words,
             configurationKey,
             cancelled: false,
@@ -172,7 +176,8 @@ export function useAnalysis(panel: PanelHandle): {
         requests.current.set(tabId, request);
         updateTab(tabId, { outcome: null, analyzing: true });
         // Judged against the state React is about to commit, so a tab
-        // cleared or reselected in the same tick wins over the outcome.
+        // cleared, moved to another session, or reselected in the same
+        // tick wins over the outcome.
         const settle = (
             answer: AnalysisOutcome['answer'],
             error: AnalysisOutcome['error']
@@ -180,6 +185,7 @@ export function useAnalysis(panel: PanelHandle): {
             updateTab(tabId, (current) => {
                 const shown = selectionWords(current.selection);
                 return current.selection === null ||
+                    current.selection.session !== request.session ||
                     (shown.length > 0 && !sameWords(shown, words))
                     ? null
                     : {
@@ -240,6 +246,7 @@ export function useAnalysis(panel: PanelHandle): {
         contextTypes,
         invalidate,
         selectedWordsKey,
+        selectionSession,
         settings,
         updateTab,
     ]);

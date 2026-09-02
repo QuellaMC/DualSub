@@ -519,6 +519,43 @@ describe('SidePanelApp', () => {
         await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
     });
 
+    it('drops a request when the tab moves to another session with the same words', async () => {
+        const fake = await renderBound();
+        let answer: (value: unknown) => void = () => undefined;
+        vi.spyOn(browser.runtime, 'sendMessage').mockImplementation(
+            () =>
+                new Promise((resolve) => {
+                    answer = resolve;
+                }) as never
+        );
+        fireEvent.click(screen.getByRole('button', { name: /Analyze/ }));
+        await screen.findByText('Analyzing...', { selector: 'p' });
+
+        fake.emit({
+            action: 'sidePanelSelectionSync',
+            data: {
+                binding: BINDING,
+                selection: {
+                    ...SELECTION,
+                    session: 'doc-2:1',
+                    selectionOwnerGeneration: 2,
+                },
+            },
+        });
+        await waitFor(() =>
+            expect(
+                screen.queryByText('Analyzing...', { selector: 'p' })
+            ).toBeNull()
+        );
+        answer(ANSWER);
+        await waitFor(() =>
+            expect(
+                screen.getByRole('button', { name: /Analyze/ })
+            ).toBeEnabled()
+        );
+        expect(screen.queryByText('A friendly greeting')).toBeNull();
+    });
+
     it('keeps actions disabled while a rebind is unconfirmed', async () => {
         const fake = await renderBound();
         await switchTab(fake, 2, 13);
