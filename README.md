@@ -269,7 +269,11 @@ For full license terms, see [LICENSE](LICENSE) file.
 
 ## 📋 Changelog
 
-### Version 3.0.0 (Current)
+### Version 3.0.1 (Current)
+
+- 🐛 The side panel keeps a tab's selected words, running analysis, and answer while you visit other tabs and come back
+
+### Version 3.0.0
 
 - 🏗️ **Rebuilt from the ground up** in TypeScript on WXT, with contract-first messaging and one player session per video
 - 🎬 **Netflix player API**: subtitle tracks come from the player itself, so DualSub keeps working after Netflix's 2026 player change
