@@ -82,7 +82,7 @@ function harness(
             connection.registerTab(binding.tabId, binding.windowId);
         }),
         onRegister: vi.fn(),
-        onBound: vi.fn(),
+        onValidated: vi.fn(),
         onConnected: vi.fn(),
         now: () => 5,
     };

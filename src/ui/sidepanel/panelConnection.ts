@@ -35,10 +35,13 @@ export interface PanelConnectionDeps {
     readonly onBindTab: (binding: TabBinding) => void;
     /** A registration for this tab was just posted. */
     readonly onRegister: (binding: TabBinding) => void;
-    /** Whether the port holds a confirmed binding. False while a
-     *  registration is pending or the port is down: what the panel shows
-     *  then is remembered, not confirmed, and must not be acted on. */
-    readonly onBound: (bound: boolean) => void;
+    /** Whether what the panel shows for the bound tab has been confirmed
+     *  by the background under the current binding: an owner projection or
+     *  an authoritative empty state. False while a registration is pending,
+     *  until synchronization delivers one, or when the port is down; what
+     *  the panel shows then is remembered, not confirmed, and must not be
+     *  acted on. */
+    readonly onValidated: (validated: boolean) => void;
     readonly onConnected: (connected: boolean) => void;
     readonly now?: () => number;
 }
@@ -71,6 +74,7 @@ interface Session {
     /** The bound-null state that follows every confirmation was seen; a
      *  null after it is the background clearing the tab. */
     baselineSeen: boolean;
+    validated: boolean;
     cursor: SelectionState | null;
     pendingRemoval: PendingRemoval | null;
 }
@@ -243,6 +247,7 @@ export class PanelConnection {
             pendingRegistration: null,
             confirmed: null,
             baselineSeen: false,
+            validated: false,
             cursor: null,
             pendingRemoval: null,
         };
@@ -353,8 +358,8 @@ export class PanelConnection {
                     this.settleRegistration(session);
                     session.confirmed = { ...frame.data };
                     session.baselineSeen = false;
+                    session.validated = false;
                     session.cursor = null;
-                    this.deps.onBound(true);
                 }
                 return;
             }
@@ -382,6 +387,14 @@ export class PanelConnection {
                 }
                 session.baselineSeen = true;
                 this.deps.onSelection(confirmed.tabId, frame.data.selection);
+                if (
+                    !session.validated &&
+                    this.isCurrent(session) &&
+                    session.confirmed === confirmed
+                ) {
+                    session.validated = true;
+                    this.deps.onValidated(true);
+                }
                 if (
                     this.isCurrent(session) &&
                     session.confirmed === confirmed
@@ -486,7 +499,10 @@ export class PanelConnection {
         }
         session.confirmed = null;
         session.cursor = null;
-        this.deps.onBound(false);
+        if (session.validated) {
+            session.validated = false;
+            this.deps.onValidated(false);
+        }
     }
 
     private retire(

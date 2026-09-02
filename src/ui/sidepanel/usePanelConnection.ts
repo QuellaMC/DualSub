@@ -42,8 +42,9 @@ export type TabPatch =
 
 export interface PanelHandle {
     readonly connected: boolean;
-    /** The bound tab's state is confirmed, not merely remembered. */
-    readonly bound: boolean;
+    /** The bound tab's state was confirmed by the background under the
+     *  current binding, not merely remembered. */
+    readonly validated: boolean;
     readonly activeTabId: number | null;
     /** The bound tab's state. */
     readonly tab: TabState;
@@ -100,7 +101,7 @@ async function queryActiveTab(): Promise<TabBinding | null> {
  */
 export function usePanelConnection(): PanelHandle {
     const [connected, setConnected] = useState(false);
-    const [bound, setBound] = useState(false);
+    const [validated, setValidated] = useState(false);
     const [activeTabId, setActiveTabId] = useState<number | null>(null);
     const [tabs, setTabs] = useState<Record<number, TabState>>({});
     const connectionRef = useRef<PanelConnection | null>(null);
@@ -126,7 +127,7 @@ export function usePanelConnection(): PanelHandle {
                 browser.runtime.connect({ name: SIDEPANEL_PORT_NAME }),
             queryActiveTab,
             onConnected: setConnected,
-            onBound: setBound,
+            onValidated: setValidated,
             onRegister: ({ tabId }) => setActiveTabId(tabId),
             onBindTab: ({ tabId, windowId }) => {
                 connection.registerTab(tabId, windowId);
@@ -173,7 +174,7 @@ export function usePanelConnection(): PanelHandle {
 
     return {
         connected,
-        bound,
+        validated,
         activeTabId,
         tab:
             activeTabId === null

@@ -16,11 +16,11 @@ export function AnalysisPanel({ t }: { t: Translate }) {
     const { selection, analyzing } = panel.tab;
     const error = outcome?.error ?? null;
     const words = selection?.entries.map((entry) => entry.word) ?? [];
-    const locked = analyzing || removing || !panel.bound;
+    const locked = analyzing || removing || !panel.validated;
     const canAnalyze =
         words.length > 0 &&
         !analyzing &&
-        panel.bound &&
+        panel.validated &&
         settingsStatus === 'ready' &&
         enabled;
 

@@ -116,6 +116,11 @@ async function switchTab(
     return binding;
 }
 
+/** Let queued frames render. */
+function settled(): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
 const ANSWER = {
     success: true,
     result: {
@@ -556,7 +561,7 @@ describe('SidePanelApp', () => {
         expect(screen.queryByText('A friendly greeting')).toBeNull();
     });
 
-    it('keeps actions disabled while a rebind is unconfirmed', async () => {
+    it('keeps actions disabled until the background confirms what the tab shows', async () => {
         const fake = await renderBound();
         await switchTab(fake, 2, 13);
         fake.emit({ action: 'tabActivated', data: { tabId: 12, windowId: 3 } });
@@ -567,12 +572,20 @@ describe('SidePanelApp', () => {
             })
         );
         // The remembered words are back on screen; nothing may act on
-        // them until the background confirms the binding.
+        // them until the background says they are what the tab shows.
         expect(screen.getAllByRole('listitem')).toHaveLength(2);
         expect(screen.getByRole('button', { name: /Analyze/ })).toBeDisabled();
+        const binding = { registrationId: 3, tabId: 12, windowId: 3 };
+        fake.emit({ action: 'sidePanelBindingConfirmed', data: binding });
         fake.emit({
-            action: 'sidePanelBindingConfirmed',
-            data: { registrationId: 3, tabId: 12, windowId: 3 },
+            action: 'sidePanelSelectionSync',
+            data: { binding, selection: null },
+        });
+        await settled();
+        expect(screen.getByRole('button', { name: /Analyze/ })).toBeDisabled();
+        fake.emit({
+            action: 'sidePanelSelectionSync',
+            data: { binding, selection: SELECTION },
         });
         await waitFor(() =>
             expect(
