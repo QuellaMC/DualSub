@@ -14,6 +14,46 @@ export interface AnalysisInput {
     readonly targetLanguage: string;
 }
 
+const MAX_ERROR_DETAIL_BYTES = 2048;
+const MAX_ERROR_DETAIL_CHARS = 160;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return value !== null && typeof value === 'object';
+}
+
+/** The upstream error's own words, when its body offers any: OpenAI-style
+ *  `{error:{message}}`, plain `{detail}`/`{message}`/`{title}`, or text. */
+async function readErrorDetail(response: Response): Promise<string> {
+    let body: string;
+    try {
+        body = (await response.text()).slice(0, MAX_ERROR_DETAIL_BYTES);
+    } catch {
+        return '';
+    }
+    let detail: unknown = body;
+    try {
+        const parsed: unknown = JSON.parse(body);
+        if (isRecord(parsed)) {
+            const error = parsed['error'];
+            detail = isRecord(error)
+                ? error['message']
+                : (error ??
+                  parsed['detail'] ??
+                  parsed['message'] ??
+                  parsed['title']);
+        }
+    } catch {
+        // Not JSON; the text itself is the detail.
+    }
+    if (typeof detail !== 'string') {
+        return '';
+    }
+    const collapsed = detail.replace(/\s+/g, ' ').trim();
+    return collapsed.length > MAX_ERROR_DETAIL_CHARS
+        ? `${collapsed.slice(0, MAX_ERROR_DETAIL_CHARS - 1)}…`
+        : collapsed;
+}
+
 function isTimeout(error: unknown): boolean {
     return (
         error instanceof Error &&
@@ -66,9 +106,10 @@ export async function runProviderAnalysis(
         );
     }
     if (!response.ok) {
+        const detail = await readErrorDetail(response);
         throw new ContextProviderError(
             'UPSTREAM_ERROR',
-            `API request failed: ${response.status}`,
+            `API request failed: ${response.status}${detail ? ` (${detail})` : ''}`,
             { status: response.status }
         );
     }

@@ -125,6 +125,46 @@ describe('openai context provider', () => {
         expect(unauthorized.retryable).toBe(false);
     });
 
+    it('quotes the upstream error detail when the body offers one', async () => {
+        const openaiStyle = await failure(
+            runProviderAnalysis(openaiContextProvider, SETTINGS, INPUT, {
+                timeoutMs: 1000,
+                fetch: fetchReturning(
+                    jsonResponse(
+                        { error: { message: 'The model `x` does not exist' } },
+                        404
+                    )
+                ),
+            })
+        );
+        expect(openaiStyle.message).toBe(
+            'API request failed: 404 (The model `x` does not exist)'
+        );
+
+        const plainText = await failure(
+            runProviderAnalysis(openaiContextProvider, SETTINGS, INPUT, {
+                timeoutMs: 1000,
+                fetch: fetchReturning(
+                    new Response('404 page not found\n', { status: 404 })
+                ),
+            })
+        );
+        expect(plainText.message).toBe(
+            'API request failed: 404 (404 page not found)'
+        );
+
+        const longDetail = await failure(
+            runProviderAnalysis(openaiContextProvider, SETTINGS, INPUT, {
+                timeoutMs: 1000,
+                fetch: fetchReturning(
+                    jsonResponse({ detail: 'x'.repeat(400) }, 400)
+                ),
+            })
+        );
+        expect(longDetail.message.length).toBeLessThan(200);
+        expect(longDetail.message.endsWith('…)')).toBe(true);
+    });
+
     it('classifies transport failures', async () => {
         const network = await failure(
             runProviderAnalysis(openaiContextProvider, SETTINGS, INPUT, {
