@@ -19,8 +19,6 @@ export default defineConfig({
             'https://*.dssedge.com/*',
             'https://*.nflxvideo.net/*',
             'https://translate.googleapis.com/*',
-            'https://api.cognitive.microsofttranslator.com/*',
-            'https://edge.microsoft.com/*',
             'https://api-free.deepl.com/*',
             'https://api.deepl.com/*',
             'https://aiplatform.googleapis.com/*',

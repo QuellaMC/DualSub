@@ -5,7 +5,6 @@ import type { SectionProps } from '../types';
 
 const PROVIDER_LABELS: Record<ProviderId, string> = {
     google: 'providerGoogleName',
-    microsoft_edge_auth: 'providerMicrosoftName',
     deepl: 'providerDeepLName',
     openai_compatible: 'providerOpenAICompatibleName',
     vertex_gemini: 'providerVertexGeminiName',

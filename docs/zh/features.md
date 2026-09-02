@@ -4,7 +4,7 @@
 
 - 双语字幕显示：同时显示原文和翻译
 - 多平台支持：适配 Netflix 与 Disney+
-- 多翻译服务商：Google、Microsoft、DeepL、OpenAI 兼容
+- 多翻译服务商：Google、DeepL、OpenAI 兼容、Vertex AI Gemini
 - 稳健翻译：服务商速率限制、重试与缓存
 
 ## 自定义选项

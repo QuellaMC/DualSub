@@ -4,7 +4,7 @@
 
 - Dual Subtitle Display: Show original and translated subtitles simultaneously
 - Multi-Platform Support: Works on Netflix and Disney+ with platform-specific optimizations
-- Multiple Translation Providers: Google, Microsoft, DeepL, and OpenAI-compatible
+- Multiple Translation Providers: Google, DeepL, OpenAI-compatible, and Vertex AI Gemini
 - Resilient Translation: Provider-aware rate limits, retries, and caching
 
 ## Customization Options

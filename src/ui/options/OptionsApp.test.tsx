@@ -106,9 +106,7 @@ describe('OptionsApp', () => {
         expect(
             screen.getByRole('heading', { level: 2, name: 'Translation' })
         ).toBeInTheDocument();
-        expect(screen.getByLabelText('Provider:')).toHaveValue(
-            'microsoft_edge_auth'
-        );
+        expect(screen.getByLabelText('Provider:')).toHaveValue('google');
     });
 
     it('shows a banner when a save fails and keeps the controls usable', async () => {

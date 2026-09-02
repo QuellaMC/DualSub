@@ -10,10 +10,6 @@ import {
 } from './geminiVertex';
 import { googleProvider } from './google';
 import {
-    createMicrosoftEdgeAuthProvider,
-    readJwtExpiry,
-} from './microsoftEdgeAuth';
-import {
     fetchAvailableModels,
     normalizeModelName,
     openaiCompatibleProvider,
@@ -83,14 +79,6 @@ async function failure(
         throw error;
     }
     throw new Error('expected a provider error');
-}
-
-function jwtExpiringAt(epochSeconds: number): string {
-    const payload = btoa(JSON.stringify({ exp: epochSeconds }))
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=+$/, '');
-    return `header.${payload}.signature`;
 }
 
 beforeEach(async () => {
@@ -175,116 +163,6 @@ describe('google provider', () => {
         );
         expect(error.code).toBe('NETWORK_ERROR');
         expect(error.retryable).toBe(true);
-    });
-});
-
-describe('microsoft edge auth provider', () => {
-    const translation = [
-        {
-            detectedLanguage: { language: 'en', score: 1 },
-            translations: [{ text: 'Hola', to: 'es' }],
-        },
-    ];
-
-    it('fetches the anonymous token once and reuses it', async () => {
-        const provider = createMicrosoftEdgeAuthProvider();
-        const token = jwtExpiringAt(Math.floor(Date.now() / 1000) + 3600);
-        fetchMock
-            .mockResolvedValueOnce(textResponse(token, 200, 'text/plain'))
-            .mockResolvedValueOnce(jsonResponse(translation))
-            .mockResolvedValueOnce(jsonResponse(translation));
-
-        await expect(provider.translate('Hello', 'auto', 'es')).resolves.toBe(
-            'Hola'
-        );
-        await expect(provider.translate('Hello', 'en', 'es')).resolves.toBe(
-            'Hola'
-        );
-
-        expect(fetchMock).toHaveBeenCalledTimes(3);
-        expect(requestAt(0).url).toBe(
-            'https://edge.microsoft.com/translate/auth'
-        );
-        const first = requestAt(1);
-        expect(first.url).toBe(
-            'https://api.cognitive.microsofttranslator.com/translate?api-version=3.0&to=es'
-        );
-        expect(headersOf(first.init).Authorization).toBe(`Bearer ${token}`);
-        expect(first.init.body).toBe(JSON.stringify([{ Text: 'Hello' }]));
-        expect(requestAt(2).url).toContain('&from=en');
-    });
-
-    it('refreshes a token that is about to expire', async () => {
-        const provider = createMicrosoftEdgeAuthProvider();
-        const nowSeconds = Math.floor(Date.now() / 1000);
-        fetchMock
-            .mockResolvedValueOnce(
-                textResponse(jwtExpiringAt(nowSeconds + 30), 200, 'text/plain')
-            )
-            .mockResolvedValueOnce(jsonResponse(translation))
-            .mockResolvedValueOnce(
-                textResponse(
-                    jwtExpiringAt(nowSeconds + 3600),
-                    200,
-                    'text/plain'
-                )
-            )
-            .mockResolvedValueOnce(jsonResponse(translation));
-
-        await provider.translate('Hello', 'auto', 'es');
-        await provider.translate('Hello', 'auto', 'es');
-        expect(fetchMock).toHaveBeenCalledTimes(4);
-        expect(requestAt(2).url).toBe(
-            'https://edge.microsoft.com/translate/auth'
-        );
-    });
-
-    it('drops the token after a 401 so the retry mints a new one', async () => {
-        const provider = createMicrosoftEdgeAuthProvider();
-        const token = jwtExpiringAt(Math.floor(Date.now() / 1000) + 3600);
-        fetchMock
-            .mockResolvedValueOnce(textResponse(token, 200, 'text/plain'))
-            .mockResolvedValueOnce(textResponse('', 401))
-            .mockResolvedValueOnce(textResponse(token, 200, 'text/plain'))
-            .mockResolvedValueOnce(jsonResponse(translation));
-
-        const error = await failure(provider.translate('Hello', 'auto', 'es'));
-        expect(error.code).toBe('AUTHENTICATION_ERROR');
-        expect(error.retryable).toBe(true);
-
-        await expect(provider.translate('Hello', 'auto', 'es')).resolves.toBe(
-            'Hola'
-        );
-        expect(requestAt(2).url).toBe(
-            'https://edge.microsoft.com/translate/auth'
-        );
-    });
-
-    it('rejects an auth body that is not a JWT with an expiry', async () => {
-        const provider = createMicrosoftEdgeAuthProvider();
-        fetchMock.mockResolvedValueOnce(
-            textResponse('nope', 200, 'text/plain')
-        );
-        const error = await failure(provider.translate('Hello', 'auto', 'es'));
-        expect(error.code).toBe('REQUEST_FAILED');
-        expect(error.retryable).toBe(true);
-        expect(readJwtExpiry('a.b.c')).toBeNull();
-        expect(readJwtExpiry(jwtExpiringAt(1700))).toBe(1_700_000);
-    });
-
-    it('rejects a payload without a translation', async () => {
-        const provider = createMicrosoftEdgeAuthProvider();
-        fetchMock
-            .mockResolvedValueOnce(
-                textResponse(
-                    jwtExpiringAt(Math.floor(Date.now() / 1000) + 3600),
-                    200,
-                    'text/plain'
-                )
-            )
-            .mockResolvedValueOnce(jsonResponse([{ translations: [] }]));
-        const error = await failure(provider.translate('Hello', 'auto', 'es'));
-        expect(error.code).toBe('REQUEST_FAILED');
     });
 });
 

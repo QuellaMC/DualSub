@@ -23,20 +23,6 @@ export function ProvidersSection({ t, settings, save }: SectionProps) {
                 />
             )}
 
-            {settings.selectedProvider === 'microsoft_edge_auth' && (
-                <StaticProviderCard
-                    t={t}
-                    titleKey="cardMicrosoftTitle"
-                    descriptionKey="cardMicrosoftDesc"
-                    featureKeys={[
-                        'featureFree',
-                        'featureNoApiKey',
-                        'featureHighQuality',
-                        'featureGoodPerformance',
-                    ]}
-                />
-            )}
-
             {settings.selectedProvider === 'deepl' && (
                 <DeepLProviderCard
                     t={t}

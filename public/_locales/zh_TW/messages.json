@@ -266,12 +266,6 @@
     "cardGoogleDesc": {
         "message": "由 Google 提供的免費翻譯服務。無需額外設定。"
     },
-    "cardMicrosoftTitle": {
-        "message": "Microsoft 翻譯"
-    },
-    "cardMicrosoftDesc": {
-        "message": "由 Microsoft Edge 提供的免費翻譯服務。無需額外設定。"
-    },
     "providerStatus": {
         "message": "狀態："
     },
@@ -313,9 +307,6 @@
     },
     "providerGoogleName": {
         "message": "Google 翻譯（免費）"
-    },
-    "providerMicrosoftName": {
-        "message": "Microsoft 翻譯（免費）"
     },
     "providerDeepLName": {
         "message": "DeepL（需要 API 金鑰）"

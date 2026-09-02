@@ -18,7 +18,7 @@
 
 For Language Learning:
 
-- Provider: Microsoft Translate (Free)
+- Provider: Google Translate (Free)
 - Layout: Top/Bottom, Original First
 - AI Context: OpenAI GPT-5.6 Luna (Cultural, Historical, Linguistic)
 

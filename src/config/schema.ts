@@ -199,7 +199,7 @@ export const configSchema = {
 
     selectedProvider: setting({
         schema: z.enum(PROVIDER_IDS),
-        default: 'microsoft_edge_auth',
+        default: 'google',
         scope: 'sync',
     }),
     translationDelay: setting({

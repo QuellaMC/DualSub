@@ -266,12 +266,6 @@
     "cardGoogleDesc": {
         "message": "Servicio de traducción gratuito proporcionado por Google. No requiere configuración adicional."
     },
-    "cardMicrosoftTitle": {
-        "message": "Microsoft Translate"
-    },
-    "cardMicrosoftDesc": {
-        "message": "Servicio de traducción gratuito proporcionado por Microsoft Edge. No requiere configuración adicional."
-    },
     "providerStatus": {
         "message": "Estado:"
     },
@@ -313,9 +307,6 @@
     },
     "providerGoogleName": {
         "message": "Google Translate (Gratuito)"
-    },
-    "providerMicrosoftName": {
-        "message": "Microsoft Translate (Gratuito)"
     },
     "providerDeepLName": {
         "message": "DeepL (Requiere Clave API)"
