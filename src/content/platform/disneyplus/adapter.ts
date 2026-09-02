@@ -12,15 +12,23 @@ import { TimelineLocator, findPlayPauseButton } from './controlsDom';
 
 const PLAYBACK_TRANSITION_DELAY_MS = 160;
 
+// Disney+ has rendered cues under several names over time; the newest is a
+// timed-text-override-region element inside the player's shadow tree.
 const DISNEY_NATIVE_SUB_RECIPE: NativeSubRecipe = {
     styleId: 'dualsub-disneyplus-subtitle-hider',
     selectors: [
+        'timed-text-override-region',
+        '.timed-text-override-region',
+        '#timed-text-override-region',
         '.TimedTextOverlay',
         '.hive-subtitle-renderer-wrapper',
         '.hive-subtitle-renderer-cue-positioning-box',
         '.hive-subtitle-renderer-cue-window',
     ],
     css: `
+        timed-text-override-region[data-dualsub-hidden="true"],
+        .timed-text-override-region[data-dualsub-hidden="true"],
+        #timed-text-override-region[data-dualsub-hidden="true"],
         .TimedTextOverlay[data-dualsub-hidden="true"],
         .hive-subtitle-renderer-wrapper[data-dualsub-hidden="true"],
         .hive-subtitle-renderer-cue-positioning-box[data-dualsub-hidden="true"],

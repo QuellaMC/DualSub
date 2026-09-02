@@ -10,11 +10,63 @@ const HIDDEN_ATTRIBUTE = 'data-dualsub-hidden';
 
 type ConfigSource = Pick<typeof configService, 'get' | 'onChanged'>;
 
+type StyleRoot = Document | ShadowRoot;
+
+/** The tree a stylesheet must live in to reach `element`: the document or
+ *  the shadow root the element is rendered in. Decided by node type so it
+ *  holds across realms. */
+function styleRootOf(element: Element): StyleRoot | null {
+    const root = element.getRootNode();
+    if (root.nodeType === Node.DOCUMENT_NODE) {
+        return root as Document;
+    }
+    return root.nodeType === Node.DOCUMENT_FRAGMENT_NODE && 'host' in root
+        ? (root as ShadowRoot)
+        : null;
+}
+
+function styleHostOf(root: StyleRoot): ParentNode | null {
+    return root.nodeType === Node.DOCUMENT_NODE
+        ? (root as Document).head
+        : root;
+}
+
+/** Every element matching the selectors under `scopes`, looking through
+ *  each open shadow root on the way down. */
+function collectTargets(
+    scopes: readonly ParentNode[],
+    selectors: readonly string[]
+): Element[] {
+    const found = new Set<Element>();
+    const visited = new Set<ParentNode>();
+    const queue = [...scopes];
+    while (queue.length > 0) {
+        const root = queue.shift()!;
+        if (visited.has(root)) {
+            continue;
+        }
+        visited.add(root);
+        for (const selector of selectors) {
+            for (const element of root.querySelectorAll(selector)) {
+                found.add(element);
+            }
+        }
+        for (const node of root.querySelectorAll('*')) {
+            if (node.shadowRoot) {
+                queue.push(node.shadowRoot);
+            }
+        }
+    }
+    return [...found];
+}
+
 /**
  * Hides the platform's own subtitle rendering while DualSub is showing
- * subtitles. A stylesheet keyed on `data-dualsub-hidden` does the hiding;
- * an observer re-applies after the site re-renders its cue containers. Fully
- * reversible: abort restores everything.
+ * subtitles. Targets are marked with `data-dualsub-hidden`; a stylesheet
+ * keyed on that attribute does the hiding and is placed in whichever tree
+ * holds the target, so cues rendered inside open shadow roots are covered
+ * too. Observers re-apply after the site re-renders its cue containers.
+ * Fully reversible: abort restores everything.
  */
 export function installNativeSubHider(
     recipe: NativeSubRecipe,
@@ -26,38 +78,90 @@ export function installNativeSubHider(
         return;
     }
 
-    if (!document.getElementById(recipe.styleId) && document.head) {
-        const style = document.createElement('style');
-        style.id = recipe.styleId;
-        style.textContent = recipe.css;
-        document.head.appendChild(style);
-    }
-
     let hide = false;
+    const marked = new Set<Element>();
+    const styledRoots = new Set<StyleRoot>();
+    const observedRoots = new Set<Node>();
+    const observers: MutationObserver[] = [];
+    let reapplyScheduled = false;
+    let reportedNoTargets = false;
 
-    const targets = (): Element[] => {
-        const found = new Set<Element>();
-        const roots: ParentNode[] = [document, ...recipe.observedRoots(media)];
-        for (const root of roots) {
-            for (const selector of recipe.selectors) {
-                for (const element of root.querySelectorAll(selector)) {
-                    found.add(element);
-                }
-            }
+    const ensureStyle = (root: StyleRoot): void => {
+        if (styledRoots.has(root)) {
+            return;
         }
-        return [...found];
+        const host = styleHostOf(root);
+        if (!host) {
+            return;
+        }
+        if (!root.querySelector(`#${recipe.styleId}`)) {
+            const style = document.createElement('style');
+            style.id = recipe.styleId;
+            style.textContent = recipe.css;
+            host.appendChild(style);
+        }
+        styledRoots.add(root);
+    };
+
+    const scheduleReapply = (): void => {
+        if (reapplyScheduled) {
+            return;
+        }
+        reapplyScheduled = true;
+        scopedTimeout(
+            signal,
+            () => {
+                reapplyScheduled = false;
+                apply();
+            },
+            REAPPLY_DELAY_MS
+        );
+    };
+
+    const observe = (root: Node): void => {
+        if (observedRoots.has(root) || !root.isConnected) {
+            return;
+        }
+        observedRoots.add(root);
+        const observer = new MutationObserver((mutations) => {
+            if (mutations.some((m) => m.addedNodes.length > 0)) {
+                scheduleReapply();
+            }
+        });
+        observer.observe(root, { childList: true, subtree: true });
+        observers.push(observer);
     };
 
     const apply = (): void => {
         if (signal.aborted) {
             return;
         }
-        for (const element of targets()) {
+        const targets = collectTargets(
+            [document, ...recipe.observedRoots(media)],
+            recipe.selectors
+        );
+        if (hide && targets.length === 0 && !reportedNoTargets) {
+            reportedNoTargets = true;
+            deps.logger.info('No native subtitle container found to hide yet');
+        }
+        for (const element of targets) {
             if (hide) {
+                const root = styleRootOf(element);
+                if (root) {
+                    ensureStyle(root);
+                    observe(root);
+                }
                 element.setAttribute(HIDDEN_ATTRIBUTE, 'true');
+                marked.add(element);
             } else {
                 element.removeAttribute(HIDDEN_ATTRIBUTE);
             }
+        }
+        if (!hide) {
+            for (const element of marked) {
+                element.removeAttribute(HIDDEN_ATTRIBUTE);
+            }
+            marked.clear();
         }
     };
 
@@ -72,8 +176,9 @@ export function installNativeSubHider(
         }
     });
 
-    const observers: MutationObserver[] = [];
-    const observe = (attempt: number): void => {
+    // The recipe's roots are watched from the start; roots discovered
+    // through targets (a cue tree inside a shadow root) join as they appear.
+    const watchRecipeRoots = (attempt: number): void => {
         if (signal.aborted) {
             return;
         }
@@ -84,36 +189,17 @@ export function installNativeSubHider(
             if (attempt < MAX_ROOT_RETRIES) {
                 scopedTimeout(
                     signal,
-                    () => observe(attempt + 1),
+                    () => watchRecipeRoots(attempt + 1),
                     ROOT_RETRY_DELAY_MS
                 );
             }
             return;
         }
-        let reapplyScheduled = false;
-        const observer = new MutationObserver((mutations) => {
-            if (
-                reapplyScheduled ||
-                !mutations.some((m) => m.addedNodes.length > 0)
-            ) {
-                return;
-            }
-            reapplyScheduled = true;
-            scopedTimeout(
-                signal,
-                () => {
-                    reapplyScheduled = false;
-                    apply();
-                },
-                REAPPLY_DELAY_MS
-            );
-        });
         for (const root of roots) {
-            observer.observe(root, { childList: true, subtree: true });
+            observe(root);
         }
-        observers.push(observer);
     };
-    observe(0);
+    watchRecipeRoots(0);
 
     signal.addEventListener(
         'abort',
@@ -122,11 +208,10 @@ export function installNativeSubHider(
             for (const observer of observers) {
                 observer.disconnect();
             }
-            for (const element of document.querySelectorAll(
-                `[${HIDDEN_ATTRIBUTE}]`
-            )) {
+            for (const element of marked) {
                 element.removeAttribute(HIDDEN_ATTRIBUTE);
             }
+            marked.clear();
         },
         { once: true }
     );

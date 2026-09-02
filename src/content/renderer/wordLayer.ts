@@ -6,6 +6,11 @@ export interface WordIntent {
     readonly word: string;
 }
 
+function paint(span: HTMLSpanElement, color: string | null): void {
+    span.style.backgroundColor = color ?? '';
+    span.style.boxShadow = color ? `${HIGHLIGHT_SPREAD} ${color}` : '';
+}
+
 interface WordRegistry {
     readonly renderRevision: number;
     readonly spans: readonly HTMLSpanElement[];
@@ -13,7 +18,9 @@ interface WordRegistry {
 
 const HOVER_BACKGROUND = 'rgba(255, 255, 255, 0.22)';
 const SELECTED_BACKGROUND = 'rgba(19, 127, 236, 0.65)';
-const SELECTED_OUTLINE = '0 0 0 1px rgba(19, 127, 236, 0.9)';
+/** The highlight reaches past the glyphs through a shadow spread rather than
+ *  padding, so a clickable line keeps the spacing of a plain one. */
+const HIGHLIGHT_SPREAD = '0 0 0 2px';
 
 /**
  * Paints the original subtitle line as clickable words and turns clicks
@@ -56,8 +63,8 @@ export class WordLayer {
             Object.assign(span.style, {
                 cursor: 'pointer',
                 borderRadius: '3px',
-                padding: '0 2px',
-                transition: 'background-color 0.15s ease',
+                transition:
+                    'background-color 0.15s ease, box-shadow 0.15s ease',
             });
             fragment.append(span);
             spans.push(span);
@@ -83,8 +90,7 @@ export class WordLayer {
         spans.forEach((span, index) => {
             const selected = this.selected.has(index);
             span.setAttribute('aria-pressed', String(selected));
-            span.style.backgroundColor = selected ? SELECTED_BACKGROUND : '';
-            span.style.boxShadow = selected ? SELECTED_OUTLINE : '';
+            paint(span, selected ? SELECTED_BACKGROUND : null);
         });
     }
 
@@ -143,8 +149,10 @@ export class WordLayer {
         if (!resolved || this.selected.has(resolved.wordIndex)) {
             return;
         }
-        const span = this.registry!.spans[resolved.wordIndex]!;
-        span.style.backgroundColor = entering ? HOVER_BACKGROUND : '';
+        paint(
+            this.registry!.spans[resolved.wordIndex]!,
+            entering ? HOVER_BACKGROUND : null
+        );
     }
 
     /** A span is only an intent while it is the registered span at its
