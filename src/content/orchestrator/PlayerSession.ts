@@ -191,7 +191,7 @@ export class PlayerSession {
     start(): void {
         this.renderer.setVisible(this.settings.subtitlesEnabled);
         const unsubscribe = configService.onChanged((changes) =>
-            this.onSettingsChanged(changes)
+            this.applySettings(changes)
         );
         this.signal.addEventListener('abort', unsubscribe, { once: true });
 
@@ -236,7 +236,8 @@ export class PlayerSession {
         }
     }
 
-    private onSettingsChanged(changes: Partial<SettingsValues>): void {
+    /** Display settings from storage or from a popup live preview. */
+    applySettings(changes: Partial<SettingsValues>): void {
         let displayChanged = false;
         for (const key of CONTENT_SETTINGS_KEYS) {
             if (changes[key] !== undefined) {

@@ -719,6 +719,11 @@ class ConfigService {
      * defaults are written — the reverse order would resurrect retired keys
      * and mis-scope credentials.
      */
+    /** Apply the stored logging level (schema default when unreadable). */
+    async syncLoggingLevel(): Promise<void> {
+        setLoggingLevel(await this.get('loggingLevel'));
+    }
+
     initializeDefaults(beforeDefaults?: () => Promise<void>): void {
         browser.runtime.onInstalled.addListener((details) => {
             if (details.reason !== 'install' && details.reason !== 'update') {

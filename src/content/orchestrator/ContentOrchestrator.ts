@@ -1,13 +1,17 @@
 import { createLogger, setLoggingLevel } from '@/shared/logger';
 import { configService } from '@/config/service';
 import { MessageRouter } from '@/messaging/router';
-import { loggingLevelChanged } from '@/messaging/contracts/control';
+import {
+    configChanged,
+    loggingLevelChanged,
+} from '@/messaging/contracts/control';
 import { IsolatedBridge } from '../bridge/IsolatedBridge';
 import type { CapturedEvent } from '../bridge/protocol';
 import { SubtitleEventCache } from '../bridge/SubtitleEventCache';
 import type { PlatformDescriptor, PlatformHandoff } from '../platform/types';
 import { UiRoot } from '../renderer/domLayer';
 import { NavigationWatcher } from './NavigationWatcher';
+import { prepareContentPreview } from './preview';
 import {
     CONTENT_SETTINGS_KEYS,
     FETCH_SETTINGS_KEYS,
@@ -57,12 +61,22 @@ export class ContentOrchestrator {
             setLoggingLevel(request.level);
             return { success: true as const };
         });
-        this.router.listen();
-        void configService.get('loggingLevel').then((level) => {
-            if (!signal.aborted) {
-                setLoggingLevel(level);
+        // Popup sliders paint before they persist; storage stays the truth.
+        this.router.handle(configChanged, (request) => {
+            let preview;
+            try {
+                preview = prepareContentPreview(request.changes);
+            } catch {
+                return {
+                    success: false as const,
+                    error: 'Invalid configuration change',
+                };
             }
+            this.activeSession?.applySettings(preview);
+            return { success: true as const };
         });
+        this.router.listen();
+        void configService.syncLoggingLevel();
 
         this.bridge.start();
         new NavigationWatcher(() => this.requestReconcile('navigation')).start(

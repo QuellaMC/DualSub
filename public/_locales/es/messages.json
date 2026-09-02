@@ -856,5 +856,8 @@
     },
     "translationRequestError": {
         "message": "[Error en la Solicitud de Traducción. Por favor, inténtalo de nuevo.]"
+    },
+    "settingsSaveFailed": {
+        "message": "No se pudo guardar el ajuste. Inténtalo de nuevo."
     }
 }

@@ -1,7 +1,13 @@
+import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { configService } from '@/config/service';
+import { PopupApp } from '@/ui/popup/PopupApp';
+import '@/ui/popup/popup.css';
 
-function PopupApp() {
-    return <h1>DualSub</h1>;
-}
+void configService.syncLoggingLevel();
 
-createRoot(document.getElementById('root')!).render(<PopupApp />);
+createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+        <PopupApp />
+    </StrictMode>
+);

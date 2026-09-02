@@ -856,5 +856,8 @@
     },
     "translationRequestError": {
         "message": "[翻译请求错误。请重试。]"
+    },
+    "settingsSaveFailed": {
+        "message": "保存设置失败，请重试。"
     }
 }

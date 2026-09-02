@@ -856,5 +856,8 @@
     },
     "translationRequestError": {
         "message": "[翻譯請求錯誤。請重試。]"
+    },
+    "settingsSaveFailed": {
+        "message": "儲存設定失敗，請重試。"
     }
 }

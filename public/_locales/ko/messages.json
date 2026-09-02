@@ -856,5 +856,8 @@
     },
     "translationRequestError": {
         "message": "[번역 요청 오류. 다시 시도해주세요.]"
+    },
+    "settingsSaveFailed": {
+        "message": "설정을 저장하지 못했습니다. 다시 시도해주세요."
     }
 }
