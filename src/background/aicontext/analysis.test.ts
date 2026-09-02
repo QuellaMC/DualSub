@@ -185,6 +185,28 @@ describe('openai context provider', () => {
     });
 });
 
+describe('analysis runner', () => {
+    it('invokes fetch unbound, as the worker global requires', async () => {
+        const sample = culturalSample();
+        const strictFetch = vi.fn(function (this: unknown) {
+            if (this !== undefined) {
+                return Promise.reject(new TypeError('Illegal invocation'));
+            }
+            return Promise.resolve(
+                jsonResponse({
+                    choices: [{ message: { content: JSON.stringify(sample) } }],
+                })
+            );
+        });
+        await expect(
+            runProviderAnalysis(openaiContextProvider, SETTINGS, INPUT, {
+                timeoutMs: 1000,
+                fetch: strictFetch,
+            })
+        ).resolves.toEqual(sample);
+    });
+});
+
 describe('gemini context provider', () => {
     it('posts generateContent with the key in a header and a JSON response schema', async () => {
         const sample = culturalSample();

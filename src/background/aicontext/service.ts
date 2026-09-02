@@ -238,10 +238,14 @@ export class AiContextService {
                 return failure(error.message);
             }
             if (error instanceof ContextProviderError) {
-                this.logger.warn('Context analysis failed', {
+                this.logger.error('Context analysis failed', null, {
                     provider: provider.id,
                     code: error.code,
                     status: error.status,
+                    cause:
+                        error.cause instanceof Error
+                            ? `${error.cause.name}: ${error.cause.message}`
+                            : undefined,
                 });
                 return failure(error.message, error.retryable);
             }

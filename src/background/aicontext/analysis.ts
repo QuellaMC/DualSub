@@ -47,9 +47,12 @@ export async function runProviderAnalysis(
         analysisJsonSchema(input.type)
     );
 
+    // Called unbound on purpose: the global fetch throws "Illegal invocation"
+    // when invoked as a method of another object.
+    const { fetch: send } = options;
     let response: Response;
     try {
-        response = await options.fetch(request.url, {
+        response = await send(request.url, {
             ...request.init,
             signal: AbortSignal.timeout(options.timeoutMs),
         });
