@@ -485,6 +485,24 @@ describe('SidePanelApp', () => {
         ).toBeInTheDocument();
     });
 
+    it('hides the answer while the analysis settings differ from its own', async () => {
+        await renderBound();
+        vi.spyOn(browser.runtime, 'sendMessage').mockResolvedValue(
+            ANSWER as never
+        );
+        fireEvent.click(screen.getByRole('button', { name: /Analyze/ }));
+        await screen.findByText('A friendly greeting');
+
+        await configService.setMultiple({ aiContextEnabled: false });
+        await waitFor(() =>
+            expect(screen.queryByText('A friendly greeting')).toBeNull()
+        );
+        await configService.setMultiple({ aiContextEnabled: true });
+        expect(
+            await screen.findByText('A friendly greeting')
+        ).toBeInTheDocument();
+    });
+
     it('keeps the analyze action disabled while the feature is off', async () => {
         await configService.setMultiple({ aiContextEnabled: false });
         await renderBound();

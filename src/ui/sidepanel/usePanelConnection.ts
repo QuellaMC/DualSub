@@ -14,10 +14,11 @@ export type PanelError =
     | { readonly kind: 'key'; readonly key: string }
     | { readonly kind: 'text'; readonly text: string };
 
-/** An answer, the words it was computed for, and the language it is in. */
+/** An answer, the words it was computed for, and the analysis settings
+ *  it was produced under (the configuration key of useAnalysis). */
 export interface AnalysisRecord {
     readonly words: readonly string[];
-    readonly targetLanguage: string;
+    readonly configuration: string;
     readonly result: Analysis;
 }
 

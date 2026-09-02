@@ -8,6 +8,7 @@ import {
     selectionWords,
     type AnalysisRecord,
     type PanelHandle,
+    type TabState,
 } from './usePanelConnection';
 
 export const ANALYSIS_SETTINGS_KEYS = [
@@ -41,9 +42,9 @@ let requestCounter = 0;
  * panel's current view: switching tabs while it runs neither cancels it
  * nor loses its answer. It is dropped only when its tab's words change to
  * other words, its tab's document goes away, or the analysis settings
- * change underneath it. An answer is shown only in the target language it
- * was made for; changing the language hides it and changing back shows
- * it again.
+ * change underneath it. An answer is shown only under the analysis
+ * settings it was made with; changing them hides it and changing them
+ * back shows it again.
  */
 export function useAnalysis(panel: PanelHandle): {
     readonly settingsStatus: SettingsStatus;
@@ -66,8 +67,7 @@ export function useAnalysis(panel: PanelHandle): {
     const selectedWordsKey = JSON.stringify(selectionWords(tab.selection));
     const selectionCleared = tab.selection === null;
     const answer =
-        tab.analysis !== null &&
-        tab.analysis.targetLanguage === settings?.targetLanguage
+        tab.analysis !== null && tab.analysis.configuration === configurationKey
             ? tab.analysis
             : null;
 
@@ -161,6 +161,16 @@ export function useAnalysis(panel: PanelHandle): {
         };
         requests.current.set(tabId, request);
         updateTab(tabId, { analysis: null, error: null, analyzing: true });
+        // Judged against the state React is about to commit, so a tab
+        // cleared or reselected in the same tick wins over the outcome.
+        const settle = (fields: Partial<TabState>) =>
+            updateTab(tabId, (current) => {
+                const shown = selectionWords(current.selection);
+                return current.selection === null ||
+                    (shown.length > 0 && !sameWords(shown, words))
+                    ? null
+                    : fields;
+            });
         requestCounter += 1;
         try {
             const response = await sendWithRetry(
@@ -184,21 +194,12 @@ export function useAnalysis(panel: PanelHandle): {
             if (request.cancelled) {
                 return;
             }
-            // Judged against the state React is about to commit, so a tab
-            // cleared or reselected in the same tick wins over the answer.
-            updateTab(tabId, (current) => {
-                const shown = selectionWords(current.selection);
-                if (
-                    current.selection === null ||
-                    (shown.length > 0 && !sameWords(shown, words))
-                ) {
-                    return null;
-                }
-                return response.success
+            settle(
+                response.success
                     ? {
                           analysis: {
                               words,
-                              targetLanguage: settings.targetLanguage,
+                              configuration: configurationKey,
                               result: response.result.analysis,
                           },
                           error: null,
@@ -207,11 +208,11 @@ export function useAnalysis(panel: PanelHandle): {
                           error: response.error
                               ? { kind: 'text', text: response.error }
                               : { kind: 'key', key: 'sidepanelErrorGeneric' },
-                      };
-            });
+                      }
+            );
         } catch {
             if (!request.cancelled) {
-                updateTab(tabId, {
+                settle({
                     error: { kind: 'key', key: 'sidepanelErrorGeneric' },
                 });
             }
