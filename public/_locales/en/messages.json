@@ -859,5 +859,8 @@
     },
     "settingsSaveFailed": {
         "message": "Failed to save setting. Please try again."
+    },
+    "subtitleLoading": {
+        "message": "DualSub: loading subtitles…"
     }
 }

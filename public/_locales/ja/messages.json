@@ -859,5 +859,8 @@
     },
     "settingsSaveFailed": {
         "message": "設定を保存できませんでした。もう一度お試しください。"
+    },
+    "subtitleLoading": {
+        "message": "DualSub: 字幕を読み込んでいます…"
     }
 }

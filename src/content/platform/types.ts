@@ -27,8 +27,8 @@ export type ConfigReader = {
     get<K extends keyof SettingsValues>(key: K): Promise<SettingsValues[K]>;
 };
 
-/** The session's subtitle language choices, fixed for its lifetime: a
- *  change restarts the session. */
+/** The session's subtitle language choices. A change reloads subtitles in
+ *  place: the current cues stay on screen until the new set arrives. */
 export interface SubtitleLanguages {
     readonly originalLanguage: string;
     readonly targetLanguage: string;
@@ -38,7 +38,8 @@ export interface SubtitleLanguages {
 export interface AdapterContext {
     readonly signal: AbortSignal;
     readonly videoId: string;
-    readonly languages: SubtitleLanguages;
+    /** The session's current languages; read at use, never cached. */
+    readonly languages: () => SubtitleLanguages;
     readonly bridge: BridgeControlSender;
     readonly config: ConfigReader;
     readonly logger: Logger;
@@ -63,6 +64,11 @@ export type SubtitleFetchSpec =
           readonly tracks: unknown[];
       }
     | { readonly kind: 'm3u8-master'; readonly url: string };
+
+/** What a subtitle event means for this session: something to fetch, or
+ *  the platform's answer that it has nothing for the requested languages. */
+export type SubtitleSource =
+    SubtitleFetchSpec | { readonly kind: 'unavailable' };
 
 export interface NativeSubRecipe {
     readonly styleId: string;
@@ -91,12 +97,15 @@ export interface PlatformDescriptor {
 /** One stateful adapter per PlayerSession. */
 export interface PlatformAdapter {
     /** Turn a subtitle event for this session's video into a background
-     *  fetch spec, or null to ignore. */
-    interpretSubtitleEvent(event: CapturedEvent): SubtitleFetchSpec | null;
+     *  fetch spec, report it as unavailable, or null to ignore. */
+    interpretSubtitleEvent(event: CapturedEvent): SubtitleSource | null;
     /** Non-subtitle platform events (Disney timeline updates). */
     onPlatformEvent(event: CapturedEvent): void;
     /** The page bridge (re)connected: send any page-world setup traffic. */
     onBridgeConnected?(): void;
+    /** The session's languages changed: refresh whatever the page world
+     *  derived from them (Netflix asks for the new tracks). */
+    onLanguagesChanged?(): void;
     /** Program time in seconds for cue lookup, or null meaning "suppress
      *  subtitles this frame" (Disney interstitials, untrustworthy clock). */
     getPlaybackTime(video: HTMLVideoElement): number | null;

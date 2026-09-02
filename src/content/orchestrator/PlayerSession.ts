@@ -26,14 +26,17 @@ import type { DisplaySettings } from '../renderer/styling';
 import { buildCueSet, type CueSet } from '../subtitles/cueModel';
 import { TranslationScheduler } from '../translation/TranslationScheduler';
 import { MediaBinding } from './MediaBinding';
-import { childScope, ensureLive, runScoped } from './scope';
+import { childScope, ensureLive, runScoped, scopedTimeout } from './scope';
 
 export type SessionEndReason =
     | 'navigation'
     | 'left-player-page'
-    | 'config-restart'
     | 'document-teardown'
     | 'context-invalidated';
+
+/** A wait longer than this drops the loading placeholder; the platform
+ *  evidently has nothing coming. */
+const SUBTITLE_LOADING_TIMEOUT_MS = 20_000;
 
 export const CONTENT_SETTINGS_KEYS = [
     'subtitlesEnabled',
@@ -116,7 +119,9 @@ export class PlayerSession {
     private readonly mediaBinding: MediaBinding;
     private mediaScope: AbortController | null = null;
     private settings: ContentSettings;
+    private languagesValue: SubtitleLanguages;
     private latestSubtitleEvent: CapturedEvent | null = null;
+    private loadingToken = 0;
     private inFlightKey: string | null = null;
     private completedKey: string | null = null;
     /** Latest-wins: a slower earlier request must not overwrite newer cues. */
@@ -132,6 +137,7 @@ export class PlayerSession {
         this.videoId = deps.videoId;
         this.signal = this.controller.signal;
         this.settings = deps.settings;
+        this.languagesValue = deps.languages;
         this.logger = createLogger(
             `PlayerSession:${deps.descriptor.id}:${deps.id}`
         );
@@ -140,7 +146,7 @@ export class PlayerSession {
             {
                 signal: this.signal,
                 videoId: deps.videoId,
-                languages: deps.languages,
+                languages: () => this.languagesValue,
                 bridge: deps.bridge,
                 config: configService,
                 logger: this.logger,
@@ -188,12 +194,17 @@ export class PlayerSession {
         });
     }
 
+    get languages(): SubtitleLanguages {
+        return this.languagesValue;
+    }
+
     start(): void {
         this.renderer.setVisible(this.settings.subtitlesEnabled);
         const unsubscribe = configService.onChanged((changes) =>
             this.applySettings(changes)
         );
         this.signal.addEventListener('abort', unsubscribe, { once: true });
+        this.setLoading(true);
 
         // Replays retained events synchronously — anything the page bridge
         // resolved before this session existed.
@@ -224,10 +235,54 @@ export class PlayerSession {
         if (!this.settings.subtitlesEnabled) {
             return;
         }
-        const spec = this.adapter.interpretSubtitleEvent(event);
-        if (spec) {
-            runScoped(this.requestSubtitles(spec));
+        const source = this.adapter.interpretSubtitleEvent(event);
+        if (!source) {
+            return;
         }
+        if (source.kind === 'unavailable') {
+            this.setLoading(false);
+            return;
+        }
+        runScoped(this.requestSubtitles(source));
+    }
+
+    /** Reload subtitles for new languages; the current cues stay on screen
+     *  behind a placeholder until the new set arrives. */
+    updateLanguages(next: SubtitleLanguages): void {
+        const current = this.languagesValue;
+        if (
+            next.originalLanguage === current.originalLanguage &&
+            next.targetLanguage === current.targetLanguage &&
+            next.useOfficialTranslations === current.useOfficialTranslations
+        ) {
+            return;
+        }
+        this.languagesValue = next;
+        this.completedKey = null;
+        this.setLoading(true);
+        this.adapter.onLanguagesChanged?.();
+        if (this.latestSubtitleEvent) {
+            this.onSubtitleEvent(this.latestSubtitleEvent);
+        }
+    }
+
+    private setLoading(loading: boolean): void {
+        this.loadingToken += 1;
+        this.renderer.setLoading(loading);
+        if (!loading) {
+            return;
+        }
+        const token = this.loadingToken;
+        scopedTimeout(
+            this.signal,
+            () => {
+                if (token === this.loadingToken) {
+                    this.logger.warn('Subtitles did not arrive in time');
+                    this.setLoading(false);
+                }
+            },
+            SUBTITLE_LOADING_TIMEOUT_MS
+        );
     }
 
     onPlatformEvent(event: CapturedEvent): void {
@@ -264,7 +319,9 @@ export class PlayerSession {
     }
 
     private async requestSubtitles(spec: SubtitleFetchSpec): Promise<void> {
-        const key = JSON.stringify(spec);
+        const { originalLanguage, targetLanguage, useOfficialTranslations } =
+            this.languagesValue;
+        const key = JSON.stringify([spec, this.languagesValue]);
         if (key === this.completedKey || key === this.inFlightKey) {
             return;
         }
@@ -272,11 +329,6 @@ export class PlayerSession {
         this.requestSequence += 1;
         const sequence = this.requestSequence;
         try {
-            const {
-                originalLanguage,
-                targetLanguage,
-                useOfficialTranslations,
-            } = this.deps.languages;
             const request: FetchVttRequest =
                 spec.kind === 'netflix-tracks'
                     ? {
@@ -311,13 +363,14 @@ export class PlayerSession {
                 this.completedKey = key;
                 const cueSet = buildCueSet(response);
                 this.rendererState.loadCues(cueSet);
-                this.renderer.cuesChanged();
+                this.setLoading(false);
                 this.startTranslation(cueSet);
                 this.logger.info('Subtitles loaded', {
                     cueCount: cueSet.cues.length,
                     useNativeTarget: cueSet.useNativeTarget,
                 });
             } else {
+                this.setLoading(false);
                 this.logger.warn('Subtitle request failed', {
                     error: response.error,
                     stage: response.stage,
@@ -330,6 +383,9 @@ export class PlayerSession {
             if (isContextInvalidated(error)) {
                 this.deps.onContextInvalidated();
                 return;
+            }
+            if (sequence === this.requestSequence) {
+                this.setLoading(false);
             }
             this.logger.error('Subtitle request errored', error);
         } finally {

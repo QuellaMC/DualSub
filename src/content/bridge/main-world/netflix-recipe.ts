@@ -356,6 +356,15 @@ async function resolveSubtitleTracks(
             token
         );
         if (!session) {
+            if (!token.cancelled) {
+                emit({
+                    t: 'subtitle-data',
+                    platform: 'netflix',
+                    movieId: videoId,
+                    languages: [...languages],
+                    tracks: [],
+                });
+            }
             return;
         }
         const selected = selectTracks(

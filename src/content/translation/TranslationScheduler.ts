@@ -6,7 +6,7 @@ import type {
 } from '@/messaging/contracts/translate';
 import type { Cue, CueId } from '../subtitles/cueModel';
 import { scopedInterval } from '../orchestrator/scope';
-import { translationFailureText } from './errorText';
+import { overlayText } from '../overlayText';
 
 export const TRANSLATION_LOOKBEHIND_SECONDS = 5;
 export const TRANSLATION_LOOKAHEAD_SECONDS = 30;
@@ -274,7 +274,7 @@ export class TranslationScheduler {
             deps.logger.error('Translation request failed', error, {
                 cueStart: cue.start,
             });
-            this.settle(cue, translationFailureText('request'));
+            this.settle(cue, overlayText('translationRequestError'));
             return;
         }
         if (deps.signal.aborted) {
@@ -306,7 +306,7 @@ export class TranslationScheduler {
             cueStart: cue.start,
             retryable: response.retryable,
         });
-        this.settle(cue, translationFailureText('api'));
+        this.settle(cue, overlayText('translationApiError'));
     }
 
     private settle(cue: TranslatableCue, translated: string): void {

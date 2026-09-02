@@ -859,5 +859,8 @@
     },
     "settingsSaveFailed": {
         "message": "설정을 저장하지 못했습니다. 다시 시도해주세요."
+    },
+    "subtitleLoading": {
+        "message": "DualSub: 자막을 불러오는 중…"
     }
 }

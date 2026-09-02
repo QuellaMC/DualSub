@@ -5,7 +5,8 @@ import type {
     NativeSubRecipe,
     PlatformAdapter,
     PlatformHandoff,
-    SubtitleFetchSpec,
+    SubtitleLanguages,
+    SubtitleSource,
 } from '../types';
 
 const NETFLIX_NATIVE_SUB_RECIPE: NativeSubRecipe = {
@@ -33,11 +34,21 @@ const NETFLIX_NATIVE_SUB_RECIPE: NativeSubRecipe = {
 /** Languages the page bridge should resolve, original first. The target is
  *  only wanted when official translations may replace API translation. */
 export function requestedSubtitleLanguages(
-    languages: AdapterContext['languages']
+    languages: SubtitleLanguages
 ): string[] {
     return languages.useOfficialTranslations
         ? [languages.originalLanguage, languages.targetLanguage]
         : [languages.originalLanguage];
+}
+
+function sameLanguages(
+    left: readonly string[],
+    right: readonly string[]
+): boolean {
+    return (
+        left.length === right.length &&
+        left.every((language, index) => language === right[index])
+    );
 }
 
 export class NetflixAdapter implements PlatformAdapter {
@@ -48,19 +59,14 @@ export class NetflixAdapter implements PlatformAdapter {
         _handoff: PlatformHandoff | null
     ) {}
 
-    interpretSubtitleEvent(event: CapturedEvent): SubtitleFetchSpec | null {
+    interpretSubtitleEvent(event: CapturedEvent): SubtitleSource | null {
         if (event.t !== 'subtitle-data') {
             return null;
         }
-        // A retained resolution answered an earlier session's languages;
-        // this session's own request is on its way.
-        const requested = requestedSubtitleLanguages(this.context.languages);
-        if (
-            event.languages.length !== requested.length ||
-            event.languages.some(
-                (language, index) => language !== requested[index]
-            )
-        ) {
+        // A resolution for other languages answered an earlier request;
+        // the one for the current languages is on its way.
+        const requested = requestedSubtitleLanguages(this.context.languages());
+        if (!sameLanguages(event.languages, requested)) {
             return null;
         }
         if (event.tracks.length === 0) {
@@ -68,7 +74,7 @@ export class NetflixAdapter implements PlatformAdapter {
                 'Netflix resolved no subtitle track for the requested languages',
                 { videoId: this.context.videoId }
             );
-            return null;
+            return { kind: 'unavailable' };
         }
         return { kind: 'netflix-tracks', tracks: event.tracks };
     }
@@ -76,12 +82,20 @@ export class NetflixAdapter implements PlatformAdapter {
     onPlatformEvent(): void {}
 
     /** Track URLs live in the page's player; ask for them once the bridge
-     *  is up (again after a reconnect, which supersedes the earlier ask). */
+     *  is up. A later ask supersedes an earlier one. */
     onBridgeConnected(): void {
+        this.requestTracks();
+    }
+
+    onLanguagesChanged(): void {
+        this.requestTracks();
+    }
+
+    private requestTracks(): void {
         this.context.bridge.sendControl({
             t: 'request-subtitle-tracks',
             videoId: this.context.videoId,
-            languages: requestedSubtitleLanguages(this.context.languages),
+            languages: requestedSubtitleLanguages(this.context.languages()),
         });
     }
 

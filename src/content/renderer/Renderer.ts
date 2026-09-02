@@ -5,6 +5,7 @@ import type {
     PlatformDescriptor,
 } from '../platform/types';
 import { childScope } from '../orchestrator/scope';
+import { overlayText } from '../overlayText';
 import { pairActiveCues, scanActiveCues } from './cueSelect';
 import { SessionContainer, type UiRoot } from './domLayer';
 import { startFrameLoop } from './frameLoop';
@@ -98,6 +99,13 @@ export class Renderer {
         this.render();
     }
 
+    /** While loading, the translated slot carries a placeholder and the
+     *  overlay stays up even between cues, so the wait is visibly ours. */
+    setLoading(loading: boolean): void {
+        this.deps.state.setLoading(loading);
+        this.render();
+    }
+
     destroy(): void {
         this.detachMedia();
         this.container.destroy();
@@ -184,13 +192,20 @@ export class Renderer {
         const now = Date.now();
         let { nextBoundaryTime, nextBoundaryInclusive } = scan;
         let wallClockDeadline: number | null = null;
+        const loadingText = state.loading
+            ? overlayText('subtitleLoading')
+            : null;
 
         if (scan.activeCues.length > 0) {
             const pair = pairActiveCues(scan.activeCues);
             const originalText = pair.original?.original ?? '';
             const translatedText =
-                pair.translated?.translated ?? pair.original?.translated ?? '';
+                loadingText ??
+                pair.translated?.translated ??
+                pair.original?.translated ??
+                '';
             this.commit(elements, originalText, translatedText);
+            state.painted.placeholder = loadingText !== null;
             const displayed = pair.original ?? pair.translated;
             if (displayed) {
                 state.painted.cueWindow = {
@@ -198,6 +213,16 @@ export class Renderer {
                     end: displayed.end,
                 };
             }
+        } else if (loadingText !== null) {
+            this.commit(elements, '', loadingText);
+            state.painted.placeholder = true;
+            state.painted.cueWindow = null;
+        } else if (state.painted.placeholder) {
+            // The placeholder is not a cue: no grace keeps it up once the
+            // wait is over.
+            this.commit(elements, '', '');
+            state.painted.placeholder = false;
+            state.painted.cueWindow = null;
         } else {
             const cueWindow = state.painted.cueWindow;
             const withinWindow =

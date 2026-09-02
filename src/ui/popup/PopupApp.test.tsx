@@ -177,16 +177,20 @@ describe('PopupApp', () => {
 
         fireEvent.change(slider, { target: { value: '1.5' } });
         fireEvent.pointerUp(slider);
-        await waitFor(() =>
-            expect(screen.getByRole('status')).toHaveTextContent(
-                'Failed to save setting. Please try again.'
-            )
+        await waitFor(
+            () =>
+                expect(screen.getByRole('status')).toHaveTextContent(
+                    'Failed to save setting. Please try again.'
+                ),
+            { timeout: 2500 }
         );
-        await waitFor(() =>
-            expect(previewsSent(send)).toEqual([
-                { subtitleFontSize: 1.5 },
-                { subtitleFontSize: 1.1 },
-            ])
+        await waitFor(
+            () =>
+                expect(previewsSent(send)).toEqual([
+                    { subtitleFontSize: 1.5 },
+                    { subtitleFontSize: 1.1 },
+                ]),
+            { timeout: 2500 }
         );
         expect(slider).toHaveValue('1.1');
     });

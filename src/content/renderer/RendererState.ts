@@ -15,6 +15,8 @@ export interface FrameMemo {
 export interface PaintedState {
     originalText: string;
     translatedText: string;
+    /** The translated slot currently shows the loading placeholder. */
+    placeholder: boolean;
     cueWindow: { start: number; end: number } | null;
     styleAppliedAt: number;
 }
@@ -27,12 +29,15 @@ export interface PaintedState {
 export class RendererState {
     cues: Cue[] = [];
     useNativeTarget = false;
+    /** Subtitles for the current languages are still on their way. */
+    loading = false;
     display: DisplaySettings;
     renderRevision = 0;
     frameMemo: FrameMemo | null = null;
     readonly painted: PaintedState = {
         originalText: '',
         translatedText: '',
+        placeholder: false,
         cueWindow: null,
         styleAppliedAt: 0,
     };
@@ -57,6 +62,11 @@ export class RendererState {
 
     setDisplay(display: DisplaySettings): void {
         this.display = display;
+        this.invalidateMemo();
+    }
+
+    setLoading(loading: boolean): void {
+        this.loading = loading;
         this.invalidateMemo();
     }
 

@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { setUrl } from '@/test-utils/dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { createLogger } from '@/shared/logger';
 import type { PlatformAdapter } from '../platform/types';
 import type { Cue } from '../subtitles/cueModel';
@@ -102,6 +103,36 @@ describe('Renderer', () => {
     });
     afterEach(() => {
         vi.useRealTimers();
+        vi.restoreAllMocks();
+    });
+
+    it('shows the loading placeholder until cues arrive, then in the translated slot while reloading', () => {
+        vi.spyOn(fakeBrowser.i18n, 'getMessage').mockImplementation(
+            () => 'Loading…'
+        );
+        const { renderer, video, state, tick, texts, container, controller } =
+            setup();
+        renderer.attachMedia({ root: video.parentElement, video });
+        renderer.setLoading(true);
+        tick(0.5);
+        expect(container()?.style.display).toBe('flex');
+        expect(texts()).toEqual(['', 'Loading…']);
+
+        state.loadCues({
+            cues: [cue(1, 2, 'Hello', '你好')],
+            useNativeTarget: false,
+            sourceLanguage: 'en',
+            targetLanguage: 'zh-CN',
+        });
+        renderer.setLoading(false);
+        tick(1.5);
+        expect(texts()).toEqual(['Hello', '你好']);
+
+        renderer.setLoading(true);
+        expect(texts()).toEqual(['Hello', 'Loading…']);
+        tick(3);
+        expect(texts()).toEqual(['', 'Loading…']);
+        controller.abort();
     });
 
     it('paints the active cue pair and clears after the cue plus grace', () => {

@@ -10,7 +10,6 @@ import type { CapturedEvent } from '../bridge/protocol';
 import { SubtitleEventCache } from '../bridge/SubtitleEventCache';
 import type { PlatformDescriptor, PlatformHandoff } from '../platform/types';
 import { UiRoot } from '../renderer/domLayer';
-import { carryHandoff } from './handoff';
 import { NavigationWatcher } from './NavigationWatcher';
 import { prepareContentPreview } from './preview';
 import {
@@ -22,8 +21,6 @@ import {
     type SessionEndReason,
 } from './PlayerSession';
 import type { SubtitleLanguages } from '../platform/types';
-
-type ReconcileTrigger = 'boot' | 'navigation' | 'bridge-event' | 'config';
 
 /**
  * Document root of the content side. Owns document-lifetime services (page
@@ -42,7 +39,7 @@ export class ContentOrchestrator {
     private handoff: PlatformHandoff | null = null;
     private sessionCounter = 0;
     private reconciling = false;
-    private pendingReconcile: { force: boolean } | null = null;
+    private pendingReconcile = false;
     private tornDown = false;
 
     constructor(private readonly descriptor: PlatformDescriptor) {
@@ -80,18 +77,22 @@ export class ContentOrchestrator {
         void configService.syncLoggingLevel();
 
         this.bridge.start();
-        new NavigationWatcher(() => this.requestReconcile('navigation')).start(
-            signal
-        );
+        new NavigationWatcher(() => this.requestReconcile()).start(signal);
 
         const unsubscribe = configService.onChanged((changes) => {
-            if (FETCH_SETTINGS_KEYS.some((key) => changes[key] !== undefined)) {
-                this.requestReconcile('config', { force: true });
+            const session = this.activeSession;
+            if (
+                session &&
+                FETCH_SETTINGS_KEYS.some((key) => changes[key] !== undefined)
+            ) {
+                session.updateLanguages(
+                    toSubtitleLanguages({ ...session.languages, ...changes })
+                );
             }
         });
         signal.addEventListener('abort', unsubscribe, { once: true });
 
-        this.requestReconcile('boot');
+        this.requestReconcile();
         this.logger.info('Content orchestrator started');
     }
 
@@ -102,7 +103,7 @@ export class ContentOrchestrator {
         }
         if (classification.kind === 'subtitle') {
             this.cache.publish(classification.videoId, event);
-            this.requestReconcile('bridge-event');
+            this.requestReconcile();
             return;
         }
         const session = this.activeSession;
@@ -117,51 +118,40 @@ export class ContentOrchestrator {
 
     /** Serialized, latest-wins: a fast A→B→A cannot interleave teardown
      *  and startup. */
-    requestReconcile(
-        trigger: ReconcileTrigger,
-        options: { force?: boolean } = {}
-    ): void {
+    requestReconcile(): void {
         if (this.tornDown) {
             return;
         }
-        const force = options.force ?? false;
         if (this.reconciling) {
-            this.pendingReconcile = {
-                force: force || (this.pendingReconcile?.force ?? false),
-            };
+            this.pendingReconcile = true;
             return;
         }
         this.reconciling = true;
         try {
-            this.reconcile(trigger, force);
+            this.reconcile();
         } finally {
             this.reconciling = false;
         }
-        const pending = this.pendingReconcile;
-        if (pending) {
-            this.pendingReconcile = null;
-            this.requestReconcile(trigger, pending);
+        if (this.pendingReconcile) {
+            this.pendingReconcile = false;
+            this.requestReconcile();
         }
     }
 
-    private reconcile(trigger: ReconcileTrigger, force: boolean): void {
+    /** The route's videoId decides which single session exists; a session
+     *  ends only when the route leaves its video, so the memory it hands on
+     *  always describes a different video's player. */
+    private reconcile(): void {
         const desired = this.descriptor.parseVideoIdFromUrl(location.href);
         const active = this.activeSession;
-        if (active && active.videoId === desired && !force) {
+        if (active && active.videoId === desired) {
             return;
         }
         if (active) {
-            const reason: SessionEndReason =
-                trigger === 'config'
-                    ? 'config-restart'
-                    : desired
-                      ? 'navigation'
-                      : 'left-player-page';
-            this.handoff = carryHandoff(
-                active.end(reason),
-                active.videoId,
-                desired
-            );
+            const reason: SessionEndReason = desired
+                ? 'navigation'
+                : 'left-player-page';
+            this.handoff = active.end(reason);
             this.activeSession = null;
         }
         if (!desired) {
@@ -191,7 +181,7 @@ export class ContentOrchestrator {
             handoff: this.handoff,
             settings,
             languages,
-            onNavigationMismatch: () => this.requestReconcile('navigation'),
+            onNavigationMismatch: () => this.requestReconcile(),
             onContextInvalidated: () => this.teardown('context-invalidated'),
         });
         this.activeSession = session;

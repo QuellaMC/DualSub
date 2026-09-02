@@ -305,16 +305,34 @@ describe('netflixRecipe track resolution', () => {
         expect(emitted).toHaveLength(1);
     });
 
-    it('answers nothing when no matching player appears within the wait budget', async () => {
+    it('answers with no tracks when no matching player appears within the wait budget', async () => {
         installNetflix({ movieId: '999', tracks: [OFF, EN], urls: ['en-1'] });
         request('1', ['en']);
-        await settle(61_000);
+        await settle(59_000);
         expect(emitted).toEqual([]);
+        await settle(2_000);
+        expect(emitted).toEqual([
+            {
+                t: 'subtitle-data',
+                platform: 'netflix',
+                movieId: '1',
+                languages: ['en'],
+                tracks: [],
+            },
+        ]);
     });
 
-    it('answers nothing when the player API is absent', async () => {
+    it('answers with no tracks when the player API is absent', async () => {
         request('1', ['en']);
         await settle(61_000);
-        expect(emitted).toEqual([]);
+        expect(emitted).toEqual([
+            {
+                t: 'subtitle-data',
+                platform: 'netflix',
+                movieId: '1',
+                languages: ['en'],
+                tracks: [],
+            },
+        ]);
     });
 });

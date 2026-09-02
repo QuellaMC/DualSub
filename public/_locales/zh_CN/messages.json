@@ -859,5 +859,8 @@
     },
     "settingsSaveFailed": {
         "message": "保存设置失败，请重试。"
+    },
+    "subtitleLoading": {
+        "message": "DualSub：正在加载字幕…"
     }
 }

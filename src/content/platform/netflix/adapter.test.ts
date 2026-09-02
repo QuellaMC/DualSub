@@ -9,18 +9,26 @@ const LANGUAGES: SubtitleLanguages = {
     useOfficialTranslations: true,
 };
 
-function setup(languages: SubtitleLanguages = LANGUAGES) {
+function setup(initial: SubtitleLanguages = LANGUAGES) {
+    let languages = initial;
     const sendControl = vi.fn(() => true);
     const logger = createLogger('test');
     const context: AdapterContext = {
         signal: new AbortController().signal,
         videoId: '70283145',
-        languages,
+        languages: () => languages,
         bridge: { connected: true, sendControl },
         config: { get: vi.fn() },
         logger,
     };
-    return { adapter: new NetflixAdapter(context, null), sendControl, logger };
+    return {
+        adapter: new NetflixAdapter(context, null),
+        sendControl,
+        logger,
+        setLanguages: (next: SubtitleLanguages): void => {
+            languages = next;
+        },
+    };
 }
 
 describe('NetflixAdapter', () => {
@@ -43,7 +51,18 @@ describe('NetflixAdapter', () => {
         ).toEqual(['en']);
     });
 
-    it('turns a resolved track list into a fetch spec and warns on an empty one', () => {
+    it('asks again with the current languages when they change', () => {
+        const { adapter, sendControl, setLanguages } = setup();
+        setLanguages({ ...LANGUAGES, useOfficialTranslations: false });
+        adapter.onLanguagesChanged();
+        expect(sendControl).toHaveBeenLastCalledWith({
+            t: 'request-subtitle-tracks',
+            videoId: '70283145',
+            languages: ['en'],
+        });
+    });
+
+    it('turns a resolved track list into a fetch spec and reports an empty one as unavailable', () => {
         const { adapter, logger } = setup();
         const warn = vi
             .spyOn(logger, 'warn')
@@ -66,7 +85,7 @@ describe('NetflixAdapter', () => {
                 languages: ['en', 'zh-CN'],
                 tracks: [],
             })
-        ).toBeNull();
+        ).toEqual({ kind: 'unavailable' });
         expect(warn).toHaveBeenCalledTimes(1);
     });
 
