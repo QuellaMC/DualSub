@@ -278,9 +278,35 @@ describe('SidePanelService registration', () => {
         expect(panel.alive).toBe(true);
     });
 
-    it('changes nothing when the republish failed ambiguously', async () => {
+    it('projects the owner it holds when the republish failed ambiguously', async () => {
         const { service, sendToTab } = harness();
         service.acceptSelectionSnapshot(contentSender(), snapshot());
+        sendToTab.mockRejectedValue(
+            new MessagingError(
+                'closed',
+                MessagingFailureClass.AMBIGUOUS_ACCEPTANCE,
+                null
+            )
+        );
+        const panel = await bound(service);
+        expect(panel.posted[2]!.data.selection).toMatchObject({
+            selectionOwnerGeneration: 1,
+            entries: [{ wordIndex: 0, word: 'hola' }],
+        });
+        expect(
+            service.acceptSelectionSnapshot(
+                contentSender(),
+                snapshot({ selectionRevision: 2, entries: [] })
+            )
+        ).toBe(true);
+        expect(panel.posted[3]!.data.selection).toMatchObject({
+            selectionOwnerGeneration: 1,
+            selectionRevision: 2,
+        });
+    });
+
+    it('changes nothing when the republish failed ambiguously and nothing is known', async () => {
+        const { service, sendToTab } = harness();
         sendToTab.mockRejectedValue(
             new MessagingError(
                 'closed',
@@ -295,15 +321,24 @@ describe('SidePanelService registration', () => {
         await settled();
         expect(panel.posted).toHaveLength(2);
         expect(panel.alive).toBe(true);
-        expect(
-            service.acceptSelectionSnapshot(
-                contentSender(),
-                snapshot({ selectionRevision: 2, entries: [] })
-            )
-        ).toBe(true);
+    });
+
+    it('treats an uncorrelated acknowledgement as unknown, not as an empty tab', async () => {
+        const { service, sendToTab } = harness();
+        service.acceptSelectionSnapshot(contentSender(), snapshot());
+        sendToTab.mockImplementation((contract, _tabId, request) => {
+            if (contract.action === 'sidePanelGetState') {
+                const { data } = request as { data: { requestId: number } };
+                return Promise.resolve({
+                    requestId: data.requestId + 1,
+                    accepted: false,
+                } as never);
+            }
+            return Promise.resolve({ success: true } as never);
+        });
+        const panel = await bound(service);
         expect(panel.posted[2]!.data.selection).toMatchObject({
             selectionOwnerGeneration: 1,
-            selectionRevision: 2,
         });
     });
 

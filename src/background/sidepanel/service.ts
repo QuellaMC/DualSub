@@ -580,7 +580,8 @@ export class SidePanelService {
      * while this exact binding still stands. When content has nothing to
      * republish, or the tab provably has no content script, and no
      * snapshot arrived meanwhile, the panel hears a second null: the tab
-     * is empty. An ambiguous failure says nothing, and changes nothing.
+     * is empty. An ambiguous failure or an uncorrelated reply says
+     * nothing, so the panel hears what was already known, if anything.
      */
     private async synchronizeRegisteredPort(
         connection: Connection,
@@ -628,7 +629,7 @@ export class SidePanelService {
         const capturedInvalidationEpoch =
             this.selectionInvalidationEpochByTab.get(tabId) ?? 0;
 
-        let accepted: boolean;
+        let reply: 'accepted' | 'declined' | 'unknown';
         try {
             const response = await this.deps.sendToTab(
                 selectionRepublishRequest,
@@ -641,42 +642,72 @@ export class SidePanelService {
                     ? { documentId: capturedOwner.documentId, frameId: 0 }
                     : { frameId: 0 }
             );
-            accepted = response.requestId === requestId && response.accepted;
+            reply =
+                response.requestId !== requestId
+                    ? 'unknown'
+                    : response.accepted
+                      ? 'accepted'
+                      : 'declined';
         } catch (error) {
-            if (
-                !(error instanceof MessagingError) ||
-                error.failureClass !== MessagingFailureClass.PROVEN_NON_DELIVERY
-            ) {
-                return ownsBinding();
-            }
-            accepted = false;
+            reply =
+                error instanceof MessagingError &&
+                error.failureClass === MessagingFailureClass.PROVEN_NON_DELIVERY
+                    ? 'declined'
+                    : 'unknown';
         }
         if (!ownsBinding()) {
             return false;
         }
 
         const currentOwner = this.selectionOwnersByTab.get(tabId);
+        const known = currentOwner?.windowId === windowId ? currentOwner : null;
         const navigated =
             (this.selectionInvalidationEpochByTab.get(tabId) ?? 0) !==
             capturedInvalidationEpoch;
         const republished =
-            currentOwner &&
-            currentOwner.windowId === windowId &&
-            currentOwner.acceptedReceiptEpoch > capturedReceiptEpoch &&
+            known &&
+            known.acceptedReceiptEpoch > capturedReceiptEpoch &&
             (navigated ||
                 !capturedOwner ||
-                ownerIdentityEquals(currentOwner, capturedOwner))
-                ? currentOwner
+                ownerIdentityEquals(known, capturedOwner))
+                ? known
                 : null;
-        if (!republished) {
-            // Acknowledged but not received yet: the replay's own broadcast
-            // follows. Not acknowledged: the tab has nothing to show.
-            return accepted ? ownsBinding() : this.projectSelectionNull(tabId);
+        if (republished) {
+            return this.projectOwnerTo(connection, binding, republished);
         }
+        switch (reply) {
+            case 'accepted':
+                // Received before the replay: its own broadcast follows.
+                return ownsBinding();
+            case 'declined':
+                return this.projectSelectionNull(tabId);
+            case 'unknown':
+                // Nothing was learned; what was known still stands.
+                return known
+                    ? this.projectOwnerTo(connection, binding, known)
+                    : ownsBinding();
+        }
+    }
+
+    /** Post an owner to the exact binding; a change underneath the post
+     *  projects null so the panel never keeps a superseded state. */
+    private projectOwnerTo(
+        connection: Connection,
+        binding: SidePanelBinding,
+        owner: SelectionOwner
+    ): boolean {
+        const ownsBinding = () =>
+            this.isCurrentBinding(
+                connection,
+                binding.tabId,
+                binding.windowId,
+                null,
+                binding.registrationId
+            );
         if (
             !this.post(connection, {
                 action: MessageActions.SIDEPANEL_SELECTION_SYNC,
-                data: { binding, selection: projectOwner(republished) },
+                data: { binding, selection: projectOwner(owner) },
             })
         ) {
             return false;
@@ -684,9 +715,9 @@ export class SidePanelService {
         if (!ownsBinding()) {
             return false;
         }
-        const afterPost = this.selectionOwnersByTab.get(tabId);
-        if (!afterPost || !ownerStateEquals(afterPost, republished)) {
-            this.projectSelectionNull(tabId);
+        const afterPost = this.selectionOwnersByTab.get(owner.tabId);
+        if (!afterPost || !ownerStateEquals(afterPost, owner)) {
+            this.projectSelectionNull(owner.tabId);
         }
         return ownsBinding();
     }
