@@ -73,7 +73,7 @@
     npm run build
     ```
 
-    这将创建 `dist/` 文件夹，其中包含编译后的扩展。
+    这将生成 `.output/chrome-mv3`，其中包含编译后的扩展。
 
     开发模式下自动重新构建：
 
@@ -84,14 +84,14 @@
 4. 在 Chrome 中加载已解压的扩展
     - 打开 `chrome://extensions`
     - 开启"开发者模式"（右上角）
-    - 点击"加载已解压的扩展程序"，选择 **`dist/`** 文件夹（不是项目根目录！）
+    - 点击"加载已解压的扩展程序"，选择 **`.output/chrome-mv3`**（不是项目根目录！）
 
 5. 验证是否生效
     - 访问 Netflix 或 Disney+
     - 开启字幕后点击 DualSub，启用双语字幕
 
 6. 开发工作流程
-    - 修改 `popup/`、`options/` 等源文件
+    - 修改 `src/` 下的源文件
     - 运行 `npm run dev` 实现修改后自动重新构建
     - 在 `chrome://extensions` 中点击 DualSub 卡片的刷新按钮重新加载
     - 测试您的更改
@@ -112,7 +112,7 @@
 - 扩展不可见：在 `chrome://extensions` 确认已启用，并可选择固定到工具栏
 - "无法加载 manifest"：
     - GitHub 发布版：确保已解压 ZIP 并选择解压后的文件夹
-    - 开发版：确保选择的是 `dist/` 文件夹（不是项目根目录！）并且已运行 `npm run build`
+    - 开发版：确保选择的是 `.output/chrome-mv3`（不是项目根目录！）并且已运行 `npm run build`
 - 构建错误：确保已安装 Node.js 24 LTS，并在 `npm run build` 之前运行 `npm ci`
 - 无字幕可用：确认平台本身提供字幕并在播放器中已开启
 - AI 上下文无响应：在高级设置中配置 API 密钥与模型；检查速率限制与网络

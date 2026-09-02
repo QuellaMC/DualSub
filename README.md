@@ -93,7 +93,7 @@ Debug Logging: Enabled
 ### Prerequisites
 
 - **Node.js** 24 LTS and npm 11+
-- **Google Chrome** with Developer mode enabled
+- **Google Chrome** 116+ with Developer mode enabled
 - **Git** for version control
 
 ### Setup Instructions
@@ -109,64 +109,66 @@ Debug Logging: Enabled
 2. **Development Commands**
 
     ```bash
-    # Verify formatting without changing files
+    # Type-check, lint, and verify formatting
+    npm run compile
+    npm run lint
     npm run format:check
 
-    # Linting
-    npm run lint
-
-    # Testing
+    # Tests: once, in watch mode, or with the enforced coverage floors
     npm test
     npm run test:watch
+    npm run test:coverage
 
-    # Production build and extension-package validation
+    # Production build, release archive, and archive audit
     npm run build
-    npm run verify:build
+    npm run zip
+    npm run verify:release
     ```
 
 3. **Load Extension for Testing**
-    - Follow manual installation steps above
-    - Reload extension after making changes
+    - Run `npm run build` (or `npm run dev` to rebuild on every change)
+    - Open `chrome://extensions`, enable Developer mode, click **Load unpacked**, and select `.output/chrome-mv3`
+    - Reload the extension after each build
 
 ### Project Structure
 
 ```
 DualSub/
-├── content_scripts/     # Platform-specific content scripts
-├── translation_providers/ # Translation service implementations
-├── services/           # Core services (config, logging)
-├── popup/             # Extension popup interface
-├── options/           # Advanced settings page
-├── sidepanel/         # AI analysis side panel
-├── utils/             # Shared utilities
-├── test-utils/        # Testing infrastructure
-├── _locales/          # Internationalization files
-└── icons/             # Extension icons
+├── src/
+│   ├── entrypoints/    # Background worker, content scripts, popup, options, side panel
+│   ├── background/     # Subtitle pipeline, translation, AI context, side panel authority
+│   ├── content/        # Page bridge, player sessions, renderer, selection, platform adapters
+│   ├── messaging/      # Cross-context contracts, router, client, sender authentication
+│   ├── config/         # Settings schema, storage service, migrations
+│   ├── shared/         # Logger, fetch hardening, provider constants
+│   ├── ui/             # React popup, options, side panel, shared hooks
+│   ├── build/          # Manifest golden snapshot and locale parity tests
+│   └── test-utils/     # Test helpers
+├── public/             # Locale catalogs and icons
+├── scripts/            # Release verification
+├── docs/               # User documentation (en, zh) and reference material
+└── wxt.config.ts       # Manifest and build configuration (WXT)
 ```
 
 ## 🏗️ Architecture
 
-DualSub uses a modern, modular architecture built on several key design patterns:
+DualSub 3 is a TypeScript extension built with WXT, React 19, zod, and Vitest.
 
 ### Core Architecture
 
-- **📐 Template Method Pattern**: `BaseContentScript` provides common functionality with platform-specific implementations
-- **🔌 Dependency Injection**: Dynamic module loading for better testability and loose coupling
-- **📡 Event-Driven Design**: Extensible message handling with action-based routing
-- **🧹 Resource Management**: Comprehensive cleanup system preventing memory leaks
+- **One session per video**: the content orchestrator keeps exactly one player session for the video on the current route, and every listener, timer, and request of a session ends with one abort signal
+- **Page bridge**: a declaratively registered main-world script reads subtitle tracks from the platform's own player and talks to the isolated world over a message channel
+- **Contract-first messaging**: every cross-context message is a zod contract; the router snapshots the payload, authenticates the sender, gates by role, and parses before a typed handler runs
+- **Background services**: a subtitle pipeline with a CDN allowlist and byte caps, a translation service with per-provider pacing and caching, a fail-closed AI context service, and a side panel authority that keeps the content script the single source of selection truth
 
 ### Key Components
 
-- **Content Scripts**: Platform-specific implementations extending `BaseContentScript`
-- **Translation Providers**: Modular translation services with explicit retry and provider selection
-- **Configuration Service**: Centralized settings management with validation
-- **Logging System**: Cross-context logging with configurable levels
+- **Platform adapters** (`src/content/platform/`): Netflix and Disney+ specifics behind one interface
+- **Translation providers** (`src/background/translation/providers/`): one error taxonomy and one pacing seam for every provider
+- **Configuration service** (`src/config/`): typed settings schema, strict reads, credentials kept device-local, idempotent migrations
+- **Side panel** (`src/ui/sidepanel/`, `src/background/sidepanel/`): selection sync with two-phase removal
 
-For detailed technical documentation, see:
-
-- [Architecture Overview](content_scripts/ARCHITECTURE.md)
-- [API Reference](content_scripts/API_REFERENCE.md)
-- [Platform Implementation Guide](content_scripts/PLATFORM_IMPLEMENTATION_GUIDE.md)
+Reference material: [audit report](docs/reference/pr62-audit-report.html), [smoke protocol](docs/reference/smoke-protocol.md), [store review notes](docs/reference/store-review-notes.md).
 
 ## 🤝 Contributing
 
@@ -175,7 +177,7 @@ We welcome contributions! Please follow these guidelines:
 ### Code Standards
 
 - **ESLint + Prettier**: Code must pass linting and formatting checks
-- **ES Modules**: Use modern JavaScript module syntax
+- **TypeScript strict**: no `any`, exact message contracts, typed settings
 - **Testing**: All new features require comprehensive tests
 - **Documentation**: Update relevant documentation for changes
 
@@ -195,19 +197,18 @@ We welcome contributions! Please follow these guidelines:
 
 #### New Translation Providers
 
-1. Create provider in `translation_providers/` directory
-2. Implement `async function translate(text, sourceLang, targetLang)`
-3. Register it in `background/services/translationService.js` and the shared provider constants
-4. Update the React popup/options section or provider card that exposes it
-5. Add comprehensive tests
+1. Add a provider module under `src/background/translation/providers/` implementing `TranslationProvider`
+2. Register it in `providers/index.ts` and add its id to `PROVIDER_IDS` in `src/shared/providers.ts`
+3. Add its options card under `src/ui/options/providers/` and its strings to every catalog in `public/_locales/`
+4. Add tests next to the module
 
 #### New Streaming Platforms
 
-1. Extend `BaseContentScript` class
-2. Implement required abstract methods
-3. Create platform-specific configuration
-4. Update `manifest.json` content scripts
-5. Add platform tests
+1. Add a platform under `src/content/platform/` with a descriptor and an adapter
+2. Declare its content scripts in `src/entrypoints/`
+3. Extend the subtitle policy and parsers in `src/background/subtitle/` for its CDN
+4. Update the golden manifest in `src/build/manifest.golden.json` in a commit that explains the change
+5. Run the smoke protocol on the platform
 
 ### Code Review Process
 
@@ -229,8 +230,8 @@ npm test
 # Watch mode for development
 npm run test:watch
 
-# Run specific test file
-npm test -- background.test.js
+# Run one directory or file
+npm test -- src/config
 
 # Run tests with coverage
 npm run test:coverage
@@ -240,12 +241,12 @@ npm run test:coverage
 
 - **Unit Tests**: Individual component testing
 - **Integration Tests**: Cross-component functionality
-- **Mock Infrastructure**: Chrome API and DOM mocking
+- **Mock Infrastructure**: fake-browser for extension APIs, happy-dom for UI
 - **Test Utilities**: Shared testing helpers and fixtures
 
 ### Testing Guidelines
 
-- **Coverage**: Keep the enforced coverage ratchet green and add focused regressions for changed behavior
+- **Coverage**: Keep the enforced coverage floors green and add focused regressions for changed behavior
 - **Isolation**: Tests should not depend on each other
 - **Mocking**: Use provided mocks for Chrome APIs
 - **Assertions**: Clear, descriptive test assertions
@@ -268,7 +269,15 @@ For full license terms, see [LICENSE](LICENSE) file.
 
 ## 📋 Changelog
 
-### Version 2.5.0 (Current)
+### Version 3.0.0 (Beta)
+
+- 🏗️ **Rebuilt from the ground up** in TypeScript on WXT, with contract-first messaging and one player session per video
+- 🎬 **Netflix player API**: subtitle tracks come from the player itself, so DualSub keeps working after Netflix's 2026 player change
+- 🌐 **Microsoft Translate** moved to Edge's tokenless endpoint after Microsoft retired the free auth endpoint
+- 🤖 **Side panel**: clickable words, selection sync, and AI analysis with the failure reason shown in the panel
+- 🔒 Credentials never leave the device, provider requests carry no browser cookies, and the AI rate limiter survives worker restarts
+
+### Version 2.5.0
 
 - 🤖 **Unified AI Experience**: Integrated AI Context Analysis into the Side Panel for a seamless, persistent workspace.
 - 🐛 **Stability Improvements**: Fixed desync issues when switching videos or deselecting words in the side panel.

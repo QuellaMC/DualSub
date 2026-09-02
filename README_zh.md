@@ -64,7 +64,7 @@
 ### 先决条件
 
 - **Node.js** 24 LTS 和 npm 11+
-- **Google Chrome** 启用开发者模式
+- **Google Chrome** 116+ 并启用开发者模式
 - **Git** 用于版本控制
 
 ### 设置说明
@@ -77,83 +77,69 @@
     npm ci
     ```
 
-2. **构建扩展**
-
-    扩展使用 React 开发，使用前需要构建：
+2. **开发命令**
 
     ```bash
-    # 生产构建
-    npm run build
-
-    # 开发模式（自动重新构建）
-    npm run dev
-    ```
-
-3. **开发命令**
-
-    ```bash
-    # 检查代码格式但不修改文件
+    # 类型检查、代码检查与格式校验
+    npm run compile
+    npm run lint
     npm run format:check
 
-    # 代码检查
-    npm run lint
-
-    # 测试
+    # 测试：单次、监视模式，或带覆盖率下限
     npm test
     npm run test:watch
+    npm run test:coverage
 
-    # 生产构建与扩展包验证
+    # 生产构建、发布压缩包与压缩包审计
     npm run build
-    npm run verify:build
+    npm run zip
+    npm run verify:release
     ```
 
-4. **加载扩展进行测试**
-    - 打开 `chrome://extensions`
-    - 开启"开发者模式"
-    - 点击"加载已解压的扩展程序"，选择 **`dist/`** 文件夹（不是项目根目录！）
-    - 更改后运行 `npm run dev`（自动重新构建）或 `npm run build`，然后重新加载扩展
+3. **加载扩展进行测试**
+    - 运行 `npm run build`（或 `npm run dev` 实现修改后自动重新构建）
+    - 打开 `chrome://extensions`，开启"开发者模式"，点击"加载已解压的扩展程序"，选择 `.output/chrome-mv3`
+    - 每次构建后重新加载扩展
 
 ### 项目结构
 
 ```
 DualSub/
-├── content_scripts/     # 平台特定的内容脚本
-├── translation_providers/ # 翻译服务实现
-├── services/           # 核心服务（配置、日志）
-├── popup/             # 扩展弹出界面（React）
-├── options/           # 高级设置页面（React）
-├── sidepanel/         # AI 分析侧边栏（React）
-├── utils/             # 共享工具
-├── test-utils/        # 测试基础设施
-├── _locales/          # 国际化文件
-├── icons/             # 扩展图标
-├── dist/              # 构建输出（由 Vite 生成）
-└── vite.config.js     # React/Vite 构建配置
+├── src/
+│   ├── entrypoints/    # 后台 worker、内容脚本、弹窗、设置页、侧边栏
+│   ├── background/     # 字幕管线、翻译、AI 上下文、侧边栏权威
+│   ├── content/        # 页面桥、播放会话、渲染、选词、平台适配器
+│   ├── messaging/      # 跨上下文契约、路由、客户端、发送方鉴别
+│   ├── config/         # 设置模式、存储服务、迁移
+│   ├── shared/         # 日志、请求加固、服务商常量
+│   ├── ui/             # React 弹窗、设置页、侧边栏与共享 hooks
+│   ├── build/          # manifest 快照与语言包一致性测试
+│   └── test-utils/     # 测试辅助
+├── public/             # 语言包与图标
+├── scripts/            # 发布校验
+├── docs/               # 用户文档（en、zh）与参考资料
+└── wxt.config.ts       # manifest 与构建配置（WXT）
 ```
 
 ## 🏗️ 架构设计
 
-DualSub 使用基于几个关键设计模式的现代模块化架构：
+DualSub 3 是基于 WXT、React 19、zod 与 Vitest 的 TypeScript 扩展。
 
 ### 核心架构
 
-- **📐 模板方法模式**：`BaseContentScript` 提供通用功能，具有平台特定实现
-- **🔌 依赖注入**：动态模块加载，提高可测试性和松耦合
-- **📡 事件驱动设计**：具有基于操作路由的可扩展消息处理
-- **🧹 资源管理**：全面的清理系统，防止内存泄漏
+- **每个视频一个会话**：内容编排器只为当前路由上的视频保留一个播放会话，会话中的每个监听器、定时器与请求都随同一个中止信号结束
+- **页面桥**：声明式注册的主世界脚本直接从平台播放器读取字幕轨道，并通过消息通道与隔离世界通信
+- **契约优先的消息**：每条跨上下文消息都是 zod 契约；路由先快照载荷、鉴别发送方、按角色放行、再解析，最后才交给类型化处理器
+- **后台服务**：带 CDN 白名单与字节上限的字幕管线、按服务商限速并缓存的翻译服务、失败即关闭的 AI 上下文服务，以及让内容脚本始终成为选词唯一真相的侧边栏权威
 
 ### 关键组件
 
-- **内容脚本**：扩展 `BaseContentScript` 的平台特定实现
-- **翻译服务商**：支持明确选择与有限重试的模块化翻译服务
-- **配置服务**：具有验证的集中设置管理
-- **日志系统**：具有可配置级别的跨上下文日志记录
+- **平台适配器**（`src/content/platform/`）：Netflix 与 Disney+ 的差异收敛在同一接口之后
+- **翻译服务商**（`src/background/translation/providers/`）：所有服务商共用一套错误分类与限速机制
+- **配置服务**（`src/config/`）：类型化设置模式、严格读取、凭据仅存本机、幂等迁移
+- **侧边栏**（`src/ui/sidepanel/`、`src/background/sidepanel/`）：带两阶段移除的选词同步
 
-有关详细的技术文档，请参阅：
-
-- [架构概述](content_scripts/ARCHITECTURE.md)
-- [API 参考](content_scripts/API_REFERENCE.md)
-- [平台实现指南](content_scripts/PLATFORM_IMPLEMENTATION_GUIDE.md)
+参考资料：[审计报告](docs/reference/pr62-audit-report.html)、[冒烟测试清单](docs/reference/smoke-protocol.md)、[商店审核说明](docs/reference/store-review-notes.md)。
 
 ## 🤝 贡献指南
 
@@ -182,19 +168,18 @@ DualSub 使用基于几个关键设计模式的现代模块化架构：
 
 #### 新翻译服务商
 
-1. 在 `translation_providers/` 目录中创建服务商
-2. 实现 `async function translate(text, sourceLang, targetLang)`
-3. 在 `background/services/translationService.js` 与共享服务商常量中注册
-4. 更新用于展示该服务商的 React 弹窗/设置区或服务商卡片
-5. 添加全面的测试
+1. 在 `src/background/translation/providers/` 下新增实现 `TranslationProvider` 的模块
+2. 在 `providers/index.ts` 注册，并把 id 加入 `src/shared/providers.ts` 的 `PROVIDER_IDS`
+3. 在 `src/ui/options/providers/` 添加设置卡片，并为 `public/_locales/` 中的每个语言包补充文案
+4. 在模块旁添加测试
 
 #### 新流媒体平台
 
-1. 扩展 `BaseContentScript` 类
-2. 实现所需的抽象方法
-3. 创建平台特定配置
-4. 更新 `manifest.json` 内容脚本
-5. 添加平台测试
+1. 在 `src/content/platform/` 下新增描述符与适配器
+2. 在 `src/entrypoints/` 声明其内容脚本
+3. 为其 CDN 扩展 `src/background/subtitle/` 中的策略与解析器
+4. 在说明变更原因的提交中更新 `src/build/manifest.golden.json`
+5. 在该平台上执行冒烟测试清单
 
 ### 代码审查流程
 
@@ -216,8 +201,8 @@ npm test
 # 开发的监视模式
 npm run test:watch
 
-# 运行特定测试文件
-npm test -- background.test.js
+# 运行某个目录或文件
+npm test -- src/config
 
 # 运行带覆盖率的测试
 npm run test:coverage
@@ -255,7 +240,15 @@ npm run test:coverage
 
 ## 📋 更新日志
 
-### 版本 2.5.0（当前）
+### 版本 3.0.0（测试版）
+
+- 🏗️ **从零重建**：TypeScript + WXT，契约优先的消息机制，每个视频一个播放会话
+- 🎬 **Netflix 播放器 API**：字幕轨道直接来自播放器，因此在 Netflix 2026 年的播放器改动后仍可工作
+- 🌐 **Microsoft 翻译**改用 Edge 的免令牌端点（微软已下线免费鉴权端点）
+- 🤖 **侧边栏**：可点击的单词、选词同步、AI 分析并在面板中显示失败原因
+- 🔒 凭据不离开本机、服务商请求不携带浏览器 Cookie、AI 限速在 worker 重启后依然有效
+
+### 版本 2.5.0
 
 - 🤖 **统一 AI 体验**：将 AI 上下文分析集成到侧边栏中，提供无缝、持久的工作空间。
 - 🐛 **稳定性改进**：修复了切换视频或在侧边栏中取消选择单词时的不同步问题。

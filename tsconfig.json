@@ -7,11 +7,5 @@
         "noFallthroughCasesInSwitch": true,
         "jsx": "react-jsx"
     },
-    "include": [
-        ".wxt/wxt.d.ts",
-        "src",
-        "wxt.config.ts",
-        "vitest.config.ts",
-        "scripts/v3"
-    ]
+    "include": [".wxt/wxt.d.ts", "src", "wxt.config.ts", "vitest.config.ts"]
 }

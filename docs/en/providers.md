@@ -24,4 +24,4 @@ The no-key Google/Microsoft integrations use undocumented consumer/internal endp
 - DeepL API: local request pacing only; quota truth comes from DeepL provider responses
 - OpenAI Compatible: requests-per-minute with a small mandatory delay
 
-See `background/services/translationService.js` for the current provider limits and single-text request path.
+See `src/background/translation/` for the current provider pacing and the single-text request path.

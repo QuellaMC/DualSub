@@ -66,30 +66,24 @@ Commit messages and PR descriptions contain no co-author trailers and no
 mention of AI agents or tools. Write plain conventional messages that describe
 the change.
 
-## 3. Project map (v3 rebuild)
+## 3. Project map
 
-DualSub is mid-rebuild: the v3 extension lives under `src/` + `wxt.config.ts`
-(TypeScript strict, WXT, React 19, Vitest, zod). The legacy v2 tree
-(`background/`, `content_scripts/`, `services/`, `video_platforms/`,
-`injected_scripts/`, `popup/`, `options/`, `sidepanel/`, `utils/`,
-`translation_providers/`, `context_providers/`, `config/`, `shared/`,
-`test-utils/`, root `manifest.json` + `vite.config.js` + `jest.*`) is a
-**frozen reference** — the executable spec for the port, exempt from "no
-residue" until the cutover milestone deletes it. Do not modify legacy files;
-do not import from them in `src/`.
+DualSub 3 lives under `src/` + `wxt.config.ts` (TypeScript strict, WXT,
+React 19, Vitest, zod). The v2 JavaScript tree was removed at the 3.0
+cutover: its last state is branch `v2-maintenance` (2.5.0), and the
+abandoned de-bloat refactor survives on `backup/pr62-debloat-wip` (known
+buggy — do not base work on it).
 
-Reference material for port decisions:
+Reference material for behavior decisions:
 
 - `docs/reference/pr62-audit-report.html` — 35 audited defect classes the
-  rebuild must not reintroduce.
-- Legacy behavioral tests — mine assertions as specs; never port source-text
-  greps or mock-wiring assertions.
-- Reference baseline is commit `b9ea648`; the later abandoned working-tree
-  refactor survives on branch `backup/pr62-debloat-wip` (known buggy — do not
-  base work on it).
+  codebase must not reintroduce.
+- `docs/reference/smoke-protocol.md` — the manual pre-release checklist.
+- `docs/reference/store-review-notes.md` — permissions and data flows as
+  declared to the store; the golden manifest in `src/build/` enforces them.
 
-Semantics that port **verbatim** (battle-tested, subtle): sender
-classification, subtitle request policy + CDN allowlist + fetch hardening,
-selection-sync cursor acceptance + two-phase removal, config strict-read
-bundles + sensitive-key gating, fail-closed AI enablement re-checks, the
-idempotent every-boot storage migration design.
+Semantics ported verbatim from the audited v2 and kept that way unless a
+test proves a change: sender classification, subtitle request policy + CDN
+allowlist + fetch hardening, selection-sync cursor acceptance + two-phase
+removal, config strict-read bundles + sensitive-key gating, fail-closed AI
+enablement re-checks, the idempotent every-boot storage migration design.

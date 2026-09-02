@@ -7,11 +7,7 @@ node_modules/
 .augment/
 WARP.md
 
-# Chrome extensions cannot load directories beginning with underscore
-__tests__/
-dist/
 coverage/
-UI_DESIGN/
 
 # WXT (v3 build system)
 .wxt/

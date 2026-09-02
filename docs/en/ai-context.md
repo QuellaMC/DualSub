@@ -29,4 +29,4 @@ Get cultural, historical, and linguistic explanations for selected subtitle text
 - Selected text, language metadata, and limited surrounding subtitle context are sent to the configured AI provider
 - Results use a bounded in-memory cache when caching is enabled; they are not permanently stored by DualSub
 
-See also: `context_providers/openaiContextProvider.js` and `context_providers/geminiContextProvider.js` for technical details.
+See also: `src/background/aicontext/` for the providers, prompt, and response schemas.

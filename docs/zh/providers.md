@@ -24,4 +24,4 @@
 - DeepL API：仅在本地执行请求间隔；配额以 DeepL 服务端响应为准
 - OpenAI 兼容：每分钟请求数限制 + 小延迟
 
-当前服务商限制与单文本请求路径参见 `background/services/translationService.js`。
+当前服务商限速与单文本请求路径参见 `src/background/translation/`。

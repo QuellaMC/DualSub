@@ -5,12 +5,30 @@ All notable changes to DualSub will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [3.0.0-beta.1] - 2026-09-02
 
 ### Changed
 
-- Completed a repository-wide sidebar, Manifest V3 lifecycle, dependency, test, build, CI, accessibility, and dead-code modernization pass.
-- Removed unused queue/batch processors and settings that claimed to group live subtitle cues without any production caller. The explicit multi-text provider protocol remains available and now chunks oversized inputs without dropping results.
+- Rebuilt the extension from the ground up in TypeScript on WXT with React 19, zod, and Vitest. Every cross-context message is a typed contract; each video gets exactly one player session whose listeners, timers, and requests end together.
+- Netflix subtitle tracks are resolved through the player's own API instead of intercepting JSON parsing, which Netflix's 2026 player change had broken.
+- Microsoft Translate uses Edge's tokenless `translatetext` endpoint; Microsoft retired the free auth endpoint in July 2026. Its settings id is now `microsoft_edge` and it is the default provider again.
+- Language changes reload subtitles in place: the current line stays on screen behind a loading placeholder until the new languages arrive.
+- AI analysis failures show the provider's own reason in the side panel.
+
+### Added
+
+- Clickable subtitle words with locale-aware segmentation (Chinese and Japanese split into words), selection sync with the side panel, and two-phase removal.
+- Seeded upgrade-path, locale parity, and cold-start tests; coverage floors in CI; a release archive audit.
+
+### Removed
+
+- The v2 JavaScript tree, jest, the Vite build, and the in-page analysis modal. The last v2 state lives on the `v2-maintenance` branch.
+
+### Fixed
+
+- Disney+ native subtitles are hidden again inside the player's shadow tree.
+- Provider requests carry only the configured credential, never browser cookies.
+- The AI context rate limiter keeps its timestamps across service worker restarts.
 
 ## [2.5.0] - 2025-11-19
 

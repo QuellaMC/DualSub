@@ -51,8 +51,8 @@ jobs:
             - name: Test with coverage floors
               run: npm run test:coverage
 
-            - name: Build legacy extension
-              run: npm run legacy:build
+            - name: Package extension
+              run: npm run zip
 
-            - name: Verify legacy extension artifact
-              run: npm run legacy:verify
+            - name: Verify release artifact
+              run: npm run verify:release

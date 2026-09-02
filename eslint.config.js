@@ -21,26 +21,18 @@ export default defineConfig([
     {
         ignores: [
             'node_modules/**',
-            'dist/**',
             'coverage/**',
-            'temp/**',
-            'DualSub/**',
             '.wxt/**',
             '.output/**',
             'output/**',
         ],
     },
     {
-        files: ['**/*.{js,jsx,mjs}'],
+        files: ['*.config.js', 'scripts/**/*.mjs'],
         languageOptions: {
             ecmaVersion: 'latest',
             sourceType: 'module',
-            globals: {
-                ...globals.browser,
-                ...globals.webextensions,
-                ...globals.node,
-                gc: 'readonly',
-            },
+            globals: globals.node,
         },
         linterOptions: {
             reportUnusedDisableDirectives: 'warn',
@@ -48,7 +40,6 @@ export default defineConfig([
         rules: {
             ...js.configs.recommended.rules,
             'no-console': 'off',
-            'no-empty': ['error', { allowEmptyCatch: true }],
             'no-unused-vars': unusedVariablesRule,
         },
     },
@@ -103,14 +94,7 @@ export default defineConfig([
         },
     },
     {
-        files: ['**/*.{jsx,tsx}'],
-        languageOptions: {
-            parserOptions: {
-                ecmaFeatures: {
-                    jsx: true,
-                },
-            },
-        },
+        files: ['src/**/*.tsx'],
         plugins: {
             react,
         },
@@ -126,50 +110,13 @@ export default defineConfig([
         },
     },
     {
-        files: ['**/*.{js,jsx,ts,tsx}'],
+        files: ['src/**/*.{ts,tsx}'],
         plugins: {
             'react-hooks': reactHooks,
         },
         rules: {
             'react-hooks/exhaustive-deps': 'warn',
             'react-hooks/rules-of-hooks': 'error',
-        },
-    },
-    {
-        files: [
-            '*.config.js',
-            'scripts/**/*.{js,mjs}',
-            'test-utils/style-mock.js',
-        ],
-        rules: {
-            'no-unused-vars': [
-                'error',
-                {
-                    args: 'after-used',
-                    argsIgnorePattern: '^_',
-                    caughtErrors: 'none',
-                    varsIgnorePattern: '^_',
-                },
-            ],
-        },
-    },
-    {
-        files: [
-            '**/*.test.{js,jsx}',
-            '**/*.spec.{js,jsx}',
-            '**/tests/**/*.{js,jsx}',
-            'jest.setup.js',
-            'test-utils/**/*.{js,jsx}',
-        ],
-        languageOptions: {
-            globals: {
-                ...globals.browser,
-                ...globals.webextensions,
-                ...globals.node,
-                ...globals.jest,
-                gc: 'readonly',
-                fail: 'readonly',
-            },
         },
     },
     prettierConfig,

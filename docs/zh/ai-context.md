@@ -29,4 +29,4 @@
 - 所选文本、语言信息和有限的周边字幕上下文会发送给已配置的 AI 服务商
 - 启用缓存时结果只保存在有界的内存缓存中，DualSub 不会永久保存
 
-参见：`context_providers/openaiContextProvider.js` 与 `context_providers/geminiContextProvider.js`。
+参见：`src/background/aicontext/`（服务商、提示词与响应模式）。
