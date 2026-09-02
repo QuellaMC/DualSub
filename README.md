@@ -269,7 +269,7 @@ For full license terms, see [LICENSE](LICENSE) file.
 
 ## 📋 Changelog
 
-### Version 3.0.0 (Beta)
+### Version 3.0.0 (Current)
 
 - 🏗️ **Rebuilt from the ground up** in TypeScript on WXT, with contract-first messaging and one player session per video
 - 🎬 **Netflix player API**: subtitle tracks come from the player itself, so DualSub keeps working after Netflix's 2026 player change
