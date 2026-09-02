@@ -135,6 +135,7 @@ export async function mintAccessToken(
     });
     const response = await fetchWithTimeout(GOOGLE_OAUTH_TOKEN_URI, {
         method: 'POST',
+        credentials: 'omit',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: body.toString(),
     });

@@ -185,6 +185,7 @@ describe('microsoft edge provider', () => {
             'https://edge.microsoft.com/translate/translatetext?from=&to=es&isEnterpriseClient=false'
         );
         expect(request.init.method).toBe('POST');
+        expect(request.init.credentials).toBe('omit');
         expect(headersOf(request.init)).toEqual({
             'Content-Type': 'application/json',
         });

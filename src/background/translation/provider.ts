@@ -40,13 +40,15 @@ export interface TranslationProvider {
 
 export const MAX_PROVIDER_RESPONSE_BYTES = 1024 * 1024;
 
+/** Provider requests carry only what the provider config puts in them:
+ *  the browser's cookies for the provider's domain stay out. */
 export async function providerFetch(
     provider: ProviderId,
     url: string,
     init?: RequestInit
 ): Promise<Response> {
     try {
-        return await fetchWithTimeout(url, init);
+        return await fetchWithTimeout(url, { ...init, credentials: 'omit' });
     } catch {
         throw new TranslationProviderError(provider, 'Network request failed', {
             code: 'NETWORK_ERROR',

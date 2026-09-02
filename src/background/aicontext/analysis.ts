@@ -94,6 +94,9 @@ export async function runProviderAnalysis(
     try {
         response = await send(request.url, {
             ...request.init,
+            // The API key is the only credential; browser cookies for the
+            // provider's domain must not ride along.
+            credentials: 'omit',
             signal: AbortSignal.timeout(options.timeoutMs),
         });
     } catch (error) {

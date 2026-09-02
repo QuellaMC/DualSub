@@ -81,6 +81,7 @@ describe('openai context provider', () => {
         const [url, init] = fetchMock.mock.calls[0]! as [string, RequestInit];
         expect(url).toBe('https://api.openai.com/v1/chat/completions');
         expect(init.headers).toMatchObject({ Authorization: 'Bearer sk-test' });
+        expect(init.credentials).toBe('omit');
         expect(init.signal).toBeInstanceOf(AbortSignal);
         const body = requestBody(fetchMock);
         expect(body.model).toBe('gpt-5.6-luna');
