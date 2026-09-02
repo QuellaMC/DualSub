@@ -9,14 +9,16 @@ import {
 
 // Runs in the page's own realm as a declarative MAIN-world content script.
 // It shares globals with the site, so every later call uses a native captured
-// at install time. The JSON.parse patch installs synchronously at
-// document_start — before any page script can parse a manifest.
+// at install time. A recipe that inspects JSON gets its JSON.parse patch
+// installed synchronously at document_start — before any page script can
+// parse a manifest.
 
 export interface InterceptorRecipe {
     readonly platform: BridgePlatform;
     /** Inspect every JSON.parse result and emit anything worth capturing. */
-    onParsed(parsed: unknown, emit: (event: CapturedEvent) => void): void;
-    /** Control messages from the isolated world (Disney timeline bridge). */
+    onParsed?(parsed: unknown, emit: (event: CapturedEvent) => void): void;
+    /** Control messages from the isolated world (timeline polling, track
+     *  resolution). */
     onControl?(
         message: IsolatedToMain,
         emit: (event: CapturedEvent) => void
@@ -69,18 +71,21 @@ export function installInterceptor(recipe: InterceptorRecipe): void {
         }
     };
 
-    JSON.parse = function (
-        text: string,
-        reviver?: (this: unknown, key: string, value: unknown) => unknown
-    ) {
-        const parsed: unknown = nativeParse.call(JSON, text, reviver);
-        try {
-            recipe.onParsed(parsed, emit);
-        } catch {
-            // Parsing must stay transparent even if inspection fails.
-        }
-        return parsed;
-    } as typeof JSON.parse;
+    const onParsed = recipe.onParsed?.bind(recipe);
+    if (onParsed) {
+        JSON.parse = function (
+            text: string,
+            reviver?: (this: unknown, key: string, value: unknown) => unknown
+        ) {
+            const parsed: unknown = nativeParse.call(JSON, text, reviver);
+            try {
+                onParsed(parsed, emit);
+            } catch {
+                // Parsing must stay transparent even if inspection fails.
+            }
+            return parsed;
+        } as typeof JSON.parse;
+    }
 
     const adoptPort = (candidate: MessagePort, capability: string): void => {
         port?.close();

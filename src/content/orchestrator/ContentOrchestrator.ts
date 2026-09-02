@@ -12,9 +12,11 @@ import {
     CONTENT_SETTINGS_KEYS,
     FETCH_SETTINGS_KEYS,
     PlayerSession,
+    toSubtitleLanguages,
     type ContentSettings,
     type SessionEndReason,
 } from './PlayerSession';
+import type { SubtitleLanguages } from '../platform/types';
 
 type ReconcileTrigger = 'boot' | 'navigation' | 'bridge-event' | 'config';
 
@@ -150,7 +152,7 @@ export class ContentOrchestrator {
     }
 
     private async startSession(videoId: string): Promise<void> {
-        const settings = await this.readContentSettings();
+        const { settings, languages } = await this.readSessionSettings();
         // The route may have moved on while settings were loading.
         if (
             this.tornDown ||
@@ -169,6 +171,7 @@ export class ContentOrchestrator {
             uiRoot: this.uiRoot,
             handoff: this.handoff,
             settings,
+            languages,
             onNavigationMismatch: () => this.requestReconcile('navigation'),
             onContextInvalidated: () => this.teardown('context-invalidated'),
         });
@@ -177,9 +180,18 @@ export class ContentOrchestrator {
         session.start();
     }
 
-    private async readContentSettings(): Promise<ContentSettings> {
-        const values = await configService.getMultiple(CONTENT_SETTINGS_KEYS);
-        return values as ContentSettings;
+    private async readSessionSettings(): Promise<{
+        settings: ContentSettings;
+        languages: SubtitleLanguages;
+    }> {
+        const values = await configService.getMultiple([
+            ...CONTENT_SETTINGS_KEYS,
+            ...FETCH_SETTINGS_KEYS,
+        ]);
+        return {
+            settings: values as ContentSettings,
+            languages: toSubtitleLanguages(values),
+        };
     }
 
     teardown(reason: SessionEndReason): void {

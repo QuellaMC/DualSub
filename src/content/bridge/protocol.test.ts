@@ -121,3 +121,31 @@ describe('bridge protocol validators', () => {
         expect(isIsolatedToMain({ t: 'ready' })).toBe(false);
     });
 });
+
+describe('track resolution frames', () => {
+    it('accepts a bounded language list and the cancel frame', () => {
+        expect(
+            isIsolatedToMain({
+                t: 'request-subtitle-tracks',
+                videoId: '70283145',
+                languages: ['en', 'zh-CN'],
+            })
+        ).toBe(true);
+        expect(isIsolatedToMain({ t: 'cancel-subtitle-tracks' })).toBe(true);
+    });
+
+    it.each([
+        ['no languages', { videoId: '1', languages: [] }],
+        ['blank videoId', { videoId: '', languages: ['en'] }],
+        ['non-string language', { videoId: '1', languages: ['en', 5] }],
+        [
+            'too many languages',
+            { videoId: '1', languages: Array<string>(5).fill('en') },
+        ],
+        ['missing languages', { videoId: '1' }],
+    ])('rejects a request with %s', (_label, frame) => {
+        expect(
+            isIsolatedToMain({ t: 'request-subtitle-tracks', ...frame })
+        ).toBe(false);
+    });
+});

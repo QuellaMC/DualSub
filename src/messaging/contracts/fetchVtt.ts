@@ -12,13 +12,14 @@ import { boundedNonBlankString, boundedText } from './primitives';
 const MAX_ROUTE_ID_BYTES = 256;
 const MAX_LANGUAGE_BYTES = 64;
 
-/** Sized for the Netflix track ceiling (128 tracks × 16 KiB URLs ≈ 2 MiB). */
+/** Sized for a handful of resolved Netflix tracks with 16 KiB URLs. */
 const FETCH_VTT_BUDGET = Object.freeze({
     maxDepth: 8,
-    maxEntries: 8192,
+    maxEntries: 512,
     maxStringBytes: 16 * 1024,
-    maxTotalBytes: 3 * 1024 * 1024,
+    maxTotalBytes: 256 * 1024,
 });
+const MAX_NETFLIX_TRACKS = 8;
 
 export const fetchVtt = defineContract({
     action: MessageActions.FETCH_VTT,
@@ -42,7 +43,7 @@ export const fetchVtt = defineContract({
             originalLanguage: boundedNonBlankString(MAX_LANGUAGE_BYTES),
             useOfficialTranslations: z.boolean(),
             data: z.strictObject({
-                tracks: z.array(z.unknown()).min(1).max(128),
+                tracks: z.array(z.unknown()).min(1).max(MAX_NETFLIX_TRACKS),
             }),
         }),
     ]),

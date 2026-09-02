@@ -68,3 +68,40 @@ describe('convertTtmlToVtt', () => {
         ).toThrow('Invalid TTML cue range');
     });
 });
+
+const IMSC_SAMPLE = `<?xml version="1.0" encoding="UTF-8"?>
+<tt xmlns="http://www.w3.org/ns/ttml" xmlns:tts="http://www.w3.org/ns/ttml#styling" xmlns:ttp="http://www.w3.org/ns/ttml#parameter" ttp:tickRate="90000" xml:lang="ja">
+  <head>
+    <styling>
+      <style xml:id="rubyContainer" tts:ruby="container"/>
+      <style xml:id="rubyBase" tts:ruby="base"/>
+      <style xml:id="rubyText" tts:ruby="text"/>
+    </styling>
+    <layout>
+      <region xml:id="r1" tts:origin="10% 80%"/>
+    </layout>
+  </head>
+  <body>
+    <div>
+      <p begin="90000t" dur="180000t" region="r1"><span style="rubyContainer"><span style="rubyBase">漢字</span><span style="rubyText">かんじ</span></span>です</p>
+    </div>
+    <div>
+      <p begin="360000t" end="450000t">Second<br/>line <span tts:ruby="text">rt</span>base</p>
+    </div>
+  </body>
+</tt>`;
+
+describe('convertTtmlToVtt (IMSC 1.1)', () => {
+    it('honors the declared tick rate, dur, dropped ruby readings, and multiple divs', () => {
+        const vtt = convertTtmlToVtt(IMSC_SAMPLE);
+        expect(vtt).toContain('00:00:01.000 --> 00:00:03.000\n漢字です');
+        expect(vtt).toContain(
+            '00:00:04.000 --> 00:00:05.000\nSecond\nline base'
+        );
+    });
+
+    it('parses ticks against a custom tick rate', () => {
+        expect(parseTtmlTimeToSeconds('90000t', 90_000)).toBe(1);
+        expect(parseTtmlTimeToSeconds('10000000t')).toBe(1);
+    });
+});

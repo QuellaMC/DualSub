@@ -9,6 +9,8 @@ export type CapturedEvent =
           t: 'subtitle-data';
           platform: 'netflix';
           movieId: string;
+          /** Resolved tracks from the page bridge; the background policy
+           *  owns their validation. */
           tracks: unknown[];
       }
     | {
@@ -36,6 +38,10 @@ export type IsolatedToMain =
     | { t: 'request-playback-timeline' }
     | { t: 'playback-bridge-resume' }
     | { t: 'playback-bridge-pause' }
+    /** Netflix: resolve subtitle track URLs for these languages, in
+     *  priority order, from the page's player. Supersedes any pending request. */
+    | { t: 'request-subtitle-tracks'; videoId: string; languages: string[] }
+    | { t: 'cancel-subtitle-tracks' }
     | { t: 'close' };
 
 export interface HelloMessage {
@@ -53,6 +59,8 @@ export function mainReadyEventName(platform: BridgePlatform): string {
 const MAX_BUFFERED_EVENTS = 20;
 const MAX_ROUTE_ID_LENGTH = 768;
 const MAX_URL_LENGTH = 16 * 1024;
+const MAX_LANGUAGE_LENGTH = 64;
+const MAX_REQUESTED_LANGUAGES = 4;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -121,13 +129,29 @@ export function isMainToIsolated(value: unknown): value is MainToIsolated {
 }
 
 export function isIsolatedToMain(value: unknown): value is IsolatedToMain {
-    return (
-        isRecord(value) &&
-        (value.t === 'request-playback-timeline' ||
-            value.t === 'playback-bridge-resume' ||
-            value.t === 'playback-bridge-pause' ||
-            value.t === 'close')
-    );
+    if (!isRecord(value)) {
+        return false;
+    }
+    switch (value.t) {
+        case 'request-playback-timeline':
+        case 'playback-bridge-resume':
+        case 'playback-bridge-pause':
+        case 'cancel-subtitle-tracks':
+        case 'close':
+            return true;
+        case 'request-subtitle-tracks':
+            return (
+                isBoundedString(value.videoId, MAX_ROUTE_ID_LENGTH) &&
+                Array.isArray(value.languages) &&
+                value.languages.length > 0 &&
+                value.languages.length <= MAX_REQUESTED_LANGUAGES &&
+                value.languages.every((language) =>
+                    isBoundedString(language, MAX_LANGUAGE_LENGTH)
+                )
+            );
+        default:
+            return false;
+    }
 }
 
 export function isHelloMessage(

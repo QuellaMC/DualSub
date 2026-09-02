@@ -27,9 +27,18 @@ export type ConfigReader = {
     get<K extends keyof SettingsValues>(key: K): Promise<SettingsValues[K]>;
 };
 
+/** The session's subtitle language choices, fixed for its lifetime: a
+ *  change restarts the session. */
+export interface SubtitleLanguages {
+    readonly originalLanguage: string;
+    readonly targetLanguage: string;
+    readonly useOfficialTranslations: boolean;
+}
+
 export interface AdapterContext {
     readonly signal: AbortSignal;
     readonly videoId: string;
+    readonly languages: SubtitleLanguages;
     readonly bridge: BridgeControlSender;
     readonly config: ConfigReader;
     readonly logger: Logger;

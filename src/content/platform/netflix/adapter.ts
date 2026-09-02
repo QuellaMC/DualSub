@@ -30,6 +30,16 @@ const NETFLIX_NATIVE_SUB_RECIPE: NativeSubRecipe = {
     },
 };
 
+/** Languages the page bridge should resolve, original first. The target is
+ *  only wanted when official translations may replace API translation. */
+export function requestedSubtitleLanguages(
+    languages: AdapterContext['languages']
+): string[] {
+    return languages.useOfficialTranslations
+        ? [languages.originalLanguage, languages.targetLanguage]
+        : [languages.originalLanguage];
+}
+
 export class NetflixAdapter implements PlatformAdapter {
     readonly nativeSubRecipe = NETFLIX_NATIVE_SUB_RECIPE;
 
@@ -39,13 +49,30 @@ export class NetflixAdapter implements PlatformAdapter {
     ) {}
 
     interpretSubtitleEvent(event: CapturedEvent): SubtitleFetchSpec | null {
-        if (event.t !== 'subtitle-data' || event.tracks.length === 0) {
+        if (event.t !== 'subtitle-data') {
+            return null;
+        }
+        if (event.tracks.length === 0) {
+            this.context.logger.warn(
+                'Netflix resolved no subtitle track for the requested languages',
+                { videoId: this.context.videoId }
+            );
             return null;
         }
         return { kind: 'netflix-tracks', tracks: event.tracks };
     }
 
     onPlatformEvent(): void {}
+
+    /** Track URLs live in the page's player; ask for them once the bridge
+     *  is up (again after a reconnect, which supersedes the earlier ask). */
+    onBridgeConnected(): void {
+        this.context.bridge.sendControl({
+            t: 'request-subtitle-tracks',
+            videoId: this.context.videoId,
+            languages: requestedSubtitleLanguages(this.context.languages),
+        });
+    }
 
     /** HTML5 media time is program time on Netflix. */
     getPlaybackTime(video: HTMLVideoElement): number | null {
@@ -82,7 +109,9 @@ export class NetflixAdapter implements PlatformAdapter {
         return !video.paused;
     }
 
-    beforeAbort(): void {}
+    beforeAbort(): void {
+        this.context.bridge.sendControl({ t: 'cancel-subtitle-tracks' });
+    }
 
     dispose(): unknown {
         this.context.logger.debug('Netflix adapter disposed');

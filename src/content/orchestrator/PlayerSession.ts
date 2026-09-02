@@ -16,6 +16,7 @@ import type {
     PlatformDescriptor,
     PlatformHandoff,
     SubtitleFetchSpec,
+    SubtitleLanguages,
 } from '../platform/types';
 import { installNativeSubHider } from '../platform/shared/nativeSubHider';
 import { Renderer } from '../renderer/Renderer';
@@ -55,6 +56,18 @@ export const FETCH_SETTINGS_KEYS = [
     'useOfficialTranslations',
 ] as const;
 
+export function toSubtitleLanguages(
+    settings: Partial<
+        Pick<SettingsValues, (typeof FETCH_SETTINGS_KEYS)[number]>
+    >
+): SubtitleLanguages {
+    return {
+        originalLanguage: settings.originalLanguage ?? 'en',
+        targetLanguage: settings.targetLanguage ?? 'en',
+        useOfficialTranslations: settings.useOfficialTranslations ?? true,
+    };
+}
+
 export function toDisplaySettings(settings: ContentSettings): DisplaySettings {
     return {
         fontSizeVw: settings.subtitleFontSize,
@@ -79,6 +92,7 @@ export interface PlayerSessionDeps {
     readonly uiRoot: UiRoot;
     readonly handoff: PlatformHandoff | null;
     readonly settings: ContentSettings;
+    readonly languages: SubtitleLanguages;
     readonly onNavigationMismatch: () => void;
     readonly onContextInvalidated: () => void;
 }
@@ -105,6 +119,8 @@ export class PlayerSession {
     private latestSubtitleEvent: CapturedEvent | null = null;
     private inFlightKey: string | null = null;
     private completedKey: string | null = null;
+    /** Latest-wins: a slower earlier request must not overwrite newer cues. */
+    private requestSequence = 0;
     /** Translate-mode loop for the current cue set; one scope per cue set. */
     private translation: {
         readonly scheduler: TranslationScheduler;
@@ -124,6 +140,7 @@ export class PlayerSession {
             {
                 signal: this.signal,
                 videoId: deps.videoId,
+                languages: deps.languages,
                 bridge: deps.bridge,
                 config: configService,
                 logger: this.logger,
@@ -178,8 +195,8 @@ export class PlayerSession {
         );
         this.signal.addEventListener('abort', unsubscribe, { once: true });
 
-        // Replays retained events synchronously — Netflix next-episode
-        // preloads and anything captured before this session existed.
+        // Replays retained events synchronously — anything the page bridge
+        // resolved before this session existed.
         this.deps.cache.subscribe(
             this.videoId,
             (event) => this.onSubtitleEvent(event),
@@ -251,23 +268,23 @@ export class PlayerSession {
             return;
         }
         this.inFlightKey = key;
+        this.requestSequence += 1;
+        const sequence = this.requestSequence;
         try {
-            const fetchSettings =
-                await configService.getMultiple(FETCH_SETTINGS_KEYS);
-            ensureLive(this.signal);
-            const languages = {
-                targetLanguage: fetchSettings.targetLanguage ?? 'en',
-                originalLanguage: fetchSettings.originalLanguage ?? 'en',
-            };
+            const {
+                originalLanguage,
+                targetLanguage,
+                useOfficialTranslations,
+            } = this.deps.languages;
             const request: FetchVttRequest =
                 spec.kind === 'netflix-tracks'
                     ? {
                           action: 'fetchVTT',
                           source: 'netflix',
                           videoId: this.videoId,
-                          ...languages,
-                          useOfficialTranslations:
-                              fetchSettings.useOfficialTranslations ?? true,
+                          targetLanguage,
+                          originalLanguage,
+                          useOfficialTranslations,
                           data: { tracks: spec.tracks },
                       }
                     : {
@@ -275,7 +292,8 @@ export class PlayerSession {
                           source: 'disneyplus',
                           videoId: this.videoId,
                           url: spec.url,
-                          ...languages,
+                          targetLanguage,
+                          originalLanguage,
                       };
 
             const response = await sendWithRetry(fetchVtt, request, {
@@ -284,6 +302,9 @@ export class PlayerSession {
                 canDispatch: () => !this.signal.aborted,
             });
             ensureLive(this.signal);
+            if (sequence !== this.requestSequence) {
+                return;
+            }
 
             if (response.success) {
                 this.completedKey = key;

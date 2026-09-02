@@ -12,9 +12,8 @@ export const netflixDescriptor: PlatformDescriptor = {
         videoReplacedAcrossEpisodes: true,
     },
     parseVideoIdFromUrl: extractNetflixVideoIdFromUrl,
-    // Keyed by the event's own movieId: Netflix parses the next episode's
-    // tracks while the current one plays, and the cache holds them until
-    // the route becomes that movie.
+    // Keyed by the event's own movieId: a resolution that lands after the
+    // route moved on stays cached for the movie it belongs to.
     classifyBridgeEvent(event) {
         if (event.t !== 'subtitle-data') {
             return null;

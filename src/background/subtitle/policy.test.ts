@@ -118,12 +118,10 @@ describe('Netflix authorization', () => {
         language: 'en',
         displayName: 'English',
         trackType: 'PRIMARY',
-        ttDownloadables: {
-            'dfxp-ls-sdh': { urls: [{ url: NETFLIX_CDN_URL }] },
-        },
+        url: NETFLIX_CDN_URL,
     };
 
-    it('reduces tracks to one vetted URL each and freezes the snapshot', () => {
+    it('vets each resolved track URL and freezes the snapshot', () => {
         const snapshot = authorizeSubtitleRequest(
             netflixRequest([goodTrack]),
             netflixSender()
@@ -142,110 +140,64 @@ describe('Netflix authorization', () => {
         expect(Object.isFrozen(snapshot)).toBe(true);
     });
 
-    it('drops none/forced tracks and tracks without URLs, rejecting when empty', () => {
+    it('defaults the display name and omits an absent track type', () => {
         const snapshot = authorizeSubtitleRequest(
             netflixRequest([
-                { ...goodTrack, isNoneTrack: true },
-                { ...goodTrack, isForcedNarrative: true },
-                { language: 'fr', displayName: 'French', ttDownloadables: {} },
-                goodTrack,
+                { language: 'ja', url: `${NETFLIX_CDN_URL}#frag` },
             ]),
             netflixSender()
         );
         if (snapshot.source === 'netflix') {
-            expect(snapshot.tracks).toHaveLength(1);
-        }
-
-        expect(() =>
-            authorizeSubtitleRequest(
-                netflixRequest([{ ...goodTrack, isNoneTrack: true }]),
-                netflixSender()
-            )
-        ).toThrow(SubtitleRequestPolicyError);
-    });
-
-    it('reads downloadables from rawTrack and string URL entries', () => {
-        const snapshot = authorizeSubtitleRequest(
-            netflixRequest([
+            expect(snapshot.tracks).toEqual([
                 {
                     language: 'ja',
-                    rawTrack: {
-                        ttDownloadables: {
-                            simplesdh: { downloadUrls: [NETFLIX_CDN_URL] },
-                        },
-                    },
+                    displayName: 'ja',
+                    downloadUrl: NETFLIX_CDN_URL,
                 },
-            ]),
-            netflixSender()
-        );
-        if (snapshot.source === 'netflix') {
-            expect(snapshot.tracks[0]).toMatchObject({
-                language: 'ja',
-                displayName: 'ja',
-                downloadUrl: NETFLIX_CDN_URL,
-            });
+            ]);
         }
     });
 
-    it('rejects a track whose URL points off the Netflix CDN', () => {
+    it.each([
+        [
+            'a URL off the Netflix CDN',
+            { language: 'en', url: 'https://evil.example/track' },
+        ],
+        [
+            'an http URL',
+            { language: 'en', url: 'http://sub.nflxvideo.net/track' },
+        ],
+        ['a missing URL', { language: 'en' }],
+        ['an unknown key', { ...goodTrack, trackId: 'x' }],
+        ['a blank language', { ...goodTrack, language: ' ' }],
+        ['a non-string track type', { ...goodTrack, trackType: 1 }],
+        [
+            'an oversized display name',
+            { ...goodTrack, displayName: 'x'.repeat(257) },
+        ],
+        ['a non-object track', 'en'],
+    ])('rejects a track with %s', (_label, track) => {
+        expect(() =>
+            authorizeSubtitleRequest(netflixRequest([track]), netflixSender())
+        ).toThrow(SubtitleRequestPolicyError);
+    });
+
+    it('rejects the whole request when any track is invalid', () => {
         expect(() =>
             authorizeSubtitleRequest(
                 netflixRequest([
-                    {
-                        language: 'en',
-                        ttDownloadables: {
-                            f: { urls: ['https://evil.example/track'] },
-                        },
-                    },
+                    goodTrack,
+                    { language: 'fr', url: 'https://evil.example/track' },
                 ]),
                 netflixSender()
             )
         ).toThrow(SubtitleRequestPolicyError);
     });
 
-    it('rejects oversized format and URL-entry fans', () => {
-        const manyFormats = Object.fromEntries(
-            Array.from({ length: 17 }, (_, i) => [
-                `f${i}`,
-                { urls: [NETFLIX_CDN_URL] },
-            ])
-        );
+    it('rejects a videoId that is not the tab route', () => {
         expect(() =>
             authorizeSubtitleRequest(
-                netflixRequest([
-                    { language: 'en', ttDownloadables: manyFormats },
-                ]),
-                netflixSender()
-            )
-        ).toThrow(SubtitleRequestPolicyError);
-
-        expect(() =>
-            authorizeSubtitleRequest(
-                netflixRequest([
-                    {
-                        language: 'en',
-                        ttDownloadables: {
-                            f: { urls: new Array(9).fill(NETFLIX_CDN_URL) },
-                        },
-                    },
-                ]),
-                netflixSender()
-            )
-        ).toThrow(SubtitleRequestPolicyError);
-    });
-
-    it('validates later formats even after selecting a URL', () => {
-        expect(() =>
-            authorizeSubtitleRequest(
-                netflixRequest([
-                    {
-                        language: 'en',
-                        ttDownloadables: {
-                            a: { urls: [NETFLIX_CDN_URL] },
-                            b: { urls: new Array(9).fill(NETFLIX_CDN_URL) },
-                        },
-                    },
-                ]),
+                { ...netflixRequest([goodTrack]), videoId: '1' },
                 netflixSender()
             )
         ).toThrow(SubtitleRequestPolicyError);

@@ -9,7 +9,7 @@ import {
 // The second authorization layer behind the message contract. It owns what
 // the contract cannot: the request's videoId must match the sender tab's
 // player route, every URL must canonicalize onto the platform CDN allowlist,
-// and Netflix track metadata is reduced to exactly one vetted URL per track.
+// and every Netflix track the page bridge resolved carries one vetted URL.
 // Without this layer the background is an open proxy for the content script.
 
 const POLICY_ERROR_MESSAGE = 'Subtitle request rejected by policy.';
@@ -19,8 +19,12 @@ const MAX_URL_BYTES = 16 * 1024;
 const MAX_LANGUAGE_BYTES = 64;
 const MAX_FORMAT_OR_TRACK_TYPE_BYTES = 64;
 const MAX_DISPLAY_NAME_BYTES = 256;
-const MAX_NETFLIX_FORMATS_PER_TRACK = 16;
-const MAX_NETFLIX_URL_ENTRIES_PER_FORMAT = 8;
+const NETFLIX_TRACK_KEYS = new Set([
+    'language',
+    'displayName',
+    'trackType',
+    'url',
+]);
 
 export type SubtitleSource = 'netflix' | 'disneyplus';
 
@@ -245,175 +249,59 @@ function isBoundedNonemptyString(value: unknown, maxBytes: number): boolean {
     );
 }
 
-function readOptionalBoolean(
-    record: Record<string, unknown>,
-    key: string
-): boolean {
-    if (!Object.hasOwn(record, key)) {
-        return false;
+function readBoundedString(
+    track: Record<string, unknown>,
+    key: string,
+    maxBytes: number
+): string | undefined {
+    if (!Object.hasOwn(track, key)) {
+        return undefined;
     }
-    const value = record[key];
-    if (typeof value !== 'boolean') {
+    const value = track[key];
+    if (!isBoundedNonemptyString(value, maxBytes)) {
         throw new SubtitleRequestPolicyError(
             'ERR_SUBTITLE_REQUEST_UNAUTHORIZED',
             'netflix'
         );
     }
-    return value;
+    return value as string;
 }
 
-function readNetflixUrlCandidate(entry: unknown): string | null {
-    if (typeof entry === 'string') {
-        return entry.length > 0 ? entry : null;
-    }
-    if (!isPlainDataRecord(entry)) {
-        return null;
-    }
-    const url = entry.url;
-    return typeof url === 'string' && url.length > 0 ? url : null;
-}
-
-function selectNetflixDownloadables(
-    track: Record<string, unknown>
-): Record<string, unknown> | null {
-    const direct = track.ttDownloadables;
-    if (isPlainDataRecord(direct)) {
-        return direct;
-    }
-    const rawTrack = track.rawTrack;
-    if (!isPlainDataRecord(rawTrack)) {
-        return null;
-    }
-    const rawDownloadables = rawTrack.ttDownloadables;
-    return isPlainDataRecord(rawDownloadables) ? rawDownloadables : null;
-}
-
-function selectNetflixTrackDownload(
-    downloadables: Record<string, unknown> | null
-): string | null {
-    if (!downloadables) {
-        return null;
-    }
-    const formats = Object.keys(downloadables);
-    if (formats.length > MAX_NETFLIX_FORMATS_PER_TRACK) {
-        throw new SubtitleRequestPolicyError(
-            'ERR_SUBTITLE_REQUEST_UNAUTHORIZED',
-            'netflix'
-        );
-    }
-
-    let selectedUrl: string | null = null;
-    for (const format of formats) {
-        if (!isBoundedNonemptyString(format, MAX_FORMAT_OR_TRACK_TYPE_BYTES)) {
-            throw new SubtitleRequestPolicyError(
-                'ERR_SUBTITLE_REQUEST_UNAUTHORIZED',
-                'netflix'
-            );
-        }
-        const formatData = downloadables[format];
-        if (!isPlainDataRecord(formatData)) {
-            throw new SubtitleRequestPolicyError(
-                'ERR_SUBTITLE_REQUEST_UNAUTHORIZED',
-                'netflix'
-            );
-        }
-
-        // Every format's list bounds are validated, even after a selection,
-        // so an oversized later format still rejects the whole request.
-        const candidateLists: unknown[] = [];
-        for (const listKey of ['urls', 'downloadUrls']) {
-            if (!Object.hasOwn(formatData, listKey)) {
-                continue;
-            }
-            const list = formatData[listKey];
-            if (
-                !Array.isArray(list) ||
-                list.length > MAX_NETFLIX_URL_ENTRIES_PER_FORMAT
-            ) {
-                throw new SubtitleRequestPolicyError(
-                    'ERR_SUBTITLE_REQUEST_UNAUTHORIZED',
-                    'netflix'
-                );
-            }
-            candidateLists.push(list);
-        }
-        if (selectedUrl !== null) {
-            continue;
-        }
-
-        for (const list of candidateLists) {
-            const rawUrl = readNetflixUrlCandidate((list as unknown[])[0]);
-            if (rawUrl) {
-                selectedUrl = canonicalizeAllowedSubtitleUrl(
-                    rawUrl,
-                    'netflix',
-                    'request'
-                );
-                break;
-            }
-        }
-    }
-    return selectedUrl;
-}
-
-function sanitizeNetflixTrack(track: unknown): SanitizedNetflixTrack | null {
-    if (!isPlainDataRecord(track)) {
-        throw new SubtitleRequestPolicyError(
-            'ERR_SUBTITLE_REQUEST_UNAUTHORIZED',
-            'netflix'
-        );
-    }
+/** The page bridge's resolved track: exactly these keys, one CDN URL. Any
+ *  other shape is tampering, not a compatibility case. */
+function sanitizeNetflixTrack(track: unknown): SanitizedNetflixTrack {
     if (
-        readOptionalBoolean(track, 'isNoneTrack') ||
-        readOptionalBoolean(track, 'isForcedNarrative')
+        !isPlainDataRecord(track) ||
+        Object.keys(track).some((key) => !NETFLIX_TRACK_KEYS.has(key))
     ) {
-        return null;
-    }
-
-    const language = track.language;
-    if (!isBoundedNonemptyString(language, MAX_LANGUAGE_BYTES)) {
         throw new SubtitleRequestPolicyError(
             'ERR_SUBTITLE_REQUEST_UNAUTHORIZED',
             'netflix'
         );
     }
-    let displayName = language as string;
-    if (Object.hasOwn(track, 'displayName')) {
-        if (
-            !isBoundedNonemptyString(track.displayName, MAX_DISPLAY_NAME_BYTES)
-        ) {
-            throw new SubtitleRequestPolicyError(
-                'ERR_SUBTITLE_REQUEST_UNAUTHORIZED',
-                'netflix'
-            );
-        }
-        displayName = track.displayName as string;
+    const language = readBoundedString(track, 'language', MAX_LANGUAGE_BYTES);
+    if (language === undefined) {
+        throw new SubtitleRequestPolicyError(
+            'ERR_SUBTITLE_REQUEST_UNAUTHORIZED',
+            'netflix'
+        );
     }
-    let trackType: string | undefined;
-    if (Object.hasOwn(track, 'trackType')) {
-        if (
-            !isBoundedNonemptyString(
-                track.trackType,
-                MAX_FORMAT_OR_TRACK_TYPE_BYTES
-            )
-        ) {
-            throw new SubtitleRequestPolicyError(
-                'ERR_SUBTITLE_REQUEST_UNAUTHORIZED',
-                'netflix'
-            );
-        }
-        trackType = track.trackType as string;
-    }
-
-    const downloadUrl = selectNetflixTrackDownload(
-        selectNetflixDownloadables(track)
+    const displayName =
+        readBoundedString(track, 'displayName', MAX_DISPLAY_NAME_BYTES) ??
+        language;
+    const trackType = readBoundedString(
+        track,
+        'trackType',
+        MAX_FORMAT_OR_TRACK_TYPE_BYTES
     );
-    if (!downloadUrl) {
-        return null;
-    }
-    return trackType !== undefined
-        ? { language: language as string, displayName, trackType, downloadUrl }
-        : { language: language as string, displayName, downloadUrl };
+    const downloadUrl = canonicalizeAllowedSubtitleUrl(
+        track.url,
+        'netflix',
+        'request'
+    );
+    return trackType === undefined
+        ? { language, displayName, downloadUrl }
+        : { language, displayName, trackType, downloadUrl };
 }
 
 function deepFreeze<T extends object>(value: T): T {
@@ -478,19 +366,7 @@ export function authorizeSubtitleRequest(
         );
     }
 
-    const tracks: SanitizedNetflixTrack[] = [];
-    for (const track of request.data.tracks) {
-        const sanitized = sanitizeNetflixTrack(track);
-        if (sanitized) {
-            tracks.push(sanitized);
-        }
-    }
-    if (tracks.length === 0) {
-        throw new SubtitleRequestPolicyError(
-            'ERR_SUBTITLE_REQUEST_UNAUTHORIZED',
-            'netflix'
-        );
-    }
+    const tracks = request.data.tracks.map(sanitizeNetflixTrack);
 
     return brand({
         source: 'netflix',

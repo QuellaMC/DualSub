@@ -1,7 +1,9 @@
 import { normalizeCueText } from '@/shared/cueTextNormalizer';
 
-// Netflix TTML → WebVTT: region layouts give same-timestamp cues a stable
-// top-to-bottom, left-to-right merge order.
+// Netflix TTML (legacy DFXP and IMSC 1.1) → WebVTT: tick timestamps resolve
+// against the document's ttp:tickRate, ruby readings are dropped so furigana
+// never inlines into the cue, and region layouts give same-timestamp cues a
+// stable top-to-bottom, left-to-right merge order.
 
 export class TTMLConversionError extends Error {
     override readonly name = 'TTMLConversionError';
@@ -11,14 +13,17 @@ export class TTMLConversionError extends Error {
     }
 }
 
+/** Netflix's historical tick rate, used when the document declares none. */
+export const DEFAULT_TICK_RATE = 10_000_000;
+
 interface RegionLayout {
     x: number;
     y: number;
 }
 
 interface IntermediateCue {
-    begin: string;
-    end: string;
+    startMs: number;
+    endMs: number;
     region: string;
     text: string;
 }
@@ -31,6 +36,17 @@ function parseAttributes(attributeText: string): Record<string, string> {
         attributes[match[1]!.toLowerCase()] = match[2] ?? match[3] ?? '';
     }
     return attributes;
+}
+
+function parseTickRate(ttmlText: string): number {
+    const rootMatch = /<(?:[\w-]+:)?tt\b([^>]*)>/i.exec(ttmlText);
+    if (!rootMatch) {
+        return DEFAULT_TICK_RATE;
+    }
+    const declared = Number(parseAttributes(rootMatch[1]!)['ttp:tickrate']);
+    return Number.isFinite(declared) && declared > 0
+        ? declared
+        : DEFAULT_TICK_RATE;
 }
 
 function parseRegionLayouts(ttmlText: string): Map<string, RegionLayout> {
@@ -54,34 +70,53 @@ function parseRegionLayouts(ttmlText: string): Map<string, RegionLayout> {
     return regionLayouts;
 }
 
-function parsePElements(ttmlText: string): IntermediateCue[] {
-    const intermediateCues: IntermediateCue[] = [];
-    const pElementRegex =
-        /<(?:[\w-]+:)?p\b([^>]*)>([\s\S]*?)<\/(?:[\w-]+:)?p>/gi;
-    let pMatch: RegExpExecArray | null;
+const RUBY_ANNOTATION_ROLES = new Set(['text', 'delimiter']);
 
-    while ((pMatch = pElementRegex.exec(ttmlText)) !== null) {
-        const attributes = parseAttributes(pMatch[1]!);
-        const begin = attributes.begin;
-        const end = attributes.end;
-        if (!begin || !end) {
-            continue;
+/** Style ids whose tts:ruby role is a reading or its delimiter. */
+function parseRubyAnnotationStyles(ttmlText: string): Set<string> {
+    const styles = new Set<string>();
+    const styleRegex = /<(?:[\w-]+:)?style\b([^>]*)\/?\s*>/gi;
+    let styleMatch: RegExpExecArray | null;
+    while ((styleMatch = styleRegex.exec(ttmlText)) !== null) {
+        const attributes = parseAttributes(styleMatch[1]!);
+        const styleId = attributes['xml:id'] || attributes.id;
+        if (
+            styleId &&
+            RUBY_ANNOTATION_ROLES.has(attributes['tts:ruby'] ?? '')
+        ) {
+            styles.add(styleId);
         }
-        intermediateCues.push({
-            begin,
-            end,
-            region: attributes.region ?? '',
-            text: normalizeCueText(pMatch[2], 'ttml'),
-        });
     }
-    return intermediateCues;
+    return styles;
 }
 
-export function parseTtmlTimeToSeconds(ttmlTime: string): number {
+/** Remove spans that carry a ruby reading (inline role or via style). Such
+ *  spans hold text only, so a non-nesting match is exact. */
+function stripRubyAnnotations(
+    paragraphText: string,
+    annotationStyles: Set<string>
+): string {
+    return paragraphText.replace(
+        /<(?:[\w-]+:)?span\b([^>]*)>[^<]*<\/(?:[\w-]+:)?span>/gi,
+        (match, attributeText: string) => {
+            const attributes = parseAttributes(attributeText);
+            const styleIds = (attributes.style ?? '').split(/\s+/);
+            return RUBY_ANNOTATION_ROLES.has(attributes['tts:ruby'] ?? '') ||
+                styleIds.some((styleId) => annotationStyles.has(styleId))
+                ? ''
+                : match;
+        }
+    );
+}
+
+export function parseTtmlTimeToSeconds(
+    ttmlTime: string,
+    tickRate: number = DEFAULT_TICK_RATE
+): number {
     const value = String(ttmlTime).trim().replace(',', '.');
     const tickMatch = /^(\d+(?:\.\d+)?)t$/i.exec(value);
     if (tickMatch) {
-        return Number(tickMatch[1]) / 10_000_000;
+        return Number(tickMatch[1]) / tickRate;
     }
 
     const clockMatch = /^(\d+):(\d{2}):(\d{2}(?:\.\d+)?)$/.exec(value);
@@ -107,6 +142,56 @@ export function parseTtmlTimeToSeconds(ttmlTime: string): number {
     return Number(offsetMatch[1]) * multipliers[offsetMatch[2]!.toLowerCase()]!;
 }
 
+function toMilliseconds(ttmlTime: string, tickRate: number): number {
+    const milliseconds = Math.round(
+        parseTtmlTimeToSeconds(ttmlTime, tickRate) * 1000
+    );
+    if (!Number.isFinite(milliseconds) || milliseconds < 0) {
+        throw new TTMLConversionError(
+            'TTML conversion failed: Unsupported TTML timestamp'
+        );
+    }
+    return milliseconds;
+}
+
+function parsePElements(
+    ttmlText: string,
+    tickRate: number,
+    annotationStyles: Set<string>
+): IntermediateCue[] {
+    const intermediateCues: IntermediateCue[] = [];
+    const pElementRegex =
+        /<(?:[\w-]+:)?p\b([^>]*)>([\s\S]*?)<\/(?:[\w-]+:)?p>/gi;
+    let pMatch: RegExpExecArray | null;
+
+    while ((pMatch = pElementRegex.exec(ttmlText)) !== null) {
+        const attributes = parseAttributes(pMatch[1]!);
+        const { begin, end, dur } = attributes;
+        if (!begin || (!end && !dur)) {
+            continue;
+        }
+        const startMs = toMilliseconds(begin, tickRate);
+        const endMs = end
+            ? toMilliseconds(end, tickRate)
+            : startMs + toMilliseconds(dur!, tickRate);
+        if (endMs <= startMs) {
+            throw new TTMLConversionError(
+                'TTML conversion failed: Invalid TTML cue range'
+            );
+        }
+        intermediateCues.push({
+            startMs,
+            endMs,
+            region: attributes.region ?? '',
+            text: normalizeCueText(
+                stripRubyAnnotations(pMatch[2]!, annotationStyles),
+                'ttml'
+            ),
+        });
+    }
+    return intermediateCues;
+}
+
 function formatMillisecondsAsVtt(totalMilliseconds: number): string {
     const hours = Math.floor(totalMilliseconds / 3_600_000);
     const minutes = Math.floor((totalMilliseconds % 3_600_000) / 60_000);
@@ -130,7 +215,11 @@ export function convertTtmlToVtt(ttmlText: string): string {
     }
 
     const regionLayouts = parseRegionLayouts(ttmlText);
-    const intermediateCues = parsePElements(ttmlText);
+    const intermediateCues = parsePElements(
+        ttmlText,
+        parseTickRate(ttmlText),
+        parseRubyAnnotationStyles(ttmlText)
+    );
     if (intermediateCues.length === 0) {
         throw new TTMLConversionError(
             'TTML conversion failed: No valid TTML subtitle entries found'
@@ -139,7 +228,7 @@ export function convertTtmlToVtt(ttmlText: string): string {
 
     const groupedByTime = new Map<string, IntermediateCue[]>();
     for (const cue of intermediateCues) {
-        const key = JSON.stringify([cue.begin, cue.end]);
+        const key = `${cue.startMs}-${cue.endMs}`;
         const group = groupedByTime.get(key);
         if (group) {
             group.push(cue);
@@ -148,53 +237,26 @@ export function convertTtmlToVtt(ttmlText: string): string {
         }
     }
 
-    const finalCues: { begin: string; end: string; text: string }[] = [];
-    for (const [key, group] of groupedByTime) {
+    const finalCues = [...groupedByTime.values()].map((group) => {
         group.sort((a, b) => {
             const regionA = regionLayouts.get(a.region) ?? { y: 999, x: 999 };
             const regionB = regionLayouts.get(b.region) ?? { y: 999, x: 999 };
             return regionA.y - regionB.y || regionA.x - regionB.x;
         });
-        const [begin, end] = JSON.parse(key) as [string, string];
-        finalCues.push({
-            begin,
-            end,
+        return {
+            startMs: group[0]!.startMs,
+            endMs: group[0]!.endMs,
             text: group
                 .map((cue) => cue.text)
                 .join(' ')
                 .trim(),
-        });
-    }
-
-    finalCues.sort(
-        (a, b) =>
-            parseTtmlTimeToSeconds(a.begin) - parseTtmlTimeToSeconds(b.begin)
-    );
+        };
+    });
+    finalCues.sort((a, b) => a.startMs - b.startMs);
 
     let vtt = 'WEBVTT\n\n';
     for (const cue of finalCues) {
-        const startMilliseconds = Math.round(
-            parseTtmlTimeToSeconds(cue.begin) * 1000
-        );
-        const endMilliseconds = Math.round(
-            parseTtmlTimeToSeconds(cue.end) * 1000
-        );
-        if (
-            !Number.isFinite(startMilliseconds) ||
-            startMilliseconds < 0 ||
-            !Number.isFinite(endMilliseconds) ||
-            endMilliseconds < 0
-        ) {
-            throw new TTMLConversionError(
-                'TTML conversion failed: Unsupported TTML timestamp'
-            );
-        }
-        if (endMilliseconds <= startMilliseconds) {
-            throw new TTMLConversionError(
-                'TTML conversion failed: Invalid TTML cue range'
-            );
-        }
-        vtt += `${formatMillisecondsAsVtt(startMilliseconds)} --> ${formatMillisecondsAsVtt(endMilliseconds)}\n`;
+        vtt += `${formatMillisecondsAsVtt(cue.startMs)} --> ${formatMillisecondsAsVtt(cue.endMs)}\n`;
         vtt += `${encodeVttText(cue.text)}\n\n`;
     }
     return vtt;
