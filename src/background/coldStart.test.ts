@@ -5,7 +5,7 @@ import {
     TEST_EXTENSION_ORIGIN,
     installExtensionRuntimeIdentity,
 } from '@/test-utils/extensionRuntime';
-import background from './background';
+import background from '@/entrypoints/background';
 
 // A service worker woken by an event drops that event unless its listener
 // exists by the time the entry module has run: every listener must be
@@ -44,13 +44,15 @@ function connectEvent() {
 
 async function probe(): Promise<Readiness> {
     const responses: Readiness[] = [];
-    await fakeBrowser.runtime.onMessage.trigger(
+    // The listener answers through sendResponse; its own return value is
+    // only the "keep the channel open" flag.
+    void (await fakeBrowser.runtime.onMessage.trigger(
         { action: 'checkBackgroundReady' },
-        sidepanelSender as never,
+        sidepanelSender,
         (response: Readiness) => {
             responses.push(response);
         }
-    );
+    ));
     await vi.waitFor(() => expect(responses).toHaveLength(1));
     return responses[0]!;
 }
