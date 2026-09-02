@@ -23,7 +23,9 @@ export type RemovalStatus = 'applied' | 'rejected';
 export interface PanelConnectionDeps {
     readonly connect: () => PortLike;
     readonly queryActiveTab: () => Promise<TabBinding | null>;
-    /** The bound tab's selection changed; null clears it. */
+    /** The bound tab's selection as content published it. Null means the
+     *  tab's document went away and the panel forgets the tab. Rebinds and
+     *  reconnects are not reported: content republishes after them. */
     readonly onSelection: (
         tabId: number,
         selection: SelectionState | null
@@ -61,6 +63,9 @@ interface Session {
     port: FramedPort<PanelToBackgroundFrame>;
     pendingRegistration: PendingRegistration | null;
     confirmed: SidePanelBinding | null;
+    /** The bound-null state that follows every confirmation was seen; a
+     *  null after it is the background clearing the tab. */
+    baselineSeen: boolean;
     cursor: SelectionState | null;
     pendingRemoval: PendingRemoval | null;
 }
@@ -232,6 +237,7 @@ export class PanelConnection {
             port: null as unknown as FramedPort<PanelToBackgroundFrame>,
             pendingRegistration: null,
             confirmed: null,
+            baselineSeen: false,
             cursor: null,
             pendingRemoval: null,
         };
@@ -280,18 +286,6 @@ export class PanelConnection {
             !Number.isSafeInteger(windowId) ||
             windowId < 0
         ) {
-            return false;
-        }
-        // Nothing from the previous binding may survive the intent to
-        // rebind, and the new tab starts visibly empty until confirmed.
-        const prior = session.confirmed;
-        if (prior) {
-            this.deps.onSelection(prior.tabId, null);
-        }
-        if (!prior || prior.tabId !== tabId) {
-            this.deps.onSelection(tabId, null);
-        }
-        if (!this.isCurrent(session)) {
             return false;
         }
         this.bindingIntentEpoch += 1;
@@ -353,6 +347,7 @@ export class PanelConnection {
                 ) {
                     this.settleRegistration(session);
                     session.confirmed = { ...frame.data };
+                    session.baselineSeen = false;
                     session.cursor = null;
                 }
                 return;
@@ -373,6 +368,13 @@ export class PanelConnection {
                     return;
                 }
                 session.cursor = advance.cursor;
+                if (frame.data.selection === null && !session.baselineSeen) {
+                    // The bound-null state that follows every confirmation;
+                    // the republish behind it says what the tab really has.
+                    session.baselineSeen = true;
+                    return;
+                }
+                session.baselineSeen = true;
                 this.deps.onSelection(confirmed.tabId, frame.data.selection);
                 if (
                     this.isCurrent(session) &&
@@ -484,13 +486,6 @@ export class PanelConnection {
         session: Session,
         options: { disconnect: boolean; reconnectDelay: number | null }
     ): void {
-        if (this.session !== session) {
-            return;
-        }
-        const confirmed = session.confirmed;
-        if (confirmed) {
-            this.deps.onSelection(confirmed.tabId, null);
-        }
         if (this.session !== session) {
             return;
         }

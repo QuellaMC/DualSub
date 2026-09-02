@@ -364,6 +364,57 @@ describe('SidePanelApp', () => {
         expect(screen.queryByText('A friendly greeting')).toBeNull();
     });
 
+    it('forgets a tab whose page navigates away', async () => {
+        const fake = await renderBound();
+        vi.spyOn(browser.runtime, 'sendMessage').mockResolvedValue(
+            ANSWER as never
+        );
+        fireEvent.click(screen.getByRole('button', { name: /Analyze/ }));
+        await screen.findByText('A friendly greeting');
+
+        fake.emit({
+            action: 'sidePanelSelectionSync',
+            data: { binding: BINDING, selection: null },
+        });
+        await waitFor(() =>
+            expect(screen.queryByText('A friendly greeting')).toBeNull()
+        );
+        expect(screen.queryAllByRole('listitem')).toHaveLength(0);
+    });
+
+    it('keeps the answer when the same words are selected again', async () => {
+        const fake = await renderBound();
+        vi.spyOn(browser.runtime, 'sendMessage').mockResolvedValue(
+            ANSWER as never
+        );
+        fireEvent.click(screen.getByRole('button', { name: /Analyze/ }));
+        await screen.findByText('A friendly greeting');
+
+        fake.emit({
+            action: 'sidePanelSelectionSync',
+            data: {
+                binding: BINDING,
+                selection: {
+                    ...SELECTION,
+                    selectionRevision: 3,
+                    reason: 'remove',
+                    entries: [],
+                },
+            },
+        });
+        fake.emit({
+            action: 'sidePanelSelectionSync',
+            data: {
+                binding: BINDING,
+                selection: { ...SELECTION, selectionRevision: 4 },
+            },
+        });
+        await waitFor(() =>
+            expect(screen.getAllByRole('listitem')).toHaveLength(2)
+        );
+        expect(screen.getByText('A friendly greeting')).toBeInTheDocument();
+    });
+
     it('keeps the analyze action disabled while the feature is off', async () => {
         await configService.setMultiple({ aiContextEnabled: false });
         await renderBound();
