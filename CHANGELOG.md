@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Disney+ native subtitles are hidden again inside the player's shadow tree.
 - Provider requests carry only the configured credential, never browser cookies.
 - The AI context rate limiter keeps its timestamps across service worker restarts.
+- The side panel keeps a tab's selected words, running analysis, and answer while the user visits other tabs and comes back.
 
 ## [2.5.0] - 2025-11-19
 

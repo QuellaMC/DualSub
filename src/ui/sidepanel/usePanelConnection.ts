@@ -14,9 +14,15 @@ export type PanelError =
     | { readonly kind: 'key'; readonly key: string }
     | { readonly kind: 'text'; readonly text: string };
 
+/** An answer and the words it was computed for. */
+export interface AnalysisRecord {
+    readonly words: readonly string[];
+    readonly result: Analysis;
+}
+
 export interface TabState {
     readonly selection: SelectionState | null;
-    readonly analysis: Analysis | null;
+    readonly analysis: AnalysisRecord | null;
     readonly error: PanelError | null;
     readonly analyzing: boolean;
 }
@@ -31,7 +37,10 @@ export const EMPTY_TAB_STATE: TabState = {
 export interface PanelHandle {
     readonly connected: boolean;
     readonly activeTabId: number | null;
+    /** The bound tab's state. */
     readonly tab: TabState;
+    /** Any tab's latest committed state. */
+    readonly tabState: (tabId: number) => TabState;
     readonly updateTab: (tabId: number, patch: Partial<TabState>) => void;
     readonly requestRemoval: (
         selection: SelectionState,
@@ -39,18 +48,11 @@ export interface PanelHandle {
     ) => Promise<RemovalStatus>;
 }
 
-function selectionsEqual(
-    left: SelectionState | null,
-    right: SelectionState | null
-): boolean {
-    if (left === right) {
-        return true;
-    }
-    if (!left || !right) {
-        return false;
-    }
+/** The content-authored identity of a selection. The owner generation is
+ *  left out: the background mints a new one whenever the panel rebinds,
+ *  while the words on screen have not moved. */
+function sameContent(left: SelectionState, right: SelectionState): boolean {
     return (
-        left.selectionOwnerGeneration === right.selectionOwnerGeneration &&
         left.selectionRevision === right.selectionRevision &&
         left.renderRevision === right.renderRevision &&
         left.reason === right.reason &&
@@ -75,14 +77,19 @@ async function queryActiveTab(): Promise<TabBinding | null> {
 
 /**
  * React view of the panel's port. State is kept per tab so switching away
- * and back restores that tab's selection and analysis; the bound tab is
+ * and back restores that tab's words and answer; the bound tab is
  * whichever the connection registered last.
  */
 export function usePanelConnection(): PanelHandle {
     const [connected, setConnected] = useState(false);
     const [activeTabId, setActiveTabId] = useState<number | null>(null);
     const [tabs, setTabs] = useState<Record<number, TabState>>({});
+    const tabsRef = useRef(tabs);
     const connectionRef = useRef<PanelConnection | null>(null);
+
+    useEffect(() => {
+        tabsRef.current = tabs;
+    }, [tabs]);
 
     const updateTab = useCallback((tabId: number, patch: Partial<TabState>) => {
         setTabs((previous) => {
@@ -106,25 +113,33 @@ export function usePanelConnection(): PanelHandle {
                 connection.registerTab(tabId, windowId);
             },
             onSelection: (tabId, selection) => {
+                // A null projection means the binding moved or is being
+                // rebuilt, not that the words changed: the content script
+                // republishes what it has, and nothing known is discarded.
+                if (selection === null) {
+                    return;
+                }
                 setTabs((previous) => {
                     const current = previous[tabId] ?? EMPTY_TAB_STATE;
-                    const selectionChanged = !selectionsEqual(
-                        current.selection,
-                        selection
-                    );
-                    const clears =
-                        selection === null &&
-                        (current.analysis !== null || current.error !== null);
-                    if (!selectionChanged && !clears) {
-                        return previous;
+                    if (
+                        current.selection &&
+                        sameContent(current.selection, selection)
+                    ) {
+                        return {
+                            ...previous,
+                            [tabId]: { ...current, selection },
+                        };
                     }
+                    // An answer outlives the line it came from; only new
+                    // words make it stale.
+                    const keepsAnswer = selection.entries.length === 0;
                     return {
                         ...previous,
                         [tabId]: {
                             ...current,
                             selection,
-                            analysis: null,
-                            error: null,
+                            analysis: keepsAnswer ? current.analysis : null,
+                            error: keepsAnswer ? current.error : null,
                         },
                     };
                 });
@@ -147,6 +162,11 @@ export function usePanelConnection(): PanelHandle {
         []
     );
 
+    const tabState = useCallback(
+        (tabId: number) => tabsRef.current[tabId] ?? EMPTY_TAB_STATE,
+        []
+    );
+
     return {
         connected,
         activeTabId,
@@ -154,6 +174,7 @@ export function usePanelConnection(): PanelHandle {
             activeTabId === null
                 ? EMPTY_TAB_STATE
                 : (tabs[activeTabId] ?? EMPTY_TAB_STATE),
+        tabState,
         updateTab,
         requestRemoval,
     };

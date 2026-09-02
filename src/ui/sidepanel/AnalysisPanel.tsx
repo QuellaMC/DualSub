@@ -120,7 +120,11 @@ export function AnalysisPanel({ t }: { t: Translate }) {
             )}
 
             {analysis && !analyzing && (
-                <AnalysisResults analysis={analysis} words={words} t={t} />
+                <AnalysisResults
+                    analysis={analysis.result}
+                    words={analysis.words}
+                    t={t}
+                />
             )}
         </div>
     );

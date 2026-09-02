@@ -92,6 +92,39 @@ async function renderBound() {
     return fake;
 }
 
+/** The window's active tab changes: the panel rebinds there, the background
+ *  confirms, and projects a bound null state until content republishes. */
+async function switchTab(
+    fake: ReturnType<typeof fakePort>,
+    registrationId: number,
+    tabId: number
+) {
+    fake.emit({ action: 'tabActivated', data: { tabId, windowId: 3 } });
+    await waitFor(() =>
+        expect(fake.posted.at(-1)).toMatchObject({
+            action: 'sidePanelRegister',
+            data: { registrationId, tabId, windowId: 3 },
+        })
+    );
+    const binding = { registrationId, tabId, windowId: 3 };
+    fake.emit({ action: 'sidePanelBindingConfirmed', data: binding });
+    fake.emit({
+        action: 'sidePanelSelectionSync',
+        data: { binding, selection: null },
+    });
+    return binding;
+}
+
+const ANSWER = {
+    success: true,
+    result: {
+        analysis: { definition: 'A friendly greeting' },
+        contextType: 'cultural',
+        contextTypes: ['cultural'],
+        isStructured: true,
+    },
+};
+
 beforeAll(() => {
     installExtensionRuntimeIdentity();
 });
@@ -223,6 +256,112 @@ describe('SidePanelApp', () => {
             'OpenAI API key not configured'
         );
         expect(screen.getByRole('button', { name: 'Retry' })).toBeEnabled();
+    });
+
+    it('keeps the words and the answer when the panel rebinds to another tab and back', async () => {
+        const fake = await renderBound();
+        vi.spyOn(browser.runtime, 'sendMessage').mockResolvedValue(
+            ANSWER as never
+        );
+        fireEvent.click(screen.getByRole('button', { name: /Analyze/ }));
+        await screen.findByText('A friendly greeting');
+
+        await switchTab(fake, 2, 13);
+        await waitFor(() =>
+            expect(screen.queryByText('A friendly greeting')).toBeNull()
+        );
+        expect(screen.queryAllByRole('listitem')).toHaveLength(0);
+
+        // Content republishes the same words; the background has minted a
+        // new owner generation for the rebound tab.
+        const binding = await switchTab(fake, 3, 12);
+        fake.emit({
+            action: 'sidePanelSelectionSync',
+            data: {
+                binding,
+                selection: { ...SELECTION, selectionOwnerGeneration: 2 },
+            },
+        });
+        expect(
+            await screen.findByText('A friendly greeting')
+        ).toBeInTheDocument();
+        expect(screen.getAllByRole('listitem')).toHaveLength(2);
+    });
+
+    it('finishes an analysis into its tab while the user is on another tab', async () => {
+        const fake = await renderBound();
+        let answer: (value: unknown) => void = () => undefined;
+        vi.spyOn(browser.runtime, 'sendMessage').mockImplementation(
+            () =>
+                new Promise((resolve) => {
+                    answer = resolve;
+                }) as never
+        );
+        fireEvent.click(screen.getByRole('button', { name: /Analyze/ }));
+        await screen.findByText('Analyzing...', { selector: 'p' });
+
+        await switchTab(fake, 2, 13);
+        await waitFor(() =>
+            expect(
+                screen.queryByText('Analyzing...', { selector: 'p' })
+            ).toBeNull()
+        );
+        answer(ANSWER);
+
+        const binding = await switchTab(fake, 3, 12);
+        fake.emit({
+            action: 'sidePanelSelectionSync',
+            data: {
+                binding,
+                selection: { ...SELECTION, selectionOwnerGeneration: 2 },
+            },
+        });
+        expect(
+            await screen.findByText('A friendly greeting')
+        ).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Analyze/ })).toBeEnabled();
+    });
+
+    it('keeps the answer when the line moves on and drops it for new words', async () => {
+        const fake = await renderBound();
+        vi.spyOn(browser.runtime, 'sendMessage').mockResolvedValue(
+            ANSWER as never
+        );
+        fireEvent.click(screen.getByRole('button', { name: /Analyze/ }));
+        await screen.findByText('A friendly greeting');
+
+        fake.emit({
+            action: 'sidePanelSelectionSync',
+            data: {
+                binding: BINDING,
+                selection: {
+                    ...SELECTION,
+                    selectionRevision: 3,
+                    renderRevision: 2,
+                    reason: 'subtitle-change',
+                    entries: [],
+                },
+            },
+        });
+        await waitFor(() =>
+            expect(screen.queryAllByRole('listitem')).toHaveLength(0)
+        );
+        expect(screen.getByText('A friendly greeting')).toBeInTheDocument();
+
+        fake.emit({
+            action: 'sidePanelSelectionSync',
+            data: {
+                binding: BINDING,
+                selection: {
+                    ...SELECTION,
+                    selectionRevision: 4,
+                    renderRevision: 2,
+                    entries: [{ wordIndex: 1, word: 'adios' }],
+                },
+            },
+        });
+        await screen.findByText('adios');
+        expect(screen.queryByText('A friendly greeting')).toBeNull();
     });
 
     it('keeps the analyze action disabled while the feature is off', async () => {
