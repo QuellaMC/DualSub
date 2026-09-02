@@ -4,7 +4,12 @@ import { MessageRouter } from '@/messaging/router';
 import {
     configChanged,
     loggingLevelChanged,
+    sidePanelPauseVideo,
 } from '@/messaging/contracts/control';
+import {
+    selectionRemovalCommand,
+    selectionRepublishRequest,
+} from '@/messaging/contracts/selection';
 import { IsolatedBridge } from '../bridge/IsolatedBridge';
 import type { CapturedEvent } from '../bridge/protocol';
 import { SubtitleEventCache } from '../bridge/SubtitleEventCache';
@@ -15,9 +20,11 @@ import { prepareContentPreview } from './preview';
 import {
     CONTENT_SETTINGS_KEYS,
     FETCH_SETTINGS_KEYS,
+    INTERACTION_SETTINGS_KEYS,
     PlayerSession,
     toSubtitleLanguages,
     type ContentSettings,
+    type InteractionSettings,
     type SessionEndReason,
 } from './PlayerSession';
 import type { SubtitleLanguages } from '../platform/types';
@@ -73,6 +80,28 @@ export class ContentOrchestrator {
             this.activeSession?.applySettings(preview);
             return { success: true as const };
         });
+        // Side panel traffic addresses the selection of whichever session is
+        // on the route; with no session there is nothing to answer for.
+        this.router.handle(
+            selectionRepublishRequest,
+            (request) =>
+                this.activeSession?.selection.handleRepublish(
+                    request.data.requestId
+                ) ?? { requestId: request.data.requestId, accepted: false }
+        );
+        this.router.handle(
+            selectionRemovalCommand,
+            (request) =>
+                this.activeSession?.selection.handleRemoval(request.data) ?? {
+                    success: false,
+                    requestId: request.data.requestId,
+                }
+        );
+        this.router.handle(sidePanelPauseVideo, async () =>
+            (await this.activeSession?.pauseVideo())
+                ? { success: true as const }
+                : { success: false as const, error: 'No video to pause' }
+        );
         this.router.listen();
         void configService.syncLoggingLevel();
 
@@ -161,7 +190,8 @@ export class ContentOrchestrator {
     }
 
     private async startSession(videoId: string): Promise<void> {
-        const { settings, languages } = await this.readSessionSettings();
+        const { settings, languages, interaction } =
+            await this.readSessionSettings();
         // The route may have moved on while settings were loading.
         if (
             this.tornDown ||
@@ -181,6 +211,7 @@ export class ContentOrchestrator {
             handoff: this.handoff,
             settings,
             languages,
+            interaction,
             onNavigationMismatch: () => this.requestReconcile(),
             onContextInvalidated: () => this.teardown('context-invalidated'),
         });
@@ -192,14 +223,17 @@ export class ContentOrchestrator {
     private async readSessionSettings(): Promise<{
         settings: ContentSettings;
         languages: SubtitleLanguages;
+        interaction: InteractionSettings;
     }> {
         const values = await configService.getMultiple([
             ...CONTENT_SETTINGS_KEYS,
             ...FETCH_SETTINGS_KEYS,
+            ...INTERACTION_SETTINGS_KEYS,
         ]);
         return {
             settings: values as ContentSettings,
             languages: toSubtitleLanguages(values),
+            interaction: values as InteractionSettings,
         };
     }
 

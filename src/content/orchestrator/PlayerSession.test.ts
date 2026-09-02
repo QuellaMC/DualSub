@@ -114,6 +114,11 @@ function startSession() {
             subtitleTimeOffset: 0,
         },
         languages: LANGUAGES,
+        interaction: {
+            aiContextEnabled: false,
+            sidePanelAutoOpen: true,
+            sidePanelAutoPauseVideo: true,
+        },
         onNavigationMismatch: vi.fn(),
         onContextInvalidated: vi.fn(),
     });

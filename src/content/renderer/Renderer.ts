@@ -15,6 +15,7 @@ import {
     type DisplaySettings,
     type SubtitleElements,
 } from './styling';
+import { WordLayer, type WordIntent } from './wordLayer';
 
 /** Text stays on screen this long after a style change with no active cue,
  *  so re-styling never flashes the overlay blank. */
@@ -22,9 +23,11 @@ const STYLE_GRACE_MS = 800;
 
 export class Renderer {
     private readonly container: SessionContainer;
+    private readonly words: WordLayer;
     private media: MediaScope | null = null;
     private mediaScope: AbortController | null = null;
     private visible = true;
+    private interactive = false;
 
     constructor(
         private readonly deps: {
@@ -37,9 +40,17 @@ export class Renderer {
             logger: Logger;
             onNavigationMismatch: () => void;
             onSeek?: () => void;
+            /** The original line was repainted under a new render revision. */
+            onOriginalPainted?: (renderRevision: number) => void;
+            onWordIntent?: (intent: WordIntent) => void;
+            wordLanguage?: () => string;
         }
     ) {
         this.container = new SessionContainer(deps.uiRoot);
+        this.words = new WordLayer({
+            language: () => deps.wordLanguage?.() ?? 'und',
+            onIntent: (intent) => deps.onWordIntent?.(intent),
+        });
     }
 
     /** Playback time with the user offset applied; null without a clock. */
@@ -99,6 +110,24 @@ export class Renderer {
         this.render();
     }
 
+    /** Paint the original line as clickable words, or as plain text. The
+     *  current line is repainted under a new revision either way. */
+    setInteractive(interactive: boolean): void {
+        if (this.interactive === interactive) {
+            return;
+        }
+        this.interactive = interactive;
+        this.container.current?.original.replaceChildren();
+        this.words.forget();
+        this.deps.state.painted.originalText = '';
+        this.deps.state.invalidateMemo();
+        this.render();
+    }
+
+    setSelectedWords(indices: Iterable<number>): void {
+        this.words.setSelected(indices);
+    }
+
     /** While loading, the translated slot carries a placeholder and the
      *  overlay stays up even between cues, so the wait is visibly ours. */
     setLoading(loading: boolean): void {
@@ -108,6 +137,7 @@ export class Renderer {
 
     destroy(): void {
         this.detachMedia();
+        this.words.destroy();
         this.container.destroy();
     }
 
@@ -266,11 +296,24 @@ export class Renderer {
         originalText: string,
         translatedText: string
     ): void {
-        const { painted } = this.deps.state;
+        const { state } = this.deps;
+        const { painted } = state;
         if (painted.originalText !== originalText) {
-            elements.original.textContent = originalText;
+            state.renderRevision += 1;
+            if (this.interactive && originalText !== '') {
+                this.words.paint(
+                    elements.original,
+                    originalText,
+                    state.renderRevision
+                );
+            } else {
+                elements.original.textContent = originalText;
+                this.words.forget();
+            }
             painted.originalText = originalText;
-            this.deps.state.renderRevision += 1;
+            if (this.interactive) {
+                this.deps.onOriginalPainted?.(state.renderRevision);
+            }
         }
         if (painted.translatedText !== translatedText) {
             elements.translated.textContent = translatedText;

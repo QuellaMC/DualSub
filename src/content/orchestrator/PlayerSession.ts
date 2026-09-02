@@ -1,8 +1,13 @@
 import { createLogger } from '@/shared/logger';
 import { configService } from '@/config/service';
 import type { SettingsValues } from '@/config/schema';
-import { sendWithRetry } from '@/messaging/client';
+import { sendMessage, sendWithRetry } from '@/messaging/client';
 import { fetchVtt, type FetchVttRequest } from '@/messaging/contracts/fetchVtt';
+import {
+    sidePanelSelectionSync,
+    sidePanelWordSelected,
+    type ContentSelectionSnapshot,
+} from '@/messaging/contracts/selection';
 import {
     translate,
     type TranslateRequest,
@@ -23,6 +28,11 @@ import { Renderer } from '../renderer/Renderer';
 import { RendererState } from '../renderer/RendererState';
 import type { UiRoot } from '../renderer/domLayer';
 import type { DisplaySettings } from '../renderer/styling';
+import type { WordIntent } from '../renderer/wordLayer';
+import {
+    allocateLifecycleGeneration,
+    SelectionAuthority,
+} from '../selection/SelectionAuthority';
 import { buildCueSet, type CueSet } from '../subtitles/cueModel';
 import { TranslationScheduler } from '../translation/TranslationScheduler';
 import { MediaBinding } from './MediaBinding';
@@ -58,6 +68,18 @@ export const FETCH_SETTINGS_KEYS = [
     'originalLanguage',
     'useOfficialTranslations',
 ] as const;
+
+/** Clickable words and what a click asks the side panel to do. */
+export const INTERACTION_SETTINGS_KEYS = [
+    'aiContextEnabled',
+    'sidePanelAutoOpen',
+    'sidePanelAutoPauseVideo',
+] as const;
+
+export type InteractionSettings = Pick<
+    SettingsValues,
+    (typeof INTERACTION_SETTINGS_KEYS)[number]
+>;
 
 export function toSubtitleLanguages(
     settings: Partial<
@@ -96,6 +118,7 @@ export interface PlayerSessionDeps {
     readonly handoff: PlatformHandoff | null;
     readonly settings: ContentSettings;
     readonly languages: SubtitleLanguages;
+    readonly interaction: InteractionSettings;
     readonly onNavigationMismatch: () => void;
     readonly onContextInvalidated: () => void;
 }
@@ -117,9 +140,12 @@ export class PlayerSession {
     private readonly rendererState: RendererState;
     private readonly renderer: Renderer;
     private readonly mediaBinding: MediaBinding;
+    /** Which words of the current line are selected; the panel mirrors it. */
+    readonly selection: SelectionAuthority;
     private mediaScope: AbortController | null = null;
     private settings: ContentSettings;
     private languagesValue: SubtitleLanguages;
+    private interaction: InteractionSettings;
     private latestSubtitleEvent: CapturedEvent | null = null;
     private loadingToken = 0;
     private inFlightKey: string | null = null;
@@ -138,9 +164,17 @@ export class PlayerSession {
         this.signal = this.controller.signal;
         this.settings = deps.settings;
         this.languagesValue = deps.languages;
+        this.interaction = deps.interaction;
         this.logger = createLogger(
             `PlayerSession:${deps.descriptor.id}:${deps.id}`
         );
+        this.selection = new SelectionAuthority({
+            lifecycleGeneration: allocateLifecycleGeneration(),
+            publish: (snapshot, canDispatch) =>
+                this.publishSelection(snapshot, canDispatch),
+            onSelectionChanged: (indices) =>
+                this.renderer.setSelectedWords(indices),
+        });
 
         this.adapter = deps.descriptor.createAdapter(
             {
@@ -166,6 +200,10 @@ export class PlayerSession {
             logger: this.logger,
             onNavigationMismatch: deps.onNavigationMismatch,
             onSeek: () => this.translation?.scheduler.kick(),
+            onOriginalPainted: (revision) =>
+                this.selection.onSubtitleChange(revision),
+            onWordIntent: (intent) => this.onWordIntent(intent),
+            wordLanguage: () => this.languagesValue.originalLanguage,
         });
         this.mediaBinding = new MediaBinding({
             adapter: this.adapter,
@@ -200,6 +238,7 @@ export class PlayerSession {
 
     start(): void {
         this.renderer.setVisible(this.settings.subtitlesEnabled);
+        this.renderer.setInteractive(this.interaction.aiContextEnabled);
         const unsubscribe = configService.onChanged((changes) =>
             this.applySettings(changes)
         );
@@ -316,6 +355,99 @@ export class PlayerSession {
                 this.onSubtitleEvent(this.latestSubtitleEvent);
             }
         }
+        for (const key of INTERACTION_SETTINGS_KEYS) {
+            if (changes[key] !== undefined) {
+                (this.interaction as Record<string, unknown>)[key] =
+                    changes[key];
+            }
+        }
+        if (changes.aiContextEnabled !== undefined) {
+            // The panel learns the selection is gone before the words stop
+            // being clickable.
+            if (!changes.aiContextEnabled) {
+                this.selection.clear();
+            }
+            this.renderer.setInteractive(changes.aiContextEnabled);
+        }
+    }
+
+    private onWordIntent(intent: WordIntent): void {
+        if (!this.selection.toggle(intent)) {
+            return;
+        }
+        runScoped(this.sendWordIntent());
+    }
+
+    /** Tell the background a word was clicked so it can open the panel and
+     *  pause playback per the gesture-time settings. */
+    private async sendWordIntent(): Promise<void> {
+        try {
+            await sendMessage(sidePanelWordSelected, {
+                action: 'sidePanelWordSelected',
+                options: {
+                    autoOpen: this.interaction.sidePanelAutoOpen,
+                    pauseVideo: this.interaction.sidePanelAutoPauseVideo,
+                },
+            });
+        } catch (error) {
+            if (isContextInvalidated(error)) {
+                this.deps.onContextInvalidated();
+                return;
+            }
+            this.logger.debug('Word intent not delivered', {
+                reason: error instanceof Error ? error.name : 'unknown',
+            });
+        }
+    }
+
+    private async publishSelection(
+        snapshot: ContentSelectionSnapshot,
+        canDispatch: () => boolean
+    ): Promise<boolean> {
+        try {
+            const response = await sendWithRetry(
+                sidePanelSelectionSync,
+                { action: 'sidePanelSelectionSync', data: snapshot },
+                {
+                    retries: 2,
+                    baseDelayMs: 120,
+                    pingBeforeRetry: false,
+                    canDispatch: () => !this.signal.aborted && canDispatch(),
+                }
+            );
+            return response.success;
+        } catch (error) {
+            if (!this.signal.aborted && isContextInvalidated(error)) {
+                this.deps.onContextInvalidated();
+            }
+            return false;
+        }
+    }
+
+    /** Pause through the platform first; a direct media pause is the
+     *  fallback only where the platform tolerates it. */
+    async pauseVideo(): Promise<boolean> {
+        const video = this.mediaBinding.current?.video;
+        if (!video) {
+            return false;
+        }
+        if (video.paused || video.ended) {
+            return true;
+        }
+        try {
+            if (await this.adapter.pause(video)) {
+                return true;
+            }
+        } catch (error) {
+            this.logger.warn('Platform pause failed', {
+                reason: error instanceof Error ? error.name : 'unknown',
+            });
+        }
+        if (!this.deps.descriptor.capabilities.directMediaControl) {
+            return false;
+        }
+        video.pause();
+        return video.paused;
     }
 
     private async requestSubtitles(spec: SubtitleFetchSpec): Promise<void> {

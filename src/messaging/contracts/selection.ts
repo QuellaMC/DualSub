@@ -153,7 +153,8 @@ export const sidePanelWordSelected = defineContract({
     response: z.strictObject({ success: z.boolean() }),
 });
 
-/** Background asks content to republish its authoritative selection. */
+/** Background asks content to republish its authoritative selection;
+ *  `accepted` says the replay reached the background before the ack. */
 export const selectionRepublishRequest = defineContract({
     action: MessageActions.SIDEPANEL_GET_STATE,
     transport: 'tab',
@@ -162,7 +163,10 @@ export const selectionRepublishRequest = defineContract({
         action: z.literal(MessageActions.SIDEPANEL_GET_STATE),
         data: z.strictObject({ requestId: positiveSafeInteger }),
     }),
-    response: z.strictObject({ requestId: positiveSafeInteger }),
+    response: z.strictObject({
+        requestId: positiveSafeInteger,
+        accepted: z.boolean(),
+    }),
 });
 
 /**

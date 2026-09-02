@@ -1,7 +1,13 @@
+import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { configService } from '@/config/service';
+import { SidePanelApp } from '@/ui/sidepanel/SidePanelApp';
+import '@/ui/sidepanel/sidepanel.css';
 
-function SidePanelApp() {
-    return <h1>DualSub AI Analysis</h1>;
-}
+void configService.syncLoggingLevel();
 
-createRoot(document.getElementById('root')!).render(<SidePanelApp />);
+createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+        <SidePanelApp />
+    </StrictMode>
+);

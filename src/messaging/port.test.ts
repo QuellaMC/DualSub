@@ -63,17 +63,20 @@ describe('framePort', () => {
         ).toThrow();
     });
 
-    it('closes the port on one invalid inbound frame', () => {
+    it('closes the port on one invalid inbound frame and tells the owner', () => {
         const fake = createFakePort();
         const received: unknown[] = [];
+        const onDisconnect = vi.fn();
         const framed = framePort(fake.port, {
             inbound: frameSchema,
             outbound: frameSchema,
             onFrame: (frame) => received.push(frame),
+            onDisconnect,
         });
 
         fake.emit({ action: 'hello', value: 7, extra: true });
         expect(fake.port.disconnect).toHaveBeenCalledOnce();
+        expect(onDisconnect).toHaveBeenCalledOnce();
 
         // After closing, nothing is delivered or posted.
         fake.emit({ action: 'hello', value: 9 });

@@ -5,7 +5,7 @@ import {
     tryCreatePlainDataSnapshot,
 } from './snapshot';
 
-interface PortLike {
+export interface PortLike {
     postMessage(message: unknown): void;
     disconnect(): void;
     onMessage: {
@@ -26,7 +26,9 @@ export interface FramedPort<Out> {
  * Wrap a long-lived Port so both directions honor their frame schemas: every
  * outbound frame is parsed before posting, every inbound frame is
  * snapshotted and parsed, and ONE invalid inbound frame closes the port —
- * a peer that speaks outside the contract loses the connection.
+ * a peer that speaks outside the contract loses the connection. onDisconnect
+ * fires for that closure as well as for the peer's, so the owner sees every
+ * way the connection can end except its own disconnect() call.
  */
 export function framePort<In, Out>(
     port: PortLike,
@@ -55,6 +57,7 @@ export function framePort<In, Out>(
             logger.warn('Rejected invalid port frame; closing port');
             closed = true;
             port.disconnect();
+            config.onDisconnect?.();
             return;
         }
         config.onFrame(parsed.data);
