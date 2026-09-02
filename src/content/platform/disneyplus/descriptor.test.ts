@@ -46,6 +46,7 @@ describe('disneyPlusDescriptor', () => {
                 t: 'subtitle-data',
                 platform: 'netflix',
                 movieId: '1',
+                languages: ['en'],
                 tracks: [],
             })
         ).toBeNull();

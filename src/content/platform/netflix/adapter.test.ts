@@ -54,6 +54,7 @@ describe('NetflixAdapter', () => {
                 t: 'subtitle-data',
                 platform: 'netflix',
                 movieId: '70283145',
+                languages: ['en', 'zh-CN'],
                 tracks,
             })
         ).toEqual({ kind: 'netflix-tracks', tracks });
@@ -62,10 +63,33 @@ describe('NetflixAdapter', () => {
                 t: 'subtitle-data',
                 platform: 'netflix',
                 movieId: '70283145',
+                languages: ['en', 'zh-CN'],
                 tracks: [],
             })
         ).toBeNull();
         expect(warn).toHaveBeenCalledTimes(1);
+    });
+
+    it('ignores a resolution answered for other languages', () => {
+        const { adapter } = setup();
+        expect(
+            adapter.interpretSubtitleEvent({
+                t: 'subtitle-data',
+                platform: 'netflix',
+                movieId: '70283145',
+                languages: ['en', 'ja'],
+                tracks: [{ language: 'en', url: 'https://x' }],
+            })
+        ).toBeNull();
+        expect(
+            adapter.interpretSubtitleEvent({
+                t: 'subtitle-data',
+                platform: 'netflix',
+                movieId: '70283145',
+                languages: ['en'],
+                tracks: [{ language: 'en', url: 'https://x' }],
+            })
+        ).toBeNull();
     });
 
     it('cancels the page request before the session aborts', () => {

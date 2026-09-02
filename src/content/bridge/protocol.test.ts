@@ -15,6 +15,7 @@ describe('bridge protocol validators', () => {
                 t: 'subtitle-data',
                 platform: 'netflix',
                 movieId: '81234567',
+                languages: ['en', 'zh-CN'],
                 tracks: [],
             })
         ).toBe(true);
@@ -47,12 +48,27 @@ describe('bridge protocol validators', () => {
                 t: 'subtitle-data',
                 platform: 'disneyplus',
                 movieId: '1',
+                languages: ['en'],
                 tracks: [],
             },
         ],
         [
             'missing tracks',
-            { t: 'subtitle-data', platform: 'netflix', movieId: '1' },
+            {
+                t: 'subtitle-data',
+                platform: 'netflix',
+                movieId: '1',
+                languages: ['en'],
+            },
+        ],
+        [
+            'missing languages',
+            {
+                t: 'subtitle-data',
+                platform: 'netflix',
+                movieId: '1',
+                tracks: [],
+            },
         ],
         [
             'empty url',

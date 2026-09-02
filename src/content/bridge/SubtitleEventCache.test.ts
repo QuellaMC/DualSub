@@ -6,6 +6,7 @@ function event(movieId: string, marker = 0): CapturedEvent {
     return {
         t: 'subtitle-data',
         platform: 'netflix',
+        languages: ['en'],
         movieId,
         tracks: [marker],
     };

@@ -9,6 +9,8 @@ export type CapturedEvent =
           t: 'subtitle-data';
           platform: 'netflix';
           movieId: string;
+          /** The languages this resolution answers, in request order. */
+          languages: string[];
           /** Resolved tracks from the page bridge; the background policy
            *  owns their validation. */
           tracks: unknown[];
@@ -74,6 +76,17 @@ function isBoundedString(value: unknown, maxLength: number): value is string {
     );
 }
 
+function isLanguageList(value: unknown): value is string[] {
+    return (
+        Array.isArray(value) &&
+        value.length > 0 &&
+        value.length <= MAX_REQUESTED_LANGUAGES &&
+        value.every((language) =>
+            isBoundedString(language, MAX_LANGUAGE_LENGTH)
+        )
+    );
+}
+
 export function isCapturedEvent(value: unknown): value is CapturedEvent {
     if (!isRecord(value)) {
         return false;
@@ -83,6 +96,7 @@ export function isCapturedEvent(value: unknown): value is CapturedEvent {
             return (
                 value.platform === 'netflix' &&
                 isBoundedString(value.movieId, MAX_ROUTE_ID_LENGTH) &&
+                isLanguageList(value.languages) &&
                 Array.isArray(value.tracks)
             );
         case 'subtitle-url':
@@ -142,12 +156,7 @@ export function isIsolatedToMain(value: unknown): value is IsolatedToMain {
         case 'request-subtitle-tracks':
             return (
                 isBoundedString(value.videoId, MAX_ROUTE_ID_LENGTH) &&
-                Array.isArray(value.languages) &&
-                value.languages.length > 0 &&
-                value.languages.length <= MAX_REQUESTED_LANGUAGES &&
-                value.languages.every((language) =>
-                    isBoundedString(language, MAX_LANGUAGE_LENGTH)
-                )
+                isLanguageList(value.languages)
             );
         default:
             return false;

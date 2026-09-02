@@ -418,6 +418,7 @@ async function resolveSubtitleTracks(
             t: 'subtitle-data',
             platform: 'netflix',
             movieId: videoId,
+            languages: [...languages],
             tracks,
         });
     } catch {

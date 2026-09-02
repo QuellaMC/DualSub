@@ -52,6 +52,17 @@ export class NetflixAdapter implements PlatformAdapter {
         if (event.t !== 'subtitle-data') {
             return null;
         }
+        // A retained resolution answered an earlier session's languages;
+        // this session's own request is on its way.
+        const requested = requestedSubtitleLanguages(this.context.languages);
+        if (
+            event.languages.length !== requested.length ||
+            event.languages.some(
+                (language, index) => language !== requested[index]
+            )
+        ) {
+            return null;
+        }
         if (event.tracks.length === 0) {
             this.context.logger.warn(
                 'Netflix resolved no subtitle track for the requested languages',

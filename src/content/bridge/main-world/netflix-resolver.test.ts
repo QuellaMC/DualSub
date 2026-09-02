@@ -157,6 +157,7 @@ describe('netflixRecipe track resolution', () => {
                 t: 'subtitle-data',
                 platform: 'netflix',
                 movieId: '70283145',
+                languages: ['en', 'ja'],
                 tracks: [
                     {
                         language: 'en',

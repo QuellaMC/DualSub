@@ -31,6 +31,7 @@ describe('netflixDescriptor', () => {
                 t: 'subtitle-data',
                 platform: 'netflix',
                 movieId: '99',
+                languages: ['en'],
                 tracks: [],
             })
         ).toEqual({ kind: 'subtitle', videoId: '99' });
@@ -39,6 +40,7 @@ describe('netflixDescriptor', () => {
                 t: 'subtitle-data',
                 platform: 'netflix',
                 movieId: 'not-numeric',
+                languages: ['en'],
                 tracks: [],
             })
         ).toBeNull();

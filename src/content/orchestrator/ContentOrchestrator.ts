@@ -10,6 +10,7 @@ import type { CapturedEvent } from '../bridge/protocol';
 import { SubtitleEventCache } from '../bridge/SubtitleEventCache';
 import type { PlatformDescriptor, PlatformHandoff } from '../platform/types';
 import { UiRoot } from '../renderer/domLayer';
+import { carryHandoff } from './handoff';
 import { NavigationWatcher } from './NavigationWatcher';
 import { prepareContentPreview } from './preview';
 import {
@@ -156,7 +157,11 @@ export class ContentOrchestrator {
                     : desired
                       ? 'navigation'
                       : 'left-player-page';
-            this.handoff = active.end(reason);
+            this.handoff = carryHandoff(
+                active.end(reason),
+                active.videoId,
+                desired
+            );
             this.activeSession = null;
         }
         if (!desired) {

@@ -49,7 +49,9 @@ export interface MediaScope {
     readonly video: HTMLVideoElement;
 }
 
-/** Cross-session platform memory handed old session → new session. */
+/** Platform memory handed from the previous video's session to the next
+ *  one. A restart on the same video hands nothing: every field here
+ *  describes what the *previous* video's player looked like. */
 export interface PlatformHandoff {
     readonly mediaScope: MediaScope | null;
     readonly platformScratch: unknown;
