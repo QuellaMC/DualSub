@@ -14,9 +14,10 @@ export type PanelError =
     | { readonly kind: 'key'; readonly key: string }
     | { readonly kind: 'text'; readonly text: string };
 
-/** An answer and the words it was computed for. */
+/** An answer, the words it was computed for, and the language it is in. */
 export interface AnalysisRecord {
     readonly words: readonly string[];
+    readonly targetLanguage: string;
     readonly result: Analysis;
 }
 
@@ -34,14 +35,17 @@ export const EMPTY_TAB_STATE: TabState = {
     analyzing: false,
 };
 
+/** Fields to change, or a function of the state React is about to commit
+ *  that returns them (null leaves the tab as it is). */
+export type TabPatch =
+    Partial<TabState> | ((current: TabState) => Partial<TabState> | null);
+
 export interface PanelHandle {
     readonly connected: boolean;
     readonly activeTabId: number | null;
     /** The bound tab's state. */
     readonly tab: TabState;
-    /** Any tab's latest committed state. */
-    readonly tabState: (tabId: number) => TabState;
-    readonly updateTab: (tabId: number, patch: Partial<TabState>) => void;
+    readonly updateTab: (tabId: number, patch: TabPatch) => void;
     readonly requestRemoval: (
         selection: SelectionState,
         wordIndex: number
@@ -78,22 +82,25 @@ async function queryActiveTab(): Promise<TabBinding | null> {
  * React view of the panel's port. State is kept per tab so switching away
  * and back restores that tab's words and answer; the bound tab is
  * whichever the connection registered last. An answer is keyed by its
- * words: it stays while the tab shows those words or none at all, and goes
- * when the tab shows other words or its document goes away.
+ * words: it stays while the tab shows those words, or none at all in the
+ * same document, and goes when the tab shows other words, another
+ * document, or nothing at all.
  */
 export function usePanelConnection(): PanelHandle {
     const [connected, setConnected] = useState(false);
     const [activeTabId, setActiveTabId] = useState<number | null>(null);
     const [tabs, setTabs] = useState<Record<number, TabState>>({});
-    const tabsRef = useRef(tabs);
-    tabsRef.current = tabs;
     const connectionRef = useRef<PanelConnection | null>(null);
 
-    const updateTab = useCallback((tabId: number, patch: Partial<TabState>) => {
+    const updateTab = useCallback((tabId: number, patch: TabPatch) => {
         setTabs((previous) => {
             const current = previous[tabId] ?? EMPTY_TAB_STATE;
-            const next = { ...current, ...patch };
-            const changed = (Object.keys(patch) as (keyof TabState)[]).some(
+            const fields = typeof patch === 'function' ? patch(current) : patch;
+            if (fields === null) {
+                return previous;
+            }
+            const next = { ...current, ...fields };
+            const changed = (Object.keys(fields) as (keyof TabState)[]).some(
                 (key) => current[key] !== next[key]
             );
             return changed ? { ...previous, [tabId]: next } : previous;
@@ -112,18 +119,25 @@ export function usePanelConnection(): PanelHandle {
             },
             onSelection: (tabId, selection) => {
                 setTabs((previous) => {
-                    const current = previous[tabId] ?? EMPTY_TAB_STATE;
                     if (selection === null) {
                         return { ...previous, [tabId]: EMPTY_TAB_STATE };
                     }
+                    const current = previous[tabId] ?? EMPTY_TAB_STATE;
                     const words = selectionWords(selection);
+                    const sameDocument =
+                        current.selection?.selectionOwnerGeneration ===
+                        selection.selectionOwnerGeneration;
                     const keepsAnswer =
-                        words.length === 0 ||
-                        (current.analysis !== null &&
-                            sameWords(words, current.analysis.words));
+                        current.analysis !== null &&
+                        (sameWords(words, current.analysis.words) ||
+                            (sameDocument && words.length === 0));
                     const keepsError =
-                        words.length === 0 ||
-                        sameWords(words, selectionWords(current.selection));
+                        sameDocument &&
+                        (words.length === 0 ||
+                            sameWords(
+                                words,
+                                selectionWords(current.selection)
+                            ));
                     return {
                         ...previous,
                         [tabId]: {
@@ -153,11 +167,6 @@ export function usePanelConnection(): PanelHandle {
         []
     );
 
-    const tabState = useCallback(
-        (tabId: number) => tabsRef.current[tabId] ?? EMPTY_TAB_STATE,
-        []
-    );
-
     return {
         connected,
         activeTabId,
@@ -165,7 +174,6 @@ export function usePanelConnection(): PanelHandle {
             activeTabId === null
                 ? EMPTY_TAB_STATE
                 : (tabs[activeTabId] ?? EMPTY_TAB_STATE),
-        tabState,
         updateTab,
         requestRemoval,
     };

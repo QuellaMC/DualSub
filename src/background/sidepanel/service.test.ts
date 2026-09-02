@@ -141,31 +141,33 @@ async function bound(
     const panel = fakePort();
     service.handleConnect(panel.port);
     panel.register(registrationId, tabId, windowId);
-    await vi.waitFor(() => expect(panel.posted).toHaveLength(2));
+    await vi.waitFor(() => expect(panel.posted).toHaveLength(3));
     return panel;
 }
 
 describe('SidePanelService registration', () => {
-    it('binds only after verifying the active tab, then confirms and publishes a bound null state', async () => {
+    it('binds only after verifying the active tab, confirms, and reports the empty tab', async () => {
         const { service, tabsGet } = harness();
         const panel = fakePort();
         service.handleConnect(panel.port);
         panel.register(1, 12, 3);
         expect(panel.posted).toEqual([]);
-        await vi.waitFor(() => expect(panel.posted).toHaveLength(2));
+        await vi.waitFor(() => expect(panel.posted).toHaveLength(3));
         expect(tabsGet).toHaveBeenCalledWith(12);
+        const nullSync = {
+            action: 'sidePanelSelectionSync',
+            data: {
+                binding: { registrationId: 1, tabId: 12, windowId: 3 },
+                selection: null,
+            },
+        };
         expect(panel.posted).toEqual([
             {
                 action: 'sidePanelBindingConfirmed',
                 data: { registrationId: 1, tabId: 12, windowId: 3 },
             },
-            {
-                action: 'sidePanelSelectionSync',
-                data: {
-                    binding: { registrationId: 1, tabId: 12, windowId: 3 },
-                    selection: null,
-                },
-            },
+            nullSync,
+            nullSync,
         ]);
         expect(panel.alive).toBe(true);
     });
@@ -232,11 +234,20 @@ describe('SidePanelService registration', () => {
         });
     });
 
-    it('keeps a no-owner registration bound to null when content does not replay', async () => {
+    it('reports an empty tab with a second null when content has nothing to republish', async () => {
         const { service } = harness();
         const panel = await bound(service);
         await settled();
-        expect(panel.posted).toHaveLength(2);
+        expect(panel.posted).toHaveLength(3);
+        expect(panel.posted[2]!.data.selection).toBeNull();
+        expect(panel.alive).toBe(true);
+    });
+
+    it('reports an empty tab when the tab has no content script', async () => {
+        const { service, sendToTab } = harness();
+        sendToTab.mockRejectedValue(new Error('no receiver'));
+        const panel = await bound(service);
+        expect(panel.posted[2]!.data.selection).toBeNull();
         expect(panel.alive).toBe(true);
     });
 
@@ -267,7 +278,7 @@ describe('SidePanelService registration', () => {
         panel.emit({ action: 'sidePanelRegister', data: {} });
         expect(panel.port.disconnect).toHaveBeenCalled();
         service.acceptSelectionSnapshot(contentSender(), snapshot());
-        expect(panel.posted).toHaveLength(2);
+        expect(panel.posted).toHaveLength(3);
     });
 
     it('evicts a replaced same-tab panel so it cannot receive state', async () => {
@@ -276,8 +287,8 @@ describe('SidePanelService registration', () => {
         const second = await bound(service, 2);
         expect(first.port.disconnect).toHaveBeenCalled();
         service.acceptSelectionSnapshot(contentSender(), snapshot());
-        expect(first.posted).toHaveLength(2);
-        expect(second.posted).toHaveLength(3);
+        expect(first.posted).toHaveLength(3);
+        expect(second.posted).toHaveLength(4);
     });
 
     it('re-registers one panel to another tab without leaving its old binding', async () => {
@@ -287,15 +298,15 @@ describe('SidePanelService registration', () => {
         const panel = await bound(service, 1, 12, 3);
         service.handleTabActivated({ tabId: 13, windowId: 3 });
         panel.register(2, 13, 3);
-        await vi.waitFor(() => expect(panel.posted).toHaveLength(5));
+        await vi.waitFor(() => expect(panel.posted).toHaveLength(7));
         service.acceptSelectionSnapshot(contentSender(), snapshot());
-        expect(panel.posted).toHaveLength(5);
+        expect(panel.posted).toHaveLength(7);
         service.acceptSelectionSnapshot(
             contentSender({ tabId: 13 }),
             snapshot()
         );
-        expect(panel.posted).toHaveLength(6);
-        expect(panel.posted[5]!.data.binding).toEqual({
+        expect(panel.posted).toHaveLength(8);
+        expect(panel.posted[7]!.data.binding).toEqual({
             registrationId: 2,
             tabId: 13,
             windowId: 3,
@@ -318,7 +329,7 @@ describe('SidePanelService selection ownership', () => {
                 })
             )
         ).toBe(true);
-        expect(panel.posted[2]!.data.selection).toMatchObject({
+        expect(panel.posted[3]!.data.selection).toMatchObject({
             selectionOwnerGeneration: 1,
             entries: [
                 { wordIndex: 0, word: 'hola' },
@@ -337,7 +348,7 @@ describe('SidePanelService selection ownership', () => {
                 snapshot({ selectionRevision: 2, entries: [] })
             )
         ).toBe(true);
-        expect(panel.posted[3]!.data.selection).toMatchObject({
+        expect(panel.posted[4]!.data.selection).toMatchObject({
             selectionOwnerGeneration: 1,
             selectionRevision: 2,
         });
@@ -350,7 +361,7 @@ describe('SidePanelService selection ownership', () => {
         expect(
             service.acceptSelectionSnapshot(contentSender(), snapshot())
         ).toBe(true);
-        expect(panel.posted).toHaveLength(3);
+        expect(panel.posted).toHaveLength(4);
     });
 
     it('rejects a same-revision mismatch and older revisions without projecting', async () => {
@@ -382,7 +393,7 @@ describe('SidePanelService selection ownership', () => {
                 snapshot({ selectionRevision: 4, renderRevision: 1 })
             )
         ).toBe(false);
-        expect(panel.posted).toHaveLength(3);
+        expect(panel.posted).toHaveLength(4);
     });
 
     it('mints generations for a changed document, higher lifecycle, and changed window', async () => {
@@ -393,14 +404,14 @@ describe('SidePanelService selection ownership', () => {
             contentSender(),
             snapshot({ lifecycleGeneration: 2 })
         );
-        expect(panel.posted[3]!.data.selection).toMatchObject({
+        expect(panel.posted[4]!.data.selection).toMatchObject({
             selectionOwnerGeneration: 2,
         });
         service.acceptSelectionSnapshot(
             contentSender({ documentId: 'doc-2' }),
             snapshot()
         );
-        expect(panel.posted[4]!.data.selection).toMatchObject({
+        expect(panel.posted[5]!.data.selection).toMatchObject({
             selectionOwnerGeneration: 3,
         });
         expect(
@@ -410,7 +421,7 @@ describe('SidePanelService selection ownership', () => {
             )
         ).toBe(true);
         // A window change mints an owner but the panel is bound elsewhere.
-        expect(panel.posted).toHaveLength(5);
+        expect(panel.posted).toHaveLength(6);
     });
 
     it('rejects an older lifecycle from the current document owner', async () => {
@@ -428,36 +439,46 @@ describe('SidePanelService selection ownership', () => {
         ).toBe(false);
     });
 
-    it('clears owners on cross-tab activation, navigation, and tab removal', async () => {
-        const { service } = harness({
+    it('keeps an owner across activation and drops it on navigation and tab removal', async () => {
+        const { service, sendToTab } = harness({
             13: { id: 13, windowId: 3, active: true },
         });
         const panel = await bound(service);
         service.acceptSelectionSnapshot(contentSender(), snapshot());
 
         service.handleTabNavigation(12);
-        expect(panel.posted[3]!.data.selection).toBeNull();
+        expect(panel.posted[4]!.data.selection).toBeNull();
         expect(
-            service.acceptSelectionSnapshot(
-                contentSender(),
-                snapshot({ lifecycleGeneration: 1, selectionRevision: 1 })
-            )
+            service.acceptSelectionSnapshot(contentSender(), snapshot())
         ).toBe(true);
-        expect(panel.posted[4]!.data.selection).toMatchObject({
+        expect(panel.posted[5]!.data.selection).toMatchObject({
             selectionOwnerGeneration: 2,
         });
 
         service.handleTabActivated({ tabId: 13, windowId: 3 });
-        expect(panel.posted[5]).toEqual({
+        expect(panel.posted[6]).toEqual({
             action: 'tabActivated',
             data: { tabId: 13, windowId: 3 },
         });
-        expect(
-            service.acceptSelectionSnapshot(contentSender(), snapshot())
-        ).toBe(true);
-        // The activation dropped the tab-12 owner, so this minted a new one;
-        // the panel's binding is no longer current for tab 12.
-        expect(panel.posted).toHaveLength(6);
+        service.handleTabActivated({ tabId: 12, windowId: 3 });
+        sendToTab.mockImplementation((contract, _tabId, request) => {
+            if (contract.action === 'sidePanelGetState') {
+                service.acceptSelectionSnapshot(contentSender(), snapshot());
+                const { data } = request as { data: { requestId: number } };
+                return Promise.resolve({
+                    requestId: data.requestId,
+                    accepted: true,
+                } as never);
+            }
+            return Promise.resolve({ success: true } as never);
+        });
+        panel.register(2, 12, 3);
+        await vi.waitFor(() => expect(panel.posted).toHaveLength(11));
+        // The owner survived the detour through tab 13: the replay is
+        // projected under the generation minted before it.
+        expect(panel.posted[10]!.data.selection).toMatchObject({
+            selectionOwnerGeneration: 2,
+        });
 
         service.handleTabRemoved(12);
         expect(panel.port.disconnect).toHaveBeenCalled();
@@ -470,8 +491,8 @@ describe('SidePanelService selection ownership', () => {
         const first = await bound(service, 1, 12, 3);
         const second = await bound(service, 2, 20, 4);
         service.handleTabActivated({ tabId: 21, windowId: 4 });
-        expect(first.posted).toHaveLength(2);
-        expect(second.posted[2]).toEqual({
+        expect(first.posted).toHaveLength(3);
+        expect(second.posted[3]).toEqual({
             action: 'tabActivated',
             data: { tabId: 21, windowId: 4 },
         });
@@ -519,7 +540,7 @@ describe('SidePanelService removal', () => {
             return Promise.resolve({ success: true } as never);
         });
         panel.emit(removal);
-        await vi.waitFor(() => expect(panel.posted).toHaveLength(5));
+        await vi.waitFor(() => expect(panel.posted).toHaveLength(6));
         expect(sendToTab).toHaveBeenLastCalledWith(
             expect.objectContaining({ action: 'sidePanelUpdateState' }),
             12,
@@ -535,11 +556,11 @@ describe('SidePanelService removal', () => {
             },
             { documentId: 'doc-1', frameId: 0 }
         );
-        expect(panel.posted[3]!.data.selection).toMatchObject({
+        expect(panel.posted[4]!.data.selection).toMatchObject({
             selectionRevision: 2,
             reason: 'remove',
         });
-        expect(panel.posted[4]).toEqual({
+        expect(panel.posted[5]).toEqual({
             action: 'sidePanelUpdateState',
             data: {
                 binding: { registrationId: 1, tabId: 12, windowId: 3 },
@@ -556,8 +577,8 @@ describe('SidePanelService removal', () => {
         service.acceptSelectionSnapshot(contentSender(), twoWords);
         sendToTab.mockResolvedValue({ success: true, requestId: 1 });
         panel.emit(removal);
-        await vi.waitFor(() => expect(panel.posted).toHaveLength(4));
-        expect(panel.posted[3]!.data.status).toBe('rejected');
+        await vi.waitFor(() => expect(panel.posted).toHaveLength(5));
+        expect(panel.posted[4]!.data.status).toBe('rejected');
     });
 
     it('rejects a request that does not match the current owner without contacting content', async () => {
@@ -569,8 +590,8 @@ describe('SidePanelService removal', () => {
             ...removal,
             data: { ...removal.data, selectionRevision: 7 },
         });
-        await vi.waitFor(() => expect(panel.posted).toHaveLength(4));
-        expect(panel.posted[3]!.data.status).toBe('rejected');
+        await vi.waitFor(() => expect(panel.posted).toHaveLength(5));
+        expect(panel.posted[4]!.data.status).toBe('rejected');
         expect(sendToTab).not.toHaveBeenCalled();
     });
 
@@ -591,7 +612,7 @@ describe('SidePanelService removal', () => {
             ...removal,
             data: { ...removal.data, requestId: 2, wordIndex: 0 },
         });
-        expect(panel.posted[3]).toEqual({
+        expect(panel.posted[4]).toEqual({
             action: 'sidePanelUpdateState',
             data: {
                 binding: { registrationId: 1, tabId: 12, windowId: 3 },
@@ -602,8 +623,8 @@ describe('SidePanelService removal', () => {
         });
         await vi.waitFor(() => expect(sendToTab).toHaveBeenCalledTimes(1));
         release();
-        await vi.waitFor(() => expect(panel.posted).toHaveLength(5));
-        expect(panel.posted[4]!.data).toMatchObject({
+        await vi.waitFor(() => expect(panel.posted).toHaveLength(6));
+        expect(panel.posted[5]!.data).toMatchObject({
             requestId: 1,
             status: 'rejected',
         });

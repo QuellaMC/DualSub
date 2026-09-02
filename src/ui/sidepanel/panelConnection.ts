@@ -24,8 +24,9 @@ export interface PanelConnectionDeps {
     readonly connect: () => PortLike;
     readonly queryActiveTab: () => Promise<TabBinding | null>;
     /** The bound tab's selection as content published it. Null means the
-     *  tab's document went away and the panel forgets the tab. Rebinds and
-     *  reconnects are not reported: content republishes after them. */
+     *  tab has nothing to show, because its document went away or came
+     *  back without a selection, and the panel forgets the tab. Rebinds
+     *  and reconnects are not reported: content republishes after them. */
     readonly onSelection: (
         tabId: number,
         selection: SelectionState | null

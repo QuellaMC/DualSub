@@ -6,6 +6,7 @@ import { useSettings, type SettingsStatus } from '../hooks/useSettings';
 import {
     sameWords,
     selectionWords,
+    type AnalysisRecord,
     type PanelHandle,
 } from './usePanelConnection';
 
@@ -40,17 +41,19 @@ let requestCounter = 0;
  * panel's current view: switching tabs while it runs neither cancels it
  * nor loses its answer. It is dropped only when its tab's words change to
  * other words, its tab's document goes away, or the analysis settings
- * change underneath it.
+ * change underneath it. An answer is shown only in the target language it
+ * was made for; changing the language hides it and changing back shows
+ * it again.
  */
 export function useAnalysis(panel: PanelHandle): {
     readonly settingsStatus: SettingsStatus;
     readonly enabled: boolean;
+    readonly answer: AnalysisRecord | null;
     readonly analyze: () => Promise<void>;
 } {
     const { settings, status } = useSettings(ANALYSIS_SETTINGS_KEYS);
-    const { activeTabId, tab, tabState, updateTab } = panel;
+    const { activeTabId, tab, updateTab } = panel;
     const requests = useRef(new Map<number, ActiveRequest>());
-    const lastTargetLanguage = useRef<string | null>(null);
 
     const contextTypes = normalizeContextTypes(settings?.aiContextTypes ?? []);
     const configurationKey = JSON.stringify([
@@ -62,6 +65,11 @@ export function useAnalysis(panel: PanelHandle): {
     ]);
     const selectedWordsKey = JSON.stringify(selectionWords(tab.selection));
     const selectionCleared = tab.selection === null;
+    const answer =
+        tab.analysis !== null &&
+        tab.analysis.targetLanguage === settings?.targetLanguage
+            ? tab.analysis
+            : null;
 
     const invalidate = useCallback(
         (request: ActiveRequest) => {
@@ -105,22 +113,6 @@ export function useAnalysis(panel: PanelHandle): {
             invalidate(request);
         }
     }, [activeTabId, invalidate, selectedWordsKey, selectionCleared]);
-
-    // A new answer language makes every shown answer stale.
-    useEffect(() => {
-        const targetLanguage = settings?.targetLanguage ?? null;
-        if (targetLanguage === null) {
-            return;
-        }
-        const previous = lastTargetLanguage.current;
-        lastTargetLanguage.current = targetLanguage;
-        if (previous === null || previous === targetLanguage) {
-            return;
-        }
-        if (activeTabId !== null) {
-            updateTab(activeTabId, { analysis: null, error: null });
-        }
-    }, [activeTabId, settings?.targetLanguage, updateTab]);
 
     useEffect(
         () => () => {
@@ -192,23 +184,28 @@ export function useAnalysis(panel: PanelHandle): {
             if (request.cancelled) {
                 return;
             }
-            const current = selectionWords(tabState(tabId).selection);
-            if (current.length > 0 && !sameWords(current, words)) {
-                return;
-            }
-            updateTab(
-                tabId,
-                response.success
+            // Judged against the state React is about to commit, so a
+            // selection that changed in the same tick wins over the answer.
+            updateTab(tabId, (current) => {
+                const shown = selectionWords(current.selection);
+                if (shown.length > 0 && !sameWords(shown, words)) {
+                    return null;
+                }
+                return response.success
                     ? {
-                          analysis: { words, result: response.result.analysis },
+                          analysis: {
+                              words,
+                              targetLanguage: settings.targetLanguage,
+                              result: response.result.analysis,
+                          },
                           error: null,
                       }
                     : {
                           error: response.error
                               ? { kind: 'text', text: response.error }
                               : { kind: 'key', key: 'sidepanelErrorGeneric' },
-                      }
-            );
+                      };
+            });
         } catch {
             if (!request.cancelled) {
                 updateTab(tabId, {
@@ -228,13 +225,13 @@ export function useAnalysis(panel: PanelHandle): {
         invalidate,
         selectedWordsKey,
         settings,
-        tabState,
         updateTab,
     ]);
 
     return {
         settingsStatus: status,
         enabled: settings?.aiContextEnabled === true,
+        answer,
         analyze,
     };
 }

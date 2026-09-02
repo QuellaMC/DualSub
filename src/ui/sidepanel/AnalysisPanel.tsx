@@ -11,9 +11,9 @@ function errorText(error: PanelError, t: Translate): string {
 /** Selected words, one analyze action, and the answer for the bound tab. */
 export function AnalysisPanel({ t }: { t: Translate }) {
     const panel = usePanelConnection();
-    const { settingsStatus, enabled, analyze } = useAnalysis(panel);
+    const { settingsStatus, enabled, answer, analyze } = useAnalysis(panel);
     const [removing, setRemoving] = useState(false);
-    const { selection, analysis, error, analyzing } = panel.tab;
+    const { selection, error, analyzing } = panel.tab;
     const words = selection?.entries.map((entry) => entry.word) ?? [];
     const locked = analyzing || removing;
     const canAnalyze =
@@ -119,10 +119,10 @@ export function AnalysisPanel({ t }: { t: Translate }) {
                 </div>
             )}
 
-            {analysis && !analyzing && (
+            {answer && !analyzing && (
                 <AnalysisResults
-                    analysis={analysis.result}
-                    words={analysis.words}
+                    analysis={answer.result}
+                    words={answer.words}
                     t={t}
                 />
             )}

@@ -573,6 +573,8 @@ export class SidePanelService {
      * to republish. The republished owner is projected only when it is a
      * fresher receipt for the same document than what was known when the
      * request went out, and only while this exact binding still stands.
+     * When content has nothing to republish, or the tab has no content
+     * script at all, the panel hears a second null: the tab is empty.
      */
     private async synchronizeRegisteredPort(
         connection: Connection,
@@ -635,13 +637,13 @@ export class SidePanelService {
             );
             accepted = response.requestId === requestId && response.accepted;
         } catch {
-            return ownsBinding();
+            accepted = false;
         }
         if (!ownsBinding()) {
             return false;
         }
         if (!accepted) {
-            return ownsBinding();
+            return this.projectSelectionNull(tabId);
         }
 
         const currentOwner = this.selectionOwnersByTab.get(tabId);
@@ -1290,19 +1292,15 @@ export class SidePanelService {
         );
     }
 
-    /** Tab activation moves selection ownership: owners in the window that
-     *  are not the activated tab are dropped, and every panel in that window
-     *  is told to rebind. Panels are window-scoped; other windows never hear
-     *  about it. */
+    /** Every panel in the window is told to rebind. The window's other
+     *  owners stay: an inactive tab cannot publish, so its owner is still
+     *  true when the user returns, and a navigation meanwhile drops it
+     *  through handleTabNavigation. Panels are window-scoped; other windows
+     *  never hear about it. */
     handleTabActivated(info: { tabId: number; windowId: number }): void {
         const activatedOwner = this.selectionOwnersByTab.get(info.tabId);
         if (activatedOwner && activatedOwner.windowId !== info.windowId) {
             this.selectionOwnersByTab.delete(info.tabId);
-        }
-        for (const [ownedTabId, owner] of this.selectionOwnersByTab) {
-            if (owner.windowId === info.windowId && ownedTabId !== info.tabId) {
-                this.selectionOwnersByTab.delete(ownedTabId);
-            }
         }
         const activation: WindowActivation = {
             activationEpoch: this.nextAuthorizationEpoch(),
