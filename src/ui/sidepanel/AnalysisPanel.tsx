@@ -11,13 +11,18 @@ function errorText(error: PanelError, t: Translate): string {
 /** Selected words, one analyze action, and the answer for the bound tab. */
 export function AnalysisPanel({ t }: { t: Translate }) {
     const panel = usePanelConnection();
-    const { settingsStatus, enabled, analyze } = useAnalysis(panel);
+    const { settingsStatus, enabled, outcome, analyze } = useAnalysis(panel);
     const [removing, setRemoving] = useState(false);
-    const { selection, analysis, error, analyzing } = panel.tab;
+    const { selection, analyzing } = panel.tab;
+    const error = outcome?.error ?? null;
     const words = selection?.entries.map((entry) => entry.word) ?? [];
-    const locked = analyzing || removing;
+    const locked = analyzing || removing || !panel.validated;
     const canAnalyze =
-        words.length > 0 && !analyzing && settingsStatus === 'ready' && enabled;
+        words.length > 0 &&
+        !analyzing &&
+        panel.validated &&
+        settingsStatus === 'ready' &&
+        enabled;
 
     const removeAt = async (index: number): Promise<void> => {
         const entry = selection?.entries[index];
@@ -119,8 +124,12 @@ export function AnalysisPanel({ t }: { t: Translate }) {
                 </div>
             )}
 
-            {analysis && !analyzing && (
-                <AnalysisResults analysis={analysis} words={words} t={t} />
+            {outcome?.answer && !analyzing && (
+                <AnalysisResults
+                    analysis={outcome.answer}
+                    words={outcome.words}
+                    t={t}
+                />
             )}
         </div>
     );

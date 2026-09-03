@@ -49,6 +49,7 @@ const BINDING = { registrationId: 1, tabId: 12, windowId: 3 };
 
 function selection(overrides: Partial<SelectionState> = {}): SelectionState {
     return {
+        session: 'doc-1:1',
         selectionOwnerGeneration: 1,
         selectionRevision: 3,
         renderRevision: 1,
@@ -81,6 +82,7 @@ function harness(
             connection.registerTab(binding.tabId, binding.windowId);
         }),
         onRegister: vi.fn(),
+        onValidated: vi.fn(),
         onConnected: vi.fn(),
         now: () => 5,
     };
@@ -219,7 +221,7 @@ describe('PanelConnection', () => {
                 selection: selection(),
             },
         });
-        expect(selections).toEqual([[12, null]]);
+        expect(selections).toEqual([]);
         port.emit({
             action: 'sidePanelSelectionSync',
             data: { binding: BINDING, selection: selection() },
@@ -236,7 +238,6 @@ describe('PanelConnection', () => {
             data: { binding: BINDING, selection: null },
         });
         expect(selections).toEqual([
-            [12, null],
             [12, selection()],
             [12, null],
         ]);
@@ -329,11 +330,34 @@ describe('PanelConnection', () => {
         );
         expect(connection.registerTab(13, 3)).toBe(true);
         expect(await third).toBe('rejected');
-        expect(selections.slice(-2)).toEqual([
-            [12, null],
-            [13, null],
+        // A rebind is not a selection event for either tab.
+        expect(selections.some(([tabId]) => tabId === 13)).toBe(false);
+        expect(selections.at(-1)).toEqual([
+            12,
+            selection({ selectionRevision: 5 }),
         ]);
         expect(connection.binding).toBeNull();
+    });
+
+    it('treats the bound-null baseline as silence and a later null as a clear', async () => {
+        const { port, selections } = await connected();
+        port.emit({
+            action: 'sidePanelSelectionSync',
+            data: { binding: BINDING, selection: null },
+        });
+        expect(selections).toEqual([]);
+        port.emit({
+            action: 'sidePanelSelectionSync',
+            data: { binding: BINDING, selection: selection() },
+        });
+        port.emit({
+            action: 'sidePanelSelectionSync',
+            data: { binding: BINDING, selection: null },
+        });
+        expect(selections).toEqual([
+            [12, selection()],
+            [12, null],
+        ]);
     });
 
     it('rebinds when the background names a tab', async () => {
@@ -356,10 +380,10 @@ describe('PanelConnection', () => {
         });
     });
 
-    it('clears the bound selection on disconnect and reconnects', async () => {
+    it('keeps the last selection through a disconnect and reconnects', async () => {
         const { connection, port, ports, deps, selections } = await connected();
         port.emitDisconnect();
-        expect(selections.at(-1)).toEqual([12, null]);
+        expect(selections).toEqual([]);
         expect(deps.onConnected).toHaveBeenLastCalledWith(false);
         expect(connection.binding).toBeNull();
         await vi.advanceTimersByTimeAsync(1000);

@@ -1,7 +1,11 @@
 import { browser } from 'wxt/browser';
 import { createLogger } from '@/shared/logger';
 import { MessageActions } from '@/messaging/actions';
-import { sendToTab } from '@/messaging/client';
+import {
+    MessagingError,
+    MessagingFailureClass,
+    sendToTab,
+} from '@/messaging/client';
 import { framePort, type FramedPort, type PortLike } from '@/messaging/port';
 import { sidePanelPauseVideo } from '@/messaging/contracts/control';
 import {
@@ -9,6 +13,7 @@ import {
     selectionRepublishRequest,
     type ContentSelectionSnapshot,
     type SelectionEntry,
+    type SelectionRepublishResult,
     type SelectionState,
 } from '@/messaging/contracts/selection';
 import {
@@ -145,6 +150,7 @@ function entriesEqual(
 
 function projectOwner(owner: SelectionOwner): SelectionState {
     return {
+        session: `${owner.documentId}:${owner.lifecycleGeneration}`,
         selectionOwnerGeneration: owner.selectionOwnerGeneration,
         selectionRevision: owner.selectionRevision,
         renderRevision: owner.renderRevision,
@@ -176,10 +182,6 @@ export class SidePanelService {
     private readonly activationByWindow = new Map<number, WindowActivation>();
     private readonly tabLifecycleEpochByTab = new Map<number, number>();
     private readonly selectionOwnersByTab = new Map<number, SelectionOwner>();
-    private readonly selectionInvalidationEpochByTab = new Map<
-        number,
-        number
-    >();
     private readonly removalFlights = new Map<Connection, RemovalFlight>();
     private authorizationEpoch = 0;
     private selectionOwnerGeneration = 0;
@@ -570,9 +572,14 @@ export class SidePanelService {
 
     /**
      * Confirmed panels start from a bound null state, then content is asked
-     * to republish. The republished owner is projected only when it is a
-     * fresher receipt for the same document than what was known when the
-     * request went out, and only while this exact binding still stands.
+     * to republish. An owner accepted after the request went out is the
+     * tab's current truth, whatever document or lifecycle it belongs to
+     * (the router vouches for its provenance), and is projected while this
+     * exact binding still stands. When content has nothing to publish, or
+     * the tab provably has no content script, the tab is empty: what was
+     * known about it is retired and the panel hears a second null. A
+     * failed publication, an ambiguous failure, or an uncorrelated reply
+     * says nothing, so the panel hears what was already known, if anything.
      */
     private async synchronizeRegisteredPort(
         connection: Connection,
@@ -617,10 +624,8 @@ export class SidePanelService {
             return ownsBinding();
         }
         const capturedReceiptEpoch = this.selectionReceiptEpoch;
-        const capturedInvalidationEpoch =
-            this.selectionInvalidationEpochByTab.get(tabId) ?? 0;
 
-        let accepted: boolean;
+        let reply: SelectionRepublishResult | 'unknown';
         try {
             const response = await this.deps.sendToTab(
                 selectionRepublishRequest,
@@ -633,32 +638,59 @@ export class SidePanelService {
                     ? { documentId: capturedOwner.documentId, frameId: 0 }
                     : { frameId: 0 }
             );
-            accepted = response.requestId === requestId && response.accepted;
-        } catch {
-            return ownsBinding();
+            reply =
+                response.requestId === requestId ? response.result : 'unknown';
+        } catch (error) {
+            reply =
+                error instanceof MessagingError &&
+                error.failureClass === MessagingFailureClass.PROVEN_NON_DELIVERY
+                    ? 'empty'
+                    : 'unknown';
         }
         if (!ownsBinding()) {
             return false;
         }
-        if (!accepted) {
-            return ownsBinding();
-        }
 
         const currentOwner = this.selectionOwnersByTab.get(tabId);
-        if (
-            !currentOwner ||
-            currentOwner.windowId !== windowId ||
-            currentOwner.acceptedReceiptEpoch <= capturedReceiptEpoch ||
-            (this.selectionInvalidationEpochByTab.get(tabId) ?? 0) !==
-                capturedInvalidationEpoch ||
-            (capturedOwner && !ownerIdentityEquals(currentOwner, capturedOwner))
-        ) {
-            return ownsBinding();
+        const known = currentOwner?.windowId === windowId ? currentOwner : null;
+        if (known && known.acceptedReceiptEpoch > capturedReceiptEpoch) {
+            return this.projectOwnerTo(connection, binding, known);
         }
+        switch (reply) {
+            case 'replayed':
+                // Not received yet: the replay's own broadcast follows.
+                return ownsBinding();
+            case 'empty':
+                this.selectionOwnersByTab.delete(tabId);
+                return this.projectSelectionNull(tabId);
+            case 'failed':
+            case 'unknown':
+                // Nothing was learned; what was known still stands.
+                return known
+                    ? this.projectOwnerTo(connection, binding, known)
+                    : ownsBinding();
+        }
+    }
+
+    /** Post an owner to the exact binding; a change underneath the post
+     *  projects null so the panel never keeps a superseded state. */
+    private projectOwnerTo(
+        connection: Connection,
+        binding: SidePanelBinding,
+        owner: SelectionOwner
+    ): boolean {
+        const ownsBinding = () =>
+            this.isCurrentBinding(
+                connection,
+                binding.tabId,
+                binding.windowId,
+                null,
+                binding.registrationId
+            );
         if (
             !this.post(connection, {
                 action: MessageActions.SIDEPANEL_SELECTION_SYNC,
-                data: { binding, selection: projectOwner(currentOwner) },
+                data: { binding, selection: projectOwner(owner) },
             })
         ) {
             return false;
@@ -666,9 +698,9 @@ export class SidePanelService {
         if (!ownsBinding()) {
             return false;
         }
-        const afterPost = this.selectionOwnersByTab.get(tabId);
-        if (!afterPost || !ownerStateEquals(afterPost, currentOwner)) {
-            this.projectSelectionNull(tabId);
+        const afterPost = this.selectionOwnersByTab.get(owner.tabId);
+        if (!afterPost || !ownerStateEquals(afterPost, owner)) {
+            this.projectSelectionNull(owner.tabId);
         }
         return ownsBinding();
     }
@@ -1290,19 +1322,15 @@ export class SidePanelService {
         );
     }
 
-    /** Tab activation moves selection ownership: owners in the window that
-     *  are not the activated tab are dropped, and every panel in that window
-     *  is told to rebind. Panels are window-scoped; other windows never hear
-     *  about it. */
+    /** Every panel in the window is told to rebind. The window's other
+     *  owners stay: an inactive tab cannot publish, so its owner is still
+     *  true when the user returns, and a navigation meanwhile drops it
+     *  through handleTabNavigation. Panels are window-scoped; other windows
+     *  never hear about it. */
     handleTabActivated(info: { tabId: number; windowId: number }): void {
         const activatedOwner = this.selectionOwnersByTab.get(info.tabId);
         if (activatedOwner && activatedOwner.windowId !== info.windowId) {
             this.selectionOwnersByTab.delete(info.tabId);
-        }
-        for (const [ownedTabId, owner] of this.selectionOwnersByTab) {
-            if (owner.windowId === info.windowId && ownedTabId !== info.tabId) {
-                this.selectionOwnersByTab.delete(ownedTabId);
-            }
         }
         const activation: WindowActivation = {
             activationEpoch: this.nextAuthorizationEpoch(),
@@ -1340,7 +1368,6 @@ export class SidePanelService {
     handleTabRemoved(tabId: number): void {
         const removalEpoch = this.nextAuthorizationEpoch();
         this.tabLifecycleEpochByTab.set(tabId, removalEpoch);
-        this.selectionInvalidationEpochByTab.delete(tabId);
         this.selectionOwnersByTab.delete(tabId);
         for (const [windowId, activation] of this.activationByWindow) {
             if (activation.tabId === tabId) {
@@ -1397,10 +1424,6 @@ export class SidePanelService {
     /** A navigation invalidates the tab's selection owner and any removal in
      *  flight; a bound panel sees null until the new document publishes. */
     handleTabNavigation(tabId: number): void {
-        this.selectionInvalidationEpochByTab.set(
-            tabId,
-            this.nextAuthorizationEpoch()
-        );
         this.selectionOwnersByTab.delete(tabId);
         const connection = this.connectionByTab.get(tabId);
         if (connection) {
@@ -1424,7 +1447,6 @@ export class SidePanelService {
         this.claimByConnection.clear();
         this.activationByWindow.clear();
         this.selectionOwnersByTab.clear();
-        this.selectionInvalidationEpochByTab.clear();
         this.removalFlights.clear();
     }
 }

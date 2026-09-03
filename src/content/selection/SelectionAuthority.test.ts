@@ -131,21 +131,21 @@ describe('SelectionAuthority', () => {
         const { authority, published } = harness();
         expect(await authority.handleRepublish(5)).toEqual({
             requestId: 5,
-            accepted: false,
+            result: 'empty',
         });
         authority.onSubtitleChange(1);
         authority.toggle(intent(0, 'hola'));
         await flush();
         expect(await authority.handleRepublish(6)).toEqual({
             requestId: 6,
-            accepted: true,
+            result: 'replayed',
         });
         expect(published.at(-1)).toMatchObject({ selectionRevision: 2 });
         expect(published).toHaveLength(3);
     });
 
-    it('does not acknowledge a replay that a newer snapshot overtook', async () => {
-        const { authority, hold, release } = harness();
+    it('follows the selection when a newer snapshot overtakes the replay', async () => {
+        const { authority, published, hold, release } = harness();
         authority.onSubtitleChange(1);
         authority.toggle(intent(0, 'hola'));
         await flush();
@@ -153,7 +153,19 @@ describe('SelectionAuthority', () => {
         const pending = authority.handleRepublish(1);
         authority.toggle(intent(1, 'amigo'));
         release();
-        expect(await pending).toEqual({ requestId: 1, accepted: false });
+        expect(await pending).toEqual({ requestId: 1, result: 'replayed' });
+        // The overtaking snapshot went out on its own, then again as the
+        // replay the ack stands for.
+        expect(published.slice(-2)).toMatchObject([
+            {
+                selectionRevision: 3,
+                entries: [
+                    { wordIndex: 0, word: 'hola' },
+                    { wordIndex: 1, word: 'amigo' },
+                ],
+            },
+            { selectionRevision: 3 },
+        ]);
     });
 
     it('removes one exact occurrence only after the successor snapshot is accepted', async () => {
@@ -272,6 +284,16 @@ describe('SelectionAuthority', () => {
         expect(authority.selectedIndices.size).toBe(0);
     });
 
+    it('reports a publication the background refused as failed, not empty', async () => {
+        const { authority } = harness({ accept: () => false });
+        authority.onSubtitleChange(1);
+        await flush();
+        expect(await authority.handleRepublish(1)).toEqual({
+            requestId: 1,
+            result: 'failed',
+        });
+    });
+
     it('treats a failed publication as not accepted', async () => {
         const { authority, publish } = harness();
         publish.mockRejectedValueOnce(new Error('offline'));
@@ -281,7 +303,7 @@ describe('SelectionAuthority', () => {
         await flush();
         expect(await authority.handleRepublish(1)).toEqual({
             requestId: 1,
-            accepted: true,
+            result: 'replayed',
         });
     });
 });

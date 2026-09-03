@@ -3,18 +3,33 @@ import { CONTEXT_TYPES, type ContextType } from '@/shared/contextTypes';
 import { sendWithRetry } from '@/messaging/client';
 import { analyzeContext } from '@/messaging/contracts/analyzeContext';
 import { useSettings, type SettingsStatus } from '../hooks/useSettings';
-import type { PanelHandle } from './usePanelConnection';
+import {
+    sameWords,
+    selectionWords,
+    type AnalysisOutcome,
+    type PanelHandle,
+} from './usePanelConnection';
 
+/** Everything that can change an answer: what is asked of the provider,
+ *  and the provider identity the background caches by (its credentials
+ *  aside, which no surface reads). */
 export const ANALYSIS_SETTINGS_KEYS = [
     'aiContextEnabled',
     'aiContextTypes',
     'aiContextProvider',
+    'openaiBaseUrl',
+    'openaiModel',
+    'geminiModel',
     'targetLanguage',
 ] as const;
 
+/** A request belongs to the tab, the content session, and the words it
+ *  was started for, under the settings of that moment. */
 interface ActiveRequest {
     readonly tabId: number;
-    readonly authorityKey: string;
+    readonly session: string;
+    readonly words: readonly string[];
+    readonly configurationKey: string;
     cancelled: boolean;
 }
 
@@ -31,128 +46,157 @@ function normalizeContextTypes(types: readonly string[]): ContextType[] {
 let requestCounter = 0;
 
 /**
- * Runs one analysis at a time for the bound tab. A request is only allowed
- * to publish its answer while the tab, the selection occurrence, and the
- * analysis settings it was made under are all still current; anything else
- * changing underneath it turns the answer into silence.
+ * Runs one analysis per tab. A request belongs to its tab, not to the
+ * panel's current view: switching tabs while it runs neither cancels it
+ * nor loses its outcome. It is dropped only when its tab's words change to
+ * other words, its tab moves to another content session or has nothing
+ * to show, or the analysis settings change underneath it. An outcome is
+ * shown only under the analysis settings it was made with; changing them
+ * hides it and changing them back shows it again.
  */
 export function useAnalysis(panel: PanelHandle): {
     readonly settingsStatus: SettingsStatus;
     readonly enabled: boolean;
+    readonly outcome: AnalysisOutcome | null;
     readonly analyze: () => Promise<void>;
 } {
     const { settings, status } = useSettings(ANALYSIS_SETTINGS_KEYS);
     const { activeTabId, tab, updateTab } = panel;
-    const activeRequest = useRef<ActiveRequest | null>(null);
-    const lastTargetLanguage = useRef<string | null>(null);
+    const requests = useRef(new Map<number, ActiveRequest>());
 
-    const selection = tab.selection;
     const contextTypes = normalizeContextTypes(settings?.aiContextTypes ?? []);
-    const authorityKey = JSON.stringify([
+    const configurationKey = JSON.stringify([
         status,
         settings?.aiContextEnabled,
         settings?.aiContextProvider,
+        settings?.openaiBaseUrl,
+        settings?.openaiModel,
+        settings?.geminiModel,
         contextTypes,
         settings?.targetLanguage,
-        selection
-            ? [
-                  selection.selectionOwnerGeneration,
-                  selection.selectionRevision,
-                  selection.renderRevision,
-                  selection.entries,
-              ]
-            : null,
     ]);
-    const authority = useRef({ tabId: activeTabId, authorityKey });
-    authority.current = { tabId: activeTabId, authorityKey };
-
-    const hasAuthority = useCallback(
-        (request: ActiveRequest) =>
-            !request.cancelled &&
-            activeRequest.current === request &&
-            authority.current.tabId === request.tabId &&
-            authority.current.authorityKey === request.authorityKey,
-        []
-    );
+    const selectedWordsKey = JSON.stringify(selectionWords(tab.selection));
+    const selectionSession = tab.selection?.session ?? null;
+    const outcome =
+        tab.outcome !== null && tab.outcome.configuration === configurationKey
+            ? tab.outcome
+            : null;
 
     const invalidate = useCallback(
-        (request: ActiveRequest | null) => {
-            if (!request || request.cancelled) {
+        (request: ActiveRequest) => {
+            if (request.cancelled) {
                 return;
             }
             request.cancelled = true;
-            updateTab(request.tabId, { analyzing: false });
-            if (activeRequest.current === request) {
-                activeRequest.current = null;
+            if (requests.current.get(request.tabId) === request) {
+                requests.current.delete(request.tabId);
             }
+            updateTab(request.tabId, { analyzing: false });
         },
         [updateTab]
     );
 
+    // Settings changes end every flight; new words, another session, or
+    // nothing to show end the active tab's. Other tabs cannot change their
+    // words while inactive: the background accepts snapshots only from the
+    // active tab.
     useEffect(() => {
-        const request = activeRequest.current;
+        for (const request of requests.current.values()) {
+            if (request.configurationKey !== configurationKey) {
+                invalidate(request);
+            }
+        }
+    }, [configurationKey, invalidate]);
+
+    useEffect(() => {
+        const request =
+            activeTabId === null
+                ? undefined
+                : requests.current.get(activeTabId);
+        if (!request) {
+            return;
+        }
+        const words = JSON.parse(selectedWordsKey) as string[];
         if (
-            request &&
-            (request.tabId !== activeTabId ||
-                request.authorityKey !== authorityKey)
+            selectionSession !== request.session ||
+            (words.length > 0 && !sameWords(words, request.words))
         ) {
             invalidate(request);
         }
-    }, [activeTabId, authorityKey, invalidate]);
+    }, [activeTabId, invalidate, selectedWordsKey, selectionSession]);
 
-    // A new answer language makes every shown answer stale.
-    useEffect(() => {
-        const targetLanguage = settings?.targetLanguage ?? null;
-        if (targetLanguage === null) {
-            return;
-        }
-        const previous = lastTargetLanguage.current;
-        lastTargetLanguage.current = targetLanguage;
-        if (previous === null || previous === targetLanguage) {
-            return;
-        }
-        invalidate(activeRequest.current);
-        if (activeTabId !== null) {
-            updateTab(activeTabId, { analysis: null, error: null });
-        }
-    }, [activeTabId, invalidate, settings?.targetLanguage, updateTab]);
-
-    useEffect(() => () => invalidate(activeRequest.current), [invalidate]);
+    useEffect(
+        () => () => {
+            for (const request of requests.current.values()) {
+                invalidate(request);
+            }
+        },
+        [invalidate]
+    );
 
     const analyze = useCallback(async () => {
         const tabId = activeTabId;
         if (tabId === null || !settings) {
             return;
         }
-        const words = selection?.entries.map((entry) => entry.word) ?? [];
-        if (words.length === 0) {
+        const words = JSON.parse(selectedWordsKey) as string[];
+        const refuse = (key: string) =>
             updateTab(tabId, {
-                error: { kind: 'key', key: 'sidepanelErrorNoWords' },
+                outcome: {
+                    words,
+                    configuration: configurationKey,
+                    answer: null,
+                    error: { kind: 'key', key },
+                },
             });
+        if (words.length === 0 || selectionSession === null) {
+            refuse('sidepanelErrorNoWords');
             return;
         }
         if (!settings.aiContextEnabled) {
-            updateTab(tabId, {
-                error: { kind: 'key', key: 'sidepanelErrorDisabled' },
-            });
+            refuse('sidepanelErrorDisabled');
             return;
         }
         if (contextTypes.length === 0) {
-            updateTab(tabId, {
-                analysis: null,
-                error: { kind: 'key', key: 'sidepanelErrorNoContextTypes' },
-            });
+            refuse('sidepanelErrorNoContextTypes');
             return;
         }
 
-        invalidate(activeRequest.current);
+        const previous = requests.current.get(tabId);
+        if (previous) {
+            invalidate(previous);
+        }
         const request: ActiveRequest = {
             tabId,
-            authorityKey,
+            session: selectionSession,
+            words,
+            configurationKey,
             cancelled: false,
         };
-        activeRequest.current = request;
-        updateTab(tabId, { analysis: null, error: null, analyzing: true });
+        requests.current.set(tabId, request);
+        updateTab(tabId, { outcome: null, analyzing: true });
+        // Judged against the state React is about to commit, so a tab
+        // cleared, moved to another session, or reselected in the same
+        // tick wins over the outcome.
+        const settle = (
+            answer: AnalysisOutcome['answer'],
+            error: AnalysisOutcome['error']
+        ) =>
+            updateTab(tabId, (current) => {
+                const shown = selectionWords(current.selection);
+                return current.selection === null ||
+                    current.selection.session !== request.session ||
+                    (shown.length > 0 && !sameWords(shown, words))
+                    ? null
+                    : {
+                          outcome: {
+                              words,
+                              configuration: configurationKey,
+                              answer,
+                              error,
+                          },
+                      };
+            });
         requestCounter += 1;
         try {
             const response = await sendWithRetry(
@@ -170,41 +214,39 @@ export function useAnalysis(panel: PanelHandle): {
                 {
                     retries: 0,
                     pingBeforeRetry: false,
-                    canDispatch: () => hasAuthority(request),
+                    canDispatch: () => !request.cancelled,
                 }
             );
-            if (!hasAuthority(request)) {
+            if (request.cancelled) {
                 return;
             }
-            updateTab(
-                tabId,
-                response.success
-                    ? { analysis: response.result.analysis, error: null }
-                    : {
-                          error: response.error
-                              ? { kind: 'text', text: response.error }
-                              : { kind: 'key', key: 'sidepanelErrorGeneric' },
-                      }
-            );
+            if (response.success) {
+                settle(response.result.analysis, null);
+            } else {
+                settle(
+                    null,
+                    response.error
+                        ? { kind: 'text', text: response.error }
+                        : { kind: 'key', key: 'sidepanelErrorGeneric' }
+                );
+            }
         } catch {
-            if (hasAuthority(request)) {
-                updateTab(tabId, {
-                    error: { kind: 'key', key: 'sidepanelErrorGeneric' },
-                });
+            if (!request.cancelled) {
+                settle(null, { kind: 'key', key: 'sidepanelErrorGeneric' });
             }
         } finally {
-            if (activeRequest.current === request) {
-                activeRequest.current = null;
+            if (requests.current.get(tabId) === request) {
+                requests.current.delete(tabId);
                 updateTab(tabId, { analyzing: false });
             }
         }
     }, [
         activeTabId,
-        authorityKey,
+        configurationKey,
         contextTypes,
-        hasAuthority,
         invalidate,
-        selection,
+        selectedWordsKey,
+        selectionSession,
         settings,
         updateTab,
     ]);
@@ -212,6 +254,7 @@ export function useAnalysis(panel: PanelHandle): {
     return {
         settingsStatus: status,
         enabled: settings?.aiContextEnabled === true,
+        outcome,
         analyze,
     };
 }

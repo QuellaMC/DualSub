@@ -14,53 +14,71 @@ export type PanelError =
     | { readonly kind: 'key'; readonly key: string }
     | { readonly kind: 'text'; readonly text: string };
 
+/** What one analysis produced for some words under some analysis settings
+ *  (the configuration key of useAnalysis): an answer or an error. */
+export interface AnalysisOutcome {
+    readonly words: readonly string[];
+    readonly configuration: string;
+    readonly answer: Analysis | null;
+    readonly error: PanelError | null;
+}
+
 export interface TabState {
     readonly selection: SelectionState | null;
-    readonly analysis: Analysis | null;
-    readonly error: PanelError | null;
+    readonly outcome: AnalysisOutcome | null;
     readonly analyzing: boolean;
 }
 
 export const EMPTY_TAB_STATE: TabState = {
     selection: null,
-    analysis: null,
-    error: null,
+    outcome: null,
     analyzing: false,
 };
 
+/** Fields to change, or a function of the state React is about to commit
+ *  that returns them (null leaves the tab as it is). */
+export type TabPatch =
+    Partial<TabState> | ((current: TabState) => Partial<TabState> | null);
+
 export interface PanelHandle {
     readonly connected: boolean;
+    /** The bound tab's state was confirmed by the background under the
+     *  current binding, not merely remembered. */
+    readonly validated: boolean;
     readonly activeTabId: number | null;
+    /** The bound tab's state. */
     readonly tab: TabState;
-    readonly updateTab: (tabId: number, patch: Partial<TabState>) => void;
+    readonly updateTab: (tabId: number, patch: TabPatch) => void;
     readonly requestRemoval: (
         selection: SelectionState,
         wordIndex: number
     ) => Promise<RemovalStatus>;
 }
 
-function selectionsEqual(
-    left: SelectionState | null,
-    right: SelectionState | null
+export function selectionWords(
+    selection: SelectionState | null
+): readonly string[] {
+    return selection?.entries.map((entry) => entry.word) ?? [];
+}
+
+export function sameWords(
+    left: readonly string[],
+    right: readonly string[]
 ): boolean {
-    if (left === right) {
-        return true;
-    }
-    if (!left || !right) {
-        return false;
-    }
     return (
-        left.selectionOwnerGeneration === right.selectionOwnerGeneration &&
-        left.selectionRevision === right.selectionRevision &&
-        left.renderRevision === right.renderRevision &&
-        left.reason === right.reason &&
-        left.entries.length === right.entries.length &&
-        left.entries.every(
-            (entry, index) =>
-                entry.wordIndex === right.entries[index]!.wordIndex &&
-                entry.word === right.entries[index]!.word
-        )
+        left.length === right.length &&
+        left.every((word, index) => word === right[index])
     );
+}
+
+/** The same content session: the background names it, so a worker
+ *  restart (a new owner generation) keeps it and a new document or
+ *  player session does not. */
+function continues(
+    previous: SelectionState | null,
+    next: SelectionState
+): boolean {
+    return previous !== null && previous.session === next.session;
 }
 
 async function queryActiveTab(): Promise<TabBinding | null> {
@@ -75,20 +93,28 @@ async function queryActiveTab(): Promise<TabBinding | null> {
 
 /**
  * React view of the panel's port. State is kept per tab so switching away
- * and back restores that tab's selection and analysis; the bound tab is
- * whichever the connection registered last.
+ * and back restores that tab's words and outcome; the bound tab is
+ * whichever the connection registered last. An outcome is keyed by its
+ * words: it stays while the tab shows those words, or none at all, in the
+ * same document, and goes when the tab shows other words, another
+ * document, or nothing at all.
  */
 export function usePanelConnection(): PanelHandle {
     const [connected, setConnected] = useState(false);
+    const [validated, setValidated] = useState(false);
     const [activeTabId, setActiveTabId] = useState<number | null>(null);
     const [tabs, setTabs] = useState<Record<number, TabState>>({});
     const connectionRef = useRef<PanelConnection | null>(null);
 
-    const updateTab = useCallback((tabId: number, patch: Partial<TabState>) => {
+    const updateTab = useCallback((tabId: number, patch: TabPatch) => {
         setTabs((previous) => {
             const current = previous[tabId] ?? EMPTY_TAB_STATE;
-            const next = { ...current, ...patch };
-            const changed = (Object.keys(patch) as (keyof TabState)[]).some(
+            const fields = typeof patch === 'function' ? patch(current) : patch;
+            if (fields === null) {
+                return previous;
+            }
+            const next = { ...current, ...fields };
+            const changed = (Object.keys(fields) as (keyof TabState)[]).some(
                 (key) => current[key] !== next[key]
             );
             return changed ? { ...previous, [tabId]: next } : previous;
@@ -101,30 +127,29 @@ export function usePanelConnection(): PanelHandle {
                 browser.runtime.connect({ name: SIDEPANEL_PORT_NAME }),
             queryActiveTab,
             onConnected: setConnected,
+            onValidated: setValidated,
             onRegister: ({ tabId }) => setActiveTabId(tabId),
             onBindTab: ({ tabId, windowId }) => {
                 connection.registerTab(tabId, windowId);
             },
             onSelection: (tabId, selection) => {
                 setTabs((previous) => {
-                    const current = previous[tabId] ?? EMPTY_TAB_STATE;
-                    const selectionChanged = !selectionsEqual(
-                        current.selection,
-                        selection
-                    );
-                    const clears =
-                        selection === null &&
-                        (current.analysis !== null || current.error !== null);
-                    if (!selectionChanged && !clears) {
-                        return previous;
+                    if (selection === null) {
+                        return { ...previous, [tabId]: EMPTY_TAB_STATE };
                     }
+                    const current = previous[tabId] ?? EMPTY_TAB_STATE;
+                    const words = selectionWords(selection);
+                    const keepsOutcome =
+                        current.outcome !== null &&
+                        continues(current.selection, selection) &&
+                        (words.length === 0 ||
+                            sameWords(words, current.outcome.words));
                     return {
                         ...previous,
                         [tabId]: {
                             ...current,
                             selection,
-                            analysis: null,
-                            error: null,
+                            outcome: keepsOutcome ? current.outcome : null,
                         },
                     };
                 });
@@ -149,6 +174,7 @@ export function usePanelConnection(): PanelHandle {
 
     return {
         connected,
+        validated,
         activeTabId,
         tab:
             activeTabId === null
