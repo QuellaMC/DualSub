@@ -52,6 +52,14 @@ export function createSubtitleElements(): SubtitleElements {
     return { container, original, translated };
 }
 
+/** A slot is drawn only when it has text: its padding and background
+ *  would otherwise sit over the video as an empty box. */
+export function applySlotVisibility(elements: SubtitleElements): void {
+    for (const slot of [elements.original, elements.translated]) {
+        slot.style.display = slot.textContent === '' ? 'none' : 'inline-block';
+    }
+}
+
 /** The user's 0.1–9.9 slider maps to a 5%–50% `bottom` offset. */
 function verticalPositionToBottomPercent(verticalPosition: number): number {
     const clamped = Math.max(0.1, Math.min(9.9, verticalPosition));
@@ -73,7 +81,6 @@ export function applyDisplaySettings(
             overflow: 'visible',
             textOverflow: 'clip',
             fontSize: `${display.fontSizeVw}vw`,
-            display: 'inline-block',
             width: 'auto',
             textAlign: 'center',
             boxSizing: 'border-box',
@@ -96,6 +103,8 @@ export function applyDisplaySettings(
     const first = display.order === 'translation_top' ? translated : original;
     const second = display.order === 'translation_top' ? original : translated;
     container.replaceChildren(first, second);
+
+    applySlotVisibility(elements);
 
     if (display.orientation === 'column') {
         first.style.maxWidth = '100%';

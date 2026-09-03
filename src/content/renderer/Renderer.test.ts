@@ -82,6 +82,12 @@ function setup(videoId = '1') {
     ];
     const container = (): HTMLElement | null =>
         document.getElementById('dualsub-subtitle-container');
+    const slots = (): [string, string] => [
+        document.getElementById('dualsub-original-subtitle')?.style.display ??
+            '',
+        document.getElementById('dualsub-translated-subtitle')?.style.display ??
+            '',
+    ];
     return {
         controller,
         video,
@@ -90,6 +96,7 @@ function setup(videoId = '1') {
         tick,
         texts,
         container,
+        slots,
         onNavigationMismatch,
     };
 }
@@ -104,6 +111,39 @@ describe('Renderer', () => {
     afterEach(() => {
         vi.useRealTimers();
         vi.restoreAllMocks();
+    });
+
+    it('draws only the slots that have text', () => {
+        vi.spyOn(fakeBrowser.i18n, 'getMessage').mockImplementation(
+            () => 'Loading…'
+        );
+        const { renderer, video, state, tick, slots, controller } = setup();
+        renderer.attachMedia({ root: video.parentElement, video });
+        tick(0.5);
+        expect(slots()).toEqual(['none', 'none']);
+
+        renderer.setLoading(true);
+        tick(0.6);
+        expect(slots()).toEqual(['none', 'inline-block']);
+
+        state.loadCues({
+            cues: [cue(1, 2, 'Hello', '你好')],
+            useNativeTarget: false,
+            sourceLanguage: 'en',
+            targetLanguage: 'zh-CN',
+        });
+        renderer.setLoading(false);
+        tick(1.5);
+        expect(slots()).toEqual(['inline-block', 'inline-block']);
+
+        // Past the cue and past the grace that follows a style change.
+        vi.setSystemTime(101_000);
+        tick(3);
+        expect(slots()).toEqual(['none', 'none']);
+        // A style change must not bring the empty boxes back.
+        renderer.setDisplay({ ...display, gap: 1 });
+        expect(slots()).toEqual(['none', 'none']);
+        controller.abort();
     });
 
     it('shows the loading placeholder until cues arrive, then in the translated slot while reloading', () => {
