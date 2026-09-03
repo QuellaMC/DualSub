@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - The side panel keeps a tab's selected words, running analysis, and answer while the user visits other tabs and comes back.
+- Subtitle slots are drawn only when they have text, so no empty box sits over the video between lines.
 
 ## [3.0.0] - 2026-09-02
 

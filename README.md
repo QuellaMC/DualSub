@@ -272,6 +272,7 @@ For full license terms, see [LICENSE](LICENSE) file.
 ### Version 3.0.1 (Current)
 
 - 🐛 The side panel keeps a tab's selected words, running analysis, and answer while you visit other tabs and come back
+- 🐛 No empty subtitle box over the video between lines
 
 ### Version 3.0.0
 
