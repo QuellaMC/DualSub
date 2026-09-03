@@ -12,6 +12,7 @@ import { startFrameLoop } from './frameLoop';
 import type { RendererState } from './RendererState';
 import {
     applyDisplaySettings,
+    applySlotVisibility,
     type DisplaySettings,
     type SubtitleElements,
 } from './styling';
@@ -319,6 +320,7 @@ export class Renderer {
             elements.translated.textContent = translatedText;
             painted.translatedText = translatedText;
         }
+        applySlotVisibility(elements);
     }
 
     private show(elements: SubtitleElements): void {
