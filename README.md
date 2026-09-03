@@ -269,7 +269,11 @@ For full license terms, see [LICENSE](LICENSE) file.
 
 ## 📋 Changelog
 
-### Version 3.0.1 (Current)
+### Version 3.0.2 (Current)
+
+- 🐛 No empty subtitle box over the video between lines
+
+### Version 3.0.1
 
 - 🐛 The side panel keeps a tab's selected words, running analysis, and answer while you visit other tabs and come back
 
