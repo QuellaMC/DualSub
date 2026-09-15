@@ -54,6 +54,8 @@ export default defineConfig([
         rules: {
             'no-console': 'off',
             '@typescript-eslint/no-unused-vars': unusedVariablesRule,
+            '@typescript-eslint/consistent-type-imports': 'error',
+            eqeqeq: ['error', 'always', { null: 'ignore' }],
         },
     },
     {
