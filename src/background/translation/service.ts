@@ -1,4 +1,4 @@
-import { configService, type SettingsChanges } from '@/config/service';
+import type { configService, SettingsChanges } from '@/config/service';
 import { getDefaultValue, type SettingsKey } from '@/config/schema';
 import type { ProviderId } from '@/shared/providers';
 import { createLogger, type Logger } from '@/shared/logger';
