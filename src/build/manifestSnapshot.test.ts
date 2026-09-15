@@ -8,7 +8,7 @@ import golden from './manifest.golden.json';
 // deliberate, reviewed facts. Update the golden file only in a commit whose
 // message explains the manifest change. Requires `npm run build` first.
 const builtManifestPath = fileURLToPath(
-    new URL('../../.output/chrome-mv3/manifest.json', import.meta.url)
+    new URL('../../dist/chrome-mv3/manifest.json', import.meta.url)
 );
 
 describe.skipIf(!existsSync(builtManifestPath))('built manifest', () => {

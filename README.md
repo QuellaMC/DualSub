@@ -127,7 +127,7 @@ Debug Logging: Enabled
 
 3. **Load Extension for Testing**
     - Run `npm run build` (or `npm run dev` to rebuild on every change)
-    - Open `chrome://extensions`, enable Developer mode, click **Load unpacked**, and select `.output/chrome-mv3`
+    - Open `chrome://extensions`, enable Developer mode, click **Load unpacked**, and select `dist/chrome-mv3`
     - Reload the extension after each build
 
 ### Project Structure

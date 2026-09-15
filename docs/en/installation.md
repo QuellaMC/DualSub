@@ -73,7 +73,7 @@
     npm run build
     ```
 
-    This will create `.output/chrome-mv3` with the compiled extension.
+    This will create `dist/chrome-mv3` with the compiled extension.
 
     For development with auto-rebuild:
 
@@ -84,7 +84,7 @@
 4. Load unpacked extension in Chrome
     - Open `chrome://extensions`
     - Enable Developer mode (top-right toggle)
-    - Click Load unpacked and select **`.output/chrome-mv3`** (not the project root!)
+    - Click Load unpacked and select **`dist/chrome-mv3`** (not the project root!)
 
 5. Verify it's working
     - Visit Netflix or Disney+
@@ -112,7 +112,7 @@
 - Extension not visible: ensure it's enabled at `chrome://extensions` and optionally pinned in the toolbar
 - "Could not load manifest":
     - For GitHub releases: make sure you extracted the ZIP and selected the extracted folder
-    - For development: make sure you selected `.output/chrome-mv3` (not the project root!) and ran `npm run build` first
+    - For development: make sure you selected `dist/chrome-mv3` (not the project root!) and ran `npm run build` first
 - Build errors: ensure you have Node.js 24 LTS installed and run `npm ci` before `npm run build`
 - No subtitles: verify the platform provides subtitles and they are enabled in the player
 - AI Context not working: set your API key and model in Advanced Settings; check rate limits and network connectivity
