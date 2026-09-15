@@ -4,6 +4,7 @@ import { defineConfig } from 'wxt';
 // src/build/manifestSnapshot.test.ts enforces it against the golden file.
 export default defineConfig({
     srcDir: 'src',
+    outDir: 'dist',
     modules: ['@wxt-dev/module-react'],
     imports: false,
     manifest: {

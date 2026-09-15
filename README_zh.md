@@ -98,7 +98,7 @@
 
 3. **加载扩展进行测试**
     - 运行 `npm run build`（或 `npm run dev` 实现修改后自动重新构建）
-    - 打开 `chrome://extensions`，开启"开发者模式"，点击"加载已解压的扩展程序"，选择 `.output/chrome-mv3`
+    - 打开 `chrome://extensions`，开启"开发者模式"，点击"加载已解压的扩展程序"，选择 `dist/chrome-mv3`
     - 每次构建后重新加载扩展
 
 ### 项目结构

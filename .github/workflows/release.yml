@@ -99,7 +99,7 @@ jobs:
               shell: bash
               run: |
                   archive="dualsub-${{ steps.version.outputs.tag }}.zip"
-                  cp ".output/dualsub-${{ steps.version.outputs.version }}-chrome.zip" "$archive"
+                  cp "dist/dualsub-${{ steps.version.outputs.version }}-chrome.zip" "$archive"
                   if [[ "${{ steps.version.outputs.prerelease }}" == "true" ]]; then
                     flags=(--prerelease)
                   else

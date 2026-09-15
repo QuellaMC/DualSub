@@ -2,8 +2,7 @@
 node_modules/
 coverage/
 .wxt/
-.output/
+dist/
 
 # Generated audit artifact preserved as reference
 docs/reference/pr62-audit-report.html
-output/

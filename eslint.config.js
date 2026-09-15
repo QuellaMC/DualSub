@@ -19,13 +19,7 @@ const unusedVariablesRule = [
 
 export default defineConfig([
     {
-        ignores: [
-            'node_modules/**',
-            'coverage/**',
-            '.wxt/**',
-            '.output/**',
-            'output/**',
-        ],
+        ignores: ['node_modules/**', 'coverage/**', '.wxt/**', 'dist/**'],
     },
     {
         files: ['*.config.js', 'scripts/**/*.mjs'],

@@ -6,7 +6,7 @@ import { execFileSync } from 'node:child_process';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 
-const OUTPUT_DIR = resolve('.output');
+const OUTPUT_DIR = resolve('dist');
 const BUILD_DIR = join(OUTPUT_DIR, 'chrome-mv3');
 const MAX_ARCHIVE_BYTES = 5 * 1024 * 1024;
 const FORBIDDEN_ENTRY =
