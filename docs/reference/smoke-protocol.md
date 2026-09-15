@@ -1,7 +1,7 @@
 # Manual smoke protocol
 
 Run on both Netflix and Disney+ before every release build (and after any
-change to the content core). Load the unpacked build from `.output/chrome-mv3`
+change to the content core). Load the unpacked build from `dist/chrome-mv3`
 with a clean profile plus one seeded profile (see the upgrade-path tests in
 `src/config/upgradePaths.test.ts` for what "2.5.0 → 3" storage looks like).
 
