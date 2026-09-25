@@ -10,7 +10,8 @@ import { Renderer } from './Renderer';
 import { RendererState } from './RendererState';
 
 const display = {
-    fontSizeVw: 1.1,
+    style: 'dualsub' as const,
+    fontScale: 1,
     gap: 0.3,
     verticalPosition: 2.8,
     orientation: 'column' as const,
@@ -62,6 +63,7 @@ function setup(videoId = '1') {
         state,
         adapter,
         descriptor: {
+            id: 'netflix' as const,
             parseVideoIdFromUrl: (url) =>
                 /\/watch\/(\d+)/.exec(url)?.[1] ?? null,
         },
@@ -111,6 +113,7 @@ describe('Renderer', () => {
     afterEach(() => {
         vi.useRealTimers();
         vi.restoreAllMocks();
+        vi.unstubAllGlobals();
     });
 
     it('draws only the slots that have text', () => {
@@ -270,6 +273,100 @@ describe('Renderer', () => {
         expect(texts()[0]).toBe('A');
         controller.abort();
         expect(container()).toBeNull();
+    });
+});
+
+describe('Renderer styling', () => {
+    beforeEach(() => {
+        document.body.innerHTML = '';
+        setUrl('https://www.netflix.com/watch/1');
+    });
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
+    function original(): HTMLElement {
+        return document.getElementById('dualsub-original-subtitle')!;
+    }
+
+    function showCue(
+        state: RendererState,
+        renderer: Renderer,
+        tick: (time: number) => void
+    ): void {
+        state.loadCues({
+            cues: [cue(1, 5, 'A', 'B')],
+            useNativeTarget: false,
+            sourceLanguage: 'en',
+            targetLanguage: 'zh-CN',
+        });
+        renderer.cuesChanged();
+        tick(2);
+    }
+
+    it('sizes text from the video height, the scale, and every resize', () => {
+        let notify: (() => void) | null = null;
+        let disconnected = false;
+        vi.stubGlobal(
+            'ResizeObserver',
+            class {
+                constructor(callback: () => void) {
+                    notify = callback;
+                }
+                observe(): void {}
+                disconnect(): void {
+                    disconnected = true;
+                }
+            }
+        );
+        const { renderer, video, state, tick, controller } = setup();
+        let height = 500;
+        video.getBoundingClientRect = () => ({ height }) as DOMRect;
+        renderer.attachMedia({ root: video.parentElement, video });
+        showCue(state, renderer, tick);
+        expect(original().style.fontSize).toBe('10px');
+
+        renderer.setDisplay({ ...display, fontScale: 2 });
+        expect(original().style.fontSize).toBe('20px');
+
+        height = 1000;
+        notify!();
+        expect(original().style.fontSize).toBe('40px');
+
+        renderer.detachMedia();
+        expect(disconnected).toBe(true);
+        controller.abort();
+    });
+
+    it('switches between the DualSub and platform looks', () => {
+        const { renderer, video, state, tick, controller } = setup();
+        renderer.attachMedia({ root: video.parentElement, video });
+        showCue(state, renderer, tick);
+        expect(original().style.fontWeight).toBe('normal');
+
+        renderer.setDisplay({ ...display, style: 'platform' });
+        expect(original().style.fontWeight).toBe('bold');
+        expect(original().style.backgroundColor).toBe('transparent');
+        expect(original().textContent).toBe('A');
+
+        renderer.setDisplay(display);
+        expect(original().style.fontWeight).toBe('normal');
+        controller.abort();
+    });
+
+    it('styles a re-bound video for the display chosen while detached', () => {
+        const { renderer, video, state, tick, controller } = setup();
+        renderer.attachMedia({ root: video.parentElement, video });
+        renderer.detachMedia();
+        expect(
+            document.getElementById('dualsub-subtitle-container')
+        ).toBeNull();
+
+        renderer.setDisplay({ ...display, style: 'platform' });
+        renderer.attachMedia({ root: video.parentElement, video });
+        showCue(state, renderer, tick);
+        expect(original().style.fontWeight).toBe('bold');
+        controller.abort();
     });
 });
 

@@ -9,6 +9,7 @@ import { overlayText } from '../overlayText';
 import { pairActiveCues, scanActiveCues } from './cueSelect';
 import { SessionContainer, type UiRoot } from './domLayer';
 import { startFrameLoop } from './frameLoop';
+import { resolveLook, type SubtitleLook } from './looks';
 import type { RendererState } from './RendererState';
 import {
     applyDisplaySettings,
@@ -22,6 +23,13 @@ import { WordLayer, type WordIntent } from './wordLayer';
  *  so re-styling never flashes the overlay blank. */
 const STYLE_GRACE_MS = 800;
 
+/** The size basis of every look: the video's rendered height, or the
+ *  viewport's while the element has no box yet. */
+function sizeBasis(video: HTMLVideoElement): number {
+    const height = video.getBoundingClientRect().height;
+    return height > 0 ? height : window.innerHeight;
+}
+
 export class Renderer {
     private readonly container: SessionContainer;
     private readonly words: WordLayer;
@@ -34,7 +42,7 @@ export class Renderer {
         private readonly deps: {
             state: RendererState;
             adapter: PlatformAdapter;
-            descriptor: Pick<PlatformDescriptor, 'parseVideoIdFromUrl'>;
+            descriptor: Pick<PlatformDescriptor, 'id' | 'parseVideoIdFromUrl'>;
             videoId: string;
             uiRoot: UiRoot;
             signal: AbortSignal;
@@ -59,10 +67,13 @@ export class Renderer {
         return this.media ? this.playbackTime(this.media) : null;
     }
 
+    /** Builds the overlay for this video; a re-bind starts from a fresh
+     *  container so it is styled for the display in force now. */
     attachMedia(media: MediaScope): void {
         this.detachMedia();
         this.media = media;
         this.mediaScope = childScope(this.deps.signal);
+        const { signal } = this.mediaScope;
         this.ensureElements(media);
         startFrameLoop(
             media.video,
@@ -74,8 +85,15 @@ export class Renderer {
                     this.deps.onSeek?.();
                 },
             },
-            this.mediaScope.signal
+            signal
         );
+        // Window, fullscreen, and player layout changes all move the size
+        // basis.
+        const resize = new ResizeObserver(() => this.restyle());
+        resize.observe(media.video);
+        signal.addEventListener('abort', () => resize.disconnect(), {
+            once: true,
+        });
         this.render();
     }
 
@@ -83,7 +101,7 @@ export class Renderer {
         this.mediaScope?.abort();
         this.mediaScope = null;
         this.media = null;
-        this.hide();
+        this.container.destroy();
     }
 
     setVisible(visible: boolean): void {
@@ -98,11 +116,7 @@ export class Renderer {
 
     setDisplay(display: DisplaySettings): void {
         this.deps.state.setDisplay(display);
-        const elements = this.container.current;
-        if (elements) {
-            applyDisplaySettings(elements, display);
-            this.deps.state.painted.styleAppliedAt = Date.now();
-        }
+        this.restyle();
         this.render();
     }
 
@@ -139,7 +153,6 @@ export class Renderer {
     destroy(): void {
         this.detachMedia();
         this.words.destroy();
-        this.container.destroy();
     }
 
     private playbackTime(media: MediaScope): number | null {
@@ -155,11 +168,35 @@ export class Renderer {
         if (this.container.containerEpoch !== epochBefore) {
             state.painted.originalText = '';
             state.painted.translatedText = '';
-            applyDisplaySettings(elements, state.display);
-            state.painted.styleAppliedAt = Date.now();
             state.invalidateMemo();
+            this.restyle();
         }
         return elements;
+    }
+
+    /** Re-derive every style from the display, its look, and the video's
+     *  current size. */
+    private restyle(): void {
+        const elements = this.container.current;
+        const media = this.media;
+        if (!elements || !media) {
+            return;
+        }
+        const { state } = this.deps;
+        applyDisplaySettings(
+            elements,
+            state.display,
+            this.look(),
+            sizeBasis(media.video)
+        );
+        state.painted.styleAppliedAt = Date.now();
+    }
+
+    private look(): SubtitleLook {
+        return resolveLook(
+            this.deps.state.display.style,
+            this.deps.descriptor.id
+        );
     }
 
     private frame(): void {

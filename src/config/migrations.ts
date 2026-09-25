@@ -1,5 +1,6 @@
 import { browser } from 'wxt/browser';
 import { VERTEX_LOCATIONS } from '@/shared/providers';
+import { SETTING_BOUNDS } from './schema';
 
 const RETIRED_GEMINI_MODELS = new Set(['gemini-1.5-flash', 'gemini-1.5-pro']);
 
@@ -13,10 +14,14 @@ const DEVICE_LOCAL_CREDENTIAL_KEYS = [
 
 const ALLOWED_VERTEX_LOCATIONS = new Set<string>(VERTEX_LOCATIONS);
 
+/** The pre-3.1 font size was a viewport-width percentage with this default. */
+const LEGACY_DEFAULT_FONT_SIZE_VW = 1.1;
+
 // Grows monotonically; it is the durable record of deliberately dropped
 // features. v2 batching + old side-panel/modal surface, plus the v3
-// retirements: the modal-vs-panel toggle and the legacy half of the
-// useNativeSubtitles/useOfficialTranslations dual key.
+// retirements: the modal-vs-panel toggle, the legacy half of the
+// useNativeSubtitles/useOfficialTranslations dual key, and the
+// viewport-relative font size that subtitleFontScale replaced in 3.1.
 const RETIRED_SYNC_KEYS = [
     'translationBatchSize',
     'maxConcurrentBatches',
@@ -49,6 +54,7 @@ const RETIRED_SYNC_KEYS = [
     'contextAutoCloseDelay',
     'sidePanelUseSidePanel',
     'useNativeSubtitles',
+    'subtitleFontSize',
 ];
 
 const RETIRED_LOCAL_KEYS = [
@@ -56,6 +62,16 @@ const RETIRED_LOCAL_KEYS = [
     'sidePanelSelectionBuckets',
     'aiContextDebugMode',
 ];
+
+/** The scale that reproduces a legacy width-relative size at its default. */
+function legacyFontSizeToScale(fontSizeVw: number): number {
+    const { min, max } = SETTING_BOUNDS.subtitleFontScale;
+    const scale = Math.min(
+        max,
+        Math.max(min, fontSizeVw / LEGACY_DEFAULT_FONT_SIZE_VW)
+    );
+    return Math.round(scale * 100) / 100;
+}
 
 export interface MigrationSummary {
     localUpdates: string[];
@@ -95,6 +111,7 @@ async function runMigration(): Promise<MigrationSummary> {
             'geminiModel',
             'vertexLocation',
             'useOfficialTranslations',
+            'subtitleFontScale',
             ...RETIRED_SYNC_KEYS,
         ]),
         browser.storage.local.get([
@@ -145,6 +162,18 @@ async function runMigration(): Promise<MigrationSummary> {
         syncItems.useOfficialTranslations === undefined
     ) {
         syncUpdates.useOfficialTranslations = syncItems.useNativeSubtitles;
+    }
+
+    // Subtitles are sized against the video since 3.1; the old
+    // width-relative value seeds the equivalent scale exactly once.
+    if (
+        typeof syncItems.subtitleFontSize === 'number' &&
+        Number.isFinite(syncItems.subtitleFontSize) &&
+        syncItems.subtitleFontScale === undefined
+    ) {
+        syncUpdates.subtitleFontScale = legacyFontSizeToScale(
+            syncItems.subtitleFontSize
+        );
     }
 
     if (Object.keys(localUpdates).length > 0) {

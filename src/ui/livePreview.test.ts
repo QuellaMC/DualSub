@@ -20,17 +20,17 @@ afterEach(() => {
 describe('previewContentSettings', () => {
     it('sends the changes to the active tab as a configChanged request', async () => {
         const send = stubTabs(activeTab(7));
-        await previewContentSettings({ subtitleFontSize: 1.5 });
+        await previewContentSettings({ subtitleFontScale: 1.5 });
         expect(send).toHaveBeenCalledWith(
             7,
-            { action: 'configChanged', changes: { subtitleFontSize: 1.5 } },
+            { action: 'configChanged', changes: { subtitleFontScale: 1.5 } },
             undefined
         );
     });
 
     it('does nothing without an active tab', async () => {
         const send = stubTabs([]);
-        await previewContentSettings({ subtitleFontSize: 1.5 });
+        await previewContentSettings({ subtitleFontScale: 1.5 });
         expect(send).not.toHaveBeenCalled();
     });
 
@@ -48,17 +48,17 @@ describe('previewContentSettings', () => {
             .mockResolvedValue({ success: true } as never);
 
         const first = previewContentSettings({
-            subtitleFontSize: 1.4,
+            subtitleFontScale: 1.4,
             subtitleGap: 0.5,
         });
-        const second = previewContentSettings({ subtitleFontSize: 1.8 });
+        const second = previewContentSettings({ subtitleFontScale: 1.8 });
         lookups[1]!(activeTab(7));
         await second;
         lookups[0]!(activeTab(7));
         await first;
 
         expect(send.mock.calls.map((call) => call[1])).toEqual([
-            { action: 'configChanged', changes: { subtitleFontSize: 1.8 } },
+            { action: 'configChanged', changes: { subtitleFontScale: 1.8 } },
             { action: 'configChanged', changes: { subtitleGap: 0.5 } },
         ]);
     });
@@ -67,12 +67,12 @@ describe('previewContentSettings', () => {
         const send = stubTabs(activeTab(7));
         send.mockRejectedValueOnce(new Error('Receiving end does not exist'));
         await expect(
-            previewContentSettings({ subtitleFontSize: 1.5 })
+            previewContentSettings({ subtitleFontScale: 1.5 })
         ).resolves.toBeUndefined();
 
         send.mockResolvedValueOnce({ success: false, error: 'nope' } as never);
         await expect(
-            previewContentSettings({ subtitleFontSize: 1.5 })
+            previewContentSettings({ subtitleFontScale: 1.5 })
         ).resolves.toBeUndefined();
     });
 });

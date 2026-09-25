@@ -1,5 +1,9 @@
+import type { SubtitleLook, SubtitleStyle } from './looks';
+
 export interface DisplaySettings {
-    readonly fontSizeVw: number;
+    readonly style: SubtitleStyle;
+    /** Multiplier over the look's base size. */
+    readonly fontScale: number;
     readonly gap: number;
     readonly verticalPosition: number;
     readonly orientation: 'column' | 'row';
@@ -32,21 +36,8 @@ export function createSubtitleElements(): SubtitleElements {
 
     const original = document.createElement('div');
     original.id = 'dualsub-original-subtitle';
-    Object.assign(original.style, {
-        color: 'white',
-        backgroundColor: 'rgba(0, 0, 0, 0.6)',
-        textShadow: '1px 1px 2px black, 0 0 3px black',
-        borderRadius: '4px',
-    });
-
     const translated = document.createElement('div');
     translated.id = 'dualsub-translated-subtitle';
-    Object.assign(translated.style, {
-        color: '#00FFFF',
-        backgroundColor: 'rgba(0, 0, 0, 0.6)',
-        textShadow: '1px 1px 2px black, 0 0 3px black',
-        borderRadius: '4px',
-    });
 
     container.append(original, translated);
     return { container, original, translated };
@@ -67,20 +58,43 @@ function verticalPositionToBottomPercent(verticalPosition: number): number {
     return 5 + normalized * 45;
 }
 
+/** Font size in pixels for a video of the given rendered height. */
+export function fontSizePx(
+    look: SubtitleLook,
+    display: DisplaySettings,
+    videoHeight: number
+): number {
+    return (
+        Math.round(look.sizeRatio * videoHeight * display.fontScale * 100) / 100
+    );
+}
+
 export function applyDisplaySettings(
     elements: SubtitleElements,
-    display: DisplaySettings
+    display: DisplaySettings,
+    look: SubtitleLook,
+    videoHeight: number
 ): void {
     const { container, original, translated } = elements;
+    const fontSize = `${fontSizePx(look, display, videoHeight)}px`;
 
-    for (const element of [original, translated]) {
+    for (const [element, color] of [
+        [original, look.originalColor],
+        [translated, look.translatedColor],
+    ] as const) {
         Object.assign(element.style, {
-            padding: '0.2em 0.5em',
+            fontFamily: look.fontFamily,
+            fontWeight: look.fontWeight,
+            color,
+            textShadow: look.textShadow,
+            backgroundColor: look.background,
+            padding: look.padding,
+            borderRadius: look.borderRadius,
+            fontSize,
             lineHeight: '1.3',
             whiteSpace: 'pre-line',
             overflow: 'visible',
             textOverflow: 'clip',
-            fontSize: `${display.fontSizeVw}vw`,
             width: 'auto',
             textAlign: 'center',
             boxSizing: 'border-box',

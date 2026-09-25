@@ -106,7 +106,8 @@ function startSession() {
         handoff: null,
         settings: {
             subtitlesEnabled: true,
-            subtitleFontSize: 1.1,
+            subtitleStyle: 'dualsub',
+            subtitleFontScale: 1,
             subtitleGap: 0.3,
             subtitleVerticalPosition: 2.8,
             subtitleLayoutOrientation: 'column',

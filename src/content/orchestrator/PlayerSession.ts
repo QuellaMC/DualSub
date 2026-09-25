@@ -50,7 +50,8 @@ const SUBTITLE_LOADING_TIMEOUT_MS = 20_000;
 
 export const CONTENT_SETTINGS_KEYS = [
     'subtitlesEnabled',
-    'subtitleFontSize',
+    'subtitleStyle',
+    'subtitleFontScale',
     'subtitleGap',
     'subtitleVerticalPosition',
     'subtitleLayoutOrientation',
@@ -95,7 +96,8 @@ export function toSubtitleLanguages(
 
 export function toDisplaySettings(settings: ContentSettings): DisplaySettings {
     return {
-        fontSizeVw: settings.subtitleFontSize,
+        style: settings.subtitleStyle,
+        fontScale: settings.subtitleFontScale,
         gap: settings.subtitleGap,
         verticalPosition: settings.subtitleVerticalPosition,
         orientation: settings.subtitleLayoutOrientation,
