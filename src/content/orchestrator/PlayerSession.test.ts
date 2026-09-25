@@ -104,9 +104,11 @@ function startSession() {
         cache,
         uiRoot: new UiRoot(controller.signal),
         handoff: null,
+        platformLook: null,
         settings: {
             subtitlesEnabled: true,
-            subtitleFontSize: 1.1,
+            subtitleStyle: 'dualsub',
+            subtitleFontScale: 1,
             subtitleGap: 0.3,
             subtitleVerticalPosition: 2.8,
             subtitleLayoutOrientation: 'column',
@@ -172,6 +174,9 @@ describe('PlayerSession', () => {
             videoId: '1',
             languages: ['en', 'zh-CN'],
         });
+        expect(active.sendControl).toHaveBeenCalledWith({
+            t: 'request-subtitle-appearance',
+        });
 
         active.cache.publish('1', resolution(['en', 'zh-CN']));
         await settle();
@@ -214,6 +219,25 @@ describe('PlayerSession', () => {
         await settle();
         active.tick(1.5);
         active.session.updateLanguages({ ...LANGUAGES });
+        expect(texts()).toEqual(['Hello', '你好']);
+    });
+
+    it("draws the platform style from the viewer's reported appearance", async () => {
+        stubBackground({ 'zh-CN': '你好' });
+        active = startSession();
+        active.session.applySettings({ subtitleStyle: 'platform' });
+        active.cache.publish('1', resolution(['en', 'zh-CN']));
+        await settle();
+        active.tick(1.5);
+        const original = (): HTMLElement =>
+            document.getElementById('dualsub-original-subtitle')!;
+        expect(original().style.fontWeight).toBe('bold');
+
+        active.session.updatePlatformLook({
+            ...netflixDescriptor.look,
+            fontWeight: '600',
+        });
+        expect(original().style.fontWeight).toBe('600');
         expect(texts()).toEqual(['Hello', '你好']);
     });
 

@@ -120,10 +120,12 @@ export class DisneyPlusAdapter implements PlatformAdapter {
         });
     }
 
-    /** Page-world setup: start the program-clock poller for this session. */
+    /** Page-world setup: start the program-clock poller for this session
+     *  and ask for the viewer's subtitle appearance. */
     onBridgeConnected(): void {
         this.context.bridge.sendControl({ t: 'playback-bridge-resume' });
         this.context.bridge.sendControl({ t: 'request-playback-timeline' });
+        this.context.bridge.sendControl({ t: 'request-subtitle-appearance' });
     }
 
     interpretSubtitleEvent(event: CapturedEvent): SubtitleFetchSpec | null {

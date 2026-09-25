@@ -59,6 +59,15 @@
     "layoutLeftRight": {
         "message": "左右配置"
     },
+    "subtitleStyleLabel": {
+        "message": "字幕スタイル："
+    },
+    "subtitleStyleDualSub": {
+        "message": "DualSub"
+    },
+    "subtitleStylePlatform": {
+        "message": "プラットフォームに合わせる"
+    },
     "uiLanguageLabel": {
         "message": "言語："
     },
@@ -88,6 +97,9 @@
     },
     "statusLayoutOrientationUpdated": {
         "message": "レイアウト方向が更新されました。"
+    },
+    "statusSubtitleStyleUpdated": {
+        "message": "字幕スタイルを更新しました。"
     },
     "statusFontSize": {
         "message": "フォントサイズ："

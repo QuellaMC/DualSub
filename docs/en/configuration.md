@@ -5,6 +5,7 @@
 - Enable/Disable dual subtitles
 - Translation Provider and Target Language
 - Layout (Top/Bottom, Left/Right), appearance, and timing offset
+- Subtitle style: DualSub's own look, or Match Platform, which follows the subtitle appearance settings of your Netflix or Disney+ profile. Font size is a scale over the look's base size, which follows the video's height.
 
 ## Advanced Options
 

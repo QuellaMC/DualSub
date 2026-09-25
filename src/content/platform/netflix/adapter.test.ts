@@ -40,6 +40,9 @@ describe('NetflixAdapter', () => {
             videoId: '70283145',
             languages: ['en', 'zh-CN'],
         });
+        expect(sendControl).toHaveBeenCalledWith({
+            t: 'request-subtitle-appearance',
+        });
     });
 
     it('asks only for the original language when translation is API-only', () => {

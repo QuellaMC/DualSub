@@ -5,6 +5,16 @@ All notable changes to DualSub will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Subtitle style setting in the popup: DualSub's own look, or "Match Platform", which draws both lines with the typography the platform's own player would use: the font, color, edge and background from your Netflix or Disney+ profile's subtitle appearance settings, without the platform's subtitles being on. Size stays DualSub's own slider, since the platforms size a single line.
+
+### Changed
+
+- Subtitles are sized from the video's rendered height instead of the window width, so they follow fullscreen and window changes the way the platforms' own subtitles do. The font size slider is now a scale factor; stored values migrate to the equivalent scale.
+
 ## [3.0.2] - 2026-09-03
 
 ### Fixed
@@ -148,6 +158,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+[Unreleased]: https://github.com/QuellaMC/DualSub/compare/v3.0.2...HEAD
 [3.0.2]: https://github.com/QuellaMC/DualSub/compare/v3.0.1...v3.0.2
 [3.0.1]: https://github.com/QuellaMC/DualSub/compare/v3.0.0...v3.0.1
 [3.0.0]: https://github.com/QuellaMC/DualSub/compare/v2.5.0...v3.0.0

@@ -5,10 +5,10 @@ describe('prepareContentPreview', () => {
     it('canonicalizes display values', () => {
         expect(
             prepareContentPreview({
-                subtitleFontSize: 1.5,
+                subtitleFontScale: 1.5,
                 subtitlesEnabled: false,
             })
-        ).toEqual({ subtitleFontSize: 1.5, subtitlesEnabled: false });
+        ).toEqual({ subtitleFontScale: 1.5, subtitlesEnabled: false });
     });
 
     it('rejects keys outside the display set', () => {
@@ -22,7 +22,7 @@ describe('prepareContentPreview', () => {
 
     it('rejects the whole payload when any value is invalid', () => {
         expect(() =>
-            prepareContentPreview({ subtitleFontSize: 1.5, subtitleGap: 9 })
+            prepareContentPreview({ subtitleFontScale: 1.5, subtitleGap: 9 })
         ).toThrow(TypeError);
     });
 });

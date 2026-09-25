@@ -18,9 +18,10 @@ export const POPUP_SETTINGS_KEYS = [
     'useOfficialTranslations',
     'originalLanguage',
     'targetLanguage',
+    'subtitleStyle',
     'subtitleLayoutOrder',
     'subtitleLayoutOrientation',
-    'subtitleFontSize',
+    'subtitleFontScale',
     'subtitleGap',
     'subtitleVerticalPosition',
     'subtitleTimeOffset',
@@ -32,7 +33,7 @@ type PopupSettings = Pick<SettingsValues, (typeof POPUP_SETTINGS_KEYS)[number]>;
 const GITHUB_URL = 'https://github.com/QuellaMC/DualSub';
 
 const SLIDER_STATUS: Record<SliderKey, { key: string; unit: string }> = {
-    subtitleFontSize: { key: 'statusFontSize', unit: 'vw' },
+    subtitleFontScale: { key: 'statusFontSize', unit: '×' },
     subtitleGap: { key: 'statusVerticalGap', unit: 'em' },
     subtitleVerticalPosition: { key: 'statusVerticalPosition', unit: '' },
 };
@@ -206,14 +207,21 @@ export function PopupApp() {
                         );
                     }
                 }}
+                subtitleStyle={settings.subtitleStyle}
                 layoutOrder={settings.subtitleLayoutOrder}
                 layoutOrientation={settings.subtitleLayoutOrientation}
                 sliderValues={{
-                    subtitleFontSize: settings.subtitleFontSize,
+                    subtitleFontScale: settings.subtitleFontScale,
                     subtitleGap: settings.subtitleGap,
                     subtitleVerticalPosition: settings.subtitleVerticalPosition,
                 }}
                 timeOffset={settings.subtitleTimeOffset}
+                onSubtitleStyleChange={(value) =>
+                    void persist(
+                        { subtitleStyle: value },
+                        t('statusSubtitleStyleUpdated')
+                    )
+                }
                 onLayoutOrderChange={(value) =>
                     void persist(
                         { subtitleLayoutOrder: value },
