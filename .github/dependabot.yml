@@ -4,11 +4,34 @@ updates:
       directory: /
       schedule:
           interval: weekly
+      # A dependency joins the first group it matches. Packages that must
+      # upgrade in lockstep come first; the broad groups take only minor and
+      # patch updates, so one blocked major cannot hold back the rest.
       groups:
+          react:
+              patterns:
+                  - react
+                  - react-dom
+                  - '@types/react'
+                  - '@types/react-dom'
+          vitest:
+              patterns:
+                  - vitest
+                  - '@vitest/*'
+          eslint:
+              patterns:
+                  - eslint
+                  - '@eslint/js'
           production-dependencies:
               dependency-type: production
+              update-types:
+                  - minor
+                  - patch
           development-dependencies:
               dependency-type: development
+              update-types:
+                  - minor
+                  - patch
 
     - package-ecosystem: github-actions
       directory: /
