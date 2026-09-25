@@ -3,25 +3,8 @@ import { TRANSLATION_COLOR, type SubtitleLook } from '../../renderer/looks';
 // Netflix's player draws subtitles from the profile's appearance settings
 // (defaults plus non-null overrides) through the fixed tables below, taken
 // from cadmium-playercore 6.0062. Reproducing them here lets the overlay
-// match the platform's own rendering without a native cue on screen.
-
-/** Medium text is one nineteenth of the picture height. */
-const BASE_SIZE_RATIO = 0.05263157894736842;
-
-const CHARACTER_SIZE_SCALE: Readonly<Record<string, number>> = {
-    SMALL: 0.5,
-    'SMALL-MEDIUM': 0.8,
-    MEDIUM: 1,
-    'MEDIUM-LARGE': 1.3,
-    LARGE: 2,
-};
-
-/** Monospaced styles are drawn larger at small and medium sizes only. */
-const MONOSPACE_SIZE_SCALE: Readonly<Record<string, number>> = {
-    MONOSPACED_SANS_SERIF: 1.37,
-    MONOSPACED_SERIF: 1.15,
-};
-const MONOSPACE_SCALED_SIZES = new Set(['SMALL', 'MEDIUM']);
+// match the platform's own typography without a native cue on screen.
+// Size is not copied: the player sizes one line, and DualSub draws two.
 
 const OPACITY: Readonly<Record<string, number>> = {
     NONE: 0,
@@ -52,21 +35,7 @@ const COLOR_HEX: Readonly<Record<string, string>> = {
     pink: '#ffc0cb',
 };
 
-/** Languages whose medium text the player enlarges by 1.4, and small by 1.6
- *  (small also covers Korean). Normalized codes. */
-const INCREASED_MEDIUM_LANGUAGES = [
-    'ro',
-    'zh-CN',
-    'zh-TW',
-    'vi',
-    'ar',
-    'he',
-    'hi',
-    'th',
-    'ta',
-    'te',
-];
-const INCREASED_SMALL_LANGUAGES = [...INCREASED_MEDIUM_LANGUAGES, 'ko'];
+/** Languages the player draws at normal weight. Normalized codes. */
 const LESS_BOLD_LANGUAGES = ['th', 'ta'];
 
 const DEFAULT_FONT_DECLARATIONS =
@@ -175,28 +144,6 @@ function parseFontDeclarations(declarations: string): {
     return font;
 }
 
-function languageOverrides(size: string): SubtitleLook['languageOverrides'] {
-    const overrides: Record<
-        string,
-        { sizeScale?: number; fontWeight?: string }
-    > = {};
-    const enlarged =
-        size === 'MEDIUM'
-            ? { languages: INCREASED_MEDIUM_LANGUAGES, scale: 1.4 }
-            : size === 'SMALL'
-              ? { languages: INCREASED_SMALL_LANGUAGES, scale: 1.6 }
-              : null;
-    if (enlarged) {
-        for (const language of enlarged.languages) {
-            overrides[language] = { sizeScale: enlarged.scale };
-        }
-    }
-    for (const language of LESS_BOLD_LANGUAGES) {
-        overrides[language] = { ...overrides[language], fontWeight: 'normal' };
-    }
-    return overrides;
-}
-
 /** The look Netflix's player would draw from these settings, or null when
  *  the payload is not the appearance shape the page reports. */
 export function parseNetflixLook(
@@ -211,11 +158,7 @@ export function parseNetflixLook(
     const setting = (key: string): string | null =>
         overrides[key] ?? defaults[key] ?? null;
 
-    const size = setting('characterSize') ?? 'MEDIUM';
     const style = setting('characterStyle') ?? DEFAULT_STYLE;
-    const monospaceScale = MONOSPACE_SCALED_SIZES.has(size)
-        ? (MONOSPACE_SIZE_SCALE[style] ?? 1)
-        : 1;
     const font = parseFontDeclarations(
         fontFamilyMapping[style] ??
             fontFamilyMapping[DEFAULT_STYLE] ??
@@ -242,11 +185,12 @@ export function parseNetflixLook(
                 : 'transparent',
         padding: '0',
         borderRadius: '0',
-        sizeRatio:
-            BASE_SIZE_RATIO *
-            (CHARACTER_SIZE_SCALE[size] ?? 1) *
-            monospaceScale,
-        languageOverrides: languageOverrides(size),
+        languageOverrides: Object.fromEntries(
+            LESS_BOLD_LANGUAGES.map((language) => [
+                language,
+                { fontWeight: 'normal' },
+            ])
+        ),
     };
 }
 

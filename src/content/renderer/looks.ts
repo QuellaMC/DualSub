@@ -5,16 +5,15 @@ export type SubtitleStyle = SettingsValues['subtitleStyle'];
 
 /** Adjustments a platform makes for the language of the line it draws. */
 export interface LanguageLookOverride {
-    readonly sizeScale?: number;
     readonly fontFamily?: string;
     readonly fontWeight?: string;
 }
 
 /**
  * The typography and box of both subtitle lines. Layout (order, gap,
- * position) stays with the display settings; size is a fraction of the
- * video's rendered height so every look scales the way the platforms'
- * own subtitles do.
+ * position) stays with the display settings, and size with the renderer:
+ * the platforms size a single line, and two lines at that size are too
+ * tall, so every look is drawn at DualSub's own size.
  */
 export interface SubtitleLook {
     readonly fontFamily: string;
@@ -28,8 +27,6 @@ export interface SubtitleLook {
     readonly background: string;
     readonly padding: string;
     readonly borderRadius: string;
-    /** Font size at scale 1, as a fraction of the video's rendered height. */
-    readonly sizeRatio: number;
     /** Keyed by normalized language code. */
     readonly languageOverrides: Readonly<Record<string, LanguageLookOverride>>;
 }
@@ -48,7 +45,6 @@ export const DUALSUB_LOOK: SubtitleLook = {
     background: 'rgba(0, 0, 0, 0.6)',
     padding: '0.2em 0.5em',
     borderRadius: '4px',
-    sizeRatio: 0.02,
     languageOverrides: {},
 };
 
@@ -76,7 +72,6 @@ export function forLanguage(
     }
     return {
         ...look,
-        sizeRatio: look.sizeRatio * (override.sizeScale ?? 1),
         fontFamily: override.fontFamily ?? look.fontFamily,
         fontWeight: override.fontWeight ?? look.fontWeight,
     };

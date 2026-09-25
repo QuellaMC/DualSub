@@ -8,9 +8,7 @@ const CAPTURED = {
     windowColor: 'rgba(255,255,255,0)',
     textColor: 'rgba(255,255,255,1)',
     font: 'default',
-    size: 'medium',
     textEdge: 'none',
-    sizeScalar: 3.3,
     fontMappingOverride: {
         default: { 'font-family': 'sans-serif' },
         japanese: {
@@ -35,33 +33,15 @@ describe('parseDisneyLook', () => {
             padding: '0.5rem',
             borderRadius: '0.5em',
         });
-        expect(look.sizeRatio).toBeCloseTo(0.033, 6);
         expect(forLanguage(look, 'ja').fontFamily).toBe(
             'Hiragino Kaku Gothic ProN, Hiragino Sans, Meiryo, sans-serif'
         );
         expect(forLanguage(look, 'en').fontFamily).toBe('sans-serif');
     });
 
-    it('has a clear default look at medium size', () => {
+    it('has a clear default look', () => {
         expect(DISNEY_LOOK.background).toBe('rgba(0,0,0,0)');
-        expect(DISNEY_LOOK.sizeRatio).toBeCloseTo(0.033, 6);
-    });
-
-    it('scales by size and clamps the size scalar', () => {
-        expect(
-            parseDisneyLook({ ...CAPTURED, size: 'large', sizeScalar: 20 })!
-                .sizeRatio
-        ).toBeCloseTo(0.15, 6);
-        expect(
-            parseDisneyLook({
-                ...CAPTURED,
-                size: 'extra-large',
-                sizeScalar: 0.5,
-            })!.sizeRatio
-        ).toBeCloseTo(0.02, 6);
-        expect(
-            parseDisneyLook({ ...CAPTURED, sizeScalar: 'big' })!.sizeRatio
-        ).toBeCloseTo(0.033, 6);
+        expect(DISNEY_LOOK.textShadow).toBe('none');
     });
 
     it('maps edges to shadows and strokes', () => {
@@ -110,8 +90,8 @@ describe('parseDisneyLook', () => {
         });
     });
 
-    it('rejects payloads without a known size', () => {
+    it('rejects payloads carrying none of the appearance settings', () => {
         expect(parseDisneyLook({})).toBeNull();
-        expect(parseDisneyLook({ size: 'huge' })).toBeNull();
+        expect(parseDisneyLook({ size: 'medium', sizeScalar: 3.3 })).toBeNull();
     });
 });

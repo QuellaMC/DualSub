@@ -110,9 +110,7 @@ describe('disneyRecipe appearance', () => {
         textColor: 'rgba(255,255,255,1)',
         backgroundColor: 'rgba(0,0,0,0.75)',
         font: 'default',
-        size: 'medium',
         textEdge: 'none',
-        sizeScalar: 3.3,
     };
 
     function mountCaptions(): void {
@@ -124,6 +122,8 @@ describe('disneyRecipe appearance', () => {
                 preferences: {
                     appearance: {
                         ...appearance,
+                        size: 'medium',
+                        sizeScalar: 3.3,
                         fontMappingOverride: {
                             japanese: { 'font-family': 'Meiryo', weight: 1 },
                             bogus: 'x',

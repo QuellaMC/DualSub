@@ -1,5 +1,10 @@
 import type { SubtitleLook, SubtitleStyle } from './looks';
 
+/** Font size at scale 1 as a fraction of the picture height, for every
+ *  look: two stacked lines need a smaller size than the single line the
+ *  platforms size their own subtitles for. */
+const BASE_SIZE_RATIO = 0.02;
+
 export interface DisplaySettings {
     readonly style: SubtitleStyle;
     /** Multiplier over the look's base size. */
@@ -58,14 +63,14 @@ function verticalPositionToBottomPercent(verticalPosition: number): number {
     return 5 + normalized * 45;
 }
 
-/** Font size in pixels for a video of the given rendered height. */
+/** Font size in pixels for a picture of the given rendered height. */
 export function fontSizePx(
-    look: SubtitleLook,
     display: DisplaySettings,
     videoHeight: number
 ): number {
     return (
-        Math.round(look.sizeRatio * videoHeight * display.fontScale * 100) / 100
+        Math.round(BASE_SIZE_RATIO * videoHeight * display.fontScale * 100) /
+        100
     );
 }
 
@@ -76,7 +81,7 @@ export function applyDisplaySettings(
     videoHeight: number
 ): void {
     const { container, original, translated } = elements;
-    const fontSize = `${fontSizePx(look, display, videoHeight)}px`;
+    const fontSize = `${fontSizePx(display, videoHeight)}px`;
 
     for (const [element, color] of [
         [original, look.originalColor],

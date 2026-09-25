@@ -27,7 +27,7 @@ describe('netflixDescriptor', () => {
     });
 
     it('routes appearance events document-wide and turns them into a look', () => {
-        const appearance = { defaults: { characterSize: 'LARGE' } };
+        const appearance = { defaults: { characterEdgeAttributes: 'NONE' } };
         expect(
             netflixDescriptor.classifyBridgeEvent({
                 t: 'subtitle-appearance',
@@ -39,8 +39,8 @@ describe('netflixDescriptor', () => {
             netflixDescriptor.parsePlatformLook(NETFLIX_DEFAULT_APPEARANCE)
         ).toEqual(netflixDescriptor.look);
         expect(
-            netflixDescriptor.parsePlatformLook(appearance)?.sizeRatio
-        ).toBeCloseTo(2 / 19, 6);
+            netflixDescriptor.parsePlatformLook(appearance)?.textShadow
+        ).toBe('none');
         expect(netflixDescriptor.parsePlatformLook({})).toBeNull();
     });
 

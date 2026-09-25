@@ -36,7 +36,6 @@ describe('parseNetflixLook', () => {
             background: 'transparent',
             padding: '0',
         });
-        expect(NETFLIX_LOOK.sizeRatio).toBeCloseTo(1 / 19, 6);
     });
 
     it('lets non-null overrides win and maps every table', () => {
@@ -58,24 +57,10 @@ describe('parseNetflixLook', () => {
                 '-1px 0px #ff0000, 0px 1px #ff0000, 1px 0px #ff0000, 0px -1px #ff0000',
             background: 'rgba(0, 0, 0, 0.5)',
         });
-        // Large text gets no monospace enlargement.
-        expect(look.sizeRatio).toBeCloseTo(2 / 19, 6);
         expect(look.languageOverrides).toEqual({
             th: { fontWeight: 'normal' },
             ta: { fontWeight: 'normal' },
         });
-    });
-
-    it('enlarges monospaced text at small and medium sizes', () => {
-        expect(
-            withOverrides({ characterStyle: 'MONOSPACED_SERIF' }).sizeRatio
-        ).toBeCloseTo(1.15 / 19, 6);
-        expect(
-            withOverrides({
-                characterStyle: 'MONOSPACED_SERIF',
-                characterSize: 'SMALL',
-            }).sizeRatio
-        ).toBeCloseTo((0.5 * 1.15) / 19, 6);
     });
 
     it('keeps small capitals as a font variant', () => {
@@ -106,30 +91,10 @@ describe('parseNetflixLook', () => {
         ).toBe('none');
     });
 
-    it('enlarges the languages the player enlarges, per size', () => {
-        expect(forLanguage(NETFLIX_LOOK, 'zh-CN').sizeRatio).toBeCloseTo(
-            1.4 / 19,
-            6
-        );
-        expect(forLanguage(NETFLIX_LOOK, 'zh-Hant').sizeRatio).toBeCloseTo(
-            1.4 / 19,
-            6
-        );
-        expect(forLanguage(NETFLIX_LOOK, 'ko').sizeRatio).toBeCloseTo(
-            1 / 19,
-            6
-        );
-        expect(forLanguage(NETFLIX_LOOK, 'en').sizeRatio).toBeCloseTo(
-            1 / 19,
-            6
-        );
-
-        const small = withOverrides({ characterSize: 'SMALL' });
-        expect(forLanguage(small, 'ko').sizeRatio).toBeCloseTo(
-            (0.5 * 1.6) / 19,
-            6
-        );
+    it('draws Thai and Tamil at normal weight, as the player does', () => {
         expect(forLanguage(NETFLIX_LOOK, 'th').fontWeight).toBe('normal');
+        expect(forLanguage(NETFLIX_LOOK, 'ta-IN').fontWeight).toBe('normal');
+        expect(forLanguage(NETFLIX_LOOK, 'zh-CN')).toBe(NETFLIX_LOOK);
     });
 
     it('accepts hex colors and falls back for names it does not know', () => {

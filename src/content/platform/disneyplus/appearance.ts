@@ -3,20 +3,8 @@ import { TRANSLATION_COLOR, type SubtitleLook } from '../../renderer/looks';
 // Disney+'s player draws subtitles from the profile's appearance settings
 // through the fixed tables below, taken from the hive playback-session
 // bundle (26.11). Reproducing them here lets the overlay match the
-// platform's own rendering without a native cue on screen.
-
-const DEFAULT_SIZE_SCALAR = 3.3;
-const MIN_SIZE_SCALAR = 1;
-const MAX_SIZE_SCALAR = 10;
-
-const SIZE_SCALE: Readonly<Record<string, number>> = {
-    small: 0.5,
-    'medium-small': 0.75,
-    medium: 1,
-    'medium-large': 1.25,
-    large: 1.5,
-    'extra-large': 2,
-};
+// platform's own typography without a native cue on screen. Size is not
+// copied: the player sizes one line, and DualSub draws two.
 
 const EDGES: Readonly<Record<string, { shadow: string; stroke: string }>> = {
     none: { shadow: 'none', stroke: '' },
@@ -70,13 +58,20 @@ const SCRIPT_LANGUAGES: Readonly<Record<string, string>> = {
     vietnamese: 'vi',
 };
 
+/** The settings a look is built from; a payload with none is not one. */
+const APPEARANCE_KEYS = [
+    'textColor',
+    'backgroundColor',
+    'font',
+    'textEdge',
+    'fontMappingOverride',
+];
+
 const CSS_COLOR_PATTERN =
     /^(#[0-9a-f]{3,8}|rgba?\(\s*\d+(\.\d+)?\s*,\s*\d+(\.\d+)?\s*,\s*\d+(\.\d+)?\s*(,\s*\d*\.?\d+\s*)?\))$/i;
 
 /** A fresh profile's settings, as the player reports them. */
 export const DISNEY_DEFAULT_APPEARANCE: Record<string, unknown> = {
-    size: 'medium',
-    sizeScalar: DEFAULT_SIZE_SCALAR,
     font: 'default',
     textEdge: 'none',
     textColor: 'rgba(255,255,255,1)',
@@ -123,19 +118,12 @@ function fontRules(override: unknown): Record<string, FontRule> {
     return rules;
 }
 
-function sizeScalar(value: unknown): number {
-    return typeof value === 'number' && Number.isFinite(value)
-        ? Math.min(MAX_SIZE_SCALAR, Math.max(MIN_SIZE_SCALAR, value))
-        : DEFAULT_SIZE_SCALAR;
-}
-
 /** The look Disney+'s player would draw from these settings, or null when
  *  the payload is not the appearance shape the player reports. */
 export function parseDisneyLook(
     appearance: Record<string, unknown>
 ): SubtitleLook | null {
-    const size = readString(appearance.size);
-    if (size === null || !(size in SIZE_SCALE)) {
+    if (!APPEARANCE_KEYS.some((key) => key in appearance)) {
         return null;
     }
     const rules = fontRules(appearance.fontMappingOverride);
@@ -163,8 +151,6 @@ export function parseDisneyLook(
         background: cssColor(appearance.backgroundColor) ?? 'transparent',
         padding: '0.5rem',
         borderRadius: '0.5em',
-        sizeRatio:
-            (sizeScalar(appearance.sizeScalar) * SIZE_SCALE[size]!) / 100,
         languageOverrides,
     };
 }

@@ -45,29 +45,24 @@ describe('forLanguage', () => {
         const look: SubtitleLook = {
             ...DUALSUB_LOOK,
             languageOverrides: {
-                'zh-CN': { sizeScale: 1.4 },
+                'zh-CN': { fontWeight: '600' },
                 th: { fontWeight: 'normal', fontFamily: 'Thai' },
             },
         };
-        expect(forLanguage(look, 'zh-Hans').sizeRatio).toBeCloseTo(0.028, 6);
+        expect(forLanguage(look, 'zh-Hans').fontWeight).toBe('600');
         expect(forLanguage(look, 'en')).toBe(look);
         expect(forLanguage(look, 'th-TH')).toMatchObject({
             fontFamily: 'Thai',
             fontWeight: 'normal',
-            sizeRatio: 0.02,
         });
     });
 });
 
 describe('fontSizePx', () => {
-    it('multiplies the look ratio by the video height and the scale', () => {
-        expect(fontSizePx(DUALSUB_LOOK, display, 1000)).toBe(20);
-        expect(
-            fontSizePx(DUALSUB_LOOK, { ...display, fontScale: 1.5 }, 1000)
-        ).toBe(30);
-        expect(
-            fontSizePx(DUALSUB_LOOK, { ...display, fontScale: 0.5 }, 333)
-        ).toBe(3.33);
+    it('is a fixed fraction of the picture height times the scale', () => {
+        expect(fontSizePx(display, 1000)).toBe(20);
+        expect(fontSizePx({ ...display, fontScale: 1.5 }, 1000)).toBe(30);
+        expect(fontSizePx({ ...display, fontScale: 0.5 }, 333)).toBe(3.33);
     });
 });
 

@@ -22,7 +22,7 @@ describe('disneyPlusDescriptor', () => {
     });
 
     it('routes appearance events document-wide and turns them into a look', () => {
-        const appearance = { size: 'large', sizeScalar: 4 };
+        const appearance = { textEdge: 'raised' };
         expect(
             disneyPlusDescriptor.classifyBridgeEvent({
                 t: 'subtitle-appearance',
@@ -34,8 +34,8 @@ describe('disneyPlusDescriptor', () => {
             disneyPlusDescriptor.parsePlatformLook(DISNEY_DEFAULT_APPEARANCE)
         ).toEqual(disneyPlusDescriptor.look);
         expect(
-            disneyPlusDescriptor.parsePlatformLook(appearance)?.sizeRatio
-        ).toBeCloseTo(0.06, 6);
+            disneyPlusDescriptor.parsePlatformLook(appearance)?.textShadow
+        ).toBe('2px 2px 0 rgba(0,0,0,.5)');
         expect(disneyPlusDescriptor.parsePlatformLook({})).toBeNull();
     });
 

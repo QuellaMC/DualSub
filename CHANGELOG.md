@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Subtitle style setting in the popup: DualSub's own look, or "Match Platform", which draws both lines the way the platform's own player would. It reads the subtitle appearance settings of your Netflix or Disney+ profile (font, size, color, edge, background) and applies the platform's own size rules, including Netflix's per-language enlargement, without the platform's subtitles being on.
+- Subtitle style setting in the popup: DualSub's own look, or "Match Platform", which draws both lines with the typography the platform's own player would use: the font, color, edge and background from your Netflix or Disney+ profile's subtitle appearance settings, without the platform's subtitles being on. Size stays DualSub's own slider, since the platforms size a single line.
 
 ### Changed
 

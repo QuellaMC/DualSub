@@ -388,9 +388,10 @@ describe('Renderer styling', () => {
         renderer.setDisplay({ ...display, style: 'platform' });
         renderer.setPlatformLook({
             ...DUALSUB_LOOK,
-            languageOverrides: { 'zh-CN': { sizeScale: 1.5 } },
+            languageOverrides: { 'zh-CN': { fontWeight: '600' } },
         });
-        expect(original().style.fontSize).toBe('15px');
+        expect(original().style.fontWeight).toBe('600');
+        expect(original().style.fontSize).toBe('10px');
         controller.abort();
     });
 

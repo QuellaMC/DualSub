@@ -15,10 +15,8 @@ const APPEARANCE_POLL_INTERVAL_MS = 500;
 const APPEARANCE_WAIT_TIMEOUT_MS = 30_000;
 const APPEARANCE_STRING_KEYS = [
     'backgroundColor',
-    'windowColor',
     'textColor',
     'font',
-    'size',
     'textEdge',
 ] as const;
 const MAX_FONT_OVERRIDE_ENTRIES = 32;
@@ -182,8 +180,8 @@ function readCaptionAppearance(): Record<string, unknown> | null {
             appearance[key] = value;
         }
     }
-    if (typeof source.sizeScalar === 'number') {
-        appearance.sizeScalar = source.sizeScalar;
+    if (Object.keys(appearance).length === 0) {
+        return null;
     }
     const fontMappingOverride: Record<string, Record<string, string>> = {};
     if (isRecord(source.fontMappingOverride)) {
@@ -209,7 +207,7 @@ function readCaptionAppearance(): Record<string, unknown> | null {
         }
     }
     appearance.fontMappingOverride = fontMappingOverride;
-    return 'size' in appearance ? appearance : null;
+    return appearance;
 }
 
 const appearanceResolution = new ResolutionSlot();
