@@ -63,7 +63,9 @@ const RETIRED_LOCAL_KEYS = [
     'aiContextDebugMode',
 ];
 
-/** The scale that reproduces a legacy width-relative size at its default. */
+/** Legacy sizes were viewport-width percentages and the new basis is the
+ *  picture height, so no pixel equivalence exists; what carries over is the
+ *  user's ratio to the old default. */
 function legacyFontSizeToScale(fontSizeVw: number): number {
     const { min, max } = SETTING_BOUNDS.subtitleFontScale;
     const scale = Math.min(

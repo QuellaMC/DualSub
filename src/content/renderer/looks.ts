@@ -1,13 +1,6 @@
 import type { SettingsValues } from '@/config/schema';
-import { normalizeLanguageCode } from '@/shared/languageNormalization';
 
 export type SubtitleStyle = SettingsValues['subtitleStyle'];
-
-/** Adjustments a platform makes for the language of the line it draws. */
-export interface LanguageLookOverride {
-    readonly fontFamily?: string;
-    readonly fontWeight?: string;
-}
 
 /**
  * The typography and box of both subtitle lines. Layout (order, gap,
@@ -27,8 +20,6 @@ export interface SubtitleLook {
     readonly background: string;
     readonly padding: string;
     readonly borderRadius: string;
-    /** Keyed by normalized language code. */
-    readonly languageOverrides: Readonly<Record<string, LanguageLookOverride>>;
 }
 
 /** The translation keeps this color in every look so the lines stay apart. */
@@ -45,7 +36,6 @@ export const DUALSUB_LOOK: SubtitleLook = {
     background: 'rgba(0, 0, 0, 0.6)',
     padding: '0.2em 0.5em',
     borderRadius: '4px',
-    languageOverrides: {},
 };
 
 /** The platform style is the viewer's own platform settings when the page
@@ -59,20 +49,4 @@ export function resolveLook(
         return DUALSUB_LOOK;
     }
     return platformLook ?? platformPreset;
-}
-
-/** The look as the platform would draw a line in `language`. */
-export function forLanguage(
-    look: SubtitleLook,
-    language: string
-): SubtitleLook {
-    const override = look.languageOverrides[normalizeLanguageCode(language)];
-    if (!override) {
-        return look;
-    }
-    return {
-        ...look,
-        fontFamily: override.fontFamily ?? look.fontFamily,
-        fontWeight: override.fontWeight ?? look.fontWeight,
-    };
 }

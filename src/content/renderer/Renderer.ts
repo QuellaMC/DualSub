@@ -9,7 +9,7 @@ import { overlayText } from '../overlayText';
 import { pairActiveCues, scanActiveCues } from './cueSelect';
 import { SessionContainer, type UiRoot } from './domLayer';
 import { startFrameLoop } from './frameLoop';
-import { forLanguage, resolveLook, type SubtitleLook } from './looks';
+import { resolveLook, type SubtitleLook } from './looks';
 import type { RendererState } from './RendererState';
 import {
     applyDisplaySettings,
@@ -200,9 +200,9 @@ export class Renderer {
         return elements;
     }
 
-    /** Re-derive every style from the display, its look, the original
-     *  language, and the video's current size. */
-    restyle(): void {
+    /** Re-derive every style from the display, its look, and the video's
+     *  current size. */
+    private restyle(): void {
         const elements = this.container.current;
         const media = this.media;
         if (!elements || !media) {
@@ -219,12 +219,11 @@ export class Renderer {
     }
 
     private look(): SubtitleLook {
-        const look = resolveLook(
+        return resolveLook(
             this.deps.state.display.style,
             this.deps.descriptor.look,
             this.platformLook
         );
-        return forLanguage(look, this.deps.wordLanguage?.() ?? 'und');
     }
 
     private frame(): void {

@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { forLanguage } from '../../renderer/looks';
 import { DISNEY_LOOK, parseDisneyLook } from './appearance';
 
 /** A profile's settings as the player reported them on 2026-09-25. */
@@ -33,10 +32,6 @@ describe('parseDisneyLook', () => {
             padding: '0.5rem',
             borderRadius: '0.5em',
         });
-        expect(forLanguage(look, 'ja').fontFamily).toBe(
-            'Hiragino Kaku Gothic ProN, Hiragino Sans, Meiryo, sans-serif'
-        );
-        expect(forLanguage(look, 'en').fontFamily).toBe('sans-serif');
     });
 
     it('has a clear default look', () => {

@@ -359,26 +359,26 @@ describe('netflixRecipe appearance', () => {
                   timedTextStyleOverrides: overrides,
               }
             : {};
+        const initParams: Record<string, unknown> = ready
+            ? { timedTextFontFamilyMapping: mapping }
+            : {};
         (globalThis as { netflix?: unknown }).netflix = {
             reactContext: { models: { userInfo: { data } } },
             appContext: {
                 state: {
                     playerApp: {
-                        getState: () => ({
-                            videoPlayer: {
-                                initParams: {
-                                    timedTextFontFamilyMapping: mapping,
-                                },
-                            },
-                        }),
+                        getState: () => ({ videoPlayer: { initParams } }),
                     },
                 },
             },
         };
         return {
-            setReady(): void {
+            setStyle(): void {
                 data.timedTextStyleDefaults = defaults;
                 data.timedTextStyleOverrides = overrides;
+            },
+            setMapping(): void {
+                initParams.timedTextFontFamilyMapping = mapping;
             },
         };
     }
@@ -389,7 +389,13 @@ describe('netflixRecipe appearance', () => {
         await settle(1000);
         expect(emitted).toEqual([]);
 
-        page.setReady();
+        // The profile style alone is not a payload: the font mapping that
+        // resolves its character style has to be there too.
+        page.setStyle();
+        await settle(1000);
+        expect(emitted).toEqual([]);
+
+        page.setMapping();
         await settle(500);
         expect(emitted).toEqual([
             {

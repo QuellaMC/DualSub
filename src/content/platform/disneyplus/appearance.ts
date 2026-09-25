@@ -38,24 +38,6 @@ const BASE_FONTS: Readonly<Record<string, FontRule>> = {
     casual: { family: 'Comic Sans MS', variant: 'normal' },
     script: { family: 'Apple Chancery', variant: 'normal' },
     'small-caps': { family: 'Arial, sans-serif', variant: 'small-caps' },
-    japanese: { family: 'sans-serif', variant: 'normal' },
-    korean: { family: 'sans-serif', variant: 'normal' },
-    'simplified-chinese': { family: 'sans-serif', variant: 'normal' },
-    'traditional-chinese': { family: 'sans-serif', variant: 'normal' },
-};
-
-/** Script keys the player picks by the line's language, over the font
- *  setting. Normalized language codes. */
-const SCRIPT_LANGUAGES: Readonly<Record<string, string>> = {
-    japanese: 'ja',
-    korean: 'ko',
-    'simplified-chinese': 'zh-CN',
-    'traditional-chinese': 'zh-TW',
-    arabic: 'ar',
-    hebrew: 'he',
-    greek: 'el',
-    thai: 'th',
-    vietnamese: 'vi',
 };
 
 /** The settings a look is built from; a payload with none is not one. */
@@ -89,7 +71,7 @@ function readString(value: unknown): string | null {
     return typeof value === 'string' ? value : null;
 }
 
-/** The viewer's per-script font overrides merged over the base table. */
+/** The viewer's font overrides merged over the base table. */
 function fontRules(override: unknown): Record<string, FontRule> {
     const rules: Record<string, FontRule> = { ...BASE_FONTS };
     if (override === null || typeof override !== 'object') {
@@ -132,14 +114,6 @@ export function parseDisneyLook(
     const edge =
         EDGES[readString(appearance.textEdge) ?? 'none'] ?? EDGES.none!;
 
-    const languageOverrides: Record<string, { fontFamily: string }> = {};
-    for (const [script, language] of Object.entries(SCRIPT_LANGUAGES)) {
-        const rule = rules[script];
-        if (rule) {
-            languageOverrides[language] = { fontFamily: rule.family };
-        }
-    }
-
     return {
         fontFamily: font.family,
         fontWeight: 'normal',
@@ -151,7 +125,6 @@ export function parseDisneyLook(
         background: cssColor(appearance.backgroundColor) ?? 'transparent',
         padding: '0.5rem',
         borderRadius: '0.5em',
-        languageOverrides,
     };
 }
 

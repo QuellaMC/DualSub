@@ -57,7 +57,7 @@ function cue(
     };
 }
 
-function setup(videoId = '1', wordLanguage?: () => string) {
+function setup(videoId = '1') {
     const controller = new AbortController();
     const video = makeVideo();
     const state = new RendererState(display);
@@ -80,7 +80,6 @@ function setup(videoId = '1', wordLanguage?: () => string) {
         signal: controller.signal,
         logger: createLogger('test'),
         onNavigationMismatch,
-        ...(wordLanguage ? { wordLanguage } : {}),
     });
     const tick = (time: number): void => {
         video.time = time;
@@ -374,24 +373,6 @@ describe('Renderer styling', () => {
         expect(original().style.fontWeight).toBe('600');
         renderer.setPlatformLook(null);
         expect(original().style.fontWeight).toBe('bold');
-        controller.abort();
-    });
-
-    it('styles the line the way the platform draws its language', () => {
-        const { renderer, video, state, tick, controller } = setup(
-            '1',
-            () => 'zh-CN'
-        );
-        video.getBoundingClientRect = () => ({ height: 500 }) as DOMRect;
-        renderer.attachMedia({ root: video.parentElement, video });
-        showCue(state, renderer, tick);
-        renderer.setDisplay({ ...display, style: 'platform' });
-        renderer.setPlatformLook({
-            ...DUALSUB_LOOK,
-            languageOverrides: { 'zh-CN': { fontWeight: '600' } },
-        });
-        expect(original().style.fontWeight).toBe('600');
-        expect(original().style.fontSize).toBe('10px');
         controller.abort();
     });
 

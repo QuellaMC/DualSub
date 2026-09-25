@@ -418,46 +418,33 @@ function readStringRecord(
     return record;
 }
 
-/** The profile's timed-text style (defaults plus overrides) and the
- *  player's style-to-font mapping; null until the page has loaded them. */
+/** The profile's timed-text style (defaults and overrides) and the
+ *  player's style-to-font mapping; null until the page holds all three. */
 function readTimedTextAppearance(): Record<string, unknown> | null {
-    const models = readPath(readNetflixGlobal(), 'reactContext', 'models');
-    const userInfo = readPath(models, 'userInfo', 'data');
+    const userInfo = readPath(
+        readNetflixGlobal(),
+        'reactContext',
+        'models',
+        'userInfo',
+        'data'
+    );
     const defaults = readStringRecord(
         readProperty(userInfo, 'timedTextStyleDefaults')
     );
-    if (!defaults) {
-        return null;
-    }
-    const fontFamilyMapping =
-        readStringRecord(
-            readPath(
-                callMethod(readPlayerApp(), 'getState'),
-                'videoPlayer',
-                'initParams',
-                'timedTextFontFamilyMapping'
-            )
-        ) ??
-        readStringRecord(
-            readPath(
-                models,
-                'playerModel',
-                'data',
-                'config',
-                'ui',
-                'initParams',
-                'timedTextFontFamilyMapping'
-            )
-        ) ??
-        {};
-    return {
-        defaults,
-        overrides:
-            readStringRecord(
-                readProperty(userInfo, 'timedTextStyleOverrides')
-            ) ?? {},
-        fontFamilyMapping,
-    };
+    const overrides = readStringRecord(
+        readProperty(userInfo, 'timedTextStyleOverrides')
+    );
+    const fontFamilyMapping = readStringRecord(
+        readPath(
+            callMethod(readPlayerApp(), 'getState'),
+            'videoPlayer',
+            'initParams',
+            'timedTextFontFamilyMapping'
+        )
+    );
+    return defaults && overrides && fontFamilyMapping
+        ? { defaults, overrides, fontFamilyMapping }
+        : null;
 }
 
 async function resolveSubtitleAppearance(

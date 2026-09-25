@@ -1,11 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from 'vitest';
-import {
-    DUALSUB_LOOK,
-    forLanguage,
-    resolveLook,
-    type SubtitleLook,
-} from './looks';
+import { DUALSUB_LOOK, resolveLook, type SubtitleLook } from './looks';
 import {
     applyDisplaySettings,
     createSubtitleElements,
@@ -37,24 +32,6 @@ describe('resolveLook', () => {
         );
         expect(resolveLook('platform', BOLD_PRESET, null)).toBe(BOLD_PRESET);
         expect(resolveLook('platform', BOLD_PRESET, captured)).toBe(captured);
-    });
-});
-
-describe('forLanguage', () => {
-    it("applies a platform's per-language adjustments by normalized code", () => {
-        const look: SubtitleLook = {
-            ...DUALSUB_LOOK,
-            languageOverrides: {
-                'zh-CN': { fontWeight: '600' },
-                th: { fontWeight: 'normal', fontFamily: 'Thai' },
-            },
-        };
-        expect(forLanguage(look, 'zh-Hans').fontWeight).toBe('600');
-        expect(forLanguage(look, 'en')).toBe(look);
-        expect(forLanguage(look, 'th-TH')).toMatchObject({
-            fontFamily: 'Thai',
-            fontWeight: 'normal',
-        });
     });
 });
 

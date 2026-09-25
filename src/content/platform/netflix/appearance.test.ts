@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { forLanguage } from '../../renderer/looks';
 import {
     NETFLIX_DEFAULT_APPEARANCE,
     NETFLIX_LOOK,
@@ -57,10 +56,6 @@ describe('parseNetflixLook', () => {
                 '-1px 0px #ff0000, 0px 1px #ff0000, 1px 0px #ff0000, 0px -1px #ff0000',
             background: 'rgba(0, 0, 0, 0.5)',
         });
-        expect(look.languageOverrides).toEqual({
-            th: { fontWeight: 'normal' },
-            ta: { fontWeight: 'normal' },
-        });
     });
 
     it('keeps small capitals as a font variant', () => {
@@ -91,10 +86,20 @@ describe('parseNetflixLook', () => {
         ).toBe('none');
     });
 
-    it('draws Thai and Tamil at normal weight, as the player does', () => {
-        expect(forLanguage(NETFLIX_LOOK, 'th').fontWeight).toBe('normal');
-        expect(forLanguage(NETFLIX_LOOK, 'ta-IN').fontWeight).toBe('normal');
-        expect(forLanguage(NETFLIX_LOOK, 'zh-CN')).toBe(NETFLIX_LOOK);
+    it('merges the window behind the block into the line box when the text has no background', () => {
+        expect(
+            withOverrides({
+                windowColor: 'BLACK',
+                windowOpacity: 'SEMI_TRANSPARENT',
+            }).background
+        ).toBe('rgba(0, 0, 0, 0.5)');
+        expect(
+            withOverrides({
+                backgroundColor: 'BLUE',
+                windowColor: 'BLACK',
+                windowOpacity: 'SEMI_TRANSPARENT',
+            }).background
+        ).toBe('#0000ff');
     });
 
     it('accepts hex colors and falls back for names it does not know', () => {

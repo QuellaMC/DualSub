@@ -35,9 +35,6 @@ const COLOR_HEX: Readonly<Record<string, string>> = {
     pink: '#ffc0cb',
 };
 
-/** Languages the player draws at normal weight. Normalized codes. */
-const LESS_BOLD_LANGUAGES = ['th', 'ta'];
-
 const DEFAULT_FONT_DECLARATIONS =
     'font-family:Netflix Sans,Helvetica Nueue,Helvetica,Arial,sans-serif;font-weight:bolder';
 const DEFAULT_STYLE = 'PROPORTIONAL_SANS_SERIF';
@@ -157,6 +154,12 @@ export function parseNetflixLook(
     const fontFamilyMapping = readStrings(appearance.fontFamilyMapping) ?? {};
     const setting = (key: string): string | null =>
         overrides[key] ?? defaults[key] ?? null;
+    /** A colored layer, or null when it is unset or fully transparent. */
+    const layer = (colorKey: string, opacityKey: string): string | null => {
+        const hex = toHex(setting(colorKey));
+        const opacity = OPACITY[setting(opacityKey) ?? 'OPAQUE'] ?? 1;
+        return hex && opacity > 0 ? withOpacity(hex, opacity) : null;
+    };
 
     const style = setting('characterStyle') ?? DEFAULT_STYLE;
     const font = parseFontDeclarations(
@@ -166,9 +169,6 @@ export function parseNetflixLook(
     );
     const textColor = toHex(setting('characterColor')) ?? '#ffffff';
     const textOpacity = OPACITY[setting('characterOpacity') ?? 'OPAQUE'] ?? 1;
-    const backgroundHex = toHex(setting('backgroundColor'));
-    const backgroundOpacity =
-        OPACITY[setting('backgroundOpacity') ?? 'OPAQUE'] ?? 1;
 
     return {
         ...font,
@@ -179,18 +179,14 @@ export function parseNetflixLook(
             toHex(setting('characterEdgeColor')) ?? '#000000'
         ),
         textStroke: '',
+        // DualSub draws one box per line, so the character background and
+        // the window behind the block merge into it, nearest layer first.
         background:
-            backgroundHex && backgroundOpacity > 0
-                ? withOpacity(backgroundHex, backgroundOpacity)
-                : 'transparent',
+            layer('backgroundColor', 'backgroundOpacity') ??
+            layer('windowColor', 'windowOpacity') ??
+            'transparent',
         padding: '0',
         borderRadius: '0',
-        languageOverrides: Object.fromEntries(
-            LESS_BOLD_LANGUAGES.map((language) => [
-                language,
-                { fontWeight: 'normal' },
-            ])
-        ),
     };
 }
 

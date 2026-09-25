@@ -304,7 +304,6 @@ export class PlayerSession {
         }
         this.languagesValue = next;
         this.completedKey = null;
-        this.renderer.restyle();
         this.setLoading(true);
         this.adapter.onLanguagesChanged?.();
         if (this.latestSubtitleEvent) {
