@@ -9,7 +9,7 @@ import { overlayText } from '../overlayText';
 import { pairActiveCues, scanActiveCues } from './cueSelect';
 import { SessionContainer, type UiRoot } from './domLayer';
 import { startFrameLoop } from './frameLoop';
-import { resolveLook, type SubtitleLook } from './looks';
+import { forLanguage, resolveLook, type SubtitleLook } from './looks';
 import type { RendererState } from './RendererState';
 import {
     applyDisplaySettings,
@@ -23,11 +23,18 @@ import { WordLayer, type WordIntent } from './wordLayer';
  *  so re-styling never flashes the overlay blank. */
 const STYLE_GRACE_MS = 800;
 
-/** The size basis of every look: the video's rendered height, or the
- *  viewport's while the element has no box yet. */
+/** The size basis of every look: the height of the picture inside the
+ *  video element's box (letterbox bars excluded, as the platforms size
+ *  their own subtitles), or the viewport's while the element has no box. */
 function sizeBasis(video: HTMLVideoElement): number {
-    const height = video.getBoundingClientRect().height;
-    return height > 0 ? height : window.innerHeight;
+    const box = video.getBoundingClientRect();
+    if (box.height <= 0) {
+        return window.innerHeight;
+    }
+    const { videoWidth, videoHeight } = video;
+    return videoWidth > 0 && videoHeight > 0
+        ? Math.min(box.height, (box.width * videoHeight) / videoWidth)
+        : box.height;
 }
 
 export class Renderer {
@@ -37,12 +44,18 @@ export class Renderer {
     private mediaScope: AbortController | null = null;
     private visible = true;
     private interactive = false;
+    private platformLook: SubtitleLook | null;
 
     constructor(
         private readonly deps: {
             state: RendererState;
             adapter: PlatformAdapter;
-            descriptor: Pick<PlatformDescriptor, 'id' | 'parseVideoIdFromUrl'>;
+            descriptor: Pick<
+                PlatformDescriptor,
+                'look' | 'parseVideoIdFromUrl'
+            >;
+            /** The viewer's platform appearance, when the page reported it. */
+            platformLook: SubtitleLook | null;
             videoId: string;
             uiRoot: UiRoot;
             signal: AbortSignal;
@@ -56,6 +69,7 @@ export class Renderer {
         }
     ) {
         this.container = new SessionContainer(deps.uiRoot);
+        this.platformLook = deps.platformLook;
         this.words = new WordLayer({
             language: () => deps.wordLanguage?.() ?? 'und',
             onIntent: (intent) => deps.onWordIntent?.(intent),
@@ -87,12 +101,15 @@ export class Renderer {
             },
             signal
         );
-        // Window, fullscreen, and player layout changes all move the size
-        // basis.
+        // Window, fullscreen, player layout, and picture dimension changes
+        // all move the size basis.
         const resize = new ResizeObserver(() => this.restyle());
         resize.observe(media.video);
         signal.addEventListener('abort', () => resize.disconnect(), {
             once: true,
+        });
+        media.video.addEventListener('resize', () => this.restyle(), {
+            signal,
         });
         this.render();
     }
@@ -116,6 +133,15 @@ export class Renderer {
 
     setDisplay(display: DisplaySettings): void {
         this.deps.state.setDisplay(display);
+        this.restyle();
+        this.render();
+    }
+
+    setPlatformLook(look: SubtitleLook | null): void {
+        if (this.platformLook === look) {
+            return;
+        }
+        this.platformLook = look;
         this.restyle();
         this.render();
     }
@@ -174,9 +200,9 @@ export class Renderer {
         return elements;
     }
 
-    /** Re-derive every style from the display, its look, and the video's
-     *  current size. */
-    private restyle(): void {
+    /** Re-derive every style from the display, its look, the original
+     *  language, and the video's current size. */
+    restyle(): void {
         const elements = this.container.current;
         const media = this.media;
         if (!elements || !media) {
@@ -193,10 +219,12 @@ export class Renderer {
     }
 
     private look(): SubtitleLook {
-        return resolveLook(
+        const look = resolveLook(
             this.deps.state.display.style,
-            this.deps.descriptor.id
+            this.deps.descriptor.look,
+            this.platformLook
         );
+        return forLanguage(look, this.deps.wordLanguage?.() ?? 'und');
     }
 
     private frame(): void {

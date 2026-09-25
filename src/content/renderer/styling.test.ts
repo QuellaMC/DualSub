@@ -1,6 +1,11 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from 'vitest';
-import { DUALSUB_LOOK, PLATFORM_LOOKS, resolveLook } from './looks';
+import {
+    DUALSUB_LOOK,
+    forLanguage,
+    resolveLook,
+    type SubtitleLook,
+} from './looks';
 import {
     applyDisplaySettings,
     createSubtitleElements,
@@ -18,21 +23,39 @@ const display: DisplaySettings = {
     timeOffset: 0,
 };
 
-describe('resolveLook', () => {
-    it('picks the DualSub look or the platform preset', () => {
-        expect(resolveLook('dualsub', 'netflix')).toBe(DUALSUB_LOOK);
-        expect(resolveLook('dualsub', 'disneyplus')).toBe(DUALSUB_LOOK);
-        expect(resolveLook('platform', 'netflix')).toBe(PLATFORM_LOOKS.netflix);
-        expect(resolveLook('platform', 'disneyplus')).toBe(
-            PLATFORM_LOOKS.disneyplus
-        );
-    });
+const BOLD_PRESET: SubtitleLook = {
+    ...DUALSUB_LOOK,
+    fontWeight: 'bold',
+    background: 'transparent',
+};
 
-    it('every look sizes text as a plausible fraction of the video', () => {
-        for (const look of [DUALSUB_LOOK, ...Object.values(PLATFORM_LOOKS)]) {
-            expect(look.sizeRatio).toBeGreaterThan(0.01);
-            expect(look.sizeRatio).toBeLessThan(0.08);
-        }
+describe('resolveLook', () => {
+    it("uses the platform preset, or the viewer's reported look over it", () => {
+        const captured = { ...DUALSUB_LOOK, fontWeight: '600' };
+        expect(resolveLook('dualsub', BOLD_PRESET, captured)).toBe(
+            DUALSUB_LOOK
+        );
+        expect(resolveLook('platform', BOLD_PRESET, null)).toBe(BOLD_PRESET);
+        expect(resolveLook('platform', BOLD_PRESET, captured)).toBe(captured);
+    });
+});
+
+describe('forLanguage', () => {
+    it("applies a platform's per-language adjustments by normalized code", () => {
+        const look: SubtitleLook = {
+            ...DUALSUB_LOOK,
+            languageOverrides: {
+                'zh-CN': { sizeScale: 1.4 },
+                th: { fontWeight: 'normal', fontFamily: 'Thai' },
+            },
+        };
+        expect(forLanguage(look, 'zh-Hans').sizeRatio).toBeCloseTo(0.028, 6);
+        expect(forLanguage(look, 'en')).toBe(look);
+        expect(forLanguage(look, 'th-TH')).toMatchObject({
+            fontFamily: 'Thai',
+            fontWeight: 'normal',
+            sizeRatio: 0.02,
+        });
     });
 });
 
@@ -59,8 +82,14 @@ describe('applyDisplaySettings', () => {
             elements.translated.style.color
         );
 
-        applyDisplaySettings(elements, display, PLATFORM_LOOKS.netflix, 1000);
+        applyDisplaySettings(
+            elements,
+            display,
+            { ...BOLD_PRESET, fontVariant: 'small-caps' },
+            1000
+        );
         expect(elements.original.style.fontWeight).toBe('bold');
+        expect(elements.original.style.fontVariant).toBe('small-caps');
         expect(elements.original.style.backgroundColor).toBe('transparent');
         expect(elements.translated.style.backgroundColor).toBe('transparent');
     });

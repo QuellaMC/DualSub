@@ -1,7 +1,14 @@
 import type { SettingsValues } from '@/config/schema';
-import type { PlatformId } from '../platform/types';
+import { normalizeLanguageCode } from '@/shared/languageNormalization';
 
 export type SubtitleStyle = SettingsValues['subtitleStyle'];
+
+/** Adjustments a platform makes for the language of the line it draws. */
+export interface LanguageLookOverride {
+    readonly sizeScale?: number;
+    readonly fontFamily?: string;
+    readonly fontWeight?: string;
+}
 
 /**
  * The typography and box of both subtitle lines. Layout (order, gap,
@@ -12,60 +19,65 @@ export type SubtitleStyle = SettingsValues['subtitleStyle'];
 export interface SubtitleLook {
     readonly fontFamily: string;
     readonly fontWeight: string;
+    readonly fontVariant: string;
     readonly originalColor: string;
     readonly translatedColor: string;
     readonly textShadow: string;
+    /** `-webkit-text-stroke` value; empty for none. */
+    readonly textStroke: string;
     readonly background: string;
     readonly padding: string;
     readonly borderRadius: string;
     /** Font size at scale 1, as a fraction of the video's rendered height. */
     readonly sizeRatio: number;
+    /** Keyed by normalized language code. */
+    readonly languageOverrides: Readonly<Record<string, LanguageLookOverride>>;
 }
+
+/** The translation keeps this color in every look so the lines stay apart. */
+export const TRANSLATION_COLOR = '#00FFFF';
 
 export const DUALSUB_LOOK: SubtitleLook = {
     fontFamily: 'inherit',
     fontWeight: 'normal',
+    fontVariant: 'normal',
     originalColor: 'white',
-    translatedColor: '#00FFFF',
+    translatedColor: TRANSLATION_COLOR,
     textShadow: '1px 1px 2px black, 0 0 3px black',
+    textStroke: '',
     background: 'rgba(0, 0, 0, 0.6)',
     padding: '0.2em 0.5em',
     borderRadius: '4px',
     sizeRatio: 0.02,
+    languageOverrides: {},
 };
 
-/** Each platform's default subtitle rendering as its web player draws it.
- *  The translation keeps DualSub's color so the two lines stay apart. */
-export const PLATFORM_LOOKS: Record<PlatformId, SubtitleLook> = {
-    netflix: {
-        fontFamily:
-            '"Netflix Sans", "Helvetica Neue", Helvetica, Arial, sans-serif',
-        fontWeight: 'bold',
-        originalColor: '#ffffff',
-        translatedColor: '#00FFFF',
-        textShadow: '#000000 0px 0px 7px',
-        background: 'transparent',
-        padding: '0',
-        borderRadius: '0',
-        sizeRatio: 0.035,
-    },
-    disneyplus: {
-        fontFamily:
-            'Avenir, "Avenir Next", "Helvetica Neue", Helvetica, Arial, sans-serif',
-        fontWeight: 'normal',
-        originalColor: '#ffffff',
-        translatedColor: '#00FFFF',
-        textShadow: '0 0 6px rgba(0, 0, 0, 0.8), 0 1px 2px rgba(0, 0, 0, 0.9)',
-        background: 'transparent',
-        padding: '0',
-        borderRadius: '0',
-        sizeRatio: 0.035,
-    },
-};
-
+/** The platform style is the viewer's own platform settings when the page
+ *  has reported them, else the platform's documented defaults. */
 export function resolveLook(
     style: SubtitleStyle,
-    platform: PlatformId
+    platformPreset: SubtitleLook,
+    platformLook: SubtitleLook | null
 ): SubtitleLook {
-    return style === 'platform' ? PLATFORM_LOOKS[platform] : DUALSUB_LOOK;
+    if (style !== 'platform') {
+        return DUALSUB_LOOK;
+    }
+    return platformLook ?? platformPreset;
+}
+
+/** The look as the platform would draw a line in `language`. */
+export function forLanguage(
+    look: SubtitleLook,
+    language: string
+): SubtitleLook {
+    const override = look.languageOverrides[normalizeLanguageCode(language)];
+    if (!override) {
+        return look;
+    }
+    return {
+        ...look,
+        sizeRatio: look.sizeRatio * (override.sizeScale ?? 1),
+        fontFamily: override.fontFamily ?? look.fontFamily,
+        fontWeight: override.fontWeight ?? look.fontWeight,
+    };
 }

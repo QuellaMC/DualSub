@@ -1,6 +1,7 @@
 import { normalizeLanguageCode } from '@/shared/languageNormalization';
 import type { CapturedEvent } from '../protocol';
 import type { InterceptorRecipe } from './interceptor-core';
+import { ResolutionSlot, waitFor } from './waitFor';
 
 // Netflix resolves its manifest inside the player core, so subtitle track
 // URLs never pass through the page's JSON.parse. They are read instead from
@@ -8,18 +9,18 @@ import type { InterceptorRecipe } from './interceptor-core';
 // the download URLs from that session's state. Netflix only fetches a URL
 // for the text track that is switched on, so a requested language that has
 // none yet is switched on briefly and switched back once its URL appears.
-
-// Page-world natives captured at module evaluation (document_start), before
-// any site script can replace them.
-const nativeSetTimeout = window.setTimeout.bind(window);
-const nativeClearTimeout = window.clearTimeout.bind(window);
+// The viewer's subtitle appearance settings come from the same page state.
 
 const PLAYER_POLL_INTERVAL_MS = 500;
 const PLAYER_WAIT_TIMEOUT_MS = 60_000;
 const TRACK_URL_POLL_INTERVAL_MS = 500;
 const TRACK_URL_TIMEOUT_MS = 10_000;
+const APPEARANCE_POLL_INTERVAL_MS = 500;
+const APPEARANCE_WAIT_TIMEOUT_MS = 30_000;
 /** Timed-text objects sit about 12 levels below the session root. */
 const STATE_WALK_MAX_DEPTH = 20;
+const MAX_APPEARANCE_KEYS = 40;
+const MAX_APPEARANCE_STRING_LENGTH = 512;
 
 type PageRecord = Record<string, unknown>;
 
@@ -53,6 +54,14 @@ function readProperty(target: unknown, key: string): unknown {
     }
 }
 
+function readPath(target: unknown, ...keys: string[]): unknown {
+    let current = target;
+    for (const key of keys) {
+        current = readProperty(current, key);
+    }
+    return current;
+}
+
 function callMethod(
     target: unknown,
     name: string,
@@ -72,20 +81,19 @@ function callMethod(
     }
 }
 
+function readNetflixGlobal(): unknown {
+    return (globalThis as { netflix?: unknown }).netflix;
+}
+
+function readPlayerApp(): unknown {
+    return readPath(readNetflixGlobal(), 'appContext', 'state', 'playerApp');
+}
+
 function readNetflixApi(): {
     videoPlayer: PageRecord;
     playersById: unknown;
 } | null {
-    const playerApp = readProperty(
-        readProperty(
-            readProperty(
-                (globalThis as { netflix?: unknown }).netflix,
-                'appContext'
-            ),
-            'state'
-        ),
-        'playerApp'
-    );
+    const playerApp = readPlayerApp();
     const videoPlayer = readProperty(
         callMethod(playerApp, 'getAPI'),
         'videoPlayer'
@@ -93,11 +101,10 @@ function readNetflixApi(): {
     if (!isRecord(videoPlayer)) {
         return null;
     }
-    const playersById = readProperty(
-        readProperty(
-            readProperty(callMethod(playerApp, 'getState'), 'videoPlayer'),
-            'cadmiumPlayerRepository'
-        ),
+    const playersById = readPath(
+        callMethod(playerApp, 'getState'),
+        'videoPlayer',
+        'cadmiumPlayerRepository',
         'playersById'
     );
     return { videoPlayer, playersById };
@@ -285,69 +292,15 @@ function readTimedTextUrls(stateRoot: unknown): Map<string, string> {
     return urls;
 }
 
-/** Poll `probe` until it yields a value, the timeout passes, or the token
- *  is cancelled. */
-function waitFor<T>(
-    probe: () => T | null,
-    intervalMs: number,
-    timeoutMs: number,
-    token: ResolutionToken
-): Promise<T | null> {
-    return new Promise((resolve) => {
-        const deadline = Date.now() + timeoutMs;
-        let timer: number | null = null;
-        const attempt = (): void => {
-            timer = null;
-            if (token.cancelled) {
-                resolve(null);
-                return;
-            }
-            const value = probe();
-            if (value !== null) {
-                resolve(value);
-                return;
-            }
-            if (Date.now() >= deadline) {
-                resolve(null);
-                return;
-            }
-            timer = nativeSetTimeout(attempt, intervalMs);
-        };
-        token.onCancel = () => {
-            if (timer !== null) {
-                nativeClearTimeout(timer);
-                timer = null;
-                resolve(null);
-            }
-        };
-        attempt();
-    });
-}
-
-/** One in-flight resolution; cancelling wakes any poll it is sleeping in. */
-interface ResolutionToken {
-    cancelled: boolean;
-    onCancel?: () => void;
-}
-
-let activeToken: ResolutionToken | null = null;
-
-function cancelActiveResolution(): void {
-    if (activeToken) {
-        activeToken.cancelled = true;
-        activeToken.onCancel?.();
-        activeToken = null;
-    }
-}
+const trackResolution = new ResolutionSlot();
+const appearanceResolution = new ResolutionSlot();
 
 async function resolveSubtitleTracks(
     videoId: string,
     languages: readonly string[],
     emit: (event: CapturedEvent) => void
 ): Promise<void> {
-    cancelActiveResolution();
-    const token: ResolutionToken = { cancelled: false };
-    activeToken = token;
+    const token = trackResolution.begin();
     try {
         const session = await waitFor(
             () => findReadyPlayerSession(videoId),
@@ -434,9 +387,95 @@ async function resolveSubtitleTracks(
         // A page API failure leaves the request unanswered; the next
         // request or navigation retries from scratch.
     } finally {
-        if (activeToken === token) {
-            activeToken = null;
+        trackResolution.release(token);
+    }
+}
+
+/** The own string-or-null entries of a page record, as fresh plain data. */
+function readStringRecord(
+    source: unknown
+): Record<string, string | null> | null {
+    if (!isRecord(source)) {
+        return null;
+    }
+    let keys: string[];
+    try {
+        keys = Object.keys(source).slice(0, MAX_APPEARANCE_KEYS);
+    } catch {
+        return null;
+    }
+    const record: Record<string, string | null> = {};
+    for (const key of keys) {
+        const value = readProperty(source, key);
+        if (
+            value === null ||
+            (typeof value === 'string' &&
+                value.length <= MAX_APPEARANCE_STRING_LENGTH)
+        ) {
+            record[key] = value;
         }
+    }
+    return record;
+}
+
+/** The profile's timed-text style (defaults plus overrides) and the
+ *  player's style-to-font mapping; null until the page has loaded them. */
+function readTimedTextAppearance(): Record<string, unknown> | null {
+    const models = readPath(readNetflixGlobal(), 'reactContext', 'models');
+    const userInfo = readPath(models, 'userInfo', 'data');
+    const defaults = readStringRecord(
+        readProperty(userInfo, 'timedTextStyleDefaults')
+    );
+    if (!defaults) {
+        return null;
+    }
+    const fontFamilyMapping =
+        readStringRecord(
+            readPath(
+                callMethod(readPlayerApp(), 'getState'),
+                'videoPlayer',
+                'initParams',
+                'timedTextFontFamilyMapping'
+            )
+        ) ??
+        readStringRecord(
+            readPath(
+                models,
+                'playerModel',
+                'data',
+                'config',
+                'ui',
+                'initParams',
+                'timedTextFontFamilyMapping'
+            )
+        ) ??
+        {};
+    return {
+        defaults,
+        overrides:
+            readStringRecord(
+                readProperty(userInfo, 'timedTextStyleOverrides')
+            ) ?? {},
+        fontFamilyMapping,
+    };
+}
+
+async function resolveSubtitleAppearance(
+    emit: (event: CapturedEvent) => void
+): Promise<void> {
+    const token = appearanceResolution.begin();
+    try {
+        const appearance = await waitFor(
+            readTimedTextAppearance,
+            APPEARANCE_POLL_INTERVAL_MS,
+            APPEARANCE_WAIT_TIMEOUT_MS,
+            token
+        );
+        if (appearance && !token.cancelled) {
+            emit({ t: 'subtitle-appearance', platform: 'netflix', appearance });
+        }
+    } finally {
+        appearanceResolution.release(token);
     }
 }
 
@@ -452,13 +491,17 @@ export const netflixRecipe: InterceptorRecipe = {
                 );
                 break;
             case 'cancel-subtitle-tracks':
-                cancelActiveResolution();
+                trackResolution.cancel();
+                break;
+            case 'request-subtitle-appearance':
+                void resolveSubtitleAppearance(emit);
                 break;
             default:
                 break;
         }
     },
     onClose() {
-        cancelActiveResolution();
+        trackResolution.cancel();
+        appearanceResolution.cancel();
     },
 };

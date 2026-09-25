@@ -336,3 +336,79 @@ describe('netflixRecipe track resolution', () => {
         ]);
     });
 });
+
+describe('netflixRecipe appearance', () => {
+    const defaults = {
+        characterSize: 'MEDIUM',
+        characterStyle: 'PROPORTIONAL_SANS_SERIF',
+        backgroundColor: null,
+    };
+    const overrides = { characterSize: 'LARGE' };
+    const mapping = {
+        PROPORTIONAL_SANS_SERIF: 'font-family:Netflix Sans;font-weight:bolder',
+    };
+
+    function installPage(ready: boolean) {
+        const data: Record<string, unknown> = ready
+            ? {
+                  timedTextStyleDefaults: {
+                      ...defaults,
+                      ignoredNumber: 3,
+                      ignoredFunction: () => 1,
+                  },
+                  timedTextStyleOverrides: overrides,
+              }
+            : {};
+        (globalThis as { netflix?: unknown }).netflix = {
+            reactContext: { models: { userInfo: { data } } },
+            appContext: {
+                state: {
+                    playerApp: {
+                        getState: () => ({
+                            videoPlayer: {
+                                initParams: {
+                                    timedTextFontFamilyMapping: mapping,
+                                },
+                            },
+                        }),
+                    },
+                },
+            },
+        };
+        return {
+            setReady(): void {
+                data.timedTextStyleDefaults = defaults;
+                data.timedTextStyleOverrides = overrides;
+            },
+        };
+    }
+
+    it('reports the profile style and font mapping once the page holds them, as plain strings', async () => {
+        const page = installPage(false);
+        netflixRecipe.onControl?.({ t: 'request-subtitle-appearance' }, emit);
+        await settle(1000);
+        expect(emitted).toEqual([]);
+
+        page.setReady();
+        await settle(500);
+        expect(emitted).toEqual([
+            {
+                t: 'subtitle-appearance',
+                platform: 'netflix',
+                appearance: {
+                    defaults,
+                    overrides,
+                    fontFamilyMapping: mapping,
+                },
+            },
+        ]);
+    });
+
+    it('drops entries that are neither strings nor null', async () => {
+        installPage(true);
+        netflixRecipe.onControl?.({ t: 'request-subtitle-appearance' }, emit);
+        await settle();
+        expect(emitted).toHaveLength(1);
+        expect(emitted[0]).toMatchObject({ appearance: { defaults } });
+    });
+});

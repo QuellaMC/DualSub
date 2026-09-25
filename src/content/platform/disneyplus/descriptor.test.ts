@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { DISNEY_DEFAULT_APPEARANCE } from './appearance';
 import { disneyPlusDescriptor } from './descriptor';
 
 describe('disneyPlusDescriptor', () => {
@@ -18,6 +19,24 @@ describe('disneyPlusDescriptor', () => {
                 'https://www.disneyplus.com/home'
             )
         ).toBeNull();
+    });
+
+    it('routes appearance events document-wide and turns them into a look', () => {
+        const appearance = { size: 'large', sizeScalar: 4 };
+        expect(
+            disneyPlusDescriptor.classifyBridgeEvent({
+                t: 'subtitle-appearance',
+                platform: 'disneyplus',
+                appearance,
+            })
+        ).toEqual({ kind: 'appearance', appearance });
+        expect(
+            disneyPlusDescriptor.parsePlatformLook(DISNEY_DEFAULT_APPEARANCE)
+        ).toEqual(disneyPlusDescriptor.look);
+        expect(
+            disneyPlusDescriptor.parsePlatformLook(appearance)?.sizeRatio
+        ).toBeCloseTo(0.06, 6);
+        expect(disneyPlusDescriptor.parsePlatformLook({})).toBeNull();
     });
 
     it('classifies subtitle URLs as subtitle events and timeline updates as platform events', () => {

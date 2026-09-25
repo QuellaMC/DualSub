@@ -85,8 +85,10 @@ export function applyDisplaySettings(
         Object.assign(element.style, {
             fontFamily: look.fontFamily,
             fontWeight: look.fontWeight,
+            fontVariant: look.fontVariant,
             color,
             textShadow: look.textShadow,
+            webkitTextStroke: look.textStroke,
             backgroundColor: look.background,
             padding: look.padding,
             borderRadius: look.borderRadius,

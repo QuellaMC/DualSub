@@ -100,3 +100,75 @@ describe('disneyRecipe timeline poller', () => {
         expect(emitted).toHaveLength(0);
     });
 });
+
+describe('disneyRecipe appearance', () => {
+    const emitted: CapturedEvent[] = [];
+    const emit = (event: CapturedEvent): void => {
+        emitted.push(event);
+    };
+    const appearance = {
+        textColor: 'rgba(255,255,255,1)',
+        backgroundColor: 'rgba(0,0,0,0.75)',
+        font: 'default',
+        size: 'medium',
+        textEdge: 'none',
+        sizeScalar: 3.3,
+    };
+
+    function mountCaptions(): void {
+        const player = document.createElement(
+            'disney-web-player-ui'
+        ) as Element & { mediaPlayerApi?: unknown };
+        player.mediaPlayerApi = {
+            captions: {
+                preferences: {
+                    appearance: {
+                        ...appearance,
+                        fontMappingOverride: {
+                            japanese: { 'font-family': 'Meiryo', weight: 1 },
+                            bogus: 'x',
+                        },
+                        setter: () => 1,
+                    },
+                },
+            },
+        };
+        document.body.append(player);
+    }
+
+    async function settle(ms: number): Promise<void> {
+        await vi.advanceTimersByTimeAsync(ms);
+        for (let i = 0; i < 10; i += 1) {
+            await Promise.resolve();
+        }
+    }
+
+    beforeEach(() => {
+        emitted.length = 0;
+        document.body.innerHTML = '';
+    });
+    afterEach(() => {
+        disneyRecipe.onClose?.();
+    });
+
+    it('reports the caption appearance as plain data once the player mounts', async () => {
+        disneyRecipe.onControl?.({ t: 'request-subtitle-appearance' }, emit);
+        await settle(1000);
+        expect(emitted).toEqual([]);
+
+        mountCaptions();
+        await settle(500);
+        expect(emitted).toEqual([
+            {
+                t: 'subtitle-appearance',
+                platform: 'disneyplus',
+                appearance: {
+                    ...appearance,
+                    fontMappingOverride: {
+                        japanese: { 'font-family': 'Meiryo' },
+                    },
+                },
+            },
+        ]);
+    });
+});

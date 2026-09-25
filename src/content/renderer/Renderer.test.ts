@@ -6,8 +6,15 @@ import { createLogger } from '@/shared/logger';
 import type { PlatformAdapter } from '../platform/types';
 import type { Cue } from '../subtitles/cueModel';
 import { UiRoot } from './domLayer';
+import { DUALSUB_LOOK, type SubtitleLook } from './looks';
 import { Renderer } from './Renderer';
 import { RendererState } from './RendererState';
+
+const PLATFORM_PRESET: SubtitleLook = {
+    ...DUALSUB_LOOK,
+    fontWeight: 'bold',
+    background: 'transparent',
+};
 
 const display = {
     style: 'dualsub' as const,
@@ -50,7 +57,7 @@ function cue(
     };
 }
 
-function setup(videoId = '1') {
+function setup(videoId = '1', wordLanguage?: () => string) {
     const controller = new AbortController();
     const video = makeVideo();
     const state = new RendererState(display);
@@ -63,15 +70,17 @@ function setup(videoId = '1') {
         state,
         adapter,
         descriptor: {
-            id: 'netflix' as const,
+            look: PLATFORM_PRESET,
             parseVideoIdFromUrl: (url) =>
                 /\/watch\/(\d+)/.exec(url)?.[1] ?? null,
         },
+        platformLook: null,
         videoId,
         uiRoot: new UiRoot(controller.signal),
         signal: controller.signal,
         logger: createLogger('test'),
         onNavigationMismatch,
+        ...(wordLanguage ? { wordLanguage } : {}),
     });
     const tick = (time: number): void => {
         video.time = time;
@@ -351,6 +360,49 @@ describe('Renderer styling', () => {
 
         renderer.setDisplay(display);
         expect(original().style.fontWeight).toBe('normal');
+        controller.abort();
+    });
+
+    it("applies the viewer's reported platform look over the preset", () => {
+        const { renderer, video, state, tick, controller } = setup();
+        renderer.attachMedia({ root: video.parentElement, video });
+        showCue(state, renderer, tick);
+        renderer.setDisplay({ ...display, style: 'platform' });
+        expect(original().style.fontWeight).toBe('bold');
+
+        renderer.setPlatformLook({ ...DUALSUB_LOOK, fontWeight: '600' });
+        expect(original().style.fontWeight).toBe('600');
+        renderer.setPlatformLook(null);
+        expect(original().style.fontWeight).toBe('bold');
+        controller.abort();
+    });
+
+    it('styles the line the way the platform draws its language', () => {
+        const { renderer, video, state, tick, controller } = setup(
+            '1',
+            () => 'zh-CN'
+        );
+        video.getBoundingClientRect = () => ({ height: 500 }) as DOMRect;
+        renderer.attachMedia({ root: video.parentElement, video });
+        showCue(state, renderer, tick);
+        renderer.setDisplay({ ...display, style: 'platform' });
+        renderer.setPlatformLook({
+            ...DUALSUB_LOOK,
+            languageOverrides: { 'zh-CN': { sizeScale: 1.5 } },
+        });
+        expect(original().style.fontSize).toBe('15px');
+        controller.abort();
+    });
+
+    it('measures the picture inside the box, not the letterbox bars', () => {
+        const { renderer, video, state, tick, controller } = setup();
+        video.getBoundingClientRect = () =>
+            ({ width: 1000, height: 1000 }) as DOMRect;
+        Object.defineProperty(video, 'videoWidth', { value: 2390 });
+        Object.defineProperty(video, 'videoHeight', { value: 1000 });
+        renderer.attachMedia({ root: video.parentElement, video });
+        showCue(state, renderer, tick);
+        expect(original().style.fontSize).toBe('8.37px');
         controller.abort();
     });
 

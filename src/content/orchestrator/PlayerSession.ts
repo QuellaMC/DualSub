@@ -27,6 +27,7 @@ import { installNativeSubHider } from '../platform/shared/nativeSubHider';
 import { Renderer } from '../renderer/Renderer';
 import { RendererState } from '../renderer/RendererState';
 import type { UiRoot } from '../renderer/domLayer';
+import type { SubtitleLook } from '../renderer/looks';
 import type { DisplaySettings } from '../renderer/styling';
 import type { WordIntent } from '../renderer/wordLayer';
 import {
@@ -118,6 +119,8 @@ export interface PlayerSessionDeps {
     readonly cache: SubtitleEventCache;
     readonly uiRoot: UiRoot;
     readonly handoff: PlatformHandoff | null;
+    /** The viewer's platform subtitle appearance, when already reported. */
+    readonly platformLook: SubtitleLook | null;
     readonly settings: ContentSettings;
     readonly languages: SubtitleLanguages;
     readonly interaction: InteractionSettings;
@@ -196,6 +199,7 @@ export class PlayerSession {
             state: this.rendererState,
             adapter: this.adapter,
             descriptor: deps.descriptor,
+            platformLook: deps.platformLook,
             videoId: deps.videoId,
             uiRoot: deps.uiRoot,
             signal: this.signal,
@@ -300,11 +304,17 @@ export class PlayerSession {
         }
         this.languagesValue = next;
         this.completedKey = null;
+        this.renderer.restyle();
         this.setLoading(true);
         this.adapter.onLanguagesChanged?.();
         if (this.latestSubtitleEvent) {
             this.onSubtitleEvent(this.latestSubtitleEvent);
         }
+    }
+
+    /** The page reported the viewer's platform subtitle appearance. */
+    updatePlatformLook(look: SubtitleLook | null): void {
+        this.renderer.setPlatformLook(look);
     }
 
     private setLoading(loading: boolean): void {

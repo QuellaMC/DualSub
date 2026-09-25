@@ -1,6 +1,7 @@
 import type { CapturedEvent, IsolatedToMain } from '../bridge/protocol';
 import type { Logger } from '@/shared/logger';
 import type { SettingsValues } from '@/config/schema';
+import type { SubtitleLook } from '../renderer/looks';
 
 export type PlatformId = 'netflix' | 'disneyplus';
 
@@ -16,7 +17,9 @@ export interface PlatformCapabilities {
 
 export type BridgeEventClassification =
     | { kind: 'subtitle'; videoId: string }
-    | { kind: 'platform'; videoId: string | null };
+    | { kind: 'platform'; videoId: string | null }
+    /** The viewer's subtitle appearance: document-wide, not per video. */
+    | { kind: 'appearance'; appearance: Record<string, unknown> };
 
 export interface BridgeControlSender {
     readonly connected: boolean;
@@ -88,6 +91,11 @@ export interface PlatformDescriptor {
      *  keys by the event's own movieId so next-episode preloads land under
      *  the upcoming video. Null → drop. */
     classifyBridgeEvent(event: CapturedEvent): BridgeEventClassification | null;
+    /** How the platform draws its own subtitles by default. */
+    readonly look: SubtitleLook;
+    /** The look the platform would draw from the viewer's reported
+     *  appearance settings; null when the payload is not that shape. */
+    parsePlatformLook(appearance: Record<string, unknown>): SubtitleLook | null;
     createAdapter(
         context: AdapterContext,
         handoff: PlatformHandoff | null

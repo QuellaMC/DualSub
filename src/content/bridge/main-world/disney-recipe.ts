@@ -1,6 +1,7 @@
 import { extractDisneyPlusVideoIdFromPathname } from '@/shared/routeIdentity';
 import type { CapturedEvent } from '../protocol';
 import type { InterceptorRecipe } from './interceptor-core';
+import { ResolutionSlot, waitFor } from './waitFor';
 
 // Page-world natives captured at module evaluation (document_start), before
 // any site script can replace them.
@@ -10,6 +11,18 @@ const nativeClearInterval = window.clearInterval.bind(window);
 
 const PLAYBACK_POLL_INTERVAL_MS = 300;
 const PLAYBACK_HEARTBEAT_MS = 1200;
+const APPEARANCE_POLL_INTERVAL_MS = 500;
+const APPEARANCE_WAIT_TIMEOUT_MS = 30_000;
+const APPEARANCE_STRING_KEYS = [
+    'backgroundColor',
+    'windowColor',
+    'textColor',
+    'font',
+    'size',
+    'textEdge',
+] as const;
+const MAX_FONT_OVERRIDE_ENTRIES = 32;
+const MAX_APPEARANCE_STRING_LENGTH = 256;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -146,6 +159,84 @@ function dispatchPlaybackState(
     emit({ t: 'timeline-update', platform: 'disneyplus', sequence, ...state });
 }
 
+/** The viewer's caption appearance as the player holds it, copied into
+ *  fresh plain data; null until the player has mounted it. */
+function readCaptionAppearance(): Record<string, unknown> | null {
+    const playerApi = readHostProperty(
+        'disney-web-player-ui',
+        'mediaPlayerApi'
+    );
+    const captions = isRecord(playerApi) ? playerApi.captions : null;
+    const preferences = isRecord(captions) ? captions.preferences : null;
+    const source = isRecord(preferences) ? preferences.appearance : null;
+    if (!isRecord(source)) {
+        return null;
+    }
+    const appearance: Record<string, unknown> = {};
+    for (const key of APPEARANCE_STRING_KEYS) {
+        const value = source[key];
+        if (
+            typeof value === 'string' &&
+            value.length <= MAX_APPEARANCE_STRING_LENGTH
+        ) {
+            appearance[key] = value;
+        }
+    }
+    if (typeof source.sizeScalar === 'number') {
+        appearance.sizeScalar = source.sizeScalar;
+    }
+    const fontMappingOverride: Record<string, Record<string, string>> = {};
+    if (isRecord(source.fontMappingOverride)) {
+        for (const [script, rules] of Object.entries(
+            source.fontMappingOverride
+        ).slice(0, MAX_FONT_OVERRIDE_ENTRIES)) {
+            if (!isRecord(rules)) {
+                continue;
+            }
+            const rule: Record<string, string> = {};
+            for (const property of ['font-family', 'font-variant']) {
+                const value = rules[property];
+                if (
+                    typeof value === 'string' &&
+                    value.length <= MAX_APPEARANCE_STRING_LENGTH
+                ) {
+                    rule[property] = value;
+                }
+            }
+            if (Object.keys(rule).length > 0) {
+                fontMappingOverride[script] = rule;
+            }
+        }
+    }
+    appearance.fontMappingOverride = fontMappingOverride;
+    return 'size' in appearance ? appearance : null;
+}
+
+const appearanceResolution = new ResolutionSlot();
+
+async function resolveSubtitleAppearance(
+    emit: (event: CapturedEvent) => void
+): Promise<void> {
+    const token = appearanceResolution.begin();
+    try {
+        const appearance = await waitFor(
+            readCaptionAppearance,
+            APPEARANCE_POLL_INTERVAL_MS,
+            APPEARANCE_WAIT_TIMEOUT_MS,
+            token
+        );
+        if (appearance && !token.cancelled) {
+            emit({
+                t: 'subtitle-appearance',
+                platform: 'disneyplus',
+                appearance,
+            });
+        }
+    } finally {
+        appearanceResolution.release(token);
+    }
+}
+
 function pausePolling(): void {
     polling = false;
     if (pollTimer !== null) {
@@ -190,6 +281,9 @@ export const disneyRecipe: InterceptorRecipe = {
             case 'playback-bridge-resume':
                 resumePolling(emit);
                 break;
+            case 'request-subtitle-appearance':
+                void resolveSubtitleAppearance(emit);
+                break;
             case 'playback-bridge-pause':
             case 'close':
                 pausePolling();
@@ -198,5 +292,6 @@ export const disneyRecipe: InterceptorRecipe = {
     },
     onClose() {
         pausePolling();
+        appearanceResolution.cancel();
     },
 };
