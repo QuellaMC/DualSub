@@ -9,6 +9,7 @@ import { overlayText } from '../overlayText';
 import { pairActiveCues, scanActiveCues } from './cueSelect';
 import { SessionContainer, type UiRoot } from './domLayer';
 import { startFrameLoop } from './frameLoop';
+import { resolveLook, type SubtitleLook } from './looks';
 import type { RendererState } from './RendererState';
 import {
     applyDisplaySettings,
@@ -22,6 +23,20 @@ import { WordLayer, type WordIntent } from './wordLayer';
  *  so re-styling never flashes the overlay blank. */
 const STYLE_GRACE_MS = 800;
 
+/** The size basis of every look: the height of the picture inside the
+ *  video element's box (letterbox bars excluded, as the platforms size
+ *  their own subtitles), or the viewport's while the element has no box. */
+function sizeBasis(video: HTMLVideoElement): number {
+    const box = video.getBoundingClientRect();
+    if (box.height <= 0) {
+        return window.innerHeight;
+    }
+    const { videoWidth, videoHeight } = video;
+    return videoWidth > 0 && videoHeight > 0
+        ? Math.min(box.height, (box.width * videoHeight) / videoWidth)
+        : box.height;
+}
+
 export class Renderer {
     private readonly container: SessionContainer;
     private readonly words: WordLayer;
@@ -29,12 +44,18 @@ export class Renderer {
     private mediaScope: AbortController | null = null;
     private visible = true;
     private interactive = false;
+    private platformLook: SubtitleLook | null;
 
     constructor(
         private readonly deps: {
             state: RendererState;
             adapter: PlatformAdapter;
-            descriptor: Pick<PlatformDescriptor, 'parseVideoIdFromUrl'>;
+            descriptor: Pick<
+                PlatformDescriptor,
+                'look' | 'parseVideoIdFromUrl'
+            >;
+            /** The viewer's platform appearance, when the page reported it. */
+            platformLook: SubtitleLook | null;
             videoId: string;
             uiRoot: UiRoot;
             signal: AbortSignal;
@@ -48,6 +69,7 @@ export class Renderer {
         }
     ) {
         this.container = new SessionContainer(deps.uiRoot);
+        this.platformLook = deps.platformLook;
         this.words = new WordLayer({
             language: () => deps.wordLanguage?.() ?? 'und',
             onIntent: (intent) => deps.onWordIntent?.(intent),
@@ -59,10 +81,13 @@ export class Renderer {
         return this.media ? this.playbackTime(this.media) : null;
     }
 
+    /** Builds the overlay for this video; a re-bind starts from a fresh
+     *  container so it is styled for the display in force now. */
     attachMedia(media: MediaScope): void {
         this.detachMedia();
         this.media = media;
         this.mediaScope = childScope(this.deps.signal);
+        const { signal } = this.mediaScope;
         this.ensureElements(media);
         startFrameLoop(
             media.video,
@@ -74,8 +99,18 @@ export class Renderer {
                     this.deps.onSeek?.();
                 },
             },
-            this.mediaScope.signal
+            signal
         );
+        // Window, fullscreen, player layout, and picture dimension changes
+        // all move the size basis.
+        const resize = new ResizeObserver(() => this.restyle());
+        resize.observe(media.video);
+        signal.addEventListener('abort', () => resize.disconnect(), {
+            once: true,
+        });
+        media.video.addEventListener('resize', () => this.restyle(), {
+            signal,
+        });
         this.render();
     }
 
@@ -83,7 +118,7 @@ export class Renderer {
         this.mediaScope?.abort();
         this.mediaScope = null;
         this.media = null;
-        this.hide();
+        this.container.destroy();
     }
 
     setVisible(visible: boolean): void {
@@ -98,11 +133,16 @@ export class Renderer {
 
     setDisplay(display: DisplaySettings): void {
         this.deps.state.setDisplay(display);
-        const elements = this.container.current;
-        if (elements) {
-            applyDisplaySettings(elements, display);
-            this.deps.state.painted.styleAppliedAt = Date.now();
+        this.restyle();
+        this.render();
+    }
+
+    setPlatformLook(look: SubtitleLook | null): void {
+        if (this.platformLook === look) {
+            return;
         }
+        this.platformLook = look;
+        this.restyle();
         this.render();
     }
 
@@ -139,7 +179,6 @@ export class Renderer {
     destroy(): void {
         this.detachMedia();
         this.words.destroy();
-        this.container.destroy();
     }
 
     private playbackTime(media: MediaScope): number | null {
@@ -155,11 +194,36 @@ export class Renderer {
         if (this.container.containerEpoch !== epochBefore) {
             state.painted.originalText = '';
             state.painted.translatedText = '';
-            applyDisplaySettings(elements, state.display);
-            state.painted.styleAppliedAt = Date.now();
             state.invalidateMemo();
+            this.restyle();
         }
         return elements;
+    }
+
+    /** Re-derive every style from the display, its look, and the video's
+     *  current size. */
+    private restyle(): void {
+        const elements = this.container.current;
+        const media = this.media;
+        if (!elements || !media) {
+            return;
+        }
+        const { state } = this.deps;
+        applyDisplaySettings(
+            elements,
+            state.display,
+            this.look(),
+            sizeBasis(media.video)
+        );
+        state.painted.styleAppliedAt = Date.now();
+    }
+
+    private look(): SubtitleLook {
+        return resolveLook(
+            this.deps.state.display.style,
+            this.deps.descriptor.look,
+            this.platformLook
+        );
     }
 
     private frame(): void {

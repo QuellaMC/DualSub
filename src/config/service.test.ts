@@ -21,19 +21,19 @@ describe('configService', () => {
 
     describe('get', () => {
         it('returns the stored value when valid', async () => {
-            await fakeBrowser.storage.sync.set({ subtitleFontSize: 2.2 });
-            await expect(configService.get('subtitleFontSize')).resolves.toBe(
+            await fakeBrowser.storage.sync.set({ subtitleFontScale: 2.2 });
+            await expect(configService.get('subtitleFontScale')).resolves.toBe(
                 2.2
             );
         });
 
         it('falls back to the schema default when unset or invalid', async () => {
-            await expect(configService.get('subtitleFontSize')).resolves.toBe(
-                1.1
+            await expect(configService.get('subtitleFontScale')).resolves.toBe(
+                1
             );
-            await fakeBrowser.storage.sync.set({ subtitleFontSize: 99 });
-            await expect(configService.get('subtitleFontSize')).resolves.toBe(
-                1.1
+            await fakeBrowser.storage.sync.set({ subtitleFontScale: 99 });
+            await expect(configService.get('subtitleFontScale')).resolves.toBe(
+                1
             );
         });
 
@@ -41,8 +41,8 @@ describe('configService', () => {
             vi.spyOn(browser.storage.sync, 'get').mockRejectedValueOnce(
                 new Error('storage broken')
             );
-            await expect(configService.get('subtitleFontSize')).resolves.toBe(
-                1.1
+            await expect(configService.get('subtitleFontScale')).resolves.toBe(
+                1
             );
         });
 
@@ -63,10 +63,10 @@ describe('configService', () => {
 
         it('rejects invalid values without writing', async () => {
             await expect(
-                configService.set('subtitleFontSize', 99)
+                configService.set('subtitleFontScale', 99)
             ).rejects.toThrow('Invalid value');
             expect(
-                await fakeBrowser.storage.sync.get('subtitleFontSize')
+                await fakeBrowser.storage.sync.get('subtitleFontScale')
             ).toEqual({});
         });
 
@@ -84,16 +84,16 @@ describe('configService', () => {
     describe('read result bundles', () => {
         it('distinguishes stored, default-missing, and default-invalid sources', async () => {
             await fakeBrowser.storage.sync.set({
-                subtitleFontSize: 2,
+                subtitleFontScale: 2,
                 subtitleGap: 'bogus',
             });
             const result = await configService.readMultipleResult([
-                'subtitleFontSize',
+                'subtitleFontScale',
                 'subtitleGap',
                 'subtitlesEnabled',
             ]);
             expect(result.ok).toBe(true);
-            expect(result.sources.subtitleFontSize?.source).toBe('stored');
+            expect(result.sources.subtitleFontScale?.source).toBe('stored');
             expect(result.sources.subtitleGap?.source).toBe(
                 'schema-default-invalid'
             );
@@ -108,7 +108,7 @@ describe('configService', () => {
                 new Error('quota exceeded')
             );
             const result = await configService.readMultipleResult([
-                'subtitleFontSize',
+                'subtitleFontScale',
                 'debugMode',
             ]);
             expect(result.ok).toBe(false);
@@ -116,8 +116,8 @@ describe('configService', () => {
             expect(result.failedAreas).toEqual(['sync']);
             expect(result.areas.sync.status).toBe('error');
             expect(result.areas.local.status).toBe('ok');
-            expect(result.values.subtitleFontSize).toBeUndefined();
-            expect(result.displayFallbacks.subtitleFontSize).toBe(1.1);
+            expect(result.values.subtitleFontScale).toBeUndefined();
+            expect(result.displayFallbacks.subtitleFontScale).toBe(1);
         });
 
         it('treats unknown and sensitive-excluded keys as metadata, not failure', async () => {
@@ -191,7 +191,7 @@ describe('configService', () => {
             await expect(
                 configService.setMultiple({
                     subtitlesEnabled: false,
-                    subtitleFontSize: 99,
+                    subtitleFontScale: 99,
                 })
             ).rejects.toBeInstanceOf(ConfigValidationError);
             expect(
@@ -240,14 +240,14 @@ describe('configService', () => {
 
     describe('setDefaultsForMissingKeys', () => {
         it('repairs missing and invalid keys to canonical values', async () => {
-            await fakeBrowser.storage.sync.set({ subtitleFontSize: 99 });
+            await fakeBrowser.storage.sync.set({ subtitleFontScale: 99 });
             await configService.setDefaultsForMissingKeys();
 
             const sync = await fakeBrowser.storage.sync.get(null);
             expect(Object.keys(sync).sort()).toEqual(
                 getKeysByScope('sync').sort()
             );
-            expect(sync.subtitleFontSize).toBe(1.1);
+            expect(sync.subtitleFontScale).toBe(1);
             const local = await fakeBrowser.storage.local.get(null);
             expect(Object.keys(local).sort()).toEqual(
                 getKeysByScope('local').sort()
@@ -255,11 +255,11 @@ describe('configService', () => {
         });
 
         it('leaves valid stored values untouched', async () => {
-            await fakeBrowser.storage.sync.set({ subtitleFontSize: 2.5 });
+            await fakeBrowser.storage.sync.set({ subtitleFontScale: 2.5 });
             await configService.setDefaultsForMissingKeys();
             expect(
-                (await fakeBrowser.storage.sync.get('subtitleFontSize'))
-                    .subtitleFontSize
+                (await fakeBrowser.storage.sync.get('subtitleFontScale'))
+                    .subtitleFontScale
             ).toBe(2.5);
         });
 
@@ -297,12 +297,12 @@ describe('configService', () => {
             });
 
             await configService.set('deeplApiKey', 'secret');
-            await configService.set('subtitleFontSize', 2);
+            await configService.set('subtitleFontScale', 2);
             await vi.waitFor(() => {
                 expect(privileged).toHaveBeenCalledWith({
                     deeplApiKey: 'secret',
                 });
-                expect(plain).toHaveBeenCalledWith({ subtitleFontSize: 2 });
+                expect(plain).toHaveBeenCalledWith({ subtitleFontScale: 2 });
             });
             expect(plain).not.toHaveBeenCalledWith({ deeplApiKey: 'secret' });
 
@@ -313,10 +313,10 @@ describe('configService', () => {
         it('projects an invalid external write as the schema default', async () => {
             const listener = vi.fn();
             const unsubscribe = configService.onChanged(listener);
-            await fakeBrowser.storage.sync.set({ subtitleFontSize: 99 });
+            await fakeBrowser.storage.sync.set({ subtitleFontScale: 99 });
             await vi.waitFor(() => {
                 expect(listener).toHaveBeenCalledWith({
-                    subtitleFontSize: 1.1,
+                    subtitleFontScale: 1,
                 });
             });
             unsubscribe();

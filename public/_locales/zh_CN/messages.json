@@ -59,6 +59,15 @@
     "layoutLeftRight": {
         "message": "左右排列"
     },
+    "subtitleStyleLabel": {
+        "message": "字幕样式："
+    },
+    "subtitleStyleDualSub": {
+        "message": "DualSub"
+    },
+    "subtitleStylePlatform": {
+        "message": "跟随平台"
+    },
     "uiLanguageLabel": {
         "message": "语言："
     },
@@ -88,6 +97,9 @@
     },
     "statusLayoutOrientationUpdated": {
         "message": "布局方向已更新。"
+    },
+    "statusSubtitleStyleUpdated": {
+        "message": "字幕样式已更新。"
     },
     "statusFontSize": {
         "message": "字体大小："

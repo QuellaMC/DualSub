@@ -6,11 +6,19 @@ import { createLogger } from '@/shared/logger';
 import type { PlatformAdapter } from '../platform/types';
 import type { Cue } from '../subtitles/cueModel';
 import { UiRoot } from './domLayer';
+import { DUALSUB_LOOK, type SubtitleLook } from './looks';
 import { Renderer } from './Renderer';
 import { RendererState } from './RendererState';
 
+const PLATFORM_PRESET: SubtitleLook = {
+    ...DUALSUB_LOOK,
+    fontWeight: 'bold',
+    background: 'transparent',
+};
+
 const display = {
-    fontSizeVw: 1.1,
+    style: 'dualsub' as const,
+    fontScale: 1,
     gap: 0.3,
     verticalPosition: 2.8,
     orientation: 'column' as const,
@@ -62,9 +70,11 @@ function setup(videoId = '1') {
         state,
         adapter,
         descriptor: {
+            look: PLATFORM_PRESET,
             parseVideoIdFromUrl: (url) =>
                 /\/watch\/(\d+)/.exec(url)?.[1] ?? null,
         },
+        platformLook: null,
         videoId,
         uiRoot: new UiRoot(controller.signal),
         signal: controller.signal,
@@ -111,6 +121,7 @@ describe('Renderer', () => {
     afterEach(() => {
         vi.useRealTimers();
         vi.restoreAllMocks();
+        vi.unstubAllGlobals();
     });
 
     it('draws only the slots that have text', () => {
@@ -270,6 +281,126 @@ describe('Renderer', () => {
         expect(texts()[0]).toBe('A');
         controller.abort();
         expect(container()).toBeNull();
+    });
+});
+
+describe('Renderer styling', () => {
+    beforeEach(() => {
+        document.body.innerHTML = '';
+        setUrl('https://www.netflix.com/watch/1');
+    });
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
+    function original(): HTMLElement {
+        return document.getElementById('dualsub-original-subtitle')!;
+    }
+
+    function showCue(
+        state: RendererState,
+        renderer: Renderer,
+        tick: (time: number) => void
+    ): void {
+        state.loadCues({
+            cues: [cue(1, 5, 'A', 'B')],
+            useNativeTarget: false,
+            sourceLanguage: 'en',
+            targetLanguage: 'zh-CN',
+        });
+        renderer.cuesChanged();
+        tick(2);
+    }
+
+    it('sizes text from the video height, the scale, and every resize', () => {
+        let notify: (() => void) | null = null;
+        let disconnected = false;
+        vi.stubGlobal(
+            'ResizeObserver',
+            class {
+                constructor(callback: () => void) {
+                    notify = callback;
+                }
+                observe(): void {}
+                disconnect(): void {
+                    disconnected = true;
+                }
+            }
+        );
+        const { renderer, video, state, tick, controller } = setup();
+        let height = 500;
+        video.getBoundingClientRect = () => ({ height }) as DOMRect;
+        renderer.attachMedia({ root: video.parentElement, video });
+        showCue(state, renderer, tick);
+        expect(original().style.fontSize).toBe('10px');
+
+        renderer.setDisplay({ ...display, fontScale: 2 });
+        expect(original().style.fontSize).toBe('20px');
+
+        height = 1000;
+        notify!();
+        expect(original().style.fontSize).toBe('40px');
+
+        renderer.detachMedia();
+        expect(disconnected).toBe(true);
+        controller.abort();
+    });
+
+    it('switches between the DualSub and platform looks', () => {
+        const { renderer, video, state, tick, controller } = setup();
+        renderer.attachMedia({ root: video.parentElement, video });
+        showCue(state, renderer, tick);
+        expect(original().style.fontWeight).toBe('normal');
+
+        renderer.setDisplay({ ...display, style: 'platform' });
+        expect(original().style.fontWeight).toBe('bold');
+        expect(original().style.backgroundColor).toBe('transparent');
+        expect(original().textContent).toBe('A');
+
+        renderer.setDisplay(display);
+        expect(original().style.fontWeight).toBe('normal');
+        controller.abort();
+    });
+
+    it("applies the viewer's reported platform look over the preset", () => {
+        const { renderer, video, state, tick, controller } = setup();
+        renderer.attachMedia({ root: video.parentElement, video });
+        showCue(state, renderer, tick);
+        renderer.setDisplay({ ...display, style: 'platform' });
+        expect(original().style.fontWeight).toBe('bold');
+
+        renderer.setPlatformLook({ ...DUALSUB_LOOK, fontWeight: '600' });
+        expect(original().style.fontWeight).toBe('600');
+        renderer.setPlatformLook(null);
+        expect(original().style.fontWeight).toBe('bold');
+        controller.abort();
+    });
+
+    it('measures the picture inside the box, not the letterbox bars', () => {
+        const { renderer, video, state, tick, controller } = setup();
+        video.getBoundingClientRect = () =>
+            ({ width: 1000, height: 1000 }) as DOMRect;
+        Object.defineProperty(video, 'videoWidth', { value: 2390 });
+        Object.defineProperty(video, 'videoHeight', { value: 1000 });
+        renderer.attachMedia({ root: video.parentElement, video });
+        showCue(state, renderer, tick);
+        expect(original().style.fontSize).toBe('8.37px');
+        controller.abort();
+    });
+
+    it('styles a re-bound video for the display chosen while detached', () => {
+        const { renderer, video, state, tick, controller } = setup();
+        renderer.attachMedia({ root: video.parentElement, video });
+        renderer.detachMedia();
+        expect(
+            document.getElementById('dualsub-subtitle-container')
+        ).toBeNull();
+
+        renderer.setDisplay({ ...display, style: 'platform' });
+        renderer.attachMedia({ root: video.parentElement, video });
+        showCue(state, renderer, tick);
+        expect(original().style.fontWeight).toBe('bold');
+        controller.abort();
     });
 });
 

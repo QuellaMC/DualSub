@@ -77,6 +77,35 @@ describe('migrateLegacyConfiguration', () => {
         expect(sync.vertexLocation).toBe('us-central1');
     });
 
+    it('seeds subtitleFontScale from the legacy font size once, clamped to its bounds', async () => {
+        await fakeBrowser.storage.sync.set({ subtitleFontSize: 2.2 });
+        await migrateLegacyConfiguration();
+        let sync = await syncState();
+        expect(sync.subtitleFontScale).toBe(2);
+        expect(sync).not.toHaveProperty('subtitleFontSize');
+
+        // A device still on 3.0 writes the old key back: the scale wins.
+        resetConfigurationMigrationForTests();
+        await fakeBrowser.storage.sync.set({ subtitleFontSize: 1.1 });
+        await migrateLegacyConfiguration();
+        sync = await syncState();
+        expect(sync.subtitleFontScale).toBe(2);
+        expect(sync).not.toHaveProperty('subtitleFontSize');
+
+        for (const [legacy, scale] of [
+            [0.2, 0.5],
+            [10, 3],
+        ]) {
+            await fakeBrowser.storage.sync.clear();
+            resetConfigurationMigrationForTests();
+            await fakeBrowser.storage.sync.set({ subtitleFontSize: legacy });
+            await migrateLegacyConfiguration();
+            expect((await syncState()).subtitleFontScale, `${legacy}`).toBe(
+                scale
+            );
+        }
+    });
+
     it('deletes vertexServiceAccount and retired keys, leaving unknown keys', async () => {
         await fakeBrowser.storage.sync.set({
             translationBatchSize: 5,

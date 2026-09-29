@@ -98,6 +98,61 @@ describe('bridge protocol validators', () => {
         expect(isCapturedEvent(value)).toBe(false);
     });
 
+    it('accepts a bounded plain appearance record', () => {
+        expect(
+            isCapturedEvent({
+                t: 'subtitle-appearance',
+                platform: 'netflix',
+                appearance: {
+                    defaults: {
+                        characterSize: 'MEDIUM',
+                        backgroundColor: null,
+                    },
+                    overrides: {},
+                    fontFamilyMapping: {},
+                },
+            })
+        ).toBe(true);
+        expect(
+            isCapturedEvent({
+                t: 'subtitle-appearance',
+                platform: 'disneyplus',
+                appearance: { size: 'medium', sizeScalar: 3.3 },
+            })
+        ).toBe(true);
+    });
+
+    it.each([
+        ['an unknown platform', { platform: 'hulu', appearance: {} }],
+        ['a non-record payload', { platform: 'netflix', appearance: 'x' }],
+        [
+            'a dangerous key',
+            {
+                platform: 'netflix',
+                appearance: JSON.parse('{"__proto__": {}}') as unknown,
+            },
+        ],
+        [
+            'a non-finite number',
+            { platform: 'disneyplus', appearance: { sizeScalar: Infinity } },
+        ],
+        [
+            'an oversized string',
+            { platform: 'netflix', appearance: { font: 'x'.repeat(600) } },
+        ],
+        [
+            'excessive depth',
+            {
+                platform: 'netflix',
+                appearance: { a: { b: { c: { d: { e: { f: 1 } } } } } },
+            },
+        ],
+    ])('rejects an appearance with %s', (_label, frame) => {
+        expect(isCapturedEvent({ t: 'subtitle-appearance', ...frame })).toBe(
+            false
+        );
+    });
+
     it('validates ready frames including buffered events', () => {
         expect(isMainToIsolated({ t: 'ready', capability, buffered: [] })).toBe(
             true
@@ -134,6 +189,9 @@ describe('bridge protocol validators', () => {
             )
         ).toBe(false);
         expect(isIsolatedToMain({ t: 'close' })).toBe(true);
+        expect(isIsolatedToMain({ t: 'request-subtitle-appearance' })).toBe(
+            true
+        );
         expect(isIsolatedToMain({ t: 'ready' })).toBe(false);
     });
 });

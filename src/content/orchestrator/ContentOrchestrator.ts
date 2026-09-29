@@ -15,6 +15,7 @@ import type { CapturedEvent } from '../bridge/protocol';
 import { SubtitleEventCache } from '../bridge/SubtitleEventCache';
 import type { PlatformDescriptor, PlatformHandoff } from '../platform/types';
 import { UiRoot } from '../renderer/domLayer';
+import type { SubtitleLook } from '../renderer/looks';
 import { NavigationWatcher } from './NavigationWatcher';
 import { prepareContentPreview } from './preview';
 import {
@@ -44,6 +45,9 @@ export class ContentOrchestrator {
     private readonly router = new MessageRouter();
     private activeSession: PlayerSession | null = null;
     private handoff: PlatformHandoff | null = null;
+    /** The viewer's platform subtitle appearance; profile-wide, so it
+     *  outlives sessions. */
+    private platformLook: SubtitleLook | null = null;
     private sessionCounter = 0;
     private reconciling = false;
     private pendingReconcile = false;
@@ -138,6 +142,16 @@ export class ContentOrchestrator {
             this.requestReconcile();
             return;
         }
+        if (classification.kind === 'appearance') {
+            this.platformLook = this.descriptor.parsePlatformLook(
+                classification.appearance
+            );
+            if (!this.platformLook) {
+                this.logger.warn('Platform subtitle appearance not understood');
+            }
+            this.activeSession?.updatePlatformLook(this.platformLook);
+            return;
+        }
         const session = this.activeSession;
         if (
             session &&
@@ -212,6 +226,7 @@ export class ContentOrchestrator {
             cache: this.cache,
             uiRoot: this.uiRoot,
             handoff: this.handoff,
+            platformLook: this.platformLook,
             settings,
             languages,
             interaction,

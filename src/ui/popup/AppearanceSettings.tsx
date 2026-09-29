@@ -1,9 +1,14 @@
-import type { SettingsValues } from '@/config/schema';
+import { SETTING_BOUNDS, type SettingsValues } from '@/config/schema';
 import type { Translate } from '../hooks/useI18n';
 import { SliderSetting } from './SliderSetting';
 
 export type SliderKey =
-    'subtitleFontSize' | 'subtitleGap' | 'subtitleVerticalPosition';
+    'subtitleFontScale' | 'subtitleGap' | 'subtitleVerticalPosition';
+
+const SUBTITLE_STYLE_LABELS: Record<SettingsValues['subtitleStyle'], string> = {
+    dualsub: 'subtitleStyleDualSub',
+    platform: 'subtitleStylePlatform',
+};
 
 const LAYOUT_ORDER_LABELS: Record<
     SettingsValues['subtitleLayoutOrder'],
@@ -29,10 +34,10 @@ const SLIDERS: {
     step: number;
 }[] = [
     {
-        key: 'subtitleFontSize',
+        key: 'subtitleFontScale',
         labelKey: 'fontSizeLabel',
-        min: 1,
-        max: 3,
+        min: SETTING_BOUNDS.subtitleFontScale.min,
+        max: SETTING_BOUNDS.subtitleFontScale.max,
         step: 0.1,
     },
     {
@@ -51,6 +56,12 @@ const SLIDERS: {
     },
 ];
 
+function isSubtitleStyle(
+    value: string
+): value is SettingsValues['subtitleStyle'] {
+    return Object.hasOwn(SUBTITLE_STYLE_LABELS, value);
+}
+
 function isLayoutOrder(
     value: string
 ): value is SettingsValues['subtitleLayoutOrder'] {
@@ -67,10 +78,12 @@ export function AppearanceSettings({
     t,
     isOpen,
     onToggle,
+    subtitleStyle,
     layoutOrder,
     layoutOrientation,
     sliderValues,
     timeOffset,
+    onSubtitleStyleChange,
     onLayoutOrderChange,
     onLayoutOrientationChange,
     onSliderPreview,
@@ -80,10 +93,12 @@ export function AppearanceSettings({
     t: Translate;
     isOpen: boolean;
     onToggle: (open: boolean) => void;
+    subtitleStyle: SettingsValues['subtitleStyle'];
     layoutOrder: SettingsValues['subtitleLayoutOrder'];
     layoutOrientation: SettingsValues['subtitleLayoutOrientation'];
     sliderValues: Record<SliderKey, number>;
     timeOffset: number;
+    onSubtitleStyleChange: (value: SettingsValues['subtitleStyle']) => void;
     onLayoutOrderChange: (value: SettingsValues['subtitleLayoutOrder']) => void;
     onLayoutOrientationChange: (
         value: SettingsValues['subtitleLayoutOrientation']
@@ -102,6 +117,28 @@ export function AppearanceSettings({
                 {t('subtitleAppearanceTimingLegend')}
             </summary>
             <div className="accordion-body">
+                <div className="setting-item">
+                    <label htmlFor="subtitleStyle">
+                        {t('subtitleStyleLabel')}
+                    </label>
+                    <select
+                        id="subtitleStyle"
+                        value={subtitleStyle}
+                        onChange={(event) => {
+                            if (isSubtitleStyle(event.target.value)) {
+                                onSubtitleStyleChange(event.target.value);
+                            }
+                        }}
+                    >
+                        {Object.entries(SUBTITLE_STYLE_LABELS).map(
+                            ([value, key]) => (
+                                <option key={value} value={value}>
+                                    {t(key)}
+                                </option>
+                            )
+                        )}
+                    </select>
+                </div>
                 <div className="setting-item">
                     <label htmlFor="subtitleLayoutOrder">
                         {t('displayOrderLabel')}

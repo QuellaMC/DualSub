@@ -186,12 +186,14 @@ describe('upgrade paths', () => {
             selectedProvider: 'microsoft_edge',
             useOfficialTranslations: true,
             uiLanguage: 'ja',
-            subtitleFontSize: 1.4,
+            subtitleFontScale: 1.27,
+            subtitleStyle: 'dualsub',
             sidePanelTheme: 'dark',
             geminiModel: 'gemini-2.5-flash',
         });
         expect(storage.sync).not.toHaveProperty('useNativeSubtitles');
         expect(storage.sync).not.toHaveProperty('sidePanelUseSidePanel');
+        expect(storage.sync).not.toHaveProperty('subtitleFontSize');
     });
 
     it('2.3.2 → 3: batching and modal keys go, the legacy mode key seeds the unified one', async () => {
@@ -207,6 +209,7 @@ describe('upgrade paths', () => {
             geminiModel: 'gemini-3.5-flash',
             openaiCompatibleBaseUrl: 'https://api.openai.com/v1',
             subtitleLayoutOrientation: 'row',
+            subtitleFontScale: 1,
         });
         for (const retired of [
             'translationBatchSize',
@@ -215,6 +218,7 @@ describe('upgrade paths', () => {
             'contextModalPosition',
             'contextAutoCloseDelay',
             'useNativeSubtitles',
+            'subtitleFontSize',
         ]) {
             expect(storage.sync, retired).not.toHaveProperty(retired);
         }
