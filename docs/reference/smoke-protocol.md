@@ -8,7 +8,9 @@ with a clean profile plus one seeded profile (see the upgrade-path tests in
 ## Subtitles
 
 1. Open a title. Dual subtitles appear; the platform's own subtitle
-   container stays hidden.
+   container stays hidden. On a title with on-screen text (Disney+ Marvel
+   films open with location cards), the cue the platform raises shows at
+   the top with its translation while dialogue stays at the bottom.
 2. Toggle "use official translations" and change both languages from the
    popup: the current line stays up behind the loading placeholder, then
    the new languages take over at the right time.

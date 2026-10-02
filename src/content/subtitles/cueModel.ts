@@ -1,3 +1,4 @@
+import type { CuePlacement } from '@/shared/cuePlacement';
 import type { FetchVttResponse } from '@/messaging/contracts/fetchVtt';
 import { parseVtt } from './vtt';
 
@@ -8,7 +9,7 @@ export type CueId = string;
  * - Translate mode: cueType 'original' carrying `original`; `translated` is
  *   filled in by the translation loop.
  * - Native-target mode: separate 'original' and 'target' cues whose timings
- *   may not align; the renderer pairs the active ones.
+ *   may not align; the renderer draws the active ones together.
  */
 export interface Cue {
     readonly id: CueId;
@@ -18,6 +19,7 @@ export interface Cue {
     readonly original: string | null;
     translated: string | null;
     readonly useNativeTarget: boolean;
+    readonly placement: CuePlacement;
 }
 
 export interface CueSet {
@@ -45,6 +47,7 @@ export function buildCueSet(
         original: cue.text,
         translated: null,
         useNativeTarget,
+        placement: cue.placement,
     }));
     if (useNativeTarget) {
         for (const [index, cue] of targetCues.entries()) {
@@ -56,6 +59,7 @@ export function buildCueSet(
                 original: null,
                 translated: cue.text,
                 useNativeTarget,
+                placement: cue.placement,
             });
         }
     }

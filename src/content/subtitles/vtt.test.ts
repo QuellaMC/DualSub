@@ -1,14 +1,24 @@
 import { describe, expect, it } from 'vitest';
+import { AUTO_PLACEMENT } from '@/shared/cuePlacement';
 import { parseTimestampToSeconds, parseVtt } from './vtt';
 import { buildCueSet } from './cueModel';
 
 const SAMPLE = [
     'WEBVTT',
     '',
+    'STYLE',
+    '::cue() { font-family: Arial; }',
+    '',
     '1',
     '00:00:01.000 --> 00:00:02.500 align:middle',
     'Hello <i>there</i>',
     'second line',
+    '',
+    '00:00:03.000 --> 00:00:04.000 line:85.19%,end',
+    '[crowd cheering]',
+    '',
+    '00:00:05.000 --> 00:00:06.000 line:14.81%,start',
+    '<i>Tonight, President Ross</i>',
     '',
     '00:01:05.250 --> 00:01:06.000',
     'Caf&eacute; &amp; bar',
@@ -25,10 +35,27 @@ const SAMPLE = [
 describe('parseVtt', () => {
     it('parses cues with optional ids, settings, markup, entities, and CRLF', () => {
         const cues = parseVtt(SAMPLE);
-        expect(cues).toEqual([
+        expect(
+            cues.map(({ start, end, text }) => ({ start, end, text }))
+        ).toEqual([
             { start: 1, end: 2.5, text: 'Hello there\nsecond line' },
+            { start: 3, end: 4, text: '[crowd cheering]' },
+            { start: 5, end: 6, text: 'Tonight, President Ross' },
             { start: 65.25, end: 66, text: 'Caf&eacute; & bar' },
             { start: 3600, end: 3601, text: 'Late cue' },
+        ]);
+    });
+
+    it("keeps the platforms' line placement and treats other settings as automatic", () => {
+        const [first, cheering, tonight, ...rest] = parseVtt(SAMPLE);
+        expect(first!.placement).toBe(AUTO_PLACEMENT);
+        expect(cheering!.placement.line).toBeCloseTo(0.8519, 6);
+        expect(cheering!.placement.lineAlign).toBe('end');
+        expect(tonight!.placement.line).toBeCloseTo(0.1481, 6);
+        expect(tonight!.placement.lineAlign).toBe('start');
+        expect(rest.map((cue) => cue.placement)).toEqual([
+            AUTO_PLACEMENT,
+            AUTO_PLACEMENT,
         ]);
     });
 
@@ -72,14 +99,16 @@ describe('buildCueSet', () => {
                 original: 'A',
                 translated: null,
                 useNativeTarget: false,
+                placement: AUTO_PLACEMENT,
             },
         ]);
     });
 
-    it('interleaves original and target cues sorted by start in native mode', () => {
+    it('interleaves original and target cues sorted by start in native mode, each with its placement', () => {
         const set = buildCueSet({
             ...base,
-            vttText: 'WEBVTT\n\n00:00:05.000 --> 00:00:06.000\nA',
+            vttText:
+                'WEBVTT\n\n00:00:05.000 --> 00:00:06.000 line:15%,start\nA',
             targetVttText: 'WEBVTT\n\n00:00:01.000 --> 00:00:02.000\n甲',
             useNativeTarget: true,
         });
@@ -88,6 +117,10 @@ describe('buildCueSet', () => {
         expect(set.cues[0]).toMatchObject({
             cueType: 'target',
             translated: '甲',
+            placement: AUTO_PLACEMENT,
+        });
+        expect(set.cues[1]).toMatchObject({
+            placement: { line: 0.15, lineAlign: 'start' },
         });
     });
 

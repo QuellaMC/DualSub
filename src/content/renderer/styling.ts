@@ -1,3 +1,5 @@
+import type { LineAlign } from '@/shared/cuePlacement';
+import type { BlockPlacement } from './cueSelect';
 import type { SubtitleLook, SubtitleStyle } from './looks';
 
 /** Font size at scale 1 as a fraction of the picture height, for every
@@ -16,23 +18,23 @@ export interface DisplaySettings {
     readonly timeOffset: number;
 }
 
-export interface SubtitleElements {
+/** One block: an original line and its translation, drawn together. */
+export interface BlockElements {
     readonly container: HTMLDivElement;
     readonly original: HTMLDivElement;
     readonly translated: HTMLDivElement;
 }
 
-export function createSubtitleElements(): SubtitleElements {
+export function createBlockElements(key: string): BlockElements {
     const container = document.createElement('div');
-    container.id = 'dualsub-subtitle-container';
+    container.className = 'dualsub-subtitle-block';
+    container.dataset.block = key;
     Object.assign(container.style, {
         position: 'absolute',
         left: '50%',
-        transform: 'translateX(-50%)',
         zIndex: '9999',
         pointerEvents: 'none',
         width: '94%',
-        maxWidth: 'none',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -40,9 +42,9 @@ export function createSubtitleElements(): SubtitleElements {
     });
 
     const original = document.createElement('div');
-    original.id = 'dualsub-original-subtitle';
+    original.className = 'dualsub-original-subtitle';
     const translated = document.createElement('div');
-    translated.id = 'dualsub-translated-subtitle';
+    translated.className = 'dualsub-translated-subtitle';
 
     container.append(original, translated);
     return { container, original, translated };
@@ -50,7 +52,7 @@ export function createSubtitleElements(): SubtitleElements {
 
 /** A slot is drawn only when it has text: its padding and background
  *  would otherwise sit over the video as an empty box. */
-export function applySlotVisibility(elements: SubtitleElements): void {
+export function applySlotVisibility(elements: BlockElements): void {
     for (const slot of [elements.original, elements.translated]) {
         slot.style.display = slot.textContent === '' ? 'none' : 'inline-block';
     }
@@ -66,22 +68,49 @@ function verticalPositionToBottomPercent(verticalPosition: number): number {
 /** Font size in pixels for a picture of the given rendered height. */
 export function fontSizePx(
     display: DisplaySettings,
-    videoHeight: number
+    pictureHeight: number
 ): number {
     return (
-        Math.round(BASE_SIZE_RATIO * videoHeight * display.fontScale * 100) /
+        Math.round(BASE_SIZE_RATIO * pictureHeight * display.fontScale * 100) /
         100
     );
 }
 
-export function applyDisplaySettings(
-    elements: SubtitleElements,
+const LINE_ALIGN_SHIFT: Record<LineAlign, string> = {
+    start: '0',
+    center: '-50%',
+    end: '-100%',
+};
+
+/** The standard block sits at the viewer's position; a positioned block
+ *  hangs its anchored edge on the platform's line. */
+function placementStyle(
+    placement: BlockPlacement,
+    display: DisplaySettings
+): Record<string, string> {
+    if (placement.kind === 'standard') {
+        return {
+            top: 'auto',
+            bottom: `${verticalPositionToBottomPercent(display.verticalPosition)}%`,
+            transform: 'translateX(-50%)',
+        };
+    }
+    return {
+        top: `${Math.round(placement.line * 10_000) / 100}%`,
+        bottom: 'auto',
+        transform: `translateX(-50%) translateY(${LINE_ALIGN_SHIFT[placement.lineAlign]})`,
+    };
+}
+
+export function applyBlockStyle(
+    elements: BlockElements,
     display: DisplaySettings,
     look: SubtitleLook,
-    videoHeight: number
+    pictureHeight: number,
+    placement: BlockPlacement
 ): void {
     const { container, original, translated } = elements;
-    const fontSize = `${fontSizePx(display, videoHeight)}px`;
+    const fontSize = `${fontSizePx(display, pictureHeight)}px`;
 
     for (const [element, color] of [
         [original, look.originalColor],
@@ -118,7 +147,7 @@ export function applyDisplaySettings(
         width: '94%',
         justifyContent: 'center',
         alignItems: 'center',
-        bottom: `${verticalPositionToBottomPercent(display.verticalPosition)}%`,
+        ...placementStyle(placement, display),
     });
 
     const first = display.order === 'translation_top' ? translated : original;

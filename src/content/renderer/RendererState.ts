@@ -3,8 +3,8 @@ import type { DisplaySettings } from './styling';
 
 export interface FrameMemo {
     readonly evaluatedTime: number;
+    /** Next playback time at which what is on screen changes. */
     readonly nextBoundaryTime: number | null;
-    readonly nextBoundaryInclusive: boolean;
     /** Wall-clock deadline for the blank-flash grace, if one is pending. */
     readonly wallClockDeadline: number | null;
     readonly href: string;
@@ -13,11 +13,10 @@ export interface FrameMemo {
 }
 
 export interface PaintedState {
-    originalText: string;
-    translatedText: string;
-    /** The translated slot currently shows the loading placeholder. */
-    placeholder: boolean;
-    cueWindow: { start: number; end: number } | null;
+    /** The original line the clickable words and the selection refer to,
+     *  and the key of the block drawing it. */
+    currentLine: string;
+    currentBlock: string;
     styleAppliedAt: number;
 }
 
@@ -35,10 +34,8 @@ export class RendererState {
     renderRevision = 0;
     frameMemo: FrameMemo | null = null;
     readonly painted: PaintedState = {
-        originalText: '',
-        translatedText: '',
-        placeholder: false,
-        cueWindow: null,
+        currentLine: '',
+        currentBlock: '',
         styleAppliedAt: 0,
     };
 
@@ -95,11 +92,6 @@ export class RendererState {
         if (memo.wallClockDeadline !== null && now >= memo.wallClockDeadline) {
             return true;
         }
-        if (memo.nextBoundaryTime === null) {
-            return false;
-        }
-        return memo.nextBoundaryInclusive
-            ? time >= memo.nextBoundaryTime
-            : time > memo.nextBoundaryTime;
+        return memo.nextBoundaryTime !== null && time >= memo.nextBoundaryTime;
     }
 }
