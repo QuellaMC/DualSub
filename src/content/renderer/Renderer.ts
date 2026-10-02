@@ -41,9 +41,10 @@ interface PictureRect {
     readonly height: number;
 }
 
-/** The picture inside the video element's box, in viewport coordinates:
- *  letterbox bars excluded, as the platforms place and size their own
- *  subtitles; the viewport itself while the element has no box. */
+/** The picture inside the video element's box, in viewport coordinates.
+ *  Both platforms let the video keep its aspect inside its box, so the
+ *  letterbox bars are excluded as they are from the platforms' own
+ *  subtitles; the viewport stands in while the element has no box. */
 function pictureRect(video: HTMLVideoElement): PictureRect {
     const box = video.getBoundingClientRect();
     if (!(box.width > 0 && box.height > 0)) {
@@ -74,9 +75,14 @@ function pictureRect(video: HTMLVideoElement): PictureRect {
     };
 }
 
-interface CueWindow {
-    readonly start: number;
-    readonly end: number;
+function sameRect(a: PictureRect | null, b: PictureRect): boolean {
+    return (
+        a !== null &&
+        a.left === b.left &&
+        a.top === b.top &&
+        a.width === b.width &&
+        a.height === b.height
+    );
 }
 
 /** One drawn placement: an original line and its translation. */
@@ -86,10 +92,6 @@ interface Block {
     placement: BlockPlacement;
     originalText: string;
     translatedText: string;
-    /** The span of the cues drawn. With nothing to replace it, a block
-     *  stays up to its end even when the cues vanish, as across a cue-set
-     *  reload. */
-    window: CueWindow | null;
     /** Shows the loading placeholder, which gets no grace. */
     placeholder: boolean;
     /** The original line is painted as clickable words. */
@@ -100,7 +102,6 @@ interface BlockContent {
     readonly placement: BlockPlacement;
     readonly originalText: string;
     readonly translatedText: string;
-    readonly window: CueWindow | null;
     readonly placeholder: boolean;
 }
 
@@ -110,7 +111,7 @@ export class Renderer {
     private readonly words: WordLayer;
     private media: MediaScope | null = null;
     private mediaScope: AbortController | null = null;
-    private pictureHeight = 0;
+    private picture: PictureRect | null = null;
     private visible = true;
     private interactive = false;
     private platformLook: SubtitleLook | null;
@@ -170,22 +171,12 @@ export class Renderer {
             },
             signal
         );
-        // Window, fullscreen, player layout, and picture dimension changes
-        // all resize the picture; a viewport change or a scroll can move it
-        // without resizing it, and every render measures it again.
-        const resize = new ResizeObserver(() => this.restyle());
+        // Every frame follows the picture while the video plays; the
+        // observer covers a resize while it is paused.
+        const resize = new ResizeObserver(() => this.placeStage());
         resize.observe(media.video);
         signal.addEventListener('abort', () => resize.disconnect(), {
             once: true,
-        });
-        media.video.addEventListener('resize', () => this.restyle(), {
-            signal,
-        });
-        window.addEventListener('resize', () => this.placeStage(), { signal });
-        window.addEventListener('scroll', () => this.placeStage(), {
-            capture: true,
-            passive: true,
-            signal,
         });
         this.render();
     }
@@ -276,49 +267,58 @@ export class Renderer {
         const stage = this.container.ensure();
         if (this.container.containerEpoch !== epochBefore) {
             this.blocks.clear();
+            this.picture = null;
             this.forgetCurrentLine();
             this.restyle();
         }
         return stage;
     }
 
-    /** Lay the stage over the picture; its height sizes every block. */
-    private placeStage(): number {
+    /** Lay the stage over the picture as it is now. Its height sizes every
+     *  block, so a new height restyles them. */
+    private placeStage(): void {
         const stage = this.container.current;
         const media = this.media;
         if (!stage || !media) {
-            return this.pictureHeight;
+            return;
         }
         const rect = pictureRect(media.video);
+        if (sameRect(this.picture, rect)) {
+            return;
+        }
+        const heightChanged = rect.height !== this.picture?.height;
+        this.picture = rect;
         Object.assign(stage.style, {
             left: `${rect.left}px`,
             top: `${rect.top}px`,
             width: `${rect.width}px`,
             height: `${rect.height}px`,
         });
-        this.pictureHeight = rect.height;
-        return rect.height;
+        if (heightChanged) {
+            for (const block of this.blocks.values()) {
+                this.styleBlock(block);
+            }
+        }
     }
 
-    /** Re-derive every style from the display, its look, and the picture's
-     *  current size. */
+    /** Re-derive every style from the display, its look, and the picture. */
     private restyle(): void {
         if (!this.container.current || !this.media) {
             return;
         }
-        const pictureHeight = this.placeStage();
+        this.placeStage();
         for (const block of this.blocks.values()) {
-            this.styleBlock(block, pictureHeight);
+            this.styleBlock(block);
         }
         this.deps.state.painted.styleAppliedAt = Date.now();
     }
 
-    private styleBlock(block: Block, pictureHeight: number): void {
+    private styleBlock(block: Block): void {
         applyBlockStyle(
             block.elements,
             this.deps.state.display,
             this.look(),
-            pictureHeight,
+            this.picture?.height ?? 0,
             block.placement
         );
     }
@@ -341,6 +341,7 @@ export class Renderer {
             this.render();
             return;
         }
+        this.placeStage();
         if (media.video.readyState < media.video.HAVE_CURRENT_DATA) {
             return;
         }
@@ -391,39 +392,22 @@ export class Renderer {
         this.placeStage();
         const scan = scanActiveCues(state.cues, time);
         const now = Date.now();
-        let { nextBoundaryTime } = scan;
         let wallClockDeadline: number | null = null;
         const planned = this.plan(
             scan.activeCues,
             state.loading ? overlayText('subtitleLoading') : null
         );
 
-        // A block the plan dropped stays up only while nothing replaces it:
-        // to the end of its cue window, or through the restyle grace, so a
-        // reload or a style change never flashes the overlay blank. A
-        // placeholder goes at once.
-        const keepDropped = planned.size === 0;
+        // A block the plan dropped goes at once, except that with nothing
+        // to replace it, it stays through the restyle grace so a style
+        // change never flashes the overlay blank. A placeholder never stays.
         const graceDeadline = state.painted.styleAppliedAt + STYLE_GRACE_MS;
         for (const block of [...this.blocks.values()]) {
             if (planned.has(block.key)) {
                 continue;
             }
-            const cueWindow = block.window;
             if (
-                keepDropped &&
-                !block.placeholder &&
-                cueWindow !== null &&
-                time >= cueWindow.start &&
-                time < cueWindow.end
-            ) {
-                if (
-                    nextBoundaryTime === null ||
-                    cueWindow.end < nextBoundaryTime
-                ) {
-                    nextBoundaryTime = cueWindow.end;
-                }
-            } else if (
-                keepDropped &&
+                planned.size === 0 &&
                 !block.placeholder &&
                 now < graceDeadline
             ) {
@@ -442,9 +426,8 @@ export class Renderer {
             }
             if (!samePlacement(block.placement, content.placement)) {
                 block.placement = content.placement;
-                this.styleBlock(block, this.pictureHeight);
+                this.styleBlock(block);
             }
-            block.window = content.window;
             block.placeholder = content.placeholder;
         }
         this.commit(planned);
@@ -452,7 +435,7 @@ export class Renderer {
         stage.style.display = 'block';
         state.frameMemo = {
             evaluatedTime: time,
-            nextBoundaryTime,
+            nextBoundaryTime: scan.nextBoundaryTime,
             wallClockDeadline,
             href,
             containerEpoch: this.container.containerEpoch,
@@ -475,10 +458,6 @@ export class Renderer {
                 originalText: text.originalText,
                 translatedText: loadingText ?? text.translatedText,
                 placeholder: loadingText !== null,
-                window: {
-                    start: Math.min(...group.cues.map((cue) => cue.start)),
-                    end: Math.max(...group.cues.map((cue) => cue.end)),
-                },
             });
         }
         if (planned.size === 0 && loadingText !== null) {
@@ -487,7 +466,6 @@ export class Renderer {
                 originalText: '',
                 translatedText: loadingText,
                 placeholder: true,
-                window: null,
             });
         }
         return planned;
@@ -500,11 +478,10 @@ export class Renderer {
             elements: createBlockElements(key),
             originalText: '',
             translatedText: '',
-            window: null,
             placeholder: false,
             interactive: false,
         };
-        this.styleBlock(block, this.pictureHeight);
+        this.styleBlock(block);
         this.blocks.set(key, block);
         return block;
     }

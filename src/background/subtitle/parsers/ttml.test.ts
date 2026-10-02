@@ -91,6 +91,7 @@ const NETFLIX_SAMPLE = `<?xml version="1.0" encoding="UTF-8"?>
       <region xml:id="bottomCenter" tts:origin="10.00% 10.00%" tts:extent="80.00% 80.00%" tts:displayAlign="after"/>
       <region xml:id="middle" tts:origin="10% 10%" tts:extent="80% 80%" tts:displayAlign="center"/>
       <region xml:id="unplaced"/>
+      <region xml:id="pixels" tts:origin="100px 100px" tts:extent="400px 50px" tts:displayAlign="before"/>
     </layout>
   </head>
   <body>
@@ -102,12 +103,13 @@ const NETFLIX_SAMPLE = `<?xml version="1.0" encoding="UTF-8"?>
     <div>
       <p begin="70000000t" end="80000000t" region="unplaced">Free</p>
       <p begin="90000000t" end="100000000t" region="styledTop">Styled</p>
+      <p begin="110000000t" end="120000000t" region="pixels">Pixels</p>
     </div>
   </body>
 </tt>`;
 
 describe('convertTtmlToVtt (Netflix regions)', () => {
-    it('anchors on the edge displayAlign names, inherits the region of the enclosing div, and resolves region styles', () => {
+    it('anchors on the edge displayAlign names, inherits the region of the enclosing div, resolves region styles, and places only percentage boxes', () => {
         const vtt = convertTtmlToVtt(NETFLIX_SAMPLE);
         expect(vtt).toContain(
             '00:00:01.000 --> 00:00:03.000 line:90%,end\nDialogue'
@@ -122,6 +124,7 @@ describe('convertTtmlToVtt (Netflix regions)', () => {
         expect(vtt).toContain(
             '00:00:09.000 --> 00:00:10.000 line:10%,start\nStyled'
         );
+        expect(vtt).toContain('00:00:11.000 --> 00:00:12.000\nPixels');
     });
 });
 
