@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { browser, type Browser } from 'wxt/browser';
-import { previewContentSettings } from './livePreview';
+import { previewContentSettings, readPlatformLookStatus } from './contentTab';
 
 function activeTab(id: number): Browser.tabs.Tab[] {
     return [{ id } as unknown as Browser.tabs.Tab];
@@ -74,5 +74,36 @@ describe('previewContentSettings', () => {
         await expect(
             previewContentSettings({ subtitleFontScale: 1.5 })
         ).resolves.toBeUndefined();
+    });
+});
+
+describe('readPlatformLookStatus', () => {
+    it('asks the active tab what Match Platform draws from', async () => {
+        const send = stubTabs(activeTab(7));
+        send.mockResolvedValueOnce({
+            platform: 'disneyplus',
+            captured: true,
+        } as never);
+        await expect(readPlatformLookStatus()).resolves.toEqual({
+            platform: 'disneyplus',
+            captured: true,
+        });
+        expect(send).toHaveBeenCalledWith(
+            7,
+            { action: 'platformLookStatus' },
+            undefined
+        );
+    });
+
+    it('is null without an active tab, a content script, or a sound answer', async () => {
+        stubTabs([]);
+        await expect(readPlatformLookStatus()).resolves.toBeNull();
+
+        const send = stubTabs(activeTab(7));
+        send.mockRejectedValueOnce(new Error('Receiving end does not exist'));
+        await expect(readPlatformLookStatus()).resolves.toBeNull();
+
+        send.mockResolvedValueOnce({ platform: 'hulu', captured: 1 } as never);
+        await expect(readPlatformLookStatus()).resolves.toBeNull();
     });
 });

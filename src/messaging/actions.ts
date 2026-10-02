@@ -7,6 +7,7 @@ export const MessageActions = {
     PING: 'ping',
     CHECK_BACKGROUND_READY: 'checkBackgroundReady',
     CONFIG_CHANGED: 'configChanged',
+    PLATFORM_LOOK_STATUS: 'platformLookStatus',
     LOGGING_LEVEL_CHANGED: 'LOGGING_LEVEL_CHANGED',
     SIDEPANEL_WORD_SELECTED: 'sidePanelWordSelected',
     SIDEPANEL_PAUSE_VIDEO: 'sidePanelPauseVideo',

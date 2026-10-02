@@ -19,6 +19,7 @@ const PLATFORM_PRESET: SubtitleLook = {
 
 const display = {
     style: 'dualsub' as const,
+    customLook: DUALSUB_LOOK,
     fontScale: 1,
     gap: 0.3,
     verticalPosition: 2.8,

@@ -315,7 +315,7 @@ export class Renderer {
 
     private look(): SubtitleLook {
         return resolveLook(
-            this.deps.state.display.style,
+            this.deps.state.display,
             this.deps.descriptor.look,
             this.platformLook
         );

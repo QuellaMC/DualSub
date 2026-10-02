@@ -715,5 +715,101 @@
     },
     "subtitleLoading": {
         "message": "DualSub: 자막을 불러오는 중…"
+    },
+    "subtitleStyleCustom": {
+        "message": "사용자 지정"
+    },
+    "platformLookCaptured": {
+        "message": "'플랫폼과 동일하게'는 %s 프로필의 자막 설정을 따릅니다."
+    },
+    "platformLookPreset": {
+        "message": "'플랫폼과 동일하게'는 프로필의 자막 설정을 읽을 때까지 %s 기본 모양을 사용합니다."
+    },
+    "editCustomLook": {
+        "message": "설정에서 사용자 지정 모양 편집"
+    },
+    "navAppearance": {
+        "message": "모양"
+    },
+    "sectionAppearance": {
+        "message": "자막 모양"
+    },
+    "cardSubtitleStyleTitle": {
+        "message": "자막 스타일"
+    },
+    "cardSubtitleStyleDesc": {
+        "message": "두 자막 줄을 그리는 방식입니다. '플랫폼과 동일하게'는 사이트에서 프로필의 자막 설정을 따르며, 미리보기는 플랫폼의 기본 모양을 보여 줍니다."
+    },
+    "previewPlatformLabel": {
+        "message": "미리보기 플랫폼:"
+    },
+    "lookPreviewLabel": {
+        "message": "자막 미리보기"
+    },
+    "lookPreviewOriginal": {
+        "message": "Where there's a will, there's a way."
+    },
+    "lookPreviewTranslation": {
+        "message": "뜻이 있는 곳에 길이 있다."
+    },
+    "cardCustomLookTitle": {
+        "message": "사용자 지정 모양"
+    },
+    "cardCustomLookDesc": {
+        "message": "두 줄에 쓸 나만의 타이포그래피입니다. 값을 바꾸면 사용자 지정 스타일이 선택됩니다."
+    },
+    "customFontLabel": {
+        "message": "글꼴:"
+    },
+    "customFontDefault": {
+        "message": "페이지 기본값"
+    },
+    "customFontSansSerif": {
+        "message": "산세리프"
+    },
+    "customFontSerif": {
+        "message": "세리프"
+    },
+    "customFontMonospace": {
+        "message": "고정폭"
+    },
+    "customFontCasual": {
+        "message": "캐주얼"
+    },
+    "customFontSmallCaps": {
+        "message": "작은 대문자"
+    },
+    "customBoldLabel": {
+        "message": "굵게:"
+    },
+    "customOriginalColorLabel": {
+        "message": "원문 글자색:"
+    },
+    "customTranslatedColorLabel": {
+        "message": "번역 글자색:"
+    },
+    "customEdgeLabel": {
+        "message": "글자 테두리:"
+    },
+    "customEdgeNone": {
+        "message": "없음"
+    },
+    "customEdgeShadow": {
+        "message": "그림자"
+    },
+    "customEdgeOutline": {
+        "message": "외곽선"
+    },
+    "customEdgeRaised": {
+        "message": "돌출"
+    },
+    "customEdgeDepressed": {
+        "message": "함몰"
+    },
+    "customBackgroundColorLabel": {
+        "message": "배경색:"
+    },
+    "customBackgroundOpacityLabel": {
+        "message": "배경 불투명도:"
     }
 }

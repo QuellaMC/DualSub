@@ -1,4 +1,8 @@
-import { TRANSLATION_COLOR, type SubtitleLook } from '../../renderer/looks';
+import {
+    hexWithOpacity,
+    TRANSLATION_COLOR,
+    type SubtitleLook,
+} from '../../renderer/looks';
 
 // Netflix's player draws subtitles from the profile's appearance settings
 // (defaults plus non-null overrides) through the fixed tables below, taken
@@ -88,14 +92,6 @@ function toHex(value: string | null | undefined): string | null {
     return COLOR_HEX[value.toLowerCase()] ?? null;
 }
 
-function withOpacity(hex: string, opacity: number): string {
-    if (opacity >= 1) {
-        return hex;
-    }
-    const value = Number.parseInt(hex.slice(1), 16);
-    return `rgba(${value >> 16}, ${(value >> 8) & 255}, ${value & 255}, ${opacity})`;
-}
-
 function edgeShadow(edge: string | null | undefined, color: string): string {
     switch (edge) {
         case 'DROP_SHADOW':
@@ -158,7 +154,7 @@ export function parseNetflixLook(
     const layer = (colorKey: string, opacityKey: string): string | null => {
         const hex = toHex(setting(colorKey));
         const opacity = OPACITY[setting(opacityKey) ?? 'OPAQUE'] ?? 1;
-        return hex && opacity > 0 ? withOpacity(hex, opacity) : null;
+        return hex && opacity > 0 ? hexWithOpacity(hex, opacity) : null;
     };
 
     const style = setting('characterStyle') ?? DEFAULT_STYLE;
@@ -172,7 +168,7 @@ export function parseNetflixLook(
 
     return {
         ...font,
-        originalColor: withOpacity(textColor, textOpacity),
+        originalColor: hexWithOpacity(textColor, textOpacity),
         translatedColor: TRANSLATION_COLOR,
         textShadow: edgeShadow(
             setting('characterEdgeAttributes'),

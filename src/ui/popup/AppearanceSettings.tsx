@@ -1,14 +1,16 @@
 import { SETTING_BOUNDS, type SettingsValues } from '@/config/schema';
+import type { PlatformLookStatus } from '../contentTab';
 import type { Translate } from '../hooks/useI18n';
+import {
+    isSubtitleStyle,
+    PLATFORM_NAMES,
+    SUBTITLE_STYLE_LABELS,
+    type SubtitleStyle,
+} from '../subtitleStyle';
 import { SliderSetting } from './SliderSetting';
 
 export type SliderKey =
     'subtitleFontScale' | 'subtitleGap' | 'subtitleVerticalPosition';
-
-const SUBTITLE_STYLE_LABELS: Record<SettingsValues['subtitleStyle'], string> = {
-    dualsub: 'subtitleStyleDualSub',
-    platform: 'subtitleStylePlatform',
-};
 
 const LAYOUT_ORDER_LABELS: Record<
     SettingsValues['subtitleLayoutOrder'],
@@ -56,12 +58,6 @@ const SLIDERS: {
     },
 ];
 
-function isSubtitleStyle(
-    value: string
-): value is SettingsValues['subtitleStyle'] {
-    return Object.hasOwn(SUBTITLE_STYLE_LABELS, value);
-}
-
 function isLayoutOrder(
     value: string
 ): value is SettingsValues['subtitleLayoutOrder'] {
@@ -74,16 +70,58 @@ function isLayoutOrientation(
     return Object.hasOwn(LAYOUT_ORIENTATION_LABELS, value);
 }
 
+/** What the chosen style draws from on this tab: a note under the menu. */
+function StyleNote({
+    t,
+    subtitleStyle,
+    platformLook,
+    onEditCustomLook,
+}: {
+    t: Translate;
+    subtitleStyle: SubtitleStyle;
+    platformLook: PlatformLookStatus | null;
+    onEditCustomLook: () => void;
+}) {
+    if (subtitleStyle === 'platform' && platformLook) {
+        return (
+            <p className="setting-note">
+                {t(
+                    platformLook.captured
+                        ? 'platformLookCaptured'
+                        : 'platformLookPreset',
+                    PLATFORM_NAMES[platformLook.platform]
+                )}
+            </p>
+        );
+    }
+    if (subtitleStyle === 'custom') {
+        return (
+            <p className="setting-note">
+                <button
+                    type="button"
+                    className="link-button"
+                    onClick={onEditCustomLook}
+                >
+                    {t('editCustomLook')}
+                </button>
+            </p>
+        );
+    }
+    return null;
+}
+
 export function AppearanceSettings({
     t,
     isOpen,
     onToggle,
     subtitleStyle,
+    platformLook,
     layoutOrder,
     layoutOrientation,
     sliderValues,
     timeOffset,
     onSubtitleStyleChange,
+    onEditCustomLook,
     onLayoutOrderChange,
     onLayoutOrientationChange,
     onSliderPreview,
@@ -93,12 +131,14 @@ export function AppearanceSettings({
     t: Translate;
     isOpen: boolean;
     onToggle: (open: boolean) => void;
-    subtitleStyle: SettingsValues['subtitleStyle'];
+    subtitleStyle: SubtitleStyle;
+    platformLook: PlatformLookStatus | null;
     layoutOrder: SettingsValues['subtitleLayoutOrder'];
     layoutOrientation: SettingsValues['subtitleLayoutOrientation'];
     sliderValues: Record<SliderKey, number>;
     timeOffset: number;
-    onSubtitleStyleChange: (value: SettingsValues['subtitleStyle']) => void;
+    onSubtitleStyleChange: (value: SubtitleStyle) => void;
+    onEditCustomLook: () => void;
     onLayoutOrderChange: (value: SettingsValues['subtitleLayoutOrder']) => void;
     onLayoutOrientationChange: (
         value: SettingsValues['subtitleLayoutOrientation']
@@ -139,6 +179,12 @@ export function AppearanceSettings({
                         )}
                     </select>
                 </div>
+                <StyleNote
+                    t={t}
+                    subtitleStyle={subtitleStyle}
+                    platformLook={platformLook}
+                    onEditCustomLook={onEditCustomLook}
+                />
                 <div className="setting-item">
                     <label htmlFor="subtitleLayoutOrder">
                         {t('displayOrderLabel')}

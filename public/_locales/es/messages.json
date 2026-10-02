@@ -715,5 +715,101 @@
     },
     "subtitleLoading": {
         "message": "DualSub: cargando subtítulos…"
+    },
+    "subtitleStyleCustom": {
+        "message": "Personalizado"
+    },
+    "platformLookCaptured": {
+        "message": "Igual que la plataforma sigue la configuración de subtítulos de tu perfil de %s."
+    },
+    "platformLookPreset": {
+        "message": "Igual que la plataforma usa el ajuste predeterminado de %s hasta que se lea la configuración de subtítulos de tu perfil."
+    },
+    "editCustomLook": {
+        "message": "Editar el estilo personalizado en la configuración"
+    },
+    "navAppearance": {
+        "message": "Apariencia"
+    },
+    "sectionAppearance": {
+        "message": "Apariencia de los subtítulos"
+    },
+    "cardSubtitleStyleTitle": {
+        "message": "Estilo de subtítulos"
+    },
+    "cardSubtitleStyleDesc": {
+        "message": "Cómo se dibujan ambas líneas de subtítulos. Igual que la plataforma sigue la configuración de subtítulos de tu perfil en el sitio; la vista previa muestra el aspecto predeterminado de la plataforma."
+    },
+    "previewPlatformLabel": {
+        "message": "Plataforma de la vista previa:"
+    },
+    "lookPreviewLabel": {
+        "message": "Vista previa de los subtítulos"
+    },
+    "lookPreviewOriginal": {
+        "message": "Where there's a will, there's a way."
+    },
+    "lookPreviewTranslation": {
+        "message": "Querer es poder."
+    },
+    "cardCustomLookTitle": {
+        "message": "Estilo personalizado"
+    },
+    "cardCustomLookDesc": {
+        "message": "Tu propia tipografía para ambas líneas. Cambiar un valor selecciona el estilo Personalizado."
+    },
+    "customFontLabel": {
+        "message": "Fuente:"
+    },
+    "customFontDefault": {
+        "message": "Predeterminada de la página"
+    },
+    "customFontSansSerif": {
+        "message": "Sans-serif"
+    },
+    "customFontSerif": {
+        "message": "Serif"
+    },
+    "customFontMonospace": {
+        "message": "Monoespaciada"
+    },
+    "customFontCasual": {
+        "message": "Informal"
+    },
+    "customFontSmallCaps": {
+        "message": "Versalitas"
+    },
+    "customBoldLabel": {
+        "message": "Negrita:"
+    },
+    "customOriginalColorLabel": {
+        "message": "Color del texto original:"
+    },
+    "customTranslatedColorLabel": {
+        "message": "Color del texto traducido:"
+    },
+    "customEdgeLabel": {
+        "message": "Borde del texto:"
+    },
+    "customEdgeNone": {
+        "message": "Ninguno"
+    },
+    "customEdgeShadow": {
+        "message": "Sombra"
+    },
+    "customEdgeOutline": {
+        "message": "Contorno"
+    },
+    "customEdgeRaised": {
+        "message": "Relieve"
+    },
+    "customEdgeDepressed": {
+        "message": "Hundido"
+    },
+    "customBackgroundColorLabel": {
+        "message": "Color de fondo:"
+    },
+    "customBackgroundOpacityLabel": {
+        "message": "Opacidad del fondo:"
     }
 }

@@ -4,6 +4,7 @@ import { MessageRouter } from '@/messaging/router';
 import {
     configChanged,
     loggingLevelChanged,
+    platformLookStatus,
     sidePanelPauseVideo,
 } from '@/messaging/contracts/control';
 import {
@@ -84,6 +85,10 @@ export class ContentOrchestrator {
             this.activeSession?.applySettings(preview);
             return { success: true as const };
         });
+        this.router.handle(platformLookStatus, () => ({
+            platform: this.descriptor.id,
+            captured: this.platformLook !== null,
+        }));
         // Side panel traffic addresses the selection of whichever session is
         // on the route; with no session there is nothing to answer for.
         this.router.handle(

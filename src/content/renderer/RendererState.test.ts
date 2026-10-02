@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import { DUALSUB_LOOK } from './looks';
 import { RendererState } from './RendererState';
 
 const display = {
     style: 'dualsub' as const,
+    customLook: DUALSUB_LOOK,
     fontScale: 1,
     gap: 0.3,
     verticalPosition: 2.8,

@@ -2,6 +2,7 @@ import type { Translate } from '../hooks/useI18n';
 
 export const SECTION_IDS = [
     'general',
+    'appearance',
     'translation',
     'providers',
     'ai-context',
@@ -13,6 +14,7 @@ export type SectionId = (typeof SECTION_IDS)[number];
 
 const SECTION_LABELS: Record<SectionId, string> = {
     general: 'navGeneral',
+    appearance: 'navAppearance',
     translation: 'navTranslation',
     providers: 'navProviders',
     'ai-context': 'navAIContext',

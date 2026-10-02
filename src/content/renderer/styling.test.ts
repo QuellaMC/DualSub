@@ -1,7 +1,14 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from 'vitest';
 import { STANDARD_PLACEMENT } from './cueSelect';
-import { DUALSUB_LOOK, resolveLook, type SubtitleLook } from './looks';
+import { getDefaultValue } from '@/config/schema';
+import {
+    customLook,
+    DUALSUB_LOOK,
+    hexWithOpacity,
+    resolveLook,
+    type SubtitleLook,
+} from './looks';
 import {
     applyBlockStyle,
     createBlockElements,
@@ -11,6 +18,7 @@ import {
 
 const display: DisplaySettings = {
     style: 'dualsub',
+    customLook: DUALSUB_LOOK,
     fontScale: 1,
     gap: 0.3,
     verticalPosition: 2.8,
@@ -28,11 +36,59 @@ const BOLD_PRESET: SubtitleLook = {
 describe('resolveLook', () => {
     it("uses the platform preset, or the viewer's reported look over it", () => {
         const captured = { ...DUALSUB_LOOK, fontWeight: '600' };
-        expect(resolveLook('dualsub', BOLD_PRESET, captured)).toBe(
+        expect(resolveLook(display, BOLD_PRESET, captured)).toBe(DUALSUB_LOOK);
+        expect(
+            resolveLook({ ...display, style: 'platform' }, BOLD_PRESET, null)
+        ).toBe(BOLD_PRESET);
+        expect(
+            resolveLook(
+                { ...display, style: 'platform' },
+                BOLD_PRESET,
+                captured
+            )
+        ).toBe(captured);
+    });
+
+    it('draws the custom style from the display', () => {
+        const own = customLook({
+            ...getDefaultValue('subtitleCustomLook'),
+            bold: true,
+        });
+        expect(
+            resolveLook({ style: 'custom', customLook: own }, BOLD_PRESET, null)
+        ).toBe(own);
+    });
+});
+
+describe('customLook', () => {
+    it('is the DualSub look at its defaults', () => {
+        expect(customLook(getDefaultValue('subtitleCustomLook'))).toEqual(
             DUALSUB_LOOK
         );
-        expect(resolveLook('platform', BOLD_PRESET, null)).toBe(BOLD_PRESET);
-        expect(resolveLook('platform', BOLD_PRESET, captured)).toBe(captured);
+        expect(DUALSUB_LOOK.background).toBe('rgba(0, 0, 0, 0.6)');
+        expect(DUALSUB_LOOK.fontFamily).toBe('inherit');
+    });
+
+    it('maps the typography choices to CSS', () => {
+        const look = customLook({
+            font: 'small-caps',
+            bold: true,
+            originalColor: '#ffff00',
+            translatedColor: '#ff00ff',
+            edge: 'outline',
+            backgroundColor: '#102030',
+            backgroundOpacity: 1,
+        });
+        expect(look).toMatchObject({
+            fontVariant: 'small-caps',
+            fontWeight: 'bold',
+            originalColor: '#ffff00',
+            translatedColor: '#ff00ff',
+            textShadow: 'none',
+            textStroke: '1.5px black',
+            background: '#102030',
+        });
+        expect(hexWithOpacity('#102030', 0.25)).toBe('rgba(16, 32, 48, 0.25)');
     });
 });
 

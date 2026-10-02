@@ -4,6 +4,13 @@ import type { Translate } from '../hooks/useI18n';
 export const OPTIONS_SETTINGS_KEYS = [
     'uiLanguage',
     'hideOfficialSubtitles',
+    'subtitleStyle',
+    'subtitleCustomLook',
+    'subtitleLayoutOrder',
+    'subtitleLayoutOrientation',
+    'subtitleFontScale',
+    'subtitleGap',
+    'subtitleVerticalPosition',
     'loggingLevel',
     'selectedProvider',
     'translationDelay',

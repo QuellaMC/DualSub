@@ -9,6 +9,8 @@ const BASE_SIZE_RATIO = 0.02;
 
 export interface DisplaySettings {
     readonly style: SubtitleStyle;
+    /** The look drawn by the custom style. */
+    readonly customLook: SubtitleLook;
     /** Multiplier over the look's base size. */
     readonly fontScale: number;
     readonly gap: number;

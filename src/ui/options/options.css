@@ -748,3 +748,51 @@ input[aria-invalid='true'] {
         justify-self: start;
     }
 }
+
+/* Subtitle appearance */
+.look-preview {
+    position: relative;
+    width: 100%;
+    max-width: 640px;
+    aspect-ratio: 16 / 9;
+    margin-top: 15px;
+    border-radius: 8px;
+    overflow: hidden;
+    background:
+        radial-gradient(
+            ellipse at 30% 25%,
+            rgba(94, 124, 180, 0.55),
+            transparent 55%
+        ),
+        linear-gradient(180deg, #1b2233 0%, #0b0e16 100%);
+}
+
+.setting input[type='color'] {
+    width: 48px;
+    height: 32px;
+    padding: 0;
+    border: 1px solid var(--input-border);
+    border-radius: 6px;
+    background-color: var(--input-bg);
+    cursor: pointer;
+    justify-self: start;
+}
+
+.range-control {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.range-control input[type='range'] {
+    flex: 1;
+    accent-color: var(--link-color);
+}
+
+.range-value {
+    min-width: 40px;
+    text-align: right;
+    color: var(--secondary-text-color);
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+}
