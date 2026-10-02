@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     CUSTOM_LOOK_EDGES,
     CUSTOM_LOOK_FONTS,
@@ -50,19 +50,22 @@ function isEdge(value: string): value is CustomLook['edge'] {
 
 /**
  * The custom look being edited. Edits show at once and are written after a
- * pause, or when the editor goes away; a value arriving from storage
- * (another window, a synced device) is adopted unless an edit is pending.
+ * pause, or when the editor goes away; a write that fails snaps the draft
+ * back to the stored look unless a newer edit is pending. A look arriving
+ * from storage (another window, a synced device) is adopted unless an edit
+ * is pending.
  */
 function useLookDraft(
     saved: CustomLook,
     save: SaveSettings
 ): [CustomLook, (changes: Partial<CustomLook>) => void] {
     const [draft, setDraft] = useState(saved);
+    /** The draft holds an edit storage has not seen yet. */
     const pending = useRef(false);
-    const latest = useRef({ draft, save });
+    const latest = useRef({ draft, save, saved });
 
     useEffect(() => {
-        latest.current = { draft, save };
+        latest.current = { draft, save, saved };
     });
 
     useEffect(() => {
@@ -71,28 +74,29 @@ function useLookDraft(
         }
     }, [saved]);
 
+    const commit = useCallback((): void => {
+        if (!pending.current) {
+            return;
+        }
+        pending.current = false;
+        const { draft: edited, save: write } = latest.current;
+        void write({ subtitleCustomLook: edited }).then((persisted) => {
+            if (!persisted && !pending.current) {
+                setDraft(latest.current.saved);
+            }
+        });
+    }, []);
+
     useEffect(() => {
         if (!pending.current) {
             return;
         }
-        const timer = setTimeout(() => {
-            pending.current = false;
-            void save({ subtitleCustomLook: draft });
-        }, SAVE_DELAY_MS);
+        const timer = setTimeout(commit, SAVE_DELAY_MS);
         return () => clearTimeout(timer);
-    }, [draft, save]);
+    }, [draft, commit]);
 
-    useEffect(
-        () => () => {
-            if (pending.current) {
-                pending.current = false;
-                void latest.current.save({
-                    subtitleCustomLook: latest.current.draft,
-                });
-            }
-        },
-        []
-    );
+    // Unmounting writes a pending edit.
+    useEffect(() => commit, [commit]);
 
     const edit = (changes: Partial<CustomLook>): void => {
         pending.current = true;

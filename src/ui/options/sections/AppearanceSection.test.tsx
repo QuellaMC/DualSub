@@ -25,8 +25,10 @@ function defaults(): OptionsSettings {
     return values as unknown as OptionsSettings;
 }
 
-function renderSection(overrides: Partial<OptionsSettings> = {}) {
-    const save = vi.fn(() => Promise.resolve(true));
+function renderSection(
+    overrides: Partial<OptionsSettings> = {},
+    save = vi.fn(() => Promise.resolve(true))
+) {
     const settings = { ...defaults(), ...overrides };
     const view = render(
         <AppearanceSection t={t} settings={settings} save={save} />
@@ -140,6 +142,19 @@ describe('AppearanceSection', () => {
             },
         });
         expect(font).toHaveValue('monospace');
+    });
+
+    it('snaps back to the stored look when the write fails', async () => {
+        renderSection(
+            { subtitleStyle: 'custom' },
+            vi.fn(() => Promise.resolve(false))
+        );
+        const font = screen.getByLabelText('customFontLabel');
+        fireEvent.change(font, { target: { value: 'serif' } });
+        expect(font).toHaveValue('serif');
+        await waitFor(() => expect(font).toHaveValue('default'), {
+            timeout: 1500,
+        });
     });
 
     it('writes a pending edit when the section goes away', () => {
