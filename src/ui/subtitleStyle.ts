@@ -8,7 +8,6 @@ export type SubtitleStyle = SettingsValues['subtitleStyle'];
 
 /** Catalog keys of the style choices, in menu order. */
 export const SUBTITLE_STYLE_LABELS: Record<SubtitleStyle, string> = {
-    dualsub: 'subtitleStyleDualSub',
     platform: 'subtitleStylePlatform',
     custom: 'subtitleStyleCustom',
 };

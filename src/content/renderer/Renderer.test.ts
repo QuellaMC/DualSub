@@ -3,23 +3,27 @@ import { setUrl } from '@/test-utils/dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { AUTO_PLACEMENT, type CuePlacement } from '@/shared/cuePlacement';
+import { getDefaultValue } from '@/config/schema';
 import { createLogger } from '@/shared/logger';
 import type { PlatformAdapter } from '../platform/types';
 import type { Cue } from '../subtitles/cueModel';
 import { UiRoot } from './domLayer';
-import { DUALSUB_LOOK, type SubtitleLook } from './looks';
+import { customLook, type SubtitleLook } from './looks';
 import { Renderer } from './Renderer';
 import { RendererState } from './RendererState';
 
+const DEFAULT_LOOK = customLook(getDefaultValue('subtitleCustomLook'));
+
 const PLATFORM_PRESET: SubtitleLook = {
-    ...DUALSUB_LOOK,
+    ...DEFAULT_LOOK,
     fontWeight: 'bold',
     background: 'transparent',
 };
 
 const display = {
-    style: 'dualsub' as const,
-    customLook: DUALSUB_LOOK,
+    style: 'custom' as const,
+    customLook: DEFAULT_LOOK,
+    translationColor: '#00ffff',
     fontScale: 1,
     gap: 0.3,
     verticalPosition: 2.8,
@@ -461,7 +465,7 @@ describe('Renderer styling', () => {
         controller.abort();
     });
 
-    it('switches between the DualSub and platform looks', () => {
+    it('switches between the custom and platform looks', () => {
         const { renderer, video, tick, loadCues, controller } = setup();
         renderer.attachMedia({ root: video.parentElement, video });
         showCue(loadCues, tick);
@@ -484,7 +488,7 @@ describe('Renderer styling', () => {
         renderer.setDisplay({ ...display, style: 'platform' });
         expect(original().style.fontWeight).toBe('bold');
 
-        renderer.setPlatformLook({ ...DUALSUB_LOOK, fontWeight: '600' });
+        renderer.setPlatformLook({ ...DEFAULT_LOOK, fontWeight: '600' });
         expect(original().style.fontWeight).toBe('600');
         renderer.setPlatformLook(null);
         expect(original().style.fontWeight).toBe('bold');

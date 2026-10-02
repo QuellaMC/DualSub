@@ -1,24 +1,19 @@
-import {
-    getDefaultValue,
-    type CustomLook,
-    type SettingsValues,
-} from '@/config/schema';
+import type { CustomLook, SettingsValues } from '@/config/schema';
 import type { DisplaySettings } from './styling';
 
 export type SubtitleStyle = SettingsValues['subtitleStyle'];
 
 /**
  * The typography and box of both subtitle lines. Layout (order, gap,
- * position) stays with the display settings, and size with the renderer:
- * the platforms size a single line, and two lines at that size are too
- * tall, so every look is drawn at DualSub's own size.
+ * position), the translation line's color, and size stay with the display
+ * settings: the platforms size a single line, and two lines at that size
+ * are too tall, so every look is drawn at DualSub's own size.
  */
 export interface SubtitleLook {
     readonly fontFamily: string;
     readonly fontWeight: string;
     readonly fontVariant: string;
     readonly originalColor: string;
-    readonly translatedColor: string;
     readonly textShadow: string;
     /** `-webkit-text-stroke` value; empty for none. */
     readonly textStroke: string;
@@ -26,10 +21,6 @@ export interface SubtitleLook {
     readonly padding: string;
     readonly borderRadius: string;
 }
-
-/** The translation keeps this color in the platform looks so the lines
- *  stay apart. */
-export const TRANSLATION_COLOR = '#00FFFF';
 
 const FONTS: Record<
     CustomLook['font'],
@@ -78,12 +69,12 @@ export function hexWithOpacity(hex: string, opacity: number): string {
     return `rgba(${value >> 16}, ${(value >> 8) & 255}, ${value & 255}, ${opacity})`;
 }
 
+/** The custom look at the setting's defaults is DualSub's own look. */
 export function customLook(values: CustomLook): SubtitleLook {
     return {
         ...FONTS[values.font],
         fontWeight: values.bold ? 'bold' : 'normal',
         originalColor: values.originalColor,
-        translatedColor: values.translatedColor,
         ...EDGES[values.edge],
         background: hexWithOpacity(
             values.backgroundColor,
@@ -94,12 +85,6 @@ export function customLook(values: CustomLook): SubtitleLook {
     };
 }
 
-/** Custom starts from what the viewer already sees: DualSub's own look
- *  is the custom look at the setting's defaults. */
-export const DUALSUB_LOOK: SubtitleLook = customLook(
-    getDefaultValue('subtitleCustomLook')
-);
-
 /** The platform style is the viewer's own platform settings when the page
  *  has reported them, else the platform's documented defaults. */
 export function resolveLook(
@@ -107,12 +92,7 @@ export function resolveLook(
     platformPreset: SubtitleLook,
     platformLook: SubtitleLook | null
 ): SubtitleLook {
-    switch (display.style) {
-        case 'platform':
-            return platformLook ?? platformPreset;
-        case 'custom':
-            return display.customLook;
-        default:
-            return DUALSUB_LOOK;
-    }
+    return display.style === 'platform'
+        ? (platformLook ?? platformPreset)
+        : display.customLook;
 }

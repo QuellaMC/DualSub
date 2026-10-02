@@ -187,7 +187,7 @@ describe('upgrade paths', () => {
             useOfficialTranslations: true,
             uiLanguage: 'ja',
             subtitleFontScale: 1.27,
-            subtitleStyle: 'dualsub',
+            subtitleStyle: 'custom',
             sidePanelTheme: 'dark',
             geminiModel: 'gemini-2.5-flash',
         });
@@ -227,6 +227,12 @@ describe('upgrade paths', () => {
             openaiCompatibleApiKey: 'oc-old',
             geminiApiKey: 'gm-old',
         });
+    });
+
+    it("a pre-release 3.1 profile's DualSub style boots as Custom, its new default", async () => {
+        await browser.storage.sync.set({ subtitleStyle: 'dualsub' });
+        await boot();
+        expect((await snapshot()).sync.subtitleStyle).toBe('custom');
     });
 
     it('a v2 device re-polluting sync after the upgrade cannot undo it', async () => {

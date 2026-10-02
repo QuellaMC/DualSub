@@ -13,8 +13,8 @@ import {
 } from './schema';
 
 describe('registry shape', () => {
-    it('has exactly the 50 v3 keys', () => {
-        expect(SETTINGS_KEYS).toHaveLength(50);
+    it('has exactly the 51 v3 keys', () => {
+        expect(SETTINGS_KEYS).toHaveLength(51);
     });
 
     it('retired v2 keys are gone', () => {
@@ -225,7 +225,11 @@ describe('numeric constraints', () => {
         expect(validateSetting('subtitleFontScale', 0.4)).toBe(false);
         expect(validateSetting('subtitleFontScale', 3.5)).toBe(false);
         expect(validateSetting('subtitleStyle', 'custom')).toBe(true);
-        expect(validateSetting('subtitleStyle', 'fancy')).toBe(false);
+        expect(validateSetting('subtitleStyle', 'dualsub')).toBe(false);
+        expect(validateSetting('subtitleTranslationColor', '#FFCC00')).toBe(
+            true
+        );
+        expect(validateSetting('subtitleTranslationColor', 'cyan')).toBe(false);
         expect(validateSetting('subtitleTimeOffset', Number.NaN)).toBe(false);
         expect(validateSetting('subtitleTimeOffset', Infinity)).toBe(false);
         expect(validateSetting('subtitleTimeOffset', -2.75)).toBe(true);

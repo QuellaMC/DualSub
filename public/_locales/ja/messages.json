@@ -62,9 +62,6 @@
     "subtitleStyleLabel": {
         "message": "字幕スタイル："
     },
-    "subtitleStyleDualSub": {
-        "message": "DualSub"
-    },
     "subtitleStylePlatform": {
         "message": "プラットフォームに合わせる"
     },
@@ -738,7 +735,7 @@
         "message": "字幕スタイル"
     },
     "cardSubtitleStyleDesc": {
-        "message": "2行の字幕の描き方です。「プラットフォームに合わせる」はサイト上でプロフィールの字幕設定に従い、プレビューはプラットフォームの既定の外観を表示します。"
+        "message": "2行の字幕の描き方です。「プラットフォームに合わせる」はサイト上でプロフィールの字幕設定に従い、プレビューはプラットフォームの既定の外観を表示します。「カスタム」はDualSub自身の外観から始まり、下で編集できます。"
     },
     "previewPlatformLabel": {
         "message": "プレビューのプラットフォーム："
@@ -785,9 +782,6 @@
     "customOriginalColorLabel": {
         "message": "原文の文字色："
     },
-    "customTranslatedColorLabel": {
-        "message": "翻訳の文字色："
-    },
     "customEdgeLabel": {
         "message": "文字の縁取り："
     },
@@ -811,5 +805,11 @@
     },
     "customBackgroundOpacityLabel": {
         "message": "背景の不透明度："
+    },
+    "translationColorLabel": {
+        "message": "翻訳の文字色："
+    },
+    "translationColorHelp": {
+        "message": "どちらのスタイルでも、翻訳行はこの色で描かれます。"
     }
 }

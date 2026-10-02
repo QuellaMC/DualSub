@@ -62,9 +62,6 @@
     "subtitleStyleLabel": {
         "message": "자막 스타일:"
     },
-    "subtitleStyleDualSub": {
-        "message": "DualSub"
-    },
     "subtitleStylePlatform": {
         "message": "플랫폼과 동일하게"
     },
@@ -738,7 +735,7 @@
         "message": "자막 스타일"
     },
     "cardSubtitleStyleDesc": {
-        "message": "두 자막 줄을 그리는 방식입니다. '플랫폼과 동일하게'는 사이트에서 프로필의 자막 설정을 따르며, 미리보기는 플랫폼의 기본 모양을 보여 줍니다."
+        "message": "두 자막 줄을 그리는 방식입니다. '플랫폼과 동일하게'는 사이트에서 프로필의 자막 설정을 따르며, 미리보기는 플랫폼의 기본 모양을 보여 줍니다. '사용자 지정'은 DualSub 고유의 모양에서 시작하며 아래에서 편집합니다."
     },
     "previewPlatformLabel": {
         "message": "미리보기 플랫폼:"
@@ -785,9 +782,6 @@
     "customOriginalColorLabel": {
         "message": "원문 글자색:"
     },
-    "customTranslatedColorLabel": {
-        "message": "번역 글자색:"
-    },
     "customEdgeLabel": {
         "message": "글자 테두리:"
     },
@@ -811,5 +805,11 @@
     },
     "customBackgroundOpacityLabel": {
         "message": "배경 불투명도:"
+    },
+    "translationColorLabel": {
+        "message": "번역 글자색:"
+    },
+    "translationColorHelp": {
+        "message": "두 스타일 모두 번역 줄을 이 색으로 그립니다."
     }
 }

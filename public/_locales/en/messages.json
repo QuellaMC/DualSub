@@ -62,9 +62,6 @@
     "subtitleStyleLabel": {
         "message": "Subtitle Style:"
     },
-    "subtitleStyleDualSub": {
-        "message": "DualSub"
-    },
     "subtitleStylePlatform": {
         "message": "Match Platform"
     },
@@ -738,7 +735,7 @@
         "message": "Subtitle Style"
     },
     "cardSubtitleStyleDesc": {
-        "message": "How both subtitle lines are drawn. Match Platform follows your profile's subtitle settings on the site; the preview shows the platform's default look."
+        "message": "How both subtitle lines are drawn. Match Platform follows your profile's subtitle settings on the site; the preview shows the platform's default look. Custom starts as DualSub's own look and is edited below."
     },
     "previewPlatformLabel": {
         "message": "Preview platform:"
@@ -785,9 +782,6 @@
     "customOriginalColorLabel": {
         "message": "Original text color:"
     },
-    "customTranslatedColorLabel": {
-        "message": "Translation text color:"
-    },
     "customEdgeLabel": {
         "message": "Text edge:"
     },
@@ -811,5 +805,11 @@
     },
     "customBackgroundOpacityLabel": {
         "message": "Background opacity:"
+    },
+    "translationColorLabel": {
+        "message": "Translation text color:"
+    },
+    "translationColorHelp": {
+        "message": "Both styles draw the translation line in this color."
     }
 }

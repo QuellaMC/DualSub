@@ -11,6 +11,8 @@ export interface DisplaySettings {
     readonly style: SubtitleStyle;
     /** The look drawn by the custom style. */
     readonly customLook: SubtitleLook;
+    /** The translation line's color, in every look. */
+    readonly translationColor: string;
     /** Multiplier over the look's base size. */
     readonly fontScale: number;
     readonly gap: number;
@@ -116,7 +118,7 @@ export function applyBlockStyle(
 
     for (const [element, color] of [
         [original, look.originalColor],
-        [translated, look.translatedColor],
+        [translated, display.translationColor],
     ] as const) {
         Object.assign(element.style, {
             fontFamily: look.fontFamily,

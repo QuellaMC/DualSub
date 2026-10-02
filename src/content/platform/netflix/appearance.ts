@@ -1,8 +1,4 @@
-import {
-    hexWithOpacity,
-    TRANSLATION_COLOR,
-    type SubtitleLook,
-} from '../../renderer/looks';
+import { hexWithOpacity, type SubtitleLook } from '../../renderer/looks';
 
 // Netflix's player draws subtitles from the profile's appearance settings
 // (defaults plus non-null overrides) through the fixed tables below, taken
@@ -169,7 +165,6 @@ export function parseNetflixLook(
     return {
         ...font,
         originalColor: hexWithOpacity(textColor, textOpacity),
-        translatedColor: TRANSLATION_COLOR,
         textShadow: edgeShadow(
             setting('characterEdgeAttributes'),
             toHex(setting('characterEdgeColor')) ?? '#000000'

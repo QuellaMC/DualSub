@@ -81,13 +81,32 @@ describe('AppearanceSection', () => {
     it('saves the style choice', () => {
         const { save } = renderSection();
         fireEvent.change(screen.getByLabelText('subtitleStyleLabel'), {
-            target: { value: 'custom' },
+            target: { value: 'platform' },
         });
-        expect(save).toHaveBeenCalledWith({ subtitleStyle: 'custom' });
+        expect(save).toHaveBeenCalledWith({ subtitleStyle: 'platform' });
+    });
+
+    it('applies the translation color in every style without touching the style', async () => {
+        const { save } = renderSection({ subtitleStyle: 'platform' });
+        expect(screen.getByText('translationColorHelp')).toBeInTheDocument();
+        fireEvent.change(screen.getByLabelText('translationColorLabel'), {
+            target: { value: '#ff00ff' },
+        });
+        expect(previewSlot('translated').style.color).toMatch(
+            /#ff00ff|rgb\(255, 0, 255\)/
+        );
+        await waitFor(
+            () =>
+                expect(save).toHaveBeenCalledWith({
+                    subtitleTranslationColor: '#ff00ff',
+                }),
+            { timeout: 1500 }
+        );
+        expect(save).toHaveBeenCalledTimes(1);
     });
 
     it('selects the custom style on the first edit', () => {
-        const { save } = renderSection();
+        const { save } = renderSection({ subtitleStyle: 'platform' });
         fireEvent.change(screen.getByLabelText('customFontLabel'), {
             target: { value: 'serif' },
         });

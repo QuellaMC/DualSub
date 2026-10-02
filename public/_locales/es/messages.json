@@ -62,9 +62,6 @@
     "subtitleStyleLabel": {
         "message": "Estilo de subtítulos:"
     },
-    "subtitleStyleDualSub": {
-        "message": "DualSub"
-    },
     "subtitleStylePlatform": {
         "message": "Igual que la plataforma"
     },
@@ -738,7 +735,7 @@
         "message": "Estilo de subtítulos"
     },
     "cardSubtitleStyleDesc": {
-        "message": "Cómo se dibujan ambas líneas de subtítulos. Igual que la plataforma sigue la configuración de subtítulos de tu perfil en el sitio; la vista previa muestra el aspecto predeterminado de la plataforma."
+        "message": "Cómo se dibujan ambas líneas de subtítulos. Igual que la plataforma sigue la configuración de subtítulos de tu perfil en el sitio; la vista previa muestra el aspecto predeterminado de la plataforma. Personalizado empieza con el estilo propio de DualSub y se edita abajo."
     },
     "previewPlatformLabel": {
         "message": "Plataforma de la vista previa:"
@@ -785,9 +782,6 @@
     "customOriginalColorLabel": {
         "message": "Color del texto original:"
     },
-    "customTranslatedColorLabel": {
-        "message": "Color del texto traducido:"
-    },
     "customEdgeLabel": {
         "message": "Borde del texto:"
     },
@@ -811,5 +805,11 @@
     },
     "customBackgroundOpacityLabel": {
         "message": "Opacidad del fondo:"
+    },
+    "translationColorLabel": {
+        "message": "Color del texto traducido:"
+    },
+    "translationColorHelp": {
+        "message": "Ambos estilos dibujan la línea traducida con este color."
     }
 }

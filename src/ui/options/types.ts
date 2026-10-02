@@ -6,6 +6,7 @@ export const OPTIONS_SETTINGS_KEYS = [
     'hideOfficialSubtitles',
     'subtitleStyle',
     'subtitleCustomLook',
+    'subtitleTranslationColor',
     'subtitleLayoutOrder',
     'subtitleLayoutOrientation',
     'subtitleFontScale',

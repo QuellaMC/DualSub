@@ -205,7 +205,7 @@ describe('PopupApp', () => {
         stubTabs();
         await renderReady();
         const style = screen.getByRole('combobox', { name: 'Subtitle Style:' });
-        expect(style).toHaveValue('dualsub');
+        expect(style).toHaveValue('custom');
 
         fireEvent.change(style, { target: { value: 'platform' } });
         await waitFor(() =>
@@ -292,7 +292,6 @@ describe('PopupApp', () => {
             within(style).getByRole('option', { name: 'Custom' })
         ).toBeInTheDocument();
 
-        fireEvent.change(style, { target: { value: 'custom' } });
         fireEvent.click(
             await screen.findByRole('button', {
                 name: 'Edit the custom look in settings',

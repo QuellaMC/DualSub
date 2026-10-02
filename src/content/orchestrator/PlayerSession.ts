@@ -53,6 +53,7 @@ export const CONTENT_SETTINGS_KEYS = [
     'subtitlesEnabled',
     'subtitleStyle',
     'subtitleCustomLook',
+    'subtitleTranslationColor',
     'subtitleFontScale',
     'subtitleGap',
     'subtitleVerticalPosition',
@@ -100,6 +101,7 @@ export function toDisplaySettings(settings: ContentSettings): DisplaySettings {
     return {
         style: settings.subtitleStyle,
         customLook: customLook(settings.subtitleCustomLook),
+        translationColor: settings.subtitleTranslationColor,
         fontScale: settings.subtitleFontScale,
         gap: settings.subtitleGap,
         verticalPosition: settings.subtitleVerticalPosition,

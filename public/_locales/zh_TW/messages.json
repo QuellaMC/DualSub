@@ -62,9 +62,6 @@
     "subtitleStyleLabel": {
         "message": "字幕樣式："
     },
-    "subtitleStyleDualSub": {
-        "message": "DualSub"
-    },
     "subtitleStylePlatform": {
         "message": "跟隨平台"
     },
@@ -738,7 +735,7 @@
         "message": "字幕樣式"
     },
     "cardSubtitleStyleDesc": {
-        "message": "決定兩行字幕的繪製方式。「跟隨平台」在網站上採用你個人檔案中的字幕設定；預覽顯示平台的預設外觀。"
+        "message": "決定兩行字幕的繪製方式。「跟隨平台」在網站上採用你個人檔案中的字幕設定；預覽顯示平台的預設外觀。「自訂」以 DualSub 自身的外觀為起點，在下方編輯。"
     },
     "previewPlatformLabel": {
         "message": "預覽平台："
@@ -785,9 +782,6 @@
     "customOriginalColorLabel": {
         "message": "原文文字顏色："
     },
-    "customTranslatedColorLabel": {
-        "message": "譯文文字顏色："
-    },
     "customEdgeLabel": {
         "message": "文字描邊："
     },
@@ -811,5 +805,11 @@
     },
     "customBackgroundOpacityLabel": {
         "message": "背景不透明度："
+    },
+    "translationColorLabel": {
+        "message": "譯文文字顏色："
+    },
+    "translationColorHelp": {
+        "message": "兩種樣式都會用此顏色繪製譯文行。"
     }
 }

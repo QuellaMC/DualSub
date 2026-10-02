@@ -17,7 +17,7 @@ import {
 import { LookPreview } from '../LookPreview';
 import { SettingCard } from '../SettingCard';
 import { ToggleSwitch } from '../ToggleSwitch';
-import type { SaveSettings, SectionProps } from '../types';
+import type { SectionProps } from '../types';
 
 const FONT_LABELS: Record<CustomLook['font'], string> = {
     default: 'customFontDefault',
@@ -37,7 +37,7 @@ const EDGE_LABELS: Record<CustomLook['edge'], string> = {
 };
 
 /** Color pickers and the opacity slider report every movement; one write
- *  per pause keeps the look within the sync storage write quota. */
+ *  per pause keeps a drag within the sync storage write quota. */
 const SAVE_DELAY_MS = 400;
 
 function isFont(value: string): value is CustomLook['font'] {
@@ -49,23 +49,23 @@ function isEdge(value: string): value is CustomLook['edge'] {
 }
 
 /**
- * The custom look being edited. Edits show at once and are written after a
- * pause, or when the editor goes away; a write that fails snaps the draft
- * back to the stored look unless a newer edit is pending. A look arriving
- * from storage (another window, a synced device) is adopted unless an edit
- * is pending.
+ * A setting edited with a continuous control. Edits show at once and are
+ * written after a pause, or when the editor goes away; a write that fails
+ * snaps the draft back to the stored value unless a newer edit is pending.
+ * A value arriving from storage (another window, a synced device) is
+ * adopted unless an edit is pending.
  */
-function useLookDraft(
-    saved: CustomLook,
-    save: SaveSettings
-): [CustomLook, (changes: Partial<CustomLook>) => void] {
+function useDraft<T>(
+    saved: T,
+    write: (value: T) => Promise<boolean>
+): [T, (value: T) => void] {
     const [draft, setDraft] = useState(saved);
     /** The draft holds an edit storage has not seen yet. */
     const pending = useRef(false);
-    const latest = useRef({ draft, save, saved });
+    const latest = useRef({ draft, write, saved });
 
     useEffect(() => {
-        latest.current = { draft, save, saved };
+        latest.current = { draft, write, saved };
     });
 
     useEffect(() => {
@@ -79,8 +79,7 @@ function useLookDraft(
             return;
         }
         pending.current = false;
-        const { draft: edited, save: write } = latest.current;
-        void write({ subtitleCustomLook: edited }).then((persisted) => {
+        void latest.current.write(latest.current.draft).then((persisted) => {
             if (!persisted && !pending.current) {
                 setDraft(latest.current.saved);
             }
@@ -98,9 +97,9 @@ function useLookDraft(
     // Unmounting writes a pending edit.
     useEffect(() => commit, [commit]);
 
-    const edit = (changes: Partial<CustomLook>): void => {
+    const edit = (value: T): void => {
         pending.current = true;
-        setDraft((current) => ({ ...current, ...changes }));
+        setDraft(value);
     };
     return [draft, edit];
 }
@@ -108,13 +107,20 @@ function useLookDraft(
 export function AppearanceSection({ t, settings, save }: SectionProps) {
     const [previewPlatform, setPreviewPlatform] =
         useState<PlatformId>('netflix');
-    const [draft, editDraft] = useLookDraft(settings.subtitleCustomLook, save);
+    const [look, editLook] = useDraft(settings.subtitleCustomLook, (value) =>
+        save({ subtitleCustomLook: value })
+    );
+    const [translationColor, editTranslationColor] = useDraft(
+        settings.subtitleTranslationColor,
+        (value) => save({ subtitleTranslationColor: value })
+    );
     const style = settings.subtitleStyle;
 
     const display = useMemo<DisplaySettings>(
         () => ({
             style,
-            customLook: customLook(draft),
+            customLook: customLook(look),
+            translationColor,
             fontScale: settings.subtitleFontScale,
             gap: settings.subtitleGap,
             verticalPosition: settings.subtitleVerticalPosition,
@@ -124,7 +130,8 @@ export function AppearanceSection({ t, settings, save }: SectionProps) {
         }),
         [
             style,
-            draft,
+            look,
+            translationColor,
             settings.subtitleFontScale,
             settings.subtitleGap,
             settings.subtitleVerticalPosition,
@@ -132,11 +139,10 @@ export function AppearanceSection({ t, settings, save }: SectionProps) {
             settings.subtitleLayoutOrder,
         ]
     );
-    const look = resolveLook(display, PLATFORM_PRESETS[previewPlatform], null);
 
     /** Touching the editor selects the custom style, so the change shows. */
     const edit = (changes: Partial<CustomLook>): void => {
-        editDraft(changes);
+        editLook({ ...look, ...changes });
         if (style !== 'custom') {
             void save({ subtitleStyle: 'custom' });
         }
@@ -175,6 +181,22 @@ export function AppearanceSection({ t, settings, save }: SectionProps) {
                     </select>
                 </div>
                 <div className="setting">
+                    <label htmlFor="subtitleTranslationColor">
+                        {t('translationColorLabel')}
+                    </label>
+                    <input
+                        type="color"
+                        id="subtitleTranslationColor"
+                        value={translationColor}
+                        onChange={(event) =>
+                            editTranslationColor(event.target.value)
+                        }
+                    />
+                </div>
+                <p className="setting-description">
+                    {t('translationColorHelp')}
+                </p>
+                <div className="setting">
                     <label htmlFor="previewPlatform">
                         {t('previewPlatformLabel')}
                     </label>
@@ -196,7 +218,11 @@ export function AppearanceSection({ t, settings, save }: SectionProps) {
                 </div>
                 <LookPreview
                     display={display}
-                    look={look}
+                    look={resolveLook(
+                        display,
+                        PLATFORM_PRESETS[previewPlatform],
+                        null
+                    )}
                     originalText={t('lookPreviewOriginal')}
                     translatedText={t('lookPreviewTranslation')}
                     label={t('lookPreviewLabel')}
@@ -211,7 +237,7 @@ export function AppearanceSection({ t, settings, save }: SectionProps) {
                     <label htmlFor="customFont">{t('customFontLabel')}</label>
                     <select
                         id="customFont"
-                        value={draft.font}
+                        value={look.font}
                         onChange={(event) => {
                             if (isFont(event.target.value)) {
                                 edit({ font: event.target.value });
@@ -229,7 +255,7 @@ export function AppearanceSection({ t, settings, save }: SectionProps) {
                     <label htmlFor="customBold">{t('customBoldLabel')}</label>
                     <ToggleSwitch
                         id="customBold"
-                        checked={draft.bold}
+                        checked={look.bold}
                         onChange={(bold) => edit({ bold })}
                     />
                 </div>
@@ -240,22 +266,9 @@ export function AppearanceSection({ t, settings, save }: SectionProps) {
                     <input
                         type="color"
                         id="customOriginalColor"
-                        value={draft.originalColor}
+                        value={look.originalColor}
                         onChange={(event) =>
                             edit({ originalColor: event.target.value })
-                        }
-                    />
-                </div>
-                <div className="setting">
-                    <label htmlFor="customTranslatedColor">
-                        {t('customTranslatedColorLabel')}
-                    </label>
-                    <input
-                        type="color"
-                        id="customTranslatedColor"
-                        value={draft.translatedColor}
-                        onChange={(event) =>
-                            edit({ translatedColor: event.target.value })
                         }
                     />
                 </div>
@@ -263,7 +276,7 @@ export function AppearanceSection({ t, settings, save }: SectionProps) {
                     <label htmlFor="customEdge">{t('customEdgeLabel')}</label>
                     <select
                         id="customEdge"
-                        value={draft.edge}
+                        value={look.edge}
                         onChange={(event) => {
                             if (isEdge(event.target.value)) {
                                 edit({ edge: event.target.value });
@@ -284,7 +297,7 @@ export function AppearanceSection({ t, settings, save }: SectionProps) {
                     <input
                         type="color"
                         id="customBackgroundColor"
-                        value={draft.backgroundColor}
+                        value={look.backgroundColor}
                         onChange={(event) =>
                             edit({ backgroundColor: event.target.value })
                         }
@@ -301,7 +314,7 @@ export function AppearanceSection({ t, settings, save }: SectionProps) {
                             min={0}
                             max={1}
                             step={0.05}
-                            value={draft.backgroundOpacity}
+                            value={look.backgroundOpacity}
                             onChange={(event) =>
                                 edit({
                                     backgroundOpacity: Number(
@@ -311,7 +324,7 @@ export function AppearanceSection({ t, settings, save }: SectionProps) {
                             }
                         />
                         <span className="range-value">
-                            {Math.round(draft.backgroundOpacity * 100)}%
+                            {Math.round(look.backgroundOpacity * 100)}%
                         </span>
                     </div>
                 </div>

@@ -116,9 +116,9 @@ export function detectBrowserLanguage(): UiLanguage {
 const uiLanguageSchema = z.enum(['en', 'es', 'ja', 'ko', 'zh-CN', 'zh-TW']);
 export type UiLanguage = z.infer<typeof uiLanguageSchema>;
 
-/** DualSub's own subtitle look, the look of the platform being watched, or
- *  the viewer's own. */
-const SUBTITLE_STYLES = ['dualsub', 'platform', 'custom'] as const;
+/** The look of the platform being watched, or the viewer's own, which
+ *  starts as DualSub's. */
+const SUBTITLE_STYLES = ['platform', 'custom'] as const;
 
 /** The typography choices of the custom look; the look model maps them to
  *  CSS. */
@@ -144,7 +144,6 @@ const customLookSchema = z.strictObject({
     font: z.enum(CUSTOM_LOOK_FONTS),
     bold: z.boolean(),
     originalColor: hexColor,
-    translatedColor: hexColor,
     edge: z.enum(CUSTOM_LOOK_EDGES),
     backgroundColor: hexColor,
     backgroundOpacity: z.number().finite().min(0).max(1),
@@ -358,7 +357,7 @@ export const configSchema = {
     }),
     subtitleStyle: setting({
         schema: z.enum(SUBTITLE_STYLES),
-        default: 'dualsub',
+        default: 'custom',
         scope: 'sync',
     }),
     /** The viewer's own look for both lines. Its defaults are DualSub's own
@@ -369,11 +368,16 @@ export const configSchema = {
             font: 'default',
             bold: false,
             originalColor: '#ffffff',
-            translatedColor: '#00ffff',
             edge: 'shadow',
             backgroundColor: '#000000',
             backgroundOpacity: 0.6,
         },
+        scope: 'sync',
+    }),
+    /** The translation line's color, in every style. */
+    subtitleTranslationColor: setting({
+        schema: hexColor,
+        default: '#00ffff',
         scope: 'sync',
     }),
     subtitleGap: setting({
