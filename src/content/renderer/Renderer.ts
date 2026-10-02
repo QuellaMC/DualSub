@@ -6,16 +6,26 @@ import type {
 } from '../platform/types';
 import { childScope } from '../orchestrator/scope';
 import { overlayText } from '../overlayText';
-import { pairActiveCues, scanActiveCues } from './cueSelect';
+import type { Cue } from '../subtitles/cueModel';
+import {
+    blockKey,
+    composeBlockText,
+    groupActiveCues,
+    placementOrder,
+    scanActiveCues,
+    STANDARD_PLACEMENT,
+    type BlockPlacement,
+} from './cueSelect';
 import { SessionContainer, type UiRoot } from './domLayer';
 import { startFrameLoop } from './frameLoop';
 import { resolveLook, type SubtitleLook } from './looks';
 import type { RendererState } from './RendererState';
 import {
-    applyDisplaySettings,
+    applyBlockStyle,
     applySlotVisibility,
+    createBlockElements,
+    type BlockElements,
     type DisplaySettings,
-    type SubtitleElements,
 } from './styling';
 import { WordLayer, type WordIntent } from './wordLayer';
 
@@ -23,25 +33,82 @@ import { WordLayer, type WordIntent } from './wordLayer';
  *  so re-styling never flashes the overlay blank. */
 const STYLE_GRACE_MS = 800;
 
-/** The size basis of every look: the height of the picture inside the
- *  video element's box (letterbox bars excluded, as the platforms size
- *  their own subtitles), or the viewport's while the element has no box. */
-function sizeBasis(video: HTMLVideoElement): number {
+interface PictureRect {
+    readonly left: number;
+    readonly top: number;
+    readonly width: number;
+    readonly height: number;
+}
+
+/** The picture inside the video element's box, in viewport coordinates:
+ *  letterbox bars excluded, as the platforms place and size their own
+ *  subtitles; the viewport itself while the element has no box. */
+function pictureRect(video: HTMLVideoElement): PictureRect {
     const box = video.getBoundingClientRect();
-    if (box.height <= 0) {
-        return window.innerHeight;
+    if (!(box.width > 0 && box.height > 0)) {
+        return {
+            left: 0,
+            top: 0,
+            width: window.innerWidth,
+            height: window.innerHeight,
+        };
     }
     const { videoWidth, videoHeight } = video;
-    return videoWidth > 0 && videoHeight > 0
-        ? Math.min(box.height, (box.width * videoHeight) / videoWidth)
-        : box.height;
+    if (!(videoWidth > 0 && videoHeight > 0)) {
+        return {
+            left: box.left,
+            top: box.top,
+            width: box.width,
+            height: box.height,
+        };
+    }
+    const scale = Math.min(box.width / videoWidth, box.height / videoHeight);
+    const width = videoWidth * scale;
+    const height = videoHeight * scale;
+    return {
+        left: box.left + (box.width - width) / 2,
+        top: box.top + (box.height - height) / 2,
+        width,
+        height,
+    };
+}
+
+interface CueWindow {
+    readonly start: number;
+    readonly end: number;
+}
+
+/** One drawn placement: an original line and its translation. */
+interface Block {
+    readonly key: string;
+    readonly placement: BlockPlacement;
+    readonly elements: BlockElements;
+    originalText: string;
+    translatedText: string;
+    /** The span of the cues drawn. A block stays up to its end even when
+     *  the cues vanish, as across a cue-set reload. */
+    window: CueWindow | null;
+    /** Shows the loading placeholder, which gets no grace. */
+    placeholder: boolean;
+    /** The original line is painted as clickable words. */
+    interactive: boolean;
+}
+
+interface BlockContent {
+    readonly placement: BlockPlacement;
+    readonly originalText: string;
+    readonly translatedText: string;
+    readonly window: CueWindow | null;
+    readonly placeholder: boolean;
 }
 
 export class Renderer {
     private readonly container: SessionContainer;
+    private readonly blocks = new Map<string, Block>();
     private readonly words: WordLayer;
     private media: MediaScope | null = null;
     private mediaScope: AbortController | null = null;
+    private pictureHeight = 0;
     private visible = true;
     private interactive = false;
     private platformLook: SubtitleLook | null;
@@ -82,13 +149,13 @@ export class Renderer {
     }
 
     /** Builds the overlay for this video; a re-bind starts from a fresh
-     *  container so it is styled for the display in force now. */
+     *  stage so it is styled for the display in force now. */
     attachMedia(media: MediaScope): void {
         this.detachMedia();
         this.media = media;
         this.mediaScope = childScope(this.deps.signal);
         const { signal } = this.mediaScope;
-        this.ensureElements(media);
+        this.ensureStage();
         startFrameLoop(
             media.video,
             {
@@ -102,13 +169,18 @@ export class Renderer {
             signal
         );
         // Window, fullscreen, player layout, and picture dimension changes
-        // all move the size basis.
+        // all move the picture; a scroll moves it without resizing it.
         const resize = new ResizeObserver(() => this.restyle());
         resize.observe(media.video);
         signal.addEventListener('abort', () => resize.disconnect(), {
             once: true,
         });
         media.video.addEventListener('resize', () => this.restyle(), {
+            signal,
+        });
+        window.addEventListener('scroll', () => this.placeStage(), {
+            capture: true,
+            passive: true,
             signal,
         });
         this.render();
@@ -118,6 +190,7 @@ export class Renderer {
         this.mediaScope?.abort();
         this.mediaScope = null;
         this.media = null;
+        this.blocks.clear();
         this.container.destroy();
     }
 
@@ -151,16 +224,14 @@ export class Renderer {
         this.render();
     }
 
-    /** Paint the original line as clickable words, or as plain text. The
-     *  current line is repainted under a new revision either way. */
+    /** Paint the current line as clickable words, or as plain text. It is
+     *  repainted under a new revision either way. */
     setInteractive(interactive: boolean): void {
         if (this.interactive === interactive) {
             return;
         }
         this.interactive = interactive;
-        this.container.current?.original.replaceChildren();
-        this.words.forget();
-        this.deps.state.painted.originalText = '';
+        this.deps.state.painted.currentLine = '';
         this.deps.state.invalidateMemo();
         this.render();
     }
@@ -186,36 +257,60 @@ export class Renderer {
         return raw === null ? null : raw + this.deps.state.display.timeOffset;
     }
 
-    /** Live elements; a rebuild resets painted text so the next commit paints. */
-    private ensureElements(media: MediaScope): SubtitleElements {
+    /** The live stage; a rebuild forgets every block so the next render
+     *  paints afresh. */
+    private ensureStage(): HTMLDivElement {
         const { state } = this.deps;
         const epochBefore = this.container.containerEpoch;
-        const elements = this.container.ensure(media);
+        const stage = this.container.ensure();
         if (this.container.containerEpoch !== epochBefore) {
-            state.painted.originalText = '';
-            state.painted.translatedText = '';
+            this.blocks.clear();
+            state.painted.currentLine = '';
             state.invalidateMemo();
             this.restyle();
         }
-        return elements;
+        return stage;
     }
 
-    /** Re-derive every style from the display, its look, and the video's
+    /** Lay the stage over the picture; its height sizes every block. */
+    private placeStage(): number {
+        const stage = this.container.current;
+        const media = this.media;
+        if (!stage || !media) {
+            return this.pictureHeight;
+        }
+        const rect = pictureRect(media.video);
+        Object.assign(stage.style, {
+            left: `${rect.left}px`,
+            top: `${rect.top}px`,
+            width: `${rect.width}px`,
+            height: `${rect.height}px`,
+        });
+        this.pictureHeight = rect.height;
+        return rect.height;
+    }
+
+    /** Re-derive every style from the display, its look, and the picture's
      *  current size. */
     private restyle(): void {
-        const elements = this.container.current;
-        const media = this.media;
-        if (!elements || !media) {
+        if (!this.container.current || !this.media) {
             return;
         }
-        const { state } = this.deps;
-        applyDisplaySettings(
-            elements,
-            state.display,
+        const pictureHeight = this.placeStage();
+        for (const block of this.blocks.values()) {
+            this.styleBlock(block, pictureHeight);
+        }
+        this.deps.state.painted.styleAppliedAt = Date.now();
+    }
+
+    private styleBlock(block: Block, pictureHeight: number): void {
+        applyBlockStyle(
+            block.elements,
+            this.deps.state.display,
             this.look(),
-            sizeBasis(media.video)
+            pictureHeight,
+            block.placement
         );
-        state.painted.styleAppliedAt = Date.now();
     }
 
     private look(): SubtitleLook {
@@ -231,8 +326,8 @@ export class Renderer {
         if (!media || !this.visible) {
             return;
         }
-        const elements = this.container.current;
-        if (elements && !elements.container.isConnected) {
+        const stage = this.container.current;
+        if (stage && !stage.isConnected) {
             this.render();
             return;
         }
@@ -282,53 +377,31 @@ export class Renderer {
             return;
         }
 
-        const elements = this.ensureElements(media);
+        const stage = this.ensureStage();
         const scan = scanActiveCues(state.cues, time);
         const now = Date.now();
         let { nextBoundaryTime, nextBoundaryInclusive } = scan;
         let wallClockDeadline: number | null = null;
-        const loadingText = state.loading
-            ? overlayText('subtitleLoading')
-            : null;
+        const planned = this.plan(
+            scan.activeCues,
+            state.loading ? overlayText('subtitleLoading') : null
+        );
 
-        if (scan.activeCues.length > 0) {
-            const pair = pairActiveCues(scan.activeCues);
-            const originalText = pair.original?.original ?? '';
-            const translatedText =
-                loadingText ??
-                pair.translated?.translated ??
-                pair.original?.translated ??
-                '';
-            this.commit(elements, originalText, translatedText);
-            state.painted.placeholder = loadingText !== null;
-            const displayed = pair.original ?? pair.translated;
-            if (displayed) {
-                state.painted.cueWindow = {
-                    start: displayed.start,
-                    end: displayed.end,
-                };
+        // A block the plan dropped stays up to the end of its cue window or
+        // through the restyle grace, so a reload or a style change never
+        // flashes the overlay blank; a placeholder goes at once.
+        const graceDeadline = state.painted.styleAppliedAt + STYLE_GRACE_MS;
+        for (const block of [...this.blocks.values()]) {
+            if (planned.has(block.key)) {
+                continue;
             }
-        } else if (loadingText !== null) {
-            this.commit(elements, '', loadingText);
-            state.painted.placeholder = true;
-            state.painted.cueWindow = null;
-        } else if (state.painted.placeholder) {
-            // The placeholder is not a cue: no grace keeps it up once the
-            // wait is over.
-            this.commit(elements, '', '');
-            state.painted.placeholder = false;
-            state.painted.cueWindow = null;
-        } else {
-            const cueWindow = state.painted.cueWindow;
-            const withinWindow =
+            const cueWindow = block.window;
+            if (
+                !block.placeholder &&
                 cueWindow !== null &&
                 time >= cueWindow.start &&
-                time <= cueWindow.end;
-            const graceDeadline = state.painted.styleAppliedAt + STYLE_GRACE_MS;
-            const hasText =
-                state.painted.originalText !== '' ||
-                state.painted.translatedText !== '';
-            if (withinWindow) {
+                time <= cueWindow.end
+            ) {
                 if (
                     nextBoundaryTime === null ||
                     cueWindow.end < nextBoundaryTime
@@ -336,15 +409,26 @@ export class Renderer {
                     nextBoundaryTime = cueWindow.end;
                     nextBoundaryInclusive = false;
                 }
-            } else if (hasText && now < graceDeadline) {
+            } else if (!block.placeholder && now < graceDeadline) {
                 wallClockDeadline = graceDeadline;
             } else {
-                this.commit(elements, '', '');
-                state.painted.cueWindow = null;
+                block.elements.container.remove();
+                this.blocks.delete(block.key);
             }
         }
+        for (const [key, content] of planned) {
+            const block =
+                this.blocks.get(key) ??
+                this.createBlock(key, content.placement);
+            if (!block.elements.container.isConnected) {
+                stage.appendChild(block.elements.container);
+            }
+            block.window = content.window;
+            block.placeholder = content.placeholder;
+        }
+        this.commit(planned);
 
-        this.show(elements);
+        stage.style.display = 'block';
         state.frameMemo = {
             evaluatedTime: time,
             nextBoundaryTime,
@@ -356,45 +440,127 @@ export class Renderer {
         };
     }
 
-    private commit(
-        elements: SubtitleElements,
-        originalText: string,
-        translatedText: string
-    ): void {
-        const { state } = this.deps;
-        const { painted } = state;
-        if (painted.originalText !== originalText) {
-            state.renderRevision += 1;
-            if (this.interactive && originalText !== '') {
-                this.words.paint(
-                    elements.original,
-                    originalText,
-                    state.renderRevision
-                );
-            } else {
-                elements.original.textContent = originalText;
-                this.words.forget();
-            }
-            painted.originalText = originalText;
-            if (this.interactive) {
-                this.deps.onOriginalPainted?.(state.renderRevision);
-            }
+    /** What each placement shows this frame. While loading, every block
+     *  carries the placeholder, the standard block alone when no cue is
+     *  active. */
+    private plan(
+        activeCues: readonly Cue[],
+        loadingText: string | null
+    ): Map<string, BlockContent> {
+        const planned = new Map<string, BlockContent>();
+        for (const group of groupActiveCues(activeCues)) {
+            const text = composeBlockText(group.cues);
+            planned.set(group.key, {
+                placement: group.placement,
+                originalText: text.originalText,
+                translatedText: loadingText ?? text.translatedText,
+                placeholder: loadingText !== null,
+                window: {
+                    start: Math.min(...group.cues.map((cue) => cue.start)),
+                    end: Math.max(...group.cues.map((cue) => cue.end)),
+                },
+            });
         }
-        if (painted.translatedText !== translatedText) {
-            elements.translated.textContent = translatedText;
-            painted.translatedText = translatedText;
+        if (planned.size === 0 && loadingText !== null) {
+            planned.set(blockKey(STANDARD_PLACEMENT), {
+                placement: STANDARD_PLACEMENT,
+                originalText: '',
+                translatedText: loadingText,
+                placeholder: true,
+                window: null,
+            });
         }
-        applySlotVisibility(elements);
+        return planned;
     }
 
-    private show(elements: SubtitleElements): void {
-        elements.container.style.display = 'flex';
+    private createBlock(key: string, placement: BlockPlacement): Block {
+        const block: Block = {
+            key,
+            placement,
+            elements: createBlockElements(key),
+            originalText: '',
+            translatedText: '',
+            window: null,
+            placeholder: false,
+            interactive: false,
+        };
+        this.styleBlock(block, this.pictureHeight);
+        this.blocks.set(key, block);
+        return block;
+    }
+
+    /** Paint every block. The first line with text, in block order, is the
+     *  current line: the one painted as clickable words and reported to the
+     *  selection under a new revision whenever it changes. */
+    private commit(planned: ReadonlyMap<string, BlockContent>): void {
+        const { state } = this.deps;
+        const blocks = [...this.blocks.values()].sort(
+            (a, b) => placementOrder(a.placement) - placementOrder(b.placement)
+        );
+        const originalTextOf = (block: Block): string =>
+            planned.get(block.key)?.originalText ?? block.originalText;
+        const primary =
+            blocks.find((block) => originalTextOf(block) !== '') ?? null;
+        const line = primary ? originalTextOf(primary) : '';
+        const lineChanged = line !== state.painted.currentLine;
+        if (lineChanged) {
+            state.renderRevision += 1;
+            state.painted.currentLine = line;
+        }
+
+        let anyInteractive = false;
+        for (const block of blocks) {
+            const content = planned.get(block.key);
+            this.commitBlock(
+                block,
+                content?.originalText ?? block.originalText,
+                content?.translatedText ?? block.translatedText,
+                this.interactive && block === primary
+            );
+            anyInteractive ||= block.interactive;
+        }
+        if (!anyInteractive) {
+            this.words.forget();
+        }
+        if (lineChanged && this.interactive) {
+            this.deps.onOriginalPainted?.(state.renderRevision);
+        }
+    }
+
+    private commitBlock(
+        block: Block,
+        originalText: string,
+        translatedText: string,
+        interactive: boolean
+    ): void {
+        const paintWords = interactive && originalText !== '';
+        if (
+            block.originalText !== originalText ||
+            block.interactive !== paintWords
+        ) {
+            if (paintWords) {
+                this.words.paint(
+                    block.elements.original,
+                    originalText,
+                    this.deps.state.renderRevision
+                );
+            } else {
+                block.elements.original.textContent = originalText;
+            }
+            block.originalText = originalText;
+            block.interactive = paintWords;
+        }
+        if (block.translatedText !== translatedText) {
+            block.elements.translated.textContent = translatedText;
+            block.translatedText = translatedText;
+        }
+        applySlotVisibility(block.elements);
     }
 
     private hide(): void {
-        const elements = this.container.current;
-        if (elements) {
-            elements.container.style.display = 'none';
+        const stage = this.container.current;
+        if (stage) {
+            stage.style.display = 'none';
         }
     }
 }

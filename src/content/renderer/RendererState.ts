@@ -13,11 +13,8 @@ export interface FrameMemo {
 }
 
 export interface PaintedState {
-    originalText: string;
-    translatedText: string;
-    /** The translated slot currently shows the loading placeholder. */
-    placeholder: boolean;
-    cueWindow: { start: number; end: number } | null;
+    /** The original line the clickable words and the selection refer to. */
+    currentLine: string;
     styleAppliedAt: number;
 }
 
@@ -35,10 +32,7 @@ export class RendererState {
     renderRevision = 0;
     frameMemo: FrameMemo | null = null;
     readonly painted: PaintedState = {
-        originalText: '',
-        translatedText: '',
-        placeholder: false,
-        cueWindow: null,
+        currentLine: '',
         styleAppliedAt: 0,
     };
 

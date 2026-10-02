@@ -1,3 +1,4 @@
+import type { CuePlacement, LineAlign } from '@/shared/cuePlacement';
 import type { Cue } from '../subtitles/cueModel';
 
 export interface ActiveCueScan {
@@ -35,43 +36,91 @@ export function scanActiveCues(
     return { activeCues, nextBoundaryTime, nextBoundaryInclusive };
 }
 
-export interface CuePair {
-    readonly original: Cue | null;
-    readonly translated: Cue | null;
+/** Where a block is drawn: at the viewer's own position, where the platform
+ *  draws ordinary dialogue, or on the line the platform chose. */
+export type BlockPlacement =
+    | { readonly kind: 'standard' }
+    | {
+          readonly kind: 'line';
+          readonly line: number;
+          readonly lineAlign: LineAlign;
+      };
+
+export const STANDARD_PLACEMENT: BlockPlacement = { kind: 'standard' };
+
+/** A cue anchored at or below this fraction of the picture height sits
+ *  where the platform draws ordinary dialogue (Disney+ anchors at 85%,
+ *  Netflix at 90%), so it takes the viewer's position; anything higher is
+ *  drawn where the platform put it. */
+export const STANDARD_BAND = 0.75;
+
+export function placeBlock(placement: CuePlacement): BlockPlacement {
+    return placement.line === null || placement.line >= STANDARD_BAND
+        ? STANDARD_PLACEMENT
+        : {
+              kind: 'line',
+              line: placement.line,
+              lineAlign: placement.lineAlign,
+          };
 }
 
-/** Native-target mode pairs one original with one target cue (best overlap
- *  fallback); translate mode uses the first active cue for both texts. */
-export function pairActiveCues(activeCues: readonly Cue[]): CuePair {
-    if (activeCues.length === 0) {
-        return { original: null, translated: null };
-    }
-    if (!activeCues.some((cue) => cue.useNativeTarget)) {
-        return { original: activeCues[0]!, translated: null };
-    }
+/** Lines within the same twentieth of the picture share a block, so an
+ *  original and an official translation authored a fraction apart stack
+ *  instead of overlapping. */
+const LINE_BUCKETS = 20;
 
-    let original = activeCues.find((cue) => cue.cueType === 'original') ?? null;
-    let translated = activeCues.find((cue) => cue.cueType === 'target') ?? null;
+export function blockKey(placement: BlockPlacement): string {
+    return placement.kind === 'standard'
+        ? 'standard'
+        : `${placement.lineAlign}:${Math.round(placement.line * LINE_BUCKETS)}`;
+}
 
-    if (!original && !translated) {
-        original = activeCues[0]!;
-    }
-    if (original && !translated) {
-        let bestOverlap = 0;
-        for (const cue of activeCues) {
-            if (cue === original || !cue.translated) {
-                continue;
-            }
-            const overlap = Math.max(
-                0,
-                Math.min(original.end, cue.end) -
-                    Math.max(original.start, cue.start)
-            );
-            if (overlap > bestOverlap) {
-                bestOverlap = overlap;
-                translated = cue;
-            }
+/** The standard block first, then positioned blocks from the top down. */
+export function placementOrder(placement: BlockPlacement): number {
+    return placement.kind === 'standard' ? -1 : placement.line;
+}
+
+export interface CueGroup {
+    readonly key: string;
+    readonly placement: BlockPlacement;
+    readonly cues: Cue[];
+}
+
+/** Active cues grouped by the block that draws them, in block order. A
+ *  block is placed where its first cue is. */
+export function groupActiveCues(activeCues: readonly Cue[]): CueGroup[] {
+    const groups = new Map<string, CueGroup>();
+    for (const cue of activeCues) {
+        const placement = placeBlock(cue.placement);
+        const key = blockKey(placement);
+        const group = groups.get(key);
+        if (group) {
+            group.cues.push(cue);
+        } else {
+            groups.set(key, { key, placement, cues: [cue] });
         }
     }
-    return { original, translated };
+    return [...groups.values()].sort(
+        (a, b) => placementOrder(a.placement) - placementOrder(b.placement)
+    );
+}
+
+export interface BlockText {
+    readonly originalText: string;
+    readonly translatedText: string;
+}
+
+function joinLines(lines: readonly (string | null)[]): string {
+    return lines
+        .filter((line): line is string => line !== null && line !== '')
+        .join('\n');
+}
+
+/** A block's two lines, one entry per cue in cue order: the originals, and
+ *  the translations (a cue's own, or the official target cues'). */
+export function composeBlockText(cues: readonly Cue[]): BlockText {
+    return {
+        originalText: joinLines(cues.map((cue) => cue.original)),
+        translatedText: joinLines(cues.map((cue) => cue.translated)),
+    };
 }

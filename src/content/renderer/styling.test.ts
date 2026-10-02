@@ -1,9 +1,10 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from 'vitest';
+import { STANDARD_PLACEMENT } from './cueSelect';
 import { DUALSUB_LOOK, resolveLook, type SubtitleLook } from './looks';
 import {
-    applyDisplaySettings,
-    createSubtitleElements,
+    applyBlockStyle,
+    createBlockElements,
     fontSizePx,
     type DisplaySettings,
 } from './styling';
@@ -43,10 +44,16 @@ describe('fontSizePx', () => {
     });
 });
 
-describe('applyDisplaySettings', () => {
+describe('applyBlockStyle', () => {
     it('paints the look and size onto both slots', () => {
-        const elements = createSubtitleElements();
-        applyDisplaySettings(elements, display, DUALSUB_LOOK, 1000);
+        const elements = createBlockElements('standard');
+        applyBlockStyle(
+            elements,
+            display,
+            DUALSUB_LOOK,
+            1000,
+            STANDARD_PLACEMENT
+        );
         expect(elements.original.style.fontSize).toBe('20px');
         expect(elements.translated.style.fontSize).toBe('20px');
         expect(elements.original.style.fontWeight).toBe('normal');
@@ -54,11 +61,12 @@ describe('applyDisplaySettings', () => {
             elements.translated.style.color
         );
 
-        applyDisplaySettings(
+        applyBlockStyle(
             elements,
             display,
             { ...BOLD_PRESET, fontVariant: 'small-caps' },
-            1000
+            1000,
+            STANDARD_PLACEMENT
         );
         expect(elements.original.style.fontWeight).toBe('bold');
         expect(elements.original.style.fontVariant).toBe('small-caps');
@@ -67,18 +75,63 @@ describe('applyDisplaySettings', () => {
     });
 
     it('orders and lays out the slots per the display', () => {
-        const elements = createSubtitleElements();
-        applyDisplaySettings(elements, display, DUALSUB_LOOK, 1000);
+        const elements = createBlockElements('standard');
+        applyBlockStyle(
+            elements,
+            display,
+            DUALSUB_LOOK,
+            1000,
+            STANDARD_PLACEMENT
+        );
         expect(elements.container.children[0]).toBe(elements.original);
         expect(elements.container.style.flexDirection).toBe('column');
 
-        applyDisplaySettings(
+        applyBlockStyle(
             elements,
             { ...display, order: 'translation_top', orientation: 'row' },
             DUALSUB_LOOK,
-            1000
+            1000,
+            STANDARD_PLACEMENT
         );
         expect(elements.container.children[0]).toBe(elements.translated);
         expect(elements.container.style.flexDirection).toBe('row');
+    });
+
+    it("places the standard block at the viewer's position and a positioned block on its line", () => {
+        const elements = createBlockElements('standard');
+        expect(elements.container.dataset.block).toBe('standard');
+        applyBlockStyle(
+            elements,
+            display,
+            DUALSUB_LOOK,
+            1000,
+            STANDARD_PLACEMENT
+        );
+        expect(parseFloat(elements.container.style.bottom)).toBeCloseTo(
+            17.4,
+            1
+        );
+        expect(elements.container.style.top).toBe('auto');
+        expect(elements.container.style.transform).toBe('translateX(-50%)');
+
+        applyBlockStyle(elements, display, DUALSUB_LOOK, 1000, {
+            kind: 'line',
+            line: 0.1481,
+            lineAlign: 'start',
+        });
+        expect(elements.container.style.top).toBe('14.81%');
+        expect(elements.container.style.bottom).toBe('auto');
+        expect(elements.container.style.transform).toBe(
+            'translateX(-50%) translateY(0)'
+        );
+
+        applyBlockStyle(elements, display, DUALSUB_LOOK, 1000, {
+            kind: 'line',
+            line: 0.7,
+            lineAlign: 'end',
+        });
+        expect(elements.container.style.transform).toBe(
+            'translateX(-50%) translateY(-100%)'
+        );
     });
 });

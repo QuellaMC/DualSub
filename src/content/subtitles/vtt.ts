@@ -1,3 +1,4 @@
+import { parseCueSettings, type CuePlacement } from '@/shared/cuePlacement';
 import {
     normalizeCueLineEndings,
     normalizeCueText,
@@ -7,7 +8,10 @@ export interface VttCue {
     start: number;
     end: number;
     text: string;
+    placement: CuePlacement;
 }
+
+const TIMING_LINE_PATTERN = /^(\S+)[ \t]+-->[ \t]+(\S+)(?:[ \t]+(.*))?$/;
 
 /** WebVTT cue-boundary timestamp forms: [HH:]MM:SS.mmm */
 export function parseTimestampToSeconds(timestamp: string): number | null {
@@ -38,28 +42,33 @@ export function parseVtt(vttString: string): VttCue[] {
             continue;
         }
         const lines = block.split('\n');
-        let timestampLine: string;
+        let timingLine: string;
         let textLines: string[];
         if (lines[0]!.includes('-->')) {
-            timestampLine = lines[0]!;
+            timingLine = lines[0]!;
             textLines = lines.slice(1);
         } else if (lines.length > 1 && lines[1]!.includes('-->')) {
-            timestampLine = lines[1]!;
+            timingLine = lines[1]!;
             textLines = lines.slice(2);
         } else {
             continue;
         }
 
-        const timeParts = timestampLine.trim().split(/[ \t]+-->[ \t]+/);
-        if (timeParts.length !== 2) {
+        const timing = TIMING_LINE_PATTERN.exec(timingLine.trim());
+        if (!timing) {
             continue;
         }
-        const start = parseTimestampToSeconds(timeParts[0]!);
-        const end = parseTimestampToSeconds(timeParts[1]!.split(/[ \t]+/)[0]!);
+        const start = parseTimestampToSeconds(timing[1]!);
+        const end = parseTimestampToSeconds(timing[2]!);
         const text = normalizeCueText(textLines.join('\n'), 'webvtt');
 
         if (text && start !== null && end !== null && end > start) {
-            cues.push({ start, end, text });
+            cues.push({
+                start,
+                end,
+                text,
+                placement: parseCueSettings(timing[3] ?? ''),
+            });
         }
     }
     return cues;

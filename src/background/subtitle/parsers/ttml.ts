@@ -1,9 +1,15 @@
+import {
+    AUTO_PLACEMENT,
+    formatCueSettings,
+    type CuePlacement,
+} from '@/shared/cuePlacement';
 import { normalizeCueText } from '@/shared/cueTextNormalizer';
 
 // Netflix TTML (legacy DFXP and IMSC 1.1) → WebVTT: tick timestamps resolve
 // against the document's ttp:tickRate, ruby readings are dropped so furigana
-// never inlines into the cue, and region layouts give same-timestamp cues a
-// stable top-to-bottom, left-to-right merge order.
+// never inlines into the cue, and each paragraph's region becomes the cue's
+// line setting, so a cue the platform raises over on-screen text keeps its
+// place.
 
 export class TTMLConversionError extends Error {
     override readonly name = 'TTMLConversionError';
@@ -16,15 +22,10 @@ export class TTMLConversionError extends Error {
 /** Netflix's historical tick rate, used when the document declares none. */
 export const DEFAULT_TICK_RATE = 10_000_000;
 
-interface RegionLayout {
-    x: number;
-    y: number;
-}
-
 interface IntermediateCue {
     startMs: number;
     endMs: number;
-    region: string;
+    placement: CuePlacement;
     text: string;
 }
 
@@ -49,25 +50,91 @@ function parseTickRate(ttmlText: string): number {
         : DEFAULT_TICK_RATE;
 }
 
-function parseRegionLayouts(ttmlText: string): Map<string, RegionLayout> {
-    const regionLayouts = new Map<string, RegionLayout>();
+function parsePercentPair(value: string | undefined): [number, number] | null {
+    const parts = (value ?? '').trim().split(/\s+/);
+    const first = /^(-?\d+(?:\.\d+)?)%$/.exec(parts[0] ?? '');
+    const second = /^(-?\d+(?:\.\d+)?)%$/.exec(parts[1] ?? '');
+    return parts.length === 2 && first && second
+        ? [Number(first[1]), Number(second[1])]
+        : null;
+}
+
+/** A region's vertical anchor: the edge of its box that tts:displayAlign
+ *  puts the text against. A region declaring no layout places nothing. */
+function parseRegionPlacement(
+    attributes: Record<string, string>
+): CuePlacement {
+    const origin = parsePercentPair(attributes['tts:origin']);
+    const extent = parsePercentPair(attributes['tts:extent']);
+    const displayAlign = attributes['tts:displayalign'];
+    if (!origin && !extent && !displayAlign) {
+        return AUTO_PLACEMENT;
+    }
+    const top = (origin?.[1] ?? 0) / 100;
+    const bottom = extent ? top + extent[1] / 100 : 1;
+    switch (displayAlign) {
+        case 'after':
+            return { line: bottom, lineAlign: 'end' };
+        case 'center':
+            return { line: (top + bottom) / 2, lineAlign: 'center' };
+        default:
+            return { line: top, lineAlign: 'start' };
+    }
+}
+
+function parseRegionPlacements(ttmlText: string): Map<string, CuePlacement> {
+    const placements = new Map<string, CuePlacement>();
     const regionRegex = /<(?:[\w-]+:)?region\b([^>]*)\/?\s*>/gi;
     let regionMatch: RegExpExecArray | null;
-
     while ((regionMatch = regionRegex.exec(ttmlText)) !== null) {
         const attributes = parseAttributes(regionMatch[1]!);
         const regionId = attributes['xml:id'] || attributes.id;
-        const origin = String(attributes['tts:origin'] ?? '').split(/\s+/);
-        if (origin.length === 2) {
-            const x = parseFloat(origin[0]!);
-            const y = parseFloat(origin[1]!);
-            if (!regionId || !Number.isFinite(x) || !Number.isFinite(y)) {
-                continue;
-            }
-            regionLayouts.set(regionId, { x, y });
+        if (regionId) {
+            placements.set(regionId, parseRegionPlacement(attributes));
         }
     }
-    return regionLayouts;
+    return placements;
+}
+
+/** The region inherited at a document offset from the nearest enclosing
+ *  div or body. Offsets must be asked in document order. */
+function regionScopes(
+    ttmlText: string
+): (offset: number) => string | undefined {
+    const events: {
+        readonly index: number;
+        readonly closing: boolean;
+        readonly region: string | undefined;
+    }[] = [];
+    const tagRegex = /<(\/?)(?:[\w-]+:)?(?:body|div)\b([^>]*)>/gi;
+    let match: RegExpExecArray | null;
+    while ((match = tagRegex.exec(ttmlText)) !== null) {
+        const closing = match[1] === '/';
+        if (closing || !/\/\s*$/.test(match[2]!)) {
+            events.push({
+                index: match.index,
+                closing,
+                region: closing ? undefined : parseAttributes(match[2]!).region,
+            });
+        }
+    }
+    const stack: (string | undefined)[] = [];
+    let next = 0;
+    return (offset) => {
+        for (
+            ;
+            next < events.length && events[next]!.index < offset;
+            next += 1
+        ) {
+            const event = events[next]!;
+            if (event.closing) {
+                stack.pop();
+            } else {
+                stack.push(event.region ?? stack[stack.length - 1]);
+            }
+        }
+        return stack[stack.length - 1];
+    };
 }
 
 const RUBY_ANNOTATION_ROLES = new Set(['text', 'delimiter']);
@@ -157,9 +224,11 @@ function toMilliseconds(ttmlTime: string, tickRate: number): number {
 function parsePElements(
     ttmlText: string,
     tickRate: number,
-    annotationStyles: Set<string>
+    annotationStyles: Set<string>,
+    regionPlacements: Map<string, CuePlacement>
 ): IntermediateCue[] {
     const intermediateCues: IntermediateCue[] = [];
+    const regionAt = regionScopes(ttmlText);
     const pElementRegex =
         /<(?:[\w-]+:)?p\b([^>]*)>([\s\S]*?)<\/(?:[\w-]+:)?p>/gi;
     let pMatch: RegExpExecArray | null;
@@ -179,10 +248,14 @@ function parsePElements(
                 'TTML conversion failed: Invalid TTML cue range'
             );
         }
+        const region = attributes.region ?? regionAt(pMatch.index);
         intermediateCues.push({
             startMs,
             endMs,
-            region: attributes.region ?? '',
+            placement:
+                (region === undefined
+                    ? undefined
+                    : regionPlacements.get(region)) ?? AUTO_PLACEMENT,
             text: normalizeCueText(
                 stripRubyAnnotations(pMatch[2]!, annotationStyles),
                 'ttml'
@@ -214,49 +287,23 @@ export function convertTtmlToVtt(ttmlText: string): string {
         throw new TTMLConversionError('TTML input must be a non-empty string');
     }
 
-    const regionLayouts = parseRegionLayouts(ttmlText);
-    const intermediateCues = parsePElements(
+    const cues = parsePElements(
         ttmlText,
         parseTickRate(ttmlText),
-        parseRubyAnnotationStyles(ttmlText)
+        parseRubyAnnotationStyles(ttmlText),
+        parseRegionPlacements(ttmlText)
     );
-    if (intermediateCues.length === 0) {
+    if (cues.length === 0) {
         throw new TTMLConversionError(
             'TTML conversion failed: No valid TTML subtitle entries found'
         );
     }
-
-    const groupedByTime = new Map<string, IntermediateCue[]>();
-    for (const cue of intermediateCues) {
-        const key = `${cue.startMs}-${cue.endMs}`;
-        const group = groupedByTime.get(key);
-        if (group) {
-            group.push(cue);
-        } else {
-            groupedByTime.set(key, [cue]);
-        }
-    }
-
-    const finalCues = [...groupedByTime.values()].map((group) => {
-        group.sort((a, b) => {
-            const regionA = regionLayouts.get(a.region) ?? { y: 999, x: 999 };
-            const regionB = regionLayouts.get(b.region) ?? { y: 999, x: 999 };
-            return regionA.y - regionB.y || regionA.x - regionB.x;
-        });
-        return {
-            startMs: group[0]!.startMs,
-            endMs: group[0]!.endMs,
-            text: group
-                .map((cue) => cue.text)
-                .join(' ')
-                .trim(),
-        };
-    });
-    finalCues.sort((a, b) => a.startMs - b.startMs);
+    cues.sort((a, b) => a.startMs - b.startMs);
 
     let vtt = 'WEBVTT\n\n';
-    for (const cue of finalCues) {
-        vtt += `${formatMillisecondsAsVtt(cue.startMs)} --> ${formatMillisecondsAsVtt(cue.endMs)}\n`;
+    for (const cue of cues) {
+        const settings = formatCueSettings(cue.placement);
+        vtt += `${formatMillisecondsAsVtt(cue.startMs)} --> ${formatMillisecondsAsVtt(cue.endMs)}${settings === '' ? '' : ` ${settings}`}\n`;
         vtt += `${encodeVttText(cue.text)}\n\n`;
     }
     return vtt;

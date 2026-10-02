@@ -44,15 +44,24 @@ describe('parseTtmlTimeToSeconds', () => {
 });
 
 describe('convertTtmlToVtt', () => {
-    it('merges same-timestamp cues top-to-bottom by region and strips markup', () => {
-        const vtt = convertTtmlToVtt(TTML_SAMPLE);
-        expect(vtt.startsWith('WEBVTT\n\n')).toBe(true);
-        expect(vtt).toContain('00:00:00.100 --> 00:00:02.000');
-        // Region-sorted: upper region text before lower, in one merged cue,
-        // entities decoded once and re-encoded for the VTT transport.
-        expect(vtt).toContain('Upper styled line Lower &amp;lt;line&amp;gt;');
-        expect(vtt).toContain('00:00:03.000 --> 00:00:04.500');
-        expect(vtt).toContain('Second\ncue');
+    it('keeps each paragraph as its own cue, its region as the line setting, and strips markup', () => {
+        expect(convertTtmlToVtt(TTML_SAMPLE)).toBe(
+            [
+                'WEBVTT',
+                '',
+                '00:00:00.100 --> 00:00:02.000 line:80%,start',
+                // Entities decoded once and re-encoded for the VTT transport.
+                'Lower &amp;lt;line&amp;gt;',
+                '',
+                '00:00:00.100 --> 00:00:02.000 line:10%,start',
+                'Upper styled line',
+                '',
+                '00:00:03.000 --> 00:00:04.500',
+                'Second\ncue',
+                '',
+                '',
+            ].join('\n')
+        );
     });
 
     it('rejects empty input, invalid timestamps, and inverted ranges', () => {
@@ -66,6 +75,44 @@ describe('convertTtmlToVtt', () => {
         expect(() =>
             convertTtmlToVtt('<tt><p begin="2s" end="1s">x</p></tt>')
         ).toThrow('Invalid TTML cue range');
+    });
+});
+
+const NETFLIX_SAMPLE = `<?xml version="1.0" encoding="UTF-8"?>
+<tt xmlns="http://www.w3.org/ns/ttml" xmlns:tts="http://www.w3.org/ns/ttml#styling" xmlns:ttp="http://www.w3.org/ns/ttml#parameter" ttp:tickRate="10000000">
+  <head>
+    <layout>
+      <region xml:id="topCenter" tts:origin="10.00% 10.00%" tts:extent="80.00% 80.00%" tts:displayAlign="before"/>
+      <region xml:id="bottomCenter" tts:origin="10.00% 10.00%" tts:extent="80.00% 80.00%" tts:displayAlign="after"/>
+      <region xml:id="middle" tts:origin="10% 10%" tts:extent="80% 80%" tts:displayAlign="center"/>
+      <region xml:id="unplaced"/>
+    </layout>
+  </head>
+  <body>
+    <div region="bottomCenter">
+      <p begin="10000000t" end="30000000t">Dialogue</p>
+      <p begin="20000000t" end="40000000t" region="topCenter">SIGN</p>
+      <p begin="50000000t" end="60000000t" region="middle">Center</p>
+    </div>
+    <div>
+      <p begin="70000000t" end="80000000t" region="unplaced">Free</p>
+    </div>
+  </body>
+</tt>`;
+
+describe('convertTtmlToVtt (Netflix regions)', () => {
+    it('anchors on the edge displayAlign names and inherits the region of the enclosing div', () => {
+        const vtt = convertTtmlToVtt(NETFLIX_SAMPLE);
+        expect(vtt).toContain(
+            '00:00:01.000 --> 00:00:03.000 line:90%,end\nDialogue'
+        );
+        expect(vtt).toContain(
+            '00:00:02.000 --> 00:00:04.000 line:10%,start\nSIGN'
+        );
+        expect(vtt).toContain(
+            '00:00:05.000 --> 00:00:06.000 line:50%,center\nCenter'
+        );
+        expect(vtt).toContain('00:00:07.000 --> 00:00:08.000\nFree');
     });
 });
 
@@ -94,7 +141,9 @@ const IMSC_SAMPLE = `<?xml version="1.0" encoding="UTF-8"?>
 describe('convertTtmlToVtt (IMSC 1.1)', () => {
     it('honors the declared tick rate, dur, dropped ruby readings, and multiple divs', () => {
         const vtt = convertTtmlToVtt(IMSC_SAMPLE);
-        expect(vtt).toContain('00:00:01.000 --> 00:00:03.000\n漢字です');
+        expect(vtt).toContain(
+            '00:00:01.000 --> 00:00:03.000 line:80%,start\n漢字です'
+        );
         expect(vtt).toContain(
             '00:00:04.000 --> 00:00:05.000\nSecond\nline base'
         );
