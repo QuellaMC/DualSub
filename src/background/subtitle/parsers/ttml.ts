@@ -103,13 +103,16 @@ function parsePercentPair(value: string | undefined): [number, number] | null {
 }
 
 /** A region's vertical anchor: the edge of its box that tts:displayAlign
- *  puts the text against. A region declaring no layout leaves its cues at
- *  the automatic placement. */
+ *  puts the text against. Only a box in percentages is placed; a region in
+ *  other units, like one declaring no layout, leaves its cues at the
+ *  automatic placement. */
 function parseRegionPlacement(attributes: Attributes): CuePlacement {
-    const origin = parsePercentPair(attributes['tts:origin']);
-    const extent = parsePercentPair(attributes['tts:extent']);
+    const lengths = [attributes['tts:origin'], attributes['tts:extent']];
+    const [origin, extent] = lengths.map(parsePercentPair);
     const displayAlign = attributes['tts:displayalign'];
-    if (!origin && !extent && !displayAlign) {
+    const declared = lengths.some((length) => length !== undefined);
+    const readable = origin !== null || extent !== null;
+    if ((declared && !readable) || (!declared && !displayAlign)) {
         return AUTO_PLACEMENT;
     }
     const top = (origin?.[1] ?? 0) / 100;

@@ -16,49 +16,27 @@ export interface CuePlacement {
 
 export const AUTO_PLACEMENT: CuePlacement = { line: null, lineAlign: 'end' };
 
-/** One snap-to-lines row as a fraction of the picture height: the line
- *  height of the browsers' default cue size. */
-const SNAP_ROW = 0.06;
-
 const LINE_ALIGNS: readonly LineAlign[] = ['start', 'center', 'end'];
 
-function clampFraction(value: number): number {
-    return Math.min(1, Math.max(0, value));
-}
-
-function parseLineAlign(value: string | undefined): LineAlign | null {
-    return LINE_ALIGNS.find((candidate) => candidate === value) ?? null;
-}
-
-/** The placement in a cue's settings text (`line:85%,end position:50%`);
- *  anything but a well-formed `line` is the automatic placement. */
+/** The placement in a cue's settings text (`line:85%,end position:50%`).
+ *  Anything but a percentage line, snap-to-lines rows included, is the
+ *  automatic placement: a row is a multiple of the renderer's own line
+ *  height, which this model does not describe. */
 export function parseCueSettings(settings: string): CuePlacement {
     for (const token of settings.trim().split(/\s+/)) {
         if (!token.startsWith('line:')) {
             continue;
         }
         const [value = '', align] = token.slice('line:'.length).split(',');
-        const lineAlign = parseLineAlign(align);
         const percent = /^(\d+(?:\.\d+)?)%$/.exec(value);
-        if (percent) {
-            return {
-                line: clampFraction(Number(percent[1]) / 100),
-                lineAlign: lineAlign ?? 'start',
-            };
-        }
-        if (!/^-?\d+$/.test(value)) {
+        if (!percent) {
             return AUTO_PLACEMENT;
         }
-        const row = Number(value);
-        return row >= 0
-            ? {
-                  line: clampFraction(row * SNAP_ROW),
-                  lineAlign: lineAlign ?? 'start',
-              }
-            : {
-                  line: clampFraction(1 + (row + 1) * SNAP_ROW),
-                  lineAlign: lineAlign ?? 'end',
-              };
+        return {
+            line: Math.min(1, Number(percent[1]) / 100),
+            lineAlign:
+                LINE_ALIGNS.find((candidate) => candidate === align) ?? 'start',
+        };
     }
     return AUTO_PLACEMENT;
 }

@@ -88,12 +88,32 @@ export interface CueGroup {
     readonly cues: Cue[];
 }
 
+/** An official translation belongs with the original it shares the most
+ *  time with; the two tracks need not agree on timing or placement. */
+function sourceOf(target: Cue, originals: readonly Cue[]): Cue | null {
+    let source: Cue | null = null;
+    let bestOverlap = 0;
+    for (const original of originals) {
+        const overlap =
+            Math.min(original.end, target.end) -
+            Math.max(original.start, target.start);
+        if (overlap > bestOverlap) {
+            bestOverlap = overlap;
+            source = original;
+        }
+    }
+    return source;
+}
+
 /** Active cues grouped by the block that draws them, in block order. A
  *  block is placed where its first cue is. */
 export function groupActiveCues(activeCues: readonly Cue[]): CueGroup[] {
+    const originals = activeCues.filter((cue) => cue.cueType === 'original');
     const groups = new Map<string, CueGroup>();
     for (const cue of activeCues) {
-        const placement = placeBlock(cue.placement);
+        const anchor =
+            cue.cueType === 'target' ? (sourceOf(cue, originals) ?? cue) : cue;
+        const placement = placeBlock(anchor.placement);
         const key = blockKey(placement);
         const group = groups.get(key);
         if (group) {

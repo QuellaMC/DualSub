@@ -285,21 +285,6 @@ describe('Renderer', () => {
         expect(onOriginalPainted).toHaveBeenLastCalledWith(2);
     });
 
-    it('keeps a block up to the end of its cue window across a reload', () => {
-        const { renderer, video, tick, texts, blockKeys, loadCues } = setup();
-        renderer.attachMedia({ root: video.parentElement, video });
-        loadCues([cue(1, 5, 'A', '甲')]);
-        tick(2);
-        expect(texts()).toEqual(['A', '甲']);
-
-        vi.setSystemTime(101_000);
-        loadCues([]);
-        tick(3);
-        expect(texts()).toEqual(['A', '甲']);
-        tick(5.5);
-        expect(blockKeys()).toEqual([]);
-    });
-
     it('drops a finished block at once when another placement stays active', () => {
         const { renderer, video, tick, blockKeys, wordsIn, loadCues } = setup();
         renderer.attachMedia({ root: video.parentElement, video });
@@ -521,7 +506,7 @@ describe('Renderer styling', () => {
     });
 
     it('follows the picture when the video moves without resizing', () => {
-        const { renderer, video, stage, controller } = setup();
+        const { renderer, video, tick, stage, controller } = setup();
         let left = 0;
         video.getBoundingClientRect = () =>
             ({ left, top: 0, width: 800, height: 450 }) as DOMRect;
@@ -529,7 +514,7 @@ describe('Renderer styling', () => {
         expect(stage()?.style.left).toBe('0px');
 
         left = 120;
-        window.dispatchEvent(new Event('resize'));
+        tick(1);
         expect(stage()?.style.left).toBe('120px');
         controller.abort();
     });

@@ -130,6 +130,61 @@ describe('groupActiveCues', () => {
     });
 });
 
+describe('groupActiveCues with official translations', () => {
+    it('keeps a translation with the original it shares the most time with', () => {
+        const raised = cue({
+            start: 1,
+            end: 3,
+            placement: TOP,
+            original: 'SIGN',
+        });
+        const dialogue = cue({ start: 2, end: 5, original: 'Hi' });
+        const signTarget = cue({
+            start: 1.1,
+            end: 2.9,
+            cueType: 'target',
+            original: null,
+            translated: '标志',
+            useNativeTarget: true,
+        });
+        const dialogueTarget = cue({
+            start: 2.2,
+            end: 5,
+            cueType: 'target',
+            original: null,
+            translated: '嗨',
+            useNativeTarget: true,
+        });
+        const groups = groupActiveCues([
+            raised,
+            signTarget,
+            dialogue,
+            dialogueTarget,
+        ]);
+        expect(groups.map((group) => group.key)).toEqual([
+            'standard',
+            'start:3',
+        ]);
+        expect(groups[0]!.cues).toEqual([dialogue, dialogueTarget]);
+        expect(groups[1]!.cues).toEqual([raised, signTarget]);
+    });
+
+    it('draws a translation with no active original at its own placement', () => {
+        const target = cue({
+            start: 1,
+            end: 2,
+            cueType: 'target',
+            original: null,
+            translated: '甲',
+            useNativeTarget: true,
+            placement: TOP,
+        });
+        expect(groupActiveCues([target]).map((group) => group.key)).toEqual([
+            'start:3',
+        ]);
+    });
+});
+
 describe('composeBlockText', () => {
     it("stacks the cues' lines, translations from the cues or the target track", () => {
         const a = cue({ start: 1, end: 2, original: 'A', translated: '甲' });

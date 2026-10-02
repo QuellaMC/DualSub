@@ -27,17 +27,14 @@ describe('parseCueSettings', () => {
         expectPlacement(parseCueSettings('line:150%'), 1, 'start');
     });
 
-    it('maps snap-to-lines rows from the top or the bottom', () => {
-        expectPlacement(parseCueSettings('line:0'), 0, 'start');
-        expectPlacement(parseCueSettings('line:2'), 0.12, 'start');
-        expectPlacement(parseCueSettings('line:-1'), 1, 'end');
-        expectPlacement(parseCueSettings('line:-3'), 0.88, 'end');
-    });
-
-    it('is the automatic placement without a usable line', () => {
+    it('is the automatic placement without a percentage line', () => {
         expect(parseCueSettings('')).toBe(AUTO_PLACEMENT);
         expect(parseCueSettings('align:middle size:80%')).toBe(AUTO_PLACEMENT);
         expect(parseCueSettings('line:auto')).toBe(AUTO_PLACEMENT);
+        // Snap-to-lines rows are multiples of a line height the model does
+        // not describe.
+        expect(parseCueSettings('line:2')).toBe(AUTO_PLACEMENT);
+        expect(parseCueSettings('line:-1,end')).toBe(AUTO_PLACEMENT);
     });
 });
 
