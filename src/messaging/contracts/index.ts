@@ -4,6 +4,7 @@ export {
     CONFIG_CHANGED_LIMITS,
     configChanged,
     loggingLevelChanged,
+    platformLookStatus,
     sidePanelPauseVideo,
 } from './control';
 export { checkBackgroundReady, ping } from './readiness';

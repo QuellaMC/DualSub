@@ -38,6 +38,26 @@ export const configChanged = defineContract({
     response: controlAck,
 });
 
+/** Whether Match Platform on this tab follows the viewer's own platform
+ *  subtitle settings, or the platform's preset until they are read. Off a
+ *  player route there is nothing to say. */
+export const platformLookStatus = defineContract({
+    action: MessageActions.PLATFORM_LOOK_STATUS,
+    transport: 'tab',
+    senders: ['popup'],
+    request: z.strictObject({
+        action: z.literal(MessageActions.PLATFORM_LOOK_STATUS),
+    }),
+    response: z.discriminatedUnion('onPlayer', [
+        z.strictObject({
+            onPlayer: z.literal(true),
+            platform: z.enum(['netflix', 'disneyplus']),
+            captured: z.boolean(),
+        }),
+        z.strictObject({ onPlayer: z.literal(false) }),
+    ]),
+});
+
 export const loggingLevelChanged = defineContract({
     action: MessageActions.LOGGING_LEVEL_CHANGED,
     transport: 'tab',

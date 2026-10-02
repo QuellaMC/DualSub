@@ -1,11 +1,24 @@
 import { browser } from 'wxt/browser';
 import { sendToTab } from '@/messaging/client';
-import { configChanged } from '@/messaging/contracts/control';
+import {
+    configChanged,
+    platformLookStatus,
+} from '@/messaging/contracts/control';
+import type { ResponseOf } from '@/messaging/registry';
 import { createLogger } from '@/shared/logger';
 import type { ContentSettings } from '@/content/orchestrator/PlayerSession';
 
-const logger = createLogger('LivePreview');
+const logger = createLogger('ContentTab');
 const generations = new Map<string, number>();
+
+/** The active tab of the current window; where a popup's page lives. */
+async function activeTabId(): Promise<number | null> {
+    const [tab] = await browser.tabs.query({
+        active: true,
+        currentWindow: true,
+    });
+    return tab?.id ?? null;
+}
 
 /**
  * Paint un-persisted display values on the active tab right away, so a
@@ -24,19 +37,16 @@ export async function previewContentSettings(
         stamps.set(key, generation);
     }
     try {
-        const [tab] = await browser.tabs.query({
-            active: true,
-            currentWindow: true,
-        });
+        const tabId = await activeTabId();
         const current = Object.fromEntries(
             Object.entries(snapshot).filter(
                 ([key]) => generations.get(key) === stamps.get(key)
             )
         );
-        if (tab?.id === undefined || Object.keys(current).length === 0) {
+        if (tabId === null || Object.keys(current).length === 0) {
             return;
         }
-        const response = await sendToTab(configChanged, tab.id, {
+        const response = await sendToTab(configChanged, tabId, {
             action: configChanged.action,
             changes: current,
         });
@@ -51,5 +61,30 @@ export async function previewContentSettings(
         logger.debug('Live preview not delivered', {
             reason: error instanceof Error ? error.name : 'unknown',
         });
+    }
+}
+
+export type PlatformLookStatus = Extract<
+    ResponseOf<typeof platformLookStatus>,
+    { onPlayer: true }
+>;
+
+/** What Match Platform draws from on the active tab; null off a player
+ *  page. */
+export async function readPlatformLookStatus(): Promise<PlatformLookStatus | null> {
+    try {
+        const tabId = await activeTabId();
+        if (tabId === null) {
+            return null;
+        }
+        const status = await sendToTab(platformLookStatus, tabId, {
+            action: platformLookStatus.action,
+        });
+        return status.onPlayer ? status : null;
+    } catch (error) {
+        logger.debug('Platform look status not available', {
+            reason: error instanceof Error ? error.name : 'unknown',
+        });
+        return null;
     }
 }

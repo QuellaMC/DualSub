@@ -8,6 +8,7 @@ import {
     render,
     screen,
     waitFor,
+    within,
 } from '@testing-library/react';
 import {
     afterEach,
@@ -48,12 +49,18 @@ function stubTabs() {
         .mockResolvedValue({ success: true } as never);
 }
 
+/** The live previews among the popup's messages to the tab (the popup
+ *  also asks the tab what Match Platform draws from). */
 function previewsSent(
     send: ReturnType<typeof stubTabs>
 ): Record<string, unknown>[] {
-    return send.mock.calls.map(
-        (call) => (call[1] as { changes: Record<string, unknown> }).changes
-    );
+    return send.mock.calls
+        .map(
+            (call) =>
+                call[1] as { action: string; changes?: Record<string, unknown> }
+        )
+        .filter((request) => request.action === 'configChanged')
+        .map((request) => request.changes ?? {});
 }
 
 async function renderReady() {
@@ -198,7 +205,7 @@ describe('PopupApp', () => {
         stubTabs();
         await renderReady();
         const style = screen.getByRole('combobox', { name: 'Subtitle Style:' });
-        expect(style).toHaveValue('dualsub');
+        expect(style).toHaveValue('custom');
 
         fireEvent.change(style, { target: { value: 'platform' } });
         await waitFor(() =>
@@ -208,6 +215,90 @@ describe('PopupApp', () => {
         );
         expect(await fakeBrowser.storage.sync.get('subtitleStyle')).toEqual({
             subtitleStyle: 'platform',
+        });
+    });
+
+    it.each([
+        [
+            true,
+            "Match Platform follows your Netflix profile's subtitle settings.",
+        ],
+        [
+            false,
+            "Match Platform uses the Netflix preset until your profile's subtitle settings are read.",
+        ],
+    ])(
+        'says what Match Platform draws from on this tab (captured: %s)',
+        async (captured, note) => {
+            await fakeBrowser.storage.local.set({
+                appearanceAccordionOpen: true,
+            });
+            await fakeBrowser.storage.sync.set({ subtitleStyle: 'platform' });
+            stubTabs().mockImplementation(((
+                _tabId: number,
+                message: { action: string }
+            ) =>
+                Promise.resolve(
+                    message.action === 'platformLookStatus'
+                        ? { onPlayer: true, platform: 'netflix', captured }
+                        : { success: true }
+                )) as never);
+            await renderReady();
+            expect(await screen.findByText(note)).toBeInTheDocument();
+        }
+    );
+
+    it('refreshes the note while open, as the tab reports its player', async () => {
+        await fakeBrowser.storage.local.set({ appearanceAccordionOpen: true });
+        await fakeBrowser.storage.sync.set({ subtitleStyle: 'platform' });
+        let onPlayer = false;
+        stubTabs().mockImplementation(((
+            _tabId: number,
+            message: { action: string }
+        ) =>
+            Promise.resolve(
+                message.action !== 'platformLookStatus'
+                    ? { success: true }
+                    : onPlayer
+                      ? {
+                            onPlayer: true,
+                            platform: 'disneyplus',
+                            captured: true,
+                        }
+                      : { onPlayer: false }
+            )) as never);
+        await renderReady();
+        expect(screen.queryByText(/follows your|uses the/)).toBeNull();
+
+        onPlayer = true;
+        expect(
+            await screen.findByText(
+                "Match Platform follows your Disney+ profile's subtitle settings.",
+                {},
+                { timeout: 2500 }
+            )
+        ).toBeInTheDocument();
+    });
+
+    it('offers the custom style and opens its editor in the options page', async () => {
+        await fakeBrowser.storage.local.set({ appearanceAccordionOpen: true });
+        stubTabs();
+        const create = vi
+            .spyOn(browser.tabs, 'create')
+            .mockResolvedValue({} as never);
+        await renderReady();
+        const style = screen.getByRole('combobox', { name: 'Subtitle Style:' });
+        expect(
+            within(style).getByRole('option', { name: 'Custom' })
+        ).toBeInTheDocument();
+
+        fireEvent.click(
+            await screen.findByRole('button', {
+                name: 'Edit the custom look in settings',
+            })
+        );
+        expect(create).toHaveBeenCalledWith({
+            url: expect.stringMatching(/options\.html#appearance$/) as string,
         });
     });
 

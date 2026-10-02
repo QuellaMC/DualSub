@@ -1,11 +1,15 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { browser } from 'wxt/browser';
 import { detectBrowserLanguage, type SettingsValues } from '@/config/schema';
 import { createLogger } from '@/shared/logger';
 import { useI18n } from '../hooks/useI18n';
 import { useSettings } from '../hooks/useSettings';
 import { useStatusMessage } from '../hooks/useStatusMessage';
-import { previewContentSettings } from '../livePreview';
+import {
+    previewContentSettings,
+    readPlatformLookStatus,
+    type PlatformLookStatus,
+} from '../contentTab';
 import { AppearanceSettings, type SliderKey } from './AppearanceSettings';
 import { Header } from './Header';
 import { LanguageSelector, languageLabelKey } from './LanguageSelector';
@@ -38,6 +42,8 @@ const SLIDER_STATUS: Record<SliderKey, { key: string; unit: string }> = {
     subtitleVerticalPosition: { key: 'statusVerticalPosition', unit: '' },
 };
 
+const PLATFORM_LOOK_REFRESH_MS = 1000;
+
 const logger = createLogger('Popup');
 
 function sliderChange(
@@ -55,6 +61,9 @@ export function PopupApp() {
     );
     const { message, show } = useStatusMessage();
     const settingsRef = useRef(settings);
+    const [platformLook, setPlatformLook] = useState<PlatformLookStatus | null>(
+        null
+    );
     // Ordered per slider key: a failed commit rolls the page back only when
     // no newer preview or commit has superseded it.
     const sliderGeneration = useRef(new Map<SliderKey, number>());
@@ -68,6 +77,25 @@ export function PopupApp() {
             logger.error('Settings initial load unavailable');
         }
     }, [status]);
+
+    // The note follows the tab while the popup is open: the session may
+    // still be starting, or the profile's appearance may arrive later.
+    useEffect(() => {
+        let active = true;
+        const refresh = (): void => {
+            void readPlatformLookStatus().then((platformLookStatus) => {
+                if (active) {
+                    setPlatformLook(platformLookStatus);
+                }
+            });
+        };
+        refresh();
+        const timer = setInterval(refresh, PLATFORM_LOOK_REFRESH_MS);
+        return () => {
+            active = false;
+            clearInterval(timer);
+        };
+    }, []);
 
     if (status === 'unavailable') {
         return <div role="alert">{t('settingsLoadFailed')}</div>;
@@ -208,6 +236,7 @@ export function PopupApp() {
                     }
                 }}
                 subtitleStyle={settings.subtitleStyle}
+                platformLook={platformLook}
                 layoutOrder={settings.subtitleLayoutOrder}
                 layoutOrientation={settings.subtitleLayoutOrientation}
                 sliderValues={{
@@ -221,6 +250,11 @@ export function PopupApp() {
                         { subtitleStyle: value },
                         t('statusSubtitleStyleUpdated')
                     )
+                }
+                onEditCustomLook={() =>
+                    void browser.tabs.create({
+                        url: `${browser.runtime.getURL('/options.html')}#appearance`,
+                    })
                 }
                 onLayoutOrderChange={(value) =>
                     void persist(

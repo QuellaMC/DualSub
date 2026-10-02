@@ -6,6 +6,7 @@ import { useSettings } from '../hooks/useSettings';
 import { AboutSection } from './sections/AboutSection';
 import { AdvancedSection } from './sections/AdvancedSection';
 import { AIContextSection } from './sections/AIContextSection';
+import { AppearanceSection } from './sections/AppearanceSection';
 import { GeneralSection } from './sections/GeneralSection';
 import { ProvidersSection } from './sections/ProvidersSection';
 import { TranslationSection } from './sections/TranslationSection';
@@ -95,6 +96,9 @@ export function OptionsApp() {
                     </p>
                 )}
                 {section === 'general' && <GeneralSection {...sectionProps} />}
+                {section === 'appearance' && (
+                    <AppearanceSection {...sectionProps} />
+                )}
                 {section === 'translation' && (
                     <TranslationSection {...sectionProps} />
                 )}

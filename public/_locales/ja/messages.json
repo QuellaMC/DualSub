@@ -62,9 +62,6 @@
     "subtitleStyleLabel": {
         "message": "字幕スタイル："
     },
-    "subtitleStyleDualSub": {
-        "message": "DualSub"
-    },
     "subtitleStylePlatform": {
         "message": "プラットフォームに合わせる"
     },
@@ -715,5 +712,104 @@
     },
     "subtitleLoading": {
         "message": "DualSub: 字幕を読み込んでいます…"
+    },
+    "subtitleStyleCustom": {
+        "message": "カスタム"
+    },
+    "platformLookCaptured": {
+        "message": "「プラットフォームに合わせる」は %s プロフィールの字幕設定に従います。"
+    },
+    "platformLookPreset": {
+        "message": "「プラットフォームに合わせる」は、プロフィールの字幕設定を読み取るまで %s の既定の外観を使います。"
+    },
+    "editCustomLook": {
+        "message": "設定でカスタム外観を編集"
+    },
+    "navAppearance": {
+        "message": "外観"
+    },
+    "sectionAppearance": {
+        "message": "字幕の外観"
+    },
+    "cardSubtitleStyleTitle": {
+        "message": "字幕スタイル"
+    },
+    "cardSubtitleStyleDesc": {
+        "message": "2行の字幕の描き方です。「プラットフォームに合わせる」はサイト上でプロフィールの字幕設定に従い、プレビューはプラットフォームの既定の外観を表示します。「カスタム」はDualSub自身の外観から始まり、下で編集できます。"
+    },
+    "previewPlatformLabel": {
+        "message": "プレビューのプラットフォーム："
+    },
+    "lookPreviewLabel": {
+        "message": "字幕プレビュー"
+    },
+    "lookPreviewOriginal": {
+        "message": "Where there's a will, there's a way."
+    },
+    "lookPreviewTranslation": {
+        "message": "意志あるところに道は開ける。"
+    },
+    "cardCustomLookTitle": {
+        "message": "カスタム外観"
+    },
+    "cardCustomLookDesc": {
+        "message": "2行の字幕に使う独自のタイポグラフィです。値を変更するとカスタムスタイルが選択されます。"
+    },
+    "customFontLabel": {
+        "message": "フォント："
+    },
+    "customFontDefault": {
+        "message": "ページの既定"
+    },
+    "customFontSansSerif": {
+        "message": "サンセリフ"
+    },
+    "customFontSerif": {
+        "message": "セリフ"
+    },
+    "customFontMonospace": {
+        "message": "等幅"
+    },
+    "customFontCasual": {
+        "message": "カジュアル"
+    },
+    "customFontSmallCaps": {
+        "message": "スモールキャピタル"
+    },
+    "customBoldLabel": {
+        "message": "太字："
+    },
+    "customOriginalColorLabel": {
+        "message": "原文の文字色："
+    },
+    "customEdgeLabel": {
+        "message": "文字の縁取り："
+    },
+    "customEdgeNone": {
+        "message": "なし"
+    },
+    "customEdgeShadow": {
+        "message": "ドロップシャドウ"
+    },
+    "customEdgeOutline": {
+        "message": "アウトライン"
+    },
+    "customEdgeRaised": {
+        "message": "浮き彫り"
+    },
+    "customEdgeDepressed": {
+        "message": "沈み彫り"
+    },
+    "customBackgroundColorLabel": {
+        "message": "背景色："
+    },
+    "customBackgroundOpacityLabel": {
+        "message": "背景の不透明度："
+    },
+    "translationColorLabel": {
+        "message": "翻訳の文字色："
+    },
+    "translationColorHelp": {
+        "message": "どちらのスタイルでも、翻訳行はこの色で描かれます。"
     }
 }

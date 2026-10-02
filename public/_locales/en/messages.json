@@ -62,9 +62,6 @@
     "subtitleStyleLabel": {
         "message": "Subtitle Style:"
     },
-    "subtitleStyleDualSub": {
-        "message": "DualSub"
-    },
     "subtitleStylePlatform": {
         "message": "Match Platform"
     },
@@ -715,5 +712,104 @@
     },
     "subtitleLoading": {
         "message": "DualSub: loading subtitles…"
+    },
+    "subtitleStyleCustom": {
+        "message": "Custom"
+    },
+    "platformLookCaptured": {
+        "message": "Match Platform follows your %s profile's subtitle settings."
+    },
+    "platformLookPreset": {
+        "message": "Match Platform uses the %s preset until your profile's subtitle settings are read."
+    },
+    "editCustomLook": {
+        "message": "Edit the custom look in settings"
+    },
+    "navAppearance": {
+        "message": "Appearance"
+    },
+    "sectionAppearance": {
+        "message": "Subtitle Appearance"
+    },
+    "cardSubtitleStyleTitle": {
+        "message": "Subtitle Style"
+    },
+    "cardSubtitleStyleDesc": {
+        "message": "How both subtitle lines are drawn. Match Platform follows your profile's subtitle settings on the site; the preview shows the platform's default look. Custom starts as DualSub's own look and is edited below."
+    },
+    "previewPlatformLabel": {
+        "message": "Preview platform:"
+    },
+    "lookPreviewLabel": {
+        "message": "Subtitle preview"
+    },
+    "lookPreviewOriginal": {
+        "message": "Where there's a will, there's a way."
+    },
+    "lookPreviewTranslation": {
+        "message": "有志者事竟成。"
+    },
+    "cardCustomLookTitle": {
+        "message": "Custom Look"
+    },
+    "cardCustomLookDesc": {
+        "message": "Your own typography for both lines. Changing a value selects the Custom style."
+    },
+    "customFontLabel": {
+        "message": "Font:"
+    },
+    "customFontDefault": {
+        "message": "Page default"
+    },
+    "customFontSansSerif": {
+        "message": "Sans-serif"
+    },
+    "customFontSerif": {
+        "message": "Serif"
+    },
+    "customFontMonospace": {
+        "message": "Monospace"
+    },
+    "customFontCasual": {
+        "message": "Casual"
+    },
+    "customFontSmallCaps": {
+        "message": "Small capitals"
+    },
+    "customBoldLabel": {
+        "message": "Bold:"
+    },
+    "customOriginalColorLabel": {
+        "message": "Original text color:"
+    },
+    "customEdgeLabel": {
+        "message": "Text edge:"
+    },
+    "customEdgeNone": {
+        "message": "None"
+    },
+    "customEdgeShadow": {
+        "message": "Drop shadow"
+    },
+    "customEdgeOutline": {
+        "message": "Outline"
+    },
+    "customEdgeRaised": {
+        "message": "Raised"
+    },
+    "customEdgeDepressed": {
+        "message": "Depressed"
+    },
+    "customBackgroundColorLabel": {
+        "message": "Background color:"
+    },
+    "customBackgroundOpacityLabel": {
+        "message": "Background opacity:"
+    },
+    "translationColorLabel": {
+        "message": "Translation text color:"
+    },
+    "translationColorHelp": {
+        "message": "Both styles draw the translation line in this color."
     }
 }

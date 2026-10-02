@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest';
+import { getDefaultValue } from '@/config/schema';
+import { customLook } from './looks';
 import { RendererState } from './RendererState';
 
 const display = {
-    style: 'dualsub' as const,
+    style: 'custom' as const,
+    customLook: customLook(getDefaultValue('subtitleCustomLook')),
+    translationColor: '#00ffff',
     fontScale: 1,
     gap: 0.3,
     verticalPosition: 2.8,

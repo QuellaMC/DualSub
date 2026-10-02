@@ -10,7 +10,7 @@
 ## Customization Options
 
 - Flexible Layouts: Vertical (top/bottom) or horizontal (left/right)
-- Appearance Control: Adjustable font size, spacing, display order, and a subtitle style that matches the platform's own look
+- Appearance Control: Adjustable font size, spacing, display order, and a subtitle style that matches the platform's own look or your own custom look, previewed in the options page
 - Vertical Positioning: Precise control over subtitle placement on screen
 - Platform Placement: Cues the platform raises over on-screen text, or shows at the same time, are drawn where the platform puts them
 - Timing Precision: Fine-tune subtitle synchronization with offset controls

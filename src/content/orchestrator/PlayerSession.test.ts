@@ -8,6 +8,7 @@ import {
     it,
     vi,
 } from 'vitest';
+import { getDefaultValue } from '@/config/schema';
 import { browser } from 'wxt/browser';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { setUrl } from '@/test-utils/dom';
@@ -108,7 +109,9 @@ function startSession() {
         platformLook: null,
         settings: {
             subtitlesEnabled: true,
-            subtitleStyle: 'dualsub',
+            subtitleStyle: 'custom',
+            subtitleCustomLook: getDefaultValue('subtitleCustomLook'),
+            subtitleTranslationColor: '#00ffff',
             subtitleFontScale: 1,
             subtitleGap: 0.3,
             subtitleVerticalPosition: 2.8,

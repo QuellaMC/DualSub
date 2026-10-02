@@ -284,3 +284,25 @@ input[type='range']::-webkit-slider-thumb {
     margin-top: 10px;
     color: var(--secondary-text);
 }
+
+.setting-note {
+    margin: -4px 0 0;
+    padding: 0 16px 12px;
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--secondary-text);
+}
+
+.link-button {
+    padding: 0;
+    border: none;
+    background: none;
+    font: inherit;
+    color: var(--slider-progress-bg);
+    cursor: pointer;
+}
+
+.link-button:focus-visible {
+    outline: 2px solid var(--slider-progress-bg);
+    outline-offset: 2px;
+}
