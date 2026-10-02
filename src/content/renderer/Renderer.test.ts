@@ -301,6 +301,58 @@ describe('Renderer', () => {
         expect(blockKeys()).toEqual([]);
     });
 
+    it('drops a finished block at once when another placement stays active', () => {
+        const { renderer, video, tick, blockKeys, wordsIn, loadCues } = setup();
+        renderer.attachMedia({ root: video.parentElement, video });
+        renderer.setInteractive(true);
+        loadCues([cue(1, 3, 'Dialogue'), cue(1, 5, 'SIGN', null, TOP)]);
+        tick(2);
+        expect(blockKeys()).toEqual(['standard', 'start:3']);
+        expect(wordsIn('standard')).toBe(1);
+
+        // The standard cue ends now, inside the restyle grace.
+        tick(3);
+        expect(blockKeys()).toEqual(['start:3']);
+        expect(wordsIn('start:3')).toBe(1);
+    });
+
+    it("repositions a reused block when the platform's line moves within its bucket", () => {
+        const { renderer, video, tick, block, texts, loadCues } = setup();
+        renderer.attachMedia({ root: video.parentElement, video });
+        loadCues([
+            cue(1, 2, 'A', null, { line: 0.1, lineAlign: 'start' }),
+            cue(2, 3, 'B', null, { line: 0.12, lineAlign: 'start' }),
+        ]);
+        tick(1.5);
+        expect(block('start:2')?.style.top).toBe('10%');
+        tick(2);
+        expect(block('start:2')?.style.top).toBe('12%');
+        expect(texts('start:2')).toEqual(['B', '']);
+    });
+
+    it('advances the revision when the clickable line moves to another block with the same text', () => {
+        const { renderer, video, tick, wordsIn, loadCues, onOriginalPainted } =
+            setup();
+        renderer.attachMedia({ root: video.parentElement, video });
+        renderer.setInteractive(true);
+        loadCues([cue(1, 3, 'Hello'), cue(1, 5, 'Hello', null, TOP)]);
+        tick(2);
+        expect(onOriginalPainted).toHaveBeenLastCalledWith(1);
+        tick(4);
+        expect(wordsIn('start:3')).toBe(1);
+        expect(onOriginalPainted).toHaveBeenLastCalledWith(2);
+    });
+
+    it('replaces a dropped block at once when the new cue set draws elsewhere', () => {
+        const { renderer, video, tick, blockKeys, texts, loadCues } = setup();
+        renderer.attachMedia({ root: video.parentElement, video });
+        loadCues([cue(1, 5, 'Old')]);
+        tick(2);
+        loadCues([cue(1, 5, 'New', null, TOP)]);
+        expect(blockKeys()).toEqual(['start:3']);
+        expect(texts('start:3')).toEqual(['New', '']);
+    });
+
     it('skips redundant frames inside a memoized window', () => {
         const { renderer, video, state, tick, loadCues, controller } = setup();
         renderer.attachMedia({ root: video.parentElement, video });
@@ -466,6 +518,20 @@ describe('Renderer styling', () => {
         expect(stage()?.style.width).toBe('1000px');
         expect(parseFloat(stage()?.style.height ?? '')).toBeCloseTo(418.41, 1);
         expect(parseFloat(stage()?.style.top ?? '')).toBeCloseTo(290.79, 1);
+        controller.abort();
+    });
+
+    it('follows the picture when the video moves without resizing', () => {
+        const { renderer, video, stage, controller } = setup();
+        let left = 0;
+        video.getBoundingClientRect = () =>
+            ({ left, top: 0, width: 800, height: 450 }) as DOMRect;
+        renderer.attachMedia({ root: video.parentElement, video });
+        expect(stage()?.style.left).toBe('0px');
+
+        left = 120;
+        window.dispatchEvent(new Event('resize'));
+        expect(stage()?.style.left).toBe('120px');
         controller.abort();
     });
 

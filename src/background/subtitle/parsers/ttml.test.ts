@@ -81,7 +81,12 @@ describe('convertTtmlToVtt', () => {
 const NETFLIX_SAMPLE = `<?xml version="1.0" encoding="UTF-8"?>
 <tt xmlns="http://www.w3.org/ns/ttml" xmlns:tts="http://www.w3.org/ns/ttml#styling" xmlns:ttp="http://www.w3.org/ns/ttml#parameter" ttp:tickRate="10000000">
   <head>
+    <styling>
+      <style xml:id="box" tts:origin="10% 10%" tts:extent="80% 80%"/>
+      <style xml:id="raised" style="box" tts:displayAlign="before"/>
+    </styling>
     <layout>
+      <region xml:id="styledTop" style="raised"/>
       <region xml:id="topCenter" tts:origin="10.00% 10.00%" tts:extent="80.00% 80.00%" tts:displayAlign="before"/>
       <region xml:id="bottomCenter" tts:origin="10.00% 10.00%" tts:extent="80.00% 80.00%" tts:displayAlign="after"/>
       <region xml:id="middle" tts:origin="10% 10%" tts:extent="80% 80%" tts:displayAlign="center"/>
@@ -96,12 +101,13 @@ const NETFLIX_SAMPLE = `<?xml version="1.0" encoding="UTF-8"?>
     </div>
     <div>
       <p begin="70000000t" end="80000000t" region="unplaced">Free</p>
+      <p begin="90000000t" end="100000000t" region="styledTop">Styled</p>
     </div>
   </body>
 </tt>`;
 
 describe('convertTtmlToVtt (Netflix regions)', () => {
-    it('anchors on the edge displayAlign names and inherits the region of the enclosing div', () => {
+    it('anchors on the edge displayAlign names, inherits the region of the enclosing div, and resolves region styles', () => {
         const vtt = convertTtmlToVtt(NETFLIX_SAMPLE);
         expect(vtt).toContain(
             '00:00:01.000 --> 00:00:03.000 line:90%,end\nDialogue'
@@ -113,6 +119,9 @@ describe('convertTtmlToVtt (Netflix regions)', () => {
             '00:00:05.000 --> 00:00:06.000 line:50%,center\nCenter'
         );
         expect(vtt).toContain('00:00:07.000 --> 00:00:08.000\nFree');
+        expect(vtt).toContain(
+            '00:00:09.000 --> 00:00:10.000 line:10%,start\nStyled'
+        );
     });
 });
 

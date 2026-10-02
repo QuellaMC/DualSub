@@ -22,6 +22,8 @@ export class TTMLConversionError extends Error {
 /** Netflix's historical tick rate, used when the document declares none. */
 export const DEFAULT_TICK_RATE = 10_000_000;
 
+type Attributes = Record<string, string>;
+
 interface IntermediateCue {
     startMs: number;
     endMs: number;
@@ -29,8 +31,8 @@ interface IntermediateCue {
     text: string;
 }
 
-function parseAttributes(attributeText: string): Record<string, string> {
-    const attributes = Object.create(null) as Record<string, string>;
+function parseAttributes(attributeText: string): Attributes {
+    const attributes = Object.create(null) as Attributes;
     const attributeRegex = /([\w:-]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g;
     let match: RegExpExecArray | null;
     while ((match = attributeRegex.exec(attributeText)) !== null) {
@@ -50,6 +52,47 @@ function parseTickRate(ttmlText: string): number {
         : DEFAULT_TICK_RATE;
 }
 
+/** Every style's own attributes, by id. */
+function parseStyles(ttmlText: string): Map<string, Attributes> {
+    const styles = new Map<string, Attributes>();
+    const styleRegex = /<(?:[\w-]+:)?style\b([^>]*)\/?\s*>/gi;
+    let styleMatch: RegExpExecArray | null;
+    while ((styleMatch = styleRegex.exec(ttmlText)) !== null) {
+        const attributes = parseAttributes(styleMatch[1]!);
+        const styleId = attributes['xml:id'] || attributes.id;
+        if (styleId) {
+            styles.set(styleId, attributes);
+        }
+    }
+    return styles;
+}
+
+/** Bounds a chain of styles referencing styles. */
+const STYLE_CHAIN_LIMIT = 8;
+
+/** An element's attributes over those of the styles it references, each
+ *  style over the ones it references in turn. */
+function withReferencedStyles(
+    attributes: Attributes,
+    styles: ReadonlyMap<string, Attributes>,
+    depth = 0
+): Attributes {
+    if (depth >= STYLE_CHAIN_LIMIT) {
+        return attributes;
+    }
+    const merged = Object.create(null) as Attributes;
+    for (const styleId of (attributes.style ?? '').split(/\s+/)) {
+        const referenced = styleId === '' ? undefined : styles.get(styleId);
+        if (referenced) {
+            Object.assign(
+                merged,
+                withReferencedStyles(referenced, styles, depth + 1)
+            );
+        }
+    }
+    return Object.assign(merged, attributes);
+}
+
 function parsePercentPair(value: string | undefined): [number, number] | null {
     const parts = (value ?? '').trim().split(/\s+/);
     const first = /^(-?\d+(?:\.\d+)?)%$/.exec(parts[0] ?? '');
@@ -60,10 +103,9 @@ function parsePercentPair(value: string | undefined): [number, number] | null {
 }
 
 /** A region's vertical anchor: the edge of its box that tts:displayAlign
- *  puts the text against. A region declaring no layout places nothing. */
-function parseRegionPlacement(
-    attributes: Record<string, string>
-): CuePlacement {
+ *  puts the text against. A region declaring no layout leaves its cues at
+ *  the automatic placement. */
+function parseRegionPlacement(attributes: Attributes): CuePlacement {
     const origin = parsePercentPair(attributes['tts:origin']);
     const extent = parsePercentPair(attributes['tts:extent']);
     const displayAlign = attributes['tts:displayalign'];
@@ -82,7 +124,10 @@ function parseRegionPlacement(
     }
 }
 
-function parseRegionPlacements(ttmlText: string): Map<string, CuePlacement> {
+function parseRegionPlacements(
+    ttmlText: string,
+    styles: ReadonlyMap<string, Attributes>
+): Map<string, CuePlacement> {
     const placements = new Map<string, CuePlacement>();
     const regionRegex = /<(?:[\w-]+:)?region\b([^>]*)\/?\s*>/gi;
     let regionMatch: RegExpExecArray | null;
@@ -90,7 +135,10 @@ function parseRegionPlacements(ttmlText: string): Map<string, CuePlacement> {
         const attributes = parseAttributes(regionMatch[1]!);
         const regionId = attributes['xml:id'] || attributes.id;
         if (regionId) {
-            placements.set(regionId, parseRegionPlacement(attributes));
+            placements.set(
+                regionId,
+                parseRegionPlacement(withReferencedStyles(attributes, styles))
+            );
         }
     }
     return placements;
@@ -139,40 +187,29 @@ function regionScopes(
 
 const RUBY_ANNOTATION_ROLES = new Set(['text', 'delimiter']);
 
-/** Style ids whose tts:ruby role is a reading or its delimiter. */
-function parseRubyAnnotationStyles(ttmlText: string): Set<string> {
-    const styles = new Set<string>();
-    const styleRegex = /<(?:[\w-]+:)?style\b([^>]*)\/?\s*>/gi;
-    let styleMatch: RegExpExecArray | null;
-    while ((styleMatch = styleRegex.exec(ttmlText)) !== null) {
-        const attributes = parseAttributes(styleMatch[1]!);
-        const styleId = attributes['xml:id'] || attributes.id;
-        if (
-            styleId &&
-            RUBY_ANNOTATION_ROLES.has(attributes['tts:ruby'] ?? '')
-        ) {
-            styles.add(styleId);
-        }
-    }
-    return styles;
+/** Whether an element carries a ruby reading or its delimiter, inline or
+ *  through its styles. */
+function isRubyAnnotation(
+    attributes: Attributes,
+    styles: ReadonlyMap<string, Attributes>
+): boolean {
+    return RUBY_ANNOTATION_ROLES.has(
+        withReferencedStyles(attributes, styles)['tts:ruby'] ?? ''
+    );
 }
 
-/** Remove spans that carry a ruby reading (inline role or via style). Such
- *  spans hold text only, so a non-nesting match is exact. */
+/** Remove spans that carry a ruby reading. Such spans hold text only, so a
+ *  non-nesting match is exact. */
 function stripRubyAnnotations(
     paragraphText: string,
-    annotationStyles: Set<string>
+    styles: ReadonlyMap<string, Attributes>
 ): string {
     return paragraphText.replace(
         /<(?:[\w-]+:)?span\b([^>]*)>[^<]*<\/(?:[\w-]+:)?span>/gi,
-        (match, attributeText: string) => {
-            const attributes = parseAttributes(attributeText);
-            const styleIds = (attributes.style ?? '').split(/\s+/);
-            return RUBY_ANNOTATION_ROLES.has(attributes['tts:ruby'] ?? '') ||
-                styleIds.some((styleId) => annotationStyles.has(styleId))
+        (match, attributeText: string) =>
+            isRubyAnnotation(parseAttributes(attributeText), styles)
                 ? ''
-                : match;
-        }
+                : match
     );
 }
 
@@ -224,8 +261,8 @@ function toMilliseconds(ttmlTime: string, tickRate: number): number {
 function parsePElements(
     ttmlText: string,
     tickRate: number,
-    annotationStyles: Set<string>,
-    regionPlacements: Map<string, CuePlacement>
+    styles: ReadonlyMap<string, Attributes>,
+    regionPlacements: ReadonlyMap<string, CuePlacement>
 ): IntermediateCue[] {
     const intermediateCues: IntermediateCue[] = [];
     const regionAt = regionScopes(ttmlText);
@@ -257,7 +294,7 @@ function parsePElements(
                     ? undefined
                     : regionPlacements.get(region)) ?? AUTO_PLACEMENT,
             text: normalizeCueText(
-                stripRubyAnnotations(pMatch[2]!, annotationStyles),
+                stripRubyAnnotations(pMatch[2]!, styles),
                 'ttml'
             ),
         });
@@ -287,11 +324,12 @@ export function convertTtmlToVtt(ttmlText: string): string {
         throw new TTMLConversionError('TTML input must be a non-empty string');
     }
 
+    const styles = parseStyles(ttmlText);
     const cues = parsePElements(
         ttmlText,
         parseTickRate(ttmlText),
-        parseRubyAnnotationStyles(ttmlText),
-        parseRegionPlacements(ttmlText)
+        styles,
+        parseRegionPlacements(ttmlText, styles)
     );
     if (cues.length === 0) {
         throw new TTMLConversionError(

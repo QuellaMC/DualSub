@@ -6,6 +6,7 @@ import {
     composeBlockText,
     groupActiveCues,
     placeBlock,
+    samePlacement,
     scanActiveCues,
     STANDARD_PLACEMENT,
 } from './cueSelect';
@@ -28,23 +29,32 @@ const BOTTOM: CuePlacement = { line: 0.85, lineAlign: 'end' };
 describe('scanActiveCues', () => {
     const cues = [
         cue({ start: 1, end: 2 }),
+        cue({ start: 2, end: 3 }),
         cue({ start: 3, end: 5 }),
         cue({ start: 4, end: 6 }),
     ];
 
-    it('reports the next inclusive start boundary before any cue', () => {
+    it('reports the next start before any cue', () => {
         expect(scanActiveCues(cues, 0.5)).toEqual({
             activeCues: [],
             nextBoundaryTime: 1,
-            nextBoundaryInclusive: true,
         });
     });
 
-    it('reports the earliest exclusive end while inside overlapping cues', () => {
+    it('activates a cue at its start and ends it at its end, so back-to-back cues never overlap', () => {
+        expect(scanActiveCues(cues, 1).activeCues.map((c) => c.start)).toEqual([
+            1,
+        ]);
+        expect(scanActiveCues(cues, 2).activeCues.map((c) => c.start)).toEqual([
+            2,
+        ]);
+        expect(scanActiveCues(cues, 2).nextBoundaryTime).toBe(3);
+    });
+
+    it('reports the earliest end while inside overlapping cues', () => {
         const scan = scanActiveCues(cues, 4.5);
         expect(scan.activeCues.map((c) => c.start)).toEqual([3, 4]);
         expect(scan.nextBoundaryTime).toBe(5);
-        expect(scan.nextBoundaryInclusive).toBe(false);
     });
 
     it('has no boundary after the last cue', () => {
@@ -75,6 +85,18 @@ describe('placeBlock', () => {
             'end:3'
         );
         expect(blockKey(STANDARD_PLACEMENT)).toBe('standard');
+    });
+
+    it('tells placements apart by exact line within a bucket', () => {
+        const top = placeBlock(TOP);
+        expect(samePlacement(top, placeBlock({ ...TOP }))).toBe(true);
+        expect(
+            samePlacement(top, placeBlock({ line: 0.16, lineAlign: 'start' }))
+        ).toBe(false);
+        expect(samePlacement(top, STANDARD_PLACEMENT)).toBe(false);
+        expect(samePlacement(STANDARD_PLACEMENT, placeBlock(BOTTOM))).toBe(
+            true
+        );
     });
 });
 
