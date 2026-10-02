@@ -12,6 +12,7 @@ import {
     composeBlockText,
     groupActiveCues,
     placementOrder,
+    samePlacement,
     scanActiveCues,
     STANDARD_PLACEMENT,
     type BlockPlacement,
@@ -81,12 +82,13 @@ interface CueWindow {
 /** One drawn placement: an original line and its translation. */
 interface Block {
     readonly key: string;
-    readonly placement: BlockPlacement;
     readonly elements: BlockElements;
+    placement: BlockPlacement;
     originalText: string;
     translatedText: string;
-    /** The span of the cues drawn. A block stays up to its end even when
-     *  the cues vanish, as across a cue-set reload. */
+    /** The span of the cues drawn. With nothing to replace it, a block
+     *  stays up to its end even when the cues vanish, as across a cue-set
+     *  reload. */
     window: CueWindow | null;
     /** Shows the loading placeholder, which gets no grace. */
     placeholder: boolean;
@@ -169,7 +171,8 @@ export class Renderer {
             signal
         );
         // Window, fullscreen, player layout, and picture dimension changes
-        // all move the picture; a scroll moves it without resizing it.
+        // all resize the picture; a viewport change or a scroll can move it
+        // without resizing it, and every render measures it again.
         const resize = new ResizeObserver(() => this.restyle());
         resize.observe(media.video);
         signal.addEventListener('abort', () => resize.disconnect(), {
@@ -178,6 +181,7 @@ export class Renderer {
         media.video.addEventListener('resize', () => this.restyle(), {
             signal,
         });
+        window.addEventListener('resize', () => this.placeStage(), { signal });
         window.addEventListener('scroll', () => this.placeStage(), {
             capture: true,
             passive: true,
@@ -231,8 +235,7 @@ export class Renderer {
             return;
         }
         this.interactive = interactive;
-        this.deps.state.painted.currentLine = '';
-        this.deps.state.invalidateMemo();
+        this.forgetCurrentLine();
         this.render();
     }
 
@@ -257,16 +260,23 @@ export class Renderer {
         return raw === null ? null : raw + this.deps.state.display.timeOffset;
     }
 
+    /** The next render reports the current line anew, under a new
+     *  revision. */
+    private forgetCurrentLine(): void {
+        const { state } = this.deps;
+        state.painted.currentLine = '';
+        state.painted.currentBlock = '';
+        state.invalidateMemo();
+    }
+
     /** The live stage; a rebuild forgets every block so the next render
      *  paints afresh. */
     private ensureStage(): HTMLDivElement {
-        const { state } = this.deps;
         const epochBefore = this.container.containerEpoch;
         const stage = this.container.ensure();
         if (this.container.containerEpoch !== epochBefore) {
             this.blocks.clear();
-            state.painted.currentLine = '';
-            state.invalidateMemo();
+            this.forgetCurrentLine();
             this.restyle();
         }
         return stage;
@@ -378,18 +388,21 @@ export class Renderer {
         }
 
         const stage = this.ensureStage();
+        this.placeStage();
         const scan = scanActiveCues(state.cues, time);
         const now = Date.now();
-        let { nextBoundaryTime, nextBoundaryInclusive } = scan;
+        let { nextBoundaryTime } = scan;
         let wallClockDeadline: number | null = null;
         const planned = this.plan(
             scan.activeCues,
             state.loading ? overlayText('subtitleLoading') : null
         );
 
-        // A block the plan dropped stays up to the end of its cue window or
-        // through the restyle grace, so a reload or a style change never
-        // flashes the overlay blank; a placeholder goes at once.
+        // A block the plan dropped stays up only while nothing replaces it:
+        // to the end of its cue window, or through the restyle grace, so a
+        // reload or a style change never flashes the overlay blank. A
+        // placeholder goes at once.
+        const keepDropped = planned.size === 0;
         const graceDeadline = state.painted.styleAppliedAt + STYLE_GRACE_MS;
         for (const block of [...this.blocks.values()]) {
             if (planned.has(block.key)) {
@@ -397,19 +410,23 @@ export class Renderer {
             }
             const cueWindow = block.window;
             if (
+                keepDropped &&
                 !block.placeholder &&
                 cueWindow !== null &&
                 time >= cueWindow.start &&
-                time <= cueWindow.end
+                time < cueWindow.end
             ) {
                 if (
                     nextBoundaryTime === null ||
                     cueWindow.end < nextBoundaryTime
                 ) {
                     nextBoundaryTime = cueWindow.end;
-                    nextBoundaryInclusive = false;
                 }
-            } else if (!block.placeholder && now < graceDeadline) {
+            } else if (
+                keepDropped &&
+                !block.placeholder &&
+                now < graceDeadline
+            ) {
                 wallClockDeadline = graceDeadline;
             } else {
                 block.elements.container.remove();
@@ -423,6 +440,10 @@ export class Renderer {
             if (!block.elements.container.isConnected) {
                 stage.appendChild(block.elements.container);
             }
+            if (!samePlacement(block.placement, content.placement)) {
+                block.placement = content.placement;
+                this.styleBlock(block, this.pictureHeight);
+            }
             block.window = content.window;
             block.placeholder = content.placeholder;
         }
@@ -432,7 +453,6 @@ export class Renderer {
         state.frameMemo = {
             evaluatedTime: time,
             nextBoundaryTime,
-            nextBoundaryInclusive,
             wallClockDeadline,
             href,
             containerEpoch: this.container.containerEpoch,
@@ -491,7 +511,7 @@ export class Renderer {
 
     /** Paint every block. The first line with text, in block order, is the
      *  current line: the one painted as clickable words and reported to the
-     *  selection under a new revision whenever it changes. */
+     *  selection under a new revision whenever it or its block changes. */
     private commit(planned: ReadonlyMap<string, BlockContent>): void {
         const { state } = this.deps;
         const blocks = [...this.blocks.values()].sort(
@@ -502,10 +522,13 @@ export class Renderer {
         const primary =
             blocks.find((block) => originalTextOf(block) !== '') ?? null;
         const line = primary ? originalTextOf(primary) : '';
-        const lineChanged = line !== state.painted.currentLine;
+        const lineChanged =
+            line !== state.painted.currentLine ||
+            (primary?.key ?? '') !== state.painted.currentBlock;
         if (lineChanged) {
             state.renderRevision += 1;
             state.painted.currentLine = line;
+            state.painted.currentBlock = primary?.key ?? '';
         }
 
         let anyInteractive = false;

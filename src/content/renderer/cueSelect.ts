@@ -3,37 +3,32 @@ import type { Cue } from '../subtitles/cueModel';
 
 export interface ActiveCueScan {
     readonly activeCues: Cue[];
-    /** Next playback time at which the active set can change. */
+    /** Next playback time at which the active set changes. */
     readonly nextBoundaryTime: number | null;
-    readonly nextBoundaryInclusive: boolean;
 }
 
+/** A cue is active from its start up to, not including, its end, so a cue
+ *  that ends exactly when the next starts never shares a frame with it. */
 export function scanActiveCues(
     cues: readonly Cue[],
     time: number
 ): ActiveCueScan {
     const activeCues: Cue[] = [];
     let nextBoundaryTime: number | null = null;
-    let nextBoundaryInclusive = false;
-    const consider = (boundary: number, inclusive: boolean): void => {
-        if (
-            nextBoundaryTime === null ||
-            boundary < nextBoundaryTime ||
-            (boundary === nextBoundaryTime && inclusive)
-        ) {
+    const consider = (boundary: number): void => {
+        if (nextBoundaryTime === null || boundary < nextBoundaryTime) {
             nextBoundaryTime = boundary;
-            nextBoundaryInclusive = inclusive;
         }
     };
     for (const cue of cues) {
         if (time < cue.start) {
-            consider(cue.start, true);
-        } else if (time <= cue.end) {
+            consider(cue.start);
+        } else if (time < cue.end) {
             activeCues.push(cue);
-            consider(cue.end, false);
+            consider(cue.end);
         }
     }
-    return { activeCues, nextBoundaryTime, nextBoundaryInclusive };
+    return { activeCues, nextBoundaryTime };
 }
 
 /** Where a block is drawn: at the viewer's own position, where the platform
@@ -62,6 +57,13 @@ export function placeBlock(placement: CuePlacement): BlockPlacement {
               line: placement.line,
               lineAlign: placement.lineAlign,
           };
+}
+
+export function samePlacement(a: BlockPlacement, b: BlockPlacement): boolean {
+    if (a.kind === 'standard' || b.kind === 'standard') {
+        return a.kind === b.kind;
+    }
+    return a.line === b.line && a.lineAlign === b.lineAlign;
 }
 
 /** Lines within the same twentieth of the picture share a block, so an
