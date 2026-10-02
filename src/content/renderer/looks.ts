@@ -78,7 +78,6 @@ export function hexWithOpacity(hex: string, opacity: number): string {
     return `rgba(${value >> 16}, ${(value >> 8) & 255}, ${value & 255}, ${opacity})`;
 }
 
-/** The look the custom values describe. */
 export function customLook(values: CustomLook): SubtitleLook {
     return {
         ...FONTS[values.font],
@@ -95,7 +94,8 @@ export function customLook(values: CustomLook): SubtitleLook {
     };
 }
 
-/** DualSub's own look: the custom look at its defaults. */
+/** Custom starts from what the viewer already sees: DualSub's own look
+ *  is the custom look at the setting's defaults. */
 export const DUALSUB_LOOK: SubtitleLook = customLook(
     getDefaultValue('subtitleCustomLook')
 );

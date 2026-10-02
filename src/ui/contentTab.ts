@@ -64,7 +64,10 @@ export async function previewContentSettings(
     }
 }
 
-export type PlatformLookStatus = ResponseOf<typeof platformLookStatus>;
+export type PlatformLookStatus = Extract<
+    ResponseOf<typeof platformLookStatus>,
+    { onPlayer: true }
+>;
 
 /** What Match Platform draws from on the active tab; null off a player
  *  page. */
@@ -74,9 +77,10 @@ export async function readPlatformLookStatus(): Promise<PlatformLookStatus | nul
         if (tabId === null) {
             return null;
         }
-        return await sendToTab(platformLookStatus, tabId, {
+        const status = await sendToTab(platformLookStatus, tabId, {
             action: platformLookStatus.action,
         });
+        return status.onPlayer ? status : null;
     } catch (error) {
         logger.debug('Platform look status not available', {
             reason: error instanceof Error ? error.name : 'unknown',

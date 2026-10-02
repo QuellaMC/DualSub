@@ -81,10 +81,12 @@ describe('readPlatformLookStatus', () => {
     it('asks the active tab what Match Platform draws from', async () => {
         const send = stubTabs(activeTab(7));
         send.mockResolvedValueOnce({
+            onPlayer: true,
             platform: 'disneyplus',
             captured: true,
         } as never);
         await expect(readPlatformLookStatus()).resolves.toEqual({
+            onPlayer: true,
             platform: 'disneyplus',
             captured: true,
         });
@@ -95,8 +97,13 @@ describe('readPlatformLookStatus', () => {
         );
     });
 
-    it('is null without an active tab, a content script, or a sound answer', async () => {
+    it('is null without an active tab, a content script, a player route, or a sound answer', async () => {
         stubTabs([]);
+        await expect(readPlatformLookStatus()).resolves.toBeNull();
+
+        stubTabs(activeTab(7)).mockResolvedValueOnce({
+            onPlayer: false,
+        } as never);
         await expect(readPlatformLookStatus()).resolves.toBeNull();
 
         const send = stubTabs(activeTab(7));

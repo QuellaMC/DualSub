@@ -240,7 +240,7 @@ describe('PopupApp', () => {
             ) =>
                 Promise.resolve(
                     message.action === 'platformLookStatus'
-                        ? { platform: 'netflix', captured }
+                        ? { onPlayer: true, platform: 'netflix', captured }
                         : { success: true }
                 )) as never);
             await renderReady();

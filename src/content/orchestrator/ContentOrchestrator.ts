@@ -85,10 +85,15 @@ export class ContentOrchestrator {
             this.activeSession?.applySettings(preview);
             return { success: true as const };
         });
-        this.router.handle(platformLookStatus, () => ({
-            platform: this.descriptor.id,
-            captured: this.platformLook !== null,
-        }));
+        this.router.handle(platformLookStatus, () =>
+            this.activeSession
+                ? {
+                      onPlayer: true as const,
+                      platform: this.descriptor.id,
+                      captured: this.platformLook !== null,
+                  }
+                : { onPlayer: false as const }
+        );
         // Side panel traffic addresses the selection of whichever session is
         // on the route; with no session there is nothing to answer for.
         this.router.handle(

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
     CUSTOM_LOOK_EDGES,
     CUSTOM_LOOK_FONTS,
@@ -17,7 +17,7 @@ import {
 import { LookPreview } from '../LookPreview';
 import { SettingCard } from '../SettingCard';
 import { ToggleSwitch } from '../ToggleSwitch';
-import type { SectionProps } from '../types';
+import type { SaveSettings, SectionProps } from '../types';
 
 const FONT_LABELS: Record<CustomLook['font'], string> = {
     default: 'customFontDefault',
@@ -48,28 +48,64 @@ function isEdge(value: string): value is CustomLook['edge'] {
     return (CUSTOM_LOOK_EDGES as readonly string[]).includes(value);
 }
 
-function sameLook(a: CustomLook, b: CustomLook): boolean {
-    return (Object.keys(a) as (keyof CustomLook)[]).every(
-        (key) => a[key] === b[key]
+/**
+ * The custom look being edited. Edits show at once and are written after a
+ * pause, or when the editor goes away; a value arriving from storage
+ * (another window, a synced device) is adopted unless an edit is pending.
+ */
+function useLookDraft(
+    saved: CustomLook,
+    save: SaveSettings
+): [CustomLook, (changes: Partial<CustomLook>) => void] {
+    const [draft, setDraft] = useState(saved);
+    const pending = useRef(false);
+    const latest = useRef({ draft, save });
+
+    useEffect(() => {
+        latest.current = { draft, save };
+    });
+
+    useEffect(() => {
+        if (!pending.current) {
+            setDraft(saved);
+        }
+    }, [saved]);
+
+    useEffect(() => {
+        if (!pending.current) {
+            return;
+        }
+        const timer = setTimeout(() => {
+            pending.current = false;
+            void save({ subtitleCustomLook: draft });
+        }, SAVE_DELAY_MS);
+        return () => clearTimeout(timer);
+    }, [draft, save]);
+
+    useEffect(
+        () => () => {
+            if (pending.current) {
+                pending.current = false;
+                void latest.current.save({
+                    subtitleCustomLook: latest.current.draft,
+                });
+            }
+        },
+        []
     );
+
+    const edit = (changes: Partial<CustomLook>): void => {
+        pending.current = true;
+        setDraft((current) => ({ ...current, ...changes }));
+    };
+    return [draft, edit];
 }
 
 export function AppearanceSection({ t, settings, save }: SectionProps) {
     const [previewPlatform, setPreviewPlatform] =
         useState<PlatformId>('netflix');
-    const [draft, setDraft] = useState<CustomLook>(settings.subtitleCustomLook);
-    const saved = settings.subtitleCustomLook;
+    const [draft, editDraft] = useLookDraft(settings.subtitleCustomLook, save);
     const style = settings.subtitleStyle;
-
-    useEffect(() => {
-        if (sameLook(draft, saved)) {
-            return;
-        }
-        const timer = setTimeout(() => {
-            void save({ subtitleCustomLook: draft });
-        }, SAVE_DELAY_MS);
-        return () => clearTimeout(timer);
-    }, [draft, saved, save]);
 
     const display = useMemo<DisplaySettings>(
         () => ({
@@ -96,7 +132,7 @@ export function AppearanceSection({ t, settings, save }: SectionProps) {
 
     /** Touching the editor selects the custom style, so the change shows. */
     const edit = (changes: Partial<CustomLook>): void => {
-        setDraft((current) => ({ ...current, ...changes }));
+        editDraft(changes);
         if (style !== 'custom') {
             void save({ subtitleStyle: 'custom' });
         }

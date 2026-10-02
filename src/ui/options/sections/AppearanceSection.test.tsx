@@ -28,8 +28,18 @@ function defaults(): OptionsSettings {
 function renderSection(overrides: Partial<OptionsSettings> = {}) {
     const save = vi.fn(() => Promise.resolve(true));
     const settings = { ...defaults(), ...overrides };
-    render(<AppearanceSection t={t} settings={settings} save={save} />);
-    return { save };
+    const view = render(
+        <AppearanceSection t={t} settings={settings} save={save} />
+    );
+    const update = (changes: Partial<OptionsSettings>): void =>
+        view.rerender(
+            <AppearanceSection
+                t={t}
+                settings={{ ...settings, ...changes }}
+                save={save}
+            />
+        );
+    return { save, update, unmount: view.unmount };
 }
 
 function previewSlot(name: 'original' | 'translated'): HTMLElement {
@@ -109,5 +119,41 @@ describe('AppearanceSection', () => {
             { timeout: 1500 }
         );
         expect(save).toHaveBeenCalledTimes(1);
+    });
+
+    it('adopts a look arriving from storage unless an edit is pending', () => {
+        const { update } = renderSection({ subtitleStyle: 'custom' });
+        const font = screen.getByLabelText('customFontLabel');
+        update({
+            subtitleCustomLook: {
+                ...getDefaultValue('subtitleCustomLook'),
+                font: 'serif',
+            },
+        });
+        expect(font).toHaveValue('serif');
+
+        fireEvent.change(font, { target: { value: 'monospace' } });
+        update({
+            subtitleCustomLook: {
+                ...getDefaultValue('subtitleCustomLook'),
+                font: 'casual',
+            },
+        });
+        expect(font).toHaveValue('monospace');
+    });
+
+    it('writes a pending edit when the section goes away', () => {
+        const { save, unmount } = renderSection({ subtitleStyle: 'custom' });
+        fireEvent.change(screen.getByLabelText('customFontLabel'), {
+            target: { value: 'serif' },
+        });
+        expect(save).not.toHaveBeenCalled();
+        unmount();
+        expect(save).toHaveBeenCalledWith({
+            subtitleCustomLook: {
+                ...getDefaultValue('subtitleCustomLook'),
+                font: 'serif',
+            },
+        });
     });
 });
