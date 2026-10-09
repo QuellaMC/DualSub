@@ -59,22 +59,10 @@ export function placeBlock(placement: CuePlacement): BlockPlacement {
           };
 }
 
-export function samePlacement(a: BlockPlacement, b: BlockPlacement): boolean {
-    if (a.kind === 'standard' || b.kind === 'standard') {
-        return a.kind === b.kind;
-    }
-    return a.line === b.line && a.lineAlign === b.lineAlign;
-}
-
-/** Lines within the same twentieth of the picture share a block, so an
- *  original and an official translation authored a fraction apart stack
- *  instead of overlapping. */
-const LINE_BUCKETS = 20;
-
 export function blockKey(placement: BlockPlacement): string {
     return placement.kind === 'standard'
         ? 'standard'
-        : `${placement.lineAlign}:${Math.round(placement.line * LINE_BUCKETS)}`;
+        : `${placement.lineAlign}:${placement.line}`;
 }
 
 /** The standard block first, then positioned blocks from the top down. */
@@ -105,21 +93,39 @@ function sourceOf(target: Cue, originals: readonly Cue[]): Cue | null {
     return source;
 }
 
-/** Active cues grouped by the block that draws them, in block order. A
- *  block is placed where its first cue is. */
+/** Active cues grouped by the block that draws them, in block order: each
+ *  original followed by its translations, at the original's placement, and
+ *  a translation with no active original at its own. */
 export function groupActiveCues(activeCues: readonly Cue[]): CueGroup[] {
     const originals = activeCues.filter((cue) => cue.cueType === 'original');
-    const groups = new Map<string, CueGroup>();
+    const translations = new Map<Cue, Cue[]>();
     for (const cue of activeCues) {
-        const anchor =
-            cue.cueType === 'target' ? (sourceOf(cue, originals) ?? cue) : cue;
+        if (cue.cueType === 'target') {
+            const source = sourceOf(cue, originals) ?? cue;
+            translations.set(source, [
+                ...(translations.get(source) ?? []),
+                cue,
+            ]);
+        }
+    }
+
+    const groups = new Map<string, CueGroup>();
+    const draw = (anchor: Cue, cues: Cue[]): void => {
         const placement = placeBlock(anchor.placement);
         const key = blockKey(placement);
         const group = groups.get(key);
         if (group) {
-            group.cues.push(cue);
+            group.cues.push(...cues);
         } else {
-            groups.set(key, { key, placement, cues: [cue] });
+            groups.set(key, { key, placement, cues });
+        }
+    };
+    for (const original of originals) {
+        draw(original, [original, ...(translations.get(original) ?? [])]);
+    }
+    for (const [anchor, cues] of translations) {
+        if (anchor.cueType === 'target') {
+            draw(anchor, cues);
         }
     }
     return [...groups.values()].sort(
@@ -138,8 +144,8 @@ function joinLines(lines: readonly (string | null)[]): string {
         .join('\n');
 }
 
-/** A block's two lines, one entry per cue in cue order: the originals, and
- *  the translations (a cue's own, or the official target cues'). */
+/** A block's two lines, one entry per cue in group order: the originals,
+ *  and the translations (a cue's own, or the official target cues'). */
 export function composeBlockText(cues: readonly Cue[]): BlockText {
     return {
         originalText: joinLines(cues.map((cue) => cue.original)),

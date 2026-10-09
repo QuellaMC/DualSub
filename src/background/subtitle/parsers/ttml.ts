@@ -67,34 +67,35 @@ function parseStyles(ttmlText: string): Map<string, Attributes> {
     return styles;
 }
 
-/** Bounds a chain of styles referencing styles. */
-const STYLE_CHAIN_LIMIT = 8;
-
 /** An element's attributes over those of the styles it references, each
- *  style over the ones it references in turn. */
+ *  style over the ones it references in turn; a style met twice is a cycle
+ *  and is not followed again. */
 function withReferencedStyles(
     attributes: Attributes,
     styles: ReadonlyMap<string, Attributes>,
-    depth = 0
+    visited: ReadonlySet<string> = new Set()
 ): Attributes {
-    if (depth >= STYLE_CHAIN_LIMIT) {
-        return attributes;
-    }
     const merged = Object.create(null) as Attributes;
     for (const styleId of (attributes.style ?? '').split(/\s+/)) {
-        const referenced = styleId === '' ? undefined : styles.get(styleId);
-        if (referenced) {
+        const referenced = styles.get(styleId);
+        if (referenced && !visited.has(styleId)) {
             Object.assign(
                 merged,
-                withReferencedStyles(referenced, styles, depth + 1)
+                withReferencedStyles(
+                    referenced,
+                    styles,
+                    new Set([...visited, styleId])
+                )
             );
         }
     }
     return Object.assign(merged, attributes);
 }
 
-function parsePercentPair(value: string | undefined): [number, number] | null {
-    const parts = (value ?? '').trim().split(/\s+/);
+/** A `tts:origin` or `tts:extent` pair in percentages of the root
+ *  container; null for any other unit. */
+function parsePercentPair(value: string): [number, number] | null {
+    const parts = value.trim().split(/\s+/);
     const first = /^(-?\d+(?:\.\d+)?)%$/.exec(parts[0] ?? '');
     const second = /^(-?\d+(?:\.\d+)?)%$/.exec(parts[1] ?? '');
     return parts.length === 2 && first && second
@@ -103,16 +104,21 @@ function parsePercentPair(value: string | undefined): [number, number] | null {
 }
 
 /** A region's vertical anchor: the edge of its box that tts:displayAlign
- *  puts the text against. Only a box in percentages is placed; a region in
- *  other units, like one declaring no layout, leaves its cues at the
- *  automatic placement. */
+ *  puts the text against. A region declaring no layout, or a length the
+ *  model cannot read, leaves its cues at the automatic placement. */
 function parseRegionPlacement(attributes: Attributes): CuePlacement {
-    const lengths = [attributes['tts:origin'], attributes['tts:extent']];
-    const [origin, extent] = lengths.map(parsePercentPair);
+    const originText = attributes['tts:origin'];
+    const extentText = attributes['tts:extent'];
+    const origin =
+        originText === undefined ? undefined : parsePercentPair(originText);
+    const extent =
+        extentText === undefined ? undefined : parsePercentPair(extentText);
     const displayAlign = attributes['tts:displayalign'];
-    const declared = lengths.some((length) => length !== undefined);
-    const readable = origin !== null || extent !== null;
-    if ((declared && !readable) || (!declared && !displayAlign)) {
+    if (
+        origin === null ||
+        extent === null ||
+        (!origin && !extent && !displayAlign)
+    ) {
         return AUTO_PLACEMENT;
     }
     const top = (origin?.[1] ?? 0) / 100;

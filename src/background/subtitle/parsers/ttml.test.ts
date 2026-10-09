@@ -92,6 +92,7 @@ const NETFLIX_SAMPLE = `<?xml version="1.0" encoding="UTF-8"?>
       <region xml:id="middle" tts:origin="10% 10%" tts:extent="80% 80%" tts:displayAlign="center"/>
       <region xml:id="unplaced"/>
       <region xml:id="pixels" tts:origin="100px 100px" tts:extent="400px 50px" tts:displayAlign="before"/>
+      <region xml:id="mixed" tts:origin="10% 10%" tts:extent="400px 50px" tts:displayAlign="after"/>
     </layout>
   </head>
   <body>
@@ -104,6 +105,7 @@ const NETFLIX_SAMPLE = `<?xml version="1.0" encoding="UTF-8"?>
       <p begin="70000000t" end="80000000t" region="unplaced">Free</p>
       <p begin="90000000t" end="100000000t" region="styledTop">Styled</p>
       <p begin="110000000t" end="120000000t" region="pixels">Pixels</p>
+      <p begin="130000000t" end="140000000t" region="mixed">Mixed</p>
     </div>
   </body>
 </tt>`;
@@ -125,6 +127,23 @@ describe('convertTtmlToVtt (Netflix regions)', () => {
             '00:00:09.000 --> 00:00:10.000 line:10%,start\nStyled'
         );
         expect(vtt).toContain('00:00:11.000 --> 00:00:12.000\nPixels');
+        expect(vtt).toContain('00:00:13.000 --> 00:00:14.000\nMixed');
+    });
+
+    it('follows style references through any length of chain, and a cycle once', () => {
+        const chain = Array.from(
+            { length: 12 },
+            (_, index) =>
+                `<style xml:id="s${index}" style="s${index + 1}"${index === 11 ? ' tts:displayAlign="before" tts:origin="10% 10%" tts:extent="80% 80%"' : ''}/>`
+        ).join('');
+        const document = `<tt xmlns:tts="http://www.w3.org/ns/ttml#styling"><head><styling>${chain}<style xml:id="loopA" style="loopB"/><style xml:id="loopB" style="loopA" tts:displayAlign="after" tts:origin="10% 10%" tts:extent="80% 80%"/></styling><layout><region xml:id="deep" style="s0"/><region xml:id="loop" style="loopA"/></layout></head><body><div><p begin="1s" end="2s" region="deep">Deep</p><p begin="3s" end="4s" region="loop">Loop</p></div></body></tt>`;
+        const vtt = convertTtmlToVtt(document);
+        expect(vtt).toContain(
+            '00:00:01.000 --> 00:00:02.000 line:10%,start\nDeep'
+        );
+        expect(vtt).toContain(
+            '00:00:03.000 --> 00:00:04.000 line:90%,end\nLoop'
+        );
     });
 });
 

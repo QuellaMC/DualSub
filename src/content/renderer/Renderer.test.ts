@@ -242,10 +242,10 @@ describe('Renderer', () => {
         ]);
 
         tick(1.5);
-        expect(blockKeys()).toEqual(['standard', 'start:3']);
+        expect(blockKeys()).toEqual(['standard', 'start:0.15']);
         expect(texts()).toEqual(['Dialogue', '对白']);
-        expect(texts('start:3')).toEqual(['SIGN', '标志']);
-        expect(block('start:3')?.style.top).toBe('15%');
+        expect(texts('start:0.15')).toEqual(['SIGN', '标志']);
+        expect(block('start:0.15')?.style.top).toBe('15%');
         expect(block()?.style.top).toBe('auto');
 
         tick(3);
@@ -275,13 +275,13 @@ describe('Renderer', () => {
 
         tick(2);
         expect(wordsIn('standard')).toBe(2);
-        expect(wordsIn('start:3')).toBe(0);
+        expect(wordsIn('start:0.15')).toBe(0);
         expect(onOriginalPainted).toHaveBeenLastCalledWith(1);
 
         vi.setSystemTime(101_000);
         tick(4);
         expect(block('standard')).toBeNull();
-        expect(wordsIn('start:3')).toBe(2);
+        expect(wordsIn('start:0.15')).toBe(2);
         expect(onOriginalPainted).toHaveBeenLastCalledWith(2);
     });
 
@@ -291,27 +291,26 @@ describe('Renderer', () => {
         renderer.setInteractive(true);
         loadCues([cue(1, 3, 'Dialogue'), cue(1, 5, 'SIGN', null, TOP)]);
         tick(2);
-        expect(blockKeys()).toEqual(['standard', 'start:3']);
+        expect(blockKeys()).toEqual(['standard', 'start:0.15']);
         expect(wordsIn('standard')).toBe(1);
 
         // The standard cue ends now, inside the restyle grace.
         tick(3);
-        expect(blockKeys()).toEqual(['start:3']);
-        expect(wordsIn('start:3')).toBe(1);
+        expect(blockKeys()).toEqual(['start:0.15']);
+        expect(wordsIn('start:0.15')).toBe(1);
     });
 
-    it("repositions a reused block when the platform's line moves within its bucket", () => {
-        const { renderer, video, tick, block, texts, loadCues } = setup();
+    it('draws cues at nearby lines as separate blocks, each at its own line', () => {
+        const { renderer, video, tick, block, blockKeys, loadCues } = setup();
         renderer.attachMedia({ root: video.parentElement, video });
         loadCues([
-            cue(1, 2, 'A', null, { line: 0.1, lineAlign: 'start' }),
-            cue(2, 3, 'B', null, { line: 0.12, lineAlign: 'start' }),
+            cue(1, 3, 'A', null, { line: 0.1, lineAlign: 'start' }),
+            cue(1, 3, 'B', null, { line: 0.12, lineAlign: 'start' }),
         ]);
-        tick(1.5);
-        expect(block('start:2')?.style.top).toBe('10%');
         tick(2);
-        expect(block('start:2')?.style.top).toBe('12%');
-        expect(texts('start:2')).toEqual(['B', '']);
+        expect(blockKeys()).toEqual(['start:0.1', 'start:0.12']);
+        expect(block('start:0.1')?.style.top).toBe('10%');
+        expect(block('start:0.12')?.style.top).toBe('12%');
     });
 
     it('advances the revision when the clickable line moves to another block with the same text', () => {
@@ -323,7 +322,7 @@ describe('Renderer', () => {
         tick(2);
         expect(onOriginalPainted).toHaveBeenLastCalledWith(1);
         tick(4);
-        expect(wordsIn('start:3')).toBe(1);
+        expect(wordsIn('start:0.15')).toBe(1);
         expect(onOriginalPainted).toHaveBeenLastCalledWith(2);
     });
 
@@ -333,8 +332,8 @@ describe('Renderer', () => {
         loadCues([cue(1, 5, 'Old')]);
         tick(2);
         loadCues([cue(1, 5, 'New', null, TOP)]);
-        expect(blockKeys()).toEqual(['start:3']);
-        expect(texts('start:3')).toEqual(['New', '']);
+        expect(blockKeys()).toEqual(['start:0.15']);
+        expect(texts('start:0.15')).toEqual(['New', '']);
     });
 
     it('skips redundant frames inside a memoized window', () => {
