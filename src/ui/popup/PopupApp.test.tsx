@@ -248,38 +248,6 @@ describe('PopupApp', () => {
         }
     );
 
-    it('refreshes the note while open, as the tab reports its player', async () => {
-        await fakeBrowser.storage.local.set({ appearanceAccordionOpen: true });
-        await fakeBrowser.storage.sync.set({ subtitleStyle: 'platform' });
-        let onPlayer = false;
-        stubTabs().mockImplementation(((
-            _tabId: number,
-            message: { action: string }
-        ) =>
-            Promise.resolve(
-                message.action !== 'platformLookStatus'
-                    ? { success: true }
-                    : onPlayer
-                      ? {
-                            onPlayer: true,
-                            platform: 'disneyplus',
-                            captured: true,
-                        }
-                      : { onPlayer: false }
-            )) as never);
-        await renderReady();
-        expect(screen.queryByText(/follows your|uses the/)).toBeNull();
-
-        onPlayer = true;
-        expect(
-            await screen.findByText(
-                "Match Platform follows your Disney+ profile's subtitle settings.",
-                {},
-                { timeout: 2500 }
-            )
-        ).toBeInTheDocument();
-    });
-
     it('offers the custom style and opens its editor in the options page', async () => {
         await fakeBrowser.storage.local.set({ appearanceAccordionOpen: true });
         stubTabs();

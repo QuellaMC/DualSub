@@ -42,8 +42,6 @@ const SLIDER_STATUS: Record<SliderKey, { key: string; unit: string }> = {
     subtitleVerticalPosition: { key: 'statusVerticalPosition', unit: '' },
 };
 
-const PLATFORM_LOOK_REFRESH_MS = 1000;
-
 const logger = createLogger('Popup');
 
 function sliderChange(
@@ -78,22 +76,15 @@ export function PopupApp() {
         }
     }, [status]);
 
-    // The note follows the tab while the popup is open: the session may
-    // still be starting, or the profile's appearance may arrive later.
     useEffect(() => {
         let active = true;
-        const refresh = (): void => {
-            void readPlatformLookStatus().then((platformLookStatus) => {
-                if (active) {
-                    setPlatformLook(platformLookStatus);
-                }
-            });
-        };
-        refresh();
-        const timer = setInterval(refresh, PLATFORM_LOOK_REFRESH_MS);
+        void readPlatformLookStatus().then((platformLookStatus) => {
+            if (active) {
+                setPlatformLook(platformLookStatus);
+            }
+        });
         return () => {
             active = false;
-            clearInterval(timer);
         };
     }, []);
 
