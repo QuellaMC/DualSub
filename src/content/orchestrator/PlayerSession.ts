@@ -27,7 +27,7 @@ import { installNativeSubHider } from '../platform/shared/nativeSubHider';
 import { Renderer } from '../renderer/Renderer';
 import { RendererState } from '../renderer/RendererState';
 import type { UiRoot } from '../renderer/domLayer';
-import type { SubtitleLook } from '../renderer/looks';
+import { customLook, type SubtitleLook } from '../renderer/looks';
 import type { DisplaySettings } from '../renderer/styling';
 import type { WordIntent } from '../renderer/wordLayer';
 import {
@@ -52,6 +52,8 @@ const SUBTITLE_LOADING_TIMEOUT_MS = 20_000;
 export const CONTENT_SETTINGS_KEYS = [
     'subtitlesEnabled',
     'subtitleStyle',
+    'subtitleCustomLook',
+    'subtitleTranslationColor',
     'subtitleFontScale',
     'subtitleGap',
     'subtitleVerticalPosition',
@@ -98,6 +100,8 @@ export function toSubtitleLanguages(
 export function toDisplaySettings(settings: ContentSettings): DisplaySettings {
     return {
         style: settings.subtitleStyle,
+        customLook: customLook(settings.subtitleCustomLook),
+        translationColor: settings.subtitleTranslationColor,
         fontScale: settings.subtitleFontScale,
         gap: settings.subtitleGap,
         verticalPosition: settings.subtitleVerticalPosition,

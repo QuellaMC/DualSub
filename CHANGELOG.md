@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Subtitle style setting in the popup: DualSub's own look, or "Match Platform", which draws both lines with the typography the platform's own player would use: the font, color, edge and background from your Netflix or Disney+ profile's subtitle appearance settings, without the platform's subtitles being on. Size stays DualSub's own slider, since the platforms size a single line.
+- Subtitle styles: "Match Platform" draws both lines with the typography the platform's own player would use: the font, color, edge and background from your Netflix or Disney+ profile's subtitle appearance settings, without the platform's subtitles being on. "Custom" starts as DualSub's own look and is edited in the new Appearance section of the options page: font, weight, text color, text edge, and background, with a preview drawn by the overlay's own styling for either platform. Size stays DualSub's own slider in both, since the platforms size a single line.
+- The translation line's color is a setting of its own and applies to both styles. The popup says whether Match Platform is following your profile's settings or the platform's preset on the current tab.
 
 ### Changed
 

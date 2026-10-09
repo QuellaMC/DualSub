@@ -62,9 +62,6 @@
     "subtitleStyleLabel": {
         "message": "字幕样式："
     },
-    "subtitleStyleDualSub": {
-        "message": "DualSub"
-    },
     "subtitleStylePlatform": {
         "message": "跟随平台"
     },
@@ -715,5 +712,104 @@
     },
     "subtitleLoading": {
         "message": "DualSub：正在加载字幕…"
+    },
+    "subtitleStyleCustom": {
+        "message": "自定义"
+    },
+    "platformLookCaptured": {
+        "message": "“跟随平台”会采用你的 %s 个人资料中的字幕设置。"
+    },
+    "platformLookPreset": {
+        "message": "“跟随平台”在读取到个人资料的字幕设置之前，使用 %s 的默认外观。"
+    },
+    "editCustomLook": {
+        "message": "在设置中编辑自定义外观"
+    },
+    "navAppearance": {
+        "message": "外观"
+    },
+    "sectionAppearance": {
+        "message": "字幕外观"
+    },
+    "cardSubtitleStyleTitle": {
+        "message": "字幕样式"
+    },
+    "cardSubtitleStyleDesc": {
+        "message": "决定两行字幕的绘制方式。“跟随平台”在网站上采用你个人资料中的字幕设置；预览显示平台的默认外观。“自定义”以 DualSub 自身的外观为起点，在下方编辑。"
+    },
+    "previewPlatformLabel": {
+        "message": "预览平台："
+    },
+    "lookPreviewLabel": {
+        "message": "字幕预览"
+    },
+    "lookPreviewOriginal": {
+        "message": "Where there's a will, there's a way."
+    },
+    "lookPreviewTranslation": {
+        "message": "有志者事竟成。"
+    },
+    "cardCustomLookTitle": {
+        "message": "自定义外观"
+    },
+    "cardCustomLookDesc": {
+        "message": "为两行字幕设置你自己的字体样式。修改任意一项会选中“自定义”样式。"
+    },
+    "customFontLabel": {
+        "message": "字体："
+    },
+    "customFontDefault": {
+        "message": "页面默认"
+    },
+    "customFontSansSerif": {
+        "message": "无衬线"
+    },
+    "customFontSerif": {
+        "message": "衬线"
+    },
+    "customFontMonospace": {
+        "message": "等宽"
+    },
+    "customFontCasual": {
+        "message": "手写体"
+    },
+    "customFontSmallCaps": {
+        "message": "小型大写"
+    },
+    "customBoldLabel": {
+        "message": "粗体："
+    },
+    "customOriginalColorLabel": {
+        "message": "原文文字颜色："
+    },
+    "customEdgeLabel": {
+        "message": "文字描边："
+    },
+    "customEdgeNone": {
+        "message": "无"
+    },
+    "customEdgeShadow": {
+        "message": "阴影"
+    },
+    "customEdgeOutline": {
+        "message": "轮廓"
+    },
+    "customEdgeRaised": {
+        "message": "凸起"
+    },
+    "customEdgeDepressed": {
+        "message": "凹陷"
+    },
+    "customBackgroundColorLabel": {
+        "message": "背景颜色："
+    },
+    "customBackgroundOpacityLabel": {
+        "message": "背景不透明度："
+    },
+    "translationColorLabel": {
+        "message": "译文文字颜色："
+    },
+    "translationColorHelp": {
+        "message": "两种样式都会用此颜色绘制译文行。"
     }
 }

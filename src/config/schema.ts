@@ -116,8 +116,39 @@ export function detectBrowserLanguage(): UiLanguage {
 const uiLanguageSchema = z.enum(['en', 'es', 'ja', 'ko', 'zh-CN', 'zh-TW']);
 export type UiLanguage = z.infer<typeof uiLanguageSchema>;
 
-/** DualSub's own subtitle look, or the look of the platform being watched. */
-const SUBTITLE_STYLES = ['dualsub', 'platform'] as const;
+/** The look of the platform being watched, or the viewer's own, which
+ *  starts as DualSub's. */
+const SUBTITLE_STYLES = ['platform', 'custom'] as const;
+
+/** The typography choices of the custom look; the look model maps them to
+ *  CSS. */
+export const CUSTOM_LOOK_FONTS = [
+    'default',
+    'sans-serif',
+    'serif',
+    'monospace',
+    'casual',
+    'small-caps',
+] as const;
+export const CUSTOM_LOOK_EDGES = [
+    'none',
+    'shadow',
+    'outline',
+    'raised',
+    'depressed',
+] as const;
+
+const hexColor = z.string().regex(/^#[0-9a-f]{6}$/i);
+
+const customLookSchema = z.strictObject({
+    font: z.enum(CUSTOM_LOOK_FONTS),
+    bold: z.boolean(),
+    originalColor: hexColor,
+    edge: z.enum(CUSTOM_LOOK_EDGES),
+    backgroundColor: hexColor,
+    backgroundOpacity: z.number().finite().min(0).max(1),
+});
+export type CustomLook = z.infer<typeof customLookSchema>;
 
 const languageTag = z.string().refine(isPlausibleLanguageTag);
 const nonblankString = z.string().refine(isNonblankString);
@@ -326,7 +357,27 @@ export const configSchema = {
     }),
     subtitleStyle: setting({
         schema: z.enum(SUBTITLE_STYLES),
-        default: 'dualsub',
+        default: 'custom',
+        scope: 'sync',
+    }),
+    /** The viewer's own look for both lines. Its defaults are DualSub's own
+     *  look, so Custom starts from what the viewer already sees. */
+    subtitleCustomLook: setting({
+        schema: customLookSchema,
+        default: {
+            font: 'default',
+            bold: false,
+            originalColor: '#ffffff',
+            edge: 'shadow',
+            backgroundColor: '#000000',
+            backgroundOpacity: 0.6,
+        },
+        scope: 'sync',
+    }),
+    /** The translation line's color, in every style. */
+    subtitleTranslationColor: setting({
+        schema: hexColor,
+        default: '#00ffff',
         scope: 'sync',
     }),
     subtitleGap: setting({
