@@ -1,5 +1,6 @@
 import { AiContext } from './sections/AiContext';
 import { Customize } from './sections/Customize';
+import { Engines } from './sections/Engines';
 import { GetStarted } from './sections/GetStarted';
 import { Hero } from './sections/Hero';
 import { PopupTour } from './sections/PopupTour';
@@ -15,6 +16,7 @@ export function App() {
                 <PopupTour />
                 <Customize />
                 <AiContext />
+                <Engines />
             </main>
         </>
     );
