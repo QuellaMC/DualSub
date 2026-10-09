@@ -10,7 +10,11 @@ import {
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getDefaultValue, SETTINGS_KEYS } from '@/config/schema';
 import { AppearanceSection } from './AppearanceSection';
-import { OPTIONS_SETTINGS_KEYS, type OptionsSettings } from '../types';
+import {
+    OPTIONS_SETTINGS_KEYS,
+    type OptionsSettings,
+    type SaveSettings,
+} from '../types';
 
 const t = (key: string, ...subs: readonly (string | number)[]): string =>
     subs.length > 0 ? `${key}:${subs.join(',')}` : key;
@@ -27,7 +31,7 @@ function defaults(): OptionsSettings {
 
 function renderSection(
     overrides: Partial<OptionsSettings> = {},
-    save = vi.fn(() => Promise.resolve(true))
+    save: SaveSettings = vi.fn(() => Promise.resolve(true))
 ) {
     const settings = { ...defaults(), ...overrides };
     const view = render(
@@ -174,6 +178,35 @@ describe('AppearanceSection', () => {
         await waitFor(() => expect(font).toHaveValue('default'), {
             timeout: 1500,
         });
+    });
+
+    it('keeps one write in flight and writes the newest draft once it settles', async () => {
+        const first = Promise.withResolvers<boolean>();
+        const save: SaveSettings = vi
+            .fn()
+            .mockReturnValueOnce(first.promise)
+            .mockResolvedValue(true);
+        renderSection({ subtitleStyle: 'custom' }, save);
+        const font = screen.getByLabelText('customFontLabel');
+        fireEvent.change(font, { target: { value: 'serif' } });
+        await waitFor(() => expect(save).toHaveBeenCalledTimes(1), {
+            timeout: 1500,
+        });
+
+        fireEvent.change(font, { target: { value: 'monospace' } });
+        await new Promise((resolve) => setTimeout(resolve, 600));
+        expect(save).toHaveBeenCalledTimes(1);
+
+        first.resolve(true);
+        await waitFor(() =>
+            expect(save).toHaveBeenLastCalledWith({
+                subtitleCustomLook: {
+                    ...getDefaultValue('subtitleCustomLook'),
+                    font: 'monospace',
+                },
+            })
+        );
+        expect(save).toHaveBeenCalledTimes(2);
     });
 
     it('writes a pending edit when the section goes away', () => {

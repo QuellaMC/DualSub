@@ -50,10 +50,11 @@ function isEdge(value: string): value is CustomLook['edge'] {
 
 /**
  * A setting edited with a continuous control. Edits show at once and are
- * written after a pause, or when the editor goes away; a write that fails
- * snaps the draft back to the stored value unless a newer edit is pending.
- * A value arriving from storage (another window, a synced device) is
- * adopted unless an edit is pending.
+ * written after a pause, or when the editor goes away, one write at a time
+ * with the newest draft written once the one in flight settles; a write
+ * that fails snaps the draft back to the stored value unless a newer edit
+ * is pending. A value arriving from storage (another window, a synced
+ * device) is adopted unless an edit is pending.
  */
 function useDraft<T>(
     saved: T,
@@ -62,6 +63,7 @@ function useDraft<T>(
     const [draft, setDraft] = useState(saved);
     /** The draft holds an edit storage has not seen yet. */
     const pending = useRef(false);
+    const inFlight = useRef(false);
     const latest = useRef({ draft, write, saved });
 
     useEffect(() => {
@@ -74,13 +76,17 @@ function useDraft<T>(
         }
     }, [saved]);
 
-    const commit = useCallback((): void => {
-        if (!pending.current) {
+    const commit = useCallback(function commit(): void {
+        if (!pending.current || inFlight.current) {
             return;
         }
         pending.current = false;
+        inFlight.current = true;
         void latest.current.write(latest.current.draft).then((persisted) => {
-            if (!persisted && !pending.current) {
+            inFlight.current = false;
+            if (pending.current) {
+                commit();
+            } else if (!persisted) {
                 setDraft(latest.current.saved);
             }
         });
@@ -94,7 +100,6 @@ function useDraft<T>(
         return () => clearTimeout(timer);
     }, [draft, commit]);
 
-    // Unmounting writes a pending edit.
     useEffect(() => commit, [commit]);
 
     const edit = (value: T): void => {
