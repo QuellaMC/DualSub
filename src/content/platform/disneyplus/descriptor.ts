@@ -4,6 +4,7 @@ import {
 } from '@/shared/routeIdentity';
 import type { PlatformDescriptor } from '../types';
 import { DisneyPlusAdapter } from './adapter';
+import { DISNEY_LOOK, parseDisneyLook } from './appearance';
 
 export const disneyPlusDescriptor: PlatformDescriptor = {
     id: 'disneyplus',
@@ -23,8 +24,13 @@ export const disneyPlusDescriptor: PlatformDescriptor = {
                 videoId: normalizeDisneyPlusVideoId(event.videoId),
             };
         }
+        if (event.t === 'subtitle-appearance') {
+            return { kind: 'appearance', appearance: event.appearance };
+        }
         return null;
     },
+    look: DISNEY_LOOK,
+    parsePlatformLook: parseDisneyLook,
     createAdapter(context, handoff) {
         return new DisneyPlusAdapter(context, handoff);
     },

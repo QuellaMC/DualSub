@@ -59,6 +59,15 @@
     "layoutLeftRight": {
         "message": "좌우 배치"
     },
+    "subtitleStyleLabel": {
+        "message": "자막 스타일:"
+    },
+    "subtitleStyleDualSub": {
+        "message": "DualSub"
+    },
+    "subtitleStylePlatform": {
+        "message": "플랫폼과 동일하게"
+    },
     "uiLanguageLabel": {
         "message": "언어:"
     },
@@ -88,6 +97,9 @@
     },
     "statusLayoutOrientationUpdated": {
         "message": "레이아웃 방향이 업데이트되었습니다."
+    },
+    "statusSubtitleStyleUpdated": {
+        "message": "자막 스타일이 업데이트되었습니다."
     },
     "statusFontSize": {
         "message": "글꼴 크기: "

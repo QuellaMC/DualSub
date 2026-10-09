@@ -14,6 +14,7 @@ const INVALID_SETTING_VALUE_MESSAGE = 'Invalid setting value.';
 
 /** Numeric limits shared by the schema and the controls that edit them. */
 export const SETTING_BOUNDS = {
+    subtitleFontScale: { min: 0.5, max: 3 },
     translationDelay: { min: 0, max: 5000 },
     aiContextTimeout: { min: 5000, max: 30000 },
     aiContextRateLimit: { min: 10, max: 300 },
@@ -114,6 +115,9 @@ export function detectBrowserLanguage(): UiLanguage {
 
 const uiLanguageSchema = z.enum(['en', 'es', 'ja', 'ko', 'zh-CN', 'zh-TW']);
 export type UiLanguage = z.infer<typeof uiLanguageSchema>;
+
+/** DualSub's own subtitle look, or the look of the platform being watched. */
+const SUBTITLE_STYLES = ['dualsub', 'platform'] as const;
 
 const languageTag = z.string().refine(isPlausibleLanguageTag);
 const nonblankString = z.string().refine(isNonblankString);
@@ -309,9 +313,20 @@ export const configSchema = {
         default: 'column',
         scope: 'sync',
     }),
-    subtitleFontSize: setting({
-        schema: z.number().finite().min(1).max(3),
-        default: 1.1,
+    /** Multiplier over the look's base size, itself a fraction of the
+     *  video's rendered height. */
+    subtitleFontScale: setting({
+        schema: z
+            .number()
+            .finite()
+            .min(SETTING_BOUNDS.subtitleFontScale.min)
+            .max(SETTING_BOUNDS.subtitleFontScale.max),
+        default: 1,
+        scope: 'sync',
+    }),
+    subtitleStyle: setting({
+        schema: z.enum(SUBTITLE_STYLES),
+        default: 'dualsub',
         scope: 'sync',
     }),
     subtitleGap: setting({

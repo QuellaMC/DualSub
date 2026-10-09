@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { RendererState } from './RendererState';
 
 const display = {
-    fontSizeVw: 1.1,
+    style: 'dualsub' as const,
+    fontScale: 1,
     gap: 0.3,
     verticalPosition: 2.8,
     orientation: 'column' as const,
@@ -99,7 +100,7 @@ describe('RendererState.shouldRender', () => {
 
     it('mutations invalidate the memo', () => {
         const state = stateWithMemo();
-        state.setDisplay({ ...display, fontSizeVw: 2 });
+        state.setDisplay({ ...display, fontScale: 2 });
         expect(state.frameMemo).toBeNull();
     });
 });

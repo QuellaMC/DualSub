@@ -81,10 +81,12 @@ export class NetflixAdapter implements PlatformAdapter {
 
     onPlatformEvent(): void {}
 
-    /** Track URLs live in the page's player; ask for them once the bridge
-     *  is up. A later ask supersedes an earlier one. */
+    /** Track URLs and the viewer's subtitle appearance live in the page's
+     *  player; ask for them once the bridge is up. A later ask supersedes
+     *  an earlier one. */
     onBridgeConnected(): void {
         this.requestTracks();
+        this.context.bridge.sendControl({ t: 'request-subtitle-appearance' });
     }
 
     onLanguagesChanged(): void {

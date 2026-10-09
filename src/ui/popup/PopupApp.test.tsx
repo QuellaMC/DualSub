@@ -86,7 +86,7 @@ describe('PopupApp', () => {
         await fakeBrowser.storage.sync.set({
             subtitlesEnabled: false,
             targetLanguage: 'ja',
-            subtitleFontSize: 2,
+            subtitleFontScale: 2,
         });
         await fakeBrowser.storage.local.set({ appearanceAccordionOpen: true });
         stubTabs();
@@ -102,7 +102,7 @@ describe('PopupApp', () => {
         expect(screen.getByRole('slider', { name: 'Font Size:' })).toHaveValue(
             '2'
         );
-        expect(POPUP_SETTINGS_KEYS).toHaveLength(12);
+        expect(POPUP_SETTINGS_KEYS).toHaveLength(13);
     });
 
     it('saves a toggle and shows its status', async () => {
@@ -149,21 +149,23 @@ describe('PopupApp', () => {
 
         fireEvent.change(slider, { target: { value: '1.5' } });
         await waitFor(() =>
-            expect(previewsSent(send)).toEqual([{ subtitleFontSize: 1.5 }])
+            expect(previewsSent(send)).toEqual([{ subtitleFontScale: 1.5 }])
         );
-        expect(await fakeBrowser.storage.sync.get('subtitleFontSize')).toEqual(
+        expect(await fakeBrowser.storage.sync.get('subtitleFontScale')).toEqual(
             {}
         );
 
         fireEvent.pointerUp(slider);
         await waitFor(() =>
             expect(screen.getByRole('status')).toHaveTextContent(
-                'Font size: 1.5vw.'
+                'Font size: 1.5×.'
             )
         );
-        expect(await fakeBrowser.storage.sync.get('subtitleFontSize')).toEqual({
-            subtitleFontSize: 1.5,
-        });
+        expect(await fakeBrowser.storage.sync.get('subtitleFontScale')).toEqual(
+            {
+                subtitleFontScale: 1.5,
+            }
+        );
     });
 
     it('rolls the page back to the persisted value when a slider commit fails', async () => {
@@ -184,11 +186,29 @@ describe('PopupApp', () => {
         );
         await waitFor(() =>
             expect(previewsSent(send)).toEqual([
-                { subtitleFontSize: 1.5 },
-                { subtitleFontSize: 1.1 },
+                { subtitleFontScale: 1.5 },
+                { subtitleFontScale: 1 },
             ])
         );
-        expect(slider).toHaveValue('1.1');
+        expect(slider).toHaveValue('1');
+    });
+
+    it('saves the subtitle style choice', async () => {
+        await fakeBrowser.storage.local.set({ appearanceAccordionOpen: true });
+        stubTabs();
+        await renderReady();
+        const style = screen.getByRole('combobox', { name: 'Subtitle Style:' });
+        expect(style).toHaveValue('dualsub');
+
+        fireEvent.change(style, { target: { value: 'platform' } });
+        await waitFor(() =>
+            expect(screen.getByRole('status')).toHaveTextContent(
+                'Subtitle style updated.'
+            )
+        );
+        expect(await fakeBrowser.storage.sync.get('subtitleStyle')).toEqual({
+            subtitleStyle: 'platform',
+        });
     });
 
     it('validates the time offset before saving it', async () => {

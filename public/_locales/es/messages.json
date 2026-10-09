@@ -59,6 +59,15 @@
     "layoutLeftRight": {
         "message": "Izquierda / Derecha"
     },
+    "subtitleStyleLabel": {
+        "message": "Estilo de subtítulos:"
+    },
+    "subtitleStyleDualSub": {
+        "message": "DualSub"
+    },
+    "subtitleStylePlatform": {
+        "message": "Igual que la plataforma"
+    },
     "uiLanguageLabel": {
         "message": "Idioma:"
     },
@@ -88,6 +97,9 @@
     },
     "statusLayoutOrientationUpdated": {
         "message": "Orientación del diseño actualizada."
+    },
+    "statusSubtitleStyleUpdated": {
+        "message": "Estilo de subtítulos actualizado."
     },
     "statusFontSize": {
         "message": "Tamaño de fuente: "

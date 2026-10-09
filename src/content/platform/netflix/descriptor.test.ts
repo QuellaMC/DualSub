@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { NETFLIX_DEFAULT_APPEARANCE } from './appearance';
 import { netflixDescriptor } from './descriptor';
 
 describe('netflixDescriptor', () => {
@@ -23,6 +24,24 @@ describe('netflixDescriptor', () => {
                 'https://www.netflix.com/watch/abc'
             )
         ).toBeNull();
+    });
+
+    it('routes appearance events document-wide and turns them into a look', () => {
+        const appearance = { defaults: { characterEdgeAttributes: 'NONE' } };
+        expect(
+            netflixDescriptor.classifyBridgeEvent({
+                t: 'subtitle-appearance',
+                platform: 'netflix',
+                appearance,
+            })
+        ).toEqual({ kind: 'appearance', appearance });
+        expect(
+            netflixDescriptor.parsePlatformLook(NETFLIX_DEFAULT_APPEARANCE)
+        ).toEqual(netflixDescriptor.look);
+        expect(
+            netflixDescriptor.parsePlatformLook(appearance)?.textShadow
+        ).toBe('none');
+        expect(netflixDescriptor.parsePlatformLook({})).toBeNull();
     });
 
     it('keys subtitle events by their own movieId (preload-safe)', () => {

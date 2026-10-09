@@ -7,7 +7,7 @@ import { useSettings } from './useSettings';
 
 const KEYS = [
     'subtitlesEnabled',
-    'subtitleFontSize',
+    'subtitleFontScale',
     'targetLanguage',
 ] as const;
 
@@ -23,7 +23,7 @@ describe('useSettings', () => {
     });
 
     it('loads the projection from storage with schema defaults filling gaps', async () => {
-        await fakeBrowser.storage.sync.set({ subtitleFontSize: 2 });
+        await fakeBrowser.storage.sync.set({ subtitleFontScale: 2 });
         const { result } = renderHook(() => useSettings(KEYS));
         expect(result.current.status).toBe('loading');
         expect(result.current.settings).toBeNull();
@@ -31,7 +31,7 @@ describe('useSettings', () => {
         await waitFor(() => expect(result.current.status).toBe('ready'));
         expect(result.current.settings).toEqual({
             subtitlesEnabled: true,
-            subtitleFontSize: 2,
+            subtitleFontScale: 2,
             targetLanguage: 'zh-CN',
         });
     });
@@ -40,11 +40,13 @@ describe('useSettings', () => {
         const { result } = renderHook(() => useSettings(KEYS));
         await waitFor(() => expect(result.current.status).toBe('ready'));
 
-        await act(() => result.current.save({ subtitleFontSize: 1.5 }));
-        expect(result.current.settings?.subtitleFontSize).toBe(1.5);
-        expect(await fakeBrowser.storage.sync.get('subtitleFontSize')).toEqual({
-            subtitleFontSize: 1.5,
-        });
+        await act(() => result.current.save({ subtitleFontScale: 1.5 }));
+        expect(result.current.settings?.subtitleFontScale).toBe(1.5);
+        expect(await fakeBrowser.storage.sync.get('subtitleFontScale')).toEqual(
+            {
+                subtitleFontScale: 1.5,
+            }
+        );
     });
 
     it('rejects an invalid write and leaves the projection untouched', async () => {
@@ -53,11 +55,11 @@ describe('useSettings', () => {
 
         await act(async () => {
             await expect(
-                result.current.save({ subtitleFontSize: 99 })
+                result.current.save({ subtitleFontScale: 99 })
             ).rejects.toThrow();
         });
-        expect(result.current.settings?.subtitleFontSize).toBe(1.1);
-        expect(await fakeBrowser.storage.sync.get('subtitleFontSize')).toEqual(
+        expect(result.current.settings?.subtitleFontScale).toBe(1);
+        expect(await fakeBrowser.storage.sync.get('subtitleFontScale')).toEqual(
             {}
         );
     });
@@ -80,8 +82,8 @@ describe('useSettings', () => {
         await waitFor(() => expect(result.current.status).toBe('unavailable'));
         expect(result.current.settings).toBeNull();
 
-        await fakeBrowser.storage.sync.set({ subtitleFontSize: 2 });
+        await fakeBrowser.storage.sync.set({ subtitleFontScale: 2 });
         await waitFor(() => expect(result.current.status).toBe('ready'));
-        expect(result.current.settings?.subtitleFontSize).toBe(2);
+        expect(result.current.settings?.subtitleFontScale).toBe(2);
     });
 });

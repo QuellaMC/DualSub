@@ -30,6 +30,13 @@ export type CapturedEvent =
           availId: string | null;
           playbackSessionId: string | null;
           isInterstitialPlaying: boolean | null;
+      }
+    /** The viewer's subtitle appearance settings as the platform's own
+     *  player holds them; the descriptor turns them into a look. */
+    | {
+          t: 'subtitle-appearance';
+          platform: BridgePlatform;
+          appearance: Record<string, unknown>;
       };
 
 export type MainToIsolated =
@@ -44,6 +51,8 @@ export type IsolatedToMain =
      *  priority order, from the page's player. Supersedes any pending request. */
     | { t: 'request-subtitle-tracks'; videoId: string; languages: string[] }
     | { t: 'cancel-subtitle-tracks' }
+    /** Report the viewer's subtitle appearance settings once readable. */
+    | { t: 'request-subtitle-appearance' }
     | { t: 'close' };
 
 export interface HelloMessage {
@@ -63,6 +72,10 @@ const MAX_ROUTE_ID_LENGTH = 768;
 const MAX_URL_LENGTH = 16 * 1024;
 const MAX_LANGUAGE_LENGTH = 64;
 const MAX_REQUESTED_LANGUAGES = 4;
+const MAX_APPEARANCE_NODES = 256;
+const MAX_APPEARANCE_DEPTH = 4;
+const MAX_APPEARANCE_STRING_LENGTH = 512;
+const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -84,6 +97,56 @@ function isLanguageList(value: unknown): value is string[] {
         value.every((language) =>
             isBoundedString(language, MAX_LANGUAGE_LENGTH)
         )
+    );
+}
+
+function isPlatform(value: unknown): value is BridgePlatform {
+    return value === 'netflix' || value === 'disneyplus';
+}
+
+function isPlainNode(
+    value: unknown,
+    depth: number,
+    budget: { nodes: number }
+): boolean {
+    budget.nodes -= 1;
+    if (budget.nodes < 0 || depth > MAX_APPEARANCE_DEPTH) {
+        return false;
+    }
+    if (value === null || typeof value === 'boolean') {
+        return true;
+    }
+    if (typeof value === 'number') {
+        return Number.isFinite(value);
+    }
+    if (typeof value === 'string') {
+        return value.length <= MAX_APPEARANCE_STRING_LENGTH;
+    }
+    if (Array.isArray(value)) {
+        return value.every((item) => isPlainNode(item, depth + 1, budget));
+    }
+    if (!isRecord(value)) {
+        return false;
+    }
+    const prototype: unknown = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) {
+        return false;
+    }
+    return Object.keys(value).every(
+        (key) =>
+            !DANGEROUS_KEYS.has(key) &&
+            isPlainNode(value[key], depth + 1, budget)
+    );
+}
+
+/** Bounded JSON-like data with no dangerous keys: all a page record may
+ *  carry across the port. */
+function isBoundedPlainRecord(
+    value: unknown
+): value is Record<string, unknown> {
+    return (
+        isRecord(value) &&
+        isPlainNode(value, 0, { nodes: MAX_APPEARANCE_NODES })
     );
 }
 
@@ -122,6 +185,11 @@ export function isCapturedEvent(value: unknown): value is CapturedEvent {
                 (value.isInterstitialPlaying === null ||
                     typeof value.isInterstitialPlaying === 'boolean')
             );
+        case 'subtitle-appearance':
+            return (
+                isPlatform(value.platform) &&
+                isBoundedPlainRecord(value.appearance)
+            );
         default:
             return false;
     }
@@ -151,6 +219,7 @@ export function isIsolatedToMain(value: unknown): value is IsolatedToMain {
         case 'playback-bridge-resume':
         case 'playback-bridge-pause':
         case 'cancel-subtitle-tracks':
+        case 'request-subtitle-appearance':
         case 'close':
             return true;
         case 'request-subtitle-tracks':

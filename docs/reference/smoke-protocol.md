@@ -17,7 +17,11 @@ with a clean profile plus one seeded profile (see the upgrade-path tests in
 4. Leave the player, come back, and reload the page: subtitles return
    without a stale line from the earlier session.
 5. Seek rapidly and drag the popup sliders while playing: the overlay
-   follows the slider live and never goes blank between cues.
+   follows the slider live and never goes blank between cues. Switch the
+   subtitle style between DualSub and Match Platform and resize the
+   window: the text restyles live and scales with the video. With the
+   platform's own subtitles off, Match Platform still follows the
+   profile's subtitle appearance settings.
 6. Disney+ only: an ad or recap interstitial shows no subtitle, and the
    time source stays correct across the shadow-DOM player controls.
 
