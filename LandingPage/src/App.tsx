@@ -1,3 +1,4 @@
+import { GetStarted } from './sections/GetStarted';
 import { Hero } from './sections/Hero';
 import { SiteHeader } from './sections/SiteHeader';
 
@@ -7,6 +8,7 @@ export function App() {
             <SiteHeader />
             <main>
                 <Hero />
+                <GetStarted />
             </main>
         </>
     );
