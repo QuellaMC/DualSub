@@ -1,0 +1,132 @@
+.site-header {
+    position: fixed;
+    top: 0;
+    right: 0;
+    left: 0;
+    z-index: 10;
+    height: var(--header-height);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(7, 11, 20, 0.6);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    backdrop-filter: blur(14px) saturate(140%);
+}
+
+.site-header-bar {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    height: 100%;
+}
+
+.site-header-home {
+    display: flex;
+    justify-self: start;
+}
+
+.site-nav ul {
+    display: flex;
+    gap: 39px;
+}
+
+.site-nav a {
+    color: var(--text-muted);
+    font-size: 15px;
+    transition: color 150ms ease;
+}
+
+.site-nav a:hover {
+    color: var(--text);
+}
+
+.site-header-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 28px;
+}
+
+.site-header-github {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.site-header-github .icon {
+    width: 17px;
+    height: 17px;
+}
+
+.site-header-menu {
+    display: none;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: 1px solid #2b3445;
+    border-radius: 10px;
+    background: #1b2432;
+    color: var(--text);
+    cursor: pointer;
+}
+
+.site-header-menu .icon {
+    width: 20px;
+    height: 20px;
+}
+
+@media (max-width: 1080px) {
+    .site-header-bar {
+        grid-template-columns: 1fr auto;
+    }
+
+    .site-header-actions {
+        gap: 16px;
+    }
+
+    .site-header-menu {
+        display: grid;
+    }
+
+    .site-nav {
+        position: absolute;
+        top: var(--header-height);
+        right: 0;
+        left: 0;
+        display: none;
+        border-bottom: 1px solid var(--line);
+        background: var(--bg);
+    }
+
+    .site-header.is-open .site-nav {
+        display: block;
+    }
+
+    .site-nav ul {
+        flex-direction: column;
+        gap: 0;
+        width: min(100% - 2 * var(--gutter), 1200px);
+        margin: 0 auto;
+        padding: 8px 0 16px;
+    }
+
+    .site-nav a {
+        display: block;
+        padding: 12px 0;
+        color: var(--text);
+        font-size: 17px;
+    }
+}
+
+@media (max-width: 640px) {
+    .site-header-github span {
+        display: none;
+    }
+}
+
+@media (max-width: 480px) {
+    .site-header-cta {
+        display: none;
+    }
+}

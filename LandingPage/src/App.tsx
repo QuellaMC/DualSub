@@ -1,3 +1,10 @@
+import { SiteHeader } from './sections/SiteHeader';
+
 export function App() {
-    return <main />;
+    return (
+        <>
+            <SiteHeader />
+            <main />
+        </>
+    );
 }
