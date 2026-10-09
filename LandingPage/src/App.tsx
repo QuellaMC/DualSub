@@ -1,3 +1,4 @@
+import { Customize } from './sections/Customize';
 import { GetStarted } from './sections/GetStarted';
 import { Hero } from './sections/Hero';
 import { PopupTour } from './sections/PopupTour';
@@ -11,6 +12,7 @@ export function App() {
                 <Hero />
                 <GetStarted />
                 <PopupTour />
+                <Customize />
             </main>
         </>
     );
