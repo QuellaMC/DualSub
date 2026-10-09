@@ -1,5 +1,6 @@
 import { GetStarted } from './sections/GetStarted';
 import { Hero } from './sections/Hero';
+import { PopupTour } from './sections/PopupTour';
 import { SiteHeader } from './sections/SiteHeader';
 
 export function App() {
@@ -9,6 +10,7 @@ export function App() {
             <main>
                 <Hero />
                 <GetStarted />
+                <PopupTour />
             </main>
         </>
     );
