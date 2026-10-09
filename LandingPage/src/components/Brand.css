@@ -1,0 +1,17 @@
+.wordmark {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45em;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+
+.wordmark-mark {
+    width: 1.64em;
+    height: 1.64em;
+}
+
+.wordmark-accent {
+    color: var(--amber);
+}
