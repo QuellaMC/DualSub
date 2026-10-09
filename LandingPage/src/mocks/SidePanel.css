@@ -1,0 +1,155 @@
+/* Colors follow src/ui/sidepanel/sidepanel.css in its dark theme. */
+
+.side-panel {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-left: 1px solid #000;
+    background: #101922;
+    color: #fff;
+}
+
+.side-panel::after {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 90px;
+    background: linear-gradient(transparent, #101922 85%);
+    content: '';
+}
+
+.side-panel-bar {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 8px;
+    height: 45px;
+    padding: 0 14px;
+    border-bottom: 1px solid #2a2f37;
+    background: #1c1f24;
+    font-size: 14px;
+}
+
+.side-panel-logo {
+    width: 20px;
+    height: 20px;
+}
+
+.side-panel-menu {
+    margin-right: auto;
+    font-size: 12px;
+    color: #9aa0a6;
+}
+
+.side-panel-tool {
+    margin-left: 10px;
+    font-size: 16px;
+    color: #c4c7c5;
+}
+
+.side-panel-body {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    padding: 16px 16px 0;
+}
+
+.side-panel-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.side-panel-title {
+    font-size: 24px;
+    font-weight: 700;
+}
+
+.side-panel-analyze {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 18px;
+    border-radius: 12px;
+    background: #137fec;
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.side-panel-box {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px;
+    border: 1px solid #324d67;
+    border-radius: 12px;
+    background: #192633;
+}
+
+.side-panel-label {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.side-panel-words {
+    position: relative;
+    display: flex;
+    gap: 8px;
+    padding: 12px;
+    border: 1px solid #324d67;
+    border-radius: 12px;
+    background: #101922;
+}
+
+.side-panel-word {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 6px 4px 8px;
+    border-radius: 6px;
+    background: #0f5fb8;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.side-panel-remove {
+    display: grid;
+    place-items: center;
+    width: 20px;
+    height: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.25);
+    font-size: 12px;
+}
+
+.side-panel-results {
+    gap: 0;
+}
+
+.side-panel-results-title {
+    margin-bottom: 16px;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.side-panel-section {
+    margin-bottom: 8px;
+    color: #2f8cf0;
+    font-weight: 600;
+}
+
+.side-panel-results p {
+    margin-bottom: 16px;
+    color: #92adc9;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.side-panel-results strong {
+    margin-bottom: 4px;
+    font-size: 14px;
+}
