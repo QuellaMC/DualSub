@@ -3,6 +3,7 @@ import { Customize } from './sections/Customize';
 import { Engines } from './sections/Engines';
 import { GetStarted } from './sections/GetStarted';
 import { Hero } from './sections/Hero';
+import { Platforms } from './sections/Platforms';
 import { PopupTour } from './sections/PopupTour';
 import { SiteHeader } from './sections/SiteHeader';
 
@@ -17,6 +18,7 @@ export function App() {
                 <Customize />
                 <AiContext />
                 <Engines />
+                <Platforms />
             </main>
         </>
     );
