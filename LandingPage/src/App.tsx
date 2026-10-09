@@ -1,4 +1,5 @@
 import { AiContext } from './sections/AiContext';
+import { ClosingCta } from './sections/ClosingCta';
 import { Customize } from './sections/Customize';
 import { Engines } from './sections/Engines';
 import { Faq } from './sections/Faq';
@@ -23,6 +24,7 @@ export function App() {
                 <Platforms />
                 <Privacy />
                 <Faq />
+                <ClosingCta />
             </main>
         </>
     );
