@@ -1,0 +1,36 @@
+.privacy {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+}
+
+.privacy li {
+    display: flex;
+    gap: 18px;
+}
+
+.privacy .feature-icon {
+    width: 48px;
+    height: 48px;
+    font-size: 20px;
+}
+
+.privacy h3 {
+    margin: 2px 0 6px;
+    font-size: 19px;
+    font-weight: 700;
+    line-height: 1.35;
+}
+
+.privacy p {
+    color: var(--text-muted);
+    font-size: 15.5px;
+    line-height: 1.6;
+}
+
+@media (max-width: 900px) {
+    .privacy {
+        grid-template-columns: 1fr;
+        max-width: 560px;
+    }
+}

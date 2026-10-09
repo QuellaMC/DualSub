@@ -5,6 +5,7 @@ import { GetStarted } from './sections/GetStarted';
 import { Hero } from './sections/Hero';
 import { Platforms } from './sections/Platforms';
 import { PopupTour } from './sections/PopupTour';
+import { Privacy } from './sections/Privacy';
 import { SiteHeader } from './sections/SiteHeader';
 
 export function App() {
@@ -19,6 +20,7 @@ export function App() {
                 <AiContext />
                 <Engines />
                 <Platforms />
+                <Privacy />
             </main>
         </>
     );
