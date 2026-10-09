@@ -8,6 +8,7 @@ import { Hero } from './sections/Hero';
 import { Platforms } from './sections/Platforms';
 import { PopupTour } from './sections/PopupTour';
 import { Privacy } from './sections/Privacy';
+import { SiteFooter } from './sections/SiteFooter';
 import { SiteHeader } from './sections/SiteHeader';
 
 export function App() {
@@ -26,6 +27,7 @@ export function App() {
                 <Faq />
                 <ClosingCta />
             </main>
+            <SiteFooter />
         </>
     );
 }
