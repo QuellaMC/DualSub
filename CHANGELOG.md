@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Subtitles are sized from the video's rendered height instead of the window width, so they follow fullscreen and window changes the way the platforms' own subtitles do. The font size slider is now a scale factor; stored values migrate to the equivalent scale.
+- The position slider places the lines relative to the picture, letterbox bars excluded, as the platforms place their own subtitles.
+
+### Fixed
+
+- Cues the platform raises over on-screen text are drawn at the platform's line instead of the bottom, and cues shown at the same time are all drawn, each at its place. Netflix cues sharing a timestamp are no longer merged into one line.
 
 ## [3.0.2] - 2026-09-03
 

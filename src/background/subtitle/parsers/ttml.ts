@@ -1,9 +1,15 @@
+import {
+    AUTO_PLACEMENT,
+    formatCueSettings,
+    type CuePlacement,
+} from '@/shared/cuePlacement';
 import { normalizeCueText } from '@/shared/cueTextNormalizer';
 
 // Netflix TTML (legacy DFXP and IMSC 1.1) → WebVTT: tick timestamps resolve
 // against the document's ttp:tickRate, ruby readings are dropped so furigana
-// never inlines into the cue, and region layouts give same-timestamp cues a
-// stable top-to-bottom, left-to-right merge order.
+// never inlines into the cue, and each paragraph's region becomes the cue's
+// line setting, so a cue the platform raises over on-screen text keeps its
+// place.
 
 export class TTMLConversionError extends Error {
     override readonly name = 'TTMLConversionError';
@@ -16,20 +22,17 @@ export class TTMLConversionError extends Error {
 /** Netflix's historical tick rate, used when the document declares none. */
 export const DEFAULT_TICK_RATE = 10_000_000;
 
-interface RegionLayout {
-    x: number;
-    y: number;
-}
+type Attributes = Record<string, string>;
 
 interface IntermediateCue {
     startMs: number;
     endMs: number;
-    region: string;
+    placement: CuePlacement;
     text: string;
 }
 
-function parseAttributes(attributeText: string): Record<string, string> {
-    const attributes = Object.create(null) as Record<string, string>;
+function parseAttributes(attributeText: string): Attributes {
+    const attributes = Object.create(null) as Attributes;
     const attributeRegex = /([\w:-]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g;
     let match: RegExpExecArray | null;
     while ((match = attributeRegex.exec(attributeText)) !== null) {
@@ -49,63 +52,173 @@ function parseTickRate(ttmlText: string): number {
         : DEFAULT_TICK_RATE;
 }
 
-function parseRegionLayouts(ttmlText: string): Map<string, RegionLayout> {
-    const regionLayouts = new Map<string, RegionLayout>();
-    const regionRegex = /<(?:[\w-]+:)?region\b([^>]*)\/?\s*>/gi;
-    let regionMatch: RegExpExecArray | null;
-
-    while ((regionMatch = regionRegex.exec(ttmlText)) !== null) {
-        const attributes = parseAttributes(regionMatch[1]!);
-        const regionId = attributes['xml:id'] || attributes.id;
-        const origin = String(attributes['tts:origin'] ?? '').split(/\s+/);
-        if (origin.length === 2) {
-            const x = parseFloat(origin[0]!);
-            const y = parseFloat(origin[1]!);
-            if (!regionId || !Number.isFinite(x) || !Number.isFinite(y)) {
-                continue;
-            }
-            regionLayouts.set(regionId, { x, y });
-        }
-    }
-    return regionLayouts;
-}
-
-const RUBY_ANNOTATION_ROLES = new Set(['text', 'delimiter']);
-
-/** Style ids whose tts:ruby role is a reading or its delimiter. */
-function parseRubyAnnotationStyles(ttmlText: string): Set<string> {
-    const styles = new Set<string>();
+/** Every style's own attributes, by id. */
+function parseStyles(ttmlText: string): Map<string, Attributes> {
+    const styles = new Map<string, Attributes>();
     const styleRegex = /<(?:[\w-]+:)?style\b([^>]*)\/?\s*>/gi;
     let styleMatch: RegExpExecArray | null;
     while ((styleMatch = styleRegex.exec(ttmlText)) !== null) {
         const attributes = parseAttributes(styleMatch[1]!);
         const styleId = attributes['xml:id'] || attributes.id;
-        if (
-            styleId &&
-            RUBY_ANNOTATION_ROLES.has(attributes['tts:ruby'] ?? '')
-        ) {
-            styles.add(styleId);
+        if (styleId) {
+            styles.set(styleId, attributes);
         }
     }
     return styles;
 }
 
-/** Remove spans that carry a ruby reading (inline role or via style). Such
- *  spans hold text only, so a non-nesting match is exact. */
+/** An element's attributes over those of the styles it references, each
+ *  style over the ones it references in turn; a style met twice is a cycle
+ *  and is not followed again. */
+function withReferencedStyles(
+    attributes: Attributes,
+    styles: ReadonlyMap<string, Attributes>,
+    visited: ReadonlySet<string> = new Set()
+): Attributes {
+    const merged = Object.create(null) as Attributes;
+    for (const styleId of (attributes.style ?? '').split(/\s+/)) {
+        const referenced = styles.get(styleId);
+        if (referenced && !visited.has(styleId)) {
+            Object.assign(
+                merged,
+                withReferencedStyles(
+                    referenced,
+                    styles,
+                    new Set([...visited, styleId])
+                )
+            );
+        }
+    }
+    return Object.assign(merged, attributes);
+}
+
+/** A `tts:origin` or `tts:extent` pair in percentages of the root
+ *  container; null for any other unit. */
+function parsePercentPair(value: string): [number, number] | null {
+    const parts = value.trim().split(/\s+/);
+    const first = /^(-?\d+(?:\.\d+)?)%$/.exec(parts[0] ?? '');
+    const second = /^(-?\d+(?:\.\d+)?)%$/.exec(parts[1] ?? '');
+    return parts.length === 2 && first && second
+        ? [Number(first[1]), Number(second[1])]
+        : null;
+}
+
+/** A region's vertical anchor: the edge of its box that tts:displayAlign
+ *  puts the text against. A region declaring no layout, or a length the
+ *  model cannot read, leaves its cues at the automatic placement. */
+function parseRegionPlacement(attributes: Attributes): CuePlacement {
+    const originText = attributes['tts:origin'];
+    const extentText = attributes['tts:extent'];
+    const origin =
+        originText === undefined ? undefined : parsePercentPair(originText);
+    const extent =
+        extentText === undefined ? undefined : parsePercentPair(extentText);
+    const displayAlign = attributes['tts:displayalign'];
+    if (
+        origin === null ||
+        extent === null ||
+        (!origin && !extent && !displayAlign)
+    ) {
+        return AUTO_PLACEMENT;
+    }
+    const top = (origin?.[1] ?? 0) / 100;
+    const bottom = extent ? top + extent[1] / 100 : 1;
+    switch (displayAlign) {
+        case 'after':
+            return { line: bottom, lineAlign: 'end' };
+        case 'center':
+            return { line: (top + bottom) / 2, lineAlign: 'center' };
+        default:
+            return { line: top, lineAlign: 'start' };
+    }
+}
+
+function parseRegionPlacements(
+    ttmlText: string,
+    styles: ReadonlyMap<string, Attributes>
+): Map<string, CuePlacement> {
+    const placements = new Map<string, CuePlacement>();
+    const regionRegex = /<(?:[\w-]+:)?region\b([^>]*)\/?\s*>/gi;
+    let regionMatch: RegExpExecArray | null;
+    while ((regionMatch = regionRegex.exec(ttmlText)) !== null) {
+        const attributes = parseAttributes(regionMatch[1]!);
+        const regionId = attributes['xml:id'] || attributes.id;
+        if (regionId) {
+            placements.set(
+                regionId,
+                parseRegionPlacement(withReferencedStyles(attributes, styles))
+            );
+        }
+    }
+    return placements;
+}
+
+/** The region inherited at a document offset from the nearest enclosing
+ *  div or body. Offsets must be asked in document order. */
+function regionScopes(
+    ttmlText: string
+): (offset: number) => string | undefined {
+    const events: {
+        readonly index: number;
+        readonly closing: boolean;
+        readonly region: string | undefined;
+    }[] = [];
+    const tagRegex = /<(\/?)(?:[\w-]+:)?(?:body|div)\b([^>]*)>/gi;
+    let match: RegExpExecArray | null;
+    while ((match = tagRegex.exec(ttmlText)) !== null) {
+        const closing = match[1] === '/';
+        if (closing || !/\/\s*$/.test(match[2]!)) {
+            events.push({
+                index: match.index,
+                closing,
+                region: closing ? undefined : parseAttributes(match[2]!).region,
+            });
+        }
+    }
+    const stack: (string | undefined)[] = [];
+    let next = 0;
+    return (offset) => {
+        for (
+            ;
+            next < events.length && events[next]!.index < offset;
+            next += 1
+        ) {
+            const event = events[next]!;
+            if (event.closing) {
+                stack.pop();
+            } else {
+                stack.push(event.region ?? stack[stack.length - 1]);
+            }
+        }
+        return stack[stack.length - 1];
+    };
+}
+
+const RUBY_ANNOTATION_ROLES = new Set(['text', 'delimiter']);
+
+/** Whether an element carries a ruby reading or its delimiter, inline or
+ *  through its styles. */
+function isRubyAnnotation(
+    attributes: Attributes,
+    styles: ReadonlyMap<string, Attributes>
+): boolean {
+    return RUBY_ANNOTATION_ROLES.has(
+        withReferencedStyles(attributes, styles)['tts:ruby'] ?? ''
+    );
+}
+
+/** Remove spans that carry a ruby reading. Such spans hold text only, so a
+ *  non-nesting match is exact. */
 function stripRubyAnnotations(
     paragraphText: string,
-    annotationStyles: Set<string>
+    styles: ReadonlyMap<string, Attributes>
 ): string {
     return paragraphText.replace(
         /<(?:[\w-]+:)?span\b([^>]*)>[^<]*<\/(?:[\w-]+:)?span>/gi,
-        (match, attributeText: string) => {
-            const attributes = parseAttributes(attributeText);
-            const styleIds = (attributes.style ?? '').split(/\s+/);
-            return RUBY_ANNOTATION_ROLES.has(attributes['tts:ruby'] ?? '') ||
-                styleIds.some((styleId) => annotationStyles.has(styleId))
+        (match, attributeText: string) =>
+            isRubyAnnotation(parseAttributes(attributeText), styles)
                 ? ''
-                : match;
-        }
+                : match
     );
 }
 
@@ -157,9 +270,11 @@ function toMilliseconds(ttmlTime: string, tickRate: number): number {
 function parsePElements(
     ttmlText: string,
     tickRate: number,
-    annotationStyles: Set<string>
+    styles: ReadonlyMap<string, Attributes>,
+    regionPlacements: ReadonlyMap<string, CuePlacement>
 ): IntermediateCue[] {
     const intermediateCues: IntermediateCue[] = [];
+    const regionAt = regionScopes(ttmlText);
     const pElementRegex =
         /<(?:[\w-]+:)?p\b([^>]*)>([\s\S]*?)<\/(?:[\w-]+:)?p>/gi;
     let pMatch: RegExpExecArray | null;
@@ -179,12 +294,16 @@ function parsePElements(
                 'TTML conversion failed: Invalid TTML cue range'
             );
         }
+        const region = attributes.region ?? regionAt(pMatch.index);
         intermediateCues.push({
             startMs,
             endMs,
-            region: attributes.region ?? '',
+            placement:
+                (region === undefined
+                    ? undefined
+                    : regionPlacements.get(region)) ?? AUTO_PLACEMENT,
             text: normalizeCueText(
-                stripRubyAnnotations(pMatch[2]!, annotationStyles),
+                stripRubyAnnotations(pMatch[2]!, styles),
                 'ttml'
             ),
         });
@@ -214,49 +333,24 @@ export function convertTtmlToVtt(ttmlText: string): string {
         throw new TTMLConversionError('TTML input must be a non-empty string');
     }
 
-    const regionLayouts = parseRegionLayouts(ttmlText);
-    const intermediateCues = parsePElements(
+    const styles = parseStyles(ttmlText);
+    const cues = parsePElements(
         ttmlText,
         parseTickRate(ttmlText),
-        parseRubyAnnotationStyles(ttmlText)
+        styles,
+        parseRegionPlacements(ttmlText, styles)
     );
-    if (intermediateCues.length === 0) {
+    if (cues.length === 0) {
         throw new TTMLConversionError(
             'TTML conversion failed: No valid TTML subtitle entries found'
         );
     }
-
-    const groupedByTime = new Map<string, IntermediateCue[]>();
-    for (const cue of intermediateCues) {
-        const key = `${cue.startMs}-${cue.endMs}`;
-        const group = groupedByTime.get(key);
-        if (group) {
-            group.push(cue);
-        } else {
-            groupedByTime.set(key, [cue]);
-        }
-    }
-
-    const finalCues = [...groupedByTime.values()].map((group) => {
-        group.sort((a, b) => {
-            const regionA = regionLayouts.get(a.region) ?? { y: 999, x: 999 };
-            const regionB = regionLayouts.get(b.region) ?? { y: 999, x: 999 };
-            return regionA.y - regionB.y || regionA.x - regionB.x;
-        });
-        return {
-            startMs: group[0]!.startMs,
-            endMs: group[0]!.endMs,
-            text: group
-                .map((cue) => cue.text)
-                .join(' ')
-                .trim(),
-        };
-    });
-    finalCues.sort((a, b) => a.startMs - b.startMs);
+    cues.sort((a, b) => a.startMs - b.startMs);
 
     let vtt = 'WEBVTT\n\n';
-    for (const cue of finalCues) {
-        vtt += `${formatMillisecondsAsVtt(cue.startMs)} --> ${formatMillisecondsAsVtt(cue.endMs)}\n`;
+    for (const cue of cues) {
+        const settings = formatCueSettings(cue.placement);
+        vtt += `${formatMillisecondsAsVtt(cue.startMs)} --> ${formatMillisecondsAsVtt(cue.endMs)}${settings === '' ? '' : ` ${settings}`}\n`;
         vtt += `${encodeVttText(cue.text)}\n\n`;
     }
     return vtt;

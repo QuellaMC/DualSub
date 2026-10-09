@@ -70,9 +70,10 @@ function makeVideo(): HTMLVideoElement & { time: number } {
 
 function texts(): [string, string] {
     return [
-        document.getElementById('dualsub-original-subtitle')?.textContent ?? '',
-        document.getElementById('dualsub-translated-subtitle')?.textContent ??
-            '',
+        document.querySelector<HTMLElement>('.dualsub-original-subtitle')
+            ?.textContent ?? '',
+        document.querySelector<HTMLElement>('.dualsub-translated-subtitle')
+            ?.textContent ?? '',
     ];
 }
 
@@ -230,7 +231,7 @@ describe('PlayerSession', () => {
         await settle();
         active.tick(1.5);
         const original = (): HTMLElement =>
-            document.getElementById('dualsub-original-subtitle')!;
+            document.querySelector<HTMLElement>('.dualsub-original-subtitle')!;
         expect(original().style.fontWeight).toBe('bold');
 
         active.session.updatePlatformLook({

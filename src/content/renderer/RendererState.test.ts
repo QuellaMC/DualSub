@@ -21,7 +21,6 @@ describe('RendererState.shouldRender', () => {
         state.frameMemo = {
             evaluatedTime: 10,
             nextBoundaryTime: 12,
-            nextBoundaryInclusive: false,
             wallClockDeadline: null,
             href: 'https://n/watch/1',
             containerEpoch: 1,
@@ -37,34 +36,25 @@ describe('RendererState.shouldRender', () => {
         ).toBe(true);
     });
 
-    it('skips frames inside the memoized window', () => {
+    it('skips frames before the next boundary and renders from it on', () => {
         expect(
             stateWithMemo().shouldRender(11, 'https://n/watch/1', 1, video, 0)
         ).toBe(false);
         expect(
             stateWithMemo().shouldRender(12, 'https://n/watch/1', 1, video, 0)
-        ).toBe(false);
+        ).toBe(true);
         expect(
-            stateWithMemo().shouldRender(
-                12.001,
+            stateWithMemo({ nextBoundaryTime: null }).shouldRender(
+                100,
                 'https://n/watch/1',
                 1,
                 video,
                 0
             )
-        ).toBe(true);
+        ).toBe(false);
     });
 
-    it('honors inclusive boundaries, time regression, href, container, and video identity', () => {
-        expect(
-            stateWithMemo({ nextBoundaryInclusive: true }).shouldRender(
-                12,
-                'https://n/watch/1',
-                1,
-                video,
-                0
-            )
-        ).toBe(true);
+    it('honors time regression, href, container, and video identity', () => {
         expect(
             stateWithMemo().shouldRender(9, 'https://n/watch/1', 1, video, 0)
         ).toBe(true);

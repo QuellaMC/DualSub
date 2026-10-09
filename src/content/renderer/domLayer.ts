@@ -1,6 +1,3 @@
-import type { MediaScope } from '../platform/types';
-import { createSubtitleElements, type SubtitleElements } from './styling';
-
 /**
  * Document-scoped host for every DualSub overlay: a fixed, full-viewport,
  * click-transparent layer. Created at document_start (before <body>) under
@@ -68,45 +65,55 @@ export class UiRoot {
     }
 }
 
-/** Session-scoped subtitle container living inside the UiRoot. */
+function createStage(): HTMLDivElement {
+    const stage = document.createElement('div');
+    stage.id = 'dualsub-subtitle-stage';
+    Object.assign(stage.style, {
+        position: 'absolute',
+        left: '0',
+        top: '0',
+        width: '100%',
+        height: '100%',
+        pointerEvents: 'none',
+    });
+    return stage;
+}
+
+/** Session-scoped stage inside the UiRoot: a box laid over the picture
+ *  that holds the subtitle blocks. */
 export class SessionContainer {
-    private elements: SubtitleElements | null = null;
+    private stage: HTMLDivElement | null = null;
     private epoch = 0;
 
     constructor(private readonly uiRoot: UiRoot) {}
 
-    /** Bumps whenever the container is (re)built, for frame-memo invalidation. */
+    /** Bumps whenever the stage is (re)built, for frame-memo invalidation. */
     get containerEpoch(): number {
         return this.epoch;
     }
 
-    /** Returns live elements, rebuilding if the site tore the container out. */
-    ensure(media: MediaScope | null): SubtitleElements {
+    /** The live stage, rebuilt empty if the site tore it out. */
+    ensure(): HTMLDivElement {
         const root = this.uiRoot.ensure();
-        if (this.elements?.container.isConnected) {
-            if (this.elements.container.parentElement !== root) {
-                root.appendChild(this.elements.container);
+        if (this.stage?.isConnected) {
+            if (this.stage.parentElement !== root) {
+                root.appendChild(this.stage);
             }
-            return this.elements;
+            return this.stage;
         }
-        this.elements?.container.remove();
-        this.elements = createSubtitleElements();
-        root.appendChild(this.elements.container);
+        this.stage?.remove();
+        this.stage = createStage();
+        root.appendChild(this.stage);
         this.epoch += 1;
-
-        // Overlay positioning is relative to the player when it is not.
-        if (media?.root && getComputedStyle(media.root).position === 'static') {
-            media.root.style.position = 'relative';
-        }
-        return this.elements;
+        return this.stage;
     }
 
-    get current(): SubtitleElements | null {
-        return this.elements;
+    get current(): HTMLDivElement | null {
+        return this.stage;
     }
 
     destroy(): void {
-        this.elements?.container.remove();
-        this.elements = null;
+        this.stage?.remove();
+        this.stage = null;
     }
 }
