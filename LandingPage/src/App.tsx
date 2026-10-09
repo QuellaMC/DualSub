@@ -1,3 +1,4 @@
+import { AiContext } from './sections/AiContext';
 import { Customize } from './sections/Customize';
 import { GetStarted } from './sections/GetStarted';
 import { Hero } from './sections/Hero';
@@ -13,6 +14,7 @@ export function App() {
                 <GetStarted />
                 <PopupTour />
                 <Customize />
+                <AiContext />
             </main>
         </>
     );
