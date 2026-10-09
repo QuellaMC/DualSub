@@ -1,0 +1,283 @@
+.pin-art,
+.menu-art,
+.languages-art {
+    position: relative;
+    height: 100%;
+}
+
+/* Step 1 */
+
+.pin-art {
+    background:
+        radial-gradient(
+            230px 170px at 50% 30%,
+            rgba(64, 118, 204, 0.38),
+            transparent
+        ),
+        #0b1220;
+    color: #e8eaed;
+}
+
+.pin-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    height: 45px;
+    padding: 0 14px;
+    background: #35363a;
+    color: #c4c7c5;
+}
+
+.pin-omnibox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 201px;
+    height: 28px;
+    padding: 0 12px;
+    border-radius: 14px;
+    background: #202124;
+    color: #e8eaed;
+    font-size: 13px;
+}
+
+.pin-omnibox .icon {
+    font-size: 11px;
+    color: #9aa0a6;
+}
+
+.pin-puzzle {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    margin-left: 12px;
+    border-radius: 50%;
+    background: #4d4e52;
+    font-size: 16px;
+}
+
+.pin-pinned {
+    width: 22px;
+    height: 22px;
+}
+
+.pin-avatar {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #6366f1;
+}
+
+.pin-menu {
+    position: absolute;
+    top: 55px;
+    left: 64px;
+    width: 267px;
+    padding: 12px 8px 10px;
+    border: 1px solid #3c3d41;
+    border-radius: 10px;
+    background: #292a2d;
+    box-shadow: 0 16px 32px rgba(0, 0, 0, 0.5);
+    font-size: 13px;
+}
+
+.pin-menu-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 8px 0 12px;
+}
+
+.pin-menu-head .icon {
+    font-size: 14px;
+    color: #9aa0a6;
+}
+
+.pin-menu-label {
+    display: block;
+    padding: 5px 12px 6px;
+    color: #9aa0a6;
+    font-size: 11px;
+}
+
+.pin-menu-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 34px;
+    margin-bottom: 6px;
+    padding: 0 8px 0 12px;
+    border-radius: 6px;
+    color: #c4c7c5;
+}
+
+.pin-menu-row-active {
+    background: #3c3d41;
+    color: #e8eaed;
+}
+
+.pin-menu-name {
+    flex: 1;
+}
+
+.pin-menu-icon {
+    width: 16px;
+    height: 16px;
+}
+
+.pin-menu-blank {
+    border-radius: 3px;
+    background: #5f6368;
+}
+
+.pin-menu-pin {
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    color: #9aa0a6;
+    font-size: 13px;
+}
+
+.pin-menu-pin-on {
+    background: #394457;
+    color: #8ab4f8;
+}
+
+.pin-menu-grip {
+    font-size: 14px;
+    color: #9aa0a6;
+}
+
+.pin-menu-manage {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px 2px;
+    border-top: 1px solid #3c3d41;
+    color: #c4c7c5;
+}
+
+.pin-cursor {
+    top: 132px;
+    left: 280px;
+}
+
+/* Step 2 */
+
+.menu-art {
+    color: #fff;
+}
+
+.menu-art > .scene {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.menu-art-menu {
+    position: absolute;
+    top: 22px;
+    left: 138px;
+    display: flex;
+    flex-direction: column;
+    width: 190px;
+    padding: 10px 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    background: rgba(24, 24, 28, 0.92);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+    font-size: 13px;
+}
+
+.menu-art-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 8px 8px;
+    font-weight: 700;
+}
+
+.menu-art-title .icon {
+    font-size: 15px;
+}
+
+.menu-art-option {
+    position: relative;
+    display: flex;
+    align-items: center;
+    height: 34px;
+    padding-left: 38px;
+    border-radius: 6px;
+    color: #c8c8c8;
+}
+
+.menu-art-option-on {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    font-weight: 700;
+}
+
+.menu-art-option-on .icon {
+    position: absolute;
+    left: 13px;
+    font-size: 14px;
+    color: var(--amber);
+    stroke-width: 3;
+}
+
+.menu-art-cursor {
+    top: 108px;
+    left: 268px;
+}
+
+.menu-art-bar {
+    position: absolute;
+    right: 22px;
+    bottom: 24px;
+    left: 26px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 16px;
+}
+
+.menu-art-track {
+    position: relative;
+    flex: 1;
+    height: 3px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.menu-art-track span {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 18%;
+    border-radius: inherit;
+    background: var(--amber);
+}
+
+/* Step 3 */
+
+.languages-art {
+    background:
+        radial-gradient(
+            280px 130px at 50% 100%,
+            rgba(245, 184, 61, 0.28),
+            transparent
+        ),
+        #0b1120;
+}
+
+.languages-art-popup {
+    position: absolute;
+    top: 20px;
+    left: 40px;
+    font-size: 13.43px;
+}

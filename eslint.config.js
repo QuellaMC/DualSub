@@ -19,7 +19,13 @@ const unusedVariablesRule = [
 
 export default defineConfig([
     {
-        ignores: ['node_modules/**', 'coverage/**', '.wxt/**', 'dist/**'],
+        ignores: [
+            'node_modules/**',
+            'coverage/**',
+            '.wxt/**',
+            'dist/**',
+            'LandingPage/dist/**',
+        ],
     },
     {
         files: ['*.config.js', 'scripts/**/*.mjs'],
@@ -38,7 +44,12 @@ export default defineConfig([
         },
     },
     {
-        files: ['src/**/*.{ts,tsx}', 'wxt.config.ts', 'vitest.config.ts'],
+        files: [
+            'src/**/*.{ts,tsx}',
+            'LandingPage/**/*.{ts,tsx}',
+            'wxt.config.ts',
+            'vitest.config.ts',
+        ],
         extends: [tseslint.configs.recommendedTypeChecked],
         languageOptions: {
             parserOptions: {
@@ -90,7 +101,7 @@ export default defineConfig([
         },
     },
     {
-        files: ['src/**/*.tsx'],
+        files: ['src/**/*.tsx', 'LandingPage/src/**/*.tsx'],
         plugins: {
             react,
         },
@@ -106,7 +117,7 @@ export default defineConfig([
         },
     },
     {
-        files: ['src/**/*.{ts,tsx}'],
+        files: ['src/**/*.{ts,tsx}', 'LandingPage/src/**/*.{ts,tsx}'],
         plugins: {
             'react-hooks': reactHooks,
         },

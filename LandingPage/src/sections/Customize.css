@@ -1,0 +1,212 @@
+.customize {
+    display: grid;
+    grid-template-columns: 360px 1fr;
+    align-items: start;
+    gap: 57px;
+}
+
+.customize-hint {
+    display: flex;
+    gap: 14px;
+    max-width: 360px;
+    margin-top: 26px;
+    padding-left: 4px;
+    color: var(--text-faint);
+    font-size: 15px;
+    line-height: 1.55;
+}
+
+.customize-hint .icon {
+    flex-shrink: 0;
+    margin-top: 3px;
+    color: var(--amber);
+}
+
+.previews {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px 26px;
+}
+
+.previews h3 {
+    margin-top: 14px;
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1.4;
+}
+
+.previews p {
+    color: var(--text-faint);
+    font-size: 14px;
+}
+
+.preview-board {
+    width: 378px;
+    height: 212px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+}
+
+.preview-board > .scene {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.preview-board .subtitles {
+    position: absolute;
+    right: 0;
+    bottom: 38px;
+    left: 0;
+    font-size: 14px;
+}
+
+.preview-side .subtitles {
+    bottom: 36px;
+    font-size: 13px;
+}
+
+.preview-bigger .subtitles {
+    bottom: 67px;
+    font-size: 20px;
+}
+
+/* Time offset */
+
+.offset-card {
+    display: grid;
+    grid-template-columns: minmax(0, 580px) minmax(0, 472px);
+    justify-content: space-between;
+    align-items: center;
+    gap: 24px 40px;
+    margin-top: 32px;
+    padding: 13px 38px 13px 30px;
+    border-radius: 24px;
+}
+
+.offset-intro {
+    display: flex;
+    gap: 20px;
+}
+
+.offset-intro .feature-icon {
+    margin-top: 2px;
+}
+
+.offset-intro h3 {
+    margin-bottom: 8px;
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1.35;
+}
+
+.offset-intro p {
+    color: var(--text-muted);
+    font-size: 16px;
+    line-height: 1.65;
+}
+
+.offset-intro strong {
+    color: var(--amber-light);
+}
+
+.offset-figure {
+    width: 100%;
+}
+
+.offset-board {
+    width: 472px;
+}
+
+.offset-diagram {
+    position: relative;
+    display: grid;
+    grid-template-columns: 122px 350px;
+    grid-auto-rows: 47px;
+    align-items: center;
+}
+
+.offset-diagram::after {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 242px;
+    border-left: 1.5px dashed rgba(61, 220, 151, 0.7);
+    content: '';
+}
+
+.offset-label {
+    color: #8b95a8;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.offset-wave {
+    width: 350px;
+    height: 40px;
+}
+
+.offset-track {
+    position: relative;
+    height: 28px;
+}
+
+.offset-pill {
+    position: absolute;
+    top: 50%;
+    padding: 3px 10px;
+    border-radius: 7px;
+    font-size: 13px;
+    white-space: nowrap;
+    transform: translateY(-50%);
+}
+
+.offset-late {
+    left: 161px;
+    border: 1px solid #6b7280;
+    color: #b8c0cc;
+}
+
+.offset-on-time {
+    left: 121px;
+    background: var(--amber);
+    color: var(--amber-ink);
+    font-weight: 700;
+}
+
+@media (max-width: 1100px) {
+    .customize {
+        grid-template-columns: 1fr;
+    }
+
+    .customize-controls {
+        justify-self: center;
+        width: 100%;
+        max-width: 360px;
+    }
+
+    .offset-card {
+        grid-template-columns: minmax(0, 1fr);
+        padding: 28px 30px;
+    }
+
+    .offset-figure {
+        max-width: 472px;
+    }
+}
+
+@media (max-width: 640px) {
+    .previews {
+        grid-template-columns: 1fr;
+    }
+
+    .offset-card {
+        padding: 24px;
+    }
+
+    .offset-intro {
+        flex-direction: column;
+    }
+}

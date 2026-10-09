@@ -123,6 +123,11 @@ Debug Logging: Enabled
     npm run build
     npm run zip
     npm run verify:release
+
+    # Landing page: dev server, static build to LandingPage/dist, and a preview of that build
+    npm run site:dev
+    npm run site:build
+    npm run site:preview
     ```
 
 3. **Load Extension for Testing**
@@ -147,6 +152,7 @@ DualSub/
 ├── public/             # Locale catalogs and icons
 ├── scripts/            # Release verification
 ├── docs/               # User documentation (en, zh) and reference material
+├── LandingPage/        # Landing page website (Vite + React), with its design reference
 └── wxt.config.ts       # Manifest and build configuration (WXT)
 ```
 

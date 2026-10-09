@@ -1,0 +1,146 @@
+.browser {
+    overflow: hidden;
+    border: 1px solid #2a2b2f;
+    border-radius: 12px;
+    background: #131315;
+    box-shadow:
+        0 40px 80px -20px rgba(0, 0, 0, 0.8),
+        0 0 120px -10px rgba(40, 90, 180, 0.25);
+    color: #e8eaed;
+}
+
+.browser-tabs {
+    display: flex;
+    align-items: flex-end;
+    height: 40px;
+    padding-left: 16px;
+}
+
+.browser-lights {
+    display: flex;
+    gap: 8px;
+    align-self: center;
+    margin-right: 20px;
+}
+
+.browser-lights > span {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #ff5f57;
+}
+
+.browser-lights > span:nth-child(2) {
+    background: #febc2e;
+}
+
+.browser-lights > span:nth-child(3) {
+    background: #28c840;
+}
+
+.browser-tab {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 240px;
+    height: 32px;
+    padding: 0 12px;
+    border-radius: 8px 8px 0 0;
+    background: #35363a;
+    font-size: 13px;
+}
+
+.browser-favicon {
+    display: grid;
+    place-items: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    background: #5f6368;
+    font-size: 9px;
+}
+
+.browser-tab-title {
+    flex: 1;
+}
+
+.browser-tab-close {
+    font-size: 14px;
+    color: #9aa0a6;
+}
+
+.browser-new-tab {
+    align-self: center;
+    margin-left: 14px;
+    font-size: 18px;
+    color: #9aa0a6;
+}
+
+.browser-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    height: 44px;
+    padding: 0 14px;
+    background: #35363a;
+    font-size: 18px;
+    color: #c4c7c5;
+}
+
+.browser-disabled {
+    opacity: 0.45;
+}
+
+.browser-omnibox {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: 8px;
+    height: 30px;
+    margin: 0 6px;
+    padding: 0 16px;
+    border-radius: 15px;
+    background: #202124;
+    color: #9aa0a6;
+    font-size: 14px;
+}
+
+.browser-omnibox .icon {
+    font-size: 13px;
+}
+
+.browser-host {
+    color: #e8eaed;
+}
+
+.browser-extension {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    margin: 0 -4px;
+    border-radius: 50%;
+    background: #4d4e52;
+}
+
+.browser-extension img {
+    width: 22px;
+    height: 22px;
+}
+
+.browser-avatar {
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6b8cff, #69d4cf);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.browser-page {
+    position: relative;
+    background: #000;
+}

@@ -1,0 +1,131 @@
+/* Colors follow src/ui/options/options.css. */
+
+.settings {
+    position: relative;
+    display: flex;
+    width: 610px;
+    height: 471px;
+    overflow: hidden;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.6);
+    color: #1c1c1e;
+    font-size: 12px;
+    line-height: 1.2;
+}
+
+.settings::after {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 148px;
+    height: 70px;
+    background: linear-gradient(rgba(242, 242, 247, 0), #f2f2f7 90%);
+    content: '';
+}
+
+.settings-sidebar {
+    display: flex;
+    flex: 0 0 148px;
+    flex-direction: column;
+    gap: 4px;
+    padding: 18px 11px;
+    border-right: 1px solid #e5e5ea;
+}
+
+.settings-brand {
+    margin: 0 5px 14px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid #e5e5ea;
+    color: #000;
+    font-size: 17px;
+}
+
+.settings-nav {
+    padding: 7px 11px;
+    border-radius: 6px;
+    font-size: 12.5px;
+    white-space: nowrap;
+}
+
+.settings-nav-active {
+    background: #007aff;
+    color: #fff;
+}
+
+.settings-content {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 12px;
+    padding: 18px 22px;
+    background: #f2f2f7;
+}
+
+.settings-title {
+    margin-bottom: 1px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e5e5ea;
+    color: #000;
+    font-size: 19px;
+}
+
+.settings-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 17px 15px;
+    border: 1px solid #e5e5ea;
+    border-radius: 8px;
+    background: #fff;
+}
+
+.settings-card > strong {
+    color: #000;
+    font-size: 13.5px;
+}
+
+.settings-field {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 27px;
+}
+
+.settings-input {
+    width: 172px;
+    padding: 5px 9px;
+    border: 1px solid #d1d1d6;
+    border-radius: 6px;
+    color: #1c1c1e;
+    font-size: 11.5px;
+}
+
+.settings-select {
+    background: no-repeat right 9px center / 10px
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238e8e93' stroke-width='2.5'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+
+.settings-secret {
+    letter-spacing: 0.08em;
+}
+
+.settings-switch {
+    position: relative;
+    width: 40px;
+    height: 24px;
+    border-radius: 12px;
+    background: #34c759;
+}
+
+.settings-switch::after {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    content: '';
+}

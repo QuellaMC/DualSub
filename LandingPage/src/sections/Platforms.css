@@ -1,0 +1,119 @@
+.platforms {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+}
+
+.platform {
+    padding: 36px 36px 22px;
+    border-radius: 24px;
+}
+
+.platform-streaming {
+    background:
+        radial-gradient(
+            380px 260px at 18% 0%,
+            rgba(77, 163, 255, 0.16),
+            transparent
+        ),
+        var(--surface);
+}
+
+.platform-languages {
+    background:
+        radial-gradient(
+            380px 260px at 85% 0%,
+            rgba(245, 184, 61, 0.1),
+            transparent
+        ),
+        var(--surface);
+}
+
+.platform h3 {
+    margin-top: 24px;
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1.2;
+}
+
+.platform-sub {
+    margin-top: 4px;
+    color: var(--text-faint);
+    font-size: 16px;
+}
+
+.platform-facts {
+    display: grid;
+    gap: 14px;
+    margin-top: 24px;
+    color: var(--text-muted);
+    font-size: 16px;
+    line-height: 1.6;
+}
+
+.platform-facts li {
+    display: flex;
+    gap: 14px;
+}
+
+.platform-facts .icon {
+    flex-shrink: 0;
+    margin-top: 6px;
+    width: 16px;
+    height: 16px;
+    color: var(--green);
+    stroke-width: 2.5;
+}
+
+.platform-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 8px;
+    margin-top: 21px;
+}
+
+.platform-chips li {
+    padding: 4px 14px;
+    border: 1px solid #2a3446;
+    border-radius: 999px;
+    background: #1b2334;
+    color: #d6dbe4;
+    font-size: 14px;
+}
+
+.platform-interface {
+    margin-top: 16px;
+    padding-top: 13px;
+    border-top: 1px solid var(--line-strong);
+}
+
+.platform-interface p {
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.platform-interface ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 22px;
+    margin-top: 10px;
+    color: var(--text-faint);
+    font-size: 14px;
+}
+
+@media (max-width: 900px) {
+    .platforms {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+    .platform {
+        padding: 28px 24px;
+    }
+
+    .platform h3 {
+        font-size: 24px;
+    }
+}

@@ -1,0 +1,135 @@
+.hero {
+    padding: calc(var(--header-height) + 50px) 0 100px;
+    background:
+        radial-gradient(
+            560px 420px at 21% 250px,
+            rgba(245, 184, 61, 0.13),
+            transparent
+        ),
+        radial-gradient(
+            620px 460px at 80% 280px,
+            rgba(77, 163, 255, 0.16),
+            transparent
+        ),
+        var(--bg);
+}
+
+.hero-intro {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 6px 16px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.04);
+    color: #d9dee8;
+    font-size: 14px;
+}
+
+.hero-badge-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 10px rgba(61, 220, 151, 0.7);
+}
+
+.hero-title {
+    margin-top: 24px;
+    font-size: clamp(40px, 8vw, 78px);
+    font-weight: 700;
+    line-height: 1.1;
+    text-wrap: balance;
+}
+
+.hero-lead {
+    max-width: 720px;
+    margin-top: 24px;
+    color: var(--text-muted);
+    font-size: 20px;
+    line-height: 1.6;
+    text-wrap: pretty;
+}
+
+.hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 14px;
+    margin-top: 36px;
+}
+
+.hero-facts {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px 31px;
+    margin-top: 26px;
+    color: #8792a6;
+    font-size: 14px;
+}
+
+.hero-facts li {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+}
+
+.hero-facts .icon {
+    width: 13px;
+    height: 13px;
+    color: var(--green);
+    stroke-width: 3;
+}
+
+.hero-visual {
+    width: min(100% - 2 * var(--gutter), 1240px);
+    margin: 64px auto 0;
+}
+
+.hero-board {
+    width: 1240px;
+}
+
+.hero-board .browser {
+    width: 1040px;
+}
+
+.hero-player {
+    height: 585px;
+}
+
+.hero-player .subtitles {
+    font-size: 26px;
+}
+
+.hero-popup {
+    position: absolute;
+    top: 88px;
+    left: 916px;
+}
+
+@media (max-width: 760px) {
+    .hero-title br {
+        display: none;
+    }
+
+    .hero-lead {
+        font-size: 17px;
+    }
+
+    .hero-board {
+        width: 1040px;
+    }
+
+    .hero-popup {
+        display: none;
+    }
+}

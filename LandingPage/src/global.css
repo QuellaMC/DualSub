@@ -1,0 +1,339 @@
+:root {
+    color-scheme: dark;
+    --bg: #070b14;
+    --bg-alt: #0a1120;
+    --surface: #0f1729;
+    --surface-raised: #141b2b;
+    --line: #1b2230;
+    --line-strong: #263044;
+    --text: #f5f7fb;
+    --text-muted: #a9b3c6;
+    --text-faint: #7b8699;
+    --amber: #f5b83d;
+    --amber-light: #ffd37a;
+    --amber-ink: #1a1204;
+    --green: #3ddc97;
+    --blue: #4da3ff;
+    --font-sans:
+        'Inter Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+        'Helvetica Neue', Arial, sans-serif;
+    --text-gradient: linear-gradient(
+        90deg,
+        #ffd166 0%,
+        var(--amber) 30%,
+        #8ab9ff 72%,
+        var(--blue) 100%
+    );
+    --header-height: 80px;
+    --gutter: 24px;
+}
+
+@media (max-width: 640px) {
+    :root {
+        --gutter: 16px;
+    }
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+}
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+h1,
+h2,
+h3,
+h4,
+p,
+ul,
+ol,
+dl,
+dd,
+figure {
+    margin: 0;
+}
+
+ul,
+ol {
+    padding: 0;
+    list-style: none;
+}
+
+a {
+    color: inherit;
+    text-decoration: none;
+}
+
+img,
+svg {
+    display: block;
+}
+
+:focus-visible {
+    outline: 2px solid var(--amber);
+    outline-offset: 3px;
+}
+
+.container {
+    width: min(100% - 2 * var(--gutter), 1200px);
+    margin-inline: auto;
+}
+
+.icon {
+    width: 1em;
+    height: 1em;
+    flex-shrink: 0;
+}
+
+.text-gradient {
+    background: var(--text-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+/* Sections */
+
+.section {
+    padding-block: 120px;
+    background: var(--bg);
+}
+
+.section + .section {
+    border-top: 1px solid var(--line);
+}
+
+.section-alt {
+    background: var(--bg-alt);
+}
+
+.section-heading {
+    max-width: 760px;
+    margin: 0 auto 52px;
+    text-align: center;
+}
+
+.section-heading .eyebrow {
+    margin-bottom: 13px;
+}
+
+.section-heading .lead {
+    margin-top: 20px;
+}
+
+.section-heading-start {
+    margin-inline: 0;
+    text-align: left;
+}
+
+.section-heading-compact {
+    margin-bottom: 44px;
+}
+
+.section-heading-compact .section-title {
+    font-size: 40px;
+}
+
+.eyebrow {
+    color: var(--amber);
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    line-height: 1.4;
+    text-transform: uppercase;
+}
+
+.section-title {
+    font-size: 48px;
+    font-weight: 700;
+    line-height: 1.2;
+    text-wrap: balance;
+}
+
+.lead {
+    color: var(--text-muted);
+    font-size: 19px;
+    line-height: 1.6;
+    text-wrap: pretty;
+}
+
+@media (max-width: 760px) {
+    .section {
+        padding-block: 80px;
+        scroll-margin-top: 40px;
+    }
+
+    .section-heading {
+        margin-bottom: 40px;
+    }
+
+    .section-title {
+        font-size: 36px;
+    }
+
+    .lead {
+        font-size: 17px;
+    }
+}
+
+/* Cards */
+
+.card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+}
+
+/* A tinted tile holding a feature's icon */
+
+.feature-icon {
+    display: grid;
+    flex-shrink: 0;
+    place-items: center;
+    width: 52px;
+    height: 52px;
+    border: 1px solid;
+    border-radius: 12px;
+    font-size: 22px;
+}
+
+.feature-icon-amber {
+    border-color: rgba(245, 184, 61, 0.2);
+    background: rgba(245, 184, 61, 0.1);
+    color: var(--amber);
+}
+
+.feature-icon-green {
+    border-color: rgba(61, 220, 151, 0.2);
+    background: rgba(61, 220, 151, 0.08);
+    color: var(--green);
+}
+
+.feature-icon-blue {
+    border-color: rgba(77, 163, 255, 0.25);
+    background: rgba(77, 163, 255, 0.12);
+    color: var(--blue);
+}
+
+/* Buttons */
+
+.button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    height: 52px;
+    padding: 0 22px;
+    border: 1px solid transparent;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 700;
+    white-space: nowrap;
+    transition:
+        transform 150ms ease,
+        box-shadow 150ms ease,
+        background-color 150ms ease;
+}
+
+.button .icon {
+    width: 20px;
+    height: 20px;
+    stroke-width: 2.4;
+}
+
+.button-primary {
+    background: linear-gradient(90deg, #ffd162, #f4a823);
+    box-shadow:
+        0 10px 30px -10px rgba(245, 166, 35, 0.7),
+        inset 0 1px 0 rgba(255, 255, 255, 0.35);
+    color: var(--amber-ink);
+}
+
+.button-primary:hover {
+    transform: translateY(-1px);
+    box-shadow:
+        0 14px 36px -10px rgba(245, 166, 35, 0.85),
+        inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.button-secondary {
+    background: #1b2432;
+    border-color: #2b3445;
+    color: var(--text);
+}
+
+.button-secondary:hover {
+    background: #222d3e;
+}
+
+.button-compact {
+    height: 42px;
+    padding: 0 18px;
+    border-radius: 10px;
+    font-size: 15px;
+}
+
+.button-compact .icon {
+    width: 18px;
+    height: 18px;
+}
+
+/* Numbered markers that tie an illustration to the text describing it */
+
+.callout {
+    display: inline-grid;
+    flex-shrink: 0;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--amber);
+    box-shadow: 0 0 0 4px rgba(245, 184, 61, 0.2);
+    color: var(--amber-ink);
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1;
+    text-shadow: none;
+}
+
+.callout-blue {
+    background: var(--blue);
+    box-shadow: 0 0 0 4px rgba(77, 163, 255, 0.2);
+    color: #061226;
+}
+
+/* Illustrations are laid out at their designed size and scaled to fit. */
+
+.artboard {
+    position: relative;
+}
+
+.artboard-board {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform-origin: top center;
+}

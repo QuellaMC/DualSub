@@ -94,6 +94,11 @@
     npm run build
     npm run zip
     npm run verify:release
+
+    # 落地页：开发服务器、静态构建到 LandingPage/dist，以及预览该构建
+    npm run site:dev
+    npm run site:build
+    npm run site:preview
     ```
 
 3. **加载扩展进行测试**
@@ -118,6 +123,7 @@ DualSub/
 ├── public/             # 语言包与图标
 ├── scripts/            # 发布校验
 ├── docs/               # 用户文档（en、zh）与参考资料
+├── LandingPage/        # 落地页网站（Vite + React）及其设计稿
 └── wxt.config.ts       # manifest 与构建配置（WXT）
 ```
 

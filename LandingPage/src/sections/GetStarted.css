@@ -1,0 +1,76 @@
+.steps {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+}
+
+.step {
+    padding: 16px 16px 28px;
+}
+
+.step-board {
+    width: 352px;
+    height: 272px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+}
+
+.step-text {
+    padding: 28px 12px 0;
+}
+
+.step-text h3 {
+    margin: 12px 0 12px;
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+.step-text h3 + p {
+    color: var(--text-muted);
+    font-size: 17px;
+    line-height: 1.55;
+}
+
+.overlap-note {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    margin-top: 28px;
+    padding: 16px 18px;
+    border: 1px solid #2c2618;
+    border-radius: 16px;
+    background: #181717;
+}
+
+.overlap-note .feature-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    font-size: 20px;
+}
+
+.overlap-note p {
+    color: var(--text-muted);
+    font-size: 16px;
+    line-height: 1.45;
+}
+
+.overlap-note strong {
+    color: var(--text);
+}
+
+.overlap-note em {
+    color: var(--amber-light);
+    font-style: normal;
+    font-weight: 600;
+}
+
+@media (max-width: 900px) {
+    .steps {
+        grid-template-columns: 1fr;
+        max-width: 480px;
+        margin-inline: auto;
+    }
+}
