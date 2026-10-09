@@ -20,37 +20,42 @@ with a clean profile plus one seeded profile (see the upgrade-path tests in
    without a stale line from the earlier session.
 5. Seek rapidly and drag the popup sliders while playing: the overlay
    follows the slider live and never goes blank between cues. Switch the
-   subtitle style between DualSub and Match Platform and resize the
+   subtitle style between Match Platform and Custom and resize the
    window: the text restyles live and scales with the video. With the
    platform's own subtitles off, Match Platform still follows the
-   profile's subtitle appearance settings.
-6. Disney+ only: an ad or recap interstitial shows no subtitle, and the
+   profile's subtitle appearance settings, and the popup says so.
+6. In the options page's Appearance section, edit the custom look (font,
+   bold, text color, edge, background) and the translation color: the
+   preview follows each edit at once, the overlay follows after a pause,
+   both styles draw the translation in the chosen color, and the values
+   are still there after the options page is reloaded.
+7. Disney+ only: an ad or recap interstitial shows no subtitle, and the
    time source stays correct across the shadow-DOM player controls.
 
 ## Translation
 
-7. Switch providers in the options page (Microsoft, Google, a keyed one):
+8. Switch providers in the options page (Microsoft, Google, a keyed one):
    translations resume for the current line without a page reload.
-8. Kill the service worker from chrome://serviceworker-internals while
+9. Kill the service worker from chrome://serviceworker-internals while
    playing: translations resume within a few cues.
 
 ## Side panel
 
-9. Enable AI Context. Click a subtitle word: the panel opens, the word is
-   highlighted, and playback pauses when auto-pause is on.
-10. Click several words, remove one from the panel: the removal shows only
+10. Enable AI Context. Click a subtitle word: the panel opens, the word is
+    highlighted, and playback pauses when auto-pause is on.
+11. Click several words, remove one from the panel: the removal shows only
     after the subtitle highlight drops it.
-11. Switch tabs in the same window and back: the panel follows the active
+12. Switch tabs in the same window and back: the panel follows the active
     tab and restores its selection.
-12. Kill the service worker with the panel open: the panel reconnects and
+13. Kill the service worker with the panel open: the panel reconnects and
     the selection is republished.
-13. Analyze: a result renders; turn AI Context off in options while a
+14. Analyze: a result renders; turn AI Context off in options while a
     request is in flight: no result appears afterwards.
 
 ## Settings and locale
 
-14. Change the UI language: popup, options, and panel switch without a
+15. Change the UI language: popup, options, and panel switch without a
     reload; the options page title follows.
-15. Seeded 2.5.0 profile: after the first boot, credentials are gone from
+16. Seeded 2.5.0 profile: after the first boot, credentials are gone from
     sync storage, the provider is Microsoft, and every option shows the
     value the old profile had.
