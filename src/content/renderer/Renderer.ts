@@ -12,7 +12,6 @@ import {
     composeBlockText,
     groupActiveCues,
     placementOrder,
-    samePlacement,
     scanActiveCues,
     STANDARD_PLACEMENT,
     type BlockPlacement,
@@ -88,8 +87,8 @@ function sameRect(a: PictureRect | null, b: PictureRect): boolean {
 /** One drawn placement: an original line and its translation. */
 interface Block {
     readonly key: string;
+    readonly placement: BlockPlacement;
     readonly elements: BlockElements;
-    placement: BlockPlacement;
     originalText: string;
     translatedText: string;
     /** Shows the loading placeholder, which gets no grace. */
@@ -423,10 +422,6 @@ export class Renderer {
                 this.createBlock(key, content.placement);
             if (!block.elements.container.isConnected) {
                 stage.appendChild(block.elements.container);
-            }
-            if (!samePlacement(block.placement, content.placement)) {
-                block.placement = content.placement;
-                this.styleBlock(block);
             }
             block.placeholder = content.placeholder;
         }

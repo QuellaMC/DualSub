@@ -6,7 +6,6 @@ import {
     composeBlockText,
     groupActiveCues,
     placeBlock,
-    samePlacement,
     scanActiveCues,
     STANDARD_PLACEMENT,
 } from './cueSelect';
@@ -76,27 +75,12 @@ describe('placeBlock', () => {
         });
     });
 
-    it('keys lines authored a fraction apart into one block', () => {
-        expect(blockKey(placeBlock(TOP))).toBe('start:3');
-        expect(blockKey(placeBlock({ line: 0.1481, lineAlign: 'start' }))).toBe(
-            'start:3'
-        );
+    it('keys a block by its exact line', () => {
+        expect(blockKey(placeBlock(TOP))).toBe('start:0.15');
         expect(blockKey(placeBlock({ line: 0.15, lineAlign: 'end' }))).toBe(
-            'end:3'
+            'end:0.15'
         );
         expect(blockKey(STANDARD_PLACEMENT)).toBe('standard');
-    });
-
-    it('tells placements apart by exact line within a bucket', () => {
-        const top = placeBlock(TOP);
-        expect(samePlacement(top, placeBlock({ ...TOP }))).toBe(true);
-        expect(
-            samePlacement(top, placeBlock({ line: 0.16, lineAlign: 'start' }))
-        ).toBe(false);
-        expect(samePlacement(top, STANDARD_PLACEMENT)).toBe(false);
-        expect(samePlacement(STANDARD_PLACEMENT, placeBlock(BOTTOM))).toBe(
-            true
-        );
     });
 });
 
@@ -118,8 +102,8 @@ describe('groupActiveCues', () => {
         const groups = groupActiveCues([top, dialogue, middle, raised]);
         expect(groups.map((group) => group.key)).toEqual([
             'standard',
-            'start:3',
-            'center:10',
+            'start:0.15',
+            'center:0.5',
         ]);
         expect(groups[0]!.cues).toEqual([dialogue, raised]);
         expect(groups[1]!.placement).toEqual({
@@ -163,10 +147,36 @@ describe('groupActiveCues with official translations', () => {
         ]);
         expect(groups.map((group) => group.key)).toEqual([
             'standard',
-            'start:3',
+            'start:0.15',
         ]);
         expect(groups[0]!.cues).toEqual([dialogue, dialogueTarget]);
         expect(groups[1]!.cues).toEqual([raised, signTarget]);
+    });
+
+    it("orders each translation after its source, whatever the tracks' timing", () => {
+        const a = cue({ start: 1, end: 3, original: 'A' });
+        const b = cue({ start: 1.5, end: 5, original: 'B' });
+        const bTarget = cue({
+            start: 1.2,
+            end: 5,
+            cueType: 'target',
+            original: null,
+            translated: 'B translated',
+            useNativeTarget: true,
+        });
+        const aTarget = cue({
+            start: 1.4,
+            end: 2.9,
+            cueType: 'target',
+            original: null,
+            translated: 'A translated',
+            useNativeTarget: true,
+        });
+        const [group] = groupActiveCues([a, bTarget, aTarget, b]);
+        expect(composeBlockText(group!.cues)).toEqual({
+            originalText: 'A\nB',
+            translatedText: 'A translated\nB translated',
+        });
     });
 
     it('draws a translation with no active original at its own placement', () => {
@@ -180,7 +190,7 @@ describe('groupActiveCues with official translations', () => {
             placement: TOP,
         });
         expect(groupActiveCues([target]).map((group) => group.key)).toEqual([
-            'start:3',
+            'start:0.15',
         ]);
     });
 });
