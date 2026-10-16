@@ -291,6 +291,26 @@ describe('PopupApp on a site DualSub works on', () => {
         );
     });
 
+    it('edits nothing while it cannot tell which site the tab is on, then shows that site', async () => {
+        stubTab(NETFLIX_WATCH, true);
+        vi.mocked(browser.tabs.query).mockRejectedValueOnce(
+            new Error('tabs broken')
+        );
+        render(<PopupApp />);
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+            'Failed to load settings'
+        );
+        expect(screen.queryByRole('switch')).not.toBeInTheDocument();
+
+        expect(
+            await screen.findByRole(
+                'switch',
+                { name: 'Use DualSub here' },
+                { timeout: 3000 }
+            )
+        ).toBeInTheDocument();
+    });
+
     it('says so when the settings cannot be read', async () => {
         vi.spyOn(browser.storage.sync, 'get').mockRejectedValue(
             new Error('broken')

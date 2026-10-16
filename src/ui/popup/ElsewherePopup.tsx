@@ -3,7 +3,7 @@ import { useI18n } from '../hooks/useI18n';
 import { useSettings } from '../hooks/useSettings';
 import { SamplePreview, SAMPLE_SETTINGS_KEYS } from '../preview/SamplePreview';
 import { SiteLinks } from '../SiteLinks';
-import { PopupShell } from './PopupShell';
+import { PopupShell, PopupUnavailable } from './PopupShell';
 
 const ELSEWHERE_KEYS = ['uiLanguage', ...SAMPLE_SETTINGS_KEYS] as const;
 
@@ -17,13 +17,7 @@ export function ElsewherePopup() {
     );
 
     if (loadedLocale !== null && status === 'unavailable') {
-        return (
-            <PopupShell t={t}>
-                <p role="alert" className="notice danger">
-                    {t('settingsLoadFailed')}
-                </p>
-            </PopupShell>
-        );
+        return <PopupUnavailable t={t} />;
     }
     if (!settings || loadedLocale === null) {
         return <div className="popup" aria-busy="true" />;
