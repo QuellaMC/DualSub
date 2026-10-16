@@ -1,9 +1,11 @@
 import { useRef, useState } from 'react';
 import {
     siteProfileOf,
+    type SettingsValues,
     type SiteProfile,
     type SiteSettingKey,
 } from '@/config/schema';
+import { configService } from '@/config/service';
 import {
     PLATFORM_IDS,
     PLATFORM_NAMES,
@@ -14,6 +16,8 @@ import { Switch } from '../../design/Switch';
 import type { Translate } from '../../hooks/useI18n';
 import { useSettings } from '../../hooks/useSettings';
 import { feedbackSave, followAllSites, useFeedback } from '../shell/feedback';
+
+type Rules = SettingsValues['subtitleBlacklist'];
 
 const SITE_DOMAINS: Record<PlatformId, string> = {
     netflix: 'netflix.com',
@@ -81,16 +85,34 @@ function SiteCard({
         ...new Set(ownKeys.map((key) => t(OWN_SETTING_LABELS[key]))),
     ];
     const rules = settings.subtitleBlacklist[site] ?? [];
-    const saveRules = (next: string[], message: string): void =>
-        void save(
-            {
-                subtitleBlacklist: {
-                    ...settings.subtitleBlacklist,
-                    [site]: next,
-                },
+    /** Change this site's rules from the stored list, so quick edits, and
+     *  edits from another page, each build on the last; Undo puts back this
+     *  site's list alone. */
+    const editRules = (
+        change: (current: readonly string[]) => string[],
+        message: string
+    ): void => {
+        let previous: readonly string[] = [];
+        const withRules = (next: readonly string[]) => (lists: Rules) => ({
+            ...lists,
+            [site]: [...next],
+        });
+        void feedback.apply(
+            async () => {
+                const before = await configService.updateSetting(
+                    'subtitleBlacklist',
+                    (lists) => withRules(change(lists[site] ?? []))(lists)
+                );
+                previous = before[site] ?? [];
             },
-            { message }
+            message,
+            () =>
+                configService.updateSetting(
+                    'subtitleBlacklist',
+                    withRules(previous)
+                )
         );
+    };
     const removeOwn = (): void => {
         void followAllSites(
             feedback,
@@ -237,11 +259,12 @@ function SiteCard({
                                         existing
                                     )}
                                     onClick={() =>
-                                        saveRules(
-                                            rules.filter(
-                                                (candidate) =>
-                                                    candidate !== existing
-                                            ),
+                                        editRules(
+                                            (current) =>
+                                                current.filter(
+                                                    (candidate) =>
+                                                        candidate !== existing
+                                                ),
                                             t('toastFilterRemoved', existing)
                                         )
                                     }
@@ -257,8 +280,11 @@ function SiteCard({
                             event.preventDefault();
                             const next = rule.trim();
                             if (next !== '' && !rules.includes(next)) {
-                                saveRules(
-                                    [...rules, next],
+                                editRules(
+                                    (current) =>
+                                        current.includes(next)
+                                            ? [...current]
+                                            : [...current, next],
                                     t('toastFilterAdded', next)
                                 );
                             }
