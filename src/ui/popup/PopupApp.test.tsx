@@ -22,6 +22,7 @@ import {
 import { browser, type Browser } from 'wxt/browser';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { installExtensionRuntimeIdentity } from '@/test-utils/extensionRuntime';
+import { configService } from '@/config/service';
 import { resetCatalogsForTests } from '../hooks/useI18n';
 import { POPUP_SETTINGS_KEYS, PopupApp } from './PopupApp';
 
@@ -221,8 +222,17 @@ describe('PopupApp', () => {
         await fakeBrowser.storage.local.set({ appearanceAccordionOpen: true });
         const send = stubTabs();
         await renderReady();
-        vi.spyOn(browser.storage.sync, 'set').mockRejectedValueOnce(
-            new Error('quota')
+        // Only the slider's own save fails, not one another test left behind.
+        const realSave = configService.setMultiple.bind(configService);
+        let failed = false;
+        vi.spyOn(configService, 'setMultiple').mockImplementation(
+            (settings, siteWrite) => {
+                if (!failed && Object.hasOwn(settings, 'subtitleFontScale')) {
+                    failed = true;
+                    return Promise.reject(new Error('quota'));
+                }
+                return realSave(settings, siteWrite);
+            }
         );
         const slider = screen.getByRole('slider', { name: 'Font Size:' });
 

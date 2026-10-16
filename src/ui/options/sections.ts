@@ -23,12 +23,25 @@ export const SECTIONS: Record<
         readonly advanced?: true;
         /** Shows the live subtitle preview beside it. */
         readonly preview?: true;
+        /** Holds settings a site can keep of its own, so the page can edit
+         *  them for one site; elsewhere it edits what every site shares. */
+        readonly scoped?: true;
     }
 > = {
-    start: { labelKey: 'navStart', icon: 'home', preview: true },
-    languages: { labelKey: 'navLanguages', icon: 'languages', preview: true },
-    look: { labelKey: 'navLook', icon: 'look', preview: true },
-    timing: { labelKey: 'navTiming', icon: 'timing', preview: true },
+    start: { labelKey: 'navStart', icon: 'home', preview: true, scoped: true },
+    languages: {
+        labelKey: 'navLanguages',
+        icon: 'languages',
+        preview: true,
+        scoped: true,
+    },
+    look: { labelKey: 'navLook', icon: 'look', preview: true, scoped: true },
+    timing: {
+        labelKey: 'navTiming',
+        icon: 'timing',
+        preview: true,
+        scoped: true,
+    },
     translation: { labelKey: 'navTranslation', icon: 'translation' },
     explanations: { labelKey: 'navExplanations', icon: 'explain' },
     sites: { labelKey: 'navSites', icon: 'sites' },
