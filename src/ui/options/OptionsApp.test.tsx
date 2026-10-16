@@ -288,6 +288,64 @@ describe('OptionsApp', () => {
         );
     });
 
+    it('keeps explanations off while no kind of explanation is chosen', async () => {
+        await fakeBrowser.storage.sync.set({
+            aiContextProvider: 'gemini',
+            aiContextTypes: [],
+        });
+        await fakeBrowser.storage.local.set({ geminiApiKey: 'AIza-key' });
+        location.hash = '#explanations';
+        await renderReady();
+        expect(
+            await screen.findByText('Pick at least one thing to explain.')
+        ).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Turn on' })).toBeDisabled();
+    });
+
+    it('removes two filters clicked one right after the other', async () => {
+        await fakeBrowser.storage.sync.set({
+            subtitleBlacklist: {
+                disneyplus: ['--forced--', 'forced=yes'],
+                netflix: [],
+                generic: [],
+            },
+        });
+        await fakeBrowser.storage.local.set({ showAdvancedSettings: true });
+        location.hash = '#sites';
+        await renderReady();
+        fireEvent.click(
+            await screen.findByRole('button', {
+                name: 'Remove the rule --forced--',
+            })
+        );
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Remove the rule forced=yes' })
+        );
+        await waitFor(async () =>
+            expect(await sync('subtitleBlacklist')).toEqual({
+                disneyplus: [],
+                netflix: [],
+                generic: [],
+            })
+        );
+    });
+
+    it('stops offering exports once the settings can no longer be read', async () => {
+        await fakeBrowser.storage.local.set({ showAdvancedSettings: true });
+        location.hash = '#advanced';
+        await renderReady();
+        const download = screen.getByRole('button', {
+            name: 'Download settings',
+        });
+        await waitFor(() => expect(download).toBeEnabled());
+
+        vi.spyOn(browser.storage.sync, 'get').mockRejectedValue(
+            new Error('broken')
+        );
+        await fakeBrowser.storage.sync.set({ subtitleGap: 0.5 });
+        await waitFor(() => expect(download).toBeDisabled());
+    });
+
     it('turns word explanations on only once a key is in', async () => {
         location.hash = '#explanations';
         await renderReady();

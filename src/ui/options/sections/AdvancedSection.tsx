@@ -136,6 +136,8 @@ export function AdvancedSection({ t, settings, save }: SectionProps) {
 
     useEffect(() => {
         let active = true;
+        // Exports and copies wait for a fresh read rather than offer old
+        // settings as current.
         const refresh = (): void => {
             void readStoredSettings().then(
                 (values) => {
@@ -143,7 +145,11 @@ export function AdvancedSection({ t, settings, save }: SectionProps) {
                         setStored(values);
                     }
                 },
-                () => undefined
+                () => {
+                    if (active) {
+                        setStored(null);
+                    }
+                }
             );
         };
         refresh();
