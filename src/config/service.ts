@@ -153,10 +153,14 @@ interface ResolvedStoredValue {
     resolution: StoredResolution;
 }
 
-/** Settings that are maps edited a part at a time: the site profiles and
- *  the subtitle filters. Every rewrite of one waits for the one before it,
- *  so it builds on what that one left. */
-const EDITED_IN_PART = ['siteProfiles', 'subtitleBlacklist'] as const;
+/** Settings whose controls each change one part: the site profiles, the
+ *  subtitle filters, and the kinds of explanation. Every rewrite of one
+ *  waits for the one before it, so it builds on what that one left. */
+const EDITED_IN_PART = [
+    'siteProfiles',
+    'subtitleBlacklist',
+    'aiContextTypes',
+] as const;
 type EditedInPart = (typeof EDITED_IN_PART)[number];
 const PARTS_LOCK = 'dualsub:settingParts';
 

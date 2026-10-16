@@ -74,11 +74,21 @@ function SiteCard({
     const [rule, setRule] = useState('');
     const useHere = useRef<HTMLButtonElement | null>(null);
     const { settings } = handle;
+    const name = PLATFORM_NAMES[site];
+    if (handle.status === 'unavailable') {
+        return (
+            <div className="card">
+                <h2 className="label">{name}</h2>
+                <p className="notice danger" role="alert">
+                    {t('settingsLoadFailed')}
+                </p>
+            </div>
+        );
+    }
     if (!settings) {
         return null;
     }
     const save = feedbackSave(handle, site, feedback);
-    const name = PLATFORM_NAMES[site];
     const own = siteProfileOf(settings.siteProfiles, site);
     const ownKeys = ownSettingKeys(own);
     const ownNames = [
