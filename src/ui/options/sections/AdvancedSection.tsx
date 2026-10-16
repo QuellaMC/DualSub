@@ -52,14 +52,11 @@ async function readStoredSettings(): Promise<Partial<SettingsValues>> {
     );
 }
 
-/** The changes a backup file would make: its non-sensitive settings whose
- *  value differs from what is stored. Null for a file that is not a
- *  settings object, or holds a value this version cannot use for a setting
- *  it knows: loading the rest would restore the backup only in part. */
-function changesFrom(
-    text: string,
-    current: Partial<SettingsValues>
-): Partial<SettingsValues> | null {
+/** The settings a backup file holds, ready to write: every non-sensitive
+ *  one it names. Null for a file that is not a settings object, or holds a
+ *  value this version cannot use for a setting it knows: loading the rest
+ *  would restore the backup only in part. */
+function backupValues(text: string): Partial<SettingsValues> | null {
     let parsed: unknown;
     try {
         parsed = JSON.parse(text);
@@ -73,7 +70,7 @@ function changesFrom(
     ) {
         return null;
     }
-    const changes: Record<string, unknown> = {};
+    const values: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(parsed)) {
         if (!isSettingsKey(key) || NOT_BACKED_UP.includes(key)) {
             continue;
@@ -81,12 +78,20 @@ function changesFrom(
         if (!validateSetting(key, value)) {
             return null;
         }
-        const prepared = prepareSettingValue(key, value);
-        if (!sameSettingValue(prepared, current[key])) {
-            changes[key] = prepared;
-        }
+        values[key] = prepareSettingValue(key, value);
     }
-    return changes;
+    return values;
+}
+
+/** How many of `backup`'s settings differ from what is stored. */
+function changeCount(
+    backup: Partial<SettingsValues>,
+    stored: Partial<SettingsValues>
+): number {
+    return Object.entries(backup).filter(
+        ([key, value]) =>
+            !sameSettingValue(value, stored[key as keyof SettingsValues])
+    ).length;
 }
 
 function download(name: string, text: string): void {
@@ -103,9 +108,9 @@ function download(name: string, text: string): void {
 export function AdvancedSection({ t, settings, save }: SectionProps) {
     const feedback = useFeedback();
     const [stored, setStored] = useState<Partial<SettingsValues> | null>(null);
-    const [pending, setPending] = useState<Partial<SettingsValues> | null>(
-        null
-    );
+    /** The backup waiting to be applied, kept whole: what it would change
+     *  is counted against the stored settings as they are now. */
+    const [backup, setBackup] = useState<Partial<SettingsValues> | null>(null);
     const [loadError, setLoadError] = useState(false);
     const [confirmReset, setConfirmReset] = useState(false);
     const fileInput = useRef<HTMLInputElement | null>(null);
@@ -169,7 +174,7 @@ export function AdvancedSection({ t, settings, save }: SectionProps) {
     };
 
     const closeLoad = (): void => {
-        setPending(null);
+        setBackup(null);
         chooseFile.current?.focus();
     };
 
@@ -238,9 +243,9 @@ export function AdvancedSection({ t, settings, save }: SectionProps) {
                                 return;
                             }
                             void file.text().then((text) => {
-                                const changes = changesFrom(text, stored);
-                                setLoadError(changes === null);
-                                setPending(changes);
+                                const values = backupValues(text);
+                                setLoadError(values === null);
+                                setBackup(values);
                             });
                         }}
                     />
@@ -250,23 +255,23 @@ export function AdvancedSection({ t, settings, save }: SectionProps) {
                         {t('advancedLoadUnreadable')}
                     </p>
                 )}
-                {pending && (
+                {backup && stored && (
                     <div className="notice" role="status">
                         <div className="grow">
-                            {Object.keys(pending).length === 0
+                            {changeCount(backup, stored) === 0
                                 ? t('advancedLoadNothing')
                                 : t(
                                       'advancedLoadPreview',
-                                      Object.keys(pending).length
+                                      changeCount(backup, stored)
                                   )}
                         </div>
-                        {Object.keys(pending).length > 0 && (
+                        {changeCount(backup, stored) > 0 && (
                             <button
                                 type="button"
                                 className="button primary"
                                 onClick={() => {
                                     closeLoad();
-                                    replaceSettings(pending, t('toastLoaded'));
+                                    replaceSettings(backup, t('toastLoaded'));
                                 }}
                             >
                                 {t('advancedLoadApply')}

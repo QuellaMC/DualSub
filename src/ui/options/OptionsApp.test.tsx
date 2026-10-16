@@ -111,6 +111,45 @@ describe('OptionsApp', () => {
         );
     });
 
+    it('moves the subtitles one step per press, however quick the presses', async () => {
+        location.hash = '#timing';
+        await renderReady();
+        const earlier = screen.getByRole('button', { name: /Show earlier/ });
+        fireEvent.click(earlier);
+        fireEvent.click(earlier);
+        expect(await screen.findByText('1.0 s earlier')).toBeInTheDocument();
+        await waitFor(async () =>
+            expect(await sync('subtitleTimeOffset')).toBe(1)
+        );
+    });
+
+    it("shows a site's scope only where a site keeps settings of its own", async () => {
+        await fakeBrowser.storage.sync.set({
+            siteProfiles: { netflix: { subtitleFontScale: 1.6 } },
+        });
+        location.hash = '#look';
+        await renderReady();
+        fireEvent.click(
+            within(
+                screen.getByRole('group', { name: 'Settings for' })
+            ).getByRole('button', { name: /^Netflix/ })
+        );
+        expect(
+            await screen.findByText("You're changing Netflix only.")
+        ).toBeInTheDocument();
+
+        nav('Help');
+        await screen.findByRole('heading', { level: 1, name: 'Help' });
+        expect(
+            screen.queryByText("You're changing Netflix only.")
+        ).not.toBeInTheDocument();
+
+        nav('How subtitles look');
+        expect(
+            await screen.findByText("You're changing Netflix only.")
+        ).toBeInTheDocument();
+    });
+
     it('moves the subtitles earlier and later in plain words', async () => {
         location.hash = '#timing';
         await renderReady();
@@ -412,7 +451,7 @@ describe('OptionsApp', () => {
                 name: 'Hello! DualSub is ready.',
             })
         ).toBeInTheDocument();
-        expect(location.hash).toBe('#start');
+        await waitFor(() => expect(location.hash).toBe('#start'));
     });
 
     it('drops the key when the AI service moves to another host', async () => {
@@ -738,6 +777,39 @@ describe('OptionsApp', () => {
             'Failed to save setting'
         );
         expect(await sync('subtitleFontScale')).toBe(1);
+    });
+
+    it('applies the whole backup, counting what changes as the settings change', async () => {
+        await fakeBrowser.storage.local.set({ showAdvancedSettings: true });
+        location.hash = '#advanced';
+        await renderReady();
+        await waitFor(() =>
+            expect(document.querySelector('pre.code')).toHaveTextContent(
+                '"subtitleFontScale": 1'
+            )
+        );
+        const backup = new File(
+            [JSON.stringify({ subtitleFontScale: 1.6, subtitleGap: 0.3 })],
+            'backup.json',
+            { type: 'application/json' }
+        );
+        fireEvent.change(screen.getByLabelText('Load settings from a file'), {
+            target: { files: [backup] },
+        });
+        expect(
+            await screen.findByText('Settings that will change: 1.')
+        ).toBeInTheDocument();
+
+        // Another page changes a setting the backup holds.
+        await fakeBrowser.storage.sync.set({ subtitleGap: 0.5 });
+        expect(
+            await screen.findByText('Settings that will change: 2.')
+        ).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Replace them' }));
+        await waitFor(async () =>
+            expect(await sync('subtitleFontScale')).toBe(1.6)
+        );
+        expect(await sync('subtitleGap')).toBe(0.3);
     });
 
     it('refuses a backup holding a value this version cannot use', async () => {

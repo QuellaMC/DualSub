@@ -59,12 +59,24 @@ function initialSection(): SectionId {
 
 export function OptionsApp() {
     const [scope, setScope] = useState<Scope>('all');
+    const [section, setSection] = useState<SectionId>(initialSection);
     // The page reads what every scope shares, so it stays in place, focus
     // included, while a newly picked scope's settings load.
     const page = useSettings(PAGE_SETTINGS_KEYS);
+    // An advanced section shows only while advanced options are on, however
+    // they went off.
+    const shown: SectionId =
+        page.settings &&
+        !page.settings.showAdvancedSettings &&
+        SECTIONS[section].advanced
+            ? 'start'
+            : section;
+    // A site's scope applies where a site can keep settings of its own;
+    // elsewhere, changes reach every site, so the page shows them that way.
+    const editing: Scope = SECTIONS[shown].scoped ? scope : 'all';
     const handle = useSettings(OPTIONS_SETTINGS_KEYS, {
         includeSensitive: true,
-        site: scope === 'all' ? null : scope,
+        site: editing === 'all' ? null : editing,
         siteTarget: 'own',
     });
     const { settings } = handle;
@@ -74,15 +86,6 @@ export function OptionsApp() {
         page.settings?.uiLanguage ??
             (unavailable ? detectBrowserLanguage() : null)
     );
-    const [section, setSection] = useState<SectionId>(initialSection);
-    // An advanced section shows only while advanced options are on, however
-    // they went off.
-    const shown: SectionId =
-        page.settings &&
-        !page.settings.showAdvancedSettings &&
-        SECTIONS[section].advanced
-            ? 'start'
-            : section;
     const [saveFailed, setSaveFailed] = useState(false);
     const [toast, setToast] = useState<ToastState | null>(null);
     const [lookDraft, setLookDraft] = useState<LookDraft>({});
@@ -203,7 +206,7 @@ export function OptionsApp() {
         );
     }
 
-    const save = feedbackSave(handle, scope, feedback);
+    const save = feedbackSave(handle, editing, feedback);
     const savePage = feedbackSave(page, 'all', feedback);
     const {
         uiLanguage,
@@ -217,15 +220,23 @@ export function OptionsApp() {
         ])
     );
     const showScope =
-        advanced ||
-        scope !== 'all' ||
-        Object.values(ownCounts).some((count) => count > 0);
+        SECTIONS[shown].scoped === true &&
+        (advanced ||
+            scope !== 'all' ||
+            Object.values(ownCounts).some((count) => count > 0));
     const ownKeys = new Set(
-        scope === 'all' ? [] : Object.keys(siteProfileOf(siteProfiles, scope))
+        editing === 'all'
+            ? []
+            : Object.keys(siteProfileOf(siteProfiles, editing))
     );
     const followShared = (keys: readonly SiteSettingKey[]): void => {
-        if (scope !== 'all') {
-            void followAllSites(feedback, scope, keys, t('toastFollowsShared'));
+        if (editing !== 'all') {
+            void followAllSites(
+                feedback,
+                editing,
+                keys,
+                t('toastFollowsShared')
+            );
         }
     };
 
@@ -282,7 +293,7 @@ export function OptionsApp() {
 
     return (
         <FeedbackProvider value={feedback}>
-            <ScopeProvider value={{ t, scope, ownKeys, followShared }}>
+            <ScopeProvider value={{ t, scope: editing, ownKeys, followShared }}>
                 <div className="options">
                     <a className="skip-link" href="#main">
                         {t('topSkipToContent')}
@@ -323,7 +334,7 @@ export function OptionsApp() {
                             <div className="columns">
                                 <div
                                     className="content"
-                                    key={scope}
+                                    key={editing}
                                     aria-busy={settings ? undefined : true}
                                 >
                                     {settings &&
@@ -333,7 +344,7 @@ export function OptionsApp() {
                                     <Preview
                                         t={t}
                                         settings={{ ...settings, ...lookDraft }}
-                                        scope={scope}
+                                        scope={editing}
                                     />
                                 )}
                             </div>
