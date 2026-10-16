@@ -1,7 +1,8 @@
-import { createContext, useContext } from 'react';
+import { createContext, useContext, useEffect } from 'react';
 import type { SiteSettingKey } from '@/config/schema';
 import { PLATFORM_NAMES } from '@/shared/platforms';
 import type { Translate } from '../../hooks/useI18n';
+import { useDraft, type Draft, type SaveFeedback } from '../../hooks/useDraft';
 import type { Scope } from '../types';
 
 interface ScopeContextValue {
@@ -10,6 +11,12 @@ interface ScopeContextValue {
     /** The keys the scoped site holds its own values for. */
     readonly ownKeys: ReadonlySet<string>;
     readonly followShared: (keys: readonly SiteSettingKey[]) => void;
+    /** Lets following the value for all sites cancel `key`'s draft first;
+     *  returns the way to stop. */
+    readonly registerDraft: (
+        key: SiteSettingKey,
+        cancel: () => void
+    ) => () => void;
 }
 
 const ScopeContext = createContext<ScopeContextValue | null>(null);
@@ -48,6 +55,21 @@ export function SiteTag({ keys }: { keys: readonly SiteSettingKey[] }) {
             </button>
         </div>
     );
+}
+
+/** A site setting's draft. Following the value for all sites cancels it, so
+ *  an edit still waiting to be written cannot bring the site's own value
+ *  back. */
+export function useSiteDraft<T>(
+    key: SiteSettingKey,
+    saved: T,
+    write: (value: T, notice: SaveFeedback) => Promise<boolean>
+): Draft<T> {
+    const draft = useDraft(saved, write);
+    const registerDraft = useContext(ScopeContext)?.registerDraft;
+    const { cancel } = draft;
+    useEffect(() => registerDraft?.(key, cancel), [registerDraft, key, cancel]);
+    return draft;
 }
 
 /** Under a site's scope, marks a setting that every site shares. */

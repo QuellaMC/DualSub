@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { browser } from 'wxt/browser';
 import {
+    changedSiteValues,
     CREDENTIAL_SETUP,
     getDefaultValue,
     isSettingsKey,
@@ -162,7 +163,9 @@ export function AdvancedSection({ t, settings, save }: SectionProps) {
         wasConfirming.current = confirmReset;
     }, [confirmReset]);
 
-    /** Write `changes`, with an Undo that puts back what they replaced. */
+    /** Write `changes`, with an Undo that puts back what they replaced. The
+     *  site profiles go back value by value, over any change another page
+     *  made since. */
     const replaceSettings = (
         changes: Partial<SettingsValues>,
         message: string
@@ -182,7 +185,16 @@ export function AdvancedSection({ t, settings, save }: SectionProps) {
                 }
             },
             message,
-            () => configService.setMultiple(before)
+            () =>
+                changes.siteProfiles === undefined
+                    ? configService.setMultiple(before)
+                    : configService.restoreSiteValues(
+                          before,
+                          changedSiteValues(
+                              before.siteProfiles ?? {},
+                              changes.siteProfiles
+                          )
+                      )
         );
     };
 

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
 import {
+    changedSiteValues,
     prepareSettingValue,
     sameSettingValue,
     siteProfileOf,
@@ -11,6 +12,27 @@ import { configService, type SettingsChanges } from './service';
 async function stored(): Promise<unknown> {
     return (await fakeBrowser.storage.sync.get('siteProfiles')).siteProfiles;
 }
+
+describe('changedSiteValues', () => {
+    it('lists each site value added, changed, or removed, newer entries included', () => {
+        expect(
+            changedSiteValues(
+                {
+                    netflix: { subtitleGap: 0.5, subtitleFontScale: 1.2 },
+                    hulu: { futureSetting: 1 },
+                },
+                {
+                    netflix: { subtitleGap: 0.5, subtitleFontScale: 1.6 },
+                    disneyplus: { subtitlesEnabled: false },
+                }
+            )
+        ).toEqual([
+            ['netflix', 'subtitleFontScale'],
+            ['hulu', 'futureSetting'],
+            ['disneyplus', 'subtitlesEnabled'],
+        ]);
+    });
+});
 
 describe('siteProfiles values', () => {
     it('keeps each site’s valid site settings, canonicalized', () => {
@@ -228,11 +250,10 @@ describe('configService for one site', () => {
         await fakeBrowser.storage.sync.set({
             siteProfiles: { disneyplus: { subtitleGap: 0.7 }, hulu: { x: 1 } },
         });
-        await configService.restoreSiteValues(
-            before,
-            ['netflix', 'disneyplus'],
-            ['hideOfficialSubtitles']
-        );
+        await configService.restoreSiteValues(before, [
+            ['netflix', 'hideOfficialSubtitles'],
+            ['disneyplus', 'hideOfficialSubtitles'],
+        ]);
         expect(await stored()).toEqual({
             netflix: { hideOfficialSubtitles: false },
             disneyplus: { hideOfficialSubtitles: true, subtitleGap: 0.7 },

@@ -389,6 +389,9 @@
     "explainCache": {
         "message": "답변 기억하기"
     },
+    "explainAllowHost": {
+        "message": "단어를 설명하려면 DualSub가 이 주소에 연결하도록 허용해 주세요."
+    },
     "explainKeyStays": {
         "message": "키는 이 컴퓨터에만 저장되고, 내가 고른 서비스에만 전달돼요."
     },
