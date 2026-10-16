@@ -1304,6 +1304,9 @@
     "searchWordsSiteOnOff": {
         "message": "netflix disney site off on enable disable turn"
     },
+    "searchWordsDualSubtitles": {
+        "message": "on off enable disable turn everywhere every site all two lines"
+    },
     "searchWordsHide": {
         "message": "hide official twice double duplicate two"
     },

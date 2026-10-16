@@ -1304,6 +1304,9 @@
     "searchWordsSiteOnOff": {
         "message": "netflix disney 網飛 迪士尼 網站 平台 開啟 關閉 打開 關掉 啟用 停用 開關 不想用 暫時關掉 雙語字幕 開啟字幕 關閉字幕 關掉字幕"
     },
+    "searchWordsDualSubtitles": {
+        "message": "開 關 開啟 關閉 啟用 停用 所有網站 全部 兩行"
+    },
     "searchWordsHide": {
         "message": "隱藏 不顯示 藏起來 關掉 官方 官方字幕 原本的字幕 網站字幕 內建字幕 重複 兩次 兩遍 雙重 疊在一起 重疊 兩份 兩組 兩套 字幕重複 重複字幕 出現兩次 兩個字幕"
     },
