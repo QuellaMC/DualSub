@@ -35,17 +35,15 @@ export type SampleSettings = Pick<
 
 /** The two lines as these settings show them over a sample video in
  *  another language, their text sized as on a picture `pictureHeight`
- *  pixels tall; with `standIns`, each language English stands in for. */
+ *  pixels tall, and each language English stands in for. */
 export function SamplePreview({
     t,
     settings,
     pictureHeight,
-    standIns = false,
 }: {
     t: Translate;
     settings: SampleSettings;
     pictureHeight: number;
-    standIns?: boolean;
 }) {
     const sample = sampleSubtitles(
         settings,
@@ -66,7 +64,7 @@ export function SamplePreview({
                 translatedText={sample.translatedText}
                 label={t('previewLabel')}
             />
-            {standIns && <SampleStandIns t={t} sample={sample} />}
+            <SampleStandIns t={t} sample={sample} />
         </>
     );
 }

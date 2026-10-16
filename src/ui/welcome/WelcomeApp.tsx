@@ -287,7 +287,6 @@ function Welcome({
                             t={t}
                             settings={settings}
                             pictureHeight={PICTURE_HEIGHT}
-                            standIns
                         />
                         {ownSites.length > 0 && (
                             <p className="help">
