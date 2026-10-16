@@ -272,7 +272,7 @@ describe('configService for one site', () => {
         const release = Promise.withResolvers<void>();
         // Another page holds the lock that every extension page shares.
         const elsewhere = navigator.locks.request(
-            'dualsub:siteProfiles',
+            'dualsub:settingParts',
             async () => {
                 await fakeBrowser.storage.sync.set({
                     siteProfiles: {

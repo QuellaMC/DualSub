@@ -69,9 +69,12 @@ export function ExplanationsSection({
     // A custom OpenAI address works only once Chrome lets DualSub reach it.
     const access = useHostPermission(settings.openaiBaseUrl);
     const blocked = provider === 'openai' && access.permitted === false;
+    // Explanations need a key the service can be reached with, and at least
+    // one kind of explanation to give.
     const ready =
         apiKey.trim() !== '' &&
-        (provider !== 'openai' || access.permitted === true);
+        (provider !== 'openai' || access.permitted === true) &&
+        settings.aiContextTypes.length > 0;
     const enabled = settings.aiContextEnabled;
     const enableSwitch = useRef<HTMLButtonElement | null>(null);
 
