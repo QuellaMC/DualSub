@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 
 /**
  * A range input that previews every movement and commits once the
- * interaction ends. A commit that fails snaps the slider back to the
- * persisted value unless the user has already moved on to a newer draft.
+ * interaction ends. It shows the persisted value except while the user
+ * holds a draft; a draft gives way when its commit settles, so a failed
+ * commit snaps the slider back unless the user has already moved on.
  */
 export function SliderSetting({
     id,
@@ -22,41 +23,29 @@ export function SliderSetting({
     max: number;
     step: number;
     onPreview: (value: number) => void;
-    onCommit: (value: number) => Promise<boolean>;
+    onCommit: (value: number) => Promise<void>;
 }) {
-    const [draft, setDraft] = useState(value);
-    const draftRef = useRef(value);
-    const committed = useRef(value);
-
-    useEffect(() => {
-        draftRef.current = draft;
-    }, [draft]);
-
-    useEffect(() => {
-        setDraft(value);
-        committed.current = value;
-    }, [value]);
+    const [draft, setDraft] = useState<number | null>(null);
+    /** The draft whose commit is on its way: a pointerup and the blur
+     *  after it commit it once. */
+    const committing = useRef<number | null>(null);
+    const shown = draft ?? value;
 
     const release = (): void => {
-        const target = draft;
-        if (target === committed.current) {
+        if (draft === null || draft === committing.current) {
             return;
         }
-        committed.current = target;
-        void onCommit(target).then((persisted) => {
-            if (persisted) {
-                return;
+        const target = draft;
+        committing.current = target;
+        void onCommit(target).then(() => {
+            if (committing.current === target) {
+                committing.current = null;
             }
-            if (committed.current === target) {
-                committed.current = value;
-            }
-            if (draftRef.current === target) {
-                setDraft(value);
-            }
+            setDraft((current) => (current === target ? null : current));
         });
     };
 
-    const progress = ((draft - min) / (max - min)) * 100;
+    const progress = ((shown - min) / (max - min)) * 100;
 
     return (
         <div className="setting-item-slider">
@@ -68,7 +57,7 @@ export function SliderSetting({
                     min={min}
                     max={max}
                     step={step}
-                    value={draft}
+                    value={shown}
                     style={{ backgroundSize: `${progress}% 100%` }}
                     onChange={(event) => {
                         const next = Number(event.target.value);
@@ -80,7 +69,7 @@ export function SliderSetting({
                     onKeyUp={release}
                     onBlur={release}
                 />
-                <span className="slider-value">{draft.toFixed(1)}</span>
+                <span className="slider-value">{shown.toFixed(1)}</span>
             </div>
         </div>
     );
