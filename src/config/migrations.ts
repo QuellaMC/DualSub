@@ -2,6 +2,7 @@ import { browser } from 'wxt/browser';
 import { KEY_ORIGINS, originOf, type KeyBinding } from '@/shared/keyOrigins';
 import { VERTEX_LOCATIONS } from '@/shared/providers';
 import { getDefaultValue, prepareSettingValue, SETTING_BOUNDS } from './schema';
+import { inTurn } from './service';
 
 const RETIRED_GEMINI_MODELS = new Set(['gemini-1.5-flash', 'gemini-1.5-pro']);
 
@@ -134,14 +135,11 @@ async function runMigration(): Promise<MigrationSummary> {
             ...RETIRED_SYNC_KEYS,
         ]),
         browser.storage.local.get([
-            ...DEVICE_LOCAL_CREDENTIAL_KEYS,
-            ...KEY_BINDINGS.map(([, { origin }]) => origin),
             'vertexServiceAccount',
             ...RETIRED_LOCAL_KEYS,
         ]),
     ]);
 
-    const localUpdates: Record<string, unknown> = {};
     const syncUpdates: Record<string, unknown> = {};
     const removed: string[] = [];
 
@@ -150,12 +148,6 @@ async function runMigration(): Promise<MigrationSummary> {
     const syncedCredentialKeys = DEVICE_LOCAL_CREDENTIAL_KEYS.filter(
         (key) => syncItems[key] !== undefined
     );
-    for (const key of syncedCredentialKeys) {
-        const value: unknown = syncItems[key];
-        if (typeof value === 'string' && value.trim() && !localItems[key]) {
-            localUpdates[key] = value;
-        }
-    }
 
     if (
         syncItems.openaiBaseUrl === 'https://api.openai.com' ||
@@ -196,27 +188,9 @@ async function runMigration(): Promise<MigrationSummary> {
         );
     }
 
-    // A key with no recorded origin, stored before keys recorded one or by
-    // an older version since, or one moved here from sync just now, was
-    // entered for the address set now.
-    for (const [key, { address, origin }] of KEY_BINDINGS) {
-        if (
-            Object.hasOwn(localUpdates, key) ||
-            (localItems[key] && !localItems[origin])
-        ) {
-            localUpdates[origin] =
-                originOf(
-                    resolvedAddress(
-                        address,
-                        syncUpdates[address] ?? syncItems[address]
-                    )
-                ) ?? '';
-        }
-    }
-
-    if (Object.keys(localUpdates).length > 0) {
-        await browser.storage.local.set(localUpdates);
-    }
+    const localUpdates = await inTurn(() =>
+        settleCredentials(syncItems, syncUpdates)
+    );
     if (Object.keys(syncUpdates).length > 0) {
         await browser.storage.sync.set(syncUpdates);
     }
@@ -249,6 +223,47 @@ async function runMigration(): Promise<MigrationSummary> {
         syncUpdates: Object.keys(syncUpdates),
         removed,
     };
+}
+
+/**
+ * Move credentials synced by v2 into empty local slots, and bind each key
+ * without a recorded origin, from the local credentials stored by now. It
+ * runs in turn with key entries, so a key entered meanwhile is neither
+ * overwritten nor bound to another origin.
+ */
+async function settleCredentials(
+    syncItems: Record<string, unknown>,
+    syncUpdates: Record<string, unknown>
+): Promise<Record<string, unknown>> {
+    const stored = await browser.storage.local.get([
+        ...DEVICE_LOCAL_CREDENTIAL_KEYS,
+        ...KEY_BINDINGS.map(([, { origin }]) => origin),
+    ]);
+    const updates: Record<string, unknown> = {};
+    for (const key of DEVICE_LOCAL_CREDENTIAL_KEYS) {
+        const value: unknown = syncItems[key];
+        if (typeof value === 'string' && value.trim() && !stored[key]) {
+            updates[key] = value;
+        }
+    }
+    // A key with no recorded origin, stored before keys recorded one or by
+    // an older version since, or one moved here from sync just now, was
+    // entered for the address set now.
+    for (const [key, { address, origin }] of KEY_BINDINGS) {
+        if (Object.hasOwn(updates, key) || (stored[key] && !stored[origin])) {
+            updates[origin] =
+                originOf(
+                    resolvedAddress(
+                        address,
+                        syncUpdates[address] ?? syncItems[address]
+                    )
+                ) ?? '';
+        }
+    }
+    if (Object.keys(updates).length > 0) {
+        await browser.storage.local.set(updates);
+    }
+    return updates;
 }
 
 /** Reset single-flight state for isolated tests. */

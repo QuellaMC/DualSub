@@ -1,4 +1,5 @@
 import { browser } from 'wxt/browser';
+import { KEY_ORIGINS } from '@/shared/keyOrigins';
 import { createLogger, setLoggingLevel } from '@/shared/logger';
 import type { PlatformId } from '@/shared/platforms';
 import {
@@ -162,7 +163,24 @@ const EDITED_IN_PART = [
     'aiContextTypes',
 ] as const;
 type EditedInPart = (typeof EDITED_IN_PART)[number];
+
+/** Settings whose writes take their turn: those edited in part, and the
+ *  origin each key is bound to, which the boot migration binds from what it
+ *  read. */
+const WRITTEN_IN_TURN: readonly SettingsKey[] = [
+    ...EDITED_IN_PART,
+    ...Object.values(KEY_ORIGINS).map(({ origin }) => origin),
+];
 const PARTS_LOCK = 'dualsub:settingParts';
+
+/** Run `change` once every earlier write that reads what it replaces has
+ *  settled: a rewrite of a setting edited in part, startup repair, and a
+ *  key's entry or binding. The lock is shared by every extension page and
+ *  the worker, which share the extension's origin, so a popup, a settings
+ *  tab, and the boot migration take turns too. */
+export function inTurn<T>(change: () => Promise<T>): Promise<T> {
+    return navigator.locks.request(PARTS_LOCK, change);
+}
 
 class ConfigService {
     private readonly logger = createLogger('ConfigService');
@@ -652,17 +670,18 @@ class ConfigService {
     /**
      * Multi-key write. Validates everything first (nothing is written when any
      * key/value is invalid), then writes each storage area independently and
-     * aggregates area failures. A write of a setting edited in part, or of a
-     * site's values, waits for the rewrite before it, made in any extension
-     * page, so it builds on what that one left.
+     * aggregates area failures. A write of a setting edited in part, of a
+     * key's origin, or of a site's values, waits for the rewrite before it,
+     * made in any extension page or the worker, so it builds on what that
+     * one left.
      */
     setMultiple(
         settings: Partial<SettingsValues>,
         siteWrite?: SiteWrite
     ): Promise<Partial<SettingsValues>> {
         return siteWrite ||
-            EDITED_IN_PART.some((key) => Object.hasOwn(settings, key))
-            ? this.afterParts(() => this.writeMultiple(settings, siteWrite))
+            WRITTEN_IN_TURN.some((key) => Object.hasOwn(settings, key))
+            ? inTurn(() => this.writeMultiple(settings, siteWrite))
             : this.writeMultiple(settings, siteWrite);
     }
 
@@ -676,20 +695,12 @@ class ConfigService {
         key: K,
         edit: (current: SettingsValues[K]) => SettingsValues[K]
     ): Promise<SettingsValues[K]> {
-        return this.afterParts(async () => {
+        return inTurn(async () => {
             const { values } = await this.readResultStrict(key);
             const current = values[key] as SettingsValues[K];
             await this.writeMultiple({ [key]: edit(current) });
             return current;
         });
-    }
-
-    /** Run `change` once every earlier rewrite of a setting edited in part
-     *  has settled; each reads the value and writes it whole. The lock is
-     *  shared by every extension page and the worker, which share the
-     *  extension's origin, so a popup and a settings tab take turns too. */
-    private afterParts<T>(change: () => Promise<T>): Promise<T> {
-        return navigator.locks.request(PARTS_LOCK, change);
     }
 
     private async writeMultiple(
@@ -851,7 +862,7 @@ class ConfigService {
         source: SettingsValues['siteProfiles'],
         shared: Partial<SettingsValues>
     ): Promise<Partial<SettingsValues>> {
-        return this.afterParts(async () => {
+        return inTurn(async () => {
             const { values } = await this.readMultipleResultStrict([
                 ...Object.keys(shared),
                 'siteProfiles',
@@ -1138,7 +1149,7 @@ class ConfigService {
      * read.
      */
     setDefaultsForMissingKeys(): Promise<void> {
-        return this.afterParts(() => this.repairStoredValues());
+        return inTurn(() => this.repairStoredValues());
     }
 
     private async repairStoredValues(): Promise<void> {

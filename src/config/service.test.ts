@@ -237,6 +237,30 @@ describe('configService', () => {
                     .subtitlesEnabled
             ).toBe(false);
         });
+
+        it('writes a key with its origin in turn with every page and the worker', async () => {
+            const release = Promise.withResolvers<void>();
+            // The boot migration, or another page, holds the shared lock.
+            const elsewhere = navigator.locks.request(
+                'dualsub:settingParts',
+                () => release.promise
+            );
+            const entry = configService.setMultiple({
+                openaiApiKey: 'sk',
+                openaiApiKeyOrigin: 'https://api.openai.com',
+            });
+            await new Promise((resolve) => setTimeout(resolve, 20));
+            const whileHeld =
+                await fakeBrowser.storage.local.get('openaiApiKey');
+            release.resolve();
+            await Promise.all([elsewhere, entry]);
+
+            expect(whileHeld).toEqual({});
+            expect(
+                (await fakeBrowser.storage.local.get('openaiApiKey'))
+                    .openaiApiKey
+            ).toBe('sk');
+        });
     });
 
     describe('setDefaultsForMissingKeys', () => {
