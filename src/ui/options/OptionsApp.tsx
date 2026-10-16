@@ -102,6 +102,9 @@ export function OptionsApp() {
     const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     /** The last change asked for; each waits for the one before. */
     const changes = useRef<Promise<unknown>>(Promise.resolve());
+    /** Counts the times an Undo was taken back, so a change asked for
+     *  before one confirms itself without an Undo. */
+    const undoTakeBacks = useRef(0);
     /** Counts the navigations the viewer asks for, so one that waits on a
      *  save gives way to any asked for after it. */
     const navigations = useRef(0);
@@ -205,7 +208,10 @@ export function OptionsApp() {
             setToast({ id: Date.now(), ...toast });
             holdToast(false);
         };
-        const makeChange: Feedback['apply'] = async (change) => {
+        const makeChange = async (
+            change: () => Promise<Confirmation | undefined>,
+            asked: number
+        ): Promise<boolean> => {
             let confirmation: Confirmation | undefined;
             try {
                 confirmation = await change();
@@ -220,23 +226,26 @@ export function OptionsApp() {
                 show({
                     message,
                     tone: 'done',
-                    undo: undo
-                        ? () =>
-                              queueChange(async () => {
-                                  await undo();
-                                  return undefined;
-                              })
-                        : null,
+                    undo:
+                        undo && undoTakeBacks.current === asked
+                            ? () =>
+                                  queueChange(async () => {
+                                      await undo();
+                                      return undefined;
+                                  })
+                            : null,
                 });
             }
             return true;
         };
         const queueChange: Feedback['apply'] = (change) => {
-            const made = changes.current.then(() => makeChange(change));
+            const asked = undoTakeBacks.current;
+            const made = changes.current.then(() => makeChange(change, asked));
             changes.current = made.catch(() => undefined);
             return made;
         };
         const takeBackUndo = (): void => {
+            undoTakeBacks.current += 1;
             setToast((current) =>
                 current?.undo ? { ...current, undo: null } : current
             );

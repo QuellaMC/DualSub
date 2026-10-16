@@ -27,8 +27,9 @@ export interface Feedback {
     readonly apply: (
         change: () => Promise<Confirmation | undefined>
     ) => Promise<boolean>;
-    /** Take back an Undo still offered for an edit on its way, though not
-     *  asked for yet, which the Undo would put back too. */
+    /** Take back the Undo offered, and the one each change asked for until
+     *  now would offer: an edit is on its way, not asked for yet, that
+     *  builds on them. */
     readonly takeBackUndo: () => void;
     /** Say something that changed nothing, such as a blocked copy. */
     readonly notify: (message: string, tone: ToastTone) => void;

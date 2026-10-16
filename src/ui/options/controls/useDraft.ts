@@ -14,22 +14,19 @@ const SAVE_DELAY_MS = 400;
 
 const INTERACTION_ENDS = ['pointerup', 'keyup', 'blur', 'pagehide'] as const;
 
-/** Each edit returns whether the draft took it: a value the draft holds
- *  already, as a second press of the same choice, changes nothing. */
+/** A value the draft holds already, as a second press of the same choice,
+ *  changes nothing. */
 export interface Draft<T> {
     /** What the control shows: the stored value, or an edit on its way. */
     readonly value: T;
     /** Show `value` at once and write it quietly after a pause, or once
      *  the interaction that made it ends. */
-    readonly edit: (value: T) => boolean;
+    readonly edit: (value: T) => void;
     /** Show `value` at once and write it now, confirmed with `notice`. */
-    readonly set: (value: T, notice: SaveFeedback) => boolean;
+    readonly set: (value: T, notice: SaveFeedback) => void;
     /** `set` what `change` makes of the newest draft, which a render may
      *  not show yet. */
-    readonly update: (
-        change: (current: T) => T,
-        notice: SaveFeedback
-    ) => boolean;
+    readonly update: (change: (current: T) => T, notice: SaveFeedback) => void;
     /** Drop an edit still waiting to be written and show the stored value
      *  again; a write already on its way still lands. */
     readonly cancel: () => void;
@@ -42,11 +39,13 @@ export interface Draft<T> {
  * flight settles, or when the editor goes away; a write that fails snaps
  * the draft back to the stored value unless a newer edit is waiting. A
  * value arriving from storage (another window, a synced device) is adopted
- * unless an edit is waiting.
+ * unless an edit is waiting. `onTake` hears of each value the draft takes,
+ * before it is written.
  */
 export function useDraft<T>(
     saved: T,
-    write: (value: T, notice: SaveFeedback) => Promise<boolean>
+    write: (value: T, notice: SaveFeedback) => Promise<boolean>,
+    onTake: () => void = () => undefined
 ): Draft<T> {
     const [draft, setDraft] = useState(saved);
     /** How to confirm the edit storage has not seen yet; null when none. */
@@ -118,6 +117,7 @@ export function useDraft<T>(
         if (sameSettingValue(value, latest.current.draft)) {
             return false;
         }
+        onTake();
         // A pick's confirmation outlasts the quiet edits that follow it
         // before the write goes out.
         if (notice !== 'quiet' || pending.current === null) {
@@ -127,20 +127,21 @@ export function useDraft<T>(
         setDraft(value);
         return true;
     };
-    const showNow = (value: T, notice: SaveFeedback): boolean => {
-        if (!show(value, notice)) {
-            return false;
+    const showNow = (value: T, notice: SaveFeedback): void => {
+        if (show(value, notice)) {
+            flush();
         }
-        flush();
-        return true;
     };
 
     return {
         value: draft,
-        edit: (value) => show(value, 'quiet'),
+        edit: (value) => {
+            show(value, 'quiet');
+        },
         set: showNow,
-        update: (change, notice) =>
-            showNow(change(latest.current.draft), notice),
+        update: (change, notice) => {
+            showNow(change(latest.current.draft), notice);
+        },
         cancel,
     };
 }
