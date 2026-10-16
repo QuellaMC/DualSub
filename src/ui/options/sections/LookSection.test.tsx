@@ -45,13 +45,7 @@ function renderSection(
     const onDraft = vi.fn();
     const section = (shown: OptionsSettings) => (
         <FeedbackProvider value={feedback}>
-            <LookSection
-                t={t}
-                settings={shown}
-                save={save}
-                onDraft={onDraft}
-                advanced
-            />
+            <LookSection t={t} settings={shown} save={save} onDraft={onDraft} />
         </FeedbackProvider>
     );
     const view = render(section(settings));

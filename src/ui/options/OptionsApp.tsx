@@ -361,13 +361,7 @@ export function OptionsApp() {
             case 'languages':
                 return <LanguagesSection {...sectionProps} />;
             case 'look':
-                return (
-                    <LookSection
-                        {...sectionProps}
-                        onDraft={setLookDraft}
-                        advanced={advanced}
-                    />
-                );
+                return <LookSection {...sectionProps} onDraft={setLookDraft} />;
             case 'timing':
                 return <TimingSection {...sectionProps} advanced={advanced} />;
             case 'translation':
@@ -388,7 +382,13 @@ export function OptionsApp() {
             case 'advanced':
                 return <AdvancedSection {...sectionProps} />;
             case 'help':
-                return <HelpSection t={t} go={go} />;
+                return (
+                    <HelpSection
+                        t={t}
+                        fallback={sectionProps.settings.translationFallback}
+                        go={go}
+                    />
+                );
         }
     };
 

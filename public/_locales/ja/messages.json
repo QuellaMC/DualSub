@@ -17,9 +17,6 @@
     "apiPlanPro": {
         "message": "Pro（有料）"
     },
-    "aboutDevelopment": {
-        "message": "QuellaMC & 1jifang によって開発されました。"
-    },
     "lang_en": {
         "message": "英語"
     },
@@ -69,7 +66,7 @@
         "message": "⚠️ DeepL APIキーのテストが必要です。"
     },
     "testingButton": {
-        "message": "テスト中..."
+        "message": "確認中…"
     },
     "testingConnection": {
         "message": "DeepL接続をテストしています..."
@@ -93,16 +90,16 @@
         "message": "❌ テストに失敗しました：%s"
     },
     "vertexAccessTokenLabel": {
-        "message": "アクセストークン："
+        "message": "アクセストークン"
     },
     "vertexProjectIdLabel": {
-        "message": "プロジェクトID："
+        "message": "プロジェクトID"
     },
     "vertexLocationLabel": {
-        "message": "ロケーション："
+        "message": "リージョン"
     },
     "vertexModelLabel": {
-        "message": "モデル："
+        "message": "モデル"
     },
     "vertexMissingConfig": {
         "message": "アクセストークンとプロジェクトIDを入力してください。"
@@ -111,13 +108,13 @@
         "message": "接続に失敗しました：%s"
     },
     "vertexServiceAccountLabel": {
-        "message": "サービスアカウントJSON："
+        "message": "サービスアカウントのファイル"
     },
     "vertexImportButton": {
-        "message": "JSONファイルをインポート"
+        "message": "ファイルを選ぶ…"
     },
     "vertexImporting": {
-        "message": "インポート中..."
+        "message": "読み込み中…"
     },
     "vertexGeneratingToken": {
         "message": "アクセストークンを生成中..."
@@ -129,7 +126,7 @@
         "message": "⚠️ Vertex AIが設定されています。接続をテストしてください。"
     },
     "testConnectionButton": {
-        "message": "接続をテスト"
+        "message": "接続を確認"
     },
     "openaiApiKeyError": {
         "message": "まずAPIキーを入力してください。"
@@ -216,7 +213,7 @@
         "message": "分析中にエラーが発生しました。"
     },
     "aiContextTypesRequired": {
-        "message": "解説する内容を1つ以上選んでください。"
+        "message": "1つ以上選んでください。"
     },
     "deeplTestSuccessSimple": {
         "message": "✅ DeepL APIテストが成功しました！"
@@ -294,10 +291,10 @@
         "message": "設定をダウンロード"
     },
     "advancedJsonHelp": {
-        "message": "DualSubが保存している内容です（キーは含みません）。サイトごとの設定には、すべてのサイト共通の設定と違う項目だけが入っています。"
+        "message": "DualSubが保存している内容です（キーは含みません）。サイトごとの設定には、違う項目だけが入っています。"
     },
     "advancedJsonTitle": {
-        "message": "JSON形式の設定"
+        "message": "すべての設定（JSON形式）"
     },
     "advancedLead": {
         "message": "バックアップ、設定データそのもの、トラブル調査のための機能です。"
@@ -351,13 +348,13 @@
         "message": "すべてリセット…"
     },
     "advancedResetConfirm": {
-        "message": "すべての設定をおすすめの状態に戻しますか？このあとすぐなら元に戻せます。"
+        "message": "すべての設定をリセットしますか？このあとすぐなら元に戻せます。"
     },
     "advancedResetDo": {
         "message": "リセット"
     },
     "advancedResetHelp": {
-        "message": "すべての設定がおすすめの状態に戻り、どのサイトもまたすべてのサイト共通の設定に従います。キーと、それぞれのキーと一緒に使う設定（アドレスやモデルなど）、この設定画面の言語はそのまま残ります。"
+        "message": "すべての設定をおすすめの状態に戻し、サイトごとの専用設定を消します。キーと、それぞれのキーに合わせた設定（アドレスやモデルなど）、この設定画面の言語はそのまま残ります。"
     },
     "advancedResetTitle": {
         "message": "最初からやり直す"
@@ -380,20 +377,26 @@
     "commonChange": {
         "message": "変更"
     },
+    "commonDone": {
+        "message": "完了"
+    },
     "commonLoading": {
         "message": "読み込み中…"
     },
     "commonRecommended": {
         "message": "おすすめ"
     },
+    "commonOn": {
+        "message": "オン"
+    },
+    "commonOff": {
+        "message": "オフ"
+    },
     "explainCache": {
         "message": "回答を覚えておく"
     },
     "explainAllowHost": {
         "message": "単語を説明するには、DualSubがこのアドレスに接続することを許可してください。"
-    },
-    "explainKeyStays": {
-        "message": "キーはこのパソコンに保存され、選んだサービスにだけ送られます。"
     },
     "explainLead": {
         "message": "字幕の単語をクリックすると、意味や使われ方、その背景にある話がわかります。"
@@ -405,7 +408,7 @@
         "message": "単語をクリックしたら解説パネルを開く"
     },
     "explainPauseTitle": {
-        "message": "読んでいる間は動画を一時停止する"
+        "message": "動画を一時停止する"
     },
     "explainRateLimit": {
         "message": "1分あたりの最大リクエスト数"
@@ -417,13 +420,10 @@
         "message": "あきらめるまでに試す回数"
     },
     "explainSampleMeaning": {
-        "message": "とても激しい雨のこと。昔からある、くだけた英語の言い回しです。"
-    },
-    "explainSetupDone": {
-        "message": "お使いのAIサービス"
+        "message": "とても激しい雨のこと。昔からある、くだけた英語の言い回しで、由来ははっきりしていません。"
     },
     "explainSetupHelp": {
-        "message": "解説は、ご自分のアカウントを使ってAIサービスが作ります。"
+        "message": "解説は、ご自分のアカウントを使ってAIサービスが作ります。キーはこのパソコンに保存されたままです。"
     },
     "explainSetupTitle": {
         "message": "3つの手順で設定"
@@ -431,8 +431,26 @@
     "explainStatusOff": {
         "message": "オフになっています。キーは保存されたままです。"
     },
+    "explainNeedsSetup": {
+        "message": "設定が必要"
+    },
+    "explainSetUpWith": {
+        "message": "%sで設定済み"
+    },
+    "explainKeySaved": {
+        "message": "キーはこのパソコンにだけ保存されています。"
+    },
+    "explainChangeKey": {
+        "message": "キーを変更"
+    },
+    "explainChooseService": {
+        "message": "AIサービスを選ぶ"
+    },
+    "explainAddress": {
+        "message": "アドレス（互換サーバー用）"
+    },
     "explainStatusOn": {
-        "message": "オンです。字幕の単語をクリックして試してみてください。"
+        "message": "字幕の単語をクリックして試してみてください。"
     },
     "explainStatusSetup": {
         "message": "オンにするには、下の3つの手順を済ませてください。"
@@ -510,7 +528,7 @@
         "message": "ページを再読み込みしてください。"
     },
     "helpNoSubtitlesSite": {
-        "message": "そのサイトでDualSubがオンになっているか確かめてください。"
+        "message": "そのサイトでDualSubがオンになっているか、「%s」で確かめてください。"
     },
     "helpNoSubtitlesTitle": {
         "message": "字幕が表示されない"
@@ -518,17 +536,20 @@
     "helpNoSubtitlesTracks": {
         "message": "動画に字幕があるか確かめてください。サイトの字幕メニューを開くとわかります。"
     },
-    "helpOpenSites": {
-        "message": "「サイト」を開く"
-    },
     "helpPrivacy": {
-        "message": "字幕の文章は、選んだ翻訳サービスにだけ送られます。追跡は一切なく、DualSubの開発者に何かが送られることもありません。"
+        "message": "字幕の文章は、選んだ翻訳サービスにだけ送られます。追跡は一切なく、私たちに何かが送られることもありません。"
+    },
+    "helpPrivacyFallback": {
+        "message": "字幕の文章は、選んだ翻訳サービスと、それが使えないときに代わりを務める無料のサービスにだけ送られます。追跡は一切なく、私たちに何かが送られることもありません。"
     },
     "helpSource": {
         "message": "ソースコード"
     },
+    "helpMadeBy": {
+        "message": "制作：QuellaMC、1jifang"
+    },
     "helpTimingHelp": {
-        "message": "字幕を少し早く、または少し遅く表示します。"
+        "message": "字幕を少し早く、または少し遅くずらします。"
     },
     "helpTimingTitle": {
         "message": "字幕が声とずれている"
@@ -567,7 +588,7 @@
         "message": "動画で話されている言語"
     },
     "languagesTopAutoHelp": {
-        "message": "動画ごと、選んだ音声ごとにDualSubが合わせます。韓国ドラマなら上の行は韓国語、英語の映画なら英語になります。"
+        "message": "動画ごとにDualSubが合わせます。韓国ドラマなら上の行は韓国語、英語の映画なら英語になります。"
     },
     "languagesTopFixed": {
         "message": "常に同じ言語"
@@ -639,7 +660,7 @@
         "message": "やわらかい影"
     },
     "lookExactPosition": {
-        "message": "高さ：%s（0.1が一番下、9.9が画面の真ん中）"
+        "message": "高さ：%s（0.1の一番下から9.9の真ん中まで）"
     },
     "lookExactSize": {
         "message": "文字の大きさ：%s倍"
@@ -722,6 +743,9 @@
     "lookPresetsLabel": {
         "message": "用意された見た目"
     },
+    "lookPresetSample": {
+        "message": "こんにちは"
+    },
     "lookSizeTitle": {
         "message": "文字の大きさ"
     },
@@ -732,7 +756,10 @@
         "message": "用意された見た目から始めて、好みで色やフォントを変えられます。"
     },
     "lookStylePlatform": {
-        "message": "サイトと同じ見た目"
+        "message": "見ているサイトと同じ見た目"
+    },
+    "lookStylePlatformSite": {
+        "message": "%sと同じ見た目"
     },
     "lookStylePlatformHelp": {
         "message": "NetflixやDisney+のプロフィールにある字幕設定に従います。"
@@ -780,10 +807,22 @@
         "message": "タイミング"
     },
     "previewCaptionAuto": {
-        "message": "動画の行は%s（動画で話されている言語）、自分の言語の行は%sです。"
+        "message": "動画の行は%s（この動画で話されている言語）。自分の言語の行は%sで、作品に公式の翻訳があればそれを使います。"
     },
     "previewCaptionFixed": {
-        "message": "動画の行は%s、自分の言語の行は%sです。"
+        "message": "動画の行は%s。自分の言語の行は%sで、作品に公式の翻訳があればそれを使います。"
+    },
+    "previewCaptionAutoTranslated": {
+        "message": "動画の行は%s（この動画で話されている言語）。自分の言語の行は%sで、DualSubが翻訳します。"
+    },
+    "previewCaptionAutoOne": {
+        "message": "動画の行は%s（この動画で話されている言語）です。"
+    },
+    "previewCaptionFixedTranslated": {
+        "message": "動画の行は%s。自分の言語の行は%sで、DualSubが翻訳します。"
+    },
+    "previewCaptionFixedOne": {
+        "message": "動画の行は%sです。"
     },
     "previewEnglishFilm": {
         "message": "英語の映画"
@@ -846,25 +885,25 @@
         "message": "すべてのサイト"
     },
     "scopeBackToAll": {
-        "message": "すべてのサイトに戻る"
+        "message": "「すべてのサイト」に戻る"
     },
     "scopeEditingSite": {
         "message": "%sの設定だけを変更しています。"
     },
     "scopeEditingSiteHelp": {
-        "message": "ここで変えた項目には「%sのみ」の印が付きます。それ以外は、すべてのサイト共通の設定に従います。"
+        "message": "ここで変えた項目には「%sのみ」の印が付きます。それ以外は「すべてのサイト」の設定に従います。"
     },
     "scopeHelp": {
-        "message": "専用の設定がないサイトでは、すべてのサイト共通の設定が使われます。"
+        "message": "専用の設定がないサイトでは、「すべてのサイト」の設定が使われます。"
     },
     "scopeLabel": {
         "message": "設定するサイト"
     },
     "scopeOwnCount": {
-        "message": "専用の設定：%d項目"
+        "message": "専用の設定 %d項目"
     },
     "scopeSameAsAll": {
-        "message": "すべてのサイトと同じ"
+        "message": "「すべてのサイト」と同じ"
     },
     "scopeSharedSetting": {
         "message": "どのサイトでも共通"
@@ -873,13 +912,19 @@
         "message": "%sのみ"
     },
     "scopeUseShared": {
-        "message": "すべてのサイト共通の値を使う"
+        "message": "「すべてのサイト」の値を使う"
     },
     "setupAddress": {
         "message": "サービスのアドレス"
     },
     "setupCheckKey": {
         "message": "キーを確認"
+    },
+    "setupOpenAIStudio": {
+        "message": "Google AI Studioを開く"
+    },
+    "setupOpenOpenAI": {
+        "message": "OpenAIを開く"
     },
     "setupChooseService": {
         "message": "AIサービスを選ぶ"
@@ -895,9 +940,6 @@
     },
     "setupOpenAIKeyHelp": {
         "message": "ログインして「API keys」を開き、シークレットキーを作成してコピーします。"
-    },
-    "setupOpenKeyPage": {
-        "message": "%sを開く"
     },
     "setupOtherKeyHelp": {
         "message": "お使いのサービスが発行するキーとアドレスを使ってください。"
@@ -948,16 +990,10 @@
         "message": "DualSubはこれらのサイトで自動的にオンになります。サイトごとにオフにしたり、専用の設定を作ったりできます。"
     },
     "sitesMoreHelp": {
-        "message": "DualSubが新しいサイトに対応すると、ここに表示されます。最初からオンになっていて、すべてのサイト共通の設定が使われます。"
+        "message": "DualSubが新しいサイトに対応すると、ここに表示されます。最初からオンになっていて、「すべてのサイト」の設定が使われます。"
     },
     "sitesMoreTitle": {
         "message": "対応サイトはこれから増えます"
-    },
-    "sitesOff": {
-        "message": "オフ"
-    },
-    "sitesOn": {
-        "message": "オン"
     },
     "sitesRemoveOwn": {
         "message": "専用の設定を削除"
@@ -966,10 +1002,10 @@
         "message": "このサイトでDualSubを使う"
     },
     "sitesUsesShared": {
-        "message": "すべてのサイト共通の設定を使用中"
+        "message": "「すべてのサイト」の設定を使用中"
     },
     "sitesUsesSharedHelp": {
-        "message": "%s専用に、文字の大きさ・色・上の行・タイミングを決められます。"
+        "message": "%s専用に、文字の大きさ・色・言語・タイミングを決められます。"
     },
     "sizeExtraLarge": {
         "message": "特大"
@@ -999,7 +1035,7 @@
         "message": "字幕が二重に表示される"
     },
     "startFromBrowser": {
-        "message": "ブラウザの設定から"
+        "message": "ブラウザの設定から選びました"
     },
     "startLead": {
         "message": "NetflixかDisney+を開いて、好きな動画を再生してください。字幕が2行表示されます。上は動画の言語、下は自分の言語です。"
@@ -1017,34 +1053,37 @@
         "message": "DeepL（自分のキーを使用）"
     },
     "startProviderGoogle": {
-        "message": "Google翻訳：無料、設定は不要"
+        "message": "Google翻訳、無料、設定は不要"
     },
     "startProviderMicrosoft": {
-        "message": "Microsoft翻訳：無料、設定は不要"
+        "message": "Microsoft翻訳、無料、設定は不要"
     },
     "startProviderVertex": {
-        "message": "Google Vertex AI（自分のGoogle Cloudプロジェクトを使用）"
+        "message": "Google Vertex AI"
     },
     "startSetUpTitle": {
         "message": "あらかじめ設定してあります"
     },
-    "startSiteOff": {
-        "message": "%s：オフ"
-    },
-    "startSiteUnreadable": {
-        "message": "%s：読み込み失敗"
-    },
-    "startSiteOn": {
-        "message": "%s：オン"
+    "startTopTitle": {
+        "message": "上の行"
     },
     "startStatusOff": {
         "message": "二言語字幕はオフです"
     },
+    "startStatusOn": {
+        "message": "二言語字幕はオンです"
+    },
+    "startStatusWorking": {
+        "message": "%sで動いています"
+    },
+    "startStatusWorkingSome": {
+        "message": "%sで動いています（%sではオフ）"
+    },
+    "startSitesUnreadable": {
+        "message": "DualSubがどのサイトでオンになっているか読み取れませんでした。"
+    },
     "startStatusOffHelp": {
         "message": "スイッチでまたオンにできます。"
-    },
-    "startStatusReady": {
-        "message": "DualSubの準備ができています"
     },
     "startStatusReadyHelp": {
         "message": "設定は不要です。動画を再生するだけです。"
@@ -1080,7 +1119,7 @@
         "message": "どの行も少し早く表示されます。"
     },
     "timingExactHelp": {
-        "message": "単位は秒です。プラスの数にすると、字幕が早く表示されます。"
+        "message": "単位は秒です。プラスの数にすると、字幕が早く表示されます（%sとして保存）。"
     },
     "timingExactTitle": {
         "message": "ずらす秒数"
@@ -1107,7 +1146,7 @@
         "message": "ずれなしに戻す"
     },
     "timingTipHelp": {
-        "message": "ブラウザのツールバーにあるDualSubのボタンを押すと、同じボタンが使えます。動画を見たまま、字幕を声に合わせられます。"
+        "message": "ブラウザのツールバーにあるDualSubのボタンにも、同じ2つのボタンがあります。動画を見たまま、字幕を聞こえる声に合わせられます。"
     },
     "timingTipTitle": {
         "message": "見ながら直す"
@@ -1140,7 +1179,7 @@
         "message": "「%s」に当てはまるトラックをまた使います"
     },
     "toastFollowsShared": {
-        "message": "すべてのサイト共通の値に戻しました"
+        "message": "「すべてのサイト」の値に戻しました"
     },
     "toastHiddenEverywhere": {
         "message": "完了しました。どのサイトでも、サイト本来の字幕を隠します。"
@@ -1188,7 +1227,7 @@
         "message": "%sでDualSubをオンにしました"
     },
     "toastSiteShared": {
-        "message": "%sはまた、すべてのサイト共通の設定を使います"
+        "message": "%sはまた「すべてのサイト」の設定を使います"
     },
     "toastSiteShow": {
         "message": "%s自体の字幕を表示します"
@@ -1352,6 +1391,12 @@
     "translationDeepLOpen": {
         "message": "DeepLを開く"
     },
+    "translationDeepLGetKey": {
+        "message": "キーを取得"
+    },
+    "translationDeepLKeyPlaceholder": {
+        "message": "DeepLのキー"
+    },
     "translationDeepLPlan": {
         "message": "どちらのプランをお使いですか？"
     },
@@ -1377,7 +1422,7 @@
         "message": "翻訳サービス"
     },
     "translationVertexHelp": {
-        "message": "サービスアカウントのファイルを一度読み込んで有効期限の短いトークンを作るか、トークンを貼り付けてください。ファイル自体は保存されません。"
+        "message": "DualSubはこのファイルから有効期限の短いトークンを作り、ファイル自体は保存しません。"
     },
     "translationVertexSetupTitle": {
         "message": "Google Vertex AIの設定"
@@ -1385,47 +1430,86 @@
     "welcomePageTitle": {
         "message": "DualSubへようこそ"
     },
+    "welcomeInstalled": {
+        "message": "インストール済み"
+    },
+    "welcomePickedTitle": {
+        "message": "選んでおいたもの"
+    },
+    "welcomeLanguage": {
+        "message": "自分の言語：%s"
+    },
+    "welcomeLanguageFromBrowser": {
+        "message": "ブラウザの設定から選びました。下の行はいつもこの言語です。"
+    },
+    "welcomeLanguageLabel": {
+        "message": "自分の言語"
+    },
+    "welcomeTopAuto": {
+        "message": "上の行：それぞれの動画で話されている言語"
+    },
+    "welcomeTopAutoHelp": {
+        "message": "韓国ドラマなら韓国語、英語の映画なら英語になります。"
+    },
+    "welcomeTopFixed": {
+        "message": "上の行：常に%s"
+    },
+    "welcomeTopFixedHelp": {
+        "message": "サイトにその言語の字幕があれば、どの動画でも上に表示します。"
+    },
+    "welcomeTranslation": {
+        "message": "翻訳：%s"
+    },
+    "welcomeTranslationFree": {
+        "message": "無料で、アカウントは不要です。"
+    },
+    "welcomeTranslationKeyed": {
+        "message": "ご自分のアカウントを使います。"
+    },
+    "welcomeTranslationOfficial": {
+        "message": "作品に自分の言語の公式翻訳があれば、DualSubはそれを使います。"
+    },
+    "welcomeOpenHelp": {
+        "message": "いつもどおりにログインします。"
+    },
+    "welcomeEarlier": {
+        "message": "早く"
+    },
+    "welcomeLater": {
+        "message": "遅く"
+    },
     "welcomeTitle": {
-        "message": "ようこそ！DualSubの準備ができました。"
+        "message": "準備ができました。"
     },
     "welcomeLead": {
-        "message": "設定なしで、すぐに使えます。字幕はこのように表示されます："
-    },
-    "welcomeLanguageTitle": {
-        "message": "字幕を翻訳する言語"
+        "message": "DualSubは、NetflixとDisney+に2行の字幕を表示します。上は動画そのものの言語、下は自分の言語です。設定は何もいりません。"
     },
     "welcomeLanguageHelp": {
-        "message": "ブラウザの言語を選んでおきました。お好みで、ほかの言語に変えられます。"
+        "message": "下の行はいつもこの言語です。"
     },
     "welcomeStepsTitle": {
-        "message": "最初の動画を見るまでの3つの手順"
+        "message": "3つの手順で見始めましょう"
     },
     "welcomePinTitle": {
         "message": "DualSubをツールバーに固定する"
     },
     "welcomePinHelp": {
-        "message": "Chromeの右上にある、パズルのピースの形をした「拡張機能」ボタンをクリックします。次に、DualSubの横にあるピンの形の「固定」ボタンをクリックします。これでDualSubのボタンがツールバーに残り、動画を見ている間もすぐに使えます。"
+        "message": "ブラウザの右上にある、パズルのピースの形をした「拡張機能」をクリックし、DualSubの横にあるピンの「固定」をクリックします。これで動画を見ている間もボタンが見えたままになります。"
     },
     "welcomeOpenTitle": {
-        "message": "見たいサイトを開く"
+        "message": "NetflixかDisney+を開く"
     },
     "welcomePlayTitle": {
         "message": "好きな動画を再生する"
     },
     "welcomePlayHelp": {
-        "message": "字幕が自動で2行表示されます。上は動画の言語、下は自分の言語です。もともと自分の言語の動画なら、1行だけ表示します。"
-    },
-    "welcomeSettingsTitle": {
-        "message": "変えたいところがありますか？"
-    },
-    "welcomeSettingsHelp": {
-        "message": "字幕の見た目、タイミング、翻訳サービスなどは、設定で変えられます。"
+        "message": "2行の字幕は自動で表示されます。小さすぎたり、声とずれていたりしたら、DualSubのボタンをクリックしてください。"
     },
     "welcomeOpenSettings": {
-        "message": "設定を開く"
+        "message": "すべての設定を見る"
     },
     "welcomeClose": {
-        "message": "このタブはいつ閉じてもかまいません。"
+        "message": "以上です。このタブは閉じてかまいません。"
     },
     "popupAllSettings": {
         "message": "すべての設定"
@@ -1474,14 +1558,5 @@
     },
     "startNeedsSetupStopped": {
         "message": "設定が済むまでは、字幕は翻訳されません。"
-    },
-    "sitesHideAllHelp": {
-        "message": "すべてのサイトが対象です。下のサイトごとに、個別に選ぶこともできます。"
-    },
-    "toastSitesHide": {
-        "message": "サイト本来の字幕：非表示"
-    },
-    "toastSitesShow": {
-        "message": "サイト本来の字幕：表示"
     }
 }

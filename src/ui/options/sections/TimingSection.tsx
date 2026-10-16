@@ -1,6 +1,7 @@
 import { validateSetting } from '@/config/schema';
 import { NUDGE_SECONDS, roundSeconds, timingLabel } from '../../adjustments';
 import { Icon } from '../../design/Icon';
+import { Interpolate } from '../../design/Interpolate';
 import { useCommittedTextField } from '../../hooks/useCommittedTextField';
 import { CommittedField } from '../controls/CommittedField';
 import { SiteTag, useSiteDraft } from '../shell/scopeContext';
@@ -46,7 +47,7 @@ export function TimingSection({
             <p className="lead">{t('timingLead')}</p>
 
             <div className="card" id="timing">
-                <h2 className="label">{t('timingTitle')}</h2>
+                <h2 className="sr-only">{t('timingTitle')}</h2>
                 <div className="timing">
                     <button
                         type="button"
@@ -113,7 +114,13 @@ export function TimingSection({
                                     {t('commonAdvanced')}
                                 </span>
                             </label>
-                            <div className="help">{t('timingExactHelp')}</div>
+                            <div className="help">
+                                <Interpolate text={t('timingExactHelp')}>
+                                    <span className="mono">
+                                        subtitleTimeOffset
+                                    </span>
+                                </Interpolate>
+                            </div>
                         </div>
                         <div className="stack">
                             <CommittedField

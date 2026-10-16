@@ -18,6 +18,7 @@ const AI_SERVICES = [
         baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
         model: 'gemini-2.5-flash',
         keyPage: 'https://aistudio.google.com/apikey',
+        keyPageKey: 'setupOpenAIStudio',
         keyHelpKey: 'setupGeminiKeyHelp',
     },
     {
@@ -26,6 +27,7 @@ const AI_SERVICES = [
         baseUrl: 'https://api.openai.com/v1',
         model: 'gpt-5.6-luna',
         keyPage: 'https://platform.openai.com/api-keys',
+        keyPageKey: 'setupOpenOpenAI',
         keyHelpKey: 'setupOpenAIKeyHelp',
     },
 ] as const;
@@ -123,7 +125,7 @@ export function OpenAICompatibleProviderCard({
                                 target="_blank"
                                 rel="noopener noreferrer"
                             >
-                                {t('setupOpenKeyPage', t(service.labelKey))}
+                                {t(service.keyPageKey)}
                                 <Icon name="external" />
                             </a>
                         )}
