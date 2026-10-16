@@ -99,8 +99,8 @@ export function OptionsApp() {
     const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     /** The last change asked for; each waits for the one before. */
     const changes = useRef<Promise<unknown>>(Promise.resolve());
-    /** Counts the viewer's navigations, so one that waits on a save gives
-     *  way to any made meanwhile. */
+    /** Counts the navigations the viewer asks for, so one that waits on a
+     *  save gives way to any asked for after it. */
     const navigations = useRef(0);
     /** The drafts of the settings shown, by key; following the value for
      *  all sites cancels them first. */
@@ -284,7 +284,7 @@ export function OptionsApp() {
             }
             void followAllSites(
                 feedback,
-                editing,
+                [editing],
                 keys,
                 t('toastFollowsShared')
             );
@@ -301,7 +301,7 @@ export function OptionsApp() {
         go('look');
     };
     const openSearchResult = async (entry: SearchEntry): Promise<void> => {
-        const asked = navigations.current;
+        const asked = ++navigations.current;
         if (
             entry.advanced &&
             !advanced &&

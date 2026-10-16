@@ -60,7 +60,7 @@ describe('useSettings', () => {
             .spyOn(configService, 'setMultiple')
             .mockReturnValueOnce(firstWrite.promise);
 
-        let saves: Promise<void>[] = [];
+        let saves: Promise<Partial<SettingsValues>>[] = [];
         act(() => {
             saves = [
                 result.current.save({ targetLanguage: 'ja' }),

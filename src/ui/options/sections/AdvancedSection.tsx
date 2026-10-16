@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { browser } from 'wxt/browser';
 import {
-    changedSiteValues,
     CREDENTIAL_SETUP,
     getDefaultValue,
     isSettingsKey,
@@ -14,7 +13,7 @@ import {
     type SettingsKey,
     type SettingsValues,
 } from '@/config/schema';
-import { configService } from '@/config/service';
+import { configService, type SettingsChange } from '@/config/service';
 import { useSettings } from '../../hooks/useSettings';
 import { useFeedback } from '../shell/feedback';
 import type { SectionProps } from '../types';
@@ -122,49 +121,6 @@ function changeCount(
     ).length;
 }
 
-/** One site's stored value for `key` in `profiles`, if it has one. */
-function entryOf(
-    profiles: SettingsValues['siteProfiles'] | undefined,
-    site: string,
-    key: string
-): unknown {
-    return profiles?.[site]?.[key];
-}
-
-/** Put back what `before` held where storage still holds what `changes`
- *  wrote: each setting whole, and of the site profiles only the entries
- *  `changes` changes, so an edit another page made since stays. */
-async function putBack(
-    before: Partial<SettingsValues>,
-    changes: Partial<SettingsValues>
-): Promise<unknown> {
-    const now = await configService.getMultiple(Object.keys(changes));
-    const shared = Object.fromEntries(
-        Object.keys(changes)
-            .filter(isSettingsKey)
-            .filter(
-                (key) =>
-                    key !== 'siteProfiles' &&
-                    sameSettingValue(now[key], changes[key])
-            )
-            .map((key) => [key, before[key]])
-    );
-    const written = changes.siteProfiles;
-    if (written === undefined) {
-        return configService.setMultiple(shared);
-    }
-    return configService.restoreSiteValues(
-        { ...shared, siteProfiles: before.siteProfiles },
-        changedSiteValues(before.siteProfiles ?? {}, written).filter(
-            ([site, key]) =>
-                sameSettingValue(
-                    entryOf(now.siteProfiles, site, key),
-                    entryOf(written, site, key)
-                )
-        )
-    );
-}
-
 /** Write `changes` with `write` whole or not at all: the storage areas are
  *  written one after another, so when a later one fails, what the earlier
  *  ones took is put back. Resolves to what `changes` replaced. */
@@ -176,7 +132,9 @@ async function wholly(
     try {
         await write();
     } catch (error) {
-        await putBack(before, changes).catch(() => undefined);
+        await configService
+            .putBack({ before, after: changes })
+            .catch(() => undefined);
         throw error;
     }
     return before;
@@ -227,15 +185,14 @@ export function AdvancedSection({ t, settings, save }: SectionProps) {
         build: () => Promise<Partial<SettingsValues>>,
         message: string
     ): void => {
-        let changes: Partial<SettingsValues> = {};
-        let before: Partial<SettingsValues> = {};
+        let change: SettingsChange = { before: {}, after: {} };
         void feedback.apply(
             async () => {
-                changes = await build();
-                before = await wholly(changes);
+                const changes = await build();
+                change = { before: await wholly(changes), after: changes };
             },
             message,
-            () => wholly(before, () => putBack(before, changes))
+            () => wholly(change.before, () => configService.putBack(change))
         );
     };
 
