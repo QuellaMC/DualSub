@@ -252,7 +252,10 @@ describe('OptionsApp', () => {
         fireEvent.change(screen.getByLabelText('Paste it here'), {
             target: { value: 'AIza-key' },
         });
-        fireEvent.click(await screen.findByRole('button', { name: 'Turn on' }));
+        // The button waits for the key to be saved.
+        const turnOn = await screen.findByRole('button', { name: 'Turn on' });
+        await waitFor(() => expect(turnOn).toBeEnabled());
+        fireEvent.click(turnOn);
         await waitFor(async () =>
             expect(await sync('aiContextEnabled')).toBe(true)
         );
@@ -270,6 +273,7 @@ describe('OptionsApp', () => {
         await fakeBrowser.storage.sync.set({
             openaiCompatibleBaseUrl: 'https://llm.example.com/v1',
             openaiCompatibleModel: 'house-model',
+            openaiBaseUrl: 'https://explain.example.com/v1',
         });
         await fakeBrowser.storage.local.set({
             deeplApiKey: 'keep-me',
@@ -289,11 +293,13 @@ describe('OptionsApp', () => {
         expect(
             (await fakeBrowser.storage.local.get('deeplApiKey')).deeplApiKey
         ).toBe('keep-me');
-        // A kept key keeps the address and model it was set up with.
+        // A kept key keeps the address and model it was set up with; an
+        // address with no key goes back to the recommended one.
         expect(await sync('openaiCompatibleBaseUrl')).toBe(
             'https://llm.example.com/v1'
         );
         expect(await sync('openaiCompatibleModel')).toBe('house-model');
+        expect(await sync('openaiBaseUrl')).toBe('https://api.openai.com/v1');
 
         fireEvent.click(await screen.findByRole('button', { name: 'Undo' }));
         await waitFor(async () =>
@@ -379,6 +385,19 @@ describe('OptionsApp', () => {
             (await fakeBrowser.storage.local.get('showAdvancedSettings'))
                 .showAdvancedSettings
         ).toBe(true);
+    });
+
+    it('lands on the menu language picker from search', async () => {
+        await renderReady();
+        fireEvent.change(screen.getByRole('searchbox'), {
+            target: { value: 'menu language' },
+        });
+        fireEvent.click(
+            screen.getByRole('button', { name: /^Language of DualSub's menus/ })
+        );
+        await waitFor(() =>
+            expect(document.getElementById('ui-language')).toHaveFocus()
+        );
     });
 
     it('lands on the choice that shows a searched setting, then on the setting', async () => {
