@@ -1,4 +1,5 @@
 import { createLogger, setLoggingLevel } from '@/shared/logger';
+import type { SettingsValues } from '@/config/schema';
 import { configService, type SiteConfig } from '@/config/service';
 import { MessageRouter } from '@/messaging/router';
 import {
@@ -25,9 +26,14 @@ import {
     toLanguageSettings,
     type ContentSettings,
     type InteractionSettings,
-    type LanguageSettings,
     type SessionEndReason,
 } from './PlayerSession';
+
+const SESSION_SETTINGS_KEYS = [
+    ...CONTENT_SETTINGS_KEYS,
+    ...FETCH_SETTINGS_KEYS,
+    ...INTERACTION_SETTINGS_KEYS,
+];
 
 /**
  * Document root of the content side. Owns document-lifetime services (page
@@ -44,6 +50,9 @@ export class ContentOrchestrator {
     private readonly bridge: IsolatedBridge;
     private readonly router = new MessageRouter();
     private activeSession: PlayerSession | null = null;
+    /** For each session's settings read still out, the changes heard since
+     *  it began, which are newer than its answer. */
+    private readonly reads = new Set<Partial<SettingsValues>>();
     private handoff: PlatformHandoff | null = null;
     /** The viewer's platform subtitle appearance; profile-wide, so it
      *  outlives sessions. */
@@ -72,7 +81,7 @@ export class ContentOrchestrator {
             return { success: true as const };
         });
         this.router.handle(playerStatus, () => ({
-            onPlayer: this.activeSession !== null,
+            onPlayer: this.activeSession?.hasMedia === true,
         }));
         // Side panel traffic addresses the selection of whichever session is
         // on the route; with no session there is nothing to answer for.
@@ -105,19 +114,14 @@ export class ContentOrchestrator {
         this.bridge.start();
         new NavigationWatcher(() => this.requestReconcile()).start(signal);
 
+        // The one subscription, made before any session reads its settings:
+        // a change heard while a read is out lands on top of its answer, and
+        // every later one reaches the session on the route.
         const unsubscribe = this.config.onChanged((changes) => {
-            const session = this.activeSession;
-            if (
-                session &&
-                FETCH_SETTINGS_KEYS.some((key) => changes[key] !== undefined)
-            ) {
-                session.updateLanguageSettings(
-                    toLanguageSettings({
-                        ...session.languageSettings,
-                        ...changes,
-                    })
-                );
+            for (const heard of this.reads) {
+                Object.assign(heard, changes);
             }
+            this.activeSession?.applySettings(changes);
         });
         signal.addEventListener('abort', unsubscribe, { once: true });
 
@@ -208,8 +212,14 @@ export class ContentOrchestrator {
     }
 
     private async startSession(videoId: string): Promise<void> {
-        const { settings, languageSettings, interaction } =
-            await this.readSessionSettings();
+        const heard: Partial<SettingsValues> = {};
+        this.reads.add(heard);
+        let stored: Partial<SettingsValues>;
+        try {
+            stored = await this.config.getMultiple(SESSION_SETTINGS_KEYS);
+        } finally {
+            this.reads.delete(heard);
+        }
         // The route may have moved on while settings were loading.
         if (
             this.tornDown ||
@@ -218,6 +228,7 @@ export class ContentOrchestrator {
         ) {
             return;
         }
+        const values = { ...stored, ...heard };
         this.sessionCounter += 1;
         const session = new PlayerSession({
             id: this.sessionCounter,
@@ -229,32 +240,15 @@ export class ContentOrchestrator {
             uiRoot: this.uiRoot,
             handoff: this.handoff,
             platformLook: this.platformLook,
-            settings,
-            languageSettings,
-            interaction,
+            settings: values as ContentSettings,
+            languageSettings: toLanguageSettings(values),
+            interaction: values as InteractionSettings,
             onNavigationMismatch: () => this.requestReconcile(),
             onContextInvalidated: () => this.teardown('context-invalidated'),
         });
         this.activeSession = session;
         this.handoff = null;
         session.start();
-    }
-
-    private async readSessionSettings(): Promise<{
-        settings: ContentSettings;
-        languageSettings: LanguageSettings;
-        interaction: InteractionSettings;
-    }> {
-        const values = await this.config.getMultiple([
-            ...CONTENT_SETTINGS_KEYS,
-            ...FETCH_SETTINGS_KEYS,
-            ...INTERACTION_SETTINGS_KEYS,
-        ]);
-        return {
-            settings: values as ContentSettings,
-            languageSettings: toLanguageSettings(values),
-            interaction: values as InteractionSettings,
-        };
     }
 
     teardown(reason: SessionEndReason): void {
