@@ -432,6 +432,137 @@ describe('OptionsApp', () => {
         expect(document.body).not.toHaveTextContent('commonLoading');
     });
 
+    it("puts a site's profiles back exactly on Undo, an own value equal to the shared one included", async () => {
+        await fakeBrowser.storage.sync.set({
+            siteProfiles: { netflix: { subtitleFontScale: 1 } },
+        });
+        location.hash = '#sites';
+        await renderReady();
+        fireEvent.click(
+            await screen.findByRole('button', {
+                name: 'Edit the Netflix settings',
+            })
+        );
+        await screen.findByText("You're changing Netflix only.");
+        fireEvent.click(screen.getByRole('button', { name: /Large$/ }));
+        await waitFor(async () =>
+            expect(await sync('siteProfiles')).toEqual({
+                netflix: { subtitleFontScale: 1.3 },
+            })
+        );
+        fireEvent.click(await screen.findByRole('button', { name: 'Undo' }));
+        await waitFor(async () =>
+            expect(await sync('siteProfiles')).toEqual({
+                netflix: { subtitleFontScale: 1 },
+            })
+        );
+    });
+
+    it('says when the chosen service still needs setting up and nothing covers', async () => {
+        await fakeBrowser.storage.sync.set({
+            selectedProvider: 'deepl',
+            translationFallback: false,
+        });
+        await renderReady();
+        expect(screen.getByText("DeepL isn't set up yet")).toBeInTheDocument();
+        expect(
+            screen.getByText("Until it is, subtitles aren't translated.")
+        ).toBeInTheDocument();
+        expect(screen.queryByText('DualSub is ready')).not.toBeInTheDocument();
+    });
+
+    it('says who translates while the chosen service still needs setting up', async () => {
+        await fakeBrowser.storage.sync.set({ selectedProvider: 'deepl' });
+        await renderReady();
+        expect(screen.getByText('DualSub is ready')).toBeInTheDocument();
+        expect(
+            screen.getByText('Until it is, Microsoft Translator translates.')
+        ).toBeInTheDocument();
+    });
+
+    it("hides or shows the sites' own subtitles on every site at once", async () => {
+        location.hash = '#sites';
+        await renderReady();
+        const everywhere = await screen.findByRole('switch', {
+            name: "Hide the site's own subtitles",
+        });
+        expect(everywhere).toHaveAttribute('aria-checked', 'true');
+        fireEvent.click(everywhere);
+        await waitFor(async () =>
+            expect(await sync('hideOfficialSubtitles')).toBe(false)
+        );
+        expect(
+            await screen.findByText("Sites' own subtitles: shown")
+        ).toBeInTheDocument();
+    });
+
+    it("counts a site's switches among its own settings, and removes them too", async () => {
+        await fakeBrowser.storage.sync.set({
+            siteProfiles: { netflix: { subtitlesEnabled: false } },
+        });
+        location.hash = '#sites';
+        await renderReady();
+        expect(
+            await screen.findByText('Has its own settings')
+        ).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Remove them' }));
+        await waitFor(async () =>
+            expect(await sync('siteProfiles')).toEqual({})
+        );
+    });
+
+    it('keeps the token expiry out of the settings JSON along with the keys', async () => {
+        await fakeBrowser.storage.local.set({
+            showAdvancedSettings: true,
+            vertexTokenExpiresAt: 123,
+        });
+        location.hash = '#advanced';
+        await renderReady();
+        await waitFor(() =>
+            expect(document.querySelector('pre.code')).toHaveTextContent(
+                '"subtitleFontScale": 1'
+            )
+        );
+        expect(document.querySelector('pre.code')).not.toHaveTextContent(
+            'vertexTokenExpiresAt'
+        );
+    });
+
+    it('puts everything back when a backup can only be loaded in part', async () => {
+        await fakeBrowser.storage.local.set({ showAdvancedSettings: true });
+        location.hash = '#advanced';
+        await renderReady();
+        await waitFor(() =>
+            expect(document.querySelector('pre.code')).toHaveTextContent(
+                '"subtitleFontScale": 1'
+            )
+        );
+        const backup = new File(
+            [
+                JSON.stringify({
+                    subtitleFontScale: 1.6,
+                    showAdvancedSettings: false,
+                }),
+            ],
+            'backup.json',
+            { type: 'application/json' }
+        );
+        fireEvent.change(screen.getByLabelText('Load settings from a file'), {
+            target: { files: [backup] },
+        });
+        const replace = await screen.findByRole('button', {
+            name: 'Replace them',
+        });
+        vi.spyOn(browser.storage.local, 'set').mockRejectedValueOnce(
+            new Error('quota')
+        );
+        fireEvent.click(replace);
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+            'Failed to save setting'
+        );
+        expect(await sync('subtitleFontScale')).toBe(1);
+    });
+
     it('blocks the page when settings cannot be read', async () => {
         vi.spyOn(browser.storage.sync, 'get').mockRejectedValue(
             new Error('broken')

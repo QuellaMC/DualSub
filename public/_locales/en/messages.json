@@ -1450,5 +1450,23 @@
     },
     "popupReload": {
         "message": "Reload the page"
+    },
+    "startNeedsSetupTitle": {
+        "message": "%s isn't set up yet"
+    },
+    "startNeedsSetupCovered": {
+        "message": "Until it is, %s translates."
+    },
+    "startNeedsSetupStopped": {
+        "message": "Until it is, subtitles aren't translated."
+    },
+    "sitesHideAllHelp": {
+        "message": "On every site. A site below can keep its own choice."
+    },
+    "toastSitesHide": {
+        "message": "Sites' own subtitles: hidden"
+    },
+    "toastSitesShow": {
+        "message": "Sites' own subtitles: shown"
     }
 }

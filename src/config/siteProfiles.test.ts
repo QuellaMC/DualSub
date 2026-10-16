@@ -3,6 +3,7 @@ import { fakeBrowser } from 'wxt/testing/fake-browser';
 import {
     prepareSettingValue,
     sameSettingValue,
+    siteProfileOf,
     validateSetting,
 } from './schema';
 import { configService, type SettingsChanges } from './service';
@@ -24,19 +25,23 @@ describe('siteProfiles values', () => {
         });
     });
 
-    it('drops what this version does not know or accept, keeping the rest', () => {
-        expect(
-            prepareSettingValue('siteProfiles', {
-                netflix: {
-                    subtitleFontScale: 99,
-                    subtitleGap: 0.5,
-                    futureSetting: true,
-                    selectedProvider: 'deepl',
-                },
-                hulu: { subtitleGap: 0.1 },
-                disneyplus: { subtitleFontScale: 'big' },
-            })
-        ).toEqual({ netflix: { subtitleGap: 0.5 } });
+    it('keeps what a newer version wrote, and reads only what this one can use', () => {
+        const written = {
+            netflix: {
+                subtitleFontScale: 99,
+                subtitleGap: 0.5,
+                futureSetting: true,
+                selectedProvider: 'deepl',
+            },
+            hulu: { subtitleGap: 0.1 },
+            disneyplus: { subtitleFontScale: 'big' },
+        };
+        const profiles = prepareSettingValue('siteProfiles', written);
+        expect(profiles).toEqual(written);
+        expect(siteProfileOf(profiles, 'netflix')).toEqual({
+            subtitleGap: 0.5,
+        });
+        expect(siteProfileOf(profiles, 'disneyplus')).toEqual({});
     });
 
     it('fails the whole value on signs of tampering', () => {
@@ -152,6 +157,41 @@ describe('configService for one site', () => {
         ).toBe(0);
     });
 
+    it("keeps a newer version's entries when this one writes a site's values", async () => {
+        await fakeBrowser.storage.sync.set({
+            siteProfiles: {
+                netflix: { futureSetting: 'x', subtitleGap: 0.5 },
+                hulu: { subtitleGap: 0.1 },
+            },
+        });
+        await configService.setMultiple(
+            { subtitleFontScale: 1.6 },
+            { site: 'netflix', target: 'own' }
+        );
+        await configService.removeSiteValues('netflix', ['subtitleGap']);
+        expect(await stored()).toEqual({
+            netflix: { futureSetting: 'x', subtitleFontScale: 1.6 },
+            hulu: { subtitleGap: 0.1 },
+        });
+    });
+
+    it('applies overlapping site writes one after another, so both stick', async () => {
+        await fakeBrowser.storage.sync.set({
+            siteProfiles: {
+                netflix: { subtitleGap: 0.5, subtitleTimeOffset: 0.5 },
+            },
+        });
+        const netflix = { site: 'netflix', target: 'source' } as const;
+        await Promise.all([
+            configService.setMultiple({ subtitleGap: 0.7 }, netflix),
+            configService.setMultiple({ subtitleTimeOffset: 1 }, netflix),
+            configService.removeSiteValues('disneyplus', ['subtitleGap']),
+        ]);
+        expect(await stored()).toEqual({
+            netflix: { subtitleGap: 0.7, subtitleTimeOffset: 1 },
+        });
+    });
+
     it('lets a site follow the shared values again', async () => {
         await fakeBrowser.storage.sync.set({
             siteProfiles: {
@@ -183,13 +223,19 @@ describe('configService for one site', () => {
         expect(await stored()).toEqual({ netflix: { subtitleGap: 0.5 } });
     });
 
-    it('leaves a canonical profile alone during startup repair', async () => {
-        const profiles = { netflix: { subtitleGap: 0.5 } };
+    it('leaves a canonical profile alone during startup repair, newer entries included', async () => {
+        const profiles = {
+            netflix: { subtitleGap: 0.5, futureSetting: true },
+            hulu: { subtitleGap: 0.1 },
+        };
         await fakeBrowser.storage.sync.set({ siteProfiles: profiles });
+        await fakeBrowser.storage.sync.remove('subtitleGap');
         const set = vi.spyOn(fakeBrowser.storage.sync, 'set');
         await configService.setDefaultsForMissingKeys();
-        const writes = set.mock.calls.map(([items]) => Object.keys(items));
-        expect(writes.flat()).not.toContain('siteProfiles');
+        const written = set.mock.calls.flatMap(([items]) => Object.keys(items));
+        expect(written).toContain('subtitleGap');
+        expect(written).not.toContain('siteProfiles');
+        expect(await stored()).toEqual(profiles);
     });
 
     describe('change events', () => {

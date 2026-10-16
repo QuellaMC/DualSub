@@ -16,13 +16,6 @@ import type { Translate } from '../../hooks/useI18n';
 import { useSettings } from '../../hooks/useSettings';
 import { feedbackSave, followAllSites, useFeedback } from '../shell/feedback';
 
-/** Shown as switches on each site's card rather than counted as its own
- *  settings. */
-const CARD_SWITCH_KEYS: readonly SiteSettingKey[] = [
-    'subtitlesEnabled',
-    'hideOfficialSubtitles',
-];
-
 /** Each own value's name in the summary; a key shares a name with its
  *  sibling when the page edits them together. */
 const OWN_SETTING_LABELS: Record<SiteSettingKey, string> = {
@@ -41,12 +34,9 @@ const OWN_SETTING_LABELS: Record<SiteSettingKey, string> = {
     subtitleTimeOffset: 'timingTitle',
 };
 
-/** The site settings a site holds its own values for, besides the switches
- *  on its card. */
+/** The site settings a site holds its own values for. */
 export function ownSettingKeys(profile: SiteProfile): SiteSettingKey[] {
-    return (Object.keys(profile) as SiteSettingKey[]).filter(
-        (key) => !CARD_SWITCH_KEYS.includes(key)
-    );
+    return Object.keys(profile) as SiteSettingKey[];
 }
 
 /** Track filters apply where the subtitle pipeline reads them. */
@@ -101,7 +91,7 @@ function SiteCard({
         void followAllSites(
             feedback,
             site,
-            own,
+            settings.siteProfiles,
             ownKeys,
             t('toastSiteShared', name)
         ).then((removed) => {
@@ -152,7 +142,7 @@ function SiteCard({
                     />
                 </div>
             </div>
-            <div className="row divided" id={`hide-${site}`}>
+            <div className="row divided">
                 <div className="grow">
                     <div className="strong" id={`${site}-hide`}>
                         {t('sitesHideOwn', name)}
@@ -292,6 +282,43 @@ function SiteCard({
     );
 }
 
+/** The site's own subtitles, hidden or shown on every site that keeps no
+ *  choice of its own. */
+function SharedHide({ t }: { t: Translate }) {
+    const feedback = useFeedback();
+    const handle = useSettings(['hideOfficialSubtitles', 'siteProfiles']);
+    if (!handle.settings) {
+        return null;
+    }
+    const save = feedbackSave(handle, 'all', feedback);
+    return (
+        <div className="card" id="hide-all">
+            <div className="row">
+                <div className="grow">
+                    <h2 className="label" id="hide-all-title">
+                        {t('sitesHideTitle')}
+                    </h2>
+                    <p className="help">{t('sitesHideAllHelp')}</p>
+                </div>
+                <Switch
+                    checked={handle.settings.hideOfficialSubtitles}
+                    labelledBy="hide-all-title"
+                    onChange={(hide) =>
+                        void save(
+                            { hideOfficialSubtitles: hide },
+                            {
+                                message: t(
+                                    hide ? 'toastSitesHide' : 'toastSitesShow'
+                                ),
+                            }
+                        )
+                    }
+                />
+            </div>
+        </div>
+    );
+}
+
 export function SitesSection({
     t,
     advanced,
@@ -307,6 +334,7 @@ export function SitesSection({
                 {t('navSites')}
             </h1>
             <p className="lead">{t('sitesLead')}</p>
+            <SharedHide t={t} />
             {PLATFORM_IDS.map((site) => (
                 <SiteCard
                     key={site}

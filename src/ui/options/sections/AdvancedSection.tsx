@@ -15,11 +15,17 @@ import { configService } from '@/config/service';
 import { useFeedback } from '../shell/feedback';
 import type { SectionProps } from '../types';
 
-/** Credentials, their expiry, and how the page itself reads stay when
- *  everything else goes back to the recommended values. */
-const KEPT_ON_RESET: readonly SettingsKey[] = [
+/** Credentials, and the expiry that only means something with its token,
+ *  never leave this computer in a backup. */
+const NOT_BACKED_UP: readonly SettingsKey[] = [
     ...SENSITIVE_KEYS,
     'vertexTokenExpiresAt',
+];
+
+/** What is not backed up, and how the page itself reads, stays when
+ *  everything else goes back to the recommended values. */
+const KEPT_ON_RESET: readonly SettingsKey[] = [
+    ...NOT_BACKED_UP,
     'uiLanguage',
     'showAdvancedSettings',
 ];
@@ -32,10 +38,15 @@ const LOGGING_LEVELS = [
     { level: 4, labelKey: 'advancedLoggingEverything' },
 ] as const;
 
-/** Everything stored except credentials, as one JSON document. */
+/** Everything stored but what stays out of backups, as one JSON
+ *  document. */
 async function readStoredSettings(): Promise<Partial<SettingsValues>> {
     const { values } = await configService.readAllResultStrict();
-    return values;
+    return Object.fromEntries(
+        Object.entries(values).filter(
+            ([key]) => !NOT_BACKED_UP.includes(key as SettingsKey)
+        )
+    );
 }
 
 /** The changes a backup file would make: valid, non-sensitive keys whose
@@ -61,7 +72,7 @@ function changesFrom(
     for (const [key, value] of Object.entries(parsed)) {
         if (
             isSettingsKey(key) &&
-            !SENSITIVE_KEYS.includes(key) &&
+            !NOT_BACKED_UP.includes(key) &&
             validateSetting(key, value)
         ) {
             const prepared = prepareSettingValue(key, value);
@@ -137,7 +148,15 @@ export function AdvancedSection({ t, settings, save }: SectionProps) {
         void feedback.apply(
             async () => {
                 before = await configService.getMultiple(Object.keys(changes));
-                await configService.setMultiple(changes);
+                try {
+                    await configService.setMultiple(changes);
+                } catch (error) {
+                    // One storage area may have taken its part; put it back.
+                    await configService
+                        .setMultiple(before)
+                        .catch(() => undefined);
+                    throw error;
+                }
             },
             message,
             () => configService.setMultiple(before)
