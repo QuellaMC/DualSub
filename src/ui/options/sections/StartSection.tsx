@@ -38,7 +38,14 @@ const PROVIDER_SUMMARIES = {
 
 /** Whether DualSub runs on one site, as that site sees its settings. */
 function SiteStatus({ t, site }: { t: Translate; site: PlatformId }) {
-    const { settings } = useSettings(['subtitlesEnabled'], { site });
+    const { settings, status } = useSettings(['subtitlesEnabled'], { site });
+    if (status === 'unavailable') {
+        return (
+            <span className="tag danger" role="alert">
+                {t('startSiteUnreadable', PLATFORM_NAMES[site])}
+            </span>
+        );
+    }
     if (!settings) {
         return null;
     }

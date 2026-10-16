@@ -1136,6 +1136,9 @@
     "startSiteOff": {
         "message": "%s：オフ"
     },
+    "startSiteUnreadable": {
+        "message": "%s：読み込み失敗"
+    },
     "startSiteOn": {
         "message": "%s：オン"
     },

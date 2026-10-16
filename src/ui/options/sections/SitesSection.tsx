@@ -101,32 +101,38 @@ function SiteCard({
         ...new Set(ownKeys.map((key) => t(OWN_SETTING_LABELS[key]))),
     ];
     const rules = settings.subtitleBlacklist[site] ?? [];
-    /** Change this site's rules from the stored list, so quick edits, and
-     *  edits from another page, each build on the last; Undo puts back this
-     *  site's list alone. */
-    const editRules = (
-        change: (current: readonly string[]) => string[],
-        message: string
-    ): void => {
-        let previous: readonly string[] = [];
-        const withRules = (next: readonly string[]) => (lists: Rules) => ({
-            ...lists,
-            [site]: [...next],
-        });
+    /** Add or take away one of this site's rules, building on the stored
+     *  list so quick edits, and edits from another page, each build on the
+     *  last. Undo reverses that rule alone, so later edits stay. */
+    const editRule = (rule: string, add: boolean, message: string): void => {
+        const withRule =
+            (adding: boolean) =>
+            (lists: Rules): Rules => {
+                const current = lists[site] ?? [];
+                const next = adding
+                    ? current.includes(rule)
+                        ? current
+                        : [...current, rule]
+                    : current.filter((candidate) => candidate !== rule);
+                return { ...lists, [site]: [...next] };
+            };
+        let changed = false;
         void feedback.apply(
             async () => {
                 const before = await configService.updateSetting(
                     'subtitleBlacklist',
-                    (lists) => withRules(change(lists[site] ?? []))(lists)
+                    withRule(add)
                 );
-                previous = before[site] ?? [];
+                changed = (before[site] ?? []).includes(rule) !== add;
             },
             message,
             () =>
-                configService.updateSetting(
-                    'subtitleBlacklist',
-                    withRules(previous)
-                )
+                changed
+                    ? configService.updateSetting(
+                          'subtitleBlacklist',
+                          withRule(!add)
+                      )
+                    : Promise.resolve()
         );
     };
     const removeOwn = (): void => {
@@ -275,12 +281,9 @@ function SiteCard({
                                         existing
                                     )}
                                     onClick={() =>
-                                        editRules(
-                                            (current) =>
-                                                current.filter(
-                                                    (candidate) =>
-                                                        candidate !== existing
-                                                ),
+                                        editRule(
+                                            existing,
+                                            false,
                                             t('toastFilterRemoved', existing)
                                         )
                                     }
@@ -296,11 +299,9 @@ function SiteCard({
                             event.preventDefault();
                             const next = rule.trim();
                             if (next !== '' && !rules.includes(next)) {
-                                editRules(
-                                    (current) =>
-                                        current.includes(next)
-                                            ? [...current]
-                                            : [...current, next],
+                                editRule(
+                                    next,
+                                    true,
                                     t('toastFilterAdded', next)
                                 );
                             }

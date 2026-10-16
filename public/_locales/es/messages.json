@@ -1136,6 +1136,9 @@
     "startSiteOff": {
         "message": "%s: desactivado"
     },
+    "startSiteUnreadable": {
+        "message": "%s: no se pudo leer"
+    },
     "startSiteOn": {
         "message": "%s: activado"
     },

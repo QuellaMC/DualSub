@@ -1136,6 +1136,9 @@
     "startSiteOff": {
         "message": "%s：已關閉"
     },
+    "startSiteUnreadable": {
+        "message": "%s：無法讀取"
+    },
     "startSiteOn": {
         "message": "%s：已開啟"
     },
