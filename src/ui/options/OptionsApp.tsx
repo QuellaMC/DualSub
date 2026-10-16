@@ -205,12 +205,12 @@ export function OptionsApp() {
                 show({
                     message,
                     tone: 'done',
-                    undo: undo ? () => inTurn(undo) : null,
+                    undo: undo ? () => queueChange(undo) : null,
                 });
             }
             return true;
         };
-        const inTurn = (
+        const queueChange = (
             change: () => Promise<unknown>,
             message?: string,
             undo?: () => Promise<unknown>
@@ -228,7 +228,7 @@ export function OptionsApp() {
         };
         const apply: Feedback['apply'] = (change, message, undo) => {
             takeBackUndo();
-            return inTurn(change, message, undo);
+            return queueChange(change, message, undo);
         };
         return {
             apply,

@@ -1662,6 +1662,57 @@ describe('OptionsApp', () => {
         expect(await sync('subtitleFontScale')).toBe(1);
     });
 
+    it("puts a backup that loads in part back to what its own turn read, keeping another page's write", async () => {
+        await fakeBrowser.storage.local.set({ showAdvancedSettings: true });
+        location.hash = '#advanced';
+        await renderReady();
+        await waitFor(() =>
+            expect(document.querySelector('pre.code')).toHaveTextContent(
+                '"subtitleFontScale": 1'
+            )
+        );
+        fireEvent.change(screen.getByLabelText('Load settings from a file'), {
+            target: {
+                files: [
+                    new File(
+                        [
+                            JSON.stringify({
+                                subtitleFontScale: 1.6,
+                                showAdvancedSettings: false,
+                            }),
+                        ],
+                        'backup.json',
+                        { type: 'application/json' }
+                    ),
+                ],
+            },
+        });
+        const replace = await screen.findByRole('button', {
+            name: 'Replace them',
+        });
+        // Another page is writing, in its turn, when the backup asks for its own.
+        const release = Promise.withResolvers<void>();
+        const elsewhere = navigator.locks.request(
+            'dualsub:settingParts',
+            async () => {
+                await release.promise;
+                await fakeBrowser.storage.sync.set({ subtitleFontScale: 1.3 });
+            }
+        );
+        vi.spyOn(browser.storage.local, 'set').mockRejectedValueOnce(
+            new Error('quota')
+        );
+        fireEvent.click(replace);
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        release.resolve();
+        await elsewhere;
+
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+            'Failed to save setting'
+        );
+        expect(await sync('subtitleFontScale')).toBe(1.3);
+    });
+
     it('takes back a backup that loads in part entry by entry, keeping a profile changed elsewhere', async () => {
         await fakeBrowser.storage.sync.set({
             siteProfiles: { netflix: { subtitleGap: 0.5 } },
