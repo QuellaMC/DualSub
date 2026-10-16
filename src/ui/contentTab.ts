@@ -25,16 +25,11 @@ async function activeTabId(): Promise<number | null> {
     return (await activeTab())?.id ?? null;
 }
 
-/** The site of the active tab, or null when DualSub does not work there. */
+/** The site of the active tab, or null when DualSub does not work there.
+ *  Rejects when the tab cannot be read, since which site it is is then
+ *  unknown, not none. */
 export async function activeTabPlatform(): Promise<PlatformId | null> {
-    try {
-        return platformFromUrl((await activeTab())?.url);
-    } catch (error) {
-        logger.debug('Active tab unreadable', {
-            reason: error instanceof Error ? error.name : 'unknown',
-        });
-        return null;
-    }
+    return platformFromUrl((await activeTab())?.url);
 }
 
 /**
