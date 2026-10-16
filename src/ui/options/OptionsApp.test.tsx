@@ -600,6 +600,39 @@ describe('OptionsApp', () => {
         );
     });
 
+    it('enters a key for the address just typed, while that address is still being saved', async () => {
+        await fakeBrowser.storage.local.set({ showAdvancedSettings: true });
+        location.hash = '#explanations';
+        await renderReady();
+        const stored = Promise.withResolvers<void>();
+        const write = browser.storage.sync.set.bind(browser.storage.sync);
+        vi.spyOn(browser.storage.sync, 'set').mockImplementationOnce(
+            (items: Record<string, unknown>) =>
+                stored.promise.then(() => write(items)) as never
+        );
+        const address = screen.getByLabelText('Service address');
+        fireEvent.change(address, {
+            target: { value: 'https://llm.example.com/v1' },
+        });
+        fireEvent.blur(address);
+        fireEvent.change(screen.getByLabelText('Paste it here'), {
+            target: { value: 'sk-llm' },
+        });
+        stored.resolve();
+        await waitFor(async () =>
+            expect(await sync('openaiBaseUrl')).toBe(
+                'https://llm.example.com/v1'
+            )
+        );
+        await waitFor(() =>
+            expect(screen.getByLabelText('Paste it here')).toHaveValue('sk-llm')
+        );
+        expect(
+            (await fakeBrowser.storage.local.get('openaiApiKeyOrigin'))
+                .openaiApiKeyOrigin
+        ).toBe('https://llm.example.com');
+    });
+
     it('treats a key as missing once another computer moves its address', async () => {
         await fakeBrowser.storage.sync.set({
             selectedProvider: 'openai_compatible',

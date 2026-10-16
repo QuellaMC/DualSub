@@ -169,6 +169,42 @@ describe('OpenAICompatibleProviderCard', () => {
         await flush();
     });
 
+    it('enters a key for the address just committed, before it is stored', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(() => Promise.resolve(modelsResponse([])))
+        );
+        const { save } = renderCard();
+        const address = screen.getByLabelText('setupAddress');
+        const key = screen.getByLabelText('setupPasteKey');
+        fireEvent.change(address, {
+            target: { value: 'https://llm.example.com/v1' },
+        });
+        fireEvent.blur(address);
+        await flush();
+        fireEvent.change(key, { target: { value: 'sk-llm' } });
+        expect(save).toHaveBeenLastCalledWith(
+            {
+                openaiCompatibleApiKey: 'sk-llm',
+                openaiCompatibleApiKeyOrigin: 'https://llm.example.com',
+            },
+            'quiet'
+        );
+
+        // An address that is not one leaves the key with the stored address.
+        fireEvent.change(address, { target: { value: 'not a url' } });
+        fireEvent.blur(address);
+        fireEvent.change(key, { target: { value: 'sk-2' } });
+        expect(save).toHaveBeenLastCalledWith(
+            {
+                openaiCompatibleApiKey: 'sk-2',
+                openaiCompatibleApiKeyOrigin: 'https://api.openai.com',
+            },
+            'quiet'
+        );
+        await flush();
+    });
+
     it('fills in a known service from one click, and asks for the address only for another', async () => {
         vi.stubGlobal(
             'fetch',

@@ -5,6 +5,10 @@ export interface CommittedTextField<T> {
     readonly value: T;
     /** The draft would be accepted by `validate`. */
     readonly valid: boolean;
+    /** What the control stands for: the draft when it validates, else the
+     *  persisted value. A setting saved with it can use this before the
+     *  draft's own save has landed. */
+    readonly effective: T;
     /** A commit was attempted with an invalid draft; show guidance. */
     readonly invalid: boolean;
     readonly change: (next: T) => void;
@@ -116,6 +120,7 @@ export function useCommittedTextField<T>({
     return {
         value: draft,
         valid,
+        effective: valid ? draft : value,
         invalid: attempted && !valid,
         change,
         commit,

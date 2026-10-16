@@ -56,6 +56,16 @@ describe('useCommittedTextField', () => {
         expect(onCommit).toHaveBeenCalledTimes(1);
     });
 
+    it('stands for a valid draft before it is persisted, else the persisted value', async () => {
+        const { result } = setup();
+        act(() => result.current.change('next'));
+        await act(() => result.current.commit());
+        expect(result.current.effective).toBe('next');
+
+        act(() => result.current.change('  '));
+        expect(result.current.effective).toBe('a');
+    });
+
     it('keeps an invalid draft editable without persisting it', async () => {
         const { result, onCommit } = setup();
         act(() => result.current.change('   '));

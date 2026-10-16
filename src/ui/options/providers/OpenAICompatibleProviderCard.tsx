@@ -149,7 +149,7 @@ export function OpenAICompatibleProviderCard({
                                         keyEntry(
                                             'openaiCompatibleApiKey',
                                             event.target.value,
-                                            baseUrl
+                                            baseUrlField.effective
                                         ),
                                         'quiet'
                                     )

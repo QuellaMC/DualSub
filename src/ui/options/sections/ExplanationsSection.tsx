@@ -248,7 +248,7 @@ export function ExplanationsSection({
                                                 ? keyEntry(
                                                       'openaiApiKey',
                                                       event.target.value,
-                                                      settings.openaiBaseUrl
+                                                      baseUrl.effective
                                                   )
                                                 : {
                                                       geminiApiKey:
