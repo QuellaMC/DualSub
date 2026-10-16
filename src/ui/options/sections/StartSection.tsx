@@ -8,6 +8,7 @@ import { Icon } from '../../design/Icon';
 import { Switch } from '../../design/Switch';
 import { HealthNotice } from '../../HealthNotice';
 import {
+    callsForTranslation,
     translationStopped,
     useServiceUnset,
 } from '../../hooks/useServiceUnset';
@@ -40,11 +41,12 @@ export function StartSection({
     const provider = settings.selectedProvider;
     const providerName = t(PROVIDER_NAME_KEYS[provider]);
     const unset = useServiceUnset(settings);
-    const stopped = translationStopped(
-        working,
-        unset,
-        settings.translationFallback
-    );
+    const stopped = translationStopped(working, unset, settings);
+    const covered =
+        working &&
+        unset &&
+        settings.translationFallback &&
+        callsForTranslation(settings);
     const toTranslation = (
         <button
             type="button"
@@ -150,7 +152,7 @@ export function StartSection({
                 </div>
             </div>
 
-            {working && unset && !stopped && (
+            {covered && (
                 <div className="notice" role="status">
                     <Icon name="alert" />
                     <div className="stack">

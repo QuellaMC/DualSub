@@ -10,7 +10,6 @@ import { resolveLook } from '@/content/renderer/looks';
 import { toDisplaySettings } from '@/content/renderer/styling';
 import { PLATFORM_IDS, PLATFORM_NAMES, platformHome } from '@/shared/platforms';
 import { KEYLESS_PROVIDERS, type ProviderId } from '@/shared/providers';
-import { isSameLanguage } from '@/shared/languageNormalization';
 import {
     AUTO_LANGUAGE,
     browserTargetLanguage,
@@ -21,6 +20,7 @@ import { Logo } from '../design/Logo';
 import { Switch } from '../design/Switch';
 import { useI18n, type Translate } from '../hooks/useI18n';
 import {
+    callsForTranslation,
     SERVICE_SETUP_KEYS,
     translationStopped,
     useServiceUnset,
@@ -30,7 +30,7 @@ import {
     type SettingsHandle,
     type SettingsProjection,
 } from '../hooks/useSettings';
-import { siteNames, sitesOnTitle, useSitesOn } from '../hooks/useSitesOn';
+import { siteNames, sitesOn, sitesOnTitle } from '../hooks/useSitesOn';
 import { languageName } from '../languageLabels';
 import { LookPreview } from '../preview/LookPreview';
 import { sampleSubtitles, sampleVideoLanguage } from '../preview/sample';
@@ -89,10 +89,7 @@ function arrangementKey(
         | 'subtitleLayoutOrientation'
     >
 ): string {
-    if (
-        settings.originalLanguage !== AUTO_LANGUAGE &&
-        isSameLanguage(settings.originalLanguage, settings.targetLanguage)
-    ) {
+    if (!callsForTranslation(settings)) {
         return 'welcomeArrangeOneLine';
     }
     if (settings.subtitleLayoutOrientation === 'row') {
@@ -198,15 +195,11 @@ function Welcome({
     const [changingLanguage, setChangingLanguage] = useState(false);
     /** Only the latest pick's save may report how it went. */
     const latestPick = useRef(0);
-    const { sites } = useSitesOn();
-    const working = sites ? sites.on.length > 0 : settings.subtitlesEnabled;
-    const everywhere = sites ? sites.off.length === 0 : working;
+    const sites = sitesOn(settings);
+    const working = sites.on.length > 0;
+    const everywhere = sites.off.length === 0;
     const unset = useServiceUnset(settings);
-    const stopped = translationStopped(
-        working,
-        unset,
-        settings.translationFallback
-    );
+    const stopped = translationStopped(working, unset, settings);
     /** Dual subtitles were off on some site, say from another computer, so
      *  the page offers the switch, and keeps it once switched. */
     const [offeredSwitch, setOfferedSwitch] = useState(false);
@@ -273,10 +266,7 @@ function Welcome({
                                 t(arrangementKey(settings)),
                                 t(
                                     READINESS_KEYS[readiness],
-                                    siteNames(
-                                        settings.uiLanguage,
-                                        sites?.off ?? []
-                                    )
+                                    siteNames(settings.uiLanguage, sites.off)
                                 )
                             )}
                         </p>

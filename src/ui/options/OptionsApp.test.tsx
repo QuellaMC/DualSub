@@ -2071,6 +2071,29 @@ describe('OptionsApp', () => {
         ).not.toBeInTheDocument();
     });
 
+    it('asks no service of a setup that shows one line', async () => {
+        await fakeBrowser.storage.sync.set({
+            selectedProvider: 'deepl',
+            originalLanguage: 'en',
+            targetLanguage: 'en',
+        });
+        await renderReady();
+        expect(
+            await screen.findByText('Working on Netflix and Disney+')
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByText("DeepL isn't set up yet")
+        ).not.toBeInTheDocument();
+
+        await fakeBrowser.storage.sync.set({ translationFallback: false });
+        await waitFor(async () =>
+            expect(await sync('translationFallback')).toBe(false)
+        );
+        expect(
+            screen.queryByText("Until it is, subtitles aren't translated.")
+        ).not.toBeInTheDocument();
+    });
+
     it("counts a site's switches among its own settings, and removes them too", async () => {
         await fakeBrowser.storage.sync.set({
             siteProfiles: { netflix: { subtitlesEnabled: false } },
