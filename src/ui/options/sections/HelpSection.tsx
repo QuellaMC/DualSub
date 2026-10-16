@@ -1,10 +1,8 @@
 import { browser } from 'wxt/browser';
-import type { SettingsValues } from '@/config/schema';
-import { configService } from '@/config/service';
 import { PLATFORM_IDS } from '@/shared/platforms';
 import type { Translate } from '../../hooks/useI18n';
 import type { SectionId } from '../sections';
-import { useFeedback } from '../shell/feedback';
+import { followAllSites, useFeedback } from '../shell/feedback';
 
 const SOURCE_URL = 'https://github.com/QuellaMC/DualSub';
 
@@ -18,26 +16,14 @@ export function HelpSection({
     const feedback = useFeedback();
 
     /** Hide every site's own subtitles in one write: the shared value, and
-     *  no site keeping its own. Undo puts back the shared value and every
-     *  site's own choice as they were. */
+     *  no site keeping its own. */
     const hideEverywhere = (): void => {
-        let before: Partial<SettingsValues> = {};
-        void feedback.apply(
-            async () => {
-                before = await configService.removeSiteValues(
-                    PLATFORM_IDS,
-                    ['hideOfficialSubtitles'],
-                    { hideOfficialSubtitles: true }
-                );
-            },
+        void followAllSites(
+            feedback,
+            PLATFORM_IDS,
+            ['hideOfficialSubtitles'],
             t('toastHiddenEverywhere'),
-            () =>
-                configService.restoreSiteValues(
-                    before,
-                    PLATFORM_IDS.map(
-                        (site) => [site, 'hideOfficialSubtitles'] as const
-                    )
-                )
+            { hideOfficialSubtitles: true }
         );
     };
 

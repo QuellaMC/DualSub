@@ -15,9 +15,12 @@ export interface SettingsHandle<K extends SettingsKey> {
     readonly status: SettingsStatus;
     /** The complete projection once ready; null while loading or unavailable. */
     readonly settings: SettingsProjection<K> | null;
-    /** Persist one or more settings. Rejects when validation or storage
-     *  fails; nothing is written in that case. */
-    readonly save: (changes: Partial<SettingsProjection<K>>) => Promise<void>;
+    /** Persist one or more settings, resolving to what was written as
+     *  `setMultiple` reports it. Rejects when validation or storage fails;
+     *  nothing is written in that case. */
+    readonly save: (
+        changes: Partial<SettingsProjection<K>>
+    ) => Promise<Partial<SettingsValues>>;
 }
 
 interface SettingsState<K extends SettingsKey> {
@@ -147,13 +150,16 @@ export function useSettings<K extends SettingsKey>(
     }, [view, keyList, includeSensitive, site]);
 
     const save = useCallback(
-        async (changes: Partial<SettingsProjection<K>>): Promise<void> => {
+        async (
+            changes: Partial<SettingsProjection<K>>
+        ): Promise<Partial<SettingsValues>> => {
             const written = await configService.setMultiple(
                 changes,
                 site ? { site, target: siteTarget } : undefined
             );
             const relevant = pickWatched(written, keyList.split(' ') as K[]);
             setState((previous) => withChanges(previous, view, relevant));
+            return written;
         },
         [view, keyList, site, siteTarget]
     );
