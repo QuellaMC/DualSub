@@ -51,6 +51,7 @@ function renderCard(
             return made;
         },
         notify: vi.fn(),
+        takeBackUndo: vi.fn(),
     };
     render(
         <FeedbackProvider value={feedback}>

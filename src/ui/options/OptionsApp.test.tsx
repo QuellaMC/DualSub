@@ -133,6 +133,45 @@ describe('OptionsApp', () => {
         expect(await sync('subtitleFontScale')).toBe(2);
     });
 
+    it("undoes a choice to what its own write replaced, keeping another page's write", async () => {
+        await renderReady();
+        const realSet = fakeBrowser.storage.sync.set.bind(
+            fakeBrowser.storage.sync
+        );
+        const elsewhere = Promise.withResolvers<void>();
+        let interleaved = false;
+        vi.spyOn(fakeBrowser.storage.sync, 'set').mockImplementation(
+            (items: Record<string, unknown>) => {
+                if (interleaved || !('subtitleFontScale' in items)) {
+                    return realSet(items) as never;
+                }
+                interleaved = true;
+                // Another page writes, in its turn, while this write is out.
+                void navigator.locks
+                    .request('dualsub:settingParts', () =>
+                        realSet({ subtitleFontScale: 1.6 })
+                    )
+                    .then(() => elsewhere.resolve());
+                return new Promise((resolve) => setTimeout(resolve, 20)).then(
+                    () => realSet(items)
+                ) as never;
+            }
+        );
+        fireEvent.click(screen.getByRole('button', { name: /Large$/ }));
+        const toast = await screen.findByText('Text size: Large');
+        await elsewhere.promise;
+
+        fireEvent.click(
+            within(toast.parentElement!).getByRole('button', { name: 'Undo' })
+        );
+        await waitFor(() =>
+            expect(
+                screen.queryByText('Text size: Large')
+            ).not.toBeInTheDocument()
+        );
+        expect(await sync('subtitleFontScale')).toBe(1.6);
+    });
+
     it('moves the subtitles one step per press, however quick the presses', async () => {
         location.hash = '#timing';
         await renderReady();
@@ -428,6 +467,36 @@ describe('OptionsApp', () => {
         await waitFor(async () =>
             expect(await sync('aiContextTypes')).toEqual(['linguistic'])
         );
+    });
+
+    it('takes back a kind of explanation clicked again while the first click is saved', async () => {
+        await fakeBrowser.storage.sync.set({ aiContextTypes: ['linguistic'] });
+        location.hash = '#explanations';
+        await renderReady();
+        const realSet = fakeBrowser.storage.sync.set.bind(
+            fakeBrowser.storage.sync
+        );
+        const held = Promise.withResolvers<void>();
+        let holding = true;
+        vi.spyOn(fakeBrowser.storage.sync, 'set').mockImplementation(
+            (items: Record<string, unknown>) => {
+                if (!holding || !('aiContextTypes' in items)) {
+                    return realSet(items) as never;
+                }
+                holding = false;
+                return held.promise.then(() => realSet(items)) as never;
+            }
+        );
+        const culture = within(
+            screen.getByRole('group', { name: 'What to explain' })
+        ).getByRole('checkbox', { name: 'The culture behind it' });
+        fireEvent.click(culture);
+        fireEvent.click(culture);
+        held.resolve();
+        await new Promise((resolve) => setTimeout(resolve, 50));
+
+        expect(await sync('aiContextTypes')).toEqual(['linguistic']);
+        expect(culture).not.toBeChecked();
     });
 
     it('removes two filters clicked one right after the other', async () => {
@@ -1306,6 +1375,31 @@ describe('OptionsApp', () => {
         expect(await sync('subtitleCustomLook')).toMatchObject({
             font: 'serif',
         });
+    });
+
+    it('takes back an Undo as soon as a later edit is made, before it is saved', async () => {
+        await fakeBrowser.storage.sync.set({ subtitleStyle: 'custom' });
+        location.hash = '#look';
+        await renderReady();
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Change colors and font' })
+        );
+        fireEvent.click(screen.getByRole('button', { name: /Cinema$/ }));
+        const toast = await screen.findByText('Look: Cinema');
+
+        // The edit waits for its pause; Ctrl+Z comes before it is saved.
+        fireEvent.click(screen.getByRole('switch', { name: 'Bold letters' }));
+        expect(
+            within(toast.parentElement!).queryByRole('button', { name: 'Undo' })
+        ).not.toBeInTheDocument();
+        fireEvent.keyDown(document.body, { key: 'z', ctrlKey: true });
+        fireEvent.keyUp(document.body, { key: 'z', ctrlKey: true });
+        await waitFor(async () =>
+            expect(await sync('subtitleCustomLook')).toMatchObject({
+                font: 'serif',
+                bold: true,
+            })
+        );
     });
 
     it('turns a switch back when it is pressed again while its first change is saved', async () => {

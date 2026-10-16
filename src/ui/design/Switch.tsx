@@ -1,10 +1,8 @@
-import { useState, type Ref } from 'react';
+import type { Ref } from 'react';
+import { useChoice } from './useChoice';
 
-/**
- * An on/off control, named by the visible text `labelledBy` points at. It
- * shows the choice just made until the change `onChange` returns settles,
- * so a second press turns back what the first turned, saved or not.
- */
+/** An on/off control, named by the visible text `labelledBy` points at,
+ *  showing the choice just made as `useChoice` does. */
 export function Switch({
     checked,
     onChange,
@@ -20,8 +18,7 @@ export function Switch({
     disabled?: boolean;
     ref?: Ref<HTMLButtonElement>;
 }) {
-    const [chosen, setChosen] = useState<boolean | null>(null);
-    const shown = chosen ?? checked;
+    const [shown, toggle] = useChoice(checked, onChange);
 
     return (
         <button
@@ -32,13 +29,7 @@ export function Switch({
             aria-checked={shown}
             aria-labelledby={labelledBy}
             disabled={disabled}
-            onClick={() => {
-                const next = !shown;
-                setChosen(next);
-                const settle = (): void =>
-                    setChosen((current) => (current === next ? null : current));
-                void Promise.resolve(onChange(next)).then(settle, settle);
-            }}
+            onClick={toggle}
         />
     );
 }
