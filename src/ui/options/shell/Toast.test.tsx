@@ -41,4 +41,33 @@ describe('Toast', () => {
         act(() => root.unmount());
         container.remove();
     });
+
+    it('starts no timer as it goes, so none outlives the page', () => {
+        const onHold = vi.fn();
+        const container = document.body.appendChild(
+            document.createElement('div')
+        );
+        const root = createRoot(container);
+        act(() =>
+            root.render(
+                <Toast
+                    t={t}
+                    toast={{
+                        id: 1,
+                        message: 'Saved',
+                        tone: 'done',
+                        undo: null,
+                    }}
+                    onDismiss={vi.fn()}
+                    onHold={onHold}
+                />
+            )
+        );
+        expect(onHold).toHaveBeenLastCalledWith(false);
+        onHold.mockClear();
+
+        act(() => root.unmount());
+        container.remove();
+        expect(onHold).not.toHaveBeenCalled();
+    });
 });
