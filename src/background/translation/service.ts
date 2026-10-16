@@ -27,7 +27,8 @@ export const TRANSLATION_CACHE_CONFIGURATION_KEYS = [
 
 const CACHE_MAX_ENTRIES = 1000;
 const CACHE_TTL_MS = 5 * 60 * 1000;
-/** Three attempts per request at most. */
+/** Three attempts for the selected provider at most; a provider covering
+ *  for it gets one, so a failing chain cannot multiply requests. */
 const MAX_RETRIES = 2;
 const RATE_LIMIT_RETRY_DELAY_MS = 5000;
 const RETRY_BASE_DELAY_MS = 1000;
@@ -50,7 +51,10 @@ export interface TranslationOutcome {
 
 export interface TranslationServiceDeps {
     readonly providers: readonly TranslationProvider[];
-    readonly config: Pick<typeof configService, 'get' | 'onChanged'>;
+    readonly config: Pick<
+        typeof configService,
+        'get' | 'onChanged' | 'readStoredBooleanStrict'
+    >;
     readonly health?: {
         readonly read: () => Promise<TranslationHealth | null>;
         readonly write: (health: TranslationHealth | null) => Promise<void>;
@@ -128,8 +132,12 @@ export class TranslationService {
     private cacheGeneration = 0;
     private selectedProvider: ProviderId = getDefaultValue('selectedProvider');
     private configuredDelayMs: number = getDefaultValue('translationDelay');
-    private fallbackEnabled: boolean = getDefaultValue('translationFallback');
+    /** Off until the stored choice is read: subtitle text reaches another
+     *  provider only when the viewer's own setting says it may. */
+    private fallbackEnabled = false;
     private health: TranslationHealth | null = null;
+    /** The health in memory has not reached session storage yet. */
+    private healthUnsaved = false;
     private unsubscribe: (() => void) | null = null;
 
     constructor(private readonly deps: TranslationServiceDeps) {
@@ -153,16 +161,25 @@ export class TranslationService {
             { includeSensitive: true }
         );
         try {
-            const [provider, delayMs, fallback] = await Promise.all([
+            const [provider, delayMs] = await Promise.all([
                 this.deps.config.get('selectedProvider'),
                 this.deps.config.get('translationDelay'),
-                this.deps.config.get('translationFallback'),
             ]);
             this.selectProvider(provider);
             this.configuredDelayMs = delayMs;
-            this.fallbackEnabled = fallback;
         } catch (error) {
             this.logger.error('Failed to load translation settings', error);
+        }
+        try {
+            this.fallbackEnabled =
+                await this.deps.config.readStoredBooleanStrict(
+                    'translationFallback'
+                );
+        } catch (error) {
+            this.logger.warn(
+                'Fallback choice unreadable; translating with the selected provider only',
+                { reason: error instanceof Error ? error.name : 'unknown' }
+            );
         }
         try {
             const health = await this.healthStore.read();
@@ -200,17 +217,28 @@ export class TranslationService {
     ): Promise<TranslationOutcome> {
         const generation = this.cacheGeneration;
         const selected = this.selectedProvider;
+        let selectedFailure: unknown = null;
         let failure: unknown = null;
         for (const providerId of this.providerChain(selected)) {
+            const covering = providerId !== selected;
+            // The chain was decided when the request began; the viewer may
+            // have turned fallback off since.
+            if (covering && !this.fallbackEnabled) {
+                throw (
+                    selectedFailure ??
+                    new TranslationConfigurationChangedError()
+                );
+            }
             try {
                 const outcome = await this.translateWith(
                     providerId,
                     text,
                     sourceLang,
                     targetLang,
-                    generation
+                    generation,
+                    covering ? 0 : MAX_RETRIES
                 );
-                if (providerId === selected) {
+                if (!covering) {
                     this.recordHealth(null);
                 }
                 return outcome;
@@ -218,13 +246,15 @@ export class TranslationService {
                 if (error instanceof TranslationConfigurationChangedError) {
                     throw error;
                 }
-                if (providerId === selected) {
+                if (!covering) {
                     this.recordFailure(selected, error);
+                    selectedFailure = error;
                 }
                 failure = error;
             }
         }
-        throw failure;
+        // The selected provider's failure says whether a later try can work.
+        throw selectedFailure ?? failure;
     }
 
     /** The selected provider unless a standing failure pauses it, then the
@@ -261,23 +291,34 @@ export class TranslationService {
     }
 
     private recordHealth(health: TranslationHealth | null): void {
-        if (health === null && this.health === null) {
+        if (health === null && this.health === null && !this.healthUnsaved) {
             return;
         }
         this.health = health;
-        void this.healthStore.write(health).catch((error: unknown) => {
-            this.logger.warn('Translation health not saved', {
-                reason: error instanceof Error ? error.name : 'unknown',
-            });
-        });
+        this.healthUnsaved = true;
+        void this.healthStore.write(health).then(
+            () => {
+                if (this.health === health) {
+                    this.healthUnsaved = false;
+                }
+            },
+            (error: unknown) => {
+                // Left unsaved, so the next record writes it again.
+                this.logger.warn('Translation health not saved', {
+                    reason: error instanceof Error ? error.name : 'unknown',
+                });
+            }
+        );
     }
 
+    /** One provider's answer, with at most `retries` more attempts. */
     private async translateWith(
         providerId: ProviderId,
         text: string,
         sourceLang: string,
         targetLang: string,
-        generation: number
+        generation: number,
+        retries: number
     ): Promise<TranslationOutcome> {
         const provider = this.providers.get(providerId);
         if (!provider) {
@@ -325,7 +366,8 @@ export class TranslationService {
                 if (this.cacheGeneration !== generation) {
                     throw new TranslationConfigurationChangedError();
                 }
-                const delayMs = retryDelay(error, attempt);
+                const delayMs =
+                    attempt < retries ? retryDelay(error, attempt) : null;
                 if (delayMs === null) {
                     throw error;
                 }
