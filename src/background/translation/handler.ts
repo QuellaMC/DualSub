@@ -8,10 +8,7 @@ import {
 import { whenServiceReady } from '../readiness';
 import { TranslationProviderError } from './providerError';
 import { RateLimitExhaustedError } from './rateLimiter';
-import {
-    TranslationConfigurationChangedError,
-    type TranslationService,
-} from './service';
+import { retryableFailure, type TranslationService } from './service';
 
 const logger = createLogger('TranslationHandler');
 
@@ -36,19 +33,13 @@ export function describeTranslationFailure(
     error: unknown,
     now: number
 ): { retryable: boolean; retryAfter: number | null } {
-    if (error instanceof RateLimitExhaustedError) {
-        return {
-            retryable: true,
-            retryAfter: toRetryAfter(error.resetAt, now),
-        };
-    }
-    if (error instanceof TranslationProviderError) {
-        return { retryable: error.retryable, retryAfter: null };
-    }
-    if (error instanceof TranslationConfigurationChangedError) {
-        return { retryable: true, retryAfter: null };
-    }
-    return { retryable: false, retryAfter: null };
+    return {
+        retryable: retryableFailure(error),
+        retryAfter:
+            error instanceof RateLimitExhaustedError
+                ? toRetryAfter(error.resetAt, now)
+                : null,
+    };
 }
 
 function failureLabel(error: unknown): string {

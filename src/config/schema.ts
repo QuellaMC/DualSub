@@ -750,6 +750,19 @@ export function siteProfileOf(
     );
 }
 
+/** Whether this version can use every value `profiles` holds for a site
+ *  and a setting it knows. Stored profiles keep the values it cannot use,
+ *  for the newer version that wrote them; a backup it loads must not. */
+export function siteProfilesUsable(
+    profiles: SettingsValues['siteProfiles']
+): boolean {
+    return PLATFORM_IDS.every(
+        (site) =>
+            Object.keys(profiles[site] ?? {}).filter(isSiteSettingKey)
+                .length === Object.keys(siteProfileOf(profiles, site)).length
+    );
+}
+
 export const SENSITIVE_KEYS = SETTINGS_KEYS.filter(
     (key) => configSchema[key].sensitive === true
 );
