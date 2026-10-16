@@ -1424,6 +1424,9 @@
     "searchWordsDeepL": {
         "message": "deepl 딥엘 api api키 키 요금제 플랜 무료 pro 프로"
     },
+    "searchWordsVertex": {
+        "message": "vertex 버텍스 google cloud 구글 클라우드 gemini 서비스 계정 프로젝트 토큰 리전"
+    },
     "searchWordsAiTranslation": {
         "message": "ai openai chatgpt gemini llm gpt 오픈ai 챗gpt 챗지피티 제미나이 제미니 인공지능 모델 api api키 키 주소 호환"
     },

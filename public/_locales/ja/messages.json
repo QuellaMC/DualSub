@@ -1424,6 +1424,9 @@
     "searchWordsDeepL": {
         "message": "deepl ディープエル api apiキー キー 認証キー 鍵 プラン 無料 有料 アカウント"
     },
+    "searchWordsVertex": {
+        "message": "vertex バーテックス google cloud グーグルクラウド gemini サービスアカウント プロジェクト トークン リージョン"
+    },
     "searchWordsAiTranslation": {
         "message": "ai openai chatgpt gemini llm 人工知能 生成ai オープンai チャットgpt ジェミニ モデル キー apiキー 互換 アカウント"
     },
