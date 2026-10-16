@@ -242,10 +242,38 @@ describe('configService', () => {
             });
         });
 
-        it('aggregates partial area failures', async () => {
+        it('puts back what one area took when another fails, so nothing is written', async () => {
             vi.spyOn(browser.storage.local, 'set').mockRejectedValueOnce(
                 new Error('local broken')
             );
+            await expect(
+                configService.setMultiple({
+                    subtitlesEnabled: false,
+                    vertexTokenExpiresAt: 5,
+                })
+            ).rejects.toMatchObject({
+                name: 'ConfigWriteError',
+                completeFailure: true,
+                failedAreas: ['local'],
+            });
+            expect(
+                (await fakeBrowser.storage.sync.get('subtitlesEnabled'))
+                    .subtitlesEnabled
+            ).toBe(true);
+        });
+
+        it('says a write landed in part when what one area took cannot be put back', async () => {
+            vi.spyOn(browser.storage.local, 'set').mockRejectedValueOnce(
+                new Error('local broken')
+            );
+            const realSet = fakeBrowser.storage.sync.set.bind(
+                fakeBrowser.storage.sync
+            );
+            vi.spyOn(browser.storage.sync, 'set')
+                .mockImplementationOnce(
+                    (items: Record<string, unknown>) => realSet(items) as never
+                )
+                .mockRejectedValueOnce(new Error('sync broken'));
             await expect(
                 configService.setMultiple({
                     subtitlesEnabled: false,
