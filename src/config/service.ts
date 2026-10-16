@@ -152,12 +152,13 @@ interface ResolvedStoredValue {
     resolution: StoredResolution;
 }
 
+const SITE_PROFILES_LOCK = 'dualsub:siteProfiles';
+
 class ConfigService {
     private readonly logger = createLogger('ConfigService');
     private readonly changeListeners = new Set<ChangeListenerRecord>();
     private changeListenerInitialized = false;
     /** The latest rewrite of `siteProfiles` in this context, settled or not. */
-    private profilesSettled: Promise<unknown> = Promise.resolve();
 
     // ------------------------------------------------------------------ storage
 
@@ -642,7 +643,8 @@ class ConfigService {
      * Multi-key write. Validates everything first (nothing is written when any
      * key/value is invalid), then writes each storage area independently and
      * aggregates area failures. A write that rewrites `siteProfiles` waits for
-     * the one before it, so it builds on the profiles that one left.
+     * the one before it, made in any extension page, so it builds on the
+     * profiles that one left.
      */
     setMultiple(
         settings: Partial<SettingsValues>,
@@ -653,12 +655,12 @@ class ConfigService {
             : this.writeMultiple(settings, siteWrite);
     }
 
-    /** Run `change` once every earlier rewrite of `siteProfiles` in this
-     *  context has settled; each reads the profiles and writes them whole. */
+    /** Run `change` once every earlier rewrite of `siteProfiles` has
+     *  settled; each reads the profiles and writes them whole. The lock is
+     *  shared by every extension page and the worker, which share the
+     *  extension's origin, so a popup and a settings tab take turns too. */
     private afterProfiles<T>(change: () => Promise<T>): Promise<T> {
-        const result = this.profilesSettled.then(change);
-        this.profilesSettled = result.catch(() => undefined);
-        return result;
+        return navigator.locks.request(SITE_PROFILES_LOCK, change);
     }
 
     private async writeMultiple(
