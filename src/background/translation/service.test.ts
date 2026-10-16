@@ -357,6 +357,7 @@ describe('TranslationService fallback', () => {
             selected?: ProviderId;
             fallback?: boolean;
             fallbackUnreadable?: boolean;
+            delay?: number;
             health?: TranslationHealth | null;
             healthStore?: TranslationServiceDeps['health'];
         } = {}
@@ -368,6 +369,7 @@ describe('TranslationService fallback', () => {
             selectedProvider: options.selected ?? 'deepl',
             translationFallback: options.fallback ?? true,
             fallbackUnreadable: options.fallbackUnreadable ?? false,
+            translationDelay: options.delay ?? 0,
         });
         const memory = memoryHealth(options.health ?? null);
         const health = {
@@ -513,6 +515,51 @@ describe('TranslationService fallback', () => {
         answer.reject(error);
         expect(await rejection(pending)).toBe(error);
         expect(microsoft.translate).not.toHaveBeenCalled();
+    });
+
+    it('sends nothing to a fallback turned off while the request waited its turn', async () => {
+        const { service, deepl, microsoft, fake } = await setup({
+            delay: 1000,
+        });
+        deepl.translate.mockRejectedValue(
+            failing('deepl', 'AUTHENTICATION_ERROR')
+        );
+        await service.translate('Hello', 'auto', 'es');
+        expect(microsoft.translate).toHaveBeenCalledOnce();
+
+        const waiting = rejection(service.translate('Next', 'auto', 'es'));
+        await vi.advanceTimersByTimeAsync(500);
+        fake.emit({ translationFallback: false });
+        await vi.advanceTimersByTimeAsync(1000);
+        expect(await waiting).toBeInstanceOf(
+            TranslationConfigurationChangedError
+        );
+        expect(microsoft.translate).toHaveBeenCalledOnce();
+    });
+
+    it('drops a failure record that a change made before startup outdated', async () => {
+        const memory = memoryHealth({
+            provider: 'deepl',
+            problem: 'credentials',
+            fallback: 'microsoft_edge',
+            since: 999_000,
+        });
+        const deepl = fakeProvider('deepl');
+        const fake = fakeConfig({ selectedProvider: 'deepl' });
+        const service = new TranslationService({
+            providers: [deepl, fakeProvider('microsoft_edge')],
+            config: fake.config,
+            health: memory.store,
+            logger: silentLogger,
+        });
+        // The change that woke the worker arrives before initialization.
+        fake.emit({ deeplApiKey: 'fixed' });
+        await service.initialize();
+
+        await expect(service.translate('Hello', 'auto', 'es')).resolves.toEqual(
+            { translatedText: '[deepl:es] Hello', cached: false }
+        );
+        expect(memory.current()).toBeNull();
     });
 
     it("gives each fallback one attempt and keeps the chosen provider's failure", async () => {
