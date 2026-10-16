@@ -335,6 +335,24 @@ describe('configService for one site', () => {
         expect(await stored()).toEqual({ netflix: { subtitleGap: 0.5 } });
     });
 
+    it('keeps a site value saved while startup repair reads the profiles', async () => {
+        const gate = Promise.withResolvers<void>();
+        // The repair finds no profiles, then writes after the save lands.
+        const before = fakeBrowser.storage.sync.get(null);
+        vi.spyOn(fakeBrowser.storage.sync, 'get').mockReturnValueOnce(
+            gate.promise.then(() => before) as never
+        );
+        const repair = configService.setDefaultsForMissingKeys();
+        const save = configService.setMultiple(
+            { subtitleGap: 0.7 },
+            { site: 'netflix', target: 'own' }
+        );
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        gate.resolve();
+        await Promise.all([repair, save]);
+        expect(await stored()).toEqual({ netflix: { subtitleGap: 0.7 } });
+    });
+
     it('leaves a canonical profile alone during startup repair, newer entries included', async () => {
         const profiles = {
             netflix: { subtitleGap: 0.5, futureSetting: true },
