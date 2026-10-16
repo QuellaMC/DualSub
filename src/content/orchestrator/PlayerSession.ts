@@ -54,8 +54,7 @@ export type SessionEndReason =
  *  evidently has nothing coming. */
 const SUBTITLE_LOADING_TIMEOUT_MS = 20_000;
 
-export const CONTENT_SETTINGS_KEYS = [
-    'subtitlesEnabled',
+const DISPLAY_SETTINGS_KEYS = [
     'subtitleStyle',
     'subtitleCustomLook',
     'subtitleTranslationColor',
@@ -65,6 +64,12 @@ export const CONTENT_SETTINGS_KEYS = [
     'subtitleLayoutOrientation',
     'subtitleLayoutOrder',
     'subtitleTimeOffset',
+] as const;
+
+export const CONTENT_SETTINGS_KEYS = [
+    'subtitlesEnabled',
+    'hideOfficialSubtitles',
+    ...DISPLAY_SETTINGS_KEYS,
 ] as const;
 
 export type ContentSettings = Pick<
@@ -194,6 +199,8 @@ export class PlayerSession {
     /** Which words of the current line are selected; the panel mirrors it. */
     readonly selection: SelectionAuthority;
     private mediaScope: AbortController | null = null;
+    /** Shows or hides the site's own subtitles in the bound media. */
+    private hideNativeSubs: ((hidden: boolean) => void) | null = null;
     private settings: ContentSettings;
     private languageSettingsValue: LanguageSettings;
     /** What the player reported as spoken: undefined until it reports,
@@ -276,16 +283,18 @@ export class PlayerSession {
                 this.mediaScope = childScope(this.signal);
                 this.adapter.onClockInvalidated();
                 this.renderer.attachMedia(media);
-                installNativeSubHider(this.adapter.nativeSubRecipe, media, {
-                    signal: this.mediaScope.signal,
-                    config: this.deps.config,
-                    logger: this.logger,
-                });
+                this.hideNativeSubs = installNativeSubHider(
+                    this.adapter.nativeSubRecipe,
+                    media,
+                    { signal: this.mediaScope.signal, logger: this.logger },
+                    this.nativeSubsHidden()
+                );
                 this.translation?.scheduler.kick();
             },
             onLost: () => {
                 this.mediaScope?.abort();
                 this.mediaScope = null;
+                this.hideNativeSubs = null;
                 this.renderer.detachMedia();
             },
             signal: this.signal,
@@ -419,18 +428,28 @@ export class PlayerSession {
         }
     }
 
+    /** The site's own subtitles hide only while DualSub shows its lines. */
+    private nativeSubsHidden(): boolean {
+        return (
+            this.settings.hideOfficialSubtitles &&
+            this.settings.subtitlesEnabled
+        );
+    }
+
     private applySettings(changes: Partial<SettingsValues>): void {
-        let displayChanged = false;
         for (const key of CONTENT_SETTINGS_KEYS) {
             if (changes[key] !== undefined) {
                 (this.settings as Record<string, unknown>)[key] = changes[key];
-                if (key !== 'subtitlesEnabled') {
-                    displayChanged = true;
-                }
             }
         }
-        if (displayChanged) {
+        if (DISPLAY_SETTINGS_KEYS.some((key) => changes[key] !== undefined)) {
             this.renderer.setDisplay(toDisplaySettings(this.settings));
+        }
+        if (
+            changes.subtitlesEnabled !== undefined ||
+            changes.hideOfficialSubtitles !== undefined
+        ) {
+            this.hideNativeSubs?.(this.nativeSubsHidden());
         }
         if (changes.subtitlesEnabled !== undefined) {
             this.renderer.setVisible(changes.subtitlesEnabled);

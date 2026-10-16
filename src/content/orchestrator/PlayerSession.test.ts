@@ -21,7 +21,11 @@ import type {
 import { SubtitleEventCache } from '../bridge/SubtitleEventCache';
 import { netflixDescriptor } from '../platform/netflix/descriptor';
 import { UiRoot } from '../renderer/domLayer';
-import { PlayerSession, type LanguageSettings } from './PlayerSession';
+import {
+    PlayerSession,
+    type ContentSettings,
+    type LanguageSettings,
+} from './PlayerSession';
 
 const LANGUAGES: LanguageSettings = {
     originalLanguage: 'en',
@@ -93,7 +97,10 @@ function resolution(
     };
 }
 
-function startSession(languageSettings: LanguageSettings = LANGUAGES) {
+function startSession(
+    languageSettings: LanguageSettings = LANGUAGES,
+    settings: Partial<ContentSettings> = {}
+) {
     const controller = new AbortController();
     const cache = new SubtitleEventCache();
     const sendControl = vi.fn(() => true);
@@ -110,6 +117,7 @@ function startSession(languageSettings: LanguageSettings = LANGUAGES) {
         platformLook: null,
         settings: {
             subtitlesEnabled: true,
+            hideOfficialSubtitles: true,
             subtitleStyle: 'custom',
             subtitleCustomLook: getDefaultValue('subtitleCustomLook'),
             subtitleTranslationColor: '#00ffff',
@@ -119,6 +127,7 @@ function startSession(languageSettings: LanguageSettings = LANGUAGES) {
             subtitleLayoutOrientation: 'column',
             subtitleLayoutOrder: 'original_top',
             subtitleTimeOffset: 0,
+            ...settings,
         },
         languageSettings,
         interaction: {
@@ -290,6 +299,20 @@ describe('PlayerSession', () => {
         );
         await settle();
         expect(stageHidden()).toBe(true);
+    });
+
+    it("hides the site's own subtitles only while DualSub shows its lines", async () => {
+        stubBackground({});
+        active = startSession(LANGUAGES, { subtitlesEnabled: false });
+        const cue = document.createElement('div');
+        cue.className = 'player-timedtext';
+        document.querySelector('.watch-video')!.append(cue);
+        await settle(150);
+        expect(cue.getAttribute('data-dualsub-hidden')).toBeNull();
+
+        await fakeBrowser.storage.sync.set({ subtitlesEnabled: true });
+        await settle(150);
+        expect(cue.getAttribute('data-dualsub-hidden')).toBe('true');
     });
 
     it('watches the spoken language for its whole life', () => {
