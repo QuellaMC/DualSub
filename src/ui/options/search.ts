@@ -202,6 +202,7 @@ const ENTRIES: readonly SearchEntry[] = [
         labelKey: 'topMenuLanguage',
         wordsKey: 'searchWordsPageLanguage',
         section: 'start',
+        anchors: ['ui-language'],
     },
     {
         labelKey: 'helpNoSubtitlesTitle',

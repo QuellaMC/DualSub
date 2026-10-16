@@ -41,6 +41,38 @@ export function DeepLProviderCard({
                     </div>
                 </li>
                 <li>
+                    <div>
+                        <div className="strong" id="deepl-plan">
+                            {t('translationDeepLPlan')}
+                        </div>
+                        <div
+                            className="segmented"
+                            role="group"
+                            aria-labelledby="deepl-plan"
+                        >
+                            {(['free', 'pro'] as const).map((choice) => (
+                                <button
+                                    key={choice}
+                                    type="button"
+                                    aria-pressed={plan === choice}
+                                    onClick={() =>
+                                        void save(
+                                            { deeplApiPlan: choice },
+                                            'quiet'
+                                        )
+                                    }
+                                >
+                                    {t(
+                                        choice === 'free'
+                                            ? 'apiPlanFree'
+                                            : 'apiPlanPro'
+                                    )}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </li>
+                <li>
                     <div className="grow">
                         <label className="strong" htmlFor="deeplApiKey">
                             {t('setupPasteKey')}
@@ -71,38 +103,6 @@ export function DeepLProviderCard({
                             </button>
                         </div>
                         <TestResultDisplay result={check.result} />
-                    </div>
-                </li>
-                <li>
-                    <div>
-                        <div className="strong" id="deepl-plan">
-                            {t('translationDeepLPlan')}
-                        </div>
-                        <div
-                            className="segmented"
-                            role="group"
-                            aria-labelledby="deepl-plan"
-                        >
-                            {(['free', 'pro'] as const).map((choice) => (
-                                <button
-                                    key={choice}
-                                    type="button"
-                                    aria-pressed={plan === choice}
-                                    onClick={() =>
-                                        void save(
-                                            { deeplApiPlan: choice },
-                                            'quiet'
-                                        )
-                                    }
-                                >
-                                    {t(
-                                        choice === 'free'
-                                            ? 'apiPlanFree'
-                                            : 'apiPlanPro'
-                                    )}
-                                </button>
-                            ))}
-                        </div>
                     </div>
                 </li>
             </ol>
