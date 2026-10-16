@@ -116,7 +116,7 @@ function installNetflix(options: {
         setReady(): void {
             options.ready = true;
         },
-        setAudio(language: string): void {
+        setAudio(language: string | undefined): void {
             audio = language;
         },
     };
@@ -482,6 +482,33 @@ describe('netflixRecipe spoken language', () => {
         netflix.setAudio('fr');
         await settle(1000);
         expect(spoken()).toEqual([null, 'fr']);
+    });
+
+    it('says it cannot tell any more once a known language stays unreadable', async () => {
+        const netflix = installNetflix({
+            movieId: 81,
+            tracks: [EN],
+            audio: 'ko',
+        });
+        watch('81');
+        await settle();
+        netflix.setAudio(undefined);
+        await settle(5000);
+        netflix.setAudio('ko');
+        await settle(1000);
+        expect(spoken()).toEqual(['ko']);
+
+        netflix.setAudio(undefined);
+        await settle(14_000);
+        expect(spoken()).toEqual(['ko']);
+        await settle(1000);
+        expect(spoken()).toEqual(['ko', null]);
+        await settle(5000);
+        expect(spoken()).toEqual(['ko', null]);
+
+        netflix.setAudio('ja');
+        await settle(1000);
+        expect(spoken()).toEqual(['ko', null, 'ja']);
     });
 
     it('stops reporting when unwatched or closed', async () => {

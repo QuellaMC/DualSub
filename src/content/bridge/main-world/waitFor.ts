@@ -77,10 +77,11 @@ export function waitFor<T>(
 }
 
 /**
- * Polls `read` until stopped and reports every new value. While nothing has
- * been read yet, it reports null once `unknownAfterMs` has passed, so the
- * listener can stop waiting; a value read later is still reported. Starting
- * again replaces the previous watch.
+ * Polls `read` until stopped and reports every new value. Once nothing has
+ * been readable for `unknownAfterMs`, from the start or since the last value,
+ * it reports null, so the listener stops waiting on or trusting a stale
+ * value; a shorter gap reports nothing. Starting again replaces the previous
+ * watch.
  */
 export class ValueWatch {
     private timer: number | null = null;
@@ -92,14 +93,20 @@ export class ValueWatch {
         unknownAfterMs: number
     ): void {
         this.stop();
-        const giveUpAt = Date.now() + unknownAfterMs;
+        let silentSince = Date.now();
         let reported: string | null | undefined;
         const poll = (): void => {
             const value = read();
-            if (value !== null && value !== reported) {
-                reported = value;
-                report(value);
-            } else if (reported === undefined && Date.now() >= giveUpAt) {
+            if (value !== null) {
+                silentSince = Date.now();
+                if (value !== reported) {
+                    reported = value;
+                    report(value);
+                }
+            } else if (
+                reported !== null &&
+                Date.now() - silentSince >= unknownAfterMs
+            ) {
                 reported = null;
                 report(null);
             }
