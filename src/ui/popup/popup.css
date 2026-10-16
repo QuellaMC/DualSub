@@ -46,6 +46,7 @@ body {
 
 .icon-button:hover {
     background: var(--fill);
+    color: var(--ink-lead);
 }
 
 .popup-body {
@@ -136,27 +137,23 @@ body {
     font-size: 15px;
 }
 
-/* A plain strip of video: the sample's lines without the scene behind
-   them, which the popup has no room for. */
-.popup-sample .screen {
-    height: 120px;
-    aspect-ratio: auto;
-    background: var(--screen);
+/* Guidance gets more room than the remote control's cards. */
+.popup .guide {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
 
-.popup-sample .screen::before,
-.popup-sample .screen::after {
-    display: none;
+.popup .guide .card {
+    padding: 18px 16px;
+}
+
+.popup .guide .help {
+    font-size: 15px;
 }
 
 .popup-foot {
     display: flex;
     justify-content: space-between;
     padding: 0 14px 12px;
-}
-
-.popup-foot .link-button {
-    min-height: 44px;
-    padding: 0 6px;
-    text-decoration: none;
 }

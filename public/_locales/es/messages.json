@@ -1556,6 +1556,9 @@
     "popupAllSettings": {
         "message": "Toda la configuración"
     },
+    "popupOnGitHub": {
+        "message": "DualSub en GitHub"
+    },
     "popupWorkingTitle": {
         "message": "Funcionando en este video"
     },

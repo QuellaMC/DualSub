@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react';
 import { browser } from 'wxt/browser';
+import { GitHubMark } from '../design/GitHubMark';
 import { Icon } from '../design/Icon';
 import { Logo } from '../design/Logo';
 import type { Translate } from '../hooks/useI18n';
+import { SOURCE_URL } from '../sourceCode';
 
 /** The settings page, opened at `section` when one is named. */
 export function openSettings(section?: string): void {
@@ -16,7 +18,7 @@ export function openSettings(section?: string): void {
 }
 
 /** The frame every popup state shares: the name, the way to the settings,
- *  and help. */
+ *  the source, and help. */
 export function PopupShell({
     t,
     children,
@@ -35,6 +37,7 @@ export function PopupShell({
                     type="button"
                     className="icon-button"
                     aria-label={t('popupAllSettings')}
+                    title={t('popupAllSettings')}
                     onClick={() => openSettings()}
                 >
                     <Icon name="settings" />
@@ -42,19 +45,24 @@ export function PopupShell({
             </header>
             <main className="popup-body">{children}</main>
             <footer className="popup-foot">
-                <button
-                    type="button"
-                    className="link-button"
-                    onClick={() => openSettings()}
+                <a
+                    className="icon-button"
+                    href={SOURCE_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={t('popupOnGitHub')}
+                    title={t('popupOnGitHub')}
                 >
-                    {t('popupAllSettings')}
-                </button>
+                    <GitHubMark />
+                </a>
                 <button
                     type="button"
-                    className="link-button"
+                    className="icon-button"
+                    aria-label={t('navHelp')}
+                    title={t('navHelp')}
                     onClick={() => openSettings('help')}
                 >
-                    {t('navHelp')}
+                    <Icon name="help" />
                 </button>
             </footer>
         </div>

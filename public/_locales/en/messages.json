@@ -1556,6 +1556,9 @@
     "popupAllSettings": {
         "message": "All settings"
     },
+    "popupOnGitHub": {
+        "message": "DualSub on GitHub"
+    },
     "popupWorkingTitle": {
         "message": "Working on this video"
     },

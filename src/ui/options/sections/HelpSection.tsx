@@ -2,10 +2,9 @@ import { browser } from 'wxt/browser';
 import { PLATFORM_IDS } from '@/shared/platforms';
 import { Interpolate } from '../../design/Interpolate';
 import type { Translate } from '../../hooks/useI18n';
+import { SOURCE_URL } from '../../sourceCode';
 import type { SectionId } from '../sections';
 import { followAllSites, useFeedback } from '../shell/feedback';
-
-const SOURCE_URL = 'https://github.com/QuellaMC/DualSub';
 
 export function HelpSection({
     t,

@@ -1556,6 +1556,9 @@
     "popupAllSettings": {
         "message": "모든 설정"
     },
+    "popupOnGitHub": {
+        "message": "GitHub의 DualSub"
+    },
     "popupWorkingTitle": {
         "message": "이 영상에서 작동 중"
     },

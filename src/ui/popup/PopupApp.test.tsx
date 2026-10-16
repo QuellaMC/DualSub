@@ -408,9 +408,6 @@ describe('PopupApp anywhere else', () => {
             })
         ).toBeInTheDocument();
         expect(
-            screen.getByRole('img', { name: 'Subtitle preview' })
-        ).toBeInTheDocument();
-        expect(
             screen.getByRole('link', { name: 'Open Netflix' })
         ).toHaveAttribute('href', 'https://www.netflix.com/');
         expect(
@@ -418,7 +415,7 @@ describe('PopupApp anywhere else', () => {
         ).toHaveAttribute('href', 'https://www.disneyplus.com/');
     });
 
-    it('opens all settings and help', async () => {
+    it('opens the settings and help, and links to the source', async () => {
         const openOptions = vi
             .spyOn(browser.runtime, 'openOptionsPage')
             .mockResolvedValue(undefined);
@@ -427,15 +424,16 @@ describe('PopupApp anywhere else', () => {
             .mockResolvedValue({} as never);
         stubTab('https://example.com/');
         render(<PopupApp />);
-        const [header, footer] = await screen.findAllByRole('button', {
-            name: 'All settings',
-        });
-        fireEvent.click(header!);
-        fireEvent.click(footer!);
-        expect(openOptions).toHaveBeenCalledTimes(2);
+        fireEvent.click(
+            await screen.findByRole('button', { name: 'All settings' })
+        );
+        expect(openOptions).toHaveBeenCalledOnce();
         fireEvent.click(screen.getByRole('button', { name: 'Help' }));
         expect(create).toHaveBeenCalledWith({
             url: `${TEST_EXTENSION_ORIGIN}/options.html#help`,
         });
+        expect(
+            screen.getByRole('link', { name: 'DualSub on GitHub' })
+        ).toHaveAttribute('href', 'https://github.com/QuellaMC/DualSub');
     });
 });

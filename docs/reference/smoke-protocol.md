@@ -32,8 +32,8 @@ with a clean profile plus one seeded profile (see the upgrade-path tests in
    profile's subtitle appearance settings.
 6. Open the popup on a playing Netflix video: it says DualSub is working
    on it. Turn DualSub off there: Netflix shows its own subtitles while a
-   Disney+ tab keeps dual subtitles. On any other page the popup shows
-   the sample and the sites.
+   Disney+ tab keeps dual subtitles. On any other page the popup names
+   the sites and opens each one.
 7. In the settings page's How subtitles look section, pick each
    ready-made look, then change colors and font (font, bold, text color,
    edge, background) and the translation color: the preview follows each

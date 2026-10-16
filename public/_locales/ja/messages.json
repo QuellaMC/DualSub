@@ -1556,6 +1556,9 @@
     "popupAllSettings": {
         "message": "すべての設定"
     },
+    "popupOnGitHub": {
+        "message": "GitHub の DualSub"
+    },
     "popupWorkingTitle": {
         "message": "この動画で字幕を表示中"
     },

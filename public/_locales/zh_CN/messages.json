@@ -1556,6 +1556,9 @@
     "popupAllSettings": {
         "message": "全部设置"
     },
+    "popupOnGitHub": {
+        "message": "GitHub 上的 DualSub"
+    },
     "popupWorkingTitle": {
         "message": "正在为这个视频工作"
     },
