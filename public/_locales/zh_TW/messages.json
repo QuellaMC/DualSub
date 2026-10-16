@@ -1439,6 +1439,15 @@
     "searchWordsPause": {
         "message": "暫停 自動暫停 暫停影片 影片暫停 一直暫停 自己暫停 停止 停下來 停住 播放 繼續播放 不要暫停 影片一直暫停"
     },
+    "searchWordsKinds": {
+        "message": "類型 種類 意思 含義 文化 歷史 由來 解釋什麼 選擇"
+    },
+    "searchWordsAutoOpen": {
+        "message": "自動開啟 面板 側邊面板 點單字 跳出 打開"
+    },
+    "searchWordsCache": {
+        "message": "記住 回答 快取 暫存 儲存 重複"
+    },
     "searchWordsTheme": {
         "message": "主題 深色 淺色 暗色 亮色 深色模式 淺色模式 夜間模式 暗黑模式 黑底 白底 太亮 刺眼 面板 解釋面板 側邊面板"
     },

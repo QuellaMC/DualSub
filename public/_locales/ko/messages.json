@@ -1439,6 +1439,15 @@
     "searchWordsPause": {
         "message": "일시정지 정지 멈춤 자동정지 자동멈춤"
     },
+    "searchWordsKinds": {
+        "message": "종류 의미 뜻 문화 역사 유래 어원 설명할 내용 고르기"
+    },
+    "searchWordsAutoOpen": {
+        "message": "자동으로 열기 패널 사이드패널 클릭 단어 열림"
+    },
+    "searchWordsCache": {
+        "message": "기억 답변 캐시 저장 반복"
+    },
     "searchWordsTheme": {
         "message": "테마 다크모드 라이트모드 야간모드 어둡게 어두운 밝게 밝은 패널 설명창 색깔 색상"
     },

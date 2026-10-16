@@ -1439,6 +1439,15 @@
     "searchWordsPause": {
         "message": "自动暂停 停下 停住 停止 视频停了 自己停了 继续播放"
     },
+    "searchWordsKinds": {
+        "message": "类型 种类 含义 意思 文化 历史 来历 解释什么 选择"
+    },
+    "searchWordsAutoOpen": {
+        "message": "自动打开 面板 侧边栏 点击单词 弹出 打开"
+    },
+    "searchWordsCache": {
+        "message": "记住 回答 缓存 保存 重复"
+    },
     "searchWordsTheme": {
         "message": "主题 皮肤 深色模式 浅色模式 暗黑模式 夜间模式 暗色 亮色 跟随系统 跟随电脑 刺眼 解释面板 侧边栏"
     },

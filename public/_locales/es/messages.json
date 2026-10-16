@@ -1439,6 +1439,15 @@
     "searchWordsPause": {
         "message": "pausa detener parar automático automatico vídeo leer"
     },
+    "searchWordsKinds": {
+        "message": "tipos clases significado cultura historia origen qué explicar elegir"
+    },
+    "searchWordsAutoOpen": {
+        "message": "abrir panel automáticamente automaticamente clic palabra lateral"
+    },
+    "searchWordsCache": {
+        "message": "recordar respuestas caché cache guardar repetir"
+    },
     "searchWordsTheme": {
         "message": "tema oscuro claro modo nocturno noche luz negro blanco"
     },
