@@ -244,6 +244,42 @@ describe('configService for one site', () => {
         ).toBe(false);
     });
 
+    it('waits for a profile rewrite another extension page is making', async () => {
+        await fakeBrowser.storage.sync.set({
+            siteProfiles: { netflix: { subtitleGap: 0.5 } },
+        });
+        const release = Promise.withResolvers<void>();
+        // Another page holds the lock that every extension page shares.
+        const elsewhere = navigator.locks.request(
+            'dualsub:siteProfiles',
+            async () => {
+                await fakeBrowser.storage.sync.set({
+                    siteProfiles: {
+                        netflix: { subtitleGap: 0.5 },
+                        disneyplus: { subtitleGap: 0.7 },
+                    },
+                });
+                await release.promise;
+            }
+        );
+        const write = configService.setMultiple(
+            { subtitleTimeOffset: 1 },
+            { site: 'netflix', target: 'own' }
+        );
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        expect(await stored()).toEqual({
+            netflix: { subtitleGap: 0.5 },
+            disneyplus: { subtitleGap: 0.7 },
+        });
+
+        release.resolve();
+        await Promise.all([elsewhere, write]);
+        expect(await stored()).toEqual({
+            netflix: { subtitleGap: 0.5, subtitleTimeOffset: 1 },
+            disneyplus: { subtitleGap: 0.7 },
+        });
+    });
+
     it('lets a site follow the shared values again', async () => {
         await fakeBrowser.storage.sync.set({
             siteProfiles: {
