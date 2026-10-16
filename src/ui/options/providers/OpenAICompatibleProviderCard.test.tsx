@@ -133,31 +133,17 @@ describe('OpenAICompatibleProviderCard', () => {
         expect(input).toHaveAttribute('aria-invalid', 'true');
 
         fireEvent.change(input, {
-            target: { value: 'https://api.openai.com/v2' },
-        });
-        fireEvent.keyDown(input, { key: 'Enter' });
-        await flush();
-        expect(save).toHaveBeenLastCalledWith(
-            { openaiCompatibleBaseUrl: 'https://api.openai.com/v2' },
-            'quiet'
-        );
-
-        // The key entered for one host never goes to another.
-        fireEvent.change(input, {
             target: { value: 'https://llm.example.com/v1/' },
         });
         fireEvent.keyDown(input, { key: 'Enter' });
         await flush();
-        expect(save).toHaveBeenLastCalledWith(
-            {
-                openaiCompatibleBaseUrl: 'https://llm.example.com/v1/',
-                openaiCompatibleApiKey: '',
-            },
+        expect(save).toHaveBeenCalledWith(
+            { openaiCompatibleBaseUrl: 'https://llm.example.com/v1/' },
             'quiet'
         );
     });
 
-    it('saves key and model edits directly', async () => {
+    it('enters a key for the origin of its address, and saves model edits directly', async () => {
         vi.stubGlobal(
             'fetch',
             vi.fn(() => Promise.resolve(modelsResponse([])))
@@ -167,7 +153,10 @@ describe('OpenAICompatibleProviderCard', () => {
             target: { value: 'sk-2' },
         });
         expect(save).toHaveBeenCalledWith(
-            { openaiCompatibleApiKey: 'sk-2' },
+            {
+                openaiCompatibleApiKey: 'sk-2',
+                openaiCompatibleApiKeyOrigin: 'https://api.openai.com',
+            },
             'quiet'
         );
         fireEvent.change(screen.getByLabelText('setupModel'), {
@@ -198,7 +187,6 @@ describe('OpenAICompatibleProviderCard', () => {
             {
                 openaiCompatibleBaseUrl:
                     'https://generativelanguage.googleapis.com/v1beta/openai',
-                openaiCompatibleApiKey: '',
                 openaiCompatibleModel: 'gemini-2.5-flash',
             },
             'quiet'

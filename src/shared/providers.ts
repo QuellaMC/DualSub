@@ -1,3 +1,5 @@
+import { usableCredential, type KeyOriginSetting } from './keyOrigins';
+
 export const PROVIDER_IDS = [
     'google',
     'microsoft_edge',
@@ -42,11 +44,12 @@ export function vertexTokenExpired(expiresAt: number, now: number): boolean {
     return expiresAt > 0 && expiresAt <= now;
 }
 
-/** The credentials `provider` still lacks in `settings`. A Vertex token
+/** The credentials `provider` still lacks in `settings`. A key entered for
+ *  another origin than its address's is lacking too, and a Vertex token
  *  past its recorded expiry is as good as missing. */
 export function missingCredentials(
     provider: ProviderId,
-    settings: Partial<Record<CredentialKey, string>> & {
+    settings: Partial<Record<CredentialKey | KeyOriginSetting, string>> & {
         readonly vertexTokenExpiresAt?: number;
     },
     now = Date.now()
@@ -54,7 +57,7 @@ export function missingCredentials(
     const needed: readonly CredentialKey[] = PROVIDER_CREDENTIALS[provider];
     return needed.filter(
         (key) =>
-            !credentialEntered(settings[key]) ||
+            !credentialEntered(usableCredential(key, settings)) ||
             (key === 'vertexAccessToken' &&
                 vertexTokenExpired(settings.vertexTokenExpiresAt ?? 0, now))
     );

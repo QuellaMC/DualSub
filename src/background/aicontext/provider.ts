@@ -5,6 +5,7 @@ export type AiContextProviderId = SettingsValues['aiContextProvider'];
 
 export const PROVIDER_SETTINGS_KEYS = [
     'openaiApiKey',
+    'openaiApiKeyOrigin',
     'openaiBaseUrl',
     'openaiModel',
     'geminiApiKey',

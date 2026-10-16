@@ -24,6 +24,7 @@ const RUNTIME = {
 
 const REQUEST_SETTINGS = {
     openaiApiKey: 'sk-test',
+    openaiApiKeyOrigin: 'https://api.openai.com',
     openaiBaseUrl: 'https://api.openai.com/v1',
     openaiModel: 'gpt-5.6-luna',
     geminiApiKey: '',
@@ -250,26 +251,35 @@ describe('AiContextService', () => {
         expect(sleeps).toEqual([]);
     });
 
-    it('does not cache an in-flight result after credential rotation', async () => {
-        const { service, fetchMock, emit } = harness();
-        let release: (response: Response) => void = () => undefined;
-        fetchMock.mockImplementationOnce(
-            () =>
-                new Promise<Response>((resolve) => {
-                    release = resolve;
-                })
-        );
-        await service.initialize();
-        const pending = service.analyze(REQUEST);
-        await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
-        emit({ openaiApiKey: 'sk-rotated' });
-        release(jsonResponse(culturalSample()));
-        expect(await pending).toMatchObject({ success: true, cached: false });
-        expect(await service.analyze(REQUEST)).toMatchObject({
-            cached: false,
-        });
-        expect(fetchMock).toHaveBeenCalledTimes(2);
-    });
+    it.each([
+        ['value', { openaiApiKey: 'sk-rotated' }],
+        ['origin', { openaiApiKeyOrigin: 'https://proxy.example.com' }],
+    ])(
+        "does not cache an in-flight result once the key's %s changes",
+        async (_, rotation) => {
+            const { service, fetchMock, emit } = harness();
+            let release: (response: Response) => void = () => undefined;
+            fetchMock.mockImplementationOnce(
+                () =>
+                    new Promise<Response>((resolve) => {
+                        release = resolve;
+                    })
+            );
+            await service.initialize();
+            const pending = service.analyze(REQUEST);
+            await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+            emit(rotation);
+            release(jsonResponse(culturalSample()));
+            expect(await pending).toMatchObject({
+                success: true,
+                cached: false,
+            });
+            expect(await service.analyze(REQUEST)).toMatchObject({
+                cached: false,
+            });
+            expect(fetchMock).toHaveBeenCalledTimes(2);
+        }
+    );
 
     it('includes provider model and endpoint in cache identity', async () => {
         const { service, fetchMock, config } = harness();

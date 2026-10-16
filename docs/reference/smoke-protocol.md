@@ -89,5 +89,11 @@ with a clean profile plus one seeded profile (see the upgrade-path tests in
     sample follows. Reload the extension from chrome://extensions: no
     second welcome page.
 19. Seeded 2.5.0 profile: after the first boot, credentials are gone from
-    sync storage, the provider is Microsoft, and every option shows the
-    value the old profile had.
+    sync storage, the provider is Microsoft, every option shows the value
+    the old profile had, and its AI keys still work at their addresses.
+20. Set up AI translation with a Google Gemini key, then choose OpenAI:
+    the key field empties, Start says AI translation isn't set up yet,
+    and no request goes to api.openai.com. Choose Google Gemini again:
+    the key is back. With an OpenAI key in Word explanations, save a
+    backup, change its `openaiBaseUrl` to another host, and load it: Word
+    explanations asks for a key again.

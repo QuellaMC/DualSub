@@ -432,7 +432,10 @@ describe('OptionsApp', () => {
             aiContextProvider: 'openai',
             openaiBaseUrl: 'https://llm.example.com/v1',
         });
-        await fakeBrowser.storage.local.set({ openaiApiKey: 'sk-key' });
+        await fakeBrowser.storage.local.set({
+            openaiApiKey: 'sk-key',
+            openaiApiKeyOrigin: 'https://llm.example.com',
+        });
         location.hash = '#explanations';
         await renderReady();
         const allow = await screen.findByRole('button', {
@@ -462,6 +465,7 @@ describe('OptionsApp', () => {
         await fakeBrowser.storage.local.set({
             showAdvancedSettings: true,
             openaiApiKey: 'sk-key',
+            openaiApiKeyOrigin: 'https://explain.example.com',
         });
         location.hash = '#explanations';
         await renderReady();
@@ -705,8 +709,14 @@ describe('OptionsApp', () => {
             expect(await sync('aiContextEnabled')).toBe(true)
         );
         expect(
-            (await fakeBrowser.storage.local.get('openaiApiKey')).openaiApiKey
-        ).toBe('AIza-key');
+            await fakeBrowser.storage.local.get([
+                'openaiApiKey',
+                'openaiApiKeyOrigin',
+            ])
+        ).toEqual({
+            openaiApiKey: 'AIza-key',
+            openaiApiKeyOrigin: 'https://api.openai.com',
+        });
         expect(
             await screen.findByRole('heading', { name: 'Set up with OpenAI' })
         ).toBeInTheDocument();
@@ -732,6 +742,7 @@ describe('OptionsApp', () => {
         await fakeBrowser.storage.local.set({
             deeplApiKey: 'keep-me',
             openaiCompatibleApiKey: 'keep-me-too',
+            openaiCompatibleApiKeyOrigin: 'https://llm.example.com',
             showAdvancedSettings: true,
         });
         location.hash = '#advanced';
@@ -747,8 +758,15 @@ describe('OptionsApp', () => {
         expect(
             (await fakeBrowser.storage.local.get('deeplApiKey')).deeplApiKey
         ).toBe('keep-me');
-        // A kept key keeps the address and model it was set up with; an
-        // address with no key goes back to the recommended one.
+        // A kept key keeps its origin and the address and model it was set
+        // up with; an address with no key goes back to the recommended one.
+        expect(
+            (
+                await fakeBrowser.storage.local.get(
+                    'openaiCompatibleApiKeyOrigin'
+                )
+            ).openaiCompatibleApiKeyOrigin
+        ).toBe('https://llm.example.com');
         expect(await sync('openaiCompatibleBaseUrl')).toBe(
             'https://llm.example.com/v1'
         );
@@ -819,6 +837,7 @@ describe('OptionsApp', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
         await fakeBrowser.storage.local.set({
             openaiCompatibleApiKey: 'sk-key',
+            openaiCompatibleApiKeyOrigin: 'https://llm.example.com',
         });
         held.resolve();
 
@@ -838,6 +857,7 @@ describe('OptionsApp', () => {
         });
         await fakeBrowser.storage.local.set({
             openaiCompatibleApiKey: '   ',
+            openaiCompatibleApiKeyOrigin: 'https://llm.example.com',
             showAdvancedSettings: true,
         });
         location.hash = '#advanced';
@@ -872,6 +892,7 @@ describe('OptionsApp', () => {
                 await release.promise;
                 await fakeBrowser.storage.local.set({
                     openaiCompatibleApiKey: 'sk-key',
+                    openaiCompatibleApiKeyOrigin: 'https://llm.example.com',
                 });
             }
         );
@@ -891,6 +912,41 @@ describe('OptionsApp', () => {
         expect(await sync('openaiCompatibleBaseUrl')).toBe(
             'https://llm.example.com/v1'
         );
+    });
+
+    it('resets the setup of a key entered for another address', async () => {
+        await fakeBrowser.storage.sync.set({
+            openaiCompatibleBaseUrl: 'https://llm.example.com/v1',
+        });
+        await fakeBrowser.storage.local.set({
+            openaiCompatibleApiKey: 'sk-key',
+            openaiCompatibleApiKeyOrigin: 'https://api.openai.com',
+            showAdvancedSettings: true,
+        });
+        location.hash = '#advanced';
+        await renderReady();
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Reset everything…' })
+        );
+        fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
+
+        expect(
+            await screen.findByText(
+                'Everything is back to the recommended settings'
+            )
+        ).toBeInTheDocument();
+        expect(await sync('openaiCompatibleBaseUrl')).toBe(
+            getDefaultValue('openaiCompatibleBaseUrl')
+        );
+        expect(
+            await fakeBrowser.storage.local.get([
+                'openaiCompatibleApiKey',
+                'openaiCompatibleApiKeyOrigin',
+            ])
+        ).toEqual({
+            openaiCompatibleApiKey: 'sk-key',
+            openaiCompatibleApiKeyOrigin: 'https://api.openai.com',
+        });
     });
 
     it('undoes a backup load whole or not at all, and offers Undo again after a failure', async () => {
@@ -1447,7 +1503,7 @@ describe('OptionsApp', () => {
         expect(heading()).toHaveTextContent('Hello! DualSub is ready.');
     });
 
-    it('drops the key when the AI service moves to another host', async () => {
+    it('uses a key only with the service it was entered for', async () => {
         await fakeBrowser.storage.sync.set({
             selectedProvider: 'openai_compatible',
             openaiCompatibleBaseUrl:
@@ -1455,19 +1511,200 @@ describe('OptionsApp', () => {
         });
         await fakeBrowser.storage.local.set({
             openaiCompatibleApiKey: 'AIza-google-key',
+            openaiCompatibleApiKeyOrigin:
+                'https://generativelanguage.googleapis.com',
         });
         location.hash = '#translation';
         await renderReady();
-        fireEvent.click(await screen.findByRole('button', { name: 'OpenAI' }));
+        const key = screen.getByLabelText('Paste it here');
+        expect(key).toHaveValue('AIza-google-key');
+
+        fireEvent.click(screen.getByRole('button', { name: 'OpenAI' }));
+        await waitFor(() => expect(key).toHaveValue(''));
+        expect(
+            await screen.findByText('Please enter your API key first.')
+        ).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Google Gemini' }));
+        await waitFor(() => expect(key).toHaveValue('AIza-google-key'));
+
+        fireEvent.click(screen.getByRole('button', { name: 'OpenAI' }));
+        await waitFor(() => expect(key).toHaveValue(''));
+        fireEvent.change(key, { target: { value: 'sk-openai' } });
         await waitFor(async () =>
-            expect(await sync('openaiCompatibleBaseUrl')).toBe(
-                'https://api.openai.com/v1'
+            expect(
+                await fakeBrowser.storage.local.get([
+                    'openaiCompatibleApiKey',
+                    'openaiCompatibleApiKeyOrigin',
+                ])
+            ).toEqual({
+                openaiCompatibleApiKey: 'sk-openai',
+                openaiCompatibleApiKeyOrigin: 'https://api.openai.com',
+            })
+        );
+    });
+
+    it('enters a key for the address shown when it was typed, while a new one is still being saved', async () => {
+        await fakeBrowser.storage.local.set({ showAdvancedSettings: true });
+        location.hash = '#explanations';
+        await renderReady();
+        const stored = Promise.withResolvers<void>();
+        const write = browser.storage.sync.set.bind(browser.storage.sync);
+        vi.spyOn(browser.storage.sync, 'set').mockImplementationOnce(
+            (items: Record<string, unknown>) =>
+                stored.promise.then(() => write(items)) as never
+        );
+        const address = screen.getByLabelText(
+            'Address, for compatible servers'
+        );
+        fireEvent.change(address, {
+            target: { value: 'https://llm.example.com/v1' },
+        });
+        fireEvent.blur(address);
+        fireEvent.change(screen.getByLabelText('Paste it here'), {
+            target: { value: 'sk-openai' },
+        });
+        stored.resolve();
+        await waitFor(async () =>
+            expect(await sync('openaiBaseUrl')).toBe(
+                'https://llm.example.com/v1'
+            )
+        );
+        await waitFor(async () =>
+            expect(
+                await fakeBrowser.storage.local.get([
+                    'openaiApiKey',
+                    'openaiApiKeyOrigin',
+                ])
+            ).toEqual({
+                openaiApiKey: 'sk-openai',
+                openaiApiKeyOrigin: 'https://api.openai.com',
+            })
+        );
+        await waitFor(() =>
+            expect(screen.getByLabelText('Paste it here')).toHaveValue('')
+        );
+    });
+
+    it('enters a key for the address shown when it was typed, whatever is stored meanwhile', async () => {
+        await fakeBrowser.storage.local.set({ showAdvancedSettings: true });
+        location.hash = '#explanations';
+        await renderReady();
+        const release = Promise.withResolvers<void>();
+        // The entry waits its turn while another page or computer moves the
+        // address.
+        const elsewhere = navigator.locks.request(
+            'dualsub:settingParts',
+            () => release.promise
+        );
+        fireEvent.change(screen.getByLabelText('Paste it here'), {
+            target: { value: 'sk-openai' },
+        });
+        await fakeBrowser.storage.sync.set({
+            openaiBaseUrl: 'https://elsewhere.example.com/v1',
+        });
+        release.resolve();
+        await elsewhere;
+        await waitFor(async () =>
+            expect(
+                await fakeBrowser.storage.local.get([
+                    'openaiApiKey',
+                    'openaiApiKeyOrigin',
+                ])
+            ).toEqual({
+                openaiApiKey: 'sk-openai',
+                openaiApiKeyOrigin: 'https://api.openai.com',
+            })
+        );
+    });
+
+    it('enters a key for the service shown when it was typed, while another is still being saved', async () => {
+        await fakeBrowser.storage.sync.set({
+            selectedProvider: 'openai_compatible',
+            openaiCompatibleBaseUrl:
+                'https://generativelanguage.googleapis.com/v1beta/openai',
+        });
+        location.hash = '#translation';
+        await renderReady();
+        const stored = Promise.withResolvers<void>();
+        const write = browser.storage.sync.set.bind(browser.storage.sync);
+        vi.spyOn(browser.storage.sync, 'set').mockImplementationOnce(
+            (items: Record<string, unknown>) =>
+                stored.promise.then(() => write(items)) as never
+        );
+        fireEvent.click(screen.getByRole('button', { name: 'OpenAI' }));
+        fireEvent.change(screen.getByLabelText('Paste it here'), {
+            target: { value: 'sk-openai' },
+        });
+        stored.resolve();
+        await waitFor(async () =>
+            expect(
+                await fakeBrowser.storage.local.get([
+                    'openaiCompatibleApiKey',
+                    'openaiCompatibleApiKeyOrigin',
+                ])
+            ).toEqual({
+                openaiCompatibleApiKey: 'sk-openai',
+                openaiCompatibleApiKeyOrigin:
+                    'https://generativelanguage.googleapis.com',
+            })
+        );
+    });
+
+    it('keeps a key typed before an address change with the address it was typed for', async () => {
+        await fakeBrowser.storage.local.set({ showAdvancedSettings: true });
+        location.hash = '#explanations';
+        await renderReady();
+        fireEvent.change(screen.getByLabelText('Paste it here'), {
+            target: { value: 'sk-openai' },
+        });
+        const address = screen.getByLabelText(
+            'Address, for compatible servers'
+        );
+        fireEvent.change(address, {
+            target: { value: 'https://llm.example.com/v1' },
+        });
+        fireEvent.blur(address);
+        await waitFor(async () =>
+            expect(await sync('openaiBaseUrl')).toBe(
+                'https://llm.example.com/v1'
             )
         );
         expect(
-            (await fakeBrowser.storage.local.get('openaiCompatibleApiKey'))
-                .openaiCompatibleApiKey
-        ).toBe('');
+            await fakeBrowser.storage.local.get([
+                'openaiApiKey',
+                'openaiApiKeyOrigin',
+            ])
+        ).toEqual({
+            openaiApiKey: 'sk-openai',
+            openaiApiKeyOrigin: 'https://api.openai.com',
+        });
+        await waitFor(() =>
+            expect(screen.getByLabelText('Paste it here')).toHaveValue('')
+        );
+    });
+
+    it('treats a key as missing once another computer moves its address', async () => {
+        await fakeBrowser.storage.sync.set({
+            selectedProvider: 'openai_compatible',
+            openaiCompatibleBaseUrl: 'https://api.openai.com/v1',
+        });
+        await fakeBrowser.storage.local.set({
+            openaiCompatibleApiKey: 'sk-openai',
+            openaiCompatibleApiKeyOrigin: 'https://api.openai.com',
+        });
+        await renderReady();
+        expect(
+            screen.queryByText("AI translation isn't set up yet")
+        ).not.toBeInTheDocument();
+
+        await fakeBrowser.storage.sync.set({
+            openaiCompatibleBaseUrl: 'https://llm.example.com/v1',
+        });
+        expect(
+            await screen.findByText("AI translation isn't set up yet")
+        ).toBeInTheDocument();
+        nav('Translation');
+        expect(screen.getByLabelText('Paste it here')).toHaveValue('');
     });
 
     it('undoes the last change with Ctrl+Z outside text fields', async () => {
@@ -1993,6 +2230,7 @@ describe('OptionsApp', () => {
         });
         await fakeBrowser.storage.local.set({
             openaiCompatibleApiKey: 'sk-key',
+            openaiCompatibleApiKeyOrigin: 'https://llm.example.com',
         });
         await renderReady();
         expect(
@@ -2011,6 +2249,7 @@ describe('OptionsApp', () => {
         });
         await fakeBrowser.storage.local.set({
             openaiCompatibleApiKey: 'sk-key',
+            openaiCompatibleApiKeyOrigin: 'https://llm.example.com',
         });
         await renderReady();
         expect(
@@ -2086,10 +2325,11 @@ describe('OptionsApp', () => {
         );
     });
 
-    it('keeps the token expiry out of the settings JSON along with the keys', async () => {
+    it('keeps the token expiry and key origins out of the settings JSON along with the keys', async () => {
         await fakeBrowser.storage.local.set({
             showAdvancedSettings: true,
             vertexTokenExpiresAt: 123,
+            openaiApiKeyOrigin: 'https://api.openai.com',
         });
         location.hash = '#advanced';
         await renderReady();
@@ -2098,8 +2338,53 @@ describe('OptionsApp', () => {
                 '"subtitleFontScale": 1'
             )
         );
-        expect(document.querySelector('pre.code')).not.toHaveTextContent(
-            'vertexTokenExpiresAt'
+        const json = document.querySelector('pre.code');
+        expect(json).not.toHaveTextContent('vertexTokenExpiresAt');
+        expect(json).not.toHaveTextContent('ApiKeyOrigin');
+    });
+
+    it('leaves a key behind when a loaded backup moves its address', async () => {
+        await fakeBrowser.storage.local.set({
+            showAdvancedSettings: true,
+            openaiApiKey: 'sk-openai',
+            openaiApiKeyOrigin: 'https://api.openai.com',
+        });
+        location.hash = '#advanced';
+        await renderReady();
+        await waitFor(() =>
+            expect(document.querySelector('pre.code')).toHaveTextContent(
+                '"subtitleFontScale": 1'
+            )
+        );
+        const backup = new File(
+            [
+                JSON.stringify({
+                    openaiBaseUrl: 'https://proxy.example.com/v1',
+                    openaiApiKeyOrigin: 'https://proxy.example.com',
+                }),
+            ],
+            'backup.json',
+            { type: 'application/json' }
+        );
+        fireEvent.change(screen.getByLabelText('Load settings from a file'), {
+            target: { files: [backup] },
+        });
+        expect(
+            await screen.findByText('Settings that will change: 1.')
+        ).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Replace them' }));
+        await waitFor(async () =>
+            expect(await sync('openaiBaseUrl')).toBe(
+                'https://proxy.example.com/v1'
+            )
+        );
+        expect(
+            (await fakeBrowser.storage.local.get('openaiApiKeyOrigin'))
+                .openaiApiKeyOrigin
+        ).toBe('https://api.openai.com');
+        nav('Word explanations');
+        await waitFor(() =>
+            expect(screen.getByLabelText('Paste it here')).toHaveValue('')
         );
     });
 

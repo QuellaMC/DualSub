@@ -1,6 +1,8 @@
 import { browser } from 'wxt/browser';
+import { KEY_ORIGINS, originOf, type KeyBinding } from '@/shared/keyOrigins';
 import { VERTEX_LOCATIONS } from '@/shared/providers';
-import { SETTING_BOUNDS } from './schema';
+import { getDefaultValue, prepareSettingValue, SETTING_BOUNDS } from './schema';
+import { inTurn } from './service';
 
 const RETIRED_GEMINI_MODELS = new Set(['gemini-1.5-flash', 'gemini-1.5-pro']);
 
@@ -11,6 +13,8 @@ const DEVICE_LOCAL_CREDENTIAL_KEYS = [
     'openaiApiKey',
     'geminiApiKey',
 ] as const;
+
+const KEY_BINDINGS = Object.entries(KEY_ORIGINS);
 
 const ALLOWED_VERTEX_LOCATIONS = new Set<string>(VERTEX_LOCATIONS);
 
@@ -79,6 +83,16 @@ function legacyFontSizeToScale(fontSizeVw: number): number {
     return Math.round(scale * 100) / 100;
 }
 
+/** The address `stored` resolves to, as every reader resolves it: itself
+ *  when valid, else the default. */
+function resolvedAddress(key: KeyBinding['address'], stored: unknown): string {
+    try {
+        return prepareSettingValue(key, stored);
+    } catch {
+        return getDefaultValue(key);
+    }
+}
+
 export interface MigrationSummary {
     localUpdates: string[];
     syncUpdates: string[];
@@ -113,7 +127,7 @@ async function runMigration(): Promise<MigrationSummary> {
     const [syncItems, localItems] = await Promise.all([
         browser.storage.sync.get([
             ...DEVICE_LOCAL_CREDENTIAL_KEYS,
-            'openaiBaseUrl',
+            ...KEY_BINDINGS.map(([, { address }]) => address),
             'geminiModel',
             'vertexLocation',
             'useOfficialTranslations',
@@ -127,7 +141,6 @@ async function runMigration(): Promise<MigrationSummary> {
         ]),
     ]);
 
-    const localUpdates: Record<string, unknown> = {};
     const syncUpdates: Record<string, unknown> = {};
     const removed: string[] = [];
 
@@ -136,12 +149,6 @@ async function runMigration(): Promise<MigrationSummary> {
     const syncedCredentialKeys = DEVICE_LOCAL_CREDENTIAL_KEYS.filter(
         (key) => syncItems[key] !== undefined
     );
-    for (const key of syncedCredentialKeys) {
-        const value: unknown = syncItems[key];
-        if (typeof value === 'string' && value.trim() && !localItems[key]) {
-            localUpdates[key] = value;
-        }
-    }
 
     if (
         syncItems.openaiBaseUrl === 'https://api.openai.com' ||
@@ -182,9 +189,9 @@ async function runMigration(): Promise<MigrationSummary> {
         );
     }
 
-    if (Object.keys(localUpdates).length > 0) {
-        await browser.storage.local.set(localUpdates);
-    }
+    const localUpdates = await inTurn(() =>
+        settleCredentials({ sync: syncItems, local: localItems }, syncUpdates)
+    );
     if (Object.keys(syncUpdates).length > 0) {
         await browser.storage.sync.set(syncUpdates);
     }
@@ -217,6 +224,56 @@ async function runMigration(): Promise<MigrationSummary> {
         syncUpdates: Object.keys(syncUpdates),
         removed,
     };
+}
+
+/**
+ * Settle the local credentials as the migration found storage: move each
+ * credential v2 synced into a slot that was empty, and bind it, like each
+ * key with no recorded origin (stored before keys recorded one, or by an
+ * older version since), to the address set then. It runs in turn with
+ * every settings write, and an edit made since the migration looked is
+ * newer and wins: a slot filled or emptied since keeps what it holds, a key
+ * entered since keeps its own origin, and an address stored since is a
+ * change of address, which leaves a key with the one it was entered for.
+ */
+async function settleCredentials(
+    found: {
+        readonly sync: Record<string, unknown>;
+        readonly local: Record<string, unknown>;
+    },
+    syncUpdates: Record<string, unknown>
+): Promise<Record<string, unknown>> {
+    const stored = await browser.storage.local.get([
+        ...DEVICE_LOCAL_CREDENTIAL_KEYS,
+        ...KEY_BINDINGS.map(([, { origin }]) => origin),
+    ]);
+    const updates: Record<string, unknown> = {};
+    for (const key of DEVICE_LOCAL_CREDENTIAL_KEYS) {
+        const value: unknown = found.sync[key];
+        if (
+            typeof value === 'string' &&
+            value.trim() &&
+            !found.local[key] &&
+            !stored[key]
+        ) {
+            updates[key] = value;
+        }
+    }
+    for (const [key, { address, origin }] of KEY_BINDINGS) {
+        if (Object.hasOwn(updates, key) || (stored[key] && !stored[origin])) {
+            updates[origin] =
+                originOf(
+                    resolvedAddress(
+                        address,
+                        syncUpdates[address] ?? found.sync[address]
+                    )
+                ) ?? '';
+        }
+    }
+    if (Object.keys(updates).length > 0) {
+        await browser.storage.local.set(updates);
+    }
+    return updates;
 }
 
 /** Reset single-flight state for isolated tests. */

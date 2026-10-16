@@ -49,6 +49,11 @@ provider account.
   the user's own credentials. When the selected provider fails, Microsoft
   and then Google translate instead, unless the user turned that fallback
   off.
+- An API key for an address the user sets (OpenAI-compatible translation,
+  OpenAI word explanations) is stored with the origin it was entered for
+  and sent only there. An address changed on another synced device or by
+  loading a settings backup leaves the key unused until the user enters
+  one for the new address.
 - With Word explanations (AI context) enabled, the words the user clicked (and the target
   language) go to the user's configured OpenAI or Gemini endpoint. The
   feature is off by default and re-checks its stored enablement before
