@@ -318,7 +318,7 @@
         "message": "将会改变的设置：%d 项。"
     },
     "advancedLoadUnreadable": {
-        "message": "这个文件不是 DualSub 的设置文件。"
+        "message": "无法载入这个文件：它不是 DualSub 的设置文件，或其中有无效的设置。"
     },
     "advancedLoggingErrors": {
         "message": "只显示错误"
@@ -357,7 +357,7 @@
         "message": "重置"
     },
     "advancedResetHelp": {
-        "message": "所有设置都会恢复为推荐值，每个网站也会重新使用所有网站通用的设置。你的密钥和设置页面的语言会保留不变。"
+        "message": "所有设置都会恢复为推荐值，每个网站也会重新使用所有网站通用的设置。你的密钥及与每个密钥配套的设置（如地址和模型），以及设置页面的语言会保留不变。"
     },
     "advancedResetTitle": {
         "message": "从头开始"

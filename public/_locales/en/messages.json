@@ -318,7 +318,7 @@
         "message": "Settings that will change: %d."
     },
     "advancedLoadUnreadable": {
-        "message": "That file is not a DualSub settings file."
+        "message": "That file can't be loaded: it isn't a DualSub settings file, or a setting in it isn't valid."
     },
     "advancedLoggingErrors": {
         "message": "Errors only"
@@ -357,7 +357,7 @@
         "message": "Reset"
     },
     "advancedResetHelp": {
-        "message": "Every setting goes back to the recommended one, and every site follows the settings for all sites again. Your keys and the language of these pages stay."
+        "message": "Every setting goes back to the recommended one, and every site follows the settings for all sites again. Your keys stay, together with the settings each one is used with, such as its address and model, and so does the language of these pages."
     },
     "advancedResetTitle": {
         "message": "Start over"

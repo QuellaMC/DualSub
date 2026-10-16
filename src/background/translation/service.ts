@@ -62,6 +62,15 @@ export interface TranslationServiceDeps {
     readonly logger?: Logger;
 }
 
+function cacheKey(
+    providerId: ProviderId,
+    sourceLang: string,
+    targetLang: string,
+    text: string
+): string {
+    return JSON.stringify([providerId, sourceLang, targetLang, text]);
+}
+
 function sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -109,10 +118,12 @@ function retryDelay(error: unknown, attempt: number): number | null {
 
 /**
  * Translates through the selected provider with a per-provider request
- * pacer, a short result cache, and bounded retries. Every provider
- * configuration change bumps a cache generation: an in-flight request that
- * started under the previous generation is thrown away rather than cached,
- * so a rotated credential can never serve or store a stale result.
+ * pacer, a short result cache, and bounded retries. Every credential change
+ * and every switch of the selected provider bumps a generation: a request
+ * that started under the previous one is thrown away rather than cached or
+ * recorded, so a rotated credential can never serve or store a stale
+ * result, and a provider switched away from has no say in the health of the
+ * one selected now.
  *
  * When the selected provider fails, a keyless provider covers the request
  * unless the viewer turned fallback off. A lasting failure is recorded as
@@ -129,7 +140,7 @@ export class TranslationService {
     );
     private readonly logger: Logger;
     private readonly healthStore: NonNullable<TranslationServiceDeps['health']>;
-    private cacheGeneration = 0;
+    private generation = 0;
     private selectedProvider: ProviderId = getDefaultValue('selectedProvider');
     private configuredDelayMs: number = getDefaultValue('translationDelay');
     /** Off until the stored choice is read: subtitle text reaches another
@@ -223,7 +234,7 @@ export class TranslationService {
     }
 
     clearCache(): void {
-        this.cacheGeneration += 1;
+        this.generation += 1;
         this.cache.clear();
     }
 
@@ -232,8 +243,15 @@ export class TranslationService {
         sourceLang: string,
         targetLang: string
     ): Promise<TranslationOutcome> {
-        const generation = this.cacheGeneration;
+        const generation = this.generation;
         const selected = this.selectedProvider;
+        // What the selected provider answered stands even while it is paused.
+        const known = this.cache.get(
+            cacheKey(selected, sourceLang, targetLang, text)
+        );
+        if (known !== undefined) {
+            return { translatedText: known, cached: true };
+        }
         let selectedFailed = false;
         let selectedFailure: unknown;
         let failure: unknown;
@@ -340,15 +358,18 @@ export class TranslationService {
             const health = this.health;
             try {
                 await this.healthStore.write(health);
+                if (this.health === health) {
+                    this.healthUnsaved = false;
+                }
             } catch (error) {
-                // Left unsaved, so the next record writes it again.
                 this.logger.warn('Translation health not saved', {
                     reason: error instanceof Error ? error.name : 'unknown',
                 });
-                break;
-            }
-            if (this.health === health) {
-                this.healthUnsaved = false;
+                // A newer health is written next; this one stays unsaved
+                // until the next record.
+                if (this.health === health) {
+                    break;
+                }
             }
         }
         this.healthSaving = false;
@@ -371,17 +392,12 @@ export class TranslationService {
                 { code: 'REQUEST_FAILED' }
             );
         }
-        const cacheKey = JSON.stringify([
-            providerId,
-            sourceLang,
-            targetLang,
-            text,
-        ]);
+        const key = cacheKey(providerId, sourceLang, targetLang, text);
 
         for (let attempt = 0; ; attempt += 1) {
             try {
                 this.assertGeneration(generation);
-                const cached = this.cache.get(cacheKey);
+                const cached = this.cache.get(key);
                 if (cached !== undefined) {
                     return { translatedText: cached, cached: true };
                 }
@@ -403,10 +419,10 @@ export class TranslationService {
                     );
                 }
                 this.assertGeneration(generation);
-                this.cache.set(cacheKey, translatedText);
+                this.cache.set(key, translatedText);
                 return { translatedText, cached: false };
             } catch (error) {
-                if (this.cacheGeneration !== generation) {
+                if (this.generation !== generation) {
                     throw new TranslationConfigurationChangedError();
                 }
                 const delayMs =
@@ -425,7 +441,7 @@ export class TranslationService {
     }
 
     private assertGeneration(generation: number): void {
-        if (this.cacheGeneration !== generation) {
+        if (this.generation !== generation) {
             throw new TranslationConfigurationChangedError();
         }
     }
@@ -440,14 +456,17 @@ export class TranslationService {
     }
 
     private selectProvider(id: ProviderId): void {
-        if (this.providers.has(id)) {
-            this.selectedProvider = id;
+        if (!this.providers.has(id)) {
+            this.logger.warn('Unknown translation provider selected', {
+                requested: id,
+                active: this.selectedProvider,
+            });
             return;
         }
-        this.logger.warn('Unknown translation provider selected', {
-            requested: id,
-            active: this.selectedProvider,
-        });
+        if (id !== this.selectedProvider) {
+            this.selectedProvider = id;
+            this.generation += 1;
+        }
     }
 
     private onConfigChanged(changes: SettingsChanges): void {

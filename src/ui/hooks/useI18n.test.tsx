@@ -83,6 +83,22 @@ describe('useI18n', () => {
         expect(calls).toEqual([catalogUrl('zh_TW'), catalogUrl('en')]);
     });
 
+    it('marks the page with the language it shows, English when falling back', async () => {
+        stubFetch({ en: EN, ko: { appName: { message: 'KO' } } });
+        const { result, rerender } = renderHook(
+            ({ locale }: { locale: string }) => useI18n(locale),
+            { initialProps: { locale: 'ko' } }
+        );
+        await waitFor(() => expect(result.current.ready).toBe(true));
+        expect(document.documentElement.lang).toBe('ko');
+
+        rerender({ locale: 'ja' });
+        await waitFor(() => expect(result.current.ready).toBe(true));
+        expect(result.current.t('appName')).toBe('DualSub');
+        expect(document.documentElement.lang).toBe('en');
+        expect(result.current.loadedLocale).toBe('en');
+    });
+
     it('substitutes %s and %d placeholders in order', async () => {
         stubFetch({ en: { greet: { message: 'Hi %s, %d new, %s' } } });
         const { result } = renderHook(() => useI18n('en'));
@@ -127,16 +143,24 @@ describe('useI18n', () => {
     it('does not remember a failed locale, so a later load retries it', async () => {
         const available: Catalogs = { en: EN };
         const calls = stubFetch(available);
-        expect((await loadCatalog('ja')).appName?.message).toBe('DualSub');
+        expect(await loadCatalog('ja')).toMatchObject({
+            locale: 'en',
+            catalog: { appName: { message: 'DualSub' } },
+        });
 
         available.ja = { appName: { message: 'デュアルサブ' } };
-        expect((await loadCatalog('ja')).appName?.message).toBe('デュアルサブ');
+        expect(await loadCatalog('ja')).toMatchObject({
+            locale: 'ja',
+            catalog: { appName: { message: 'デュアルサブ' } },
+        });
         expect(calls).toEqual([
             catalogUrl('ja'),
             catalogUrl('en'),
             catalogUrl('ja'),
         ]);
-        expect((await loadCatalog('en')).appName?.message).toBe('DualSub');
+        expect((await loadCatalog('en')).catalog.appName?.message).toBe(
+            'DualSub'
+        );
         expect(calls).toHaveLength(3);
     });
 });

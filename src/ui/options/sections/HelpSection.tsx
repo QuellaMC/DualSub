@@ -17,28 +17,24 @@ export function HelpSection({
 }) {
     const feedback = useFeedback();
 
-    /** Hide every site's own subtitles: the shared value, and no site
-     *  keeping its own. Undo puts back the shared value and every site's own
-     *  values as they were. */
+    /** Hide every site's own subtitles in one write: the shared value, and
+     *  no site keeping its own. Undo puts back the shared value and every
+     *  site's own choice as they were. */
     const hideEverywhere = (): void => {
         let before: Partial<SettingsValues> = {};
         void feedback.apply(
             async () => {
-                before = await configService.getMultiple([
-                    'hideOfficialSubtitles',
-                    'siteProfiles',
-                ]);
-                await configService.setMultiple({
-                    hideOfficialSubtitles: true,
-                });
-                for (const site of PLATFORM_IDS) {
-                    await configService.removeSiteValues(site, [
-                        'hideOfficialSubtitles',
-                    ]);
-                }
+                before = await configService.removeSiteValues(
+                    PLATFORM_IDS,
+                    ['hideOfficialSubtitles'],
+                    { hideOfficialSubtitles: true }
+                );
             },
             t('toastHiddenEverywhere'),
-            () => configService.setMultiple(before)
+            () =>
+                configService.restoreSiteValues(before, PLATFORM_IDS, [
+                    'hideOfficialSubtitles',
+                ])
         );
     };
 
