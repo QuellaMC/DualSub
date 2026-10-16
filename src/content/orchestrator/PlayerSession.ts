@@ -1,6 +1,11 @@
 import { createLogger } from '@/shared/logger';
 import { configService } from '@/config/service';
-import type { SettingsValues } from '@/config/schema';
+import { getDefaultValue, type SettingsValues } from '@/config/schema';
+import {
+    isSameLanguage,
+    normalizeLanguageCode,
+} from '@/shared/languageNormalization';
+import { AUTO_LANGUAGE } from '@/shared/subtitleLanguages';
 import { sendMessage, sendWithRetry } from '@/messaging/client';
 import { fetchVtt, type FetchVttRequest } from '@/messaging/contracts/fetchVtt';
 import {
@@ -73,6 +78,11 @@ export const FETCH_SETTINGS_KEYS = [
     'useOfficialTranslations',
 ] as const;
 
+export type LanguageSettings = Pick<
+    SettingsValues,
+    (typeof FETCH_SETTINGS_KEYS)[number]
+>;
+
 /** Clickable words and what a click asks the side panel to do. */
 export const INTERACTION_SETTINGS_KEYS = [
     'aiContextEnabled',
@@ -85,16 +95,60 @@ export type InteractionSettings = Pick<
     (typeof INTERACTION_SETTINGS_KEYS)[number]
 >;
 
-export function toSubtitleLanguages(
-    settings: Partial<
-        Pick<SettingsValues, (typeof FETCH_SETTINGS_KEYS)[number]>
-    >
-): SubtitleLanguages {
+export function toLanguageSettings(
+    values: Partial<LanguageSettings>
+): LanguageSettings {
     return {
-        originalLanguage: settings.originalLanguage ?? 'en',
-        targetLanguage: settings.targetLanguage ?? 'en',
-        useOfficialTranslations: settings.useOfficialTranslations ?? true,
+        originalLanguage:
+            values.originalLanguage ?? getDefaultValue('originalLanguage'),
+        targetLanguage:
+            values.targetLanguage ?? getDefaultValue('targetLanguage'),
+        useOfficialTranslations:
+            values.useOfficialTranslations ??
+            getDefaultValue('useOfficialTranslations'),
     };
+}
+
+/**
+ * The concrete languages for the session. An automatic top line takes the
+ * language the player says is spoken, or English when the player could not
+ * tell (`null`); it is null itself while the player has not reported yet
+ * (`undefined`).
+ */
+export function resolveSubtitleLanguages(
+    settings: LanguageSettings,
+    spokenLanguage: string | null | undefined
+): SubtitleLanguages | null {
+    const { originalLanguage, targetLanguage, useOfficialTranslations } =
+        settings;
+    if (originalLanguage !== AUTO_LANGUAGE) {
+        return { originalLanguage, targetLanguage, useOfficialTranslations };
+    }
+    if (spokenLanguage === undefined) {
+        return null;
+    }
+    return {
+        originalLanguage:
+            spokenLanguage === null
+                ? 'en'
+                : normalizeLanguageCode(spokenLanguage),
+        targetLanguage,
+        useOfficialTranslations,
+    };
+}
+
+function sameSubtitleLanguages(
+    left: SubtitleLanguages | null,
+    right: SubtitleLanguages | null
+): boolean {
+    return (
+        left === right ||
+        (left !== null &&
+            right !== null &&
+            left.originalLanguage === right.originalLanguage &&
+            left.targetLanguage === right.targetLanguage &&
+            left.useOfficialTranslations === right.useOfficialTranslations)
+    );
 }
 
 export function toDisplaySettings(settings: ContentSettings): DisplaySettings {
@@ -126,7 +180,7 @@ export interface PlayerSessionDeps {
     /** The viewer's platform subtitle appearance, when already reported. */
     readonly platformLook: SubtitleLook | null;
     readonly settings: ContentSettings;
-    readonly languages: SubtitleLanguages;
+    readonly languageSettings: LanguageSettings;
     readonly interaction: InteractionSettings;
     readonly onNavigationMismatch: () => void;
     readonly onContextInvalidated: () => void;
@@ -153,7 +207,11 @@ export class PlayerSession {
     readonly selection: SelectionAuthority;
     private mediaScope: AbortController | null = null;
     private settings: ContentSettings;
-    private languagesValue: SubtitleLanguages;
+    private languageSettingsValue: LanguageSettings;
+    /** What the player reported as spoken: undefined until it reports,
+     *  null when it could not tell. */
+    private spokenLanguage: string | null | undefined;
+    private languagesValue: SubtitleLanguages | null;
     private interaction: InteractionSettings;
     private latestSubtitleEvent: CapturedEvent | null = null;
     private loadingToken = 0;
@@ -172,7 +230,11 @@ export class PlayerSession {
         this.videoId = deps.videoId;
         this.signal = this.controller.signal;
         this.settings = deps.settings;
-        this.languagesValue = deps.languages;
+        this.languageSettingsValue = deps.languageSettings;
+        this.languagesValue = resolveSubtitleLanguages(
+            deps.languageSettings,
+            undefined
+        );
         this.interaction = deps.interaction;
         this.logger = createLogger(
             `PlayerSession:${deps.descriptor.id}:${deps.id}`
@@ -213,7 +275,7 @@ export class PlayerSession {
             onOriginalPainted: (revision) =>
                 this.selection.onSubtitleChange(revision),
             onWordIntent: (intent) => this.onWordIntent(intent),
-            wordLanguage: () => this.languagesValue.originalLanguage,
+            wordLanguage: () => this.languagesValue?.originalLanguage ?? 'en',
         });
         this.mediaBinding = new MediaBinding({
             adapter: this.adapter,
@@ -242,8 +304,8 @@ export class PlayerSession {
         });
     }
 
-    get languages(): SubtitleLanguages {
-        return this.languagesValue;
+    get languageSettings(): LanguageSettings {
+        return this.languageSettingsValue;
     }
 
     start(): void {
@@ -264,7 +326,7 @@ export class PlayerSession {
         );
         this.mediaBinding.start();
         if (this.deps.bridge.connected) {
-            this.adapter.onBridgeConnected?.();
+            this.connectPageWorld();
         }
         this.state = 'active';
         this.logger.info('Session started', { videoId: this.videoId });
@@ -272,8 +334,18 @@ export class PlayerSession {
 
     onBridgeConnected(): void {
         if (this.state === 'active') {
-            this.adapter.onBridgeConnected?.();
+            this.connectPageWorld();
         }
+    }
+
+    /** Every platform reports the spoken language the same way; the rest
+     *  of the page-world setup is the adapter's. */
+    private connectPageWorld(): void {
+        this.deps.bridge.sendControl({
+            t: 'watch-spoken-language',
+            videoId: this.videoId,
+        });
+        this.adapter.onBridgeConnected?.();
     }
 
     onSubtitleEvent(event: CapturedEvent): void {
@@ -281,7 +353,7 @@ export class PlayerSession {
             return;
         }
         this.latestSubtitleEvent = event;
-        if (!this.settings.subtitlesEnabled) {
+        if (!this.settings.subtitlesEnabled || !this.languagesValue) {
             return;
         }
         const source = this.adapter.interpretSubtitleEvent(event);
@@ -295,15 +367,27 @@ export class PlayerSession {
         runScoped(this.requestSubtitles(source));
     }
 
-    /** Reload subtitles for new languages; the current cues stay on screen
-     *  behind a placeholder until the new set arrives. */
-    updateLanguages(next: SubtitleLanguages): void {
-        const current = this.languagesValue;
-        if (
-            next.originalLanguage === current.originalLanguage &&
-            next.targetLanguage === current.targetLanguage &&
-            next.useOfficialTranslations === current.useOfficialTranslations
-        ) {
+    updateLanguageSettings(next: LanguageSettings): void {
+        this.languageSettingsValue = next;
+        this.applyLanguages();
+    }
+
+    /** The player reported the language of the audio playing. */
+    updateSpokenLanguage(language: string | null): void {
+        if (language !== this.spokenLanguage) {
+            this.spokenLanguage = language;
+            this.applyLanguages();
+        }
+    }
+
+    /** Reload subtitles when the concrete languages change; the current cues
+     *  stay on screen behind a placeholder until the new set arrives. */
+    private applyLanguages(): void {
+        const next = resolveSubtitleLanguages(
+            this.languageSettingsValue,
+            this.spokenLanguage
+        );
+        if (sameSubtitleLanguages(next, this.languagesValue)) {
             return;
         }
         this.languagesValue = next;
@@ -466,9 +550,13 @@ export class PlayerSession {
     }
 
     private async requestSubtitles(spec: SubtitleFetchSpec): Promise<void> {
+        const languages = this.languagesValue;
+        if (!languages) {
+            return;
+        }
         const { originalLanguage, targetLanguage, useOfficialTranslations } =
-            this.languagesValue;
-        const key = JSON.stringify([spec, this.languagesValue]);
+            languages;
+        const key = JSON.stringify([spec, languages]);
         if (key === this.completedKey || key === this.inFlightKey) {
             return;
         }
@@ -494,6 +582,7 @@ export class PlayerSession {
                           url: spec.url,
                           targetLanguage,
                           originalLanguage,
+                          useOfficialTranslations,
                       };
 
             const response = await sendWithRetry(fetchVtt, request, {
@@ -545,7 +634,11 @@ export class PlayerSession {
     private startTranslation(cueSet: CueSet): void {
         this.translation?.scope.abort();
         this.translation = null;
-        if (cueSet.useNativeTarget) {
+        // A video already in the target language keeps its one line.
+        if (
+            cueSet.useNativeTarget ||
+            isSameLanguage(cueSet.sourceLanguage, cueSet.targetLanguage)
+        ) {
             return;
         }
         const scope = childScope(this.signal);
@@ -593,6 +686,7 @@ export class PlayerSession {
         this.state = 'ending';
         this.logger.info('Session ending', { reason });
         // Page-world goodbyes ride the still-live bridge before abort.
+        this.deps.bridge.sendControl({ t: 'unwatch-spoken-language' });
         this.adapter.beforeAbort();
         this.controller.abort();
         this.renderer.destroy();

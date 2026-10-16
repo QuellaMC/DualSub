@@ -236,6 +236,9 @@
     "lang_hi": {
         "message": "Hindi"
     },
+    "lang_auto": {
+        "message": "Automatic (follows the audio)"
+    },
     "testDeepLButton": {
         "message": "Test DeepL Connection"
     },

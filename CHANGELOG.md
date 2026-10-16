@@ -9,10 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- The top line follows the language spoken in the video. "Automatic" is the new default for fresh installs, and it follows the audio track when you switch it in the player; a fixed language is still there for learning one language with every video.
+
 - Subtitle styles: "Match Platform" draws both lines with the typography the platform's own player would use: the font, color, edge and background from your Netflix or Disney+ profile's subtitle appearance settings, without the platform's subtitles being on. "Custom" starts as DualSub's own look and is edited in the new Appearance section of the options page: font, weight, text color, text edge, and background, with a preview drawn by the overlay's own styling for either platform. Size stays DualSub's own slider in both, since the platforms size a single line.
 - The translation line's color is a setting of its own and applies to both styles. The popup says whether Match Platform is following your profile's settings or the platform's preset on the current tab.
 
 ### Changed
+
+- On a fresh install the translation language is the browser's language instead of Chinese (Simplified).
+- When the video is already in the translation language, one line shows instead of the same text twice.
 
 - Subtitles are sized from the video's rendered height instead of the window width, so they follow fullscreen and window changes the way the platforms' own subtitles do. The font size slider is now a scale factor; stored values migrate to the equivalent scale.
 - The position slider places the lines relative to the picture, letterbox bars excluded, as the platforms place their own subtitles.

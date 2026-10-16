@@ -148,6 +148,25 @@ describe('PopupApp', () => {
         });
     });
 
+    it('starts the top line on the spoken language and saves a fixed one', async () => {
+        stubTabs();
+        await renderReady();
+        const topLine = screen.getByRole('combobox', { name: 'Language Set:' });
+        expect(topLine).toHaveValue('auto');
+        expect(
+            within(topLine).getByRole('option', {
+                name: 'Automatic (follows the audio)',
+            })
+        ).toBeInTheDocument();
+
+        fireEvent.change(topLine, { target: { value: 'ko' } });
+        await waitFor(async () =>
+            expect(
+                await fakeBrowser.storage.sync.get('originalLanguage')
+            ).toEqual({ originalLanguage: 'ko' })
+        );
+    });
+
     it('previews slider movement on the active tab and persists on release', async () => {
         await fakeBrowser.storage.local.set({ appearanceAccordionOpen: true });
         const send = stubTabs();

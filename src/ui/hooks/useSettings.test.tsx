@@ -3,6 +3,7 @@ import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { browser } from 'wxt/browser';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
+import { getDefaultValue } from '@/config/schema';
 import { useSettings } from './useSettings';
 
 const KEYS = [
@@ -32,7 +33,7 @@ describe('useSettings', () => {
         expect(result.current.settings).toEqual({
             subtitlesEnabled: true,
             subtitleFontScale: 2,
-            targetLanguage: 'zh-CN',
+            targetLanguage: getDefaultValue('targetLanguage'),
         });
     });
 

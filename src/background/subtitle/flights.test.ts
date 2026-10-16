@@ -19,6 +19,7 @@ function disneyRequest(
         url: 'https://cdn.media.dssott.com/master.m3u8',
         targetLanguage: 'zh-CN',
         originalLanguage: 'en',
+        useOfficialTranslations: true,
         ...overrides,
     };
 }

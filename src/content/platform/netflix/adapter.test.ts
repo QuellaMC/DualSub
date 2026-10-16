@@ -9,7 +9,7 @@ const LANGUAGES: SubtitleLanguages = {
     useOfficialTranslations: true,
 };
 
-function setup(initial: SubtitleLanguages = LANGUAGES) {
+function setup(initial: SubtitleLanguages | null = LANGUAGES) {
     let languages = initial;
     const sendControl = vi.fn(() => true);
     const logger = createLogger('test');
@@ -25,7 +25,7 @@ function setup(initial: SubtitleLanguages = LANGUAGES) {
         adapter: new NetflixAdapter(context, null),
         sendControl,
         logger,
-        setLanguages: (next: SubtitleLanguages): void => {
+        setLanguages: (next: SubtitleLanguages | null): void => {
             languages = next;
         },
     };
@@ -52,6 +52,40 @@ describe('NetflixAdapter', () => {
                 useOfficialTranslations: false,
             })
         ).toEqual(['en']);
+    });
+
+    it('never asks for a target in the original language', () => {
+        expect(
+            requestedSubtitleLanguages({
+                ...LANGUAGES,
+                originalLanguage: 'zh-Hans',
+            })
+        ).toEqual(['zh-Hans']);
+    });
+
+    it('waits for concrete languages before asking, and ignores answers meanwhile', () => {
+        const { adapter, sendControl, setLanguages } = setup(null);
+        adapter.onBridgeConnected();
+        expect(sendControl).not.toHaveBeenCalledWith(
+            expect.objectContaining({ t: 'request-subtitle-tracks' })
+        );
+        expect(
+            adapter.interpretSubtitleEvent({
+                t: 'subtitle-data',
+                platform: 'netflix',
+                movieId: '70283145',
+                languages: ['en', 'zh-CN'],
+                tracks: [{ language: 'en', url: 'https://x' }],
+            })
+        ).toBeNull();
+
+        setLanguages(LANGUAGES);
+        adapter.onLanguagesChanged();
+        expect(sendControl).toHaveBeenLastCalledWith({
+            t: 'request-subtitle-tracks',
+            videoId: '70283145',
+            languages: ['en', 'zh-CN'],
+        });
     });
 
     it('asks again with the current languages when they change', () => {

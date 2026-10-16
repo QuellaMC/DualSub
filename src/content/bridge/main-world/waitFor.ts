@@ -75,3 +75,43 @@ export function waitFor<T>(
         attempt();
     });
 }
+
+/**
+ * Polls `read` until stopped and reports every new value. While nothing has
+ * been read yet, it reports null once `unknownAfterMs` has passed, so the
+ * listener can stop waiting; a value read later is still reported. Starting
+ * again replaces the previous watch.
+ */
+export class ValueWatch {
+    private timer: number | null = null;
+
+    start(
+        read: () => string | null,
+        report: (value: string | null) => void,
+        intervalMs: number,
+        unknownAfterMs: number
+    ): void {
+        this.stop();
+        const giveUpAt = Date.now() + unknownAfterMs;
+        let reported: string | null | undefined;
+        const poll = (): void => {
+            const value = read();
+            if (value !== null && value !== reported) {
+                reported = value;
+                report(value);
+            } else if (reported === undefined && Date.now() >= giveUpAt) {
+                reported = null;
+                report(null);
+            }
+            this.timer = nativeSetTimeout(poll, intervalMs);
+        };
+        poll();
+    }
+
+    stop(): void {
+        if (this.timer !== null) {
+            nativeClearTimeout(this.timer);
+            this.timer = null;
+        }
+    }
+}

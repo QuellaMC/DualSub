@@ -1,7 +1,7 @@
 import { extractDisneyPlusVideoIdFromPathname } from '@/shared/routeIdentity';
-import type { CapturedEvent } from '../protocol';
+import { isBridgeLanguage, type CapturedEvent } from '../protocol';
 import type { InterceptorRecipe } from './interceptor-core';
-import { ResolutionSlot, waitFor } from './waitFor';
+import { ResolutionSlot, ValueWatch, waitFor } from './waitFor';
 
 // Page-world natives captured at module evaluation (document_start), before
 // any site script can replace them.
@@ -21,6 +21,8 @@ const APPEARANCE_STRING_KEYS = [
 ] as const;
 const MAX_FONT_OVERRIDE_ENTRIES = 32;
 const MAX_APPEARANCE_STRING_LENGTH = 256;
+const SPOKEN_LANGUAGE_POLL_INTERVAL_MS = 1000;
+const SPOKEN_LANGUAGE_UNKNOWN_AFTER_MS = 15_000;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -211,6 +213,46 @@ function readCaptionAppearance(): Record<string, unknown> | null {
 }
 
 const appearanceResolution = new ResolutionSlot();
+const spokenLanguageWatch = new ValueWatch();
+
+/** The language of the audio track the player has selected, while the
+ *  route still shows `videoId`. */
+function readSpokenLanguage(videoId: string): string | null {
+    try {
+        if (
+            extractDisneyPlusVideoIdFromPathname(location.pathname) !== videoId
+        ) {
+            return null;
+        }
+        const playerApi = readHostProperty(
+            'disney-web-player-ui',
+            'mediaPlayerApi'
+        );
+        const audio = isRecord(playerApi) ? playerApi.audio : null;
+        const language = isRecord(audio) ? audio.selectedLanguage : null;
+        return isBridgeLanguage(language) ? language : null;
+    } catch {
+        return null;
+    }
+}
+
+function watchSpokenLanguage(
+    videoId: string,
+    emit: (event: CapturedEvent) => void
+): void {
+    spokenLanguageWatch.start(
+        () => readSpokenLanguage(videoId),
+        (language) =>
+            emit({
+                t: 'spoken-language',
+                platform: 'disneyplus',
+                videoId,
+                language,
+            }),
+        SPOKEN_LANGUAGE_POLL_INTERVAL_MS,
+        SPOKEN_LANGUAGE_UNKNOWN_AFTER_MS
+    );
+}
 
 async function resolveSubtitleAppearance(
     emit: (event: CapturedEvent) => void
@@ -282,6 +324,12 @@ export const disneyRecipe: InterceptorRecipe = {
             case 'request-subtitle-appearance':
                 void resolveSubtitleAppearance(emit);
                 break;
+            case 'watch-spoken-language':
+                watchSpokenLanguage(message.videoId, emit);
+                break;
+            case 'unwatch-spoken-language':
+                spokenLanguageWatch.stop();
+                break;
             case 'playback-bridge-pause':
             case 'close':
                 pausePolling();
@@ -291,5 +339,6 @@ export const disneyRecipe: InterceptorRecipe = {
     onClose() {
         pausePolling();
         appearanceResolution.cancel();
+        spokenLanguageWatch.stop();
     },
 };

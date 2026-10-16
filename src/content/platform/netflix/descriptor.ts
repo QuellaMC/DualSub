@@ -19,6 +19,12 @@ export const netflixDescriptor: PlatformDescriptor = {
         if (event.t === 'subtitle-appearance') {
             return { kind: 'appearance', appearance: event.appearance };
         }
+        if (event.t === 'spoken-language') {
+            const videoId = normalizeNetflixVideoId(event.videoId);
+            return videoId
+                ? { kind: 'spoken-language', videoId, language: event.language }
+                : null;
+        }
         if (event.t !== 'subtitle-data') {
             return null;
         }

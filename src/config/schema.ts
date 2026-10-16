@@ -2,6 +2,11 @@ import { z } from 'zod';
 import { CONTEXT_TYPES } from '@/shared/contextTypes';
 import { PROVIDER_IDS, VERTEX_LOCATIONS } from '@/shared/providers';
 import { toHostPermissionPattern } from '@/shared/hostPermissions';
+import {
+    AUTO_LANGUAGE,
+    browserLanguage,
+    SUBTITLE_LANGUAGES,
+} from '@/shared/subtitleLanguages';
 
 const DNS_LABEL_PATTERN = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
 const VERTEX_PROJECT_ID_PATTERN = /^[a-z][a-z0-9-]{4,28}[a-z0-9]$/;
@@ -41,6 +46,12 @@ function normalizeLanguageTag(value: unknown): string {
         throw new TypeError(INVALID_SETTING_VALUE_MESSAGE);
     }
     return canonical;
+}
+
+function normalizeOriginalLanguage(value: unknown): string {
+    return value === AUTO_LANGUAGE
+        ? AUTO_LANGUAGE
+        : normalizeLanguageTag(value);
 }
 
 function isNonblankString(value: string): boolean {
@@ -99,22 +110,13 @@ function hasUniqueItems(items: readonly string[]): boolean {
     return new Set(items).size === items.length;
 }
 
-/** Browser language → closest supported UI locale. */
-export function detectBrowserLanguage(): UiLanguage {
-    if (typeof navigator === 'undefined') {
-        return 'en';
-    }
-    const lang = (navigator.language || 'en').toLowerCase();
-    if (lang.startsWith('zh-tw')) return 'zh-TW';
-    if (lang.startsWith('zh')) return 'zh-CN';
-    if (lang.startsWith('es')) return 'es';
-    if (lang.startsWith('ja')) return 'ja';
-    if (lang.startsWith('ko')) return 'ko';
-    return 'en';
-}
-
 const uiLanguageSchema = z.enum(['en', 'es', 'ja', 'ko', 'zh-CN', 'zh-TW']);
 export type UiLanguage = z.infer<typeof uiLanguageSchema>;
+
+/** Browser language → closest supported UI locale. */
+export function detectBrowserLanguage(): UiLanguage {
+    return browserLanguage(uiLanguageSchema.options) ?? 'en';
+}
 
 /** The look of the platform being watched, or the viewer's own, which
  *  starts as DualSub's. */
@@ -151,6 +153,7 @@ const customLookSchema = z.strictObject({
 export type CustomLook = z.infer<typeof customLookSchema>;
 
 const languageTag = z.string().refine(isPlausibleLanguageTag);
+const originalLanguageSchema = z.union([z.literal(AUTO_LANGUAGE), languageTag]);
 const nonblankString = z.string().refine(isNonblankString);
 const providerBaseUrl = z.string().refine(isAllowedProviderBaseUrl);
 
@@ -319,15 +322,17 @@ export const configSchema = {
     }),
     targetLanguage: setting({
         schema: languageTag,
-        default: 'zh-CN',
-        scope: 'sync',
-        normalize: normalizeLanguageTag,
-    }),
-    originalLanguage: setting({
-        schema: languageTag,
         default: 'en',
         scope: 'sync',
         normalize: normalizeLanguageTag,
+        dynamicDefault: () => browserLanguage(SUBTITLE_LANGUAGES) ?? 'en',
+    }),
+    /** A language tag, or `auto` for the language spoken in the video. */
+    originalLanguage: setting({
+        schema: originalLanguageSchema,
+        default: AUTO_LANGUAGE,
+        scope: 'sync',
+        normalize: normalizeOriginalLanguage,
     }),
     subtitleTimeOffset: setting({
         schema: z.number().finite(),

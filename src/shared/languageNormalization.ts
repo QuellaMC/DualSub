@@ -54,11 +54,16 @@ export function normalizeLanguageCode(platformLangCode: unknown): string {
     const baseLanguage = subtags[0] ?? '';
     let normalized = NORMALIZED_MAP[lowerCaseCode];
 
-    if (!normalized && baseLanguage === 'zh') {
+    // Players tag Mandarin audio `cmn` and Cantonese `yue`; their subtitles
+    // are written Chinese, Cantonese in the traditional script.
+    if (!normalized && (baseLanguage === 'zh' || baseLanguage === 'cmn')) {
         const traditional =
             subtags.includes('hant') ||
             subtags.some((subtag) => ['tw', 'hk', 'mo'].includes(subtag));
         normalized = traditional ? 'zh-TW' : 'zh-CN';
+    }
+    if (!normalized && baseLanguage === 'yue') {
+        normalized = 'zh-TW';
     }
     if (!normalized && Object.hasOwn(NORMALIZED_MAP, baseLanguage)) {
         normalized = NORMALIZED_MAP[baseLanguage];
@@ -67,4 +72,16 @@ export function normalizeLanguageCode(platformLangCode: unknown): string {
     normalized = normalized || baseLanguage || lowerCaseCode;
     languageNormalizationCache.set(lowerCaseCode, normalized);
     return normalized;
+}
+
+export function isSameLanguage(left: string, right: string): boolean {
+    return normalizeLanguageCode(left) === normalizeLanguageCode(right);
+}
+
+/** The entry of `supported` naming the same language as `tag`, or null. */
+export function closestLanguage<T extends string>(
+    tag: string,
+    supported: readonly T[]
+): T | null {
+    return supported.find((code) => isSameLanguage(code, tag)) ?? null;
 }

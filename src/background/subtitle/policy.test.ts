@@ -42,6 +42,7 @@ const disneyRequest = {
     url: 'https://cdn.media.dssott.com/master.m3u8#frag',
     targetLanguage: 'zh-CN',
     originalLanguage: 'en',
+    useOfficialTranslations: false,
 };
 
 function netflixRequest(tracks: unknown[]) {
@@ -71,6 +72,7 @@ describe('Disney authorization', () => {
             videoId: 'abc123',
             // Fragment stripped by canonicalization.
             url: 'https://cdn.media.dssott.com/master.m3u8',
+            useOfficialTranslations: false,
         });
         expect(Object.isFrozen(snapshot)).toBe(true);
     });

@@ -1,5 +1,8 @@
 import { createLogger } from '@/shared/logger';
-import { normalizeLanguageCode } from '@/shared/languageNormalization';
+import {
+    isSameLanguage,
+    normalizeLanguageCode,
+} from '@/shared/languageNormalization';
 import { configService } from '@/config/service';
 import { fetchAuthorizedSubtitleText } from './fetch';
 import type {
@@ -228,16 +231,6 @@ export async function processDisneyPlusSubtitles(
 
     const availableLanguages =
         await parseAvailableSubtitleLanguages(masterPlaylistText);
-    const useOfficialTranslations = await configService.get(
-        'useOfficialTranslations'
-    );
-
-    let targetLanguageInfo =
-        useOfficialTranslations && targetLanguage
-            ? findSubtitleUriForLanguage(availableLanguages, targetLanguage)
-            : null;
-    let useNativeTarget = targetLanguageInfo !== null;
-
     const originalLanguageInfo =
         findSubtitleUriForLanguage(availableLanguages, originalLanguage) ??
         findSubtitleUriForLanguage(availableLanguages, 'en') ??
@@ -249,6 +242,13 @@ export async function processDisneyPlusSubtitles(
             new Error('No suitable subtitle language found.')
         );
     }
+
+    let targetLanguageInfo =
+        snapshot.useOfficialTranslations &&
+        !isSameLanguage(originalLanguageInfo.normalizedCode, targetLanguage)
+            ? findSubtitleUriForLanguage(availableLanguages, targetLanguage)
+            : null;
+    let useNativeTarget = targetLanguageInfo !== null;
 
     const vttText = await fetchLanguageSpecificSubtitles(
         snapshot,

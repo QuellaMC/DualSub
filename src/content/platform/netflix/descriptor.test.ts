@@ -72,4 +72,27 @@ describe('netflixDescriptor', () => {
             })
         ).toBeNull();
     });
+
+    it('routes spoken-language reports to their video', () => {
+        expect(
+            netflixDescriptor.classifyBridgeEvent({
+                t: 'spoken-language',
+                platform: 'netflix',
+                videoId: '81234567',
+                language: 'en',
+            })
+        ).toEqual({
+            kind: 'spoken-language',
+            videoId: '81234567',
+            language: 'en',
+        });
+        expect(
+            netflixDescriptor.classifyBridgeEvent({
+                t: 'spoken-language',
+                platform: 'netflix',
+                videoId: 'not-a-number',
+                language: null,
+            })
+        ).toBeNull();
+    });
 });

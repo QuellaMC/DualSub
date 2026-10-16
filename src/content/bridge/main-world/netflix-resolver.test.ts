@@ -54,6 +54,7 @@ function installNetflix(options: {
     tracks: FakeTrack[];
     urls?: string[];
     ready?: boolean;
+    audio?: string;
 }) {
     const timedText: unknown[] = (options.urls ?? []).map((trackId) => ({
         type: 'timedtext',
@@ -63,8 +64,13 @@ function installNetflix(options: {
     let current: FakeTrack | undefined =
         options.tracks.find((track) => track.isNoneTrack) ?? options.tracks[0];
     const switches: string[] = [];
+    let audio = options.audio;
     const player = {
         getMovieId: () => options.movieId,
+        getAudioTrack: () =>
+            audio === undefined
+                ? undefined
+                : { trackId: `a-${audio}`, bcp47: audio, isNative: true },
         getTimedTextTrackList: () =>
             options.ready === false ? [] : options.tracks,
         getTimedTextTrack: () => current,
@@ -109,6 +115,9 @@ function installNetflix(options: {
         },
         setReady(): void {
             options.ready = true;
+        },
+        setAudio(language: string): void {
+            audio = language;
         },
     };
 }
@@ -416,5 +425,83 @@ describe('netflixRecipe appearance', () => {
         await settle();
         expect(emitted).toHaveLength(1);
         expect(emitted[0]).toMatchObject({ appearance: { defaults } });
+    });
+});
+
+describe('netflixRecipe spoken language', () => {
+    function watch(videoId: string): void {
+        netflixRecipe.onControl?.(
+            { t: 'watch-spoken-language', videoId },
+            emit
+        );
+    }
+
+    function spoken(): unknown[] {
+        return emitted
+            .filter((event) => event.t === 'spoken-language')
+            .map((event) => (event as { language: unknown }).language);
+    }
+
+    it("reports the playing audio's language, then each change", async () => {
+        const netflix = installNetflix({
+            movieId: 81,
+            tracks: [EN],
+            ready: false,
+            audio: 'ko',
+        });
+        watch('81');
+        await settle(2000);
+        expect(spoken()).toEqual([]);
+
+        netflix.setReady();
+        await settle(1000);
+        expect(emitted.at(-1)).toEqual({
+            t: 'spoken-language',
+            platform: 'netflix',
+            videoId: '81',
+            language: 'ko',
+        });
+
+        await settle(3000);
+        expect(spoken()).toEqual(['ko']);
+        netflix.setAudio('ja');
+        await settle(1000);
+        expect(spoken()).toEqual(['ko', 'ja']);
+    });
+
+    it('says once that it cannot tell, and still reports a later answer', async () => {
+        const netflix = installNetflix({ movieId: 81, tracks: [EN] });
+        watch('81');
+        await settle(14_000);
+        expect(spoken()).toEqual([]);
+        await settle(1000);
+        expect(spoken()).toEqual([null]);
+        await settle(5000);
+        expect(spoken()).toEqual([null]);
+
+        netflix.setAudio('fr');
+        await settle(1000);
+        expect(spoken()).toEqual([null, 'fr']);
+    });
+
+    it('stops reporting when unwatched or closed', async () => {
+        const netflix = installNetflix({
+            movieId: 81,
+            tracks: [EN],
+            audio: 'en',
+        });
+        watch('81');
+        await settle();
+        netflixRecipe.onControl?.({ t: 'unwatch-spoken-language' }, emit);
+        netflix.setAudio('de');
+        await settle(5000);
+        expect(spoken()).toEqual(['en']);
+
+        watch('81');
+        await settle();
+        netflixRecipe.onClose?.();
+        netflix.setAudio('it');
+        await settle(5000);
+        expect(spoken()).toEqual(['en', 'de']);
     });
 });

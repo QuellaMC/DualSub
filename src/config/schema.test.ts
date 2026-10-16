@@ -272,7 +272,7 @@ describe('default resolution', () => {
 
     it.each([
         ['zh-TW', 'zh-TW'],
-        ['zh-HK', 'zh-CN'],
+        ['zh-HK', 'zh-TW'],
         ['zh-cn', 'zh-CN'],
         ['es-MX', 'es'],
         ['ja', 'ja'],
@@ -282,5 +282,24 @@ describe('default resolution', () => {
         vi.stubGlobal('navigator', { language: browserLang });
         expect(detectBrowserLanguage()).toBe(expected);
         expect(getDefaultValue('uiLanguage')).toBe(expected);
+    });
+
+    it.each([
+        [['fr-CA', 'en'], 'fr'],
+        [['zh-Hant-HK'], 'zh-TW'],
+        [['tlh', 'pt-BR'], 'pt'],
+        [['tlh'], 'en'],
+    ])(
+        'targetLanguage default for browser languages %j is %s',
+        (languages, expected) => {
+            vi.stubGlobal('navigator', { language: languages[0], languages });
+            expect(getDefaultValue('targetLanguage')).toBe(expected);
+        }
+    );
+
+    it('starts the top line on the language spoken in the video', () => {
+        expect(getDefaultValue('originalLanguage')).toBe('auto');
+        expect(prepareSettingValue('originalLanguage', 'auto')).toBe('auto');
+        expect(validateSetting('originalLanguage', 'AUTO')).toBe(false);
     });
 });
