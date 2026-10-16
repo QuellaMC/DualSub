@@ -6,18 +6,35 @@ import {
 } from '@/messaging/contracts/control';
 import type { ResponseOf } from '@/messaging/registry';
 import { createLogger } from '@/shared/logger';
+import { platformFromUrl, type PlatformId } from '@/shared/platforms';
 import type { ContentSettings } from '@/content/orchestrator/PlayerSession';
 
 const logger = createLogger('ContentTab');
 const generations = new Map<string, number>();
 
 /** The active tab of the current window; where a popup's page lives. */
-async function activeTabId(): Promise<number | null> {
+async function activeTab(): Promise<{ id?: number; url?: string } | null> {
     const [tab] = await browser.tabs.query({
         active: true,
         currentWindow: true,
     });
-    return tab?.id ?? null;
+    return tab ?? null;
+}
+
+async function activeTabId(): Promise<number | null> {
+    return (await activeTab())?.id ?? null;
+}
+
+/** The site of the active tab, or null when DualSub does not work there. */
+export async function activeTabPlatform(): Promise<PlatformId | null> {
+    try {
+        return platformFromUrl((await activeTab())?.url);
+    } catch (error) {
+        logger.debug('Active tab unreadable', {
+            reason: error instanceof Error ? error.name : 'unknown',
+        });
+        return null;
+    }
 }
 
 /**

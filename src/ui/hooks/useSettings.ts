@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { configService, type SettingsChanges } from '@/config/service';
+import {
+    configService,
+    type SettingsChanges,
+    type SiteWrite,
+} from '@/config/service';
 import type { SettingsKey, SettingsValues } from '@/config/schema';
+import type { PlatformId } from '@/shared/platforms';
 
 export type SettingsStatus = 'loading' | 'ready' | 'unavailable';
 
@@ -33,6 +38,14 @@ function pickWatched<K extends SettingsKey>(
     return picked as Partial<SettingsProjection<K>>;
 }
 
+export interface SettingsOptions {
+    readonly includeSensitive?: boolean;
+    /** Show the settings as this site sees them, and write site settings
+     *  where `siteTarget` says. */
+    readonly site?: PlatformId | null;
+    readonly siteTarget?: SiteWrite['target'];
+}
+
 /**
  * A UI surface's view of the settings it renders. Storage is the single
  * source of truth: reads are authoritative (a failed read blocks the
@@ -42,10 +55,12 @@ function pickWatched<K extends SettingsKey>(
  */
 export function useSettings<K extends SettingsKey>(
     keys: readonly K[],
-    options: { readonly includeSensitive?: boolean } = {}
+    options: SettingsOptions = {}
 ): SettingsHandle<K> {
     const keyList = keys.join(' ');
     const includeSensitive = options.includeSensitive === true;
+    const site = options.site ?? null;
+    const siteTarget = options.siteTarget ?? 'source';
     const [state, setState] = useState<SettingsState<K>>({
         status: 'loading',
         settings: null,
@@ -65,7 +80,7 @@ export function useSettings<K extends SettingsKey>(
             try {
                 const { values } = await configService.readMultipleResultStrict(
                     watched,
-                    { includeSensitive }
+                    { includeSensitive, ...(site ? { site } : {}) }
                 );
                 next = {
                     status: 'ready',
@@ -102,7 +117,7 @@ export function useSettings<K extends SettingsKey>(
                         : previous
                 );
             },
-            { includeSensitive }
+            { includeSensitive, ...(site ? { site } : {}) }
         );
         void load();
 
@@ -110,11 +125,14 @@ export function useSettings<K extends SettingsKey>(
             active = false;
             unsubscribe();
         };
-    }, [keyList, includeSensitive]);
+    }, [keyList, includeSensitive, site]);
 
     const save = useCallback(
         async (changes: Partial<SettingsProjection<K>>): Promise<void> => {
-            const written = await configService.setMultiple(changes);
+            const written = await configService.setMultiple(
+                changes,
+                site ? { site, target: siteTarget } : undefined
+            );
             const relevant = pickWatched(written, keyList.split(' ') as K[]);
             setState((previous) =>
                 previous.settings
@@ -125,7 +143,7 @@ export function useSettings<K extends SettingsKey>(
                     : previous
             );
         },
-        [keyList]
+        [keyList, site, siteTarget]
     );
 
     return { status: state.status, settings: state.settings, save };

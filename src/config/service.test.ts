@@ -109,7 +109,7 @@ describe('configService', () => {
             );
             const result = await configService.readMultipleResult([
                 'subtitleFontScale',
-                'debugMode',
+                'vertexTokenExpiresAt',
             ]);
             expect(result.ok).toBe(false);
             expect(result.degraded).toBe(true);
@@ -202,19 +202,20 @@ describe('configService', () => {
         it('splits writes by scope and returns prepared values', async () => {
             const result = await configService.setMultiple({
                 subtitlesEnabled: false,
-                debugMode: true,
+                vertexTokenExpiresAt: 5,
             });
             expect(result).toEqual({
                 subtitlesEnabled: false,
-                debugMode: true,
+                vertexTokenExpiresAt: 5,
             });
             expect(
                 (await fakeBrowser.storage.sync.get('subtitlesEnabled'))
                     .subtitlesEnabled
             ).toBe(false);
             expect(
-                (await fakeBrowser.storage.local.get('debugMode')).debugMode
-            ).toBe(true);
+                (await fakeBrowser.storage.local.get('vertexTokenExpiresAt'))
+                    .vertexTokenExpiresAt
+            ).toBe(5);
         });
 
         it('aggregates partial area failures', async () => {
@@ -224,7 +225,7 @@ describe('configService', () => {
             await expect(
                 configService.setMultiple({
                     subtitlesEnabled: false,
-                    debugMode: true,
+                    vertexTokenExpiresAt: 5,
                 })
             ).rejects.toMatchObject({
                 name: 'ConfigWriteError',

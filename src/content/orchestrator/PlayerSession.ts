@@ -1,5 +1,5 @@
 import { createLogger } from '@/shared/logger';
-import { configService } from '@/config/service';
+import type { SiteConfig } from '@/config/service';
 import { getDefaultValue, type SettingsValues } from '@/config/schema';
 import {
     isSameLanguage,
@@ -173,6 +173,8 @@ export interface PlayerSessionDeps {
     readonly id: number;
     readonly videoId: string;
     readonly descriptor: PlatformDescriptor;
+    /** The settings as this platform's site sees them. */
+    readonly config: SiteConfig;
     readonly bridge: BridgeControlSender;
     readonly cache: SubtitleEventCache;
     readonly uiRoot: UiRoot;
@@ -253,7 +255,7 @@ export class PlayerSession {
                 videoId: deps.videoId,
                 languages: () => this.languagesValue,
                 bridge: deps.bridge,
-                config: configService,
+                config: deps.config,
                 logger: this.logger,
             },
             deps.handoff
@@ -289,7 +291,7 @@ export class PlayerSession {
                 this.renderer.attachMedia(media);
                 installNativeSubHider(this.adapter.nativeSubRecipe, media, {
                     signal: this.mediaScope.signal,
-                    config: configService,
+                    config: this.deps.config,
                     logger: this.logger,
                 });
                 this.translation?.scheduler.kick();
@@ -311,7 +313,7 @@ export class PlayerSession {
     start(): void {
         this.renderer.setVisible(this.settings.subtitlesEnabled);
         this.renderer.setInteractive(this.interaction.aiContextEnabled);
-        const unsubscribe = configService.onChanged((changes) =>
+        const unsubscribe = this.deps.config.onChanged((changes) =>
             this.applySettings(changes)
         );
         this.signal.addEventListener('abort', unsubscribe, { once: true });

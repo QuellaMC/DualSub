@@ -2,10 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import { browser } from 'wxt/browser';
 import { detectBrowserLanguage, type SettingsValues } from '@/config/schema';
 import { createLogger } from '@/shared/logger';
+import type { PlatformId } from '@/shared/platforms';
 import { useI18n } from '../hooks/useI18n';
 import { useSettings } from '../hooks/useSettings';
 import { useStatusMessage } from '../hooks/useStatusMessage';
 import {
+    activeTabPlatform,
     previewContentSettings,
     readPlatformLookStatus,
     type PlatformLookStatus,
@@ -51,8 +53,35 @@ function sliderChange(
     return { [key]: value };
 }
 
+/** The popup edits the settings the active tab's site sees, each where
+ *  that site gets it from. */
 export function PopupApp() {
-    const { settings, status, save } = useSettings(POPUP_SETTINGS_KEYS);
+    const [site, setSite] = useState<PlatformId | null | undefined>();
+
+    useEffect(() => {
+        let active = true;
+        void activeTabPlatform().then((platform) => {
+            if (active) {
+                setSite(platform);
+            }
+        });
+        return () => {
+            active = false;
+        };
+    }, []);
+
+    return site === undefined ? (
+        <div role="status">Loading...</div>
+    ) : (
+        <PopupControls site={site} />
+    );
+}
+
+function PopupControls({ site }: { site: PlatformId | null }) {
+    const { settings, status, save } = useSettings(POPUP_SETTINGS_KEYS, {
+        site,
+        siteTarget: 'source',
+    });
     const { t, ready } = useI18n(
         settings?.uiLanguage ??
             (status === 'unavailable' ? detectBrowserLanguage() : null)

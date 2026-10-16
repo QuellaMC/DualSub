@@ -1,9 +1,9 @@
 import { SETTING_BOUNDS, type SettingsValues } from '@/config/schema';
 import type { PlatformLookStatus } from '../contentTab';
 import type { Translate } from '../hooks/useI18n';
+import { PLATFORM_NAMES } from '@/shared/platforms';
 import {
     isSubtitleStyle,
-    PLATFORM_NAMES,
     SUBTITLE_STYLE_LABELS,
     type SubtitleStyle,
 } from '../subtitleStyle';

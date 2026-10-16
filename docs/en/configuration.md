@@ -7,6 +7,12 @@
 - Layout (Top/Bottom, Left/Right), appearance, and timing offset
 - Subtitle style: Match Platform, which follows the subtitle appearance settings of your Netflix or Disney+ profile, or Custom, which starts as DualSub's own look and is edited in the options page. The translation line's color is a setting of its own for both. Font size is a scale over the look's base size, which follows the video's height.
 
+## Per-Site Settings
+
+Netflix and Disney+ can each keep their own value for these settings: dual subtitles on or off, hiding the site's own subtitles, the top line's language, official translations, the subtitle style and custom look, the translation color, size, spacing, position, line order and layout, and timing. A site stores only what differs from the settings for all sites; everything else follows them. The translation language, the translation service, word explanations, and API keys are the same on every site.
+
+The popup changes the value the current site uses: its own value when it has one, otherwise the shared one.
+
 ## Advanced Options
 
 - UI Language (EN, ES, JA, KO, ZH-CN, ZH-TW)

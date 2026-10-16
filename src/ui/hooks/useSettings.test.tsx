@@ -87,4 +87,33 @@ describe('useSettings', () => {
         await waitFor(() => expect(result.current.status).toBe('ready'));
         expect(result.current.settings?.subtitleFontScale).toBe(2);
     });
+
+    it("shows a site's view and gives it its own values", async () => {
+        await fakeBrowser.storage.sync.set({
+            subtitleFontScale: 1.2,
+            siteProfiles: { disneyplus: { subtitleFontScale: 1.5 } },
+        });
+        const { result } = renderHook(() =>
+            useSettings(KEYS, { site: 'disneyplus', siteTarget: 'own' })
+        );
+        await waitFor(() => expect(result.current.status).toBe('ready'));
+        expect(result.current.settings?.subtitleFontScale).toBe(1.5);
+
+        await act(() =>
+            result.current.save({
+                subtitleFontScale: 1.7,
+                subtitlesEnabled: false,
+            })
+        );
+        expect(result.current.settings?.subtitleFontScale).toBe(1.7);
+        expect(await fakeBrowser.storage.sync.get(null)).toMatchObject({
+            subtitleFontScale: 1.2,
+            siteProfiles: {
+                disneyplus: {
+                    subtitleFontScale: 1.7,
+                    subtitlesEnabled: false,
+                },
+            },
+        });
+    });
 });

@@ -1,5 +1,5 @@
 import { createLogger, setLoggingLevel } from '@/shared/logger';
-import { configService } from '@/config/service';
+import { configService, type SiteConfig } from '@/config/service';
 import { MessageRouter } from '@/messaging/router';
 import {
     configChanged,
@@ -40,6 +40,7 @@ import {
 export class ContentOrchestrator {
     private readonly controller = new AbortController();
     private readonly logger;
+    private readonly config: SiteConfig;
     private readonly cache = new SubtitleEventCache();
     private readonly uiRoot: UiRoot;
     private readonly bridge: IsolatedBridge;
@@ -56,6 +57,7 @@ export class ContentOrchestrator {
 
     constructor(private readonly descriptor: PlatformDescriptor) {
         this.logger = createLogger(`Content:${descriptor.id}`);
+        this.config = configService.forSite(descriptor.id);
         this.uiRoot = new UiRoot(this.controller.signal);
         this.bridge = new IsolatedBridge(descriptor.id, {
             onEvent: (event) => this.onBridgeEvent(event),
@@ -125,7 +127,7 @@ export class ContentOrchestrator {
         this.bridge.start();
         new NavigationWatcher(() => this.requestReconcile()).start(signal);
 
-        const unsubscribe = configService.onChanged((changes) => {
+        const unsubscribe = this.config.onChanged((changes) => {
             const session = this.activeSession;
             if (
                 session &&
@@ -243,6 +245,7 @@ export class ContentOrchestrator {
             id: this.sessionCounter,
             videoId,
             descriptor: this.descriptor,
+            config: this.config,
             bridge: this.bridge,
             cache: this.cache,
             uiRoot: this.uiRoot,
@@ -264,7 +267,7 @@ export class ContentOrchestrator {
         languageSettings: LanguageSettings;
         interaction: InteractionSettings;
     }> {
-        const values = await configService.getMultiple([
+        const values = await this.config.getMultiple([
             ...CONTENT_SETTINGS_KEYS,
             ...FETCH_SETTINGS_KEYS,
             ...INTERACTION_SETTINGS_KEYS,
