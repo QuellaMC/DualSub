@@ -33,3 +33,13 @@ export function useServiceUnset(
         (provider === 'openai_compatible' && access.permitted === false)
     );
 }
+
+/** Whether DualSub translates nothing where it runs: the chosen service
+ *  still needs setting up, and fallback is off, so no free one covers. */
+export function translationStopped(
+    working: boolean,
+    unset: boolean,
+    fallback: boolean
+): boolean {
+    return working && unset && !fallback;
+}

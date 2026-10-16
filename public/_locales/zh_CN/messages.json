@@ -1493,6 +1493,9 @@
     "welcomeLead": {
         "message": "DualSub 会在 Netflix 和 Disney+ 上显示两行字幕：上面是视频本身的语言，下面是你的语言。什么都不用设置。"
     },
+    "welcomeLeadSetUp": {
+        "message": "DualSub 会在 Netflix 和 Disney+ 上显示两行字幕：上面是视频本身的语言，下面是你的语言。要翻译你的那行，请先设置好下面的翻译服务。"
+    },
     "welcomeLanguageHelp": {
         "message": "下行字幕始终是这种语言。"
     },

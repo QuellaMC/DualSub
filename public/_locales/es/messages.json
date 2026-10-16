@@ -1493,6 +1493,9 @@
     "welcomeLead": {
         "message": "DualSub pone dos líneas de subtítulos en Netflix y Disney+: arriba, el idioma del propio video, y debajo, el tuyo. No hay nada que configurar."
     },
+    "welcomeLeadSetUp": {
+        "message": "DualSub pone dos líneas de subtítulos en Netflix y Disney+: arriba, el idioma del propio video, y debajo, el tuyo. Para traducir el tuyo, termina de configurar el servicio de traducción de abajo."
+    },
     "welcomeLanguageHelp": {
         "message": "La línea de abajo siempre está en este idioma."
     },
