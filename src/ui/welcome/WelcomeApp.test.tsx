@@ -189,6 +189,29 @@ describe('WelcomeApp', () => {
         ).toBeInTheDocument();
     });
 
+    it('counts an AI translation key only for the address it was entered for', async () => {
+        await fakeBrowser.storage.sync.set({
+            selectedProvider: 'openai_compatible',
+        });
+        await fakeBrowser.storage.local.set({
+            openaiCompatibleApiKey: 'sk-key',
+            openaiCompatibleApiKeyOrigin: new URL(
+                getDefaultValue('openaiCompatibleBaseUrl')
+            ).origin,
+        });
+        render(<WelcomeApp />);
+        expect(
+            await screen.findByText('Translation: AI translation')
+        ).toBeInTheDocument();
+
+        await fakeBrowser.storage.local.set({
+            openaiCompatibleApiKeyOrigin: 'https://llm.example.com',
+        });
+        expect(
+            await screen.findByText("AI translation isn't set up yet")
+        ).toBeInTheDocument();
+    });
+
     it('saves another translation language and opens the settings', async () => {
         const openOptions = vi
             .spyOn(browser.runtime, 'openOptionsPage')
