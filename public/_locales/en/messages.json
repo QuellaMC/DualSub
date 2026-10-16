@@ -497,6 +497,9 @@
     "explainCache": {
         "message": "Remember answers"
     },
+    "explainAllowHost": {
+        "message": "DualSub needs your permission to reach this address before it can explain words."
+    },
     "explainKeyStays": {
         "message": "Your key stays on this computer and goes only to the service you chose."
     },

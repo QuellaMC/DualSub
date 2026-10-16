@@ -2,8 +2,7 @@ import { validateSetting } from '@/config/schema';
 import { Icon } from '../../design/Icon';
 import { useCommittedTextField } from '../../hooks/useCommittedTextField';
 import { CommittedField } from '../controls/CommittedField';
-import { useDraft } from '../controls/useDraft';
-import { SiteTag } from '../shell/scopeContext';
+import { SiteTag, useSiteDraft } from '../shell/scopeContext';
 import type { SectionProps } from '../types';
 
 /** Each press of Earlier or Later moves the subtitles this far. */
@@ -22,7 +21,8 @@ export function TimingSection({
     advanced,
 }: SectionProps & { advanced: boolean }) {
     // Each press builds on the last one shown, saved or not.
-    const draft = useDraft(
+    const draft = useSiteDraft(
+        'subtitleTimeOffset',
         roundSeconds(settings.subtitleTimeOffset),
         (value, notice) => save({ subtitleTimeOffset: value }, notice)
     );

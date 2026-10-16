@@ -95,6 +95,20 @@ export function OptionsApp() {
         anchors: readonly string[];
     } | null>(null);
     const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    /** The drafts of the settings shown, by key; following the value for
+     *  all sites cancels them first. */
+    const drafts = useRef(new Map<SiteSettingKey, Set<() => void>>());
+    const registerDraft = useCallback(
+        (key: SiteSettingKey, cancel: () => void) => {
+            const cancels = drafts.current.get(key) ?? new Set();
+            cancels.add(cancel);
+            drafts.current.set(key, cancels);
+            return () => {
+                cancels.delete(cancel);
+            };
+        },
+        []
+    );
 
     useEffect(() => {
         if (unavailable) {
@@ -231,6 +245,11 @@ export function OptionsApp() {
     );
     const followShared = (keys: readonly SiteSettingKey[]): void => {
         if (editing !== 'all') {
+            for (const key of keys) {
+                for (const cancel of drafts.current.get(key) ?? []) {
+                    cancel();
+                }
+            }
             void followAllSites(
                 feedback,
                 editing,
@@ -293,7 +312,15 @@ export function OptionsApp() {
 
     return (
         <FeedbackProvider value={feedback}>
-            <ScopeProvider value={{ t, scope: editing, ownKeys, followShared }}>
+            <ScopeProvider
+                value={{
+                    t,
+                    scope: editing,
+                    ownKeys,
+                    followShared,
+                    registerDraft,
+                }}
+            >
                 <div className="options">
                     <a className="skip-link" href="#main">
                         {t('topSkipToContent')}

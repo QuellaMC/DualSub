@@ -32,10 +32,13 @@ export function OpenAIHostPermission({
     t,
     baseUrl,
     valid,
+    onAnswer,
 }: {
     t: Translate;
     baseUrl: string;
     valid: boolean;
+    /** Told once the prompt is answered, so readiness can be read again. */
+    onAnswer: () => void;
 }) {
     const [status, setStatus] = useState<HostPermissionStatus>(null);
     const sequence = useRef(0);
@@ -70,6 +73,7 @@ export function OpenAIHostPermission({
         }
         void permission.then(
             (granted) => {
+                onAnswer();
                 if (mine !== sequence.current) {
                     return;
                 }

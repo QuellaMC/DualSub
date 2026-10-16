@@ -11,6 +11,7 @@ import { useCommittedTextField } from '../../hooks/useCommittedTextField';
 import { CommittedField } from '../controls/CommittedField';
 import { GEMINI_MODELS, OPENAI_MODELS } from '../explanations/models';
 import { OpenAIHostPermission } from '../explanations/OpenAIHostPermission';
+import { useHostPermission } from '../hooks/useHostPermission';
 import { addressChange } from '../providers/address';
 import { SharedTag } from '../shell/scopeContext';
 import type { SectionProps } from '../types';
@@ -65,7 +66,12 @@ export function ExplanationsSection({
     const service = AI_SERVICES[provider];
     const apiKey =
         provider === 'openai' ? settings.openaiApiKey : settings.geminiApiKey;
-    const ready = apiKey.trim() !== '';
+    // A custom OpenAI address works only once Chrome lets DualSub reach it.
+    const access = useHostPermission(settings.openaiBaseUrl);
+    const blocked = provider === 'openai' && access.permitted === false;
+    const ready =
+        apiKey.trim() !== '' &&
+        (provider !== 'openai' || access.permitted === true);
     const enabled = settings.aiContextEnabled;
     const enableSwitch = useRef<HTMLButtonElement | null>(null);
 
@@ -273,6 +279,19 @@ export function ExplanationsSection({
                                     </button>
                                 )}
                             </div>
+                            {blocked && (
+                                <>
+                                    <p className="help">
+                                        {t('explainAllowHost')}
+                                    </p>
+                                    <OpenAIHostPermission
+                                        t={t}
+                                        baseUrl={settings.openaiBaseUrl}
+                                        valid
+                                        onAnswer={access.recheck}
+                                    />
+                                </>
+                            )}
                             <p className="help">{t('explainKeyStays')}</p>
                         </div>
                     </li>
@@ -411,6 +430,7 @@ export function ExplanationsSection({
                                         t={t}
                                         baseUrl={baseUrl.value}
                                         valid={baseUrl.valid}
+                                        onAnswer={access.recheck}
                                     />
                                 </div>
                             </>

@@ -497,6 +497,9 @@
     "explainCache": {
         "message": "回答を覚えておく"
     },
+    "explainAllowHost": {
+        "message": "単語を説明するには、DualSubがこのアドレスに接続することを許可してください。"
+    },
     "explainKeyStays": {
         "message": "キーはこのパソコンに保存され、選んだサービスにだけ送られます。"
     },
