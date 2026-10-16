@@ -1,3 +1,4 @@
+import { PLATFORM_IDS } from '@/shared/platforms';
 import type { Translate } from '../hooks/useI18n';
 import type { SectionId } from './sections';
 
@@ -87,6 +88,7 @@ const ENTRIES: readonly SearchEntry[] = [
         labelKey: 'lookFineTuneButton',
         wordsKey: 'searchWordsFineTune',
         section: 'look',
+        advanced: true,
         anchors: ['fine-tune'],
     },
     {
@@ -94,6 +96,13 @@ const ENTRIES: readonly SearchEntry[] = [
         wordsKey: 'searchWordsTiming',
         section: 'timing',
         anchors: ['timing'],
+    },
+    {
+        labelKey: 'timingExactTitle',
+        wordsKey: 'searchWordsTiming',
+        section: 'timing',
+        advanced: true,
+        anchors: ['timing-exact'],
     },
     {
         labelKey: 'translationServiceTitle',
@@ -162,7 +171,7 @@ const ENTRIES: readonly SearchEntry[] = [
         labelKey: 'sitesUseHere',
         wordsKey: 'searchWordsSiteOnOff',
         section: 'sites',
-        anchors: ['sites'],
+        anchors: [`site-on-${PLATFORM_IDS[0]}`],
     },
     {
         labelKey: 'sitesHideTitle',
