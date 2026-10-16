@@ -7,7 +7,8 @@ const TRANSLATION_HEALTH_KEY = 'translationHealth';
 const translationHealthSchema = z.strictObject({
     provider: z.enum(PROVIDER_IDS),
     problem: z.enum(['credentials', 'quota', 'rejected']),
-    /** The provider covering meanwhile; null when fallback is off. */
+    /** The provider that translated in its place last; null while none
+     *  has, or when fallback is off. */
     fallback: z.enum(PROVIDER_IDS).nullable(),
     since: z.number().int().nonnegative(),
 });

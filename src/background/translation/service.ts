@@ -116,9 +116,9 @@ function retryDelay(error: unknown, attempt: number): number | null {
  *
  * When the selected provider fails, a keyless provider covers the request
  * unless the viewer turned fallback off. A lasting failure is recorded as
- * the translation health, which the settings pages show; while it stands,
- * requests go straight to the fallback until the provider's configuration
- * changes or the pause runs out.
+ * the translation health, which the settings pages show along with the
+ * provider that covered last; while it stands, requests go straight to the
+ * fallback until the provider's configuration changes or the pause runs out.
  */
 export class TranslationService {
     private readonly providers: ReadonlyMap<ProviderId, TranslationProvider>;
@@ -138,6 +138,9 @@ export class TranslationService {
     private health: TranslationHealth | null = null;
     /** The health in memory has not reached session storage yet. */
     private healthUnsaved = false;
+    private healthSaving = false;
+    /** Changes received while the first read is in flight; null after it. */
+    private heldChanges: SettingsChanges[] | null = null;
     private unsubscribe: (() => void) | null = null;
 
     constructor(private readonly deps: TranslationServiceDeps) {
@@ -153,11 +156,21 @@ export class TranslationService {
 
     /** Follows the provider selection and pacing settings. Never throws. */
     async initialize(): Promise<void> {
-        // Subscribe before the initial read so no change can slip between.
-        // Credential values are observed only so their rotation can
-        // invalidate cached results; the handler logs key names, not values.
+        // Subscribe before the first read so no change can slip between. A
+        // change that lands while the read is in flight is newer than what
+        // the read returns, so it applies after it. Credential values are
+        // observed only so their rotation can invalidate cached results; the
+        // handler logs key names, not values.
+        const heldChanges: SettingsChanges[] = [];
+        this.heldChanges = heldChanges;
         this.unsubscribe ??= this.deps.config.onChanged(
-            (changes) => this.onConfigChanged(changes),
+            (changes) => {
+                if (this.heldChanges) {
+                    this.heldChanges.push(changes);
+                } else {
+                    this.onConfigChanged(changes);
+                }
+            },
             { includeSensitive: true }
         );
         try {
@@ -189,6 +202,10 @@ export class TranslationService {
             this.logger.warn('Translation health unreadable', {
                 reason: error instanceof Error ? error.name : 'unknown',
             });
+        }
+        this.heldChanges = null;
+        for (const changes of heldChanges) {
+            this.onConfigChanged(changes);
         }
         this.logger.info('Translation service initialized', {
             provider: this.selectedProvider,
@@ -238,7 +255,9 @@ export class TranslationService {
                     generation,
                     covering ? 0 : MAX_RETRIES
                 );
-                if (!covering) {
+                if (covering) {
+                    this.recordCover(selected, providerId);
+                } else {
                     this.recordHealth(null);
                 }
                 return outcome;
@@ -254,6 +273,7 @@ export class TranslationService {
                 failure = error;
             }
         }
+        this.recordCover(selected, null);
         // The selected provider's failure says whether a later try can work.
         throw selectedFailed ? selectedFailure : failure;
     }
@@ -266,11 +286,17 @@ export class TranslationService {
                   (id) => id !== selected && this.providers.has(id)
               )
             : [];
-        const paused =
-            covered.length > 0 &&
-            this.health?.provider === selected &&
-            Date.now() < this.health.since + FAILING_PROVIDER_PAUSE_MS;
+        const paused = covered.length > 0 && this.isPaused(selected);
         return paused ? covered : [selected, ...covered];
+    }
+
+    private isPaused(provider: ProviderId): boolean {
+        if (this.health?.provider !== provider) {
+            return false;
+        }
+        // A record dated ahead of the clock (it was set back) has run out.
+        const elapsed = Date.now() - this.health.since;
+        return elapsed >= 0 && elapsed < FAILING_PROVIDER_PAUSE_MS;
     }
 
     private recordFailure(provider: ProviderId, error: unknown): void {
@@ -278,17 +304,21 @@ export class TranslationService {
         if (problem === null) {
             return;
         }
-        const fallback = this.fallbackEnabled
-            ? (KEYLESS_PROVIDERS.find(
-                  (id) => id !== provider && this.providers.has(id)
-              ) ?? null)
-            : null;
-        this.logger.warn('Translation provider failing', {
-            provider,
-            problem,
-            fallback,
-        });
+        this.logger.warn('Translation provider failing', { provider, problem });
+        // The provider that covered last is still the one to name until a
+        // cover answers or fails.
+        const fallback =
+            this.health?.provider === provider ? this.health.fallback : null;
         this.recordHealth({ provider, problem, fallback, since: Date.now() });
+    }
+
+    /** Names the provider that translated in place of the failing one, or
+     *  null when every cover failed too. */
+    private recordCover(failing: ProviderId, cover: ProviderId | null): void {
+        const health = this.health;
+        if (health?.provider === failing && health.fallback !== cover) {
+            this.recordHealth({ ...health, fallback: cover });
+        }
     }
 
     private recordHealth(health: TranslationHealth | null): void {
@@ -297,19 +327,31 @@ export class TranslationService {
         }
         this.health = health;
         this.healthUnsaved = true;
-        void this.healthStore.write(health).then(
-            () => {
-                if (this.health === health) {
-                    this.healthUnsaved = false;
-                }
-            },
-            (error: unknown) => {
+        if (!this.healthSaving) {
+            this.healthSaving = true;
+            void this.saveHealth();
+        }
+    }
+
+    /** One write at a time, each of the newest health, so a slow earlier
+     *  write never lands after a newer one. */
+    private async saveHealth(): Promise<void> {
+        while (this.healthUnsaved) {
+            const health = this.health;
+            try {
+                await this.healthStore.write(health);
+            } catch (error) {
                 // Left unsaved, so the next record writes it again.
                 this.logger.warn('Translation health not saved', {
                     reason: error instanceof Error ? error.name : 'unknown',
                 });
+                break;
             }
-        );
+            if (this.health === health) {
+                this.healthUnsaved = false;
+            }
+        }
+        this.healthSaving = false;
     }
 
     /** One provider's answer, with at most `retries` more attempts. */

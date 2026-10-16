@@ -471,6 +471,36 @@ describe('TranslationService fallback', () => {
         expect(microsoft.translate).not.toHaveBeenCalled();
     });
 
+    it('keeps a fallback opt-out that lands while the first read is in flight', async () => {
+        const deepl = fakeProvider('deepl');
+        const microsoft = fakeProvider('microsoft_edge');
+        const fake = fakeConfig({
+            selectedProvider: 'deepl',
+            translationFallback: true,
+        });
+        const read = Promise.withResolvers<boolean>();
+        vi.mocked(fake.config.readStoredBooleanStrict).mockReturnValueOnce(
+            read.promise
+        );
+        const service = new TranslationService({
+            providers: [deepl, microsoft],
+            config: fake.config,
+            health: memoryHealth().store,
+            logger: silentLogger,
+        });
+        const initialized = service.initialize();
+        fake.emit({ translationFallback: false });
+        read.resolve(true);
+        await initialized;
+
+        const error = failing('deepl', 'AUTHENTICATION_ERROR');
+        deepl.translate.mockRejectedValue(error);
+        expect(await rejection(service.translate('Hello', 'auto', 'es'))).toBe(
+            error
+        );
+        expect(microsoft.translate).not.toHaveBeenCalled();
+    });
+
     it('sends nothing to a fallback once the viewer turns fallback off mid-request', async () => {
         const { service, deepl, microsoft, fake } = await setup();
         const answer = Promise.withResolvers<string>();
@@ -527,11 +557,91 @@ describe('TranslationService fallback', () => {
         );
         await service.translate('Hello', 'auto', 'es');
         vi.setSystemTime(1_000_000 + 10 * 60 * 1000);
+        const failureWrites = writes.length;
 
         failNext = true;
         await service.translate('Later', 'auto', 'es');
         await service.translate('Again', 'auto', 'es');
-        expect(writes.slice(1)).toEqual([null, null]);
+        expect(writes.slice(failureWrites)).toEqual([null, null]);
+    });
+
+    it('lets the newest record win when an earlier save is slow', async () => {
+        const saves: (() => void)[] = [];
+        let stored: TranslationHealth | null = null;
+        const healthStore = {
+            read: () => Promise.resolve(null),
+            write: (health: TranslationHealth | null) =>
+                new Promise<void>((resolve) => {
+                    saves.push(() => {
+                        stored = health;
+                        resolve();
+                    });
+                }),
+        };
+        const { service, deepl, fake } = await setup({ healthStore });
+        deepl.translate.mockRejectedValueOnce(
+            failing('deepl', 'AUTHENTICATION_ERROR')
+        );
+        await service.translate('Hello', 'auto', 'es');
+        fake.emit({ deeplApiKey: 'fixed' });
+
+        // Session storage may finish a later write first.
+        while (saves.length > 0) {
+            saves.pop()!();
+            await vi.advanceTimersByTimeAsync(0);
+        }
+        expect(stored).toBeNull();
+    });
+
+    it('names the provider that actually covers, or none when every cover fails', async () => {
+        const { service, deepl, microsoft, google, health } = await setup();
+        deepl.translate.mockRejectedValue(
+            failing('deepl', 'AUTHENTICATION_ERROR')
+        );
+        microsoft.translate.mockRejectedValueOnce(
+            failing('microsoft_edge', 'NETWORK_ERROR')
+        );
+        await expect(service.translate('Hello', 'auto', 'es')).resolves.toEqual(
+            { translatedText: '[google:es] Hello', cached: false }
+        );
+        expect(health.current()).toMatchObject({
+            provider: 'deepl',
+            fallback: 'google',
+        });
+
+        microsoft.translate.mockRejectedValueOnce(
+            failing('microsoft_edge', 'NETWORK_ERROR')
+        );
+        google.translate.mockRejectedValueOnce(
+            failing('google', 'NETWORK_ERROR')
+        );
+        await rejection(service.translate('Again', 'auto', 'es'));
+        expect(health.current()).toMatchObject({
+            provider: 'deepl',
+            fallback: null,
+        });
+
+        await service.translate('Later', 'auto', 'es');
+        expect(health.current()).toMatchObject({
+            provider: 'deepl',
+            fallback: 'microsoft_edge',
+        });
+    });
+
+    it('ends the pause when the clock was set back past the failure', async () => {
+        const { service, deepl, health } = await setup({
+            health: {
+                provider: 'deepl',
+                problem: 'credentials',
+                fallback: 'microsoft_edge',
+                since: 1_000_000 + 60_000,
+            },
+        });
+        await expect(service.translate('Hello', 'auto', 'es')).resolves.toEqual(
+            { translatedText: '[deepl:es] Hello', cached: false }
+        );
+        expect(deepl.translate).toHaveBeenCalledOnce();
+        expect(health.current()).toBeNull();
     });
 
     it('records a used-up quota and a refused request, but not a blank answer', async () => {
