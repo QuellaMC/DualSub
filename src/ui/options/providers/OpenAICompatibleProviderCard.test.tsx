@@ -251,6 +251,39 @@ describe('OpenAICompatibleProviderCard', () => {
         await flush();
     });
 
+    it('keeps the newer service when an older choice fails to save', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(() => Promise.resolve(modelsResponse([])))
+        );
+        const { save } = renderCard({
+            baseUrl: 'https://llm.example.com/v1',
+            advanced: false,
+        });
+        const gemini = Promise.withResolvers<boolean>();
+        save.mockImplementationOnce(() => gemini.promise);
+        save.mockImplementationOnce(() => new Promise(() => {}));
+        fireEvent.click(
+            screen.getByRole('button', { name: 'setupServiceGemini' })
+        );
+        fireEvent.click(
+            screen.getByRole('button', { name: 'setupServiceOpenAI' })
+        );
+        gemini.resolve(false);
+        await flush();
+        fireEvent.change(screen.getByLabelText('setupPasteKey'), {
+            target: { value: 'sk-openai' },
+        });
+        expect(save).toHaveBeenLastCalledWith(
+            {
+                openaiCompatibleApiKey: 'sk-openai',
+                openaiCompatibleApiKeyOrigin: 'https://api.openai.com',
+            },
+            'quiet'
+        );
+        await flush();
+    });
+
     it('fills in a known service from one click, and asks for the address only for another', async () => {
         vi.stubGlobal(
             'fetch',

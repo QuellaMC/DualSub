@@ -96,6 +96,33 @@ describe('useCommittedTextField', () => {
         expect(result.current.value).toBe('c');
     });
 
+    it('shows an adopted value at once and persists it through its own save', async () => {
+        const { result, onCommit } = setup();
+        const persist = vi.fn(() => Promise.resolve(true));
+        await act(() => result.current.adopt('chosen', persist));
+        expect(result.current.value).toBe('chosen');
+        expect(persist).toHaveBeenCalledWith('chosen');
+        expect(onCommit).not.toHaveBeenCalled();
+    });
+
+    it('rolls back a failed adoption, but not over a newer one', async () => {
+        const { result } = setup();
+        await act(() => result.current.adopt('lost', () => false));
+        expect(result.current.value).toBe('a');
+
+        const older = Promise.withResolvers<boolean>();
+        let first: Promise<boolean> = Promise.resolve(true);
+        act(() => {
+            first = result.current.adopt('older', () => older.promise);
+        });
+        act(() => {
+            void result.current.adopt('newer', () => new Promise(() => {}));
+        });
+        older.resolve(false);
+        await act(() => first);
+        expect(result.current.value).toBe('newer');
+    });
+
     it('rolls a failed commit back to the persisted value', async () => {
         const { result } = setup(
             'a',

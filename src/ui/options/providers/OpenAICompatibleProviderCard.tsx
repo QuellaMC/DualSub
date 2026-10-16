@@ -86,23 +86,22 @@ export function OpenAICompatibleProviderCard({
                                     aria-pressed={service?.id === entry.id}
                                     onClick={() => {
                                         setChoseOther(false);
-                                        // The address field stands for the
-                                        // choice until it is stored, so a key
-                                        // pasted meanwhile is entered for it.
-                                        baseUrlField.change(entry.baseUrl);
-                                        void save(
-                                            {
-                                                openaiCompatibleBaseUrl:
-                                                    entry.baseUrl,
-                                                openaiCompatibleModel:
-                                                    entry.model,
-                                            },
-                                            'quiet'
-                                        ).then((saved) => {
-                                            if (!saved) {
-                                                baseUrlField.reset();
-                                            }
-                                        });
+                                        // Through the address field, so a key
+                                        // pasted before the choice is stored
+                                        // is entered for it.
+                                        void baseUrlField.adopt(
+                                            entry.baseUrl,
+                                            (address) =>
+                                                save(
+                                                    {
+                                                        openaiCompatibleBaseUrl:
+                                                            address,
+                                                        openaiCompatibleModel:
+                                                            entry.model,
+                                                    },
+                                                    'quiet'
+                                                )
+                                        );
                                     }}
                                 >
                                     {t(entry.labelKey)}
