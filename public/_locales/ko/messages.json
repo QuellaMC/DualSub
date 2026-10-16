@@ -1604,6 +1604,9 @@
     "welcomeLead": {
         "message": "DualSub은 Netflix와 Disney+에 자막을 두 줄로 보여 줘요. 위에는 영상 원래의 언어, 아래에는 내 언어가 나와요. 따로 설정할 건 없어요."
     },
+    "welcomeLeadSetUp": {
+        "message": "DualSub은 Netflix와 Disney+에 자막을 두 줄로 보여 줘요. 위에는 영상 원래의 언어, 아래에는 내 언어가 나와요. 내 언어 줄을 번역하려면 아래 번역 서비스 설정을 마치세요."
+    },
     "welcomeLanguageHelp": {
         "message": "아래 줄은 항상 이 언어로 나와요."
     },

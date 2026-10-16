@@ -15,7 +15,11 @@ import { LanguageSelect } from '../design/LanguageSelect';
 import { Logo } from '../design/Logo';
 import { Switch } from '../design/Switch';
 import { useI18n, type Translate } from '../hooks/useI18n';
-import { SERVICE_SETUP_KEYS, useServiceUnset } from '../hooks/useServiceUnset';
+import {
+    SERVICE_SETUP_KEYS,
+    translationStopped,
+    useServiceUnset,
+} from '../hooks/useServiceUnset';
 import {
     useSettings,
     type SettingsHandle,
@@ -142,6 +146,11 @@ function Welcome({
     const { sites } = useSitesOn();
     const working = sites ? sites.on.length > 0 : settings.subtitlesEnabled;
     const unset = useServiceUnset(settings);
+    const stopped = translationStopped(
+        working,
+        unset,
+        settings.translationFallback
+    );
     /** Dual subtitles were off everywhere, say from another computer, so
      *  the page offers the switch, and keeps it once switched. */
     const [offeredSwitch, setOfferedSwitch] = useState(false);
@@ -184,9 +193,15 @@ function Welcome({
                 <section className="welcome-hero">
                     <div className="welcome-hero-text">
                         <h1>
-                            {t(working ? 'welcomeTitle' : 'welcomePageTitle')}
+                            {t(
+                                working && !stopped
+                                    ? 'welcomeTitle'
+                                    : 'welcomePageTitle'
+                            )}
                         </h1>
-                        <p className="lead">{t('welcomeLead')}</p>
+                        <p className="lead">
+                            {t(stopped ? 'welcomeLeadSetUp' : 'welcomeLead')}
+                        </p>
                     </div>
                     <div className="welcome-frame">
                         <LookPreview
