@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+    type ReactNode,
+} from 'react';
 import {
     detectBrowserLanguage,
     siteProfileOf,
@@ -31,9 +38,15 @@ import { ScopeBar } from './shell/ScopeBar';
 import { ScopeProvider } from './shell/scopeContext';
 import { Toast, type ToastState } from './shell/Toast';
 import { TopBar } from './shell/TopBar';
-import { OPTIONS_SETTINGS_KEYS, type Scope } from './types';
+import { OPTIONS_SETTINGS_KEYS, type Scope, type SectionProps } from './types';
 
 const logger = createLogger('Options');
+/** What the page around the settings shows; the same in every scope. */
+const PAGE_SETTINGS_KEYS = [
+    'uiLanguage',
+    'showAdvancedSettings',
+    'siteProfiles',
+] as const;
 const TOAST_MS = 6000;
 
 const FOCUSABLE =
@@ -46,15 +59,20 @@ function initialSection(): SectionId {
 
 export function OptionsApp() {
     const [scope, setScope] = useState<Scope>('all');
+    // The page reads what every scope shares, so it stays in place, focus
+    // included, while a newly picked scope's settings load.
+    const page = useSettings(PAGE_SETTINGS_KEYS);
     const handle = useSettings(OPTIONS_SETTINGS_KEYS, {
         includeSensitive: true,
         site: scope === 'all' ? null : scope,
         siteTarget: 'own',
     });
-    const { settings, status } = handle;
+    const { settings } = handle;
+    const unavailable =
+        page.status === 'unavailable' || handle.status === 'unavailable';
     const { t, loadedLocale } = useI18n(
-        settings?.uiLanguage ??
-            (status === 'unavailable' ? detectBrowserLanguage() : null)
+        page.settings?.uiLanguage ??
+            (unavailable ? detectBrowserLanguage() : null)
     );
     const [section, setSection] = useState<SectionId>(initialSection);
     const [saveFailed, setSaveFailed] = useState(false);
@@ -68,10 +86,10 @@ export function OptionsApp() {
     const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
-        if (status === 'unavailable') {
+        if (unavailable) {
             logger.error('Settings initial load unavailable');
         }
-    }, [status]);
+    }, [unavailable]);
 
     useEffect(() => {
         if (loadedLocale !== null) {
@@ -150,22 +168,7 @@ export function OptionsApp() {
         };
     }, [holdToast]);
 
-    const followShared = useCallback(
-        (keys: readonly SiteSettingKey[]) => {
-            if (scope !== 'all' && settings) {
-                void followAllSites(
-                    feedback,
-                    scope,
-                    settings.siteProfiles,
-                    keys,
-                    t('toastFollowsShared')
-                );
-            }
-        },
-        [scope, settings, feedback, t]
-    );
-
-    if (loadedLocale !== null && status === 'unavailable') {
+    if (loadedLocale !== null && unavailable) {
         return (
             <main className="options-blocked">
                 <p role="alert" className="notice danger">
@@ -174,7 +177,7 @@ export function OptionsApp() {
             </main>
         );
     }
-    if (!settings || loadedLocale === null) {
+    if (!page.settings || loadedLocale === null) {
         return (
             <main className="options-blocked" aria-busy="true">
                 {loadedLocale !== null && (
@@ -185,11 +188,16 @@ export function OptionsApp() {
     }
 
     const save = feedbackSave(handle, scope, feedback);
-    const advanced = settings.showAdvancedSettings;
+    const savePage = feedbackSave(page, 'all', feedback);
+    const {
+        uiLanguage,
+        showAdvancedSettings: advanced,
+        siteProfiles,
+    } = page.settings;
     const ownCounts: Record<string, number> = Object.fromEntries(
         PLATFORM_IDS.map((site) => [
             site,
-            ownSettingKeys(siteProfileOf(settings.siteProfiles, site)).length,
+            ownSettingKeys(siteProfileOf(siteProfiles, site)).length,
         ])
     );
     const showScope =
@@ -197,10 +205,19 @@ export function OptionsApp() {
         scope !== 'all' ||
         Object.values(ownCounts).some((count) => count > 0);
     const ownKeys = new Set(
-        scope === 'all'
-            ? []
-            : Object.keys(siteProfileOf(settings.siteProfiles, scope))
+        scope === 'all' ? [] : Object.keys(siteProfileOf(siteProfiles, scope))
     );
+    const followShared = (keys: readonly SiteSettingKey[]): void => {
+        if (scope !== 'all') {
+            void followAllSites(
+                feedback,
+                scope,
+                siteProfiles,
+                keys,
+                t('toastFollowsShared')
+            );
+        }
+    };
 
     const go = (next: SectionId, anchor: string | null = null): void => {
         setSection(next);
@@ -211,20 +228,19 @@ export function OptionsApp() {
         go('look');
     };
     const setAdvanced = (next: boolean): void => {
-        void save({ showAdvancedSettings: next });
+        void savePage({ showAdvancedSettings: next });
         if (!next && SECTIONS[section].advanced) {
             go('start');
         }
     };
     const openSearchResult = (entry: SearchEntry): void => {
         if (entry.advanced && !advanced) {
-            void save({ showAdvancedSettings: true });
+            void savePage({ showAdvancedSettings: true });
         }
         go(entry.section, entry.anchor ?? null);
     };
 
-    const sectionProps = { t, settings, save };
-    const content = (() => {
+    const sectionContent = (sectionProps: SectionProps): ReactNode => {
         switch (section) {
             case 'start':
                 return <StartSection {...sectionProps} go={go} />;
@@ -254,7 +270,7 @@ export function OptionsApp() {
             case 'help':
                 return <HelpSection t={t} go={go} />;
         }
-    })();
+    };
 
     return (
         <FeedbackProvider value={feedback}>
@@ -265,8 +281,10 @@ export function OptionsApp() {
                     </a>
                     <TopBar
                         t={t}
-                        uiLanguage={settings.uiLanguage}
-                        onUiLanguage={(uiLanguage) => void save({ uiLanguage })}
+                        uiLanguage={uiLanguage}
+                        onUiLanguage={(next) =>
+                            void savePage({ uiLanguage: next })
+                        }
                         onOpen={openSearchResult}
                         onHelp={() => go('help')}
                     />
@@ -293,10 +311,15 @@ export function OptionsApp() {
                                 />
                             )}
                             <div className="columns">
-                                <div className="content" key={scope}>
-                                    {content}
+                                <div
+                                    className="content"
+                                    key={scope}
+                                    aria-busy={settings ? undefined : true}
+                                >
+                                    {settings &&
+                                        sectionContent({ t, settings, save })}
                                 </div>
-                                {SECTIONS[section].preview && (
+                                {settings && SECTIONS[section].preview && (
                                     <Preview
                                         t={t}
                                         settings={{ ...settings, ...lookDraft }}

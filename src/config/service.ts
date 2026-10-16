@@ -91,6 +91,9 @@ interface ChangeListenerRecord {
     readonly callback: ChangeListener;
     /** Site projections read storage; they are delivered in event order. */
     delivery: Promise<void>;
+    /** Site keys a failed read left unprojected; the next event reads them
+     *  again and reports what the site sees. */
+    readonly missed: Set<SiteSettingKey>;
 }
 
 /**
@@ -751,9 +754,12 @@ class ConfigService {
         // The stored entry, with what a newer version wrote, not just what
         // this one reads.
         const own: Record<string, unknown> = { ...profiles[site] };
+        // A value this version cannot read leaves the site on the shared
+        // one, so the shared one is the source.
+        const readable = siteProfileOf(profiles, site);
         let routed = false;
         for (const key of keys) {
-            if (target === 'source' && !Object.hasOwn(own, key)) {
+            if (target === 'source' && !Object.hasOwn(readable, key)) {
                 continue;
             }
             routed = true;
@@ -813,6 +819,7 @@ class ConfigService {
             site: options.site ?? null,
             callback,
             delivery: Promise.resolve(),
+            missed: new Set(),
         };
         this.changeListeners.add(record);
         return () => {
@@ -874,15 +881,18 @@ class ConfigService {
     /**
      * The changes as `site` sees them, read after the storage event: a
      * shared change the site's own value hides is dropped, and a site value
-     * added, changed, or removed reports what the site sees now.
+     * added, changed, or removed reports what the site sees now, as does a
+     * key in `missed`. When the read fails, the site keys join `missed`.
      */
     private async projectForSite(
         site: PlatformId,
         changes: SettingsChanges,
-        rawSiteProfiles: { oldValue?: unknown } | undefined
+        rawSiteProfiles: { oldValue?: unknown } | undefined,
+        missed: Set<SiteSettingKey>
     ): Promise<SettingsChanges> {
         const projected: Record<string, unknown> = {};
-        const touched = new Set<SiteSettingKey>();
+        const recovering = new Set(missed);
+        const touched = new Set(missed);
         for (const [key, value] of Object.entries(changes)) {
             if (isSiteSettingKey(key)) {
                 touched.add(key);
@@ -920,14 +930,28 @@ class ConfigService {
         if (touched.size === 0) {
             return projected;
         }
-        const items = await this.getFromStorage(
-            'sync',
-            [...touched, 'siteProfiles'],
-            false
-        );
+        let items: Record<string, unknown>;
+        try {
+            items = await this.getFromStorage(
+                'sync',
+                [...touched, 'siteProfiles'],
+                false
+            );
+        } catch (error) {
+            for (const key of touched) {
+                missed.add(key);
+            }
+            this.logger.warn('Site change projection deferred', {
+                site,
+                reason: error instanceof Error ? error.name : 'unknown',
+            });
+            return projected;
+        }
+        missed.clear();
         const profile = this.siteProfileIn(site, items);
         for (const key of touched) {
             const hiddenSharedChange =
+                !recovering.has(key) &&
                 Object.hasOwn(changes, key) &&
                 Object.hasOwn(profile, key) &&
                 (before === null ||
@@ -1005,7 +1029,8 @@ class ConfigService {
                                 await this.projectForSite(
                                     site,
                                     relevantChanges,
-                                    rawSiteProfiles
+                                    rawSiteProfiles,
+                                    record.missed
                                 ),
                                 context
                             );
@@ -1031,33 +1056,6 @@ class ConfigService {
     /** Apply the stored logging level (schema default when unreadable). */
     async syncLoggingLevel(): Promise<void> {
         setLoggingLevel(await this.get('loggingLevel'));
-    }
-
-    /**
-     * Register the onInstalled defaults pass. The migration hook runs BEFORE
-     * defaults are written — the reverse order would resurrect retired keys
-     * and mis-scope credentials.
-     */
-    initializeDefaults(beforeDefaults?: () => Promise<void>): void {
-        browser.runtime.onInstalled.addListener((details) => {
-            if (details.reason !== 'install' && details.reason !== 'update') {
-                return;
-            }
-            void (async () => {
-                try {
-                    await beforeDefaults?.();
-                } catch (error) {
-                    this.logger.warn(
-                        'Pre-default configuration migration failed; continuing with schema defaults',
-                        {
-                            reason: details.reason,
-                            errorName: (error as Error)?.name,
-                        }
-                    );
-                }
-                await this.setDefaultsForMissingKeys();
-            })();
-        });
     }
 
     /**

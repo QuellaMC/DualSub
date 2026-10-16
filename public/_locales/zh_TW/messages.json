@@ -1398,7 +1398,7 @@
         "message": "隨便播放一部影片"
     },
     "welcomePlayHelp": {
-        "message": "兩行字幕會自動出現：上面是影片的語言，下面是你的語言。"
+        "message": "兩行字幕會自動出現：上面是影片的語言，下面是你的語言。影片本來就是你的語言時，只顯示一行。"
     },
     "welcomeSettingsTitle": {
         "message": "想改一些設定嗎？"

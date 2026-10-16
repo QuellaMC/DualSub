@@ -1398,7 +1398,7 @@
         "message": "Pon lo que quieras"
     },
     "welcomePlayHelp": {
-        "message": "Aparecen dos líneas de subtítulos sin que hagas nada: el idioma del video arriba y el tuyo debajo."
+        "message": "Aparecen dos líneas de subtítulos sin que hagas nada: el idioma del video arriba y el tuyo debajo. Si el video ya está en tu idioma, verás una sola línea."
     },
     "welcomeSettingsTitle": {
         "message": "¿Quieres cambiar algo?"

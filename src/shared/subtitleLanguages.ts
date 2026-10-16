@@ -23,6 +23,12 @@ export type SubtitleLanguage = (typeof SUBTITLE_LANGUAGES)[number];
  *  video. */
 export const AUTO_LANGUAGE = 'auto';
 
+/** The translation language the browser's preferences pick, the one a
+ *  fresh install starts with; null when DualSub offers none of them. */
+export function browserTargetLanguage(): SubtitleLanguage | null {
+    return browserLanguage(SUBTITLE_LANGUAGES);
+}
+
 /** The first of the browser's preferred languages that `supported` offers,
  *  or null. */
 export function browserLanguage<T extends string>(

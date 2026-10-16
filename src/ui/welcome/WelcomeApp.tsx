@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { browser } from 'wxt/browser';
-import { detectBrowserLanguage, getDefaultValue } from '@/config/schema';
+import { detectBrowserLanguage } from '@/config/schema';
+import { browserTargetLanguage } from '@/shared/subtitleLanguages';
 import { LanguageSelect } from '../design/LanguageSelect';
 import { useI18n } from '../hooks/useI18n';
 import { useSettings } from '../hooks/useSettings';
@@ -46,8 +47,7 @@ export function WelcomeApp() {
         );
     }
 
-    const fromBrowser =
-        settings.targetLanguage === getDefaultValue('targetLanguage');
+    const fromBrowser = settings.targetLanguage === browserTargetLanguage();
     const pickLanguage = (targetLanguage: string): void => {
         const pick = ++latestPick.current;
         const report = (failed: boolean) => (): void => {

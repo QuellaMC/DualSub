@@ -89,6 +89,13 @@ describe('OptionsApp', () => {
         ).toBeInTheDocument();
     });
 
+    it("claims no browser language when the browser's are all ones DualSub lacks", async () => {
+        vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['nl-NL']);
+        vi.spyOn(navigator, 'language', 'get').mockReturnValue('nl-NL');
+        await renderReady();
+        expect(screen.queryByText('From your browser')).not.toBeInTheDocument();
+    });
+
     it('saves a choice, says so, and undoes it on request', async () => {
         await renderReady();
         fireEvent.click(screen.getByRole('button', { name: /Large$/ }));
@@ -394,6 +401,29 @@ describe('OptionsApp', () => {
             })
         );
         expect(await sync('subtitleFontScale')).toBeUndefined();
+    });
+
+    it("keeps the page and focus while a site's settings load, then shows that site's", async () => {
+        await fakeBrowser.storage.local.set({ showAdvancedSettings: true });
+        await fakeBrowser.storage.sync.set({
+            siteProfiles: { netflix: { subtitleFontScale: 1.6 } },
+        });
+        location.hash = '#look';
+        await renderReady();
+        const extraLarge = () =>
+            screen.queryByRole('button', { name: /Extra large$/ });
+        expect(extraLarge()).toHaveAttribute('aria-pressed', 'false');
+
+        const netflix = within(
+            screen.getByRole('group', { name: 'Settings for' })
+        ).getByRole('button', { name: /^Netflix/ });
+        netflix.focus();
+        fireEvent.click(netflix);
+        expect(extraLarge()).toBeNull();
+        await waitFor(() =>
+            expect(extraLarge()).toHaveAttribute('aria-pressed', 'true')
+        );
+        expect(netflix).toHaveFocus();
     });
 
     it('fixes doubled subtitles everywhere and gives each site its value back on Undo', async () => {

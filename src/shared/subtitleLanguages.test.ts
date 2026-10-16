@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { browserLanguage, SUBTITLE_LANGUAGES } from './subtitleLanguages';
+import {
+    browserLanguage,
+    browserTargetLanguage,
+    SUBTITLE_LANGUAGES,
+} from './subtitleLanguages';
 
 afterEach(() => {
     vi.unstubAllGlobals();
@@ -24,5 +28,14 @@ describe('browserLanguage', () => {
         expect(browserLanguage(SUBTITLE_LANGUAGES)).toBeNull();
         vi.stubGlobal('navigator', undefined);
         expect(browserLanguage(SUBTITLE_LANGUAGES)).toBeNull();
+    });
+});
+
+describe('browserTargetLanguage', () => {
+    it('picks a translation language from the browser, or none', () => {
+        vi.stubGlobal('navigator', { language: 'nl', languages: ['nl', 'ja'] });
+        expect(browserTargetLanguage()).toBe('ja');
+        vi.stubGlobal('navigator', { language: 'nl', languages: ['nl'] });
+        expect(browserTargetLanguage()).toBeNull();
     });
 });
