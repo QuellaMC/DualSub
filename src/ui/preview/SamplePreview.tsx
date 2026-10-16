@@ -5,7 +5,13 @@ import { PLATFORM_IDS } from '@/shared/platforms';
 import type { Translate } from '../hooks/useI18n';
 import { PLATFORM_PRESETS } from '../subtitleStyle';
 import { LookPreview } from './LookPreview';
-import { sampleCaption, sampleSubtitles, sampleVideoLanguage } from './sample';
+import { languageName } from '../languageLabels';
+import {
+    sampleCaption,
+    sampleSubtitles,
+    sampleVideoLanguage,
+    type SampleSubtitles,
+} from './sample';
 
 /** The settings a sample of the subtitles is drawn from. */
 export const SAMPLE_SETTINGS_KEYS = [
@@ -57,8 +63,30 @@ export function SamplePreview({
                 label={t('previewLabel')}
             />
             {caption && (
-                <p className="help">{sampleCaption(t, settings, sample)}</p>
+                <SampleCaption t={t} settings={settings} sample={sample} />
             )}
+        </>
+    );
+}
+
+/** What each sample line is, and each language English stands in for. */
+export function SampleCaption({
+    t,
+    settings,
+    sample,
+}: {
+    t: Translate;
+    settings: Pick<SettingsValues, 'originalLanguage'>;
+    sample: SampleSubtitles;
+}) {
+    return (
+        <>
+            <p className="help">{sampleCaption(t, settings, sample)}</p>
+            {sample.standIns.map((language) => (
+                <p key={language} className="help">
+                    {t('previewStandIn', languageName(t, language))}
+                </p>
+            ))}
         </>
     );
 }

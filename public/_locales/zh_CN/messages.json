@@ -803,6 +803,9 @@
     "previewSampleVideo": {
         "message": "示例视频"
     },
+    "previewStandIn": {
+        "message": "这里没有%s的示例，所以用英语代替。"
+    },
     "previewShownOn": {
         "message": "显示在"
     },

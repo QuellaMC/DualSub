@@ -79,6 +79,16 @@ describe('WelcomeApp', () => {
         ).toHaveAttribute('href', 'https://www.disneyplus.com/');
     });
 
+    it('says when its sample shows English for a language it has no sample in', async () => {
+        await fakeBrowser.storage.sync.set({ targetLanguage: 'th' });
+        render(<WelcomeApp />);
+        expect(
+            await screen.findByText(
+                'There is no th sample here, so English stands in for it.'
+            )
+        ).toBeInTheDocument();
+    });
+
     it('saves another translation language and opens the settings', async () => {
         const openOptions = vi
             .spyOn(browser.runtime, 'openOptionsPage')

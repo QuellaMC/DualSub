@@ -803,6 +803,9 @@
     "previewSampleVideo": {
         "message": "예시 영상"
     },
+    "previewStandIn": {
+        "message": "여기에는 %s 예시가 없어서 영어로 대신 보여 줘요."
+    },
     "previewShownOn": {
         "message": "보는 사이트"
     },
