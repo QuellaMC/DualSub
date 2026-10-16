@@ -1560,22 +1560,22 @@
         "message": "Your language: %s"
     },
     "welcomeLanguageFromBrowser": {
-        "message": "Taken from your browser. The bottom line is always in this language."
+        "message": "Taken from your browser. Your line is always in this language."
     },
     "welcomeLanguageLabel": {
         "message": "Your language"
     },
     "welcomeTopAuto": {
-        "message": "Top line: the language spoken in each video"
+        "message": "Video's line: the language spoken in each video"
     },
     "welcomeTopAutoHelp": {
         "message": "A Korean drama shows Korean, an English film shows English."
     },
     "welcomeTopFixed": {
-        "message": "Top line: always %s"
+        "message": "Video's line: always %s"
     },
     "welcomeTopFixedHelp": {
-        "message": "Every video shows it on top, when the site has subtitles in it."
+        "message": "Every video shows it, when the site has subtitles in it."
     },
     "welcomeTranslation": {
         "message": "Translation: %s"
@@ -1601,14 +1601,29 @@
     "welcomeTitle": {
         "message": "You're all set."
     },
-    "welcomeLead": {
-        "message": "DualSub puts two lines of subtitles on Netflix and Disney+: the video's own language on top, and yours underneath. There is nothing to set up."
+    "welcomeLeadFormat": {
+        "message": "%s %s"
     },
-    "welcomeLeadSetUp": {
-        "message": "DualSub puts two lines of subtitles on Netflix and Disney+: the video's own language on top, and yours underneath. To translate yours, finish setting up the translation service below."
+    "welcomeArrangeVideoFirst": {
+        "message": "DualSub puts two lines of subtitles on Netflix and Disney+: the video's own language on top, and yours underneath."
+    },
+    "welcomeArrangeMineFirst": {
+        "message": "DualSub puts two lines of subtitles on Netflix and Disney+: yours on top, and the video's own language underneath."
+    },
+    "welcomeArrangeSideBySide": {
+        "message": "DualSub puts two lines of subtitles side by side on Netflix and Disney+: the video's own language, and yours."
+    },
+    "welcomeStateReady": {
+        "message": "There is nothing to set up."
+    },
+    "welcomeStateOff": {
+        "message": "It is off for now: the switch below turns it on."
+    },
+    "welcomeStateSetUp": {
+        "message": "To translate yours, finish setting up the translation service below."
     },
     "welcomeLanguageHelp": {
-        "message": "The bottom line is always in this language."
+        "message": "Your line is always in this language."
     },
     "welcomeStepsTitle": {
         "message": "Start watching in three steps"

@@ -1560,22 +1560,22 @@
         "message": "내 언어: %s"
     },
     "welcomeLanguageFromBrowser": {
-        "message": "브라우저에서 가져왔어요. 아래 줄은 항상 이 언어로 나와요."
+        "message": "브라우저에서 가져왔어요. 내 줄은 항상 이 언어로 나와요."
     },
     "welcomeLanguageLabel": {
         "message": "내 언어"
     },
     "welcomeTopAuto": {
-        "message": "위 줄: 영상마다 말하는 언어"
+        "message": "영상 줄: 영상마다 말하는 언어"
     },
     "welcomeTopAutoHelp": {
         "message": "한국 드라마는 한국어, 영어 영화는 영어가 나와요."
     },
     "welcomeTopFixed": {
-        "message": "위 줄: 항상 %s"
+        "message": "영상 줄: 항상 %s"
     },
     "welcomeTopFixedHelp": {
-        "message": "사이트에 그 언어 자막이 있으면 어떤 영상이든 위에 보여 줘요."
+        "message": "사이트에 그 언어 자막이 있으면 어떤 영상이든 보여 줘요."
     },
     "welcomeTranslation": {
         "message": "번역: %s"
@@ -1601,14 +1601,29 @@
     "welcomeTitle": {
         "message": "준비가 끝났어요."
     },
-    "welcomeLead": {
-        "message": "DualSub은 Netflix와 Disney+에 자막을 두 줄로 보여 줘요. 위에는 영상 원래의 언어, 아래에는 내 언어가 나와요. 따로 설정할 건 없어요."
+    "welcomeLeadFormat": {
+        "message": "%s %s"
     },
-    "welcomeLeadSetUp": {
-        "message": "DualSub은 Netflix와 Disney+에 자막을 두 줄로 보여 줘요. 위에는 영상 원래의 언어, 아래에는 내 언어가 나와요. 내 언어 줄을 번역하려면 아래 번역 서비스 설정을 마치세요."
+    "welcomeArrangeVideoFirst": {
+        "message": "DualSub은 Netflix와 Disney+에 자막을 두 줄로 보여 줘요. 위에는 영상 원래의 언어, 아래에는 내 언어가 나와요."
+    },
+    "welcomeArrangeMineFirst": {
+        "message": "DualSub은 Netflix와 Disney+에 자막을 두 줄로 보여 줘요. 위에는 내 언어, 아래에는 영상 원래의 언어가 나와요."
+    },
+    "welcomeArrangeSideBySide": {
+        "message": "DualSub은 Netflix와 Disney+에 자막 두 줄을 나란히 보여 줘요. 영상 원래의 언어와 내 언어예요."
+    },
+    "welcomeStateReady": {
+        "message": "따로 설정할 건 없어요."
+    },
+    "welcomeStateOff": {
+        "message": "지금은 꺼져 있어요. 아래 스위치로 켤 수 있어요."
+    },
+    "welcomeStateSetUp": {
+        "message": "내 언어 줄을 번역하려면 아래 번역 서비스 설정을 마치세요."
     },
     "welcomeLanguageHelp": {
-        "message": "아래 줄은 항상 이 언어로 나와요."
+        "message": "내 줄은 항상 이 언어로 나와요."
     },
     "welcomeStepsTitle": {
         "message": "세 단계로 바로 보기"

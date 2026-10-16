@@ -1560,22 +1560,22 @@
         "message": "你的語言：%s"
     },
     "welcomeLanguageFromBrowser": {
-        "message": "依瀏覽器的語言選的。下行字幕一律是這種語言。"
+        "message": "依瀏覽器的語言選的。你的那一行一律是這種語言。"
     },
     "welcomeLanguageLabel": {
         "message": "你的語言"
     },
     "welcomeTopAuto": {
-        "message": "上行字幕：每部影片裡說的語言"
+        "message": "影片的那一行：每部影片裡說的語言"
     },
     "welcomeTopAutoHelp": {
         "message": "韓劇就顯示韓語，英語電影就顯示英語。"
     },
     "welcomeTopFixed": {
-        "message": "上行字幕：固定為%s"
+        "message": "影片的那一行：固定為%s"
     },
     "welcomeTopFixedHelp": {
-        "message": "只要網站有這種語言的字幕，每部影片都會在上面顯示它。"
+        "message": "只要網站有這種語言的字幕，每部影片都會顯示它。"
     },
     "welcomeTranslation": {
         "message": "翻譯：%s"
@@ -1601,14 +1601,29 @@
     "welcomeTitle": {
         "message": "一切就緒。"
     },
-    "welcomeLead": {
-        "message": "DualSub 會在 Netflix 和 Disney+ 上顯示兩行字幕：上面是影片本身的語言，下面是你的語言。什麼都不用設定。"
+    "welcomeLeadFormat": {
+        "message": "%s%s"
     },
-    "welcomeLeadSetUp": {
-        "message": "DualSub 會在 Netflix 和 Disney+ 上顯示兩行字幕：上面是影片本身的語言，下面是你的語言。要翻譯你的那一行，請先設定好下面的翻譯服務。"
+    "welcomeArrangeVideoFirst": {
+        "message": "DualSub 會在 Netflix 和 Disney+ 上顯示兩行字幕：上面是影片本身的語言，下面是你的語言。"
+    },
+    "welcomeArrangeMineFirst": {
+        "message": "DualSub 會在 Netflix 和 Disney+ 上顯示兩行字幕：上面是你的語言，下面是影片本身的語言。"
+    },
+    "welcomeArrangeSideBySide": {
+        "message": "DualSub 會在 Netflix 和 Disney+ 上並排顯示兩行字幕：影片本身的語言，和你的語言。"
+    },
+    "welcomeStateReady": {
+        "message": "什麼都不用設定。"
+    },
+    "welcomeStateOff": {
+        "message": "現在是關閉的，用下面的開關就能開啟。"
+    },
+    "welcomeStateSetUp": {
+        "message": "要翻譯你的那一行，請先設定好下面的翻譯服務。"
     },
     "welcomeLanguageHelp": {
-        "message": "下行字幕一律是這種語言。"
+        "message": "你的那一行一律是這種語言。"
     },
     "welcomeStepsTitle": {
         "message": "三個步驟開始觀看"

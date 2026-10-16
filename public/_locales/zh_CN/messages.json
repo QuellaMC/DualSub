@@ -1560,22 +1560,22 @@
         "message": "你的语言：%s"
     },
     "welcomeLanguageFromBrowser": {
-        "message": "按浏览器语言选的。下行字幕始终是这种语言。"
+        "message": "按浏览器语言选的。你的那行始终是这种语言。"
     },
     "welcomeLanguageLabel": {
         "message": "你的语言"
     },
     "welcomeTopAuto": {
-        "message": "上行字幕：每个视频里说的语言"
+        "message": "视频的那行：每个视频里说的语言"
     },
     "welcomeTopAutoHelp": {
         "message": "韩剧显示韩语，英语电影显示英语。"
     },
     "welcomeTopFixed": {
-        "message": "上行字幕：始终是%s"
+        "message": "视频的那行：始终是%s"
     },
     "welcomeTopFixedHelp": {
-        "message": "只要网站有这种语言的字幕，每个视频都会在上面显示它。"
+        "message": "只要网站有这种语言的字幕，每个视频都会显示它。"
     },
     "welcomeTranslation": {
         "message": "翻译：%s"
@@ -1601,14 +1601,29 @@
     "welcomeTitle": {
         "message": "一切就绪。"
     },
-    "welcomeLead": {
-        "message": "DualSub 会在 Netflix 和 Disney+ 上显示两行字幕：上面是视频本身的语言，下面是你的语言。什么都不用设置。"
+    "welcomeLeadFormat": {
+        "message": "%s%s"
     },
-    "welcomeLeadSetUp": {
-        "message": "DualSub 会在 Netflix 和 Disney+ 上显示两行字幕：上面是视频本身的语言，下面是你的语言。要翻译你的那行，请先设置好下面的翻译服务。"
+    "welcomeArrangeVideoFirst": {
+        "message": "DualSub 会在 Netflix 和 Disney+ 上显示两行字幕：上面是视频本身的语言，下面是你的语言。"
+    },
+    "welcomeArrangeMineFirst": {
+        "message": "DualSub 会在 Netflix 和 Disney+ 上显示两行字幕：上面是你的语言，下面是视频本身的语言。"
+    },
+    "welcomeArrangeSideBySide": {
+        "message": "DualSub 会在 Netflix 和 Disney+ 上并排显示两行字幕：视频本身的语言，和你的语言。"
+    },
+    "welcomeStateReady": {
+        "message": "什么都不用设置。"
+    },
+    "welcomeStateOff": {
+        "message": "现在是关闭的，用下面的开关就能打开。"
+    },
+    "welcomeStateSetUp": {
+        "message": "要翻译你的那行，请先设置好下面的翻译服务。"
     },
     "welcomeLanguageHelp": {
-        "message": "下行字幕始终是这种语言。"
+        "message": "你的那行始终是这种语言。"
     },
     "welcomeStepsTitle": {
         "message": "三步开始观看"

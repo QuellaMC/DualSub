@@ -1560,22 +1560,22 @@
         "message": "自分の言語：%s"
     },
     "welcomeLanguageFromBrowser": {
-        "message": "ブラウザの設定から選びました。下の行はいつもこの言語です。"
+        "message": "ブラウザの設定から選びました。自分の行はいつもこの言語です。"
     },
     "welcomeLanguageLabel": {
         "message": "自分の言語"
     },
     "welcomeTopAuto": {
-        "message": "上の行：それぞれの動画で話されている言語"
+        "message": "動画の行：それぞれの動画で話されている言語"
     },
     "welcomeTopAutoHelp": {
         "message": "韓国ドラマなら韓国語、英語の映画なら英語になります。"
     },
     "welcomeTopFixed": {
-        "message": "上の行：常に%s"
+        "message": "動画の行：常に%s"
     },
     "welcomeTopFixedHelp": {
-        "message": "サイトにその言語の字幕があれば、どの動画でも上に表示します。"
+        "message": "サイトにその言語の字幕があれば、どの動画でも表示します。"
     },
     "welcomeTranslation": {
         "message": "翻訳：%s"
@@ -1601,14 +1601,29 @@
     "welcomeTitle": {
         "message": "準備ができました。"
     },
-    "welcomeLead": {
-        "message": "DualSubは、NetflixとDisney+に2行の字幕を表示します。上は動画そのものの言語、下は自分の言語です。設定は何もいりません。"
+    "welcomeLeadFormat": {
+        "message": "%s%s"
     },
-    "welcomeLeadSetUp": {
-        "message": "DualSubは、NetflixとDisney+に2行の字幕を表示します。上は動画そのものの言語、下は自分の言語です。自分の言語の行を翻訳するには、下の翻訳サービスの設定を済ませてください。"
+    "welcomeArrangeVideoFirst": {
+        "message": "DualSubは、NetflixとDisney+に2行の字幕を表示します。上は動画そのものの言語、下は自分の言語です。"
+    },
+    "welcomeArrangeMineFirst": {
+        "message": "DualSubは、NetflixとDisney+に2行の字幕を表示します。上は自分の言語、下は動画そのものの言語です。"
+    },
+    "welcomeArrangeSideBySide": {
+        "message": "DualSubは、NetflixとDisney+に2つの字幕を横に並べて表示します。動画そのものの言語と、自分の言語です。"
+    },
+    "welcomeStateReady": {
+        "message": "設定は何もいりません。"
+    },
+    "welcomeStateOff": {
+        "message": "今はオフになっています。下のスイッチでオンにできます。"
+    },
+    "welcomeStateSetUp": {
+        "message": "自分の言語の行を翻訳するには、下の翻訳サービスの設定を済ませてください。"
     },
     "welcomeLanguageHelp": {
-        "message": "下の行はいつもこの言語です。"
+        "message": "自分の行はいつもこの言語です。"
     },
     "welcomeStepsTitle": {
         "message": "3つの手順で見始めましょう"
