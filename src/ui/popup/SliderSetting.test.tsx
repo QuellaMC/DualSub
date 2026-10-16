@@ -1,5 +1,7 @@
 // @vitest-environment happy-dom
+import { createRoot } from 'react-dom/client';
 import {
+    act,
     cleanup,
     fireEvent,
     render,
@@ -9,9 +11,12 @@ import {
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SliderSetting } from './SliderSetting';
 
-function setup(value = 1.1, onCommit = vi.fn(() => Promise.resolve(true))) {
-    const onPreview = vi.fn();
-    const view = render(
+function sizeSlider(
+    value: number,
+    onPreview: (value: number) => void,
+    onCommit: (value: number) => Promise<void>
+) {
+    return (
         <SliderSetting
             id="size"
             label="Size"
@@ -23,21 +28,19 @@ function setup(value = 1.1, onCommit = vi.fn(() => Promise.resolve(true))) {
             onCommit={onCommit}
         />
     );
-    const slider = screen.getByRole('slider', { name: 'Size' });
+}
+
+function setup(value = 1.1, onCommit = vi.fn(() => Promise.resolve())) {
+    const onPreview = vi.fn();
+    const view = render(sizeSlider(value, onPreview, onCommit));
     const rerender = (next: number): void =>
-        view.rerender(
-            <SliderSetting
-                id="size"
-                label="Size"
-                value={next}
-                min={1}
-                max={3}
-                step={0.1}
-                onPreview={onPreview}
-                onCommit={onCommit}
-            />
-        );
-    return { slider, onPreview, onCommit, rerender };
+        view.rerender(sizeSlider(next, onPreview, onCommit));
+    return {
+        slider: screen.getByRole('slider', { name: 'Size' }),
+        onPreview,
+        onCommit,
+        rerender,
+    };
 }
 
 afterEach(() => {
@@ -59,18 +62,15 @@ describe('SliderSetting', () => {
         expect(onCommit).toHaveBeenCalledWith(1.4);
     });
 
-    it('does not commit when released at the persisted value', () => {
+    it('does not commit a release without a change', () => {
         const { slider, onCommit } = setup();
         fireEvent.pointerUp(slider);
         fireEvent.keyUp(slider, { key: 'ArrowRight' });
         expect(onCommit).not.toHaveBeenCalled();
     });
 
-    it('snaps back to the persisted value when the commit fails', async () => {
-        const { slider } = setup(
-            1.1,
-            vi.fn(() => Promise.resolve(false))
-        );
+    it('snaps back to the persisted value when a commit leaves it unchanged', async () => {
+        const { slider } = setup();
         fireEvent.change(slider, { target: { value: '1.4' } });
         fireEvent.pointerUp(slider);
         await waitFor(() =>
@@ -78,9 +78,9 @@ describe('SliderSetting', () => {
         );
     });
 
-    it('keeps a newer draft when an older commit fails', async () => {
-        const gate = Promise.withResolvers<boolean>();
-        const { slider, onCommit } = setup(
+    it('keeps a newer draft when an older commit settles', async () => {
+        const gate = Promise.withResolvers<void>();
+        const { slider } = setup(
             1.1,
             vi.fn(() => gate.promise)
         );
@@ -88,9 +88,8 @@ describe('SliderSetting', () => {
         fireEvent.pointerUp(slider);
         fireEvent.change(slider, { target: { value: '1.8' } });
 
-        gate.resolve(false);
-        await waitFor(() => expect(onCommit).toHaveBeenCalledTimes(1));
-        await Promise.resolve();
+        gate.resolve();
+        await act(() => gate.promise);
         expect((slider as HTMLInputElement).value).toBe('1.8');
     });
 
@@ -99,5 +98,56 @@ describe('SliderSetting', () => {
         rerender(2);
         expect((slider as HTMLInputElement).value).toBe('2');
         expect(screen.getByText('2.0')).toBeTruthy();
+    });
+
+    it('follows the authoritative value again once a commit settles', async () => {
+        const commit = Promise.withResolvers<void>();
+        const { slider, rerender } = setup(
+            1.1,
+            vi.fn(() => commit.promise)
+        );
+        fireEvent.change(slider, { target: { value: '1.4' } });
+        fireEvent.pointerUp(slider);
+        commit.resolve();
+        await act(() => commit.promise);
+
+        rerender(2);
+        expect((slider as HTMLInputElement).value).toBe('2');
+    });
+
+    it('keeps a draft over a value that arrives while the user drags', () => {
+        const { slider, onCommit, rerender } = setup();
+        fireEvent.change(slider, { target: { value: '1.4' } });
+        rerender(2);
+        expect((slider as HTMLInputElement).value).toBe('1.4');
+
+        fireEvent.pointerUp(slider);
+        expect(onCommit).toHaveBeenCalledWith(1.4);
+    });
+
+    it('keeps a change made the moment the slider appears', async () => {
+        // React runs a render's effects in a task after its commit, and an
+        // input can land in between, as the popup's first drag can on a
+        // busy machine.
+        const onCommit = vi.fn(() => Promise.resolve());
+        const container = document.body.appendChild(
+            document.createElement('div')
+        );
+        const root = createRoot(container);
+        const released = new Promise<void>((resolve) => {
+            new MutationObserver((_records, observer) => {
+                observer.disconnect();
+                const input = screen.getByRole('slider', { name: 'Size' });
+                fireEvent.change(input, { target: { value: '1.4' } });
+                fireEvent.pointerUp(input);
+                resolve();
+            }).observe(container, { childList: true });
+        });
+        root.render(sizeSlider(1.1, vi.fn(), onCommit));
+        await released;
+
+        expect(onCommit).toHaveBeenCalledWith(1.4);
+        act(() => root.unmount());
+        container.remove();
     });
 });
