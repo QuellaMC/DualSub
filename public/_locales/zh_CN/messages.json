@@ -1028,6 +1028,9 @@
     "startSiteOff": {
         "message": "%s：已关闭"
     },
+    "startSiteUnreadable": {
+        "message": "%s：无法读取"
+    },
     "startSiteOn": {
         "message": "%s：已打开"
     },

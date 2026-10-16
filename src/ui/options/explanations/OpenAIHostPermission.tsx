@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import {
     requestHostPermission,
     toHostPermissionPattern,
@@ -42,6 +42,7 @@ export function OpenAIHostPermission({
 }) {
     const [status, setStatus] = useState<HostPermissionStatus>(null);
     const sequence = useRef(0);
+    const hostId = useId();
     const current = status?.baseUrl === baseUrl ? status : null;
     const state = current?.state ?? 'idle';
     const pending = state === 'pending';
@@ -107,7 +108,7 @@ export function OpenAIHostPermission({
         <div
             className={`api-host-permission ${state}`}
             role="group"
-            aria-labelledby="openaiHostPermissionHost"
+            aria-labelledby={hostId}
         >
             <div className="api-host-permission-heading">
                 <span className="api-host-permission-icon" aria-hidden="true">
@@ -121,7 +122,7 @@ export function OpenAIHostPermission({
                         )}
                     </svg>
                 </span>
-                <span id="openaiHostPermissionHost">{hostLabel(baseUrl)}</span>
+                <span id={hostId}>{hostLabel(baseUrl)}</span>
             </div>
             <button
                 type="button"
