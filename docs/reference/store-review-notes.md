@@ -13,8 +13,11 @@ provider account.
 
 ## Permissions
 
-- `storage`: user settings; provider credentials stay in `chrome.storage.local`; a failing translation service's record (service, kind of problem, covering service, time; no subtitle text or credentials) stays in `chrome.storage.session` until that service works again, its settings change, or the browser session ends
-  and never sync.
+- `storage`: user settings; provider credentials stay in `chrome.storage.local`
+  and never sync. A failing translation service's record (the service, the
+  kind of problem, the covering service, and the time; no subtitle text or
+  credentials) stays in `chrome.storage.session` until that service works
+  again, its settings change, or the browser session ends.
 - `activeTab`: the popup previews slider changes on the tab it was opened for.
 - `sidePanel`: the AI analysis panel. It opens only from the user's click on
   a subtitle word.
