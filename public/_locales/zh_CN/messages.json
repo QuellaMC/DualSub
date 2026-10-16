@@ -56,9 +56,6 @@
     "lang_hi": {
         "message": "印地语"
     },
-    "lang_auto": {
-        "message": "自动（跟随音频）"
-    },
     "deeplApiKeyError": {
         "message": "请先输入您的 DeepL API 密钥。"
     },
@@ -1517,8 +1514,14 @@
     "popupWorkingTitle": {
         "message": "正在为这个视频工作"
     },
+    "popupWorkingHelpOne": {
+        "message": "%s · %s，本来就是你的语言"
+    },
+    "popupWorkingHelpSoon": {
+        "message": "%s，附你的译文"
+    },
     "popupWorkingHelp": {
-        "message": "你的那行：%s。"
+        "message": "%s · %s，附你的译文"
     },
     "popupReadyTitle": {
         "message": "在 %s 上已准备好"
@@ -1529,6 +1532,33 @@
     "popupOffTitle": {
         "message": "%s 上的双语字幕已关闭"
     },
+    "popupOffHelp": {
+        "message": "网站自带的字幕回来了。"
+    },
+    "popupTopAutomatic": {
+        "message": "自动"
+    },
+    "popupTopAutomaticIs": {
+        "message": "自动：%s"
+    },
+    "popupPosition": {
+        "message": "位置"
+    },
+    "popupExactSize": {
+        "message": "%s×"
+    },
+    "positionLowest": {
+        "message": "最低"
+    },
+    "positionUsual": {
+        "message": "常用位置"
+    },
+    "positionHigher": {
+        "message": "偏高"
+    },
+    "positionMiddle": {
+        "message": "中间"
+    },
     "popupSmaller": {
         "message": "缩小文字"
     },
@@ -1536,10 +1566,19 @@
         "message": "放大文字"
     },
     "popupElsewhereTitle": {
-        "message": "DualSub 支持这些网站"
+        "message": "DualSub 可以在 %s 上使用"
     },
     "popupElsewhereHelp": {
         "message": "现在这个页面不在其中。打开下面任意一个网站，随便播放一个视频，两行字幕就会自动出现。"
+    },
+    "popupAlreadyTitle": {
+        "message": "已经在 %s 上了？"
+    },
+    "popupAlreadyPlay": {
+        "message": "播放一个视频，开始播放后字幕就会出现。"
+    },
+    "popupAlreadyNone": {
+        "message": "没有字幕？这个视频可能没有任何语言的字幕。"
     },
     "popupReloadTitle": {
         "message": "刷新页面就能启动 DualSub"

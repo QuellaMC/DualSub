@@ -56,9 +56,6 @@
     "lang_hi": {
         "message": "ヒンディー語"
     },
-    "lang_auto": {
-        "message": "自動（音声に合わせる）"
-    },
     "deeplApiKeyError": {
         "message": "まずDeepL APIキーを入力してください。"
     },
@@ -1517,8 +1514,14 @@
     "popupWorkingTitle": {
         "message": "この動画で字幕を表示中"
     },
+    "popupWorkingHelpOne": {
+        "message": "%s · %s、もともと自分の言語"
+    },
+    "popupWorkingHelpSoon": {
+        "message": "%s、自分の言語の訳付き"
+    },
     "popupWorkingHelp": {
-        "message": "自分の言語の行は%sです。"
+        "message": "%s · %s、自分の言語の訳付き"
     },
     "popupReadyTitle": {
         "message": "%sで準備完了"
@@ -1529,6 +1532,33 @@
     "popupOffTitle": {
         "message": "%sでは二言語字幕がオフです"
     },
+    "popupOffHelp": {
+        "message": "サイト自体の字幕が戻ります。"
+    },
+    "popupTopAutomatic": {
+        "message": "自動"
+    },
+    "popupTopAutomaticIs": {
+        "message": "自動：%s"
+    },
+    "popupPosition": {
+        "message": "位置"
+    },
+    "popupExactSize": {
+        "message": "%s×"
+    },
+    "positionLowest": {
+        "message": "一番下"
+    },
+    "positionUsual": {
+        "message": "いつもの位置"
+    },
+    "positionHigher": {
+        "message": "少し上"
+    },
+    "positionMiddle": {
+        "message": "真ん中"
+    },
     "popupSmaller": {
         "message": "文字を小さく"
     },
@@ -1536,10 +1566,19 @@
         "message": "文字を大きく"
     },
     "popupElsewhereTitle": {
-        "message": "DualSubが使えるサイト"
+        "message": "DualSubは%sで使えます"
     },
     "popupElsewhereHelp": {
         "message": "このページでは使えません。下のサイトを開いて好きな動画を再生すると、2行の字幕が自動で表示されます。"
+    },
+    "popupAlreadyTitle": {
+        "message": "もう%sを開いていますか？"
+    },
+    "popupAlreadyPlay": {
+        "message": "動画を再生してください。始まると字幕が表示されます。"
+    },
+    "popupAlreadyNone": {
+        "message": "字幕が出ませんか？その動画には、どの言語の字幕もないのかもしれません。"
     },
     "popupReloadTitle": {
         "message": "再読み込みするとDualSubが使えます"

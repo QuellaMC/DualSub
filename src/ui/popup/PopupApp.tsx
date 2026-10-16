@@ -4,6 +4,8 @@ import type { PlatformId } from '@/shared/platforms';
 import {
     activeTabSite,
     readTabStatus,
+    sameTabStatus,
+    WAITING,
     type TabSite,
     type TabStatus,
 } from '../contentTab';
@@ -38,7 +40,7 @@ export function PopupApp() {
                 return;
             }
             const { site } = tab;
-            const status = site ? await readTabStatus(tab.tabId) : 'waiting';
+            const status = site ? await readTabStatus(tab.tabId) : WAITING;
             // What the tab said holds only while it shows the site it was
             // asked about; one that moved on is read again.
             const now = await activeTabSite().catch(() => null);
@@ -52,7 +54,7 @@ export function PopupApp() {
             setPlace((previous) =>
                 previous !== 'unknown' &&
                 previous?.site === site &&
-                previous.status === status
+                sameTabStatus(previous.status, status)
                     ? previous
                     : { site, status }
             );

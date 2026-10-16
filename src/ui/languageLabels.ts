@@ -22,7 +22,7 @@ export const NATIVE_LANGUAGE_NAMES: Record<SubtitleLanguage, string> = {
     hi: 'हिन्दी',
 };
 
-/** The catalog key of a language's name; `auto` has one too. */
+/** The catalog key of a language's name. */
 export function languageLabelKey(code: string): string {
     return `lang_${code.replace('-', '_')}`;
 }

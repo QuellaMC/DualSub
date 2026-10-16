@@ -11,13 +11,14 @@ with a clean profile plus one seeded profile (see the upgrade-path tests in
    container stays hidden. On a title with on-screen text (Disney+ Marvel
    films open with location cards), the cue the platform raises shows at
    the top with its translation while dialogue stays at the bottom.
-2. Change both languages from the popup, and toggle the show's own
-   translation in the settings page's Languages section: the current line
+2. Change your language from the popup, and the top line and the show's
+   own translation in the settings page's Languages section: the current line
    stays up behind the loading placeholder, then the new languages take
    over at the right time. With the top line on
    Automatic (a fresh profile's default), switch the audio track in the
    player: the top line reloads in the new audio language within a few
-   seconds; pick audio in the translation language: one line shows.
+   seconds, and the popup names it; pick audio in the translation
+   language: one line shows.
 3. Next episode (autoplay and manual): no duplicated cues, no cue from the
    previous episode, timing correct from the first line.
 4. Leave the player, come back, and reload the page: subtitles return

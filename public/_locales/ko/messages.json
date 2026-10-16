@@ -56,9 +56,6 @@
     "lang_hi": {
         "message": "힌디어"
     },
-    "lang_auto": {
-        "message": "자동 (오디오에 맞춤)"
-    },
     "deeplApiKeyError": {
         "message": "먼저 DeepL API 키를 입력해주세요."
     },
@@ -1517,8 +1514,14 @@
     "popupWorkingTitle": {
         "message": "이 영상에서 작동 중"
     },
+    "popupWorkingHelpOne": {
+        "message": "%s · %s, 이미 내 언어"
+    },
+    "popupWorkingHelpSoon": {
+        "message": "%s, 내 언어 번역과 함께"
+    },
     "popupWorkingHelp": {
-        "message": "내 줄: %s."
+        "message": "%s · %s, 내 언어 번역과 함께"
     },
     "popupReadyTitle": {
         "message": "%s에서 준비 완료"
@@ -1529,6 +1532,33 @@
     "popupOffTitle": {
         "message": "%s에서 이중 자막 꺼짐"
     },
+    "popupOffHelp": {
+        "message": "사이트 자체 자막이 다시 나와요."
+    },
+    "popupTopAutomatic": {
+        "message": "자동"
+    },
+    "popupTopAutomaticIs": {
+        "message": "자동: %s"
+    },
+    "popupPosition": {
+        "message": "위치"
+    },
+    "popupExactSize": {
+        "message": "%s×"
+    },
+    "positionLowest": {
+        "message": "맨 아래"
+    },
+    "positionUsual": {
+        "message": "보통"
+    },
+    "positionHigher": {
+        "message": "조금 위"
+    },
+    "positionMiddle": {
+        "message": "가운데"
+    },
     "popupSmaller": {
         "message": "글자 작게"
     },
@@ -1536,10 +1566,19 @@
         "message": "글자 크게"
     },
     "popupElsewhereTitle": {
-        "message": "DualSub 지원 사이트"
+        "message": "DualSub은 %s에서 작동해요"
     },
     "popupElsewhereHelp": {
         "message": "지금 보고 있는 페이지는 지원 사이트가 아니에요. 아래 사이트 중 하나를 열고 아무 영상이나 재생하면 자막 두 줄이 저절로 나와요."
+    },
+    "popupAlreadyTitle": {
+        "message": "이미 %s에 있나요?"
+    },
+    "popupAlreadyPlay": {
+        "message": "영상을 재생하세요. 시작되면 자막이 나와요."
+    },
+    "popupAlreadyNone": {
+        "message": "자막이 안 나오나요? 그 영상에는 어떤 언어의 자막도 없을 수 있어요."
     },
     "popupReloadTitle": {
         "message": "새로고침해서 DualSub 시작하기"

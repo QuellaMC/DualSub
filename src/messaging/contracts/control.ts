@@ -9,7 +9,8 @@ const controlAck = z.discriminatedUnion('success', [
     z.strictObject({ success: z.literal(false), error: boundedText(512) }),
 ]);
 
-/** Whether DualSub is serving a video player on this tab. */
+/** Whether DualSub is serving a video player on this tab, and the language
+ *  its top line shows there once that is known. */
 export const playerStatus = defineContract({
     action: MessageActions.PLAYER_STATUS,
     transport: 'tab',
@@ -17,7 +18,10 @@ export const playerStatus = defineContract({
     request: z.strictObject({
         action: z.literal(MessageActions.PLAYER_STATUS),
     }),
-    response: z.strictObject({ onPlayer: z.boolean() }),
+    response: z.strictObject({
+        onPlayer: z.boolean(),
+        topLanguage: boundedText(35).nullable(),
+    }),
 });
 
 export const loggingLevelChanged = defineContract({

@@ -308,6 +308,11 @@ export class PlayerSession {
         return this.mediaBinding.current !== null;
     }
 
+    /** The language the top line shows; null until it is known. */
+    get topLanguage(): string | null {
+        return this.languagesValue?.originalLanguage ?? null;
+    }
+
     start(): void {
         this.renderer.setVisible(this.settings.subtitlesEnabled);
         this.renderer.setInteractive(this.interaction.aiContextEnabled);

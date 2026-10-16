@@ -35,6 +35,10 @@ const PATHS = {
         'M9 4h3.5v2a1.5 1.5 0 0 0 3 0V4H19v5h-2a1.5 1.5 0 0 0 0 3h2v6h-6v-2a1.5 1.5 0 0 0-3 0v2H5v-6h2a1.5 1.5 0 0 0 0-3H5V4z',
     ],
     pin: ['M9 4h6l-1 5 3 3H7l3-3z', 'M12 12v8'],
+    settings: [
+        'M12 9a3 3 0 1 0 0 6a3 3 0 1 0 0-6z',
+        'M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1',
+    ],
 } as const;
 
 export type IconName = keyof typeof PATHS;

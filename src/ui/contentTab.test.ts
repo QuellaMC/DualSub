@@ -14,7 +14,7 @@ function stubTabs(tabs: Browser.tabs.Tab[]) {
     vi.spyOn(browser.tabs, 'query').mockResolvedValue(tabs as never);
     return vi
         .spyOn(browser.tabs, 'sendMessage')
-        .mockResolvedValue({ onPlayer: true } as never);
+        .mockResolvedValue({ onPlayer: true, topLanguage: 'ko' } as never);
 }
 
 afterEach(() => {
@@ -70,17 +70,31 @@ describe('activeTabSite', () => {
 });
 
 describe('readTabStatus', () => {
-    it('tells a player from a page that waits for one, asking the tab it is given', async () => {
+    it('tells a player, with the language on top, from a page that waits for one, asking the tab it is given', async () => {
         const send = stubTabs(activeTab(7));
-        await expect(readTabStatus(7)).resolves.toBe('player');
+        await expect(readTabStatus(7)).resolves.toEqual({
+            kind: 'player',
+            topLanguage: 'ko',
+        });
         expect(send).toHaveBeenCalledWith(
             7,
             { action: 'playerStatus' },
             undefined
         );
 
-        send.mockResolvedValueOnce({ onPlayer: false } as never);
-        await expect(readTabStatus(7)).resolves.toBe('waiting');
+        send.mockResolvedValueOnce({
+            onPlayer: true,
+            topLanguage: null,
+        } as never);
+        await expect(readTabStatus(7)).resolves.toEqual({
+            kind: 'player',
+            topLanguage: null,
+        });
+        send.mockResolvedValueOnce({
+            onPlayer: false,
+            topLanguage: null,
+        } as never);
+        await expect(readTabStatus(7)).resolves.toEqual({ kind: 'waiting' });
     });
 
     it('knows when DualSub is not running in the page yet', async () => {
@@ -89,17 +103,19 @@ describe('readTabStatus', () => {
                 'Could not establish connection. Receiving end does not exist.'
             )
         );
-        await expect(readTabStatus(7)).resolves.toBe('notRunning');
+        await expect(readTabStatus(7)).resolves.toEqual({ kind: 'notRunning' });
     });
 
     it('claims nothing it cannot prove', async () => {
-        await expect(readTabStatus(null)).resolves.toBe('waiting');
+        await expect(readTabStatus(null)).resolves.toEqual({ kind: 'waiting' });
 
         const send = stubTabs(activeTab(7));
         send.mockResolvedValueOnce({ onPlayer: 'yes' } as never);
-        await expect(readTabStatus(7)).resolves.toBe('waiting');
+        await expect(readTabStatus(7)).resolves.toEqual({ kind: 'waiting' });
+        send.mockResolvedValueOnce({ onPlayer: true } as never);
+        await expect(readTabStatus(7)).resolves.toEqual({ kind: 'waiting' });
         send.mockRejectedValueOnce(new Error('The message port closed'));
-        await expect(readTabStatus(7)).resolves.toBe('waiting');
+        await expect(readTabStatus(7)).resolves.toEqual({ kind: 'waiting' });
     });
 });
 

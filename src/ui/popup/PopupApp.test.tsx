@@ -32,13 +32,18 @@ import { PopupApp } from './PopupApp';
 const EN = readFileSync(resolve('public/_locales/en/messages.json'), 'utf8');
 const NETFLIX_WATCH = 'https://www.netflix.com/watch/1';
 
+/** The active tab at `url`; on a player, its top line shows English. */
 function stubTab(url: string, onPlayer = false) {
     vi.spyOn(browser.tabs, 'query').mockResolvedValue([
         { id: 7, url } as unknown as Browser.tabs.Tab,
     ] as never);
-    vi.spyOn(browser.tabs, 'sendMessage').mockResolvedValue({
-        onPlayer,
-    } as never);
+    vi.spyOn(browser.tabs, 'sendMessage').mockResolvedValue(
+        player(onPlayer) as never
+    );
+}
+
+function player(onPlayer: boolean, topLanguage: string | null = 'en') {
+    return { onPlayer, topLanguage: onPlayer ? topLanguage : null };
 }
 
 async function sync(key: string): Promise<unknown> {
@@ -82,10 +87,13 @@ describe('PopupApp on a site DualSub works on', () => {
                 name: 'Working on this video',
             })
         ).toBeInTheDocument();
-        expect(screen.getByText('Your line: Japanese.')).toBeInTheDocument();
+        expect(
+            screen.getByText('Netflix · English, with your translation')
+        ).toBeInTheDocument();
+        expect(screen.getByText('Automatic: English')).toBeInTheDocument();
 
         const enabled = screen.getByRole('switch', {
-            name: 'Use DualSub here',
+            name: 'Dual subtitles',
         });
         expect(enabled).toHaveAttribute('aria-checked', 'true');
         fireEvent.click(enabled);
@@ -106,7 +114,7 @@ describe('PopupApp on a site DualSub works on', () => {
         stubTab(NETFLIX_WATCH, true);
         render(<PopupApp />);
         const enabled = await screen.findByRole('switch', {
-            name: 'Use DualSub here',
+            name: 'Dual subtitles',
         });
         const realSet = fakeBrowser.storage.sync.set.bind(
             fakeBrowser.storage.sync
@@ -166,9 +174,9 @@ describe('PopupApp on a site DualSub works on', () => {
             await screen.findByRole('heading', { name: 'Ready on Netflix' })
         ).toBeInTheDocument();
 
-        vi.mocked(browser.tabs.sendMessage).mockResolvedValue({
-            onPlayer: true,
-        } as never);
+        vi.mocked(browser.tabs.sendMessage).mockResolvedValue(
+            player(true) as never
+        );
         expect(
             await screen.findByRole('heading', {
                 name: 'Working on this video',
@@ -185,9 +193,9 @@ describe('PopupApp on a site DualSub works on', () => {
             })
         ).toBeInTheDocument();
 
-        vi.mocked(browser.tabs.sendMessage).mockResolvedValue({
-            onPlayer: false,
-        } as never);
+        vi.mocked(browser.tabs.sendMessage).mockResolvedValue(
+            player(false) as never
+        );
         expect(
             await screen.findByRole(
                 'heading',
@@ -211,14 +219,12 @@ describe('PopupApp on a site DualSub works on', () => {
                     url: 'https://www.disneyplus.com/video/1',
                 } as unknown as Browser.tabs.Tab,
             ] as never);
-            return Promise.resolve({ onPlayer: true }) as never;
+            return Promise.resolve(player(true)) as never;
         });
         render(<PopupApp />);
         await screen.findByRole('heading', { name: 'Working on this video' });
 
-        fireEvent.click(
-            screen.getByRole('switch', { name: 'Use DualSub here' })
-        );
+        fireEvent.click(screen.getByRole('switch', { name: 'Dual subtitles' }));
         await waitFor(async () =>
             expect(await sync('siteProfiles')).toEqual({
                 disneyplus: { subtitlesEnabled: false },
@@ -274,21 +280,35 @@ describe('PopupApp on a site DualSub works on', () => {
         expect(await sync('subtitleFontScale')).toBeUndefined();
     });
 
-    it('changes the languages', async () => {
+    it('changes the language you speak and says what the top line shows', async () => {
         stubTab(NETFLIX_WATCH, true);
         render(<PopupApp />);
         fireEvent.change(await screen.findByLabelText('I speak'), {
-            target: { value: 'ko' },
-        });
-        fireEvent.change(screen.getByLabelText(/^The top line shows/), {
             target: { value: 'en' },
         });
         await waitFor(async () =>
-            expect(await sync('targetLanguage')).toBe('ko')
+            expect(await sync('targetLanguage')).toBe('en')
         );
-        await waitFor(async () =>
-            expect(await sync('originalLanguage')).toBe('en')
+        expect(
+            await screen.findByText(
+                'Netflix · English, already in your language'
+            )
+        ).toBeInTheDocument();
+
+        await fakeBrowser.storage.sync.set({ originalLanguage: 'ko' });
+        expect(await screen.findByText('Korean')).toBeInTheDocument();
+    });
+
+    it('says the top line is automatic until the player names its language', async () => {
+        stubTab(NETFLIX_WATCH, true);
+        vi.mocked(browser.tabs.sendMessage).mockResolvedValue(
+            player(true, null) as never
         );
+        render(<PopupApp />);
+        expect(await screen.findByText('Automatic')).toBeInTheDocument();
+        expect(
+            screen.getByText('Netflix, with your translation')
+        ).toBeInTheDocument();
     });
 
     it('names a failing translation service and leads to its settings', async () => {
@@ -355,7 +375,7 @@ describe('PopupApp on a site DualSub works on', () => {
         expect(
             await screen.findByRole(
                 'switch',
-                { name: 'Use DualSub here' },
+                { name: 'Dual subtitles' },
                 { timeout: 3000 }
             )
         ).toBeInTheDocument();
@@ -379,7 +399,12 @@ describe('PopupApp anywhere else', () => {
         render(<PopupApp />);
         expect(
             await screen.findByRole('heading', {
-                name: 'DualSub works on these sites',
+                name: 'DualSub works on Netflix and Disney+',
+            })
+        ).toBeInTheDocument();
+        expect(
+            screen.getByRole('heading', {
+                name: 'Already on Netflix or Disney+?',
             })
         ).toBeInTheDocument();
         expect(
