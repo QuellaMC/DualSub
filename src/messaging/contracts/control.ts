@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { MessageActions } from '../actions';
 import { defineContract } from '../registry';
-import { boundedText } from './primitives';
+import { boundedText, languageTag } from './primitives';
 
 /** Shared ack for background → content control messages. */
 const controlAck = z.discriminatedUnion('success', [
@@ -20,7 +20,7 @@ export const playerStatus = defineContract({
     }),
     response: z.strictObject({
         onPlayer: z.boolean(),
-        topLanguage: boundedText(35).nullable(),
+        topLanguage: languageTag.nullable(),
     }),
 });
 

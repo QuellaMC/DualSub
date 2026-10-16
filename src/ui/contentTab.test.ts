@@ -97,6 +97,18 @@ describe('readTabStatus', () => {
         await expect(readTabStatus(7)).resolves.toEqual({ kind: 'waiting' });
     });
 
+    it('takes any language tag settings can hold, extensions included', async () => {
+        const send = stubTabs(activeTab(7));
+        send.mockResolvedValueOnce({
+            onPlayer: true,
+            topLanguage: 'de-DE-u-ca-gregory-co-phonebk-nu-latn',
+        } as never);
+        await expect(readTabStatus(7)).resolves.toEqual({
+            kind: 'player',
+            topLanguage: 'de-DE-u-ca-gregory-co-phonebk-nu-latn',
+        });
+    });
+
     it('knows when DualSub is not running in the page yet', async () => {
         stubTabs(activeTab(7)).mockRejectedValueOnce(
             new Error(
