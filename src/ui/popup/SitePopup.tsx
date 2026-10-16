@@ -152,12 +152,12 @@ function SiteControls({
     site: PlatformId;
     status: TabStatus;
     settings: SitePopupSettings;
-    save: (changes: Partial<SitePopupSettings>) => Promise<void>;
+    save: (changes: Partial<SitePopupSettings>) => Promise<unknown>;
     enabled: boolean;
-    saveEnabled: (enabled: boolean) => Promise<void>;
+    saveEnabled: (enabled: boolean) => Promise<unknown>;
 }) {
     const [saveFailed, setSaveFailed] = useState(false);
-    const write = async (change: () => Promise<void>): Promise<boolean> => {
+    const write = async (change: () => Promise<unknown>): Promise<boolean> => {
         try {
             await change();
             setSaveFailed(false);

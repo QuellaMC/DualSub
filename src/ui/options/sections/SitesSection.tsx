@@ -134,7 +134,7 @@ function SiteCard({
     const removeOwn = (): void => {
         void followAllSites(
             feedback,
-            site,
+            [site],
             ownKeys,
             t('toastSiteShared', name)
         ).then((removed) => {
