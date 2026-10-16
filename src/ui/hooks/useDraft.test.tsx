@@ -1,7 +1,27 @@
 // @vitest-environment happy-dom
-import { act, renderHook } from '@testing-library/react';
+import { useState } from 'react';
+import { createRoot } from 'react-dom/client';
+import { act, fireEvent, renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { useDraft } from './useDraft';
+
+/** A count that each write stores, as a settings handle would. */
+function Counter({ write }: { write: (value: number) => Promise<boolean> }) {
+    const [stored, setStored] = useState(0);
+    const draft = useDraft(stored, async (value) => {
+        const persisted = await write(value);
+        setStored(value);
+        return persisted;
+    });
+    return (
+        <button
+            type="button"
+            onClick={() => draft.update((count) => count + 1, 'quiet')}
+        >
+            {draft.value}
+        </button>
+    );
+}
 
 describe('useDraft', () => {
     it('builds on its own picks while their writes are out, whatever echoes back meanwhile', async () => {
@@ -73,5 +93,37 @@ describe('useDraft', () => {
             await Promise.resolve();
         });
         expect(result.current.value).toBe(3);
+    });
+
+    it('builds on presses made the moment the control shows', async () => {
+        // React runs a render's effects in a task after its commit, and a
+        // press can land in between.
+        const writes: number[] = [];
+        const write = (value: number): Promise<boolean> => {
+            writes.push(value);
+            return Promise.resolve(true);
+        };
+        const container = document.body.appendChild(
+            document.createElement('div')
+        );
+        const root = createRoot(container);
+        const pressed = new Promise<void>((resolve) => {
+            new MutationObserver((_records, observer) => {
+                const button = container.querySelector('button');
+                if (button) {
+                    observer.disconnect();
+                    fireEvent.click(button);
+                    fireEvent.click(button);
+                    resolve();
+                }
+            }).observe(container, { childList: true, subtree: true });
+        });
+        root.render(<Counter write={write} />);
+        await pressed;
+
+        await waitFor(() => expect(writes).toEqual([1, 2]));
+        expect(container.querySelector('button')?.textContent).toBe('2');
+        act(() => root.unmount());
+        container.remove();
     });
 });

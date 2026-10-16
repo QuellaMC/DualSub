@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+    useCallback,
+    useEffect,
+    useLayoutEffect,
+    useRef,
+    useState,
+} from 'react';
 
 /** How a write is confirmed to the viewer: a named change, or nothing. */
 export type SaveFeedback = { readonly message: string } | 'quiet';
@@ -48,11 +54,13 @@ export function useDraft<T>(
     const [settled, setSettled] = useState(0);
     const latest = useRef({ draft, write, saved });
 
-    useEffect(() => {
+    // As a render commits, before a press on what it shows can land: run
+    // later, these would take back a press made in between.
+    useLayoutEffect(() => {
         latest.current = { draft, write, saved };
     });
 
-    useEffect(() => {
+    useLayoutEffect(() => {
         // While a write is out, a value arriving from storage is the echo of
         // an older write, not news; once the last write settles, what storage
         // holds then is what to show.
