@@ -488,7 +488,7 @@ describe('OptionsApp', () => {
         fireEvent.click(screen.getByRole('button', { name: 'OpenAI' }));
         await waitFor(() => expect(key).toHaveValue(''));
         expect(
-            screen.getByText('Please enter your API key first.')
+            await screen.findByText('Please enter your API key first.')
         ).toBeInTheDocument();
         fireEvent.click(screen.getByRole('button', { name: 'Google Gemini' }));
         await waitFor(() => expect(key).toHaveValue('AIza-google-key'));
@@ -841,7 +841,9 @@ describe('OptionsApp', () => {
                 .openaiApiKeyOrigin
         ).toBe('https://api.openai.com');
         nav('Word explanations');
-        expect(screen.getByLabelText('Paste it here')).toHaveValue('');
+        await waitFor(() =>
+            expect(screen.getByLabelText('Paste it here')).toHaveValue('')
+        );
     });
 
     it('puts everything back when a backup can only be loaded in part', async () => {
