@@ -101,6 +101,24 @@ describe('useSettings', () => {
         expect(result.current.settings?.subtitleFontScale).toBe(2);
     });
 
+    it('shows what the newest read found, however earlier retries finish', async () => {
+        const get = vi.spyOn(browser.storage.sync, 'get');
+        get.mockRejectedValueOnce(new Error('storage broken'));
+        const { result } = renderHook(() => useSettings(KEYS));
+        await waitFor(() => expect(result.current.status).toBe('unavailable'));
+
+        const slowRetry = Promise.withResolvers<Record<string, unknown>>();
+        get.mockReturnValueOnce(slowRetry.promise as never);
+        await fakeBrowser.storage.sync.set({ subtitleFontScale: 2 });
+        await fakeBrowser.storage.sync.set({ subtitleFontScale: 3 });
+        await waitFor(() => expect(result.current.status).toBe('ready'));
+        expect(result.current.settings?.subtitleFontScale).toBe(3);
+
+        slowRetry.reject(new Error('storage broken'));
+        await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+        expect(result.current.status).toBe('ready');
+    });
+
     it("shows a site's view and gives it its own values", async () => {
         await fakeBrowser.storage.sync.set({
             subtitleFontScale: 1.2,
