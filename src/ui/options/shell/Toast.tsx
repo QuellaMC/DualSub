@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+    useCallback,
+    useEffect,
+    useLayoutEffect,
+    useRef,
+    useState,
+} from 'react';
 import { Icon } from '../../design/Icon';
 import type { Translate } from '../../hooks/useI18n';
 import type { ToastTone } from './feedback';
@@ -67,7 +73,8 @@ function ToastCard({
         });
     }, [id, undo, onDismiss]);
 
-    useEffect(() => {
+    // In place as the toast commits, so Ctrl+Z works as soon as it shows.
+    useLayoutEffect(() => {
         if (!undo) {
             return;
         }
