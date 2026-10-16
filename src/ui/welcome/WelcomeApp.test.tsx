@@ -78,11 +78,11 @@ describe('WelcomeApp', () => {
         expect(screen.getByText('Your language: English')).toBeInTheDocument();
         expect(
             screen.getByText(
-                'Taken from your browser. The bottom line is always in this language.'
+                'Taken from your browser. Your line is always in this language.'
             )
         ).toBeInTheDocument();
         expect(
-            screen.getByText('Top line: the language spoken in each video')
+            screen.getByText("Video's line: the language spoken in each video")
         ).toBeInTheDocument();
         expect(
             screen.getByText('Translation: Microsoft Translator')
@@ -149,6 +149,14 @@ describe('WelcomeApp', () => {
         expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
             'Welcome to DualSub'
         );
+        expect(
+            screen.getByText(
+                /It is off for now: the switch below turns it on\./
+            )
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByText(/There is nothing to set up/)
+        ).not.toBeInTheDocument();
 
         fireEvent.click(screen.getByRole('switch', { name: 'Dual subtitles' }));
         await waitFor(async () =>
@@ -220,6 +228,27 @@ describe('WelcomeApp', () => {
         ).toBeInTheDocument();
     });
 
+    it('describes the lines as the saved layout sets them', async () => {
+        await fakeBrowser.storage.sync.set({
+            subtitleLayoutOrder: 'translation_top',
+        });
+        render(<WelcomeApp />);
+        expect(
+            await screen.findByText(
+                /yours on top, and the video's own language underneath\./
+            )
+        ).toBeInTheDocument();
+
+        await fakeBrowser.storage.sync.set({
+            subtitleLayoutOrientation: 'row',
+        });
+        expect(
+            await screen.findByText(
+                /two lines of subtitles side by side on Netflix and Disney\+/
+            )
+        ).toBeInTheDocument();
+    });
+
     it('saves another translation language and opens the settings', async () => {
         const openOptions = vi
             .spyOn(browser.runtime, 'openOptionsPage')
@@ -236,7 +265,7 @@ describe('WelcomeApp', () => {
         );
         expect(
             screen.queryByText(
-                'Taken from your browser. The bottom line is always in this language.'
+                'Taken from your browser. Your line is always in this language.'
             )
         ).not.toBeInTheDocument();
         fireEvent.click(screen.getByRole('button', { name: 'Done' }));
@@ -256,7 +285,7 @@ describe('WelcomeApp', () => {
         render(<WelcomeApp />);
         expect(await changeLanguage()).toHaveValue('en');
         expect(
-            screen.getByText('The bottom line is always in this language.')
+            screen.getByText('Your line is always in this language.')
         ).toBeInTheDocument();
     });
 
