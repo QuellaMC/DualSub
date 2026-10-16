@@ -5,6 +5,7 @@ import {
     migrateLegacyConfiguration,
     resetConfigurationMigrationForTests,
 } from './migrations';
+import { keyEntry } from '@/shared/keyOrigins';
 import { configService } from './service';
 
 async function syncState(): Promise<Record<string, unknown>> {
@@ -144,6 +145,7 @@ describe('migrateLegacyConfiguration', () => {
         await fakeBrowser.storage.local.set({ openaiApiKey: 'sk-legacy' });
         const read = browser.storage.local.get.bind(browser.storage.local);
         let entry: Promise<unknown> = Promise.resolve();
+        let entered = false;
         // The settings page moves the address and enters a key for it while
         // the migration reads the credentials it binds; the entry may land
         // before the binding does.
@@ -151,17 +153,22 @@ describe('migrateLegacyConfiguration', () => {
             keys: string[] | null
         ) =>
             read(keys).then(async (items) => {
+                // Only the migration's read: the entry reads what it replaces.
                 if (
+                    !entered &&
                     Array.isArray(keys) &&
                     keys.includes('openaiApiKeyOrigin')
                 ) {
+                    entered = true;
                     await fakeBrowser.storage.sync.set({
                         openaiBaseUrl: 'https://new.example.com/v1',
                     });
-                    entry = configService.enterKey(
-                        'openaiApiKey',
-                        'sk-new',
-                        'https://new.example.com/v1'
+                    entry = configService.setMultiple(
+                        keyEntry(
+                            'openaiApiKey',
+                            'sk-new',
+                            'https://new.example.com/v1'
+                        )
                     );
                     await Promise.race([
                         entry,

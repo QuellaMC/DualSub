@@ -9,8 +9,6 @@ import {
 } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { browser } from 'wxt/browser';
-import { fakeBrowser } from 'wxt/testing/fake-browser';
-import { FeedbackProvider, type Feedback } from '../shell/feedback';
 import { OpenAICompatibleProviderCard } from './OpenAICompatibleProviderCard';
 
 const t = (key: string, ...subs: readonly (string | number)[]): string =>
@@ -39,25 +37,7 @@ function renderCard(
         advanced: true,
         ...overrides,
     };
-    // The page makes each change in turn; so does this stand-in.
-    let changes: Promise<unknown> = Promise.resolve();
-    const feedback: Feedback = {
-        apply: (change) => {
-            const made = changes.then(change).then(
-                () => true,
-                () => false
-            );
-            changes = made;
-            return made;
-        },
-        notify: vi.fn(),
-        takeBackUndo: vi.fn(),
-    };
-    render(
-        <FeedbackProvider value={feedback}>
-            <OpenAICompatibleProviderCard t={t} save={save} {...props} />
-        </FeedbackProvider>
-    );
+    render(<OpenAICompatibleProviderCard t={t} save={save} {...props} />);
     return { save };
 }
 
@@ -77,10 +57,8 @@ function modelOptions(): string[] {
     ].map((option) => option.value);
 }
 
-beforeEach(async () => {
+beforeEach(() => {
     vi.useFakeTimers();
-    await fakeBrowser.storage.sync.clear();
-    await fakeBrowser.storage.local.clear();
 });
 
 afterEach(() => {
@@ -174,16 +152,13 @@ describe('OpenAICompatibleProviderCard', () => {
         fireEvent.change(screen.getByLabelText('setupPasteKey'), {
             target: { value: 'sk-2' },
         });
-        await flush();
-        expect(
-            await fakeBrowser.storage.local.get([
-                'openaiCompatibleApiKey',
-                'openaiCompatibleApiKeyOrigin',
-            ])
-        ).toEqual({
-            openaiCompatibleApiKey: 'sk-2',
-            openaiCompatibleApiKeyOrigin: 'https://api.openai.com',
-        });
+        expect(save).toHaveBeenCalledWith(
+            {
+                openaiCompatibleApiKey: 'sk-2',
+                openaiCompatibleApiKeyOrigin: 'https://api.openai.com',
+            },
+            'quiet'
+        );
         fireEvent.change(screen.getByLabelText('setupModel'), {
             target: { value: 'gpt-4o-mini' },
         });

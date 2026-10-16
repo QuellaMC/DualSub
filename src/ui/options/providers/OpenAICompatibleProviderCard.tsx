@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { validateSetting } from '@/config/schema';
-import { configService } from '@/config/service';
+import { keyEntry } from '@/shared/keyOrigins';
 import { Icon } from '../../design/Icon';
 import type { Translate } from '../../hooks/useI18n';
 import { useCommittedTextField } from '../../hooks/useCommittedTextField';
 import { CommittedField } from '../controls/CommittedField';
 import { useOpenAIModels } from '../hooks/useOpenAIModels';
-import { useFeedback } from '../shell/feedback';
 import { TestResultDisplay } from '../TestResultDisplay';
 import type { SaveSettings } from '../types';
 
@@ -46,7 +45,6 @@ export function OpenAICompatibleProviderCard({
     advanced: boolean;
     save: SaveSettings;
 }) {
-    const feedback = useFeedback();
     const catalog = useOpenAIModels(t, apiKey, baseUrl);
     const baseUrlField = useCommittedTextField({
         value: baseUrl,
@@ -146,16 +144,16 @@ export function OpenAICompatibleProviderCard({
                                 className="field grow"
                                 autoComplete="off"
                                 value={apiKey}
-                                onChange={(event) => {
-                                    const key = event.target.value;
-                                    void feedback.apply(() =>
-                                        configService.enterKey(
+                                onChange={(event) =>
+                                    void save(
+                                        keyEntry(
                                             'openaiCompatibleApiKey',
-                                            key,
+                                            event.target.value,
                                             baseUrl
-                                        )
-                                    );
-                                }}
+                                        ),
+                                        'quiet'
+                                    )
+                                }
                             />
                             <button
                                 type="button"

@@ -6,7 +6,7 @@ import {
 } from '@/config/schema';
 import { configService } from '@/config/service';
 import { CONTEXT_TYPES, type ContextType } from '@/shared/contextTypes';
-import { usableCredential } from '@/shared/keyOrigins';
+import { keyEntry, usableCredential } from '@/shared/keyOrigins';
 import { Icon } from '../../design/Icon';
 import { Switch } from '../../design/Switch';
 import { useChoice } from '../../design/useChoice';
@@ -273,12 +273,13 @@ export function ExplanationsSection({
                                     onChange={(event) => {
                                         const key = event.target.value;
                                         void (provider === 'openai'
-                                            ? feedback.apply(() =>
-                                                  configService.enterKey(
+                                            ? save(
+                                                  keyEntry(
                                                       'openaiApiKey',
                                                       key,
                                                       settings.openaiBaseUrl
-                                                  )
+                                                  ),
+                                                  'quiet'
                                               )
                                             : save(
                                                   { geminiApiKey: key },

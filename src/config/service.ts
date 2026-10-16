@@ -1,5 +1,4 @@
 import { browser } from 'wxt/browser';
-import { keyEntry, type OriginBoundKey } from '@/shared/keyOrigins';
 import { createLogger, setLoggingLevel } from '@/shared/logger';
 import type { PlatformId } from '@/shared/platforms';
 import {
@@ -670,22 +669,6 @@ class ConfigService {
             const current = values[key] as SettingsValues[K];
             await this.writeMultiple({ [key]: edit(current) });
             return current;
-        });
-    }
-
-    /**
-     * Store `value` as `key`, entered for `address`: the address shown when
-     * it was entered, whose origin is the only one the key goes to. It runs
-     * in turn with every other write, the boot migration's binding among
-     * them.
-     */
-    enterKey(
-        key: OriginBoundKey,
-        value: string,
-        address: string
-    ): Promise<void> {
-        return inTurn(async () => {
-            await this.writeMultiple(keyEntry(key, value, address));
         });
     }
 

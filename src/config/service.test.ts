@@ -263,42 +263,6 @@ describe('configService', () => {
         });
     });
 
-    describe('enterKey', () => {
-        it('enters a key for the origin of the address it was entered for, in turn with every page and the worker', async () => {
-            // What another page or computer stores meanwhile does not count.
-            await fakeBrowser.storage.sync.set({
-                openaiBaseUrl: 'https://elsewhere.example.com/v1',
-            });
-            const release = Promise.withResolvers<void>();
-            // The boot migration, or another page, holds the shared lock.
-            const elsewhere = navigator.locks.request(
-                'dualsub:settingParts',
-                () => release.promise
-            );
-            const entry = configService.enterKey(
-                'openaiApiKey',
-                'sk',
-                'https://proxy.example.com/v1'
-            );
-            await new Promise((resolve) => setTimeout(resolve, 20));
-            const whileHeld =
-                await fakeBrowser.storage.local.get('openaiApiKey');
-            release.resolve();
-            await Promise.all([elsewhere, entry]);
-
-            expect(whileHeld).toEqual({});
-            expect(
-                await fakeBrowser.storage.local.get([
-                    'openaiApiKey',
-                    'openaiApiKeyOrigin',
-                ])
-            ).toEqual({
-                openaiApiKey: 'sk',
-                openaiApiKeyOrigin: 'https://proxy.example.com',
-            });
-        });
-    });
-
     describe('setDefaultsForMissingKeys', () => {
         it('repairs missing and invalid keys to canonical values', async () => {
             await fakeBrowser.storage.sync.set({ subtitleFontScale: 99 });
