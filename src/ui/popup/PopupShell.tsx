@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { browser } from 'wxt/browser';
 import { Icon } from '../design/Icon';
+import { Logo } from '../design/Logo';
 import type { Translate } from '../hooks/useI18n';
 
 /** The settings page, opened at `section` when one is named. */
@@ -27,12 +28,7 @@ export function PopupShell({
         <div className="popup">
             <header className="popup-head">
                 <div className="brand">
-                    <img
-                        src="/icons/icon48.png"
-                        alt=""
-                        width="28"
-                        height="28"
-                    />
+                    <Logo size={28} />
                     <span>DualSub</span>
                 </div>
                 <button
@@ -41,7 +37,7 @@ export function PopupShell({
                     aria-label={t('popupAllSettings')}
                     onClick={() => openSettings()}
                 >
-                    <Icon name="advanced" />
+                    <Icon name="settings" />
                 </button>
             </header>
             <main className="popup-body">{children}</main>

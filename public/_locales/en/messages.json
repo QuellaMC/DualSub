@@ -56,9 +56,6 @@
     "lang_hi": {
         "message": "Hindi"
     },
-    "lang_auto": {
-        "message": "Automatic (follows the audio)"
-    },
     "deeplApiKeyError": {
         "message": "Please enter your DeepL API key first."
     },
@@ -1517,8 +1514,14 @@
     "popupWorkingTitle": {
         "message": "Working on this video"
     },
+    "popupWorkingHelpOne": {
+        "message": "%s · %s, already in your language"
+    },
+    "popupWorkingHelpSoon": {
+        "message": "%s, with your translation"
+    },
     "popupWorkingHelp": {
-        "message": "Your line: %s."
+        "message": "%s · %s, with your translation"
     },
     "popupReadyTitle": {
         "message": "Ready on %s"
@@ -1529,6 +1532,33 @@
     "popupOffTitle": {
         "message": "Dual subtitles are off on %s"
     },
+    "popupOffHelp": {
+        "message": "The site's own subtitles are back."
+    },
+    "popupTopAutomatic": {
+        "message": "Automatic"
+    },
+    "popupTopAutomaticIs": {
+        "message": "Automatic: %s"
+    },
+    "popupPosition": {
+        "message": "Position"
+    },
+    "popupExactSize": {
+        "message": "%s×"
+    },
+    "positionLowest": {
+        "message": "Lowest"
+    },
+    "positionUsual": {
+        "message": "Usual"
+    },
+    "positionHigher": {
+        "message": "Higher"
+    },
+    "positionMiddle": {
+        "message": "Middle"
+    },
     "popupSmaller": {
         "message": "Smaller text"
     },
@@ -1536,10 +1566,19 @@
         "message": "Bigger text"
     },
     "popupElsewhereTitle": {
-        "message": "DualSub works on these sites"
+        "message": "DualSub works on %s"
     },
     "popupElsewhereHelp": {
         "message": "This page isn't one of them. Open one, play any video, and the two lines appear by themselves."
+    },
+    "popupAlreadyTitle": {
+        "message": "Already on %s?"
+    },
+    "popupAlreadyPlay": {
+        "message": "Play a video. Subtitles show up once it starts."
+    },
+    "popupAlreadyNone": {
+        "message": "No subtitles? The video may have none in any language."
     },
     "popupReloadTitle": {
         "message": "Reload the page to start DualSub"

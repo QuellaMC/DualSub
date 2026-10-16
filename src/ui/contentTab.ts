@@ -45,26 +45,44 @@ export async function activeTabSite(): Promise<TabSite> {
 }
 
 /**
- * What DualSub is doing in the active tab: serving a video player, waiting
- * on the page for one, or not running there because the page opened before
- * DualSub was installed or updated, so only a reload brings it in.
+ * What DualSub is doing in the active tab: serving a video player, with the
+ * language its top line shows once known, waiting on the page for one, or
+ * not running there because the page opened before DualSub was installed
+ * or updated, so only a reload brings it in.
  */
-export type TabStatus = 'player' | 'waiting' | 'notRunning';
+export type TabStatus =
+    | { readonly kind: 'player'; readonly topLanguage: string | null }
+    | { readonly kind: 'waiting' }
+    | { readonly kind: 'notRunning' };
+
+export const WAITING: TabStatus = { kind: 'waiting' };
+
+export function sameTabStatus(left: TabStatus, right: TabStatus): boolean {
+    return (
+        left.kind === right.kind &&
+        (left.kind !== 'player' ||
+            (right.kind === 'player' && left.topLanguage === right.topLanguage))
+    );
+}
 
 export async function readTabStatus(tabId: number | null): Promise<TabStatus> {
     if (tabId === null) {
-        return 'waiting';
+        return WAITING;
     }
     try {
         const status = await sendToTab(playerStatus, tabId, {
             action: playerStatus.action,
         });
-        return status.onPlayer ? 'player' : 'waiting';
+        return status.onPlayer
+            ? { kind: 'player', topLanguage: status.topLanguage }
+            : WAITING;
     } catch (error) {
         logger.debug('Player status not available', {
             reason: error instanceof Error ? error.name : 'unknown',
         });
-        return isProvenMessagingNonDelivery(error) ? 'notRunning' : 'waiting';
+        return isProvenMessagingNonDelivery(error)
+            ? { kind: 'notRunning' }
+            : WAITING;
     }
 }
 

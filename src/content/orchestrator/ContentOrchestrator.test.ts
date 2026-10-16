@@ -42,18 +42,27 @@ async function settle(ms = 0): Promise<void> {
     }
 }
 
+interface PlayerAnswer {
+    readonly onPlayer: boolean;
+    readonly topLanguage: string | null;
+}
+
 /** What the tab tells the popup about its player. */
-async function onPlayer(): Promise<boolean> {
-    const answers: { onPlayer: boolean }[] = [];
+async function playerAnswer(): Promise<PlayerAnswer> {
+    const answers: PlayerAnswer[] = [];
     void (await fakeBrowser.runtime.onMessage.trigger(
         { action: 'playerStatus' },
         popupSender,
-        (answer: { onPlayer: boolean }) => {
+        (answer: PlayerAnswer) => {
             answers.push(answer);
         }
     ));
     await settle();
-    return answers[0]!.onPlayer;
+    return answers[0]!;
+}
+
+async function onPlayer(): Promise<boolean> {
+    return (await playerAnswer()).onPlayer;
 }
 
 let orchestrator: ContentOrchestrator | null = null;
@@ -121,5 +130,22 @@ describe('ContentOrchestrator', () => {
         root.remove();
         await settle(1000);
         expect(await onPlayer()).toBe(false);
+    });
+
+    it('tells the popup the language its top line shows, once known', async () => {
+        await fakeBrowser.storage.sync.set({ originalLanguage: 'ko' });
+        start();
+        await settle();
+        expect(await playerAnswer()).toEqual({
+            onPlayer: false,
+            topLanguage: null,
+        });
+
+        addPlayer();
+        await settle(1000);
+        expect(await playerAnswer()).toEqual({
+            onPlayer: true,
+            topLanguage: 'ko',
+        });
     });
 });

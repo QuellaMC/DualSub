@@ -8,7 +8,7 @@ On a site DualSub works on, the popup is a remote control:
 
 - Whether DualSub is working on the video, and a switch that turns it on or off for that site only
 - I speak: the translation language, which starts as your browser's language
-- The top line shows: Automatic, the default, follows the language spoken in the video, including when you switch the audio track in the player; pick a fixed language to learn one language with every video. When the video is already in your translation language, DualSub shows one line.
+- Top line: the language the top line shows. Automatic, the default, follows the language spoken in the video, including when you switch the audio track in the player; the settings page's Languages section can fix one language instead, to learn it with every video. When the video is already in your translation language, DualSub shows one line.
 - Text size, timing, and position, in steps the video follows at once
 - A notice when the translation service you chose stops working, with a way to its settings
 

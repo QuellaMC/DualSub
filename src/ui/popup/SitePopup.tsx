@@ -5,8 +5,10 @@ import {
     type SettingsValues,
     type SiteSettingKey,
 } from '@/config/schema';
+import { isSameLanguage } from '@/shared/languageNormalization';
 import { createLogger } from '@/shared/logger';
 import { PLATFORM_NAMES, type PlatformId } from '@/shared/platforms';
+import { AUTO_LANGUAGE } from '@/shared/subtitleLanguages';
 import {
     clampPosition,
     namedSize,
@@ -14,7 +16,7 @@ import {
     NUDGE_SECONDS,
     POSITION_BOUNDS,
     POSITION_STEP,
-    positionLabelKey,
+    positionWordKey,
     roundSeconds,
     timingLabel,
 } from '../adjustments';
@@ -44,30 +46,55 @@ type SitePopupSettings = Pick<SettingsValues, (typeof SITE_POPUP_KEYS)[number]>;
 
 const logger = createLogger('Popup');
 
-/** One adjustment: what it is, where it stands, and two buttons. */
-function Adjustment({
+/** One adjustment: what it is, and where it stands between a button
+ *  either side. */
+function Stepper({
     label,
-    value,
     tag,
-    children,
+    value,
+    less,
+    more,
 }: {
     label: string;
-    value: string;
     tag: ReactNode;
-    children: ReactNode;
+    value: string;
+    less: ReactNode;
+    more: ReactNode;
 }) {
     return (
         <div className="row">
-            <div className="grow">
-                <div className="strong">
-                    {label} {tag}
-                </div>
-                <div className="help" aria-live="polite">
+            <span className="strong">
+                {label} {tag}
+            </span>
+            <div className="stepper">
+                {less}
+                <span className="stepper-value" aria-live="polite">
                     {value}
-                </div>
+                </span>
+                {more}
             </div>
-            <div className="inline">{children}</div>
         </div>
+    );
+}
+
+/** What DualSub shows over the video playing: the site, the language on
+ *  top once the player has told it, and the viewer's line. */
+function workingHelp(
+    t: Translate,
+    site: PlatformId,
+    topLanguage: string | null,
+    targetLanguage: string
+): string {
+    const name = PLATFORM_NAMES[site];
+    if (topLanguage === null) {
+        return t('popupWorkingHelpSoon', name);
+    }
+    return t(
+        isSameLanguage(topLanguage, targetLanguage)
+            ? 'popupWorkingHelpOne'
+            : 'popupWorkingHelp',
+        name,
+        languageName(t, topLanguage)
     );
 }
 
@@ -86,7 +113,7 @@ function Status({
     targetLanguage: string;
 }) {
     const name = PLATFORM_NAMES[site];
-    if (status === 'notRunning') {
+    if (status.kind === 'notRunning') {
         return (
             <div className="status">
                 <span className="status-icon off" aria-hidden="true">
@@ -119,20 +146,22 @@ function Status({
             <div>
                 <h1 className="label">
                     {enabled
-                        ? status === 'player'
+                        ? status.kind === 'player'
                             ? t('popupWorkingTitle')
                             : t('popupReadyTitle', name)
                         : t('popupOffTitle', name)}
                 </h1>
                 <p className="help">
                     {enabled
-                        ? status === 'player'
-                            ? t(
-                                  'popupWorkingHelp',
-                                  languageName(t, targetLanguage)
+                        ? status.kind === 'player'
+                            ? workingHelp(
+                                  t,
+                                  site,
+                                  status.topLanguage,
+                                  targetLanguage
                               )
                             : t('popupReadyHelp')
-                        : t('startStatusOffHelp')}
+                        : t('popupOffHelp')}
                 </p>
             </div>
         </div>
@@ -186,6 +215,13 @@ function SiteControls({
     const size = namedSize(scale.value);
     const bigger = nextSize(scale.value, 1);
     const smaller = nextSize(scale.value, -1);
+    const topLanguage = status.kind === 'player' ? status.topLanguage : null;
+    const topLine =
+        settings.originalLanguage !== AUTO_LANGUAGE
+            ? languageName(t, settings.originalLanguage)
+            : topLanguage === null
+              ? t('popupTopAutomatic')
+              : t('popupTopAutomaticIs', languageName(t, topLanguage));
 
     return (
         <>
@@ -204,7 +240,7 @@ function SiteControls({
                 />
                 <div className="row">
                     <span className="strong" id="popup-enabled">
-                        {t('sitesUseHere')}
+                        {t('startEnabled')}
                     </span>
                     <Switch
                         checked={enabled}
@@ -232,6 +268,7 @@ function SiteControls({
                     <LanguageSelect
                         t={t}
                         id="popup-target"
+                        short
                         value={settings.targetLanguage}
                         onChange={(targetLanguage) =>
                             void write(() => save({ targetLanguage }))
@@ -239,123 +276,128 @@ function SiteControls({
                     />
                 </div>
                 <div className="row">
-                    <label className="strong" htmlFor="popup-top">
-                        {t('languagesTopTitle')} {siteTag('originalLanguage')}
-                    </label>
-                    <LanguageSelect
-                        t={t}
-                        id="popup-top"
-                        automatic
-                        value={settings.originalLanguage}
-                        onChange={(originalLanguage) =>
-                            void write(() => save({ originalLanguage }))
-                        }
-                    />
+                    <span className="strong">
+                        {t('startTopTitle')} {siteTag('originalLanguage')}
+                    </span>
+                    <span className="help">{topLine}</span>
                 </div>
             </section>
 
             <section className="card">
-                <Adjustment
+                <Stepper
                     label={t('lookSizeTitle')}
+                    tag={siteTag('subtitleFontScale')}
                     value={
                         size
                             ? t(size.labelKey)
                             : t(
-                                  'lookExactSize',
+                                  'popupExactSize',
                                   Math.round(scale.value * 100) / 100
                               )
                     }
-                    tag={siteTag('subtitleFontScale')}
-                >
-                    <button
-                        type="button"
-                        className="button step"
-                        aria-label={t('popupSmaller')}
-                        disabled={!smaller}
-                        onClick={() =>
-                            smaller && scale.set(smaller.scale, 'quiet')
-                        }
-                    >
-                        A−
-                    </button>
-                    <button
-                        type="button"
-                        className="button step"
-                        aria-label={t('popupBigger')}
-                        disabled={!bigger}
-                        onClick={() =>
-                            bigger && scale.set(bigger.scale, 'quiet')
-                        }
-                    >
-                        A+
-                    </button>
-                </Adjustment>
-                <Adjustment
-                    label={t('timingTitle')}
-                    value={timingLabel(t, offset.value)}
+                    less={
+                        <button
+                            type="button"
+                            className="button step"
+                            aria-label={t('popupSmaller')}
+                            disabled={!smaller}
+                            onClick={() =>
+                                smaller && scale.set(smaller.scale, 'quiet')
+                            }
+                        >
+                            A−
+                        </button>
+                    }
+                    more={
+                        <button
+                            type="button"
+                            className="button step"
+                            aria-label={t('popupBigger')}
+                            disabled={!bigger}
+                            onClick={() =>
+                                bigger && scale.set(bigger.scale, 'quiet')
+                            }
+                        >
+                            A+
+                        </button>
+                    }
+                />
+                <Stepper
+                    label={t('navTiming')}
                     tag={siteTag('subtitleTimeOffset')}
-                >
-                    <button
-                        type="button"
-                        className="button step"
-                        aria-label={t('timingEarlier')}
-                        onClick={() =>
-                            offset.set(
-                                roundSeconds(offset.value + NUDGE_SECONDS),
-                                'quiet'
-                            )
-                        }
-                    >
-                        <Icon name="earlier" />
-                    </button>
-                    <button
-                        type="button"
-                        className="button step"
-                        aria-label={t('timingLater')}
-                        onClick={() =>
-                            offset.set(
-                                roundSeconds(offset.value - NUDGE_SECONDS),
-                                'quiet'
-                            )
-                        }
-                    >
-                        <Icon name="later" />
-                    </button>
-                </Adjustment>
-                <Adjustment
-                    label={t('lookPositionTitle')}
-                    value={t(positionLabelKey(position.value))}
+                    value={timingLabel(t, offset.value)}
+                    less={
+                        <button
+                            type="button"
+                            className="button step"
+                            aria-label={t('timingEarlier')}
+                            onClick={() =>
+                                offset.set(
+                                    roundSeconds(offset.value + NUDGE_SECONDS),
+                                    'quiet'
+                                )
+                            }
+                        >
+                            <Icon name="earlier" />
+                        </button>
+                    }
+                    more={
+                        <button
+                            type="button"
+                            className="button step"
+                            aria-label={t('timingLater')}
+                            onClick={() =>
+                                offset.set(
+                                    roundSeconds(offset.value - NUDGE_SECONDS),
+                                    'quiet'
+                                )
+                            }
+                        >
+                            <Icon name="later" />
+                        </button>
+                    }
+                />
+                <Stepper
+                    label={t('popupPosition')}
                     tag={siteTag('subtitleVerticalPosition')}
-                >
-                    <button
-                        type="button"
-                        className="button step"
-                        aria-label={t('lookMoveUp')}
-                        disabled={position.value >= POSITION_BOUNDS.max}
-                        onClick={() =>
-                            position.set(
-                                clampPosition(position.value + POSITION_STEP),
-                                'quiet'
-                            )
-                        }
-                    >
-                        <Icon name="up" />
-                    </button>
-                    <button
-                        type="button"
-                        className="button step"
-                        aria-label={t('lookMoveDown')}
-                        disabled={position.value <= POSITION_BOUNDS.min}
-                        onClick={() =>
-                            position.set(
-                                clampPosition(position.value - POSITION_STEP),
-                                'quiet'
-                            )
-                        }
-                    >
-                        <Icon name="down" />
-                    </button>
-                </Adjustment>
+                    value={t(positionWordKey(position.value))}
+                    less={
+                        <button
+                            type="button"
+                            className="button step"
+                            aria-label={t('lookMoveUp')}
+                            disabled={position.value >= POSITION_BOUNDS.max}
+                            onClick={() =>
+                                position.set(
+                                    clampPosition(
+                                        position.value + POSITION_STEP
+                                    ),
+                                    'quiet'
+                                )
+                            }
+                        >
+                            <Icon name="up" />
+                        </button>
+                    }
+                    more={
+                        <button
+                            type="button"
+                            className="button step"
+                            aria-label={t('lookMoveDown')}
+                            disabled={position.value <= POSITION_BOUNDS.min}
+                            onClick={() =>
+                                position.set(
+                                    clampPosition(
+                                        position.value - POSITION_STEP
+                                    ),
+                                    'quiet'
+                                )
+                            }
+                        >
+                            <Icon name="down" />
+                        </button>
+                    }
+                />
             </section>
         </>
     );

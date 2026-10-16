@@ -60,16 +60,39 @@ export function clampPosition(value: number): number {
     );
 }
 
-/** The picture height the subtitles sit at, described in words. */
-export function positionLabelKey(position: number): string {
+type PositionBand = 'bottom' | 'usual' | 'lower' | 'middle';
+
+/** The part of the picture the subtitles sit in. */
+function positionBand(position: number): PositionBand {
     if (position < 1.4) {
-        return 'lookPositionBottom';
+        return 'bottom';
     }
     if (position < 3.6) {
-        return 'lookPositionUsual';
+        return 'usual';
     }
-    if (position < 6.3) {
-        return 'lookPositionLower';
-    }
-    return 'lookPositionMiddle';
+    return position < 6.3 ? 'lower' : 'middle';
+}
+
+const POSITION_LABEL_KEYS: Record<PositionBand, string> = {
+    bottom: 'lookPositionBottom',
+    usual: 'lookPositionUsual',
+    lower: 'lookPositionLower',
+    middle: 'lookPositionMiddle',
+};
+
+const POSITION_WORD_KEYS: Record<PositionBand, string> = {
+    bottom: 'positionLowest',
+    usual: 'positionUsual',
+    lower: 'positionHigher',
+    middle: 'positionMiddle',
+};
+
+/** The picture height the subtitles sit at, described in words. */
+export function positionLabelKey(position: number): string {
+    return POSITION_LABEL_KEYS[positionBand(position)];
+}
+
+/** The same height in a word, for a control with little room. */
+export function positionWordKey(position: number): string {
+    return POSITION_WORD_KEYS[positionBand(position)];
 }

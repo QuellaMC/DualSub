@@ -1,4 +1,4 @@
-import { AUTO_LANGUAGE, SUBTITLE_LANGUAGES } from '@/shared/subtitleLanguages';
+import { SUBTITLE_LANGUAGES } from '@/shared/subtitleLanguages';
 import type { Translate } from '../hooks/useI18n';
 import {
     languageLabelKey,
@@ -7,27 +7,24 @@ import {
 } from '../languageLabels';
 
 /** A subtitle language menu naming each language in its own words and in
- *  the page's language; `automatic` offers following the audio first. A
- *  language stored that the menu does not offer, from a backup or another
- *  computer, is still shown as the one picked. */
+ *  the page's language, or, `short` for a narrow menu, in its own words
+ *  only. A language stored that the menu does not offer, from a backup or
+ *  another computer, is still shown as the one picked. */
 export function LanguageSelect({
     t,
     id,
     value,
     onChange,
     labelledBy,
-    automatic = false,
+    short = false,
 }: {
     t: Translate;
     id: string;
     value: string;
     onChange: (language: string) => void;
     labelledBy?: string;
-    automatic?: boolean;
+    short?: boolean;
 }) {
-    const offered =
-        (SUBTITLE_LANGUAGES as readonly string[]).includes(value) ||
-        (automatic && value === AUTO_LANGUAGE);
     const name = languageName(t, value);
     return (
         <select
@@ -37,12 +34,7 @@ export function LanguageSelect({
             aria-labelledby={labelledBy}
             onChange={(event) => onChange(event.target.value)}
         >
-            {automatic && (
-                <option value={AUTO_LANGUAGE}>
-                    {t(languageLabelKey(AUTO_LANGUAGE))}
-                </option>
-            )}
-            {!offered && (
+            {!(SUBTITLE_LANGUAGES as readonly string[]).includes(value) && (
                 <option value={value}>
                     {name === value ? value : `${name} · ${value}`}
                 </option>
@@ -52,7 +44,9 @@ export function LanguageSelect({
                 const native = NATIVE_LANGUAGE_NAMES[code];
                 return (
                     <option key={code} value={code}>
-                        {native === local ? native : `${native} · ${local}`}
+                        {short || native === local
+                            ? native
+                            : `${native} · ${local}`}
                     </option>
                 );
             })}

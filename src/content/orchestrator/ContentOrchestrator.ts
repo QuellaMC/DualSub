@@ -80,9 +80,12 @@ export class ContentOrchestrator {
             setLoggingLevel(request.level);
             return { success: true as const };
         });
-        this.router.handle(playerStatus, () => ({
-            onPlayer: this.activeSession?.hasMedia === true,
-        }));
+        this.router.handle(playerStatus, () => {
+            const session = this.activeSession;
+            return session?.hasMedia === true
+                ? { onPlayer: true, topLanguage: session.topLanguage }
+                : { onPlayer: false, topLanguage: null };
+        });
         // Side panel traffic addresses the selection of whichever session is
         // on the route; with no session there is nothing to answer for.
         this.router.handle(
