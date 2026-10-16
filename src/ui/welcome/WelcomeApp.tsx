@@ -1,11 +1,16 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { browser } from 'wxt/browser';
-import { detectBrowserLanguage } from '@/config/schema';
+import {
+    detectBrowserLanguage,
+    siteProfileOf,
+    type SiteSettingKey,
+} from '@/config/schema';
 import { configService } from '@/config/service';
 import { resolveLook } from '@/content/renderer/looks';
 import { toDisplaySettings } from '@/content/renderer/styling';
 import { PLATFORM_IDS, PLATFORM_NAMES, platformHome } from '@/shared/platforms';
 import { KEYLESS_PROVIDERS, type ProviderId } from '@/shared/providers';
+import { isSameLanguage } from '@/shared/languageNormalization';
 import {
     AUTO_LANGUAGE,
     browserTargetLanguage,
@@ -25,7 +30,7 @@ import {
     type SettingsHandle,
     type SettingsProjection,
 } from '../hooks/useSettings';
-import { useSitesOn } from '../hooks/useSitesOn';
+import { siteNames, sitesOnTitle, useSitesOn } from '../hooks/useSitesOn';
 import { languageName } from '../languageLabels';
 import { LookPreview } from '../preview/LookPreview';
 import { sampleSubtitles, sampleVideoLanguage } from '../preview/sample';
@@ -39,6 +44,7 @@ const WELCOME_KEYS = [
     'originalLanguage',
     'useOfficialTranslations',
     'translationFallback',
+    'siteProfiles',
     ...SERVICE_SETUP_KEYS,
     'subtitleStyle',
     'subtitleCustomLook',
@@ -57,14 +63,38 @@ type WelcomeKey = (typeof WELCOME_KEYS)[number];
  *  pixels tall. */
 const PICTURE_HEIGHT = 1100;
 
-/** How the two lines sit, in the lead's words, as the saved layout puts
- *  them. */
+/** The settings a site can keep of its own that change what this page
+ *  shows and says about the subtitles. */
+const DESCRIBED_SITE_KEYS: readonly string[] = [
+    'originalLanguage',
+    'useOfficialTranslations',
+    'subtitleStyle',
+    'subtitleCustomLook',
+    'subtitleTranslationColor',
+    'subtitleFontScale',
+    'subtitleGap',
+    'subtitleVerticalPosition',
+    'subtitleLayoutOrientation',
+    'subtitleLayoutOrder',
+] satisfies readonly SiteSettingKey[];
+
+/** How the lines sit, in the lead's words, as the saved settings put them:
+ *  one line where the video's line is set to the viewer's language. */
 function arrangementKey(
     settings: Pick<
         SettingsProjection<WelcomeKey>,
-        'subtitleLayoutOrder' | 'subtitleLayoutOrientation'
+        | 'originalLanguage'
+        | 'targetLanguage'
+        | 'subtitleLayoutOrder'
+        | 'subtitleLayoutOrientation'
     >
 ): string {
+    if (
+        settings.originalLanguage !== AUTO_LANGUAGE &&
+        isSameLanguage(settings.originalLanguage, settings.targetLanguage)
+    ) {
+        return 'welcomeArrangeOneLine';
+    }
     if (settings.subtitleLayoutOrientation === 'row') {
         return 'welcomeArrangeSideBySide';
     }
@@ -73,9 +103,11 @@ function arrangementKey(
         : 'welcomeArrangeVideoFirst';
 }
 
-/** What the lead says is left to do, for each state the page finds. */
+/** What the lead says is left to do, for each state the page finds; one
+ *  with DualSub off on some sites names them. */
 const READINESS_KEYS = {
     ready: 'welcomeStateReady',
+    partial: 'welcomeStatePartial',
     off: 'welcomeStateOff',
     stopped: 'welcomeStateSetUp',
 } as const;
@@ -168,19 +200,31 @@ function Welcome({
     const latestPick = useRef(0);
     const { sites } = useSitesOn();
     const working = sites ? sites.on.length > 0 : settings.subtitlesEnabled;
+    const everywhere = sites ? sites.off.length === 0 : working;
     const unset = useServiceUnset(settings);
     const stopped = translationStopped(
         working,
         unset,
         settings.translationFallback
     );
-    /** Dual subtitles were off everywhere, say from another computer, so
+    /** Dual subtitles were off on some site, say from another computer, so
      *  the page offers the switch, and keeps it once switched. */
     const [offeredSwitch, setOfferedSwitch] = useState(false);
-    if (!working && !offeredSwitch) {
+    if (!everywhere && !offeredSwitch) {
         setOfferedSwitch(true);
     }
-    const readiness = !working ? 'off' : stopped ? 'stopped' : 'ready';
+    const readiness = !working
+        ? 'off'
+        : stopped
+          ? 'stopped'
+          : everywhere
+            ? 'ready'
+            : 'partial';
+    const ownSites = PLATFORM_IDS.filter((site) =>
+        Object.keys(siteProfileOf(settings.siteProfiles, site)).some((key) =>
+            DESCRIBED_SITE_KEYS.includes(key)
+        )
+    );
 
     const fromBrowser = settings.targetLanguage === browserTargetLanguage();
     const sample = sampleSubtitles(
@@ -227,7 +271,13 @@ function Welcome({
                             {t(
                                 'welcomeLeadFormat',
                                 t(arrangementKey(settings)),
-                                t(READINESS_KEYS[readiness])
+                                t(
+                                    READINESS_KEYS[readiness],
+                                    siteNames(
+                                        settings.uiLanguage,
+                                        sites?.off ?? []
+                                    )
+                                )
                             )}
                         </p>
                     </div>
@@ -249,6 +299,14 @@ function Welcome({
                                 {t('previewStandIn', languageName(t, language))}
                             </p>
                         ))}
+                        {ownSites.length > 0 && (
+                            <p className="help">
+                                {t(
+                                    'welcomeSitesOwn',
+                                    siteNames(settings.uiLanguage, ownSites)
+                                )}
+                            </p>
+                        )}
                     </div>
                 </section>
 
@@ -263,10 +321,11 @@ function Welcome({
                         <div className="row">
                             <div className="grow">
                                 <h2 className="label">
-                                    {t(
-                                        working
-                                            ? 'startStatusOn'
-                                            : 'startStatusOff'
+                                    {sitesOnTitle(
+                                        t,
+                                        settings.uiLanguage,
+                                        settings.subtitlesEnabled,
+                                        sites
                                     )}
                                 </h2>
                                 <p className="help">
@@ -282,7 +341,7 @@ function Welcome({
                                     {t('startEnabled')}
                                 </span>
                                 <Switch
-                                    checked={working}
+                                    checked={everywhere}
                                     labelledBy="welcome-enabled"
                                     onChange={(subtitlesEnabled) =>
                                         pick(

@@ -1553,6 +1553,9 @@
     "welcomeInstalled": {
         "message": "インストール済み"
     },
+    "welcomeSitesOwn": {
+        "message": "%sでは独自の設定に従うため、字幕がこのサンプルと違うことがあります。"
+    },
     "welcomePickedTitle": {
         "message": "選んでおいたもの"
     },
@@ -1613,11 +1616,17 @@
     "welcomeArrangeSideBySide": {
         "message": "DualSubは、NetflixとDisney+に2つの字幕を横に並べて表示します。動画そのものの言語と、自分の言語です。"
     },
+    "welcomeArrangeOneLine": {
+        "message": "DualSubは、NetflixとDisney+に自分の言語の字幕を表示します。動画の行も同じ言語に設定されているので、表示は1行です。"
+    },
     "welcomeStateReady": {
         "message": "設定は何もいりません。"
     },
     "welcomeStateOff": {
         "message": "今はオフになっています。下のスイッチでオンにできます。"
+    },
+    "welcomeStatePartial": {
+        "message": "今は%sでオフになっています。下のスイッチで、すべてのサイトでオンにできます。"
     },
     "welcomeStateSetUp": {
         "message": "自分の言語の行を翻訳するには、下の翻訳サービスの設定を済ませてください。"

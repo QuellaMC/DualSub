@@ -1,9 +1,4 @@
-import {
-    PLATFORM_IDS,
-    PLATFORM_NAMES,
-    platformHome,
-    type PlatformId,
-} from '@/shared/platforms';
+import { PLATFORM_IDS, PLATFORM_NAMES, platformHome } from '@/shared/platforms';
 import { KEYLESS_PROVIDERS } from '@/shared/providers';
 import {
     AUTO_LANGUAGE,
@@ -12,12 +7,11 @@ import {
 import { Icon } from '../../design/Icon';
 import { Switch } from '../../design/Switch';
 import { HealthNotice } from '../../HealthNotice';
-import type { Translate } from '../../hooks/useI18n';
 import {
     translationStopped,
     useServiceUnset,
 } from '../../hooks/useServiceUnset';
-import { useSitesOn, type SitesOn } from '../../hooks/useSitesOn';
+import { sitesOnTitle, useSitesOn } from '../../hooks/useSitesOn';
 import { languageName } from '../../languageLabels';
 import { LanguageSelect } from '../../design/LanguageSelect';
 import { PROVIDER_NAME_KEYS } from '../../providerNames';
@@ -33,29 +27,6 @@ const PROVIDER_SUMMARIES = {
     openai_compatible: 'startProviderAi',
     vertex_gemini: 'startProviderVertex',
 } as const;
-
-/** What the switch leaves running: where dual subtitles are on and off, or
- *  the switch's own state while the sites are not read. */
-function statusTitle(
-    t: Translate,
-    language: string,
-    enabled: boolean,
-    sites: SitesOn | null
-): string {
-    const names = (ids: PlatformId[]): string =>
-        new Intl.ListFormat(language, { type: 'conjunction' }).format(
-            ids.map((id) => PLATFORM_NAMES[id])
-        );
-    if (!sites) {
-        return t(enabled ? 'startStatusOn' : 'startStatusOff');
-    }
-    if (sites.on.length === 0) {
-        return t('startStatusOff');
-    }
-    return sites.off.length === 0
-        ? t('startStatusWorking', names(sites.on))
-        : t('startStatusWorkingSome', names(sites.on), names(sites.off));
-}
 
 export function StartSection({
     t,
@@ -119,7 +90,7 @@ export function StartSection({
                         ) : (
                             <div>
                                 <div className="label">
-                                    {statusTitle(
+                                    {sitesOnTitle(
                                         t,
                                         settings.uiLanguage,
                                         settings.subtitlesEnabled,
