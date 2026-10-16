@@ -81,6 +81,7 @@ afterEach(() => {
     cleanup();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
+    vi.useRealTimers();
 });
 
 describe('OptionsApp', () => {
@@ -807,6 +808,37 @@ describe('OptionsApp', () => {
                 disneyplus: { subtitlesEnabled: false },
             })
         );
+    });
+
+    it('lists no models, and checks no key, at an address the key was not entered for', async () => {
+        vi.useFakeTimers({ shouldAdvanceTime: true });
+        vi.mocked(browser.permissions.contains).mockResolvedValue(
+            true as never
+        );
+        await fakeBrowser.storage.sync.set({
+            selectedProvider: 'openai_compatible',
+            openaiCompatibleBaseUrl: 'https://llm.example.com/v1',
+        });
+        await fakeBrowser.storage.local.set({
+            openaiCompatibleApiKey: 'sk-key',
+            openaiCompatibleApiKeyOrigin: 'https://api.openai.com',
+        });
+        location.hash = '#translation';
+        await renderReady();
+        expect(await screen.findByLabelText('Paste it here')).toHaveValue('');
+        expect(
+            screen.getByRole('button', { name: 'Check key' })
+        ).toBeDisabled();
+
+        await vi.advanceTimersByTimeAsync(1500);
+        const requested = vi
+            .mocked(fetch)
+            .mock.calls.map(([input]) =>
+                input instanceof Request ? input.url : input.toString()
+            );
+        expect(
+            requested.filter((url) => url.startsWith('https://llm.example.com'))
+        ).toEqual([]);
     });
 
     it('keeps the setup of a key that lands while a reset waits its turn', async () => {
