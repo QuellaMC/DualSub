@@ -54,8 +54,8 @@
 ## 📦 安装与快速开始
 
 1. 从商店安装或以开发模式加载（见 [installation.md](docs/zh/installation.md)）。
-2. 打开 Netflix 或 Disney+ 并启用字幕。
-3. 点击 DualSub 图标 → 启用双语字幕并选择目标语言。
+2. 随后会打开欢迎页，语言已经选好；如有需要，可以在那里更改翻译语言。
+3. 打开 Netflix 或 Disney+ 播放任意内容：会出现两行字幕，上面是视频的语言，下面是你的语言。
 4. 可选：在设置页中用你自己的 OpenAI 或 Gemini 密钥设置“单词解释”。
 
 配置参考：[configuration.md](docs/zh/configuration.md)。

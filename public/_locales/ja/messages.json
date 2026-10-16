@@ -1474,5 +1474,50 @@
     },
     "translationVertexSetupTitle": {
         "message": "Google Vertex AIの設定"
+    },
+    "welcomePageTitle": {
+        "message": "DualSubへようこそ"
+    },
+    "welcomeTitle": {
+        "message": "ようこそ！DualSubの準備ができました。"
+    },
+    "welcomeLead": {
+        "message": "設定なしで、すぐに使えます。字幕はこのように表示されます："
+    },
+    "welcomeLanguageTitle": {
+        "message": "字幕を翻訳する言語"
+    },
+    "welcomeLanguageHelp": {
+        "message": "ブラウザの言語を選んでおきました。お好みで、ほかの言語に変えられます。"
+    },
+    "welcomeStepsTitle": {
+        "message": "最初の動画を見るまでの3つの手順"
+    },
+    "welcomePinTitle": {
+        "message": "DualSubをツールバーに固定する"
+    },
+    "welcomePinHelp": {
+        "message": "Chromeの右上にある、パズルのピースの形をした「拡張機能」ボタンをクリックします。次に、DualSubの横にあるピンの形の「固定」ボタンをクリックします。これでDualSubのボタンがツールバーに残り、動画を見ている間もすぐに使えます。"
+    },
+    "welcomeOpenTitle": {
+        "message": "見たいサイトを開く"
+    },
+    "welcomePlayTitle": {
+        "message": "好きな動画を再生する"
+    },
+    "welcomePlayHelp": {
+        "message": "字幕が自動で2行表示されます。上は動画の言語、下は自分の言語です。"
+    },
+    "welcomeSettingsTitle": {
+        "message": "変えたいところがありますか？"
+    },
+    "welcomeSettingsHelp": {
+        "message": "字幕の見た目、タイミング、翻訳サービスなどは、設定で変えられます。"
+    },
+    "welcomeOpenSettings": {
+        "message": "設定を開く"
+    },
+    "welcomeClose": {
+        "message": "このタブはいつ閉じてもかまいません。"
     }
 }

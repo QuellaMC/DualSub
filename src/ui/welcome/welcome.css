@@ -1,0 +1,25 @@
+.welcome {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 40px 24px 56px;
+}
+
+.welcome-hero {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.welcome-hero h1 {
+    margin: 0;
+    font-size: 34px;
+    line-height: 1.15;
+}
+
+.welcome-close {
+    text-align: center;
+}

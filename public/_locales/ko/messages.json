@@ -1474,5 +1474,50 @@
     },
     "translationVertexSetupTitle": {
         "message": "Google Vertex AI 설정하기"
+    },
+    "welcomePageTitle": {
+        "message": "DualSub에 오신 것을 환영해요"
+    },
+    "welcomeTitle": {
+        "message": "환영해요! DualSub 준비가 끝났어요."
+    },
+    "welcomeLead": {
+        "message": "따로 설정할 것 없이 바로 쓸 수 있어요. 자막은 이렇게 나와요:"
+    },
+    "welcomeLanguageTitle": {
+        "message": "자막을 번역할 언어"
+    },
+    "welcomeLanguageHelp": {
+        "message": "브라우저 언어로 골라 두었어요. 원하면 다른 언어를 고르세요."
+    },
+    "welcomeStepsTitle": {
+        "message": "첫 영상까지 세 단계"
+    },
+    "welcomePinTitle": {
+        "message": "툴바에 DualSub 고정하기"
+    },
+    "welcomePinHelp": {
+        "message": "Chrome 오른쪽 위에 있는 퍼즐 조각 모양의 “확장 프로그램” 버튼을 클릭하고, DualSub 옆의 핀 모양 “고정” 버튼을 클릭하세요. 그러면 DualSub 버튼이 툴바에 계속 있어서, 영상을 보는 동안 바로 쓸 수 있어요."
+    },
+    "welcomeOpenTitle": {
+        "message": "아래 사이트 중 하나 열기"
+    },
+    "welcomePlayTitle": {
+        "message": "아무 영상이나 재생하기"
+    },
+    "welcomePlayHelp": {
+        "message": "자막 두 줄이 저절로 나와요. 위에는 영상의 언어, 아래에는 내 언어가 보여요."
+    },
+    "welcomeSettingsTitle": {
+        "message": "바꾸고 싶은 게 있나요?"
+    },
+    "welcomeSettingsHelp": {
+        "message": "자막 모양, 타이밍, 번역 서비스 등은 설정에서 바꿀 수 있어요."
+    },
+    "welcomeOpenSettings": {
+        "message": "설정 열기"
+    },
+    "welcomeClose": {
+        "message": "이 탭은 언제든 닫아도 돼요."
     }
 }

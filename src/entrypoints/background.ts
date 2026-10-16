@@ -1,7 +1,7 @@
 import { defineBackground } from 'wxt/utils/define-background';
 import { configService } from '@/config/service';
 import { migrateLegacyConfiguration } from '@/config/migrations';
-import { createLogger, setLoggingLevel } from '@/shared/logger';
+import { createLogger } from '@/shared/logger';
 import { MessageRouter } from '@/messaging/router';
 import { checkBackgroundReady, ping } from '@/messaging/contracts';
 import { markServiceReady, readinessSnapshot } from '@/background/readiness';
@@ -17,6 +17,7 @@ import { registerSubtitleHandlers } from '@/background/subtitle/handler';
 import { registerTranslationHandler } from '@/background/translation/handler';
 import { TRANSLATION_PROVIDERS } from '@/background/translation/providers';
 import { TranslationService } from '@/background/translation/service';
+import { registerWelcomePage } from '@/background/welcome';
 
 export default defineBackground(() => {
     // Cold-start discipline: every listener must be registered synchronously
@@ -48,6 +49,7 @@ export default defineBackground(() => {
     configService.initializeDefaults(async () => {
         await migrateLegacyConfiguration();
     });
+    registerWelcomePage();
 
     void (async () => {
         try {
@@ -56,11 +58,7 @@ export default defineBackground(() => {
         } catch (error) {
             logger.error('Configuration migration or repair failed', error);
         }
-        try {
-            setLoggingLevel(await configService.get('loggingLevel'));
-        } catch (error) {
-            logger.error('Failed to initialize logging level', error);
-        }
+        await configService.syncLoggingLevel();
         // Migration precedes initialization so a relocated provider setting
         // is what the service reads; readiness parks requests until then.
         await translationService.initialize();

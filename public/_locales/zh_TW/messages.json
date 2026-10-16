@@ -1474,5 +1474,50 @@
     },
     "translationVertexSetupTitle": {
         "message": "設定 Google Vertex AI"
+    },
+    "welcomePageTitle": {
+        "message": "歡迎使用 DualSub"
+    },
+    "welcomeTitle": {
+        "message": "歡迎！DualSub 已經準備好了。"
+    },
+    "welcomeLead": {
+        "message": "不用做任何設定，馬上就能用。你的字幕會像這樣："
+    },
+    "welcomeLanguageTitle": {
+        "message": "你的字幕會翻譯成"
+    },
+    "welcomeLanguageHelp": {
+        "message": "我們先選了你瀏覽器的語言。想換的話，可以選其他語言。"
+    },
+    "welcomeStepsTitle": {
+        "message": "三個步驟，開始看第一部影片"
+    },
+    "welcomePinTitle": {
+        "message": "把 DualSub 固定在工具列上"
+    },
+    "welcomePinHelp": {
+        "message": "點一下 Chrome 視窗右上角拼圖形狀的「擴充功能」按鈕，再點 DualSub 旁邊的圖釘「固定」。之後 DualSub 的按鈕就會一直留在工具列上，看影片時隨時都能用。"
+    },
+    "welcomeOpenTitle": {
+        "message": "打開下面其中一個網站"
+    },
+    "welcomePlayTitle": {
+        "message": "隨便播放一部影片"
+    },
+    "welcomePlayHelp": {
+        "message": "兩行字幕會自動出現：上面是影片的語言，下面是你的語言。"
+    },
+    "welcomeSettingsTitle": {
+        "message": "想改一些設定嗎？"
+    },
+    "welcomeSettingsHelp": {
+        "message": "字幕外觀、字幕時間、翻譯服務等等，都可以在設定裡調整。"
+    },
+    "welcomeOpenSettings": {
+        "message": "打開設定"
+    },
+    "welcomeClose": {
+        "message": "你隨時可以關閉這個分頁。"
     }
 }

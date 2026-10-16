@@ -1,6 +1,7 @@
+import type { SettingsValues } from '@/config/schema';
 import type { LineAlign } from '@/shared/cuePlacement';
 import type { BlockPlacement } from './cueSelect';
-import type { SubtitleLook, SubtitleStyle } from './looks';
+import { customLook, type SubtitleLook, type SubtitleStyle } from './looks';
 
 /** Font size at scale 1 as a fraction of the picture height, for every
  *  look: two stacked lines need a smaller size than the single line the
@@ -20,6 +21,34 @@ export interface DisplaySettings {
     readonly orientation: 'column' | 'row';
     readonly order: 'original_top' | 'translation_top';
     readonly timeOffset: number;
+}
+
+/** The settings that decide how the subtitles are drawn. */
+export type DrawingSettings = Pick<
+    SettingsValues,
+    | 'subtitleStyle'
+    | 'subtitleCustomLook'
+    | 'subtitleTranslationColor'
+    | 'subtitleFontScale'
+    | 'subtitleGap'
+    | 'subtitleVerticalPosition'
+    | 'subtitleLayoutOrientation'
+    | 'subtitleLayoutOrder'
+    | 'subtitleTimeOffset'
+>;
+
+export function toDisplaySettings(settings: DrawingSettings): DisplaySettings {
+    return {
+        style: settings.subtitleStyle,
+        customLook: customLook(settings.subtitleCustomLook),
+        translationColor: settings.subtitleTranslationColor,
+        fontScale: settings.subtitleFontScale,
+        gap: settings.subtitleGap,
+        verticalPosition: settings.subtitleVerticalPosition,
+        orientation: settings.subtitleLayoutOrientation,
+        order: settings.subtitleLayoutOrder,
+        timeOffset: settings.subtitleTimeOffset,
+    };
 }
 
 /** One block: an original line and its translation, drawn together. */

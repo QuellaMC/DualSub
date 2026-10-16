@@ -301,37 +301,6 @@
     font-size: 21px;
 }
 
-.card h2 {
-    margin: 0;
-}
-
-.lead {
-    max-width: 640px;
-    margin: -6px 0 4px;
-    color: var(--ink-soft);
-    font-size: 19px;
-}
-
-.card p {
-    margin: 0;
-}
-
-.inline {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.inline.wrap {
-    flex-wrap: wrap;
-}
-
-.stack {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
 .center {
     display: flex;
     justify-content: center;
@@ -369,40 +338,8 @@
     margin-top: 6px;
 }
 
-.big-field {
-    min-height: 52px;
-    min-width: 240px;
-    font-size: 18px;
-}
-
 .narrow {
     width: 140px;
-}
-
-.status {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-}
-
-.status-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 46px;
-    height: 46px;
-    flex: none;
-    border-radius: 50%;
-}
-
-.status-icon.ok {
-    background: var(--ok-soft);
-    color: var(--ok);
-}
-
-.status-icon.off {
-    background: var(--surface-sunken);
-    color: var(--ink-soft);
 }
 
 .sizes {
@@ -621,46 +558,6 @@
 .timing-number {
     font-size: 28px;
     font-weight: 800;
-}
-
-.steps {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    counter-reset: step;
-}
-
-.steps > li {
-    display: flex;
-    gap: 14px;
-    align-items: flex-start;
-    counter-increment: step;
-}
-
-.steps > li::before {
-    content: counter(step);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 34px;
-    height: 34px;
-    flex: none;
-    border-radius: 50%;
-    background: var(--ink);
-    color: var(--surface);
-    font-weight: 800;
-}
-
-.steps .button,
-.steps .segmented {
-    margin-top: 8px;
-}
-
-.steps .inline {
-    margin-top: 8px;
 }
 
 .providers {
@@ -913,11 +810,6 @@
     .sizes,
     .presets {
         grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .big-field {
-        width: 100%;
-        min-width: 0;
     }
 
     .preview {

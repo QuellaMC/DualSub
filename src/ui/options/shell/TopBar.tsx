@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { isUiLanguage, UI_LANGUAGES, type UiLanguage } from '@/config/schema';
 import { Icon } from '../../design/Icon';
 import type { Translate } from '../../hooks/useI18n';
-import { NATIVE_LANGUAGE_NAMES } from '../controls/nativeLanguageNames';
+import { NATIVE_LANGUAGE_NAMES } from '../../languageLabels';
 import { searchSettings, type SearchEntry } from '../search';
 import { SECTIONS } from '../sections';
 

@@ -57,13 +57,19 @@ provider account.
   for the removal of `api.cognitive.microsofttranslator.com`.
 - `web_accessible_resources` were removed entirely.
 - The in-page analysis modal was removed; the side panel is the only AI UI.
+- On install, and only then, the extension opens its own welcome page
+  (`welcome.html`, packaged with the extension) in a new tab. It shows the
+  languages DualSub picked and lets the user change the translation
+  language; it loads nothing remote.
 
 ## How to test
 
-1. Sign in to Netflix or Disney+ and open any title.
-2. Click the DualSub icon, enable dual subtitles, pick a target language.
-3. Play: two subtitle lines appear. Toggle "use official translations" to
-   switch between the platform's own translation track and the provider.
+1. Install: the welcome page opens with the browser's language as the
+   translation language. Nothing else needs setting up.
+2. Sign in to Netflix or Disney+ and open any title.
+3. Play: two subtitle lines appear. In the DualSub popup, toggle "use
+   official translations" to switch between the platform's own
+   translation track and the provider.
 4. Optional: in the options page's Word explanations section, paste an
    OpenAI or Gemini API key and turn the feature on, then click a subtitle
    word; the side panel opens with the word selected and "Analyze" returns

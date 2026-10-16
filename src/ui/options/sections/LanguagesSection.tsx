@@ -2,7 +2,7 @@ import { closestLanguage } from '@/shared/languageNormalization';
 import { AUTO_LANGUAGE, SUBTITLE_LANGUAGES } from '@/shared/subtitleLanguages';
 import { Switch } from '../../design/Switch';
 import { languageName } from '../../languageLabels';
-import { LanguageSelect } from '../controls/LanguageSelect';
+import { LanguageSelect } from '../../design/LanguageSelect';
 import { SharedTag, SiteTag } from '../shell/scopeContext';
 import type { SectionProps } from '../types';
 

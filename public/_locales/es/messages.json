@@ -1474,5 +1474,50 @@
     },
     "translationVertexSetupTitle": {
         "message": "Configurar Google Vertex AI"
+    },
+    "welcomePageTitle": {
+        "message": "Te damos la bienvenida a DualSub"
+    },
+    "welcomeTitle": {
+        "message": "¡Te damos la bienvenida! DualSub ya está listo."
+    },
+    "welcomeLead": {
+        "message": "Funciona al instante, sin configurar nada. Tus subtítulos se verán así:"
+    },
+    "welcomeLanguageTitle": {
+        "message": "Tus subtítulos se traducen al"
+    },
+    "welcomeLanguageHelp": {
+        "message": "Elegimos el idioma de tu navegador. Si quieres, elige otro."
+    },
+    "welcomeStepsTitle": {
+        "message": "Tres pasos para ver tu primer video"
+    },
+    "welcomePinTitle": {
+        "message": "Fija DualSub en tu barra de herramientas"
+    },
+    "welcomePinHelp": {
+        "message": "Arriba a la derecha de Chrome, haz clic en «Extensiones» (la pieza de rompecabezas). Luego haz clic en «Fijar», el icono que está junto a DualSub. Así el botón de DualSub se queda en la barra de herramientas, a mano mientras ves un video."
+    },
+    "welcomeOpenTitle": {
+        "message": "Abre uno de estos sitios"
+    },
+    "welcomePlayTitle": {
+        "message": "Pon lo que quieras"
+    },
+    "welcomePlayHelp": {
+        "message": "Aparecen dos líneas de subtítulos sin que hagas nada: el idioma del video arriba y el tuyo debajo."
+    },
+    "welcomeSettingsTitle": {
+        "message": "¿Quieres cambiar algo?"
+    },
+    "welcomeSettingsHelp": {
+        "message": "En la configuración puedes cambiar cómo se ven los subtítulos, su sincronización, el servicio de traducción y mucho más."
+    },
+    "welcomeOpenSettings": {
+        "message": "Abrir la configuración"
+    },
+    "welcomeClose": {
+        "message": "Puedes cerrar esta pestaña cuando quieras."
     }
 }

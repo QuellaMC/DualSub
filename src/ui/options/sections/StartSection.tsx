@@ -2,6 +2,7 @@ import { getDefaultValue } from '@/config/schema';
 import {
     PLATFORM_IDS,
     PLATFORM_NAMES,
+    platformHome,
     type PlatformId,
 } from '@/shared/platforms';
 import { AUTO_LANGUAGE } from '@/shared/subtitleLanguages';
@@ -10,16 +11,11 @@ import { Switch } from '../../design/Switch';
 import type { Translate } from '../../hooks/useI18n';
 import { useSettings } from '../../hooks/useSettings';
 import { languageName } from '../../languageLabels';
-import { LanguageSelect } from '../controls/LanguageSelect';
+import { LanguageSelect } from '../../design/LanguageSelect';
 import { SizePicker } from '../controls/SizePicker';
 import type { SectionId } from '../sections';
 import { SharedTag, SiteTag } from '../shell/scopeContext';
 import type { SectionProps } from '../types';
-
-const SITE_HOMES: Record<PlatformId, string> = {
-    netflix: 'https://www.netflix.com/',
-    disneyplus: 'https://www.disneyplus.com/',
-};
 
 const PROVIDER_SUMMARIES = {
     microsoft_edge: 'startProviderMicrosoft',
@@ -126,7 +122,7 @@ export function StartSection({
                         <a
                             key={site}
                             className="button"
-                            href={SITE_HOMES[site]}
+                            href={platformHome(site)}
                             target="_blank"
                             rel="noopener noreferrer"
                         >

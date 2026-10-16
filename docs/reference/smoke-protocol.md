@@ -72,6 +72,10 @@ with a clean profile plus one seeded profile (see the upgrade-path tests in
     it gets a "Netflix only" tag, the Netflix overlay follows, Disney+
     keeps the shared size, and "Use the value for all sites" drops it
     again.
-17. Seeded 2.5.0 profile: after the first boot, credentials are gone from
+17. Install the build into a clean profile: the welcome page opens once,
+    with the browser's language picked and a two-line sample. Change the
+    language there: the sample follows. Reload the extension from
+    chrome://extensions: no second welcome page.
+18. Seeded 2.5.0 profile: after the first boot, credentials are gone from
     sync storage, the provider is Microsoft, and every option shows the
     value the old profile had.

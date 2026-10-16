@@ -1474,5 +1474,50 @@
     },
     "translationVertexSetupTitle": {
         "message": "Set up Google Vertex AI"
+    },
+    "welcomePageTitle": {
+        "message": "Welcome to DualSub"
+    },
+    "welcomeTitle": {
+        "message": "Welcome! DualSub is ready."
+    },
+    "welcomeLead": {
+        "message": "It works right away, with nothing to set up. Your subtitles will look like this:"
+    },
+    "welcomeLanguageTitle": {
+        "message": "Your subtitles are translated into"
+    },
+    "welcomeLanguageHelp": {
+        "message": "We picked your browser's language. Pick another if you like."
+    },
+    "welcomeStepsTitle": {
+        "message": "Three steps to your first video"
+    },
+    "welcomePinTitle": {
+        "message": "Pin DualSub to your toolbar"
+    },
+    "welcomePinHelp": {
+        "message": "Click the puzzle piece at the top right of Chrome, then the pin next to DualSub. Its button then stays in the toolbar, ready while you watch."
+    },
+    "welcomeOpenTitle": {
+        "message": "Open one of these sites"
+    },
+    "welcomePlayTitle": {
+        "message": "Play anything"
+    },
+    "welcomePlayHelp": {
+        "message": "Two lines of subtitles appear on their own: the video's language on top, and yours underneath."
+    },
+    "welcomeSettingsTitle": {
+        "message": "Want to change something?"
+    },
+    "welcomeSettingsHelp": {
+        "message": "How subtitles look, their timing, the translation service and more are in the settings."
+    },
+    "welcomeOpenSettings": {
+        "message": "Open settings"
+    },
+    "welcomeClose": {
+        "message": "You can close this tab whenever you like."
     }
 }

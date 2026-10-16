@@ -1,10 +1,6 @@
-import { useMemo, useState } from 'react';
-import { customLook, resolveLook } from '@/content/renderer/looks';
-import type { DisplaySettings } from '@/content/renderer/styling';
-import {
-    closestLanguage,
-    isSameLanguage,
-} from '@/shared/languageNormalization';
+import { useState } from 'react';
+import { resolveLook } from '@/content/renderer/looks';
+import { toDisplaySettings } from '@/content/renderer/styling';
 import {
     PLATFORM_IDS,
     PLATFORM_NAMES,
@@ -12,15 +8,14 @@ import {
 } from '@/shared/platforms';
 import {
     AUTO_LANGUAGE,
-    SUBTITLE_LANGUAGES,
     type SubtitleLanguage,
 } from '@/shared/subtitleLanguages';
 import type { Translate } from '../../hooks/useI18n';
 import { languageName } from '../../languageLabels';
+import { LookPreview } from '../../preview/LookPreview';
+import { sampleSubtitles, sampleVideoLanguage } from '../../preview/sample';
 import { PLATFORM_PRESETS } from '../../subtitleStyle';
-import { LookPreview } from '../LookPreview';
 import type { OptionsSettings, Scope } from '../types';
-import { SAMPLE_LINES } from './sampleLines';
 
 /** What the sample video speaks, to show an automatic top line at work. */
 const SAMPLE_VIDEOS = [
@@ -30,10 +25,6 @@ const SAMPLE_VIDEOS = [
     language: SubtitleLanguage;
     labelKey: string;
 }[];
-
-function offered(language: string): SubtitleLanguage {
-    return closestLanguage(language, SUBTITLE_LANGUAGES) ?? 'en';
-}
 
 /** The subtitles as they will look, drawn by the overlay's own styling. */
 export function Preview({
@@ -45,40 +36,15 @@ export function Preview({
     settings: OptionsSettings;
     scope: Scope;
 }) {
-    const target = offered(settings.targetLanguage);
-    // A sample in the viewer's own language would show one line only.
-    const [spoken, setSpoken] = useState<SubtitleLanguage>(
-        target === 'en' ? 'ko' : 'en'
+    const [spoken, setSpoken] = useState<SubtitleLanguage>(() =>
+        sampleVideoLanguage(settings.targetLanguage)
     );
     const [previewSite, setPreviewSite] = useState<PlatformId>('netflix');
     const site = scope === 'all' ? previewSite : scope;
     const automatic = settings.originalLanguage === AUTO_LANGUAGE;
-    const top = automatic ? spoken : offered(settings.originalLanguage);
-    const oneLine = isSameLanguage(top, target);
-
-    const display = useMemo<DisplaySettings>(
-        () => ({
-            style: settings.subtitleStyle,
-            customLook: customLook(settings.subtitleCustomLook),
-            translationColor: settings.subtitleTranslationColor,
-            fontScale: settings.subtitleFontScale,
-            gap: settings.subtitleGap,
-            verticalPosition: settings.subtitleVerticalPosition,
-            orientation: settings.subtitleLayoutOrientation,
-            order: settings.subtitleLayoutOrder,
-            timeOffset: 0,
-        }),
-        [
-            settings.subtitleStyle,
-            settings.subtitleCustomLook,
-            settings.subtitleTranslationColor,
-            settings.subtitleFontScale,
-            settings.subtitleGap,
-            settings.subtitleVerticalPosition,
-            settings.subtitleLayoutOrientation,
-            settings.subtitleLayoutOrder,
-        ]
-    );
+    const sample = sampleSubtitles(settings, spoken);
+    const oneLine = sample.translatedText === '';
+    const display = toDisplaySettings(settings);
 
     return (
         <aside className="preview" aria-labelledby="preview-title">
@@ -101,8 +67,8 @@ export function Preview({
                             PLATFORM_PRESETS[site],
                             null
                         )}
-                        originalText={SAMPLE_LINES[top]}
-                        translatedText={oneLine ? '' : SAMPLE_LINES[target]}
+                        originalText={sample.originalText}
+                        translatedText={sample.translatedText}
                         label={t('previewLabel')}
                     />
                 ) : (
@@ -162,8 +128,8 @@ export function Preview({
                         automatic
                             ? 'previewCaptionAuto'
                             : 'previewCaptionFixed',
-                        languageName(t, top),
-                        languageName(t, target)
+                        languageName(t, sample.originalLanguage),
+                        languageName(t, sample.targetLanguage)
                     )}
                 </p>
             </div>

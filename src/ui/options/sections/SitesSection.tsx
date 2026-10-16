@@ -5,6 +5,7 @@ import {
     type SiteSettingKey,
 } from '@/config/schema';
 import {
+    PLATFORM_HOSTS,
     PLATFORM_IDS,
     PLATFORM_NAMES,
     type PlatformId,
@@ -14,11 +15,6 @@ import { Switch } from '../../design/Switch';
 import type { Translate } from '../../hooks/useI18n';
 import { useSettings } from '../../hooks/useSettings';
 import { feedbackSave, followAllSites, useFeedback } from '../shell/feedback';
-
-const SITE_DOMAINS: Record<PlatformId, string> = {
-    netflix: 'netflix.com',
-    disneyplus: 'disneyplus.com',
-};
 
 /** Shown as switches on each site's card rather than counted as its own
  *  settings. */
@@ -124,7 +120,7 @@ function SiteCard({
                     </span>
                     <div>
                         <h2 className="label">{name}</h2>
-                        <div className="help">{SITE_DOMAINS[site]}</div>
+                        <div className="help">{PLATFORM_HOSTS[site]}</div>
                     </div>
                     <span
                         className={`tag ${settings.subtitlesEnabled ? 'ok' : 'muted'}`}
