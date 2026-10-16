@@ -1,7 +1,7 @@
 export type StorageArea = 'sync' | 'local';
 export const STORAGE_AREAS: readonly StorageArea[] = ['sync', 'local'];
 
-export type StorageOperation = 'get' | 'set' | 'remove';
+export type StorageOperation = 'get' | 'set';
 
 const QUOTA_KEYWORDS = [
     'quota exceeded',
