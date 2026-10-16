@@ -52,4 +52,26 @@ describe('useDraft', () => {
         rerender({ saved: 2 });
         expect(result.current.value).toBe(2);
     });
+
+    it('adopts a value stored elsewhere while its write was out, once that write settles', async () => {
+        let release: () => void = () => undefined;
+        const write = (): Promise<boolean> =>
+            new Promise((resolve) => {
+                release = () => resolve(true);
+            });
+        const { result, rerender } = renderHook(
+            ({ saved }) => useDraft(saved, write),
+            { initialProps: { saved: 1 } }
+        );
+        act(() => result.current.set(2, 'quiet'));
+        // Another window stores a newer value while this write is out.
+        rerender({ saved: 3 });
+        expect(result.current.value).toBe(2);
+
+        await act(async () => {
+            release();
+            await Promise.resolve();
+        });
+        expect(result.current.value).toBe(3);
+    });
 });
