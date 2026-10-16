@@ -485,20 +485,34 @@ describe('OptionsApp', () => {
         );
     });
 
-    it('undoes a reset whole or not at all, and offers Undo again after a failure', async () => {
-        await fakeBrowser.storage.sync.set({ subtitleFontScale: 2 });
-        await fakeBrowser.storage.local.set({
-            showAdvancedSettings: true,
-            appearanceAccordionOpen: true,
-        });
+    it('undoes a backup load whole or not at all, and offers Undo again after a failure', async () => {
+        await fakeBrowser.storage.local.set({ showAdvancedSettings: true });
         location.hash = '#advanced';
         await renderReady();
-        fireEvent.click(
-            screen.getByRole('button', { name: 'Reset everything…' })
+        await waitFor(() =>
+            expect(document.querySelector('pre.code')).toHaveTextContent(
+                '"subtitleFontScale": 1'
+            )
         );
-        fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
+        // The backup changes a setting in each storage area.
+        const backup = new File(
+            [
+                JSON.stringify({
+                    subtitleFontScale: 1.6,
+                    showAdvancedSettings: false,
+                }),
+            ],
+            'backup.json',
+            { type: 'application/json' }
+        );
+        fireEvent.change(screen.getByLabelText('Load settings from a file'), {
+            target: { files: [backup] },
+        });
+        fireEvent.click(
+            await screen.findByRole('button', { name: 'Replace them' })
+        );
         await waitFor(async () =>
-            expect(await sync('subtitleFontScale')).toBe(1)
+            expect(await sync('subtitleFontScale')).toBe(1.6)
         );
 
         vi.spyOn(browser.storage.local, 'set').mockRejectedValueOnce(
@@ -508,15 +522,15 @@ describe('OptionsApp', () => {
         expect(await screen.findByRole('alert')).toHaveTextContent(
             'Failed to save setting'
         );
-        expect(await sync('subtitleFontScale')).toBe(1);
+        expect(await sync('subtitleFontScale')).toBe(1.6);
 
         fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
         await waitFor(async () =>
-            expect(await sync('subtitleFontScale')).toBe(2)
+            expect(await sync('subtitleFontScale')).toBe(1)
         );
         expect(
-            (await fakeBrowser.storage.local.get('appearanceAccordionOpen'))
-                .appearanceAccordionOpen
+            (await fakeBrowser.storage.local.get('showAdvancedSettings'))
+                .showAdvancedSettings
         ).toBe(true);
     });
 
