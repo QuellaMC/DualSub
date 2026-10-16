@@ -1401,7 +1401,10 @@
         "message": "테마 다크모드 라이트모드 야간모드 어둡게 어두운 밝게 밝은 패널 설명창 색깔 색상"
     },
     "searchWordsLimits": {
-        "message": "시간초과 타임아웃 대기시간 제한 요청제한 재시도 횟수 캐시 기억 주소 url 엔드포인트 서버"
+        "message": "시간초과 타임아웃 대기시간 제한 요청제한 재시도 횟수 캐시 기억"
+    },
+    "searchWordsAddress": {
+        "message": "주소 url 엔드포인트 서버 접속 주소"
     },
     "searchWordsSiteOnOff": {
         "message": "netflix disney 넷플릭스 넷플 디즈니 디즈니플러스 켜기 끄기 켜짐 꺼짐 활성화 비활성화 이중자막"

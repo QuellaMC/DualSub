@@ -195,8 +195,9 @@ export function LookSection({
     const [fineTuning, setFineTuning] = useState(false);
     const custom = settings.subtitleStyle === 'custom';
     const topColor = custom ? look.value.originalColor : '#ffffff';
-    const edit = (changes: Partial<CustomLook>): void =>
+    const edit = (changes: Partial<CustomLook>): void => {
         look.edit({ ...look.value, ...changes });
+    };
 
     return (
         <section className="section" aria-labelledby="look-title">
