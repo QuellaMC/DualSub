@@ -215,10 +215,11 @@ export class PlayerSession {
     private interaction: InteractionSettings;
     private latestSubtitleEvent: CapturedEvent | null = null;
     private loadingToken = 0;
-    private inFlightKey: string | null = null;
     private completedKey: string | null = null;
-    /** Latest-wins: a slower earlier request must not overwrite newer cues. */
-    private requestSequence = 0;
+    /** The request whose answer the session waits for. A newer request or a
+     *  languages change replaces it, so a slower earlier answer never
+     *  overwrites newer cues. */
+    private pendingRequest: { readonly key: string } | null = null;
     /** Translate-mode loop for the current cue set; one scope per cue set. */
     private translation: {
         readonly scheduler: TranslationScheduler;
@@ -392,6 +393,7 @@ export class PlayerSession {
         }
         this.languagesValue = next;
         this.completedKey = null;
+        this.pendingRequest = null;
         this.setLoading(true);
         this.adapter.onLanguagesChanged?.();
         if (this.latestSubtitleEvent) {
@@ -557,12 +559,11 @@ export class PlayerSession {
         const { originalLanguage, targetLanguage, useOfficialTranslations } =
             languages;
         const key = JSON.stringify([spec, languages]);
-        if (key === this.completedKey || key === this.inFlightKey) {
+        if (key === this.completedKey || key === this.pendingRequest?.key) {
             return;
         }
-        this.inFlightKey = key;
-        this.requestSequence += 1;
-        const sequence = this.requestSequence;
+        const pending = { key };
+        this.pendingRequest = pending;
         try {
             const request: FetchVttRequest =
                 spec.kind === 'netflix-tracks'
@@ -591,7 +592,7 @@ export class PlayerSession {
                 canDispatch: () => !this.signal.aborted,
             });
             ensureLive(this.signal);
-            if (sequence !== this.requestSequence) {
+            if (pending !== this.pendingRequest) {
                 return;
             }
 
@@ -620,13 +621,13 @@ export class PlayerSession {
                 this.deps.onContextInvalidated();
                 return;
             }
-            if (sequence === this.requestSequence) {
+            if (pending === this.pendingRequest) {
                 this.setLoading(false);
             }
             this.logger.error('Subtitle request errored', error);
         } finally {
-            if (this.inFlightKey === key) {
-                this.inFlightKey = null;
+            if (this.pendingRequest === pending) {
+                this.pendingRequest = null;
             }
         }
     }

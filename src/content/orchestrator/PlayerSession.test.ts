@@ -332,6 +332,49 @@ describe('PlayerSession with an automatic top line', () => {
         ]);
     });
 
+    it('shows only the subtitles for the audio playing now', async () => {
+        const requests: FetchVttRequest[] = [];
+        const answers: ((response: FetchVttResponse) => void)[] = [];
+        vi.spyOn(browser.runtime, 'sendMessage').mockImplementation(((
+            message: FetchVttRequest
+        ) => {
+            requests.push(message);
+            return new Promise((resolve) => {
+                answers.push(resolve);
+            });
+        }) as never);
+        const english: FetchVttResponse = {
+            success: true,
+            vttText: vtt('Hello'),
+            targetVttText: vtt('你好'),
+            sourceLanguage: 'en',
+            targetLanguage: 'zh-CN',
+            useNativeTarget: true,
+            selectedLanguage: { normalizedCode: 'en', displayName: 'English' },
+        };
+        active = startSession(AUTO);
+        active.session.updateSpokenLanguage('en');
+        active.cache.publish('1', resolution(['en', 'zh-CN']));
+        await settle();
+
+        active.session.updateSpokenLanguage('ja');
+        answers[0]!(english);
+        await settle();
+        active.tick(1.5);
+        expect(texts()).toEqual(['', 'Loading…']);
+
+        active.session.updateSpokenLanguage('en');
+        await settle();
+        expect(requests.map((request) => request.originalLanguage)).toEqual([
+            'en',
+            'en',
+        ]);
+        answers[1]!(english);
+        await settle();
+        active.tick(1.6);
+        expect(texts()).toEqual(['Hello', '你好']);
+    });
+
     it('falls back to English when the player cannot tell', () => {
         stubBackground({});
         active = startSession(AUTO);
