@@ -1313,6 +1313,9 @@
     "searchWordsDeepL": {
         "message": "deepl deepl翻譯 api key 金鑰 api金鑰 密鑰 方案 免費版 專業版 付費版 帳號"
     },
+    "searchWordsVertex": {
+        "message": "vertex google cloud 谷歌雲端 gemini 服務帳戶 專案 權杖 區域"
+    },
     "searchWordsAiTranslation": {
         "message": "ai openai chatgpt gemini llm ai翻譯 人工智慧 智慧翻譯 模型 語言模型 大型語言模型 key 金鑰 api金鑰 相容"
     },

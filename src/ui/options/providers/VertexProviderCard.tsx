@@ -52,7 +52,7 @@ export function VertexProviderCard({
     });
 
     return (
-        <div className="card" aria-labelledby="vertex-setup">
+        <div className="card" id="vertex-card" aria-labelledby="vertex-setup">
             <h2 className="label" id="vertex-setup">
                 {t('translationVertexSetupTitle')}
             </h2>

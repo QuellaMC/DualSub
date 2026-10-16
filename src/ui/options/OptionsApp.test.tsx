@@ -1371,6 +1371,36 @@ describe('OptionsApp', () => {
         );
     });
 
+    it('finds the Vertex setup, showing advanced options to reach it', async () => {
+        await renderReady();
+        const search = screen.getByRole('searchbox');
+        const openResult = (): void => {
+            fireEvent.change(search, { target: { value: 'vertex' } });
+            fireEvent.click(
+                screen.getByRole('button', { name: /^Set up Google Vertex AI/ })
+            );
+        };
+        openResult();
+        await waitFor(() =>
+            expect(
+                screen.getByRole('radio', { name: /^Google Vertex AI/ })
+            ).toHaveFocus()
+        );
+
+        fireEvent.click(
+            screen.getByRole('radio', { name: /^Google Vertex AI/ })
+        );
+        await waitFor(async () =>
+            expect(await sync('selectedProvider')).toBe('vertex_gemini')
+        );
+        openResult();
+        await waitFor(() =>
+            expect(document.getElementById('vertex-card')).toContainElement(
+                document.activeElement as HTMLElement
+            )
+        );
+    });
+
     it('opens the custom look from search, or lands on the choice that shows it', async () => {
         await fakeBrowser.storage.sync.set({ subtitleStyle: 'platform' });
         await renderReady();

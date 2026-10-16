@@ -1313,6 +1313,9 @@
     "searchWordsDeepL": {
         "message": "deepl api key plan"
     },
+    "searchWordsVertex": {
+        "message": "vertex google cloud gemini service account project token region"
+    },
     "searchWordsAiTranslation": {
         "message": "ai openai chatgpt gemini model key llm compatible"
     },
