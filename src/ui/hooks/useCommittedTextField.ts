@@ -48,6 +48,9 @@ export function useCommittedTextField<T>({
 
     useEffect(() => {
         persistedRef.current = value;
+        if (Object.is(draftRef.current, value)) {
+            dirtyRef.current = false;
+        }
         if (!dirtyRef.current) {
             draftRef.current = value;
             setDraft(value);

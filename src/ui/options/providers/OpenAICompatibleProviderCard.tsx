@@ -86,6 +86,10 @@ export function OpenAICompatibleProviderCard({
                                     aria-pressed={service?.id === entry.id}
                                     onClick={() => {
                                         setChoseOther(false);
+                                        // The address field stands for the
+                                        // choice until it is stored, so a key
+                                        // pasted meanwhile is entered for it.
+                                        baseUrlField.change(entry.baseUrl);
                                         void save(
                                             {
                                                 openaiCompatibleBaseUrl:
@@ -94,7 +98,11 @@ export function OpenAICompatibleProviderCard({
                                                     entry.model,
                                             },
                                             'quiet'
-                                        );
+                                        ).then((saved) => {
+                                            if (!saved) {
+                                                baseUrlField.reset();
+                                            }
+                                        });
                                     }}
                                 >
                                     {t(entry.labelKey)}

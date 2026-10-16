@@ -88,6 +88,14 @@ describe('useCommittedTextField', () => {
         expect(result.current.value).toBe('typing');
     });
 
+    it('follows external values again once the persisted value catches up with the draft', () => {
+        const { result, rerender } = setup();
+        act(() => result.current.change('b'));
+        rerender({ value: 'b' });
+        rerender({ value: 'c' });
+        expect(result.current.value).toBe('c');
+    });
+
     it('rolls a failed commit back to the persisted value', async () => {
         const { result } = setup(
             'a',

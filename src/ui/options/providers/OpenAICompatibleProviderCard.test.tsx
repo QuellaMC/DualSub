@@ -205,6 +205,52 @@ describe('OpenAICompatibleProviderCard', () => {
         await flush();
     });
 
+    it('enters a key for the service just chosen, before it is stored', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(() => Promise.resolve(modelsResponse([])))
+        );
+        const { save } = renderCard({ advanced: false });
+        const key = screen.getByLabelText('setupPasteKey');
+        fireEvent.click(
+            screen.getByRole('button', { name: 'setupServiceGemini' })
+        );
+        fireEvent.change(key, { target: { value: 'AIza-key' } });
+        expect(save).toHaveBeenLastCalledWith(
+            {
+                openaiCompatibleApiKey: 'AIza-key',
+                openaiCompatibleApiKeyOrigin:
+                    'https://generativelanguage.googleapis.com',
+            },
+            'quiet'
+        );
+        await flush();
+    });
+
+    it('enters a key for the stored service when choosing another fails to save', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(() => Promise.resolve(modelsResponse([])))
+        );
+        const { save } = renderCard({ advanced: false });
+        save.mockResolvedValueOnce(false);
+        fireEvent.click(
+            screen.getByRole('button', { name: 'setupServiceGemini' })
+        );
+        await flush();
+        fireEvent.change(screen.getByLabelText('setupPasteKey'), {
+            target: { value: 'sk-3' },
+        });
+        expect(save).toHaveBeenLastCalledWith(
+            {
+                openaiCompatibleApiKey: 'sk-3',
+                openaiCompatibleApiKeyOrigin: 'https://api.openai.com',
+            },
+            'quiet'
+        );
+        await flush();
+    });
+
     it('fills in a known service from one click, and asks for the address only for another', async () => {
         vi.stubGlobal(
             'fetch',
