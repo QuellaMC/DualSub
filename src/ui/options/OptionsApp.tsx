@@ -31,6 +31,7 @@ import {
     feedbackSave,
     FeedbackProvider,
     followAllSites,
+    type Confirmation,
     type Feedback,
 } from './shell/feedback';
 import { Nav } from './shell/Nav';
@@ -188,36 +189,34 @@ export function OptionsApp() {
             setToast({ id: Date.now(), ...toast });
             holdToast(false);
         };
-        const makeChange = async (
-            change: () => Promise<unknown>,
-            message?: string,
-            undo?: () => Promise<unknown>
-        ): Promise<boolean> => {
+        const makeChange: Feedback['apply'] = async (change) => {
+            let confirmation: Confirmation | undefined;
             try {
-                await change();
+                confirmation = await change();
             } catch (error) {
                 logger.error('Failed to save settings', error);
                 setSaveFailed(true);
                 return false;
             }
             setSaveFailed(false);
-            if (message) {
+            if (confirmation) {
+                const { message, undo } = confirmation;
                 show({
                     message,
                     tone: 'done',
-                    undo: undo ? () => queueChange(undo) : null,
+                    undo: undo
+                        ? () =>
+                              queueChange(async () => {
+                                  await undo();
+                                  return undefined;
+                              })
+                        : null,
                 });
             }
             return true;
         };
-        const queueChange = (
-            change: () => Promise<unknown>,
-            message?: string,
-            undo?: () => Promise<unknown>
-        ): Promise<boolean> => {
-            const made = changes.current.then(() =>
-                makeChange(change, message, undo)
-            );
+        const queueChange: Feedback['apply'] = (change) => {
+            const made = changes.current.then(() => makeChange(change));
             changes.current = made.catch(() => undefined);
             return made;
         };
@@ -226,12 +225,8 @@ export function OptionsApp() {
                 current?.undo ? { ...current, undo: null } : current
             );
         };
-        const apply: Feedback['apply'] = (change, message, undo) => {
-            takeBackUndo();
-            return queueChange(change, message, undo);
-        };
         return {
-            apply,
+            apply: queueChange,
             takeBackUndo,
             notify: (message, tone) => show({ message, tone, undo: null }),
         };

@@ -116,24 +116,22 @@ function SiteCard({
                     : current.filter((candidate) => candidate !== rule);
                 return { ...lists, [site]: [...next] };
             };
-        let changed = false;
-        void feedback.apply(
-            async () => {
-                const before = await configService.updateSetting(
-                    'subtitleBlacklist',
-                    withRule(add)
-                );
-                changed = (before[site] ?? []).includes(rule) !== add;
-            },
-            message,
-            () =>
-                changed
-                    ? configService.updateSetting(
-                          'subtitleBlacklist',
-                          withRule(!add)
-                      )
-                    : Promise.resolve()
-        );
+        void feedback.apply(async () => {
+            const before = await configService.updateSetting(
+                'subtitleBlacklist',
+                withRule(add)
+            );
+            return (before[site] ?? []).includes(rule) === add
+                ? undefined
+                : {
+                      message,
+                      undo: () =>
+                          configService.updateSetting(
+                              'subtitleBlacklist',
+                              withRule(!add)
+                          ),
+                  };
+        });
     };
     const removeOwn = (): void => {
         void followAllSites(

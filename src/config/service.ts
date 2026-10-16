@@ -86,6 +86,13 @@ export interface SettingsChange {
     readonly after: Partial<SettingsValues>;
 }
 
+/** Whether `change` left every value as it found it. */
+export function leftAsFound({ before, after }: SettingsChange): boolean {
+    return Object.entries(after).every(([key, value]) =>
+        sameSettingValue(before[key as SettingsKey], value)
+    );
+}
+
 /** What `setMultiple` did: each value as written, with the site profiles
  *  when a site's values went there, and the change it made in storage. */
 export interface SettingsWrite {

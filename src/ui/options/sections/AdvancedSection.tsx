@@ -13,13 +13,9 @@ import {
     type SettingsKey,
     type SettingsValues,
 } from '@/config/schema';
-import {
-    configService,
-    type SettingsChange,
-    type SettingsWrite,
-} from '@/config/service';
+import { configService, type SettingsWrite } from '@/config/service';
 import { useSettings } from '../../hooks/useSettings';
-import { useFeedback } from '../shell/feedback';
+import { confirmChange, useFeedback } from '../shell/feedback';
 import type { SectionProps } from '../types';
 
 /** Credentials, and the expiry that only means something with its token,
@@ -164,18 +160,18 @@ export function AdvancedSection({ t, settings, save }: SectionProps) {
     }, [confirmReset]);
 
     /** Start `write` when this change's turn comes, with an Undo that puts
-     *  back what it replaced wherever nothing changed it since. */
+     *  back what it replaced wherever nothing changed it since. It says
+     *  what it did even when that changed nothing, with no Undo then. */
     const replaceSettings = (
         write: () => Promise<SettingsWrite>,
         message: string
     ): void => {
-        let change: SettingsChange = { before: {}, after: {} };
         void feedback.apply(
-            async () => {
-                change = (await write()).change;
-            },
-            message,
-            () => configService.putBack(change)
+            async () =>
+                confirmChange((await write()).change, message) ?? {
+                    message,
+                    undo: null,
+                }
         );
     };
 

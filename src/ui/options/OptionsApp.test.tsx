@@ -1145,6 +1145,42 @@ describe('OptionsApp', () => {
         expect(screen.queryByText('Text size: Large')).not.toBeInTheDocument();
     });
 
+    it('keeps the Undo of a choice made twice before it is saved', async () => {
+        location.hash = '#look';
+        await renderReady();
+        const mine = screen.getByRole('button', {
+            name: /^My language on top/,
+        });
+        fireEvent.click(mine);
+        fireEvent.click(mine);
+        const toasts = document.querySelector<HTMLElement>('.toast-region')!;
+        await waitFor(() =>
+            expect(toasts).toHaveTextContent('My language on top')
+        );
+        await new Promise((resolve) => setTimeout(resolve, 50));
+
+        fireEvent.click(within(toasts).getByRole('button', { name: 'Undo' }));
+        await waitFor(async () =>
+            expect(await sync('subtitleLayoutOrder')).toBe('original_top')
+        );
+    });
+
+    it('keeps the Undo of a size picked twice in a row', async () => {
+        await renderReady();
+        const large = screen.getByRole('button', { name: /Large$/ });
+        fireEvent.click(large);
+        fireEvent.click(large);
+        const toast = await screen.findByText('Text size: Large');
+        await new Promise((resolve) => setTimeout(resolve, 50));
+
+        fireEvent.click(
+            within(toast.parentElement!).getByRole('button', { name: 'Undo' })
+        );
+        await waitFor(async () =>
+            expect(await sync('subtitleFontScale')).toBe(1)
+        );
+    });
+
     it('undoes a quick second choice back to the first one', async () => {
         location.hash = '#look';
         await renderReady();
@@ -1171,18 +1207,18 @@ describe('OptionsApp', () => {
         fireEvent.click(
             screen.getByRole('button', { name: 'Change colors and font' })
         );
-        fireEvent.click(screen.getByRole('button', { name: /Boxed$/ }));
-        const toast = await screen.findByText('Look: Boxed');
+        fireEvent.click(screen.getByRole('button', { name: /Cinema$/ }));
+        const toast = await screen.findByText('Look: Cinema');
         expect(
             within(toast.parentElement!).getByRole('button', { name: 'Undo' })
         ).toBeInTheDocument();
 
         fireEvent.change(screen.getByLabelText('Font'), {
-            target: { value: 'serif' },
+            target: { value: 'sans-serif' },
         });
         await waitFor(async () =>
             expect(await sync('subtitleCustomLook')).toMatchObject({
-                font: 'serif',
+                font: 'sans-serif',
             })
         );
         await waitFor(() =>
@@ -1192,7 +1228,7 @@ describe('OptionsApp', () => {
         );
         fireEvent.keyDown(document.body, { key: 'z', ctrlKey: true });
         expect(await sync('subtitleCustomLook')).toMatchObject({
-            font: 'serif',
+            font: 'sans-serif',
         });
     });
 
@@ -1203,17 +1239,17 @@ describe('OptionsApp', () => {
         fireEvent.click(
             screen.getByRole('button', { name: 'Change colors and font' })
         );
-        fireEvent.click(screen.getByRole('button', { name: /Boxed$/ }));
-        await screen.findByText('Look: Boxed');
+        fireEvent.click(screen.getByRole('button', { name: /Cinema$/ }));
+        await screen.findByText('Look: Cinema');
 
         fireEvent.change(screen.getByLabelText('Font'), {
-            target: { value: 'serif' },
+            target: { value: 'sans-serif' },
         });
         fireEvent.pointerUp(document.body);
         fireEvent.keyDown(document.body, { key: 'z', ctrlKey: true });
         await new Promise((resolve) => setTimeout(resolve, 50));
         expect(await sync('subtitleCustomLook')).toMatchObject({
-            font: 'serif',
+            font: 'sans-serif',
         });
     });
 

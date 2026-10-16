@@ -144,13 +144,14 @@ export function ExplanationsSection({
         type: ContextType,
         checked: boolean
     ): Promise<boolean> =>
-        feedback.apply(() =>
-            configService.updateSetting('aiContextTypes', (types) =>
+        feedback.apply(async () => {
+            await configService.updateSetting('aiContextTypes', (types) =>
                 CONTEXT_TYPES.filter((candidate) =>
                     candidate === type ? checked : types.includes(candidate)
                 )
-            )
-        );
+            );
+            return undefined;
+        });
 
     return (
         <section className="section" aria-labelledby="explain-title">
