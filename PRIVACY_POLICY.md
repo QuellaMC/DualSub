@@ -14,6 +14,7 @@ DualSub uses the Chrome extension storage APIs:
 - Provider credentials (`deeplApiKey`, OpenAI-compatible and AI-context API keys, Gemini API keys, and Vertex access tokens) use `chrome.storage.local`, so DualSub does not sync them between devices. Chrome extension local storage is not an encrypted secret vault; protect access to your browser profile and remove credentials in Options when no longer needed.
 - A Vertex service-account JSON file is used once in memory to obtain a short-lived access token. The service-account private key is not persisted. Upgrades remove the legacy stored-key value if an older version created one.
 - Translation and AI-context results may be held temporarily in the extension service worker's in-memory caches to reduce repeated requests. These bounded, time-limited caches are not sent to DualSub's developers and disappear when the worker/browser state is discarded.
+- When the translation service you chose fails in a lasting way (a rejected key, a used-up quota, or refused requests), DualSub keeps a short record of it in `chrome.storage.session`: which service, which kind of problem, which service covered meanwhile, and when. It holds no subtitle text or credentials, stays on this device, and is cleared when that service works again, its settings change, or the browser session ends.
 
 Uninstalling the extension or clearing its extension data removes its stored settings and credentials. Synced preference removal is also subject to Chrome Sync behavior.
 
@@ -53,7 +54,7 @@ The built-in OpenAI and Gemini hosts are declared in the extension manifest. A c
 
 The current Manifest V3 extension requests:
 
-- `storage` to save preferences and device-local credentials;
+- `storage` to save preferences and device-local credentials, and for the browser session, the record of a failing translation service;
 - `activeTab` to interact with the active supported streaming tab after a user action;
 - `sidePanel` to show AI analysis in Chrome's side panel;
 - host access for Netflix and Disney+ pages, their narrow subtitle-delivery hosts, and the built-in translation/AI API hosts listed in `manifest.json`;
