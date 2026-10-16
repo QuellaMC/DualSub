@@ -126,7 +126,7 @@ export function PopupApp() {
     const commitSlider = async (
         key: SliderKey,
         value: number
-    ): Promise<boolean> => {
+    ): Promise<void> => {
         const generation = bumpSlider(key);
         const { key: statusKey, unit } = SLIDER_STATUS[key];
         const saved = await persist(
@@ -139,7 +139,6 @@ export function PopupApp() {
                 void previewContentSettings(sliderChange(key, confirmed));
             }
         }
-        return saved;
     };
 
     const changeTimeOffset = (raw: string): void => {

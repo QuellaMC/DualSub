@@ -144,7 +144,7 @@ export function AppearanceSettings({
         value: SettingsValues['subtitleLayoutOrientation']
     ) => void;
     onSliderPreview: (key: SliderKey, value: number) => void;
-    onSliderCommit: (key: SliderKey, value: number) => Promise<boolean>;
+    onSliderCommit: (key: SliderKey, value: number) => Promise<void>;
     onTimeOffsetChange: (raw: string) => void;
 }) {
     return (
