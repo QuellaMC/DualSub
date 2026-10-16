@@ -32,9 +32,10 @@ export const FeedbackProvider = FeedbackContext.Provider;
 /**
  * A settings handle's save that confirms a named change in a toast whose
  * Undo puts back what the change replaced: the shared values, and for a
- * site, the site profiles exactly as they were. Writing a site's previous
- * values back through the site would drop one equal to the shared value,
- * turning a site's own value into one it follows.
+ * site, its own values for the changed keys exactly as they were, merged
+ * into the profiles stored by then. Writing a site's previous values back
+ * through the site would drop one equal to the shared value, turning a
+ * site's own value into one it follows.
  */
 export function feedbackSave<
     Values extends { readonly siteProfiles: SettingsValues['siteProfiles'] },
@@ -47,35 +48,46 @@ export function feedbackSave<
     feedback: Feedback
 ): (changes: Partial<Values>, notice?: SaveFeedback) => Promise<boolean> {
     return (changes, notice = 'quiet') => {
+        const siteKeys: SiteSettingKey[] = [];
         const previous: Record<string, unknown> = {};
         for (const key of Object.keys(changes)) {
             if (scope !== 'all' && isSiteSettingKey(key)) {
-                previous.siteProfiles = handle.settings?.siteProfiles;
+                siteKeys.push(key);
             } else {
                 previous[key] = handle.settings?.[key as keyof Values];
             }
         }
+        const profiles = handle.settings?.siteProfiles;
         return feedback.apply(
             () => handle.save(changes),
             notice === 'quiet' ? undefined : notice.message,
-            () => configService.setMultiple(previous)
+            () =>
+                scope === 'all' || siteKeys.length === 0
+                    ? configService.setMultiple(previous)
+                    : configService.restoreSiteValues(
+                          { ...previous, siteProfiles: profiles },
+                          [scope],
+                          siteKeys
+                      )
         );
     };
 }
 
 /** Drop a site's own values for `keys`, so the site follows the settings
- *  for all sites again; Undo puts `profiles` back as they were. */
+ *  for all sites again; Undo gives the site those values back. */
 export function followAllSites(
     feedback: Feedback,
     site: PlatformId,
-    profiles: SettingsValues['siteProfiles'],
     keys: readonly SiteSettingKey[],
     message: string
 ): Promise<boolean> {
+    let before: Partial<SettingsValues> = {};
     return feedback.apply(
-        () => configService.removeSiteValues(site, keys),
+        async () => {
+            before = await configService.removeSiteValues([site], keys);
+        },
         message,
-        () => configService.setMultiple({ siteProfiles: profiles })
+        () => configService.restoreSiteValues(before, [site], keys)
     );
 }
 

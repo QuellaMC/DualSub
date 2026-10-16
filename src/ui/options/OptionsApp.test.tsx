@@ -228,8 +228,13 @@ describe('OptionsApp', () => {
             uiLanguage: 'en',
             siteProfiles: { netflix: { subtitleGap: 0.5 } },
         });
+        await fakeBrowser.storage.sync.set({
+            openaiCompatibleBaseUrl: 'https://llm.example.com/v1',
+            openaiCompatibleModel: 'house-model',
+        });
         await fakeBrowser.storage.local.set({
             deeplApiKey: 'keep-me',
+            openaiCompatibleApiKey: 'keep-me-too',
             showAdvancedSettings: true,
         });
         location.hash = '#advanced';
@@ -245,6 +250,11 @@ describe('OptionsApp', () => {
         expect(
             (await fakeBrowser.storage.local.get('deeplApiKey')).deeplApiKey
         ).toBe('keep-me');
+        // A kept key keeps the address and model it was set up with.
+        expect(await sync('openaiCompatibleBaseUrl')).toBe(
+            'https://llm.example.com/v1'
+        );
+        expect(await sync('openaiCompatibleModel')).toBe('house-model');
 
         fireEvent.click(await screen.findByRole('button', { name: 'Undo' }));
         await waitFor(async () =>
@@ -433,11 +443,13 @@ describe('OptionsApp', () => {
         });
         location.hash = '#help';
         await renderReady();
+        const set = vi.spyOn(fakeBrowser.storage.sync, 'set');
         fireEvent.click(screen.getByRole('button', { name: 'Fix it for me' }));
         await waitFor(async () =>
             expect(await sync('siteProfiles')).toEqual({})
         );
         expect(await sync('hideOfficialSubtitles')).toBe(true);
+        expect(set).toHaveBeenCalledOnce();
 
         fireEvent.click(await screen.findByRole('button', { name: 'Undo' }));
         await waitFor(async () =>
@@ -460,6 +472,40 @@ describe('OptionsApp', () => {
             ).toBeInTheDocument()
         );
         expect(document.body).not.toHaveTextContent('commonLoading');
+    });
+
+    it("keeps a change made elsewhere when a site's change is undone", async () => {
+        await fakeBrowser.storage.sync.set({
+            siteProfiles: { netflix: { subtitleFontScale: 1 } },
+        });
+        location.hash = '#sites';
+        await renderReady();
+        fireEvent.click(
+            await screen.findByRole('button', {
+                name: 'Edit the Netflix settings',
+            })
+        );
+        await screen.findByText("You're changing Netflix only.");
+        fireEvent.click(screen.getByRole('button', { name: /Large$/ }));
+        await waitFor(async () =>
+            expect(await sync('siteProfiles')).toEqual({
+                netflix: { subtitleFontScale: 1.3 },
+            })
+        );
+        await fakeBrowser.storage.sync.set({
+            siteProfiles: {
+                netflix: { subtitleFontScale: 1.3, subtitleGap: 0.5 },
+                disneyplus: { subtitlesEnabled: false },
+            },
+        });
+
+        fireEvent.click(await screen.findByRole('button', { name: 'Undo' }));
+        await waitFor(async () =>
+            expect(await sync('siteProfiles')).toEqual({
+                netflix: { subtitleFontScale: 1, subtitleGap: 0.5 },
+                disneyplus: { subtitlesEnabled: false },
+            })
+        );
     });
 
     it("puts a site's profiles back exactly on Undo, an own value equal to the shared one included", async () => {
@@ -591,6 +637,32 @@ describe('OptionsApp', () => {
             'Failed to save setting'
         );
         expect(await sync('subtitleFontScale')).toBe(1);
+    });
+
+    it('refuses a backup holding a value this version cannot use', async () => {
+        await fakeBrowser.storage.local.set({ showAdvancedSettings: true });
+        location.hash = '#advanced';
+        await renderReady();
+        await waitFor(() =>
+            expect(document.querySelector('pre.code')).toHaveTextContent(
+                '"subtitleFontScale": 1'
+            )
+        );
+        const backup = new File(
+            [JSON.stringify({ subtitleFontScale: 1.6, subtitleGap: 99 })],
+            'backup.json',
+            { type: 'application/json' }
+        );
+        fireEvent.change(screen.getByLabelText('Load settings from a file'), {
+            target: { files: [backup] },
+        });
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+            "That file can't be loaded"
+        );
+        expect(
+            screen.queryByRole('button', { name: 'Replace them' })
+        ).not.toBeInTheDocument();
+        expect(await sync('subtitleFontScale')).toBeUndefined();
     });
 
     it('blocks the page when settings cannot be read', async () => {

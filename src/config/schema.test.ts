@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+    CREDENTIAL_SETUP,
     SENSITIVE_KEYS,
     SETTINGS_KEYS,
     configSchema,
@@ -33,6 +34,12 @@ describe('registry shape', () => {
         for (const key of SENSITIVE_KEYS) {
             expect(getStorageScope(key), key).toBe('local');
         }
+    });
+
+    it('names what every credential is sent with', () => {
+        expect(Object.keys(CREDENTIAL_SETUP).sort()).toEqual(
+            [...SENSITIVE_KEYS].sort()
+        );
     });
 
     it('every default validates against its own schema', () => {

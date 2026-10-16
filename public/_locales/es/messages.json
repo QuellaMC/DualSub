@@ -426,7 +426,7 @@
         "message": "Ajustes que van a cambiar: %d."
     },
     "advancedLoadUnreadable": {
-        "message": "Ese archivo no es un archivo de ajustes de DualSub."
+        "message": "No se puede cargar ese archivo: no es un archivo de ajustes de DualSub o uno de sus ajustes no es válido."
     },
     "advancedLoggingErrors": {
         "message": "Solo errores"
@@ -465,7 +465,7 @@
         "message": "Restablecer"
     },
     "advancedResetHelp": {
-        "message": "Todos los ajustes vuelven a los recomendados y cada sitio vuelve a seguir los ajustes de todos los sitios. Tus claves y el idioma de estas páginas se mantienen."
+        "message": "Todos los ajustes vuelven a los recomendados y cada sitio vuelve a seguir los ajustes de todos los sitios. Tus claves se mantienen, junto con los ajustes con que se usa cada una, como su dirección y su modelo, y también el idioma de estas páginas."
     },
     "advancedResetTitle": {
         "message": "Empezar de cero"

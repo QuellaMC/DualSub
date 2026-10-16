@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { browser } from 'wxt/browser';
 import {
+    CREDENTIAL_SETUP,
     getDefaultValue,
     isSettingsKey,
     sameSettingValue,
@@ -22,10 +23,12 @@ const NOT_BACKED_UP: readonly SettingsKey[] = [
     'vertexTokenExpiresAt',
 ];
 
-/** What is not backed up, and how the page itself reads, stays when
- *  everything else goes back to the recommended values. */
+/** What is not backed up, what each kept credential is sent with, and how
+ *  the page itself reads stay when everything else goes back to the
+ *  recommended values. */
 const KEPT_ON_RESET: readonly SettingsKey[] = [
     ...NOT_BACKED_UP,
+    ...Object.values(CREDENTIAL_SETUP).flat(),
     'uiLanguage',
     'showAdvancedSettings',
 ];
@@ -49,8 +52,10 @@ async function readStoredSettings(): Promise<Partial<SettingsValues>> {
     );
 }
 
-/** The changes a backup file would make: valid, non-sensitive keys whose
- *  value differs from what is stored. */
+/** The changes a backup file would make: its non-sensitive settings whose
+ *  value differs from what is stored. Null for a file that is not a
+ *  settings object, or holds a value this version cannot use for a setting
+ *  it knows: loading the rest would restore the backup only in part. */
 function changesFrom(
     text: string,
     current: Partial<SettingsValues>
@@ -70,15 +75,15 @@ function changesFrom(
     }
     const changes: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(parsed)) {
-        if (
-            isSettingsKey(key) &&
-            !NOT_BACKED_UP.includes(key) &&
-            validateSetting(key, value)
-        ) {
-            const prepared = prepareSettingValue(key, value);
-            if (!sameSettingValue(prepared, current[key])) {
-                changes[key] = prepared;
-            }
+        if (!isSettingsKey(key) || NOT_BACKED_UP.includes(key)) {
+            continue;
+        }
+        if (!validateSetting(key, value)) {
+            return null;
+        }
+        const prepared = prepareSettingValue(key, value);
+        if (!sameSettingValue(prepared, current[key])) {
+            changes[key] = prepared;
         }
     }
     return changes;

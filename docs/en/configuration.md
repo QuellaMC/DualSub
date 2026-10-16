@@ -22,7 +22,7 @@ The settings page holds every setting, the popup's included. Each change saves a
 - Sites: hiding the sites' own subtitles on every site or for one, and DualSub on or off for each site
 - Help: fixes for common problems
 
-"Show advanced options" adds exact values (text size, height, timing shift, and the pause between translation requests), per-site settings, the AI service's address and model, limits for word explanations, subtitle tracks to skip on Disney+, and the Advanced section: backup and restore, the settings as JSON, the logging level, a diagnostic report, and a reset that keeps your keys.
+"Show advanced options" adds exact values (text size, height, timing shift, and the pause between translation requests), per-site settings, the AI service's address and model, limits for word explanations, subtitle tracks to skip on Disney+, and the Advanced section: backup and restore, the settings as JSON, the logging level, a diagnostic report, and a reset that keeps your keys along with the address, plan, and model each one is used with.
 
 ## Per-Site Settings
 

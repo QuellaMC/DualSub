@@ -426,7 +426,7 @@
         "message": "바뀔 설정: %d개."
     },
     "advancedLoadUnreadable": {
-        "message": "이 파일은 DualSub 설정 파일이 아니에요."
+        "message": "이 파일은 불러올 수 없어요. DualSub 설정 파일이 아니거나 올바르지 않은 설정이 들어 있어요."
     },
     "advancedLoggingErrors": {
         "message": "오류만"
@@ -465,7 +465,7 @@
         "message": "초기화"
     },
     "advancedResetHelp": {
-        "message": "모든 설정이 추천 설정으로 돌아가고, 각 사이트도 다시 모든 사이트 공통 설정을 따라요. 키와 이 페이지의 언어는 그대로 남아요."
+        "message": "모든 설정이 추천 설정으로 돌아가고, 각 사이트도 다시 모든 사이트 공통 설정을 따라요. 키와 각 키와 함께 쓰는 설정(주소, 모델 등), 이 페이지의 언어는 그대로 남아요."
     },
     "advancedResetTitle": {
         "message": "처음부터 다시"

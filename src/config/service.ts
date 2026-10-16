@@ -782,22 +782,62 @@ class ConfigService {
         }
     }
 
-    /** `site` follows the shared values of `keys` again. Reads strictly:
-     *  a profile read from a failed store would erase every site's. */
+    /**
+     * `sites` follow the shared values of `keys` again, and `shared` is
+     * written in the same storage write. Resolves to what the write
+     * replaced, the profiles and the shared values, for `restoreSiteValues`.
+     */
     removeSiteValues(
-        site: PlatformId,
+        sites: readonly PlatformId[],
+        keys: readonly SiteSettingKey[],
+        shared: Partial<Omit<SettingsValues, 'siteProfiles'>> = {}
+    ): Promise<Partial<SettingsValues>> {
+        return this.rewriteSiteValues(sites, keys, {}, shared);
+    }
+
+    /**
+     * Put back what `before` holds: its shared values, and for each of
+     * `sites` its own values for `keys` as `before.siteProfiles` had them,
+     * none where it had none. Every other site and key stays as stored now.
+     */
+    async restoreSiteValues(
+        before: Partial<SettingsValues>,
+        sites: readonly PlatformId[],
         keys: readonly SiteSettingKey[]
     ): Promise<void> {
+        const { siteProfiles = {}, ...shared } = before;
+        await this.rewriteSiteValues(sites, keys, siteProfiles, shared);
+    }
+
+    /** Give `sites` the own values for `keys` that `source` holds, over the
+     *  profiles stored now, with `shared` in the same write. Reads strictly:
+     *  a profile read from a failed store would erase every site's. */
+    private rewriteSiteValues(
+        sites: readonly PlatformId[],
+        keys: readonly SiteSettingKey[],
+        source: SettingsValues['siteProfiles'],
+        shared: Partial<SettingsValues>
+    ): Promise<Partial<SettingsValues>> {
         return this.afterProfiles(async () => {
-            const { values } = await this.readResultStrict('siteProfiles');
-            const profiles = values.siteProfiles ?? {};
-            const own: Record<string, unknown> = { ...profiles[site] };
-            for (const key of keys) {
-                delete own[key];
+            const { values } = await this.readMultipleResultStrict([
+                ...Object.keys(shared),
+                'siteProfiles',
+            ]);
+            let profiles = values.siteProfiles ?? {};
+            for (const site of sites) {
+                const own: Record<string, unknown> = { ...profiles[site] };
+                const held = source[site] ?? {};
+                for (const key of keys) {
+                    if (Object.hasOwn(held, key)) {
+                        own[key] = held[key];
+                    } else {
+                        delete own[key];
+                    }
+                }
+                profiles = withSiteProfile(profiles, site, own);
             }
-            await this.writeMultiple({
-                siteProfiles: withSiteProfile(profiles, site, own),
-            });
+            await this.writeMultiple({ ...shared, siteProfiles: profiles });
+            return values;
         });
     }
 

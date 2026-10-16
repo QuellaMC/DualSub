@@ -209,13 +209,7 @@ export function OptionsApp() {
     );
     const followShared = (keys: readonly SiteSettingKey[]): void => {
         if (scope !== 'all') {
-            void followAllSites(
-                feedback,
-                scope,
-                siteProfiles,
-                keys,
-                t('toastFollowsShared')
-            );
+            void followAllSites(feedback, scope, keys, t('toastFollowsShared'));
         }
     };
 
