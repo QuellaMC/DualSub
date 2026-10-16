@@ -150,6 +150,22 @@ describe('OptionsApp', () => {
         ).toBeInTheDocument();
     });
 
+    it('goes back on time even right after quick presses', async () => {
+        location.hash = '#timing';
+        await renderReady();
+        const earlier = screen.getByRole('button', { name: /Show earlier/ });
+        fireEvent.click(earlier);
+        fireEvent.click(earlier);
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Back to on time' })
+        );
+        await waitFor(async () =>
+            expect(await sync('subtitleTimeOffset')).toBe(0)
+        );
+        await new Promise((resolve) => setTimeout(resolve, 600));
+        expect(await sync('subtitleTimeOffset')).toBe(0);
+    });
+
     it('moves the subtitles earlier and later in plain words', async () => {
         location.hash = '#timing';
         await renderReady();
@@ -691,6 +707,23 @@ describe('OptionsApp', () => {
                 netflix: { subtitleFontScale: 1 },
             })
         );
+    });
+
+    it('says Vertex needs setting up again once its token has expired', async () => {
+        await fakeBrowser.storage.sync.set({
+            selectedProvider: 'vertex_gemini',
+            translationFallback: false,
+            vertexProjectId: 'my-project-123',
+            vertexLocation: 'us-central1',
+            vertexModel: 'gemini-2.5-flash',
+        });
+        await fakeBrowser.storage.local.set({
+            vertexAccessToken: 'ya29.token',
+            vertexTokenExpiresAt: Date.now() - 1000,
+        });
+        await renderReady();
+        expect(screen.getByText(/isn't set up yet$/)).toBeInTheDocument();
+        expect(screen.queryByText('DualSub is ready')).not.toBeInTheDocument();
     });
 
     it('says when the chosen service still needs setting up and nothing covers', async () => {
