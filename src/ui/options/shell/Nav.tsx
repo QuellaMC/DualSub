@@ -14,7 +14,7 @@ export function Nav({
     section: SectionId;
     advanced: boolean;
     onSection: (section: SectionId) => void;
-    onAdvanced: (advanced: boolean) => void;
+    onAdvanced: (advanced: boolean) => Promise<unknown>;
 }) {
     const visible = SECTION_IDS.filter(
         (id) => advanced || !SECTIONS[id].advanced

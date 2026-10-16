@@ -167,7 +167,7 @@ export function TranslationSection({
                         checked={settings.translationFallback}
                         labelledBy="translation-fallback-title"
                         onChange={(fallback) =>
-                            void save(
+                            save(
                                 { translationFallback: fallback },
                                 {
                                     message: t(
