@@ -18,9 +18,12 @@ export interface CommittedTextField<T> {
     ) => Promise<boolean>;
     /** Discard the draft in favour of the persisted value. */
     readonly reset: () => void;
-    /** Resolves, once every save the control started has settled, to what
-     *  it stands for: the draft when that validates, else the persisted
-     *  value. A setting that belongs to it is saved for that value. */
+    /** Resolves to what the control stands for now, once the save it
+     *  shows has settled: that save's value if it lands, the persisted
+     *  value if it fails. With no save on its way, the draft when it
+     *  validates, else the persisted value. A later save does not change
+     *  the answer, so a setting that belongs to this one is saved for the
+     *  value shown when it was entered. */
     readonly settled: () => Promise<T>;
     readonly handleKeyDown: (event: {
         key: string;
@@ -47,7 +50,11 @@ export function useCommittedTextField<T>({
     const draftRef = useRef(value);
     const persistedRef = useRef(value);
     const dirtyRef = useRef(false);
-    const saving = useRef(new Set<Promise<boolean>>());
+    /** The newest save the control started that has not settled. */
+    const saving = useRef<{
+        readonly target: T;
+        readonly attempt: Promise<boolean>;
+    } | null>(null);
     const onCommitRef = useRef(onCommit);
     const validateRef = useRef(validate);
     onCommitRef.current = onCommit;
@@ -104,8 +111,13 @@ export function useCommittedTextField<T>({
                 }
                 return persisted;
             })();
-            saving.current.add(attempt);
-            void attempt.then(() => saving.current.delete(attempt));
+            const save = { target, attempt };
+            saving.current = save;
+            void attempt.then(() => {
+                if (saving.current === save) {
+                    saving.current = null;
+                }
+            });
             return attempt;
         },
         [reset]
@@ -137,13 +149,17 @@ export function useCommittedTextField<T>({
         [persistDraft]
     );
 
-    const settled = useCallback(async (): Promise<T> => {
-        while (saving.current.size > 0) {
-            await Promise.all(saving.current);
+    const settled = useCallback((): Promise<T> => {
+        const save = saving.current;
+        const persisted = persistedRef.current;
+        if (save) {
+            return save.attempt.then((saved) =>
+                saved ? save.target : persisted
+            );
         }
-        return accepts(draftRef.current)
-            ? draftRef.current
-            : persistedRef.current;
+        return Promise.resolve(
+            accepts(draftRef.current) ? draftRef.current : persisted
+        );
     }, [accepts]);
 
     const handleKeyDown = useCallback(

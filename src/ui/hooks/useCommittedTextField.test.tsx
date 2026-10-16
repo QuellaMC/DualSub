@@ -78,6 +78,42 @@ describe('useCommittedTextField', () => {
         expect(await settled).toBe('next');
     });
 
+    it('settles on the save shown when asked, not on a later one', async () => {
+        const first = Promise.withResolvers<boolean>();
+        const { result } = setup(
+            'a',
+            vi.fn(() => first.promise)
+        );
+        act(() => result.current.change('first'));
+        act(() => {
+            void result.current.commit();
+        });
+        const settled = result.current.settled();
+        act(() => {
+            void result.current.adopt('second', () => true);
+        });
+        first.resolve(true);
+        expect(await settled).toBe('first');
+    });
+
+    it('settles on the persisted value when the save shown fails, whatever came after', async () => {
+        const first = Promise.withResolvers<boolean>();
+        const { result } = setup(
+            'a',
+            vi.fn(() => first.promise)
+        );
+        act(() => result.current.change('first'));
+        act(() => {
+            void result.current.commit();
+        });
+        const settled = result.current.settled();
+        act(() => {
+            void result.current.adopt('second', () => true);
+        });
+        first.resolve(false);
+        expect(await settled).toBe('a');
+    });
+
     it('settles on the persisted value once a save fails, or for an invalid draft', async () => {
         const { result } = setup(
             'a',

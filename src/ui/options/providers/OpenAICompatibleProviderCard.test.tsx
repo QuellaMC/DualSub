@@ -324,6 +324,36 @@ describe('OpenAICompatibleProviderCard', () => {
         );
     });
 
+    it('enters a key for the address shown when it was typed, not for a service chosen after', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(() => Promise.resolve(modelsResponse([])))
+        );
+        const { save } = renderCard();
+        const address = screen.getByLabelText('setupAddress');
+        const commit = Promise.withResolvers<boolean>();
+        save.mockImplementationOnce(() => commit.promise);
+        fireEvent.change(address, {
+            target: { value: 'https://llm.example.com/v1' },
+        });
+        fireEvent.blur(address);
+        fireEvent.change(screen.getByLabelText('setupPasteKey'), {
+            target: { value: 'sk-llm' },
+        });
+        fireEvent.click(
+            screen.getByRole('button', { name: 'setupServiceGemini' })
+        );
+        commit.resolve(true);
+        await flush();
+        expect(save).toHaveBeenLastCalledWith(
+            {
+                openaiCompatibleApiKey: 'sk-llm',
+                openaiCompatibleApiKeyOrigin: 'https://llm.example.com',
+            },
+            'quiet'
+        );
+    });
+
     it('fills in a known service from one click, and asks for the address only for another', async () => {
         vi.stubGlobal(
             'fetch',
