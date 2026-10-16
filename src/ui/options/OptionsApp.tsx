@@ -356,7 +356,13 @@ export function OptionsApp() {
             case 'languages':
                 return <LanguagesSection {...sectionProps} />;
             case 'look':
-                return <LookSection {...sectionProps} onDraft={setLookDraft} />;
+                return (
+                    <LookSection
+                        {...sectionProps}
+                        onDraft={setLookDraft}
+                        advanced={advanced}
+                    />
+                );
             case 'timing':
                 return <TimingSection {...sectionProps} advanced={advanced} />;
             case 'translation':

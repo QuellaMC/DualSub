@@ -938,6 +938,24 @@ describe('OptionsApp', () => {
         ).toBe(true);
     });
 
+    it('says so when the settings a backup holds cannot be read', async () => {
+        await fakeBrowser.storage.local.set({ showAdvancedSettings: true });
+        const read = configService.readMultipleResultStrict.bind(configService);
+        vi.spyOn(configService, 'readMultipleResultStrict').mockImplementation(
+            (keys, options) =>
+                options?.includeSensitive !== true &&
+                keys.includes('subtitleFontScale') &&
+                keys.includes('loggingLevel')
+                    ? Promise.reject(new Error('storage broken'))
+                    : read(keys, options)
+        );
+        location.hash = '#advanced';
+        await renderReady();
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+            'Failed to load settings'
+        );
+    });
+
     it('shows the stored settings as JSON, without keys', async () => {
         await fakeBrowser.storage.local.set({
             deeplApiKey: 'never-shown',
@@ -1139,6 +1157,57 @@ describe('OptionsApp', () => {
         await waitFor(() => expect(customize).toHaveFocus());
         expect(customize).toHaveAttribute('aria-expanded', 'true');
         expect(location.hash).toBe('#look');
+    });
+
+    it("lands a search for a site's switch on that switch", async () => {
+        await renderReady();
+        fireEvent.change(screen.getByRole('searchbox'), {
+            target: { value: 'use dualsub here' },
+        });
+        fireEvent.click(
+            screen.getByRole('button', { name: /^Use DualSub here/ })
+        );
+        await waitFor(() =>
+            expect(document.activeElement).toHaveAttribute('role', 'switch')
+        );
+        expect(
+            document
+                .getElementById('site-on-netflix')
+                ?.contains(document.activeElement)
+        ).toBe(true);
+    });
+
+    it('finds the exact timing shift, turning on advanced options to show it', async () => {
+        await renderReady();
+        fireEvent.change(screen.getByRole('searchbox'), {
+            target: { value: 'exact shift' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: /^Exact shift/ }));
+        await waitFor(() =>
+            expect(document.activeElement).toHaveAttribute(
+                'id',
+                'timing-exact-field'
+            )
+        );
+    });
+
+    it('keeps fine-tuning among the advanced options', async () => {
+        location.hash = '#look';
+        await renderReady();
+        expect(
+            screen.queryByRole('button', {
+                name: 'Fine-tune size, height and spacing',
+            })
+        ).not.toBeInTheDocument();
+
+        fireEvent.click(
+            screen.getByRole('switch', { name: 'Show advanced options' })
+        );
+        expect(
+            await screen.findByRole('button', {
+                name: 'Fine-tune size, height and spacing',
+            })
+        ).toBeInTheDocument();
     });
 
     it('lands on the menu language picker from search', async () => {
