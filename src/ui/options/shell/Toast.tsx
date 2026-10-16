@@ -63,7 +63,6 @@ function ToastCard({
     const { id, undo } = toast;
 
     useEffect(() => onHold(held), [held, onHold]);
-    useEffect(() => () => onHold(false), [onHold]);
 
     const undoThenDismiss = useCallback((): void => {
         void undo?.().then((undone) => {
