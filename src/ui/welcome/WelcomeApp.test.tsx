@@ -324,6 +324,23 @@ describe('WelcomeApp', () => {
         ).not.toBeInTheDocument();
     });
 
+    it('asks for the service where a site keeps a top line to translate from', async () => {
+        await fakeBrowser.storage.sync.set({
+            selectedProvider: 'deepl',
+            translationFallback: false,
+            originalLanguage: 'en',
+            targetLanguage: 'en',
+            siteProfiles: { netflix: { originalLanguage: 'ko' } },
+        });
+        render(<WelcomeApp />);
+        expect(
+            await screen.findByText(
+                /finish setting up the translation service below/
+            )
+        ).toBeInTheDocument();
+        expect(screen.queryByText(/so one line shows/)).not.toBeInTheDocument();
+    });
+
     it('describes the lines as the saved layout sets them', async () => {
         await fakeBrowser.storage.sync.set({
             subtitleLayoutOrder: 'translation_top',
