@@ -576,7 +576,7 @@
         "message": "要解釋哪些內容"
     },
     "healthCovered": {
-        "message": "目前先由 %s 翻譯。"
+        "message": "目前先改用 %s。"
     },
     "healthCredentials": {
         "message": "服務不接受這個金鑰。"
@@ -1458,7 +1458,7 @@
         "message": "翻譯請求之間的間隔（毫秒）"
     },
     "translationFallbackHelp": {
-        "message": "你選的服務無法使用時，會先由 Microsoft 翻譯接手翻譯，接著是 Google 翻譯，直到服務恢復正常。關閉這個選項，字幕文字就只會傳給你選的服務。"
+        "message": "你選的服務無法使用時，會先改用 Microsoft 翻譯，接著是 Google 翻譯，直到服務恢復正常。關閉這個選項，字幕文字就只會傳給你選的服務。"
     },
     "translationFallbackTitle": {
         "message": "這個服務出問題時，繼續翻譯"
@@ -1519,5 +1519,23 @@
     },
     "welcomeClose": {
         "message": "你隨時可以關閉這個分頁。"
+    },
+    "startNeedsSetupTitle": {
+        "message": "%s 還沒設定好"
+    },
+    "startNeedsSetupCovered": {
+        "message": "設定好之前，會先改用 %s。"
+    },
+    "startNeedsSetupStopped": {
+        "message": "設定好之前，字幕不會翻譯。"
+    },
+    "sitesHideAllHelp": {
+        "message": "套用到所有網站。下面的網站也可以保留自己的選擇。"
+    },
+    "toastSitesHide": {
+        "message": "各網站本身的字幕：隱藏"
+    },
+    "toastSitesShow": {
+        "message": "各網站本身的字幕：顯示"
     }
 }

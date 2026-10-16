@@ -576,7 +576,7 @@
         "message": "解释哪些内容"
     },
     "healthCovered": {
-        "message": "现在暂时由 %s 翻译。"
+        "message": "现在先用%s。"
     },
     "healthCredentials": {
         "message": "密钥没有被接受。"
@@ -591,7 +591,7 @@
         "message": "它拒绝了请求。请检查模型和服务地址。"
     },
     "healthTitle": {
-        "message": "%s 现在用不了。"
+        "message": "%s：现在用不了。"
     },
     "helpAboutTitle": {
         "message": "关于 DualSub"
@@ -930,7 +930,7 @@
         "message": "谷歌翻译"
     },
     "providerGoogleHelp": {
-        "message": "同样马上就能用。如果 Microsoft 的翻译在你的语言里读着别扭，可以试试它。"
+        "message": "同样马上就能用。如果微软翻译在你的语言里读着别扭，可以试试它。"
     },
     "providerMicrosoft": {
         "message": "微软翻译"
@@ -1519,5 +1519,23 @@
     },
     "welcomeClose": {
         "message": "你随时可以关掉这个标签页。"
+    },
+    "startNeedsSetupTitle": {
+        "message": "%s：还没设置好"
+    },
+    "startNeedsSetupCovered": {
+        "message": "设置好之前，先用%s。"
+    },
+    "startNeedsSetupStopped": {
+        "message": "设置好之前，字幕不会被翻译。"
+    },
+    "sitesHideAllHelp": {
+        "message": "对所有网站都有效。下面的网站可以保留自己的选择。"
+    },
+    "toastSitesHide": {
+        "message": "网站自带的字幕：已隐藏"
+    },
+    "toastSitesShow": {
+        "message": "网站自带的字幕：已显示"
     }
 }

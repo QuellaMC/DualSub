@@ -156,7 +156,7 @@ export function OptionsApp() {
                 void followAllSites(
                     feedback,
                     scope,
-                    siteProfileOf(settings.siteProfiles, scope),
+                    settings.siteProfiles,
                     keys,
                     t('toastFollowsShared')
                 );

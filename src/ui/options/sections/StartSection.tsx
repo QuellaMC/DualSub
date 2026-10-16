@@ -5,13 +5,16 @@ import {
     platformHome,
     type PlatformId,
 } from '@/shared/platforms';
+import { KEYLESS_PROVIDERS, missingCredentials } from '@/shared/providers';
 import { AUTO_LANGUAGE } from '@/shared/subtitleLanguages';
 import { Icon } from '../../design/Icon';
 import { Switch } from '../../design/Switch';
+import { HealthNotice } from '../../HealthNotice';
 import type { Translate } from '../../hooks/useI18n';
 import { useSettings } from '../../hooks/useSettings';
 import { languageName } from '../../languageLabels';
 import { LanguageSelect } from '../../design/LanguageSelect';
+import { PROVIDER_NAME_KEYS } from '../../providerNames';
 import { SizePicker } from '../controls/SizePicker';
 import type { SectionId } from '../sections';
 import { SharedTag, SiteTag } from '../shell/scopeContext';
@@ -49,6 +52,21 @@ export function StartSection({
 }: SectionProps & { go: (section: SectionId) => void }) {
     const fromBrowser =
         settings.targetLanguage === getDefaultValue('targetLanguage');
+    const provider = settings.selectedProvider;
+    const providerName = t(PROVIDER_NAME_KEYS[provider]);
+    const unset = missingCredentials(provider, settings).length > 0;
+    // Without fallback, a service still to be set up translates nothing.
+    const stopped =
+        settings.subtitlesEnabled && unset && !settings.translationFallback;
+    const toTranslation = (
+        <button
+            type="button"
+            className="link-button"
+            onClick={() => go('translation')}
+        >
+            {t('helpGoTranslation')}
+        </button>
+    );
     const fixes: { labelKey: string; section: SectionId }[] = [
         { labelKey: 'startFixTiming', section: 'timing' },
         { labelKey: 'startFixTwice', section: 'sites' },
@@ -67,27 +85,39 @@ export function StartSection({
                 <div className="row">
                     <div className="status">
                         <span
-                            className={`status-icon ${settings.subtitlesEnabled ? 'ok' : 'off'}`}
+                            className={`status-icon ${settings.subtitlesEnabled && !stopped ? 'ok' : 'off'}`}
                             aria-hidden="true"
                         >
-                            <Icon name="check" />
+                            <Icon name={stopped ? 'alert' : 'check'} />
                         </span>
-                        <div>
-                            <div className="label">
-                                {t(
-                                    settings.subtitlesEnabled
-                                        ? 'startStatusReady'
-                                        : 'startStatusOff'
-                                )}
+                        {stopped ? (
+                            <div className="stack">
+                                <div className="label">
+                                    {t('startNeedsSetupTitle', providerName)}
+                                </div>
+                                <div className="help">
+                                    {t('startNeedsSetupStopped')}
+                                </div>
+                                {toTranslation}
                             </div>
-                            <div className="help">
-                                {t(
-                                    settings.subtitlesEnabled
-                                        ? 'startStatusReadyHelp'
-                                        : 'startStatusOffHelp'
-                                )}
+                        ) : (
+                            <div>
+                                <div className="label">
+                                    {t(
+                                        settings.subtitlesEnabled
+                                            ? 'startStatusReady'
+                                            : 'startStatusOff'
+                                    )}
+                                </div>
+                                <div className="help">
+                                    {t(
+                                        settings.subtitlesEnabled
+                                            ? 'startStatusReadyHelp'
+                                            : 'startStatusOffHelp'
+                                    )}
+                                </div>
                             </div>
-                        </div>
+                        )}
                     </div>
                     <div className="inline">
                         <span className="strong" id="start-enabled">
@@ -132,6 +162,27 @@ export function StartSection({
                     ))}
                 </div>
             </div>
+
+            {settings.subtitlesEnabled && unset && !stopped && (
+                <div className="notice" role="status">
+                    <Icon name="alert" />
+                    <div className="stack">
+                        <strong>
+                            {t('startNeedsSetupTitle', providerName)}
+                        </strong>
+                        <span>
+                            {t(
+                                'startNeedsSetupCovered',
+                                t(PROVIDER_NAME_KEYS[KEYLESS_PROVIDERS[0]])
+                            )}
+                        </span>
+                        {toTranslation}
+                    </div>
+                </div>
+            )}
+            <HealthNotice t={t} provider={provider}>
+                {toTranslation}
+            </HealthNotice>
 
             <h2>{t('startSetUpTitle')}</h2>
             <div className="card list">

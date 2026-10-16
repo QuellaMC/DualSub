@@ -19,14 +19,14 @@ The settings page holds every setting, the popup's included. Each change saves a
 - Timing: show the subtitles earlier or later in half-second steps
 - Translation: the translation service, its setup, and whether a free service covers when it fails
 - Word explanations: click a word in the subtitles to have an AI service explain it, through your own OpenAI or Gemini key
-- Sites: DualSub on or off for each site, and hiding each site's own subtitles
+- Sites: hiding the sites' own subtitles on every site or for one, and DualSub on or off for each site
 - Help: fixes for common problems
 
 "Show advanced options" adds exact values (text size, height, timing shift, and the pause between translation requests), per-site settings, the AI service's address and model, limits for word explanations, subtitle tracks to skip on Disney+, and the Advanced section: backup and restore, the settings as JSON, the logging level, a diagnostic report, and a reset that keeps your keys.
 
 ## Per-Site Settings
 
-Netflix and Disney+ can each keep their own value for these settings: dual subtitles on or off, hiding the site's own subtitles, the top line's language, official translations, the subtitle style and custom look, the translation color, size, spacing, position, line order and layout, and timing. A site stores only what differs from the settings for all sites; everything else follows them. The translation language, the translation service, word explanations, and API keys are the same on every site.
+Netflix and Disney+ can each keep their own value for these settings: dual subtitles on or off, hiding the site's own subtitles, the top line's language, official translations, the subtitle style and custom look, the translation color, size, spacing, position, line order and layout, and timing. A site stores only the values it keeps for itself; everything else follows the settings for all sites. The translation language, the translation service, word explanations, and API keys are the same on every site.
 
 In the settings page, with advanced options shown, pick a site in the bar at the top: what you change then gets a "Netflix only" tag, and "Use the value for all sites" drops the site's own value. The Sites section lists what each site keeps and removes it in one click.
 

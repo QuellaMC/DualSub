@@ -71,7 +71,9 @@ with a clean profile plus one seeded profile (see the upgrade-path tests in
     options, pick Netflix in the bar at the top, and change the size:
     it gets a "Netflix only" tag, the Netflix overlay follows, Disney+
     keeps the shared size, and "Use the value for all sites" drops it
-    again.
+    again. Choose DeepL without a key: Start says it isn't set up yet
+    and that Microsoft Translator translates until it is; turn
+    fallback off and Start says nothing is translated.
 17. Install the build into a clean profile: the welcome page opens once,
     with the browser's language picked and a two-line sample. Change the
     language there: the sample follows. Reload the extension from

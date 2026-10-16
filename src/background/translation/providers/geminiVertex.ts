@@ -8,15 +8,11 @@ import {
     readProviderSettings,
     type TranslationProvider,
 } from '../provider';
+import { missingCredentials, PROVIDER_CREDENTIALS } from '@/shared/providers';
 import { translationInstruction } from './prompt';
 
 const PROVIDER = 'vertex_gemini';
-const SETTINGS_KEYS = [
-    'vertexAccessToken',
-    'vertexProjectId',
-    'vertexLocation',
-    'vertexModel',
-] as const;
+const SETTINGS_KEYS = PROVIDER_CREDENTIALS[PROVIDER];
 
 /** Accepts `gemini-x`, `models/gemini-x`, or a full publisher path. */
 function shortModelName(model: string): string {
@@ -122,7 +118,7 @@ export const geminiVertexProvider: TranslationProvider = {
     },
     async translate(text, sourceLang, targetLang) {
         const settings = await readProviderSettings(PROVIDER, SETTINGS_KEYS);
-        if (SETTINGS_KEYS.some((key) => settings[key].trim() === '')) {
+        if (missingCredentials(PROVIDER, settings).length > 0) {
             throw missingCredential(PROVIDER, 'Vertex AI configuration');
         }
         return translateWithVertex(
