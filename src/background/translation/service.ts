@@ -12,18 +12,25 @@ import type { TranslationProvider } from './provider';
 import { TranslationProviderError } from './providerError';
 import { RateLimitExhaustedError, RequestPacer } from './rateLimiter';
 
-/** Provider configuration whose change makes every cached result stale. */
-export const TRANSLATION_CACHE_CONFIGURATION_KEYS = [
-    'deeplApiKey',
-    'deeplApiPlan',
-    'openaiCompatibleApiKey',
-    'openaiCompatibleBaseUrl',
-    'openaiCompatibleModel',
-    'vertexAccessToken',
-    'vertexProjectId',
-    'vertexLocation',
-    'vertexModel',
-] as const satisfies readonly SettingsKey[];
+/** Each provider's configuration. A change to any of it makes every
+ *  cached result stale; a change to the failing provider's ends its
+ *  recorded failure. */
+const PROVIDER_CONFIGURATION = {
+    google: [],
+    microsoft_edge: [],
+    deepl: ['deeplApiKey', 'deeplApiPlan'],
+    openai_compatible: [
+        'openaiCompatibleApiKey',
+        'openaiCompatibleBaseUrl',
+        'openaiCompatibleModel',
+    ],
+    vertex_gemini: [
+        'vertexAccessToken',
+        'vertexProjectId',
+        'vertexLocation',
+        'vertexModel',
+    ],
+} as const satisfies Record<ProviderId, readonly SettingsKey[]>;
 
 const CACHE_MAX_ENTRIES = 1000;
 const CACHE_TTL_MS = 5 * 60 * 1000;
@@ -151,6 +158,8 @@ export class TranslationService {
     /** Off until the stored choice is read: subtitle text reaches another
      *  provider only when the viewer's own setting says it may. */
     private fallbackEnabled = false;
+    /** Counts reads of the fallback choice; only the newest applies. */
+    private fallbackReads = 0;
     private health: TranslationHealth | null = null;
     /** The health in memory has not reached session storage yet. */
     private healthUnsaved = false;
@@ -198,21 +207,9 @@ export class TranslationService {
         } catch (error) {
             this.logger.error('Failed to load translation settings', error);
         }
+        await this.readFallback();
         try {
-            this.fallbackEnabled =
-                await this.deps.config.readStoredBooleanStrict(
-                    'translationFallback'
-                );
-        } catch (error) {
-            this.logger.warn(
-                'Fallback choice unreadable; translating with the selected provider only',
-                { reason: error instanceof Error ? error.name : 'unknown' }
-            );
-        }
-        try {
-            const health = await this.healthStore.read();
-            this.health =
-                health?.provider === this.selectedProvider ? health : null;
+            this.health = await this.healthStore.read();
         } catch (error) {
             this.logger.warn('Translation health unreadable', {
                 reason: error instanceof Error ? error.name : 'unknown',
@@ -227,6 +224,29 @@ export class TranslationService {
             provider: this.selectedProvider,
             delayMs: this.configuredDelayMs,
         });
+    }
+
+    /** Reads the stored fallback choice, failing closed: fallback is off from
+     *  the moment the choice changes until a genuinely stored true says
+     *  otherwise. A change event alone never turns it on, since a removed or
+     *  invalid value arrives as the default. */
+    private async readFallback(): Promise<void> {
+        const read = ++this.fallbackReads;
+        this.fallbackEnabled = false;
+        let enabled = false;
+        try {
+            enabled = await this.deps.config.readStoredBooleanStrict(
+                'translationFallback'
+            );
+        } catch (error) {
+            this.logger.warn(
+                'Fallback choice unreadable; translating with the selected provider only',
+                { reason: error instanceof Error ? error.name : 'unknown' }
+            );
+        }
+        if (read === this.fallbackReads) {
+            this.fallbackEnabled = enabled;
+        }
     }
 
     dispose(): void {
@@ -489,11 +509,11 @@ export class TranslationService {
             this.selectProvider(changes.selectedProvider);
         }
         if (changes.translationFallback !== undefined) {
-            this.fallbackEnabled = changes.translationFallback;
+            void this.readFallback();
         }
-        const invalidating = TRANSLATION_CACHE_CONFIGURATION_KEYS.filter(
-            (key) => changes[key] !== undefined
-        );
+        const invalidating = Object.values(PROVIDER_CONFIGURATION)
+            .flat()
+            .filter((key) => changes[key] !== undefined);
         if (invalidating.length > 0) {
             this.clearCache();
             this.logger.info(
@@ -501,12 +521,17 @@ export class TranslationService {
                 { changedKeys: invalidating }
             );
         }
-        // A new provider, credential, or fallback choice deserves a fresh
-        // try; the next lasting failure records itself again.
+        // A new provider or fallback choice, or new configuration for the
+        // failing provider, deserves a fresh try; the next lasting failure
+        // records itself again.
+        const failing = this.health?.provider;
         if (
-            invalidating.length > 0 ||
             changes.selectedProvider !== undefined ||
-            changes.translationFallback !== undefined
+            changes.translationFallback !== undefined ||
+            (failing !== undefined &&
+                PROVIDER_CONFIGURATION[failing].some(
+                    (key) => changes[key] !== undefined
+                ))
         ) {
             this.recordHealth(null);
         }
