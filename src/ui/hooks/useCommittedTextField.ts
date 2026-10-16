@@ -5,10 +5,6 @@ export interface CommittedTextField<T> {
     readonly value: T;
     /** The draft would be accepted by `validate`. */
     readonly valid: boolean;
-    /** What the control stands for: the draft when it validates, else the
-     *  persisted value. A setting saved with it can use this before the
-     *  draft's own save has landed. */
-    readonly effective: T;
     /** A commit was attempted with an invalid draft; show guidance. */
     readonly invalid: boolean;
     readonly change: (next: T) => void;
@@ -22,6 +18,10 @@ export interface CommittedTextField<T> {
     ) => Promise<boolean>;
     /** Discard the draft in favour of the persisted value. */
     readonly reset: () => void;
+    /** Resolves, once every save the control started has settled, to what
+     *  it stands for: the draft when that validates, else the persisted
+     *  value. A setting that belongs to it is saved for that value. */
+    readonly settled: () => Promise<T>;
     readonly handleKeyDown: (event: {
         key: string;
         preventDefault(): void;
@@ -47,6 +47,7 @@ export function useCommittedTextField<T>({
     const draftRef = useRef(value);
     const persistedRef = useRef(value);
     const dirtyRef = useRef(false);
+    const saving = useRef(new Set<Promise<boolean>>());
     const onCommitRef = useRef(onCommit);
     const validateRef = useRef(validate);
     onCommitRef.current = onCommit;
@@ -54,15 +55,21 @@ export function useCommittedTextField<T>({
 
     useEffect(() => {
         persistedRef.current = value;
-        if (Object.is(draftRef.current, value)) {
-            dirtyRef.current = false;
-        }
         if (!dirtyRef.current) {
             draftRef.current = value;
             setDraft(value);
             setAttempted(false);
         }
     }, [value]);
+
+    /** Whether `validate` accepts `candidate`; a throwing check does not. */
+    const accepts = useCallback((candidate: T): boolean => {
+        try {
+            return validateRef.current(candidate) === true;
+        } catch {
+            return false;
+        }
+    }, []);
 
     const change = useCallback((next: T) => {
         draftRef.current = next;
@@ -80,34 +87,33 @@ export function useCommittedTextField<T>({
     /** Persist `target`, the draft shown, with `persist`. A failure puts the
      *  persisted value back unless the draft has moved on since. */
     const persistDraft = useCallback(
-        async (
+        (
             target: T,
             persist: (draft: T) => Promise<boolean> | boolean
         ): Promise<boolean> => {
             dirtyRef.current = false;
-            let persisted = false;
-            try {
-                persisted = (await persist(target)) !== false;
-            } catch {
-                persisted = false;
-            }
-            if (!persisted && Object.is(draftRef.current, target)) {
-                reset();
-            }
-            return persisted;
+            const attempt = (async () => {
+                let persisted = false;
+                try {
+                    persisted = (await persist(target)) !== false;
+                } catch {
+                    persisted = false;
+                }
+                if (!persisted && Object.is(draftRef.current, target)) {
+                    reset();
+                }
+                return persisted;
+            })();
+            saving.current.add(attempt);
+            void attempt.then(() => saving.current.delete(attempt));
+            return attempt;
         },
         [reset]
     );
 
     const commit = useCallback(async (): Promise<boolean> => {
         const target = draftRef.current;
-        let accepted = false;
-        try {
-            accepted = validateRef.current(target) === true;
-        } catch {
-            accepted = false;
-        }
-        if (!accepted) {
+        if (!accepts(target)) {
             setAttempted(true);
             return false;
         }
@@ -116,7 +122,7 @@ export function useCommittedTextField<T>({
             return true;
         }
         return persistDraft(target, onCommitRef.current);
-    }, [persistDraft]);
+    }, [accepts, persistDraft]);
 
     const adopt = useCallback(
         (
@@ -131,6 +137,15 @@ export function useCommittedTextField<T>({
         [persistDraft]
     );
 
+    const settled = useCallback(async (): Promise<T> => {
+        while (saving.current.size > 0) {
+            await Promise.all(saving.current);
+        }
+        return accepts(draftRef.current)
+            ? draftRef.current
+            : persistedRef.current;
+    }, [accepts]);
+
     const handleKeyDown = useCallback(
         (event: { key: string; preventDefault(): void }) => {
             if (event.key === 'Enter') {
@@ -144,22 +159,17 @@ export function useCommittedTextField<T>({
         [commit, reset]
     );
 
-    let valid = false;
-    try {
-        valid = validateRef.current(draft) === true;
-    } catch {
-        valid = false;
-    }
+    const valid = accepts(draft);
 
     return {
         value: draft,
         valid,
-        effective: valid ? draft : value,
         invalid: attempted && !valid,
         change,
         commit,
         adopt,
         reset,
+        settled,
         handleKeyDown,
     };
 }

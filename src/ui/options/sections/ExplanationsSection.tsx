@@ -247,21 +247,26 @@ export function ExplanationsSection({
                                     autoComplete="off"
                                     placeholder={service.placeholder}
                                     value={apiKey}
-                                    onChange={(event) =>
-                                        void save(
-                                            provider === 'openai'
-                                                ? keyEntry(
-                                                      'openaiApiKey',
-                                                      event.target.value,
-                                                      baseUrl.effective
+                                    onChange={(event) => {
+                                        const key = event.target.value;
+                                        void (provider === 'openai'
+                                            ? baseUrl
+                                                  .settled()
+                                                  .then((address) =>
+                                                      save(
+                                                          keyEntry(
+                                                              'openaiApiKey',
+                                                              key,
+                                                              address
+                                                          ),
+                                                          'quiet'
+                                                      )
                                                   )
-                                                : {
-                                                      geminiApiKey:
-                                                          event.target.value,
-                                                  },
-                                            'quiet'
-                                        )
-                                    }
+                                            : save(
+                                                  { geminiApiKey: key },
+                                                  'quiet'
+                                              ));
+                                    }}
                                 />
                                 {!enabled && (
                                     <button

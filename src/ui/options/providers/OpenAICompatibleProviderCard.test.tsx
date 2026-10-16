@@ -152,6 +152,7 @@ describe('OpenAICompatibleProviderCard', () => {
         fireEvent.change(screen.getByLabelText('setupPasteKey'), {
             target: { value: 'sk-2' },
         });
+        await flush();
         expect(save).toHaveBeenCalledWith(
             {
                 openaiCompatibleApiKey: 'sk-2',
@@ -183,6 +184,7 @@ describe('OpenAICompatibleProviderCard', () => {
         fireEvent.blur(address);
         await flush();
         fireEvent.change(key, { target: { value: 'sk-llm' } });
+        await flush();
         expect(save).toHaveBeenLastCalledWith(
             {
                 openaiCompatibleApiKey: 'sk-llm',
@@ -195,6 +197,7 @@ describe('OpenAICompatibleProviderCard', () => {
         fireEvent.change(address, { target: { value: 'not a url' } });
         fireEvent.blur(address);
         fireEvent.change(key, { target: { value: 'sk-2' } });
+        await flush();
         expect(save).toHaveBeenLastCalledWith(
             {
                 openaiCompatibleApiKey: 'sk-2',
@@ -216,6 +219,7 @@ describe('OpenAICompatibleProviderCard', () => {
             screen.getByRole('button', { name: 'setupServiceGemini' })
         );
         fireEvent.change(key, { target: { value: 'AIza-key' } });
+        await flush();
         expect(save).toHaveBeenLastCalledWith(
             {
                 openaiCompatibleApiKey: 'AIza-key',
@@ -241,6 +245,7 @@ describe('OpenAICompatibleProviderCard', () => {
         fireEvent.change(screen.getByLabelText('setupPasteKey'), {
             target: { value: 'sk-3' },
         });
+        await flush();
         expect(save).toHaveBeenLastCalledWith(
             {
                 openaiCompatibleApiKey: 'sk-3',
@@ -261,19 +266,24 @@ describe('OpenAICompatibleProviderCard', () => {
             advanced: false,
         });
         const gemini = Promise.withResolvers<boolean>();
+        const openai = Promise.withResolvers<boolean>();
         save.mockImplementationOnce(() => gemini.promise);
-        save.mockImplementationOnce(() => new Promise(() => {}));
+        save.mockImplementationOnce(() => openai.promise);
         fireEvent.click(
             screen.getByRole('button', { name: 'setupServiceGemini' })
         );
         fireEvent.click(
             screen.getByRole('button', { name: 'setupServiceOpenAI' })
         );
-        gemini.resolve(false);
-        await flush();
         fireEvent.change(screen.getByLabelText('setupPasteKey'), {
             target: { value: 'sk-openai' },
         });
+        gemini.resolve(false);
+        await flush();
+        expect(save).toHaveBeenCalledTimes(2);
+
+        openai.resolve(true);
+        await flush();
         expect(save).toHaveBeenLastCalledWith(
             {
                 openaiCompatibleApiKey: 'sk-openai',
@@ -282,6 +292,36 @@ describe('OpenAICompatibleProviderCard', () => {
             'quiet'
         );
         await flush();
+    });
+
+    it('enters a key for the stored address when the address it waited for fails to save', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(() => Promise.resolve(modelsResponse([])))
+        );
+        const { save } = renderCard();
+        const address = screen.getByLabelText('setupAddress');
+        const commit = Promise.withResolvers<boolean>();
+        save.mockImplementationOnce(() => commit.promise);
+        fireEvent.change(address, {
+            target: { value: 'https://llm.example.com/v1' },
+        });
+        fireEvent.blur(address);
+        fireEvent.change(screen.getByLabelText('setupPasteKey'), {
+            target: { value: 'sk-4' },
+        });
+        await flush();
+        expect(save).toHaveBeenCalledTimes(1);
+
+        commit.resolve(false);
+        await flush();
+        expect(save).toHaveBeenLastCalledWith(
+            {
+                openaiCompatibleApiKey: 'sk-4',
+                openaiCompatibleApiKeyOrigin: 'https://api.openai.com',
+            },
+            'quiet'
+        );
     });
 
     it('fills in a known service from one click, and asks for the address only for another', async () => {

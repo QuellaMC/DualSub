@@ -56,14 +56,39 @@ describe('useCommittedTextField', () => {
         expect(onCommit).toHaveBeenCalledTimes(1);
     });
 
-    it('stands for a valid draft before it is persisted, else the persisted value', async () => {
-        const { result } = setup();
+    it('settles on a saved draft once its save lands, before the persisted value catches up', async () => {
+        const save = Promise.withResolvers<boolean>();
+        const { result } = setup(
+            'a',
+            vi.fn(() => save.promise)
+        );
+        act(() => result.current.change('next'));
+        act(() => {
+            void result.current.commit();
+        });
+        let landed = false;
+        const settled = result.current.settled().then((value) => {
+            landed = true;
+            return value;
+        });
+        await act(() => Promise.resolve());
+        expect(landed).toBe(false);
+
+        save.resolve(true);
+        expect(await settled).toBe('next');
+    });
+
+    it('settles on the persisted value once a save fails, or for an invalid draft', async () => {
+        const { result } = setup(
+            'a',
+            vi.fn(() => Promise.resolve(false))
+        );
         act(() => result.current.change('next'));
         await act(() => result.current.commit());
-        expect(result.current.effective).toBe('next');
+        expect(await result.current.settled()).toBe('a');
 
         act(() => result.current.change('  '));
-        expect(result.current.effective).toBe('a');
+        expect(await result.current.settled()).toBe('a');
     });
 
     it('keeps an invalid draft editable without persisting it', async () => {
@@ -86,14 +111,6 @@ describe('useCommittedTextField', () => {
         act(() => result.current.change('typing'));
         rerender({ value: 'c' });
         expect(result.current.value).toBe('typing');
-    });
-
-    it('follows external values again once the persisted value catches up with the draft', () => {
-        const { result, rerender } = setup();
-        act(() => result.current.change('b'));
-        rerender({ value: 'b' });
-        rerender({ value: 'c' });
-        expect(result.current.value).toBe('c');
     });
 
     it('shows an adopted value at once and persists it through its own save', async () => {

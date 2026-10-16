@@ -151,16 +151,21 @@ export function OpenAICompatibleProviderCard({
                                 className="field grow"
                                 autoComplete="off"
                                 value={apiKey}
-                                onChange={(event) =>
-                                    void save(
-                                        keyEntry(
-                                            'openaiCompatibleApiKey',
-                                            event.target.value,
-                                            baseUrlField.effective
-                                        ),
-                                        'quiet'
-                                    )
-                                }
+                                onChange={(event) => {
+                                    const key = event.target.value;
+                                    void baseUrlField
+                                        .settled()
+                                        .then((address) =>
+                                            save(
+                                                keyEntry(
+                                                    'openaiCompatibleApiKey',
+                                                    key,
+                                                    address
+                                                ),
+                                                'quiet'
+                                            )
+                                        );
+                                }}
                             />
                             <button
                                 type="button"
