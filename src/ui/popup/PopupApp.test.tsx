@@ -176,6 +176,27 @@ describe('PopupApp on a site DualSub works on', () => {
         ).toBeInTheDocument();
     });
 
+    it('notices the video going away while the popup is open', async () => {
+        stubTab(NETFLIX_WATCH, true);
+        render(<PopupApp />);
+        expect(
+            await screen.findByRole('heading', {
+                name: 'Working on this video',
+            })
+        ).toBeInTheDocument();
+
+        vi.mocked(browser.tabs.sendMessage).mockResolvedValue({
+            onPlayer: false,
+        } as never);
+        expect(
+            await screen.findByRole(
+                'heading',
+                { name: 'Ready on Netflix' },
+                { timeout: 3000 }
+            )
+        ).toBeInTheDocument();
+    });
+
     it('is ready before a video plays', async () => {
         stubTab('https://www.disneyplus.com/home');
         render(<PopupApp />);

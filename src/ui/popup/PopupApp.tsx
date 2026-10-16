@@ -11,8 +11,8 @@ import { ElsewherePopup } from './ElsewherePopup';
 import { PopupUnavailable } from './PopupShell';
 import { SitePopup } from './SitePopup';
 
-/** How soon the popup asks the tab again until a player shows: a session
- *  can finish starting, or a reloaded tab bring DualSub in, after it opens. */
+/** How soon the popup asks the tab again while it is open: a session can
+ *  finish starting, a reloaded tab bring DualSub in, or a video go away. */
 const STATUS_RECHECK_MS = 1000;
 
 /** A remote control for the site in the active tab, or the way to one. */
@@ -47,7 +47,7 @@ export function PopupApp() {
                     ? previous
                     : { site, status }
             );
-            if (site && status !== 'player') {
+            if (site) {
                 recheck = setTimeout(() => void read(), STATUS_RECHECK_MS);
             }
         };
