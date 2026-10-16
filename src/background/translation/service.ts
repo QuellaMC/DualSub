@@ -217,17 +217,17 @@ export class TranslationService {
     ): Promise<TranslationOutcome> {
         const generation = this.cacheGeneration;
         const selected = this.selectedProvider;
-        let selectedFailure: unknown = null;
-        let failure: unknown = null;
+        let selectedFailed = false;
+        let selectedFailure: unknown;
+        let failure: unknown;
         for (const providerId of this.providerChain(selected)) {
             const covering = providerId !== selected;
             // The chain was decided when the request began; the viewer may
             // have turned fallback off since.
             if (covering && !this.fallbackEnabled) {
-                throw (
-                    selectedFailure ??
-                    new TranslationConfigurationChangedError()
-                );
+                throw selectedFailed
+                    ? selectedFailure
+                    : new TranslationConfigurationChangedError();
             }
             try {
                 const outcome = await this.translateWith(
@@ -248,13 +248,14 @@ export class TranslationService {
                 }
                 if (!covering) {
                     this.recordFailure(selected, error);
+                    selectedFailed = true;
                     selectedFailure = error;
                 }
                 failure = error;
             }
         }
         // The selected provider's failure says whether a later try can work.
-        throw selectedFailure ?? failure;
+        throw selectedFailed ? selectedFailure : failure;
     }
 
     /** The selected provider unless a standing failure pauses it, then the
