@@ -1059,33 +1059,6 @@ class ConfigService {
     }
 
     /**
-     * Register the onInstalled defaults pass. The migration hook runs BEFORE
-     * defaults are written — the reverse order would resurrect retired keys
-     * and mis-scope credentials.
-     */
-    initializeDefaults(beforeDefaults?: () => Promise<void>): void {
-        browser.runtime.onInstalled.addListener((details) => {
-            if (details.reason !== 'install' && details.reason !== 'update') {
-                return;
-            }
-            void (async () => {
-                try {
-                    await beforeDefaults?.();
-                } catch (error) {
-                    this.logger.warn(
-                        'Pre-default configuration migration failed; continuing with schema defaults',
-                        {
-                            reason: details.reason,
-                            errorName: (error as Error)?.name,
-                        }
-                    );
-                }
-                await this.setDefaultsForMissingKeys();
-            })();
-        });
-    }
-
-    /**
      * Repair pass: persist canonical values for every key whose stored value
      * is missing, invalid, or non-canonical. Tolerates per-area read failures
      * (that area is skipped); throws only when every attempted repair write

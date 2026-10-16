@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
+import { configService } from '@/config/service';
 import {
     TEST_EXTENSION_ID,
     TEST_EXTENSION_ORIGIN,
@@ -104,5 +105,19 @@ describe('background cold start', () => {
         };
         onConnect.trigger(port);
         expect(port.disconnect).toHaveBeenCalledOnce();
+    });
+
+    it('repairs the settings once on install, then opens the welcome page', async () => {
+        const repair = vi.spyOn(configService, 'setDefaultsForMissingKeys');
+        const openTab = vi.spyOn(fakeBrowser.tabs, 'create');
+        background.main();
+        await fakeBrowser.runtime.onInstalled.trigger({
+            reason: 'install',
+        } as never);
+        await vi.waitFor(() => expect(openTab).toHaveBeenCalledOnce());
+        expect(repair).toHaveBeenCalledOnce();
+        expect(repair.mock.invocationCallOrder[0]).toBeLessThan(
+            openTab.mock.invocationCallOrder[0]!
+        );
     });
 });

@@ -1506,7 +1506,7 @@
         "message": "随便播放一个节目"
     },
     "welcomePlayHelp": {
-        "message": "两行字幕会自动出现：上面是视频的语言，下面是你的语言。"
+        "message": "两行字幕会自动出现：上面是视频的语言，下面是你的语言。视频本来就是你的语言时，只显示一行。"
     },
     "welcomeSettingsTitle": {
         "message": "想改点什么吗？"

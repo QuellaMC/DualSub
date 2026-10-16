@@ -3,7 +3,8 @@ import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { browser } from 'wxt/browser';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
-import { getDefaultValue } from '@/config/schema';
+import { getDefaultValue, type SettingsValues } from '@/config/schema';
+import { configService } from '@/config/service';
 import type { PlatformId } from '@/shared/platforms';
 import { useSettings } from './useSettings';
 
@@ -49,6 +50,26 @@ describe('useSettings', () => {
                 subtitleFontScale: 1.5,
             }
         );
+    });
+
+    it('keeps the newest save when an earlier one finishes after it', async () => {
+        const { result } = renderHook(() => useSettings(KEYS));
+        await waitFor(() => expect(result.current.status).toBe('ready'));
+        const slow = Promise.withResolvers<Partial<SettingsValues>>();
+        vi.spyOn(configService, 'setMultiple')
+            .mockReturnValueOnce(slow.promise)
+            .mockResolvedValueOnce({ targetLanguage: 'ko' });
+
+        let earlier: Promise<void> = Promise.resolve();
+        await act(async () => {
+            earlier = result.current.save({ targetLanguage: 'ja' });
+            await result.current.save({ targetLanguage: 'ko' });
+        });
+        await act(async () => {
+            slow.resolve({ targetLanguage: 'ja' });
+            await earlier;
+        });
+        expect(result.current.settings?.targetLanguage).toBe('ko');
     });
 
     it('rejects an invalid write and leaves the projection untouched', async () => {

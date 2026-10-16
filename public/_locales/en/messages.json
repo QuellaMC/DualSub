@@ -1506,7 +1506,7 @@
         "message": "Play anything"
     },
     "welcomePlayHelp": {
-        "message": "Two lines of subtitles appear on their own: the video's language on top, and yours underneath."
+        "message": "Two lines of subtitles appear on their own: the video's language on top, and yours underneath. A video already in your language shows one line."
     },
     "welcomeSettingsTitle": {
         "message": "Want to change something?"

@@ -62,7 +62,7 @@ describe('WelcomeApp', () => {
                 name: 'Welcome! DualSub is ready.',
             })
         ).toBeInTheDocument();
-        expect(document.title).toBe('Welcome to DualSub');
+        await waitFor(() => expect(document.title).toBe('Welcome to DualSub'));
         expect(
             screen.getByRole('img', { name: 'Subtitle preview' })
         ).toBeInTheDocument();

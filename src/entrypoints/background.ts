@@ -46,10 +46,6 @@ export default defineBackground(() => {
     markServiceReady('subtitle');
     markServiceReady('aiContext');
 
-    configService.initializeDefaults(async () => {
-        await migrateLegacyConfiguration();
-    });
-
     const settingsReady = (async () => {
         try {
             await migrateLegacyConfiguration();

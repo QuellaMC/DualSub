@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
     configService,
     type SettingsChanges,
@@ -143,13 +143,24 @@ export function useSettings<K extends SettingsKey>(
         };
     }, [view, keyList, includeSensitive, site]);
 
+    /** The save that last changed each key: an earlier save that finishes
+     *  later must not put its value back. */
+    const latestSaves = useRef(new Map<string, object>());
+
     const save = useCallback(
         async (changes: Partial<SettingsProjection<K>>): Promise<void> => {
+            const thisSave = {};
+            for (const key of Object.keys(changes)) {
+                latestSaves.current.set(key, thisSave);
+            }
             const written = await configService.setMultiple(
                 changes,
                 site ? { site, target: siteTarget } : undefined
             );
-            const relevant = pickWatched(written, keyList.split(' ') as K[]);
+            const stillLatest = (keyList.split(' ') as K[]).filter(
+                (key) => latestSaves.current.get(key) === thisSave
+            );
+            const relevant = pickWatched(written, stillLatest);
             setState((previous) => withChanges(previous, view, relevant));
         },
         [view, keyList, site, siteTarget]
