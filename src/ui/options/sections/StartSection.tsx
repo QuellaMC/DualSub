@@ -8,11 +8,15 @@ import { Icon } from '../../design/Icon';
 import { Switch } from '../../design/Switch';
 import { HealthNotice } from '../../HealthNotice';
 import {
-    callsForTranslation,
     translationStopped,
     useServiceUnset,
 } from '../../hooks/useServiceUnset';
-import { sitesOnTitle, useSitesOn } from '../../hooks/useSitesOn';
+import {
+    callsForTranslation,
+    sitesOn,
+    sitesOnTitle,
+    useSiteViews,
+} from '../../hooks/useSitesOn';
 import { languageName } from '../../languageLabels';
 import { LanguageSelect } from '../../design/LanguageSelect';
 import { PROVIDER_NAME_KEYS } from '../../providerNames';
@@ -35,18 +39,22 @@ export function StartSection({
     save,
     go,
 }: SectionProps & { go: (section: SectionId) => void }) {
-    const { sites, unreadable } = useSitesOn();
+    // Start shows one site's view under its scope, so every site's is read
+    // from the shared settings.
+    const { settings: shared, unreadable } = useSiteViews();
+    const sites = shared ? sitesOn(shared) : null;
     const working = sites ? sites.on.length > 0 : settings.subtitlesEnabled;
+    const translating = shared ? callsForTranslation(shared) : working;
     const fromBrowser = settings.targetLanguage === browserTargetLanguage();
     const provider = settings.selectedProvider;
     const providerName = t(PROVIDER_NAME_KEYS[provider]);
     const unset = useServiceUnset(settings);
-    const stopped = translationStopped(working, unset, settings);
-    const covered =
-        working &&
-        unset &&
-        settings.translationFallback &&
-        callsForTranslation(settings);
+    const stopped = translationStopped({
+        translating,
+        unset,
+        fallback: settings.translationFallback,
+    });
+    const covered = translating && unset && settings.translationFallback;
     const toTranslation = (
         <button
             type="button"

@@ -1,11 +1,39 @@
-import { siteProfileOf, type SettingsValues } from '@/config/schema';
+import {
+    siteProfileOf,
+    type SettingsValues,
+    type SiteSettingKey,
+} from '@/config/schema';
+import { isSameLanguage } from '@/shared/languageNormalization';
 import {
     PLATFORM_IDS,
     PLATFORM_NAMES,
     type PlatformId,
 } from '@/shared/platforms';
+import { AUTO_LANGUAGE } from '@/shared/subtitleLanguages';
 import type { Translate } from './useI18n';
 import { useSettings } from './useSettings';
+
+/** The shared settings each site's switch and languages are read from. */
+export const SITE_VIEW_KEYS = [
+    'subtitlesEnabled',
+    'originalLanguage',
+    'targetLanguage',
+    'siteProfiles',
+] as const;
+
+export type SiteViewSettings = Pick<
+    SettingsValues,
+    (typeof SITE_VIEW_KEYS)[number]
+>;
+
+/** A setting as `site` sees it: its own value, else the shared one. */
+function siteSees<K extends SiteSettingKey>(
+    settings: Pick<SettingsValues, K | 'siteProfiles'>,
+    site: PlatformId,
+    key: K
+): SettingsValues[K] {
+    return siteProfileOf(settings.siteProfiles, site)[key] ?? settings[key];
+}
 
 export interface SitesOn {
     readonly on: PlatformId[];
@@ -17,28 +45,48 @@ export interface SitesOn {
 export function sitesOn(
     settings: Pick<SettingsValues, 'subtitlesEnabled' | 'siteProfiles'>
 ): SitesOn {
-    const on = PLATFORM_IDS.filter(
-        (site) =>
-            siteProfileOf(settings.siteProfiles, site).subtitlesEnabled ??
-            settings.subtitlesEnabled
+    const on = PLATFORM_IDS.filter((site) =>
+        siteSees(settings, site, 'subtitlesEnabled')
     );
     return { on, off: PLATFORM_IDS.filter((site) => !on.includes(site)) };
 }
 
-/** `sitesOn`, read for a page whose own settings show one site's view or
- *  none of the switches; null until they are read, or when they cannot
- *  be. */
-export function useSitesOn(): {
-    readonly sites: SitesOn | null;
+/** The sites whose languages call on a translation service: the video's
+ *  line automatic, or fixed to a language other than the viewer's. A site
+ *  whose video line is the viewer's own language shows one line. */
+export function sitesTranslating(
+    settings: Pick<
+        SettingsValues,
+        'originalLanguage' | 'targetLanguage' | 'siteProfiles'
+    >
+): PlatformId[] {
+    return PLATFORM_IDS.filter((site) => {
+        const original = siteSees(settings, site, 'originalLanguage');
+        return (
+            original === AUTO_LANGUAGE ||
+            !isSameLanguage(original, settings.targetLanguage)
+        );
+    });
+}
+
+/** Whether a site where DualSub runs calls on a translation service. */
+export function callsForTranslation(settings: SiteViewSettings): boolean {
+    const { on } = sitesOn(settings);
+    return sitesTranslating(settings).some((site) => on.includes(site));
+}
+
+/** The shared view of every site's switch and languages, read for a page
+ *  whose own settings show one site's view; null until it is read, or
+ *  when it cannot be. */
+export function useSiteViews(): {
+    readonly settings: SiteViewSettings | null;
     readonly unreadable: boolean;
 } {
-    const { settings, status } = useSettings([
-        'subtitlesEnabled',
-        'siteProfiles',
-    ]);
-    return settings
-        ? { sites: sitesOn(settings), unreadable: false }
-        : { sites: null, unreadable: status === 'unavailable' };
+    const { settings, status } = useSettings(SITE_VIEW_KEYS);
+    return {
+        settings: settings ?? null,
+        unreadable: status === 'unavailable',
+    };
 }
 
 /** The sites named as a list in `language`: "Netflix and Disney+". */

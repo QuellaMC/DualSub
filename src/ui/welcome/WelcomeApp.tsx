@@ -20,7 +20,6 @@ import { Logo } from '../design/Logo';
 import { Switch } from '../design/Switch';
 import { useI18n, type Translate } from '../hooks/useI18n';
 import {
-    callsForTranslation,
     SERVICE_SETUP_KEYS,
     translationStopped,
     useServiceUnset,
@@ -30,7 +29,13 @@ import {
     type SettingsHandle,
     type SettingsProjection,
 } from '../hooks/useSettings';
-import { siteNames, sitesOn, sitesOnTitle } from '../hooks/useSitesOn';
+import {
+    callsForTranslation,
+    siteNames,
+    sitesOn,
+    sitesOnTitle,
+    sitesTranslating,
+} from '../hooks/useSitesOn';
 import { languageName } from '../languageLabels';
 import { LookPreview } from '../preview/LookPreview';
 import { sampleSubtitles, sampleVideoLanguage } from '../preview/sample';
@@ -85,11 +90,12 @@ function arrangementKey(
         SettingsProjection<WelcomeKey>,
         | 'originalLanguage'
         | 'targetLanguage'
+        | 'siteProfiles'
         | 'subtitleLayoutOrder'
         | 'subtitleLayoutOrientation'
     >
 ): string {
-    if (!callsForTranslation(settings)) {
+    if (sitesTranslating(settings).length === 0) {
         return 'welcomeArrangeOneLine';
     }
     if (settings.subtitleLayoutOrientation === 'row') {
@@ -199,7 +205,11 @@ function Welcome({
     const working = sites.on.length > 0;
     const everywhere = sites.off.length === 0;
     const unset = useServiceUnset(settings);
-    const stopped = translationStopped(working, unset, settings);
+    const stopped = translationStopped({
+        translating: callsForTranslation(settings),
+        unset,
+        fallback: settings.translationFallback,
+    });
     /** Dual subtitles were off on some site, say from another computer, so
      *  the page offers the switch, and keeps it once switched. */
     const [offeredSwitch, setOfferedSwitch] = useState(false);
