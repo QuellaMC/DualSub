@@ -239,7 +239,7 @@ describe('configService for one site', () => {
             },
         });
         const set = vi.spyOn(fakeBrowser.storage.sync, 'set');
-        const before = await configService.removeSiteValues(
+        const change = await configService.removeSiteValues(
             ['netflix', 'disneyplus'],
             ['hideOfficialSubtitles'],
             { hideOfficialSubtitles: true }
@@ -250,10 +250,7 @@ describe('configService for one site', () => {
         await fakeBrowser.storage.sync.set({
             siteProfiles: { disneyplus: { subtitleGap: 0.7 }, hulu: { x: 1 } },
         });
-        await configService.restoreSiteValues(before, [
-            ['netflix', 'hideOfficialSubtitles'],
-            ['disneyplus', 'hideOfficialSubtitles'],
-        ]);
+        await configService.putBack(change);
         expect(await stored()).toEqual({
             netflix: { hideOfficialSubtitles: false },
             disneyplus: { hideOfficialSubtitles: true, subtitleGap: 0.7 },
@@ -263,6 +260,73 @@ describe('configService for one site', () => {
             (await fakeBrowser.storage.sync.get('hideOfficialSubtitles'))
                 .hideOfficialSubtitles
         ).toBe(false);
+    });
+
+    it('puts back only what still holds what a change left, so a later edit stays', async () => {
+        await fakeBrowser.storage.sync.set({
+            subtitleFontScale: 1.2,
+            subtitleGap: 0.4,
+            hideOfficialSubtitles: false,
+            siteProfiles: {
+                netflix: { hideOfficialSubtitles: false },
+                disneyplus: { hideOfficialSubtitles: true },
+            },
+        });
+        const before = await configService.getMultiple([
+            'subtitleFontScale',
+            'subtitleGap',
+        ]);
+        const after = await configService.setMultiple({
+            subtitleFontScale: 1.6,
+            subtitleGap: 0.8,
+        });
+        const hidden = await configService.removeSiteValues(
+            ['netflix', 'disneyplus'],
+            ['hideOfficialSubtitles'],
+            { hideOfficialSubtitles: true }
+        );
+        // Another page changes one shared value and one site's choice.
+        await fakeBrowser.storage.sync.set({
+            subtitleGap: 1,
+            siteProfiles: { disneyplus: { hideOfficialSubtitles: false } },
+        });
+
+        await configService.putBack({ before, after });
+        await configService.putBack(hidden);
+        expect(
+            await fakeBrowser.storage.sync.get([
+                'subtitleFontScale',
+                'subtitleGap',
+                'hideOfficialSubtitles',
+            ])
+        ).toEqual({
+            subtitleFontScale: 1.2,
+            subtitleGap: 1,
+            hideOfficialSubtitles: false,
+        });
+        expect(await stored()).toEqual({
+            netflix: { hideOfficialSubtitles: false },
+            disneyplus: { hideOfficialSubtitles: false },
+        });
+    });
+
+    it("puts back a site's own value that a write through the site dropped", async () => {
+        await fakeBrowser.storage.sync.set({
+            subtitleFontScale: 1.2,
+            siteProfiles: { netflix: { subtitleFontScale: 1.4 } },
+        });
+        const before = await configService.getMultiple(['siteProfiles']);
+        const { siteProfiles } = await configService.setMultiple(
+            { subtitleFontScale: 1.2 },
+            { site: 'netflix', target: 'own' }
+        );
+        expect(siteProfiles).toEqual({});
+        expect(await stored()).toEqual({});
+
+        await configService.putBack({ before, after: { siteProfiles } });
+        expect(await stored()).toEqual({
+            netflix: { subtitleFontScale: 1.4 },
+        });
     });
 
     it('waits for a profile rewrite another extension page is making', async () => {

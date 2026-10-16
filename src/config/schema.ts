@@ -716,6 +716,21 @@ export function isSiteSettingKey(key: string): key is SiteSettingKey {
 /** One site's own value of one setting, as a `[site, key]` pair. */
 export type SiteValueRef = readonly [site: string, key: string];
 
+/** Whether two profile maps give a site the same own value of a setting,
+ *  or both none. */
+export function sameSiteValue(
+    left: SettingsValues['siteProfiles'],
+    right: SettingsValues['siteProfiles'],
+    [site, key]: SiteValueRef
+): boolean {
+    const was = left[site] ?? {};
+    const now = right[site] ?? {};
+    return (
+        Object.hasOwn(was, key) === Object.hasOwn(now, key) &&
+        sameSettingValue(was[key], now[key])
+    );
+}
+
 /** The site values that differ between two profile maps, including one
  *  present in only one of them. */
 export function changedSiteValues(
@@ -727,13 +742,11 @@ export function changedSiteValues(
         ...Object.keys(before),
         ...Object.keys(after),
     ])) {
-        const was = before[site] ?? {};
-        const now = after[site] ?? {};
-        for (const key of new Set([...Object.keys(was), ...Object.keys(now)])) {
-            if (
-                Object.hasOwn(was, key) !== Object.hasOwn(now, key) ||
-                !sameSettingValue(was[key], now[key])
-            ) {
+        for (const key of new Set([
+            ...Object.keys(before[site] ?? {}),
+            ...Object.keys(after[site] ?? {}),
+        ])) {
+            if (!sameSiteValue(before, after, [site, key])) {
                 changed.push([site, key]);
             }
         }

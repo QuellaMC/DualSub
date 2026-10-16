@@ -865,6 +865,36 @@ describe('OptionsApp', () => {
         );
     });
 
+    it('opens the newest of two advanced search results picked while advanced options turn on', async () => {
+        await renderReady();
+        const realSet = fakeBrowser.storage.local.set.bind(
+            fakeBrowser.storage.local
+        );
+        const held = Promise.withResolvers<void>();
+        vi.spyOn(fakeBrowser.storage.local, 'set').mockImplementationOnce(
+            (items: Record<string, unknown>) =>
+                held.promise.then(() => realSet(items)) as never
+        );
+        const search = (query: string, result: RegExp): void => {
+            fireEvent.change(screen.getByRole('searchbox'), {
+                target: { value: query },
+            });
+            fireEvent.click(screen.getByRole('button', { name: result }));
+        };
+        search('pause between', /^Pause between translation requests/);
+        search('backup', /^Backup/);
+        held.resolve();
+        await waitFor(() =>
+            expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+                'Advanced'
+            )
+        );
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+            'Advanced'
+        );
+    });
+
     it('lands on the menu language picker from search', async () => {
         await renderReady();
         fireEvent.change(screen.getByRole('searchbox'), {
@@ -1250,6 +1280,36 @@ describe('OptionsApp', () => {
             })
         );
         expect(await sync('hideOfficialSubtitles')).toBe(true);
+    });
+
+    it('leaves a hide choice made in another tab alone when the fix is undone', async () => {
+        await fakeBrowser.storage.sync.set({
+            hideOfficialSubtitles: false,
+            siteProfiles: {
+                netflix: { hideOfficialSubtitles: false },
+                disneyplus: { hideOfficialSubtitles: false },
+            },
+        });
+        location.hash = '#help';
+        await renderReady();
+        fireEvent.click(screen.getByRole('button', { name: 'Fix it for me' }));
+        const undo = await screen.findByRole('button', { name: 'Undo' });
+        await waitFor(async () =>
+            expect(await sync('siteProfiles')).toEqual({})
+        );
+        // Another tab has Disney+ hide its own subtitles after all.
+        await fakeBrowser.storage.sync.set({
+            siteProfiles: { disneyplus: { hideOfficialSubtitles: true } },
+        });
+
+        fireEvent.click(undo);
+        await waitFor(async () =>
+            expect(await sync('siteProfiles')).toEqual({
+                netflix: { hideOfficialSubtitles: false },
+                disneyplus: { hideOfficialSubtitles: true },
+            })
+        );
+        expect(await sync('hideOfficialSubtitles')).toBe(false);
     });
 
     it('shows no untranslated text while its catalog loads', async () => {
