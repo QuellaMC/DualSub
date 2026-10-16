@@ -62,6 +62,17 @@ class SelectedPausedError extends Error {
     override readonly name = 'SelectedPausedError';
 }
 
+/** Whether a later try of a request that failed this way can work. */
+export function retryableFailure(error: unknown): boolean {
+    if (
+        error instanceof RateLimitExhaustedError ||
+        error instanceof TranslationConfigurationChangedError
+    ) {
+        return true;
+    }
+    return error instanceof TranslationProviderError && error.retryable;
+}
+
 export interface TranslationOutcome {
     readonly translatedText: string;
     readonly cached: boolean;
@@ -285,24 +296,42 @@ export class TranslationService {
         }
         let selectedFailed = false;
         let selectedFailure: unknown;
-        let failure: unknown;
-        const chain = this.providerChain(selected);
-        for (const providerId of chain) {
-            const covering = providerId !== selected;
+        if (!this.sitsOut(selected)) {
             try {
                 const outcome = await this.translateWith(
-                    providerId,
+                    selected,
                     text,
                     sourceLang,
                     targetLang,
                     generation,
-                    covering
+                    false
                 );
-                if (covering) {
-                    this.recordCover(selected, providerId);
-                } else {
-                    this.recordHealth(null);
+                this.recordHealth(null);
+                return outcome;
+            } catch (error) {
+                if (error instanceof TranslationConfigurationChangedError) {
+                    throw error;
                 }
+                if (!(error instanceof SelectedPausedError)) {
+                    this.recordFailure(selected, error);
+                    selectedFailed = true;
+                    selectedFailure = error;
+                }
+            }
+        }
+        // The covers the viewer allows now, not when the request began.
+        const coverFailures: unknown[] = [];
+        for (const cover of this.coversFor(selected)) {
+            try {
+                const outcome = await this.translateWith(
+                    cover,
+                    text,
+                    sourceLang,
+                    targetLang,
+                    generation,
+                    true
+                );
+                this.recordCover(selected, cover);
                 return outcome;
             } catch (error) {
                 if (error instanceof TranslationConfigurationChangedError) {
@@ -313,37 +342,31 @@ export class TranslationService {
                         ? selectedFailure
                         : new TranslationConfigurationChangedError();
                 }
-                if (error instanceof SelectedPausedError) {
-                    // The covers after it take the request. A chain with none
-                    // began while fallback was off, so the request starts over.
-                    if (chain.length === 1) {
-                        throw new TranslationConfigurationChangedError();
-                    }
-                    continue;
-                }
-                if (!covering) {
-                    this.recordFailure(selected, error);
-                    selectedFailed = true;
-                    selectedFailure = error;
-                }
-                failure = error;
+                coverFailures.push(error);
             }
         }
         this.recordCover(selected, null);
-        // The selected provider's failure says whether a later try can work.
-        throw selectedFailed ? selectedFailure : failure;
+        // The selected provider's failure says whether a later try can work;
+        // without one, any cover that may work then does.
+        throw selectedFailed
+            ? selectedFailure
+            : (coverFailures.find(retryableFailure) ?? coverFailures.at(-1));
     }
 
-    /** The selected provider unless a standing failure pauses it, then the
-     *  keyless providers that may cover for it. */
-    private providerChain(selected: ProviderId): ProviderId[] {
-        const covered = this.fallbackEnabled
+    /** The keyless providers the viewer lets cover for `selected`, in the
+     *  order they try. */
+    private coversFor(selected: ProviderId): ProviderId[] {
+        return this.fallbackEnabled
             ? KEYLESS_PROVIDERS.filter(
                   (id) => id !== selected && this.providers.has(id)
               )
             : [];
-        const paused = covered.length > 0 && this.isPaused(selected);
-        return paused ? covered : [selected, ...covered];
+    }
+
+    /** Whether requests leave `selected` to its covers: a standing failure
+     *  pauses it while a cover stands by. */
+    private sitsOut(selected: ProviderId): boolean {
+        return this.isPaused(selected) && this.coversFor(selected).length > 0;
     }
 
     private isPaused(provider: ProviderId): boolean {
@@ -446,10 +469,7 @@ export class TranslationService {
                     this.configuredDelayMs
                 );
                 this.assertCurrent(generation, covering);
-                if (
-                    !covering &&
-                    !this.providerChain(providerId).includes(providerId)
-                ) {
+                if (!covering && this.sitsOut(providerId)) {
                     throw new SelectedPausedError();
                 }
                 const translatedText = await provider.translate(
@@ -487,9 +507,8 @@ export class TranslationService {
     }
 
     /** Throws when a newer generation began, or when a covering attempt
-     *  lost the viewer's consent: the chain was decided when the request
-     *  began, and fallback may have gone off since, even while the attempt
-     *  waited its turn. */
+     *  lost the viewer's consent: fallback may have gone off since the
+     *  covers were chosen, even while the attempt waited its turn. */
     private assertCurrent(generation: number, covering: boolean): void {
         if (this.generation !== generation) {
             throw new TranslationConfigurationChangedError();
