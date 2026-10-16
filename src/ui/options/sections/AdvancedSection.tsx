@@ -118,24 +118,6 @@ function changeCount(
     ).length;
 }
 
-/** Make `write` of `changes` land whole or not at all: the storage areas
- *  are written one after another, so when a later one fails, what the
- *  earlier ones took is put back. */
-async function wholly(
-    changes: Partial<SettingsValues>,
-    write: () => Promise<unknown>
-): Promise<void> {
-    const before = await configService.getMultiple(Object.keys(changes));
-    try {
-        await write();
-    } catch (error) {
-        await configService
-            .putBack({ before, after: changes })
-            .catch(() => undefined);
-        throw error;
-    }
-}
-
 function download(name: string, text: string): void {
     const url = URL.createObjectURL(
         new Blob([text], { type: 'application/json' })
@@ -184,13 +166,11 @@ export function AdvancedSection({ t, settings, save }: SectionProps) {
         let change: SettingsChange = { before: {}, after: {} };
         void feedback.apply(
             async () => {
-                const changes = await build();
-                await wholly(changes, async () => {
-                    change = (await configService.setMultiple(changes)).change;
-                });
+                change = (await configService.setMultiple(await build()))
+                    .change;
             },
             message,
-            () => wholly(change.before, () => configService.putBack(change))
+            () => configService.putBack(change)
         );
     };
 

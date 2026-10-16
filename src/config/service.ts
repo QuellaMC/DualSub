@@ -173,6 +173,18 @@ function withSiteValue(
     return withSiteProfile(profiles, site, own);
 }
 
+/** `values` of `keys` alone. */
+function pickValues(
+    values: Partial<SettingsValues>,
+    keys: readonly string[]
+): Partial<SettingsValues> {
+    return Object.fromEntries(
+        keys
+            .filter((key) => Object.hasOwn(values, key))
+            .map((key) => [key, values[key as SettingsKey]])
+    );
+}
+
 function detach<T>(value: T): T {
     return value !== null && typeof value === 'object'
         ? structuredClone(value)
@@ -641,9 +653,10 @@ class ConfigService {
 
     /**
      * Multi-key write. Validates everything first (nothing is written when any
-     * key/value is invalid), then writes each storage area independently and
-     * aggregates area failures. It takes its turn after every earlier write,
-     * made in any extension page, and reads what it replaces in that turn.
+     * key/value is invalid), then writes each storage area; when one fails,
+     * the others get back what they held, so the write lands whole or not at
+     * all. It takes its turn after every earlier write, made in any extension
+     * page, and reads what it replaces in that turn.
      */
     setMultiple(
         settings: Partial<SettingsValues>,
@@ -714,35 +727,42 @@ class ConfigService {
             { includeSensitive: true }
         );
 
+        const taken: string[] = [];
         const failures: { area: StorageArea; error: unknown }[] = [];
-        let successes = 0;
         for (const area of STORAGE_AREAS) {
-            if (Object.keys(byArea[area]).length === 0) {
+            const items = byArea[area];
+            if (Object.keys(items).length === 0) {
                 continue;
             }
             try {
-                await this.setToStorage(area, byArea[area]);
-                successes += 1;
+                await this.setToStorage(area, items);
+                taken.push(...Object.keys(items));
             } catch (error) {
                 failures.push({ area, error });
             }
         }
 
-        if (
-            Object.hasOwn(byArea.sync, 'loggingLevel') &&
-            !failures.some((failure) => failure.area === 'sync')
-        ) {
-            setLoggingLevel(byArea.sync.loggingLevel as number);
-        }
-
         if (failures.length > 0) {
-            const completeFailure = successes === 0;
-            throw new ConfigWriteError(
-                completeFailure
-                    ? `setMultiple() failed completely: ${failures.length} storage area(s) failed`
-                    : `setMultiple() completed with partial failures: ${successes} area(s) succeeded, ${failures.length} area(s) failed`,
-                { completeFailure, errors: failures }
+            // A write lands whole or not at all: what the other areas took
+            // goes back to what this turn read, where nothing changed it since.
+            const putBack = await this.restore({
+                before: pickValues(before, taken),
+                after: pickValues(after, taken),
+            }).then(
+                () => true,
+                () => false
             );
+            throw new ConfigWriteError(
+                taken.length === 0
+                    ? `setMultiple() failed completely: ${failures.length} storage area(s) failed`
+                    : putBack
+                      ? `setMultiple() failed: ${failures.length} storage area(s) failed, and what the others took was put back`
+                      : `setMultiple() completed with partial failures: ${failures.length} storage area(s) failed, and what the others took could not be put back`,
+                { completeFailure: putBack, errors: failures }
+            );
+        }
+        if (Object.hasOwn(byArea.sync, 'loggingLevel')) {
+            setLoggingLevel(byArea.sync.loggingLevel as number);
         }
         return detach({
             written: Object.hasOwn(after, 'siteProfiles')
@@ -839,38 +859,40 @@ class ConfigService {
      * Each value it wrote counts whole, and each site value it changed on
      * its own.
      */
-    putBack({ before, after }: SettingsChange): Promise<void> {
-        return inTurn(async () => {
-            const { siteProfiles: left, ...wrote } = after;
-            const { values: now } = await this.readMultipleResultStrict(
-                Object.keys(after),
-                { includeSensitive: true }
+    putBack(change: SettingsChange): Promise<void> {
+        return inTurn(() => this.restore(change));
+    }
+
+    /** `putBack` in a turn already taken. */
+    private async restore({ before, after }: SettingsChange): Promise<void> {
+        const { siteProfiles: left, ...wrote } = after;
+        const { values: now } = await this.readMultipleResultStrict(
+            Object.keys(after),
+            { includeSensitive: true }
+        );
+        const writes: Record<string, unknown> = {};
+        for (const [key, value] of Object.entries(wrote)) {
+            if (
+                isSettingsKey(key) &&
+                sameSettingValue(now[key], prepareSettingValue(key, value))
+            ) {
+                writes[key] = before[key];
+            }
+        }
+        if (left) {
+            const was = before.siteProfiles ?? {};
+            const stored = now.siteProfiles ?? {};
+            const kept = changedSiteValues(was, left).filter((value) =>
+                sameSiteValue(stored, left, value)
             );
-            const writes: Record<string, unknown> = {};
-            for (const [key, value] of Object.entries(wrote)) {
-                if (
-                    isSettingsKey(key) &&
-                    sameSettingValue(now[key], prepareSettingValue(key, value))
-                ) {
-                    writes[key] = before[key];
-                }
-            }
-            if (left) {
-                const was = before.siteProfiles ?? {};
-                const stored = now.siteProfiles ?? {};
-                const kept = changedSiteValues(was, left).filter((value) =>
-                    sameSiteValue(stored, left, value)
+            if (kept.length > 0) {
+                writes.siteProfiles = kept.reduce(
+                    (profiles, value) => withSiteValue(profiles, value, was),
+                    stored
                 );
-                if (kept.length > 0) {
-                    writes.siteProfiles = kept.reduce(
-                        (profiles, value) =>
-                            withSiteValue(profiles, value, was),
-                        stored
-                    );
-                }
             }
-            await this.writeMultiple(writes);
-        });
+        }
+        await this.writeMultiple(writes);
     }
 
     // ------------------------------------------------------ change broadcast
