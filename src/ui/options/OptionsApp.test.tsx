@@ -1000,6 +1000,58 @@ describe('OptionsApp', () => {
         );
     });
 
+    it('lands on a searched setting that shows once its section reads its settings', async () => {
+        await renderReady();
+        fireEvent.change(screen.getByRole('searchbox'), {
+            target: { value: 'hide' },
+        });
+        fireEvent.click(
+            screen.getByRole('button', {
+                name: /^Hide the site's own subtitles/,
+            })
+        );
+        await waitFor(() =>
+            expect(
+                document
+                    .getElementById('hide-all')
+                    ?.contains(document.activeElement)
+            ).toBe(true)
+        );
+    });
+
+    it('takes an address search to the address, or to the service that has one', async () => {
+        await fakeBrowser.storage.local.set({ showAdvancedSettings: true });
+        await fakeBrowser.storage.sync.set({ aiContextProvider: 'gemini' });
+        await renderReady();
+        const searchAddress = (): void => {
+            fireEvent.change(screen.getByRole('searchbox'), {
+                target: { value: 'address' },
+            });
+            fireEvent.click(
+                screen.getByRole('button', { name: /^Service address/ })
+            );
+        };
+        searchAddress();
+        await waitFor(() =>
+            expect(document.activeElement).toHaveAttribute(
+                'id',
+                'explain-provider-openai'
+            )
+        );
+
+        fireEvent.click(document.activeElement as HTMLElement);
+        await waitFor(async () =>
+            expect(await sync('aiContextProvider')).toBe('openai')
+        );
+        searchAddress();
+        await waitFor(() =>
+            expect(document.activeElement).toHaveAttribute(
+                'id',
+                'openaiBaseUrl'
+            )
+        );
+    });
+
     it('lands on the menu language picker from search', async () => {
         await renderReady();
         fireEvent.change(screen.getByRole('searchbox'), {

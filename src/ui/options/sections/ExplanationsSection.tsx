@@ -230,6 +230,7 @@ export function ExplanationsSection({
                                 {(['gemini', 'openai'] as const).map((id) => (
                                     <button
                                         key={id}
+                                        id={`explain-provider-${id}`}
                                         type="button"
                                         aria-pressed={provider === id}
                                         onClick={() =>
@@ -439,7 +440,7 @@ export function ExplanationsSection({
                                         ))}
                                     </datalist>
                                 </div>
-                                <div className="control">
+                                <div className="control" id="explain-address">
                                     <label htmlFor="openaiBaseUrl">
                                         {t('setupAddress')}
                                     </label>

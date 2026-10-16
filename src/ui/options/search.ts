@@ -145,6 +145,13 @@ const ENTRIES: readonly SearchEntry[] = [
         anchors: ['explain-limits'],
     },
     {
+        labelKey: 'setupAddress',
+        wordsKey: 'searchWordsAddress',
+        section: 'explanations',
+        advanced: true,
+        anchors: ['explain-address', 'explain-provider-openai'],
+    },
+    {
         labelKey: 'sitesUseHere',
         wordsKey: 'searchWordsSiteOnOff',
         section: 'sites',

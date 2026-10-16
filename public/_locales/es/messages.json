@@ -1401,7 +1401,10 @@
         "message": "tema oscuro claro modo nocturno noche luz negro blanco"
     },
     "searchWordsLimits": {
-        "message": "modelos limites tiempo espera máximo maximo intentos reintentos caché cache memoria recordar respuestas dirección direccion url solicitudes minuto segundos"
+        "message": "modelos limites tiempo espera máximo maximo intentos reintentos caché cache memoria recordar respuestas solicitudes minuto segundos"
+    },
+    "searchWordsAddress": {
+        "message": "dirección direccion url servidor punto de acceso"
     },
     "searchWordsSiteOnOff": {
         "message": "netflix disney sitios página pagina web desactivar desactivado encender apagar prender aqui"

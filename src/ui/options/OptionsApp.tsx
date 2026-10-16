@@ -147,27 +147,41 @@ export function OptionsApp() {
         if (!arrival) {
             return;
         }
-        const target =
-            arrival.anchors.length === 0
-                ? document.querySelector<HTMLElement>('.content h1')
-                : arrival.anchors
-                      .map((id) => document.getElementById(id))
-                      .find((element) => element !== null);
-        if (!target) {
+        const land = (): boolean => {
+            const target =
+                arrival.anchors.length === 0
+                    ? document.querySelector<HTMLElement>('.content h1')
+                    : arrival.anchors
+                          .map((id) => document.getElementById(id))
+                          .find((element) => element !== null);
+            if (!target) {
+                return false;
+            }
+            target.scrollIntoView({ block: 'start' });
+            const focused =
+                arrival.anchors.length === 0
+                    ? target
+                    : (target.querySelector<HTMLElement>(FOCUSABLE) ?? target);
+            focused.focus({ preventScroll: true });
+            // A folded disclosure opens to show what was searched for.
+            if (focused.getAttribute('aria-expanded') === 'false') {
+                focused.click();
+            }
+            setArrival(null);
+            return true;
+        };
+        if (land()) {
             return;
         }
-        target.scrollIntoView({ block: 'start' });
-        const focused =
-            arrival.anchors.length === 0
-                ? target
-                : (target.querySelector<HTMLElement>(FOCUSABLE) ?? target);
-        focused.focus({ preventScroll: true });
-        // A folded disclosure opens to show what was searched for.
-        if (focused.getAttribute('aria-expanded') === 'false') {
-            focused.click();
-        }
-        setArrival(null);
-    }, [arrival, settings]);
+        // A section that reads settings of its own shows the target later.
+        const observer = new MutationObserver(() => {
+            if (land()) {
+                observer.disconnect();
+            }
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+        return () => observer.disconnect();
+    }, [arrival]);
 
     const holdToast = useCallback((held: boolean) => {
         if (toastTimer.current) {
