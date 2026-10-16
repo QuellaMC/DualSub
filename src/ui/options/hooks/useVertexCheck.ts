@@ -7,6 +7,7 @@ import { vertexTokenExpired } from '@/shared/providers';
 import { mintAccessToken, parseServiceAccountKey } from '@/shared/vertexAuth';
 import type { Translate } from '../../hooks/useI18n';
 import { errorMessage, type SaveSettings, type TestResult } from '../types';
+import { useNow } from './useNow';
 
 const EXPIRING_SOON_MS = 5 * 60 * 1000;
 
@@ -58,16 +59,17 @@ export function useVertexCheck(
     const [importing, setImporting] = useState(false);
     const generation = useRef(0);
     const { accessToken, projectId } = credentials;
+    const now = useNow([tokenExpiresAt - EXPIRING_SOON_MS, tokenExpiresAt]);
 
     useEffect(() => {
         generation.current += 1;
         setTesting(false);
         setResult(
             accessToken && projectId
-                ? configuredStatus(t, tokenExpiresAt, Date.now())
+                ? configuredStatus(t, tokenExpiresAt, now)
                 : { tone: 'error', message: t('vertexNotConfiguredEphemeral') }
         );
-    }, [accessToken, projectId, tokenExpiresAt, t]);
+    }, [accessToken, projectId, tokenExpiresAt, now, t]);
 
     const runCheck = useCallback(
         (target: VertexCredentials) => {

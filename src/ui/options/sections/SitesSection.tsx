@@ -43,6 +43,19 @@ export function ownSettingKeys(profile: SiteProfile): SiteSettingKey[] {
     return Object.keys(profile) as SiteSettingKey[];
 }
 
+/** A card whose settings could not be read: its title, and that it shows
+ *  nothing else until they are. */
+function UnreadableCard({ t, title }: { t: Translate; title: string }) {
+    return (
+        <div className="card">
+            <h2 className="label">{title}</h2>
+            <p className="notice danger" role="alert">
+                {t('settingsLoadFailed')}
+            </p>
+        </div>
+    );
+}
+
 /** Track filters apply where the subtitle pipeline reads them. */
 const FILTERED_SITES: readonly PlatformId[] = ['disneyplus'];
 
@@ -72,14 +85,7 @@ function SiteCard({
     const { settings } = handle;
     const name = PLATFORM_NAMES[site];
     if (handle.status === 'unavailable') {
-        return (
-            <div className="card">
-                <h2 className="label">{name}</h2>
-                <p className="notice danger" role="alert">
-                    {t('settingsLoadFailed')}
-                </p>
-            </div>
-        );
+        return <UnreadableCard t={t} title={name} />;
     }
     if (!settings) {
         return null;
@@ -322,6 +328,9 @@ function SiteCard({
 function SharedHide({ t }: { t: Translate }) {
     const feedback = useFeedback();
     const handle = useSettings(['hideOfficialSubtitles', 'siteProfiles']);
+    if (handle.status === 'unavailable') {
+        return <UnreadableCard t={t} title={t('sitesHideTitle')} />;
+    }
     if (!handle.settings) {
         return null;
     }
