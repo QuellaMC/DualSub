@@ -135,6 +135,7 @@ async function runMigration(): Promise<MigrationSummary> {
             ...RETIRED_SYNC_KEYS,
         ]),
         browser.storage.local.get([
+            ...DEVICE_LOCAL_CREDENTIAL_KEYS,
             'vertexServiceAccount',
             ...RETIRED_LOCAL_KEYS,
         ]),
@@ -189,7 +190,7 @@ async function runMigration(): Promise<MigrationSummary> {
     }
 
     const localUpdates = await inTurn(() =>
-        settleCredentials(syncItems, syncUpdates)
+        settleCredentials({ sync: syncItems, local: localItems }, syncUpdates)
     );
     if (Object.keys(syncUpdates).length > 0) {
         await browser.storage.sync.set(syncUpdates);
@@ -226,13 +227,20 @@ async function runMigration(): Promise<MigrationSummary> {
 }
 
 /**
- * Move credentials synced by v2 into empty local slots, and bind each key
- * without a recorded origin, from the local credentials stored by now. It
- * runs in turn with key entries, so a key entered meanwhile is neither
- * overwritten nor bound to another origin.
+ * Settle the local credentials as the migration found storage: move each
+ * credential v2 synced into a slot that was empty, and bind it, like each
+ * key with no recorded origin (stored before keys recorded one, or by an
+ * older version since), to the address set then. It runs in turn with
+ * every settings write, and an edit made since the migration looked is
+ * newer and wins: a slot filled or emptied since keeps what it holds, a key
+ * entered since keeps its own origin, and an address stored since is a
+ * change of address, which leaves a key with the one it was entered for.
  */
 async function settleCredentials(
-    syncItems: Record<string, unknown>,
+    found: {
+        readonly sync: Record<string, unknown>;
+        readonly local: Record<string, unknown>;
+    },
     syncUpdates: Record<string, unknown>
 ): Promise<Record<string, unknown>> {
     const stored = await browser.storage.local.get([
@@ -241,21 +249,23 @@ async function settleCredentials(
     ]);
     const updates: Record<string, unknown> = {};
     for (const key of DEVICE_LOCAL_CREDENTIAL_KEYS) {
-        const value: unknown = syncItems[key];
-        if (typeof value === 'string' && value.trim() && !stored[key]) {
+        const value: unknown = found.sync[key];
+        if (
+            typeof value === 'string' &&
+            value.trim() &&
+            !found.local[key] &&
+            !stored[key]
+        ) {
             updates[key] = value;
         }
     }
-    // A key with no recorded origin, stored before keys recorded one or by
-    // an older version since, or one moved here from sync just now, was
-    // entered for the address set now.
     for (const [key, { address, origin }] of KEY_BINDINGS) {
         if (Object.hasOwn(updates, key) || (stored[key] && !stored[origin])) {
             updates[origin] =
                 originOf(
                     resolvedAddress(
                         address,
-                        syncUpdates[address] ?? syncItems[address]
+                        syncUpdates[address] ?? found.sync[address]
                     )
                 ) ?? '';
         }

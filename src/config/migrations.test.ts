@@ -15,6 +15,28 @@ async function localState(): Promise<Record<string, unknown>> {
     return fakeBrowser.storage.local.get(null);
 }
 
+/** Make `edit` once the migration has found storage and before its turn,
+ *  as a settings page could. */
+function editOnceItLooks(edit: () => Promise<unknown>): void {
+    const read = browser.storage.local.get.bind(browser.storage.local);
+    let edited = false;
+    vi.spyOn(browser.storage.local, 'get').mockImplementation(((
+        keys: string[] | null
+    ) =>
+        read(keys).then(async (items) => {
+            // Only the read that finds storage: the edit's own reads pass.
+            if (
+                !edited &&
+                Array.isArray(keys) &&
+                keys.includes('vertexServiceAccount')
+            ) {
+                edited = true;
+                await edit();
+            }
+            return items;
+        })) as never);
+}
+
 describe('migrateLegacyConfiguration', () => {
     beforeEach(async () => {
         await fakeBrowser.storage.sync.clear();
@@ -184,6 +206,44 @@ describe('migrateLegacyConfiguration', () => {
             openaiApiKey: 'sk-new',
             openaiApiKeyOrigin: 'https://new.example.com',
         });
+    });
+
+    it('leaves a key cleared after it looks, though v2 synced one', async () => {
+        await fakeBrowser.storage.sync.set({ openaiApiKey: 'sk-synced' });
+        await fakeBrowser.storage.local.set({
+            openaiApiKey: 'sk-mine',
+            openaiApiKeyOrigin: 'https://api.openai.com',
+        });
+        editOnceItLooks(() =>
+            configService.setMultiple(
+                keyEntry('openaiApiKey', '', 'https://api.openai.com/v1')
+            )
+        );
+        await migrateLegacyConfiguration();
+
+        expect((await localState()).openaiApiKey).toBe('');
+        expect(await syncState()).not.toHaveProperty('openaiApiKey');
+    });
+
+    it('binds a key to the address it found, not one stored after it looks', async () => {
+        await fakeBrowser.storage.sync.set({
+            openaiBaseUrl: 'https://api.openai.com/v1',
+        });
+        await fakeBrowser.storage.local.set({ openaiApiKey: 'sk-legacy' });
+        editOnceItLooks(() =>
+            configService.setMultiple({
+                openaiBaseUrl: 'https://elsewhere.example.com/v1',
+            })
+        );
+        await migrateLegacyConfiguration();
+
+        expect(await localState()).toMatchObject({
+            openaiApiKey: 'sk-legacy',
+            openaiApiKeyOrigin: 'https://api.openai.com',
+        });
+        expect((await syncState()).openaiBaseUrl).toBe(
+            'https://elsewhere.example.com/v1'
+        );
     });
 
     it('binds a key moved from sync to the address set now', async () => {
