@@ -220,7 +220,9 @@ export const SITE_SETTING_KEYS = [
 
 export type SiteSettingKey = (typeof SITE_SETTING_KEYS)[number];
 
-type StoredSiteProfiles = Partial<Record<PlatformId, Record<string, unknown>>>;
+/** Each site's own values by site id, as stored: what this version knows,
+ *  and what a newer one wrote. */
+type StoredSiteProfiles = Partial<Record<string, Record<string, unknown>>>;
 
 /** Deep equality for setting values: JSON-like data, key order ignored. */
 export function sameSettingValue(left: unknown, right: unknown): boolean {
@@ -284,36 +286,41 @@ function plainEntries(value: unknown): [string, unknown][] {
 }
 
 /**
- * Keep each site's valid values for site settings, canonicalized by their
- * own schemas. Unknown sites, unknown keys, and invalid values are dropped
- * rather than failing the whole value: a newer version on another synced
- * device may write what this one does not know. A canonical value comes
- * back as the same object, so startup repair leaves it alone.
+ * Canonicalize each site's values for the site settings this version
+ * knows, and keep everything else as written: another synced device may run
+ * a newer version with more sites, more site settings, or values this one
+ * cannot read, and dropping them would erase that device's settings once
+ * startup repair wrote the value back. Readers see only what they can use
+ * (`siteProfileOf`). A canonical value comes back as the same object, so
+ * startup repair leaves it alone. Accessors and dangerous keys are signs of
+ * tampering and fail the whole value.
  */
 function normalizeSiteProfiles(value: unknown): StoredSiteProfiles {
     const normalized: StoredSiteProfiles = {};
     for (const [site, rawProfile] of plainEntries(value)) {
-        if (!(PLATFORM_IDS as readonly string[]).includes(site)) {
-            continue;
-        }
+        const known = (PLATFORM_IDS as readonly string[]).includes(site);
         const profile: Record<string, unknown> = {};
         for (const [key, raw] of plainEntries(rawProfile)) {
-            if (!(SITE_SETTING_KEYS as readonly string[]).includes(key)) {
-                continue;
-            }
-            try {
-                profile[key] = prepareSettingValue(key as SiteSettingKey, raw);
-            } catch {
-                // An invalid value leaves the site on the shared one.
-            }
+            profile[key] =
+                known && isSiteSettingKey(key)
+                    ? canonicalOrAsWritten(key, raw)
+                    : raw;
         }
         if (Object.keys(profile).length > 0) {
-            normalized[site as PlatformId] = profile;
+            normalized[site] = profile;
         }
     }
     return sameSettingValue(normalized, value)
         ? (value as StoredSiteProfiles)
         : normalized;
+}
+
+function canonicalOrAsWritten(key: SiteSettingKey, raw: unknown): unknown {
+    try {
+        return prepareSettingValue(key, raw);
+    } catch {
+        return raw;
+    }
 }
 
 const siteProfilesSchema = z.custom<StoredSiteProfiles>((value) => {
@@ -695,12 +702,18 @@ export function isSiteSettingKey(key: string): key is SiteSettingKey {
     return (SITE_SETTING_KEYS as readonly string[]).includes(key);
 }
 
-/** `site`'s own values from a resolved `siteProfiles` value. */
+/** `site`'s own values this version can use, from a resolved
+ *  `siteProfiles` value: known site settings with valid values. */
 export function siteProfileOf(
     profiles: SettingsValues['siteProfiles'],
     site: PlatformId
 ): SiteProfile {
-    return profiles[site] ?? {};
+    return Object.fromEntries(
+        Object.entries(profiles[site] ?? {}).filter(
+            ([key, value]) =>
+                isSiteSettingKey(key) && validateSetting(key, value)
+        )
+    );
 }
 
 export const SENSITIVE_KEYS = SETTINGS_KEYS.filter(

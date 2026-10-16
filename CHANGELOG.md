@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Each site can keep its own settings: whether DualSub runs there, hiding the site's own subtitles, the top line's language, official translations, the look, and timing. A site stores only what differs from the settings for all sites, and the popup edits the value the current site actually uses.
+- Each site can keep its own settings: whether DualSub runs there, hiding the site's own subtitles, the top line's language, official translations, the look, and timing. A site stores only the values it keeps for itself; everything else follows the settings for all sites. The popup edits the value the current site actually uses.
 - When the translation service you chose stops working (a rejected key, a used-up quota, or a request it refuses), Microsoft Translator covers, then Google Translate, so subtitles keep coming. Your service is tried again after ten minutes or as soon as its settings change, and fallback can be turned off to keep subtitle text with your chosen service only.
 - The top line follows the language spoken in the video. "Automatic" is the new default for fresh installs, and it follows the audio track when you switch it in the player; a fixed language is still there for learning one language with every video.
 
