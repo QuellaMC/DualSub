@@ -1620,7 +1620,7 @@
         "message": "Pon cualquier video"
     },
     "welcomePlayHelp": {
-        "message": "Las dos líneas aparecen solas. ¿Demasiado pequeñas, o desfasadas respecto a las voces? Haz clic en el botón de DualSub."
+        "message": "Las dos líneas aparecen solas; un video que ya está en tu idioma muestra una sola. ¿Demasiado pequeñas, o desfasadas respecto a las voces? Haz clic en el botón de DualSub."
     },
     "welcomeOpenSettings": {
         "message": "Ver todos los ajustes"

@@ -1620,7 +1620,7 @@
         "message": "随便播放一个视频"
     },
     "welcomePlayHelp": {
-        "message": "两行字幕会自动出现。字太小，或者和说话声对不上？点一下 DualSub 按钮。"
+        "message": "两行字幕会自动出现；视频本来就是你的语言时，只显示一行。字太小，或者和说话声对不上？点一下 DualSub 按钮。"
     },
     "welcomeOpenSettings": {
         "message": "查看所有设置"

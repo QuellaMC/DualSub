@@ -1620,7 +1620,7 @@
         "message": "아무 영상이나 재생하기"
     },
     "welcomePlayHelp": {
-        "message": "두 줄이 저절로 나와요. 글자가 너무 작거나 목소리와 안 맞으면 DualSub 버튼을 클릭하세요."
+        "message": "두 줄이 저절로 나와요. 이미 내 언어인 영상은 한 줄만 나와요. 글자가 너무 작거나 목소리와 안 맞으면 DualSub 버튼을 클릭하세요."
     },
     "welcomeOpenSettings": {
         "message": "모든 설정 보기"

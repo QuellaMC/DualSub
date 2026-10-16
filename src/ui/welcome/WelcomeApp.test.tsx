@@ -22,6 +22,7 @@ import { browser } from 'wxt/browser';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { getDefaultValue } from '@/config/schema';
 import { installExtensionRuntimeIdentity } from '@/test-utils/extensionRuntime';
+import { installPermissionEvents } from '@/test-utils/permissionEvents';
 import { resetCatalogsForTests } from '../hooks/useI18n';
 import { WelcomeApp } from './WelcomeApp';
 
@@ -29,6 +30,7 @@ const EN = readFileSync(resolve('public/_locales/en/messages.json'), 'utf8');
 
 beforeAll(() => {
     installExtensionRuntimeIdentity();
+    installPermissionEvents();
 });
 
 beforeEach(async () => {
@@ -45,6 +47,7 @@ beforeEach(async () => {
     );
     await fakeBrowser.storage.sync.clear();
     await fakeBrowser.storage.local.clear();
+    vi.spyOn(browser.permissions, 'contains').mockResolvedValue(false as never);
 });
 
 afterEach(() => {
@@ -130,6 +133,60 @@ describe('WelcomeApp', () => {
         expect(
             screen.getByRole('switch', { name: 'Dual subtitles' })
         ).toHaveAttribute('aria-checked', 'true');
+    });
+
+    it('offers the switch when every site has dual subtitles off, and turns them on everywhere', async () => {
+        await fakeBrowser.storage.sync.set({
+            siteProfiles: {
+                netflix: { subtitlesEnabled: false },
+                disneyplus: { subtitlesEnabled: false },
+            },
+        });
+        render(<WelcomeApp />);
+        expect(
+            await screen.findByText('Dual subtitles are off')
+        ).toBeInTheDocument();
+        expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+            'Welcome to DualSub'
+        );
+
+        fireEvent.click(screen.getByRole('switch', { name: 'Dual subtitles' }));
+        await waitFor(async () =>
+            expect(
+                (await fakeBrowser.storage.sync.get('siteProfiles'))
+                    .siteProfiles
+            ).toEqual({})
+        );
+        expect(
+            await screen.findByRole('heading', {
+                level: 1,
+                name: "You're all set.",
+            })
+        ).toBeInTheDocument();
+    });
+
+    it('says when the chosen service still needs setting up, and who translates until then', async () => {
+        await fakeBrowser.storage.sync.set({ selectedProvider: 'deepl' });
+        render(<WelcomeApp />);
+        expect(
+            await screen.findByText("DeepL isn't set up yet")
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText('Until it is, Microsoft Translator translates.')
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByText('Translation: DeepL')
+        ).not.toBeInTheDocument();
+
+        await fakeBrowser.storage.sync.set({ translationFallback: false });
+        expect(
+            await screen.findByText("Until it is, subtitles aren't translated.")
+        ).toBeInTheDocument();
+
+        await fakeBrowser.storage.local.set({ deeplApiKey: 'key:fx' });
+        expect(
+            await screen.findByText('Translation: DeepL')
+        ).toBeInTheDocument();
     });
 
     it('saves another translation language and opens the settings', async () => {

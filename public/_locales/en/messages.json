@@ -1620,7 +1620,7 @@
         "message": "Play any video"
     },
     "welcomePlayHelp": {
-        "message": "The two lines appear by themselves. Too small, or out of step with the voices? Click the DualSub button."
+        "message": "The two lines appear by themselves; a video already in your language shows one. Too small, or out of step with the voices? Click the DualSub button."
     },
     "welcomeOpenSettings": {
         "message": "See all settings"
