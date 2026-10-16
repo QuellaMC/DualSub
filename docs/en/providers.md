@@ -12,6 +12,10 @@ DualSub supports multiple translation providers with provider-aware rate limits.
 
 The no-key Google/Microsoft integrations use undocumented consumer/internal endpoints and can change without notice. Use a supported keyed provider when a documented service contract is required.
 
+## When a Provider Fails
+
+When the provider you chose stops working for good (a rejected key, a used-up quota, or a request it refuses), Microsoft Translator covers, then Google Translate, so subtitles keep coming. Your provider is tried again after ten minutes, or as soon as you change its settings. A passing outage is covered for that request only. Turn fallback off to keep subtitle text with your chosen provider alone.
+
 ## Request Handling
 
 - Subtitle cues are translated individually by the content script.

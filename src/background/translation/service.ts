@@ -1,7 +1,12 @@
 import type { configService, SettingsChanges } from '@/config/service';
 import { getDefaultValue, type SettingsKey } from '@/config/schema';
-import type { ProviderId } from '@/shared/providers';
+import { KEYLESS_PROVIDERS, type ProviderId } from '@/shared/providers';
 import { createLogger, type Logger } from '@/shared/logger';
+import {
+    readTranslationHealth,
+    writeTranslationHealth,
+    type TranslationHealth,
+} from '@/shared/translationHealth';
 import { TtlCache } from '@/shared/ttlCache';
 import type { TranslationProvider } from './provider';
 import { TranslationProviderError } from './providerError';
@@ -26,6 +31,8 @@ const CACHE_TTL_MS = 5 * 60 * 1000;
 const MAX_RETRIES = 2;
 const RATE_LIMIT_RETRY_DELAY_MS = 5000;
 const RETRY_BASE_DELAY_MS = 1000;
+/** A provider that failed for good is skipped this long, then tried again. */
+const FAILING_PROVIDER_PAUSE_MS = 10 * 60 * 1000;
 
 /** The request outlived a credential or provider change; its result is stale. */
 export class TranslationConfigurationChangedError extends Error {
@@ -44,11 +51,33 @@ export interface TranslationOutcome {
 export interface TranslationServiceDeps {
     readonly providers: readonly TranslationProvider[];
     readonly config: Pick<typeof configService, 'get' | 'onChanged'>;
+    readonly health?: {
+        readonly read: () => Promise<TranslationHealth | null>;
+        readonly write: (health: TranslationHealth | null) => Promise<void>;
+    };
     readonly logger?: Logger;
 }
 
 function sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** What a final failure says about the provider: retrying later, with the
+ *  same configuration, would fail the same way. */
+function lastingProblem(error: unknown): TranslationHealth['problem'] | null {
+    if (!(error instanceof TranslationProviderError)) {
+        return null;
+    }
+    switch (error.code) {
+        case 'AUTHENTICATION_ERROR':
+            return 'credentials';
+        case 'RATE_LIMIT_EXCEEDED':
+            return error.retryable ? null : 'quota';
+        case 'REQUEST_FAILED':
+            return error.status === null ? null : 'rejected';
+        default:
+            return null;
+    }
 }
 
 /** Delay before the next attempt, or null when the failure is final. */
@@ -80,6 +109,12 @@ function retryDelay(error: unknown, attempt: number): number | null {
  * configuration change bumps a cache generation: an in-flight request that
  * started under the previous generation is thrown away rather than cached,
  * so a rotated credential can never serve or store a stale result.
+ *
+ * When the selected provider fails, a keyless provider covers the request
+ * unless the viewer turned fallback off. A lasting failure is recorded as
+ * the translation health, which the settings pages show; while it stands,
+ * requests go straight to the fallback until the provider's configuration
+ * changes or the pause runs out.
  */
 export class TranslationService {
     private readonly providers: ReadonlyMap<ProviderId, TranslationProvider>;
@@ -89,9 +124,12 @@ export class TranslationService {
         CACHE_TTL_MS
     );
     private readonly logger: Logger;
+    private readonly healthStore: NonNullable<TranslationServiceDeps['health']>;
     private cacheGeneration = 0;
     private selectedProvider: ProviderId = getDefaultValue('selectedProvider');
     private configuredDelayMs: number = getDefaultValue('translationDelay');
+    private fallbackEnabled: boolean = getDefaultValue('translationFallback');
+    private health: TranslationHealth | null = null;
     private unsubscribe: (() => void) | null = null;
 
     constructor(private readonly deps: TranslationServiceDeps) {
@@ -99,6 +137,10 @@ export class TranslationService {
             deps.providers.map((provider) => [provider.id, provider])
         );
         this.logger = deps.logger ?? createLogger('TranslationService');
+        this.healthStore = deps.health ?? {
+            read: readTranslationHealth,
+            write: writeTranslationHealth,
+        };
     }
 
     /** Follows the provider selection and pacing settings. Never throws. */
@@ -111,14 +153,25 @@ export class TranslationService {
             { includeSensitive: true }
         );
         try {
-            const [provider, delayMs] = await Promise.all([
+            const [provider, delayMs, fallback] = await Promise.all([
                 this.deps.config.get('selectedProvider'),
                 this.deps.config.get('translationDelay'),
+                this.deps.config.get('translationFallback'),
             ]);
             this.selectProvider(provider);
             this.configuredDelayMs = delayMs;
+            this.fallbackEnabled = fallback;
         } catch (error) {
             this.logger.error('Failed to load translation settings', error);
+        }
+        try {
+            const health = await this.healthStore.read();
+            this.health =
+                health?.provider === this.selectedProvider ? health : null;
+        } catch (error) {
+            this.logger.warn('Translation health unreadable', {
+                reason: error instanceof Error ? error.name : 'unknown',
+            });
         }
         this.logger.info('Translation service initialized', {
             provider: this.selectedProvider,
@@ -146,7 +199,86 @@ export class TranslationService {
         targetLang: string
     ): Promise<TranslationOutcome> {
         const generation = this.cacheGeneration;
-        const providerId = this.selectedProvider;
+        const selected = this.selectedProvider;
+        let failure: unknown = null;
+        for (const providerId of this.providerChain(selected)) {
+            try {
+                const outcome = await this.translateWith(
+                    providerId,
+                    text,
+                    sourceLang,
+                    targetLang,
+                    generation
+                );
+                if (providerId === selected) {
+                    this.recordHealth(null);
+                }
+                return outcome;
+            } catch (error) {
+                if (error instanceof TranslationConfigurationChangedError) {
+                    throw error;
+                }
+                if (providerId === selected) {
+                    this.recordFailure(selected, error);
+                }
+                failure = error;
+            }
+        }
+        throw failure;
+    }
+
+    /** The selected provider unless a standing failure pauses it, then the
+     *  keyless providers that may cover for it. */
+    private providerChain(selected: ProviderId): ProviderId[] {
+        const covered = this.fallbackEnabled
+            ? KEYLESS_PROVIDERS.filter(
+                  (id) => id !== selected && this.providers.has(id)
+              )
+            : [];
+        const paused =
+            covered.length > 0 &&
+            this.health?.provider === selected &&
+            Date.now() < this.health.since + FAILING_PROVIDER_PAUSE_MS;
+        return paused ? covered : [selected, ...covered];
+    }
+
+    private recordFailure(provider: ProviderId, error: unknown): void {
+        const problem = lastingProblem(error);
+        if (problem === null) {
+            return;
+        }
+        const fallback = this.fallbackEnabled
+            ? (KEYLESS_PROVIDERS.find(
+                  (id) => id !== provider && this.providers.has(id)
+              ) ?? null)
+            : null;
+        this.logger.warn('Translation provider failing', {
+            provider,
+            problem,
+            fallback,
+        });
+        this.recordHealth({ provider, problem, fallback, since: Date.now() });
+    }
+
+    private recordHealth(health: TranslationHealth | null): void {
+        if (health === null && this.health === null) {
+            return;
+        }
+        this.health = health;
+        void this.healthStore.write(health).catch((error: unknown) => {
+            this.logger.warn('Translation health not saved', {
+                reason: error instanceof Error ? error.name : 'unknown',
+            });
+        });
+    }
+
+    private async translateWith(
+        providerId: ProviderId,
+        text: string,
+        sourceLang: string,
+        targetLang: string,
+        generation: number
+    ): Promise<TranslationOutcome> {
         const provider = this.providers.get(providerId);
         if (!provider) {
             throw new TranslationProviderError(
@@ -240,6 +372,9 @@ export class TranslationService {
         if (changes.selectedProvider !== undefined) {
             this.selectProvider(changes.selectedProvider);
         }
+        if (changes.translationFallback !== undefined) {
+            this.fallbackEnabled = changes.translationFallback;
+        }
         const invalidating = TRANSLATION_CACHE_CONFIGURATION_KEYS.filter(
             (key) => changes[key] !== undefined
         );
@@ -249,6 +384,15 @@ export class TranslationService {
                 'Translation cache invalidated after provider configuration change',
                 { changedKeys: invalidating }
             );
+        }
+        // A new provider, credential, or fallback choice deserves a fresh
+        // try; the next lasting failure records itself again.
+        if (
+            invalidating.length > 0 ||
+            changes.selectedProvider !== undefined ||
+            changes.translationFallback !== undefined
+        ) {
+            this.recordHealth(null);
         }
     }
 }

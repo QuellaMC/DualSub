@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SettingsChanges } from '@/config/service';
 import type { ProviderId } from '@/shared/providers';
+import type { TranslationHealth } from '@/shared/translationHealth';
 import type { ProviderPacing, TranslationProvider } from './provider';
 import { TranslationProviderError } from './providerError';
 import { RateLimitExhaustedError } from './rateLimiter';
@@ -26,7 +27,11 @@ function fakeProvider(
 }
 
 function fakeConfig(
-    settings: { selectedProvider?: ProviderId; translationDelay?: number } = {}
+    settings: {
+        selectedProvider?: ProviderId;
+        translationDelay?: number;
+        translationFallback?: boolean;
+    } = {}
 ) {
     let listener: ((changes: SettingsChanges) => unknown) | null = null;
     const config = {
@@ -36,6 +41,9 @@ function fakeConfig(
             }
             if (key === 'translationDelay') {
                 return Promise.resolve(settings.translationDelay ?? 0);
+            }
+            if (key === 'translationFallback') {
+                return Promise.resolve(settings.translationFallback ?? true);
             }
             return Promise.resolve(undefined);
         }),
@@ -307,5 +315,213 @@ describe('TranslationService', () => {
         await service.initialize();
         service.dispose();
         expect(fake.subscribed).toBe(false);
+    });
+});
+
+function memoryHealth(initial: TranslationHealth | null = null) {
+    let stored = initial;
+    return {
+        store: {
+            read: () => Promise.resolve(stored),
+            write: (health: TranslationHealth | null) => {
+                stored = health;
+                return Promise.resolve();
+            },
+        },
+        current: () => stored,
+    };
+}
+
+function failing(
+    provider: ProviderId,
+    code: 'AUTHENTICATION_ERROR' | 'NETWORK_ERROR'
+) {
+    return new TranslationProviderError(provider, 'failed', { code });
+}
+
+describe('TranslationService fallback', () => {
+    beforeEach(() => {
+        vi.useFakeTimers();
+        vi.setSystemTime(1_000_000);
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    async function setup(
+        options: {
+            selected?: ProviderId;
+            fallback?: boolean;
+            health?: TranslationHealth | null;
+        } = {}
+    ) {
+        const deepl = fakeProvider('deepl');
+        const microsoft = fakeProvider('microsoft_edge');
+        const google = fakeProvider('google');
+        const fake = fakeConfig({
+            selectedProvider: options.selected ?? 'deepl',
+            translationFallback: options.fallback ?? true,
+        });
+        const health = memoryHealth(options.health ?? null);
+        const service = new TranslationService({
+            providers: [deepl, microsoft, google],
+            config: fake.config,
+            health: health.store,
+            logger: silentLogger,
+        });
+        await service.initialize();
+        return { service, deepl, microsoft, google, fake, health };
+    }
+
+    it('covers a rejected key with Microsoft and pauses the failing provider', async () => {
+        const { service, deepl, microsoft, health } = await setup();
+        deepl.translate.mockRejectedValue(
+            failing('deepl', 'AUTHENTICATION_ERROR')
+        );
+
+        await expect(service.translate('Hello', 'auto', 'es')).resolves.toEqual(
+            { translatedText: '[microsoft_edge:es] Hello', cached: false }
+        );
+        expect(health.current()).toEqual({
+            provider: 'deepl',
+            problem: 'credentials',
+            fallback: 'microsoft_edge',
+            since: 1_000_000,
+        });
+
+        await service.translate('Again', 'auto', 'es');
+        expect(deepl.translate).toHaveBeenCalledTimes(1);
+        expect(microsoft.translate).toHaveBeenCalledTimes(2);
+    });
+
+    it('tries the provider again once the pause runs out and clears the record on success', async () => {
+        const { service, deepl, health } = await setup();
+        deepl.translate.mockRejectedValueOnce(
+            failing('deepl', 'AUTHENTICATION_ERROR')
+        );
+        await service.translate('Hello', 'auto', 'es');
+
+        vi.setSystemTime(1_000_000 + 10 * 60 * 1000);
+        await expect(service.translate('Later', 'auto', 'es')).resolves.toEqual(
+            { translatedText: '[deepl:es] Later', cached: false }
+        );
+        expect(health.current()).toBeNull();
+    });
+
+    it('covers a passing outage for that request only', async () => {
+        const { service, deepl, health } = await setup();
+        deepl.translate.mockRejectedValueOnce(
+            failing('deepl', 'NETWORK_ERROR')
+        );
+        deepl.translate.mockRejectedValueOnce(
+            failing('deepl', 'NETWORK_ERROR')
+        );
+        deepl.translate.mockRejectedValueOnce(
+            failing('deepl', 'NETWORK_ERROR')
+        );
+
+        const pending = service.translate('Hello', 'auto', 'es');
+        await vi.advanceTimersByTimeAsync(3000);
+        await expect(pending).resolves.toEqual({
+            translatedText: '[microsoft_edge:es] Hello',
+            cached: false,
+        });
+        expect(health.current()).toBeNull();
+        await service.translate('Next', 'auto', 'es');
+        expect(deepl.translate).toHaveBeenCalledTimes(4);
+    });
+
+    it('keeps text with the chosen provider when fallback is off, and still records why it fails', async () => {
+        const { service, deepl, microsoft, health } = await setup({
+            fallback: false,
+        });
+        const error = failing('deepl', 'AUTHENTICATION_ERROR');
+        deepl.translate.mockRejectedValue(error);
+
+        expect(await rejection(service.translate('Hello', 'auto', 'es'))).toBe(
+            error
+        );
+        expect(microsoft.translate).not.toHaveBeenCalled();
+        expect(health.current()).toMatchObject({
+            provider: 'deepl',
+            fallback: null,
+        });
+    });
+
+    it('records a used-up quota and a refused request, but not a blank answer', async () => {
+        const { service, deepl, health } = await setup();
+        deepl.translate.mockRejectedValueOnce(
+            new TranslationProviderError('deepl', 'quota', {
+                code: 'RATE_LIMIT_EXCEEDED',
+                status: 456,
+                retryable: false,
+            })
+        );
+        await service.translate('One', 'auto', 'es');
+        expect(health.current()?.problem).toBe('quota');
+
+        const fresh = await setup();
+        fresh.deepl.translate.mockRejectedValueOnce(
+            new TranslationProviderError('deepl', 'bad model', {
+                code: 'REQUEST_FAILED',
+                status: 404,
+            })
+        );
+        await fresh.service.translate('Two', 'auto', 'es');
+        expect(fresh.health.current()?.problem).toBe('rejected');
+
+        const blank = await setup();
+        blank.deepl.translate.mockResolvedValueOnce('  ');
+        await blank.service.translate('Three', 'auto', 'es');
+        expect(blank.health.current()).toBeNull();
+        expect(health.current()?.problem).toBe('quota');
+    });
+
+    it('lets a new key or provider choice try again at once', async () => {
+        const { service, deepl, fake, health } = await setup();
+        deepl.translate.mockRejectedValueOnce(
+            failing('deepl', 'AUTHENTICATION_ERROR')
+        );
+        await service.translate('Hello', 'auto', 'es');
+
+        fake.emit({ deeplApiKey: 'fixed' });
+        await vi.advanceTimersByTimeAsync(0);
+        expect(health.current()).toBeNull();
+        await expect(service.translate('Fixed', 'auto', 'es')).resolves.toEqual(
+            { translatedText: '[deepl:es] Fixed', cached: false }
+        );
+    });
+
+    it('keeps a standing failure across a worker restart, for its own provider only', async () => {
+        const record: TranslationHealth = {
+            provider: 'deepl',
+            problem: 'credentials',
+            fallback: 'microsoft_edge',
+            since: 999_000,
+        };
+        const restarted = await setup({ health: record });
+        await restarted.service.translate('Hello', 'auto', 'es');
+        expect(restarted.deepl.translate).not.toHaveBeenCalled();
+
+        const switched = await setup({ selected: 'google', health: record });
+        await switched.service.translate('Hello', 'auto', 'es');
+        expect(switched.google.translate).toHaveBeenCalledTimes(1);
+    });
+
+    it('lets Google cover when Microsoft is the provider failing', async () => {
+        const { service, microsoft, google } = await setup({
+            selected: 'microsoft_edge',
+        });
+        microsoft.translate.mockRejectedValue(
+            new TranslationProviderError('microsoft_edge', 'gone', {
+                code: 'REQUEST_FAILED',
+                status: 410,
+            })
+        );
+        await expect(service.translate('Hello', 'auto', 'es')).resolves.toEqual(
+            { translatedText: '[google:es] Hello', cached: false }
+        );
+        expect(google.translate).toHaveBeenCalledTimes(1);
     });
 });

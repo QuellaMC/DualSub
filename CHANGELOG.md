@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- When the translation service you chose stops working (a rejected key, a used-up quota, or a request it refuses), Microsoft Translator covers, then Google Translate, so subtitles keep coming. Your service is tried again after ten minutes or as soon as its settings change, and fallback can be turned off to keep subtitle text with your chosen service only.
 - The top line follows the language spoken in the video. "Automatic" is the new default for fresh installs, and it follows the audio track when you switch it in the player; a fixed language is still there for learning one language with every video.
 
 - Subtitle styles: "Match Platform" draws both lines with the typography the platform's own player would use: the font, color, edge and background from your Netflix or Disney+ profile's subtitle appearance settings, without the platform's subtitles being on. "Custom" starts as DualSub's own look and is edited in the new Appearance section of the options page: font, weight, text color, text edge, and background, with a preview drawn by the overlay's own styling for either platform. Size stays DualSub's own slider in both, since the platforms size a single line.

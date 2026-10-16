@@ -42,7 +42,9 @@ provider account.
 
 - Subtitle text goes to the translation provider the user selected. Google
   and Microsoft need no account; DeepL, OpenAI-compatible, and Vertex AI use
-  the user's own credentials.
+  the user's own credentials. When the selected provider fails, Microsoft
+  and then Google translate instead, unless the user turned that fallback
+  off.
 - With AI Context enabled, the words the user clicked (and the target
   language) go to the user's configured OpenAI or Gemini endpoint. The
   feature is off by default and re-checks its stored enablement before

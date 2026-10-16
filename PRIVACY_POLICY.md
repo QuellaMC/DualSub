@@ -31,6 +31,7 @@ The selected provider receives subtitle text plus source/target language codes:
 - DeepL API Free or Pro receives subtitle text when you configure a DeepL API key.
 - OpenAI-compatible services receive subtitle text when you configure an API key, endpoint, and model.
 - Vertex AI receives subtitle text when you configure a Google Cloud project and short-lived access token.
+- When the provider you chose fails (for example, a rejected key or an exhausted quota), Microsoft Edge translation, then Google Translate, receive the subtitle text instead until your provider works again. You can turn this fallback off in Options to keep subtitle text with your chosen provider only.
 
 The removed unofficial DeepL scraping/MyMemory fallback is not part of the extension.
 
