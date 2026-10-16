@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
     configService,
+    type SettingsChange,
     type SettingsChanges,
     type SiteWrite,
 } from '@/config/service';
@@ -15,12 +16,12 @@ export interface SettingsHandle<K extends SettingsKey> {
     readonly status: SettingsStatus;
     /** The complete projection once ready; null while loading or unavailable. */
     readonly settings: SettingsProjection<K> | null;
-    /** Persist one or more settings, resolving to what was written as
-     *  `setMultiple` reports it. Rejects when validation or storage fails;
-     *  nothing is written in that case. */
+    /** Persist one or more settings, resolving to the change made, for
+     *  `putBack`. Rejects when validation or storage fails; nothing is
+     *  written in that case. */
     readonly save: (
         changes: Partial<SettingsProjection<K>>
-    ) => Promise<Partial<SettingsValues>>;
+    ) => Promise<SettingsChange>;
 }
 
 interface SettingsState<K extends SettingsKey> {
@@ -149,29 +150,17 @@ export function useSettings<K extends SettingsKey>(
         };
     }, [view, keyList, includeSensitive, site]);
 
-    /** The last save asked for. Each waits for the one before it, so saves
-     *  reach storage, and their answers and change events come back, in the
-     *  order they were made. */
-    const saving = useRef<Promise<unknown>>(Promise.resolve());
-
     const save = useCallback(
-        (
+        async (
             changes: Partial<SettingsProjection<K>>
-        ): Promise<Partial<SettingsValues>> => {
-            const saved = saving.current.then(async () => {
-                const written = await configService.setMultiple(
-                    changes,
-                    site ? { site, target: siteTarget } : undefined
-                );
-                const relevant = pickWatched(
-                    written,
-                    keyList.split(' ') as K[]
-                );
-                setState((previous) => withChanges(previous, view, relevant));
-                return written;
-            });
-            saving.current = saved.catch(() => undefined);
-            return saved;
+        ): Promise<SettingsChange> => {
+            const { written, change } = await configService.setMultiple(
+                changes,
+                site ? { site, target: siteTarget } : undefined
+            );
+            const relevant = pickWatched(written, keyList.split(' ') as K[]);
+            setState((previous) => withChanges(previous, view, relevant));
+            return change;
         },
         [view, keyList, site, siteTarget]
     );

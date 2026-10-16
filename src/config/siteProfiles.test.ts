@@ -272,11 +272,7 @@ describe('configService for one site', () => {
                 disneyplus: { hideOfficialSubtitles: true },
             },
         });
-        const before = await configService.getMultiple([
-            'subtitleFontScale',
-            'subtitleGap',
-        ]);
-        const after = await configService.setMultiple({
+        const { change: sized } = await configService.setMultiple({
             subtitleFontScale: 1.6,
             subtitleGap: 0.8,
         });
@@ -291,7 +287,7 @@ describe('configService for one site', () => {
             siteProfiles: { disneyplus: { hideOfficialSubtitles: false } },
         });
 
-        await configService.putBack({ before, after });
+        await configService.putBack(sized);
         await configService.putBack(hidden);
         expect(
             await fakeBrowser.storage.sync.get([
@@ -315,15 +311,18 @@ describe('configService for one site', () => {
             subtitleFontScale: 1.2,
             siteProfiles: { netflix: { subtitleFontScale: 1.4 } },
         });
-        const before = await configService.getMultiple(['siteProfiles']);
-        const { siteProfiles } = await configService.setMultiple(
+        const { written, change } = await configService.setMultiple(
             { subtitleFontScale: 1.2 },
             { site: 'netflix', target: 'own' }
         );
-        expect(siteProfiles).toEqual({});
+        expect(written).toEqual({ subtitleFontScale: 1.2, siteProfiles: {} });
+        expect(change).toEqual({
+            before: { siteProfiles: { netflix: { subtitleFontScale: 1.4 } } },
+            after: { siteProfiles: {} },
+        });
         expect(await stored()).toEqual({});
 
-        await configService.putBack({ before, after: { siteProfiles } });
+        await configService.putBack(change);
         expect(await stored()).toEqual({
             netflix: { subtitleFontScale: 1.4 },
         });

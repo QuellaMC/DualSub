@@ -15,6 +15,7 @@ import {
     type OptionsSettings,
     type SaveSettings,
 } from '../types';
+import { FeedbackProvider, type Feedback } from '../shell/feedback';
 import { LookSection } from './LookSection';
 
 const t = (key: string, ...subs: readonly (string | number)[]): string =>
@@ -30,27 +31,29 @@ function defaults(): OptionsSettings {
     return values as unknown as OptionsSettings;
 }
 
+const feedback: Feedback = {
+    apply: (change) => change().then(() => true),
+    takeBackUndo: () => undefined,
+    notify: () => undefined,
+};
+
 function renderSection(
     overrides: Partial<OptionsSettings> = {},
     save: SaveSettings = vi.fn(() => Promise.resolve(true))
 ) {
     const settings = { ...defaults(), ...overrides };
     const onDraft = vi.fn();
-    const view = render(
-        <LookSection t={t} settings={settings} save={save} onDraft={onDraft} />
+    const section = (shown: OptionsSettings) => (
+        <FeedbackProvider value={feedback}>
+            <LookSection t={t} settings={shown} save={save} onDraft={onDraft} />
+        </FeedbackProvider>
     );
+    const view = render(section(settings));
     fireEvent.click(
         screen.getByRole('button', { name: 'lookCustomizeButton' })
     );
     const update = (changes: Partial<OptionsSettings>): void =>
-        view.rerender(
-            <LookSection
-                t={t}
-                settings={{ ...settings, ...changes }}
-                save={save}
-                onDraft={onDraft}
-            />
-        );
+        view.rerender(section({ ...settings, ...changes }));
     return { save, update, onDraft, unmount: view.unmount };
 }
 

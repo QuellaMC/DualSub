@@ -3,8 +3,8 @@ import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { browser } from 'wxt/browser';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
-import { getDefaultValue, type SettingsValues } from '@/config/schema';
-import { configService } from '@/config/service';
+import { getDefaultValue } from '@/config/schema';
+import type { SettingsChange } from '@/config/service';
 import type { PlatformId } from '@/shared/platforms';
 import { useSettings } from './useSettings';
 
@@ -55,27 +55,33 @@ describe('useSettings', () => {
     it('sends a save to storage only once the one before it is written', async () => {
         const { result } = renderHook(() => useSettings(KEYS));
         await waitFor(() => expect(result.current.status).toBe('ready'));
-        const firstWrite = Promise.withResolvers<Partial<SettingsValues>>();
+        const realSet = fakeBrowser.storage.sync.set.bind(
+            fakeBrowser.storage.sync
+        );
+        const firstWrite = Promise.withResolvers<void>();
         const writes = vi
-            .spyOn(configService, 'setMultiple')
-            .mockReturnValueOnce(firstWrite.promise);
+            .spyOn(fakeBrowser.storage.sync, 'set')
+            .mockImplementationOnce(
+                (items: Record<string, unknown>) =>
+                    firstWrite.promise.then(() => realSet(items)) as never
+            );
 
-        let saves: Promise<Partial<SettingsValues>>[] = [];
+        let saves: Promise<SettingsChange>[] = [];
         act(() => {
             saves = [
                 result.current.save({ targetLanguage: 'ja' }),
                 result.current.save({ targetLanguage: 'ko' }),
             ];
         });
-        await act(() => Promise.resolve());
+        await act(() => new Promise((resolve) => setTimeout(resolve, 20)));
         expect(writes).toHaveBeenCalledTimes(1);
 
-        firstWrite.resolve({ targetLanguage: 'ja' });
+        firstWrite.resolve();
         await act(() => Promise.all(saves));
-        expect(writes).toHaveBeenLastCalledWith(
+        expect(writes.mock.calls.map(([items]) => items)).toEqual([
+            { targetLanguage: 'ja' },
             { targetLanguage: 'ko' },
-            undefined
-        );
+        ]);
         expect(result.current.settings?.targetLanguage).toBe('ko');
         expect(
             (await fakeBrowser.storage.sync.get('targetLanguage'))
