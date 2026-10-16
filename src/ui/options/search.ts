@@ -94,7 +94,6 @@ const ENTRIES: readonly SearchEntry[] = [
         labelKey: 'lookFineTuneButton',
         wordsKey: 'searchWordsFineTune',
         section: 'look',
-        advanced: true,
         anchors: ['fine-tune'],
     },
     {
@@ -167,11 +166,15 @@ const ENTRIES: readonly SearchEntry[] = [
         anchors: ['explain-limits'],
     },
     {
-        labelKey: 'setupAddress',
+        labelKey: 'explainAddress',
         wordsKey: 'searchWordsAddress',
         section: 'explanations',
         advanced: true,
-        anchors: ['explain-address', 'explain-provider-openai'],
+        anchors: [
+            'explain-address',
+            'explain-provider-openai',
+            'explain-change-key',
+        ],
     },
     {
         labelKey: 'sitesUseHere',
@@ -183,7 +186,7 @@ const ENTRIES: readonly SearchEntry[] = [
         labelKey: 'sitesHideTitle',
         wordsKey: 'searchWordsHide',
         section: 'sites',
-        anchors: ['hide-all'],
+        anchors: [`site-hide-${PLATFORM_IDS[0]}`],
     },
     {
         labelKey: 'searchSiteOwn',

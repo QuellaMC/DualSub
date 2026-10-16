@@ -81,16 +81,39 @@ export function sampleSubtitles(
     };
 }
 
-/** What the sample's two lines are, in words. */
+const CAPTIONS = {
+    auto: {
+        official: 'previewCaptionAuto',
+        translated: 'previewCaptionAutoTranslated',
+        none: 'previewCaptionAutoOne',
+    },
+    fixed: {
+        official: 'previewCaptionFixed',
+        translated: 'previewCaptionFixedTranslated',
+        none: 'previewCaptionFixedOne',
+    },
+} as const;
+
+/** What the sample's lines are, in words: the video's, and the viewer's,
+ *  from the show or translated by DualSub. */
 export function sampleCaption(
     t: Translate,
-    settings: Pick<SettingsValues, 'originalLanguage'>,
+    settings: Pick<
+        SettingsValues,
+        'originalLanguage' | 'useOfficialTranslations'
+    >,
     sample: SampleSubtitles
 ): string {
+    const lines =
+        CAPTIONS[
+            settings.originalLanguage === AUTO_LANGUAGE ? 'auto' : 'fixed'
+        ];
     return t(
-        settings.originalLanguage === AUTO_LANGUAGE
-            ? 'previewCaptionAuto'
-            : 'previewCaptionFixed',
+        sample.translatedText === ''
+            ? lines.none
+            : settings.useOfficialTranslations
+              ? lines.official
+              : lines.translated,
         languageName(t, sample.originalLanguage),
         languageName(t, sample.targetLanguage)
     );

@@ -23,6 +23,11 @@ const SAMPLE_VIDEOS = [
     labelKey: string;
 }[];
 
+/** The preview draws its text as on a picture this many pixels tall: small
+ *  enough to sit in the frame as subtitles sit in a video, large enough to
+ *  read. */
+const PICTURE_HEIGHT = 700;
+
 /** The subtitles as they will look, drawn by the overlay's own styling. */
 export function Preview({
     t,
@@ -63,6 +68,7 @@ export function Preview({
                             PLATFORM_PRESETS[site],
                             null
                         )}
+                        pictureHeight={PICTURE_HEIGHT}
                         originalText={sample.originalText}
                         translatedText={sample.translatedText}
                         label={t('previewLabel')}
@@ -77,7 +83,7 @@ export function Preview({
                         {t('previewSampleVideo')}
                     </span>
                     <div
-                        className="segmented"
+                        className="segmented small"
                         role="group"
                         aria-labelledby="preview-sample"
                     >
@@ -99,7 +105,7 @@ export function Preview({
                             {t('previewShownOn')}
                         </span>
                         <div
-                            className="segmented"
+                            className="segmented small"
                             role="group"
                             aria-labelledby="preview-site"
                         >

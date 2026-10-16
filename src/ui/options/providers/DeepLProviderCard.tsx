@@ -27,7 +27,9 @@ export function DeepLProviderCard({
             <ol className="steps">
                 <li>
                     <div>
-                        <div className="strong">{t('setupGetKey')}</div>
+                        <div className="strong">
+                            {t('translationDeepLGetKey')}
+                        </div>
                         <p className="help">{t('translationDeepLKeyHelp')}</p>
                         <a
                             className="button"
@@ -83,6 +85,9 @@ export function DeepLProviderCard({
                                 id="deeplApiKey"
                                 className="field grow"
                                 autoComplete="off"
+                                placeholder={t(
+                                    'translationDeepLKeyPlaceholder'
+                                )}
                                 value={apiKey}
                                 onChange={(event) =>
                                     void save(

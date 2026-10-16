@@ -1,5 +1,6 @@
 import { browser } from 'wxt/browser';
 import { PLATFORM_IDS } from '@/shared/platforms';
+import { Interpolate } from '../../design/Interpolate';
 import type { Translate } from '../../hooks/useI18n';
 import type { SectionId } from '../sections';
 import { followAllSites, useFeedback } from '../shell/feedback';
@@ -8,9 +9,13 @@ const SOURCE_URL = 'https://github.com/QuellaMC/DualSub';
 
 export function HelpSection({
     t,
+    fallback,
     go,
 }: {
     t: Translate;
+    /** Whether free services cover for the chosen one when it fails, which
+     *  sends them subtitle text too. */
+    fallback: boolean;
     go: (section: SectionId) => void;
 }) {
     const feedback = useFeedback();
@@ -40,14 +45,15 @@ export function HelpSection({
                     <li>{t('helpNoSubtitlesPlaying')}</li>
                     <li>{t('helpNoSubtitlesTracks')}</li>
                     <li>
-                        {t('helpNoSubtitlesSite')}{' '}
-                        <button
-                            type="button"
-                            className="link-button"
-                            onClick={() => go('sites')}
-                        >
-                            {t('helpOpenSites')}
-                        </button>
+                        <Interpolate text={t('helpNoSubtitlesSite')}>
+                            <button
+                                type="button"
+                                className="link-button"
+                                onClick={() => go('sites')}
+                            >
+                                {t('navSites')}
+                            </button>
+                        </Interpolate>
                     </li>
                     <li>{t('helpNoSubtitlesReload')}</li>
                 </ol>
@@ -105,6 +111,7 @@ export function HelpSection({
                 <h2 className="label">{t('helpAboutTitle')}</h2>
                 <p className="help">
                     {t('helpVersion', browser.runtime.getManifest().version)} ·{' '}
+                    {t('helpMadeBy')} ·{' '}
                     <a
                         href={SOURCE_URL}
                         target="_blank"
@@ -113,8 +120,9 @@ export function HelpSection({
                         {t('helpSource')}
                     </a>
                 </p>
-                <p className="help">{t('aboutDevelopment')}</p>
-                <p className="help">{t('helpPrivacy')}</p>
+                <p className="help">
+                    {t(fallback ? 'helpPrivacyFallback' : 'helpPrivacy')}
+                </p>
             </div>
         </section>
     );

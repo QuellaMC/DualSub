@@ -7,6 +7,10 @@ import { PopupShell, PopupUnavailable } from './PopupShell';
 
 const ELSEWHERE_KEYS = ['uiLanguage', ...SAMPLE_SETTINGS_KEYS] as const;
 
+/** The sample's text takes the size it would have on a picture this many
+ *  pixels tall. */
+const PICTURE_HEIGHT = 750;
+
 /** The popup anywhere DualSub does not work: what it does, and the sites
  *  it works on. */
 export function ElsewherePopup() {
@@ -26,7 +30,11 @@ export function ElsewherePopup() {
     return (
         <PopupShell t={t}>
             <section className="card">
-                <SamplePreview t={t} settings={settings} />
+                <SamplePreview
+                    t={t}
+                    settings={settings}
+                    pictureHeight={PICTURE_HEIGHT}
+                />
                 <h1 className="label">{t('popupElsewhereTitle')}</h1>
                 <p className="help">{t('popupElsewhereHelp')}</p>
                 <SiteLinks t={t} className="button big" />

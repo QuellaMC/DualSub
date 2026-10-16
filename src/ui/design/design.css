@@ -1,61 +1,56 @@
-/* DualSub's extension pages share one look: large type, plain controls,
-   high contrast in both color schemes. */
+@import '@fontsource-variable/atkinson-hyperlegible-next';
+
+/* DualSub's extension pages share one look: large type in a face drawn for
+   legibility, plain controls, high contrast. */
 
 :root {
-    color-scheme: light dark;
+    color-scheme: light;
     --ground: #f3f4f6;
     --surface: #ffffff;
+    --surface-soft: #fafbfc;
     --surface-sunken: #f6f7f9;
+    --fill: #eceef2;
+    --fill-ink: #454b57;
+    --hover: #e7eaef;
     --ink: #15171c;
-    --ink-soft: #444b57;
-    --line: #d9dde3;
-    --line-strong: #aeb5c1;
+    --ink-lead: #3b414d;
+    --ink-soft: #4a505c;
+    --line: #dcdfe5;
+    --line-soft: #eceef2;
+    --line-tile: #d5d9e0;
+    --line-control: #c3c9d4;
+    --line-strong: #b3bac6;
+    --line-hover: #8e97a7;
+    --line-tile-hover: #9aa6bb;
+    --switch-off: #7d8696;
     --accent: #1f5ed6;
     --accent-hover: #184fb8;
     --accent-ink: #ffffff;
-    --accent-soft: #edf3ff;
-    --accent-text: #1a4fb5;
+    --accent-soft: #f1f6ff;
+    --accent-tint: #dce6fa;
+    --accent-text: #123f96;
+    --link-hover: #1546a3;
+    --info: #163f91;
+    --info-soft: #e1eafc;
     --ok: #17613a;
     --ok-soft: #e1f2e7;
     --site: #6e4500;
     --site-soft: #fff1d6;
+    --note: #4d3300;
+    --note-soft: #fff4dc;
     --advanced: #4f3294;
     --advanced-soft: #ece6f9;
     --danger: #b3261e;
     --danger-soft: #fdeceb;
     --focus: #f2a516;
     --screen: #141922;
+    --screen-tile: #2a3140;
+    --segment: #e4e7ec;
     --radius: 12px;
-    --radius-small: 9px;
     --font:
-        system-ui, -apple-system, 'Segoe UI', 'Noto Sans', Roboto,
-        'Helvetica Neue', Arial, sans-serif;
+        'Atkinson Hyperlegible Next Variable', system-ui, -apple-system,
+        'Segoe UI', sans-serif;
     --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
-}
-
-@media (prefers-color-scheme: dark) {
-    :root {
-        --ground: #111317;
-        --surface: #1b1e24;
-        --surface-sunken: #16191e;
-        --ink: #eef0f4;
-        --ink-soft: #b7bdc8;
-        --line: #2f343d;
-        --line-strong: #4b525e;
-        --accent: #4a86f0;
-        --accent-hover: #6a9cf5;
-        --accent-ink: #0b1220;
-        --accent-soft: #1b2a45;
-        --accent-text: #8fb4ff;
-        --ok: #84d6a5;
-        --ok-soft: #173325;
-        --site: #f5c66b;
-        --site-soft: #3a2c10;
-        --advanced: #c3b2f3;
-        --advanced-soft: #2c2445;
-        --danger: #ff8a80;
-        --danger-soft: #3d1a18;
-    }
 }
 
 *,
@@ -83,7 +78,16 @@ textarea {
 }
 
 a {
-    color: var(--accent-text);
+    color: var(--accent);
+}
+
+a:hover {
+    color: var(--link-hover);
+}
+
+h1,
+h2 {
+    font-weight: 800;
 }
 
 :focus-visible {
@@ -171,8 +175,8 @@ a {
 }
 
 .tag.accent {
-    background: var(--accent-soft);
-    color: var(--accent-text);
+    background: var(--info-soft);
+    color: var(--info);
 }
 
 .tag.site {
@@ -186,9 +190,8 @@ a {
 }
 
 .tag.muted {
-    background: var(--surface-sunken);
-    color: var(--ink-soft);
-    border: 1px solid var(--line);
+    background: var(--fill);
+    color: var(--fill-ink);
 }
 
 .tag.danger {
@@ -203,7 +206,7 @@ a {
     gap: 8px;
     min-height: 44px;
     padding: 0 18px;
-    border: 1px solid var(--line-strong);
+    border: 1px solid var(--line-control);
     border-radius: 10px;
     background: var(--surface);
     color: var(--ink);
@@ -214,7 +217,8 @@ a {
 }
 
 .button:hover {
-    border-color: var(--ink-soft);
+    border-color: var(--line-hover);
+    color: var(--ink);
 }
 
 .button:disabled {
@@ -231,15 +235,18 @@ a {
 .button.primary:hover {
     border-color: var(--accent-hover);
     background: var(--accent-hover);
+    color: var(--accent-ink);
 }
 
 .button.quiet {
     border-color: transparent;
     background: transparent;
-    color: var(--accent-text);
+    color: var(--accent);
 }
 
 .button.quiet:hover {
+    border-color: transparent;
+    color: var(--link-hover);
     text-decoration: underline;
 }
 
@@ -259,7 +266,7 @@ a {
     padding: 4px 2px;
     border: 0;
     background: transparent;
-    color: var(--accent-text);
+    color: var(--accent);
     font-weight: 700;
     text-decoration: underline;
     cursor: pointer;
@@ -303,7 +310,7 @@ input[type='checkbox'] {
     padding: 0;
     border: 0;
     border-radius: 999px;
-    background: var(--line-strong);
+    background: var(--switch-off);
     cursor: pointer;
 }
 
@@ -347,8 +354,7 @@ input[type='checkbox'] {
     gap: 4px;
     padding: 4px;
     border-radius: 12px;
-    background: var(--surface-sunken);
-    border: 1px solid var(--line);
+    background: var(--segment);
 }
 
 .segmented button {
@@ -357,9 +363,15 @@ input[type='checkbox'] {
     border: 0;
     border-radius: 9px;
     background: transparent;
-    color: var(--ink-soft);
+    color: var(--ink-lead);
     font-weight: 700;
     cursor: pointer;
+}
+
+.segmented.small button {
+    min-height: 34px;
+    padding: 0 10px;
+    font-size: 15px;
 }
 
 .segmented button[aria-pressed='true'] {
@@ -380,7 +392,7 @@ input[type='checkbox'] {
     align-items: flex-start;
     gap: 6px;
     padding: 16px 18px;
-    border: 2px solid var(--line);
+    border: 2px solid var(--line-tile);
     border-radius: var(--radius);
     background: var(--surface);
     color: var(--ink);
@@ -389,7 +401,7 @@ input[type='checkbox'] {
 }
 
 .choice:hover {
-    border-color: var(--line-strong);
+    border-color: var(--line-tile-hover);
 }
 
 .choice[aria-pressed='true'],
@@ -434,8 +446,8 @@ input[type='checkbox'] {
     align-items: flex-start;
     padding: 12px 14px;
     border-radius: var(--radius);
-    background: var(--site-soft);
-    color: var(--site);
+    background: var(--note-soft);
+    color: var(--note);
 }
 
 .notice.danger {
@@ -443,13 +455,21 @@ input[type='checkbox'] {
     color: var(--danger);
 }
 
+/* A night scene: a moon, drawn as a circle in the 16:9 frame, and two
+   hills. */
 .screen {
     position: relative;
     width: 100%;
     aspect-ratio: 16 / 9;
     overflow: hidden;
     border-radius: 10px;
-    background: var(--screen);
+    background:
+        radial-gradient(
+            ellipse 6% 10.67% at 82% 22.67%,
+            #2b3344 98%,
+            transparent 100%
+        ),
+        var(--screen);
 }
 
 .screen::before,
@@ -482,7 +502,7 @@ input[type='checkbox'] {
 .lead {
     max-width: 640px;
     margin: -6px 0 4px;
-    color: var(--ink-soft);
+    color: var(--ink-lead);
     font-size: 19px;
 }
 
@@ -534,7 +554,7 @@ input[type='checkbox'] {
 }
 
 .status-icon.off {
-    background: var(--surface-sunken);
+    background: var(--fill);
     color: var(--ink-soft);
 }
 

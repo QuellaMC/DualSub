@@ -17,9 +17,6 @@
     "apiPlanPro": {
         "message": "Pro"
     },
-    "aboutDevelopment": {
-        "message": "Developed by QuellaMC & 1jifang."
-    },
     "lang_en": {
         "message": "English"
     },
@@ -69,7 +66,7 @@
         "message": "⚠️ DeepL API key needs testing."
     },
     "testingButton": {
-        "message": "Testing..."
+        "message": "Checking…"
     },
     "testingConnection": {
         "message": "Testing DeepL connection..."
@@ -93,16 +90,16 @@
         "message": "❌ Test failed: %s"
     },
     "vertexAccessTokenLabel": {
-        "message": "Access Token:"
+        "message": "Access token"
     },
     "vertexProjectIdLabel": {
-        "message": "Project ID:"
+        "message": "Project ID"
     },
     "vertexLocationLabel": {
-        "message": "Location:"
+        "message": "Region"
     },
     "vertexModelLabel": {
-        "message": "Model:"
+        "message": "Model"
     },
     "vertexMissingConfig": {
         "message": "Please enter access token and project ID."
@@ -111,13 +108,13 @@
         "message": "Connection failed: %s"
     },
     "vertexServiceAccountLabel": {
-        "message": "Service Account JSON:"
+        "message": "Service account file"
     },
     "vertexImportButton": {
-        "message": "Import JSON File"
+        "message": "Choose file…"
     },
     "vertexImporting": {
-        "message": "Importing..."
+        "message": "Importing…"
     },
     "vertexGeneratingToken": {
         "message": "Generating access token..."
@@ -129,7 +126,7 @@
         "message": "⚠️ Vertex AI configured. Please test connection."
     },
     "testConnectionButton": {
-        "message": "Test Connection"
+        "message": "Check connection"
     },
     "openaiApiKeyError": {
         "message": "Please enter your API key first."
@@ -216,7 +213,7 @@
         "message": "An error occurred during analysis."
     },
     "aiContextTypesRequired": {
-        "message": "Pick at least one thing to explain."
+        "message": "Pick at least one."
     },
     "deeplTestSuccessSimple": {
         "message": "✅ DeepL API test successful!"
@@ -294,13 +291,13 @@
         "message": "Download settings"
     },
     "advancedJsonHelp": {
-        "message": "What DualSub stores, without your keys. Each site keeps only what differs from all sites."
+        "message": "What DualSub stores, without your keys. Each site keeps only what differs."
     },
     "advancedJsonTitle": {
-        "message": "Settings as JSON"
+        "message": "All settings as JSON"
     },
     "advancedLead": {
-        "message": "Backups, the raw settings, and tools for troubleshooting."
+        "message": "Backups, the raw settings, and troubleshooting tools."
     },
     "advancedLoadApply": {
         "message": "Replace them"
@@ -351,13 +348,13 @@
         "message": "Reset everything…"
     },
     "advancedResetConfirm": {
-        "message": "Put every setting back to the recommended one? You can undo it right after."
+        "message": "Reset all settings? You can undo it right after."
     },
     "advancedResetDo": {
         "message": "Reset"
     },
     "advancedResetHelp": {
-        "message": "Every setting goes back to the recommended one, and every site follows the settings for all sites again. Your keys stay, together with the settings each one is used with, such as its address and model, and so does the language of these pages."
+        "message": "Put every setting back to the recommended one and remove every site's own settings. Your keys stay, along with what each one is set up with, such as its address and model, and so does the language of these pages."
     },
     "advancedResetTitle": {
         "message": "Start over"
@@ -380,20 +377,26 @@
     "commonChange": {
         "message": "Change"
     },
+    "commonDone": {
+        "message": "Done"
+    },
     "commonLoading": {
         "message": "Loading…"
     },
     "commonRecommended": {
         "message": "Recommended"
     },
+    "commonOn": {
+        "message": "On"
+    },
+    "commonOff": {
+        "message": "Off"
+    },
     "explainCache": {
         "message": "Remember answers"
     },
     "explainAllowHost": {
         "message": "DualSub needs your permission to reach this address before it can explain words."
-    },
-    "explainKeyStays": {
-        "message": "Your key stays on this computer and goes only to the service you chose."
     },
     "explainLead": {
         "message": "Click any word in the subtitles to see what it means, how people use it, and the story behind it."
@@ -405,7 +408,7 @@
         "message": "Open the explanation panel when I click a word"
     },
     "explainPauseTitle": {
-        "message": "Pause the video while I read"
+        "message": "Pause the video"
     },
     "explainRateLimit": {
         "message": "Most requests per minute"
@@ -417,13 +420,10 @@
         "message": "Tries before giving up"
     },
     "explainSampleMeaning": {
-        "message": "Very heavy rain. An old, casual English saying."
-    },
-    "explainSetupDone": {
-        "message": "Your AI service"
+        "message": "Very heavy rain. An old, casual English saying; nobody is sure where it comes from."
     },
     "explainSetupHelp": {
-        "message": "Explanations come from an AI service, through your own account."
+        "message": "Explanations come from an AI service, through your own account. Your key stays on this computer."
     },
     "explainSetupTitle": {
         "message": "Set it up in three steps"
@@ -431,11 +431,29 @@
     "explainStatusOff": {
         "message": "Turned off. Your key is still saved."
     },
+    "explainNeedsSetup": {
+        "message": "Needs setup"
+    },
+    "explainSetUpWith": {
+        "message": "Set up with %s"
+    },
+    "explainKeySaved": {
+        "message": "Your key is saved on this computer only."
+    },
+    "explainChangeKey": {
+        "message": "Change key"
+    },
+    "explainChooseService": {
+        "message": "Choose an AI service"
+    },
+    "explainAddress": {
+        "message": "Address, for compatible servers"
+    },
     "explainStatusOn": {
-        "message": "On. Click a word in the subtitles to try it."
+        "message": "Click a word in the subtitles to try it."
     },
     "explainStatusSetup": {
-        "message": "Finish the three steps below to turn this on."
+        "message": "Finish the three steps below to turn it on."
     },
     "explainThemeAuto": {
         "message": "Match my computer"
@@ -504,13 +522,13 @@
         "message": "Common problems, and what fixes each one."
     },
     "helpNoSubtitlesPlaying": {
-        "message": "Make sure the video is playing, not paused on its title screen."
+        "message": "Make sure the video is playing, not paused on the title screen."
     },
     "helpNoSubtitlesReload": {
         "message": "Reload the page."
     },
     "helpNoSubtitlesSite": {
-        "message": "Check that DualSub is on for the site."
+        "message": "Check that DualSub is on for the site, under %s."
     },
     "helpNoSubtitlesTitle": {
         "message": "No subtitles appear"
@@ -518,17 +536,20 @@
     "helpNoSubtitlesTracks": {
         "message": "Check that the video has subtitles: open the site's own subtitle menu."
     },
-    "helpOpenSites": {
-        "message": "Open Sites"
-    },
     "helpPrivacy": {
-        "message": "Subtitle text goes only to the translation service you choose. No tracking, and nothing is sent to DualSub's developers."
+        "message": "Subtitle text goes only to the translation service you choose. No tracking, and nothing is sent to us."
+    },
+    "helpPrivacyFallback": {
+        "message": "Subtitle text goes only to the translation service you choose, and to the free ones that cover for it when it fails. No tracking, and nothing is sent to us."
     },
     "helpSource": {
         "message": "Source code"
     },
+    "helpMadeBy": {
+        "message": "Made by QuellaMC and 1jifang"
+    },
     "helpTimingHelp": {
-        "message": "Show the subtitles a little earlier or later."
+        "message": "Shift the subtitles a little earlier or later."
     },
     "helpTimingTitle": {
         "message": "The words don't match what I hear"
@@ -567,7 +588,7 @@
         "message": "The language spoken in the video"
     },
     "languagesTopAutoHelp": {
-        "message": "DualSub follows each video and the audio track you pick. A Korean drama shows Korean on top; an English film shows English."
+        "message": "DualSub follows each video. A Korean drama shows Korean on top, an English film shows English."
     },
     "languagesTopFixed": {
         "message": "Always the same language"
@@ -639,7 +660,7 @@
         "message": "Soft shadow"
     },
     "lookExactPosition": {
-        "message": "Exact height: %s (0.1 is at the bottom, 9.9 in the middle)"
+        "message": "Exact height: %s (from 0.1 at the bottom to 9.9 in the middle)"
     },
     "lookExactSize": {
         "message": "Exact text size: %s×"
@@ -722,6 +743,9 @@
     "lookPresetsLabel": {
         "message": "Ready-made looks"
     },
+    "lookPresetSample": {
+        "message": "Hello"
+    },
     "lookSizeTitle": {
         "message": "Text size"
     },
@@ -732,7 +756,10 @@
         "message": "Start from a ready-made look, then change colors and font if you like."
     },
     "lookStylePlatform": {
-        "message": "Look like the site"
+        "message": "Look like the site you're on"
+    },
+    "lookStylePlatformSite": {
+        "message": "Look like %s"
     },
     "lookStylePlatformHelp": {
         "message": "Follows the subtitle settings in your Netflix or Disney+ profile."
@@ -780,10 +807,22 @@
         "message": "Timing"
     },
     "previewCaptionAuto": {
-        "message": "The video's line: %s, the language spoken in it. Your line: %s."
+        "message": "Video's line: %s, the language spoken in this video. Your line: %s, from the show when it has its own translation."
     },
     "previewCaptionFixed": {
-        "message": "The video's line: %s. Your line: %s."
+        "message": "Video's line: %s. Your line: %s, from the show when it has its own translation."
+    },
+    "previewCaptionAutoTranslated": {
+        "message": "Video's line: %s, the language spoken in this video. Your line: %s, translated by DualSub."
+    },
+    "previewCaptionAutoOne": {
+        "message": "Video's line: %s, the language spoken in this video."
+    },
+    "previewCaptionFixedTranslated": {
+        "message": "Video's line: %s. Your line: %s, translated by DualSub."
+    },
+    "previewCaptionFixedOne": {
+        "message": "Video's line: %s."
     },
     "previewEnglishFilm": {
         "message": "English film"
@@ -840,31 +879,31 @@
         "message": "Google Vertex AI"
     },
     "providerVertexHelp": {
-        "message": "Gemini through your own Google Cloud project."
+        "message": "Gemini through your Google Cloud project."
     },
     "scopeAll": {
         "message": "All sites"
     },
     "scopeBackToAll": {
-        "message": "Back to all sites"
+        "message": "Back to All sites"
     },
     "scopeEditingSite": {
         "message": "You're changing %s only."
     },
     "scopeEditingSiteHelp": {
-        "message": "Whatever you change here gets a “%s only” tag. The rest follows the settings for all sites."
+        "message": "Whatever you change here gets a “%s only” tag. The rest follows All sites."
     },
     "scopeHelp": {
-        "message": "A site without its own settings uses the settings for all sites."
+        "message": "A site without its own settings uses All sites."
     },
     "scopeLabel": {
         "message": "Settings for"
     },
     "scopeOwnCount": {
-        "message": "Own settings: %d"
+        "message": "%d own settings"
     },
     "scopeSameAsAll": {
-        "message": "Same as all sites"
+        "message": "Same as All sites"
     },
     "scopeSharedSetting": {
         "message": "The same on every site"
@@ -873,13 +912,19 @@
         "message": "%s only"
     },
     "scopeUseShared": {
-        "message": "Use the value for all sites"
+        "message": "Use the All-sites value"
     },
     "setupAddress": {
         "message": "Service address"
     },
     "setupCheckKey": {
         "message": "Check key"
+    },
+    "setupOpenAIStudio": {
+        "message": "Open Google AI Studio"
+    },
+    "setupOpenOpenAI": {
+        "message": "Open OpenAI"
     },
     "setupChooseService": {
         "message": "Choose the AI service"
@@ -895,9 +940,6 @@
     },
     "setupOpenAIKeyHelp": {
         "message": "Sign in, open “API keys”, create a secret key, and copy it."
-    },
-    "setupOpenKeyPage": {
-        "message": "Open %s"
     },
     "setupOtherKeyHelp": {
         "message": "Use the key and the address that your service gives you."
@@ -915,7 +957,7 @@
         "message": "Another service"
     },
     "sitesEditOwn": {
-        "message": "Edit the %s settings"
+        "message": "Edit %s settings"
     },
     "sitesFilterAdd": {
         "message": "Add a rule"
@@ -939,7 +981,7 @@
         "message": "So you don't see the same words twice."
     },
     "sitesHideOwn": {
-        "message": "Hide the subtitles of %s itself"
+        "message": "Hide %s's own subtitles"
     },
     "sitesHideTitle": {
         "message": "Hide the site's own subtitles"
@@ -948,16 +990,10 @@
         "message": "DualSub turns itself on for these sites. You can switch it off on one, or give one its own settings."
     },
     "sitesMoreHelp": {
-        "message": "When DualSub learns a new site, it shows up here already switched on, with your settings for all sites."
+        "message": "When DualSub learns a new site, it shows up here already switched on, using your All-sites settings."
     },
     "sitesMoreTitle": {
         "message": "More sites are on the way"
-    },
-    "sitesOff": {
-        "message": "Off"
-    },
-    "sitesOn": {
-        "message": "On"
     },
     "sitesRemoveOwn": {
         "message": "Remove them"
@@ -966,10 +1002,10 @@
         "message": "Use DualSub here"
     },
     "sitesUsesShared": {
-        "message": "Uses your settings for all sites"
+        "message": "Uses your All-sites settings"
     },
     "sitesUsesSharedHelp": {
-        "message": "Give %s its own size, colors, top line or timing."
+        "message": "Give %s its own size, colors, languages or timing."
     },
     "sizeExtraLarge": {
         "message": "Extra large"
@@ -999,7 +1035,7 @@
         "message": "I see subtitles twice"
     },
     "startFromBrowser": {
-        "message": "From your browser"
+        "message": "Picked from your browser"
     },
     "startLead": {
         "message": "Open Netflix or Disney+ and play anything. You'll see two lines of subtitles: the video's language on top, and yours underneath."
@@ -1017,34 +1053,37 @@
         "message": "DeepL, with your key"
     },
     "startProviderGoogle": {
-        "message": "Google Translate: free, nothing to set up"
+        "message": "Google Translate, free, nothing to set up"
     },
     "startProviderMicrosoft": {
-        "message": "Microsoft Translator: free, nothing to set up"
+        "message": "Microsoft Translator, free, nothing to set up"
     },
     "startProviderVertex": {
-        "message": "Google Vertex AI, with your Google Cloud project"
+        "message": "Google Vertex AI"
     },
     "startSetUpTitle": {
         "message": "We set these up for you"
     },
-    "startSiteOff": {
-        "message": "%s: off"
-    },
-    "startSiteUnreadable": {
-        "message": "%s: couldn't read"
-    },
-    "startSiteOn": {
-        "message": "%s: on"
+    "startTopTitle": {
+        "message": "Top line"
     },
     "startStatusOff": {
         "message": "Dual subtitles are off"
     },
+    "startStatusOn": {
+        "message": "Dual subtitles are on"
+    },
+    "startStatusWorking": {
+        "message": "Working on %s"
+    },
+    "startStatusWorkingSome": {
+        "message": "Working on %s, off on %s"
+    },
+    "startSitesUnreadable": {
+        "message": "Couldn't read where DualSub is on."
+    },
     "startStatusOffHelp": {
         "message": "Turn them back on with the switch."
-    },
-    "startStatusReady": {
-        "message": "DualSub is ready"
     },
     "startStatusReadyHelp": {
         "message": "Nothing to set up. Just play a video."
@@ -1080,7 +1119,7 @@
         "message": "Each line shows up a little sooner."
     },
     "timingExactHelp": {
-        "message": "In seconds. Positive numbers show subtitles earlier."
+        "message": "In seconds. Positive numbers show subtitles earlier (stored as %s)."
     },
     "timingExactTitle": {
         "message": "Exact shift"
@@ -1107,7 +1146,7 @@
         "message": "Back to on time"
     },
     "timingTipHelp": {
-        "message": "The DualSub button in your browser's toolbar has the same buttons, so you can match the subtitles to the voices without leaving the video."
+        "message": "The DualSub button in your browser's toolbar has the same two buttons, so you can match the subtitles to what you hear without leaving the video."
     },
     "timingTipTitle": {
         "message": "Fix it while you watch"
@@ -1140,7 +1179,7 @@
         "message": "Tracks matching “%s” are used again"
     },
     "toastFollowsShared": {
-        "message": "Back to the value for all sites"
+        "message": "Back to the All-sites value"
     },
     "toastHiddenEverywhere": {
         "message": "Done. The sites' own subtitles are hidden everywhere."
@@ -1179,7 +1218,7 @@
         "message": "Everything is back to the recommended settings"
     },
     "toastSiteHide": {
-        "message": "The subtitles of %s itself are hidden"
+        "message": "%s's own subtitles are hidden"
     },
     "toastSiteOff": {
         "message": "DualSub is off on %s"
@@ -1188,10 +1227,10 @@
         "message": "DualSub is on for %s"
     },
     "toastSiteShared": {
-        "message": "%s uses your settings for all sites again"
+        "message": "%s uses your All-sites settings again"
     },
     "toastSiteShow": {
-        "message": "The subtitles of %s itself will show"
+        "message": "%s's own subtitles will show"
     },
     "toastSize": {
         "message": "Text size: %s"
@@ -1352,6 +1391,12 @@
     "translationDeepLOpen": {
         "message": "Open DeepL"
     },
+    "translationDeepLGetKey": {
+        "message": "Get your key"
+    },
+    "translationDeepLKeyPlaceholder": {
+        "message": "Your DeepL key"
+    },
     "translationDeepLPlan": {
         "message": "Which plan do you have?"
     },
@@ -1377,7 +1422,7 @@
         "message": "Translation service"
     },
     "translationVertexHelp": {
-        "message": "Import a service account file once to make a short-lived token, or paste a token. The file itself is not kept."
+        "message": "DualSub makes a short-lived token from it and does not keep the file."
     },
     "translationVertexSetupTitle": {
         "message": "Set up Google Vertex AI"
@@ -1385,47 +1430,86 @@
     "welcomePageTitle": {
         "message": "Welcome to DualSub"
     },
+    "welcomeInstalled": {
+        "message": "Installed"
+    },
+    "welcomePickedTitle": {
+        "message": "What we picked for you"
+    },
+    "welcomeLanguage": {
+        "message": "Your language: %s"
+    },
+    "welcomeLanguageFromBrowser": {
+        "message": "Taken from your browser. The bottom line is always in this language."
+    },
+    "welcomeLanguageLabel": {
+        "message": "Your language"
+    },
+    "welcomeTopAuto": {
+        "message": "Top line: the language spoken in each video"
+    },
+    "welcomeTopAutoHelp": {
+        "message": "A Korean drama shows Korean, an English film shows English."
+    },
+    "welcomeTopFixed": {
+        "message": "Top line: always %s"
+    },
+    "welcomeTopFixedHelp": {
+        "message": "Every video shows it on top, when the site has subtitles in it."
+    },
+    "welcomeTranslation": {
+        "message": "Translation: %s"
+    },
+    "welcomeTranslationFree": {
+        "message": "Free, no account needed."
+    },
+    "welcomeTranslationKeyed": {
+        "message": "Through your own account."
+    },
+    "welcomeTranslationOfficial": {
+        "message": "When a show has its own translation in your language, DualSub uses that instead."
+    },
+    "welcomeOpenHelp": {
+        "message": "Sign in the way you always do."
+    },
+    "welcomeEarlier": {
+        "message": "Earlier"
+    },
+    "welcomeLater": {
+        "message": "Later"
+    },
     "welcomeTitle": {
-        "message": "Welcome! DualSub is ready."
+        "message": "You're all set."
     },
     "welcomeLead": {
-        "message": "It works right away, with nothing to set up. Your subtitles will look like this:"
-    },
-    "welcomeLanguageTitle": {
-        "message": "Your subtitles are translated into"
+        "message": "DualSub puts two lines of subtitles on Netflix and Disney+: the video's own language on top, and yours underneath. There is nothing to set up."
     },
     "welcomeLanguageHelp": {
-        "message": "We picked your browser's language. Pick another if you like."
+        "message": "The bottom line is always in this language."
     },
     "welcomeStepsTitle": {
-        "message": "Three steps to your first video"
+        "message": "Start watching in three steps"
     },
     "welcomePinTitle": {
         "message": "Pin DualSub to your toolbar"
     },
     "welcomePinHelp": {
-        "message": "Click the puzzle piece at the top right of Chrome, then the pin next to DualSub. Its button then stays in the toolbar, ready while you watch."
+        "message": "Click the puzzle piece at the top right of your browser, then the pin next to DualSub. Its button then stays in view while you watch."
     },
     "welcomeOpenTitle": {
-        "message": "Open one of these sites"
+        "message": "Open Netflix or Disney+"
     },
     "welcomePlayTitle": {
-        "message": "Play anything"
+        "message": "Play any video"
     },
     "welcomePlayHelp": {
-        "message": "Two lines of subtitles appear on their own: the video's language on top, and yours underneath. A video already in your language shows one line."
-    },
-    "welcomeSettingsTitle": {
-        "message": "Want to change something?"
-    },
-    "welcomeSettingsHelp": {
-        "message": "How subtitles look, their timing, the translation service and more are in the settings."
+        "message": "The two lines appear by themselves. Too small, or out of step with the voices? Click the DualSub button."
     },
     "welcomeOpenSettings": {
-        "message": "Open settings"
+        "message": "See all settings"
     },
     "welcomeClose": {
-        "message": "You can close this tab whenever you like."
+        "message": "That's all. You can close this tab."
     },
     "popupAllSettings": {
         "message": "All settings"
@@ -1474,14 +1558,5 @@
     },
     "startNeedsSetupStopped": {
         "message": "Until it is, subtitles aren't translated."
-    },
-    "sitesHideAllHelp": {
-        "message": "On every site. A site below can keep its own choice."
-    },
-    "toastSitesHide": {
-        "message": "Sites' own subtitles: hidden"
-    },
-    "toastSitesShow": {
-        "message": "Sites' own subtitles: shown"
     }
 }

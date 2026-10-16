@@ -16,9 +16,11 @@ Get cultural, historical, and linguistic explanations for selected subtitle text
 
 In the settings page, open **Word explanations** and follow its three steps:
 
-1. Choose a service (OpenAI or Gemini)
+1. Choose a service (Gemini or OpenAI)
 2. Open the service's key page and create a key
 3. Paste the key, then **Turn on**; the switch stays off until a key is in
+
+Once explanations are on, the steps fold into the name of the service; **Change key** opens them again.
 
 With advanced options shown, the same section sets the model, the limits, and, for a custom OpenAI-compatible endpoint, its address. Use **Allow API host** to grant Chrome access to that scheme and host across all paths and ports.
 

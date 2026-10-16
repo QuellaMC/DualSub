@@ -86,8 +86,12 @@ describe('OptionsApp', () => {
     it('opens on Start, ready to use, with the browser’s language picked', async () => {
         const title = await renderReady();
         expect(title).toHaveTextContent('Hello! DualSub is ready.');
-        expect(screen.getByText('DualSub is ready')).toBeInTheDocument();
-        expect(screen.getByText('From your browser')).toBeInTheDocument();
+        expect(
+            await screen.findByText('Working on Netflix and Disney+')
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText('Picked from your browser')
+        ).toBeInTheDocument();
         expect(
             screen.getByRole('switch', { name: 'Dual subtitles' })
         ).toHaveAttribute('aria-checked', 'true');
@@ -376,7 +380,7 @@ describe('OptionsApp', () => {
 
         fireEvent.click(
             screen.getAllByRole('button', {
-                name: 'Use the value for all sites',
+                name: 'Use the All-sites value',
             })[0]!
         );
         await waitFor(async () =>
@@ -393,19 +397,17 @@ describe('OptionsApp', () => {
         await renderReady();
         fireEvent.click(
             await screen.findByRole('button', {
-                name: 'Edit the Netflix settings',
+                name: 'Edit Netflix settings',
             })
         );
         fireEvent.click(
             (
                 await screen.findAllByRole('button', {
-                    name: 'Use the value for all sites',
+                    name: 'Use the All-sites value',
                 })
             )[0]!
         );
-        const toast = await screen.findByText(
-            'Back to the value for all sites'
-        );
+        const toast = await screen.findByText('Back to the All-sites value');
         await waitFor(async () =>
             expect(await sync('siteProfiles')).toEqual({})
         );
@@ -417,7 +419,7 @@ describe('OptionsApp', () => {
         );
         await waitFor(() =>
             expect(
-                screen.queryByText('Back to the value for all sites')
+                screen.queryByText('Back to the All-sites value')
             ).not.toBeInTheDocument()
         );
         expect(await sync('siteProfiles')).toEqual({
@@ -492,9 +494,11 @@ describe('OptionsApp', () => {
         location.hash = '#explanations';
         await renderReady();
         expect(
-            await screen.findByText('Pick at least one thing to explain.')
+            await screen.findByText('Pick at least one.')
         ).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'Turn on' })).toBeDisabled();
+        expect(
+            screen.getByRole('switch', { name: 'Word explanations' })
+        ).toBeDisabled();
     });
 
     it('clears two kinds of explanation clicked one right after the other', async () => {
@@ -634,41 +638,32 @@ describe('OptionsApp', () => {
         ).toBeInTheDocument();
     });
 
-    it("says so on Start when a site's on/off state cannot be read", async () => {
-        const read = configService.readMultipleResultStrict.bind(configService);
-        vi.spyOn(configService, 'readMultipleResultStrict').mockImplementation(
-            (keys, options) =>
-                options?.site === 'netflix' && keys.length === 1
-                    ? Promise.reject(new Error('broken'))
-                    : read(keys, options)
-        );
-        await renderReady();
-        expect(
-            await screen.findByText("Netflix: couldn't read")
-        ).toBeInTheDocument();
-        expect(screen.getByText('Disney+: on')).toBeInTheDocument();
-    });
-
-    it('says so on the card for every site when its settings cannot be read', async () => {
+    it("says so on Start when the sites' on/off states cannot be read", async () => {
         const read = configService.readMultipleResultStrict.bind(configService);
         vi.spyOn(configService, 'readMultipleResultStrict').mockImplementation(
             (keys, options) =>
                 options?.site === undefined &&
                 keys.length === 2 &&
-                keys.includes('hideOfficialSubtitles')
+                keys.includes('subtitlesEnabled') &&
+                keys.includes('siteProfiles')
                     ? Promise.reject(new Error('broken'))
                     : read(keys, options)
         );
-        location.hash = '#sites';
         await renderReady();
-        const card = (
-            await screen.findByRole('heading', {
-                name: "Hide the site's own subtitles",
-            })
-        ).closest('.card');
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+            "Couldn't read where DualSub is on."
+        );
+        expect(screen.getByText('Dual subtitles are on')).toBeInTheDocument();
+    });
+
+    it('says where DualSub is on and where it is off', async () => {
+        await fakeBrowser.storage.sync.set({
+            siteProfiles: { disneyplus: { subtitlesEnabled: false } },
+        });
+        await renderReady();
         expect(
-            within(card as HTMLElement).getByRole('alert')
-        ).toHaveTextContent('Failed to load settings');
+            await screen.findByText('Working on Netflix, off on Disney+')
+        ).toBeInTheDocument();
     });
 
     it('keeps the export in step with every change, even while storage cannot be read', async () => {
@@ -712,6 +707,15 @@ describe('OptionsApp', () => {
         expect(
             (await fakeBrowser.storage.local.get('openaiApiKey')).openaiApiKey
         ).toBe('AIza-key');
+        expect(
+            await screen.findByRole('heading', { name: 'Set up with OpenAI' })
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByLabelText('Paste it here')
+        ).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Change key' }));
+        expect(screen.getByLabelText('Paste it here')).toHaveValue('AIza-key');
     });
 
     it('resets everything but keys, and the reset can be undone', async () => {
@@ -1108,7 +1112,7 @@ describe('OptionsApp', () => {
         await waitFor(() =>
             expect(
                 document
-                    .getElementById('hide-all')
+                    .getElementById('site-hide-netflix')
                     ?.contains(document.activeElement)
             ).toBe(true)
         );
@@ -1123,7 +1127,9 @@ describe('OptionsApp', () => {
                 target: { value: 'address' },
             });
             fireEvent.click(
-                screen.getByRole('button', { name: /^Service address/ })
+                screen.getByRole('button', {
+                    name: /^Address, for compatible servers/,
+                })
             );
         };
         searchAddress();
@@ -1191,22 +1197,17 @@ describe('OptionsApp', () => {
         );
     });
 
-    it('keeps fine-tuning among the advanced options', async () => {
+    it('offers fine-tuning to everyone, behind its fold', async () => {
         location.hash = '#look';
         await renderReady();
-        expect(
-            screen.queryByRole('button', {
-                name: 'Fine-tune size, height and spacing',
-            })
-        ).not.toBeInTheDocument();
+        const fold = await screen.findByRole('button', {
+            name: 'Fine-tune size, height and spacing',
+        });
+        expect(fold).toHaveAttribute('aria-expanded', 'false');
 
-        fireEvent.click(
-            screen.getByRole('switch', { name: 'Show advanced options' })
-        );
+        fireEvent.click(fold);
         expect(
-            await screen.findByRole('button', {
-                name: 'Fine-tune size, height and spacing',
-            })
+            screen.getByRole('slider', { name: /^Exact text size/ })
         ).toBeInTheDocument();
     });
 
@@ -1613,7 +1614,7 @@ describe('OptionsApp', () => {
         const cancel = await screen.findByRole('button', { name: 'Cancel' });
         await waitFor(() => expect(cancel).toHaveFocus());
         expect(
-            screen.getByRole('group', { name: /Put every setting back/ })
+            screen.getByRole('group', { name: /Reset all settings/ })
         ).toBeInTheDocument();
         fireEvent.click(cancel);
         await waitFor(() =>
@@ -1646,7 +1647,7 @@ describe('OptionsApp', () => {
         });
         fireEvent.click(
             screen.getAllByRole('button', {
-                name: 'Use the value for all sites',
+                name: 'Use the All-sites value',
             })[0]!
         );
         await waitFor(async () =>
@@ -1675,7 +1676,7 @@ describe('OptionsApp', () => {
             target: { value: '1.45' },
         });
         fireEvent.click(
-            screen.getByRole('button', { name: 'Back to all sites' })
+            screen.getByRole('button', { name: 'Back to All sites' })
         );
         await waitFor(async () =>
             expect(await sync('siteProfiles')).toEqual({
@@ -1784,7 +1785,7 @@ describe('OptionsApp', () => {
         await renderReady();
         fireEvent.click(
             await screen.findByRole('button', {
-                name: 'Edit the Netflix settings',
+                name: 'Edit Netflix settings',
             })
         );
         await screen.findByText("You're changing Netflix only.");
@@ -1818,7 +1819,7 @@ describe('OptionsApp', () => {
         await renderReady();
         fireEvent.click(
             await screen.findByRole('button', {
-                name: 'Edit the Netflix settings',
+                name: 'Edit Netflix settings',
             })
         );
         await screen.findByText("You're changing Netflix only.");
@@ -1850,7 +1851,9 @@ describe('OptionsApp', () => {
         });
         await renderReady();
         expect(screen.getByText(/isn't set up yet$/)).toBeInTheDocument();
-        expect(screen.queryByText('DualSub is ready')).not.toBeInTheDocument();
+        expect(
+            screen.queryByText('Working on Netflix and Disney+')
+        ).not.toBeInTheDocument();
     });
 
     it('says Vertex needs setting up again when its token runs out while the page is open', async () => {
@@ -1866,7 +1869,9 @@ describe('OptionsApp', () => {
             vertexTokenExpiresAt: Date.now() + 2000,
         });
         await renderReady();
-        expect(screen.getByText('DualSub is ready')).toBeInTheDocument();
+        expect(
+            await screen.findByText('Working on Netflix and Disney+')
+        ).toBeInTheDocument();
         expect(
             await screen.findByText(
                 "Google Vertex AI isn't set up yet",
@@ -1886,7 +1891,9 @@ describe('OptionsApp', () => {
         expect(
             screen.getByText("Until it is, subtitles aren't translated.")
         ).toBeInTheDocument();
-        expect(screen.queryByText('DualSub is ready')).not.toBeInTheDocument();
+        expect(
+            screen.queryByText('Working on Netflix and Disney+')
+        ).not.toBeInTheDocument();
     });
 
     it('says AI translation still needs setting up until Chrome lets DualSub reach its address', async () => {
@@ -1902,7 +1909,9 @@ describe('OptionsApp', () => {
         expect(
             await screen.findByText("AI translation isn't set up yet")
         ).toBeInTheDocument();
-        expect(screen.queryByText('DualSub is ready')).not.toBeInTheDocument();
+        expect(
+            screen.queryByText('Working on Netflix and Disney+')
+        ).not.toBeInTheDocument();
     });
 
     it('says AI translation is set up once access to its address is granted elsewhere', async () => {
@@ -1923,31 +1932,19 @@ describe('OptionsApp', () => {
             true as never
         );
         permissionsChanged('added', ['https://llm.example.com/*']);
-        expect(await screen.findByText('DualSub is ready')).toBeInTheDocument();
+        expect(
+            await screen.findByText('Working on Netflix and Disney+')
+        ).toBeInTheDocument();
     });
 
     it('says who translates while the chosen service still needs setting up', async () => {
         await fakeBrowser.storage.sync.set({ selectedProvider: 'deepl' });
         await renderReady();
-        expect(screen.getByText('DualSub is ready')).toBeInTheDocument();
+        expect(
+            await screen.findByText('Working on Netflix and Disney+')
+        ).toBeInTheDocument();
         expect(
             screen.getByText('Until it is, Microsoft Translator translates.')
-        ).toBeInTheDocument();
-    });
-
-    it("hides or shows the sites' own subtitles on every site at once", async () => {
-        location.hash = '#sites';
-        await renderReady();
-        const everywhere = await screen.findByRole('switch', {
-            name: "Hide the site's own subtitles",
-        });
-        expect(everywhere).toHaveAttribute('aria-checked', 'true');
-        fireEvent.click(everywhere);
-        await waitFor(async () =>
-            expect(await sync('hideOfficialSubtitles')).toBe(false)
-        );
-        expect(
-            await screen.findByText("Sites' own subtitles: shown")
         ).toBeInTheDocument();
     });
 
