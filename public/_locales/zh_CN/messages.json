@@ -1421,6 +1421,9 @@
     "searchWordsDeepL": {
         "message": "deepl api deepl翻译 api密钥 秘钥 套餐 免费版 专业版 账户 账号"
     },
+    "searchWordsVertex": {
+        "message": "vertex google cloud 谷歌云 gemini 服务账号 项目 令牌 区域"
+    },
     "searchWordsAiTranslation": {
         "message": "ai openai chatgpt gemini llm ai翻译 人工智能 大模型 智能翻译 api密钥 秘钥 兼容 其他服务"
     },

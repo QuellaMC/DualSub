@@ -1421,6 +1421,9 @@
     "searchWordsDeepL": {
         "message": "deepl claves api plan gratuito gratis pro cuenta configuración configuracion"
     },
+    "searchWordsVertex": {
+        "message": "vertex google cloud gemini cuenta de servicio proyecto token región region"
+    },
     "searchWordsAiTranslation": {
         "message": "ia ai inteligencia artificial openai chatgpt gemini modelos claves api llm compatible traduccion configuración configuracion"
     },
