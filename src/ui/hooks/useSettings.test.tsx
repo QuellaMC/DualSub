@@ -52,24 +52,35 @@ describe('useSettings', () => {
         );
     });
 
-    it('keeps the newest save when an earlier one finishes after it', async () => {
+    it('sends a save to storage only once the one before it is written', async () => {
         const { result } = renderHook(() => useSettings(KEYS));
         await waitFor(() => expect(result.current.status).toBe('ready'));
-        const slow = Promise.withResolvers<Partial<SettingsValues>>();
-        vi.spyOn(configService, 'setMultiple')
-            .mockReturnValueOnce(slow.promise)
-            .mockResolvedValueOnce({ targetLanguage: 'ko' });
+        const firstWrite = Promise.withResolvers<Partial<SettingsValues>>();
+        const writes = vi
+            .spyOn(configService, 'setMultiple')
+            .mockReturnValueOnce(firstWrite.promise);
 
-        let earlier: Promise<void> = Promise.resolve();
-        await act(async () => {
-            earlier = result.current.save({ targetLanguage: 'ja' });
-            await result.current.save({ targetLanguage: 'ko' });
+        let saves: Promise<void>[] = [];
+        act(() => {
+            saves = [
+                result.current.save({ targetLanguage: 'ja' }),
+                result.current.save({ targetLanguage: 'ko' }),
+            ];
         });
-        await act(async () => {
-            slow.resolve({ targetLanguage: 'ja' });
-            await earlier;
-        });
+        await act(() => Promise.resolve());
+        expect(writes).toHaveBeenCalledTimes(1);
+
+        firstWrite.resolve({ targetLanguage: 'ja' });
+        await act(() => Promise.all(saves));
+        expect(writes).toHaveBeenLastCalledWith(
+            { targetLanguage: 'ko' },
+            undefined
+        );
         expect(result.current.settings?.targetLanguage).toBe('ko');
+        expect(
+            (await fakeBrowser.storage.sync.get('targetLanguage'))
+                .targetLanguage
+        ).toBe('ko');
     });
 
     it('rejects an invalid write and leaves the projection untouched', async () => {
