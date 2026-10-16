@@ -90,11 +90,12 @@ export function useSettings<K extends SettingsKey>(
         let unavailable = false;
         /** Counts the reads started; only the newest one's answer shows. */
         let reads = 0;
-        // Changes are newer than a read still in flight.
-        const heard: Partial<SettingsProjection<K>> = {};
+        // Changes heard since the newest read began are newer than its answer.
+        let heard: Partial<SettingsProjection<K>> = {};
 
         const load = async (): Promise<void> => {
             const read = ++reads;
+            heard = {};
             let next: SettingsState<K>;
             try {
                 const { values } = await configService.readMultipleResultStrict(
