@@ -418,6 +418,20 @@ describe('OptionsApp', () => {
         expect(await sync('hideOfficialSubtitles')).toBe(true);
     });
 
+    it('shows no untranslated text while its catalog loads', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(() => new Promise<Response>(() => undefined))
+        );
+        render(<OptionsApp />);
+        await waitFor(() =>
+            expect(
+                document.querySelector('main[aria-busy="true"]')
+            ).toBeInTheDocument()
+        );
+        expect(document.body).not.toHaveTextContent('commonLoading');
+    });
+
     it('blocks the page when settings cannot be read', async () => {
         vi.spyOn(browser.storage.sync, 'get').mockRejectedValue(
             new Error('broken')
