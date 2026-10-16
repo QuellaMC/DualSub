@@ -668,19 +668,33 @@ class ConfigService {
 
     /**
      * Change a setting edited in part from what is stored now: `edit` gets
-     * the stored value and returns the next, in turn with every other
-     * rewrite of such a setting. Reads strictly, so a failed read writes
-     * nothing. Resolves to the value it replaced.
+     * the stored value and returns the next. Resolves to the value it
+     * replaced.
      */
     updateSetting<K extends EditedInPart>(
         key: K,
         edit: (current: SettingsValues[K]) => SettingsValues[K]
     ): Promise<SettingsValues[K]> {
+        return this.updateSettings([key], (stored) => ({
+            [key]: edit(stored[key] as SettingsValues[K]),
+        })).then(({ change }) => change.before[key] as SettingsValues[K]);
+    }
+
+    /**
+     * Write what `build` makes of the stored `keys`, read in the write's own
+     * turn, so a change decided by what is stored is decided by what it
+     * replaces. Reads strictly, so a failed read writes nothing. Resolves as
+     * `setMultiple` does.
+     */
+    updateSettings(
+        keys: readonly SettingsKey[],
+        build: (stored: Partial<SettingsValues>) => Partial<SettingsValues>
+    ): Promise<SettingsWrite> {
         return inTurn(async () => {
-            const { values } = await this.readResultStrict(key);
-            const current = values[key] as SettingsValues[K];
-            await this.writeMultiple({ [key]: edit(current) });
-            return current;
+            const { values } = await this.readMultipleResultStrict(keys, {
+                includeSensitive: true,
+            });
+            return this.writeMultiple(build(values));
         });
     }
 
@@ -827,31 +841,22 @@ class ConfigService {
     /**
      * `sites` follow the shared values of `keys` again, and `shared` is
      * written in the same storage write. Resolves to the change, for
-     * `putBack`. Reads strictly: a profile read from a failed store would
-     * erase every site's.
+     * `putBack`.
      */
     removeSiteValues(
         sites: readonly PlatformId[],
         keys: readonly SiteSettingKey[],
         shared: Partial<Omit<SettingsValues, 'siteProfiles'>> = {}
     ): Promise<SettingsChange> {
-        return inTurn(async () => {
-            const { values } = await this.readMultipleResultStrict([
-                ...Object.keys(shared),
-                'siteProfiles',
-            ]);
-            let profiles = values.siteProfiles ?? {};
+        return this.updateSettings(['siteProfiles'], (stored) => {
+            let profiles = stored.siteProfiles ?? {};
             for (const site of sites) {
                 for (const key of keys) {
                     profiles = withSiteValue(profiles, [site, key], {});
                 }
             }
-            const { change } = await this.writeMultiple({
-                ...shared,
-                siteProfiles: profiles,
-            });
-            return change;
-        });
+            return { ...shared, siteProfiles: profiles };
+        }).then(({ change }) => change);
     }
 
     /**

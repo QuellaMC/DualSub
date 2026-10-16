@@ -795,6 +795,42 @@ describe('OptionsApp', () => {
         );
     });
 
+    it('keeps the setup of a key another page saves while a reset waits to write', async () => {
+        await fakeBrowser.storage.sync.set({
+            openaiCompatibleBaseUrl: 'https://llm.example.com/v1',
+        });
+        await fakeBrowser.storage.local.set({ showAdvancedSettings: true });
+        location.hash = '#advanced';
+        await renderReady();
+        // Another page is saving a key, in its turn, when the reset asks for its own.
+        const release = Promise.withResolvers<void>();
+        const elsewhere = navigator.locks.request(
+            'dualsub:settingParts',
+            async () => {
+                await release.promise;
+                await fakeBrowser.storage.local.set({
+                    openaiCompatibleApiKey: 'sk-key',
+                });
+            }
+        );
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Reset everything…' })
+        );
+        fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        release.resolve();
+        await elsewhere;
+
+        expect(
+            await screen.findByText(
+                'Everything is back to the recommended settings'
+            )
+        ).toBeInTheDocument();
+        expect(await sync('openaiCompatibleBaseUrl')).toBe(
+            'https://llm.example.com/v1'
+        );
+    });
+
     it('undoes a backup load whole or not at all, and offers Undo again after a failure', async () => {
         await fakeBrowser.storage.local.set({ showAdvancedSettings: true });
         location.hash = '#advanced';

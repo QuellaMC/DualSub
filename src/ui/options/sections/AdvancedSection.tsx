@@ -13,7 +13,11 @@ import {
     type SettingsKey,
     type SettingsValues,
 } from '@/config/schema';
-import { configService, type SettingsChange } from '@/config/service';
+import {
+    configService,
+    type SettingsChange,
+    type SettingsWrite,
+} from '@/config/service';
 import { useSettings } from '../../hooks/useSettings';
 import { useFeedback } from '../shell/feedback';
 import type { SectionProps } from '../types';
@@ -29,6 +33,8 @@ const NOT_BACKED_UP: readonly SettingsKey[] = [
 ];
 
 const BACKED_UP = SETTINGS_KEYS.filter((key) => !NOT_BACKED_UP.includes(key));
+
+const CREDENTIALS = Object.keys(CREDENTIAL_SETUP) as SettingsKey[];
 
 /** What a reset leaves while everything else goes back to the recommended
  *  values: what is not backed up, how the page itself reads, and the
@@ -53,18 +59,19 @@ function keptOnReset(credentials: Partial<SettingsValues>): Set<SettingsKey> {
     return kept;
 }
 
-/** What a reset writes, judged by the keys stored when it runs: a key
- *  saved just before it keeps the setup it was entered with. */
-async function resetChanges(): Promise<Partial<SettingsValues>> {
-    const kept = keptOnReset(
-        await configService.getMultiple(Object.keys(CREDENTIAL_SETUP))
-    );
-    return Object.fromEntries(
-        SETTINGS_KEYS.filter((key) => !kept.has(key)).map((key) => [
-            key,
-            getDefaultValue(key),
-        ])
-    );
+/** Reset everything `keptOnReset` does not keep, judged by the keys stored
+ *  when the reset writes: a key saved just before it keeps the setup it was
+ *  entered with. */
+function resetSettings(): Promise<SettingsWrite> {
+    return configService.updateSettings(CREDENTIALS, (credentials) => {
+        const kept = keptOnReset(credentials);
+        return Object.fromEntries(
+            SETTINGS_KEYS.filter((key) => !kept.has(key)).map((key) => [
+                key,
+                getDefaultValue(key),
+            ])
+        );
+    });
 }
 
 const LOGGING_LEVELS = [
@@ -159,18 +166,16 @@ export function AdvancedSection({ t, settings, save }: SectionProps) {
         wasConfirming.current = confirmReset;
     }, [confirmReset]);
 
-    /** Write the changes `build` makes when this change's turn comes, with
-     *  an Undo that puts back what they replaced wherever nothing changed
-     *  it since; each lands whole or not at all. */
+    /** Start `write` when this change's turn comes, with an Undo that puts
+     *  back what it replaced wherever nothing changed it since. */
     const replaceSettings = (
-        build: () => Promise<Partial<SettingsValues>>,
+        write: () => Promise<SettingsWrite>,
         message: string
     ): void => {
         let change: SettingsChange = { before: {}, after: {} };
         void feedback.apply(
             async () => {
-                change = (await configService.setMultiple(await build()))
-                    .change;
+                change = (await write()).change;
             },
             message,
             () => configService.putBack(change)
@@ -285,7 +290,7 @@ export function AdvancedSection({ t, settings, save }: SectionProps) {
                                 onClick={() => {
                                     closeLoad();
                                     replaceSettings(
-                                        () => Promise.resolve(backup),
+                                        () => configService.setMultiple(backup),
                                         t('toastLoaded')
                                     );
                                 }}
@@ -383,7 +388,7 @@ export function AdvancedSection({ t, settings, save }: SectionProps) {
                                 onClick={() => {
                                     setConfirmReset(false);
                                     replaceSettings(
-                                        resetChanges,
+                                        resetSettings,
                                         t('toastReset')
                                     );
                                 }}
