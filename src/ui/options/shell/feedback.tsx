@@ -12,11 +12,11 @@ export type ToastTone = 'done' | 'problem';
 
 export interface Feedback {
     /**
-     * Make a change, once every change asked for before it is made. A
-     * failure shows the page's banner and resolves false. A success clears
-     * the banner and, given a message, confirms it in a toast whose Undo
-     * makes `undo` the same way; a success without one takes back an Undo
-     * still offered, which would put back this change too.
+     * Make a change, once every change asked for before it is made. Asking
+     * takes back an Undo still offered, which would put back this change
+     * too. A failure shows the page's banner and resolves false. A success
+     * clears the banner and, given a message, confirms it in a toast whose
+     * Undo makes `undo` the same way.
      */
     readonly apply: (
         change: () => Promise<unknown>,

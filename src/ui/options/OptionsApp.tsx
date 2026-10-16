@@ -200,21 +200,27 @@ export function OptionsApp() {
                 show({
                     message,
                     tone: 'done',
-                    undo: undo ? () => apply(undo) : null,
+                    undo: undo ? () => inTurn(undo) : null,
                 });
-            } else {
-                setToast((current) =>
-                    current?.undo ? { ...current, undo: null } : current
-                );
             }
             return true;
         };
-        const apply: Feedback['apply'] = (change, message, undo) => {
+        const inTurn = (
+            change: () => Promise<unknown>,
+            message?: string,
+            undo?: () => Promise<unknown>
+        ): Promise<boolean> => {
             const made = changes.current.then(() =>
                 makeChange(change, message, undo)
             );
             changes.current = made.catch(() => undefined);
             return made;
+        };
+        const apply: Feedback['apply'] = (change, message, undo) => {
+            setToast((current) =>
+                current?.undo ? { ...current, undo: null } : current
+            );
+            return inTurn(change, message, undo);
         };
         return {
             apply,
@@ -362,7 +368,7 @@ export function OptionsApp() {
                             advanced={advanced}
                             onSection={go}
                             onAdvanced={(next) =>
-                                void savePage({ showAdvancedSettings: next })
+                                savePage({ showAdvancedSettings: next })
                             }
                         />
                         <main className="main" id="main">
