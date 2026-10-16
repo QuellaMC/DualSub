@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import '@testing-library/jest-dom/vitest';
 import {
+    act,
     cleanup,
     fireEvent,
     render,
@@ -173,6 +174,38 @@ describe('LookSection', () => {
         unmount();
         expect(save).toHaveBeenCalledWith(
             { subtitleCustomLook: { ...LOOK, font: 'serif' } },
+            'quiet'
+        );
+    });
+
+    it('writes an edit as soon as the interaction that made it ends', async () => {
+        const { save } = renderSection();
+        const opacity = screen.getByLabelText(/lookBoxOpacityLabel/);
+        fireEvent.change(opacity, { target: { value: '0.25' } });
+        expect(save).not.toHaveBeenCalled();
+        fireEvent.pointerUp(opacity);
+        expect(save).toHaveBeenLastCalledWith(
+            { subtitleCustomLook: { ...LOOK, backgroundOpacity: 0.25 } },
+            'quiet'
+        );
+        await act(() => Promise.resolve());
+
+        fireEvent.change(opacity, { target: { value: '0.5' } });
+        fireEvent.keyUp(opacity, { key: 'ArrowRight' });
+        expect(save).toHaveBeenLastCalledWith(
+            { subtitleCustomLook: { ...LOOK, backgroundOpacity: 0.5 } },
+            'quiet'
+        );
+    });
+
+    it('starts writing a waiting edit before the page goes away', () => {
+        const { save } = renderSection();
+        fireEvent.change(screen.getByLabelText('lookFontLabel'), {
+            target: { value: 'small-caps' },
+        });
+        window.dispatchEvent(new Event('pagehide'));
+        expect(save).toHaveBeenCalledWith(
+            { subtitleCustomLook: { ...LOOK, font: 'small-caps' } },
             'quiet'
         );
     });
