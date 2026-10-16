@@ -1,6 +1,11 @@
 import { createContext, useContext } from 'react';
 import {
+    isSettingsKey,
     isSiteSettingKey,
+    prepareSettingValue,
+    sameSettingValue,
+    siteProfileOf,
+    type SettingsKey,
     type SettingsValues,
     type SiteSettingKey,
 } from '@/config/schema';
@@ -31,6 +36,24 @@ const FeedbackContext = createContext<Feedback | null>(null);
 
 export const FeedbackProvider = FeedbackContext.Provider;
 
+/** Of `keys`, those `scope` still sees as `written` set them: an Undo
+ *  leaves alone a setting another page changed since. */
+async function stillWritten(
+    keys: readonly SettingsKey[],
+    written: Partial<SettingsValues>,
+    scope: Scope
+): Promise<Set<SettingsKey>> {
+    const now = await configService.getMultiple(
+        keys,
+        scope === 'all' ? {} : { site: scope }
+    );
+    return new Set(
+        keys.filter((key) =>
+            sameSettingValue(now[key], prepareSettingValue(key, written[key]))
+        )
+    );
+}
+
 /**
  * A settings handle's save that confirms a named change in a toast whose
  * Undo puts back what the change replaced, read as the change is written:
@@ -39,7 +62,7 @@ export const FeedbackProvider = FeedbackContext.Provider;
  * site's previous values back through the site would drop one equal to the
  * shared value, turning a site's own value into one it follows.
  */
-export function feedbackSave<Values>(
+export function feedbackSave<Values extends Partial<SettingsValues>>(
     handle: { readonly save: (changes: Partial<Values>) => Promise<void> },
     scope: Scope,
     feedback: Feedback
@@ -48,7 +71,7 @@ export function feedbackSave<Values>(
         if (notice === 'quiet') {
             return feedback.apply(() => handle.save(changes));
         }
-        const keys = Object.keys(changes);
+        const keys = Object.keys(changes).filter(isSettingsKey);
         const siteKeys = scope === 'all' ? [] : keys.filter(isSiteSettingKey);
         const sharedKeys = keys.filter(
             (key) => scope === 'all' || !isSiteSettingKey(key)
@@ -64,13 +87,21 @@ export function feedbackSave<Values>(
                 await handle.save(changes);
             },
             notice.message,
-            () =>
-                siteKeys.length === 0
-                    ? configService.setMultiple(before)
+            async () => {
+                const kept = await stillWritten(keys, changes, scope);
+                const shared = Object.fromEntries(
+                    sharedKeys
+                        .filter((key) => kept.has(key))
+                        .map((key) => [key, before[key]])
+                );
+                const sites = siteKeys.filter((key) => kept.has(key));
+                return sites.length === 0
+                    ? configService.setMultiple(shared)
                     : configService.restoreSiteValues(
-                          before,
-                          siteKeys.map((key) => [scope, key] as const)
-                      )
+                          { ...shared, siteProfiles: before.siteProfiles },
+                          sites.map((key) => [scope, key] as const)
+                      );
+            }
         );
     };
 }
@@ -89,11 +120,19 @@ export function followAllSites(
             before = await configService.removeSiteValues([site], keys);
         },
         message,
-        () =>
-            configService.restoreSiteValues(
+        async () => {
+            // A value another page gave the site since stays its own.
+            const { siteProfiles = {} } = await configService.getMultiple([
+                'siteProfiles',
+            ]);
+            const own = siteProfileOf(siteProfiles, site);
+            return configService.restoreSiteValues(
                 before,
-                keys.map((key) => [site, key] as const)
-            )
+                keys
+                    .filter((key) => !Object.hasOwn(own, key))
+                    .map((key) => [site, key] as const)
+            );
+        }
     );
 }
 

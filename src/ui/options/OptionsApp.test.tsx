@@ -117,6 +117,22 @@ describe('OptionsApp', () => {
         );
     });
 
+    it('leaves a setting changed in another tab since alone when undoing', async () => {
+        await renderReady();
+        fireEvent.click(screen.getByRole('button', { name: /Large$/ }));
+        const toast = await screen.findByText('Text size: Large');
+        await fakeBrowser.storage.sync.set({ subtitleFontScale: 2 });
+        fireEvent.click(
+            within(toast.parentElement!).getByRole('button', { name: 'Undo' })
+        );
+        await waitFor(() =>
+            expect(
+                screen.queryByText('Text size: Large')
+            ).not.toBeInTheDocument()
+        );
+        expect(await sync('subtitleFontScale')).toBe(2);
+    });
+
     it('moves the subtitles one step per press, however quick the presses', async () => {
         location.hash = '#timing';
         await renderReady();
@@ -275,6 +291,47 @@ describe('OptionsApp', () => {
         await waitFor(async () =>
             expect(await sync('siteProfiles')).toEqual({})
         );
+    });
+
+    it('keeps a site value given back in another tab when following all sites is undone', async () => {
+        await fakeBrowser.storage.sync.set({
+            siteProfiles: { netflix: { subtitleFontScale: 1.6 } },
+        });
+        await fakeBrowser.storage.local.set({ showAdvancedSettings: true });
+        location.hash = '#sites';
+        await renderReady();
+        fireEvent.click(
+            await screen.findByRole('button', {
+                name: 'Edit the Netflix settings',
+            })
+        );
+        fireEvent.click(
+            (
+                await screen.findAllByRole('button', {
+                    name: 'Use the value for all sites',
+                })
+            )[0]!
+        );
+        const toast = await screen.findByText(
+            'Back to the value for all sites'
+        );
+        await waitFor(async () =>
+            expect(await sync('siteProfiles')).toEqual({})
+        );
+        await fakeBrowser.storage.sync.set({
+            siteProfiles: { netflix: { subtitleFontScale: 2 } },
+        });
+        fireEvent.click(
+            within(toast.parentElement!).getByRole('button', { name: 'Undo' })
+        );
+        await waitFor(() =>
+            expect(
+                screen.queryByText('Back to the value for all sites')
+            ).not.toBeInTheDocument()
+        );
+        expect(await sync('siteProfiles')).toEqual({
+            netflix: { subtitleFontScale: 2 },
+        });
     });
 
     it('asks for access to a custom explanation address before turning explanations on', async () => {
@@ -774,6 +831,38 @@ describe('OptionsApp', () => {
             (await fakeBrowser.storage.local.get('showAdvancedSettings'))
                 .showAdvancedSettings
         ).toBe(true);
+    });
+
+    it('stays where the viewer went while an advanced search result waits for its setting', async () => {
+        await renderReady();
+        const realSet = fakeBrowser.storage.local.set.bind(
+            fakeBrowser.storage.local
+        );
+        const held = Promise.withResolvers<void>();
+        vi.spyOn(fakeBrowser.storage.local, 'set').mockImplementationOnce(
+            (items: Record<string, unknown>) =>
+                held.promise.then(() => realSet(items)) as never
+        );
+        fireEvent.change(screen.getByRole('searchbox'), {
+            target: { value: 'pause between' },
+        });
+        fireEvent.click(
+            screen.getByRole('button', {
+                name: /^Pause between translation requests/,
+            })
+        );
+        nav('Help');
+        held.resolve();
+        await waitFor(async () =>
+            expect(
+                (await fakeBrowser.storage.local.get('showAdvancedSettings'))
+                    .showAdvancedSettings
+            ).toBe(true)
+        );
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+            'Help'
+        );
     });
 
     it('lands on the menu language picker from search', async () => {
@@ -1506,6 +1595,45 @@ describe('OptionsApp', () => {
             expect(await sync('subtitleFontScale')).toBe(1.6)
         );
         expect(await sync('subtitleGap')).toBe(0.3);
+    });
+
+    it('undoes a backup load except a setting changed in another tab since', async () => {
+        await fakeBrowser.storage.local.set({ showAdvancedSettings: true });
+        location.hash = '#advanced';
+        await renderReady();
+        await waitFor(() =>
+            expect(
+                screen.getByRole('button', { name: 'Download settings' })
+            ).toBeEnabled()
+        );
+        fireEvent.change(screen.getByLabelText('Load settings from a file'), {
+            target: {
+                files: [
+                    new File(
+                        [
+                            JSON.stringify({
+                                subtitleFontScale: 1.6,
+                                subtitleGap: 0.5,
+                            }),
+                        ],
+                        'backup.json',
+                        { type: 'application/json' }
+                    ),
+                ],
+            },
+        });
+        fireEvent.click(
+            await screen.findByRole('button', { name: 'Replace them' })
+        );
+        const toast = await screen.findByText('Settings loaded');
+        await fakeBrowser.storage.sync.set({ subtitleGap: 0.7 });
+        fireEvent.click(
+            within(toast.parentElement!).getByRole('button', { name: 'Undo' })
+        );
+        await waitFor(async () =>
+            expect(await sync('subtitleFontScale')).toBe(1)
+        );
+        expect(await sync('subtitleGap')).toBe(0.7);
     });
 
     it('refuses a backup holding a value this version cannot use', async () => {
