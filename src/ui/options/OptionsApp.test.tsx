@@ -1560,6 +1560,62 @@ describe('OptionsApp', () => {
         expect(await sync('subtitleFontScale')).toBe(1);
     });
 
+    it('takes back a backup that loads in part entry by entry, keeping a profile changed elsewhere', async () => {
+        await fakeBrowser.storage.sync.set({
+            siteProfiles: { netflix: { subtitleGap: 0.5 } },
+        });
+        await fakeBrowser.storage.local.set({ showAdvancedSettings: true });
+        location.hash = '#advanced';
+        await renderReady();
+        await waitFor(() =>
+            expect(
+                screen.getByRole('button', { name: 'Download settings' })
+            ).toBeEnabled()
+        );
+        fireEvent.change(screen.getByLabelText('Load settings from a file'), {
+            target: {
+                files: [
+                    new File(
+                        [
+                            JSON.stringify({
+                                siteProfiles: { netflix: { subtitleGap: 0.7 } },
+                                showAdvancedSettings: false,
+                            }),
+                        ],
+                        'backup.json',
+                        { type: 'application/json' }
+                    ),
+                ],
+            },
+        });
+        const replace = await screen.findByRole('button', {
+            name: 'Replace them',
+        });
+        // Another tab gives Disney+ a profile after the profiles are written,
+        // just before the local write fails.
+        vi.spyOn(browser.storage.local, 'set').mockImplementationOnce(
+            () =>
+                fakeBrowser.storage.sync
+                    .set({
+                        siteProfiles: {
+                            netflix: { subtitleGap: 0.7 },
+                            disneyplus: { subtitleGap: 0.2 },
+                        },
+                    })
+                    .then(() => Promise.reject(new Error('quota'))) as never
+        );
+        fireEvent.click(replace);
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+            'Failed to save setting'
+        );
+        await waitFor(async () =>
+            expect(await sync('siteProfiles')).toEqual({
+                netflix: { subtitleGap: 0.5 },
+                disneyplus: { subtitleGap: 0.2 },
+            })
+        );
+    });
+
     it('applies the whole backup, counting what changes as the settings change', async () => {
         await fakeBrowser.storage.local.set({ showAdvancedSettings: true });
         location.hash = '#advanced';
