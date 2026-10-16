@@ -1,9 +1,15 @@
 import { AUTO_LANGUAGE, SUBTITLE_LANGUAGES } from '@/shared/subtitleLanguages';
 import type { Translate } from '../hooks/useI18n';
-import { languageLabelKey, NATIVE_LANGUAGE_NAMES } from '../languageLabels';
+import {
+    languageLabelKey,
+    languageName,
+    NATIVE_LANGUAGE_NAMES,
+} from '../languageLabels';
 
 /** A subtitle language menu naming each language in its own words and in
- *  the page's language; `automatic` offers following the audio first. */
+ *  the page's language; `automatic` offers following the audio first. A
+ *  language stored that the menu does not offer, from a backup or another
+ *  computer, is still shown as the one picked. */
 export function LanguageSelect({
     t,
     id,
@@ -19,6 +25,10 @@ export function LanguageSelect({
     labelledBy?: string;
     automatic?: boolean;
 }) {
+    const offered =
+        (SUBTITLE_LANGUAGES as readonly string[]).includes(value) ||
+        (automatic && value === AUTO_LANGUAGE);
+    const name = languageName(t, value);
     return (
         <select
             id={id}
@@ -30,6 +40,11 @@ export function LanguageSelect({
             {automatic && (
                 <option value={AUTO_LANGUAGE}>
                     {t(languageLabelKey(AUTO_LANGUAGE))}
+                </option>
+            )}
+            {!offered && (
+                <option value={value}>
+                    {name === value ? value : `${name} · ${value}`}
                 </option>
             )}
             {SUBTITLE_LANGUAGES.map((code) => {

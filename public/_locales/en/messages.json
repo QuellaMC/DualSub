@@ -1293,7 +1293,10 @@
         "message": "theme dark light panel colors"
     },
     "searchWordsLimits": {
-        "message": "model timeout rate limit retries cache address url"
+        "message": "model timeout rate limit retries cache"
+    },
+    "searchWordsAddress": {
+        "message": "address url endpoint host server"
     },
     "searchWordsSiteOnOff": {
         "message": "netflix disney site off on enable disable turn"

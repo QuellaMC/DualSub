@@ -31,6 +31,7 @@ import {
     feedbackSave,
     FeedbackProvider,
     followAllSites,
+    type Confirmation,
     type Feedback,
 } from './shell/feedback';
 import { Nav } from './shell/Nav';
@@ -82,8 +83,10 @@ export function OptionsApp() {
         siteTarget: 'own',
     });
     const { settings } = handle;
-    const unavailable =
-        page.status === 'unavailable' || handle.status === 'unavailable';
+    const unavailable = page.status === 'unavailable';
+    // A section's own settings that cannot be read leave the page around
+    // it in place, the scope bar included, so another scope can be picked.
+    const sectionUnavailable = handle.status === 'unavailable';
     const { t, loadedLocale } = useI18n(
         page.settings?.uiLanguage ??
             (unavailable ? detectBrowserLanguage() : null)
@@ -118,10 +121,10 @@ export function OptionsApp() {
     );
 
     useEffect(() => {
-        if (unavailable) {
+        if (unavailable || sectionUnavailable) {
             logger.error('Settings initial load unavailable');
         }
-    }, [unavailable]);
+    }, [unavailable, sectionUnavailable]);
 
     useEffect(() => {
         if (loadedLocale !== null) {
@@ -146,27 +149,41 @@ export function OptionsApp() {
         if (!arrival) {
             return;
         }
-        const target =
-            arrival.anchors.length === 0
-                ? document.querySelector<HTMLElement>('.content h1')
-                : arrival.anchors
-                      .map((id) => document.getElementById(id))
-                      .find((element) => element !== null);
-        if (!target) {
+        const land = (): boolean => {
+            const target =
+                arrival.anchors.length === 0
+                    ? document.querySelector<HTMLElement>('.content h1')
+                    : arrival.anchors
+                          .map((id) => document.getElementById(id))
+                          .find((element) => element !== null);
+            if (!target) {
+                return false;
+            }
+            target.scrollIntoView({ block: 'start' });
+            const focused =
+                arrival.anchors.length === 0
+                    ? target
+                    : (target.querySelector<HTMLElement>(FOCUSABLE) ?? target);
+            focused.focus({ preventScroll: true });
+            // A folded disclosure opens to show what was searched for.
+            if (focused.getAttribute('aria-expanded') === 'false') {
+                focused.click();
+            }
+            setArrival(null);
+            return true;
+        };
+        if (land()) {
             return;
         }
-        target.scrollIntoView({ block: 'start' });
-        const focused =
-            arrival.anchors.length === 0
-                ? target
-                : (target.querySelector<HTMLElement>(FOCUSABLE) ?? target);
-        focused.focus({ preventScroll: true });
-        // A folded disclosure opens to show what was searched for.
-        if (focused.getAttribute('aria-expanded') === 'false') {
-            focused.click();
-        }
-        setArrival(null);
-    }, [arrival, settings]);
+        // A section that reads settings of its own shows the target later.
+        const observer = new MutationObserver(() => {
+            if (land()) {
+                observer.disconnect();
+            }
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+        return () => observer.disconnect();
+    }, [arrival]);
 
     const holdToast = useCallback((held: boolean) => {
         if (toastTimer.current) {
@@ -188,36 +205,34 @@ export function OptionsApp() {
             setToast({ id: Date.now(), ...toast });
             holdToast(false);
         };
-        const makeChange = async (
-            change: () => Promise<unknown>,
-            message?: string,
-            undo?: () => Promise<unknown>
-        ): Promise<boolean> => {
+        const makeChange: Feedback['apply'] = async (change) => {
+            let confirmation: Confirmation | undefined;
             try {
-                await change();
+                confirmation = await change();
             } catch (error) {
                 logger.error('Failed to save settings', error);
                 setSaveFailed(true);
                 return false;
             }
             setSaveFailed(false);
-            if (message) {
+            if (confirmation) {
+                const { message, undo } = confirmation;
                 show({
                     message,
                     tone: 'done',
-                    undo: undo ? () => queueChange(undo) : null,
+                    undo: undo
+                        ? () =>
+                              queueChange(async () => {
+                                  await undo();
+                                  return undefined;
+                              })
+                        : null,
                 });
             }
             return true;
         };
-        const queueChange = (
-            change: () => Promise<unknown>,
-            message?: string,
-            undo?: () => Promise<unknown>
-        ): Promise<boolean> => {
-            const made = changes.current.then(() =>
-                makeChange(change, message, undo)
-            );
+        const queueChange: Feedback['apply'] = (change) => {
+            const made = changes.current.then(() => makeChange(change));
             changes.current = made.catch(() => undefined);
             return made;
         };
@@ -226,12 +241,8 @@ export function OptionsApp() {
                 current?.undo ? { ...current, undo: null } : current
             );
         };
-        const apply: Feedback['apply'] = (change, message, undo) => {
-            takeBackUndo();
-            return queueChange(change, message, undo);
-        };
         return {
-            apply,
+            apply: queueChange,
             takeBackUndo,
             notify: (message, tone) => show({ message, tone, undo: null }),
         };
@@ -402,10 +413,23 @@ export function OptionsApp() {
                                 <div
                                     className="content"
                                     key={editing}
-                                    aria-busy={settings ? undefined : true}
+                                    aria-busy={
+                                        settings || sectionUnavailable
+                                            ? undefined
+                                            : true
+                                    }
                                 >
-                                    {settings &&
-                                        sectionContent({ t, settings, save })}
+                                    {sectionUnavailable ? (
+                                        <p
+                                            role="alert"
+                                            className="notice danger"
+                                        >
+                                            {t('settingsLoadFailed')}
+                                        </p>
+                                    ) : (
+                                        settings &&
+                                        sectionContent({ t, settings, save })
+                                    )}
                                 </div>
                                 {settings && SECTIONS[shown].preview && (
                                     <Preview

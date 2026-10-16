@@ -32,6 +32,11 @@ export const PROVIDER_CREDENTIALS = {
 
 export type CredentialKey = (typeof PROVIDER_CREDENTIALS)[ProviderId][number];
 
+/** Whether a credential is filled in; one of nothing but spaces is not. */
+export function credentialEntered(value: string | undefined): boolean {
+    return (value ?? '').trim() !== '';
+}
+
 /** Whether a Vertex token has run out at `now`; 0 records no expiry. */
 export function vertexTokenExpired(expiresAt: number, now: number): boolean {
     return expiresAt > 0 && expiresAt <= now;
@@ -49,7 +54,7 @@ export function missingCredentials(
     const needed: readonly CredentialKey[] = PROVIDER_CREDENTIALS[provider];
     return needed.filter(
         (key) =>
-            (settings[key] ?? '').trim() === '' ||
+            !credentialEntered(settings[key]) ||
             (key === 'vertexAccessToken' &&
                 vertexTokenExpired(settings.vertexTokenExpiresAt ?? 0, now))
     );

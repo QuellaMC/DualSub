@@ -1293,7 +1293,10 @@
         "message": "主題 深色 淺色 暗色 亮色 深色模式 淺色模式 夜間模式 暗黑模式 黑底 白底 太亮 刺眼 面板 解釋面板 側邊面板"
     },
     "searchWordsLimits": {
-        "message": "模型 逾時 超時 等待 太久 很慢 速率 頻率 次數 每分鐘 重試 嘗試次數 快取 暫存 記住 網址 位址 服務網址 端點 url"
+        "message": "模型 逾時 超時 等待 太久 很慢 速率 頻率 次數 每分鐘 重試 嘗試次數 快取 暫存 記住"
+    },
+    "searchWordsAddress": {
+        "message": "網址 位址 服務網址 端點 伺服器 url"
     },
     "searchWordsSiteOnOff": {
         "message": "netflix disney 網飛 迪士尼 網站 平台 開啟 關閉 打開 關掉 啟用 停用 開關 不想用 暫時關掉 雙語字幕 開啟字幕 關閉字幕 關掉字幕"

@@ -1293,7 +1293,10 @@
         "message": "主题 皮肤 深色模式 浅色模式 暗黑模式 夜间模式 暗色 亮色 跟随系统 跟随电脑 刺眼 解释面板 侧边栏"
     },
     "searchWordsLimits": {
-        "message": "url 超时 等待时间 速率 限速 频率限制 每分钟 请求次数 重试次数 缓存 记住回答 服务地址 接口地址 网址"
+        "message": "超时 等待时间 速率 限速 频率限制 每分钟 请求次数 重试次数 缓存 记住回答"
+    },
+    "searchWordsAddress": {
+        "message": "url 服务地址 接口地址 网址 服务器"
     },
     "searchWordsSiteOnOff": {
         "message": "netflix disney 网飞 奈飞 迪士尼 开关 打开 关闭 开启 启用 禁用 停用 关掉 不想用 双语字幕"

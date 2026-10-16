@@ -6,6 +6,7 @@ import {
 } from '@/config/schema';
 import { configService } from '@/config/service';
 import { CONTEXT_TYPES, type ContextType } from '@/shared/contextTypes';
+import { credentialEntered } from '@/shared/providers';
 import { Icon } from '../../design/Icon';
 import { Switch } from '../../design/Switch';
 import { useChoice } from '../../design/useChoice';
@@ -96,7 +97,7 @@ export function ExplanationsSection({
     // Explanations need a key the service can be reached with, and at least
     // one kind of explanation to give.
     const ready =
-        apiKey.trim() !== '' &&
+        credentialEntered(apiKey) &&
         (provider !== 'openai' || access.permitted === true) &&
         settings.aiContextTypes.length > 0;
     const enabled = settings.aiContextEnabled;
@@ -144,13 +145,14 @@ export function ExplanationsSection({
         type: ContextType,
         checked: boolean
     ): Promise<boolean> =>
-        feedback.apply(() =>
-            configService.updateSetting('aiContextTypes', (types) =>
+        feedback.apply(async () => {
+            await configService.updateSetting('aiContextTypes', (types) =>
                 CONTEXT_TYPES.filter((candidate) =>
                     candidate === type ? checked : types.includes(candidate)
                 )
-            )
-        );
+            );
+            return undefined;
+        });
 
     return (
         <section className="section" aria-labelledby="explain-title">
@@ -229,6 +231,7 @@ export function ExplanationsSection({
                                 {(['gemini', 'openai'] as const).map((id) => (
                                     <button
                                         key={id}
+                                        id={`explain-provider-${id}`}
                                         type="button"
                                         aria-pressed={provider === id}
                                         onClick={() =>
@@ -438,7 +441,7 @@ export function ExplanationsSection({
                                         ))}
                                     </datalist>
                                 </div>
-                                <div className="control">
+                                <div className="control" id="explain-address">
                                     <label htmlFor="openaiBaseUrl">
                                         {t('setupAddress')}
                                     </label>
