@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { browser, type Browser } from 'wxt/browser';
-import { previewContentSettings, readPlatformLookStatus } from './contentTab';
+import {
+    activeTabPlatform,
+    previewContentSettings,
+    readPlatformLookStatus,
+} from './contentTab';
 
 function activeTab(id: number): Browser.tabs.Tab[] {
     return [{ id } as unknown as Browser.tabs.Tab];
@@ -112,5 +116,40 @@ describe('readPlatformLookStatus', () => {
 
         send.mockResolvedValueOnce({ platform: 'hulu', captured: 1 } as never);
         await expect(readPlatformLookStatus()).resolves.toBeNull();
+    });
+});
+
+describe('activeTabPlatform', () => {
+    const at = (url?: string, pendingUrl?: string): Browser.tabs.Tab[] => [
+        { id: 7, url, pendingUrl } as unknown as Browser.tabs.Tab,
+    ];
+
+    it('names the site the tab shows, or none where DualSub does not work', async () => {
+        stubTabs(at('https://www.netflix.com/watch/81'));
+        await expect(activeTabPlatform()).resolves.toBe('netflix');
+        stubTabs(at('https://example.com/'));
+        await expect(activeTabPlatform()).resolves.toBeNull();
+    });
+
+    it('names the site a tab navigating within it stays on', async () => {
+        stubTabs(
+            at(
+                'https://www.netflix.com/browse',
+                'https://www.netflix.com/watch/81'
+            )
+        );
+        await expect(activeTabPlatform()).resolves.toBe('netflix');
+    });
+
+    it('cannot tell the site while the tab is on its way to another', async () => {
+        stubTabs(
+            at(
+                'https://www.netflix.com/watch/81',
+                'https://www.disneyplus.com/'
+            )
+        );
+        await expect(activeTabPlatform()).rejects.toThrow();
+        stubTabs(at(undefined, 'https://www.netflix.com/'));
+        await expect(activeTabPlatform()).rejects.toThrow();
     });
 });
