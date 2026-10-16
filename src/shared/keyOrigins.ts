@@ -16,7 +16,7 @@ export const KEY_ORIGINS = {
     Record<SettingsKey, { address: SettingsKey; origin: SettingsKey }>
 >;
 
-type OriginBoundKey = keyof typeof KEY_ORIGINS;
+export type OriginBoundKey = keyof typeof KEY_ORIGINS;
 export type KeyBinding = (typeof KEY_ORIGINS)[OriginBoundKey];
 
 /** The settings that decide where a key may go. */

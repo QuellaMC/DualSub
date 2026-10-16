@@ -56,77 +56,6 @@ describe('useCommittedTextField', () => {
         expect(onCommit).toHaveBeenCalledTimes(1);
     });
 
-    it('settles on a saved draft once its save lands, before the persisted value catches up', async () => {
-        const save = Promise.withResolvers<boolean>();
-        const { result } = setup(
-            'a',
-            vi.fn(() => save.promise)
-        );
-        act(() => result.current.change('next'));
-        act(() => {
-            void result.current.commit();
-        });
-        let landed = false;
-        const settled = result.current.settled().then((value) => {
-            landed = true;
-            return value;
-        });
-        await act(() => Promise.resolve());
-        expect(landed).toBe(false);
-
-        save.resolve(true);
-        expect(await settled).toBe('next');
-    });
-
-    it('settles on the save shown when asked, not on a later one', async () => {
-        const first = Promise.withResolvers<boolean>();
-        const { result } = setup(
-            'a',
-            vi.fn(() => first.promise)
-        );
-        act(() => result.current.change('first'));
-        act(() => {
-            void result.current.commit();
-        });
-        const settled = result.current.settled();
-        act(() => {
-            void result.current.adopt('second', () => true);
-        });
-        first.resolve(true);
-        expect(await settled).toBe('first');
-    });
-
-    it('settles on the persisted value when the save shown fails, whatever came after', async () => {
-        const first = Promise.withResolvers<boolean>();
-        const { result } = setup(
-            'a',
-            vi.fn(() => first.promise)
-        );
-        act(() => result.current.change('first'));
-        act(() => {
-            void result.current.commit();
-        });
-        const settled = result.current.settled();
-        act(() => {
-            void result.current.adopt('second', () => true);
-        });
-        first.resolve(false);
-        expect(await settled).toBe('a');
-    });
-
-    it('settles on the persisted value once a save fails, or for an invalid draft', async () => {
-        const { result } = setup(
-            'a',
-            vi.fn(() => Promise.resolve(false))
-        );
-        act(() => result.current.change('next'));
-        await act(() => result.current.commit());
-        expect(await result.current.settled()).toBe('a');
-
-        act(() => result.current.change('  '));
-        expect(await result.current.settled()).toBe('a');
-    });
-
     it('keeps an invalid draft editable without persisting it', async () => {
         const { result, onCommit } = setup();
         act(() => result.current.change('   '));
@@ -147,33 +76,6 @@ describe('useCommittedTextField', () => {
         act(() => result.current.change('typing'));
         rerender({ value: 'c' });
         expect(result.current.value).toBe('typing');
-    });
-
-    it('shows an adopted value at once and persists it through its own save', async () => {
-        const { result, onCommit } = setup();
-        const persist = vi.fn(() => Promise.resolve(true));
-        await act(() => result.current.adopt('chosen', persist));
-        expect(result.current.value).toBe('chosen');
-        expect(persist).toHaveBeenCalledWith('chosen');
-        expect(onCommit).not.toHaveBeenCalled();
-    });
-
-    it('rolls back a failed adoption, but not over a newer one', async () => {
-        const { result } = setup();
-        await act(() => result.current.adopt('lost', () => false));
-        expect(result.current.value).toBe('a');
-
-        const older = Promise.withResolvers<boolean>();
-        let first: Promise<boolean> = Promise.resolve(true);
-        act(() => {
-            first = result.current.adopt('older', () => older.promise);
-        });
-        act(() => {
-            void result.current.adopt('newer', () => new Promise(() => {}));
-        });
-        older.resolve(false);
-        await act(() => first);
-        expect(result.current.value).toBe('newer');
     });
 
     it('rolls a failed commit back to the persisted value', async () => {

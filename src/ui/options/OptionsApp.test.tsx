@@ -979,6 +979,103 @@ describe('OptionsApp', () => {
         ).toBe('https://llm.example.com');
     });
 
+    it('enters a key for the service chosen before it, while that choice is still being saved', async () => {
+        await fakeBrowser.storage.sync.set({
+            selectedProvider: 'openai_compatible',
+            openaiCompatibleBaseUrl:
+                'https://generativelanguage.googleapis.com/v1beta/openai',
+        });
+        location.hash = '#translation';
+        await renderReady();
+        const stored = Promise.withResolvers<void>();
+        const write = browser.storage.sync.set.bind(browser.storage.sync);
+        vi.spyOn(browser.storage.sync, 'set').mockImplementationOnce(
+            (items: Record<string, unknown>) =>
+                stored.promise.then(() => write(items)) as never
+        );
+        fireEvent.click(screen.getByRole('button', { name: 'OpenAI' }));
+        fireEvent.change(screen.getByLabelText('Paste it here'), {
+            target: { value: 'sk-openai' },
+        });
+        stored.resolve();
+        await waitFor(async () =>
+            expect(
+                await fakeBrowser.storage.local.get([
+                    'openaiCompatibleApiKey',
+                    'openaiCompatibleApiKeyOrigin',
+                ])
+            ).toEqual({
+                openaiCompatibleApiKey: 'sk-openai',
+                openaiCompatibleApiKeyOrigin: 'https://api.openai.com',
+            })
+        );
+    });
+
+    it('keeps a key typed before an address change with the address it was typed for', async () => {
+        await fakeBrowser.storage.local.set({ showAdvancedSettings: true });
+        location.hash = '#explanations';
+        await renderReady();
+        fireEvent.change(screen.getByLabelText('Paste it here'), {
+            target: { value: 'sk-openai' },
+        });
+        const address = screen.getByLabelText('Service address');
+        fireEvent.change(address, {
+            target: { value: 'https://llm.example.com/v1' },
+        });
+        fireEvent.blur(address);
+        await waitFor(async () =>
+            expect(await sync('openaiBaseUrl')).toBe(
+                'https://llm.example.com/v1'
+            )
+        );
+        expect(
+            await fakeBrowser.storage.local.get([
+                'openaiApiKey',
+                'openaiApiKeyOrigin',
+            ])
+        ).toEqual({
+            openaiApiKey: 'sk-openai',
+            openaiApiKeyOrigin: 'https://api.openai.com',
+        });
+        await waitFor(() =>
+            expect(screen.getByLabelText('Paste it here')).toHaveValue('')
+        );
+    });
+
+    it('enters a key for the stored address when the address it waited for fails to save', async () => {
+        await fakeBrowser.storage.local.set({ showAdvancedSettings: true });
+        location.hash = '#explanations';
+        await renderReady();
+        const failure = Promise.withResolvers<void>();
+        vi.spyOn(browser.storage.sync, 'set').mockImplementationOnce(
+            () =>
+                failure.promise.then(() => {
+                    throw new Error('quota');
+                }) as never
+        );
+        const address = screen.getByLabelText('Service address');
+        fireEvent.change(address, {
+            target: { value: 'https://llm.example.com/v1' },
+        });
+        fireEvent.blur(address);
+        fireEvent.change(screen.getByLabelText('Paste it here'), {
+            target: { value: 'sk-openai' },
+        });
+        failure.resolve();
+        await waitFor(async () =>
+            expect(
+                await fakeBrowser.storage.local.get([
+                    'openaiApiKey',
+                    'openaiApiKeyOrigin',
+                ])
+            ).toEqual({
+                openaiApiKey: 'sk-openai',
+                openaiApiKeyOrigin: 'https://api.openai.com',
+            })
+        );
+        expect(await sync('openaiBaseUrl')).toBeUndefined();
+    });
+
     it('treats a key as missing once another computer moves its address', async () => {
         await fakeBrowser.storage.sync.set({
             selectedProvider: 'openai_compatible',

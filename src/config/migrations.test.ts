@@ -144,8 +144,9 @@ describe('migrateLegacyConfiguration', () => {
         await fakeBrowser.storage.local.set({ openaiApiKey: 'sk-legacy' });
         const read = browser.storage.local.get.bind(browser.storage.local);
         let entry: Promise<unknown> = Promise.resolve();
-        // The settings page saves a key while the migration reads the
-        // credentials it binds; the entry may land before the binding does.
+        // The settings page moves the address and enters a key for it while
+        // the migration reads the credentials it binds; the entry may land
+        // before the binding does.
         vi.spyOn(browser.storage.local, 'get').mockImplementation(((
             keys: string[] | null
         ) =>
@@ -154,10 +155,10 @@ describe('migrateLegacyConfiguration', () => {
                     Array.isArray(keys) &&
                     keys.includes('openaiApiKeyOrigin')
                 ) {
-                    entry = configService.setMultiple({
-                        openaiApiKey: 'sk-new',
-                        openaiApiKeyOrigin: 'https://new.example.com',
+                    await fakeBrowser.storage.sync.set({
+                        openaiBaseUrl: 'https://new.example.com/v1',
                     });
+                    entry = configService.enterKey('openaiApiKey', 'sk-new');
                     await Promise.race([
                         entry,
                         new Promise((resolve) => setTimeout(resolve, 20)),

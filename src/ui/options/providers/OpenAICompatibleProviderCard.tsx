@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { validateSetting } from '@/config/schema';
-import { keyEntry } from '@/shared/keyOrigins';
+import { configService } from '@/config/service';
 import { Icon } from '../../design/Icon';
 import type { Translate } from '../../hooks/useI18n';
 import { useCommittedTextField } from '../../hooks/useCommittedTextField';
 import { CommittedField } from '../controls/CommittedField';
 import { useOpenAIModels } from '../hooks/useOpenAIModels';
+import { useFeedback } from '../shell/feedback';
 import { TestResultDisplay } from '../TestResultDisplay';
 import type { SaveSettings } from '../types';
 
@@ -45,6 +46,7 @@ export function OpenAICompatibleProviderCard({
     advanced: boolean;
     save: SaveSettings;
 }) {
+    const feedback = useFeedback();
     const catalog = useOpenAIModels(t, apiKey, baseUrl);
     const baseUrlField = useCommittedTextField({
         value: baseUrl,
@@ -86,21 +88,14 @@ export function OpenAICompatibleProviderCard({
                                     aria-pressed={service?.id === entry.id}
                                     onClick={() => {
                                         setChoseOther(false);
-                                        // Through the address field, so a key
-                                        // pasted before the choice is stored
-                                        // is entered for it.
-                                        void baseUrlField.adopt(
-                                            entry.baseUrl,
-                                            (address) =>
-                                                save(
-                                                    {
-                                                        openaiCompatibleBaseUrl:
-                                                            address,
-                                                        openaiCompatibleModel:
-                                                            entry.model,
-                                                    },
-                                                    'quiet'
-                                                )
+                                        void save(
+                                            {
+                                                openaiCompatibleBaseUrl:
+                                                    entry.baseUrl,
+                                                openaiCompatibleModel:
+                                                    entry.model,
+                                            },
+                                            'quiet'
                                         );
                                     }}
                                 >
@@ -153,18 +148,12 @@ export function OpenAICompatibleProviderCard({
                                 value={apiKey}
                                 onChange={(event) => {
                                     const key = event.target.value;
-                                    void baseUrlField
-                                        .settled()
-                                        .then((address) =>
-                                            save(
-                                                keyEntry(
-                                                    'openaiCompatibleApiKey',
-                                                    key,
-                                                    address
-                                                ),
-                                                'quiet'
-                                            )
-                                        );
+                                    void feedback.apply(() =>
+                                        configService.enterKey(
+                                            'openaiCompatibleApiKey',
+                                            key
+                                        )
+                                    );
                                 }}
                             />
                             <button

@@ -227,18 +227,20 @@ describe('configService', () => {
                     .subtitlesEnabled
             ).toBe(false);
         });
+    });
 
-        it('writes a key with its origin in turn with every page and the worker', async () => {
+    describe('enterKey', () => {
+        it('enters a key for the origin of the address stored now, in turn with every page and the worker', async () => {
+            await fakeBrowser.storage.sync.set({
+                openaiBaseUrl: 'https://proxy.example.com/v1',
+            });
             const release = Promise.withResolvers<void>();
             // The boot migration, or another page, holds the shared lock.
             const elsewhere = navigator.locks.request(
                 'dualsub:settingParts',
                 () => release.promise
             );
-            const entry = configService.setMultiple({
-                openaiApiKey: 'sk',
-                openaiApiKeyOrigin: 'https://api.openai.com',
-            });
+            const entry = configService.enterKey('openaiApiKey', 'sk');
             await new Promise((resolve) => setTimeout(resolve, 20));
             const whileHeld =
                 await fakeBrowser.storage.local.get('openaiApiKey');
@@ -247,9 +249,14 @@ describe('configService', () => {
 
             expect(whileHeld).toEqual({});
             expect(
-                (await fakeBrowser.storage.local.get('openaiApiKey'))
-                    .openaiApiKey
-            ).toBe('sk');
+                await fakeBrowser.storage.local.get([
+                    'openaiApiKey',
+                    'openaiApiKeyOrigin',
+                ])
+            ).toEqual({
+                openaiApiKey: 'sk',
+                openaiApiKeyOrigin: 'https://proxy.example.com',
+            });
         });
     });
 

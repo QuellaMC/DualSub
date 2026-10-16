@@ -1,5 +1,9 @@
 import { browser } from 'wxt/browser';
-import { KEY_ORIGINS } from '@/shared/keyOrigins';
+import {
+    KEY_ORIGINS,
+    keyEntry,
+    type OriginBoundKey,
+} from '@/shared/keyOrigins';
 import { createLogger, setLoggingLevel } from '@/shared/logger';
 import type { PlatformId } from '@/shared/platforms';
 import {
@@ -164,13 +168,6 @@ const EDITED_IN_PART = [
 ] as const;
 type EditedInPart = (typeof EDITED_IN_PART)[number];
 
-/** Settings whose writes take their turn: those edited in part, and the
- *  origin each key is bound to, which the boot migration binds from what it
- *  read. */
-const WRITTEN_IN_TURN: readonly SettingsKey[] = [
-    ...EDITED_IN_PART,
-    ...Object.values(KEY_ORIGINS).map(({ origin }) => origin),
-];
 const PARTS_LOCK = 'dualsub:settingParts';
 
 /** Run `change` once every earlier write that reads what it replaces has
@@ -622,17 +619,16 @@ class ConfigService {
     /**
      * Multi-key write. Validates everything first (nothing is written when any
      * key/value is invalid), then writes each storage area independently and
-     * aggregates area failures. A write of a setting edited in part, of a
-     * key's origin, or of a site's values, waits for the rewrite before it,
-     * made in any extension page or the worker, so it builds on what that
-     * one left.
+     * aggregates area failures. A write of a setting edited in part, or of a
+     * site's values, waits for the rewrite before it, made in any extension
+     * page or the worker, so it builds on what that one left.
      */
     setMultiple(
         settings: Partial<SettingsValues>,
         siteWrite?: SiteWrite
     ): Promise<Partial<SettingsValues>> {
         return siteWrite ||
-            WRITTEN_IN_TURN.some((key) => Object.hasOwn(settings, key))
+            EDITED_IN_PART.some((key) => Object.hasOwn(settings, key))
             ? inTurn(() => this.writeMultiple(settings, siteWrite))
             : this.writeMultiple(settings, siteWrite);
     }
@@ -652,6 +648,22 @@ class ConfigService {
             const current = values[key] as SettingsValues[K];
             await this.writeMultiple({ [key]: edit(current) });
             return current;
+        });
+    }
+
+    /**
+     * Store `value` as `key`, entered for the address stored now, together
+     * with that address's origin, the only one the key goes to. It runs in
+     * turn with every write that takes its turn, the boot migration's
+     * binding among them. Reads strictly, so a failed read writes nothing.
+     */
+    enterKey(key: OriginBoundKey, value: string): Promise<void> {
+        return inTurn(async () => {
+            const { address } = KEY_ORIGINS[key];
+            const { values } = await this.readResultStrict(address);
+            await this.writeMultiple(
+                keyEntry(key, value, values[address] ?? '')
+            );
         });
     }
 

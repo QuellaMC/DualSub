@@ -9,6 +9,8 @@ import {
 } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { browser } from 'wxt/browser';
+import { fakeBrowser } from 'wxt/testing/fake-browser';
+import { FeedbackProvider, type Feedback } from '../shell/feedback';
 import { OpenAICompatibleProviderCard } from './OpenAICompatibleProviderCard';
 
 const t = (key: string, ...subs: readonly (string | number)[]): string =>
@@ -37,7 +39,24 @@ function renderCard(
         advanced: true,
         ...overrides,
     };
-    render(<OpenAICompatibleProviderCard t={t} save={save} {...props} />);
+    // The page makes each change in turn; so does this stand-in.
+    let changes: Promise<unknown> = Promise.resolve();
+    const feedback: Feedback = {
+        apply: (change) => {
+            const made = changes.then(change).then(
+                () => true,
+                () => false
+            );
+            changes = made;
+            return made;
+        },
+        notify: vi.fn(),
+    };
+    render(
+        <FeedbackProvider value={feedback}>
+            <OpenAICompatibleProviderCard t={t} save={save} {...props} />
+        </FeedbackProvider>
+    );
     return { save };
 }
 
@@ -57,8 +76,10 @@ function modelOptions(): string[] {
     ].map((option) => option.value);
 }
 
-beforeEach(() => {
+beforeEach(async () => {
     vi.useFakeTimers();
+    await fakeBrowser.storage.sync.clear();
+    await fakeBrowser.storage.local.clear();
 });
 
 afterEach(() => {
@@ -143,23 +164,28 @@ describe('OpenAICompatibleProviderCard', () => {
         );
     });
 
-    it('saves a key for the origin of its address, and model edits directly', async () => {
+    it('enters a key for the origin of the stored address, and saves model edits directly', async () => {
         vi.stubGlobal(
             'fetch',
             vi.fn(() => Promise.resolve(modelsResponse([])))
         );
+        await fakeBrowser.storage.sync.set({
+            openaiCompatibleBaseUrl: 'https://api.openai.com/v1',
+        });
         const { save } = renderCard();
         fireEvent.change(screen.getByLabelText('setupPasteKey'), {
             target: { value: 'sk-2' },
         });
         await flush();
-        expect(save).toHaveBeenCalledWith(
-            {
-                openaiCompatibleApiKey: 'sk-2',
-                openaiCompatibleApiKeyOrigin: 'https://api.openai.com',
-            },
-            'quiet'
-        );
+        expect(
+            await fakeBrowser.storage.local.get([
+                'openaiCompatibleApiKey',
+                'openaiCompatibleApiKeyOrigin',
+            ])
+        ).toEqual({
+            openaiCompatibleApiKey: 'sk-2',
+            openaiCompatibleApiKeyOrigin: 'https://api.openai.com',
+        });
         fireEvent.change(screen.getByLabelText('setupModel'), {
             target: { value: 'gpt-4o-mini' },
         });
@@ -168,190 +194,6 @@ describe('OpenAICompatibleProviderCard', () => {
             'quiet'
         );
         await flush();
-    });
-
-    it('enters a key for the address just committed, before it is stored', async () => {
-        vi.stubGlobal(
-            'fetch',
-            vi.fn(() => Promise.resolve(modelsResponse([])))
-        );
-        const { save } = renderCard();
-        const address = screen.getByLabelText('setupAddress');
-        const key = screen.getByLabelText('setupPasteKey');
-        fireEvent.change(address, {
-            target: { value: 'https://llm.example.com/v1' },
-        });
-        fireEvent.blur(address);
-        await flush();
-        fireEvent.change(key, { target: { value: 'sk-llm' } });
-        await flush();
-        expect(save).toHaveBeenLastCalledWith(
-            {
-                openaiCompatibleApiKey: 'sk-llm',
-                openaiCompatibleApiKeyOrigin: 'https://llm.example.com',
-            },
-            'quiet'
-        );
-
-        // An address that is not one leaves the key with the stored address.
-        fireEvent.change(address, { target: { value: 'not a url' } });
-        fireEvent.blur(address);
-        fireEvent.change(key, { target: { value: 'sk-2' } });
-        await flush();
-        expect(save).toHaveBeenLastCalledWith(
-            {
-                openaiCompatibleApiKey: 'sk-2',
-                openaiCompatibleApiKeyOrigin: 'https://api.openai.com',
-            },
-            'quiet'
-        );
-        await flush();
-    });
-
-    it('enters a key for the service just chosen, before it is stored', async () => {
-        vi.stubGlobal(
-            'fetch',
-            vi.fn(() => Promise.resolve(modelsResponse([])))
-        );
-        const { save } = renderCard({ advanced: false });
-        const key = screen.getByLabelText('setupPasteKey');
-        fireEvent.click(
-            screen.getByRole('button', { name: 'setupServiceGemini' })
-        );
-        fireEvent.change(key, { target: { value: 'AIza-key' } });
-        await flush();
-        expect(save).toHaveBeenLastCalledWith(
-            {
-                openaiCompatibleApiKey: 'AIza-key',
-                openaiCompatibleApiKeyOrigin:
-                    'https://generativelanguage.googleapis.com',
-            },
-            'quiet'
-        );
-        await flush();
-    });
-
-    it('enters a key for the stored service when choosing another fails to save', async () => {
-        vi.stubGlobal(
-            'fetch',
-            vi.fn(() => Promise.resolve(modelsResponse([])))
-        );
-        const { save } = renderCard({ advanced: false });
-        save.mockResolvedValueOnce(false);
-        fireEvent.click(
-            screen.getByRole('button', { name: 'setupServiceGemini' })
-        );
-        await flush();
-        fireEvent.change(screen.getByLabelText('setupPasteKey'), {
-            target: { value: 'sk-3' },
-        });
-        await flush();
-        expect(save).toHaveBeenLastCalledWith(
-            {
-                openaiCompatibleApiKey: 'sk-3',
-                openaiCompatibleApiKeyOrigin: 'https://api.openai.com',
-            },
-            'quiet'
-        );
-        await flush();
-    });
-
-    it('keeps the newer service when an older choice fails to save', async () => {
-        vi.stubGlobal(
-            'fetch',
-            vi.fn(() => Promise.resolve(modelsResponse([])))
-        );
-        const { save } = renderCard({
-            baseUrl: 'https://llm.example.com/v1',
-            advanced: false,
-        });
-        const gemini = Promise.withResolvers<boolean>();
-        const openai = Promise.withResolvers<boolean>();
-        save.mockImplementationOnce(() => gemini.promise);
-        save.mockImplementationOnce(() => openai.promise);
-        fireEvent.click(
-            screen.getByRole('button', { name: 'setupServiceGemini' })
-        );
-        fireEvent.click(
-            screen.getByRole('button', { name: 'setupServiceOpenAI' })
-        );
-        fireEvent.change(screen.getByLabelText('setupPasteKey'), {
-            target: { value: 'sk-openai' },
-        });
-        gemini.resolve(false);
-        await flush();
-        expect(save).toHaveBeenCalledTimes(2);
-
-        openai.resolve(true);
-        await flush();
-        expect(save).toHaveBeenLastCalledWith(
-            {
-                openaiCompatibleApiKey: 'sk-openai',
-                openaiCompatibleApiKeyOrigin: 'https://api.openai.com',
-            },
-            'quiet'
-        );
-        await flush();
-    });
-
-    it('enters a key for the stored address when the address it waited for fails to save', async () => {
-        vi.stubGlobal(
-            'fetch',
-            vi.fn(() => Promise.resolve(modelsResponse([])))
-        );
-        const { save } = renderCard();
-        const address = screen.getByLabelText('setupAddress');
-        const commit = Promise.withResolvers<boolean>();
-        save.mockImplementationOnce(() => commit.promise);
-        fireEvent.change(address, {
-            target: { value: 'https://llm.example.com/v1' },
-        });
-        fireEvent.blur(address);
-        fireEvent.change(screen.getByLabelText('setupPasteKey'), {
-            target: { value: 'sk-4' },
-        });
-        await flush();
-        expect(save).toHaveBeenCalledTimes(1);
-
-        commit.resolve(false);
-        await flush();
-        expect(save).toHaveBeenLastCalledWith(
-            {
-                openaiCompatibleApiKey: 'sk-4',
-                openaiCompatibleApiKeyOrigin: 'https://api.openai.com',
-            },
-            'quiet'
-        );
-    });
-
-    it('enters a key for the address shown when it was typed, not for a service chosen after', async () => {
-        vi.stubGlobal(
-            'fetch',
-            vi.fn(() => Promise.resolve(modelsResponse([])))
-        );
-        const { save } = renderCard();
-        const address = screen.getByLabelText('setupAddress');
-        const commit = Promise.withResolvers<boolean>();
-        save.mockImplementationOnce(() => commit.promise);
-        fireEvent.change(address, {
-            target: { value: 'https://llm.example.com/v1' },
-        });
-        fireEvent.blur(address);
-        fireEvent.change(screen.getByLabelText('setupPasteKey'), {
-            target: { value: 'sk-llm' },
-        });
-        fireEvent.click(
-            screen.getByRole('button', { name: 'setupServiceGemini' })
-        );
-        commit.resolve(true);
-        await flush();
-        expect(save).toHaveBeenLastCalledWith(
-            {
-                openaiCompatibleApiKey: 'sk-llm',
-                openaiCompatibleApiKeyOrigin: 'https://llm.example.com',
-            },
-            'quiet'
-        );
     });
 
     it('fills in a known service from one click, and asks for the address only for another', async () => {

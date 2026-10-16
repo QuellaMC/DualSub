@@ -6,7 +6,7 @@ import {
 } from '@/config/schema';
 import { configService } from '@/config/service';
 import { CONTEXT_TYPES, type ContextType } from '@/shared/contextTypes';
-import { keyEntry, usableCredential } from '@/shared/keyOrigins';
+import { usableCredential } from '@/shared/keyOrigins';
 import { Icon } from '../../design/Icon';
 import { Switch } from '../../design/Switch';
 import { useCommittedTextField } from '../../hooks/useCommittedTextField';
@@ -250,18 +250,12 @@ export function ExplanationsSection({
                                     onChange={(event) => {
                                         const key = event.target.value;
                                         void (provider === 'openai'
-                                            ? baseUrl
-                                                  .settled()
-                                                  .then((address) =>
-                                                      save(
-                                                          keyEntry(
-                                                              'openaiApiKey',
-                                                              key,
-                                                              address
-                                                          ),
-                                                          'quiet'
-                                                      )
+                                            ? feedback.apply(() =>
+                                                  configService.enterKey(
+                                                      'openaiApiKey',
+                                                      key
                                                   )
+                                              )
                                             : save(
                                                   { geminiApiKey: key },
                                                   'quiet'
