@@ -11,8 +11,7 @@ import { customLook } from '@/content/renderer/looks';
 import { Icon } from '../../design/Icon';
 import { Switch } from '../../design/Switch';
 import { SizePicker } from '../controls/SizePicker';
-import { useDraft } from '../controls/useDraft';
-import { SiteTag } from '../shell/scopeContext';
+import { SiteTag, useSiteDraft } from '../shell/scopeContext';
 import type { OptionsSettings, SectionProps } from '../types';
 
 const PRESETS: readonly { labelKey: string; look: CustomLook }[] = [
@@ -150,22 +149,30 @@ export function LookSection({
     save,
     onDraft,
 }: SectionProps & { onDraft: (draft: LookDraft) => void }) {
-    const look = useDraft(settings.subtitleCustomLook, (value, notice) =>
-        save({ subtitleCustomLook: value }, notice)
+    const look = useSiteDraft(
+        'subtitleCustomLook',
+        settings.subtitleCustomLook,
+        (value, notice) => save({ subtitleCustomLook: value }, notice)
     );
-    const translationColor = useDraft(
+    const translationColor = useSiteDraft(
+        'subtitleTranslationColor',
         settings.subtitleTranslationColor,
         (value, notice) => save({ subtitleTranslationColor: value }, notice)
     );
-    const scale = useDraft(settings.subtitleFontScale, (value, notice) =>
-        save({ subtitleFontScale: value }, notice)
+    const scale = useSiteDraft(
+        'subtitleFontScale',
+        settings.subtitleFontScale,
+        (value, notice) => save({ subtitleFontScale: value }, notice)
     );
-    const position = useDraft(
+    const position = useSiteDraft(
+        'subtitleVerticalPosition',
         settings.subtitleVerticalPosition,
         (value, notice) => save({ subtitleVerticalPosition: value }, notice)
     );
-    const gap = useDraft(settings.subtitleGap, (value, notice) =>
-        save({ subtitleGap: value }, notice)
+    const gap = useSiteDraft(
+        'subtitleGap',
+        settings.subtitleGap,
+        (value, notice) => save({ subtitleGap: value }, notice)
     );
     useEffect(() => {
         onDraft({

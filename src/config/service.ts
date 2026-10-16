@@ -15,6 +15,7 @@ import {
     type SettingsValues,
     type SiteProfile,
     type SiteSettingKey,
+    type SiteValueRef,
 } from './schema';
 import {
     ConfigServiceReadError,
@@ -126,7 +127,7 @@ export function isSensitiveAccessExplicitlyEnabled(options: unknown): boolean {
 /** `profiles` with `site`'s own values replaced; an empty profile goes. */
 function withSiteProfile(
     profiles: SettingsValues['siteProfiles'],
-    site: PlatformId,
+    site: string,
     own: Record<string, unknown>
 ): SettingsValues['siteProfiles'] {
     const next = { ...profiles };
@@ -794,29 +795,31 @@ class ConfigService {
         keys: readonly SiteSettingKey[],
         shared: Partial<Omit<SettingsValues, 'siteProfiles'>> = {}
     ): Promise<Partial<SettingsValues>> {
-        return this.rewriteSiteValues(sites, keys, {}, shared);
+        return this.rewriteSiteValues(
+            sites.flatMap((site) => keys.map((key) => [site, key] as const)),
+            {},
+            shared
+        );
     }
 
     /**
-     * Put back what `before` holds: its shared values, and for each of
-     * `sites` its own values for `keys` as `before.siteProfiles` had them,
-     * none where it had none. Every other site and key stays as stored now.
+     * Put back what `before` holds: its shared values, and each `changed`
+     * site value as `before.siteProfiles` had it, none where it had none.
+     * Every other site value stays as stored now.
      */
     async restoreSiteValues(
         before: Partial<SettingsValues>,
-        sites: readonly PlatformId[],
-        keys: readonly SiteSettingKey[]
+        changed: readonly SiteValueRef[]
     ): Promise<void> {
         const { siteProfiles = {}, ...shared } = before;
-        await this.rewriteSiteValues(sites, keys, siteProfiles, shared);
+        await this.rewriteSiteValues(changed, siteProfiles, shared);
     }
 
-    /** Give `sites` the own values for `keys` that `source` holds, over the
+    /** Give each `changed` site value what `source` holds for it, over the
      *  profiles stored now, with `shared` in the same write. Reads strictly:
      *  a profile read from a failed store would erase every site's. */
     private rewriteSiteValues(
-        sites: readonly PlatformId[],
-        keys: readonly SiteSettingKey[],
+        changed: readonly SiteValueRef[],
         source: SettingsValues['siteProfiles'],
         shared: Partial<SettingsValues>
     ): Promise<Partial<SettingsValues>> {
@@ -826,15 +829,13 @@ class ConfigService {
                 'siteProfiles',
             ]);
             let profiles = values.siteProfiles ?? {};
-            for (const site of sites) {
+            for (const [site, key] of changed) {
                 const own: Record<string, unknown> = { ...profiles[site] };
                 const held = source[site] ?? {};
-                for (const key of keys) {
-                    if (Object.hasOwn(held, key)) {
-                        own[key] = held[key];
-                    } else {
-                        delete own[key];
-                    }
+                if (Object.hasOwn(held, key)) {
+                    own[key] = held[key];
+                } else {
+                    delete own[key];
                 }
                 profiles = withSiteProfile(profiles, site, own);
             }

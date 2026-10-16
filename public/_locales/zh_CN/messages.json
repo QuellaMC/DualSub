@@ -497,6 +497,9 @@
     "explainCache": {
         "message": "记住回答"
     },
+    "explainAllowHost": {
+        "message": "DualSub 需要你允许它连接这个地址，才能解释单词。"
+    },
     "explainKeyStays": {
         "message": "你的密钥只保存在这台电脑上，也只会发给你选的服务。"
     },

@@ -12,6 +12,9 @@ export interface Draft<T> {
     readonly edit: (value: T) => void;
     /** Show `value` at once and write it now, confirmed with `notice`. */
     readonly set: (value: T, notice: SaveFeedback) => void;
+    /** Drop an edit still waiting to be written and show the stored value
+     *  again; a write already on its way still lands. */
+    readonly cancel: () => void;
 }
 
 /**
@@ -72,6 +75,11 @@ export function useDraft<T>(
 
     useEffect(() => flush, [flush]);
 
+    const cancel = useCallback((): void => {
+        pending.current = null;
+        setDraft(latest.current.saved);
+    }, []);
+
     const show = (value: T, notice: SaveFeedback): void => {
         // A pick's confirmation outlasts the quiet edits that follow it
         // before the write goes out.
@@ -89,5 +97,6 @@ export function useDraft<T>(
             show(value, notice);
             flush();
         },
+        cancel,
     };
 }

@@ -258,6 +258,33 @@ describe('OptionsApp', () => {
         );
     });
 
+    it('asks for access to a custom explanation address before turning explanations on', async () => {
+        await fakeBrowser.storage.sync.set({
+            aiContextProvider: 'openai',
+            openaiBaseUrl: 'https://llm.example.com/v1',
+        });
+        await fakeBrowser.storage.local.set({ openaiApiKey: 'sk-key' });
+        location.hash = '#explanations';
+        await renderReady();
+        const allow = await screen.findByRole('button', {
+            name: 'Allow API host',
+        });
+        expect(screen.getByRole('button', { name: 'Turn on' })).toBeDisabled();
+
+        vi.spyOn(browser.permissions, 'request').mockResolvedValue(
+            true as never
+        );
+        vi.mocked(browser.permissions.contains).mockResolvedValue(
+            true as never
+        );
+        fireEvent.click(allow);
+        await waitFor(() =>
+            expect(
+                screen.getByRole('button', { name: 'Turn on' })
+            ).toBeEnabled()
+        );
+    });
+
     it('turns word explanations on only once a key is in', async () => {
         location.hash = '#explanations';
         await renderReady();
@@ -324,6 +351,33 @@ describe('OptionsApp', () => {
         expect(await sync('siteProfiles')).toEqual({
             netflix: { subtitleGap: 0.5 },
         });
+    });
+
+    it('keeps a site change made elsewhere when a reset is undone', async () => {
+        await fakeBrowser.storage.sync.set({
+            siteProfiles: { netflix: { subtitleGap: 0.5 } },
+        });
+        await fakeBrowser.storage.local.set({ showAdvancedSettings: true });
+        location.hash = '#advanced';
+        await renderReady();
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Reset everything…' })
+        );
+        fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
+        await waitFor(async () =>
+            expect(await sync('siteProfiles')).toEqual({})
+        );
+        await fakeBrowser.storage.sync.set({
+            siteProfiles: { disneyplus: { subtitlesEnabled: false } },
+        });
+
+        fireEvent.click(await screen.findByRole('button', { name: 'Undo' }));
+        await waitFor(async () =>
+            expect(await sync('siteProfiles')).toEqual({
+                netflix: { subtitleGap: 0.5 },
+                disneyplus: { subtitlesEnabled: false },
+            })
+        );
     });
 
     it('shows the stored settings as JSON, without keys', async () => {
@@ -557,6 +611,39 @@ describe('OptionsApp', () => {
                 screen.getByRole('button', { name: 'Reset everything…' })
             ).toHaveFocus()
         );
+    });
+
+    it('drops an edit still waiting to be written when the site follows all sites again', async () => {
+        await fakeBrowser.storage.sync.set({
+            siteProfiles: { netflix: { subtitleFontScale: 1.6 } },
+        });
+        await fakeBrowser.storage.local.set({ showAdvancedSettings: true });
+        location.hash = '#look';
+        await renderReady();
+        fireEvent.click(
+            within(
+                screen.getByRole('group', { name: 'Settings for' })
+            ).getByRole('button', { name: /^Netflix/ })
+        );
+        await screen.findByText("You're changing Netflix only.");
+        fireEvent.click(
+            screen.getByRole('button', {
+                name: 'Fine-tune size, height and spacing',
+            })
+        );
+        fireEvent.change(screen.getByLabelText(/^Exact text size/), {
+            target: { value: '1.45' },
+        });
+        fireEvent.click(
+            screen.getAllByRole('button', {
+                name: 'Use the value for all sites',
+            })[0]!
+        );
+        await waitFor(async () =>
+            expect(await sync('siteProfiles')).toEqual({})
+        );
+        await new Promise((resolve) => setTimeout(resolve, 600));
+        expect(await sync('siteProfiles')).toEqual({});
     });
 
     it('writes an edit to the site it was made for when the scope changes before the write', async () => {
