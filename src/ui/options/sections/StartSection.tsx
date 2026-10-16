@@ -1,8 +1,4 @@
-import {
-    PLATFORM_IDS,
-    PLATFORM_NAMES,
-    type PlatformId,
-} from '@/shared/platforms';
+import { PLATFORM_NAMES, type PlatformId } from '@/shared/platforms';
 import { KEYLESS_PROVIDERS } from '@/shared/providers';
 import {
     AUTO_LANGUAGE,
