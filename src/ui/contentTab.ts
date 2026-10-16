@@ -13,7 +13,11 @@ const logger = createLogger('ContentTab');
 const generations = new Map<string, number>();
 
 /** The active tab of the current window; where a popup's page lives. */
-async function activeTab(): Promise<{ id?: number; url?: string } | null> {
+async function activeTab(): Promise<{
+    id?: number;
+    url?: string;
+    pendingUrl?: string;
+} | null> {
     const [tab] = await browser.tabs.query({
         active: true,
         currentWindow: true,
@@ -26,10 +30,15 @@ async function activeTabId(): Promise<number | null> {
 }
 
 /** The site of the active tab, or null when DualSub does not work there.
- *  Rejects when the tab cannot be read, since which site it is is then
- *  unknown, not none. */
+ *  Rejects when that is unknown, not none: the tab cannot be read, or it is
+ *  on its way to another site than the one it shows. */
 export async function activeTabPlatform(): Promise<PlatformId | null> {
-    return platformFromUrl((await activeTab())?.url);
+    const tab = await activeTab();
+    const site = platformFromUrl(tab?.url);
+    if (tab?.pendingUrl && platformFromUrl(tab.pendingUrl) !== site) {
+        throw new Error('The active tab is on its way to another site');
+    }
+    return site;
 }
 
 /**
