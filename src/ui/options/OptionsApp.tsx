@@ -176,8 +176,10 @@ export function OptionsApp() {
     }
     if (!settings || loadedLocale === null) {
         return (
-            <main className="options-blocked">
-                <p role="status">{t('commonLoading')}</p>
+            <main className="options-blocked" aria-busy="true">
+                {loadedLocale !== null && (
+                    <p role="status">{t('commonLoading')}</p>
+                )}
             </main>
         );
     }

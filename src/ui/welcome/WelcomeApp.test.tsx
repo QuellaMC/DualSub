@@ -105,6 +105,42 @@ describe('WelcomeApp', () => {
         expect(openOptions).toHaveBeenCalledOnce();
     });
 
+    it('shows no untranslated text while its catalog loads', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(() => new Promise<Response>(() => undefined))
+        );
+        render(<WelcomeApp />);
+        await waitFor(() =>
+            expect(
+                document.querySelector('main[aria-busy="true"]')
+            ).toBeInTheDocument()
+        );
+        expect(document.body).not.toHaveTextContent('commonLoading');
+    });
+
+    it('reports only how the latest pick was saved', async () => {
+        render(<WelcomeApp />);
+        const language = await screen.findByRole('combobox', {
+            name: 'Your subtitles are translated into',
+        });
+        const first = Promise.withResolvers<void>();
+        vi.spyOn(browser.storage.sync, 'set').mockImplementationOnce(
+            () => first.promise as never
+        );
+        fireEvent.change(language, { target: { value: 'ko' } });
+        fireEvent.change(language, { target: { value: 'ja' } });
+        await waitFor(async () =>
+            expect(
+                (await fakeBrowser.storage.sync.get('targetLanguage'))
+                    .targetLanguage
+            ).toBe('ja')
+        );
+        first.reject(new Error('quota'));
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+
     it('says so when the language cannot be saved', async () => {
         render(<WelcomeApp />);
         const language = await screen.findByRole('combobox', {
