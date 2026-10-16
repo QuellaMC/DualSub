@@ -29,4 +29,19 @@ describe('provider credentials', () => {
         ).toEqual([]);
         expect(missingCredentials('google', {})).toEqual([]);
     });
+
+    it('counts a key entered for another origin as missing', () => {
+        const entered = {
+            openaiCompatibleApiKey: 'sk',
+            openaiCompatibleApiKeyOrigin: 'https://api.openai.com',
+            openaiCompatibleBaseUrl: 'https://api.openai.com/v1',
+        };
+        expect(missingCredentials('openai_compatible', entered)).toEqual([]);
+        expect(
+            missingCredentials('openai_compatible', {
+                ...entered,
+                openaiCompatibleBaseUrl: 'https://llm.example.com/v1',
+            })
+        ).toEqual(['openaiCompatibleApiKey']);
+    });
 });

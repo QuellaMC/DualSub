@@ -16,11 +16,14 @@ import { configService } from '@/config/service';
 import { useFeedback } from '../shell/feedback';
 import type { SectionProps } from '../types';
 
-/** Credentials, and the expiry that only means something with its token,
- *  never leave this computer in a backup. */
+/** Credentials, and what only means something with them (the token's
+ *  expiry, the origin each key was entered for), never leave this
+ *  computer in a backup. */
 const NOT_BACKED_UP: readonly SettingsKey[] = [
     ...SENSITIVE_KEYS,
     'vertexTokenExpiresAt',
+    'openaiCompatibleApiKeyOrigin',
+    'openaiApiKeyOrigin',
 ];
 
 /** What is not backed up, what each kept credential is sent with, and how

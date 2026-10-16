@@ -1,3 +1,5 @@
+import { usableCredential, type KeyOriginSetting } from './keyOrigins';
+
 export const PROVIDER_IDS = [
     'google',
     'microsoft_edge',
@@ -32,13 +34,16 @@ export const PROVIDER_CREDENTIALS = {
 
 export type CredentialKey = (typeof PROVIDER_CREDENTIALS)[ProviderId][number];
 
-/** The credentials `provider` still lacks in `settings`. */
+/** The credentials `provider` still lacks in `settings`. A key entered for
+ *  another origin than its address's is lacking too. */
 export function missingCredentials(
     provider: ProviderId,
-    settings: Partial<Record<CredentialKey, string>>
+    settings: Partial<Record<CredentialKey | KeyOriginSetting, string>>
 ): CredentialKey[] {
     const needed: readonly CredentialKey[] = PROVIDER_CREDENTIALS[provider];
-    return needed.filter((key) => (settings[key] ?? '').trim() === '');
+    return needed.filter(
+        (key) => usableCredential(key, settings).trim() === ''
+    );
 }
 
 export const VERTEX_LOCATIONS = [

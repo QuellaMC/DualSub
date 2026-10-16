@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { validateSetting } from '@/config/schema';
+import { keyEntry } from '@/shared/keyOrigins';
 import { Icon } from '../../design/Icon';
 import type { Translate } from '../../hooks/useI18n';
 import { useCommittedTextField } from '../../hooks/useCommittedTextField';
@@ -7,7 +8,6 @@ import { CommittedField } from '../controls/CommittedField';
 import { useOpenAIModels } from '../hooks/useOpenAIModels';
 import { TestResultDisplay } from '../TestResultDisplay';
 import type { SaveSettings } from '../types';
-import { addressChange } from './address';
 
 /** Services most people mean by "AI translation", by their compatible
  *  endpoint; anything else is another service at its own address. */
@@ -49,11 +49,7 @@ export function OpenAICompatibleProviderCard({
     const baseUrlField = useCommittedTextField({
         value: baseUrl,
         validate: (draft) => validateSetting('openaiCompatibleBaseUrl', draft),
-        onCommit: (draft) =>
-            save(
-                addressChange('openaiCompatibleBaseUrl', baseUrl, draft),
-                'quiet'
-            ),
+        onCommit: (draft) => save({ openaiCompatibleBaseUrl: draft }, 'quiet'),
     });
     const preset = AI_SERVICES.find((entry) => entry.baseUrl === baseUrl);
     const [choseOther, setChoseOther] = useState(false);
@@ -92,11 +88,8 @@ export function OpenAICompatibleProviderCard({
                                         setChoseOther(false);
                                         void save(
                                             {
-                                                ...addressChange(
-                                                    'openaiCompatibleBaseUrl',
-                                                    baseUrl,
-                                                    entry.baseUrl
-                                                ),
+                                                openaiCompatibleBaseUrl:
+                                                    entry.baseUrl,
                                                 openaiCompatibleModel:
                                                     entry.model,
                                             },
@@ -153,10 +146,11 @@ export function OpenAICompatibleProviderCard({
                                 value={apiKey}
                                 onChange={(event) =>
                                     void save(
-                                        {
-                                            openaiCompatibleApiKey:
-                                                event.target.value,
-                                        },
+                                        keyEntry(
+                                            'openaiCompatibleApiKey',
+                                            event.target.value,
+                                            baseUrl
+                                        ),
                                         'quiet'
                                     )
                                 }

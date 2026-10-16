@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- An API key goes only to the address it was entered for. When the AI translation or word explanations address moves to another host (on this computer, on another one you sync with, or by loading a backup), the key waits for its own address and the settings page asks for a key for the new one.
 - Cues the platform raises over on-screen text are drawn at the platform's line instead of the bottom, and cues shown at the same time are all drawn, each at its place. Netflix cues sharing a timestamp are no longer merged into one line.
 
 ## [3.0.2] - 2026-09-03

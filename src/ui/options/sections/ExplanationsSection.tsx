@@ -5,13 +5,13 @@ import {
     type SettingsValues,
 } from '@/config/schema';
 import { CONTEXT_TYPES, type ContextType } from '@/shared/contextTypes';
+import { keyEntry, usableCredential } from '@/shared/keyOrigins';
 import { Icon } from '../../design/Icon';
 import { Switch } from '../../design/Switch';
 import { useCommittedTextField } from '../../hooks/useCommittedTextField';
 import { CommittedField } from '../controls/CommittedField';
 import { GEMINI_MODELS, OPENAI_MODELS } from '../explanations/models';
 import { OpenAIHostPermission } from '../explanations/OpenAIHostPermission';
-import { addressChange } from '../providers/address';
 import { SharedTag } from '../shell/scopeContext';
 import type { SectionProps } from '../types';
 
@@ -64,7 +64,9 @@ export function ExplanationsSection({
     const provider = settings.aiContextProvider;
     const service = AI_SERVICES[provider];
     const apiKey =
-        provider === 'openai' ? settings.openaiApiKey : settings.geminiApiKey;
+        provider === 'openai'
+            ? usableCredential('openaiApiKey', settings)
+            : settings.geminiApiKey;
     const ready = apiKey.trim() !== '';
     const enabled = settings.aiContextEnabled;
     const enableSwitch = useRef<HTMLButtonElement | null>(null);
@@ -72,11 +74,7 @@ export function ExplanationsSection({
     const baseUrl = useCommittedTextField({
         value: settings.openaiBaseUrl,
         validate: (draft) => validateSetting('openaiBaseUrl', draft),
-        onCommit: (draft) =>
-            save(
-                addressChange('openaiBaseUrl', settings.openaiBaseUrl, draft),
-                'quiet'
-            ),
+        onCommit: (draft) => save({ openaiBaseUrl: draft }, 'quiet'),
     });
     const openaiModel = useCommittedTextField({
         value: settings.openaiModel,
@@ -241,10 +239,11 @@ export function ExplanationsSection({
                                     onChange={(event) =>
                                         void save(
                                             provider === 'openai'
-                                                ? {
-                                                      openaiApiKey:
-                                                          event.target.value,
-                                                  }
+                                                ? keyEntry(
+                                                      'openaiApiKey',
+                                                      event.target.value,
+                                                      settings.openaiBaseUrl
+                                                  )
                                                 : {
                                                       geminiApiKey:
                                                           event.target.value,

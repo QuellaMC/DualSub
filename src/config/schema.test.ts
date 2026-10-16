@@ -14,8 +14,8 @@ import {
 } from './schema';
 
 describe('registry shape', () => {
-    it('has exactly the 52 v3 keys', () => {
-        expect(SETTINGS_KEYS).toHaveLength(52);
+    it('has exactly the 54 v3 keys', () => {
+        expect(SETTINGS_KEYS).toHaveLength(54);
     });
 
     it('retired v2 keys are gone', () => {
@@ -56,6 +56,8 @@ describe('registry shape', () => {
             [
                 'showAdvancedSettings',
                 'vertexTokenExpiresAt',
+                'openaiCompatibleApiKeyOrigin',
+                'openaiApiKeyOrigin',
                 ...SENSITIVE_KEYS,
             ].sort()
         );

@@ -1,6 +1,7 @@
 import { browser } from 'wxt/browser';
+import { KEY_ORIGINS, originOf, type KeyBinding } from '@/shared/keyOrigins';
 import { VERTEX_LOCATIONS } from '@/shared/providers';
-import { SETTING_BOUNDS } from './schema';
+import { getDefaultValue, prepareSettingValue, SETTING_BOUNDS } from './schema';
 
 const RETIRED_GEMINI_MODELS = new Set(['gemini-1.5-flash', 'gemini-1.5-pro']);
 
@@ -11,6 +12,8 @@ const DEVICE_LOCAL_CREDENTIAL_KEYS = [
     'openaiApiKey',
     'geminiApiKey',
 ] as const;
+
+const KEY_BINDINGS = Object.entries(KEY_ORIGINS);
 
 const ALLOWED_VERTEX_LOCATIONS = new Set<string>(VERTEX_LOCATIONS);
 
@@ -78,6 +81,16 @@ function legacyFontSizeToScale(fontSizeVw: number): number {
     return Math.round(scale * 100) / 100;
 }
 
+/** The address `stored` resolves to, as every reader resolves it: itself
+ *  when valid, else the default. */
+function resolvedAddress(key: KeyBinding['address'], stored: unknown): string {
+    try {
+        return prepareSettingValue(key, stored);
+    } catch {
+        return getDefaultValue(key);
+    }
+}
+
 export interface MigrationSummary {
     localUpdates: string[];
     syncUpdates: string[];
@@ -112,7 +125,7 @@ async function runMigration(): Promise<MigrationSummary> {
     const [syncItems, localItems] = await Promise.all([
         browser.storage.sync.get([
             ...DEVICE_LOCAL_CREDENTIAL_KEYS,
-            'openaiBaseUrl',
+            ...KEY_BINDINGS.map(([, { address }]) => address),
             'geminiModel',
             'vertexLocation',
             'useOfficialTranslations',
@@ -121,6 +134,7 @@ async function runMigration(): Promise<MigrationSummary> {
         ]),
         browser.storage.local.get([
             ...DEVICE_LOCAL_CREDENTIAL_KEYS,
+            ...KEY_BINDINGS.map(([, { origin }]) => origin),
             'vertexServiceAccount',
             ...RETIRED_LOCAL_KEYS,
         ]),
@@ -179,6 +193,23 @@ async function runMigration(): Promise<MigrationSummary> {
         syncUpdates.subtitleFontScale = legacyFontSizeToScale(
             syncItems.subtitleFontSize
         );
+    }
+
+    // A key from before keys recorded their origin, or one moved here from
+    // sync just now, was entered for the address set now.
+    for (const [key, { address, origin }] of KEY_BINDINGS) {
+        if (
+            Object.hasOwn(localUpdates, key) ||
+            (localItems[key] && localItems[origin] === undefined)
+        ) {
+            localUpdates[origin] =
+                originOf(
+                    resolvedAddress(
+                        address,
+                        syncUpdates[address] ?? syncItems[address]
+                    )
+                ) ?? '';
+        }
     }
 
     if (Object.keys(localUpdates).length > 0) {

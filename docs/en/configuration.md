@@ -31,6 +31,8 @@ The settings page holds every setting, the popup's included. Each change saves a
 
 "Show advanced options" adds exact values (text size, height, timing shift, and the pause between translation requests), per-site settings, the AI service's address and model, limits for word explanations, subtitle tracks to skip on Disney+, and the Advanced section: backup and restore, the settings as JSON, the logging level, a diagnostic report, and a reset that keeps your keys along with the address, plan, and model each one is used with.
 
+API keys stay on this computer: they don't sync and never go into a backup file. A key goes only to the address it was entered for. When that address moves to another host (on this computer, on another one you sync with, or by loading a backup), DualSub treats the key as missing until you enter one for the new address.
+
 ## Per-Site Settings
 
 Netflix and Disney+ can each keep their own value for these settings: dual subtitles on or off, hiding the site's own subtitles, the top line's language, official translations, the subtitle style and custom look, the translation color, size, spacing, position, line order and layout, and timing. A site stores only the values it keeps for itself; everything else follows the settings for all sites. The translation language, the translation service, word explanations, and API keys are the same on every site.

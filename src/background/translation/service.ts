@@ -17,6 +17,7 @@ export const TRANSLATION_CACHE_CONFIGURATION_KEYS = [
     'deeplApiKey',
     'deeplApiPlan',
     'openaiCompatibleApiKey',
+    'openaiCompatibleApiKeyOrigin',
     'openaiCompatibleBaseUrl',
     'openaiCompatibleModel',
     'vertexAccessToken',

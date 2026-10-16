@@ -8,6 +8,7 @@ import { culturalSample } from './schemas.test';
 
 const SETTINGS: ProviderSettings = {
     openaiApiKey: 'sk-test',
+    openaiApiKeyOrigin: 'https://api.openai.com',
     openaiBaseUrl: 'https://api.openai.com',
     openaiModel: 'gpt-5.6-luna',
     geminiApiKey: 'gm-test',
@@ -104,6 +105,20 @@ describe('openai context provider', () => {
         );
         expect(error.code).toBe('NOT_CONFIGURED');
         expect(error.retryable).toBe(false);
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('sends no key to an address it was not entered for', async () => {
+        const fetchMock = fetchReturning(jsonResponse({}));
+        const error = await failure(
+            runProviderAnalysis(
+                openaiContextProvider,
+                { ...SETTINGS, openaiBaseUrl: 'https://openrouter.ai/api/v1' },
+                INPUT,
+                { timeoutMs: 1000, fetch: fetchMock }
+            )
+        );
+        expect(error.code).toBe('NOT_CONFIGURED');
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
