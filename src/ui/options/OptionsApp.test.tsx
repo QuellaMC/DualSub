@@ -1129,6 +1129,18 @@ describe('OptionsApp', () => {
         );
     });
 
+    it('opens where its address points, the custom look editor open', async () => {
+        await fakeBrowser.storage.sync.set({ subtitleStyle: 'custom' });
+        location.hash = '#look/look-customize/look-style-custom';
+        await renderReady();
+        const customize = screen.getByRole('button', {
+            name: 'Change colors and font',
+        });
+        await waitFor(() => expect(customize).toHaveFocus());
+        expect(customize).toHaveAttribute('aria-expanded', 'true');
+        expect(location.hash).toBe('#look');
+    });
+
     it('lands on the menu language picker from search', async () => {
         await renderReady();
         fireEvent.change(screen.getByRole('searchbox'), {

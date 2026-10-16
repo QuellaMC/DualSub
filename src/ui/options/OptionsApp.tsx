@@ -53,14 +53,22 @@ const TOAST_MS = 6000;
 const FOCUSABLE =
     'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href]';
 
-function initialSection(): SectionId {
-    const hash = location.hash.replace(/^#/, '');
-    return isSectionId(hash) ? hash : 'start';
+/** Where the page opens: the section an address like `#look` names, and
+ *  where focus then lands when anchors follow, as in `#look/look-customize`. */
+function initialPlace(): { section: SectionId; anchors: readonly string[] } {
+    const [section = '', ...anchors] = location.hash
+        .replace(/^#/, '')
+        .split('/');
+    return isSectionId(section)
+        ? { section, anchors }
+        : { section: 'start', anchors: [] };
 }
 
 export function OptionsApp() {
     const [scope, setScope] = useState<Scope>('all');
-    const [section, setSection] = useState<SectionId>(initialSection);
+    const [section, setSection] = useState<SectionId>(
+        () => initialPlace().section
+    );
     // The page reads what every scope shares, so it stays in place, focus
     // included, while a newly picked scope's settings load.
     const page = useSettings(PAGE_SETTINGS_KEYS);
@@ -98,7 +106,10 @@ export function OptionsApp() {
      *  just opened, or the first of a search result's elements on the page. */
     const [arrival, setArrival] = useState<{
         anchors: readonly string[];
-    } | null>(null);
+    } | null>(() => {
+        const { anchors } = initialPlace();
+        return anchors.length > 0 ? { anchors } : null;
+    });
     const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     /** The last change asked for; each waits for the one before. */
     const changes = useRef<Promise<unknown>>(Promise.resolve());
