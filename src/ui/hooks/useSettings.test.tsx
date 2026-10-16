@@ -140,6 +140,21 @@ describe('useSettings', () => {
         expect(result.current.status).toBe('ready');
     });
 
+    it('recovers with what storage holds now, not a change heard before the failure', async () => {
+        const firstRead = Promise.withResolvers<Record<string, unknown>>();
+        vi.spyOn(browser.storage.sync, 'get').mockReturnValueOnce(
+            firstRead.promise as never
+        );
+        const { result } = renderHook(() => useSettings(KEYS));
+        await fakeBrowser.storage.sync.set({ subtitleFontScale: 2 });
+        firstRead.reject(new Error('storage broken'));
+        await waitFor(() => expect(result.current.status).toBe('unavailable'));
+
+        await fakeBrowser.storage.sync.set({ subtitleFontScale: 3 });
+        await waitFor(() => expect(result.current.status).toBe('ready'));
+        expect(result.current.settings?.subtitleFontScale).toBe(3);
+    });
+
     it("shows a site's view and gives it its own values", async () => {
         await fakeBrowser.storage.sync.set({
             subtitleFontScale: 1.2,
