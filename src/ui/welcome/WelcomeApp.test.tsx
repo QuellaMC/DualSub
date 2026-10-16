@@ -140,20 +140,30 @@ describe('WelcomeApp', () => {
         const language = await screen.findByRole('combobox', {
             name: 'Your subtitles are translated into',
         });
-        const first = Promise.withResolvers<void>();
-        vi.spyOn(browser.storage.sync, 'set').mockImplementationOnce(
-            () => first.promise as never
+        const realSet = fakeBrowser.storage.sync.set.bind(
+            fakeBrowser.storage.sync
         );
+        const first = Promise.withResolvers<void>();
+        const second = Promise.withResolvers<void>();
+        vi.spyOn(browser.storage.sync, 'set')
+            .mockImplementationOnce(() => first.promise as never)
+            .mockImplementationOnce(
+                (items: Record<string, unknown>) =>
+                    second.promise.then(() => realSet(items)) as never
+            );
         fireEvent.change(language, { target: { value: 'ko' } });
         fireEvent.change(language, { target: { value: 'ja' } });
+        first.reject(new Error('quota'));
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+
+        second.resolve();
         await waitFor(async () =>
             expect(
                 (await fakeBrowser.storage.sync.get('targetLanguage'))
                     .targetLanguage
             ).toBe('ja')
         );
-        first.reject(new Error('quota'));
-        await new Promise((resolve) => setTimeout(resolve, 0));
         expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
 

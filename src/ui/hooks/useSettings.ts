@@ -146,25 +146,26 @@ export function useSettings<K extends SettingsKey>(
         };
     }, [view, keyList, includeSensitive, site]);
 
-    /** The save that last changed each key: an earlier save that finishes
-     *  later must not put its value back. */
-    const latestSaves = useRef(new Map<string, object>());
+    /** The last save asked for. Each waits for the one before it, so saves
+     *  reach storage, and their answers and change events come back, in the
+     *  order they were made. */
+    const saving = useRef<Promise<unknown>>(Promise.resolve());
 
     const save = useCallback(
-        async (changes: Partial<SettingsProjection<K>>): Promise<void> => {
-            const thisSave = {};
-            for (const key of Object.keys(changes)) {
-                latestSaves.current.set(key, thisSave);
-            }
-            const written = await configService.setMultiple(
-                changes,
-                site ? { site, target: siteTarget } : undefined
-            );
-            const stillLatest = (keyList.split(' ') as K[]).filter(
-                (key) => latestSaves.current.get(key) === thisSave
-            );
-            const relevant = pickWatched(written, stillLatest);
-            setState((previous) => withChanges(previous, view, relevant));
+        (changes: Partial<SettingsProjection<K>>): Promise<void> => {
+            const saved = saving.current.then(async () => {
+                const written = await configService.setMultiple(
+                    changes,
+                    site ? { site, target: siteTarget } : undefined
+                );
+                const relevant = pickWatched(
+                    written,
+                    keyList.split(' ') as K[]
+                );
+                setState((previous) => withChanges(previous, view, relevant));
+            });
+            saving.current = saved.catch(() => undefined);
+            return saved;
         },
         [view, keyList, site, siteTarget]
     );
