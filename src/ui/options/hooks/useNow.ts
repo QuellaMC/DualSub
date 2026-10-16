@@ -12,6 +12,8 @@ export function useNow(moments: readonly number[]): number {
     const [now, setNow] = useState(Date.now);
     const next = Math.min(...moments.filter((moment) => moment > now));
 
+    // A timer can fire a little before its time; the time it reads then is
+    // still short of `next`, so each reading arms the timer again.
     useEffect(() => {
         if (!Number.isFinite(next)) {
             return;
@@ -21,7 +23,7 @@ export function useNow(moments: readonly number[]): number {
             Math.min(next - Date.now(), MAX_TIMER_MS)
         );
         return () => clearTimeout(timer);
-    }, [next]);
+    }, [next, now]);
 
     return now;
 }
