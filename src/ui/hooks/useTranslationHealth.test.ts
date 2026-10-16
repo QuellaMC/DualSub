@@ -21,6 +21,7 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
+    vi.useRealTimers();
     vi.restoreAllMocks();
 });
 
@@ -49,6 +50,20 @@ describe('useTranslationHealth', () => {
             finishRead({});
             await Promise.resolve();
         });
+        expect(result.current).toEqual(RECORD);
+    });
+
+    it('asks again after a failed read instead of showing a failing service as working', async () => {
+        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        await writeTranslationHealth(RECORD);
+        vi.spyOn(browser.storage.session, 'get').mockRejectedValueOnce(
+            new Error('session busy')
+        );
+        const { result } = renderHook(() => useTranslationHealth());
+        await act(() => vi.advanceTimersByTimeAsync(0));
+        expect(result.current).toBeNull();
+
+        await act(() => vi.advanceTimersByTimeAsync(1000));
         expect(result.current).toEqual(RECORD);
     });
 });
