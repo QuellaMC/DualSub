@@ -122,19 +122,47 @@ function changeCount(
     ).length;
 }
 
-/** Put back what `before` held where `changes` changes it: each setting
- *  whole, and of the site profiles only the entries `changes` changes, over
- *  any edit another page made since. */
-function putBack(
+/** One site's stored value for `key` in `profiles`, if it has one. */
+function entryOf(
+    profiles: SettingsValues['siteProfiles'] | undefined,
+    site: string,
+    key: string
+): unknown {
+    return profiles?.[site]?.[key];
+}
+
+/** Put back what `before` held where storage still holds what `changes`
+ *  wrote: each setting whole, and of the site profiles only the entries
+ *  `changes` changes, so an edit another page made since stays. */
+async function putBack(
     before: Partial<SettingsValues>,
     changes: Partial<SettingsValues>
 ): Promise<unknown> {
-    return changes.siteProfiles === undefined
-        ? configService.setMultiple(before)
-        : configService.restoreSiteValues(
-              before,
-              changedSiteValues(before.siteProfiles ?? {}, changes.siteProfiles)
-          );
+    const now = await configService.getMultiple(Object.keys(changes));
+    const shared = Object.fromEntries(
+        Object.keys(changes)
+            .filter(isSettingsKey)
+            .filter(
+                (key) =>
+                    key !== 'siteProfiles' &&
+                    sameSettingValue(now[key], changes[key])
+            )
+            .map((key) => [key, before[key]])
+    );
+    const written = changes.siteProfiles;
+    if (written === undefined) {
+        return configService.setMultiple(shared);
+    }
+    return configService.restoreSiteValues(
+        { ...shared, siteProfiles: before.siteProfiles },
+        changedSiteValues(before.siteProfiles ?? {}, written).filter(
+            ([site, key]) =>
+                sameSettingValue(
+                    entryOf(now.siteProfiles, site, key),
+                    entryOf(written, site, key)
+                )
+        )
+    );
 }
 
 /** Write `changes` with `write` whole or not at all: the storage areas are
@@ -193,9 +221,8 @@ export function AdvancedSection({ t, settings, save }: SectionProps) {
     }, [confirmReset]);
 
     /** Write the changes `build` makes when this change's turn comes, with
-     *  an Undo that puts back what they replaced; each lands whole or not
-     *  at all. The site profiles go back value by value, over any change
-     *  another page made since. */
+     *  an Undo that puts back what they replaced wherever nothing changed
+     *  it since; each lands whole or not at all. */
     const replaceSettings = (
         build: () => Promise<Partial<SettingsValues>>,
         message: string
