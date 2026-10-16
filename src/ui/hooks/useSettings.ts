@@ -88,17 +88,19 @@ export function useSettings<K extends SettingsKey>(
         const readOptions = { includeSensitive, ...(site ? { site } : {}) };
         let active = true;
         let unavailable = false;
+        /** Counts the reads started; only the newest one's answer shows. */
+        let reads = 0;
         // Changes are newer than a read still in flight.
         const heard: Partial<SettingsProjection<K>> = {};
 
         const load = async (): Promise<void> => {
+            const read = ++reads;
             let next: SettingsState<K>;
             try {
                 const { values } = await configService.readMultipleResultStrict(
                     watched,
                     readOptions
                 );
-                unavailable = false;
                 next = {
                     view,
                     status: 'ready',
@@ -108,10 +110,10 @@ export function useSettings<K extends SettingsKey>(
                     },
                 };
             } catch {
-                unavailable = true;
                 next = { view, status: 'unavailable', settings: null };
             }
-            if (active) {
+            if (active && read === reads) {
+                unavailable = next.status === 'unavailable';
                 setState(next);
             }
         };
