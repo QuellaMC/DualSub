@@ -266,6 +266,7 @@ export function LookSection({
                     </button>
                     <button
                         type="button"
+                        id="look-style-custom"
                         className="choice"
                         aria-pressed={custom}
                         onClick={() =>
@@ -317,6 +318,7 @@ export function LookSection({
                         </div>
                         <button
                             type="button"
+                            id="look-customize"
                             className="disclosure"
                             aria-expanded={customizing}
                             onClick={() => setCustomizing(!customizing)}

@@ -95,6 +95,7 @@ export function TranslationSection({
                     {listed.map((provider) => (
                         <button
                             key={provider.id}
+                            id={`provider-${provider.id}`}
                             type="button"
                             role="radio"
                             className="choice"

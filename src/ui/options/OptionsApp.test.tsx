@@ -319,6 +319,11 @@ describe('OptionsApp', () => {
                 })
             ).toHaveFocus()
         );
+        expect(
+            screen.getByRole('button', {
+                name: 'Fine-tune size, height and spacing',
+            })
+        ).toHaveAttribute('aria-expanded', 'true');
 
         fireEvent.change(search, { target: { value: 'pause between' } });
         fireEvent.click(
@@ -335,6 +340,102 @@ describe('OptionsApp', () => {
             (await fakeBrowser.storage.local.get('showAdvancedSettings'))
                 .showAdvancedSettings
         ).toBe(true);
+    });
+
+    it('lands on the choice that shows a searched setting, then on the setting', async () => {
+        await renderReady();
+        const search = screen.getByRole('searchbox');
+        const openResult = (words: string, name: RegExp): void => {
+            fireEvent.change(search, { target: { value: words } });
+            fireEvent.click(screen.getByRole('button', { name }));
+        };
+        openResult('deepl', /^Set up DeepL/);
+        await waitFor(() =>
+            expect(screen.getByRole('radio', { name: /^DeepL/ })).toHaveFocus()
+        );
+
+        fireEvent.click(screen.getByRole('radio', { name: /^DeepL/ }));
+        await waitFor(async () =>
+            expect(await sync('selectedProvider')).toBe('deepl')
+        );
+        openResult('deepl', /^Set up DeepL/);
+        await waitFor(() =>
+            expect(document.getElementById('deepl-card')).toContainElement(
+                document.activeElement as HTMLElement
+            )
+        );
+    });
+
+    it('opens the custom look from search, or lands on the choice that shows it', async () => {
+        await fakeBrowser.storage.sync.set({ subtitleStyle: 'platform' });
+        await renderReady();
+        const search = screen.getByRole('searchbox');
+        const openResult = (): void => {
+            fireEvent.change(search, { target: { value: 'font' } });
+            fireEvent.click(
+                screen.getByRole('button', {
+                    name: /^Change colors and font\s*How subtitles look/,
+                })
+            );
+        };
+        openResult();
+        const ownLook = await screen.findByRole('button', {
+            name: /^My own style/,
+        });
+        await waitFor(() => expect(ownLook).toHaveFocus());
+
+        fireEvent.click(ownLook);
+        await waitFor(async () =>
+            expect(await sync('subtitleStyle')).toBe('custom')
+        );
+        openResult();
+        await waitFor(() =>
+            expect(
+                screen.getByRole('button', { name: 'Change colors and font' })
+            ).toHaveAttribute('aria-expanded', 'true')
+        );
+        expect(screen.getByLabelText('Font')).toBeInTheDocument();
+    });
+
+    it('leaves an advanced section when advanced options go off elsewhere', async () => {
+        await fakeBrowser.storage.local.set({ showAdvancedSettings: true });
+        location.hash = '#advanced';
+        await renderReady();
+        expect(
+            screen.getByRole('heading', { level: 1, name: 'Advanced' })
+        ).toBeInTheDocument();
+
+        await fakeBrowser.storage.local.set({ showAdvancedSettings: false });
+        expect(
+            await screen.findByRole('heading', {
+                level: 1,
+                name: 'Hello! DualSub is ready.',
+            })
+        ).toBeInTheDocument();
+        expect(location.hash).toBe('#start');
+    });
+
+    it('drops the key when the AI service moves to another host', async () => {
+        await fakeBrowser.storage.sync.set({
+            selectedProvider: 'openai_compatible',
+            openaiCompatibleBaseUrl:
+                'https://generativelanguage.googleapis.com/v1beta/openai',
+        });
+        await fakeBrowser.storage.local.set({
+            openaiCompatibleApiKey: 'AIza-google-key',
+        });
+        location.hash = '#translation';
+        await renderReady();
+        fireEvent.click(await screen.findByRole('button', { name: 'OpenAI' }));
+        await waitFor(async () =>
+            expect(await sync('openaiCompatibleBaseUrl')).toBe(
+                'https://api.openai.com/v1'
+            )
+        );
+        expect(
+            (await fakeBrowser.storage.local.get('openaiCompatibleApiKey'))
+                .openaiCompatibleApiKey
+        ).toBe('');
     });
 
     it('undoes the last change with Ctrl+Z outside text fields', async () => {
