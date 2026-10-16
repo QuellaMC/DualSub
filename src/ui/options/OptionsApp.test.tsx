@@ -1209,6 +1209,34 @@ describe('OptionsApp', () => {
         );
     });
 
+    it('opens a finished explanations setup to reach the address choice', async () => {
+        await fakeBrowser.storage.local.set({
+            showAdvancedSettings: true,
+            geminiApiKey: 'AIza-key',
+        });
+        await fakeBrowser.storage.sync.set({ aiContextProvider: 'gemini' });
+        location.hash = '#explanations';
+        await renderReady();
+        expect(
+            await screen.findByRole('button', { name: 'Change key' })
+        ).toBeInTheDocument();
+
+        fireEvent.change(screen.getByRole('searchbox'), {
+            target: { value: 'address' },
+        });
+        fireEvent.click(
+            screen.getByRole('button', {
+                name: /^Address, for compatible servers/,
+            })
+        );
+        await waitFor(() =>
+            expect(document.activeElement).toHaveAttribute(
+                'id',
+                'explain-provider-openai'
+            )
+        );
+    });
+
     it('opens where its address points, the custom look editor open', async () => {
         await fakeBrowser.storage.sync.set({ subtitleStyle: 'custom' });
         location.hash = '#look/look-customize/look-style-custom';

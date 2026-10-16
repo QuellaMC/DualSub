@@ -163,6 +163,7 @@ export function OptionsApp() {
         if (!arrival) {
             return;
         }
+        const opened = new Set<HTMLElement>();
         const land = (): boolean => {
             const target =
                 arrival.anchors.length === 0
@@ -184,9 +185,16 @@ export function OptionsApp() {
             if (document.activeElement !== focused) {
                 return false;
             }
-            // A folded disclosure opens to show what was searched for.
-            if (focused.getAttribute('aria-expanded') === 'false') {
+            // A folded disclosure opens to show what was searched for, and
+            // what it shows may hold an anchor the search prefers, so the
+            // search looks again once it has opened.
+            if (
+                focused.getAttribute('aria-expanded') === 'false' &&
+                !opened.has(focused)
+            ) {
+                opened.add(focused);
                 focused.click();
+                return false;
             }
             setArrival(null);
             return true;
@@ -200,7 +208,11 @@ export function OptionsApp() {
                 observer.disconnect();
             }
         });
-        observer.observe(document.body, { childList: true, subtree: true });
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true,
+            attributeFilter: ['aria-expanded'],
+        });
         return () => observer.disconnect();
     }, [arrival]);
 

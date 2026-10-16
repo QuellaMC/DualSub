@@ -41,8 +41,10 @@ export function sampleVideoLanguage(targetLanguage: string): SubtitleLanguage {
 }
 
 export interface SampleSubtitles {
-    readonly originalLanguage: SubtitleLanguage;
-    readonly targetLanguage: SubtitleLanguage;
+    /** The languages picked, as the video would show them: the spoken one
+     *  on an automatic top line, else the stored one, and the viewer's. */
+    readonly originalLanguage: string;
+    readonly targetLanguage: string;
     readonly originalText: string;
     /** Empty when the video already speaks the viewer's language, where
      *  DualSub shows one line. */
@@ -59,17 +61,17 @@ export function sampleSubtitles(
     spoken: SubtitleLanguage
 ): SampleSubtitles {
     const automatic = settings.originalLanguage === AUTO_LANGUAGE;
-    const targetLanguage = offered(settings.targetLanguage);
-    const originalLanguage = automatic
-        ? spoken
-        : offered(settings.originalLanguage);
+    const { targetLanguage } = settings;
+    const originalLanguage = automatic ? spoken : settings.originalLanguage;
     return {
         originalLanguage,
         targetLanguage,
-        originalText: SAMPLE_LINES[originalLanguage],
+        originalText: SAMPLE_LINES[offered(originalLanguage)],
+        // The lines are counted as the video shows them, by the languages
+        // picked, before English stands in for any the sample lacks.
         translatedText: isSameLanguage(originalLanguage, targetLanguage)
             ? ''
-            : SAMPLE_LINES[targetLanguage],
+            : SAMPLE_LINES[offered(targetLanguage)],
         standIns: [
             ...new Set([
                 settings.targetLanguage,

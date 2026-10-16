@@ -246,6 +246,7 @@ export function ExplanationsSection({
                             type="button"
                             id="explain-change-key"
                             className="button"
+                            aria-expanded={false}
                             onClick={() => setStepsOpen(true)}
                         >
                             {t('explainChangeKey')}
