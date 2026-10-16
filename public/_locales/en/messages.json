@@ -911,6 +911,9 @@
     "previewSampleVideo": {
         "message": "Sample video"
     },
+    "previewStandIn": {
+        "message": "There is no %s sample here, so English stands in for it."
+    },
     "previewShownOn": {
         "message": "Shown on"
     },

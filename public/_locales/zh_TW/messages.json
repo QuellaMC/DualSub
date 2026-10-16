@@ -911,6 +911,9 @@
     "previewSampleVideo": {
         "message": "範例影片"
     },
+    "previewStandIn": {
+        "message": "這裡沒有%s的範例，所以用英文代替。"
+    },
     "previewShownOn": {
         "message": "顯示在"
     },

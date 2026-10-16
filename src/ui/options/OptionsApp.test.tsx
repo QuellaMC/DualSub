@@ -230,6 +230,16 @@ describe('OptionsApp', () => {
         expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
 
+    it('says when the preview shows English for a language it has no sample in', async () => {
+        await fakeBrowser.storage.sync.set({ targetLanguage: 'th' });
+        await renderReady();
+        expect(
+            screen.getByText(
+                'There is no th sample here, so English stands in for it.'
+            )
+        ).toBeInTheDocument();
+    });
+
     it('shows a stored language the menu does not offer as the one picked', async () => {
         await fakeBrowser.storage.sync.set({ targetLanguage: 'nl' });
         location.hash = '#languages';

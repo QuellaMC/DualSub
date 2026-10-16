@@ -911,6 +911,9 @@
     "previewSampleVideo": {
         "message": "サンプル動画"
     },
+    "previewStandIn": {
+        "message": "ここには %s のサンプルがないので、英語で代わりに表示しています。"
+    },
     "previewShownOn": {
         "message": "表示するサイト"
     },

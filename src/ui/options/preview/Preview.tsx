@@ -31,6 +31,8 @@ const SAMPLE_VIDEOS = [
     labelKey: string;
 }[];
 
+/** The language the sample shows for `language`: the closest one it has
+ *  lines in, else English, standing in. */
 function offered(language: string): SubtitleLanguage {
     return closestLanguage(language, SUBTITLE_LANGUAGES) ?? 'en';
 }
@@ -55,6 +57,15 @@ export function Preview({
     const automatic = settings.originalLanguage === AUTO_LANGUAGE;
     const top = automatic ? spoken : offered(settings.originalLanguage);
     const oneLine = isSameLanguage(top, target);
+    /** The languages picked that the sample has no lines in. */
+    const standIns = [
+        ...new Set([
+            settings.targetLanguage,
+            ...(automatic ? [] : [settings.originalLanguage]),
+        ]),
+    ].filter(
+        (language) => closestLanguage(language, SUBTITLE_LANGUAGES) === null
+    );
 
     const display = useMemo<DisplaySettings>(
         () => ({
@@ -166,6 +177,11 @@ export function Preview({
                         languageName(t, target)
                     )}
                 </p>
+                {standIns.map((language) => (
+                    <p key={language} className="help">
+                        {t('previewStandIn', languageName(t, language))}
+                    </p>
+                ))}
             </div>
         </aside>
     );
