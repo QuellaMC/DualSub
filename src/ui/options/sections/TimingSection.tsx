@@ -2,6 +2,7 @@ import { validateSetting } from '@/config/schema';
 import { NUDGE_SECONDS, roundSeconds, timingLabel } from '../../adjustments';
 import { Icon } from '../../design/Icon';
 import { useCommittedTextField } from '../../hooks/useCommittedTextField';
+import { useDraft } from '../../hooks/useDraft';
 import { CommittedField } from '../controls/CommittedField';
 import { SiteTag } from '../shell/scopeContext';
 import type { SectionProps } from '../types';
@@ -12,20 +13,26 @@ export function TimingSection({
     save,
     advanced,
 }: SectionProps & { advanced: boolean }) {
-    const offset = roundSeconds(settings.subtitleTimeOffset);
+    // Each press builds on the last one shown, saved or not.
+    const draft = useDraft(
+        roundSeconds(settings.subtitleTimeOffset),
+        (value, notice) => save({ subtitleTimeOffset: value }, notice)
+    );
+    const offset = draft.value;
     const exact = useCommittedTextField({
         value: String(offset),
-        validate: (draft) =>
-            draft.trim() !== '' &&
-            validateSetting('subtitleTimeOffset', Number(draft)),
-        onCommit: (draft) =>
-            save({ subtitleTimeOffset: roundSeconds(Number(draft)) }, 'quiet'),
+        validate: (value) =>
+            value.trim() !== '' &&
+            validateSetting('subtitleTimeOffset', Number(value)),
+        onCommit: (value) => {
+            draft.set(roundSeconds(Number(value)), 'quiet');
+            return true;
+        },
     });
     const shift = (seconds: number, messageKey: string): void =>
-        void save(
-            { subtitleTimeOffset: roundSeconds(offset + seconds) },
-            { message: t(messageKey, NUDGE_SECONDS) }
-        );
+        draft.set(roundSeconds(offset + seconds), {
+            message: t(messageKey, NUDGE_SECONDS),
+        });
 
     return (
         <section className="section" aria-labelledby="timing-title">

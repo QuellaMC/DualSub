@@ -24,6 +24,7 @@ import {
     TEST_EXTENSION_ORIGIN,
     installExtensionRuntimeIdentity,
 } from '@/test-utils/extensionRuntime';
+import { configService } from '@/config/service';
 import { resetCatalogsForTests } from '../hooks/useI18n';
 import { PopupApp } from './PopupApp';
 
@@ -240,8 +241,17 @@ describe('PopupApp on a site DualSub works on', () => {
         const bigger = await screen.findByRole('button', {
             name: 'Bigger text',
         });
-        vi.spyOn(browser.storage.sync, 'set').mockRejectedValueOnce(
-            new Error('quota')
+        // Only this save fails, not one another test left behind.
+        const realSave = configService.setMultiple.bind(configService);
+        let failed = false;
+        vi.spyOn(configService, 'setMultiple').mockImplementation(
+            (settings, siteWrite) => {
+                if (!failed && Object.hasOwn(settings, 'subtitleFontScale')) {
+                    failed = true;
+                    return Promise.reject(new Error('quota'));
+                }
+                return realSave(settings, siteWrite);
+            }
         );
         fireEvent.click(bigger);
         expect(await screen.findByRole('alert')).toHaveTextContent(
