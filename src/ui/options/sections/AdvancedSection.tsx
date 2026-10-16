@@ -119,18 +119,33 @@ function changeCount(
     ).length;
 }
 
-/** Run `write` over `keys` whole or not at all: the storage areas are
- *  written one after another, so when a later one fails, the earlier ones
- *  get back what they held. Resolves to what the keys held before. */
+/** Put back what `before` held where `changes` changes it: each setting
+ *  whole, and of the site profiles only the entries `changes` changes, over
+ *  any edit another page made since. */
+function putBack(
+    before: Partial<SettingsValues>,
+    changes: Partial<SettingsValues>
+): Promise<unknown> {
+    return changes.siteProfiles === undefined
+        ? configService.setMultiple(before)
+        : configService.restoreSiteValues(
+              before,
+              changedSiteValues(before.siteProfiles ?? {}, changes.siteProfiles)
+          );
+}
+
+/** Write `changes` with `write` whole or not at all: the storage areas are
+ *  written one after another, so when a later one fails, what the earlier
+ *  ones took is put back. Resolves to what `changes` replaced. */
 async function wholly(
-    keys: readonly string[],
-    write: () => Promise<unknown>
+    changes: Partial<SettingsValues>,
+    write: () => Promise<unknown> = () => configService.setMultiple(changes)
 ): Promise<Partial<SettingsValues>> {
-    const before = await configService.getMultiple(keys);
+    const before = await configService.getMultiple(Object.keys(changes));
     try {
         await write();
     } catch (error) {
-        await configService.setMultiple(before).catch(() => undefined);
+        await putBack(before, changes).catch(() => undefined);
         throw error;
     }
     return before;
@@ -187,23 +202,10 @@ export function AdvancedSection({ t, settings, save }: SectionProps) {
         void feedback.apply(
             async () => {
                 changes = await build();
-                before = await wholly(Object.keys(changes), () =>
-                    configService.setMultiple(changes)
-                );
+                before = await wholly(changes);
             },
             message,
-            () =>
-                wholly(Object.keys(changes), () =>
-                    changes.siteProfiles === undefined
-                        ? configService.setMultiple(before)
-                        : configService.restoreSiteValues(
-                              before,
-                              changedSiteValues(
-                                  before.siteProfiles ?? {},
-                                  changes.siteProfiles
-                              )
-                          )
-                )
+            () => wholly(before, () => putBack(before, changes))
         );
     };
 
