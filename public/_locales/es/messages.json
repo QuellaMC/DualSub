@@ -1449,22 +1449,22 @@
         "message": "Tu idioma: %s"
     },
     "welcomeLanguageFromBrowser": {
-        "message": "Tomado de tu navegador. La línea de abajo siempre está en este idioma."
+        "message": "Tomado de tu navegador. Tu línea siempre está en este idioma."
     },
     "welcomeLanguageLabel": {
         "message": "Tu idioma"
     },
     "welcomeTopAuto": {
-        "message": "Línea de arriba: el idioma que se habla en cada video"
+        "message": "Línea del video: el idioma que se habla en cada video"
     },
     "welcomeTopAutoHelp": {
         "message": "Una serie coreana muestra coreano; una película en inglés, inglés."
     },
     "welcomeTopFixed": {
-        "message": "Línea de arriba: siempre %s"
+        "message": "Línea del video: siempre %s"
     },
     "welcomeTopFixedHelp": {
-        "message": "Todos los videos lo muestran arriba, cuando el sitio tiene subtítulos en ese idioma."
+        "message": "Todos los videos lo muestran, cuando el sitio tiene subtítulos en ese idioma."
     },
     "welcomeTranslation": {
         "message": "Traducción: %s"
@@ -1490,14 +1490,29 @@
     "welcomeTitle": {
         "message": "Todo listo."
     },
-    "welcomeLead": {
-        "message": "DualSub pone dos líneas de subtítulos en Netflix y Disney+: arriba, el idioma del propio video, y debajo, el tuyo. No hay nada que configurar."
+    "welcomeLeadFormat": {
+        "message": "%s %s"
     },
-    "welcomeLeadSetUp": {
-        "message": "DualSub pone dos líneas de subtítulos en Netflix y Disney+: arriba, el idioma del propio video, y debajo, el tuyo. Para traducir el tuyo, termina de configurar el servicio de traducción de abajo."
+    "welcomeArrangeVideoFirst": {
+        "message": "DualSub pone dos líneas de subtítulos en Netflix y Disney+: arriba, el idioma del propio video, y debajo, el tuyo."
+    },
+    "welcomeArrangeMineFirst": {
+        "message": "DualSub pone dos líneas de subtítulos en Netflix y Disney+: arriba, el tuyo, y debajo, el idioma del propio video."
+    },
+    "welcomeArrangeSideBySide": {
+        "message": "DualSub pone dos líneas de subtítulos una al lado de la otra en Netflix y Disney+: el idioma del propio video y el tuyo."
+    },
+    "welcomeStateReady": {
+        "message": "No hay nada que configurar."
+    },
+    "welcomeStateOff": {
+        "message": "Por ahora está desactivado: el interruptor de abajo lo activa."
+    },
+    "welcomeStateSetUp": {
+        "message": "Para traducir el tuyo, termina de configurar el servicio de traducción de abajo."
     },
     "welcomeLanguageHelp": {
-        "message": "La línea de abajo siempre está en este idioma."
+        "message": "Tu línea siempre está en este idioma."
     },
     "welcomeStepsTitle": {
         "message": "Empieza a ver en tres pasos"

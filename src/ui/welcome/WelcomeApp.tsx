@@ -44,6 +44,29 @@ type WelcomeKey = (typeof WELCOME_KEYS)[number];
  *  pixels tall. */
 const PICTURE_HEIGHT = 1100;
 
+/** How the two lines sit, in the lead's words, as the saved layout puts
+ *  them. */
+function arrangementKey(
+    settings: Pick<
+        SettingsProjection<WelcomeKey>,
+        'subtitleLayoutOrder' | 'subtitleLayoutOrientation'
+    >
+): string {
+    if (settings.subtitleLayoutOrientation === 'row') {
+        return 'welcomeArrangeSideBySide';
+    }
+    return settings.subtitleLayoutOrder === 'translation_top'
+        ? 'welcomeArrangeMineFirst'
+        : 'welcomeArrangeVideoFirst';
+}
+
+/** What the lead says is left to do, for each state the page finds. */
+const READINESS_KEYS = {
+    ready: 'welcomeStateReady',
+    off: 'welcomeStateOff',
+    stopped: 'welcomeStateSetUp',
+} as const;
+
 function isKeyless(provider: ProviderId): boolean {
     return (KEYLESS_PROVIDERS as readonly ProviderId[]).includes(provider);
 }
@@ -144,6 +167,7 @@ function Welcome({
     if (!working && !offeredSwitch) {
         setOfferedSwitch(true);
     }
+    const readiness = !working ? 'off' : stopped ? 'stopped' : 'ready';
 
     const fromBrowser = settings.targetLanguage === browserTargetLanguage();
     const automaticTop = settings.originalLanguage === AUTO_LANGUAGE;
@@ -176,13 +200,17 @@ function Welcome({
                     <div className="welcome-hero-text">
                         <h1>
                             {t(
-                                working && !stopped
+                                readiness === 'ready'
                                     ? 'welcomeTitle'
                                     : 'welcomePageTitle'
                             )}
                         </h1>
                         <p className="lead">
-                            {t(stopped ? 'welcomeLeadSetUp' : 'welcomeLead')}
+                            {t(
+                                'welcomeLeadFormat',
+                                t(arrangementKey(settings)),
+                                t(READINESS_KEYS[readiness])
+                            )}
                         </p>
                     </div>
                     <div className="welcome-frame">
