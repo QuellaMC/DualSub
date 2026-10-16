@@ -54,6 +54,27 @@ describe('SubtitleFlightTable', () => {
         await expect(second).resolves.toEqual(OK);
     });
 
+    it('runs a Disney+ request anew when official translations were toggled', async () => {
+        const table = new SubtitleFlightTable();
+        let observedSignal: AbortSignal | undefined;
+        const official = table.admit(disneyRequest(), (signal) => {
+            observedSignal = signal;
+            return new Promise<FetchVttResponse>(() => undefined);
+        });
+        const run = vi.fn(() => Promise.resolve(OK));
+        const translated = table.admit(
+            disneyRequest({ useOfficialTranslations: false }),
+            run
+        );
+
+        expect(run).toHaveBeenCalledOnce();
+        await expect(translated).resolves.toEqual(OK);
+        await expect(official).resolves.toEqual(
+            SUBTITLE_REQUEST_REJECTED_RESPONSE
+        );
+        expect(observedSignal?.aborted).toBe(true);
+    });
+
     it('caps coalesced responders at 8', async () => {
         const table = new SubtitleFlightTable();
         const { run, resolve } = deferredRun();
