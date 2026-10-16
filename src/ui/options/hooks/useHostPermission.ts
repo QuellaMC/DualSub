@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
+import { browser } from 'wxt/browser';
 import { hasHostPermission } from '@/shared/hostPermissions';
 
 /** Whether DualSub may reach `baseUrl`'s host: null while that is checked.
- *  `recheck` reads it again, for after a permission prompt is answered. */
+ *  It is read again when access changes anywhere (another tab, the
+ *  browser's extension controls); `recheck` reads it again, for after a
+ *  permission prompt is answered. */
 export function useHostPermission(baseUrl: string): {
     readonly permitted: boolean | null;
     readonly recheck: () => void;
@@ -33,6 +36,15 @@ export function useHostPermission(baseUrl: string): {
     }, [baseUrl, revision]);
 
     const recheck = useCallback(() => setRevision((count) => count + 1), []);
+
+    useEffect(() => {
+        browser.permissions.onAdded.addListener(recheck);
+        browser.permissions.onRemoved.addListener(recheck);
+        return () => {
+            browser.permissions.onAdded.removeListener(recheck);
+            browser.permissions.onRemoved.removeListener(recheck);
+        };
+    }, [recheck]);
     return {
         permitted: state?.baseUrl === baseUrl ? state.permitted : null,
         recheck,

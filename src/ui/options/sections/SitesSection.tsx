@@ -164,7 +164,7 @@ function SiteCard({
                         checked={settings.subtitlesEnabled}
                         labelledBy={`${site}-enabled`}
                         onChange={(enabled) =>
-                            void save(
+                            save(
                                 { subtitlesEnabled: enabled },
                                 {
                                     message: t(
@@ -190,7 +190,7 @@ function SiteCard({
                     checked={settings.hideOfficialSubtitles}
                     labelledBy={`${site}-hide`}
                     onChange={(hide) =>
-                        void save(
+                        save(
                             { hideOfficialSubtitles: hide },
                             {
                                 message: t(
@@ -348,7 +348,7 @@ function SharedHide({ t }: { t: Translate }) {
                     checked={handle.settings.hideOfficialSubtitles}
                     labelledBy="hide-all-title"
                     onChange={(hide) =>
-                        void save(
+                        save(
                             { hideOfficialSubtitles: hide },
                             {
                                 message: t(

@@ -170,7 +170,7 @@ export function ExplanationsSection({
                         labelledBy="explain-switch"
                         disabled={!enabled && !ready}
                         onChange={(on) =>
-                            void save(
+                            save(
                                 { aiContextEnabled: on },
                                 {
                                     message: t(
@@ -346,10 +346,7 @@ export function ExplanationsSection({
                         checked={settings.sidePanelAutoPauseVideo}
                         labelledBy="explain-pause"
                         onChange={(pause) =>
-                            void save(
-                                { sidePanelAutoPauseVideo: pause },
-                                'quiet'
-                            )
+                            save({ sidePanelAutoPauseVideo: pause }, 'quiet')
                         }
                     />
                 </div>
@@ -361,7 +358,7 @@ export function ExplanationsSection({
                         checked={settings.sidePanelAutoOpen}
                         labelledBy="explain-open"
                         onChange={(open) =>
-                            void save({ sidePanelAutoOpen: open }, 'quiet')
+                            save({ sidePanelAutoOpen: open }, 'quiet')
                         }
                     />
                 </div>
@@ -522,7 +519,7 @@ export function ExplanationsSection({
                                 checked={settings.aiContextCacheEnabled}
                                 labelledBy="explain-cache"
                                 onChange={(cache) =>
-                                    void save(
+                                    save(
                                         { aiContextCacheEnabled: cache },
                                         'quiet'
                                     )

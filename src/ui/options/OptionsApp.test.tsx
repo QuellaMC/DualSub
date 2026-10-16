@@ -3,6 +3,7 @@ import '@testing-library/jest-dom/vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import {
+    act,
     cleanup,
     fireEvent,
     render,
@@ -23,6 +24,7 @@ import { browser } from 'wxt/browser';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
 import { configService } from '@/config/service';
 import { installExtensionRuntimeIdentity } from '@/test-utils/extensionRuntime';
+import { installPermissionEvents } from '@/test-utils/permissionEvents';
 import { resetCatalogsForTests } from '../hooks/useI18n';
 import { OptionsApp } from './OptionsApp';
 
@@ -56,8 +58,11 @@ async function sync(key: string): Promise<unknown> {
     return (await fakeBrowser.storage.sync.get(key))[key];
 }
 
+let permissionsChanged: ReturnType<typeof installPermissionEvents>;
+
 beforeAll(() => {
     installExtensionRuntimeIdentity();
+    permissionsChanged = installPermissionEvents();
 });
 
 beforeEach(async () => {
@@ -895,6 +900,52 @@ describe('OptionsApp', () => {
         });
     });
 
+    it('takes back an Undo as soon as a later change is asked for', async () => {
+        await fakeBrowser.storage.sync.set({ subtitleStyle: 'custom' });
+        location.hash = '#look';
+        await renderReady();
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Change colors and font' })
+        );
+        fireEvent.click(screen.getByRole('button', { name: /Boxed$/ }));
+        await screen.findByText('Look: Boxed');
+
+        fireEvent.change(screen.getByLabelText('Font'), {
+            target: { value: 'serif' },
+        });
+        fireEvent.pointerUp(document.body);
+        fireEvent.keyDown(document.body, { key: 'z', ctrlKey: true });
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        expect(await sync('subtitleCustomLook')).toMatchObject({
+            font: 'serif',
+        });
+    });
+
+    it('turns a switch back when it is pressed again while its first change is saved', async () => {
+        await renderReady();
+        const advanced = screen.getByRole('switch', {
+            name: 'Show advanced options',
+        });
+        const realSave = configService.setMultiple.bind(configService);
+        const firstWrite = Promise.withResolvers<void>();
+        vi.spyOn(configService, 'setMultiple').mockImplementationOnce(
+            (settings, siteWrite) =>
+                firstWrite.promise.then(() => realSave(settings, siteWrite))
+        );
+        fireEvent.click(advanced);
+        // The second press comes in a later task, before the first is saved.
+        await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+        fireEvent.click(advanced);
+        firstWrite.resolve();
+        await waitFor(async () =>
+            expect(
+                (await fakeBrowser.storage.local.get('showAdvancedSettings'))
+                    .showAdvancedSettings
+            ).toBe(false)
+        );
+        expect(advanced).toHaveAttribute('aria-checked', 'false');
+    });
+
     it('shows the banner when an Undo cannot be saved', async () => {
         await renderReady();
         fireEvent.click(screen.getByRole('button', { name: /Large$/ }));
@@ -1171,12 +1222,35 @@ describe('OptionsApp', () => {
         });
         await fakeBrowser.storage.local.set({
             openaiCompatibleApiKey: 'sk-key',
+            openaiCompatibleApiKeyOrigin: 'https://llm.example.com',
         });
         await renderReady();
         expect(
             await screen.findByText("AI translation isn't set up yet")
         ).toBeInTheDocument();
         expect(screen.queryByText('DualSub is ready')).not.toBeInTheDocument();
+    });
+
+    it('says AI translation is set up once access to its address is granted elsewhere', async () => {
+        await fakeBrowser.storage.sync.set({
+            selectedProvider: 'openai_compatible',
+            openaiCompatibleBaseUrl: 'https://llm.example.com/v1',
+            translationFallback: false,
+        });
+        await fakeBrowser.storage.local.set({
+            openaiCompatibleApiKey: 'sk-key',
+            openaiCompatibleApiKeyOrigin: 'https://llm.example.com',
+        });
+        await renderReady();
+        expect(
+            await screen.findByText("AI translation isn't set up yet")
+        ).toBeInTheDocument();
+
+        vi.mocked(browser.permissions.contains).mockResolvedValue(
+            true as never
+        );
+        permissionsChanged('added', ['https://llm.example.com/*']);
+        expect(await screen.findByText('DualSub is ready')).toBeInTheDocument();
     });
 
     it('says who translates while the chosen service still needs setting up', async () => {
