@@ -27,7 +27,7 @@ import { useDraft } from '../hooks/useDraft';
 import { useI18n, type Translate } from '../hooks/useI18n';
 import { useSettings } from '../hooks/useSettings';
 import { languageName } from '../languageLabels';
-import { openSettings, PopupShell } from './PopupShell';
+import { openSettings, PopupShell, PopupUnavailable } from './PopupShell';
 
 const SITE_POPUP_KEYS = [
     'uiLanguage',
@@ -384,13 +384,7 @@ export function SitePopup({
         loadedLocale !== null &&
         (handle.status === 'unavailable' || here.status === 'unavailable')
     ) {
-        return (
-            <PopupShell t={t}>
-                <p role="alert" className="notice danger">
-                    {t('settingsLoadFailed')}
-                </p>
-            </PopupShell>
-        );
+        return <PopupUnavailable t={t} />;
     }
     if (!handle.settings || !here.settings || loadedLocale === null) {
         return <div className="popup" aria-busy="true" />;

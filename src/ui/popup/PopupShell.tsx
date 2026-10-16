@@ -64,3 +64,16 @@ export function PopupShell({
         </div>
     );
 }
+
+/** What the popup shows when it cannot tell what to edit: settings it
+ *  cannot read, or a tab it cannot place, where a change meant for one
+ *  site could land on every site. */
+export function PopupUnavailable({ t }: { t: Translate }) {
+    return (
+        <PopupShell t={t}>
+            <p role="alert" className="notice danger">
+                {t('settingsLoadFailed')}
+            </p>
+        </PopupShell>
+    );
+}
