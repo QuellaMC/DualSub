@@ -105,6 +105,22 @@ describe('WelcomeApp', () => {
         expect(openOptions).toHaveBeenCalledOnce();
     });
 
+    it("claims no browser language when the browser's are all ones DualSub lacks", async () => {
+        vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['nl-NL']);
+        vi.spyOn(navigator, 'language', 'get').mockReturnValue('nl-NL');
+        render(<WelcomeApp />);
+        expect(
+            await screen.findByRole('combobox', {
+                name: 'Your subtitles are translated into',
+            })
+        ).toHaveValue('en');
+        expect(
+            screen.queryByText(
+                "We picked your browser's language. Pick another if you like."
+            )
+        ).not.toBeInTheDocument();
+    });
+
     it('shows no untranslated text while its catalog loads', async () => {
         vi.stubGlobal(
             'fetch',

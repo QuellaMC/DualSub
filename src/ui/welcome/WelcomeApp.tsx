@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { browser } from 'wxt/browser';
-import { detectBrowserLanguage, getDefaultValue } from '@/config/schema';
+import { detectBrowserLanguage } from '@/config/schema';
 import { resolveLook } from '@/content/renderer/looks';
 import { toDisplaySettings } from '@/content/renderer/styling';
 import { PLATFORM_IDS, PLATFORM_NAMES, platformHome } from '@/shared/platforms';
-import { AUTO_LANGUAGE } from '@/shared/subtitleLanguages';
+import {
+    AUTO_LANGUAGE,
+    browserTargetLanguage,
+} from '@/shared/subtitleLanguages';
 import { LanguageSelect } from '../design/LanguageSelect';
 import { useI18n } from '../hooks/useI18n';
 import { useSettings } from '../hooks/useSettings';
@@ -65,8 +68,7 @@ export function WelcomeApp() {
         );
     }
 
-    const fromBrowser =
-        settings.targetLanguage === getDefaultValue('targetLanguage');
+    const fromBrowser = settings.targetLanguage === browserTargetLanguage();
     const sample = sampleSubtitles(
         settings,
         sampleVideoLanguage(settings.targetLanguage)
