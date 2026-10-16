@@ -44,6 +44,11 @@ export class TranslationConfigurationChangedError extends Error {
     }
 }
 
+/** The viewer turned fallback off before a covering request went out. */
+class FallbackWithdrawnError extends Error {
+    override readonly name = 'FallbackWithdrawnError';
+}
+
 export interface TranslationOutcome {
     readonly translatedText: string;
     readonly cached: boolean;
@@ -150,9 +155,10 @@ export class TranslationService {
     /** The health in memory has not reached session storage yet. */
     private healthUnsaved = false;
     private healthSaving = false;
-    /** Changes received while the first read is in flight; null after it. */
-    private heldChanges: SettingsChanges[] | null = null;
-    private unsubscribe: (() => void) | null = null;
+    /** Changes received before the first read is done, newer than what it
+     *  returns; null after it. */
+    private heldChanges: SettingsChanges[] | null = [];
+    private unsubscribe: (() => void) | null;
 
     constructor(private readonly deps: TranslationServiceDeps) {
         this.providers = new Map(
@@ -163,18 +169,11 @@ export class TranslationService {
             read: readTranslationHealth,
             write: writeTranslationHealth,
         };
-    }
-
-    /** Follows the provider selection and pacing settings. Never throws. */
-    async initialize(): Promise<void> {
-        // Subscribe before the first read so no change can slip between. A
-        // change that lands while the read is in flight is newer than what
-        // the read returns, so it applies after it. Credential values are
-        // observed only so their rotation can invalidate cached results; the
-        // handler logs key names, not values.
-        const heldChanges: SettingsChanges[] = [];
-        this.heldChanges = heldChanges;
-        this.unsubscribe ??= this.deps.config.onChanged(
+        // Subscribed in the worker's first synchronous turn, so even the
+        // change that woke it arrives; it is held until the first read is
+        // done. Credential values are observed only so their rotation can
+        // invalidate cached results; the handler logs key names, not values.
+        this.unsubscribe = deps.config.onChanged(
             (changes) => {
                 if (this.heldChanges) {
                     this.heldChanges.push(changes);
@@ -184,6 +183,11 @@ export class TranslationService {
             },
             { includeSensitive: true }
         );
+    }
+
+    /** Reads the provider selection and pacing settings, then follows their
+     *  changes. Never throws. */
+    async initialize(): Promise<void> {
         try {
             const [provider, delayMs] = await Promise.all([
                 this.deps.config.get('selectedProvider'),
@@ -214,6 +218,7 @@ export class TranslationService {
                 reason: error instanceof Error ? error.name : 'unknown',
             });
         }
+        const heldChanges = this.heldChanges ?? [];
         this.heldChanges = null;
         for (const changes of heldChanges) {
             this.onConfigChanged(changes);
@@ -257,13 +262,6 @@ export class TranslationService {
         let failure: unknown;
         for (const providerId of this.providerChain(selected)) {
             const covering = providerId !== selected;
-            // The chain was decided when the request began; the viewer may
-            // have turned fallback off since.
-            if (covering && !this.fallbackEnabled) {
-                throw selectedFailed
-                    ? selectedFailure
-                    : new TranslationConfigurationChangedError();
-            }
             try {
                 const outcome = await this.translateWith(
                     providerId,
@@ -271,7 +269,7 @@ export class TranslationService {
                     sourceLang,
                     targetLang,
                     generation,
-                    covering ? 0 : MAX_RETRIES
+                    covering
                 );
                 if (covering) {
                     this.recordCover(selected, providerId);
@@ -282,6 +280,11 @@ export class TranslationService {
             } catch (error) {
                 if (error instanceof TranslationConfigurationChangedError) {
                     throw error;
+                }
+                if (error instanceof FallbackWithdrawnError) {
+                    throw selectedFailed
+                        ? selectedFailure
+                        : new TranslationConfigurationChangedError();
                 }
                 if (!covering) {
                     this.recordFailure(selected, error);
@@ -375,14 +378,15 @@ export class TranslationService {
         this.healthSaving = false;
     }
 
-    /** One provider's answer, with at most `retries` more attempts. */
+    /** One provider's answer: the selected provider's with retries, or a
+     *  covering provider's in one attempt. */
     private async translateWith(
         providerId: ProviderId,
         text: string,
         sourceLang: string,
         targetLang: string,
         generation: number,
-        retries: number
+        covering: boolean
     ): Promise<TranslationOutcome> {
         const provider = this.providers.get(providerId);
         if (!provider) {
@@ -393,10 +397,11 @@ export class TranslationService {
             );
         }
         const key = cacheKey(providerId, sourceLang, targetLang, text);
+        const retries = covering ? 0 : MAX_RETRIES;
 
         for (let attempt = 0; ; attempt += 1) {
             try {
-                this.assertGeneration(generation);
+                this.assertCurrent(generation, covering);
                 const cached = this.cache.get(key);
                 if (cached !== undefined) {
                     return { translatedText: cached, cached: true };
@@ -405,7 +410,7 @@ export class TranslationService {
                     text,
                     this.configuredDelayMs
                 );
-                this.assertGeneration(generation);
+                this.assertCurrent(generation, covering);
                 const translatedText = await provider.translate(
                     text,
                     sourceLang,
@@ -418,7 +423,7 @@ export class TranslationService {
                         { code: 'REQUEST_FAILED' }
                     );
                 }
-                this.assertGeneration(generation);
+                this.assertCurrent(generation, covering);
                 this.cache.set(key, translatedText);
                 return { translatedText, cached: false };
             } catch (error) {
@@ -440,9 +445,16 @@ export class TranslationService {
         }
     }
 
-    private assertGeneration(generation: number): void {
+    /** Throws when a newer generation began, or when a covering attempt
+     *  lost the viewer's consent: the chain was decided when the request
+     *  began, and fallback may have gone off since, even while the attempt
+     *  waited its turn. */
+    private assertCurrent(generation: number, covering: boolean): void {
         if (this.generation !== generation) {
             throw new TranslationConfigurationChangedError();
+        }
+        if (covering && !this.fallbackEnabled) {
+            throw new FallbackWithdrawnError();
         }
     }
 
