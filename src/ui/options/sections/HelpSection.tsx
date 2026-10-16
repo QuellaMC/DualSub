@@ -32,9 +32,12 @@ export function HelpSection({
             },
             t('toastHiddenEverywhere'),
             () =>
-                configService.restoreSiteValues(before, PLATFORM_IDS, [
-                    'hideOfficialSubtitles',
-                ])
+                configService.restoreSiteValues(
+                    before,
+                    PLATFORM_IDS.map(
+                        (site) => [site, 'hideOfficialSubtitles'] as const
+                    )
+                )
         );
     };
 

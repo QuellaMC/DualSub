@@ -2,9 +2,8 @@ import { validateSetting } from '@/config/schema';
 import { NUDGE_SECONDS, roundSeconds, timingLabel } from '../../adjustments';
 import { Icon } from '../../design/Icon';
 import { useCommittedTextField } from '../../hooks/useCommittedTextField';
-import { useDraft } from '../../hooks/useDraft';
 import { CommittedField } from '../controls/CommittedField';
-import { SiteTag } from '../shell/scopeContext';
+import { SiteTag, useSiteDraft } from '../shell/scopeContext';
 import type { SectionProps } from '../types';
 
 export function TimingSection({
@@ -14,7 +13,8 @@ export function TimingSection({
     advanced,
 }: SectionProps & { advanced: boolean }) {
     // Each press builds on the last one shown, saved or not.
-    const draft = useDraft(
+    const draft = useSiteDraft(
+        'subtitleTimeOffset',
         roundSeconds(settings.subtitleTimeOffset),
         (value, notice) => save({ subtitleTimeOffset: value }, notice)
     );

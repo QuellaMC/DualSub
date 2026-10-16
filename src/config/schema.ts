@@ -708,6 +708,34 @@ export function isSiteSettingKey(key: string): key is SiteSettingKey {
     return (SITE_SETTING_KEYS as readonly string[]).includes(key);
 }
 
+/** One site's own value of one setting, as a `[site, key]` pair. */
+export type SiteValueRef = readonly [site: string, key: string];
+
+/** The site values that differ between two profile maps, including one
+ *  present in only one of them. */
+export function changedSiteValues(
+    before: SettingsValues['siteProfiles'],
+    after: SettingsValues['siteProfiles']
+): SiteValueRef[] {
+    const changed: SiteValueRef[] = [];
+    for (const site of new Set([
+        ...Object.keys(before),
+        ...Object.keys(after),
+    ])) {
+        const was = before[site] ?? {};
+        const now = after[site] ?? {};
+        for (const key of new Set([...Object.keys(was), ...Object.keys(now)])) {
+            if (
+                Object.hasOwn(was, key) !== Object.hasOwn(now, key) ||
+                !sameSettingValue(was[key], now[key])
+            ) {
+                changed.push([site, key]);
+            }
+        }
+    }
+    return changed;
+}
+
 /** `site`'s own values this version can use, from a resolved
  *  `siteProfiles` value: known site settings with valid values. */
 export function siteProfileOf(

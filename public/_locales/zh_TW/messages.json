@@ -389,6 +389,9 @@
     "explainCache": {
         "message": "記住查過的結果"
     },
+    "explainAllowHost": {
+        "message": "DualSub 需要你允許它連線到這個位址，才能解釋單字。"
+    },
     "explainKeyStays": {
         "message": "你的金鑰只存在這台電腦上，也只會傳給你選的服務。"
     },

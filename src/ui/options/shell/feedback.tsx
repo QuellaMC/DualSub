@@ -67,8 +67,7 @@ export function feedbackSave<
                     ? configService.setMultiple(previous)
                     : configService.restoreSiteValues(
                           { ...previous, siteProfiles: profiles },
-                          [scope],
-                          siteKeys
+                          siteKeys.map((key) => [scope, key] as const)
                       )
         );
     };
@@ -88,7 +87,11 @@ export function followAllSites(
             before = await configService.removeSiteValues([site], keys);
         },
         message,
-        () => configService.restoreSiteValues(before, [site], keys)
+        () =>
+            configService.restoreSiteValues(
+                before,
+                keys.map((key) => [site, key] as const)
+            )
     );
 }
 
