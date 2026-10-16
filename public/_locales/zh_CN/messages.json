@@ -17,14 +17,8 @@
     "originalLanguageLabel": {
         "message": "原始语言："
     },
-    "providerLabel": {
-        "message": "提供商："
-    },
     "targetLanguageLabel": {
         "message": "翻译为："
-    },
-    "requestDelayLabel": {
-        "message": "请求延迟 (ms)："
     },
     "subtitleAppearanceTimingLegend": {
         "message": "字幕外观和时序"
@@ -64,9 +58,6 @@
     },
     "subtitleStylePlatform": {
         "message": "跟随平台"
-    },
-    "uiLanguageLabel": {
-        "message": "语言："
     },
     "statusLanguageSetTo": {
         "message": "刷新页面后生效："
@@ -111,88 +102,16 @@
         "message": "无效偏移，已还原。"
     },
     "optionsPageTitle": {
-        "message": "DualSub 选项"
-    },
-    "optionsH1Title": {
-        "message": "DualSub"
-    },
-    "navGeneral": {
-        "message": "常规"
+        "message": "DualSub 设置"
     },
     "navTranslation": {
         "message": "翻译"
     },
-    "navProviders": {
-        "message": "提供商"
-    },
-    "navAbout": {
-        "message": "关于"
-    },
-    "sectionGeneral": {
-        "message": "常规"
-    },
-    "cardUILanguageTitle": {
-        "message": "界面语言"
-    },
-    "cardUILanguageDesc": {
-        "message": "选择扩展界面的显示语言。"
-    },
-    "cardHideOfficialSubtitlesTitle": {
-        "message": "隐藏官方字幕"
-    },
-    "cardHideOfficialSubtitlesDesc": {
-        "message": "当 DualSub 激活时，隐藏视频平台的官方字幕。"
-    },
-    "hideOfficialSubtitlesLabel": {
-        "message": "隐藏官方字幕："
-    },
-    "sectionTranslation": {
-        "message": "翻译"
-    },
-    "cardTranslationEngineTitle": {
-        "message": "翻译引擎"
-    },
-    "cardTranslationEngineDesc": {
-        "message": "选择您喜欢的翻译服务。"
-    },
-    "cardPerformanceTitle": {
-        "message": "性能"
-    },
-    "cardPerformanceDesc": {
-        "message": "调整扩展处理翻译请求的方式，以平衡速度和稳定性。"
-    },
-    "sectionProviders": {
-        "message": "提供商设置"
-    },
-    "cardDeepLTitle": {
-        "message": "DeepL"
-    },
-    "cardDeepLDesc": {
-        "message": "输入您的 DeepL 翻译 API 密钥。选择免费或专业版计划。"
-    },
-    "apiKeyLabel": {
-        "message": "API 密钥："
-    },
-    "apiPlanLabel": {
-        "message": "API 计划："
-    },
     "apiPlanFree": {
-        "message": "DeepL API 免费版"
+        "message": "免费版"
     },
     "apiPlanPro": {
-        "message": "DeepL API 专业版"
-    },
-    "sectionAbout": {
-        "message": "关于"
-    },
-    "cardAboutTitle": {
-        "message": "DualSub"
-    },
-    "aboutVersion": {
-        "message": "版本"
-    },
-    "aboutDescription": {
-        "message": "此扩展帮助您在各种平台上观看双语字幕视频。"
+        "message": "专业版"
     },
     "aboutDevelopment": {
         "message": "由 QuellaMC & 1jifang 开发。"
@@ -239,11 +158,11 @@
     "lang_auto": {
         "message": "自动（跟随音频）"
     },
-    "testDeepLButton": {
-        "message": "测试 DeepL 连接"
-    },
     "deeplApiKeyError": {
         "message": "请先输入您的 DeepL API 密钥。"
+    },
+    "deeplTestNeedsTesting": {
+        "message": "⚠️ DeepL API 密钥需要测试。"
     },
     "testingButton": {
         "message": "测试中..."
@@ -268,81 +187,6 @@
     },
     "deeplTestGenericError": {
         "message": "❌ 测试失败：%s"
-    },
-    "cardGoogleTitle": {
-        "message": "谷歌翻译"
-    },
-    "cardGoogleDesc": {
-        "message": "由谷歌提供的免费翻译服务。无需额外配置。"
-    },
-    "cardMicrosoftTitle": {
-        "message": "微软翻译"
-    },
-    "cardMicrosoftDesc": {
-        "message": "由微软 Edge 提供的免费翻译服务。无需额外配置。"
-    },
-    "providerStatus": {
-        "message": "状态："
-    },
-    "statusReady": {
-        "message": "可以使用"
-    },
-    "providerFeatures": {
-        "message": "特性："
-    },
-    "featureFree": {
-        "message": "免费使用"
-    },
-    "featureNoApiKey": {
-        "message": "无需 API 密钥"
-    },
-    "featureWideLanguageSupport": {
-        "message": "广泛的语言支持"
-    },
-    "featureFastTranslation": {
-        "message": "快速翻译"
-    },
-    "featureHighQuality": {
-        "message": "高质量翻译"
-    },
-    "featureGoodPerformance": {
-        "message": "良好的性能"
-    },
-    "featureHighestQuality": {
-        "message": "最高质量翻译"
-    },
-    "featureApiKeyRequired": {
-        "message": "需要 API 密钥"
-    },
-    "featureLimitedLanguages": {
-        "message": "有限的语言支持"
-    },
-    "featureUsageLimits": {
-        "message": "使用限制适用"
-    },
-    "providerGoogleName": {
-        "message": "谷歌翻译（免费）"
-    },
-    "providerMicrosoftName": {
-        "message": "微软翻译（免费）"
-    },
-    "providerDeepLName": {
-        "message": "DeepL（需要 API 密钥）"
-    },
-    "providerOpenAICompatibleName": {
-        "message": "OpenAI 兼容（需要 API 密钥）"
-    },
-    "providerVertexGeminiName": {
-        "message": "Vertex AI Gemini（需要 API 密钥）"
-    },
-    "cardOpenAICompatibleTitle": {
-        "message": "OpenAI 兼容（需要 API 密钥）"
-    },
-    "cardOpenAICompatibleDesc": {
-        "message": "输入您的 API 密钥和设置，用于 Gemini 等 OpenAI 兼容服务。"
-    },
-    "cardVertexGeminiTitle": {
-        "message": "Vertex AI Gemini（需要 API 密钥）"
     },
     "vertexAccessTokenLabel": {
         "message": "访问令牌："
@@ -380,29 +224,8 @@
     "vertexConfigured": {
         "message": "⚠️ Vertex AI 已配置。请测试连接。"
     },
-    "featureVertexServiceAccount": {
-        "message": "服务账号 JSON 导入"
-    },
-    "featureVertexGemini": {
-        "message": "通过 Vertex AI 使用 Google Gemini 模型"
-    },
-    "baseUrlLabel": {
-        "message": "基础 URL："
-    },
-    "modelLabel": {
-        "message": "模型："
-    },
-    "featureCustomizable": {
-        "message": "可自定义端点和模型"
-    },
     "testConnectionButton": {
         "message": "测试连接"
-    },
-    "openaiApiKeyPlaceholder": {
-        "message": "输入您的 OpenAI 兼容 API 密钥"
-    },
-    "openaiBaseUrlPlaceholder": {
-        "message": "例如：https://api.openai.com/v1"
     },
     "openaiApiKeyError": {
         "message": "请先输入您的 API 密钥。"
@@ -428,33 +251,6 @@
     "openaiFailedToFetchModels": {
         "message": "获取模型失败：%s"
     },
-    "cardLoggingLevelTitle": {
-        "message": "日志级别"
-    },
-    "cardLoggingLevelDesc": {
-        "message": "控制浏览器控制台中显示的调试信息量。较高级别包含所有较低级别的消息。"
-    },
-    "loggingLevelLabel": {
-        "message": "日志级别："
-    },
-    "loggingLevelOff": {
-        "message": "关闭"
-    },
-    "loggingLevelError": {
-        "message": "仅错误"
-    },
-    "loggingLevelWarn": {
-        "message": "警告和错误"
-    },
-    "loggingLevelInfo": {
-        "message": "信息及以上"
-    },
-    "loggingLevelDebug": {
-        "message": "调试（全部）"
-    },
-    "deeplTestNeedsTesting": {
-        "message": "⚠️ DeepL API 密钥需要测试。"
-    },
     "aiContextUsage": {
         "message": "💡 用法与例句"
     },
@@ -466,90 +262,6 @@
     },
     "aiContextKeyInsights": {
         "message": "🔑 关键见解"
-    },
-    "navAIContext": {
-        "message": "AI 上下文"
-    },
-    "sectionAIContext": {
-        "message": "AI 上下文助手"
-    },
-    "cardAIContextToggleTitle": {
-        "message": "启用 AI 上下文分析"
-    },
-    "cardAIContextToggleDesc": {
-        "message": "为字幕文本启用 AI 驱动的文化、历史和语言学上下文分析。点击字幕中的单词或短语以获得详细解释。"
-    },
-    "aiContextEnabledLabel": {
-        "message": "启用 AI 上下文："
-    },
-    "cardAIContextProviderTitle": {
-        "message": "AI 提供商"
-    },
-    "cardAIContextProviderDesc": {
-        "message": "选择用于上下文分析的 AI 服务提供商。不同的提供商可能提供不同的质量和响应时间。"
-    },
-    "aiContextProviderLabel": {
-        "message": "提供商："
-    },
-    "cardOpenAIContextTitle": {
-        "message": "OpenAI 配置"
-    },
-    "cardOpenAIContextDesc": {
-        "message": "配置用于上下文分析的 OpenAI API 设置。您需要一个有效的 OpenAI API 密钥。"
-    },
-    "openaiApiKeyLabel": {
-        "message": "API 密钥："
-    },
-    "openaiBaseUrlLabel": {
-        "message": "基础 URL："
-    },
-    "openaiModelLabel": {
-        "message": "模型："
-    },
-    "cardGeminiContextTitle": {
-        "message": "Google Gemini 配置"
-    },
-    "cardGeminiContextDesc": {
-        "message": "配置用于上下文分析的 Google Gemini API 设置。您需要一个有效的 Gemini API 密钥。"
-    },
-    "geminiApiKeyLabel": {
-        "message": "API 密钥："
-    },
-    "geminiModelLabel": {
-        "message": "模型："
-    },
-    "cardAIContextTypesTitle": {
-        "message": "上下文类型"
-    },
-    "cardAIContextTypesDesc": {
-        "message": "启用您想要使用的上下文分析类型。您可以启用多种类型。"
-    },
-    "contextTypeCulturalLabel": {
-        "message": "文化上下文："
-    },
-    "contextTypeHistoricalLabel": {
-        "message": "历史上下文："
-    },
-    "contextTypeLinguisticLabel": {
-        "message": "语言学分析："
-    },
-    "cardAIContextAdvancedTitle": {
-        "message": "高级设置"
-    },
-    "cardAIContextAdvancedDesc": {
-        "message": "配置 AI 上下文分析行为的高级选项。"
-    },
-    "aiContextTimeoutLabel": {
-        "message": "请求超时 (ms)："
-    },
-    "aiContextRateLimitLabel": {
-        "message": "速率限制 (请求/分钟)："
-    },
-    "aiContextCacheEnabledLabel": {
-        "message": "启用缓存："
-    },
-    "aiContextRetryAttemptsLabel": {
-        "message": "重试次数："
     },
     "sidepanelLoading": {
         "message": "加载中..."
@@ -594,115 +306,61 @@
         "message": "未选择要分析的单词"
     },
     "sidepanelErrorDisabled": {
-        "message": "AI 上下文分析已禁用。请在设置中启用。"
+        "message": "单词解释已关闭。请在 DualSub 设置里打开。"
     },
     "sidepanelErrorGeneric": {
         "message": "分析过程中发生错误。"
     },
-    "advancedNote": {
-        "message": "Automatic side-panel opening requires Chrome 116 or newer."
-    },
-    "advancedTitle": {
-        "message": "高级设置"
-    },
-    "advancedWarningDescription": {
-        "message": "These settings can affect the behavior of the side panel. If you experience issues, try resetting to default values by disabling and re-enabling the side panel feature."
-    },
-    "advancedWarningTitle": {
-        "message": "Important Note"
-    },
     "aiContextTypesRequired": {
-        "message": "Select at least one context type."
-    },
-    "autoOpenSidePanel": {
-        "message": "Auto-Open Side Panel:"
-    },
-    "autoOpenSidePanelDescription": {
-        "message": "Automatically open the side panel when you click on subtitle words."
-    },
-    "autoPauseVideo": {
-        "message": "Auto-Pause Video:"
-    },
-    "autoPauseVideoDescription": {
-        "message": "Automatically pause the video when you open the side panel to select words."
-    },
-    "cardVertexGeminiEphemeralDesc": {
-        "message": "Enter a short-lived access token, or import a service account JSON once to generate one. The service-account key is never stored."
+        "message": "请至少选一项要解释的内容。"
     },
     "deeplTestSuccessSimple": {
         "message": "✅ DeepL API 测试成功"
     },
-    "featureVertexEphemeralToken": {
-        "message": "One-time token generation without storing the service-account key"
-    },
     "navAdvanced": {
-        "message": "高级设置"
+        "message": "高级"
     },
     "openaiEndpointPermissionRequired": {
-        "message": "Use Test Connection to grant access to this endpoint."
+        "message": "点击“%s”，让 DualSub 能访问这个地址。"
     },
     "openaiHostPermissionButton": {
-        "message": "Allow API host"
+        "message": "允许访问 API 主机"
     },
     "openaiHostPermissionChecking": {
-        "message": "Checking API host access…"
+        "message": "正在检查 API 主机访问权限…"
     },
     "openaiHostPermissionDenied": {
-        "message": "API host access was not granted."
+        "message": "未获得 API 主机访问权限。"
     },
     "openaiHostPermissionError": {
         "message": "无法请求 API 主机访问权限：%s"
     },
     "openaiHostPermissionGranted": {
-        "message": "API host access granted."
+        "message": "已获得 API 主机访问权限。"
     },
     "openaiHostPermissionScope": {
         "message": "已配置端点：%s。Chrome 权限范围：%s（此主机上的所有路径和端口）。"
     },
-    "sidePanelBehaviorDescription": {
-        "message": "Configure how the AI analysis side panel opens and looks."
-    },
-    "sidePanelBehaviorTitle": {
-        "message": "Side Panel Behavior"
-    },
     "sidepanelErrorNoContextTypes": {
-        "message": "请先选择至少一种上下文类型再进行分析。"
-    },
-    "sidePanelTheme": {
-        "message": "Side Panel Theme:"
-    },
-    "themeAuto": {
-        "message": "Auto (System)"
-    },
-    "themeDark": {
-        "message": "Dark"
-    },
-    "themeLight": {
-        "message": "Light"
+        "message": "请在 DualSub 设置里至少选一项要解释的内容。"
     },
     "vertexImportSuccessEphemeral": {
-        "message": "Access token generated. The service-account key was not stored; re-import the JSON when the token expires."
+        "message": "访问令牌已生成。服务账号密钥没有被保存；令牌过期后，请重新导入 JSON。"
     },
     "vertexNotConfiguredEphemeral": {
-        "message": "Import a service account JSON once to generate a short-lived token, or paste a token manually."
+        "message": "导入一次服务账号 JSON 来生成短期令牌，或者手动粘贴令牌。"
     },
     "vertexTokenExpiredReimport": {
-        "message": "⚠️ Access token expired. Re-import the service account JSON or paste a new access token."
+        "message": "⚠️ 访问令牌已过期。请重新导入服务账号 JSON，或粘贴新的访问令牌。"
     },
     "vertexTokenExpiringReimport": {
-        "message": "⚠️ Token expires in %s minutes. Re-import the service account JSON or prepare a replacement access token."
-    },
-    "videoControlDescription": {
-        "message": "Control how the video player behaves when the side panel opens."
+        "message": "⚠️ 令牌将在 %s 分钟后过期。请重新导入服务账号 JSON，或准备一个新的访问令牌。"
     },
     "invalidSettingValue": {
         "message": "请输入有效值。"
     },
     "settingsLoadFailed": {
-        "message": "无法加载设置。请尝试刷新弹出窗口。"
-    },
-    "videoControlTitle": {
-        "message": "Video Control"
+        "message": "没能加载设置。请关闭后再重新打开。"
     },
     "translationApiError": {
         "message": "[翻译API错误。请检查设置或尝试其他翻译源。]"
@@ -728,91 +386,1093 @@
     "editCustomLook": {
         "message": "在设置中编辑自定义外观"
     },
-    "navAppearance": {
-        "message": "外观"
+    "advancedBackupTitle": {
+        "message": "备份"
     },
-    "sectionAppearance": {
-        "message": "字幕外观"
+    "advancedChooseFile": {
+        "message": "选择文件…"
     },
-    "cardSubtitleStyleTitle": {
-        "message": "字幕样式"
+    "advancedCopy": {
+        "message": "复制"
     },
-    "cardSubtitleStyleDesc": {
-        "message": "决定两行字幕的绘制方式。“跟随平台”在网站上采用你个人资料中的字幕设置；预览显示平台的默认外观。“自定义”以 DualSub 自身的外观为起点，在下方编辑。"
+    "advancedCopyFailed": {
+        "message": "复制被阻止了。请选中文字，自己复制一下。"
     },
-    "previewPlatformLabel": {
-        "message": "预览平台："
+    "advancedDownload": {
+        "message": "下载设置"
     },
-    "lookPreviewLabel": {
-        "message": "字幕预览"
+    "advancedJsonHelp": {
+        "message": "DualSub 保存的全部内容，不含你的密钥。每个网站只记下和所有网站不一样的地方。"
     },
-    "lookPreviewOriginal": {
-        "message": "Where there's a will, there's a way."
+    "advancedJsonTitle": {
+        "message": "JSON 格式的设置"
     },
-    "lookPreviewTranslation": {
-        "message": "有志者事竟成。"
+    "advancedLead": {
+        "message": "备份、原始设置，以及排查问题的工具。"
     },
-    "cardCustomLookTitle": {
-        "message": "自定义外观"
+    "advancedLoadApply": {
+        "message": "替换"
     },
-    "cardCustomLookDesc": {
-        "message": "为两行字幕设置你自己的字体样式。修改任意一项会选中“自定义”样式。"
+    "advancedLoadFile": {
+        "message": "从文件载入设置"
     },
-    "customFontLabel": {
-        "message": "字体："
+    "advancedLoadFileHelp": {
+        "message": "替换之前，会先告诉你有几项设置会改变。"
     },
-    "customFontDefault": {
-        "message": "页面默认"
+    "advancedLoadNothing": {
+        "message": "这个文件不会改变任何设置。"
     },
-    "customFontSansSerif": {
-        "message": "无衬线"
+    "advancedLoadPreview": {
+        "message": "将会改变的设置：%d 项。"
     },
-    "customFontSerif": {
-        "message": "衬线"
+    "advancedLoadUnreadable": {
+        "message": "这个文件不是 DualSub 的设置文件。"
     },
-    "customFontMonospace": {
-        "message": "等宽"
+    "advancedLoggingErrors": {
+        "message": "只显示错误"
     },
-    "customFontCasual": {
-        "message": "手写体"
+    "advancedLoggingEverything": {
+        "message": "全部（调试）"
     },
-    "customFontSmallCaps": {
-        "message": "小型大写"
+    "advancedLoggingNormal": {
+        "message": "普通"
     },
-    "customBoldLabel": {
-        "message": "粗体："
+    "advancedLoggingOff": {
+        "message": "不显示"
     },
-    "customOriginalColorLabel": {
-        "message": "原文文字颜色："
+    "advancedLoggingTitle": {
+        "message": "浏览器控制台显示的详细程度"
     },
-    "customEdgeLabel": {
-        "message": "文字描边："
+    "advancedLoggingWarnings": {
+        "message": "警告和错误"
     },
-    "customEdgeNone": {
-        "message": "无"
+    "advancedReportCopy": {
+        "message": "复制报告"
     },
-    "customEdgeShadow": {
-        "message": "阴影"
+    "advancedReportHelp": {
+        "message": "包含版本、浏览器和设置（不含密钥），可以直接粘贴到问题反馈里。"
     },
-    "customEdgeOutline": {
-        "message": "轮廓"
+    "advancedReportTitle": {
+        "message": "诊断报告"
     },
-    "customEdgeRaised": {
-        "message": "凸起"
+    "advancedResetButton": {
+        "message": "全部重置…"
     },
-    "customEdgeDepressed": {
+    "advancedResetConfirm": {
+        "message": "要把所有设置都恢复为推荐值吗？之后可以马上撤销。"
+    },
+    "advancedResetDo": {
+        "message": "重置"
+    },
+    "advancedResetHelp": {
+        "message": "所有设置都会恢复为推荐值，每个网站也会重新使用所有网站通用的设置。你的密钥和设置页面的语言会保留不变。"
+    },
+    "advancedResetTitle": {
+        "message": "从头开始"
+    },
+    "advancedSaveFile": {
+        "message": "把我的设置保存成文件"
+    },
+    "advancedSaveFileHelp": {
+        "message": "包含每个网站的单独设置。API 密钥只留在这台电脑上，不会放进文件里。"
+    },
+    "advancedTroubleshootingTitle": {
+        "message": "排查问题"
+    },
+    "commonAdvanced": {
+        "message": "高级"
+    },
+    "commonCancel": {
+        "message": "取消"
+    },
+    "commonChange": {
+        "message": "更改"
+    },
+    "commonLoading": {
+        "message": "正在加载…"
+    },
+    "commonRecommended": {
+        "message": "推荐"
+    },
+    "explainCache": {
+        "message": "记住回答"
+    },
+    "explainKeyStays": {
+        "message": "你的密钥只保存在这台电脑上，也只会发给你选的服务。"
+    },
+    "explainLead": {
+        "message": "点一下字幕里的任何词，就能看到它的意思、大家怎么用它，以及背后的故事。"
+    },
+    "explainLimitsTitle": {
+        "message": "模型和限制"
+    },
+    "explainOpenTitle": {
+        "message": "点击单词时打开解释面板"
+    },
+    "explainPauseTitle": {
+        "message": "我看解释时暂停视频"
+    },
+    "explainRateLimit": {
+        "message": "每分钟最多请求次数"
+    },
+    "explainReadingTitle": {
+        "message": "我看解释的时候"
+    },
+    "explainRetries": {
+        "message": "放弃前最多试几次"
+    },
+    "explainSampleMeaning": {
+        "message": "雨下得非常大。一句很老的英语口语说法。"
+    },
+    "explainSetupDone": {
+        "message": "你的 AI 服务"
+    },
+    "explainSetupHelp": {
+        "message": "解释由 AI 服务提供，使用你自己的账户。"
+    },
+    "explainSetupTitle": {
+        "message": "三步就能设置好"
+    },
+    "explainStatusOff": {
+        "message": "已关闭。你的密钥还保存着。"
+    },
+    "explainStatusOn": {
+        "message": "已打开。点一下字幕里的词试试看。"
+    },
+    "explainStatusSetup": {
+        "message": "完成下面三步，就能打开这个功能。"
+    },
+    "explainThemeAuto": {
+        "message": "跟随电脑设置"
+    },
+    "explainThemeDark": {
+        "message": "深色"
+    },
+    "explainThemeLight": {
+        "message": "浅色"
+    },
+    "explainThemeTitle": {
+        "message": "面板颜色"
+    },
+    "explainTimeout": {
+        "message": "等多少秒后放弃"
+    },
+    "explainTitle": {
+        "message": "单词解释"
+    },
+    "explainTurnOn": {
+        "message": "打开"
+    },
+    "explainTypeCulture": {
+        "message": "背后的文化"
+    },
+    "explainTypeHistory": {
+        "message": "历史和来历"
+    },
+    "explainTypeMeaning": {
+        "message": "意思和用法"
+    },
+    "explainTypesTitle": {
+        "message": "解释哪些内容"
+    },
+    "healthCovered": {
+        "message": "现在暂时由 %s 翻译。"
+    },
+    "healthCredentials": {
+        "message": "密钥没有被接受。"
+    },
+    "healthNotCovered": {
+        "message": "在它恢复之前，翻译会暂停。"
+    },
+    "healthQuota": {
+        "message": "套餐额度已经用完了。"
+    },
+    "healthRejected": {
+        "message": "它拒绝了请求。请检查模型和服务地址。"
+    },
+    "healthTitle": {
+        "message": "%s 现在用不了。"
+    },
+    "helpAboutTitle": {
+        "message": "关于 DualSub"
+    },
+    "helpFixIt": {
+        "message": "帮我解决"
+    },
+    "helpGoTiming": {
+        "message": "去调整时间"
+    },
+    "helpGoTranslation": {
+        "message": "去翻译设置"
+    },
+    "helpLead": {
+        "message": "常见问题，以及各自的解决办法。"
+    },
+    "helpNoSubtitlesPlaying": {
+        "message": "确认视频正在播放，没有停在开头的标题画面。"
+    },
+    "helpNoSubtitlesReload": {
+        "message": "刷新一下页面。"
+    },
+    "helpNoSubtitlesSite": {
+        "message": "检查 DualSub 在这个网站上是否已打开。"
+    },
+    "helpNoSubtitlesTitle": {
+        "message": "没有出现字幕"
+    },
+    "helpNoSubtitlesTracks": {
+        "message": "检查视频有没有字幕：打开网站自带的字幕菜单看一看。"
+    },
+    "helpOpenSites": {
+        "message": "打开网站设置"
+    },
+    "helpPrivacy": {
+        "message": "字幕文字只会发给你选的翻译服务。没有任何跟踪，也不会向 DualSub 的开发者发送任何内容。"
+    },
+    "helpSource": {
+        "message": "源代码"
+    },
+    "helpTimingHelp": {
+        "message": "让字幕早一点或晚一点出现。"
+    },
+    "helpTimingTitle": {
+        "message": "字幕和听到的话对不上"
+    },
+    "helpTranslationHelp": {
+        "message": "换一个翻译服务试试，或者使用节目自带的翻译。"
+    },
+    "helpTranslationTitle": {
+        "message": "翻译读起来不通顺"
+    },
+    "helpTwiceHelp": {
+        "message": "网站自带的字幕显示在 DualSub 的字幕下面。"
+    },
+    "helpTwiceTitle": {
+        "message": "字幕出现了两遍"
+    },
+    "helpVersion": {
+        "message": "版本 %s"
+    },
+    "languagesLead": {
+        "message": "每行字幕显示哪种语言。"
+    },
+    "languagesOfficialHelp": {
+        "message": "Netflix 和 Disney+ 常有人工翻译成你的语言的字幕，比机器翻译读起来更好。节目没有这种字幕时，由 DualSub 来翻译。"
+    },
+    "languagesOfficialTitle": {
+        "message": "节目有自带翻译时就用它"
+    },
+    "languagesSpeakHelp": {
+        "message": "下行字幕会翻译成这种语言。"
+    },
+    "languagesSpeakTitle": {
+        "message": "我的语言"
+    },
+    "languagesTopAuto": {
+        "message": "视频里说的语言"
+    },
+    "languagesTopAutoHelp": {
+        "message": "DualSub 会根据每个视频和你选的音频来决定。韩剧上面显示韩语；英语电影上面显示英语。"
+    },
+    "languagesTopFixed": {
+        "message": "始终是同一种语言"
+    },
+    "languagesTopFixedHelp": {
+        "message": "适合用所有视频学同一种语言。网站要有这种语言的字幕才行。"
+    },
+    "languagesTopFixedMenu": {
+        "message": "上行字幕的语言"
+    },
+    "languagesTopTitle": {
+        "message": "上行字幕显示"
+    },
+    "lookArrangementSideBySide": {
+        "message": "左右并排"
+    },
+    "lookArrangementStacked": {
+        "message": "上下排列"
+    },
+    "lookArrangementTitle": {
+        "message": "两行怎么排列"
+    },
+    "lookBoldLabel": {
+        "message": "粗体字"
+    },
+    "lookBoxColorLabel": {
+        "message": "文字背后的底色"
+    },
+    "lookBoxOpacityLabel": {
+        "message": "底色浓淡：%d%"
+    },
+    "lookColorCyan": {
+        "message": "青色"
+    },
+    "lookColorGreen": {
+        "message": "绿色"
+    },
+    "lookColorOther": {
+        "message": "其他颜色"
+    },
+    "lookColorPink": {
+        "message": "粉色"
+    },
+    "lookColorWhite": {
+        "message": "白色"
+    },
+    "lookColorYellow": {
+        "message": "黄色"
+    },
+    "lookCustomizeButton": {
+        "message": "更改颜色和字体"
+    },
+    "lookEdgeDepressed": {
         "message": "凹陷"
     },
-    "customBackgroundColorLabel": {
-        "message": "背景颜色："
+    "lookEdgeLabel": {
+        "message": "文字边缘"
     },
-    "customBackgroundOpacityLabel": {
-        "message": "背景不透明度："
+    "lookEdgeNone": {
+        "message": "无"
     },
-    "translationColorLabel": {
-        "message": "译文文字颜色："
+    "lookEdgeOutline": {
+        "message": "描边"
     },
-    "translationColorHelp": {
-        "message": "两种样式都会用此颜色绘制译文行。"
+    "lookEdgeRaised": {
+        "message": "凸起"
+    },
+    "lookEdgeShadow": {
+        "message": "柔和阴影"
+    },
+    "lookExactPosition": {
+        "message": "精确高度：%s（0.1 在最底部，9.9 在正中间）"
+    },
+    "lookExactSize": {
+        "message": "精确文字大小：%s 倍"
+    },
+    "lookFineTuneButton": {
+        "message": "微调大小、高度和间距"
+    },
+    "lookFontCasual": {
+        "message": "手写体"
+    },
+    "lookFontDefault": {
+        "message": "网站自带的字体"
+    },
+    "lookFontLabel": {
+        "message": "字体"
+    },
+    "lookFontMono": {
+        "message": "打字机"
+    },
+    "lookFontSans": {
+        "message": "简洁（黑体）"
+    },
+    "lookFontSerif": {
+        "message": "书本（宋体）"
+    },
+    "lookFontSmallCaps": {
+        "message": "小型大写字母"
+    },
+    "lookGap": {
+        "message": "两行之间的距离：%s 倍行高"
+    },
+    "lookGapTitle": {
+        "message": "两行之间的距离"
+    },
+    "lookLead": {
+        "message": "你一调整，预览就跟着变，视频也会在一秒内跟上。"
+    },
+    "lookMoveDown": {
+        "message": "下移"
+    },
+    "lookMoveUp": {
+        "message": "上移"
+    },
+    "lookOrderMineFirst": {
+        "message": "我的语言在上面"
+    },
+    "lookOrderTitle": {
+        "message": "哪一行在上面"
+    },
+    "lookOrderVideoFirst": {
+        "message": "视频的语言在上面"
+    },
+    "lookPositionBottom": {
+        "message": "贴近画面底边"
+    },
+    "lookPositionLower": {
+        "message": "在画面下半部分"
+    },
+    "lookPositionMiddle": {
+        "message": "靠近画面中间"
+    },
+    "lookPositionTitle": {
+        "message": "屏幕上的位置"
+    },
+    "lookPositionUsual": {
+        "message": "比底部稍高一点，大多数人喜欢的位置"
+    },
+    "lookPresetBoxed": {
+        "message": "带底色"
+    },
+    "lookPresetCinema": {
+        "message": "影院"
+    },
+    "lookPresetClassic": {
+        "message": "经典"
+    },
+    "lookPresetContrast": {
+        "message": "高对比度"
+    },
+    "lookPresetsLabel": {
+        "message": "现成样式"
+    },
+    "lookSizeTitle": {
+        "message": "文字大小"
+    },
+    "lookStyleCustom": {
+        "message": "我自己的样式"
+    },
+    "lookStyleCustomHelp": {
+        "message": "先选一个现成样式，喜欢的话再改颜色和字体。"
+    },
+    "lookStylePlatform": {
+        "message": "和网站一样"
+    },
+    "lookStylePlatformHelp": {
+        "message": "跟随你在 Netflix 或 Disney+ 个人资料里的字幕设置。"
+    },
+    "lookStyleTitle": {
+        "message": "样式"
+    },
+    "lookTopColorLabel": {
+        "message": "上行字幕的颜色"
+    },
+    "lookTranslationColorHelp": {
+        "message": "两种样式都会用这个颜色，让两行字幕一眼就能分清。"
+    },
+    "lookTranslationColorTitle": {
+        "message": "译文的颜色"
+    },
+    "navAdvancedSwitch": {
+        "message": "显示高级选项"
+    },
+    "navAdvancedSwitchHelp": {
+        "message": "网站单独设置、API 详情、限制和备份。"
+    },
+    "navExplanations": {
+        "message": "单词解释"
+    },
+    "navHelp": {
+        "message": "帮助"
+    },
+    "navLabel": {
+        "message": "设置分类"
+    },
+    "navLanguages": {
+        "message": "语言"
+    },
+    "navLook": {
+        "message": "字幕外观"
+    },
+    "navSites": {
+        "message": "网站"
+    },
+    "navStart": {
+        "message": "开始"
+    },
+    "navTiming": {
+        "message": "时间"
+    },
+    "previewCaptionAuto": {
+        "message": "视频的那行：%s，也就是视频里说的语言。你的那行：%s。"
+    },
+    "previewCaptionFixed": {
+        "message": "视频的那行：%s。你的那行：%s。"
+    },
+    "previewEnglishFilm": {
+        "message": "英语电影"
+    },
+    "previewKoreanDrama": {
+        "message": "韩剧"
+    },
+    "previewLabel": {
+        "message": "字幕预览"
+    },
+    "previewOff": {
+        "message": "双语字幕已关闭"
+    },
+    "previewOneLine": {
+        "message": "这个视频本来就是你的语言，所以 DualSub 只显示一行。"
+    },
+    "previewSampleVideo": {
+        "message": "示例视频"
+    },
+    "previewShownOn": {
+        "message": "显示在"
+    },
+    "previewTitle": {
+        "message": "实时预览"
+    },
+    "providerAi": {
+        "message": "AI 翻译"
+    },
+    "providerAiHelp": {
+        "message": "由 ChatGPT、Gemini 或其他 AI 模型翻译，会参考整场戏的内容。"
+    },
+    "providerDeepL": {
+        "message": "DeepL"
+    },
+    "providerDeepLHelp": {
+        "message": "翻译非常自然。需要 DeepL 账户，有免费套餐。"
+    },
+    "providerGoogle": {
+        "message": "谷歌翻译"
+    },
+    "providerGoogleHelp": {
+        "message": "同样马上就能用。如果 Microsoft 的翻译在你的语言里读着别扭，可以试试它。"
+    },
+    "providerMicrosoft": {
+        "message": "微软翻译"
+    },
+    "providerMicrosoftHelp": {
+        "message": "大多数语言的翻译质量都不错。马上就能用。"
+    },
+    "providerVertex": {
+        "message": "Google Vertex AI"
+    },
+    "providerVertexHelp": {
+        "message": "通过你自己的 Google Cloud 项目使用 Gemini。"
+    },
+    "scopeAll": {
+        "message": "所有网站"
+    },
+    "scopeBackToAll": {
+        "message": "返回所有网站"
+    },
+    "scopeEditingSite": {
+        "message": "你现在只修改 %s 的设置。"
+    },
+    "scopeEditingSiteHelp": {
+        "message": "在这里改的每一项都会标上“仅限 %s”。其他的跟随所有网站通用的设置。"
+    },
+    "scopeHelp": {
+        "message": "没有单独设置的网站，会使用所有网站通用的设置。"
+    },
+    "scopeLabel": {
+        "message": "设置适用于"
+    },
+    "scopeOwnCount": {
+        "message": "单独设置：%d 项"
+    },
+    "scopeSameAsAll": {
+        "message": "和所有网站一样"
+    },
+    "scopeSharedSetting": {
+        "message": "每个网站都一样"
+    },
+    "scopeSiteOnly": {
+        "message": "仅限 %s"
+    },
+    "scopeUseShared": {
+        "message": "改用所有网站的设置"
+    },
+    "setupAddress": {
+        "message": "服务地址"
+    },
+    "setupCheckKey": {
+        "message": "检查密钥"
+    },
+    "setupChooseService": {
+        "message": "选择 AI 服务"
+    },
+    "setupGeminiKeyHelp": {
+        "message": "用你的 Google 账户登录，点击“Create API key”，然后复制。"
+    },
+    "setupGetKey": {
+        "message": "获取密钥"
+    },
+    "setupModel": {
+        "message": "模型"
+    },
+    "setupOpenAIKeyHelp": {
+        "message": "登录后打开“API keys”，新建一个密钥，然后复制。"
+    },
+    "setupOpenKeyPage": {
+        "message": "打开 %s"
+    },
+    "setupOtherKeyHelp": {
+        "message": "使用你的服务提供的密钥和地址。"
+    },
+    "setupPasteKey": {
+        "message": "粘贴到这里"
+    },
+    "setupServiceGemini": {
+        "message": "Google Gemini"
+    },
+    "setupServiceOpenAI": {
+        "message": "OpenAI"
+    },
+    "setupServiceOther": {
+        "message": "其他服务"
+    },
+    "sitesEditOwn": {
+        "message": "修改 %s 的设置"
+    },
+    "sitesFilterAdd": {
+        "message": "添加规则"
+    },
+    "sitesFilterRemove": {
+        "message": "删除规则 %s"
+    },
+    "sitesFiltersHelp": {
+        "message": "名称或属性里含有其中任意一项的字幕轨，都不会被使用。"
+    },
+    "sitesFiltersTitle": {
+        "message": "要跳过的字幕轨"
+    },
+    "sitesGiveOwn": {
+        "message": "给 %s 单独设置"
+    },
+    "sitesHasOwn": {
+        "message": "有单独的设置"
+    },
+    "sitesHideHelp": {
+        "message": "这样就不会把同样的话看两遍。"
+    },
+    "sitesHideOwn": {
+        "message": "隐藏 %s 自带的字幕"
+    },
+    "sitesHideTitle": {
+        "message": "隐藏网站自带的字幕"
+    },
+    "sitesLead": {
+        "message": "DualSub 会在这些网站上自动打开。你可以在某个网站上关掉它，或者给某个网站单独设置。"
+    },
+    "sitesMoreHelp": {
+        "message": "DualSub 支持新网站后，它会出现在这里，并且已经打开，使用所有网站通用的设置。"
+    },
+    "sitesMoreTitle": {
+        "message": "即将支持更多网站"
+    },
+    "sitesOff": {
+        "message": "已关闭"
+    },
+    "sitesOn": {
+        "message": "已打开"
+    },
+    "sitesRemoveOwn": {
+        "message": "移除这些设置"
+    },
+    "sitesUseHere": {
+        "message": "在这个网站使用 DualSub"
+    },
+    "sitesUsesShared": {
+        "message": "使用所有网站通用的设置"
+    },
+    "sitesUsesSharedHelp": {
+        "message": "可以给 %s 单独设定大小、颜色、上行字幕或时间。"
+    },
+    "sizeExtraLarge": {
+        "message": "特大"
+    },
+    "sizeLarge": {
+        "message": "大"
+    },
+    "sizeMedium": {
+        "message": "中"
+    },
+    "sizeSmall": {
+        "message": "小"
+    },
+    "startEnabled": {
+        "message": "双语字幕"
+    },
+    "startFixNone": {
+        "message": "没有出现字幕"
+    },
+    "startFixTiming": {
+        "message": "字幕和听到的话对不上"
+    },
+    "startFixTranslation": {
+        "message": "翻译读起来不通顺"
+    },
+    "startFixTwice": {
+        "message": "字幕出现了两遍"
+    },
+    "startFromBrowser": {
+        "message": "跟随浏览器"
+    },
+    "startLead": {
+        "message": "打开 Netflix 或 Disney+，随便播放一个节目。你会看到两行字幕：上面是视频的语言，下面是你的语言。"
+    },
+    "startOpenSite": {
+        "message": "打开 %s"
+    },
+    "startProblemsTitle": {
+        "message": "哪里不对劲？"
+    },
+    "startProviderAi": {
+        "message": "AI 翻译，使用你的密钥"
+    },
+    "startProviderDeepL": {
+        "message": "DeepL，使用你的密钥"
+    },
+    "startProviderGoogle": {
+        "message": "谷歌翻译：免费，无需设置"
+    },
+    "startProviderMicrosoft": {
+        "message": "微软翻译：免费，无需设置"
+    },
+    "startProviderVertex": {
+        "message": "Google Vertex AI，使用你的 Google Cloud 项目"
+    },
+    "startSetUpTitle": {
+        "message": "这些已经帮你设置好了"
+    },
+    "startSiteOff": {
+        "message": "%s：已关闭"
+    },
+    "startSiteOn": {
+        "message": "%s：已打开"
+    },
+    "startStatusOff": {
+        "message": "双语字幕已关闭"
+    },
+    "startStatusOffHelp": {
+        "message": "用开关就能重新打开。"
+    },
+    "startStatusReady": {
+        "message": "DualSub 已准备好"
+    },
+    "startStatusReadyHelp": {
+        "message": "不用做任何设置，直接播放视频就行。"
+    },
+    "startTitle": {
+        "message": "你好！DualSub 已经准备好了。"
+    },
+    "startTopAuto": {
+        "message": "每个视频里说的语言"
+    },
+    "startTopFixed": {
+        "message": "始终是%s"
+    },
+    "tagFree": {
+        "message": "免费"
+    },
+    "tagGoogleCloud": {
+        "message": "适合 Google Cloud 用户"
+    },
+    "tagNeedsKey": {
+        "message": "需要密钥"
+    },
+    "tagNoSetup": {
+        "message": "无需设置"
+    },
+    "timingEarlier": {
+        "message": "提前显示"
+    },
+    "timingEarlierBy": {
+        "message": "提前 %s 秒"
+    },
+    "timingEarlierHelp": {
+        "message": "每行字幕都会早一点出现。"
+    },
+    "timingExactHelp": {
+        "message": "单位是秒。正数会让字幕提前出现。"
+    },
+    "timingExactTitle": {
+        "message": "精确调整"
+    },
+    "timingLater": {
+        "message": "推迟显示"
+    },
+    "timingLaterBy": {
+        "message": "推迟 %s 秒"
+    },
+    "timingLaterHelp": {
+        "message": "每行字幕都会晚一点出现。"
+    },
+    "timingLead": {
+        "message": "如果字幕和听到的话对不上，可以把字幕稍微调早或调晚。大多数视频都不用调这里。"
+    },
+    "timingOnTime": {
+        "message": "准时"
+    },
+    "timingOnTimeHelp": {
+        "message": "字幕和视频完全同步。"
+    },
+    "timingReset": {
+        "message": "恢复准时"
+    },
+    "timingTipHelp": {
+        "message": "浏览器工具栏上的 DualSub 按钮里也有同样的按钮，不用离开视频，就能让字幕和说话声对上。"
+    },
+    "timingTipTitle": {
+        "message": "边看边调"
+    },
+    "timingTitle": {
+        "message": "字幕时间"
+    },
+    "toastCopied": {
+        "message": "已复制"
+    },
+    "toastEarlier": {
+        "message": "字幕提前了 %s 秒"
+    },
+    "toastExplainOff": {
+        "message": "单词解释已关闭"
+    },
+    "toastExplainOn": {
+        "message": "单词解释已打开"
+    },
+    "toastFallbackOff": {
+        "message": "翻译只交给你选的服务"
+    },
+    "toastFallbackOn": {
+        "message": "你选的服务出问题时，会由免费服务接替"
+    },
+    "toastFilterAdded": {
+        "message": "含有“%s”的字幕轨会被跳过"
+    },
+    "toastFilterRemoved": {
+        "message": "含有“%s”的字幕轨会重新使用"
+    },
+    "toastFollowsShared": {
+        "message": "已改回所有网站的设置"
+    },
+    "toastHiddenEverywhere": {
+        "message": "好了。所有网站自带的字幕都已隐藏。"
+    },
+    "toastLater": {
+        "message": "字幕推迟了 %s 秒"
+    },
+    "toastLoaded": {
+        "message": "设置已载入"
+    },
+    "toastMovedDown": {
+        "message": "字幕已下移"
+    },
+    "toastMovedUp": {
+        "message": "字幕已上移"
+    },
+    "toastOfficialOff": {
+        "message": "始终由 DualSub 翻译"
+    },
+    "toastOfficialOn": {
+        "message": "优先使用节目自带的翻译"
+    },
+    "toastOnTime": {
+        "message": "字幕已恢复准时"
+    },
+    "toastPreset": {
+        "message": "样式：%s"
+    },
+    "toastProvider": {
+        "message": "翻译服务：%s"
+    },
+    "toastReportCopied": {
+        "message": "报告已复制"
+    },
+    "toastReset": {
+        "message": "所有设置都已恢复为推荐值"
+    },
+    "toastSiteHide": {
+        "message": "已隐藏 %s 自带的字幕"
+    },
+    "toastSiteOff": {
+        "message": "已在 %s 上关闭 DualSub"
+    },
+    "toastSiteOn": {
+        "message": "已在 %s 上打开 DualSub"
+    },
+    "toastSiteShared": {
+        "message": "%s 重新使用所有网站通用的设置"
+    },
+    "toastSiteShow": {
+        "message": "会显示 %s 自带的字幕"
+    },
+    "toastSize": {
+        "message": "文字大小：%s"
+    },
+    "toastSpeak": {
+        "message": "我的语言：%s"
+    },
+    "toastStyleCustom": {
+        "message": "样式：我自己的"
+    },
+    "toastStylePlatform": {
+        "message": "样式：和网站一样"
+    },
+    "toastSubtitlesOff": {
+        "message": "双语字幕已关闭"
+    },
+    "toastSubtitlesOn": {
+        "message": "双语字幕已打开"
+    },
+    "toastTopAuto": {
+        "message": "上行字幕：视频里说的语言"
+    },
+    "toastTopFixed": {
+        "message": "上行字幕：始终是%s"
+    },
+    "toastTranslationColor": {
+        "message": "译文颜色：%s"
+    },
+    "toastUndo": {
+        "message": "撤销"
+    },
+    "topMenuLanguage": {
+        "message": "DualSub 菜单的语言"
+    },
+    "topSearchLabel": {
+        "message": "搜索设置"
+    },
+    "topSearchNothing": {
+        "message": "没有找到“%s”相关的设置。试试“大小”“颜色”或“时间”。"
+    },
+    "topSearchPlaceholder": {
+        "message": "搜索设置，比如“大小”或“两遍”"
+    },
+    "searchWordsSpeak": {
+        "message": "目标语言 翻译语言 译成 母语 我说的语言 字幕语言 下行字幕 下面那行 中文字幕 翻译成中文 简体中文 繁体中文"
+    },
+    "searchWordsTopLine": {
+        "message": "原文 原语言 原声 原版 视频语言 视频里说的语言 片中语言 字幕语言 音频 音轨 自动 跟随音频 上面那行 第一行 学外语 学英语 学语言 学习 外语字幕 英文字幕"
+    },
+    "searchWordsOfficial": {
+        "message": "netflix disney 网飞 奈飞 迪士尼 官方字幕 官方翻译 自带字幕 人工翻译 人工字幕 真人翻译 机器翻译 机翻 平台字幕"
+    },
+    "searchWordsSize": {
+        "message": "字体大小 字幕大小 字号 字大小 字太小 字太大 看不清 老花眼 放大 缩小 调大 调小 变大 变小 大字 小字 大一点 小一点"
+    },
+    "searchWordsPosition": {
+        "message": "字幕位置 上下位置 垂直位置 高度 上移 下移 往上 往下 移动 挪动 调高 调低 太高 太低 靠上 靠下 底部 中间 挡住画面 遮住 遮挡"
+    },
+    "searchWordsStyle": {
+        "message": "字幕样式 字幕外观 风格 样子 预设 现成样式 自定义 我自己的样式 和网站一样 跟随网站 跟随平台 经典 影院 高对比度 带底色"
+    },
+    "searchWordsCustomLook": {
+        "message": "字幕颜色 文字颜色 字体颜色 粗体 加粗 描边 轮廓 阴影 边缘 黑边 底色 背景色 背景框 黑底 不透明度 浓淡 黑体 宋体 手写体 打字机 凸起 凹陷 看不清"
+    },
+    "searchWordsTranslationColor": {
+        "message": "译文颜色 翻译颜色 翻译字幕颜色 字幕颜色 下行颜色 第二行 下面那行 青色 黄色 绿色 粉色 白色 蓝色 区分 分不清"
+    },
+    "searchWordsOrder": {
+        "message": "字幕顺序 上下顺序 先后 哪行在上 第一行 调换 互换 对调 颠倒 原文在上 译文在上 中文在上面 中文在下面"
+    },
+    "searchWordsArrangement": {
+        "message": "布局 排版 排列方式 方向 左右并排 并列 上下排列 两列 横向"
+    },
+    "searchWordsFineTune": {
+        "message": "行距 行间距 两行之间 两行距离 空隙 间隔 太挤 挤在一起 太近 太远 精确 精细调整 具体数值"
+    },
+    "searchWordsTiming": {
+        "message": "字幕同步 音画不同步 声画不同步 时间轴 时间差 偏移 字幕延迟 字幕提前 推迟 延后 字幕快了 字幕慢了 太快 太慢 字幕早了 字幕晚了 对不上 声音 说话 口型"
+    },
+    "searchWordsService": {
+        "message": "microsoft google deepl 微软 谷歌 微软翻译 谷歌翻译 必应翻译 翻译引擎 提供商 换翻译服务 翻译工具 翻译软件 机器翻译 机翻 翻译质量 翻译不好 翻译太差 翻译不准 不通顺 别扭"
+    },
+    "searchWordsDeepL": {
+        "message": "deepl api deepl翻译 api密钥 秘钥 套餐 免费版 专业版 账户 账号"
+    },
+    "searchWordsAiTranslation": {
+        "message": "ai openai chatgpt gemini llm ai翻译 人工智能 大模型 智能翻译 api密钥 秘钥 兼容 其他服务"
+    },
+    "searchWordsFallback": {
+        "message": "microsoft google 微软 谷歌 备用 后备 备选 自动切换 接替 出错 报错 坏了 用不了 不能用 失效 挂了 翻译失败 翻译停了 不翻译了 没有翻译"
+    },
+    "searchWordsDelay": {
+        "message": "请求延迟 请求间隔 请求频率 速度 速率 性能 请求太多 太频繁 限流 停顿"
+    },
+    "searchWordsExplanations": {
+        "message": "ai gemini openai 人工智能 释义 什么意思 含义 词义 查词 查单词 生词 词典 点击单词 点词 上下文 语境 文化 历史 来历 用法 例句 侧边栏 面板 看不懂 不认识 api密钥 秘钥 学习"
+    },
+    "searchWordsPause": {
+        "message": "自动暂停 停下 停住 停止 视频停了 自己停了 继续播放"
+    },
+    "searchWordsTheme": {
+        "message": "主题 皮肤 深色模式 浅色模式 暗黑模式 夜间模式 暗色 亮色 跟随系统 跟随电脑 刺眼 解释面板 侧边栏"
+    },
+    "searchWordsLimits": {
+        "message": "url 超时 等待时间 速率 限速 频率限制 每分钟 请求次数 重试次数 缓存 记住回答 服务地址 接口地址 网址"
+    },
+    "searchWordsSiteOnOff": {
+        "message": "netflix disney 网飞 奈飞 迪士尼 开关 打开 关闭 开启 启用 禁用 停用 关掉 不想用 双语字幕"
+    },
+    "searchWordsHide": {
+        "message": "两遍 两次 重复 重影 双重 叠加 重叠 字幕重复 两遍字幕 两层字幕 两套字幕 字幕重叠 叠在一起 显示两次 三行 官方字幕 自带字幕 原字幕 网站字幕 去掉 关掉 多余"
+    },
+    "searchWordsSiteOwn": {
+        "message": "分开设置 分别设置 各自 每个网站 不同网站 不一样 专属 网站配置"
+    },
+    "searchWordsFilters": {
+        "message": "黑名单 过滤 屏蔽 排除 规则 强制字幕 字幕轨道 不想要的字幕"
+    },
+    "searchWordsBackup": {
+        "message": "导出 导入 恢复备份 还原 文件 保存 存档 载入 加载 读取 换电脑 新电脑 迁移"
+    },
+    "searchWordsJson": {
+        "message": "json 原始设置 原始数据 配置 代码 开发者 复制"
+    },
+    "searchWordsLogging": {
+        "message": "日志 调试 诊断报告 问题报告 反馈 报错 错误信息 排查问题 故障"
+    },
+    "searchWordsReset": {
+        "message": "重置设置 全部重置 恢复默认设置 还原默认 推荐设置 出厂设置 初始化 重来 清空 弄乱了 改乱了"
+    },
+    "searchWordsPageLanguage": {
+        "message": "界面语言 菜单语言 显示语言 页面语言 中文界面 英文界面 全是英文 换成中文 切换语言 改语言 简体 繁体"
+    },
+    "searchWordsNoSubtitles": {
+        "message": "没有字幕 没字幕 字幕不见了 字幕没了 字幕出不来 看不到字幕 字幕不显示 不出现 没反应 不起作用 没用 不能用 用不了 坏了 失灵 无效 空白 帮助 问题"
+    },
+    "searchSiteOwn": {
+        "message": "给某个网站单独设置"
+    },
+    "topSettings": {
+        "message": "设置"
+    },
+    "topSkipToContent": {
+        "message": "直接跳到设置"
+    },
+    "translationAiSetupTitle": {
+        "message": "设置 AI 翻译"
+    },
+    "translationDeepLKeyHelp": {
+        "message": "登录 DeepL，打开你的账户，复制“API keys”下面的密钥。"
+    },
+    "translationDeepLOpen": {
+        "message": "打开 DeepL"
+    },
+    "translationDeepLPlan": {
+        "message": "你用的是哪种套餐？"
+    },
+    "translationDeepLSetupTitle": {
+        "message": "设置 DeepL"
+    },
+    "translationDelayHelp": {
+        "message": "如果服务提示请求太多，就把它调大。推荐：150 毫秒。"
+    },
+    "translationDelayTitle": {
+        "message": "翻译请求之间的间隔（毫秒）"
+    },
+    "translationFallbackHelp": {
+        "message": "你选的服务出问题时，会依次由微软翻译、谷歌翻译接替翻译，直到它恢复。关掉这项，字幕文字就只会发给你选的服务。"
+    },
+    "translationFallbackTitle": {
+        "message": "这个服务出问题时继续翻译"
+    },
+    "translationLead": {
+        "message": "节目没有自带翻译时，由谁来翻译下行字幕。"
+    },
+    "translationServiceTitle": {
+        "message": "翻译服务"
+    },
+    "translationVertexHelp": {
+        "message": "导入一次服务账号文件来生成短期令牌，或者直接粘贴令牌。文件本身不会被保存。"
+    },
+    "translationVertexSetupTitle": {
+        "message": "设置 Google Vertex AI"
     }
 }

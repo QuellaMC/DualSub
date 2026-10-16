@@ -22,13 +22,19 @@ function modelsResponse(ids: string[]): Response {
 }
 
 function renderCard(
-    overrides: Partial<{ apiKey: string; baseUrl: string; model: string }> = {}
+    overrides: Partial<{
+        apiKey: string;
+        baseUrl: string;
+        model: string;
+        advanced: boolean;
+    }> = {}
 ) {
     const save = vi.fn(() => Promise.resolve(true));
     const props = {
         apiKey: 'sk',
         baseUrl: 'https://api.openai.com/v1',
         model: 'gpt-4o-mini',
+        advanced: true,
         ...overrides,
     };
     render(<OpenAICompatibleProviderCard t={t} save={save} {...props} />);
@@ -47,7 +53,7 @@ async function flush(ms = 0): Promise<void> {
 
 function modelOptions(): string[] {
     return [
-        ...screen.getByLabelText('modelLabel').querySelectorAll('option'),
+        ...screen.getByLabelText('setupModel').querySelectorAll('option'),
     ].map((option) => option.value);
 }
 
@@ -101,9 +107,7 @@ describe('OpenAICompatibleProviderCard', () => {
         );
         expect(fetchMock).not.toHaveBeenCalled();
 
-        fireEvent.click(
-            screen.getByRole('button', { name: /testConnectionButton/ })
-        );
+        fireEvent.click(screen.getByRole('button', { name: /setupCheckKey/ }));
         expect(request).toHaveBeenCalledWith({
             origins: ['https://llm.example.com/*'],
         });
@@ -120,7 +124,7 @@ describe('OpenAICompatibleProviderCard', () => {
             vi.fn(() => Promise.resolve(modelsResponse([])))
         );
         const { save } = renderCard();
-        const input = screen.getByLabelText('baseUrlLabel');
+        const input = screen.getByLabelText('setupAddress');
 
         fireEvent.change(input, { target: { value: 'not a url' } });
         fireEvent.blur(input);
@@ -133,9 +137,10 @@ describe('OpenAICompatibleProviderCard', () => {
         });
         fireEvent.keyDown(input, { key: 'Enter' });
         await flush();
-        expect(save).toHaveBeenCalledWith({
-            openaiCompatibleBaseUrl: 'https://llm.example.com/v1/',
-        });
+        expect(save).toHaveBeenCalledWith(
+            { openaiCompatibleBaseUrl: 'https://llm.example.com/v1/' },
+            'quiet'
+        );
     });
 
     it('saves key and model edits directly', async () => {
@@ -144,16 +149,50 @@ describe('OpenAICompatibleProviderCard', () => {
             vi.fn(() => Promise.resolve(modelsResponse([])))
         );
         const { save } = renderCard();
-        fireEvent.change(screen.getByLabelText('apiKeyLabel'), {
+        fireEvent.change(screen.getByLabelText('setupPasteKey'), {
             target: { value: 'sk-2' },
         });
-        expect(save).toHaveBeenCalledWith({ openaiCompatibleApiKey: 'sk-2' });
-        fireEvent.change(screen.getByLabelText('modelLabel'), {
+        expect(save).toHaveBeenCalledWith(
+            { openaiCompatibleApiKey: 'sk-2' },
+            'quiet'
+        );
+        fireEvent.change(screen.getByLabelText('setupModel'), {
             target: { value: 'gpt-4o-mini' },
         });
-        expect(save).toHaveBeenCalledWith({
-            openaiCompatibleModel: 'gpt-4o-mini',
-        });
+        expect(save).toHaveBeenCalledWith(
+            { openaiCompatibleModel: 'gpt-4o-mini' },
+            'quiet'
+        );
+        await flush();
+    });
+
+    it('fills in a known service from one click, and asks for the address only for another', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(() => Promise.resolve(modelsResponse([])))
+        );
+        const { save } = renderCard({ advanced: false });
+        expect(screen.queryByLabelText('setupAddress')).not.toBeInTheDocument();
+        expect(
+            screen.getByRole('button', { name: 'setupServiceOpenAI' })
+        ).toHaveAttribute('aria-pressed', 'true');
+
+        fireEvent.click(
+            screen.getByRole('button', { name: 'setupServiceGemini' })
+        );
+        expect(save).toHaveBeenCalledWith(
+            {
+                openaiCompatibleBaseUrl:
+                    'https://generativelanguage.googleapis.com/v1beta/openai',
+                openaiCompatibleModel: 'gemini-2.5-flash',
+            },
+            'quiet'
+        );
+
+        fireEvent.click(
+            screen.getByRole('button', { name: 'setupServiceOther' })
+        );
+        expect(screen.getByLabelText('setupAddress')).toBeInTheDocument();
         await flush();
     });
 });

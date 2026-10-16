@@ -1,10 +1,6 @@
 import { AUTO_LANGUAGE, SUBTITLE_LANGUAGES } from '@/shared/subtitleLanguages';
 import type { Translate } from '../hooks/useI18n';
-
-/** The catalog key of a language's label; `auto` has one too. */
-export function languageLabelKey(code: string): string {
-    return `lang_${code.replace('-', '_')}`;
-}
+import { languageLabelKey } from '../languageLabels';
 
 function LanguageSelect({
     id,

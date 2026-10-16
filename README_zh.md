@@ -20,7 +20,7 @@
 - **功能特性**：[features.md](docs/zh/features.md)
 - **支持的平台**：[platforms.md](docs/zh/platforms.md)
 - **翻译服务商**：[providers.md](docs/zh/providers.md)
-- **AI 上下文分析**：[ai-context.md](docs/zh/ai-context.md)
+- **单词解释（AI 上下文）**：[ai-context.md](docs/zh/ai-context.md)
 - **安装说明**：[installation.md](docs/zh/installation.md)
 - **配置设置**：[configuration.md](docs/zh/configuration.md)
 
@@ -46,7 +46,8 @@
 - 多平台支持：Netflix、Disney+
 - 多服务商：Google、Microsoft、DeepL、OpenAI 兼容（含速率限制与缓存）
 - 自定义：布局、外观、垂直位置、时间偏移
-- AI 上下文：OpenAI 与 Gemini，文化/历史/语言解读
+- 单词解释：通过你自己的 OpenAI 或 Gemini 密钥，提供文化/历史/语言解读
+- 简明的设置页：所有设置集中在一页，支持搜索、撤销与按网站设置
 
 更多细节：[features.md](docs/zh/features.md)、[platforms.md](docs/zh/platforms.md)、[providers.md](docs/zh/providers.md)、[ai-context.md](docs/zh/ai-context.md)。
 
@@ -55,7 +56,7 @@
 1. 从商店安装或以开发模式加载（见 [installation.md](docs/zh/installation.md)）。
 2. 打开 Netflix 或 Disney+ 并启用字幕。
 3. 点击 DualSub 图标 → 启用双语字幕并选择目标语言。
-4. 可选：在“高级设置”中配置 AI 上下文（服务商、API 密钥、模型）。
+4. 可选：在设置页中用你自己的 OpenAI 或 Gemini 密钥设置“单词解释”。
 
 配置参考：[configuration.md](docs/zh/configuration.md)。
 

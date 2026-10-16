@@ -17,14 +17,8 @@
     "originalLanguageLabel": {
         "message": "言語設定："
     },
-    "providerLabel": {
-        "message": "プロバイダー："
-    },
     "targetLanguageLabel": {
         "message": "翻訳先："
-    },
-    "requestDelayLabel": {
-        "message": "リクエスト遅延 (ms)："
     },
     "subtitleAppearanceTimingLegend": {
         "message": "字幕の外観とタイミング"
@@ -64,9 +58,6 @@
     },
     "subtitleStylePlatform": {
         "message": "プラットフォームに合わせる"
-    },
-    "uiLanguageLabel": {
-        "message": "言語："
     },
     "statusLanguageSetTo": {
         "message": "言語設定完了（ページを更新してください）："
@@ -111,88 +102,16 @@
         "message": "無効なオフセットです。元に戻します。"
     },
     "optionsPageTitle": {
-        "message": "DualSub オプション"
-    },
-    "optionsH1Title": {
-        "message": "DualSub"
-    },
-    "navGeneral": {
-        "message": "一般"
+        "message": "DualSubの設定"
     },
     "navTranslation": {
         "message": "翻訳"
     },
-    "navProviders": {
-        "message": "プロバイダー"
-    },
-    "navAbout": {
-        "message": "について"
-    },
-    "sectionGeneral": {
-        "message": "一般"
-    },
-    "cardUILanguageTitle": {
-        "message": "UI言語"
-    },
-    "cardUILanguageDesc": {
-        "message": "拡張機能のインターフェースの表示言語を選択します。"
-    },
-    "cardHideOfficialSubtitlesTitle": {
-        "message": "公式字幕を非表示"
-    },
-    "cardHideOfficialSubtitlesDesc": {
-        "message": "DualSubがアクティブな時、動画プラットフォームの公式字幕を非表示にします。"
-    },
-    "hideOfficialSubtitlesLabel": {
-        "message": "公式字幕を非表示："
-    },
-    "sectionTranslation": {
-        "message": "翻訳"
-    },
-    "cardTranslationEngineTitle": {
-        "message": "翻訳エンジン"
-    },
-    "cardTranslationEngineDesc": {
-        "message": "お好みの翻訳サービスを選択してください。"
-    },
-    "cardPerformanceTitle": {
-        "message": "パフォーマンス"
-    },
-    "cardPerformanceDesc": {
-        "message": "拡張機能が翻訳リクエストを処理する方法を調整して、速度と安定性のバランスを取ります。"
-    },
-    "sectionProviders": {
-        "message": "プロバイダー設定"
-    },
-    "cardDeepLTitle": {
-        "message": "DeepL"
-    },
-    "cardDeepLDesc": {
-        "message": "DeepL TranslateのAPIキーを入力してください。FreeプランまたはProプランから選択できます。"
-    },
-    "apiKeyLabel": {
-        "message": "APIキー："
-    },
-    "apiPlanLabel": {
-        "message": "APIプラン："
-    },
     "apiPlanFree": {
-        "message": "DeepL API Free"
+        "message": "Free（無料）"
     },
     "apiPlanPro": {
-        "message": "DeepL API Pro"
-    },
-    "sectionAbout": {
-        "message": "について"
-    },
-    "cardAboutTitle": {
-        "message": "DualSub"
-    },
-    "aboutVersion": {
-        "message": "バージョン"
-    },
-    "aboutDescription": {
-        "message": "この拡張機能は、様々なプラットフォームで二言語字幕付きの動画を視聴するのに役立ちます。"
+        "message": "Pro（有料）"
     },
     "aboutDevelopment": {
         "message": "QuellaMC & 1jifang によって開発されました。"
@@ -239,20 +158,17 @@
     "lang_auto": {
         "message": "自動（音声に合わせる）"
     },
-    "testDeepLButton": {
-        "message": "DeepL接続をテスト"
-    },
     "deeplApiKeyError": {
         "message": "まずDeepL APIキーを入力してください。"
+    },
+    "deeplTestNeedsTesting": {
+        "message": "⚠️ DeepL APIキーのテストが必要です。"
     },
     "testingButton": {
         "message": "テスト中..."
     },
     "testingConnection": {
         "message": "DeepL接続をテストしています..."
-    },
-    "deeplTestSuccessSimple": {
-        "message": "✅ DeepL APIテストが成功しました！"
     },
     "deeplTestUnexpectedFormat": {
         "message": "⚠️ DeepL APIは応答しましたが、予期しない形式でした"
@@ -271,81 +187,6 @@
     },
     "deeplTestGenericError": {
         "message": "❌ テストに失敗しました：%s"
-    },
-    "cardGoogleTitle": {
-        "message": "Google翻訳"
-    },
-    "cardGoogleDesc": {
-        "message": "Googleが提供する無料の翻訳サービスです。追加の設定は必要ありません。"
-    },
-    "cardMicrosoftTitle": {
-        "message": "Microsoft翻訳"
-    },
-    "cardMicrosoftDesc": {
-        "message": "Microsoft Edgeが提供する無料の翻訳サービスです。追加の設定は必要ありません。"
-    },
-    "providerStatus": {
-        "message": "ステータス："
-    },
-    "statusReady": {
-        "message": "使用可能"
-    },
-    "providerFeatures": {
-        "message": "機能："
-    },
-    "featureFree": {
-        "message": "無料で使用可能"
-    },
-    "featureNoApiKey": {
-        "message": "APIキー不要"
-    },
-    "featureWideLanguageSupport": {
-        "message": "幅広い言語サポート"
-    },
-    "featureFastTranslation": {
-        "message": "高速翻訳"
-    },
-    "featureHighQuality": {
-        "message": "高品質翻訳"
-    },
-    "featureGoodPerformance": {
-        "message": "良好なパフォーマンス"
-    },
-    "featureHighestQuality": {
-        "message": "最高品質翻訳"
-    },
-    "featureApiKeyRequired": {
-        "message": "APIキーが必要"
-    },
-    "featureLimitedLanguages": {
-        "message": "限定的な言語サポート"
-    },
-    "featureUsageLimits": {
-        "message": "使用制限が適用されます"
-    },
-    "providerGoogleName": {
-        "message": "Google翻訳（無料）"
-    },
-    "providerMicrosoftName": {
-        "message": "Microsoft翻訳（無料）"
-    },
-    "providerDeepLName": {
-        "message": "DeepL（APIキー必須）"
-    },
-    "providerOpenAICompatibleName": {
-        "message": "OpenAI互換（APIキー必須）"
-    },
-    "providerVertexGeminiName": {
-        "message": "Vertex AI Gemini（APIキー必須）"
-    },
-    "cardOpenAICompatibleTitle": {
-        "message": "OpenAI互換（APIキー必須）"
-    },
-    "cardOpenAICompatibleDesc": {
-        "message": "GeminiなどのOpenAI互換サービス用のAPIキーと設定を入力してください。"
-    },
-    "cardVertexGeminiTitle": {
-        "message": "Vertex AI Gemini（APIキー必須）"
     },
     "vertexAccessTokenLabel": {
         "message": "アクセストークン："
@@ -383,29 +224,8 @@
     "vertexConfigured": {
         "message": "⚠️ Vertex AIが設定されています。接続をテストしてください。"
     },
-    "featureVertexServiceAccount": {
-        "message": "サービスアカウントJSONのインポート"
-    },
-    "featureVertexGemini": {
-        "message": "Vertex AI経由のGoogle Geminiモデル"
-    },
-    "baseUrlLabel": {
-        "message": "ベースURL："
-    },
-    "modelLabel": {
-        "message": "モデル："
-    },
-    "featureCustomizable": {
-        "message": "カスタマイズ可能なエンドポイントとモデル"
-    },
     "testConnectionButton": {
         "message": "接続をテスト"
-    },
-    "openaiApiKeyPlaceholder": {
-        "message": "OpenAI互換APIキーを入力してください"
-    },
-    "openaiBaseUrlPlaceholder": {
-        "message": "例：https://api.openai.com/v1"
     },
     "openaiApiKeyError": {
         "message": "まずAPIキーを入力してください。"
@@ -431,33 +251,6 @@
     "openaiFailedToFetchModels": {
         "message": "モデルの取得に失敗しました：%s"
     },
-    "cardLoggingLevelTitle": {
-        "message": "ログレベル"
-    },
-    "cardLoggingLevelDesc": {
-        "message": "ブラウザコンソールに表示されるデバッグ情報の量を制御します。高いレベルには低いレベルのメッセージも含まれます。"
-    },
-    "loggingLevelLabel": {
-        "message": "ログレベル："
-    },
-    "loggingLevelOff": {
-        "message": "オフ"
-    },
-    "loggingLevelError": {
-        "message": "エラーのみ"
-    },
-    "loggingLevelWarn": {
-        "message": "警告とエラー"
-    },
-    "loggingLevelInfo": {
-        "message": "情報以上"
-    },
-    "loggingLevelDebug": {
-        "message": "デバッグ（すべて）"
-    },
-    "deeplTestNeedsTesting": {
-        "message": "⚠️ DeepL APIキーのテストが必要です。"
-    },
     "aiContextUsage": {
         "message": "💡 使用法と例"
     },
@@ -469,90 +262,6 @@
     },
     "aiContextKeyInsights": {
         "message": "🔑 重要な洞察"
-    },
-    "navAIContext": {
-        "message": "AIコンテキスト"
-    },
-    "sectionAIContext": {
-        "message": "AIコンテキストアシスタント"
-    },
-    "cardAIContextToggleTitle": {
-        "message": "AIコンテキスト分析を有効にする"
-    },
-    "cardAIContextToggleDesc": {
-        "message": "字幕テキストのAI駆動による文化的、歴史的、言語学的コンテキスト分析を有効にします。字幕の単語やフレーズをクリックして詳細な説明を取得できます。"
-    },
-    "aiContextEnabledLabel": {
-        "message": "AIコンテキストを有効にする："
-    },
-    "cardAIContextProviderTitle": {
-        "message": "AIプロバイダー"
-    },
-    "cardAIContextProviderDesc": {
-        "message": "コンテキスト分析用のAIサービスプロバイダーを選択します。プロバイダーによって品質や応答時間が異なる場合があります。"
-    },
-    "aiContextProviderLabel": {
-        "message": "プロバイダー："
-    },
-    "cardOpenAIContextTitle": {
-        "message": "OpenAI設定"
-    },
-    "cardOpenAIContextDesc": {
-        "message": "コンテキスト分析用のOpenAI API設定を構成します。有効なOpenAI APIキーが必要です。"
-    },
-    "openaiApiKeyLabel": {
-        "message": "APIキー："
-    },
-    "openaiBaseUrlLabel": {
-        "message": "ベースURL："
-    },
-    "openaiModelLabel": {
-        "message": "モデル："
-    },
-    "cardGeminiContextTitle": {
-        "message": "Google Gemini設定"
-    },
-    "cardGeminiContextDesc": {
-        "message": "コンテキスト分析用のGoogle Gemini API設定を構成します。有効なGemini APIキーが必要です。"
-    },
-    "geminiApiKeyLabel": {
-        "message": "APIキー："
-    },
-    "geminiModelLabel": {
-        "message": "モデル："
-    },
-    "cardAIContextTypesTitle": {
-        "message": "コンテキストタイプ"
-    },
-    "cardAIContextTypesDesc": {
-        "message": "使用したいコンテキスト分析のタイプを有効にします。複数のタイプを有効にできます。"
-    },
-    "contextTypeCulturalLabel": {
-        "message": "文化的コンテキスト："
-    },
-    "contextTypeHistoricalLabel": {
-        "message": "歴史的コンテキスト："
-    },
-    "contextTypeLinguisticLabel": {
-        "message": "言語学的分析："
-    },
-    "cardAIContextAdvancedTitle": {
-        "message": "詳細設定"
-    },
-    "cardAIContextAdvancedDesc": {
-        "message": "AIコンテキスト分析の動作に関する詳細オプションを設定します。"
-    },
-    "aiContextTimeoutLabel": {
-        "message": "リクエストタイムアウト（ms）："
-    },
-    "aiContextRateLimitLabel": {
-        "message": "レート制限（リクエスト/分）："
-    },
-    "aiContextCacheEnabledLabel": {
-        "message": "キャッシュを有効にする："
-    },
-    "aiContextRetryAttemptsLabel": {
-        "message": "再試行回数："
     },
     "sidepanelLoading": {
         "message": "読み込み中..."
@@ -597,112 +306,61 @@
         "message": "分析する単語が選択されていません"
     },
     "sidepanelErrorDisabled": {
-        "message": "AIコンテキスト分析は無効になっています。設定で有効にしてください。"
+        "message": "単語の解説はオフになっています。DualSubの設定でオンにしてください。"
     },
     "sidepanelErrorGeneric": {
         "message": "分析中にエラーが発生しました。"
     },
-    "advancedNote": {
-        "message": "Automatic side-panel opening requires Chrome 116 or newer."
-    },
-    "advancedTitle": {
-        "message": "詳細設定"
-    },
-    "advancedWarningDescription": {
-        "message": "These settings can affect the behavior of the side panel. If you experience issues, try resetting to default values by disabling and re-enabling the side panel feature."
-    },
-    "advancedWarningTitle": {
-        "message": "Important Note"
-    },
     "aiContextTypesRequired": {
-        "message": "Select at least one context type."
+        "message": "解説する内容を1つ以上選んでください。"
     },
-    "autoOpenSidePanel": {
-        "message": "Auto-Open Side Panel:"
-    },
-    "autoOpenSidePanelDescription": {
-        "message": "Automatically open the side panel when you click on subtitle words."
-    },
-    "autoPauseVideo": {
-        "message": "Auto-Pause Video:"
-    },
-    "autoPauseVideoDescription": {
-        "message": "Automatically pause the video when you open the side panel to select words."
-    },
-    "cardVertexGeminiEphemeralDesc": {
-        "message": "Enter a short-lived access token, or import a service account JSON once to generate one. The service-account key is never stored."
-    },
-    "featureVertexEphemeralToken": {
-        "message": "One-time token generation without storing the service-account key"
+    "deeplTestSuccessSimple": {
+        "message": "✅ DeepL APIテストが成功しました！"
     },
     "navAdvanced": {
         "message": "詳細設定"
     },
     "openaiEndpointPermissionRequired": {
-        "message": "Use Test Connection to grant access to this endpoint."
+        "message": "「%s」をクリックして、DualSubがこのアドレスに接続できるようにしてください。"
     },
     "openaiHostPermissionButton": {
-        "message": "Allow API host"
+        "message": "API ホストを許可"
     },
     "openaiHostPermissionChecking": {
-        "message": "Checking API host access…"
+        "message": "API ホストへのアクセスを確認しています…"
     },
     "openaiHostPermissionDenied": {
-        "message": "API host access was not granted."
+        "message": "API ホストへのアクセスは許可されませんでした。"
     },
     "openaiHostPermissionError": {
         "message": "API ホストへのアクセスをリクエストできませんでした: %s"
     },
     "openaiHostPermissionGranted": {
-        "message": "API host access granted."
+        "message": "API ホストへのアクセスが許可されました。"
     },
     "openaiHostPermissionScope": {
         "message": "設定済みエンドポイント: %s。Chrome の権限範囲: %s（このホスト上のすべてのパスとポート）。"
     },
-    "sidePanelBehaviorDescription": {
-        "message": "Configure how the AI analysis side panel opens and looks."
-    },
-    "sidePanelBehaviorTitle": {
-        "message": "Side Panel Behavior"
-    },
     "sidepanelErrorNoContextTypes": {
-        "message": "分析する前に、少なくとも1つのコンテキストタイプを選択してください。"
-    },
-    "sidePanelTheme": {
-        "message": "Side Panel Theme:"
-    },
-    "themeAuto": {
-        "message": "Auto (System)"
-    },
-    "themeDark": {
-        "message": "Dark"
-    },
-    "themeLight": {
-        "message": "Light"
+        "message": "DualSubの設定で、解説する内容を1つ以上選んでください。"
     },
     "vertexImportSuccessEphemeral": {
-        "message": "Access token generated. The service-account key was not stored; re-import the JSON when the token expires."
+        "message": "アクセストークンを生成しました。サービスアカウントキーは保存されていません。トークンの有効期限が切れたら、JSONを再インポートしてください。"
     },
     "vertexNotConfiguredEphemeral": {
-        "message": "Import a service account JSON once to generate a short-lived token, or paste a token manually."
+        "message": "サービスアカウントJSONを一度インポートして有効期限の短いトークンを生成するか、トークンを手動で貼り付けてください。"
     },
     "vertexTokenExpiredReimport": {
-        "message": "⚠️ Access token expired. Re-import the service account JSON or paste a new access token."
+        "message": "⚠️ アクセストークンの有効期限が切れました。サービスアカウントJSONを再インポートするか、新しいアクセストークンを貼り付けてください。"
     },
     "vertexTokenExpiringReimport": {
-        "message": "⚠️ Token expires in %s minutes. Re-import the service account JSON or prepare a replacement access token."
-    },
-    "videoControlDescription": {
-        "message": "Control how the video player behaves when the side panel opens."
+        "message": "⚠️ トークンの有効期限まであと%s分です。サービスアカウントJSONを再インポートするか、代わりのアクセストークンを用意してください。"
     },
     "invalidSettingValue": {
         "message": "有効な値を入力してください。"
     },
     "settingsLoadFailed": {
-        "message": "設定を読み込めませんでした。ポップアップを更新してください。"
-    },
-    "videoControlTitle": {
-        "message": "Video Control"
+        "message": "設定を読み込めませんでした。いったん閉じて、もう一度開いてください。"
     },
     "translationApiError": {
         "message": "[翻訳API エラー。設定を確認するか、他のプロバイダーを試してください。]"
@@ -728,91 +386,1093 @@
     "editCustomLook": {
         "message": "設定でカスタム外観を編集"
     },
-    "navAppearance": {
-        "message": "外観"
+    "advancedBackupTitle": {
+        "message": "バックアップ"
     },
-    "sectionAppearance": {
-        "message": "字幕の外観"
+    "advancedChooseFile": {
+        "message": "ファイルを選ぶ…"
     },
-    "cardSubtitleStyleTitle": {
-        "message": "字幕スタイル"
+    "advancedCopy": {
+        "message": "コピー"
     },
-    "cardSubtitleStyleDesc": {
-        "message": "2行の字幕の描き方です。「プラットフォームに合わせる」はサイト上でプロフィールの字幕設定に従い、プレビューはプラットフォームの既定の外観を表示します。「カスタム」はDualSub自身の外観から始まり、下で編集できます。"
+    "advancedCopyFailed": {
+        "message": "コピーできませんでした。文字を選んで、ご自分でコピーしてください。"
     },
-    "previewPlatformLabel": {
-        "message": "プレビューのプラットフォーム："
+    "advancedDownload": {
+        "message": "設定をダウンロード"
     },
-    "lookPreviewLabel": {
-        "message": "字幕プレビュー"
+    "advancedJsonHelp": {
+        "message": "DualSubが保存している内容です（キーは含みません）。サイトごとの設定には、すべてのサイト共通の設定と違う項目だけが入っています。"
     },
-    "lookPreviewOriginal": {
-        "message": "Where there's a will, there's a way."
+    "advancedJsonTitle": {
+        "message": "JSON形式の設定"
     },
-    "lookPreviewTranslation": {
-        "message": "意志あるところに道は開ける。"
+    "advancedLead": {
+        "message": "バックアップ、設定データそのもの、トラブル調査のための機能です。"
     },
-    "cardCustomLookTitle": {
-        "message": "カスタム外観"
+    "advancedLoadApply": {
+        "message": "置き換える"
     },
-    "cardCustomLookDesc": {
-        "message": "2行の字幕に使う独自のタイポグラフィです。値を変更するとカスタムスタイルが選択されます。"
+    "advancedLoadFile": {
+        "message": "ファイルから設定を読み込む"
     },
-    "customFontLabel": {
-        "message": "フォント："
+    "advancedLoadFileHelp": {
+        "message": "置き換える前に、変わる設定の数を確認できます。"
     },
-    "customFontDefault": {
-        "message": "ページの既定"
+    "advancedLoadNothing": {
+        "message": "このファイルで変わる設定はありません。"
     },
-    "customFontSansSerif": {
-        "message": "サンセリフ"
+    "advancedLoadPreview": {
+        "message": "変わる設定は%d件です。"
     },
-    "customFontSerif": {
-        "message": "セリフ"
+    "advancedLoadUnreadable": {
+        "message": "このファイルはDualSubの設定ファイルではありません。"
     },
-    "customFontMonospace": {
-        "message": "等幅"
+    "advancedLoggingErrors": {
+        "message": "エラーのみ"
     },
-    "customFontCasual": {
-        "message": "カジュアル"
+    "advancedLoggingEverything": {
+        "message": "すべて（デバッグ）"
     },
-    "customFontSmallCaps": {
-        "message": "スモールキャピタル"
+    "advancedLoggingNormal": {
+        "message": "通常"
     },
-    "customBoldLabel": {
-        "message": "太字："
-    },
-    "customOriginalColorLabel": {
-        "message": "原文の文字色："
-    },
-    "customEdgeLabel": {
-        "message": "文字の縁取り："
-    },
-    "customEdgeNone": {
+    "advancedLoggingOff": {
         "message": "なし"
     },
-    "customEdgeShadow": {
-        "message": "ドロップシャドウ"
+    "advancedLoggingTitle": {
+        "message": "ブラウザのコンソールに表示する情報"
     },
-    "customEdgeOutline": {
-        "message": "アウトライン"
+    "advancedLoggingWarnings": {
+        "message": "警告とエラー"
     },
-    "customEdgeRaised": {
-        "message": "浮き彫り"
+    "advancedReportCopy": {
+        "message": "レポートをコピー"
     },
-    "customEdgeDepressed": {
-        "message": "沈み彫り"
+    "advancedReportHelp": {
+        "message": "バージョン、ブラウザ、設定（キーは除く）をまとめたものです。不具合の報告にそのまま貼り付けられます。"
     },
-    "customBackgroundColorLabel": {
-        "message": "背景色："
+    "advancedReportTitle": {
+        "message": "診断レポート"
     },
-    "customBackgroundOpacityLabel": {
-        "message": "背景の不透明度："
+    "advancedResetButton": {
+        "message": "すべてリセット…"
     },
-    "translationColorLabel": {
-        "message": "翻訳の文字色："
+    "advancedResetConfirm": {
+        "message": "すべての設定をおすすめの状態に戻しますか？このあとすぐなら元に戻せます。"
     },
-    "translationColorHelp": {
-        "message": "どちらのスタイルでも、翻訳行はこの色で描かれます。"
+    "advancedResetDo": {
+        "message": "リセット"
+    },
+    "advancedResetHelp": {
+        "message": "すべての設定がおすすめの状態に戻り、どのサイトもまたすべてのサイト共通の設定に従います。キーと、この設定画面の言語はそのまま残ります。"
+    },
+    "advancedResetTitle": {
+        "message": "最初からやり直す"
+    },
+    "advancedSaveFile": {
+        "message": "設定をファイルに保存"
+    },
+    "advancedSaveFileHelp": {
+        "message": "サイトごとの専用の設定も含まれます。APIキーはこのパソコンに残り、ファイルには入りません。"
+    },
+    "advancedTroubleshootingTitle": {
+        "message": "トラブル調査"
+    },
+    "commonAdvanced": {
+        "message": "上級者向け"
+    },
+    "commonCancel": {
+        "message": "キャンセル"
+    },
+    "commonChange": {
+        "message": "変更"
+    },
+    "commonLoading": {
+        "message": "読み込み中…"
+    },
+    "commonRecommended": {
+        "message": "おすすめ"
+    },
+    "explainCache": {
+        "message": "回答を覚えておく"
+    },
+    "explainKeyStays": {
+        "message": "キーはこのパソコンに保存され、選んだサービスにだけ送られます。"
+    },
+    "explainLead": {
+        "message": "字幕の単語をクリックすると、意味や使われ方、その背景にある話がわかります。"
+    },
+    "explainLimitsTitle": {
+        "message": "モデルと制限"
+    },
+    "explainOpenTitle": {
+        "message": "単語をクリックしたら解説パネルを開く"
+    },
+    "explainPauseTitle": {
+        "message": "読んでいる間は動画を一時停止する"
+    },
+    "explainRateLimit": {
+        "message": "1分あたりの最大リクエスト数"
+    },
+    "explainReadingTitle": {
+        "message": "解説を読むとき"
+    },
+    "explainRetries": {
+        "message": "あきらめるまでに試す回数"
+    },
+    "explainSampleMeaning": {
+        "message": "とても激しい雨のこと。昔からある、くだけた英語の言い回しです。"
+    },
+    "explainSetupDone": {
+        "message": "お使いのAIサービス"
+    },
+    "explainSetupHelp": {
+        "message": "解説は、ご自分のアカウントを使ってAIサービスが作ります。"
+    },
+    "explainSetupTitle": {
+        "message": "3つの手順で設定"
+    },
+    "explainStatusOff": {
+        "message": "オフになっています。キーは保存されたままです。"
+    },
+    "explainStatusOn": {
+        "message": "オンです。字幕の単語をクリックして試してみてください。"
+    },
+    "explainStatusSetup": {
+        "message": "オンにするには、下の3つの手順を済ませてください。"
+    },
+    "explainThemeAuto": {
+        "message": "パソコンの設定に合わせる"
+    },
+    "explainThemeDark": {
+        "message": "暗い色"
+    },
+    "explainThemeLight": {
+        "message": "明るい色"
+    },
+    "explainThemeTitle": {
+        "message": "パネルの色"
+    },
+    "explainTimeout": {
+        "message": "あきらめるまでの時間（秒）"
+    },
+    "explainTitle": {
+        "message": "単語の解説"
+    },
+    "explainTurnOn": {
+        "message": "オンにする"
+    },
+    "explainTypeCulture": {
+        "message": "背景にある文化"
+    },
+    "explainTypeHistory": {
+        "message": "歴史と由来"
+    },
+    "explainTypeMeaning": {
+        "message": "意味と使い方"
+    },
+    "explainTypesTitle": {
+        "message": "解説する内容"
+    },
+    "healthCovered": {
+        "message": "その間は%sが代わりに翻訳しています。"
+    },
+    "healthCredentials": {
+        "message": "キーが受け付けられませんでした。"
+    },
+    "healthNotCovered": {
+        "message": "使えるようになるまで、翻訳は止まります。"
+    },
+    "healthQuota": {
+        "message": "プランの利用上限に達しました。"
+    },
+    "healthRejected": {
+        "message": "リクエストが拒否されました。モデルとサービスのアドレスを確認してください。"
+    },
+    "healthTitle": {
+        "message": "%sが使えません。"
+    },
+    "helpAboutTitle": {
+        "message": "DualSubについて"
+    },
+    "helpFixIt": {
+        "message": "自動で直す"
+    },
+    "helpGoTiming": {
+        "message": "「タイミング」を開く"
+    },
+    "helpGoTranslation": {
+        "message": "「翻訳」を開く"
+    },
+    "helpLead": {
+        "message": "よくある問題と、それぞれの直し方です。"
+    },
+    "helpNoSubtitlesPlaying": {
+        "message": "タイトル画面で止まっていないか、動画が再生中か確かめてください。"
+    },
+    "helpNoSubtitlesReload": {
+        "message": "ページを再読み込みしてください。"
+    },
+    "helpNoSubtitlesSite": {
+        "message": "そのサイトでDualSubがオンになっているか確かめてください。"
+    },
+    "helpNoSubtitlesTitle": {
+        "message": "字幕が表示されない"
+    },
+    "helpNoSubtitlesTracks": {
+        "message": "動画に字幕があるか確かめてください。サイトの字幕メニューを開くとわかります。"
+    },
+    "helpOpenSites": {
+        "message": "「サイト」を開く"
+    },
+    "helpPrivacy": {
+        "message": "字幕の文章は、選んだ翻訳サービスにだけ送られます。追跡は一切なく、DualSubの開発者に何かが送られることもありません。"
+    },
+    "helpSource": {
+        "message": "ソースコード"
+    },
+    "helpTimingHelp": {
+        "message": "字幕を少し早く、または少し遅く表示します。"
+    },
+    "helpTimingTitle": {
+        "message": "字幕が声とずれている"
+    },
+    "helpTranslationHelp": {
+        "message": "別の翻訳サービスを試すか、作品の公式字幕を使ってください。"
+    },
+    "helpTranslationTitle": {
+        "message": "翻訳が読みにくい"
+    },
+    "helpTwiceHelp": {
+        "message": "DualSubの字幕の下に、サイト本来の字幕も表示されています。"
+    },
+    "helpTwiceTitle": {
+        "message": "字幕が二重に表示される"
+    },
+    "helpVersion": {
+        "message": "バージョン %s"
+    },
+    "languagesLead": {
+        "message": "字幕のそれぞれの行に、どの言語を表示するかを決めます。"
+    },
+    "languagesOfficialHelp": {
+        "message": "NetflixやDisney+には、人の手で訳された字幕が自分の言語で用意されていることがよくあります。機械翻訳より読みやすいです。ない作品では、DualSubが翻訳します。"
+    },
+    "languagesOfficialTitle": {
+        "message": "作品に公式字幕があれば、それを使う"
+    },
+    "languagesSpeakHelp": {
+        "message": "下の行はこの言語に翻訳されます。"
+    },
+    "languagesSpeakTitle": {
+        "message": "自分の言語"
+    },
+    "languagesTopAuto": {
+        "message": "動画で話されている言語"
+    },
+    "languagesTopAutoHelp": {
+        "message": "動画ごと、選んだ音声ごとにDualSubが合わせます。韓国ドラマなら上の行は韓国語、英語の映画なら英語になります。"
+    },
+    "languagesTopFixed": {
+        "message": "常に同じ言語"
+    },
+    "languagesTopFixedHelp": {
+        "message": "どの動画でも同じ言語を学びたいときに。サイトにその言語の字幕がある場合に使えます。"
+    },
+    "languagesTopFixedMenu": {
+        "message": "上の行の言語"
+    },
+    "languagesTopTitle": {
+        "message": "上の行に表示する言語"
+    },
+    "lookArrangementSideBySide": {
+        "message": "横に並べる"
+    },
+    "lookArrangementStacked": {
+        "message": "上下に並べる"
+    },
+    "lookArrangementTitle": {
+        "message": "2行の並べ方"
+    },
+    "lookBoldLabel": {
+        "message": "太字"
+    },
+    "lookBoxColorLabel": {
+        "message": "文字の背景の色"
+    },
+    "lookBoxOpacityLabel": {
+        "message": "背景の濃さ：%d%"
+    },
+    "lookColorCyan": {
+        "message": "水色"
+    },
+    "lookColorGreen": {
+        "message": "緑"
+    },
+    "lookColorOther": {
+        "message": "ほかの色"
+    },
+    "lookColorPink": {
+        "message": "ピンク"
+    },
+    "lookColorWhite": {
+        "message": "白"
+    },
+    "lookColorYellow": {
+        "message": "黄色"
+    },
+    "lookCustomizeButton": {
+        "message": "色とフォントを変える"
+    },
+    "lookEdgeDepressed": {
+        "message": "くぼみ"
+    },
+    "lookEdgeLabel": {
+        "message": "文字のふち"
+    },
+    "lookEdgeNone": {
+        "message": "なし"
+    },
+    "lookEdgeOutline": {
+        "message": "縁取り"
+    },
+    "lookEdgeRaised": {
+        "message": "浮き上がり"
+    },
+    "lookEdgeShadow": {
+        "message": "やわらかい影"
+    },
+    "lookExactPosition": {
+        "message": "高さ：%s（0.1が一番下、9.9が画面の真ん中）"
+    },
+    "lookExactSize": {
+        "message": "文字の大きさ：%s倍"
+    },
+    "lookFineTuneButton": {
+        "message": "大きさ・高さ・間隔を細かく調整"
+    },
+    "lookFontCasual": {
+        "message": "カジュアル"
+    },
+    "lookFontDefault": {
+        "message": "サイト本来のフォント"
+    },
+    "lookFontLabel": {
+        "message": "フォント"
+    },
+    "lookFontMono": {
+        "message": "タイプライター風"
+    },
+    "lookFontSans": {
+        "message": "すっきり（ゴシック体）"
+    },
+    "lookFontSerif": {
+        "message": "書籍風（明朝体）"
+    },
+    "lookFontSmallCaps": {
+        "message": "スモールキャピタル"
+    },
+    "lookGap": {
+        "message": "行の間隔：%s行分"
+    },
+    "lookGapTitle": {
+        "message": "行の間隔"
+    },
+    "lookLead": {
+        "message": "変更するとすぐにプレビューが変わり、動画にも1秒以内に反映されます。"
+    },
+    "lookMoveDown": {
+        "message": "下げる"
+    },
+    "lookMoveUp": {
+        "message": "上げる"
+    },
+    "lookOrderMineFirst": {
+        "message": "自分の言語を上に"
+    },
+    "lookOrderTitle": {
+        "message": "上に表示する行"
+    },
+    "lookOrderVideoFirst": {
+        "message": "動画の言語を上に"
+    },
+    "lookPositionBottom": {
+        "message": "画面の下端の近く"
+    },
+    "lookPositionLower": {
+        "message": "画面の下のほう"
+    },
+    "lookPositionMiddle": {
+        "message": "画面の真ん中あたり"
+    },
+    "lookPositionTitle": {
+        "message": "画面上の位置"
+    },
+    "lookPositionUsual": {
+        "message": "下端の少し上（多くの人が好む位置）"
+    },
+    "lookPresetBoxed": {
+        "message": "背景つき"
+    },
+    "lookPresetCinema": {
+        "message": "シネマ"
+    },
+    "lookPresetClassic": {
+        "message": "クラシック"
+    },
+    "lookPresetContrast": {
+        "message": "くっきり"
+    },
+    "lookPresetsLabel": {
+        "message": "用意された見た目"
+    },
+    "lookSizeTitle": {
+        "message": "文字の大きさ"
+    },
+    "lookStyleCustom": {
+        "message": "自分好みのスタイル"
+    },
+    "lookStyleCustomHelp": {
+        "message": "用意された見た目から始めて、好みで色やフォントを変えられます。"
+    },
+    "lookStylePlatform": {
+        "message": "サイトと同じ見た目"
+    },
+    "lookStylePlatformHelp": {
+        "message": "NetflixやDisney+のプロフィールにある字幕設定に従います。"
+    },
+    "lookStyleTitle": {
+        "message": "スタイル"
+    },
+    "lookTopColorLabel": {
+        "message": "上の行の色"
+    },
+    "lookTranslationColorHelp": {
+        "message": "どちらのスタイルでも使われるので、2つの行を見分けやすくなります。"
+    },
+    "lookTranslationColorTitle": {
+        "message": "翻訳の行の色"
+    },
+    "navAdvancedSwitch": {
+        "message": "上級者向けの設定を表示"
+    },
+    "navAdvancedSwitchHelp": {
+        "message": "サイトごとの設定、APIの詳細、制限、バックアップ。"
+    },
+    "navExplanations": {
+        "message": "単語の解説"
+    },
+    "navHelp": {
+        "message": "ヘルプ"
+    },
+    "navLabel": {
+        "message": "設定の項目"
+    },
+    "navLanguages": {
+        "message": "言語"
+    },
+    "navLook": {
+        "message": "字幕の見た目"
+    },
+    "navSites": {
+        "message": "サイト"
+    },
+    "navStart": {
+        "message": "はじめに"
+    },
+    "navTiming": {
+        "message": "タイミング"
+    },
+    "previewCaptionAuto": {
+        "message": "動画の行は%s（動画で話されている言語）、自分の言語の行は%sです。"
+    },
+    "previewCaptionFixed": {
+        "message": "動画の行は%s、自分の言語の行は%sです。"
+    },
+    "previewEnglishFilm": {
+        "message": "英語の映画"
+    },
+    "previewKoreanDrama": {
+        "message": "韓国ドラマ"
+    },
+    "previewLabel": {
+        "message": "字幕プレビュー"
+    },
+    "previewOff": {
+        "message": "二言語字幕はオフです"
+    },
+    "previewOneLine": {
+        "message": "この動画はもともと自分の言語なので、DualSubは1行だけ表示します。"
+    },
+    "previewSampleVideo": {
+        "message": "サンプル動画"
+    },
+    "previewShownOn": {
+        "message": "表示するサイト"
+    },
+    "previewTitle": {
+        "message": "プレビュー"
+    },
+    "providerAi": {
+        "message": "AI翻訳"
+    },
+    "providerAiHelp": {
+        "message": "ChatGPTやGeminiなどのAIモデルが、場面全体をふまえて翻訳します。"
+    },
+    "providerDeepL": {
+        "message": "DeepL"
+    },
+    "providerDeepLHelp": {
+        "message": "とても自然な翻訳です。DeepLのアカウントが必要です（無料プランあり）。"
+    },
+    "providerGoogle": {
+        "message": "Google翻訳"
+    },
+    "providerGoogleHelp": {
+        "message": "こちらもすぐに使えます。Microsoftの翻訳が自分の言語で不自然なときに試してみてください。"
+    },
+    "providerMicrosoft": {
+        "message": "Microsoft翻訳"
+    },
+    "providerMicrosoftHelp": {
+        "message": "ほとんどの言語で質の高い翻訳です。すぐに使えます。"
+    },
+    "providerVertex": {
+        "message": "Google Vertex AI"
+    },
+    "providerVertexHelp": {
+        "message": "ご自分のGoogle CloudプロジェクトでGeminiを使います。"
+    },
+    "scopeAll": {
+        "message": "すべてのサイト"
+    },
+    "scopeBackToAll": {
+        "message": "すべてのサイトに戻る"
+    },
+    "scopeEditingSite": {
+        "message": "%sの設定だけを変更しています。"
+    },
+    "scopeEditingSiteHelp": {
+        "message": "ここで変えた項目には「%sのみ」の印が付きます。それ以外は、すべてのサイト共通の設定に従います。"
+    },
+    "scopeHelp": {
+        "message": "専用の設定がないサイトでは、すべてのサイト共通の設定が使われます。"
+    },
+    "scopeLabel": {
+        "message": "設定するサイト"
+    },
+    "scopeOwnCount": {
+        "message": "専用の設定：%d項目"
+    },
+    "scopeSameAsAll": {
+        "message": "すべてのサイトと同じ"
+    },
+    "scopeSharedSetting": {
+        "message": "どのサイトでも共通"
+    },
+    "scopeSiteOnly": {
+        "message": "%sのみ"
+    },
+    "scopeUseShared": {
+        "message": "すべてのサイト共通の値を使う"
+    },
+    "setupAddress": {
+        "message": "サービスのアドレス"
+    },
+    "setupCheckKey": {
+        "message": "キーを確認"
+    },
+    "setupChooseService": {
+        "message": "AIサービスを選ぶ"
+    },
+    "setupGeminiKeyHelp": {
+        "message": "Googleアカウントでログインし、「Create API key」をクリックして、キーをコピーします。"
+    },
+    "setupGetKey": {
+        "message": "キーを取得"
+    },
+    "setupModel": {
+        "message": "モデル"
+    },
+    "setupOpenAIKeyHelp": {
+        "message": "ログインして「API keys」を開き、シークレットキーを作成してコピーします。"
+    },
+    "setupOpenKeyPage": {
+        "message": "%sを開く"
+    },
+    "setupOtherKeyHelp": {
+        "message": "お使いのサービスが発行するキーとアドレスを使ってください。"
+    },
+    "setupPasteKey": {
+        "message": "ここに貼り付け"
+    },
+    "setupServiceGemini": {
+        "message": "Google Gemini"
+    },
+    "setupServiceOpenAI": {
+        "message": "OpenAI"
+    },
+    "setupServiceOther": {
+        "message": "ほかのサービス"
+    },
+    "sitesEditOwn": {
+        "message": "%s専用の設定を編集"
+    },
+    "sitesFilterAdd": {
+        "message": "ルールを追加"
+    },
+    "sitesFilterRemove": {
+        "message": "ルール「%s」を削除"
+    },
+    "sitesFiltersHelp": {
+        "message": "名前や属性にこれらのどれかを含む字幕トラックは、使われません。"
+    },
+    "sitesFiltersTitle": {
+        "message": "使わない字幕トラック"
+    },
+    "sitesGiveOwn": {
+        "message": "%s専用の設定を作る"
+    },
+    "sitesHasOwn": {
+        "message": "専用の設定あり"
+    },
+    "sitesHideHelp": {
+        "message": "同じ言葉が二重に表示されないようにします。"
+    },
+    "sitesHideOwn": {
+        "message": "%s自体の字幕を隠す"
+    },
+    "sitesHideTitle": {
+        "message": "サイト本来の字幕を隠す"
+    },
+    "sitesLead": {
+        "message": "DualSubはこれらのサイトで自動的にオンになります。サイトごとにオフにしたり、専用の設定を作ったりできます。"
+    },
+    "sitesMoreHelp": {
+        "message": "DualSubが新しいサイトに対応すると、ここに表示されます。最初からオンになっていて、すべてのサイト共通の設定が使われます。"
+    },
+    "sitesMoreTitle": {
+        "message": "対応サイトはこれから増えます"
+    },
+    "sitesOff": {
+        "message": "オフ"
+    },
+    "sitesOn": {
+        "message": "オン"
+    },
+    "sitesRemoveOwn": {
+        "message": "専用の設定を削除"
+    },
+    "sitesUseHere": {
+        "message": "このサイトでDualSubを使う"
+    },
+    "sitesUsesShared": {
+        "message": "すべてのサイト共通の設定を使用中"
+    },
+    "sitesUsesSharedHelp": {
+        "message": "%s専用に、文字の大きさ・色・上の行・タイミングを決められます。"
+    },
+    "sizeExtraLarge": {
+        "message": "特大"
+    },
+    "sizeLarge": {
+        "message": "大"
+    },
+    "sizeMedium": {
+        "message": "中"
+    },
+    "sizeSmall": {
+        "message": "小"
+    },
+    "startEnabled": {
+        "message": "二言語字幕"
+    },
+    "startFixNone": {
+        "message": "字幕が表示されない"
+    },
+    "startFixTiming": {
+        "message": "字幕が声とずれている"
+    },
+    "startFixTranslation": {
+        "message": "翻訳が読みにくい"
+    },
+    "startFixTwice": {
+        "message": "字幕が二重に表示される"
+    },
+    "startFromBrowser": {
+        "message": "ブラウザの設定から"
+    },
+    "startLead": {
+        "message": "NetflixかDisney+を開いて、好きな動画を再生してください。字幕が2行表示されます。上は動画の言語、下は自分の言語です。"
+    },
+    "startOpenSite": {
+        "message": "%sを開く"
+    },
+    "startProblemsTitle": {
+        "message": "うまくいかないときは"
+    },
+    "startProviderAi": {
+        "message": "AI翻訳（自分のキーを使用）"
+    },
+    "startProviderDeepL": {
+        "message": "DeepL（自分のキーを使用）"
+    },
+    "startProviderGoogle": {
+        "message": "Google翻訳：無料、設定は不要"
+    },
+    "startProviderMicrosoft": {
+        "message": "Microsoft翻訳：無料、設定は不要"
+    },
+    "startProviderVertex": {
+        "message": "Google Vertex AI（自分のGoogle Cloudプロジェクトを使用）"
+    },
+    "startSetUpTitle": {
+        "message": "あらかじめ設定してあります"
+    },
+    "startSiteOff": {
+        "message": "%s：オフ"
+    },
+    "startSiteOn": {
+        "message": "%s：オン"
+    },
+    "startStatusOff": {
+        "message": "二言語字幕はオフです"
+    },
+    "startStatusOffHelp": {
+        "message": "スイッチでまたオンにできます。"
+    },
+    "startStatusReady": {
+        "message": "DualSubの準備ができています"
+    },
+    "startStatusReadyHelp": {
+        "message": "設定は不要です。動画を再生するだけです。"
+    },
+    "startTitle": {
+        "message": "こんにちは！DualSubの準備ができました。"
+    },
+    "startTopAuto": {
+        "message": "それぞれの動画で話されている言語"
+    },
+    "startTopFixed": {
+        "message": "常に%s"
+    },
+    "tagFree": {
+        "message": "無料"
+    },
+    "tagGoogleCloud": {
+        "message": "Google Cloudユーザー向け"
+    },
+    "tagNeedsKey": {
+        "message": "キーが必要"
+    },
+    "tagNoSetup": {
+        "message": "設定不要"
+    },
+    "timingEarlier": {
+        "message": "早める"
+    },
+    "timingEarlierBy": {
+        "message": "%s秒早く"
+    },
+    "timingEarlierHelp": {
+        "message": "どの行も少し早く表示されます。"
+    },
+    "timingExactHelp": {
+        "message": "単位は秒です。プラスの数にすると、字幕が早く表示されます。"
+    },
+    "timingExactTitle": {
+        "message": "ずらす秒数"
+    },
+    "timingLater": {
+        "message": "遅らせる"
+    },
+    "timingLaterBy": {
+        "message": "%s秒遅く"
+    },
+    "timingLaterHelp": {
+        "message": "どの行も少し遅く表示されます。"
+    },
+    "timingLead": {
+        "message": "字幕が声とずれているときは、少しずらしてください。ほとんどの動画では、ここを変える必要はありません。"
+    },
+    "timingOnTime": {
+        "message": "ずれなし"
+    },
+    "timingOnTimeHelp": {
+        "message": "字幕は動画どおりのタイミングで表示されます。"
+    },
+    "timingReset": {
+        "message": "ずれなしに戻す"
+    },
+    "timingTipHelp": {
+        "message": "ブラウザのツールバーにあるDualSubのボタンを押すと、同じボタンが使えます。動画を見たまま、字幕を声に合わせられます。"
+    },
+    "timingTipTitle": {
+        "message": "見ながら直す"
+    },
+    "timingTitle": {
+        "message": "字幕のタイミング"
+    },
+    "toastCopied": {
+        "message": "コピーしました"
+    },
+    "toastEarlier": {
+        "message": "字幕を%s秒早めました"
+    },
+    "toastExplainOff": {
+        "message": "単語の解説をオフにしました"
+    },
+    "toastExplainOn": {
+        "message": "単語の解説をオンにしました"
+    },
+    "toastFallbackOff": {
+        "message": "翻訳には選んだサービスだけを使います"
+    },
+    "toastFallbackOn": {
+        "message": "選んだサービスが使えないときは、無料のサービスが代わりに翻訳します"
+    },
+    "toastFilterAdded": {
+        "message": "「%s」に当てはまるトラックは使いません"
+    },
+    "toastFilterRemoved": {
+        "message": "「%s」に当てはまるトラックをまた使います"
+    },
+    "toastFollowsShared": {
+        "message": "すべてのサイト共通の値に戻しました"
+    },
+    "toastHiddenEverywhere": {
+        "message": "完了しました。どのサイトでも、サイト本来の字幕を隠します。"
+    },
+    "toastLater": {
+        "message": "字幕を%s秒遅らせました"
+    },
+    "toastLoaded": {
+        "message": "設定を読み込みました"
+    },
+    "toastMovedDown": {
+        "message": "字幕を下げました"
+    },
+    "toastMovedUp": {
+        "message": "字幕を上げました"
+    },
+    "toastOfficialOff": {
+        "message": "常にDualSubが翻訳します"
+    },
+    "toastOfficialOn": {
+        "message": "作品の公式字幕を優先します"
+    },
+    "toastOnTime": {
+        "message": "字幕をずれなしに戻しました"
+    },
+    "toastPreset": {
+        "message": "見た目：%s"
+    },
+    "toastProvider": {
+        "message": "翻訳：%s"
+    },
+    "toastReportCopied": {
+        "message": "レポートをコピーしました"
+    },
+    "toastReset": {
+        "message": "すべておすすめの設定に戻しました"
+    },
+    "toastSiteHide": {
+        "message": "%s自体の字幕を隠しました"
+    },
+    "toastSiteOff": {
+        "message": "%sでDualSubをオフにしました"
+    },
+    "toastSiteOn": {
+        "message": "%sでDualSubをオンにしました"
+    },
+    "toastSiteShared": {
+        "message": "%sはまた、すべてのサイト共通の設定を使います"
+    },
+    "toastSiteShow": {
+        "message": "%s自体の字幕を表示します"
+    },
+    "toastSize": {
+        "message": "文字の大きさ：%s"
+    },
+    "toastSpeak": {
+        "message": "自分の言語：%s"
+    },
+    "toastStyleCustom": {
+        "message": "スタイル：自分好み"
+    },
+    "toastStylePlatform": {
+        "message": "スタイル：サイトと同じ"
+    },
+    "toastSubtitlesOff": {
+        "message": "二言語字幕をオフにしました"
+    },
+    "toastSubtitlesOn": {
+        "message": "二言語字幕をオンにしました"
+    },
+    "toastTopAuto": {
+        "message": "上の行：動画で話されている言語"
+    },
+    "toastTopFixed": {
+        "message": "上の行：常に%s"
+    },
+    "toastTranslationColor": {
+        "message": "翻訳の色：%s"
+    },
+    "toastUndo": {
+        "message": "元に戻す"
+    },
+    "topMenuLanguage": {
+        "message": "DualSubのメニューの言語"
+    },
+    "topSearchLabel": {
+        "message": "設定を検索"
+    },
+    "topSearchNothing": {
+        "message": "「%s」に一致する設定はありません。「大きさ」「色」「タイミング」などで探してみてください。"
+    },
+    "topSearchPlaceholder": {
+        "message": "設定を検索（例：「大きさ」「二重」）"
+    },
+    "searchWordsSpeak": {
+        "message": "言語 げんご 言葉 ことば わたしの言語 私の言語 母国語 母語 話す言語 使う言語 翻訳先 訳す言語 字幕の言語 下の行 下の字幕 日本語 にほんご ネイティブ 言語設定"
+    },
+    "searchWordsTopLine": {
+        "message": "原語 元の言語 もとの言語 原文 オリジナル 動画の言語 映画の言語 音声 おんせい 話されている言語 自動 じどう 学習 勉強 べんきょう 語学 外国語 英語 えいご 韓国語 上の字幕 字幕の言語"
+    },
+    "searchWordsOfficial": {
+        "message": "公式 こうしき 正式 日本語字幕 人の翻訳 人間の翻訳 人が訳した プロの翻訳 機械翻訳 用意された字幕 netflix disney ネットフリックス ネトフリ ディズニー ディズニープラス"
+    },
+    "searchWordsSize": {
+        "message": "サイズ 文字サイズ 字幕サイズ 字幕の大きさ おおきさ 大きく おおきく 大きい 小さく ちいさく 小さい 文字を大きく 字幕を大きく 拡大 縮小 ズーム 見えにくい 見づらい 読みにくい もじ フォント"
+    },
+    "searchWordsPosition": {
+        "message": "いち 場所 高さ たかさ 上げる 下げる 上に 下に 移動 動かす 位置をずらす 上下 縦 高い 低い 隠れる 邪魔 じゃま かぶる"
+    },
+    "searchWordsStyle": {
+        "message": "見た目 みため デザイン 外観 おまかせ 雰囲気 サイトと同じ 自分好み カスタム プラットフォーム 標準 普通 ふつう"
+    },
+    "searchWordsCustomLook": {
+        "message": "いろ カラー 文字色 字の色 書体 字体 太字 ふとじ 太く 縁取り ふち 影 かげ 背景 はいけい 背景色 黒帯 帯 透明 透明度 不透明 濃さ 薄く 見えにくい 目立たない"
+    },
+    "searchWordsTranslationColor": {
+        "message": "翻訳の色 訳の色 いろ カラー 文字色 下の行 2行目 ２行目 二行目 水色 黄色 緑 ピンク 白 区別 見分け 同じ色"
+    },
+    "searchWordsOrder": {
+        "message": "順番 じゅんばん 順序 並び順 上下 入れ替える 入れかえる 逆 反対 さかさま どちらが上 上の行 下の行"
+    },
+    "searchWordsArrangement": {
+        "message": "配置 レイアウト 横並び 横に並べる 左右 縦並び 上下 二段 2段 ２段 ２行 二行 二列 2列"
+    },
+    "searchWordsFineTune": {
+        "message": "かんかく 行間 ぎょうかん すき間 隙間 すきま 空き 狭く 狭い 広く 広い 詰める 離す 微調整 数値 数字 正確 ぴったり サイズ"
+    },
+    "searchWordsTiming": {
+        "message": "ずれ ズレ ずれる ずらす 字幕がずれる 音ズレ 音ずれ 遅れ 遅れる 遅い おそい 早い はやい 早く 遅く 早める 遅らせる 同期 合わない 合わせる 声 こえ 音声 秒 時間 ディレイ"
+    },
+    "searchWordsService": {
+        "message": "ほんやく 翻訳エンジン エンジン プロバイダー 翻訳機 microsoft google deepl マイクロソフト グーグル ディープエル microsoft翻訳 google翻訳 グーグル翻訳 deepl翻訳 切り替え 精度 品質 不自然 読みにくい 変な翻訳 翻訳が変 下手"
+    },
+    "searchWordsDeepL": {
+        "message": "deepl ディープエル api apiキー キー 認証キー 鍵 プラン 無料 有料 アカウント"
+    },
+    "searchWordsAiTranslation": {
+        "message": "ai openai chatgpt gemini llm 人工知能 生成ai オープンai チャットgpt ジェミニ モデル キー apiキー 互換 アカウント"
+    },
+    "searchWordsFallback": {
+        "message": "予備 代わり かわり 代替 控え バックアップ 自動切り替え フォールバック 失敗 エラー 動かない 止まる 止まった 故障 壊れた 翻訳が止まる 翻訳されない microsoft google マイクロソフト グーグル"
+    },
+    "searchWordsDelay": {
+        "message": "遅延 ディレイ 待ち時間 待つ 速度 速さ スピード 遅い 重い 制限 回数 多すぎる 頻度 ペース 性能 パフォーマンス"
+    },
+    "searchWordsExplanations": {
+        "message": "ai かいせつ 説明 意味 いみ たんご 言葉 ことば 辞書 じしょ 調べる 文化 歴史 由来 語源 使い方 わからない クリック サイドパネル パネル コンテキスト gemini openai ジェミニ キー apiキー 勉強 学習"
+    },
+    "searchWordsPause": {
+        "message": "停止 止める とめる 止まる 自動停止 自動 ポーズ 待つ 再生"
+    },
+    "searchWordsTheme": {
+        "message": "テーマ ダーク ライト ダークモード ライトモード 暗い 明るい 黒 白 夜 まぶしい 目に優しい 配色 いろ"
+    },
+    "searchWordsLimits": {
+        "message": "上限 タイムアウト 時間切れ 待ち時間 回数 再試行 リトライ キャッシュ 記憶 覚える アドレス url 接続先 エンドポイント レート"
+    },
+    "searchWordsSiteOnOff": {
+        "message": "netflix disney ネットフリックス ネトフリ ディズニー ディズニープラス オン オフ 有効 無効 使わない 止める 切る 消す 入れる 切り替え スイッチ 二言語字幕 2言語 ２言語"
+    },
+    "searchWordsHide": {
+        "message": "二重 にじゅう 二重表示 字幕が二重 2回 ２回 二回 ダブり ダブる 重なる 重複 かぶる 二つ 2つ ２つ ふたつ 両方 同じ字幕 非表示 かくす 消す けす 字幕を消す 公式字幕 元の字幕 もとの字幕 邪魔"
+    },
+    "searchWordsSiteOwn": {
+        "message": "個別 別々 サイトごと サイト別 それぞれ 違う設定 別の設定 分ける 独自"
+    },
+    "searchWordsFilters": {
+        "message": "フィルター 除外 ブロック ブラックリスト 拒否 スキップ 飛ばす とばす 無視 ルール 強制字幕 forced 選ばない"
+    },
+    "searchWordsBackup": {
+        "message": "保存 ほぞん 書き出し 書き出す エクスポート 読み込み 読み込む インポート 復元 引っ越し 移行 移す 別のパソコン ファイル 設定ファイル 保管 控え"
+    },
+    "searchWordsJson": {
+        "message": "json 設定データ データ 中身 生データ 設定ファイル コンフィグ コード 開発者 コピー 一覧"
+    },
+    "searchWordsLogging": {
+        "message": "ログ 記録 デバッグ 診断レポート レポート 報告 不具合 バグ エラー 開発者ツール トラブル 調査"
+    },
+    "searchWordsReset": {
+        "message": "リセット 初期化 初期設定 初期状態 元に戻す もどす やり直し おすすめ 標準 デフォルト 既定"
+    },
+    "searchWordsPageLanguage": {
+        "message": "表示言語 画面の言語 げんご 日本語 にほんご 英語 ui言語 インターフェース 言語設定"
+    },
+    "searchWordsNoSubtitles": {
+        "message": "ヘルプ 助けて 困った 問題 トラブル 出ない でない 字幕が出ない 字幕なし 映らない 見えない 消えた 何も出ない 動かない 使えない 反応しない 壊れた 故障 じまく"
+    },
+    "searchSiteOwn": {
+        "message": "サイト専用の設定を作る"
+    },
+    "topSettings": {
+        "message": "設定"
+    },
+    "topSkipToContent": {
+        "message": "設定へ移動"
+    },
+    "translationAiSetupTitle": {
+        "message": "AI翻訳の設定"
+    },
+    "translationDeepLKeyHelp": {
+        "message": "DeepLにログインしてアカウントを開き、「API keys」にあるキーをコピーします。"
+    },
+    "translationDeepLOpen": {
+        "message": "DeepLを開く"
+    },
+    "translationDeepLPlan": {
+        "message": "どちらのプランをお使いですか？"
+    },
+    "translationDeepLSetupTitle": {
+        "message": "DeepLの設定"
+    },
+    "translationDelayHelp": {
+        "message": "サービスから「リクエストが多すぎる」と言われたら、値を上げてください。おすすめは150ミリ秒です。"
+    },
+    "translationDelayTitle": {
+        "message": "翻訳リクエストの間隔（ミリ秒）"
+    },
+    "translationFallbackHelp": {
+        "message": "選んだサービスが使えなくなったときは、また使えるようになるまで、Microsoft翻訳、次にGoogle翻訳が代わりに翻訳します。字幕の文章を選んだサービスだけに送りたい場合は、オフにしてください。"
+    },
+    "translationFallbackTitle": {
+        "message": "このサービスが使えないときも翻訳を続ける"
+    },
+    "translationLead": {
+        "message": "作品に公式字幕がないときに、下の行を翻訳するサービスを選びます。"
+    },
+    "translationServiceTitle": {
+        "message": "翻訳サービス"
+    },
+    "translationVertexHelp": {
+        "message": "サービスアカウントのファイルを一度読み込んで有効期限の短いトークンを作るか、トークンを貼り付けてください。ファイル自体は保存されません。"
+    },
+    "translationVertexSetupTitle": {
+        "message": "Google Vertex AIの設定"
     }
 }

@@ -77,16 +77,20 @@ describe('VertexProviderCard', () => {
         fireEvent.change(projectId, { target: { value: 'other-project-9' } });
         fireEvent.keyDown(projectId, { key: 'Enter' });
         await waitFor(() =>
-            expect(save).toHaveBeenCalledWith({
-                vertexProjectId: 'other-project-9',
-            })
+            expect(save).toHaveBeenCalledWith(
+                { vertexProjectId: 'other-project-9' },
+                'quiet'
+            )
         );
 
         const model = screen.getByLabelText('vertexModelLabel');
         fireEvent.change(model, { target: { value: 'gemini-2.5-pro' } });
         fireEvent.blur(model);
         await waitFor(() =>
-            expect(save).toHaveBeenCalledWith({ vertexModel: 'gemini-2.5-pro' })
+            expect(save).toHaveBeenCalledWith(
+                { vertexModel: 'gemini-2.5-pro' },
+                'quiet'
+            )
         );
     });
 
@@ -95,10 +99,10 @@ describe('VertexProviderCard', () => {
         fireEvent.change(screen.getByLabelText('vertexAccessTokenLabel'), {
             target: { value: 'ya29.new' },
         });
-        expect(save).toHaveBeenCalledWith({
-            vertexAccessToken: 'ya29.new',
-            vertexTokenExpiresAt: 0,
-        });
+        expect(save).toHaveBeenCalledWith(
+            { vertexAccessToken: 'ya29.new', vertexTokenExpiresAt: 0 },
+            'quiet'
+        );
     });
 
     it('imports a service-account key, stores only the minted token, and auto-tests', async () => {
@@ -123,7 +127,7 @@ describe('VertexProviderCard', () => {
             'key.json',
             { type: 'application/json' }
         );
-        fireEvent.change(screen.getByLabelText('Upload service account JSON'), {
+        fireEvent.change(screen.getByLabelText('vertexServiceAccountLabel'), {
             target: { files: [file] },
         });
 
@@ -151,7 +155,7 @@ describe('VertexProviderCard', () => {
     it('reports an unreadable key file without saving anything', async () => {
         const { save } = renderCard();
         const file = new File(['{'], 'key.json', { type: 'application/json' });
-        fireEvent.change(screen.getByLabelText('Upload service account JSON'), {
+        fireEvent.change(screen.getByLabelText('vertexServiceAccountLabel'), {
             target: { files: [file] },
         });
         await waitFor(() =>

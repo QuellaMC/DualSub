@@ -113,10 +113,15 @@ function hasUniqueItems(items: readonly string[]): boolean {
 
 const uiLanguageSchema = z.enum(['en', 'es', 'ja', 'ko', 'zh-CN', 'zh-TW']);
 export type UiLanguage = z.infer<typeof uiLanguageSchema>;
+export const UI_LANGUAGES = uiLanguageSchema.options;
+
+export function isUiLanguage(value: string): value is UiLanguage {
+    return uiLanguageSchema.safeParse(value).success;
+}
 
 /** Browser language → closest supported UI locale. */
 export function detectBrowserLanguage(): UiLanguage {
-    return browserLanguage(uiLanguageSchema.options) ?? 'en';
+    return browserLanguage(UI_LANGUAGES) ?? 'en';
 }
 
 /** The look of the platform being watched, or the viewer's own, which
@@ -546,6 +551,12 @@ export const configSchema = {
         normalize: normalizeSiteProfiles,
     }),
 
+    /** The settings page shows its advanced options on this device. */
+    showAdvancedSettings: setting({
+        schema: z.boolean(),
+        default: false,
+        scope: 'local',
+    }),
     appearanceAccordionOpen: setting({
         schema: z.boolean(),
         default: false,

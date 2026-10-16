@@ -17,14 +17,8 @@
     "originalLanguageLabel": {
         "message": "언어 설정:"
     },
-    "providerLabel": {
-        "message": "제공업체:"
-    },
     "targetLanguageLabel": {
         "message": "번역 대상:"
-    },
-    "requestDelayLabel": {
-        "message": "요청 지연 (ms):"
     },
     "subtitleAppearanceTimingLegend": {
         "message": "자막 외관 및 타이밍"
@@ -64,9 +58,6 @@
     },
     "subtitleStylePlatform": {
         "message": "플랫폼과 동일하게"
-    },
-    "uiLanguageLabel": {
-        "message": "언어:"
     },
     "statusLanguageSetTo": {
         "message": "언어 설정 완료 (페이지를 새로고침하세요): "
@@ -111,88 +102,16 @@
         "message": "잘못된 오프셋입니다. 되돌립니다."
     },
     "optionsPageTitle": {
-        "message": "DualSub 옵션"
-    },
-    "optionsH1Title": {
-        "message": "DualSub"
-    },
-    "navGeneral": {
-        "message": "일반"
+        "message": "DualSub 설정"
     },
     "navTranslation": {
         "message": "번역"
     },
-    "navProviders": {
-        "message": "제공업체"
-    },
-    "navAbout": {
-        "message": "정보"
-    },
-    "sectionGeneral": {
-        "message": "일반"
-    },
-    "cardUILanguageTitle": {
-        "message": "UI 언어"
-    },
-    "cardUILanguageDesc": {
-        "message": "확장 프로그램 인터페이스의 표시 언어를 선택하세요."
-    },
-    "cardHideOfficialSubtitlesTitle": {
-        "message": "공식 자막 숨기기"
-    },
-    "cardHideOfficialSubtitlesDesc": {
-        "message": "DualSub이 활성화된 상태에서 비디오 플랫폼의 공식 자막을 숨깁니다."
-    },
-    "hideOfficialSubtitlesLabel": {
-        "message": "공식 자막 숨기기:"
-    },
-    "sectionTranslation": {
-        "message": "번역"
-    },
-    "cardTranslationEngineTitle": {
-        "message": "번역 엔진"
-    },
-    "cardTranslationEngineDesc": {
-        "message": "선호하는 번역 서비스를 선택하세요."
-    },
-    "cardPerformanceTitle": {
-        "message": "성능"
-    },
-    "cardPerformanceDesc": {
-        "message": "확장 프로그램이 번역 요청을 처리하는 방식을 조정하여 속도와 안정성의 균형을 맞춥니다."
-    },
-    "sectionProviders": {
-        "message": "제공업체 설정"
-    },
-    "cardDeepLTitle": {
-        "message": "DeepL"
-    },
-    "cardDeepLDesc": {
-        "message": "DeepL Translate의 API 키를 입력하세요. 무료 플랜 또는 프로 플랜 중에서 선택할 수 있습니다."
-    },
-    "apiKeyLabel": {
-        "message": "API 키:"
-    },
-    "apiPlanLabel": {
-        "message": "API 플랜:"
-    },
     "apiPlanFree": {
-        "message": "DeepL API 무료"
+        "message": "무료"
     },
     "apiPlanPro": {
-        "message": "DeepL API 프로"
-    },
-    "sectionAbout": {
-        "message": "정보"
-    },
-    "cardAboutTitle": {
-        "message": "DualSub"
-    },
-    "aboutVersion": {
-        "message": "버전"
-    },
-    "aboutDescription": {
-        "message": "이 확장 프로그램은 다양한 플랫폼에서 이중 언어 자막으로 비디오를 시청하는 데 도움이 됩니다."
+        "message": "Pro"
     },
     "aboutDevelopment": {
         "message": "QuellaMC & 1jifang이 개발했습니다."
@@ -239,20 +158,17 @@
     "lang_auto": {
         "message": "자동 (오디오에 맞춤)"
     },
-    "testDeepLButton": {
-        "message": "DeepL 연결 테스트"
-    },
     "deeplApiKeyError": {
         "message": "먼저 DeepL API 키를 입력해주세요."
+    },
+    "deeplTestNeedsTesting": {
+        "message": "⚠️ DeepL API 키 테스트가 필요합니다."
     },
     "testingButton": {
         "message": "테스트 중..."
     },
     "testingConnection": {
         "message": "DeepL 연결을 테스트하고 있습니다..."
-    },
-    "deeplTestSuccessSimple": {
-        "message": "✅ DeepL API 테스트가 성공했습니다!"
     },
     "deeplTestUnexpectedFormat": {
         "message": "⚠️ DeepL API가 응답했지만 예상치 못한 형식이었습니다"
@@ -271,81 +187,6 @@
     },
     "deeplTestGenericError": {
         "message": "❌ 테스트에 실패했습니다: %s"
-    },
-    "cardGoogleTitle": {
-        "message": "Google 번역"
-    },
-    "cardGoogleDesc": {
-        "message": "Google에서 제공하는 무료 번역 서비스입니다. 추가 설정이 필요하지 않습니다."
-    },
-    "cardMicrosoftTitle": {
-        "message": "Microsoft 번역"
-    },
-    "cardMicrosoftDesc": {
-        "message": "Microsoft Edge에서 제공하는 무료 번역 서비스입니다. 추가 설정이 필요하지 않습니다."
-    },
-    "providerStatus": {
-        "message": "상태:"
-    },
-    "statusReady": {
-        "message": "사용 가능"
-    },
-    "providerFeatures": {
-        "message": "기능:"
-    },
-    "featureFree": {
-        "message": "무료 사용"
-    },
-    "featureNoApiKey": {
-        "message": "API 키 불필요"
-    },
-    "featureWideLanguageSupport": {
-        "message": "광범위한 언어 지원"
-    },
-    "featureFastTranslation": {
-        "message": "빠른 번역"
-    },
-    "featureHighQuality": {
-        "message": "고품질 번역"
-    },
-    "featureGoodPerformance": {
-        "message": "우수한 성능"
-    },
-    "featureHighestQuality": {
-        "message": "최고품질 번역"
-    },
-    "featureApiKeyRequired": {
-        "message": "API 키 필요"
-    },
-    "featureLimitedLanguages": {
-        "message": "제한적인 언어 지원"
-    },
-    "featureUsageLimits": {
-        "message": "사용 제한 적용"
-    },
-    "providerGoogleName": {
-        "message": "Google 번역 (무료)"
-    },
-    "providerMicrosoftName": {
-        "message": "Microsoft 번역 (무료)"
-    },
-    "providerDeepLName": {
-        "message": "DeepL (API 키 필요)"
-    },
-    "providerOpenAICompatibleName": {
-        "message": "OpenAI 호환 (API 키 필요)"
-    },
-    "providerVertexGeminiName": {
-        "message": "Vertex AI Gemini (API 키 필요)"
-    },
-    "cardOpenAICompatibleTitle": {
-        "message": "OpenAI 호환 (API 키 필요)"
-    },
-    "cardOpenAICompatibleDesc": {
-        "message": "Gemini와 같은 OpenAI 호환 서비스를 위한 API 키와 설정을 입력하세요."
-    },
-    "cardVertexGeminiTitle": {
-        "message": "Vertex AI Gemini (API 키 필요)"
     },
     "vertexAccessTokenLabel": {
         "message": "액세스 토큰:"
@@ -383,29 +224,8 @@
     "vertexConfigured": {
         "message": "⚠️ Vertex AI가 구성되었습니다. 연결을 테스트하세요."
     },
-    "featureVertexServiceAccount": {
-        "message": "서비스 계정 JSON 가져오기"
-    },
-    "featureVertexGemini": {
-        "message": "Vertex AI를 통한 Google Gemini 모델"
-    },
-    "baseUrlLabel": {
-        "message": "기본 URL:"
-    },
-    "modelLabel": {
-        "message": "모델:"
-    },
-    "featureCustomizable": {
-        "message": "사용자 정의 가능한 엔드포인트 및 모델"
-    },
     "testConnectionButton": {
         "message": "연결 테스트"
-    },
-    "openaiApiKeyPlaceholder": {
-        "message": "OpenAI 호환 API 키를 입력하세요"
-    },
-    "openaiBaseUrlPlaceholder": {
-        "message": "예: https://api.openai.com/v1"
     },
     "openaiApiKeyError": {
         "message": "먼저 API 키를 입력해주세요."
@@ -431,33 +251,6 @@
     "openaiFailedToFetchModels": {
         "message": "모델 가져오기 실패: %s"
     },
-    "cardLoggingLevelTitle": {
-        "message": "로깅 레벨"
-    },
-    "cardLoggingLevelDesc": {
-        "message": "브라우저 콘솔에 표시되는 디버그 정보의 양을 제어합니다. 높은 레벨에는 낮은 레벨의 모든 메시지가 포함됩니다."
-    },
-    "loggingLevelLabel": {
-        "message": "로깅 레벨:"
-    },
-    "loggingLevelOff": {
-        "message": "끄기"
-    },
-    "loggingLevelError": {
-        "message": "오류만"
-    },
-    "loggingLevelWarn": {
-        "message": "경고 및 오류"
-    },
-    "loggingLevelInfo": {
-        "message": "정보 이상"
-    },
-    "loggingLevelDebug": {
-        "message": "디버그 (모두)"
-    },
-    "deeplTestNeedsTesting": {
-        "message": "⚠️ DeepL API 키 테스트가 필요합니다."
-    },
     "aiContextUsage": {
         "message": "💡 사용법 및 예시"
     },
@@ -469,90 +262,6 @@
     },
     "aiContextKeyInsights": {
         "message": "🔑 핵심 통찰"
-    },
-    "navAIContext": {
-        "message": "AI 컨텍스트"
-    },
-    "sectionAIContext": {
-        "message": "AI 컨텍스트 어시스턴트"
-    },
-    "cardAIContextToggleTitle": {
-        "message": "AI 컨텍스트 분석 활성화"
-    },
-    "cardAIContextToggleDesc": {
-        "message": "자막 텍스트에 대한 AI 기반 문화적, 역사적, 언어학적 컨텍스트 분석을 활성화합니다. 자막의 단어나 구문을 클릭하여 자세한 설명을 얻을 수 있습니다."
-    },
-    "aiContextEnabledLabel": {
-        "message": "AI 컨텍스트 활성화:"
-    },
-    "cardAIContextProviderTitle": {
-        "message": "AI 제공업체"
-    },
-    "cardAIContextProviderDesc": {
-        "message": "컨텍스트 분석을 위한 AI 서비스 제공업체를 선택합니다. 제공업체에 따라 품질과 응답 시간이 다를 수 있습니다."
-    },
-    "aiContextProviderLabel": {
-        "message": "제공업체:"
-    },
-    "cardOpenAIContextTitle": {
-        "message": "OpenAI 구성"
-    },
-    "cardOpenAIContextDesc": {
-        "message": "컨텍스트 분석을 위한 OpenAI API 설정을 구성합니다. 유효한 OpenAI API 키가 필요합니다."
-    },
-    "openaiApiKeyLabel": {
-        "message": "API 키:"
-    },
-    "openaiBaseUrlLabel": {
-        "message": "기본 URL:"
-    },
-    "openaiModelLabel": {
-        "message": "모델:"
-    },
-    "cardGeminiContextTitle": {
-        "message": "Google Gemini 구성"
-    },
-    "cardGeminiContextDesc": {
-        "message": "컨텍스트 분석을 위한 Google Gemini API 설정을 구성합니다. 유효한 Gemini API 키가 필요합니다."
-    },
-    "geminiApiKeyLabel": {
-        "message": "API 키:"
-    },
-    "geminiModelLabel": {
-        "message": "모델:"
-    },
-    "cardAIContextTypesTitle": {
-        "message": "컨텍스트 유형"
-    },
-    "cardAIContextTypesDesc": {
-        "message": "사용하려는 컨텍스트 분석 유형을 활성화합니다. 여러 유형을 활성화할 수 있습니다."
-    },
-    "contextTypeCulturalLabel": {
-        "message": "문화적 컨텍스트:"
-    },
-    "contextTypeHistoricalLabel": {
-        "message": "역사적 컨텍스트:"
-    },
-    "contextTypeLinguisticLabel": {
-        "message": "언어학적 분석:"
-    },
-    "cardAIContextAdvancedTitle": {
-        "message": "고급 설정"
-    },
-    "cardAIContextAdvancedDesc": {
-        "message": "AI 컨텍스트 분석 동작에 대한 고급 옵션을 구성합니다."
-    },
-    "aiContextTimeoutLabel": {
-        "message": "요청 타임아웃 (ms):"
-    },
-    "aiContextRateLimitLabel": {
-        "message": "속도 제한 (요청/분):"
-    },
-    "aiContextCacheEnabledLabel": {
-        "message": "캐싱 활성화:"
-    },
-    "aiContextRetryAttemptsLabel": {
-        "message": "재시도 횟수:"
     },
     "sidepanelLoading": {
         "message": "로딩 중..."
@@ -597,112 +306,61 @@
         "message": "분석할 단어가 선택되지 않았습니다"
     },
     "sidepanelErrorDisabled": {
-        "message": "AI 컨텍스트 분석이 비활성화되어 있습니다. 설정에서 활성화하세요."
+        "message": "단어 설명이 꺼져 있어요. DualSub 설정에서 켜 주세요."
     },
     "sidepanelErrorGeneric": {
         "message": "분석 중 오류가 발생했습니다."
     },
-    "advancedNote": {
-        "message": "Automatic side-panel opening requires Chrome 116 or newer."
-    },
-    "advancedTitle": {
-        "message": "고급 설정"
-    },
-    "advancedWarningDescription": {
-        "message": "These settings can affect the behavior of the side panel. If you experience issues, try resetting to default values by disabling and re-enabling the side panel feature."
-    },
-    "advancedWarningTitle": {
-        "message": "Important Note"
-    },
     "aiContextTypesRequired": {
-        "message": "Select at least one context type."
+        "message": "설명할 내용을 하나 이상 고르세요."
     },
-    "autoOpenSidePanel": {
-        "message": "Auto-Open Side Panel:"
-    },
-    "autoOpenSidePanelDescription": {
-        "message": "Automatically open the side panel when you click on subtitle words."
-    },
-    "autoPauseVideo": {
-        "message": "Auto-Pause Video:"
-    },
-    "autoPauseVideoDescription": {
-        "message": "Automatically pause the video when you open the side panel to select words."
-    },
-    "cardVertexGeminiEphemeralDesc": {
-        "message": "Enter a short-lived access token, or import a service account JSON once to generate one. The service-account key is never stored."
-    },
-    "featureVertexEphemeralToken": {
-        "message": "One-time token generation without storing the service-account key"
+    "deeplTestSuccessSimple": {
+        "message": "✅ DeepL API 테스트가 성공했습니다!"
     },
     "navAdvanced": {
         "message": "고급 설정"
     },
     "openaiEndpointPermissionRequired": {
-        "message": "Use Test Connection to grant access to this endpoint."
+        "message": "DualSub에서 이 주소에 연결하려면 “%s” 버튼을 클릭하세요."
     },
     "openaiHostPermissionButton": {
-        "message": "Allow API host"
+        "message": "API 호스트 허용"
     },
     "openaiHostPermissionChecking": {
-        "message": "Checking API host access…"
+        "message": "API 호스트 액세스를 확인하는 중…"
     },
     "openaiHostPermissionDenied": {
-        "message": "API host access was not granted."
+        "message": "API 호스트 액세스가 허용되지 않았어요."
     },
     "openaiHostPermissionError": {
         "message": "API 호스트 액세스를 요청할 수 없습니다: %s"
     },
     "openaiHostPermissionGranted": {
-        "message": "API host access granted."
+        "message": "API 호스트 액세스가 허용됐어요."
     },
     "openaiHostPermissionScope": {
         "message": "설정된 엔드포인트: %s. Chrome 권한 범위: %s(이 호스트의 모든 경로 및 포트)."
     },
-    "sidePanelBehaviorDescription": {
-        "message": "Configure how the AI analysis side panel opens and looks."
-    },
-    "sidePanelBehaviorTitle": {
-        "message": "Side Panel Behavior"
-    },
     "sidepanelErrorNoContextTypes": {
-        "message": "분석하기 전에 컨텍스트 유형을 하나 이상 선택하세요."
-    },
-    "sidePanelTheme": {
-        "message": "Side Panel Theme:"
-    },
-    "themeAuto": {
-        "message": "Auto (System)"
-    },
-    "themeDark": {
-        "message": "Dark"
-    },
-    "themeLight": {
-        "message": "Light"
+        "message": "DualSub 설정에서 설명할 내용을 하나 이상 고르세요."
     },
     "vertexImportSuccessEphemeral": {
-        "message": "Access token generated. The service-account key was not stored; re-import the JSON when the token expires."
+        "message": "액세스 토큰을 생성했어요. 서비스 계정 키는 저장하지 않았으니, 토큰이 만료되면 JSON을 다시 가져오세요."
     },
     "vertexNotConfiguredEphemeral": {
-        "message": "Import a service account JSON once to generate a short-lived token, or paste a token manually."
+        "message": "서비스 계정 JSON을 한 번 가져와 잠시 쓸 수 있는 토큰을 생성하거나, 토큰을 직접 붙여넣으세요."
     },
     "vertexTokenExpiredReimport": {
-        "message": "⚠️ Access token expired. Re-import the service account JSON or paste a new access token."
+        "message": "⚠️ 액세스 토큰이 만료됐어요. 서비스 계정 JSON을 다시 가져오거나 새 액세스 토큰을 붙여넣으세요."
     },
     "vertexTokenExpiringReimport": {
-        "message": "⚠️ Token expires in %s minutes. Re-import the service account JSON or prepare a replacement access token."
-    },
-    "videoControlDescription": {
-        "message": "Control how the video player behaves when the side panel opens."
+        "message": "⚠️ 토큰이 %s분 후에 만료돼요. 서비스 계정 JSON을 다시 가져오거나 새 액세스 토큰을 준비하세요."
     },
     "invalidSettingValue": {
         "message": "유효한 값을 입력하세요."
     },
     "settingsLoadFailed": {
-        "message": "설정을 불러오지 못했습니다. 팝업을 새로고침해 주세요."
-    },
-    "videoControlTitle": {
-        "message": "Video Control"
+        "message": "설정을 불러오지 못했어요. 이 화면을 닫았다가 다시 열어 주세요."
     },
     "translationApiError": {
         "message": "[번역 API 오류. 설정을 확인하거나 다른 제공업체를 시도해보세요.]"
@@ -728,91 +386,1093 @@
     "editCustomLook": {
         "message": "설정에서 사용자 지정 모양 편집"
     },
-    "navAppearance": {
-        "message": "모양"
+    "advancedBackupTitle": {
+        "message": "백업"
     },
-    "sectionAppearance": {
-        "message": "자막 모양"
+    "advancedChooseFile": {
+        "message": "파일 선택…"
     },
-    "cardSubtitleStyleTitle": {
-        "message": "자막 스타일"
+    "advancedCopy": {
+        "message": "복사"
     },
-    "cardSubtitleStyleDesc": {
-        "message": "두 자막 줄을 그리는 방식입니다. '플랫폼과 동일하게'는 사이트에서 프로필의 자막 설정을 따르며, 미리보기는 플랫폼의 기본 모양을 보여 줍니다. '사용자 지정'은 DualSub 고유의 모양에서 시작하며 아래에서 편집합니다."
+    "advancedCopyFailed": {
+        "message": "복사가 차단됐어요. 내용을 선택해서 직접 복사하세요."
     },
-    "previewPlatformLabel": {
-        "message": "미리보기 플랫폼:"
+    "advancedDownload": {
+        "message": "설정 다운로드"
     },
-    "lookPreviewLabel": {
-        "message": "자막 미리보기"
+    "advancedJsonHelp": {
+        "message": "DualSub에 저장된 내용이에요. 키는 빠져 있어요. 사이트마다 모든 사이트 공통 설정과 다른 값만 저장돼요."
     },
-    "lookPreviewOriginal": {
-        "message": "Where there's a will, there's a way."
+    "advancedJsonTitle": {
+        "message": "JSON 형식의 설정"
     },
-    "lookPreviewTranslation": {
-        "message": "뜻이 있는 곳에 길이 있다."
+    "advancedLead": {
+        "message": "백업, 설정 원본, 문제 해결 도구가 있어요."
     },
-    "cardCustomLookTitle": {
-        "message": "사용자 지정 모양"
+    "advancedLoadApply": {
+        "message": "이대로 바꾸기"
     },
-    "cardCustomLookDesc": {
-        "message": "두 줄에 쓸 나만의 타이포그래피입니다. 값을 바꾸면 사용자 지정 스타일이 선택됩니다."
+    "advancedLoadFile": {
+        "message": "파일에서 설정 불러오기"
     },
-    "customFontLabel": {
-        "message": "글꼴:"
+    "advancedLoadFileHelp": {
+        "message": "바꾸기 전에 설정이 몇 개 바뀌는지 먼저 보여 드려요."
     },
-    "customFontDefault": {
-        "message": "페이지 기본값"
+    "advancedLoadNothing": {
+        "message": "이 파일로 바뀌는 설정은 없어요."
     },
-    "customFontSansSerif": {
-        "message": "산세리프"
+    "advancedLoadPreview": {
+        "message": "바뀔 설정: %d개."
     },
-    "customFontSerif": {
-        "message": "세리프"
+    "advancedLoadUnreadable": {
+        "message": "이 파일은 DualSub 설정 파일이 아니에요."
     },
-    "customFontMonospace": {
-        "message": "고정폭"
+    "advancedLoggingErrors": {
+        "message": "오류만"
     },
-    "customFontCasual": {
-        "message": "캐주얼"
+    "advancedLoggingEverything": {
+        "message": "전부 (디버그)"
     },
-    "customFontSmallCaps": {
-        "message": "작은 대문자"
+    "advancedLoggingNormal": {
+        "message": "보통"
     },
-    "customBoldLabel": {
-        "message": "굵게:"
-    },
-    "customOriginalColorLabel": {
-        "message": "원문 글자색:"
-    },
-    "customEdgeLabel": {
-        "message": "글자 테두리:"
-    },
-    "customEdgeNone": {
+    "advancedLoggingOff": {
         "message": "없음"
     },
-    "customEdgeShadow": {
-        "message": "그림자"
+    "advancedLoggingTitle": {
+        "message": "브라우저 콘솔에 남길 정보"
     },
-    "customEdgeOutline": {
+    "advancedLoggingWarnings": {
+        "message": "경고와 오류"
+    },
+    "advancedReportCopy": {
+        "message": "보고서 복사"
+    },
+    "advancedReportHelp": {
+        "message": "버전, 브라우저, 설정(키 제외)이 담겨 있어요. 버그 신고에 바로 붙여넣을 수 있어요."
+    },
+    "advancedReportTitle": {
+        "message": "진단 보고서"
+    },
+    "advancedResetButton": {
+        "message": "모두 초기화…"
+    },
+    "advancedResetConfirm": {
+        "message": "모든 설정을 추천 설정으로 되돌릴까요? 바로 다음에 실행 취소할 수 있어요."
+    },
+    "advancedResetDo": {
+        "message": "초기화"
+    },
+    "advancedResetHelp": {
+        "message": "모든 설정이 추천 설정으로 돌아가고, 각 사이트도 다시 모든 사이트 공통 설정을 따라요. 키와 이 페이지의 언어는 그대로 남아요."
+    },
+    "advancedResetTitle": {
+        "message": "처음부터 다시"
+    },
+    "advancedSaveFile": {
+        "message": "내 설정을 파일로 저장"
+    },
+    "advancedSaveFileHelp": {
+        "message": "사이트별로 따로 정한 설정도 모두 들어가요. API 키는 이 컴퓨터에만 남고 파일에는 절대 들어가지 않아요."
+    },
+    "advancedTroubleshootingTitle": {
+        "message": "문제 해결"
+    },
+    "commonAdvanced": {
+        "message": "고급"
+    },
+    "commonCancel": {
+        "message": "취소"
+    },
+    "commonChange": {
+        "message": "바꾸기"
+    },
+    "commonLoading": {
+        "message": "불러오는 중…"
+    },
+    "commonRecommended": {
+        "message": "추천"
+    },
+    "explainCache": {
+        "message": "답변 기억하기"
+    },
+    "explainKeyStays": {
+        "message": "키는 이 컴퓨터에만 저장되고, 내가 고른 서비스에만 전달돼요."
+    },
+    "explainLead": {
+        "message": "자막에서 아무 단어나 클릭하면 뜻과 쓰임새, 그 말에 얽힌 이야기를 볼 수 있어요."
+    },
+    "explainLimitsTitle": {
+        "message": "모델과 한도"
+    },
+    "explainOpenTitle": {
+        "message": "단어를 클릭하면 설명 창 열기"
+    },
+    "explainPauseTitle": {
+        "message": "읽는 동안 영상 멈추기"
+    },
+    "explainRateLimit": {
+        "message": "1분당 최대 요청 수"
+    },
+    "explainReadingTitle": {
+        "message": "읽는 동안"
+    },
+    "explainRetries": {
+        "message": "최대 시도 횟수"
+    },
+    "explainSampleMeaning": {
+        "message": "비가 억수같이 쏟아진다는 뜻이에요. 오래전부터 편하게 쓰는 영어 표현이에요."
+    },
+    "explainSetupDone": {
+        "message": "내 AI 서비스"
+    },
+    "explainSetupHelp": {
+        "message": "설명은 내 계정으로 쓰는 AI 서비스가 만들어요."
+    },
+    "explainSetupTitle": {
+        "message": "세 단계로 설정하기"
+    },
+    "explainStatusOff": {
+        "message": "꺼져 있어요. 키는 그대로 저장되어 있어요."
+    },
+    "explainStatusOn": {
+        "message": "켜져 있어요. 자막에서 단어를 클릭해 보세요."
+    },
+    "explainStatusSetup": {
+        "message": "아래 세 단계를 마치면 켤 수 있어요."
+    },
+    "explainThemeAuto": {
+        "message": "컴퓨터 설정에 맞추기"
+    },
+    "explainThemeDark": {
+        "message": "어둡게"
+    },
+    "explainThemeLight": {
+        "message": "밝게"
+    },
+    "explainThemeTitle": {
+        "message": "설명 창 색"
+    },
+    "explainTimeout": {
+        "message": "최대 대기 시간 (초)"
+    },
+    "explainTitle": {
+        "message": "단어 설명"
+    },
+    "explainTurnOn": {
+        "message": "켜기"
+    },
+    "explainTypeCulture": {
+        "message": "문화적 배경"
+    },
+    "explainTypeHistory": {
+        "message": "역사와 유래"
+    },
+    "explainTypeMeaning": {
+        "message": "뜻과 쓰임새"
+    },
+    "explainTypesTitle": {
+        "message": "설명할 내용"
+    },
+    "healthCovered": {
+        "message": "그동안 %s 서비스가 대신 번역해요."
+    },
+    "healthCredentials": {
+        "message": "키가 거부됐어요."
+    },
+    "healthNotCovered": {
+        "message": "다시 작동할 때까지 번역이 멈춰요."
+    },
+    "healthQuota": {
+        "message": "요금제 사용 한도를 다 썼어요."
+    },
+    "healthRejected": {
+        "message": "서비스가 요청을 거절했어요. 모델과 주소를 확인하세요."
+    },
+    "healthTitle": {
+        "message": "%s 서비스가 작동하지 않아요."
+    },
+    "helpAboutTitle": {
+        "message": "DualSub 정보"
+    },
+    "helpFixIt": {
+        "message": "바로 고치기"
+    },
+    "helpGoTiming": {
+        "message": "타이밍 설정으로 가기"
+    },
+    "helpGoTranslation": {
+        "message": "번역 설정으로 가기"
+    },
+    "helpLead": {
+        "message": "자주 생기는 문제와 해결 방법을 모았어요."
+    },
+    "helpNoSubtitlesPlaying": {
+        "message": "영상이 제목 화면에서 멈춰 있지 않고 재생 중인지 확인하세요."
+    },
+    "helpNoSubtitlesReload": {
+        "message": "페이지를 새로고침하세요."
+    },
+    "helpNoSubtitlesSite": {
+        "message": "사이트에서 DualSub 사용이 켜져 있는지 확인하세요."
+    },
+    "helpNoSubtitlesTitle": {
+        "message": "자막이 안 나와요"
+    },
+    "helpNoSubtitlesTracks": {
+        "message": "영상에 자막이 있는지 확인하세요. 사이트 자체 자막 메뉴를 열어 보면 알 수 있어요."
+    },
+    "helpOpenSites": {
+        "message": "사이트 설정 열기"
+    },
+    "helpPrivacy": {
+        "message": "자막 내용은 내가 고른 번역 서비스로만 보내요. 사용 기록을 추적하지 않고, DualSub 개발자에게는 아무것도 보내지 않아요."
+    },
+    "helpSource": {
+        "message": "소스 코드"
+    },
+    "helpTimingHelp": {
+        "message": "자막을 조금 앞당기거나 늦춰 보세요."
+    },
+    "helpTimingTitle": {
+        "message": "들리는 말과 자막이 안 맞아요"
+    },
+    "helpTranslationHelp": {
+        "message": "다른 번역 서비스를 써 보거나, 작품의 공식 자막을 사용해 보세요."
+    },
+    "helpTranslationTitle": {
+        "message": "번역이 어색해요"
+    },
+    "helpTwiceHelp": {
+        "message": "사이트 자체 자막이 DualSub 자막 아래에 함께 나오고 있어요."
+    },
+    "helpTwiceTitle": {
+        "message": "자막이 두 번 보여요"
+    },
+    "helpVersion": {
+        "message": "버전 %s"
+    },
+    "languagesLead": {
+        "message": "자막 줄마다 어떤 언어를 보여 줄지 정해요."
+    },
+    "languagesOfficialHelp": {
+        "message": "Netflix와 Disney+에는 사람이 직접 만든 내 언어 자막이 있는 경우가 많아요. 기계 번역보다 읽기 좋아요. 공식 자막이 없는 작품은 DualSub에서 번역해요."
+    },
+    "languagesOfficialTitle": {
+        "message": "공식 자막이 있으면 먼저 사용"
+    },
+    "languagesSpeakHelp": {
+        "message": "아래 줄이 이 언어로 번역돼요."
+    },
+    "languagesSpeakTitle": {
+        "message": "내 언어"
+    },
+    "languagesTopAuto": {
+        "message": "영상에서 말하는 언어"
+    },
+    "languagesTopAutoHelp": {
+        "message": "DualSub에서 영상과 내가 고른 오디오에 맞춰 자동으로 바꿔요. 한국 드라마는 위에 한국어가, 영어 영화는 영어가 나와요."
+    },
+    "languagesTopFixed": {
+        "message": "항상 같은 언어"
+    },
+    "languagesTopFixedHelp": {
+        "message": "어떤 영상을 보든 한 언어를 배우고 싶을 때 좋아요. 사이트에 그 언어 자막이 있을 때만 돼요."
+    },
+    "languagesTopFixedMenu": {
+        "message": "위 줄 언어"
+    },
+    "languagesTopTitle": {
+        "message": "위 줄에 보일 언어"
+    },
+    "lookArrangementSideBySide": {
+        "message": "옆으로 나란히"
+    },
+    "lookArrangementStacked": {
+        "message": "위아래로"
+    },
+    "lookArrangementTitle": {
+        "message": "두 줄 배치"
+    },
+    "lookBoldLabel": {
+        "message": "굵은 글씨"
+    },
+    "lookBoxColorLabel": {
+        "message": "글자 뒤 박스 색"
+    },
+    "lookBoxOpacityLabel": {
+        "message": "박스 진하기: %d%"
+    },
+    "lookColorCyan": {
+        "message": "청록색"
+    },
+    "lookColorGreen": {
+        "message": "초록색"
+    },
+    "lookColorOther": {
+        "message": "다른 색"
+    },
+    "lookColorPink": {
+        "message": "분홍색"
+    },
+    "lookColorWhite": {
+        "message": "흰색"
+    },
+    "lookColorYellow": {
+        "message": "노란색"
+    },
+    "lookCustomizeButton": {
+        "message": "색과 글꼴 바꾸기"
+    },
+    "lookEdgeDepressed": {
+        "message": "오목 효과"
+    },
+    "lookEdgeLabel": {
+        "message": "글자 테두리"
+    },
+    "lookEdgeNone": {
+        "message": "없음"
+    },
+    "lookEdgeOutline": {
         "message": "외곽선"
     },
-    "customEdgeRaised": {
-        "message": "돌출"
+    "lookEdgeRaised": {
+        "message": "볼록 효과"
     },
-    "customEdgeDepressed": {
-        "message": "함몰"
+    "lookEdgeShadow": {
+        "message": "부드러운 그림자"
     },
-    "customBackgroundColorLabel": {
-        "message": "배경색:"
+    "lookExactPosition": {
+        "message": "정확한 높이: %s (0.1은 맨 아래, 9.9는 가운데)"
     },
-    "customBackgroundOpacityLabel": {
-        "message": "배경 불투명도:"
+    "lookExactSize": {
+        "message": "정확한 글자 크기: %s배"
     },
-    "translationColorLabel": {
-        "message": "번역 글자색:"
+    "lookFineTuneButton": {
+        "message": "크기, 높이, 간격 세밀하게 맞추기"
     },
-    "translationColorHelp": {
-        "message": "두 스타일 모두 번역 줄을 이 색으로 그립니다."
+    "lookFontCasual": {
+        "message": "캐주얼"
+    },
+    "lookFontDefault": {
+        "message": "사이트 기본 글꼴"
+    },
+    "lookFontLabel": {
+        "message": "글꼴"
+    },
+    "lookFontMono": {
+        "message": "타자기체"
+    },
+    "lookFontSans": {
+        "message": "고딕체 (산세리프)"
+    },
+    "lookFontSerif": {
+        "message": "명조체 (세리프)"
+    },
+    "lookFontSmallCaps": {
+        "message": "작은 대문자"
+    },
+    "lookGap": {
+        "message": "줄 사이 간격: 줄 높이의 %s배"
+    },
+    "lookGapTitle": {
+        "message": "줄 사이 간격"
+    },
+    "lookLead": {
+        "message": "바꾸는 대로 미리보기에 바로 보이고, 보고 있는 영상에도 1초 안에 적용돼요."
+    },
+    "lookMoveDown": {
+        "message": "아래로 내리기"
+    },
+    "lookMoveUp": {
+        "message": "위로 올리기"
+    },
+    "lookOrderMineFirst": {
+        "message": "내 언어를 위로"
+    },
+    "lookOrderTitle": {
+        "message": "위에 올 줄"
+    },
+    "lookOrderVideoFirst": {
+        "message": "영상 언어를 위로"
+    },
+    "lookPositionBottom": {
+        "message": "화면 맨 아래 가까이"
+    },
+    "lookPositionLower": {
+        "message": "화면 아래쪽"
+    },
+    "lookPositionMiddle": {
+        "message": "화면 가운데쯤"
+    },
+    "lookPositionTitle": {
+        "message": "화면 위치"
+    },
+    "lookPositionUsual": {
+        "message": "맨 아래에서 조금 위, 많은 사람이 좋아하는 위치"
+    },
+    "lookPresetBoxed": {
+        "message": "박스형"
+    },
+    "lookPresetCinema": {
+        "message": "영화관"
+    },
+    "lookPresetClassic": {
+        "message": "클래식"
+    },
+    "lookPresetContrast": {
+        "message": "고대비"
+    },
+    "lookPresetsLabel": {
+        "message": "미리 만든 모양"
+    },
+    "lookSizeTitle": {
+        "message": "글자 크기"
+    },
+    "lookStyleCustom": {
+        "message": "나만의 스타일"
+    },
+    "lookStyleCustomHelp": {
+        "message": "미리 만든 모양에서 시작해서, 원하면 색과 글꼴을 바꿔 보세요."
+    },
+    "lookStylePlatform": {
+        "message": "사이트와 같은 모양"
+    },
+    "lookStylePlatformHelp": {
+        "message": "Netflix나 Disney+ 프로필의 자막 설정을 따라요."
+    },
+    "lookStyleTitle": {
+        "message": "스타일"
+    },
+    "lookTopColorLabel": {
+        "message": "위 줄 색"
+    },
+    "lookTranslationColorHelp": {
+        "message": "두 스타일 모두에 쓰여서 두 줄을 쉽게 구별할 수 있어요."
+    },
+    "lookTranslationColorTitle": {
+        "message": "번역 줄 색"
+    },
+    "navAdvancedSwitch": {
+        "message": "고급 설정 보기"
+    },
+    "navAdvancedSwitchHelp": {
+        "message": "사이트별 설정, API 세부 정보, 한도, 백업을 보여 줘요."
+    },
+    "navExplanations": {
+        "message": "단어 설명"
+    },
+    "navHelp": {
+        "message": "도움말"
+    },
+    "navLabel": {
+        "message": "설정 메뉴"
+    },
+    "navLanguages": {
+        "message": "언어"
+    },
+    "navLook": {
+        "message": "자막 모양"
+    },
+    "navSites": {
+        "message": "사이트"
+    },
+    "navStart": {
+        "message": "시작"
+    },
+    "navTiming": {
+        "message": "타이밍"
+    },
+    "previewCaptionAuto": {
+        "message": "영상 줄: %s (영상에서 말하는 언어). 내 줄: %s."
+    },
+    "previewCaptionFixed": {
+        "message": "영상 줄: %s. 내 줄: %s."
+    },
+    "previewEnglishFilm": {
+        "message": "영어 영화"
+    },
+    "previewKoreanDrama": {
+        "message": "한국 드라마"
+    },
+    "previewLabel": {
+        "message": "자막 미리보기"
+    },
+    "previewOff": {
+        "message": "이중 자막이 꺼져 있어요"
+    },
+    "previewOneLine": {
+        "message": "이 영상은 이미 내 언어라서 DualSub에서 한 줄만 보여 줘요."
+    },
+    "previewSampleVideo": {
+        "message": "예시 영상"
+    },
+    "previewShownOn": {
+        "message": "보는 사이트"
+    },
+    "previewTitle": {
+        "message": "실시간 미리보기"
+    },
+    "providerAi": {
+        "message": "AI 번역"
+    },
+    "providerAiHelp": {
+        "message": "ChatGPT, Gemini 또는 다른 AI 모델이 장면 전체의 흐름을 보고 번역해요."
+    },
+    "providerDeepL": {
+        "message": "DeepL"
+    },
+    "providerDeepLHelp": {
+        "message": "번역이 아주 자연스러워요. DeepL 계정이 필요한데, 무료 요금제도 있어요."
+    },
+    "providerGoogle": {
+        "message": "Google 번역"
+    },
+    "providerGoogleHelp": {
+        "message": "이것도 바로 쓸 수 있어요. 내 언어에서 Microsoft 번역이 어색하다면 한번 써 보세요."
+    },
+    "providerMicrosoft": {
+        "message": "Microsoft 번역"
+    },
+    "providerMicrosoftHelp": {
+        "message": "대부분의 언어에서 번역 품질이 좋아요. 바로 쓸 수 있어요."
+    },
+    "providerVertex": {
+        "message": "Google Vertex AI"
+    },
+    "providerVertexHelp": {
+        "message": "내 Google Cloud 프로젝트를 통해 Gemini를 써요."
+    },
+    "scopeAll": {
+        "message": "모든 사이트"
+    },
+    "scopeBackToAll": {
+        "message": "모든 사이트로 돌아가기"
+    },
+    "scopeEditingSite": {
+        "message": "%s 설정만 바꾸고 있어요."
+    },
+    "scopeEditingSiteHelp": {
+        "message": "여기서 바꾸는 설정에는 “%s 전용” 표시가 붙어요. 나머지는 모든 사이트 공통 설정을 따라요."
+    },
+    "scopeHelp": {
+        "message": "따로 정한 설정이 없는 사이트는 모든 사이트 공통 설정을 써요."
+    },
+    "scopeLabel": {
+        "message": "설정 대상"
+    },
+    "scopeOwnCount": {
+        "message": "따로 정한 설정: %d개"
+    },
+    "scopeSameAsAll": {
+        "message": "모든 사이트와 같음"
+    },
+    "scopeSharedSetting": {
+        "message": "모든 사이트 공통"
+    },
+    "scopeSiteOnly": {
+        "message": "%s 전용"
+    },
+    "scopeUseShared": {
+        "message": "모든 사이트 공통 값 사용"
+    },
+    "setupAddress": {
+        "message": "서비스 주소"
+    },
+    "setupCheckKey": {
+        "message": "키 확인"
+    },
+    "setupChooseService": {
+        "message": "AI 서비스 고르기"
+    },
+    "setupGeminiKeyHelp": {
+        "message": "Google 계정으로 로그인하고 “Create API key”를 클릭한 다음 키를 복사하세요."
+    },
+    "setupGetKey": {
+        "message": "키 받기"
+    },
+    "setupModel": {
+        "message": "모델"
+    },
+    "setupOpenAIKeyHelp": {
+        "message": "로그인한 다음 “API keys”를 열고, 비밀 키를 만들어 복사하세요."
+    },
+    "setupOpenKeyPage": {
+        "message": "%s 열기"
+    },
+    "setupOtherKeyHelp": {
+        "message": "사용하는 서비스에서 받은 키와 주소를 넣으세요."
+    },
+    "setupPasteKey": {
+        "message": "여기에 붙여넣기"
+    },
+    "setupServiceGemini": {
+        "message": "Google Gemini"
+    },
+    "setupServiceOpenAI": {
+        "message": "OpenAI"
+    },
+    "setupServiceOther": {
+        "message": "다른 서비스"
+    },
+    "sitesEditOwn": {
+        "message": "%s 설정 바꾸기"
+    },
+    "sitesFilterAdd": {
+        "message": "규칙 추가"
+    },
+    "sitesFilterRemove": {
+        "message": "%s 규칙 지우기"
+    },
+    "sitesFiltersHelp": {
+        "message": "이름이나 속성에 이 중 하나가 들어 있는 자막 트랙은 쓰지 않아요."
+    },
+    "sitesFiltersTitle": {
+        "message": "건너뛸 자막 트랙"
+    },
+    "sitesGiveOwn": {
+        "message": "%s 설정 따로 정하기"
+    },
+    "sitesHasOwn": {
+        "message": "따로 정한 설정이 있어요"
+    },
+    "sitesHideHelp": {
+        "message": "같은 말이 두 번 보이지 않게 해요."
+    },
+    "sitesHideOwn": {
+        "message": "%s 자체 자막 숨기기"
+    },
+    "sitesHideTitle": {
+        "message": "사이트 자체 자막 숨기기"
+    },
+    "sitesLead": {
+        "message": "이 사이트들에서는 DualSub 사용이 자동으로 켜져요. 사이트마다 끌 수도 있고, 설정을 따로 정할 수도 있어요."
+    },
+    "sitesMoreHelp": {
+        "message": "DualSub에서 새 사이트를 지원하게 되면, 처음부터 켜진 채로 여기에 나타나고 모든 사이트 공통 설정이 적용돼요."
+    },
+    "sitesMoreTitle": {
+        "message": "더 많은 사이트를 준비하고 있어요"
+    },
+    "sitesOff": {
+        "message": "꺼짐"
+    },
+    "sitesOn": {
+        "message": "켜짐"
+    },
+    "sitesRemoveOwn": {
+        "message": "따로 정한 설정 지우기"
+    },
+    "sitesUseHere": {
+        "message": "이 사이트에서 DualSub 사용"
+    },
+    "sitesUsesShared": {
+        "message": "모든 사이트 공통 설정을 따라요"
+    },
+    "sitesUsesSharedHelp": {
+        "message": "%s에만 쓸 글자 크기, 색, 위 줄, 타이밍을 따로 정할 수 있어요."
+    },
+    "sizeExtraLarge": {
+        "message": "아주 크게"
+    },
+    "sizeLarge": {
+        "message": "크게"
+    },
+    "sizeMedium": {
+        "message": "보통"
+    },
+    "sizeSmall": {
+        "message": "작게"
+    },
+    "startEnabled": {
+        "message": "이중 자막"
+    },
+    "startFixNone": {
+        "message": "자막이 안 나와요"
+    },
+    "startFixTiming": {
+        "message": "들리는 말과 자막이 안 맞아요"
+    },
+    "startFixTranslation": {
+        "message": "번역이 어색해요"
+    },
+    "startFixTwice": {
+        "message": "자막이 두 번 보여요"
+    },
+    "startFromBrowser": {
+        "message": "브라우저에서 가져옴"
+    },
+    "startLead": {
+        "message": "Netflix나 Disney+를 열고 아무 영상이나 재생해 보세요. 자막이 두 줄로 나와요. 위에는 영상의 언어, 아래에는 내 언어가 보여요."
+    },
+    "startOpenSite": {
+        "message": "%s 열기"
+    },
+    "startProblemsTitle": {
+        "message": "문제가 있나요?"
+    },
+    "startProviderAi": {
+        "message": "AI 번역 (내 키 사용)"
+    },
+    "startProviderDeepL": {
+        "message": "DeepL (내 키 사용)"
+    },
+    "startProviderGoogle": {
+        "message": "Google 번역: 무료, 설정 필요 없음"
+    },
+    "startProviderMicrosoft": {
+        "message": "Microsoft 번역: 무료, 설정 필요 없음"
+    },
+    "startProviderVertex": {
+        "message": "Google Vertex AI (내 Google Cloud 프로젝트 사용)"
+    },
+    "startSetUpTitle": {
+        "message": "이렇게 미리 설정해 두었어요"
+    },
+    "startSiteOff": {
+        "message": "%s: 꺼짐"
+    },
+    "startSiteOn": {
+        "message": "%s: 켜짐"
+    },
+    "startStatusOff": {
+        "message": "이중 자막이 꺼져 있어요"
+    },
+    "startStatusOffHelp": {
+        "message": "스위치로 다시 켤 수 있어요."
+    },
+    "startStatusReady": {
+        "message": "DualSub 준비 완료"
+    },
+    "startStatusReadyHelp": {
+        "message": "따로 설정할 건 없어요. 영상을 재생하기만 하면 돼요."
+    },
+    "startTitle": {
+        "message": "안녕하세요! DualSub 준비가 끝났어요."
+    },
+    "startTopAuto": {
+        "message": "각 영상에서 말하는 언어"
+    },
+    "startTopFixed": {
+        "message": "항상 %s"
+    },
+    "tagFree": {
+        "message": "무료"
+    },
+    "tagGoogleCloud": {
+        "message": "Google Cloud 사용자용"
+    },
+    "tagNeedsKey": {
+        "message": "키 필요"
+    },
+    "tagNoSetup": {
+        "message": "설정 필요 없음"
+    },
+    "timingEarlier": {
+        "message": "앞당기기"
+    },
+    "timingEarlierBy": {
+        "message": "%s초 일찍"
+    },
+    "timingEarlierHelp": {
+        "message": "자막이 조금 더 일찍 나와요."
+    },
+    "timingExactHelp": {
+        "message": "초 단위예요. 0보다 큰 값을 넣으면 자막이 일찍 나와요."
+    },
+    "timingExactTitle": {
+        "message": "정확한 시간 조정"
+    },
+    "timingLater": {
+        "message": "늦추기"
+    },
+    "timingLaterBy": {
+        "message": "%s초 늦게"
+    },
+    "timingLaterHelp": {
+        "message": "자막이 조금 더 늦게 나와요."
+    },
+    "timingLead": {
+        "message": "들리는 말과 자막이 맞지 않으면 자막 시간을 조금씩 옮겨 보세요. 대부분의 영상은 그대로 두면 돼요."
+    },
+    "timingOnTime": {
+        "message": "원래 시간"
+    },
+    "timingOnTimeHelp": {
+        "message": "자막이 영상 시간에 그대로 맞춰 나와요."
+    },
+    "timingReset": {
+        "message": "원래 시간으로 되돌리기"
+    },
+    "timingTipHelp": {
+        "message": "브라우저 툴바에 있는 DualSub 버튼에도 같은 버튼이 있어서, 영상을 보면서 바로 자막을 목소리에 맞출 수 있어요."
+    },
+    "timingTipTitle": {
+        "message": "보면서 바로 맞추기"
+    },
+    "timingTitle": {
+        "message": "자막 타이밍"
+    },
+    "toastCopied": {
+        "message": "복사했어요"
+    },
+    "toastEarlier": {
+        "message": "자막을 %s초 앞당겼어요"
+    },
+    "toastExplainOff": {
+        "message": "단어 설명을 껐어요"
+    },
+    "toastExplainOn": {
+        "message": "단어 설명을 켰어요"
+    },
+    "toastFallbackOff": {
+        "message": "고른 서비스로만 번역해요"
+    },
+    "toastFallbackOn": {
+        "message": "고른 서비스가 안 되면 무료 서비스가 대신 번역해요"
+    },
+    "toastFilterAdded": {
+        "message": "“%s”에 해당하는 트랙은 건너뛰어요"
+    },
+    "toastFilterRemoved": {
+        "message": "“%s”에 해당하는 트랙을 다시 써요"
+    },
+    "toastFollowsShared": {
+        "message": "모든 사이트 공통 값으로 되돌렸어요"
+    },
+    "toastHiddenEverywhere": {
+        "message": "다 됐어요. 이제 모든 사이트에서 사이트 자체 자막을 숨겨요."
+    },
+    "toastLater": {
+        "message": "자막을 %s초 늦췄어요"
+    },
+    "toastLoaded": {
+        "message": "설정을 불러왔어요"
+    },
+    "toastMovedDown": {
+        "message": "자막을 아래로 내렸어요"
+    },
+    "toastMovedUp": {
+        "message": "자막을 위로 올렸어요"
+    },
+    "toastOfficialOff": {
+        "message": "항상 DualSub에서 번역해요"
+    },
+    "toastOfficialOn": {
+        "message": "공식 자막을 먼저 사용해요"
+    },
+    "toastOnTime": {
+        "message": "자막을 원래 시간으로 되돌렸어요"
+    },
+    "toastPreset": {
+        "message": "모양: %s"
+    },
+    "toastProvider": {
+        "message": "번역: %s"
+    },
+    "toastReportCopied": {
+        "message": "보고서를 복사했어요"
+    },
+    "toastReset": {
+        "message": "모든 설정을 추천 설정으로 되돌렸어요"
+    },
+    "toastSiteHide": {
+        "message": "%s 자체 자막을 숨겼어요"
+    },
+    "toastSiteOff": {
+        "message": "%s에서 DualSub 사용을 껐어요"
+    },
+    "toastSiteOn": {
+        "message": "%s에서 DualSub 사용을 켰어요"
+    },
+    "toastSiteShared": {
+        "message": "%s에 다시 모든 사이트 공통 설정이 적용돼요"
+    },
+    "toastSiteShow": {
+        "message": "이제 %s 자체 자막이 보여요"
+    },
+    "toastSize": {
+        "message": "글자 크기: %s"
+    },
+    "toastSpeak": {
+        "message": "내 언어: %s"
+    },
+    "toastStyleCustom": {
+        "message": "스타일: 나만의 스타일"
+    },
+    "toastStylePlatform": {
+        "message": "스타일: 사이트와 같은 모양"
+    },
+    "toastSubtitlesOff": {
+        "message": "이중 자막을 껐어요"
+    },
+    "toastSubtitlesOn": {
+        "message": "이중 자막을 켰어요"
+    },
+    "toastTopAuto": {
+        "message": "위 줄: 영상에서 말하는 언어"
+    },
+    "toastTopFixed": {
+        "message": "위 줄: 항상 %s"
+    },
+    "toastTranslationColor": {
+        "message": "번역 줄 색: %s"
+    },
+    "toastUndo": {
+        "message": "실행 취소"
+    },
+    "topMenuLanguage": {
+        "message": "DualSub 메뉴 언어"
+    },
+    "topSearchLabel": {
+        "message": "설정 검색"
+    },
+    "topSearchNothing": {
+        "message": "“%s”에 맞는 설정이 없어요. “크기”, “색”, “타이밍” 같은 말로 찾아보세요."
+    },
+    "topSearchPlaceholder": {
+        "message": "설정 검색 (예: “크기”, “두 번”)"
+    },
+    "searchWordsSpeak": {
+        "message": "내언어 번역언어 번역 자막언어 모국어 사용언어 번역대상 아래줄 한국어 한글 한글자막 언어설정 변경 바꾸기"
+    },
+    "searchWordsTopLine": {
+        "message": "위줄 원어 원문 영상언어 오디오 음성 자동 고정 학습 공부 언어공부 외국어 영어 영어자막 자막언어 언어설정 변경 바꾸기"
+    },
+    "searchWordsOfficial": {
+        "message": "공식자막 정식자막 정식 사람번역 사람 번역가 기계번역 netflix disney 넷플릭스 넷플 디즈니"
+    },
+    "searchWordsSize": {
+        "message": "자막크기 글자크기 글씨크기 폰트크기 텍스트 사이즈 크게 작게 확대 축소 큰글씨 작은글씨 조절 변경"
+    },
+    "searchWordsPosition": {
+        "message": "자막위치 위치조절 높이 세로 이동 옮기기 올리기 내리기 위로 아래로 위쪽 아래쪽 높게 낮게 조절 변경"
+    },
+    "searchWordsStyle": {
+        "message": "자막스타일 모양 자막모양 디자인 꾸미기 사용자지정 사용자 지정 미리만든 플랫폼 나만의 클래식 영화관 박스형 고대비 변경"
+    },
+    "searchWordsCustomLook": {
+        "message": "색깔 색상 컬러 글자색 글씨색 자막색 폰트 서체 글씨체 굵게 굵은글씨 볼드 테두리 외곽선 그림자 배경색 박스 투명도 불투명도 진하기 가독성 변경"
+    },
+    "searchWordsTranslationColor": {
+        "message": "번역줄 번역색 번역자막 아래줄 색깔 색상 컬러 노란색 노랑 청록색 흰색 하얀색 초록색 분홍색 핑크 구별 변경 바꾸기"
+    },
+    "searchWordsOrder": {
+        "message": "순서 표시순서 자막순서 줄순서 순서바꾸기 자리 먼저 위아래 변경"
+    },
+    "searchWordsArrangement": {
+        "message": "레이아웃 방향 나란히 옆으로 좌우 가로 세로 위아래 두줄 변경"
+    },
+    "searchWordsFineTune": {
+        "message": "줄간격 자막간격 줄사이 여백 미세조정 세부 정확 정밀 배율 조절"
+    },
+    "searchWordsTiming": {
+        "message": "자막싱크 싱크조절 싱크맞추기 시간조절 밀림 밀려요 늦게 늦음 늦어요 느림 느려요 빠르게 빠름 빨라요 일찍 앞당기기 늦추기 속도 오프셋 딜레이 어긋남 안맞음 안맞아요 목소리 대사"
+    },
+    "searchWordsService": {
+        "message": "번역기 번역엔진 엔진 제공업체 번역품질 품질 이상해요 무료 microsoft google deepl 마이크로소프트 구글 구글번역 딥엘 변경 바꾸기"
+    },
+    "searchWordsDeepL": {
+        "message": "deepl 딥엘 api api키 키 요금제 플랜 무료 pro 프로"
+    },
+    "searchWordsAiTranslation": {
+        "message": "ai openai chatgpt gemini llm gpt 오픈ai 챗gpt 챗지피티 제미나이 제미니 인공지능 모델 api api키 키 주소 호환"
+    },
+    "searchWordsFallback": {
+        "message": "대체 대체번역 예비 전환 자동전환 실패 오류 에러 안됨 멈춤 멈춰요 끊김 끊겨요 microsoft google 마이크로소프트 구글 무료"
+    },
+    "searchWordsDelay": {
+        "message": "딜레이 지연 요청간격 쉬는시간 속도 성능 느림 느려요"
+    },
+    "searchWordsExplanations": {
+        "message": "ai gemini openai 제미나이 챗gpt 단어설명 단어뜻 뜻풀이 의미 사전 문화 역사 유래 어원 맥락 문맥 클릭 사이드패널 패널 설명창 키 켜기 끄기"
+    },
+    "searchWordsPause": {
+        "message": "일시정지 정지 멈춤 자동정지 자동멈춤"
+    },
+    "searchWordsTheme": {
+        "message": "테마 다크모드 라이트모드 야간모드 어둡게 어두운 밝게 밝은 패널 설명창 색깔 색상"
+    },
+    "searchWordsLimits": {
+        "message": "시간초과 타임아웃 대기시간 제한 요청제한 재시도 횟수 캐시 기억 주소 url 엔드포인트 서버"
+    },
+    "searchWordsSiteOnOff": {
+        "message": "netflix disney 넷플릭스 넷플 디즈니 디즈니플러스 켜기 끄기 켜짐 꺼짐 활성화 비활성화 이중자막"
+    },
+    "searchWordsHide": {
+        "message": "두번 두 번 두개 2번 2개 중복 겹쳐 겹침 겹치는 이중 똑같은 숨김 가리기 끄기 자체자막 공식자막 공식 원래자막 기본자막 netflix disney 넷플릭스 넷플 디즈니"
+    },
+    "searchWordsSiteOwn": {
+        "message": "사이트별 개별설정 별도 전용 프로필 다르게 각각"
+    },
+    "searchWordsFilters": {
+        "message": "필터 규칙 제외 차단 무시 블랙리스트 강제자막 건너뛰기"
+    },
+    "searchWordsBackup": {
+        "message": "내보내기 가져오기 복원 복구 파일 저장 불러오기 설정파일 다운로드 업로드"
+    },
+    "searchWordsJson": {
+        "message": "json 원본 설정원본 개발자 복사"
+    },
+    "searchWordsLogging": {
+        "message": "로그 로깅 기록 디버그 디버깅 진단보고서 보고서 버그 버그신고 개발자도구"
+    },
+    "searchWordsReset": {
+        "message": "초기화 모두초기화 리셋 기본값 기본설정 원래대로 되돌리기 추천설정"
+    },
+    "searchWordsPageLanguage": {
+        "message": "ui 화면언어 표시언어 메뉴언어 인터페이스 페이지 언어설정 언어변경 바꾸기"
+    },
+    "searchWordsNoSubtitles": {
+        "message": "자막안나옴 자막없음 안나와요 안나옴 안보임 안보여요 안뜸 안떠요 사라짐 사라져요 없음 없어요 문제 오류 고장 작동 안됨 도움말 해결"
+    },
+    "searchSiteOwn": {
+        "message": "사이트마다 설정 따로 정하기"
+    },
+    "topSettings": {
+        "message": "설정"
+    },
+    "topSkipToContent": {
+        "message": "설정으로 바로 가기"
+    },
+    "translationAiSetupTitle": {
+        "message": "AI 번역 설정하기"
+    },
+    "translationDeepLKeyHelp": {
+        "message": "DeepL에 로그인해서 계정 페이지를 열고, “API keys” 아래에 있는 키를 복사하세요."
+    },
+    "translationDeepLOpen": {
+        "message": "DeepL 열기"
+    },
+    "translationDeepLPlan": {
+        "message": "어떤 요금제를 쓰고 있나요?"
+    },
+    "translationDeepLSetupTitle": {
+        "message": "DeepL 설정하기"
+    },
+    "translationDelayHelp": {
+        "message": "서비스에서 요청이 너무 많다는 오류가 나면 값을 올리세요. 추천 값: 150밀리초."
+    },
+    "translationDelayTitle": {
+        "message": "번역 요청 사이 간격 (밀리초)"
+    },
+    "translationFallbackHelp": {
+        "message": "고른 서비스가 작동하지 않으면, 다시 될 때까지 Microsoft 번역, 그다음 Google 번역 순서로 대신 번역해요. 자막 내용을 고른 서비스로만 보내려면 이 기능을 끄세요."
+    },
+    "translationFallbackTitle": {
+        "message": "이 서비스가 안 될 때도 번역 계속하기"
+    },
+    "translationLead": {
+        "message": "공식 자막이 없을 때 아래 줄을 누가 번역할지 정해요."
+    },
+    "translationServiceTitle": {
+        "message": "번역 서비스"
+    },
+    "translationVertexHelp": {
+        "message": "서비스 계정 파일을 한 번 가져와 잠시 쓸 수 있는 토큰을 만들거나, 토큰을 직접 붙여넣으세요. 파일 자체는 저장하지 않아요."
+    },
+    "translationVertexSetupTitle": {
+        "message": "Google Vertex AI 설정하기"
     }
 }

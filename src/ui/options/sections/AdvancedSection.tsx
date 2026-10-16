@@ -1,99 +1,379 @@
-import type { SettingsValues } from '@/config/schema';
-import { SettingCard } from '../SettingCard';
-import { ToggleSwitch } from '../ToggleSwitch';
+import { useEffect, useRef, useState } from 'react';
+import { browser } from 'wxt/browser';
+import {
+    getDefaultValue,
+    isSettingsKey,
+    sameSettingValue,
+    SENSITIVE_KEYS,
+    SETTINGS_KEYS,
+    validateSetting,
+    prepareSettingValue,
+    type SettingsKey,
+    type SettingsValues,
+} from '@/config/schema';
+import { configService } from '@/config/service';
+import { useFeedback } from '../shell/feedback';
 import type { SectionProps } from '../types';
 
-const THEMES: { id: SettingsValues['sidePanelTheme']; labelKey: string }[] = [
-    { id: 'auto', labelKey: 'themeAuto' },
-    { id: 'light', labelKey: 'themeLight' },
-    { id: 'dark', labelKey: 'themeDark' },
+/** Credentials, their expiry, and how the page itself reads stay when
+ *  everything else goes back to the recommended values. */
+const KEPT_ON_RESET: readonly SettingsKey[] = [
+    ...SENSITIVE_KEYS,
+    'vertexTokenExpiresAt',
+    'uiLanguage',
+    'showAdvancedSettings',
 ];
 
-function isTheme(value: string): value is SettingsValues['sidePanelTheme'] {
-    return THEMES.some((theme) => theme.id === value);
+const LOGGING_LEVELS = [
+    { level: 0, labelKey: 'advancedLoggingOff' },
+    { level: 1, labelKey: 'advancedLoggingErrors' },
+    { level: 2, labelKey: 'advancedLoggingWarnings' },
+    { level: 3, labelKey: 'advancedLoggingNormal' },
+    { level: 4, labelKey: 'advancedLoggingEverything' },
+] as const;
+
+/** Everything stored except credentials, as one JSON document. */
+async function readStoredSettings(): Promise<Partial<SettingsValues>> {
+    const { values } = await configService.readAllResultStrict();
+    return values;
+}
+
+/** The changes a backup file would make: valid, non-sensitive keys whose
+ *  value differs from what is stored. */
+function changesFrom(
+    text: string,
+    current: Partial<SettingsValues>
+): Partial<SettingsValues> | null {
+    let parsed: unknown;
+    try {
+        parsed = JSON.parse(text);
+    } catch {
+        return null;
+    }
+    if (
+        typeof parsed !== 'object' ||
+        parsed === null ||
+        Array.isArray(parsed)
+    ) {
+        return null;
+    }
+    const changes: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(parsed)) {
+        if (
+            isSettingsKey(key) &&
+            !SENSITIVE_KEYS.includes(key) &&
+            validateSetting(key, value)
+        ) {
+            const prepared = prepareSettingValue(key, value);
+            if (!sameSettingValue(prepared, current[key])) {
+                changes[key] = prepared;
+            }
+        }
+    }
+    return changes;
+}
+
+function download(name: string, text: string): void {
+    const url = URL.createObjectURL(
+        new Blob([text], { type: 'application/json' })
+    );
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = name;
+    link.click();
+    URL.revokeObjectURL(url);
 }
 
 export function AdvancedSection({ t, settings, save }: SectionProps) {
-    return (
-        <section id="advanced">
-            <h2>{t('advancedTitle')}</h2>
+    const feedback = useFeedback();
+    const [stored, setStored] = useState<Partial<SettingsValues> | null>(null);
+    const [pending, setPending] = useState<Partial<SettingsValues> | null>(
+        null
+    );
+    const [loadError, setLoadError] = useState(false);
+    const [confirmReset, setConfirmReset] = useState(false);
+    const fileInput = useRef<HTMLInputElement | null>(null);
+    const chooseFile = useRef<HTMLButtonElement | null>(null);
+    const resetButton = useRef<HTMLButtonElement | null>(null);
+    const cancelReset = useRef<HTMLButtonElement | null>(null);
+    const wasConfirming = useRef(false);
+    const json = stored ? JSON.stringify(stored, null, 2) : '';
 
-            <SettingCard
-                title={t('sidePanelBehaviorTitle')}
-                description={t('sidePanelBehaviorDescription')}
-            >
-                <div className="setting">
-                    <label htmlFor="sidePanelAutoOpen">
-                        {t('autoOpenSidePanel')}
-                    </label>
-                    <ToggleSwitch
-                        id="sidePanelAutoOpen"
-                        checked={settings.sidePanelAutoOpen}
-                        onChange={(checked) =>
-                            void save({ sidePanelAutoOpen: checked })
+    useEffect(() => {
+        let active = true;
+        const refresh = (): void => {
+            void readStoredSettings().then(
+                (values) => {
+                    if (active) {
+                        setStored(values);
+                    }
+                },
+                () => undefined
+            );
+        };
+        refresh();
+        const stop = configService.onChanged(refresh);
+        return () => {
+            active = false;
+            stop();
+        };
+    }, []);
+
+    useEffect(() => {
+        if (confirmReset) {
+            cancelReset.current?.focus();
+        } else if (wasConfirming.current) {
+            resetButton.current?.focus();
+        }
+        wasConfirming.current = confirmReset;
+    }, [confirmReset]);
+
+    /** Write `changes`, with an Undo that puts back what they replaced. */
+    const replaceSettings = (
+        changes: Partial<SettingsValues>,
+        message: string
+    ): void => {
+        let before: Partial<SettingsValues> = {};
+        void feedback.apply(
+            async () => {
+                before = await configService.getMultiple(Object.keys(changes));
+                await configService.setMultiple(changes);
+            },
+            message,
+            () => configService.setMultiple(before)
+        );
+    };
+
+    const closeLoad = (): void => {
+        setPending(null);
+        chooseFile.current?.focus();
+    };
+
+    const copy = (text: string, message: string): void => {
+        navigator.clipboard.writeText(text).then(
+            () => feedback.notify(message, 'done'),
+            () => feedback.notify(t('advancedCopyFailed'), 'problem')
+        );
+    };
+
+    const diagnosticReport = (): string =>
+        [
+            `DualSub ${browser.runtime.getManifest().version}`,
+            navigator.userAgent,
+            json,
+        ].join('\n\n');
+
+    return (
+        <section className="section" aria-labelledby="advanced-title">
+            <h1 id="advanced-title" tabIndex={-1}>
+                {t('navAdvanced')}
+            </h1>
+            <p className="lead">{t('advancedLead')}</p>
+
+            <div className="card" id="backup">
+                <h2 className="label">{t('advancedBackupTitle')}</h2>
+                <div className="row">
+                    <div className="grow">
+                        <div className="strong">{t('advancedSaveFile')}</div>
+                        <p className="help">{t('advancedSaveFileHelp')}</p>
+                    </div>
+                    <button
+                        type="button"
+                        className="button"
+                        disabled={!stored}
+                        onClick={() =>
+                            download('dualsub-settings.json', `${json}\n`)
                         }
+                    >
+                        {t('advancedDownload')}
+                    </button>
+                </div>
+                <div className="row">
+                    <div className="grow">
+                        <div className="strong">{t('advancedLoadFile')}</div>
+                        <p className="help">{t('advancedLoadFileHelp')}</p>
+                    </div>
+                    <button
+                        ref={chooseFile}
+                        type="button"
+                        className="button"
+                        onClick={() => fileInput.current?.click()}
+                    >
+                        {t('advancedChooseFile')}
+                    </button>
+                    <input
+                        ref={fileInput}
+                        type="file"
+                        accept=".json,application/json"
+                        hidden
+                        aria-label={t('advancedLoadFile')}
+                        onChange={(event) => {
+                            const file = event.target.files?.[0];
+                            event.target.value = '';
+                            if (!file || !stored) {
+                                return;
+                            }
+                            void file.text().then((text) => {
+                                const changes = changesFrom(text, stored);
+                                setLoadError(changes === null);
+                                setPending(changes);
+                            });
+                        }}
                     />
                 </div>
-                <p className="setting-description">
-                    {t('autoOpenSidePanelDescription')}
-                </p>
+                {loadError && (
+                    <p className="status-line error" role="alert">
+                        {t('advancedLoadUnreadable')}
+                    </p>
+                )}
+                {pending && (
+                    <div className="notice" role="status">
+                        <div className="grow">
+                            {Object.keys(pending).length === 0
+                                ? t('advancedLoadNothing')
+                                : t(
+                                      'advancedLoadPreview',
+                                      Object.keys(pending).length
+                                  )}
+                        </div>
+                        {Object.keys(pending).length > 0 && (
+                            <button
+                                type="button"
+                                className="button primary"
+                                onClick={() => {
+                                    closeLoad();
+                                    replaceSettings(pending, t('toastLoaded'));
+                                }}
+                            >
+                                {t('advancedLoadApply')}
+                            </button>
+                        )}
+                        <button
+                            type="button"
+                            className="button"
+                            onClick={closeLoad}
+                        >
+                            {t('commonCancel')}
+                        </button>
+                    </div>
+                )}
+            </div>
 
-                <div className="setting">
-                    <label htmlFor="sidePanelTheme">
-                        {t('sidePanelTheme')}
+            <div className="card" id="json">
+                <div className="row">
+                    <div className="grow">
+                        <h2 className="label">{t('advancedJsonTitle')}</h2>
+                        <p className="help">{t('advancedJsonHelp')}</p>
+                    </div>
+                    <button
+                        type="button"
+                        className="button"
+                        disabled={!stored}
+                        onClick={() => copy(json, t('toastCopied'))}
+                    >
+                        {t('advancedCopy')}
+                    </button>
+                </div>
+                <pre className="code" tabIndex={0}>
+                    {json}
+                </pre>
+            </div>
+
+            <div className="card" id="troubleshooting">
+                <h2 className="label">{t('advancedTroubleshootingTitle')}</h2>
+                <div className="row">
+                    <label className="strong grow" htmlFor="logging-level">
+                        {t('advancedLoggingTitle')}
                     </label>
                     <select
-                        id="sidePanelTheme"
-                        value={settings.sidePanelTheme}
-                        onChange={(event) => {
-                            if (isTheme(event.target.value)) {
-                                void save({
-                                    sidePanelTheme: event.target.value,
-                                });
-                            }
-                        }}
+                        id="logging-level"
+                        className="field"
+                        value={settings.loggingLevel}
+                        onChange={(event) =>
+                            void save({
+                                loggingLevel: Number(event.target.value),
+                            })
+                        }
                     >
-                        {THEMES.map((theme) => (
-                            <option key={theme.id} value={theme.id}>
-                                {t(theme.labelKey)}
+                        {LOGGING_LEVELS.map(({ level, labelKey }) => (
+                            <option key={level} value={level}>
+                                {t(labelKey)}
                             </option>
                         ))}
                     </select>
                 </div>
-            </SettingCard>
-
-            <SettingCard
-                title={t('videoControlTitle')}
-                description={t('videoControlDescription')}
-            >
-                <div className="setting">
-                    <label htmlFor="sidePanelAutoPauseVideo">
-                        {t('autoPauseVideo')}
-                    </label>
-                    <ToggleSwitch
-                        id="sidePanelAutoPauseVideo"
-                        checked={settings.sidePanelAutoPauseVideo}
-                        onChange={(checked) =>
-                            void save({ sidePanelAutoPauseVideo: checked })
+                <div className="row">
+                    <div className="grow">
+                        <div className="strong">{t('advancedReportTitle')}</div>
+                        <p className="help">{t('advancedReportHelp')}</p>
+                    </div>
+                    <button
+                        type="button"
+                        className="button"
+                        disabled={!stored}
+                        onClick={() =>
+                            copy(diagnosticReport(), t('toastReportCopied'))
                         }
-                    />
+                    >
+                        {t('advancedReportCopy')}
+                    </button>
                 </div>
-                <p className="setting-description">
-                    {t('autoPauseVideoDescription')}
-                </p>
-            </SettingCard>
+            </div>
 
-            <SettingCard
-                title={t('advancedWarningTitle')}
-                description={t('advancedWarningDescription')}
-            >
-                <div className="info-message">
-                    <span className="info-message-icon" aria-hidden="true">
-                        ⚠
-                    </span>
-                    {t('advancedNote')}
-                </div>
-            </SettingCard>
+            <div className="card" id="reset">
+                <h2 className="label">{t('advancedResetTitle')}</h2>
+                {confirmReset ? (
+                    <div
+                        className="row"
+                        role="group"
+                        aria-labelledby="reset-confirm"
+                    >
+                        <div className="strong grow" id="reset-confirm">
+                            {t('advancedResetConfirm')}
+                        </div>
+                        <div className="inline">
+                            <button
+                                type="button"
+                                className="button danger"
+                                onClick={() => {
+                                    setConfirmReset(false);
+                                    const defaults: Record<string, unknown> =
+                                        {};
+                                    for (const key of SETTINGS_KEYS) {
+                                        if (!KEPT_ON_RESET.includes(key)) {
+                                            defaults[key] =
+                                                getDefaultValue(key);
+                                        }
+                                    }
+                                    replaceSettings(defaults, t('toastReset'));
+                                }}
+                            >
+                                {t('advancedResetDo')}
+                            </button>
+                            <button
+                                ref={cancelReset}
+                                type="button"
+                                className="button"
+                                onClick={() => setConfirmReset(false)}
+                            >
+                                {t('commonCancel')}
+                            </button>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="row">
+                        <p className="help grow">{t('advancedResetHelp')}</p>
+                        <button
+                            ref={resetButton}
+                            type="button"
+                            className="button"
+                            onClick={() => setConfirmReset(true)}
+                        >
+                            {t('advancedResetButton')}
+                        </button>
+                    </div>
+                )}
+            </div>
         </section>
     );
 }

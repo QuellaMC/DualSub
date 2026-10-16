@@ -1,129 +1,211 @@
+import { useState } from 'react';
 import { validateSetting } from '@/config/schema';
+import { Icon } from '../../design/Icon';
 import type { Translate } from '../../hooks/useI18n';
 import { useCommittedTextField } from '../../hooks/useCommittedTextField';
-import { FieldError } from '../FieldError';
+import { CommittedField } from '../controls/CommittedField';
 import { useOpenAIModels } from '../hooks/useOpenAIModels';
-import { SettingCard } from '../SettingCard';
-import { SparkleButton } from '../SparkleButton';
 import { TestResultDisplay } from '../TestResultDisplay';
 import type { SaveSettings } from '../types';
+
+/** Services most people mean by "AI translation", by their compatible
+ *  endpoint; anything else is another service at its own address. */
+const AI_SERVICES = [
+    {
+        id: 'gemini',
+        labelKey: 'setupServiceGemini',
+        baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
+        model: 'gemini-2.5-flash',
+        keyPage: 'https://aistudio.google.com/apikey',
+        keyHelpKey: 'setupGeminiKeyHelp',
+    },
+    {
+        id: 'openai',
+        labelKey: 'setupServiceOpenAI',
+        baseUrl: 'https://api.openai.com/v1',
+        model: 'gpt-5.6-luna',
+        keyPage: 'https://platform.openai.com/api-keys',
+        keyHelpKey: 'setupOpenAIKeyHelp',
+    },
+] as const;
 
 export function OpenAICompatibleProviderCard({
     t,
     apiKey,
     baseUrl,
     model,
+    advanced,
     save,
 }: {
     t: Translate;
     apiKey: string;
     baseUrl: string;
     model: string;
+    advanced: boolean;
     save: SaveSettings;
 }) {
     const catalog = useOpenAIModels(t, apiKey, baseUrl);
     const baseUrlField = useCommittedTextField({
         value: baseUrl,
         validate: (draft) => validateSetting('openaiCompatibleBaseUrl', draft),
-        onCommit: (draft) => save({ openaiCompatibleBaseUrl: draft }),
+        onCommit: (draft) => save({ openaiCompatibleBaseUrl: draft }, 'quiet'),
     });
+    const preset = AI_SERVICES.find((entry) => entry.baseUrl === baseUrl);
+    const [choseOther, setChoseOther] = useState(false);
+    const service = choseOther ? undefined : preset;
     // The saved model stays selectable even when the endpoint does not list it.
     const models = catalog.models.includes(model)
         ? catalog.models
         : [model, ...catalog.models];
 
     return (
-        <SettingCard
-            title={t('cardOpenAICompatibleTitle')}
-            description={t('cardOpenAICompatibleDesc')}
-        >
-            <div className="setting">
-                <label htmlFor="openaiCompatibleApiKey">
-                    {t('apiKeyLabel')}
-                </label>
-                <input
-                    type="password"
-                    id="openaiCompatibleApiKey"
-                    autoComplete="off"
-                    placeholder={t('openaiApiKeyPlaceholder')}
-                    value={apiKey}
-                    onChange={(event) =>
-                        void save({
-                            openaiCompatibleApiKey: event.target.value,
-                        })
-                    }
-                />
-            </div>
-
-            <div className="setting">
-                <label htmlFor="openaiCompatibleBaseUrl">
-                    {t('baseUrlLabel')}
-                </label>
-                <div>
-                    <input
-                        type="text"
-                        id="openaiCompatibleBaseUrl"
-                        placeholder={t('openaiBaseUrlPlaceholder')}
-                        value={baseUrlField.value}
-                        aria-invalid={baseUrlField.invalid}
-                        aria-describedby={
-                            baseUrlField.invalid
-                                ? 'openaiCompatibleBaseUrlError'
-                                : undefined
-                        }
-                        onChange={(event) =>
-                            baseUrlField.change(event.target.value)
-                        }
-                        onBlur={() => void baseUrlField.commit()}
-                        onKeyDown={baseUrlField.handleKeyDown}
-                    />
-                    <FieldError
-                        id="openaiCompatibleBaseUrlError"
-                        visible={baseUrlField.invalid}
-                        t={t}
-                    />
+        <div className="card" aria-labelledby="ai-translation-setup">
+            <h2 className="label" id="ai-translation-setup">
+                {t('translationAiSetupTitle')}
+            </h2>
+            <ol className="steps">
+                <li>
+                    <div>
+                        <div className="strong" id="ai-translation-service">
+                            {t('setupChooseService')}
+                        </div>
+                        <div
+                            className="segmented"
+                            role="group"
+                            aria-labelledby="ai-translation-service"
+                        >
+                            {AI_SERVICES.map((entry) => (
+                                <button
+                                    key={entry.id}
+                                    type="button"
+                                    aria-pressed={service?.id === entry.id}
+                                    onClick={() => {
+                                        setChoseOther(false);
+                                        void save(
+                                            {
+                                                openaiCompatibleBaseUrl:
+                                                    entry.baseUrl,
+                                                openaiCompatibleModel:
+                                                    entry.model,
+                                            },
+                                            'quiet'
+                                        );
+                                    }}
+                                >
+                                    {t(entry.labelKey)}
+                                </button>
+                            ))}
+                            <button
+                                type="button"
+                                aria-pressed={service === undefined}
+                                onClick={() => setChoseOther(true)}
+                            >
+                                {t('setupServiceOther')}
+                            </button>
+                        </div>
+                    </div>
+                </li>
+                <li>
+                    <div>
+                        <div className="strong">{t('setupGetKey')}</div>
+                        <p className="help">
+                            {t(service?.keyHelpKey ?? 'setupOtherKeyHelp')}
+                        </p>
+                        {service && (
+                            <a
+                                className="button"
+                                href={service.keyPage}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                {t('setupOpenKeyPage', t(service.labelKey))}
+                                <Icon name="external" />
+                            </a>
+                        )}
+                    </div>
+                </li>
+                <li>
+                    <div className="grow">
+                        <label
+                            className="strong"
+                            htmlFor="openaiCompatibleApiKey"
+                        >
+                            {t('setupPasteKey')}
+                        </label>
+                        <div className="inline wrap">
+                            <input
+                                type="password"
+                                id="openaiCompatibleApiKey"
+                                className="field grow"
+                                autoComplete="off"
+                                value={apiKey}
+                                onChange={(event) =>
+                                    void save(
+                                        {
+                                            openaiCompatibleApiKey:
+                                                event.target.value,
+                                        },
+                                        'quiet'
+                                    )
+                                }
+                            />
+                            <button
+                                type="button"
+                                className="button primary"
+                                onClick={catalog.test}
+                                disabled={catalog.busy !== 'idle' || !apiKey}
+                            >
+                                {catalog.busy === 'testing'
+                                    ? t('testingButton')
+                                    : t('setupCheckKey')}
+                            </button>
+                        </div>
+                        <TestResultDisplay result={catalog.result} />
+                    </div>
+                </li>
+            </ol>
+            {(advanced || service === undefined) && (
+                <div className="controls-grid">
+                    <div className="control">
+                        <label htmlFor="openaiCompatibleBaseUrl">
+                            {t('setupAddress')}
+                        </label>
+                        <CommittedField
+                            t={t}
+                            id="openaiCompatibleBaseUrl"
+                            field={baseUrlField}
+                            type="url"
+                            className="wide mono"
+                            placeholder="https://…/v1"
+                        />
+                    </div>
+                    <div className="control">
+                        <label htmlFor="openaiCompatibleModel">
+                            {t('setupModel')}
+                        </label>
+                        <select
+                            id="openaiCompatibleModel"
+                            className="field wide mono"
+                            value={model}
+                            onChange={(event) =>
+                                void save(
+                                    {
+                                        openaiCompatibleModel:
+                                            event.target.value,
+                                    },
+                                    'quiet'
+                                )
+                            }
+                        >
+                            {models.map((id) => (
+                                <option key={id} value={id}>
+                                    {id}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
                 </div>
-            </div>
-
-            <div className="setting">
-                <label htmlFor="openaiCompatibleModel">{t('modelLabel')}</label>
-                <select
-                    id="openaiCompatibleModel"
-                    value={model}
-                    onChange={(event) =>
-                        void save({ openaiCompatibleModel: event.target.value })
-                    }
-                >
-                    {models.map((id) => (
-                        <option key={id} value={id}>
-                            {id}
-                        </option>
-                    ))}
-                </select>
-            </div>
-
-            <div className="setting test-setting">
-                <TestResultDisplay result={catalog.result} />
-                <SparkleButton
-                    onClick={catalog.test}
-                    disabled={catalog.busy !== 'idle' || !apiKey}
-                >
-                    {catalog.busy === 'testing'
-                        ? t('testingButton')
-                        : t('testConnectionButton')}
-                </SparkleButton>
-            </div>
-
-            <div className="provider-info">
-                <div className="info-item">
-                    <strong>{t('providerFeatures')}</strong>
-                    <ul>
-                        <li>{t('featureCustomizable')}</li>
-                        <li>{t('featureApiKeyRequired')}</li>
-                        <li>{t('featureWideLanguageSupport')}</li>
-                    </ul>
-                </div>
-            </div>
-        </SettingCard>
+            )}
+        </div>
     );
 }

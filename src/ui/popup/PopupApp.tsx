@@ -14,7 +14,8 @@ import {
 } from '../contentTab';
 import { AppearanceSettings, type SliderKey } from './AppearanceSettings';
 import { Header } from './Header';
-import { LanguageSelector, languageLabelKey } from './LanguageSelector';
+import { languageLabelKey } from '../languageLabels';
+import { LanguageSelector } from './LanguageSelector';
 import { SettingToggle } from './SettingToggle';
 import { StatusMessage } from './StatusMessage';
 
@@ -273,7 +274,7 @@ function PopupControls({ site }: { site: PlatformId | null }) {
                 }
                 onEditCustomLook={() =>
                     void browser.tabs.create({
-                        url: `${browser.runtime.getURL('/options.html')}#appearance`,
+                        url: `${browser.runtime.getURL('/options.html')}#look`,
                     })
                 }
                 onLayoutOrderChange={(value) =>

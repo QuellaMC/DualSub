@@ -9,15 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- A new settings page holds every setting, the popup's included, in plain words. It opens on Start, which says whether DualSub is ready and what it set up for you, followed by Languages, How subtitles look (ready-made looks and a live preview over a sample video), Timing, Translation, Word explanations, Sites, and Help, which fixes common problems in one click. Each change saves at once, and the notice that confirms it can undo it, as can Ctrl+Z (⌘Z). A search box finds a setting by everyday words. "Show advanced options" adds exact values, per-site settings, limits, backup and restore, the stored settings as JSON, the logging level, and a diagnostic report.
 - Each site can keep its own settings: whether DualSub runs there, hiding the site's own subtitles, the top line's language, official translations, the look, and timing. A site stores only what differs from the settings for all sites, and the popup edits the value the current site actually uses.
 - When the translation service you chose stops working (a rejected key, a used-up quota, or a request it refuses), Microsoft Translator covers, then Google Translate, so subtitles keep coming. Your service is tried again after ten minutes or as soon as its settings change, and fallback can be turned off to keep subtitle text with your chosen service only.
 - The top line follows the language spoken in the video. "Automatic" is the new default for fresh installs, and it follows the audio track when you switch it in the player; a fixed language is still there for learning one language with every video.
 
-- Subtitle styles: "Match Platform" draws both lines with the typography the platform's own player would use: the font, color, edge and background from your Netflix or Disney+ profile's subtitle appearance settings, without the platform's subtitles being on. "Custom" starts as DualSub's own look and is edited in the new Appearance section of the options page: font, weight, text color, text edge, and background, with a preview drawn by the overlay's own styling for either platform. Size stays DualSub's own slider in both, since the platforms size a single line.
+- Subtitle styles: "Match Platform" draws both lines with the typography the platform's own player would use: the font, color, edge and background from your Netflix or Disney+ profile's subtitle appearance settings, without the platform's subtitles being on. "Custom" starts as DualSub's own look and is edited in the settings page: font, weight, text color, text edge, and background, with a preview drawn by the overlay's own styling for either platform. Size stays DualSub's own slider in both, since the platforms size a single line.
 - The translation line's color is a setting of its own and applies to both styles. The popup says whether Match Platform is following your profile's settings or the platform's preset on the current tab.
 
 ### Changed
 
+- AI Context is called Word explanations, and it turns on once an AI service key is in.
 - On a fresh install the translation language is the browser's language instead of Chinese (Simplified).
 - When the video is already in the translation language, one line shows instead of the same text twice.
 

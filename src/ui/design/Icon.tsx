@@ -1,0 +1,46 @@
+const PATHS = {
+    home: ['M3 11l9-7 9 7', 'M5 10v10h14V10'],
+    languages: ['M4 5h11v8H8l-4 3z', 'M15 9h5v8l-3-2h-6v-2'],
+    look: ['M3 5h18v14H3z', 'M7 13h10M9 16h6'],
+    timing: ['M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18z', 'M12 7v5l3 2'],
+    translation: ['M4 7h12l-3-3', 'M20 17H8l3 3'],
+    explain: [
+        'M9 18h6M10 21h4',
+        'M12 3a6 6 0 0 0-3.6 10.8c.6.5.9 1.2.9 2.2h5.4c0-1 .3-1.7.9-2.2A6 6 0 0 0 12 3z',
+    ],
+    sites: ['M3 4h18v16H3z', 'M3 9h18'],
+    advanced: [
+        'M4 7h9M17 7h3M4 17h3M11 17h9',
+        'M15 5a2 2 0 1 0 0 4a2 2 0 1 0 0-4zM9 15a2 2 0 1 0 0 4a2 2 0 1 0 0-4z',
+    ],
+    help: [
+        'M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18z',
+        'M9.6 9.4a2.5 2.5 0 1 1 3.4 2.4c-.6.3-1 .8-1 1.5v.7M12 17h.01',
+    ],
+    search: ['M11 4a7 7 0 1 0 0 14a7 7 0 1 0 0-14z', 'M20 20l-3.5-3.5'],
+    globe: [
+        'M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18z',
+        'M3 12h18M12 3c2.8 3.2 2.8 14.8 0 18M12 3c-2.8 3.2-2.8 14.8 0 18',
+    ],
+    check: ['M5 12.5l4.5 4.5L19 7.5'],
+    chevron: ['M9 6l6 6-6 6'],
+    up: ['M12 19V5M6 11l6-6 6 6'],
+    down: ['M12 5v14M6 13l6 6 6-6'],
+    earlier: ['M19 12H5M11 6l-6 6 6 6'],
+    later: ['M5 12h14M13 6l6 6-6 6'],
+    external: ['M14 5h5v5M19 5l-8 8M18 14v5H5V6h5'],
+    alert: ['M12 4l9 16H3z', 'M12 10v4M12 17h.01'],
+    close: ['M6 6l12 12M18 6L6 18'],
+} as const;
+
+export type IconName = keyof typeof PATHS;
+
+export function Icon({ name }: { name: IconName }) {
+    return (
+        <svg className="icon" viewBox="0 0 24 24" aria-hidden="true">
+            {PATHS[name].map((d) => (
+                <path key={d} d={d} />
+            ))}
+        </svg>
+    );
+}

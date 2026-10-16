@@ -47,12 +47,5 @@ export function LookPreview({
         return () => elements.container.remove();
     }, [display, look, originalText, translatedText]);
 
-    return (
-        <div
-            className="look-preview"
-            ref={frame}
-            role="img"
-            aria-label={label}
-        />
-    );
+    return <div className="screen" ref={frame} role="img" aria-label={label} />;
 }

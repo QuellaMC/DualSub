@@ -50,7 +50,9 @@ export type Translate = (
 /**
  * Extension-page i18n keyed by the user's chosen UI language rather than the
  * browser locale. `t` returns the key itself until a catalog is loaded, and
- * `ready` says whether the current locale's catalog is in place.
+ * `ready` says whether the current locale's catalog is in place. The page
+ * declares the loaded locale as its language, which picks the right glyphs
+ * for Chinese and Japanese text and the right voice for screen readers.
  */
 export function useI18n(locale: string | null): {
     readonly t: Translate;
@@ -84,6 +86,12 @@ export function useI18n(locale: string | null): {
             active = false;
         };
     }, [locale]);
+
+    useEffect(() => {
+        if (loaded) {
+            document.documentElement.lang = loaded.locale;
+        }
+    }, [loaded]);
 
     const catalog = loaded?.catalog;
     const t = useCallback<Translate>(
