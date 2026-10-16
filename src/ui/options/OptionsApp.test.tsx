@@ -372,6 +372,28 @@ describe('OptionsApp', () => {
         ).toBeInTheDocument();
     });
 
+    it('says so on the card for every site when its settings cannot be read', async () => {
+        const read = configService.readMultipleResultStrict.bind(configService);
+        vi.spyOn(configService, 'readMultipleResultStrict').mockImplementation(
+            (keys, options) =>
+                options?.site === undefined &&
+                keys.length === 2 &&
+                keys.includes('hideOfficialSubtitles')
+                    ? Promise.reject(new Error('broken'))
+                    : read(keys, options)
+        );
+        location.hash = '#sites';
+        await renderReady();
+        const card = (
+            await screen.findByRole('heading', {
+                name: "Hide the site's own subtitles",
+            })
+        ).closest('.card');
+        expect(
+            within(card as HTMLElement).getByRole('alert')
+        ).toHaveTextContent('Failed to load settings');
+    });
+
     it('keeps the export in step with every change, even while storage cannot be read', async () => {
         await fakeBrowser.storage.local.set({ showAdvancedSettings: true });
         location.hash = '#advanced';
@@ -1107,6 +1129,25 @@ describe('OptionsApp', () => {
         await renderReady();
         expect(screen.getByText(/isn't set up yet$/)).toBeInTheDocument();
         expect(screen.queryByText('DualSub is ready')).not.toBeInTheDocument();
+    });
+
+    it('says Vertex needs setting up again when its token runs out while the page is open', async () => {
+        await fakeBrowser.storage.sync.set({
+            selectedProvider: 'vertex_gemini',
+            translationFallback: false,
+            vertexProjectId: 'my-project-123',
+            vertexLocation: 'us-central1',
+            vertexModel: 'gemini-2.5-flash',
+        });
+        await fakeBrowser.storage.local.set({
+            vertexAccessToken: 'ya29.token',
+            vertexTokenExpiresAt: Date.now() + 1500,
+        });
+        await renderReady();
+        expect(screen.getByText('DualSub is ready')).toBeInTheDocument();
+        expect(
+            await screen.findByText("Google Vertex AI isn't set up yet")
+        ).toBeInTheDocument();
     });
 
     it('says when the chosen service still needs setting up and nothing covers', async () => {
