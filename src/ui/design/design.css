@@ -191,6 +191,11 @@ a {
     border: 1px solid var(--line);
 }
 
+.tag.danger {
+    background: var(--danger-soft);
+    color: var(--danger);
+}
+
 .button {
     display: inline-flex;
     align-items: center;

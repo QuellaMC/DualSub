@@ -35,20 +35,37 @@ const BACKED_UP = SETTINGS_KEYS.filter((key) => !NOT_BACKED_UP.includes(key));
  *  values: what is not backed up, how the page itself reads, and the
  *  setup of every key that stays, so a kept key never goes to a host it was
  *  not set up for. A setup without a key is reset with the rest. */
-function keptOnReset(settings: SectionProps['settings']): Set<SettingsKey> {
+function keptOnReset(credentials: Partial<SettingsValues>): Set<SettingsKey> {
     const kept = new Set<SettingsKey>([
         ...NOT_BACKED_UP,
         'uiLanguage',
         'showAdvancedSettings',
     ]);
     for (const [credential, setup] of Object.entries(CREDENTIAL_SETUP)) {
-        if (settings[credential as keyof typeof CREDENTIAL_SETUP] !== '') {
+        if (
+            (credentials[credential as keyof typeof CREDENTIAL_SETUP] ?? '') !==
+            ''
+        ) {
             for (const key of setup) {
                 kept.add(key);
             }
         }
     }
     return kept;
+}
+
+/** What a reset writes, judged by the keys stored when it runs: a key
+ *  saved just before it keeps the setup it was entered with. */
+async function resetChanges(): Promise<Partial<SettingsValues>> {
+    const kept = keptOnReset(
+        await configService.getMultiple(Object.keys(CREDENTIAL_SETUP))
+    );
+    return Object.fromEntries(
+        SETTINGS_KEYS.filter((key) => !kept.has(key)).map((key) => [
+            key,
+            getDefaultValue(key),
+        ])
+    );
 }
 
 const LOGGING_LEVELS = [
@@ -160,24 +177,26 @@ export function AdvancedSection({ t, settings, save }: SectionProps) {
         wasConfirming.current = confirmReset;
     }, [confirmReset]);
 
-    /** Write `changes`, with an Undo that puts back what they replaced;
-     *  each lands whole or not at all. The site profiles go back value by
-     *  value, over any change another page made since. */
+    /** Write the changes `build` makes when this change's turn comes, with
+     *  an Undo that puts back what they replaced; each lands whole or not
+     *  at all. The site profiles go back value by value, over any change
+     *  another page made since. */
     const replaceSettings = (
-        changes: Partial<SettingsValues>,
+        build: () => Promise<Partial<SettingsValues>>,
         message: string
     ): void => {
-        const keys = Object.keys(changes);
+        let changes: Partial<SettingsValues> = {};
         let before: Partial<SettingsValues> = {};
         void feedback.apply(
             async () => {
-                before = await wholly(keys, () =>
+                changes = await build();
+                before = await wholly(Object.keys(changes), () =>
                     configService.setMultiple(changes)
                 );
             },
             message,
             () =>
-                wholly(keys, () =>
+                wholly(Object.keys(changes), () =>
                     changes.siteProfiles === undefined
                         ? configService.setMultiple(before)
                         : configService.restoreSiteValues(
@@ -244,6 +263,7 @@ export function AdvancedSection({ t, settings, save }: SectionProps) {
                         ref={chooseFile}
                         type="button"
                         className="button"
+                        disabled={!stored}
                         onClick={() => fileInput.current?.click()}
                     >
                         {t('advancedChooseFile')}
@@ -297,7 +317,10 @@ export function AdvancedSection({ t, settings, save }: SectionProps) {
                                 className="button primary"
                                 onClick={() => {
                                     closeLoad();
-                                    replaceSettings(backup, t('toastLoaded'));
+                                    replaceSettings(
+                                        () => Promise.resolve(backup),
+                                        t('toastLoaded')
+                                    );
                                 }}
                             >
                                 {t('advancedLoadApply')}
@@ -392,16 +415,10 @@ export function AdvancedSection({ t, settings, save }: SectionProps) {
                                 className="button danger"
                                 onClick={() => {
                                     setConfirmReset(false);
-                                    const defaults: Record<string, unknown> =
-                                        {};
-                                    const kept = keptOnReset(settings);
-                                    for (const key of SETTINGS_KEYS) {
-                                        if (!kept.has(key)) {
-                                            defaults[key] =
-                                                getDefaultValue(key);
-                                        }
-                                    }
-                                    replaceSettings(defaults, t('toastReset'));
+                                    replaceSettings(
+                                        resetChanges,
+                                        t('toastReset')
+                                    );
                                 }}
                             >
                                 {t('advancedResetDo')}

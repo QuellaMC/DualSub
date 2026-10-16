@@ -1028,6 +1028,9 @@
     "startSiteOff": {
         "message": "%s: off"
     },
+    "startSiteUnreadable": {
+        "message": "%s: couldn't read"
+    },
     "startSiteOn": {
         "message": "%s: on"
     },
