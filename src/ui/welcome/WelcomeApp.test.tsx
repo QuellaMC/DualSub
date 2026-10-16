@@ -318,6 +318,30 @@ describe('WelcomeApp', () => {
         expect(screen.queryByText(/so one line shows/)).not.toBeInTheDocument();
     });
 
+    it('needs no service, and describes one line, where no running site translates', async () => {
+        await fakeBrowser.storage.sync.set({
+            selectedProvider: 'deepl',
+            translationFallback: false,
+            originalLanguage: 'en',
+            targetLanguage: 'en',
+            siteProfiles: {
+                disneyplus: { subtitlesEnabled: false, originalLanguage: 'ko' },
+            },
+        });
+        render(<WelcomeApp />);
+        expect(
+            await screen.findByText('Translation: none needed')
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByText("DeepL isn't set up yet")
+        ).not.toBeInTheDocument();
+        expect(
+            screen.getByText(
+                /The video's line is set to it too, so one line shows\./
+            )
+        ).toBeInTheDocument();
+    });
+
     it('describes the lines as the saved layout sets them', async () => {
         await fakeBrowser.storage.sync.set({
             subtitleLayoutOrder: 'translation_top',
@@ -421,6 +445,36 @@ describe('WelcomeApp', () => {
             ).toBe('ja')
         );
         expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+
+    it("keeps the switch's failure in view when the language saves after it", async () => {
+        await fakeBrowser.storage.sync.set({
+            siteProfiles: {
+                netflix: { subtitlesEnabled: false },
+                disneyplus: { subtitlesEnabled: false },
+            },
+        });
+        render(<WelcomeApp />);
+        const switchWrite = Promise.withResolvers<never>();
+        vi.spyOn(configService, 'removeSiteValues').mockReturnValueOnce(
+            switchWrite.promise
+        );
+        fireEvent.click(
+            await screen.findByRole('switch', { name: 'Dual subtitles' })
+        );
+        fireEvent.change(await changeLanguage(), {
+            target: { value: 'ja' },
+        });
+        await waitFor(async () =>
+            expect(
+                (await fakeBrowser.storage.sync.get('targetLanguage'))
+                    .targetLanguage
+            ).toBe('ja')
+        );
+        switchWrite.reject(new Error('quota'));
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+            'Failed to save setting'
+        );
     });
 
     it('says so when the language cannot be saved', async () => {

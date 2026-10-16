@@ -30,7 +30,6 @@ import {
     type SettingsProjection,
 } from '../hooks/useSettings';
 import {
-    callsForTranslation,
     siteNames,
     sitesOn,
     sitesOnTitle,
@@ -64,6 +63,9 @@ const WELCOME_KEYS = [
 
 type WelcomeKey = (typeof WELCOME_KEYS)[number];
 
+/** The page's controls that change settings. */
+type PickedControl = 'switch' | 'language';
+
 /** The sample's text takes the size it would have on a picture this many
  *  pixels tall. */
 const PICTURE_HEIGHT = 1100;
@@ -84,18 +86,15 @@ const DESCRIBED_SITE_KEYS: readonly string[] = [
 ] satisfies readonly SiteSettingKey[];
 
 /** How the lines sit, in the lead's words, as the saved settings put them:
- *  one line where the video's line is set to the viewer's language. */
+ *  one line where nothing the page describes translates. */
 function arrangementKey(
+    translates: boolean,
     settings: Pick<
         SettingsProjection<WelcomeKey>,
-        | 'originalLanguage'
-        | 'targetLanguage'
-        | 'siteProfiles'
-        | 'subtitleLayoutOrder'
-        | 'subtitleLayoutOrientation'
+        'subtitleLayoutOrder' | 'subtitleLayoutOrientation'
     >
 ): string {
-    if (sitesTranslating(settings).length === 0) {
+    if (!translates) {
         return 'welcomeArrangeOneLine';
     }
     if (settings.subtitleLayoutOrientation === 'row') {
@@ -197,16 +196,24 @@ function Welcome({
     settings: SettingsProjection<WelcomeKey>;
     save: SettingsHandle<WelcomeKey>['save'];
 }) {
-    const [saveFailed, setSaveFailed] = useState(false);
+    /** The controls whose latest change could not be saved. */
+    const [failed, setFailed] = useState<ReadonlySet<PickedControl>>(new Set());
     const [changingLanguage, setChangingLanguage] = useState(false);
-    /** Only the latest pick's save may report how it went. */
-    const latestPick = useRef(0);
+    /** Each control's latest change, the only one that may report how it
+     *  was saved; a change to another control reports on its own. */
+    const latestPicks = useRef(new Map<PickedControl, number>());
     const sites = sitesOn(settings);
     const working = sites.on.length > 0;
     const everywhere = sites.off.length === 0;
+    // The page describes the sites DualSub runs on, or every site while it
+    // runs on none, as its switch would turn them on.
+    const described = working ? sites.on : PLATFORM_IDS;
+    const translates = sitesTranslating(settings).some((site) =>
+        described.includes(site)
+    );
     const unset = useServiceUnset(settings);
     const stopped = translationStopped({
-        translating: callsForTranslation(settings),
+        translating: working && translates,
         unset,
         fallback: settings.translationFallback,
     });
@@ -237,11 +244,23 @@ function Welcome({
     const display = toDisplaySettings(settings);
     const automaticTop = settings.originalLanguage === AUTO_LANGUAGE;
     const provider = settings.selectedProvider;
-    const pick = (write: Promise<unknown>): Promise<void> => {
-        const made = ++latestPick.current;
-        const report = (failed: boolean) => (): void => {
-            if (made === latestPick.current) {
-                setSaveFailed(failed);
+    const pick = (
+        control: PickedControl,
+        write: Promise<unknown>
+    ): Promise<void> => {
+        const made = (latestPicks.current.get(control) ?? 0) + 1;
+        latestPicks.current.set(control, made);
+        const report = (saveFailed: boolean) => (): void => {
+            if (latestPicks.current.get(control) === made) {
+                setFailed((current) => {
+                    const next = new Set(current);
+                    if (saveFailed) {
+                        next.add(control);
+                    } else {
+                        next.delete(control);
+                    }
+                    return next;
+                });
             }
         };
         return write.then(report(false), report(true));
@@ -273,7 +292,7 @@ function Welcome({
                         <p className="lead">
                             {t(
                                 'welcomeLeadFormat',
-                                t(arrangementKey(settings)),
+                                t(arrangementKey(translates, settings)),
                                 t(
                                     READINESS_KEYS[readiness],
                                     siteNames(settings.uiLanguage, sites.off)
@@ -310,7 +329,7 @@ function Welcome({
                     </div>
                 </section>
 
-                {saveFailed && (
+                {failed.size > 0 && (
                     <p role="alert" className="notice danger">
                         {t('settingsSaveFailed')}
                     </p>
@@ -345,6 +364,7 @@ function Welcome({
                                     labelledBy="welcome-enabled"
                                     onChange={(subtitlesEnabled) =>
                                         pick(
+                                            'switch',
                                             configService.removeSiteValues(
                                                 PLATFORM_IDS,
                                                 ['subtitlesEnabled'],
@@ -382,7 +402,10 @@ function Welcome({
                                     labelledBy="welcome-language"
                                     value={settings.targetLanguage}
                                     onChange={(targetLanguage) =>
-                                        void pick(save({ targetLanguage }))
+                                        void pick(
+                                            'language',
+                                            save({ targetLanguage })
+                                        )
                                     }
                                 />
                                 <button
@@ -418,7 +441,12 @@ function Welcome({
                                 : 'welcomeTopFixedHelp'
                         )}
                     />
-                    {unset ? (
+                    {!translates ? (
+                        <Picked
+                            title={t('welcomeTranslationNone')}
+                            help={t('welcomeTranslationNoneHelp')}
+                        />
+                    ) : unset ? (
                         <Picked
                             ready={false}
                             title={t(

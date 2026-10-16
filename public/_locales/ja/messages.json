@@ -1592,6 +1592,12 @@
     "welcomeTranslationOfficial": {
         "message": "作品に自分の言語の公式翻訳があれば、DualSubはそれを使います。"
     },
+    "welcomeTranslationNone": {
+        "message": "翻訳：不要"
+    },
+    "welcomeTranslationNoneHelp": {
+        "message": "動画の行がもともと自分の言語なので、何も翻訳しません。"
+    },
     "welcomeOpenHelp": {
         "message": "いつもどおりにログインします。"
     },

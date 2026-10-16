@@ -1592,6 +1592,12 @@
     "welcomeTranslationOfficial": {
         "message": "影片有你的語言的官方翻譯時，DualSub 會改用官方翻譯。"
     },
+    "welcomeTranslationNone": {
+        "message": "翻譯：不需要"
+    },
+    "welcomeTranslationNoneHelp": {
+        "message": "影片的那一行本來就是你的語言，所以不用翻譯。"
+    },
     "welcomeOpenHelp": {
         "message": "像平常一樣登入。"
     },

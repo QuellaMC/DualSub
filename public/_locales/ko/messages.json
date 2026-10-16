@@ -1592,6 +1592,12 @@
     "welcomeTranslationOfficial": {
         "message": "작품에 내 언어로 된 공식 번역이 있으면 DualSub이 그걸 대신 써요."
     },
+    "welcomeTranslationNone": {
+        "message": "번역: 필요 없음"
+    },
+    "welcomeTranslationNoneHelp": {
+        "message": "영상 줄이 이미 내 언어라서 번역할 게 없어요."
+    },
     "welcomeOpenHelp": {
         "message": "평소처럼 로그인하세요."
     },

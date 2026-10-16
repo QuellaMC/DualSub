@@ -1592,6 +1592,12 @@
     "welcomeTranslationOfficial": {
         "message": "When a show has its own translation in your language, DualSub uses that instead."
     },
+    "welcomeTranslationNone": {
+        "message": "Translation: none needed"
+    },
+    "welcomeTranslationNoneHelp": {
+        "message": "The video's line is already in your language, so nothing is translated."
+    },
     "welcomeOpenHelp": {
         "message": "Sign in the way you always do."
     },
