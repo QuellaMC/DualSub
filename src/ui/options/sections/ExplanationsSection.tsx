@@ -6,6 +6,7 @@ import {
 } from '@/config/schema';
 import { configService } from '@/config/service';
 import { CONTEXT_TYPES, type ContextType } from '@/shared/contextTypes';
+import { credentialEntered } from '@/shared/providers';
 import { Icon } from '../../design/Icon';
 import { Switch } from '../../design/Switch';
 import { useChoice } from '../../design/useChoice';
@@ -96,7 +97,7 @@ export function ExplanationsSection({
     // Explanations need a key the service can be reached with, and at least
     // one kind of explanation to give.
     const ready =
-        apiKey.trim() !== '' &&
+        credentialEntered(apiKey) &&
         (provider !== 'openai' || access.permitted === true) &&
         settings.aiContextTypes.length > 0;
     const enabled = settings.aiContextEnabled;

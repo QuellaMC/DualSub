@@ -14,6 +14,7 @@ import {
     type SettingsValues,
 } from '@/config/schema';
 import { configService, type SettingsWrite } from '@/config/service';
+import { credentialEntered } from '@/shared/providers';
 import { useSettings } from '../../hooks/useSettings';
 import { confirmChange, useFeedback } from '../shell/feedback';
 import type { SectionProps } from '../types';
@@ -41,8 +42,9 @@ function keptOnReset(credentials: Partial<SettingsValues>): Set<SettingsKey> {
     ]);
     for (const [credential, setup] of Object.entries(CREDENTIAL_SETUP)) {
         if (
-            (credentials[credential as keyof typeof CREDENTIAL_SETUP] ?? '') !==
-            ''
+            credentialEntered(
+                credentials[credential as keyof typeof CREDENTIAL_SETUP]
+            )
         ) {
             for (const key of setup) {
                 kept.add(key);

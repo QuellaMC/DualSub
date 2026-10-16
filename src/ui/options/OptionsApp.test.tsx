@@ -22,6 +22,7 @@ import {
 } from 'vitest';
 import { browser } from 'wxt/browser';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
+import { getDefaultValue } from '@/config/schema';
 import { configService } from '@/config/service';
 import { installExtensionRuntimeIdentity } from '@/test-utils/extensionRuntime';
 import { installPermissionEvents } from '@/test-utils/permissionEvents';
@@ -194,6 +195,47 @@ describe('OptionsApp', () => {
         fireEvent.click(screen.getByRole('button', { name: /Show earlier/ }));
         await waitFor(async () =>
             expect(await sync('subtitleTimeOffset')).toBe(2.5)
+        );
+    });
+
+    it("keeps the scope bar when a site's settings cannot be read, so all sites can be picked again", async () => {
+        await fakeBrowser.storage.local.set({ showAdvancedSettings: true });
+        location.hash = '#look';
+        await renderReady();
+        const read = configService.readMultipleResultStrict.bind(configService);
+        vi.spyOn(configService, 'readMultipleResultStrict').mockImplementation(
+            (keys, options) =>
+                options?.site === 'netflix'
+                    ? Promise.reject(new Error('storage broken'))
+                    : read(keys, options)
+        );
+        const scopes = (): HTMLElement =>
+            screen.getByRole('group', { name: 'Settings for' });
+        fireEvent.click(
+            within(scopes()).getByRole('button', { name: /^Netflix/ })
+        );
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+            'Failed to load settings'
+        );
+
+        fireEvent.click(
+            within(scopes()).getByRole('button', { name: /^All sites/ })
+        );
+        expect(
+            await screen.findByRole('heading', {
+                level: 1,
+                name: 'How subtitles look',
+            })
+        ).toBeInTheDocument();
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+
+    it('shows a stored language the menu does not offer as the one picked', async () => {
+        await fakeBrowser.storage.sync.set({ targetLanguage: 'nl' });
+        location.hash = '#languages';
+        await renderReady();
+        expect(document.getElementById('target-language-menu')).toHaveValue(
+            'nl'
         );
     });
 
@@ -773,6 +815,31 @@ describe('OptionsApp', () => {
         ).toBeInTheDocument();
         expect(await sync('openaiCompatibleBaseUrl')).toBe(
             'https://llm.example.com/v1'
+        );
+    });
+
+    it('resets the setup of a key that is only spaces', async () => {
+        await fakeBrowser.storage.sync.set({
+            openaiCompatibleBaseUrl: 'https://llm.example.com/v1',
+        });
+        await fakeBrowser.storage.local.set({
+            openaiCompatibleApiKey: '   ',
+            showAdvancedSettings: true,
+        });
+        location.hash = '#advanced';
+        await renderReady();
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Reset everything…' })
+        );
+        fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
+
+        expect(
+            await screen.findByText(
+                'Everything is back to the recommended settings'
+            )
+        ).toBeInTheDocument();
+        expect(await sync('openaiCompatibleBaseUrl')).toBe(
+            getDefaultValue('openaiCompatibleBaseUrl')
         );
     });
 

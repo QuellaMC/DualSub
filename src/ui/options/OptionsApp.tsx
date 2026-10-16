@@ -83,8 +83,10 @@ export function OptionsApp() {
         siteTarget: 'own',
     });
     const { settings } = handle;
-    const unavailable =
-        page.status === 'unavailable' || handle.status === 'unavailable';
+    const unavailable = page.status === 'unavailable';
+    // A section's own settings that cannot be read leave the page around
+    // it in place, the scope bar included, so another scope can be picked.
+    const sectionUnavailable = handle.status === 'unavailable';
     const { t, loadedLocale } = useI18n(
         page.settings?.uiLanguage ??
             (unavailable ? detectBrowserLanguage() : null)
@@ -119,10 +121,10 @@ export function OptionsApp() {
     );
 
     useEffect(() => {
-        if (unavailable) {
+        if (unavailable || sectionUnavailable) {
             logger.error('Settings initial load unavailable');
         }
-    }, [unavailable]);
+    }, [unavailable, sectionUnavailable]);
 
     useEffect(() => {
         if (loadedLocale !== null) {
@@ -411,10 +413,23 @@ export function OptionsApp() {
                                 <div
                                     className="content"
                                     key={editing}
-                                    aria-busy={settings ? undefined : true}
+                                    aria-busy={
+                                        settings || sectionUnavailable
+                                            ? undefined
+                                            : true
+                                    }
                                 >
-                                    {settings &&
-                                        sectionContent({ t, settings, save })}
+                                    {sectionUnavailable ? (
+                                        <p
+                                            role="alert"
+                                            className="notice danger"
+                                        >
+                                            {t('settingsLoadFailed')}
+                                        </p>
+                                    ) : (
+                                        settings &&
+                                        sectionContent({ t, settings, save })
+                                    )}
                                 </div>
                                 {settings && SECTIONS[shown].preview && (
                                     <Preview
