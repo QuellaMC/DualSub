@@ -196,12 +196,13 @@ async function runMigration(): Promise<MigrationSummary> {
         );
     }
 
-    // A key from before keys recorded their origin, or one moved here from
-    // sync just now, was entered for the address set now.
+    // A key with no recorded origin, stored before keys recorded one or by
+    // an older version since, or one moved here from sync just now, was
+    // entered for the address set now.
     for (const [key, { address, origin }] of KEY_BINDINGS) {
         if (
             Object.hasOwn(localUpdates, key) ||
-            (localItems[key] && localItems[origin] === undefined)
+            (localItems[key] && !localItems[origin])
         ) {
             localUpdates[origin] =
                 originOf(

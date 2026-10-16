@@ -72,6 +72,20 @@ describe('migrateLegacyConfiguration', () => {
         );
     });
 
+    it('binds a key an older version stored after this one recorded no origin', async () => {
+        await fakeBrowser.storage.sync.set({
+            openaiBaseUrl: 'https://proxy.example.com/v1',
+        });
+        await fakeBrowser.storage.local.set({
+            openaiApiKey: 'sk-older',
+            openaiApiKeyOrigin: '',
+        });
+        await migrateLegacyConfiguration();
+        expect((await localState()).openaiApiKeyOrigin).toBe(
+            'https://proxy.example.com'
+        );
+    });
+
     it('binds a key to the address readers see, and binds no empty key', async () => {
         await fakeBrowser.storage.sync.set({
             openaiBaseUrl: 'http://insecure.example.com/v1',
