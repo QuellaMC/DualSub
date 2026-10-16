@@ -79,6 +79,39 @@ describe('WelcomeApp', () => {
         ).toHaveAttribute('href', 'https://www.disneyplus.com/');
     });
 
+    it('says when its sample shows English for a language it has no sample in', async () => {
+        await fakeBrowser.storage.sync.set({ targetLanguage: 'th' });
+        render(<WelcomeApp />);
+        expect(
+            await screen.findByText(
+                'There is no th sample here, so English stands in for it.'
+            )
+        ).toBeInTheDocument();
+    });
+
+    it('offers the switch when dual subtitles are off, as another computer may have left them', async () => {
+        await fakeBrowser.storage.sync.set({ subtitlesEnabled: false });
+        render(<WelcomeApp />);
+        expect(
+            await screen.findByText('Dual subtitles are off')
+        ).toBeInTheDocument();
+        expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+            'Welcome to DualSub'
+        );
+
+        fireEvent.click(screen.getByRole('switch', { name: 'Dual subtitles' }));
+        await waitFor(async () =>
+            expect(
+                (await fakeBrowser.storage.sync.get('subtitlesEnabled'))
+                    .subtitlesEnabled
+            ).toBe(true)
+        );
+        expect(await screen.findByText('DualSub is ready')).toBeInTheDocument();
+        expect(
+            screen.getByRole('switch', { name: 'Dual subtitles' })
+        ).toHaveAttribute('aria-checked', 'true');
+    });
+
     it('saves another translation language and opens the settings', async () => {
         const openOptions = vi
             .spyOn(browser.runtime, 'openOptionsPage')

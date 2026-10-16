@@ -803,6 +803,9 @@
     "previewSampleVideo": {
         "message": "Video de ejemplo"
     },
+    "previewStandIn": {
+        "message": "Aquí no hay una muestra en %s, así que el inglés ocupa su lugar."
+    },
     "previewShownOn": {
         "message": "Como se ve en"
     },
@@ -1300,6 +1303,9 @@
     },
     "searchWordsSiteOnOff": {
         "message": "netflix disney sitios página pagina web desactivar desactivado encender apagar prender aqui"
+    },
+    "searchWordsDualSubtitles": {
+        "message": "activar desactivar encender apagar todos los sitios en todas partes dos líneas"
     },
     "searchWordsHide": {
         "message": "dos veces doble dobles repetidos repetidas duplicados veo oficiales quitar esconder superpuestos subtitulos"

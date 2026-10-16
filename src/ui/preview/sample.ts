@@ -28,6 +28,8 @@ const SAMPLE_LINES: Record<SubtitleLanguage, string> = {
     hi: 'जहाँ चाह, वहाँ राह।',
 };
 
+/** The language the sample shows for `language`: the closest one it has
+ *  lines in, else English, standing in. */
 function offered(language: string): SubtitleLanguage {
     return closestLanguage(language, SUBTITLE_LANGUAGES) ?? 'en';
 }
@@ -45,6 +47,9 @@ export interface SampleSubtitles {
     /** Empty when the video already speaks the viewer's language, where
      *  DualSub shows one line. */
     readonly translatedText: string;
+    /** The languages picked that the sample has no lines in, where English
+     *  stands in; a backup or another computer can store one. */
+    readonly standIns: readonly string[];
 }
 
 /** The sample proverb as these settings show it over a video speaking
@@ -53,11 +58,11 @@ export function sampleSubtitles(
     settings: Pick<SettingsValues, 'originalLanguage' | 'targetLanguage'>,
     spoken: SubtitleLanguage
 ): SampleSubtitles {
+    const automatic = settings.originalLanguage === AUTO_LANGUAGE;
     const targetLanguage = offered(settings.targetLanguage);
-    const originalLanguage =
-        settings.originalLanguage === AUTO_LANGUAGE
-            ? spoken
-            : offered(settings.originalLanguage);
+    const originalLanguage = automatic
+        ? spoken
+        : offered(settings.originalLanguage);
     return {
         originalLanguage,
         targetLanguage,
@@ -65,6 +70,14 @@ export function sampleSubtitles(
         translatedText: isSameLanguage(originalLanguage, targetLanguage)
             ? ''
             : SAMPLE_LINES[targetLanguage],
+        standIns: [
+            ...new Set([
+                settings.targetLanguage,
+                ...(automatic ? [] : [settings.originalLanguage]),
+            ]),
+        ].filter(
+            (language) => closestLanguage(language, SUBTITLE_LANGUAGES) === null
+        ),
     };
 }
 

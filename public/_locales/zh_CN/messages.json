@@ -803,6 +803,9 @@
     "previewSampleVideo": {
         "message": "示例视频"
     },
+    "previewStandIn": {
+        "message": "这里没有%s的示例，所以用英语代替。"
+    },
     "previewShownOn": {
         "message": "显示在"
     },
@@ -1300,6 +1303,9 @@
     },
     "searchWordsSiteOnOff": {
         "message": "netflix disney 网飞 奈飞 迪士尼 开关 打开 关闭 开启 启用 禁用 停用 关掉 不想用 双语字幕"
+    },
+    "searchWordsDualSubtitles": {
+        "message": "开 关 开启 关闭 启用 停用 所有网站 全部 两行"
     },
     "searchWordsHide": {
         "message": "两遍 两次 重复 重影 双重 叠加 重叠 字幕重复 两遍字幕 两层字幕 两套字幕 字幕重叠 叠在一起 显示两次 三行 官方字幕 自带字幕 原字幕 网站字幕 去掉 关掉 多余"

@@ -803,6 +803,9 @@
     "previewSampleVideo": {
         "message": "예시 영상"
     },
+    "previewStandIn": {
+        "message": "여기에는 %s 예시가 없어서 영어로 대신 보여 줘요."
+    },
     "previewShownOn": {
         "message": "보는 사이트"
     },
@@ -1300,6 +1303,9 @@
     },
     "searchWordsSiteOnOff": {
         "message": "netflix disney 넷플릭스 넷플 디즈니 디즈니플러스 켜기 끄기 켜짐 꺼짐 활성화 비활성화 이중자막"
+    },
+    "searchWordsDualSubtitles": {
+        "message": "켜기 끄기 사용 중지 전체 모든 사이트 두 줄"
     },
     "searchWordsHide": {
         "message": "두번 두 번 두개 2번 2개 중복 겹쳐 겹침 겹치는 이중 똑같은 숨김 가리기 끄기 자체자막 공식자막 공식 원래자막 기본자막 netflix disney 넷플릭스 넷플 디즈니"

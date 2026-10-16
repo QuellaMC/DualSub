@@ -803,6 +803,9 @@
     "previewSampleVideo": {
         "message": "Sample video"
     },
+    "previewStandIn": {
+        "message": "There is no %s sample here, so English stands in for it."
+    },
     "previewShownOn": {
         "message": "Shown on"
     },
@@ -1300,6 +1303,9 @@
     },
     "searchWordsSiteOnOff": {
         "message": "netflix disney site off on enable disable turn"
+    },
+    "searchWordsDualSubtitles": {
+        "message": "on off enable disable turn everywhere every site all two lines"
     },
     "searchWordsHide": {
         "message": "hide official twice double duplicate two"

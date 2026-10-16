@@ -142,7 +142,8 @@ function download(name: string, text: string): void {
 export function AdvancedSection({ t, settings, save }: SectionProps) {
     const feedback = useFeedback();
     /** What a backup holds; null until it is read in full. */
-    const stored = useSettings(BACKED_UP).settings;
+    const backedUp = useSettings(BACKED_UP);
+    const stored = backedUp.settings;
     /** The backup waiting to be applied, kept whole: what it would change
      *  is counted against the stored settings as they are now. */
     const [backup, setBackup] = useState<Partial<SettingsValues> | null>(null);
@@ -207,6 +208,11 @@ export function AdvancedSection({ t, settings, save }: SectionProps) {
                 {t('navAdvanced')}
             </h1>
             <p className="lead">{t('advancedLead')}</p>
+            {backedUp.status === 'unavailable' && (
+                <p role="alert" className="notice danger">
+                    {t('settingsLoadFailed')}
+                </p>
+            )}
 
             <div className="card" id="backup">
                 <h2 className="label">{t('advancedBackupTitle')}</h2>

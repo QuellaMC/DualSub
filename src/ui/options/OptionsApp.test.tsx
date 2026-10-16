@@ -230,6 +230,16 @@ describe('OptionsApp', () => {
         expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
 
+    it('says when the preview shows English for a language it has no sample in', async () => {
+        await fakeBrowser.storage.sync.set({ targetLanguage: 'th' });
+        await renderReady();
+        expect(
+            screen.getByText(
+                'There is no th sample here, so English stands in for it.'
+            )
+        ).toBeInTheDocument();
+    });
+
     it('shows a stored language the menu does not offer as the one picked', async () => {
         await fakeBrowser.storage.sync.set({ targetLanguage: 'nl' });
         location.hash = '#languages';
@@ -984,6 +994,24 @@ describe('OptionsApp', () => {
         ).toBe(true);
     });
 
+    it('says so when the settings a backup holds cannot be read', async () => {
+        await fakeBrowser.storage.local.set({ showAdvancedSettings: true });
+        const read = configService.readMultipleResultStrict.bind(configService);
+        vi.spyOn(configService, 'readMultipleResultStrict').mockImplementation(
+            (keys, options) =>
+                options?.includeSensitive !== true &&
+                keys.includes('subtitleFontScale') &&
+                keys.includes('loggingLevel')
+                    ? Promise.reject(new Error('storage broken'))
+                    : read(keys, options)
+        );
+        location.hash = '#advanced';
+        await renderReady();
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+            'Failed to load settings'
+        );
+    });
+
     it('shows the stored settings as JSON, without keys', async () => {
         await fakeBrowser.storage.local.set({
             deeplApiKey: 'never-shown',
@@ -1171,6 +1199,105 @@ describe('OptionsApp', () => {
             expect(document.activeElement).toHaveAttribute(
                 'id',
                 'openaiBaseUrl'
+            )
+        );
+    });
+
+    it('opens where its address points, the custom look editor open', async () => {
+        await fakeBrowser.storage.sync.set({ subtitleStyle: 'custom' });
+        location.hash = '#look/look-customize/look-style-custom';
+        await renderReady();
+        const customize = screen.getByRole('button', {
+            name: 'Change colors and font',
+        });
+        await waitFor(() => expect(customize).toHaveFocus());
+        expect(customize).toHaveAttribute('aria-expanded', 'true');
+        expect(location.hash).toBe('#look');
+    });
+
+    it("lands a search for a site's switch on that switch", async () => {
+        await renderReady();
+        fireEvent.change(screen.getByRole('searchbox'), {
+            target: { value: 'use dualsub here' },
+        });
+        fireEvent.click(
+            screen.getByRole('button', { name: /^Use DualSub here/ })
+        );
+        await waitFor(() =>
+            expect(document.activeElement).toHaveAttribute('role', 'switch')
+        );
+        expect(
+            document
+                .getElementById('site-on-netflix')
+                ?.contains(document.activeElement)
+        ).toBe(true);
+    });
+
+    it('finds the exact timing shift, turning on advanced options to show it', async () => {
+        await renderReady();
+        fireEvent.change(screen.getByRole('searchbox'), {
+            target: { value: 'exact shift' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: /^Exact shift/ }));
+        await waitFor(() =>
+            expect(document.activeElement).toHaveAttribute(
+                'id',
+                'timing-exact-field'
+            )
+        );
+    });
+
+    it('keeps fine-tuning among the advanced options', async () => {
+        location.hash = '#look';
+        await renderReady();
+        expect(
+            screen.queryByRole('button', {
+                name: 'Fine-tune size, height and spacing',
+            })
+        ).not.toBeInTheDocument();
+
+        fireEvent.click(
+            screen.getByRole('switch', { name: 'Show advanced options' })
+        );
+        expect(
+            await screen.findByRole('button', {
+                name: 'Fine-tune size, height and spacing',
+            })
+        ).toBeInTheDocument();
+    });
+
+    it("lands a search for a site's own settings on that site's editing", async () => {
+        await renderReady();
+        fireEvent.change(screen.getByRole('searchbox'), {
+            target: { value: 'own settings' },
+        });
+        fireEvent.click(
+            screen.getByRole('button', {
+                name: /^Give a site its own settings/,
+            })
+        );
+        await waitFor(() =>
+            expect(
+                document
+                    .getElementById('site-own-netflix')
+                    ?.contains(document.activeElement)
+            ).toBe(true)
+        );
+        expect(document.activeElement).toHaveAttribute('type', 'button');
+    });
+
+    it('finds the switch for dual subtitles on every site', async () => {
+        location.hash = '#help';
+        await renderReady();
+        fireEvent.change(screen.getByRole('searchbox'), {
+            target: { value: 'dual subtitles' },
+        });
+        fireEvent.click(
+            screen.getByRole('button', { name: /^Dual subtitles/ })
+        );
+        await waitFor(() =>
+            expect(document.activeElement).toBe(
+                screen.getByRole('switch', { name: 'Dual subtitles' })
             )
         );
     });
@@ -1622,6 +1749,44 @@ describe('OptionsApp', () => {
         ).not.toBeInTheDocument();
         fireEvent.keyDown(document.body, { key: 'z', ctrlKey: true });
         fireEvent.keyUp(document.body, { key: 'z', ctrlKey: true });
+        await waitFor(async () =>
+            expect(await sync('subtitleCustomLook')).toMatchObject({
+                font: 'serif',
+                bold: true,
+            })
+        );
+    });
+
+    it('offers no Undo for a change that an edit made while it was saved builds on', async () => {
+        await fakeBrowser.storage.sync.set({ subtitleStyle: 'custom' });
+        location.hash = '#look';
+        await renderReady();
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Change colors and font' })
+        );
+        const realSet = fakeBrowser.storage.sync.set.bind(
+            fakeBrowser.storage.sync
+        );
+        const held = Promise.withResolvers<void>();
+        let holding = true;
+        vi.spyOn(fakeBrowser.storage.sync, 'set').mockImplementation(
+            (items: Record<string, unknown>) => {
+                if (!holding || !('subtitleCustomLook' in items)) {
+                    return realSet(items) as never;
+                }
+                holding = false;
+                return held.promise.then(() => realSet(items)) as never;
+            }
+        );
+        fireEvent.click(screen.getByRole('button', { name: /Cinema$/ }));
+        fireEvent.click(screen.getByRole('switch', { name: 'Bold letters' }));
+        held.resolve();
+
+        const toast = await screen.findByText('Look: Cinema');
+        expect(
+            within(toast.parentElement!).queryByRole('button', { name: 'Undo' })
+        ).not.toBeInTheDocument();
+        fireEvent.pointerUp(document.body);
         await waitFor(async () =>
             expect(await sync('subtitleCustomLook')).toMatchObject({
                 font: 'serif',

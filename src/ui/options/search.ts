@@ -1,3 +1,4 @@
+import { PLATFORM_IDS } from '@/shared/platforms';
 import type { Translate } from '../hooks/useI18n';
 import type { SectionId } from './sections';
 
@@ -15,7 +16,20 @@ export interface SearchEntry {
     readonly anchors?: readonly string[];
 }
 
+/** Where the custom look's editor is: its disclosure when the custom look
+ *  is chosen, else the choice of it. */
+const LOOK_EDITOR_ANCHORS: readonly string[] = [
+    'look-customize',
+    'look-style-custom',
+];
+
 const ENTRIES: readonly SearchEntry[] = [
+    {
+        labelKey: 'startEnabled',
+        wordsKey: 'searchWordsDualSubtitles',
+        section: 'start',
+        anchors: ['dual-subtitles'],
+    },
     {
         labelKey: 'languagesSpeakTitle',
         wordsKey: 'searchWordsSpeak',
@@ -56,7 +70,7 @@ const ENTRIES: readonly SearchEntry[] = [
         labelKey: 'lookCustomizeButton',
         wordsKey: 'searchWordsCustomLook',
         section: 'look',
-        anchors: ['look-customize', 'look-style-custom'],
+        anchors: LOOK_EDITOR_ANCHORS,
     },
     {
         labelKey: 'lookTranslationColorTitle',
@@ -80,6 +94,7 @@ const ENTRIES: readonly SearchEntry[] = [
         labelKey: 'lookFineTuneButton',
         wordsKey: 'searchWordsFineTune',
         section: 'look',
+        advanced: true,
         anchors: ['fine-tune'],
     },
     {
@@ -87,6 +102,13 @@ const ENTRIES: readonly SearchEntry[] = [
         wordsKey: 'searchWordsTiming',
         section: 'timing',
         anchors: ['timing'],
+    },
+    {
+        labelKey: 'timingExactTitle',
+        wordsKey: 'searchWordsTiming',
+        section: 'timing',
+        advanced: true,
+        anchors: ['timing-exact'],
     },
     {
         labelKey: 'translationServiceTitle',
@@ -155,7 +177,7 @@ const ENTRIES: readonly SearchEntry[] = [
         labelKey: 'sitesUseHere',
         wordsKey: 'searchWordsSiteOnOff',
         section: 'sites',
-        anchors: ['sites'],
+        anchors: [`site-on-${PLATFORM_IDS[0]}`],
     },
     {
         labelKey: 'sitesHideTitle',
@@ -168,7 +190,7 @@ const ENTRIES: readonly SearchEntry[] = [
         wordsKey: 'searchWordsSiteOwn',
         section: 'sites',
         advanced: true,
-        anchors: ['sites'],
+        anchors: [`site-own-${PLATFORM_IDS[0]}`],
     },
     {
         labelKey: 'sitesFiltersTitle',
