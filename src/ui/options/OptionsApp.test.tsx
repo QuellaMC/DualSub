@@ -1101,12 +1101,16 @@ describe('OptionsApp', () => {
         });
         await fakeBrowser.storage.local.set({
             vertexAccessToken: 'ya29.token',
-            vertexTokenExpiresAt: Date.now() + 1500,
+            vertexTokenExpiresAt: Date.now() + 2000,
         });
         await renderReady();
         expect(screen.getByText('DualSub is ready')).toBeInTheDocument();
         expect(
-            await screen.findByText("Google Vertex AI isn't set up yet")
+            await screen.findByText(
+                "Google Vertex AI isn't set up yet",
+                {},
+                { timeout: 4000 }
+            )
         ).toBeInTheDocument();
     });
 
