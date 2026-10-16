@@ -59,6 +59,7 @@ const RETIRED_SYNC_KEYS = [
     'sidePanelUseSidePanel',
     'useNativeSubtitles',
     'subtitleFontSize',
+    'appearanceAccordionOpen',
 ];
 
 const RETIRED_LOCAL_KEYS = [

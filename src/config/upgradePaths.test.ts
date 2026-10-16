@@ -190,6 +190,7 @@ describe('upgrade paths', () => {
         });
         expect(storage.local).not.toHaveProperty('debugMode');
         expect(storage.local).not.toHaveProperty('appearanceAccordionOpen');
+        expect(storage.sync).not.toHaveProperty('appearanceAccordionOpen');
         expect(storage.sync).toMatchObject({
             selectedProvider: 'microsoft_edge',
             useOfficialTranslations: true,

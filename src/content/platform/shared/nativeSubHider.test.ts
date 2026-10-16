@@ -1,6 +1,5 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { SettingsChanges } from '@/config/service';
 import type { MediaScope, NativeSubRecipe } from '../types';
 import { installNativeSubHider } from './nativeSubHider';
 
@@ -23,23 +22,8 @@ const silentLogger = {
 /** Every install of a test is torn down with it, as a session would. */
 const installs: AbortController[] = [];
 
-function harness(hideOfficialSubtitles: boolean, subtitlesEnabled = true) {
-    let listener: ((changes: SettingsChanges) => unknown) | null = null;
-    const config = {
-        get: vi.fn((key: string) =>
-            Promise.resolve(
-                key === 'subtitlesEnabled'
-                    ? subtitlesEnabled
-                    : hideOfficialSubtitles
-            )
-        ),
-        onChanged: vi.fn((callback: (changes: SettingsChanges) => unknown) => {
-            listener = callback;
-            return () => {
-                listener = null;
-            };
-        }),
-    };
+function harness(hidden: boolean) {
+    let follow: (hidden: boolean) => void = () => undefined;
     const player = document.createElement('div');
     document.body.append(player);
     const video = document.createElement('video');
@@ -52,15 +36,14 @@ function harness(hideOfficialSubtitles: boolean, subtitlesEnabled = true) {
         media,
         controller,
         start: () => {
-            installNativeSubHider(recipe, media, {
-                signal: controller.signal,
-                config: config as never,
-                logger: silentLogger,
-            });
+            follow = installNativeSubHider(
+                recipe,
+                media,
+                { signal: controller.signal, logger: silentLogger },
+                hidden
+            );
         },
-        emit: (changes: SettingsChanges) => {
-            listener?.(changes);
-        },
+        set: (next: boolean) => follow(next),
     };
 }
 
@@ -137,8 +120,8 @@ describe('installNativeSubHider', () => {
         expect(hidden(second)).toBe(true);
     });
 
-    it("shows the site's own subtitles while DualSub is off", async () => {
-        const { player, start, emit } = harness(true, false);
+    it('follows what it is told both ways and restores everything on abort', async () => {
+        const { player, start, set, controller } = harness(false);
         const cue = document.createElement('div');
         cue.className = 'cue';
         player.append(cue);
@@ -146,27 +129,12 @@ describe('installNativeSubHider', () => {
         await settle();
         expect(hidden(cue)).toBe(false);
 
-        emit({ subtitlesEnabled: true });
+        set(true);
         expect(hidden(cue)).toBe(true);
-        emit({ subtitlesEnabled: false });
-        expect(hidden(cue)).toBe(false);
-    });
-
-    it('follows the setting both ways and restores everything on abort', async () => {
-        const { player, start, emit, controller } = harness(false);
-        const cue = document.createElement('div');
-        cue.className = 'cue';
-        player.append(cue);
-        start();
-        await settle();
+        set(false);
         expect(hidden(cue)).toBe(false);
 
-        emit({ hideOfficialSubtitles: true });
-        expect(hidden(cue)).toBe(true);
-        emit({ hideOfficialSubtitles: false });
-        expect(hidden(cue)).toBe(false);
-
-        emit({ hideOfficialSubtitles: true });
+        set(true);
         expect(hidden(cue)).toBe(true);
         controller.abort();
         expect(hidden(cue)).toBe(false);

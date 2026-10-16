@@ -18,7 +18,7 @@
 ### Verify
 
 1. Visit Netflix or Disney+
-2. Play any video: two lines of subtitles appear, the video's language on top and yours underneath
+2. Play any video: two lines of subtitles appear, the video's language on top and yours underneath; a video already in your language shows one line
 3. Click the DualSub icon to turn dual subtitles off or change the languages
 
 ### Update

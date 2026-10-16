@@ -59,10 +59,12 @@ function fakeConfig(
     };
     return {
         config: config as unknown as TranslationServiceDeps['config'],
+        /** Storage now holds `changes`, and the listener hears them. */
         emit(changes: SettingsChanges): void {
             if (!listener) {
                 throw new Error('no listener');
             }
+            Object.assign(settings, changes);
             listener(changes);
         },
         get subscribed(): boolean {
@@ -502,6 +504,56 @@ describe('TranslationService fallback', () => {
             error
         );
         expect(microsoft.translate).not.toHaveBeenCalled();
+    });
+
+    it('turns fallback on only for a genuinely stored choice, not a defaulted change', async () => {
+        const { service, deepl, microsoft, fake } = await setup({
+            fallback: false,
+        });
+        deepl.translate.mockRejectedValue(
+            failing('deepl', 'AUTHENTICATION_ERROR')
+        );
+        const strictRead = vi.mocked(fake.config.readStoredBooleanStrict);
+        strictRead.mockRejectedValueOnce(new Error('not stored'));
+        fake.emit({ translationFallback: true });
+        await vi.advanceTimersByTimeAsync(0);
+        await rejection(service.translate('Hello', 'auto', 'es'));
+        expect(microsoft.translate).not.toHaveBeenCalled();
+
+        fake.emit({ translationFallback: true });
+        await vi.advanceTimersByTimeAsync(0);
+        await expect(service.translate('Again', 'auto', 'es')).resolves.toEqual(
+            { translatedText: '[microsoft_edge:es] Again', cached: false }
+        );
+    });
+
+    it("keeps a failing provider paused when another provider's settings change", async () => {
+        const { service, deepl, fake, health } = await setup();
+        deepl.translate.mockRejectedValue(
+            failing('deepl', 'AUTHENTICATION_ERROR')
+        );
+        await service.translate('Hello', 'auto', 'es');
+        fake.emit({ vertexModel: 'gemini-2.5-pro' });
+        await vi.advanceTimersByTimeAsync(0);
+        expect(health.current()).toMatchObject({ provider: 'deepl' });
+
+        await service.translate('Again', 'auto', 'es');
+        expect(deepl.translate).toHaveBeenCalledTimes(1);
+    });
+
+    it('clears a record left for another provider once the selected one works', async () => {
+        const switched = await setup({
+            selected: 'google',
+            health: {
+                provider: 'deepl',
+                problem: 'credentials',
+                fallback: null,
+                since: 999_000,
+            },
+        });
+        await switched.service.translate('Hello', 'auto', 'es');
+        await vi.advanceTimersByTimeAsync(0);
+        expect(switched.health.current()).toBeNull();
     });
 
     it('sends nothing to a fallback once the viewer turns fallback off mid-request', async () => {

@@ -24,6 +24,7 @@ import {
     TEST_EXTENSION_ORIGIN,
     installExtensionRuntimeIdentity,
 } from '@/test-utils/extensionRuntime';
+import { configService } from '@/config/service';
 import { resetCatalogsForTests } from '../hooks/useI18n';
 import { PopupApp } from './PopupApp';
 
@@ -126,6 +127,23 @@ describe('PopupApp on a site DualSub works on', () => {
         await waitFor(() => expect(close).toHaveBeenCalledOnce());
     });
 
+    it('notices the video once its session starts after the popup opened', async () => {
+        stubTab(NETFLIX_WATCH);
+        render(<PopupApp />);
+        expect(
+            await screen.findByRole('heading', { name: 'Ready on Netflix' })
+        ).toBeInTheDocument();
+
+        vi.mocked(browser.tabs.sendMessage).mockResolvedValue({
+            onPlayer: true,
+        } as never);
+        expect(
+            await screen.findByRole('heading', {
+                name: 'Working on this video',
+            })
+        ).toBeInTheDocument();
+    });
+
     it('is ready before a video plays', async () => {
         stubTab('https://www.disneyplus.com/home');
         render(<PopupApp />);
@@ -223,8 +241,17 @@ describe('PopupApp on a site DualSub works on', () => {
         const bigger = await screen.findByRole('button', {
             name: 'Bigger text',
         });
-        vi.spyOn(browser.storage.sync, 'set').mockRejectedValueOnce(
-            new Error('quota')
+        // Only this save fails, not one another test left behind.
+        const realSave = configService.setMultiple.bind(configService);
+        let failed = false;
+        vi.spyOn(configService, 'setMultiple').mockImplementation(
+            (settings, siteWrite) => {
+                if (!failed && Object.hasOwn(settings, 'subtitleFontScale')) {
+                    failed = true;
+                    return Promise.reject(new Error('quota'));
+                }
+                return realSave(settings, siteWrite);
+            }
         );
         fireEvent.click(bigger);
         expect(await screen.findByRole('alert')).toHaveTextContent(
