@@ -3,12 +3,17 @@ import { browser } from 'wxt/browser';
 import { detectBrowserLanguage } from '@/config/schema';
 import { browserTargetLanguage } from '@/shared/subtitleLanguages';
 import { LanguageSelect } from '../design/LanguageSelect';
+import { Switch } from '../design/Switch';
 import { useI18n } from '../hooks/useI18n';
 import { useSettings } from '../hooks/useSettings';
 import { SamplePreview, SAMPLE_SETTINGS_KEYS } from '../preview/SamplePreview';
 import { SiteLinks } from '../SiteLinks';
 
-const WELCOME_KEYS = ['uiLanguage', ...SAMPLE_SETTINGS_KEYS] as const;
+const WELCOME_KEYS = [
+    'uiLanguage',
+    'subtitlesEnabled',
+    ...SAMPLE_SETTINGS_KEYS,
+] as const;
 
 /** The page DualSub opens once, right after it is installed: what it
  *  picked, what the subtitles will look like, and how to start. */
@@ -21,6 +26,12 @@ export function WelcomeApp() {
     const [saveFailed, setSaveFailed] = useState(false);
     /** Only the latest pick's save may report how it went. */
     const latestPick = useRef(0);
+    /** Dual subtitles were off, say from another computer, so the page
+     *  offers the switch, and keeps it once switched. */
+    const [offeredSwitch, setOfferedSwitch] = useState(false);
+    if (settings && !settings.subtitlesEnabled && !offeredSwitch) {
+        setOfferedSwitch(true);
+    }
 
     useEffect(() => {
         if (loadedLocale !== null) {
@@ -48,21 +59,27 @@ export function WelcomeApp() {
     }
 
     const fromBrowser = settings.targetLanguage === browserTargetLanguage();
-    const pickLanguage = (targetLanguage: string): void => {
-        const pick = ++latestPick.current;
+    const pick = (changes: Parameters<typeof save>[0]): Promise<void> => {
+        const made = ++latestPick.current;
         const report = (failed: boolean) => (): void => {
-            if (pick === latestPick.current) {
+            if (made === latestPick.current) {
                 setSaveFailed(failed);
             }
         };
-        save({ targetLanguage }).then(report(false), report(true));
+        return save(changes).then(report(false), report(true));
     };
 
     return (
         <main className="welcome">
             <header className="welcome-hero">
                 <img src="/icons/icon128.png" alt="" width="64" height="64" />
-                <h1>{t('welcomeTitle')}</h1>
+                <h1>
+                    {t(
+                        settings.subtitlesEnabled
+                            ? 'welcomeTitle'
+                            : 'welcomePageTitle'
+                    )}
+                </h1>
                 <p className="lead">{t('welcomeLead')}</p>
             </header>
 
@@ -70,6 +87,41 @@ export function WelcomeApp() {
                 <p role="alert" className="notice danger">
                     {t('settingsSaveFailed')}
                 </p>
+            )}
+
+            {offeredSwitch && (
+                <section className="card">
+                    <div className="row">
+                        <div className="grow">
+                            <h2 className="label">
+                                {t(
+                                    settings.subtitlesEnabled
+                                        ? 'startStatusReady'
+                                        : 'startStatusOff'
+                                )}
+                            </h2>
+                            <p className="help">
+                                {t(
+                                    settings.subtitlesEnabled
+                                        ? 'startStatusReadyHelp'
+                                        : 'startStatusOffHelp'
+                                )}
+                            </p>
+                        </div>
+                        <div className="inline">
+                            <span className="strong" id="welcome-enabled">
+                                {t('startEnabled')}
+                            </span>
+                            <Switch
+                                checked={settings.subtitlesEnabled}
+                                labelledBy="welcome-enabled"
+                                onChange={(subtitlesEnabled) =>
+                                    pick({ subtitlesEnabled })
+                                }
+                            />
+                        </div>
+                    </div>
+                </section>
             )}
 
             <section className="card" aria-labelledby="welcome-language">
@@ -88,7 +140,9 @@ export function WelcomeApp() {
                         id="welcome-target"
                         labelledBy="welcome-language"
                         value={settings.targetLanguage}
-                        onChange={pickLanguage}
+                        onChange={(targetLanguage) =>
+                            void pick({ targetLanguage })
+                        }
                     />
                 </div>
             </section>
