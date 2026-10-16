@@ -163,7 +163,7 @@ function SiteCard({
                         {t(settings.subtitlesEnabled ? 'sitesOn' : 'sitesOff')}
                     </span>
                 </div>
-                <div className="inline">
+                <div className="inline" id={`site-on-${site}`}>
                     <span className="strong" id={`${site}-enabled`}>
                         {t('sitesUseHere')}
                     </span>

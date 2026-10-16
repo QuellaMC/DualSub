@@ -148,7 +148,11 @@ export function LookSection({
     settings,
     save,
     onDraft,
-}: SectionProps & { onDraft: (draft: LookDraft) => void }) {
+    advanced,
+}: SectionProps & {
+    onDraft: (draft: LookDraft) => void;
+    advanced: boolean;
+}) {
     const look = useSiteDraft(
         'subtitleCustomLook',
         settings.subtitleCustomLook,
@@ -634,81 +638,85 @@ export function LookSection({
                 </div>
             </div>
 
-            <div className="stack" id="fine-tune">
-                <button
-                    type="button"
-                    className="disclosure"
-                    aria-expanded={fineTuning}
-                    onClick={() => setFineTuning(!fineTuning)}
-                >
-                    <Icon name="chevron" />
-                    {t('lookFineTuneButton')}
-                </button>
-                {fineTuning && (
-                    <div className="card">
-                        <div className="control">
-                            <label htmlFor="look-exact-size">
-                                {t(
-                                    'lookExactSize',
-                                    Math.round(scale.value * 100) / 100
-                                )}
-                            </label>
-                            <input
-                                id="look-exact-size"
-                                type="range"
-                                min={SETTING_BOUNDS.subtitleFontScale.min}
-                                max={SETTING_BOUNDS.subtitleFontScale.max}
-                                step={0.05}
-                                value={scale.value}
-                                onChange={(event) =>
-                                    scale.edit(Number(event.target.value))
-                                }
-                            />
-                            <SiteTag keys={['subtitleFontScale']} />
+            {advanced && (
+                <div className="stack" id="fine-tune">
+                    <button
+                        type="button"
+                        className="disclosure"
+                        aria-expanded={fineTuning}
+                        onClick={() => setFineTuning(!fineTuning)}
+                    >
+                        <Icon name="chevron" />
+                        {t('lookFineTuneButton')}
+                    </button>
+                    {fineTuning && (
+                        <div className="card">
+                            <div className="control">
+                                <label htmlFor="look-exact-size">
+                                    {t(
+                                        'lookExactSize',
+                                        Math.round(scale.value * 100) / 100
+                                    )}
+                                </label>
+                                <input
+                                    id="look-exact-size"
+                                    type="range"
+                                    min={SETTING_BOUNDS.subtitleFontScale.min}
+                                    max={SETTING_BOUNDS.subtitleFontScale.max}
+                                    step={0.05}
+                                    value={scale.value}
+                                    onChange={(event) =>
+                                        scale.edit(Number(event.target.value))
+                                    }
+                                />
+                                <SiteTag keys={['subtitleFontScale']} />
+                            </div>
+                            <div className="control">
+                                <label htmlFor="look-exact-position">
+                                    {t(
+                                        'lookExactPosition',
+                                        position.value.toFixed(1)
+                                    )}
+                                </label>
+                                <input
+                                    id="look-exact-position"
+                                    type="range"
+                                    min={POSITION_BOUNDS.min}
+                                    max={POSITION_BOUNDS.max}
+                                    step={0.1}
+                                    value={position.value}
+                                    onChange={(event) =>
+                                        position.edit(
+                                            Number(event.target.value)
+                                        )
+                                    }
+                                />
+                                <SiteTag keys={['subtitleVerticalPosition']} />
+                            </div>
+                            <div className="control">
+                                <label htmlFor="look-gap">
+                                    {t(
+                                        'lookGap',
+                                        Math.round(gap.value * 100) / 100
+                                    )}
+                                </label>
+                                <input
+                                    id="look-gap"
+                                    type="range"
+                                    min={0}
+                                    max={1}
+                                    step={0.05}
+                                    value={gap.value}
+                                    onChange={(event) =>
+                                        gap.edit(Number(event.target.value))
+                                    }
+                                />
+                                <SiteTag keys={['subtitleGap']} />
+                            </div>
                         </div>
-                        <div className="control">
-                            <label htmlFor="look-exact-position">
-                                {t(
-                                    'lookExactPosition',
-                                    position.value.toFixed(1)
-                                )}
-                            </label>
-                            <input
-                                id="look-exact-position"
-                                type="range"
-                                min={POSITION_BOUNDS.min}
-                                max={POSITION_BOUNDS.max}
-                                step={0.1}
-                                value={position.value}
-                                onChange={(event) =>
-                                    position.edit(Number(event.target.value))
-                                }
-                            />
-                            <SiteTag keys={['subtitleVerticalPosition']} />
-                        </div>
-                        <div className="control">
-                            <label htmlFor="look-gap">
-                                {t(
-                                    'lookGap',
-                                    Math.round(gap.value * 100) / 100
-                                )}
-                            </label>
-                            <input
-                                id="look-gap"
-                                type="range"
-                                min={0}
-                                max={1}
-                                step={0.05}
-                                value={gap.value}
-                                onChange={(event) =>
-                                    gap.edit(Number(event.target.value))
-                                }
-                            />
-                            <SiteTag keys={['subtitleGap']} />
-                        </div>
-                    </div>
-                )}
-            </div>
+                    )}
+                </div>
+            )}
         </section>
     );
 }
