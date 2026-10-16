@@ -15,7 +15,7 @@ import { useCommittedTextField } from '../../hooks/useCommittedTextField';
 import { CommittedField } from '../controls/CommittedField';
 import { GEMINI_MODELS, OPENAI_MODELS } from '../explanations/models';
 import { OpenAIHostPermission } from '../explanations/OpenAIHostPermission';
-import { useHostPermission } from '../hooks/useHostPermission';
+import { useHostPermission } from '../../hooks/useHostPermission';
 import { useFeedback } from '../shell/feedback';
 import { SharedTag } from '../shell/scopeContext';
 import type { SectionProps } from '../types';
@@ -379,7 +379,7 @@ export function ExplanationsSection({
                 </div>
             )}
 
-            <div className="card">
+            <div className="card" id="explain-kinds">
                 <h2 className="label" id="explain-types">
                     {t('explainTypesTitle')}
                 </h2>
@@ -409,7 +409,7 @@ export function ExplanationsSection({
 
             <div className="card" id="explain-reading">
                 <h2 className="label">{t('explainReadingTitle')}</h2>
-                <div className="row">
+                <div className="row" id="explain-pause-row">
                     <span className="strong grow" id="explain-pause">
                         {t('explainPauseTitle')}
                     </span>
@@ -421,7 +421,7 @@ export function ExplanationsSection({
                         }
                     />
                 </div>
-                <div className="row">
+                <div className="row" id="explain-open-row">
                     <span className="strong grow" id="explain-open">
                         {t('explainOpenTitle')}
                     </span>
@@ -582,7 +582,7 @@ export function ExplanationsSection({
                                 className="mono narrow"
                             />
                         </div>
-                        <div className="control">
+                        <div className="control" id="explain-cache-control">
                             <span className="control-label" id="explain-cache">
                                 {t('explainCache')}
                             </span>

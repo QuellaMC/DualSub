@@ -1328,6 +1328,15 @@
     "searchWordsPause": {
         "message": "일시정지 정지 멈춤 자동정지 자동멈춤"
     },
+    "searchWordsKinds": {
+        "message": "종류 의미 뜻 문화 역사 유래 어원 설명할 내용 고르기"
+    },
+    "searchWordsAutoOpen": {
+        "message": "자동으로 열기 패널 사이드패널 클릭 단어 열림"
+    },
+    "searchWordsCache": {
+        "message": "기억 답변 캐시 저장 반복"
+    },
     "searchWordsTheme": {
         "message": "테마 다크모드 라이트모드 야간모드 어둡게 어두운 밝게 밝은 패널 설명창 색깔 색상"
     },
@@ -1500,7 +1509,7 @@
         "message": "아무 영상이나 재생하기"
     },
     "welcomePlayHelp": {
-        "message": "두 줄이 저절로 나와요. 글자가 너무 작거나 목소리와 안 맞으면 DualSub 버튼을 클릭하세요."
+        "message": "두 줄이 저절로 나와요. 이미 내 언어인 영상은 한 줄만 나와요. 글자가 너무 작거나 목소리와 안 맞으면 DualSub 버튼을 클릭하세요."
     },
     "welcomeOpenSettings": {
         "message": "모든 설정 보기"

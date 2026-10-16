@@ -1328,6 +1328,15 @@
     "searchWordsPause": {
         "message": "pausa detener parar automático automatico vídeo leer"
     },
+    "searchWordsKinds": {
+        "message": "tipos clases significado cultura historia origen qué explicar elegir"
+    },
+    "searchWordsAutoOpen": {
+        "message": "abrir panel automáticamente automaticamente clic palabra lateral"
+    },
+    "searchWordsCache": {
+        "message": "recordar respuestas caché cache guardar repetir"
+    },
     "searchWordsTheme": {
         "message": "tema oscuro claro modo nocturno noche luz negro blanco"
     },
@@ -1500,7 +1509,7 @@
         "message": "Pon cualquier video"
     },
     "welcomePlayHelp": {
-        "message": "Las dos líneas aparecen solas. ¿Demasiado pequeñas, o desfasadas respecto a las voces? Haz clic en el botón de DualSub."
+        "message": "Las dos líneas aparecen solas; un video que ya está en tu idioma muestra una sola. ¿Demasiado pequeñas, o desfasadas respecto a las voces? Haz clic en el botón de DualSub."
     },
     "welcomeOpenSettings": {
         "message": "Ver todos los ajustes"

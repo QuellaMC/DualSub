@@ -1303,6 +1303,37 @@ describe('OptionsApp', () => {
         );
     });
 
+    it('finds the explanation controls by their labels', async () => {
+        await renderReady();
+        const search = screen.getByRole('searchbox');
+        const open = (words: string, name: RegExp): void => {
+            fireEvent.change(search, { target: { value: words } });
+            fireEvent.click(screen.getByRole('button', { name }));
+        };
+        open('what to explain', /^What to explain/);
+        await waitFor(() =>
+            expect(
+                screen.getByRole('checkbox', {
+                    name: 'Meaning, and how to use it',
+                })
+            ).toHaveFocus()
+        );
+        open('open the explanation panel', /^Open the explanation panel/);
+        await waitFor(() =>
+            expect(
+                screen.getByRole('switch', {
+                    name: 'Open the explanation panel when I click a word',
+                })
+            ).toHaveFocus()
+        );
+        open('remember answers', /^Remember answers/);
+        await waitFor(() =>
+            expect(
+                screen.getByRole('switch', { name: 'Remember answers' })
+            ).toHaveFocus()
+        );
+    });
+
     it('lands on the menu language picker from search', async () => {
         await renderReady();
         fireEvent.change(screen.getByRole('searchbox'), {
@@ -2185,6 +2216,40 @@ describe('OptionsApp', () => {
         expect(
             screen.getByText('Until it is, Microsoft Translator translates.')
         ).toBeInTheDocument();
+    });
+
+    it('judges the service by the sites where DualSub runs, not the shared switch alone', async () => {
+        await fakeBrowser.storage.sync.set({
+            selectedProvider: 'deepl',
+            translationFallback: false,
+            subtitlesEnabled: false,
+            siteProfiles: { netflix: { subtitlesEnabled: true } },
+        });
+        await renderReady();
+        expect(
+            await screen.findByText("DeepL isn't set up yet")
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText("Until it is, subtitles aren't translated.")
+        ).toBeInTheDocument();
+    });
+
+    it('says subtitles are off, not that the service needs setting up, when every site has them off', async () => {
+        await fakeBrowser.storage.sync.set({
+            selectedProvider: 'deepl',
+            translationFallback: false,
+            siteProfiles: {
+                netflix: { subtitlesEnabled: false },
+                disneyplus: { subtitlesEnabled: false },
+            },
+        });
+        await renderReady();
+        expect(
+            await screen.findByText('Dual subtitles are off')
+        ).toBeInTheDocument();
+        expect(
+            screen.queryByText("DeepL isn't set up yet")
+        ).not.toBeInTheDocument();
     });
 
     it("counts a site's switches among its own settings, and removes them too", async () => {

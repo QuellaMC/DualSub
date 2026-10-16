@@ -147,16 +147,28 @@ const ENTRIES: readonly SearchEntry[] = [
         anchors: ['explanations'],
     },
     {
+        labelKey: 'explainTypesTitle',
+        wordsKey: 'searchWordsKinds',
+        section: 'explanations',
+        anchors: ['explain-kinds'],
+    },
+    {
         labelKey: 'explainPauseTitle',
         wordsKey: 'searchWordsPause',
         section: 'explanations',
-        anchors: ['explain-reading'],
+        anchors: ['explain-pause-row'],
+    },
+    {
+        labelKey: 'explainOpenTitle',
+        wordsKey: 'searchWordsAutoOpen',
+        section: 'explanations',
+        anchors: ['explain-open-row'],
     },
     {
         labelKey: 'explainThemeTitle',
         wordsKey: 'searchWordsTheme',
         section: 'explanations',
-        anchors: ['explain-reading'],
+        anchors: ['explain-theme'],
     },
     {
         labelKey: 'explainLimitsTitle',
@@ -164,6 +176,13 @@ const ENTRIES: readonly SearchEntry[] = [
         section: 'explanations',
         advanced: true,
         anchors: ['explain-limits'],
+    },
+    {
+        labelKey: 'explainCache',
+        wordsKey: 'searchWordsCache',
+        section: 'explanations',
+        advanced: true,
+        anchors: ['explain-cache-control'],
     },
     {
         labelKey: 'explainAddress',

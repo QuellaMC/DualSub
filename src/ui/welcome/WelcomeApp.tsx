@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { browser } from 'wxt/browser';
 import { detectBrowserLanguage } from '@/config/schema';
+import { configService } from '@/config/service';
+import { PLATFORM_IDS } from '@/shared/platforms';
 import { KEYLESS_PROVIDERS, type ProviderId } from '@/shared/providers';
 import {
     AUTO_LANGUAGE,
@@ -10,8 +12,14 @@ import { Icon } from '../design/Icon';
 import { LanguageSelect } from '../design/LanguageSelect';
 import { Logo } from '../design/Logo';
 import { Switch } from '../design/Switch';
-import { useI18n } from '../hooks/useI18n';
-import { useSettings } from '../hooks/useSettings';
+import { useI18n, type Translate } from '../hooks/useI18n';
+import { SERVICE_SETUP_KEYS, useServiceUnset } from '../hooks/useServiceUnset';
+import {
+    useSettings,
+    type SettingsHandle,
+    type SettingsProjection,
+} from '../hooks/useSettings';
+import { useSitesOn } from '../hooks/useSitesOn';
 import { languageName } from '../languageLabels';
 import { SamplePreview, SAMPLE_SETTINGS_KEYS } from '../preview/SamplePreview';
 import { PROVIDER_NAME_KEYS } from '../providerNames';
@@ -21,9 +29,12 @@ const WELCOME_KEYS = [
     'uiLanguage',
     'subtitlesEnabled',
     'useOfficialTranslations',
-    'selectedProvider',
+    'translationFallback',
+    ...SERVICE_SETUP_KEYS,
     ...SAMPLE_SETTINGS_KEYS,
 ] as const;
+
+type WelcomeKey = (typeof WELCOME_KEYS)[number];
 
 /** The sample's text takes the size it would have on a picture this many
  *  pixels tall. */
@@ -33,20 +44,26 @@ function isKeyless(provider: ProviderId): boolean {
     return (KEYLESS_PROVIDERS as readonly ProviderId[]).includes(provider);
 }
 
-/** One choice DualSub made, ticked off. */
+/** One choice DualSub made, ticked off, or flagged while it still needs
+ *  something. */
 function Picked({
     title,
     help,
+    ready = true,
     children,
 }: {
     title: string;
     help: string;
+    ready?: boolean;
     children?: ReactNode;
 }) {
     return (
         <div className="picked">
-            <span className="check-dot" aria-hidden="true">
-                <Icon name="check" />
+            <span
+                className={`check-dot ${ready ? '' : 'off'}`}
+                aria-hidden="true"
+            >
+                <Icon name={ready ? 'check' : 'alert'} />
             </span>
             <div className="picked-text">
                 <div className="label">{title}</div>
@@ -60,21 +77,13 @@ function Picked({
 /** The page DualSub opens once, right after it is installed: what it
  *  picked, what the subtitles will look like, and how to start. */
 export function WelcomeApp() {
-    const { settings, status, save } = useSettings(WELCOME_KEYS);
+    const { settings, status, save } = useSettings(WELCOME_KEYS, {
+        includeSensitive: true,
+    });
     const { t, loadedLocale } = useI18n(
         settings?.uiLanguage ??
             (status === 'unavailable' ? detectBrowserLanguage() : null)
     );
-    const [saveFailed, setSaveFailed] = useState(false);
-    const [changingLanguage, setChangingLanguage] = useState(false);
-    /** Only the latest pick's save may report how it went. */
-    const latestPick = useRef(0);
-    /** Dual subtitles were off, say from another computer, so the page
-     *  offers the switch, and keeps it once switched. */
-    const [offeredSwitch, setOfferedSwitch] = useState(false);
-    if (settings && !settings.subtitlesEnabled && !offeredSwitch) {
-        setOfferedSwitch(true);
-    }
 
     useEffect(() => {
         if (loadedLocale !== null) {
@@ -100,18 +109,44 @@ export function WelcomeApp() {
             </main>
         );
     }
+    return <Welcome t={t} settings={settings} save={save} />;
+}
+
+/** The page, once its settings are read. */
+function Welcome({
+    t,
+    settings,
+    save,
+}: {
+    t: Translate;
+    settings: SettingsProjection<WelcomeKey>;
+    save: SettingsHandle<WelcomeKey>['save'];
+}) {
+    const [saveFailed, setSaveFailed] = useState(false);
+    const [changingLanguage, setChangingLanguage] = useState(false);
+    /** Only the latest pick's save may report how it went. */
+    const latestPick = useRef(0);
+    const { sites } = useSitesOn();
+    const working = sites ? sites.on.length > 0 : settings.subtitlesEnabled;
+    const unset = useServiceUnset(settings);
+    /** Dual subtitles were off everywhere, say from another computer, so
+     *  the page offers the switch, and keeps it once switched. */
+    const [offeredSwitch, setOfferedSwitch] = useState(false);
+    if (!working && !offeredSwitch) {
+        setOfferedSwitch(true);
+    }
 
     const fromBrowser = settings.targetLanguage === browserTargetLanguage();
     const automaticTop = settings.originalLanguage === AUTO_LANGUAGE;
     const provider = settings.selectedProvider;
-    const pick = (changes: Parameters<typeof save>[0]): Promise<void> => {
+    const pick = (write: Promise<unknown>): Promise<void> => {
         const made = ++latestPick.current;
         const report = (failed: boolean) => (): void => {
             if (made === latestPick.current) {
                 setSaveFailed(failed);
             }
         };
-        return save(changes).then(report(false), report(true));
+        return write.then(report(false), report(true));
     };
 
     return (
@@ -131,11 +166,7 @@ export function WelcomeApp() {
                 <section className="welcome-hero">
                     <div className="welcome-hero-text">
                         <h1>
-                            {t(
-                                settings.subtitlesEnabled
-                                    ? 'welcomeTitle'
-                                    : 'welcomePageTitle'
-                            )}
+                            {t(working ? 'welcomeTitle' : 'welcomePageTitle')}
                         </h1>
                         <p className="lead">{t('welcomeLead')}</p>
                     </div>
@@ -161,14 +192,14 @@ export function WelcomeApp() {
                             <div className="grow">
                                 <h2 className="label">
                                     {t(
-                                        settings.subtitlesEnabled
+                                        working
                                             ? 'startStatusOn'
                                             : 'startStatusOff'
                                     )}
                                 </h2>
                                 <p className="help">
                                     {t(
-                                        settings.subtitlesEnabled
+                                        working
                                             ? 'startStatusReadyHelp'
                                             : 'startStatusOffHelp'
                                     )}
@@ -179,10 +210,16 @@ export function WelcomeApp() {
                                     {t('startEnabled')}
                                 </span>
                                 <Switch
-                                    checked={settings.subtitlesEnabled}
+                                    checked={working}
                                     labelledBy="welcome-enabled"
                                     onChange={(subtitlesEnabled) =>
-                                        pick({ subtitlesEnabled })
+                                        pick(
+                                            configService.removeSiteValues(
+                                                PLATFORM_IDS,
+                                                ['subtitlesEnabled'],
+                                                { subtitlesEnabled }
+                                            )
+                                        )
                                     }
                                 />
                             </div>
@@ -214,7 +251,7 @@ export function WelcomeApp() {
                                     labelledBy="welcome-language"
                                     value={settings.targetLanguage}
                                     onChange={(targetLanguage) =>
-                                        void pick({ targetLanguage })
+                                        void pick(save({ targetLanguage }))
                                     }
                                 />
                                 <button
@@ -250,22 +287,44 @@ export function WelcomeApp() {
                                 : 'welcomeTopFixedHelp'
                         )}
                     />
-                    <Picked
-                        title={t(
-                            'welcomeTranslation',
-                            t(PROVIDER_NAME_KEYS[provider])
-                        )}
-                        help={[
-                            t(
-                                isKeyless(provider)
-                                    ? 'welcomeTranslationFree'
-                                    : 'welcomeTranslationKeyed'
-                            ),
-                            ...(settings.useOfficialTranslations
-                                ? [t('welcomeTranslationOfficial')]
-                                : []),
-                        ].join(' ')}
-                    />
+                    {unset ? (
+                        <Picked
+                            ready={false}
+                            title={t(
+                                'startNeedsSetupTitle',
+                                t(PROVIDER_NAME_KEYS[provider])
+                            )}
+                            help={
+                                settings.translationFallback
+                                    ? t(
+                                          'startNeedsSetupCovered',
+                                          t(
+                                              PROVIDER_NAME_KEYS[
+                                                  KEYLESS_PROVIDERS[0]
+                                              ]
+                                          )
+                                      )
+                                    : t('startNeedsSetupStopped')
+                            }
+                        />
+                    ) : (
+                        <Picked
+                            title={t(
+                                'welcomeTranslation',
+                                t(PROVIDER_NAME_KEYS[provider])
+                            )}
+                            help={[
+                                t(
+                                    isKeyless(provider)
+                                        ? 'welcomeTranslationFree'
+                                        : 'welcomeTranslationKeyed'
+                                ),
+                                ...(settings.useOfficialTranslations
+                                    ? [t('welcomeTranslationOfficial')]
+                                    : []),
+                            ].join(' ')}
+                        />
+                    )}
                 </section>
 
                 <h2>{t('welcomeStepsTitle')}</h2>

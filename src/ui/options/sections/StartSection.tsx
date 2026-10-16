@@ -1,10 +1,5 @@
-import { siteProfileOf } from '@/config/schema';
-import {
-    PLATFORM_IDS,
-    PLATFORM_NAMES,
-    type PlatformId,
-} from '@/shared/platforms';
-import { KEYLESS_PROVIDERS, missingCredentials } from '@/shared/providers';
+import { PLATFORM_NAMES, type PlatformId } from '@/shared/platforms';
+import { KEYLESS_PROVIDERS } from '@/shared/providers';
 import {
     AUTO_LANGUAGE,
     browserTargetLanguage,
@@ -13,14 +8,13 @@ import { Icon } from '../../design/Icon';
 import { Switch } from '../../design/Switch';
 import { HealthNotice } from '../../HealthNotice';
 import type { Translate } from '../../hooks/useI18n';
-import { useSettings } from '../../hooks/useSettings';
+import { useServiceUnset } from '../../hooks/useServiceUnset';
+import { useSitesOn, type SitesOn } from '../../hooks/useSitesOn';
 import { languageName } from '../../languageLabels';
 import { SiteLinks } from '../../SiteLinks';
 import { LanguageSelect } from '../../design/LanguageSelect';
 import { PROVIDER_NAME_KEYS } from '../../providerNames';
 import { SizePicker } from '../controls/SizePicker';
-import { useHostPermission } from '../hooks/useHostPermission';
-import { useNow } from '../hooks/useNow';
 import type { SectionId } from '../sections';
 import { SharedTag, SiteTag } from '../shell/scopeContext';
 import type { SectionProps } from '../types';
@@ -32,35 +26,6 @@ const PROVIDER_SUMMARIES = {
     openai_compatible: 'startProviderAi',
     vertex_gemini: 'startProviderVertex',
 } as const;
-
-interface SitesOn {
-    readonly on: PlatformId[];
-    readonly off: PlatformId[];
-}
-
-/** The sites DualSub runs on and those it is off on, each as the site sees
- *  its settings; null until they are read, or when they cannot be. */
-function useSitesOn(): {
-    readonly sites: SitesOn | null;
-    readonly unreadable: boolean;
-} {
-    const { settings, status } = useSettings([
-        'subtitlesEnabled',
-        'siteProfiles',
-    ]);
-    if (!settings) {
-        return { sites: null, unreadable: status === 'unavailable' };
-    }
-    const on = PLATFORM_IDS.filter(
-        (site) =>
-            siteProfileOf(settings.siteProfiles, site).subtitlesEnabled ??
-            settings.subtitlesEnabled
-    );
-    return {
-        sites: { on, off: PLATFORM_IDS.filter((site) => !on.includes(site)) },
-        unreadable: false,
-    };
-}
 
 /** What the switch leaves running: where dual subtitles are on and off, or
  *  the switch's own state while the sites are not read. */
@@ -96,16 +61,10 @@ export function StartSection({
     const fromBrowser = settings.targetLanguage === browserTargetLanguage();
     const provider = settings.selectedProvider;
     const providerName = t(PROVIDER_NAME_KEYS[provider]);
-    // An AI service at its own address works only once Chrome lets DualSub
-    // reach it.
-    const access = useHostPermission(settings.openaiCompatibleBaseUrl);
-    const now = useNow([settings.vertexTokenExpiresAt]);
-    const unset =
-        missingCredentials(provider, settings, now).length > 0 ||
-        (provider === 'openai_compatible' && access.permitted === false);
-    // Without fallback, a service still to be set up translates nothing.
-    const stopped =
-        settings.subtitlesEnabled && unset && !settings.translationFallback;
+    const unset = useServiceUnset(settings);
+    // Without fallback, a service still to be set up translates nothing,
+    // on every site where DualSub runs.
+    const stopped = working && unset && !settings.translationFallback;
     const toTranslation = (
         <button
             type="button"
@@ -201,7 +160,7 @@ export function StartSection({
                 </div>
             </div>
 
-            {settings.subtitlesEnabled && unset && !stopped && (
+            {working && unset && !stopped && (
                 <div className="notice" role="status">
                     <Icon name="alert" />
                     <div className="stack">
