@@ -8,8 +8,11 @@ export interface SearchEntry {
     readonly section: SectionId;
     /** The control lives among the advanced options. */
     readonly advanced?: true;
-    /** The element to bring into view. */
-    readonly anchor?: string;
+    /** The elements to bring into view, in order of preference: the first
+     *  one on the page takes focus, and a folded disclosure there opens. A
+     *  setting shown only after a choice names that choice last, so the
+     *  search lands where the choice is made. */
+    readonly anchors?: readonly string[];
 }
 
 const ENTRIES: readonly SearchEntry[] = [
@@ -17,183 +20,183 @@ const ENTRIES: readonly SearchEntry[] = [
         labelKey: 'languagesSpeakTitle',
         wordsKey: 'searchWordsSpeak',
         section: 'languages',
-        anchor: 'target-language',
+        anchors: ['target-language'],
     },
     {
         labelKey: 'languagesTopTitle',
         wordsKey: 'searchWordsTopLine',
         section: 'languages',
-        anchor: 'top-line',
+        anchors: ['top-line'],
     },
     {
         labelKey: 'languagesOfficialTitle',
         wordsKey: 'searchWordsOfficial',
         section: 'languages',
-        anchor: 'official-translation',
+        anchors: ['official-translation'],
     },
     {
         labelKey: 'lookSizeTitle',
         wordsKey: 'searchWordsSize',
         section: 'look',
-        anchor: 'text-size',
+        anchors: ['text-size'],
     },
     {
         labelKey: 'lookPositionTitle',
         wordsKey: 'searchWordsPosition',
         section: 'look',
-        anchor: 'position',
+        anchors: ['position'],
     },
     {
         labelKey: 'lookStyleTitle',
         wordsKey: 'searchWordsStyle',
         section: 'look',
-        anchor: 'style',
+        anchors: ['style'],
     },
     {
         labelKey: 'lookCustomizeButton',
         wordsKey: 'searchWordsCustomLook',
         section: 'look',
-        anchor: 'style',
+        anchors: ['look-customize', 'look-style-custom'],
     },
     {
         labelKey: 'lookTranslationColorTitle',
         wordsKey: 'searchWordsTranslationColor',
         section: 'look',
-        anchor: 'translation-color',
+        anchors: ['translation-color'],
     },
     {
         labelKey: 'lookOrderTitle',
         wordsKey: 'searchWordsOrder',
         section: 'look',
-        anchor: 'layout',
+        anchors: ['layout'],
     },
     {
         labelKey: 'lookArrangementTitle',
         wordsKey: 'searchWordsArrangement',
         section: 'look',
-        anchor: 'layout',
+        anchors: ['layout'],
     },
     {
         labelKey: 'lookFineTuneButton',
         wordsKey: 'searchWordsFineTune',
         section: 'look',
-        anchor: 'fine-tune',
+        anchors: ['fine-tune'],
     },
     {
         labelKey: 'timingTitle',
         wordsKey: 'searchWordsTiming',
         section: 'timing',
-        anchor: 'timing',
+        anchors: ['timing'],
     },
     {
         labelKey: 'translationServiceTitle',
         wordsKey: 'searchWordsService',
         section: 'translation',
-        anchor: 'translation-service',
+        anchors: ['translation-service'],
     },
     {
         labelKey: 'translationDeepLSetupTitle',
         wordsKey: 'searchWordsDeepL',
         section: 'translation',
-        anchor: 'translation-service',
+        anchors: ['deepl-card', 'provider-deepl'],
     },
     {
         labelKey: 'translationAiSetupTitle',
         wordsKey: 'searchWordsAiTranslation',
         section: 'translation',
-        anchor: 'translation-service',
+        anchors: ['ai-translation-card', 'provider-openai_compatible'],
     },
     {
         labelKey: 'translationFallbackTitle',
         wordsKey: 'searchWordsFallback',
         section: 'translation',
-        anchor: 'translation-fallback',
+        anchors: ['translation-fallback'],
     },
     {
         labelKey: 'translationDelayTitle',
         wordsKey: 'searchWordsDelay',
         section: 'translation',
         advanced: true,
-        anchor: 'translation-delay',
+        anchors: ['translation-delay'],
     },
     {
         labelKey: 'explainTitle',
         wordsKey: 'searchWordsExplanations',
         section: 'explanations',
-        anchor: 'explanations',
+        anchors: ['explanations'],
     },
     {
         labelKey: 'explainPauseTitle',
         wordsKey: 'searchWordsPause',
         section: 'explanations',
-        anchor: 'explain-reading',
+        anchors: ['explain-reading'],
     },
     {
         labelKey: 'explainThemeTitle',
         wordsKey: 'searchWordsTheme',
         section: 'explanations',
-        anchor: 'explain-reading',
+        anchors: ['explain-reading'],
     },
     {
         labelKey: 'explainLimitsTitle',
         wordsKey: 'searchWordsLimits',
         section: 'explanations',
         advanced: true,
-        anchor: 'explain-limits',
+        anchors: ['explain-limits'],
     },
     {
         labelKey: 'sitesUseHere',
         wordsKey: 'searchWordsSiteOnOff',
         section: 'sites',
-        anchor: 'sites',
+        anchors: ['sites'],
     },
     {
         labelKey: 'sitesHideTitle',
         wordsKey: 'searchWordsHide',
         section: 'sites',
-        anchor: 'hide-all',
+        anchors: ['hide-all'],
     },
     {
         labelKey: 'searchSiteOwn',
         wordsKey: 'searchWordsSiteOwn',
         section: 'sites',
         advanced: true,
-        anchor: 'sites',
+        anchors: ['sites'],
     },
     {
         labelKey: 'sitesFiltersTitle',
         wordsKey: 'searchWordsFilters',
         section: 'sites',
         advanced: true,
-        anchor: 'filters-disneyplus',
+        anchors: ['filters-disneyplus'],
     },
     {
         labelKey: 'advancedBackupTitle',
         wordsKey: 'searchWordsBackup',
         section: 'advanced',
         advanced: true,
-        anchor: 'backup',
+        anchors: ['backup'],
     },
     {
         labelKey: 'advancedJsonTitle',
         wordsKey: 'searchWordsJson',
         section: 'advanced',
         advanced: true,
-        anchor: 'json',
+        anchors: ['json'],
     },
     {
         labelKey: 'advancedLoggingTitle',
         wordsKey: 'searchWordsLogging',
         section: 'advanced',
         advanced: true,
-        anchor: 'troubleshooting',
+        anchors: ['troubleshooting'],
     },
     {
         labelKey: 'advancedResetTitle',
         wordsKey: 'searchWordsReset',
         section: 'advanced',
         advanced: true,
-        anchor: 'reset',
+        anchors: ['reset'],
     },
     {
         labelKey: 'topMenuLanguage',
@@ -204,7 +207,7 @@ const ENTRIES: readonly SearchEntry[] = [
         labelKey: 'helpNoSubtitlesTitle',
         wordsKey: 'searchWordsNoSubtitles',
         section: 'help',
-        anchor: 'help-none',
+        anchors: ['help-none'],
     },
 ];
 

@@ -75,14 +75,22 @@ export function OptionsApp() {
             (unavailable ? detectBrowserLanguage() : null)
     );
     const [section, setSection] = useState<SectionId>(initialSection);
+    // An advanced section shows only while advanced options are on, however
+    // they went off.
+    const shown: SectionId =
+        page.settings &&
+        !page.settings.showAdvancedSettings &&
+        SECTIONS[section].advanced
+            ? 'start'
+            : section;
     const [saveFailed, setSaveFailed] = useState(false);
     const [toast, setToast] = useState<ToastState | null>(null);
     const [lookDraft, setLookDraft] = useState<LookDraft>({});
     /** Where focus goes once the page shows it: the heading of the section
-     *  just opened, or the setting a search result named. */
-    const [arrival, setArrival] = useState<{ anchor: string | null } | null>(
-        null
-    );
+     *  just opened, or the first of a search result's elements on the page. */
+    const [arrival, setArrival] = useState<{
+        anchors: readonly string[];
+    } | null>(null);
     const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
@@ -98,8 +106,8 @@ export function OptionsApp() {
     }, [loadedLocale, t]);
 
     useEffect(() => {
-        history.replaceState(null, '', `#${section}`);
-    }, [section]);
+        history.replaceState(null, '', `#${shown}`);
+    }, [shown]);
 
     useEffect(
         () => () => {
@@ -114,17 +122,25 @@ export function OptionsApp() {
         if (!arrival) {
             return;
         }
-        const target = arrival.anchor
-            ? document.getElementById(arrival.anchor)
-            : document.querySelector<HTMLElement>('.content h1');
+        const target =
+            arrival.anchors.length === 0
+                ? document.querySelector<HTMLElement>('.content h1')
+                : arrival.anchors
+                      .map((id) => document.getElementById(id))
+                      .find((element) => element !== null);
         if (!target) {
             return;
         }
         target.scrollIntoView({ block: 'start' });
-        (arrival.anchor
-            ? (target.querySelector<HTMLElement>(FOCUSABLE) ?? target)
-            : target
-        ).focus({ preventScroll: true });
+        const focused =
+            arrival.anchors.length === 0
+                ? target
+                : (target.querySelector<HTMLElement>(FOCUSABLE) ?? target);
+        focused.focus({ preventScroll: true });
+        // A folded disclosure opens to show what was searched for.
+        if (focused.getAttribute('aria-expanded') === 'false') {
+            focused.click();
+        }
         setArrival(null);
     }, [arrival, settings]);
 
@@ -213,29 +229,27 @@ export function OptionsApp() {
         }
     };
 
-    const go = (next: SectionId, anchor: string | null = null): void => {
+    const go = (next: SectionId, anchors: readonly string[] = []): void => {
         setSection(next);
-        setArrival({ anchor });
+        setArrival({ anchors });
     };
     const editSite = (site: PlatformId): void => {
         setScope(site);
         go('look');
     };
-    const setAdvanced = (next: boolean): void => {
-        void savePage({ showAdvancedSettings: next });
-        if (!next && SECTIONS[section].advanced) {
-            go('start');
+    const openSearchResult = async (entry: SearchEntry): Promise<void> => {
+        if (
+            entry.advanced &&
+            !advanced &&
+            !(await savePage({ showAdvancedSettings: true }))
+        ) {
+            return;
         }
-    };
-    const openSearchResult = (entry: SearchEntry): void => {
-        if (entry.advanced && !advanced) {
-            void savePage({ showAdvancedSettings: true });
-        }
-        go(entry.section, entry.anchor ?? null);
+        go(entry.section, entry.anchors);
     };
 
     const sectionContent = (sectionProps: SectionProps): ReactNode => {
-        switch (section) {
+        switch (shown) {
             case 'start':
                 return <StartSection {...sectionProps} go={go} />;
             case 'languages':
@@ -279,16 +293,18 @@ export function OptionsApp() {
                         onUiLanguage={(next) =>
                             void savePage({ uiLanguage: next })
                         }
-                        onOpen={openSearchResult}
+                        onOpen={(entry) => void openSearchResult(entry)}
                         onHelp={() => go('help')}
                     />
                     <div className="shell">
                         <Nav
                             t={t}
-                            section={section}
+                            section={shown}
                             advanced={advanced}
                             onSection={go}
-                            onAdvanced={setAdvanced}
+                            onAdvanced={(next) =>
+                                void savePage({ showAdvancedSettings: next })
+                            }
                         />
                         <main className="main" id="main">
                             {saveFailed && (
@@ -313,7 +329,7 @@ export function OptionsApp() {
                                     {settings &&
                                         sectionContent({ t, settings, save })}
                                 </div>
-                                {settings && SECTIONS[section].preview && (
+                                {settings && SECTIONS[shown].preview && (
                                     <Preview
                                         t={t}
                                         settings={{ ...settings, ...lookDraft }}

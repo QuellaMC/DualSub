@@ -133,12 +133,26 @@ describe('OpenAICompatibleProviderCard', () => {
         expect(input).toHaveAttribute('aria-invalid', 'true');
 
         fireEvent.change(input, {
+            target: { value: 'https://api.openai.com/v2' },
+        });
+        fireEvent.keyDown(input, { key: 'Enter' });
+        await flush();
+        expect(save).toHaveBeenLastCalledWith(
+            { openaiCompatibleBaseUrl: 'https://api.openai.com/v2' },
+            'quiet'
+        );
+
+        // The key entered for one host never goes to another.
+        fireEvent.change(input, {
             target: { value: 'https://llm.example.com/v1/' },
         });
         fireEvent.keyDown(input, { key: 'Enter' });
         await flush();
-        expect(save).toHaveBeenCalledWith(
-            { openaiCompatibleBaseUrl: 'https://llm.example.com/v1/' },
+        expect(save).toHaveBeenLastCalledWith(
+            {
+                openaiCompatibleBaseUrl: 'https://llm.example.com/v1/',
+                openaiCompatibleApiKey: '',
+            },
             'quiet'
         );
     });
@@ -184,6 +198,7 @@ describe('OpenAICompatibleProviderCard', () => {
             {
                 openaiCompatibleBaseUrl:
                     'https://generativelanguage.googleapis.com/v1beta/openai',
+                openaiCompatibleApiKey: '',
                 openaiCompatibleModel: 'gemini-2.5-flash',
             },
             'quiet'
