@@ -15,7 +15,8 @@ provider account.
 
 - `storage`: user settings; provider credentials stay in `chrome.storage.local`
   and never sync.
-- `activeTab`: the popup previews slider changes on the tab it was opened for.
+- `activeTab`: the popup reads which site the current tab is on, to edit
+  that site's settings and say whether DualSub is serving a video there.
 - `sidePanel`: the AI analysis panel. It opens only from the user's click on
   a subtitle word.
 - Host permissions: the two platforms, their subtitle CDNs
@@ -67,9 +68,9 @@ provider account.
 1. Install: the welcome page opens with the browser's language as the
    translation language. Nothing else needs setting up.
 2. Sign in to Netflix or Disney+ and open any title.
-3. Play: two subtitle lines appear. In the DualSub popup, toggle "use
-   official translations" to switch between the platform's own
-   translation track and the provider.
+3. Play: two subtitle lines appear. In the options page's Languages
+   section, toggle "Use the show's own translation when it has one" to
+   switch between the platform's own translation track and the provider.
 4. Optional: in the options page's Word explanations section, paste an
    OpenAI or Gemini API key and turn the feature on, then click a subtitle
    word; the side panel opens with the word selected and "Analyze" returns

@@ -168,7 +168,10 @@ describe('upgrade paths', () => {
 
     it('2.5.0 → 3: credentials move, retired keys go, the provider id is repaired', async () => {
         await browser.storage.sync.set(V25_SYNC);
-        await browser.storage.local.set({ debugMode: true });
+        await browser.storage.local.set({
+            debugMode: true,
+            appearanceAccordionOpen: true,
+        });
         await boot();
         const storage = await snapshot();
         expectCanonical(storage);
@@ -182,6 +185,7 @@ describe('upgrade paths', () => {
             vertexTokenExpiresAt: 0,
         });
         expect(storage.local).not.toHaveProperty('debugMode');
+        expect(storage.local).not.toHaveProperty('appearanceAccordionOpen');
         expect(storage.sync).toMatchObject({
             selectedProvider: 'microsoft_edge',
             useOfficialTranslations: true,

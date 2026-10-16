@@ -1,19 +1,11 @@
 import { validateSetting } from '@/config/schema';
+import { NUDGE_SECONDS, roundSeconds, timingLabel } from '../../adjustments';
 import { Icon } from '../../design/Icon';
 import { useCommittedTextField } from '../../hooks/useCommittedTextField';
 import { CommittedField } from '../controls/CommittedField';
 import { SiteTag } from '../shell/scopeContext';
 import type { SectionProps } from '../types';
 
-/** Each press of Earlier or Later moves the subtitles this far. */
-const NUDGE_SECONDS = 0.5;
-
-function roundSeconds(seconds: number): number {
-    return Math.round(seconds * 100) / 100;
-}
-
-/** A positive offset shows subtitles earlier: the renderer adds it to the
- *  playback time before choosing a line. */
 export function TimingSection({
     t,
     settings,
@@ -55,14 +47,7 @@ export function TimingSection({
                     </button>
                     <div className="timing-value" aria-live="polite">
                         <div className="timing-number">
-                            {offset === 0
-                                ? t('timingOnTime')
-                                : t(
-                                      offset > 0
-                                          ? 'timingEarlierBy'
-                                          : 'timingLaterBy',
-                                      Math.abs(offset).toFixed(1)
-                                  )}
+                            {timingLabel(t, offset)}
                         </div>
                         <div className="help">
                             {t(

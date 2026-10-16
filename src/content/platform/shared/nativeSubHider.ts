@@ -165,14 +165,41 @@ export function installNativeSubHider(
         }
     };
 
-    void deps.config.get('hideOfficialSubtitles').then((value) => {
-        hide = value;
+    // The site's own subtitles hide only while DualSub shows its lines; a
+    // change that arrives before the first read is newer than that read.
+    const wanted = { hideOfficialSubtitles: false, subtitlesEnabled: false };
+    const changed = new Set<keyof typeof wanted>();
+    const follow = (): void => {
+        hide = wanted.hideOfficialSubtitles && wanted.subtitlesEnabled;
         apply();
+    };
+    void Promise.all([
+        deps.config.get('hideOfficialSubtitles'),
+        deps.config.get('subtitlesEnabled'),
+    ]).then(([hideOfficialSubtitles, subtitlesEnabled]) => {
+        if (!changed.has('hideOfficialSubtitles')) {
+            wanted.hideOfficialSubtitles = hideOfficialSubtitles;
+        }
+        if (!changed.has('subtitlesEnabled')) {
+            wanted.subtitlesEnabled = subtitlesEnabled;
+        }
+        follow();
     });
     const unsubscribe = deps.config.onChanged((changes) => {
-        if (changes.hideOfficialSubtitles !== undefined) {
-            hide = changes.hideOfficialSubtitles;
-            apply();
+        let relevant = false;
+        for (const key of [
+            'hideOfficialSubtitles',
+            'subtitlesEnabled',
+        ] as const) {
+            const value = changes[key];
+            if (value !== undefined) {
+                wanted[key] = value;
+                changed.add(key);
+                relevant = true;
+            }
+        }
+        if (relevant) {
+            follow();
         }
     });
 

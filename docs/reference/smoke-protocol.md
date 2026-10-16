@@ -11,9 +11,10 @@ with a clean profile plus one seeded profile (see the upgrade-path tests in
    container stays hidden. On a title with on-screen text (Disney+ Marvel
    films open with location cards), the cue the platform raises shows at
    the top with its translation while dialogue stays at the bottom.
-2. Toggle "use official translations" and change both languages from the
-   popup: the current line stays up behind the loading placeholder, then
-   the new languages take over at the right time. With the top line on
+2. Change both languages from the popup, and toggle the show's own
+   translation in the settings page's Languages section: the current line
+   stays up behind the loading placeholder, then the new languages take
+   over at the right time. With the top line on
    Automatic (a fresh profile's default), switch the audio track in the
    player: the top line reloads in the new audio language within a few
    seconds; pick audio in the translation language: one line shows.
@@ -21,50 +22,55 @@ with a clean profile plus one seeded profile (see the upgrade-path tests in
    previous episode, timing correct from the first line.
 4. Leave the player, come back, and reload the page: subtitles return
    without a stale line from the earlier session.
-5. Seek rapidly and drag the popup sliders while playing: the overlay
-   follows the slider live and never goes blank between cues. Switch the
-   subtitle style between Match Platform and Custom and resize the
-   window: the text restyles live and scales with the video. With the
-   platform's own subtitles off, Match Platform still follows the
-   profile's subtitle appearance settings, and the popup says so.
-6. In the settings page's How subtitles look section, pick each
+5. Seek rapidly and press the popup's text size, timing, and position
+   buttons while playing: the overlay follows each press at once and
+   never goes blank between cues. Switch the subtitle style in the
+   settings page between Look like the site and My own style and resize
+   the window: the text restyles live and scales with the video. With
+   the platform's own subtitles off, Look like the site still follows the
+   profile's subtitle appearance settings.
+6. Open the popup on a playing Netflix video: it says DualSub is working
+   on it. Turn DualSub off there: Netflix shows its own subtitles while a
+   Disney+ tab keeps dual subtitles. On any other page the popup shows
+   the sample and the sites.
+7. In the settings page's How subtitles look section, pick each
    ready-made look, then change colors and font (font, bold, text color,
    edge, background) and the translation color: the preview follows each
    edit at once, the overlay follows after a pause, both styles draw the
    translation in the chosen color, and the values are still there after
    the settings page is reloaded.
-7. Disney+ only: an ad or recap interstitial shows no subtitle, and the
+8. Disney+ only: an ad or recap interstitial shows no subtitle, and the
    time source stays correct across the shadow-DOM player controls.
 
 ## Translation
 
-8. Switch the translation service in the settings page (Microsoft,
+9. Switch the translation service in the settings page (Microsoft,
    Google, a keyed one): translations resume for the current line without
    a page reload. With a keyed service whose key is wrong, translations
    keep coming through Microsoft, the Translation section names the
    failing service and the one covering for it, and after fixing the key
    the keyed service takes over at once.
-9. Kill the service worker from chrome://serviceworker-internals while
-   playing: translations resume within a few cues.
+10. Kill the service worker from chrome://serviceworker-internals while
+    playing: translations resume within a few cues.
 
 ## Side panel
 
-10. Turn on Word explanations. Click a subtitle word: the panel opens, the
+11. Turn on Word explanations. Click a subtitle word: the panel opens, the
     word is highlighted, and playback pauses when auto-pause is on.
-11. Click several words, remove one from the panel: the removal shows only
+12. Click several words, remove one from the panel: the removal shows only
     after the subtitle highlight drops it.
-12. Switch tabs in the same window and back: the panel follows the active
+13. Switch tabs in the same window and back: the panel follows the active
     tab and restores its selection.
-13. Kill the service worker with the panel open: the panel reconnects and
+14. Kill the service worker with the panel open: the panel reconnects and
     the selection is republished.
-14. Analyze: a result renders; turn Word explanations off in the settings
+15. Analyze: a result renders; turn Word explanations off in the settings
     page while a request is in flight: no result appears afterwards.
 
 ## Settings and locale
 
-15. Change the UI language: popup, settings page, and panel switch
+16. Change the UI language: popup, settings page, and panel switch
     without a reload; the settings page title follows.
-16. On a clean profile the settings page opens on Start and says
+17. On a clean profile the settings page opens on Start and says
     DualSub is ready. Change the text size: the notice confirms it,
     stays while pointed at, and Undo (or Ctrl+Z) puts it back. Search
     "twice": Sites opens with focus on the hide switch. Show advanced
@@ -72,10 +78,10 @@ with a clean profile plus one seeded profile (see the upgrade-path tests in
     it gets a "Netflix only" tag, the Netflix overlay follows, Disney+
     keeps the shared size, and "Use the value for all sites" drops it
     again.
-17. Install the build into a clean profile: the welcome page opens once,
+18. Install the build into a clean profile: the welcome page opens once,
     with the browser's language picked and a two-line sample. Change the
     language there: the sample follows. Reload the extension from
     chrome://extensions: no second welcome page.
-18. Seeded 2.5.0 profile: after the first boot, credentials are gone from
+19. Seeded 2.5.0 profile: after the first boot, credentials are gone from
     sync storage, the provider is Microsoft, and every option shows the
     value the old profile had.

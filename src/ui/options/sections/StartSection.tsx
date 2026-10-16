@@ -2,7 +2,6 @@ import { getDefaultValue } from '@/config/schema';
 import {
     PLATFORM_IDS,
     PLATFORM_NAMES,
-    platformHome,
     type PlatformId,
 } from '@/shared/platforms';
 import { AUTO_LANGUAGE } from '@/shared/subtitleLanguages';
@@ -11,6 +10,7 @@ import { Switch } from '../../design/Switch';
 import type { Translate } from '../../hooks/useI18n';
 import { useSettings } from '../../hooks/useSettings';
 import { languageName } from '../../languageLabels';
+import { SiteLinks } from '../../SiteLinks';
 import { LanguageSelect } from '../../design/LanguageSelect';
 import { SizePicker } from '../controls/SizePicker';
 import type { SectionId } from '../sections';
@@ -118,18 +118,7 @@ export function StartSection({
                     ))}
                 </div>
                 <div className="inline wrap">
-                    {PLATFORM_IDS.map((site) => (
-                        <a
-                            key={site}
-                            className="button"
-                            href={platformHome(site)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                        >
-                            {t('startOpenSite', PLATFORM_NAMES[site])}
-                            <Icon name="external" />
-                        </a>
-                    ))}
+                    <SiteLinks t={t} className="button" />
                 </div>
             </div>
 

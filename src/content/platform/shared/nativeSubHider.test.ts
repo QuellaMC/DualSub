@@ -23,10 +23,16 @@ const silentLogger = {
 /** Every install of a test is torn down with it, as a session would. */
 const installs: AbortController[] = [];
 
-function harness(hideOfficialSubtitles: boolean) {
+function harness(hideOfficialSubtitles: boolean, subtitlesEnabled = true) {
     let listener: ((changes: SettingsChanges) => unknown) | null = null;
     const config = {
-        get: vi.fn(() => Promise.resolve(hideOfficialSubtitles)),
+        get: vi.fn((key: string) =>
+            Promise.resolve(
+                key === 'subtitlesEnabled'
+                    ? subtitlesEnabled
+                    : hideOfficialSubtitles
+            )
+        ),
         onChanged: vi.fn((callback: (changes: SettingsChanges) => unknown) => {
             listener = callback;
             return () => {
@@ -129,6 +135,21 @@ describe('installNativeSubHider', () => {
         shadow.append(second);
         await settle();
         expect(hidden(second)).toBe(true);
+    });
+
+    it("shows the site's own subtitles while DualSub is off", async () => {
+        const { player, start, emit } = harness(true, false);
+        const cue = document.createElement('div');
+        cue.className = 'cue';
+        player.append(cue);
+        start();
+        await settle();
+        expect(hidden(cue)).toBe(false);
+
+        emit({ subtitlesEnabled: true });
+        expect(hidden(cue)).toBe(true);
+        emit({ subtitlesEnabled: false });
+        expect(hidden(cue)).toBe(false);
     });
 
     it('follows the setting both ways and restores everything on abort', async () => {

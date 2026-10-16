@@ -417,8 +417,7 @@ export class PlayerSession {
         }
     }
 
-    /** Display settings from storage or from a popup live preview. */
-    applySettings(changes: Partial<SettingsValues>): void {
+    private applySettings(changes: Partial<SettingsValues>): void {
         let displayChanged = false;
         for (const key of CONTENT_SETTINGS_KEYS) {
             if (changes[key] !== undefined) {

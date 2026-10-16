@@ -233,7 +233,7 @@ describe('PlayerSession', () => {
     it("draws the platform style from the viewer's reported appearance", async () => {
         stubBackground({ 'zh-CN': '你好' });
         active = startSession();
-        active.session.applySettings({ subtitleStyle: 'platform' });
+        await configService.setMultiple({ subtitleStyle: 'platform' });
         active.cache.publish('1', resolution(['en', 'zh-CN']));
         await settle();
         active.tick(1.5);

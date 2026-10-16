@@ -1,32 +1,13 @@
 import { useEffect, useState } from 'react';
 import { browser } from 'wxt/browser';
 import { detectBrowserLanguage, getDefaultValue } from '@/config/schema';
-import { resolveLook } from '@/content/renderer/looks';
-import { toDisplaySettings } from '@/content/renderer/styling';
-import { PLATFORM_IDS, PLATFORM_NAMES, platformHome } from '@/shared/platforms';
-import { AUTO_LANGUAGE } from '@/shared/subtitleLanguages';
 import { LanguageSelect } from '../design/LanguageSelect';
 import { useI18n } from '../hooks/useI18n';
 import { useSettings } from '../hooks/useSettings';
-import { languageName } from '../languageLabels';
-import { LookPreview } from '../preview/LookPreview';
-import { sampleSubtitles, sampleVideoLanguage } from '../preview/sample';
-import { PLATFORM_PRESETS } from '../subtitleStyle';
+import { SamplePreview, SAMPLE_SETTINGS_KEYS } from '../preview/SamplePreview';
+import { SiteLinks } from '../SiteLinks';
 
-const WELCOME_KEYS = [
-    'uiLanguage',
-    'targetLanguage',
-    'originalLanguage',
-    'subtitleStyle',
-    'subtitleCustomLook',
-    'subtitleTranslationColor',
-    'subtitleFontScale',
-    'subtitleGap',
-    'subtitleVerticalPosition',
-    'subtitleLayoutOrientation',
-    'subtitleLayoutOrder',
-    'subtitleTimeOffset',
-] as const;
+const WELCOME_KEYS = ['uiLanguage', ...SAMPLE_SETTINGS_KEYS] as const;
 
 /** The page DualSub opens once, right after it is installed: what it
  *  picked, what the subtitles will look like, and how to start. */
@@ -63,11 +44,6 @@ export function WelcomeApp() {
 
     const fromBrowser =
         settings.targetLanguage === getDefaultValue('targetLanguage');
-    const sample = sampleSubtitles(
-        settings,
-        sampleVideoLanguage(settings.targetLanguage)
-    );
-    const display = toDisplaySettings(settings);
     const pickLanguage = (targetLanguage: string): void => {
         save({ targetLanguage }).then(
             () => setSaveFailed(false),
@@ -90,26 +66,7 @@ export function WelcomeApp() {
             )}
 
             <section className="card" aria-labelledby="welcome-language">
-                <LookPreview
-                    display={display}
-                    look={resolveLook(
-                        display,
-                        PLATFORM_PRESETS[PLATFORM_IDS[0]],
-                        null
-                    )}
-                    originalText={sample.originalText}
-                    translatedText={sample.translatedText}
-                    label={t('previewLabel')}
-                />
-                <p className="help">
-                    {t(
-                        settings.originalLanguage === AUTO_LANGUAGE
-                            ? 'previewCaptionAuto'
-                            : 'previewCaptionFixed',
-                        languageName(t, sample.originalLanguage),
-                        languageName(t, sample.targetLanguage)
-                    )}
-                </p>
+                <SamplePreview t={t} settings={settings} caption />
                 <div className="row">
                     <div className="grow">
                         <h2 className="label" id="welcome-language">
@@ -146,20 +103,7 @@ export function WelcomeApp() {
                                 {t('welcomeOpenTitle')}
                             </div>
                             <div className="inline wrap">
-                                {PLATFORM_IDS.map((site) => (
-                                    <a
-                                        key={site}
-                                        className="button"
-                                        href={platformHome(site)}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                    >
-                                        {t(
-                                            'startOpenSite',
-                                            PLATFORM_NAMES[site]
-                                        )}
-                                    </a>
-                                ))}
+                                <SiteLinks t={t} className="button" />
                             </div>
                         </div>
                     </li>

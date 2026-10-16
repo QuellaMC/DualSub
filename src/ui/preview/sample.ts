@@ -8,6 +8,8 @@ import {
     SUBTITLE_LANGUAGES,
     type SubtitleLanguage,
 } from '@/shared/subtitleLanguages';
+import type { Translate } from '../hooks/useI18n';
+import { languageName } from '../languageLabels';
 
 /** One proverb in every subtitle language. */
 const SAMPLE_LINES: Record<SubtitleLanguage, string> = {
@@ -64,4 +66,19 @@ export function sampleSubtitles(
             ? ''
             : SAMPLE_LINES[targetLanguage],
     };
+}
+
+/** What the sample's two lines are, in words. */
+export function sampleCaption(
+    t: Translate,
+    settings: Pick<SettingsValues, 'originalLanguage'>,
+    sample: SampleSubtitles
+): string {
+    return t(
+        settings.originalLanguage === AUTO_LANGUAGE
+            ? 'previewCaptionAuto'
+            : 'previewCaptionFixed',
+        languageName(t, sample.originalLanguage),
+        languageName(t, sample.targetLanguage)
+    );
 }

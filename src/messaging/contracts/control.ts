@@ -3,59 +3,21 @@ import { MessageActions } from '../actions';
 import { defineContract } from '../registry';
 import { boundedText } from './primitives';
 
-const MAX_CONFIG_CHANGED_KEYS = 32;
-
-export const CONFIG_CHANGED_LIMITS = Object.freeze({
-    maxDepth: 6,
-    maxEntries: 64,
-    maxStringBytes: 4096,
-    maxTotalBytes: 16384,
-});
-
-/** Shared ack for background/popup → content control messages. */
+/** Shared ack for background → content control messages. */
 const controlAck = z.discriminatedUnion('success', [
     z.strictObject({ success: z.literal(true) }),
     z.strictObject({ success: z.literal(false), error: boundedText(512) }),
 ]);
 
-// Values are re-validated by the content side against the settings schema
-// before use; the contract bounds shape and size only.
-export const configChanged = defineContract({
-    action: MessageActions.CONFIG_CHANGED,
-    transport: 'tab',
-    senders: ['popup'],
-    budget: CONFIG_CHANGED_LIMITS,
-    request: z.strictObject({
-        action: z.literal(MessageActions.CONFIG_CHANGED),
-        changes: z
-            .record(z.string(), z.unknown())
-            .refine(
-                (changes) =>
-                    Object.keys(changes).length >= 1 &&
-                    Object.keys(changes).length <= MAX_CONFIG_CHANGED_KEYS
-            ),
-    }),
-    response: controlAck,
-});
-
-/** Whether Match Platform on this tab follows the viewer's own platform
- *  subtitle settings, or the platform's preset until they are read. Off a
- *  player route there is nothing to say. */
-export const platformLookStatus = defineContract({
-    action: MessageActions.PLATFORM_LOOK_STATUS,
+/** Whether DualSub is serving a video player on this tab. */
+export const playerStatus = defineContract({
+    action: MessageActions.PLAYER_STATUS,
     transport: 'tab',
     senders: ['popup'],
     request: z.strictObject({
-        action: z.literal(MessageActions.PLATFORM_LOOK_STATUS),
+        action: z.literal(MessageActions.PLAYER_STATUS),
     }),
-    response: z.discriminatedUnion('onPlayer', [
-        z.strictObject({
-            onPlayer: z.literal(true),
-            platform: z.enum(['netflix', 'disneyplus']),
-            captured: z.boolean(),
-        }),
-        z.strictObject({ onPlayer: z.literal(false) }),
-    ]),
+    response: z.strictObject({ onPlayer: z.boolean() }),
 });
 
 export const loggingLevelChanged = defineContract({

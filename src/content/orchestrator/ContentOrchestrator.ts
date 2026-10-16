@@ -2,9 +2,8 @@ import { createLogger, setLoggingLevel } from '@/shared/logger';
 import { configService, type SiteConfig } from '@/config/service';
 import { MessageRouter } from '@/messaging/router';
 import {
-    configChanged,
     loggingLevelChanged,
-    platformLookStatus,
+    playerStatus,
     sidePanelPauseVideo,
 } from '@/messaging/contracts/control';
 import {
@@ -18,7 +17,6 @@ import type { PlatformDescriptor, PlatformHandoff } from '../platform/types';
 import { UiRoot } from '../renderer/domLayer';
 import type { SubtitleLook } from '../renderer/looks';
 import { NavigationWatcher } from './NavigationWatcher';
-import { prepareContentPreview } from './preview';
 import {
     CONTENT_SETTINGS_KEYS,
     FETCH_SETTINGS_KEYS,
@@ -73,29 +71,9 @@ export class ContentOrchestrator {
             setLoggingLevel(request.level);
             return { success: true as const };
         });
-        // Popup sliders paint before they persist; storage stays the truth.
-        this.router.handle(configChanged, (request) => {
-            let preview;
-            try {
-                preview = prepareContentPreview(request.changes);
-            } catch {
-                return {
-                    success: false as const,
-                    error: 'Invalid configuration change',
-                };
-            }
-            this.activeSession?.applySettings(preview);
-            return { success: true as const };
-        });
-        this.router.handle(platformLookStatus, () =>
-            this.activeSession
-                ? {
-                      onPlayer: true as const,
-                      platform: this.descriptor.id,
-                      captured: this.platformLook !== null,
-                  }
-                : { onPlayer: false as const }
-        );
+        this.router.handle(playerStatus, () => ({
+            onPlayer: this.activeSession !== null,
+        }));
         // Side panel traffic addresses the selection of whichever session is
         // on the route; with no session there is nothing to answer for.
         this.router.handle(

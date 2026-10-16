@@ -21,8 +21,8 @@ const LEGACY_DEFAULT_FONT_SIZE_VW = 1.1;
 // features. v2 batching + old side-panel/modal surface, plus the v3
 // retirements: the modal-vs-panel toggle, the legacy half of the
 // useNativeSubtitles/useOfficialTranslations dual key, the
-// viewport-relative font size that subtitleFontScale replaced in 3.1, and
-// the debug flag nothing read.
+// viewport-relative font size that subtitleFontScale replaced in 3.1, the
+// debug flag nothing read, and the popup's appearance fold-out.
 const RETIRED_SYNC_KEYS = [
     'translationBatchSize',
     'maxConcurrentBatches',
@@ -63,6 +63,7 @@ const RETIRED_LOCAL_KEYS = [
     'sidePanelSelectionBuckets',
     'aiContextDebugMode',
     'debugMode',
+    'appearanceAccordionOpen',
 ];
 
 /** Legacy sizes were viewport-width percentages and the new basis is the

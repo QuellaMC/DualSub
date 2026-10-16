@@ -8,10 +8,16 @@ import {
     type CustomLook,
 } from '@/config/schema';
 import { customLook } from '@/content/renderer/looks';
+import {
+    clampPosition,
+    POSITION_BOUNDS,
+    POSITION_STEP,
+    positionLabelKey,
+} from '../../adjustments';
 import { Icon } from '../../design/Icon';
 import { Switch } from '../../design/Switch';
 import { SizePicker } from '../controls/SizePicker';
-import { useDraft } from '../controls/useDraft';
+import { useDraft } from '../../hooks/useDraft';
 import { SiteTag } from '../shell/scopeContext';
 import type { OptionsSettings, SectionProps } from '../types';
 
@@ -80,30 +86,12 @@ const TRANSLATION_COLORS = [
     { hex: '#ffffff', labelKey: 'lookColorWhite' },
 ] as const;
 
-/** Each move of the position buttons, on the 0.1–9.9 position scale. */
-const POSITION_STEP = 0.7;
-const POSITION_BOUNDS = { min: 0.1, max: 9.9 } as const;
-
 function isFont(value: string): value is CustomLook['font'] {
     return (CUSTOM_LOOK_FONTS as readonly string[]).includes(value);
 }
 
 function isEdge(value: string): value is CustomLook['edge'] {
     return (CUSTOM_LOOK_EDGES as readonly string[]).includes(value);
-}
-
-/** The picture height the subtitles sit at, described in words. */
-function positionKey(position: number): string {
-    if (position < 1.4) {
-        return 'lookPositionBottom';
-    }
-    if (position < 3.6) {
-        return 'lookPositionUsual';
-    }
-    if (position < 6.3) {
-        return 'lookPositionLower';
-    }
-    return 'lookPositionMiddle';
 }
 
 function presetStyle(look: CustomLook): CSSProperties {
@@ -119,17 +107,6 @@ function presetStyle(look: CustomLook): CSSProperties {
         padding: drawn.padding,
         borderRadius: drawn.borderRadius,
     };
-}
-
-function clampPosition(value: number): number {
-    return (
-        Math.round(
-            Math.min(
-                POSITION_BOUNDS.max,
-                Math.max(POSITION_BOUNDS.min, value)
-            ) * 10
-        ) / 10
-    );
 }
 
 /** Unsaved edits the preview shows while their write waits for a pause. */
@@ -218,7 +195,7 @@ export function LookSection({
                     <div className="grow">
                         <div className="label">{t('lookPositionTitle')}</div>
                         <div className="help">
-                            {t(positionKey(position.value))}
+                            {t(positionLabelKey(position.value))}
                         </div>
                     </div>
                     <div className="inline">

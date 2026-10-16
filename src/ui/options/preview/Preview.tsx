@@ -6,14 +6,14 @@ import {
     PLATFORM_NAMES,
     type PlatformId,
 } from '@/shared/platforms';
-import {
-    AUTO_LANGUAGE,
-    type SubtitleLanguage,
-} from '@/shared/subtitleLanguages';
+import type { SubtitleLanguage } from '@/shared/subtitleLanguages';
 import type { Translate } from '../../hooks/useI18n';
-import { languageName } from '../../languageLabels';
 import { LookPreview } from '../../preview/LookPreview';
-import { sampleSubtitles, sampleVideoLanguage } from '../../preview/sample';
+import {
+    sampleCaption,
+    sampleSubtitles,
+    sampleVideoLanguage,
+} from '../../preview/sample';
 import { PLATFORM_PRESETS } from '../../subtitleStyle';
 import type { OptionsSettings, Scope } from '../types';
 
@@ -41,7 +41,6 @@ export function Preview({
     );
     const [previewSite, setPreviewSite] = useState<PlatformId>('netflix');
     const site = scope === 'all' ? previewSite : scope;
-    const automatic = settings.originalLanguage === AUTO_LANGUAGE;
     const sample = sampleSubtitles(settings, spoken);
     const oneLine = sample.translatedText === '';
     const display = toDisplaySettings(settings);
@@ -123,15 +122,7 @@ export function Preview({
                 {oneLine && settings.subtitlesEnabled && (
                     <p className="notice">{t('previewOneLine')}</p>
                 )}
-                <p className="help">
-                    {t(
-                        automatic
-                            ? 'previewCaptionAuto'
-                            : 'previewCaptionFixed',
-                        languageName(t, sample.originalLanguage),
-                        languageName(t, sample.targetLanguage)
-                    )}
-                </p>
+                <p className="help">{sampleCaption(t, settings, sample)}</p>
             </div>
         </aside>
     );

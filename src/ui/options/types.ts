@@ -1,5 +1,6 @@
 import type { SettingsValues } from '@/config/schema';
 import type { PlatformId } from '@/shared/platforms';
+import type { SaveFeedback } from '../hooks/useDraft';
 import type { Translate } from '../hooks/useI18n';
 
 export const OPTIONS_SETTINGS_KEYS = [
@@ -57,10 +58,6 @@ export type OptionsSettings = Pick<
 
 /** Which sites the page is editing: all of them, or one site's own. */
 export type Scope = 'all' | PlatformId;
-
-/** What a save tells the viewer: a toast naming the change, with Undo, or
- *  nothing (a field being typed). */
-export type SaveFeedback = { readonly message: string } | 'quiet';
 
 /** Persist settings; resolves false (and the page shows its banner) on
  *  failure. Without feedback the save is quiet. */

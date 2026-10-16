@@ -1,116 +1,81 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { browser, type Browser } from 'wxt/browser';
-import { previewContentSettings, readPlatformLookStatus } from './contentTab';
+import {
+    activeTabPlatform,
+    readTabStatus,
+    reloadActiveTab,
+} from './contentTab';
 
-function activeTab(id: number): Browser.tabs.Tab[] {
-    return [{ id } as unknown as Browser.tabs.Tab];
+function activeTab(id: number, url?: string): Browser.tabs.Tab[] {
+    return [{ id, url } as unknown as Browser.tabs.Tab];
 }
 
 function stubTabs(tabs: Browser.tabs.Tab[]) {
     vi.spyOn(browser.tabs, 'query').mockResolvedValue(tabs as never);
     return vi
         .spyOn(browser.tabs, 'sendMessage')
-        .mockResolvedValue({ success: true } as never);
+        .mockResolvedValue({ onPlayer: true } as never);
 }
 
 afterEach(() => {
     vi.restoreAllMocks();
 });
 
-describe('previewContentSettings', () => {
-    it('sends the changes to the active tab as a configChanged request', async () => {
-        const send = stubTabs(activeTab(7));
-        await previewContentSettings({ subtitleFontScale: 1.5 });
-        expect(send).toHaveBeenCalledWith(
-            7,
-            { action: 'configChanged', changes: { subtitleFontScale: 1.5 } },
-            undefined
-        );
-    });
+describe('activeTabPlatform', () => {
+    it("names the active tab's site, or null off the supported sites", async () => {
+        stubTabs(activeTab(7, 'https://www.netflix.com/watch/1'));
+        await expect(activeTabPlatform()).resolves.toBe('netflix');
 
-    it('does nothing without an active tab', async () => {
-        const send = stubTabs([]);
-        await previewContentSettings({ subtitleFontScale: 1.5 });
-        expect(send).not.toHaveBeenCalled();
-    });
+        stubTabs(activeTab(7, 'https://example.com/'));
+        await expect(activeTabPlatform()).resolves.toBeNull();
 
-    it('drops a stale same-key value when tab lookups resolve out of order', async () => {
-        const lookups: ((tabs: Browser.tabs.Tab[]) => void)[] = [];
-        const query = vi.spyOn(browser.tabs, 'query');
-        for (let i = 0; i < 2; i += 1) {
-            const { promise, resolve } =
-                Promise.withResolvers<Browser.tabs.Tab[]>();
-            lookups.push(resolve);
-            query.mockReturnValueOnce(promise as never);
-        }
-        const send = vi
-            .spyOn(browser.tabs, 'sendMessage')
-            .mockResolvedValue({ success: true } as never);
-
-        const first = previewContentSettings({
-            subtitleFontScale: 1.4,
-            subtitleGap: 0.5,
-        });
-        const second = previewContentSettings({ subtitleFontScale: 1.8 });
-        lookups[1]!(activeTab(7));
-        await second;
-        lookups[0]!(activeTab(7));
-        await first;
-
-        expect(send.mock.calls.map((call) => call[1])).toEqual([
-            { action: 'configChanged', changes: { subtitleFontScale: 1.8 } },
-            { action: 'configChanged', changes: { subtitleGap: 0.5 } },
-        ]);
-    });
-
-    it('swallows delivery failures and declined previews', async () => {
-        const send = stubTabs(activeTab(7));
-        send.mockRejectedValueOnce(new Error('Receiving end does not exist'));
-        await expect(
-            previewContentSettings({ subtitleFontScale: 1.5 })
-        ).resolves.toBeUndefined();
-
-        send.mockResolvedValueOnce({ success: false, error: 'nope' } as never);
-        await expect(
-            previewContentSettings({ subtitleFontScale: 1.5 })
-        ).resolves.toBeUndefined();
+        stubTabs([]);
+        await expect(activeTabPlatform()).resolves.toBeNull();
     });
 });
 
-describe('readPlatformLookStatus', () => {
-    it('asks the active tab what Match Platform draws from', async () => {
+describe('readTabStatus', () => {
+    it('tells a player from a page that waits for one', async () => {
         const send = stubTabs(activeTab(7));
-        send.mockResolvedValueOnce({
-            onPlayer: true,
-            platform: 'disneyplus',
-            captured: true,
-        } as never);
-        await expect(readPlatformLookStatus()).resolves.toEqual({
-            onPlayer: true,
-            platform: 'disneyplus',
-            captured: true,
-        });
+        await expect(readTabStatus()).resolves.toBe('player');
         expect(send).toHaveBeenCalledWith(
             7,
-            { action: 'platformLookStatus' },
+            { action: 'playerStatus' },
             undefined
         );
+
+        send.mockResolvedValueOnce({ onPlayer: false } as never);
+        await expect(readTabStatus()).resolves.toBe('waiting');
     });
 
-    it('is null without an active tab, a content script, a player route, or a sound answer', async () => {
-        stubTabs([]);
-        await expect(readPlatformLookStatus()).resolves.toBeNull();
+    it('knows when DualSub is not running in the page yet', async () => {
+        stubTabs(activeTab(7)).mockRejectedValueOnce(
+            new Error(
+                'Could not establish connection. Receiving end does not exist.'
+            )
+        );
+        await expect(readTabStatus()).resolves.toBe('notRunning');
+    });
 
-        stubTabs(activeTab(7)).mockResolvedValueOnce({
-            onPlayer: false,
-        } as never);
-        await expect(readPlatformLookStatus()).resolves.toBeNull();
+    it('claims nothing it cannot prove', async () => {
+        stubTabs([]);
+        await expect(readTabStatus()).resolves.toBe('waiting');
 
         const send = stubTabs(activeTab(7));
-        send.mockRejectedValueOnce(new Error('Receiving end does not exist'));
-        await expect(readPlatformLookStatus()).resolves.toBeNull();
+        send.mockResolvedValueOnce({ onPlayer: 'yes' } as never);
+        await expect(readTabStatus()).resolves.toBe('waiting');
+        send.mockRejectedValueOnce(new Error('The message port closed'));
+        await expect(readTabStatus()).resolves.toBe('waiting');
+    });
+});
 
-        send.mockResolvedValueOnce({ platform: 'hulu', captured: 1 } as never);
-        await expect(readPlatformLookStatus()).resolves.toBeNull();
+describe('reloadActiveTab', () => {
+    it('reloads the active tab', async () => {
+        stubTabs(activeTab(7));
+        const reload = vi
+            .spyOn(browser.tabs, 'reload')
+            .mockResolvedValue(undefined);
+        await reloadActiveTab();
+        expect(reload).toHaveBeenCalledWith(7);
     });
 });

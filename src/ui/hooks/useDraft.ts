@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { SaveFeedback } from '../types';
+
+/** How a write is confirmed to the viewer: a named change, or nothing. */
+export type SaveFeedback = { readonly message: string } | 'quiet';
 
 /** Sliders and color pickers report every movement; one write per pause
  *  keeps a drag within the sync storage write quota. */
@@ -21,7 +23,7 @@ export interface Draft<T> {
  * flight settles, or when the editor goes away; a write that fails snaps
  * the draft back to the stored value unless a newer edit is waiting. A
  * value arriving from storage (another window, a synced device) is adopted
- * unless an edit is waiting.
+ * unless an edit is waiting or a write is out.
  */
 export function useDraft<T>(
     saved: T,
@@ -38,7 +40,9 @@ export function useDraft<T>(
     });
 
     useEffect(() => {
-        if (pending.current === null) {
+        // While a write is out, a value arriving from storage is the echo of
+        // an older write, not news.
+        if (pending.current === null && !inFlight.current) {
             setDraft(saved);
         }
     }, [saved]);

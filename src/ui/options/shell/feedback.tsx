@@ -2,7 +2,8 @@ import { createContext, useContext } from 'react';
 import type { SiteProfile, SiteSettingKey } from '@/config/schema';
 import { configService, type SiteWrite } from '@/config/service';
 import type { PlatformId } from '@/shared/platforms';
-import type { SaveFeedback, Scope } from '../types';
+import type { SaveFeedback } from '../../hooks/useDraft';
+import type { Scope } from '../types';
 
 export type ToastTone = 'done' | 'problem';
 

@@ -557,11 +557,6 @@ export const configSchema = {
         default: false,
         scope: 'local',
     }),
-    appearanceAccordionOpen: setting({
-        schema: z.boolean(),
-        default: false,
-        scope: 'local',
-    }),
 
     aiContextEnabled: setting({
         schema: z.boolean(),

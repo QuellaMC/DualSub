@@ -5,102 +5,6 @@
     "appDesc": {
         "message": "Displays dual language subtitles on streaming platforms."
     },
-    "h1Title": {
-        "message": "DualSub"
-    },
-    "enableSubtitlesLabel": {
-        "message": "Enable Dual Subtitles:"
-    },
-    "useNativeSubtitlesLabel": {
-        "message": "Use Official Subtitles:"
-    },
-    "originalLanguageLabel": {
-        "message": "Language Set:"
-    },
-    "targetLanguageLabel": {
-        "message": "Translate to:"
-    },
-    "subtitleAppearanceTimingLegend": {
-        "message": "Subtitle Appearance & Timing"
-    },
-    "displayOrderLabel": {
-        "message": "Display Order:"
-    },
-    "layoutLabel": {
-        "message": "Layout:"
-    },
-    "fontSizeLabel": {
-        "message": "Font Size:"
-    },
-    "verticalGapLabel": {
-        "message": "Vertical Gap:"
-    },
-    "subtitleVerticalPositionLabel": {
-        "message": "Vertical Position:"
-    },
-    "timeOffsetLabel": {
-        "message": "Time Offset(s):"
-    },
-    "displayOrderOriginalFirst": {
-        "message": "Original First"
-    },
-    "displayOrderTranslationFirst": {
-        "message": "Translation First"
-    },
-    "layoutTopBottom": {
-        "message": "Top / Bottom"
-    },
-    "layoutLeftRight": {
-        "message": "Left / Right"
-    },
-    "subtitleStyleLabel": {
-        "message": "Subtitle Style:"
-    },
-    "subtitleStylePlatform": {
-        "message": "Match Platform"
-    },
-    "statusLanguageSetTo": {
-        "message": "Language Set (Refresh Page): "
-    },
-    "statusDualEnabled": {
-        "message": "Dual Subtitles Enabled. (Refresh Page)"
-    },
-    "statusDualDisabled": {
-        "message": "Dual Subtitles Disabled. (Refresh Page)"
-    },
-    "statusSmartTranslationEnabled": {
-        "message": "Smart Translation Enabled. (Refresh Page)"
-    },
-    "statusSmartTranslationDisabled": {
-        "message": "Smart Translation Disabled. (Refresh Page)"
-    },
-    "statusOriginalLanguage": {
-        "message": "Language Set (Refresh Page): "
-    },
-    "statusTimeOffset": {
-        "message": "Time offset: "
-    },
-    "statusDisplayOrderUpdated": {
-        "message": "Display order updated."
-    },
-    "statusLayoutOrientationUpdated": {
-        "message": "Layout orientation updated."
-    },
-    "statusSubtitleStyleUpdated": {
-        "message": "Subtitle style updated."
-    },
-    "statusFontSize": {
-        "message": "Font size: "
-    },
-    "statusVerticalGap": {
-        "message": "Vertical gap: "
-    },
-    "statusVerticalPosition": {
-        "message": "Vertical position: "
-    },
-    "statusInvalidOffset": {
-        "message": "Invalid offset, reverting."
-    },
     "optionsPageTitle": {
         "message": "DualSub settings"
     },
@@ -373,18 +277,6 @@
     },
     "subtitleLoading": {
         "message": "DualSub: loading subtitles…"
-    },
-    "subtitleStyleCustom": {
-        "message": "Custom"
-    },
-    "platformLookCaptured": {
-        "message": "Match Platform follows your %s profile's subtitle settings."
-    },
-    "platformLookPreset": {
-        "message": "Match Platform uses the %s preset until your profile's subtitle settings are read."
-    },
-    "editCustomLook": {
-        "message": "Edit the custom look in settings"
     },
     "advancedBackupTitle": {
         "message": "Backup"
@@ -1519,5 +1411,44 @@
     },
     "welcomeClose": {
         "message": "You can close this tab whenever you like."
+    },
+    "popupAllSettings": {
+        "message": "All settings"
+    },
+    "popupWorkingTitle": {
+        "message": "Working on this video"
+    },
+    "popupWorkingHelp": {
+        "message": "Your line: %s."
+    },
+    "popupReadyTitle": {
+        "message": "Ready on %s"
+    },
+    "popupReadyHelp": {
+        "message": "Play a video and the two lines appear by themselves."
+    },
+    "popupOffTitle": {
+        "message": "Dual subtitles are off on %s"
+    },
+    "popupSmaller": {
+        "message": "Smaller text"
+    },
+    "popupBigger": {
+        "message": "Bigger text"
+    },
+    "popupElsewhereTitle": {
+        "message": "DualSub works on these sites"
+    },
+    "popupElsewhereHelp": {
+        "message": "This page isn't one of them. Open one, play any video, and the two lines appear by themselves."
+    },
+    "popupReloadTitle": {
+        "message": "Reload the page to start DualSub"
+    },
+    "popupReloadHelp": {
+        "message": "This page was open before DualSub was installed or updated."
+    },
+    "popupReload": {
+        "message": "Reload the page"
     }
 }

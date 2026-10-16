@@ -5,102 +5,6 @@
     "appDesc": {
         "message": "ストリーミングプラットフォームで二言語字幕を表示します。"
     },
-    "h1Title": {
-        "message": "DualSub"
-    },
-    "enableSubtitlesLabel": {
-        "message": "二言語字幕を有効にする："
-    },
-    "useNativeSubtitlesLabel": {
-        "message": "公式字幕を使用："
-    },
-    "originalLanguageLabel": {
-        "message": "言語設定："
-    },
-    "targetLanguageLabel": {
-        "message": "翻訳先："
-    },
-    "subtitleAppearanceTimingLegend": {
-        "message": "字幕の外観とタイミング"
-    },
-    "displayOrderLabel": {
-        "message": "表示順序："
-    },
-    "layoutLabel": {
-        "message": "レイアウト："
-    },
-    "fontSizeLabel": {
-        "message": "フォントサイズ："
-    },
-    "verticalGapLabel": {
-        "message": "垂直間隔："
-    },
-    "subtitleVerticalPositionLabel": {
-        "message": "垂直位置："
-    },
-    "timeOffsetLabel": {
-        "message": "時間オフセット（秒）："
-    },
-    "displayOrderOriginalFirst": {
-        "message": "原文を上に"
-    },
-    "displayOrderTranslationFirst": {
-        "message": "翻訳を上に"
-    },
-    "layoutTopBottom": {
-        "message": "上下配置"
-    },
-    "layoutLeftRight": {
-        "message": "左右配置"
-    },
-    "subtitleStyleLabel": {
-        "message": "字幕スタイル："
-    },
-    "subtitleStylePlatform": {
-        "message": "プラットフォームに合わせる"
-    },
-    "statusLanguageSetTo": {
-        "message": "言語設定完了（ページを更新してください）："
-    },
-    "statusDualEnabled": {
-        "message": "二言語字幕が有効になりました。（ページを更新してください）"
-    },
-    "statusDualDisabled": {
-        "message": "二言語字幕が無効になりました。（ページを更新してください）"
-    },
-    "statusSmartTranslationEnabled": {
-        "message": "スマート翻訳が有効になりました。（ページを更新してください）"
-    },
-    "statusSmartTranslationDisabled": {
-        "message": "スマート翻訳が無効になりました。（ページを更新してください）"
-    },
-    "statusOriginalLanguage": {
-        "message": "言語設定完了（ページを更新してください）："
-    },
-    "statusTimeOffset": {
-        "message": "時間オフセット："
-    },
-    "statusDisplayOrderUpdated": {
-        "message": "表示順序が更新されました。"
-    },
-    "statusLayoutOrientationUpdated": {
-        "message": "レイアウト方向が更新されました。"
-    },
-    "statusSubtitleStyleUpdated": {
-        "message": "字幕スタイルを更新しました。"
-    },
-    "statusFontSize": {
-        "message": "フォントサイズ："
-    },
-    "statusVerticalGap": {
-        "message": "垂直間隔："
-    },
-    "statusVerticalPosition": {
-        "message": "垂直位置："
-    },
-    "statusInvalidOffset": {
-        "message": "無効なオフセットです。元に戻します。"
-    },
     "optionsPageTitle": {
         "message": "DualSubの設定"
     },
@@ -373,18 +277,6 @@
     },
     "subtitleLoading": {
         "message": "DualSub: 字幕を読み込んでいます…"
-    },
-    "subtitleStyleCustom": {
-        "message": "カスタム"
-    },
-    "platformLookCaptured": {
-        "message": "「プラットフォームに合わせる」は %s プロフィールの字幕設定に従います。"
-    },
-    "platformLookPreset": {
-        "message": "「プラットフォームに合わせる」は、プロフィールの字幕設定を読み取るまで %s の既定の外観を使います。"
-    },
-    "editCustomLook": {
-        "message": "設定でカスタム外観を編集"
     },
     "advancedBackupTitle": {
         "message": "バックアップ"
@@ -1519,5 +1411,44 @@
     },
     "welcomeClose": {
         "message": "このタブはいつ閉じてもかまいません。"
+    },
+    "popupAllSettings": {
+        "message": "すべての設定"
+    },
+    "popupWorkingTitle": {
+        "message": "この動画で字幕を表示中"
+    },
+    "popupWorkingHelp": {
+        "message": "自分の言語の行は%sです。"
+    },
+    "popupReadyTitle": {
+        "message": "%sで準備完了"
+    },
+    "popupReadyHelp": {
+        "message": "動画を再生すると、2行の字幕が自動で表示されます。"
+    },
+    "popupOffTitle": {
+        "message": "%sでは二言語字幕がオフです"
+    },
+    "popupSmaller": {
+        "message": "文字を小さく"
+    },
+    "popupBigger": {
+        "message": "文字を大きく"
+    },
+    "popupElsewhereTitle": {
+        "message": "DualSubが使えるサイト"
+    },
+    "popupElsewhereHelp": {
+        "message": "このページでは使えません。下のサイトを開いて好きな動画を再生すると、2行の字幕が自動で表示されます。"
+    },
+    "popupReloadTitle": {
+        "message": "再読み込みするとDualSubが使えます"
+    },
+    "popupReloadHelp": {
+        "message": "このページは、DualSubをインストールまたは更新する前から開いていました。"
+    },
+    "popupReload": {
+        "message": "ページを再読み込み"
     }
 }
