@@ -99,6 +99,9 @@ export function OptionsApp() {
     const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     /** The last change asked for; each waits for the one before. */
     const changes = useRef<Promise<unknown>>(Promise.resolve());
+    /** Counts the viewer's navigations, so one that waits on a save gives
+     *  way to any made meanwhile. */
+    const navigations = useRef(0);
     /** The drafts of the settings shown, by key; following the value for
      *  all sites cancels them first. */
     const drafts = useRef(new Map<SiteSettingKey, Set<() => void>>());
@@ -289,6 +292,7 @@ export function OptionsApp() {
     };
 
     const go = (next: SectionId, anchors: readonly string[] = []): void => {
+        navigations.current += 1;
         setSection(next);
         setArrival({ anchors });
     };
@@ -297,6 +301,7 @@ export function OptionsApp() {
         go('look');
     };
     const openSearchResult = async (entry: SearchEntry): Promise<void> => {
+        const asked = navigations.current;
         if (
             entry.advanced &&
             !advanced &&
@@ -304,7 +309,9 @@ export function OptionsApp() {
         ) {
             return;
         }
-        go(entry.section, entry.anchors);
+        if (navigations.current === asked) {
+            go(entry.section, entry.anchors);
+        }
     };
 
     const sectionContent = (sectionProps: SectionProps): ReactNode => {
