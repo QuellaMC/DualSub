@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+    useCallback,
+    useEffect,
+    useLayoutEffect,
+    useRef,
+    useState,
+} from 'react';
 import type { SaveFeedback } from '../types';
 
 /** Sliders and color pickers report every movement; one write per pause
@@ -42,11 +48,13 @@ export function useDraft<T>(
     const inFlight = useRef(false);
     const latest = useRef({ draft, write, saved });
 
-    useEffect(() => {
+    // As a render commits, before a press on what it shows can land: run
+    // later, these would take back a press made in between.
+    useLayoutEffect(() => {
         latest.current = { draft, write, saved };
     });
 
-    useEffect(() => {
+    useLayoutEffect(() => {
         if (pending.current === null) {
             setDraft(saved);
         }
