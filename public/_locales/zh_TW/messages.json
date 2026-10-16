@@ -1442,6 +1442,9 @@
     "welcomeInstalled": {
         "message": "已安裝"
     },
+    "welcomeSitesOwn": {
+        "message": "在 %s 上，字幕依專屬設定顯示，可能跟這個範例不同。"
+    },
     "welcomePickedTitle": {
         "message": "我們幫你選好的"
     },
@@ -1502,11 +1505,17 @@
     "welcomeArrangeSideBySide": {
         "message": "DualSub 會在 Netflix 和 Disney+ 上並排顯示兩行字幕：影片本身的語言，和你的語言。"
     },
+    "welcomeArrangeOneLine": {
+        "message": "DualSub 會在 Netflix 和 Disney+ 上顯示你的語言的字幕。影片的那一行也設成了這種語言，所以只顯示一行。"
+    },
     "welcomeStateReady": {
         "message": "什麼都不用設定。"
     },
     "welcomeStateOff": {
         "message": "現在是關閉的，用下面的開關就能開啟。"
+    },
+    "welcomeStatePartial": {
+        "message": "現在在 %s 上是關閉的，用下面的開關就能在所有網站上開啟。"
     },
     "welcomeStateSetUp": {
         "message": "要翻譯你的那一行，請先設定好下面的翻譯服務。"

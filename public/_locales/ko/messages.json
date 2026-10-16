@@ -1442,6 +1442,9 @@
     "welcomeInstalled": {
         "message": "설치됨"
     },
+    "welcomeSitesOwn": {
+        "message": "%s에서는 따로 정한 설정을 따르기 때문에 자막이 이 예시와 다를 수 있어요."
+    },
     "welcomePickedTitle": {
         "message": "미리 골라 둔 설정"
     },
@@ -1502,11 +1505,17 @@
     "welcomeArrangeSideBySide": {
         "message": "DualSub은 Netflix와 Disney+에 자막 두 줄을 나란히 보여 줘요. 영상 원래의 언어와 내 언어예요."
     },
+    "welcomeArrangeOneLine": {
+        "message": "DualSub은 Netflix와 Disney+에 내 언어로 자막을 보여 줘요. 영상 줄도 같은 언어로 정해져 있어서 한 줄만 나와요."
+    },
     "welcomeStateReady": {
         "message": "따로 설정할 건 없어요."
     },
     "welcomeStateOff": {
         "message": "지금은 꺼져 있어요. 아래 스위치로 켤 수 있어요."
+    },
+    "welcomeStatePartial": {
+        "message": "지금은 %s에서 꺼져 있어요. 아래 스위치로 모든 사이트에서 켤 수 있어요."
     },
     "welcomeStateSetUp": {
         "message": "내 언어 줄을 번역하려면 아래 번역 서비스 설정을 마치세요."

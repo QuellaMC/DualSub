@@ -1442,6 +1442,9 @@
     "welcomeInstalled": {
         "message": "Installed"
     },
+    "welcomeSitesOwn": {
+        "message": "On %s, subtitles follow settings of their own, so they can differ from this sample."
+    },
     "welcomePickedTitle": {
         "message": "What we picked for you"
     },
@@ -1502,11 +1505,17 @@
     "welcomeArrangeSideBySide": {
         "message": "DualSub puts two lines of subtitles side by side on Netflix and Disney+: the video's own language, and yours."
     },
+    "welcomeArrangeOneLine": {
+        "message": "DualSub puts subtitles on Netflix and Disney+ in your language. The video's line is set to it too, so one line shows."
+    },
     "welcomeStateReady": {
         "message": "There is nothing to set up."
     },
     "welcomeStateOff": {
         "message": "It is off for now: the switch below turns it on."
+    },
+    "welcomeStatePartial": {
+        "message": "It is off on %s for now: the switch below turns it on everywhere."
     },
     "welcomeStateSetUp": {
         "message": "To translate yours, finish setting up the translation service below."

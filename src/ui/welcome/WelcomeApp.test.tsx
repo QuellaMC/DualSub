@@ -128,7 +128,7 @@ describe('WelcomeApp', () => {
             ).toBe(true)
         );
         expect(
-            await screen.findByText('Dual subtitles are on')
+            await screen.findByText('Working on Netflix and Disney+')
         ).toBeInTheDocument();
         expect(
             screen.getByRole('switch', { name: 'Dual subtitles' })
@@ -225,6 +225,61 @@ describe('WelcomeApp', () => {
         });
         expect(
             await screen.findByText("AI translation isn't set up yet")
+        ).toBeInTheDocument();
+    });
+
+    it('offers the switch while DualSub is off on one site, and names it', async () => {
+        await fakeBrowser.storage.sync.set({
+            siteProfiles: { disneyplus: { subtitlesEnabled: false } },
+        });
+        render(<WelcomeApp />);
+        expect(
+            await screen.findByText('Working on Netflix, off on Disney+')
+        ).toBeInTheDocument();
+        expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+            'Welcome to DualSub'
+        );
+        expect(
+            screen.getByText(
+                /It is off on Disney\+ for now: the switch below turns it on everywhere\./
+            )
+        ).toBeInTheDocument();
+        const everywhere = screen.getByRole('switch', {
+            name: 'Dual subtitles',
+        });
+        expect(everywhere).toHaveAttribute('aria-checked', 'false');
+
+        fireEvent.click(everywhere);
+        await waitFor(async () =>
+            expect(
+                (await fakeBrowser.storage.sync.get('siteProfiles'))
+                    .siteProfiles
+            ).toEqual({})
+        );
+        expect(
+            await screen.findByRole('heading', {
+                level: 1,
+                name: "You're all set.",
+            })
+        ).toBeInTheDocument();
+    });
+
+    it('says when a site keeps its own look, and when the languages make one line', async () => {
+        await fakeBrowser.storage.sync.set({
+            siteProfiles: { netflix: { subtitleFontScale: 1.6 } },
+            originalLanguage: 'en',
+            targetLanguage: 'en',
+        });
+        render(<WelcomeApp />);
+        expect(
+            await screen.findByText(
+                'On Netflix, subtitles follow settings of their own, so they can differ from this sample.'
+            )
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                /The video's line is set to it too, so one line shows\./
+            )
         ).toBeInTheDocument();
     });
 
