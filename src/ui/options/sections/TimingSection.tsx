@@ -29,10 +29,14 @@ export function TimingSection({
             return true;
         },
     });
-    const shift = (seconds: number, messageKey: string): void =>
-        draft.set(roundSeconds(offset + seconds), {
+    /** A button builds on an exact shift typed but not yet entered, which
+     *  the field would otherwise enter over the button's change later. */
+    const shift = (seconds: number, messageKey: string): void => {
+        void exact.commit();
+        draft.update((current) => roundSeconds(current + seconds), {
             message: t(messageKey, NUDGE_SECONDS),
         });
+    };
 
     return (
         <section className="section" aria-labelledby="timing-title">
@@ -80,9 +84,10 @@ export function TimingSection({
                         type="button"
                         className="button quiet"
                         disabled={offset === 0}
-                        onClick={() =>
-                            draft.set(0, { message: t('toastOnTime') })
-                        }
+                        onClick={() => {
+                            void exact.commit();
+                            draft.set(0, { message: t('toastOnTime') });
+                        }}
                     >
                         {t('timingReset')}
                     </button>

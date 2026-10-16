@@ -17,6 +17,9 @@ export interface Draft<T> {
     readonly edit: (value: T) => void;
     /** Show `value` at once and write it now, confirmed with `notice`. */
     readonly set: (value: T, notice: SaveFeedback) => void;
+    /** `set` what `change` makes of the newest draft, which a render may
+     *  not show yet. */
+    readonly update: (change: (current: T) => T, notice: SaveFeedback) => void;
     /** Drop an edit still waiting to be written and show the stored value
      *  again; a write already on its way still lands. */
     readonly cancel: () => void;
@@ -116,6 +119,10 @@ export function useDraft<T>(
         edit: (value) => show(value, 'quiet'),
         set: (value, notice) => {
             show(value, notice);
+            flush();
+        },
+        update: (change, notice) => {
+            show(change(latest.current.draft), notice);
             flush();
         },
         cancel,

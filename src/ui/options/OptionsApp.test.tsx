@@ -129,6 +129,19 @@ describe('OptionsApp', () => {
         );
     });
 
+    it('moves the subtitles from an exact shift typed but not yet entered', async () => {
+        await fakeBrowser.storage.local.set({ showAdvancedSettings: true });
+        location.hash = '#timing';
+        await renderReady();
+        fireEvent.change(screen.getByLabelText(/^Exact shift/), {
+            target: { value: '2' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: /Show earlier/ }));
+        await waitFor(async () =>
+            expect(await sync('subtitleTimeOffset')).toBe(2.5)
+        );
+    });
+
     it("shows a site's scope only where a site keeps settings of its own", async () => {
         await fakeBrowser.storage.sync.set({
             siteProfiles: { netflix: { subtitleFontScale: 1.6 } },

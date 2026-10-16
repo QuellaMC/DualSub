@@ -211,10 +211,9 @@ export function LookSection({
                             className="button"
                             disabled={position.value >= POSITION_BOUNDS.max}
                             onClick={() =>
-                                position.set(
-                                    clampPosition(
-                                        position.value + POSITION_STEP
-                                    ),
+                                position.update(
+                                    (current) =>
+                                        clampPosition(current + POSITION_STEP),
                                     { message: t('toastMovedUp') }
                                 )
                             }
@@ -227,10 +226,9 @@ export function LookSection({
                             className="button"
                             disabled={position.value <= POSITION_BOUNDS.min}
                             onClick={() =>
-                                position.set(
-                                    clampPosition(
-                                        position.value - POSITION_STEP
-                                    ),
+                                position.update(
+                                    (current) =>
+                                        clampPosition(current - POSITION_STEP),
                                     { message: t('toastMovedDown') }
                                 )
                             }
