@@ -49,6 +49,20 @@ describe('DeepLProviderCard', () => {
         ).toBeEnabled();
     });
 
+    it('asks for the plan before the key is checked, since each plan has its own address', () => {
+        render(
+            <DeepLProviderCard t={t} apiKey="" plan="free" save={vi.fn()} />
+        );
+        const plan = screen.getByRole('group', {
+            name: 'translationDeepLPlan',
+        });
+        const check = screen.getByRole('button', { name: 'setupCheckKey' });
+        expect(
+            plan.compareDocumentPosition(check) &
+                Node.DOCUMENT_POSITION_FOLLOWING
+        ).toBeTruthy();
+    });
+
     it('saves edits and runs the connection check', async () => {
         const save = vi.fn(() => Promise.resolve(true));
         vi.stubGlobal(
