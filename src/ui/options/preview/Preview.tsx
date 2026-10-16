@@ -73,8 +73,11 @@ export function Preview({
     const [previewSite, setPreviewSite] = useState<PlatformId>('netflix');
     const site = scope === 'all' ? previewSite : scope;
     const automatic = settings.originalLanguage === AUTO_LANGUAGE;
-    const top = automatic ? spoken : offered(settings.originalLanguage);
-    const oneLine = isSameLanguage(top, target);
+    const topLanguage = automatic ? spoken : settings.originalLanguage;
+    // The lines are counted as the video shows them, by the languages
+    // picked, before English stands in for any the sample lacks.
+    const oneLine = isSameLanguage(topLanguage, settings.targetLanguage);
+    const top = offered(topLanguage);
     /** The languages picked that the sample has no lines in. */
     const standIns = [
         ...new Set([
@@ -196,8 +199,8 @@ export function Preview({
                                   ? 'official'
                                   : 'translated'
                         ],
-                        languageName(t, top),
-                        languageName(t, target)
+                        languageName(t, topLanguage),
+                        languageName(t, settings.targetLanguage)
                     )}
                 </p>
                 {standIns.map((language) => (

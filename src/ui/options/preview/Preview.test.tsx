@@ -66,6 +66,26 @@ describe('Preview', () => {
         expect(screen.getByText('previewOneLine')).toBeInTheDocument();
     });
 
+    it('counts the lines by the languages picked, before English stands in', () => {
+        render(
+            <Preview
+                t={t}
+                scope="all"
+                settings={settingsWith({
+                    targetLanguage: 'en',
+                    originalLanguage: 'nl',
+                })}
+            />
+        );
+        expect(slot('original')).toHaveTextContent('Where there’s a will');
+        expect(slot('translated')).toHaveTextContent('Where there’s a will');
+        expect(screen.queryByText('previewOneLine')).not.toBeInTheDocument();
+        expect(
+            screen.getByText('previewCaptionFixed:nl,lang_en')
+        ).toBeInTheDocument();
+        expect(screen.getByText('previewStandIn:nl')).toBeInTheDocument();
+    });
+
     it('shows that dual subtitles are off', () => {
         render(
             <Preview
