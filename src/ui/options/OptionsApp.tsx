@@ -179,6 +179,11 @@ export function OptionsApp() {
                     ? target
                     : (target.querySelector<HTMLElement>(FOCUSABLE) ?? target);
             focused.focus({ preventScroll: true });
+            // Nothing there takes focus yet, as a card still reading its
+            // settings: keep looking.
+            if (document.activeElement !== focused) {
+                return false;
+            }
             // A folded disclosure opens to show what was searched for.
             if (focused.getAttribute('aria-expanded') === 'false') {
                 focused.click();
