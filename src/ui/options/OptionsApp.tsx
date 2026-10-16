@@ -170,7 +170,11 @@ export function OptionsApp() {
         }
     }, []);
 
-    const dismissToast = useCallback(() => setToast(null), []);
+    const dismissToast = useCallback(
+        (id: number) =>
+            setToast((current) => (current?.id === id ? null : current)),
+        []
+    );
 
     const feedback = useMemo<Feedback>(() => {
         const show = (toast: Omit<ToastState, 'id'>): void => {
@@ -190,8 +194,12 @@ export function OptionsApp() {
                 show({
                     message,
                     tone: 'done',
-                    undo: undo ? () => void apply(undo) : null,
+                    undo: undo ? () => apply(undo) : null,
                 });
+            } else {
+                setToast((current) =>
+                    current?.undo ? { ...current, undo: null } : current
+                );
             }
             return true;
         };

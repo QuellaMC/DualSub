@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Icon } from '../../design/Icon';
 import type { Translate } from '../../hooks/useI18n';
 import type { ToastTone } from './feedback';
@@ -7,12 +7,13 @@ export interface ToastState {
     readonly id: number;
     readonly message: string;
     readonly tone: ToastTone;
-    readonly undo: (() => void) | null;
+    /** Resolves whether the change was undone. */
+    readonly undo: (() => Promise<boolean>) | null;
 }
 
 interface ToastProps {
     readonly t: Translate;
-    readonly onDismiss: () => void;
+    readonly onDismiss: (id: number) => void;
     /** The toast is pointed at or focused, so it must not go yet. */
     readonly onHold: (held: boolean) => void;
 }
@@ -39,8 +40,9 @@ function editsText(target: EventTarget | null): boolean {
 /**
  * One change, said in words. It stays while pointed at or focused, and
  * Ctrl+Z (⌘Z) undoes it from anywhere but a text field, so Undo is in reach
- * for keyboard users before it goes. Focus on Undo goes back to where it
- * came from.
+ * for keyboard users before it goes. It goes once the change is undone, and
+ * an Undo that fails stays to be tried again. Focus on Undo goes back to
+ * where it came from.
  */
 function ToastCard({
     t,
@@ -52,10 +54,18 @@ function ToastCard({
     const [focused, setFocused] = useState(false);
     const returnFocus = useRef<HTMLElement | null>(null);
     const held = hovered || focused;
-    const { undo } = toast;
+    const { id, undo } = toast;
 
     useEffect(() => onHold(held), [held, onHold]);
     useEffect(() => () => onHold(false), [onHold]);
+
+    const undoThenDismiss = useCallback((): void => {
+        void undo?.().then((undone) => {
+            if (undone) {
+                onDismiss(id);
+            }
+        });
+    }, [id, undo, onDismiss]);
 
     useEffect(() => {
         if (!undo) {
@@ -70,13 +80,12 @@ function ToastCard({
                 !editsText(event.target)
             ) {
                 event.preventDefault();
-                undo();
-                onDismiss();
+                undoThenDismiss();
             }
         };
         window.addEventListener('keydown', onKey);
         return () => window.removeEventListener('keydown', onKey);
-    }, [undo, onDismiss]);
+    }, [undo, undoThenDismiss]);
 
     return (
         <div
@@ -106,8 +115,7 @@ function ToastCard({
                     className="toast-undo"
                     aria-keyshortcuts="Control+Z Meta+Z"
                     onClick={() => {
-                        undo();
-                        onDismiss();
+                        undoThenDismiss();
                         const back = returnFocus.current;
                         (back?.isConnected
                             ? back

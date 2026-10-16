@@ -21,6 +21,7 @@ import {
 } from 'vitest';
 import { browser } from 'wxt/browser';
 import { fakeBrowser } from 'wxt/testing/fake-browser';
+import { configService } from '@/config/service';
 import { installExtensionRuntimeIdentity } from '@/test-utils/extensionRuntime';
 import { resetCatalogsForTests } from '../hooks/useI18n';
 import { OptionsApp } from './OptionsApp';
@@ -302,6 +303,26 @@ describe('OptionsApp', () => {
         expect(screen.getByRole('button', { name: 'Turn on' })).toBeDisabled();
     });
 
+    it('clears two kinds of explanation clicked one right after the other', async () => {
+        await fakeBrowser.storage.sync.set({
+            aiContextTypes: ['linguistic', 'cultural', 'historical'],
+        });
+        location.hash = '#explanations';
+        await renderReady();
+        const kinds = screen.getByRole('group', { name: 'What to explain' });
+        fireEvent.click(
+            within(kinds).getByRole('checkbox', {
+                name: 'The culture behind it',
+            })
+        );
+        fireEvent.click(
+            within(kinds).getByRole('checkbox', { name: 'History and origin' })
+        );
+        await waitFor(async () =>
+            expect(await sync('aiContextTypes')).toEqual(['linguistic'])
+        );
+    });
+
     it('removes two filters clicked one right after the other', async () => {
         await fakeBrowser.storage.sync.set({
             subtitleBlacklist: {
@@ -330,7 +351,28 @@ describe('OptionsApp', () => {
         );
     });
 
-    it('stops offering exports once the settings can no longer be read', async () => {
+    it("says so on a site's card when that site's settings cannot be read", async () => {
+        const read = configService.readMultipleResultStrict.bind(configService);
+        vi.spyOn(configService, 'readMultipleResultStrict').mockImplementation(
+            (keys, options) =>
+                options?.site === 'netflix'
+                    ? Promise.reject(new Error('broken'))
+                    : read(keys, options)
+        );
+        location.hash = '#sites';
+        await renderReady();
+        const card = (
+            await screen.findByRole('heading', { name: 'Netflix' })
+        ).closest('.card');
+        expect(
+            within(card as HTMLElement).getByRole('alert')
+        ).toHaveTextContent('Failed to load settings');
+        expect(
+            screen.getByRole('heading', { name: 'Disney+' })
+        ).toBeInTheDocument();
+    });
+
+    it('keeps the export in step with every change, even while storage cannot be read', async () => {
         await fakeBrowser.storage.local.set({ showAdvancedSettings: true });
         location.hash = '#advanced';
         await renderReady();
@@ -343,7 +385,12 @@ describe('OptionsApp', () => {
             new Error('broken')
         );
         await fakeBrowser.storage.sync.set({ subtitleGap: 0.5 });
-        await waitFor(() => expect(download).toBeDisabled());
+        await waitFor(() =>
+            expect(document.querySelector('pre.code')).toHaveTextContent(
+                '"subtitleGap": 0.5'
+            )
+        );
+        expect(download).toBeEnabled();
     });
 
     it('turns word explanations on only once a key is in', async () => {
@@ -453,6 +500,55 @@ describe('OptionsApp', () => {
                 disneyplus: { subtitlesEnabled: false },
             })
         );
+    });
+
+    it('undoes a backup load whole or not at all, and offers Undo again after a failure', async () => {
+        await fakeBrowser.storage.local.set({ showAdvancedSettings: true });
+        location.hash = '#advanced';
+        await renderReady();
+        await waitFor(() =>
+            expect(document.querySelector('pre.code')).toHaveTextContent(
+                '"subtitleFontScale": 1'
+            )
+        );
+        // The backup changes a setting in each storage area.
+        const backup = new File(
+            [
+                JSON.stringify({
+                    subtitleFontScale: 1.6,
+                    showAdvancedSettings: false,
+                }),
+            ],
+            'backup.json',
+            { type: 'application/json' }
+        );
+        fireEvent.change(screen.getByLabelText('Load settings from a file'), {
+            target: { files: [backup] },
+        });
+        fireEvent.click(
+            await screen.findByRole('button', { name: 'Replace them' })
+        );
+        await waitFor(async () =>
+            expect(await sync('subtitleFontScale')).toBe(1.6)
+        );
+
+        vi.spyOn(browser.storage.local, 'set').mockRejectedValueOnce(
+            new Error('quota')
+        );
+        fireEvent.click(await screen.findByRole('button', { name: 'Undo' }));
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+            'Failed to save setting'
+        );
+        expect(await sync('subtitleFontScale')).toBe(1.6);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+        await waitFor(async () =>
+            expect(await sync('subtitleFontScale')).toBe(1)
+        );
+        expect(
+            (await fakeBrowser.storage.local.get('showAdvancedSettings'))
+                .showAdvancedSettings
+        ).toBe(true);
     });
 
     it('shows the stored settings as JSON, without keys', async () => {
@@ -724,6 +820,38 @@ describe('OptionsApp', () => {
             expect(await sync('subtitleFontScale')).toBe(1)
         );
         expect(screen.queryByText('Text size: Large')).not.toBeInTheDocument();
+    });
+
+    it('takes back an Undo once a later change lands', async () => {
+        await fakeBrowser.storage.sync.set({ subtitleStyle: 'custom' });
+        location.hash = '#look';
+        await renderReady();
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Change colors and font' })
+        );
+        fireEvent.click(screen.getByRole('button', { name: /Boxed$/ }));
+        const toast = await screen.findByText('Look: Boxed');
+        expect(
+            within(toast.parentElement!).getByRole('button', { name: 'Undo' })
+        ).toBeInTheDocument();
+
+        fireEvent.change(screen.getByLabelText('Font'), {
+            target: { value: 'serif' },
+        });
+        await waitFor(async () =>
+            expect(await sync('subtitleCustomLook')).toMatchObject({
+                font: 'serif',
+            })
+        );
+        await waitFor(() =>
+            expect(
+                screen.queryByRole('button', { name: 'Undo' })
+            ).not.toBeInTheDocument()
+        );
+        fireEvent.keyDown(document.body, { key: 'z', ctrlKey: true });
+        expect(await sync('subtitleCustomLook')).toMatchObject({
+            font: 'serif',
+        });
     });
 
     it('shows the banner when an Undo cannot be saved', async () => {

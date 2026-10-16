@@ -14,6 +14,7 @@ import {
     type SettingsValues,
 } from '@/config/schema';
 import { configService } from '@/config/service';
+import { useSettings } from '../../hooks/useSettings';
 import { useFeedback } from '../shell/feedback';
 import type { SectionProps } from '../types';
 
@@ -26,6 +27,8 @@ const NOT_BACKED_UP: readonly SettingsKey[] = [
     'openaiCompatibleApiKeyOrigin',
     'openaiApiKeyOrigin',
 ];
+
+const BACKED_UP = SETTINGS_KEYS.filter((key) => !NOT_BACKED_UP.includes(key));
 
 /** What a reset leaves while everything else goes back to the recommended
  *  values: what is not backed up, how the page itself reads, and the
@@ -54,17 +57,6 @@ const LOGGING_LEVELS = [
     { level: 3, labelKey: 'advancedLoggingNormal' },
     { level: 4, labelKey: 'advancedLoggingEverything' },
 ] as const;
-
-/** Everything stored but what stays out of backups, as one JSON
- *  document. */
-async function readStoredSettings(): Promise<Partial<SettingsValues>> {
-    const { values } = await configService.readAllResultStrict();
-    return Object.fromEntries(
-        Object.entries(values).filter(
-            ([key]) => !NOT_BACKED_UP.includes(key as SettingsKey)
-        )
-    );
-}
 
 /** The settings a backup file holds, ready to write: every non-sensitive
  *  one it names. Null for a file that is not a settings object, or holds a
@@ -108,6 +100,23 @@ function changeCount(
     ).length;
 }
 
+/** Run `write` over `keys` whole or not at all: the storage areas are
+ *  written one after another, so when a later one fails, the earlier ones
+ *  get back what they held. Resolves to what the keys held before. */
+async function wholly(
+    keys: readonly string[],
+    write: () => Promise<unknown>
+): Promise<Partial<SettingsValues>> {
+    const before = await configService.getMultiple(keys);
+    try {
+        await write();
+    } catch (error) {
+        await configService.setMultiple(before).catch(() => undefined);
+        throw error;
+    }
+    return before;
+}
+
 function download(name: string, text: string): void {
     const url = URL.createObjectURL(
         new Blob([text], { type: 'application/json' })
@@ -121,7 +130,8 @@ function download(name: string, text: string): void {
 
 export function AdvancedSection({ t, settings, save }: SectionProps) {
     const feedback = useFeedback();
-    const [stored, setStored] = useState<Partial<SettingsValues> | null>(null);
+    /** What a backup holds; null until it is read in full. */
+    const stored = useSettings(BACKED_UP).settings;
     /** The backup waiting to be applied, kept whole: what it would change
      *  is counted against the stored settings as they are now. */
     const [backup, setBackup] = useState<Partial<SettingsValues> | null>(null);
@@ -135,32 +145,6 @@ export function AdvancedSection({ t, settings, save }: SectionProps) {
     const json = stored ? JSON.stringify(stored, null, 2) : '';
 
     useEffect(() => {
-        let active = true;
-        // Exports and copies wait for a fresh read rather than offer old
-        // settings as current.
-        const refresh = (): void => {
-            void readStoredSettings().then(
-                (values) => {
-                    if (active) {
-                        setStored(values);
-                    }
-                },
-                () => {
-                    if (active) {
-                        setStored(null);
-                    }
-                }
-            );
-        };
-        refresh();
-        const stop = configService.onChanged(refresh);
-        return () => {
-            active = false;
-            stop();
-        };
-    }, []);
-
-    useEffect(() => {
         if (confirmReset) {
             cancelReset.current?.focus();
         } else if (wasConfirming.current) {
@@ -169,38 +153,34 @@ export function AdvancedSection({ t, settings, save }: SectionProps) {
         wasConfirming.current = confirmReset;
     }, [confirmReset]);
 
-    /** Write `changes`, with an Undo that puts back what they replaced. The
-     *  site profiles go back value by value, over any change another page
-     *  made since. */
+    /** Write `changes`, with an Undo that puts back what they replaced;
+     *  each lands whole or not at all. The site profiles go back value by
+     *  value, over any change another page made since. */
     const replaceSettings = (
         changes: Partial<SettingsValues>,
         message: string
     ): void => {
+        const keys = Object.keys(changes);
         let before: Partial<SettingsValues> = {};
         void feedback.apply(
             async () => {
-                before = await configService.getMultiple(Object.keys(changes));
-                try {
-                    await configService.setMultiple(changes);
-                } catch (error) {
-                    // One storage area may have taken its part; put it back.
-                    await configService
-                        .setMultiple(before)
-                        .catch(() => undefined);
-                    throw error;
-                }
+                before = await wholly(keys, () =>
+                    configService.setMultiple(changes)
+                );
             },
             message,
             () =>
-                changes.siteProfiles === undefined
-                    ? configService.setMultiple(before)
-                    : configService.restoreSiteValues(
-                          before,
-                          changedSiteValues(
-                              before.siteProfiles ?? {},
-                              changes.siteProfiles
+                wholly(keys, () =>
+                    changes.siteProfiles === undefined
+                        ? configService.setMultiple(before)
+                        : configService.restoreSiteValues(
+                              before,
+                              changedSiteValues(
+                                  before.siteProfiles ?? {},
+                                  changes.siteProfiles
+                              )
                           )
-                      )
+                )
         );
     };
 

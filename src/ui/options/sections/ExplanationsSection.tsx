@@ -4,6 +4,7 @@ import {
     validateSetting,
     type SettingsValues,
 } from '@/config/schema';
+import { configService } from '@/config/service';
 import { CONTEXT_TYPES, type ContextType } from '@/shared/contextTypes';
 import { keyEntry, usableCredential } from '@/shared/keyOrigins';
 import { Icon } from '../../design/Icon';
@@ -13,6 +14,7 @@ import { CommittedField } from '../controls/CommittedField';
 import { GEMINI_MODELS, OPENAI_MODELS } from '../explanations/models';
 import { OpenAIHostPermission } from '../explanations/OpenAIHostPermission';
 import { useHostPermission } from '../hooks/useHostPermission';
+import { useFeedback } from '../shell/feedback';
 import { SharedTag } from '../shell/scopeContext';
 import type { SectionProps } from '../types';
 
@@ -62,6 +64,7 @@ export function ExplanationsSection({
     save,
     advanced,
 }: SectionProps & { advanced: boolean }) {
+    const feedback = useFeedback();
     const provider = settings.aiContextProvider;
     const service = AI_SERVICES[provider];
     const apiKey =
@@ -112,16 +115,15 @@ export function ExplanationsSection({
         (model) => model.id === settings.geminiModel
     );
 
+    /** Each box changes the stored list, so quick clicks each build on the
+     *  last. */
     const setContextType = (type: ContextType, checked: boolean): void => {
-        void save(
-            {
-                aiContextTypes: CONTEXT_TYPES.filter((candidate) =>
-                    candidate === type
-                        ? checked
-                        : settings.aiContextTypes.includes(candidate)
-                ),
-            },
-            'quiet'
+        void feedback.apply(() =>
+            configService.updateSetting('aiContextTypes', (types) =>
+                CONTEXT_TYPES.filter((candidate) =>
+                    candidate === type ? checked : types.includes(candidate)
+                )
+            )
         );
     };
 
