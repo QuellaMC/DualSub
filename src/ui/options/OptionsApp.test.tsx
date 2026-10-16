@@ -843,6 +843,7 @@ describe('OptionsApp', () => {
         });
         await fakeBrowser.storage.local.set({
             openaiCompatibleApiKey: '   ',
+            openaiCompatibleApiKeyOrigin: 'https://llm.example.com',
             showAdvancedSettings: true,
         });
         location.hash = '#advanced';
@@ -877,6 +878,7 @@ describe('OptionsApp', () => {
                 await release.promise;
                 await fakeBrowser.storage.local.set({
                     openaiCompatibleApiKey: 'sk-key',
+                    openaiCompatibleApiKeyOrigin: 'https://llm.example.com',
                 });
             }
         );
@@ -896,6 +898,41 @@ describe('OptionsApp', () => {
         expect(await sync('openaiCompatibleBaseUrl')).toBe(
             'https://llm.example.com/v1'
         );
+    });
+
+    it('resets the setup of a key entered for another address', async () => {
+        await fakeBrowser.storage.sync.set({
+            openaiCompatibleBaseUrl: 'https://llm.example.com/v1',
+        });
+        await fakeBrowser.storage.local.set({
+            openaiCompatibleApiKey: 'sk-key',
+            openaiCompatibleApiKeyOrigin: 'https://api.openai.com',
+            showAdvancedSettings: true,
+        });
+        location.hash = '#advanced';
+        await renderReady();
+        fireEvent.click(
+            screen.getByRole('button', { name: 'Reset everything…' })
+        );
+        fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
+
+        expect(
+            await screen.findByText(
+                'Everything is back to the recommended settings'
+            )
+        ).toBeInTheDocument();
+        expect(await sync('openaiCompatibleBaseUrl')).toBe(
+            getDefaultValue('openaiCompatibleBaseUrl')
+        );
+        expect(
+            await fakeBrowser.storage.local.get([
+                'openaiCompatibleApiKey',
+                'openaiCompatibleApiKeyOrigin',
+            ])
+        ).toEqual({
+            openaiCompatibleApiKey: 'sk-key',
+            openaiCompatibleApiKeyOrigin: 'https://api.openai.com',
+        });
     });
 
     it('undoes a backup load whole or not at all, and offers Undo again after a failure', async () => {
