@@ -1210,6 +1210,42 @@ describe('OptionsApp', () => {
         ).toBeInTheDocument();
     });
 
+    it("lands a search for a site's own settings on that site's editing", async () => {
+        await renderReady();
+        fireEvent.change(screen.getByRole('searchbox'), {
+            target: { value: 'own settings' },
+        });
+        fireEvent.click(
+            screen.getByRole('button', {
+                name: /^Give a site its own settings/,
+            })
+        );
+        await waitFor(() =>
+            expect(
+                document
+                    .getElementById('site-own-netflix')
+                    ?.contains(document.activeElement)
+            ).toBe(true)
+        );
+        expect(document.activeElement).toHaveAttribute('type', 'button');
+    });
+
+    it('finds the switch for dual subtitles on every site', async () => {
+        location.hash = '#help';
+        await renderReady();
+        fireEvent.change(screen.getByRole('searchbox'), {
+            target: { value: 'dual subtitles' },
+        });
+        fireEvent.click(
+            screen.getByRole('button', { name: /^Dual subtitles/ })
+        );
+        await waitFor(() =>
+            expect(document.activeElement).toBe(
+                screen.getByRole('switch', { name: 'Dual subtitles' })
+            )
+        );
+    });
+
     it('lands on the menu language picker from search', async () => {
         await renderReady();
         fireEvent.change(screen.getByRole('searchbox'), {

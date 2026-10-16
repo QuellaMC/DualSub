@@ -25,6 +25,12 @@ export const LOOK_EDITOR_ANCHORS: readonly string[] = [
 
 const ENTRIES: readonly SearchEntry[] = [
     {
+        labelKey: 'startEnabled',
+        wordsKey: 'searchWordsDualSubtitles',
+        section: 'start',
+        anchors: ['dual-subtitles'],
+    },
+    {
         labelKey: 'languagesSpeakTitle',
         wordsKey: 'searchWordsSpeak',
         section: 'languages',
@@ -184,7 +190,7 @@ const ENTRIES: readonly SearchEntry[] = [
         wordsKey: 'searchWordsSiteOwn',
         section: 'sites',
         advanced: true,
-        anchors: ['sites'],
+        anchors: [`site-own-${PLATFORM_IDS[0]}`],
     },
     {
         labelKey: 'sitesFiltersTitle',

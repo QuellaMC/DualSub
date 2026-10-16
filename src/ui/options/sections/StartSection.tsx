@@ -139,7 +139,7 @@ export function StartSection({
                             </div>
                         )}
                     </div>
-                    <div className="inline">
+                    <div className="inline" id="dual-subtitles">
                         <span className="strong" id="start-enabled">
                             {t('startEnabled')}
                         </span>
