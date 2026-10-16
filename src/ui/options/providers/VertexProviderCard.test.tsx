@@ -59,10 +59,22 @@ describe('VertexProviderCard', () => {
 
         renderCard({
             ...CONFIGURED,
-            vertexTokenExpiresAt: Date.now() + 2 * 60_000,
+            vertexTokenExpiresAt: Date.now() + 90_000,
         });
         expect(screen.getByRole('status')).toHaveTextContent(
             'vertexTokenExpiringReimport:1'
+        );
+    });
+
+    it('says the token ran out once it does', async () => {
+        renderCard({ ...CONFIGURED, vertexTokenExpiresAt: Date.now() + 300 });
+        expect(screen.getByRole('status')).toHaveTextContent(
+            'vertexTokenExpiringReimport:0'
+        );
+        await waitFor(() =>
+            expect(screen.getByRole('status')).toHaveTextContent(
+                'vertexTokenExpiredReimport'
+            )
         );
     });
 
