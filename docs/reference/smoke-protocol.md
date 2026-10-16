@@ -65,12 +65,13 @@ with a clean profile plus one seeded profile (see the upgrade-path tests in
 15. Change the UI language: popup, settings page, and panel switch
     without a reload; the settings page title follows.
 16. On a clean profile the settings page opens on Start and says
-    DualSub is ready. Change the text size: the notice confirms it,
-    stays while pointed at, and Undo (or Ctrl+Z) puts it back. Search
-    "twice": Sites opens with focus on the hide switch. Show advanced
+    it is working on Netflix and Disney+. Change the text size: the
+    notice confirms it, stays while pointed at, and Undo (or Ctrl+Z)
+    puts it back. Search "twice": Sites opens with focus on Netflix's
+    hide switch. Show advanced
     options, pick Netflix in the bar at the top, and change the size:
     it gets a "Netflix only" tag, the Netflix overlay follows, Disney+
-    keeps the shared size, and "Use the value for all sites" drops it
+    keeps the shared size, and "Use the All-sites value" drops it
     again. Choose DeepL without a key: Start says it isn't set up yet
     and that Microsoft Translator translates until it is; turn
     fallback off and Start says nothing is translated.

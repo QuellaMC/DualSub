@@ -106,7 +106,9 @@ describe('WelcomeApp', () => {
                     .subtitlesEnabled
             ).toBe(true)
         );
-        expect(await screen.findByText('DualSub is ready')).toBeInTheDocument();
+        expect(
+            await screen.findByText('Dual subtitles are on')
+        ).toBeInTheDocument();
         expect(
             screen.getByRole('switch', { name: 'Dual subtitles' })
         ).toHaveAttribute('aria-checked', 'true');

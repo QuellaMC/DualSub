@@ -4,17 +4,18 @@ import { detectBrowserLanguage } from '@/config/schema';
 import { resolveLook } from '@/content/renderer/looks';
 import { toDisplaySettings } from '@/content/renderer/styling';
 import { PLATFORM_IDS, PLATFORM_NAMES, platformHome } from '@/shared/platforms';
-import {
-    AUTO_LANGUAGE,
-    browserTargetLanguage,
-} from '@/shared/subtitleLanguages';
+import { browserTargetLanguage } from '@/shared/subtitleLanguages';
 import { LanguageSelect } from '../design/LanguageSelect';
 import { Switch } from '../design/Switch';
 import { useI18n } from '../hooks/useI18n';
 import { useSettings } from '../hooks/useSettings';
 import { languageName } from '../languageLabels';
 import { LookPreview } from '../preview/LookPreview';
-import { sampleSubtitles, sampleVideoLanguage } from '../preview/sample';
+import {
+    sampleCaption,
+    sampleSubtitles,
+    sampleVideoLanguage,
+} from '../preview/sample';
 import { PLATFORM_PRESETS } from '../subtitleStyle';
 
 const WELCOME_KEYS = [
@@ -22,6 +23,7 @@ const WELCOME_KEYS = [
     'subtitlesEnabled',
     'targetLanguage',
     'originalLanguage',
+    'useOfficialTranslations',
     'subtitleStyle',
     'subtitleCustomLook',
     'subtitleTranslationColor',
@@ -32,6 +34,10 @@ const WELCOME_KEYS = [
     'subtitleLayoutOrder',
     'subtitleTimeOffset',
 ] as const;
+
+/** The sample's text takes the size it would have on a picture this many
+ *  pixels tall. */
+const PICTURE_HEIGHT = 1100;
 
 /** The page DualSub opens once, right after it is installed: what it
  *  picked, what the subtitles will look like, and how to start. */
@@ -119,7 +125,7 @@ export function WelcomeApp() {
                             <h2 className="label">
                                 {t(
                                     settings.subtitlesEnabled
-                                        ? 'startStatusReady'
+                                        ? 'startStatusOn'
                                         : 'startStatusOff'
                                 )}
                             </h2>
@@ -155,19 +161,12 @@ export function WelcomeApp() {
                         PLATFORM_PRESETS[PLATFORM_IDS[0]],
                         null
                     )}
+                    pictureHeight={PICTURE_HEIGHT}
                     originalText={sample.originalText}
                     translatedText={sample.translatedText}
                     label={t('previewLabel')}
                 />
-                <p className="help">
-                    {t(
-                        settings.originalLanguage === AUTO_LANGUAGE
-                            ? 'previewCaptionAuto'
-                            : 'previewCaptionFixed',
-                        languageName(t, sample.originalLanguage),
-                        languageName(t, sample.targetLanguage)
-                    )}
-                </p>
+                <p className="help">{sampleCaption(t, settings, sample)}</p>
                 {sample.standIns.map((language) => (
                     <p key={language} className="help">
                         {t('previewStandIn', languageName(t, language))}

@@ -6,14 +6,15 @@ import {
     PLATFORM_NAMES,
     type PlatformId,
 } from '@/shared/platforms';
-import {
-    AUTO_LANGUAGE,
-    type SubtitleLanguage,
-} from '@/shared/subtitleLanguages';
+import type { SubtitleLanguage } from '@/shared/subtitleLanguages';
 import type { Translate } from '../../hooks/useI18n';
 import { languageName } from '../../languageLabels';
 import { LookPreview } from '../../preview/LookPreview';
-import { sampleSubtitles, sampleVideoLanguage } from '../../preview/sample';
+import {
+    sampleCaption,
+    sampleSubtitles,
+    sampleVideoLanguage,
+} from '../../preview/sample';
 import { PLATFORM_PRESETS } from '../../subtitleStyle';
 import type { OptionsSettings, Scope } from '../types';
 
@@ -25,6 +26,11 @@ const SAMPLE_VIDEOS = [
     language: SubtitleLanguage;
     labelKey: string;
 }[];
+
+/** The preview draws its text as on a picture this many pixels tall: small
+ *  enough to sit in the frame as subtitles sit in a video, large enough to
+ *  read. */
+const PICTURE_HEIGHT = 700;
 
 /** The subtitles as they will look, drawn by the overlay's own styling. */
 export function Preview({
@@ -41,7 +47,6 @@ export function Preview({
     );
     const [previewSite, setPreviewSite] = useState<PlatformId>('netflix');
     const site = scope === 'all' ? previewSite : scope;
-    const automatic = settings.originalLanguage === AUTO_LANGUAGE;
     const sample = sampleSubtitles(settings, spoken);
     const oneLine = sample.translatedText === '';
     const display = toDisplaySettings(settings);
@@ -67,6 +72,7 @@ export function Preview({
                             PLATFORM_PRESETS[site],
                             null
                         )}
+                        pictureHeight={PICTURE_HEIGHT}
                         originalText={sample.originalText}
                         translatedText={sample.translatedText}
                         label={t('previewLabel')}
@@ -81,7 +87,7 @@ export function Preview({
                         {t('previewSampleVideo')}
                     </span>
                     <div
-                        className="segmented"
+                        className="segmented small"
                         role="group"
                         aria-labelledby="preview-sample"
                     >
@@ -103,7 +109,7 @@ export function Preview({
                             {t('previewShownOn')}
                         </span>
                         <div
-                            className="segmented"
+                            className="segmented small"
                             role="group"
                             aria-labelledby="preview-site"
                         >
@@ -123,15 +129,7 @@ export function Preview({
                 {oneLine && settings.subtitlesEnabled && (
                     <p className="notice">{t('previewOneLine')}</p>
                 )}
-                <p className="help">
-                    {t(
-                        automatic
-                            ? 'previewCaptionAuto'
-                            : 'previewCaptionFixed',
-                        languageName(t, sample.originalLanguage),
-                        languageName(t, sample.targetLanguage)
-                    )}
-                </p>
+                <p className="help">{sampleCaption(t, settings, sample)}</p>
                 {sample.standIns.map((language) => (
                     <p key={language} className="help">
                         {t('previewStandIn', languageName(t, language))}

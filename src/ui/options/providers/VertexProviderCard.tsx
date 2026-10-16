@@ -56,7 +56,6 @@ export function VertexProviderCard({
             <h2 className="label" id="vertex-setup">
                 {t('translationVertexSetupTitle')}
             </h2>
-            <p className="help">{t('translationVertexHelp')}</p>
             <input
                 ref={fileInput}
                 type="file"
@@ -76,6 +75,7 @@ export function VertexProviderCard({
                     <div className="strong">
                         {t('vertexServiceAccountLabel')}
                     </div>
+                    <p className="help">{t('translationVertexHelp')}</p>
                     <TestResultDisplay result={check.importResult} />
                 </div>
                 <button

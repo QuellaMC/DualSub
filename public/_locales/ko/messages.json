@@ -113,9 +113,6 @@
     "apiPlanPro": {
         "message": "Pro"
     },
-    "aboutDevelopment": {
-        "message": "QuellaMC & 1jifang이 개발했습니다."
-    },
     "lang_en": {
         "message": "영어"
     },
@@ -165,7 +162,7 @@
         "message": "⚠️ DeepL API 키 테스트가 필요합니다."
     },
     "testingButton": {
-        "message": "테스트 중..."
+        "message": "확인 중…"
     },
     "testingConnection": {
         "message": "DeepL 연결을 테스트하고 있습니다..."
@@ -189,16 +186,16 @@
         "message": "❌ 테스트에 실패했습니다: %s"
     },
     "vertexAccessTokenLabel": {
-        "message": "액세스 토큰:"
+        "message": "액세스 토큰"
     },
     "vertexProjectIdLabel": {
-        "message": "프로젝트 ID:"
+        "message": "프로젝트 ID"
     },
     "vertexLocationLabel": {
-        "message": "위치:"
+        "message": "리전"
     },
     "vertexModelLabel": {
-        "message": "모델:"
+        "message": "모델"
     },
     "vertexMissingConfig": {
         "message": "액세스 토큰과 프로젝트 ID를 입력하세요."
@@ -207,13 +204,13 @@
         "message": "연결 실패: %s"
     },
     "vertexServiceAccountLabel": {
-        "message": "서비스 계정 JSON:"
+        "message": "서비스 계정 파일"
     },
     "vertexImportButton": {
-        "message": "JSON 파일 가져오기"
+        "message": "파일 선택…"
     },
     "vertexImporting": {
-        "message": "가져오는 중..."
+        "message": "가져오는 중…"
     },
     "vertexGeneratingToken": {
         "message": "액세스 토큰 생성 중..."
@@ -225,7 +222,7 @@
         "message": "⚠️ Vertex AI가 구성되었습니다. 연결을 테스트하세요."
     },
     "testConnectionButton": {
-        "message": "연결 테스트"
+        "message": "연결 확인"
     },
     "openaiApiKeyError": {
         "message": "먼저 API 키를 입력해주세요."
@@ -312,7 +309,7 @@
         "message": "분석 중 오류가 발생했습니다."
     },
     "aiContextTypesRequired": {
-        "message": "설명할 내용을 하나 이상 고르세요."
+        "message": "하나 이상 고르세요."
     },
     "deeplTestSuccessSimple": {
         "message": "✅ DeepL API 테스트가 성공했습니다!"
@@ -402,10 +399,10 @@
         "message": "설정 다운로드"
     },
     "advancedJsonHelp": {
-        "message": "DualSub에 저장된 내용이에요. 키는 빠져 있어요. 사이트마다 모든 사이트 공통 설정과 다른 값만 저장돼요."
+        "message": "DualSub에 저장된 내용이에요. 키는 빠져 있어요. 사이트마다 다른 값만 저장돼요."
     },
     "advancedJsonTitle": {
-        "message": "JSON 형식의 설정"
+        "message": "JSON 형식의 전체 설정"
     },
     "advancedLead": {
         "message": "백업, 설정 원본, 문제 해결 도구가 있어요."
@@ -459,13 +456,13 @@
         "message": "모두 초기화…"
     },
     "advancedResetConfirm": {
-        "message": "모든 설정을 추천 설정으로 되돌릴까요? 바로 다음에 실행 취소할 수 있어요."
+        "message": "모든 설정을 초기화할까요? 바로 다음에 실행 취소할 수 있어요."
     },
     "advancedResetDo": {
         "message": "초기화"
     },
     "advancedResetHelp": {
-        "message": "모든 설정이 추천 설정으로 돌아가고, 각 사이트도 다시 모든 사이트 공통 설정을 따라요. 키와 각 키와 함께 쓰는 설정(주소, 모델 등), 이 페이지의 언어는 그대로 남아요."
+        "message": "모든 설정을 추천 설정으로 되돌리고, 사이트마다 따로 정한 설정을 지워요. 키와 각 키에 맞춘 설정(주소, 모델 등), 이 페이지의 언어는 그대로 남아요."
     },
     "advancedResetTitle": {
         "message": "처음부터 다시"
@@ -494,14 +491,17 @@
     "commonRecommended": {
         "message": "추천"
     },
+    "commonOn": {
+        "message": "켜짐"
+    },
+    "commonOff": {
+        "message": "꺼짐"
+    },
     "explainCache": {
         "message": "답변 기억하기"
     },
     "explainAllowHost": {
         "message": "단어를 설명하려면 DualSub가 이 주소에 연결하도록 허용해 주세요."
-    },
-    "explainKeyStays": {
-        "message": "키는 이 컴퓨터에만 저장되고, 내가 고른 서비스에만 전달돼요."
     },
     "explainLead": {
         "message": "자막에서 아무 단어나 클릭하면 뜻과 쓰임새, 그 말에 얽힌 이야기를 볼 수 있어요."
@@ -513,7 +513,7 @@
         "message": "단어를 클릭하면 설명 창 열기"
     },
     "explainPauseTitle": {
-        "message": "읽는 동안 영상 멈추기"
+        "message": "영상 멈추기"
     },
     "explainRateLimit": {
         "message": "1분당 최대 요청 수"
@@ -525,13 +525,10 @@
         "message": "최대 시도 횟수"
     },
     "explainSampleMeaning": {
-        "message": "비가 억수같이 쏟아진다는 뜻이에요. 오래전부터 편하게 쓰는 영어 표현이에요."
-    },
-    "explainSetupDone": {
-        "message": "내 AI 서비스"
+        "message": "비가 억수같이 쏟아진다는 뜻이에요. 오래전부터 편하게 쓰는 영어 표현인데, 어디서 왔는지는 아무도 확실히 몰라요."
     },
     "explainSetupHelp": {
-        "message": "설명은 내 계정으로 쓰는 AI 서비스가 만들어요."
+        "message": "설명은 내 계정으로 쓰는 AI 서비스가 만들어요. 키는 이 컴퓨터에만 저장돼요."
     },
     "explainSetupTitle": {
         "message": "세 단계로 설정하기"
@@ -539,8 +536,26 @@
     "explainStatusOff": {
         "message": "꺼져 있어요. 키는 그대로 저장되어 있어요."
     },
+    "explainNeedsSetup": {
+        "message": "설정 필요"
+    },
+    "explainSetUpWith": {
+        "message": "%s(으)로 설정됨"
+    },
+    "explainKeySaved": {
+        "message": "키는 이 컴퓨터에만 저장되어 있어요."
+    },
+    "explainChangeKey": {
+        "message": "키 바꾸기"
+    },
+    "explainChooseService": {
+        "message": "AI 서비스 고르기"
+    },
+    "explainAddress": {
+        "message": "주소 (호환 서버용)"
+    },
     "explainStatusOn": {
-        "message": "켜져 있어요. 자막에서 단어를 클릭해 보세요."
+        "message": "자막에서 단어를 클릭해 보세요."
     },
     "explainStatusSetup": {
         "message": "아래 세 단계를 마치면 켤 수 있어요."
@@ -618,7 +633,7 @@
         "message": "페이지를 새로고침하세요."
     },
     "helpNoSubtitlesSite": {
-        "message": "사이트에서 DualSub 사용이 켜져 있는지 확인하세요."
+        "message": "사이트에서 DualSub이 켜져 있는지 ‘%s’에서 확인하세요."
     },
     "helpNoSubtitlesTitle": {
         "message": "자막이 안 나와요"
@@ -626,14 +641,17 @@
     "helpNoSubtitlesTracks": {
         "message": "영상에 자막이 있는지 확인하세요. 사이트 자체 자막 메뉴를 열어 보면 알 수 있어요."
     },
-    "helpOpenSites": {
-        "message": "사이트 설정 열기"
-    },
     "helpPrivacy": {
-        "message": "자막 내용은 내가 고른 번역 서비스로만 보내요. 사용 기록을 추적하지 않고, DualSub 개발자에게는 아무것도 보내지 않아요."
+        "message": "자막 내용은 내가 고른 번역 서비스로만 보내요. 사용 기록을 추적하지 않고, 저희에게는 아무것도 보내지 않아요."
+    },
+    "helpPrivacyFallback": {
+        "message": "자막 내용은 내가 고른 번역 서비스와, 그 서비스가 안 될 때 대신 번역하는 무료 서비스로만 보내요. 사용 기록을 추적하지 않고, 저희에게는 아무것도 보내지 않아요."
     },
     "helpSource": {
         "message": "소스 코드"
+    },
+    "helpMadeBy": {
+        "message": "만든 사람: QuellaMC, 1jifang"
     },
     "helpTimingHelp": {
         "message": "자막을 조금 앞당기거나 늦춰 보세요."
@@ -675,7 +693,7 @@
         "message": "영상에서 말하는 언어"
     },
     "languagesTopAutoHelp": {
-        "message": "DualSub에서 영상과 내가 고른 오디오에 맞춰 자동으로 바꿔요. 한국 드라마는 위에 한국어가, 영어 영화는 영어가 나와요."
+        "message": "DualSub에서 영상마다 자동으로 맞춰요. 한국 드라마는 위에 한국어가, 영어 영화는 영어가 나와요."
     },
     "languagesTopFixed": {
         "message": "항상 같은 언어"
@@ -747,7 +765,7 @@
         "message": "부드러운 그림자"
     },
     "lookExactPosition": {
-        "message": "정확한 높이: %s (0.1은 맨 아래, 9.9는 가운데)"
+        "message": "정확한 높이: %s (맨 아래 0.1부터 가운데 9.9까지)"
     },
     "lookExactSize": {
         "message": "정확한 글자 크기: %s배"
@@ -830,6 +848,9 @@
     "lookPresetsLabel": {
         "message": "미리 만든 모양"
     },
+    "lookPresetSample": {
+        "message": "안녕하세요"
+    },
     "lookSizeTitle": {
         "message": "글자 크기"
     },
@@ -840,7 +861,10 @@
         "message": "미리 만든 모양에서 시작해서, 원하면 색과 글꼴을 바꿔 보세요."
     },
     "lookStylePlatform": {
-        "message": "사이트와 같은 모양"
+        "message": "지금 보는 사이트와 같은 모양"
+    },
+    "lookStylePlatformSite": {
+        "message": "%s와 같은 모양"
     },
     "lookStylePlatformHelp": {
         "message": "Netflix나 Disney+ 프로필의 자막 설정을 따라요."
@@ -888,10 +912,22 @@
         "message": "타이밍"
     },
     "previewCaptionAuto": {
-        "message": "영상 줄: %s (영상에서 말하는 언어). 내 줄: %s."
+        "message": "영상 줄: %s (이 영상에서 말하는 언어). 내 줄: %s, 작품에 공식 번역이 있으면 그걸 써요."
     },
     "previewCaptionFixed": {
-        "message": "영상 줄: %s. 내 줄: %s."
+        "message": "영상 줄: %s. 내 줄: %s, 작품에 공식 번역이 있으면 그걸 써요."
+    },
+    "previewCaptionAutoTranslated": {
+        "message": "영상 줄: %s (이 영상에서 말하는 언어). 내 줄: %s, DualSub이 번역해요."
+    },
+    "previewCaptionAutoOne": {
+        "message": "영상 줄: %s (이 영상에서 말하는 언어)."
+    },
+    "previewCaptionFixedTranslated": {
+        "message": "영상 줄: %s. 내 줄: %s, DualSub이 번역해요."
+    },
+    "previewCaptionFixedOne": {
+        "message": "영상 줄: %s."
     },
     "previewEnglishFilm": {
         "message": "영어 영화"
@@ -954,25 +990,25 @@
         "message": "모든 사이트"
     },
     "scopeBackToAll": {
-        "message": "모든 사이트로 돌아가기"
+        "message": "‘모든 사이트’로 돌아가기"
     },
     "scopeEditingSite": {
         "message": "%s 설정만 바꾸고 있어요."
     },
     "scopeEditingSiteHelp": {
-        "message": "여기서 바꾸는 설정에는 “%s 전용” 표시가 붙어요. 나머지는 모든 사이트 공통 설정을 따라요."
+        "message": "여기서 바꾸는 설정에는 “%s 전용” 표시가 붙어요. 나머지는 ‘모든 사이트’ 설정을 따라요."
     },
     "scopeHelp": {
-        "message": "따로 정한 설정이 없는 사이트는 모든 사이트 공통 설정을 써요."
+        "message": "따로 정한 설정이 없는 사이트는 ‘모든 사이트’ 설정을 써요."
     },
     "scopeLabel": {
         "message": "설정 대상"
     },
     "scopeOwnCount": {
-        "message": "따로 정한 설정: %d개"
+        "message": "따로 정한 설정 %d개"
     },
     "scopeSameAsAll": {
-        "message": "모든 사이트와 같음"
+        "message": "‘모든 사이트’와 같음"
     },
     "scopeSharedSetting": {
         "message": "모든 사이트 공통"
@@ -981,13 +1017,19 @@
         "message": "%s 전용"
     },
     "scopeUseShared": {
-        "message": "모든 사이트 공통 값 사용"
+        "message": "‘모든 사이트’ 값 사용"
     },
     "setupAddress": {
         "message": "서비스 주소"
     },
     "setupCheckKey": {
         "message": "키 확인"
+    },
+    "setupOpenAIStudio": {
+        "message": "Google AI Studio 열기"
+    },
+    "setupOpenOpenAI": {
+        "message": "OpenAI 열기"
     },
     "setupChooseService": {
         "message": "AI 서비스 고르기"
@@ -1003,9 +1045,6 @@
     },
     "setupOpenAIKeyHelp": {
         "message": "로그인한 다음 “API keys”를 열고, 비밀 키를 만들어 복사하세요."
-    },
-    "setupOpenKeyPage": {
-        "message": "%s 열기"
     },
     "setupOtherKeyHelp": {
         "message": "사용하는 서비스에서 받은 키와 주소를 넣으세요."
@@ -1056,16 +1095,10 @@
         "message": "이 사이트들에서는 DualSub 사용이 자동으로 켜져요. 사이트마다 끌 수도 있고, 설정을 따로 정할 수도 있어요."
     },
     "sitesMoreHelp": {
-        "message": "DualSub에서 새 사이트를 지원하게 되면, 처음부터 켜진 채로 여기에 나타나고 모든 사이트 공통 설정이 적용돼요."
+        "message": "DualSub에서 새 사이트를 지원하게 되면, 처음부터 켜진 채로 여기에 나타나고 ‘모든 사이트’ 설정이 적용돼요."
     },
     "sitesMoreTitle": {
         "message": "더 많은 사이트를 준비하고 있어요"
-    },
-    "sitesOff": {
-        "message": "꺼짐"
-    },
-    "sitesOn": {
-        "message": "켜짐"
     },
     "sitesRemoveOwn": {
         "message": "따로 정한 설정 지우기"
@@ -1074,10 +1107,10 @@
         "message": "이 사이트에서 DualSub 사용"
     },
     "sitesUsesShared": {
-        "message": "모든 사이트 공통 설정을 따라요"
+        "message": "‘모든 사이트’ 설정을 따라요"
     },
     "sitesUsesSharedHelp": {
-        "message": "%s에만 쓸 글자 크기, 색, 위 줄, 타이밍을 따로 정할 수 있어요."
+        "message": "%s에만 쓸 글자 크기, 색, 언어, 타이밍을 따로 정할 수 있어요."
     },
     "sizeExtraLarge": {
         "message": "아주 크게"
@@ -1107,7 +1140,7 @@
         "message": "자막이 두 번 보여요"
     },
     "startFromBrowser": {
-        "message": "브라우저에서 가져옴"
+        "message": "브라우저에서 골랐어요"
     },
     "startLead": {
         "message": "Netflix나 Disney+를 열고 아무 영상이나 재생해 보세요. 자막이 두 줄로 나와요. 위에는 영상의 언어, 아래에는 내 언어가 보여요."
@@ -1125,34 +1158,37 @@
         "message": "DeepL (내 키 사용)"
     },
     "startProviderGoogle": {
-        "message": "Google 번역: 무료, 설정 필요 없음"
+        "message": "Google 번역, 무료, 설정 필요 없음"
     },
     "startProviderMicrosoft": {
-        "message": "Microsoft 번역: 무료, 설정 필요 없음"
+        "message": "Microsoft 번역, 무료, 설정 필요 없음"
     },
     "startProviderVertex": {
-        "message": "Google Vertex AI (내 Google Cloud 프로젝트 사용)"
+        "message": "Google Vertex AI"
     },
     "startSetUpTitle": {
         "message": "이렇게 미리 설정해 두었어요"
     },
-    "startSiteOff": {
-        "message": "%s: 꺼짐"
-    },
-    "startSiteUnreadable": {
-        "message": "%s: 읽지 못함"
-    },
-    "startSiteOn": {
-        "message": "%s: 켜짐"
+    "startTopTitle": {
+        "message": "위 줄"
     },
     "startStatusOff": {
         "message": "이중 자막이 꺼져 있어요"
     },
+    "startStatusOn": {
+        "message": "이중 자막이 켜져 있어요"
+    },
+    "startStatusWorking": {
+        "message": "%s에서 작동 중"
+    },
+    "startStatusWorkingSome": {
+        "message": "%s에서 작동 중, %s에서는 꺼짐"
+    },
+    "startSitesUnreadable": {
+        "message": "DualSub이 어느 사이트에서 켜져 있는지 읽지 못했어요."
+    },
     "startStatusOffHelp": {
         "message": "스위치로 다시 켤 수 있어요."
-    },
-    "startStatusReady": {
-        "message": "DualSub 준비 완료"
     },
     "startStatusReadyHelp": {
         "message": "따로 설정할 건 없어요. 영상을 재생하기만 하면 돼요."
@@ -1188,7 +1224,7 @@
         "message": "자막이 조금 더 일찍 나와요."
     },
     "timingExactHelp": {
-        "message": "초 단위예요. 0보다 큰 값을 넣으면 자막이 일찍 나와요."
+        "message": "초 단위예요. 0보다 큰 값을 넣으면 자막이 일찍 나와요 (%s(으)로 저장)."
     },
     "timingExactTitle": {
         "message": "정확한 시간 조정"
@@ -1215,7 +1251,7 @@
         "message": "원래 시간으로 되돌리기"
     },
     "timingTipHelp": {
-        "message": "브라우저 툴바에 있는 DualSub 버튼에도 같은 버튼이 있어서, 영상을 보면서 바로 자막을 목소리에 맞출 수 있어요."
+        "message": "브라우저 툴바에 있는 DualSub 버튼에도 같은 두 버튼이 있어서, 영상을 보면서 바로 자막을 들리는 소리에 맞출 수 있어요."
     },
     "timingTipTitle": {
         "message": "보면서 바로 맞추기"
@@ -1248,7 +1284,7 @@
         "message": "“%s”에 해당하는 트랙을 다시 써요"
     },
     "toastFollowsShared": {
-        "message": "모든 사이트 공통 값으로 되돌렸어요"
+        "message": "‘모든 사이트’ 값으로 되돌렸어요"
     },
     "toastHiddenEverywhere": {
         "message": "다 됐어요. 이제 모든 사이트에서 사이트 자체 자막을 숨겨요."
@@ -1296,7 +1332,7 @@
         "message": "%s에서 DualSub 사용을 켰어요"
     },
     "toastSiteShared": {
-        "message": "%s에 다시 모든 사이트 공통 설정이 적용돼요"
+        "message": "%s에 다시 ‘모든 사이트’ 설정이 적용돼요"
     },
     "toastSiteShow": {
         "message": "이제 %s 자체 자막이 보여요"
@@ -1460,6 +1496,12 @@
     "translationDeepLOpen": {
         "message": "DeepL 열기"
     },
+    "translationDeepLGetKey": {
+        "message": "키 받기"
+    },
+    "translationDeepLKeyPlaceholder": {
+        "message": "DeepL 키"
+    },
     "translationDeepLPlan": {
         "message": "어떤 요금제를 쓰고 있나요?"
     },
@@ -1485,7 +1527,7 @@
         "message": "번역 서비스"
     },
     "translationVertexHelp": {
-        "message": "서비스 계정 파일을 한 번 가져와 잠시 쓸 수 있는 토큰을 만들거나, 토큰을 직접 붙여넣으세요. 파일 자체는 저장하지 않아요."
+        "message": "DualSub이 이 파일로 잠시 쓸 수 있는 토큰을 만들고, 파일은 저장하지 않아요."
     },
     "translationVertexSetupTitle": {
         "message": "Google Vertex AI 설정하기"
@@ -1543,14 +1585,5 @@
     },
     "startNeedsSetupStopped": {
         "message": "설정을 마칠 때까지 자막이 번역되지 않아요."
-    },
-    "sitesHideAllHelp": {
-        "message": "모든 사이트에 적용돼요. 아래에서 사이트마다 따로 정할 수도 있어요."
-    },
-    "toastSitesHide": {
-        "message": "사이트 자체 자막: 숨김"
-    },
-    "toastSitesShow": {
-        "message": "사이트 자체 자막: 표시"
     }
 }
