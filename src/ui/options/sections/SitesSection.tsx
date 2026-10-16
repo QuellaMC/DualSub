@@ -91,7 +91,6 @@ function SiteCard({
         void followAllSites(
             feedback,
             site,
-            settings.siteProfiles,
             ownKeys,
             t('toastSiteShared', name)
         ).then((removed) => {

@@ -731,6 +731,20 @@ export const SENSITIVE_KEYS = SETTINGS_KEYS.filter(
     (key) => configSchema[key].sensitive === true
 );
 
+/** For each credential, the settings it is sent with: where it goes and
+ *  what it asks for there. Kept without them, a credential could reach a
+ *  host it was never set up for. */
+export const CREDENTIAL_SETUP = {
+    deeplApiKey: ['deeplApiPlan'],
+    openaiCompatibleApiKey: [
+        'openaiCompatibleBaseUrl',
+        'openaiCompatibleModel',
+    ],
+    vertexAccessToken: ['vertexProjectId', 'vertexLocation', 'vertexModel'],
+    openaiApiKey: ['openaiBaseUrl', 'openaiModel'],
+    geminiApiKey: ['geminiModel'],
+} as const satisfies Partial<Record<SettingsKey, readonly SettingsKey[]>>;
+
 export function isSettingsKey(key: string): key is SettingsKey {
     return Object.prototype.hasOwnProperty.call(configSchema, key);
 }
