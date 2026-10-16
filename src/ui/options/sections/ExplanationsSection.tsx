@@ -253,7 +253,8 @@ export function ExplanationsSection({
                                             ? feedback.apply(() =>
                                                   configService.enterKey(
                                                       'openaiApiKey',
-                                                      key
+                                                      key,
+                                                      settings.openaiBaseUrl
                                                   )
                                               )
                                             : save(

@@ -946,7 +946,7 @@ describe('OptionsApp', () => {
         );
     });
 
-    it('enters a key for the address just typed, while that address is still being saved', async () => {
+    it('enters a key for the address shown when it was typed, while a new one is still being saved', async () => {
         await fakeBrowser.storage.local.set({ showAdvancedSettings: true });
         location.hash = '#explanations';
         await renderReady();
@@ -962,7 +962,7 @@ describe('OptionsApp', () => {
         });
         fireEvent.blur(address);
         fireEvent.change(screen.getByLabelText('Paste it here'), {
-            target: { value: 'sk-llm' },
+            target: { value: 'sk-openai' },
         });
         stored.resolve();
         await waitFor(async () =>
@@ -970,16 +970,55 @@ describe('OptionsApp', () => {
                 'https://llm.example.com/v1'
             )
         );
-        await waitFor(() =>
-            expect(screen.getByLabelText('Paste it here')).toHaveValue('sk-llm')
+        await waitFor(async () =>
+            expect(
+                await fakeBrowser.storage.local.get([
+                    'openaiApiKey',
+                    'openaiApiKeyOrigin',
+                ])
+            ).toEqual({
+                openaiApiKey: 'sk-openai',
+                openaiApiKeyOrigin: 'https://api.openai.com',
+            })
         );
-        expect(
-            (await fakeBrowser.storage.local.get('openaiApiKeyOrigin'))
-                .openaiApiKeyOrigin
-        ).toBe('https://llm.example.com');
+        await waitFor(() =>
+            expect(screen.getByLabelText('Paste it here')).toHaveValue('')
+        );
     });
 
-    it('enters a key for the service chosen before it, while that choice is still being saved', async () => {
+    it('enters a key for the address shown when it was typed, whatever is stored meanwhile', async () => {
+        await fakeBrowser.storage.local.set({ showAdvancedSettings: true });
+        location.hash = '#explanations';
+        await renderReady();
+        const release = Promise.withResolvers<void>();
+        // The entry waits its turn while another page or computer moves the
+        // address.
+        const elsewhere = navigator.locks.request(
+            'dualsub:settingParts',
+            () => release.promise
+        );
+        fireEvent.change(screen.getByLabelText('Paste it here'), {
+            target: { value: 'sk-openai' },
+        });
+        await fakeBrowser.storage.sync.set({
+            openaiBaseUrl: 'https://elsewhere.example.com/v1',
+        });
+        release.resolve();
+        await elsewhere;
+        await waitFor(async () =>
+            expect(
+                await fakeBrowser.storage.local.get([
+                    'openaiApiKey',
+                    'openaiApiKeyOrigin',
+                ])
+            ).toEqual({
+                openaiApiKey: 'sk-openai',
+                openaiApiKeyOrigin: 'https://api.openai.com',
+            })
+        );
+    });
+
+    it('enters a key for the service shown when it was typed, while another is still being saved', async () => {
         await fakeBrowser.storage.sync.set({
             selectedProvider: 'openai_compatible',
             openaiCompatibleBaseUrl:
@@ -1006,43 +1045,9 @@ describe('OptionsApp', () => {
                 ])
             ).toEqual({
                 openaiCompatibleApiKey: 'sk-openai',
-                openaiCompatibleApiKeyOrigin: 'https://api.openai.com',
+                openaiCompatibleApiKeyOrigin:
+                    'https://generativelanguage.googleapis.com',
             })
-        );
-    });
-
-    it('enters a key for the last service chosen before it when two choices overlap', async () => {
-        await fakeBrowser.storage.sync.set({
-            selectedProvider: 'openai_compatible',
-            openaiCompatibleBaseUrl: 'https://llm.example.com/v1',
-        });
-        location.hash = '#translation';
-        await renderReady();
-        const first = Promise.withResolvers<void>();
-        const write = browser.storage.sync.set.bind(browser.storage.sync);
-        vi.spyOn(browser.storage.sync, 'set').mockImplementationOnce(
-            (items: Record<string, unknown>) =>
-                first.promise.then(() => write(items)) as never
-        );
-        fireEvent.click(screen.getByRole('button', { name: 'Google Gemini' }));
-        fireEvent.click(screen.getByRole('button', { name: 'OpenAI' }));
-        fireEvent.change(screen.getByLabelText('Paste it here'), {
-            target: { value: 'sk-openai' },
-        });
-        first.resolve();
-        await waitFor(async () =>
-            expect(
-                await fakeBrowser.storage.local.get([
-                    'openaiCompatibleApiKey',
-                    'openaiCompatibleApiKeyOrigin',
-                ])
-            ).toEqual({
-                openaiCompatibleApiKey: 'sk-openai',
-                openaiCompatibleApiKeyOrigin: 'https://api.openai.com',
-            })
-        );
-        expect(await sync('openaiCompatibleBaseUrl')).toBe(
-            'https://api.openai.com/v1'
         );
     });
 
@@ -1075,40 +1080,6 @@ describe('OptionsApp', () => {
         await waitFor(() =>
             expect(screen.getByLabelText('Paste it here')).toHaveValue('')
         );
-    });
-
-    it('enters a key for the stored address when the address it waited for fails to save', async () => {
-        await fakeBrowser.storage.local.set({ showAdvancedSettings: true });
-        location.hash = '#explanations';
-        await renderReady();
-        const failure = Promise.withResolvers<void>();
-        vi.spyOn(browser.storage.sync, 'set').mockImplementationOnce(
-            () =>
-                failure.promise.then(() => {
-                    throw new Error('quota');
-                }) as never
-        );
-        const address = screen.getByLabelText('Service address');
-        fireEvent.change(address, {
-            target: { value: 'https://llm.example.com/v1' },
-        });
-        fireEvent.blur(address);
-        fireEvent.change(screen.getByLabelText('Paste it here'), {
-            target: { value: 'sk-openai' },
-        });
-        failure.resolve();
-        await waitFor(async () =>
-            expect(
-                await fakeBrowser.storage.local.get([
-                    'openaiApiKey',
-                    'openaiApiKeyOrigin',
-                ])
-            ).toEqual({
-                openaiApiKey: 'sk-openai',
-                openaiApiKeyOrigin: 'https://api.openai.com',
-            })
-        );
-        expect(await sync('openaiBaseUrl')).toBeUndefined();
     });
 
     it('treats a key as missing once another computer moves its address', async () => {

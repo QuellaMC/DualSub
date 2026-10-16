@@ -158,7 +158,11 @@ describe('migrateLegacyConfiguration', () => {
                     await fakeBrowser.storage.sync.set({
                         openaiBaseUrl: 'https://new.example.com/v1',
                     });
-                    entry = configService.enterKey('openaiApiKey', 'sk-new');
+                    entry = configService.enterKey(
+                        'openaiApiKey',
+                        'sk-new',
+                        'https://new.example.com/v1'
+                    );
                     await Promise.race([
                         entry,
                         new Promise((resolve) => setTimeout(resolve, 20)),

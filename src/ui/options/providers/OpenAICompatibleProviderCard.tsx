@@ -151,7 +151,8 @@ export function OpenAICompatibleProviderCard({
                                     void feedback.apply(() =>
                                         configService.enterKey(
                                             'openaiCompatibleApiKey',
-                                            key
+                                            key,
+                                            baseUrl
                                         )
                                     );
                                 }}

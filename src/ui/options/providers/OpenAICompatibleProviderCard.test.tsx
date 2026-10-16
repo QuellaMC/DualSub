@@ -164,14 +164,11 @@ describe('OpenAICompatibleProviderCard', () => {
         );
     });
 
-    it('enters a key for the origin of the stored address, and saves model edits directly', async () => {
+    it('enters a key for the origin of its address, and saves model edits directly', async () => {
         vi.stubGlobal(
             'fetch',
             vi.fn(() => Promise.resolve(modelsResponse([])))
         );
-        await fakeBrowser.storage.sync.set({
-            openaiCompatibleBaseUrl: 'https://api.openai.com/v1',
-        });
         const { save } = renderCard();
         fireEvent.change(screen.getByLabelText('setupPasteKey'), {
             target: { value: 'sk-2' },

@@ -1,9 +1,5 @@
 import { browser } from 'wxt/browser';
-import {
-    KEY_ORIGINS,
-    keyEntry,
-    type OriginBoundKey,
-} from '@/shared/keyOrigins';
+import { keyEntry, type OriginBoundKey } from '@/shared/keyOrigins';
 import { createLogger, setLoggingLevel } from '@/shared/logger';
 import type { PlatformId } from '@/shared/platforms';
 import {
@@ -652,18 +648,18 @@ class ConfigService {
     }
 
     /**
-     * Store `value` as `key`, entered for the address stored now, together
-     * with that address's origin, the only one the key goes to. It runs in
-     * turn with every write that takes its turn, the boot migration's
-     * binding among them. Reads strictly, so a failed read writes nothing.
+     * Store `value` as `key`, entered for `address`: the address shown when
+     * it was entered, whose origin is the only one the key goes to. It runs
+     * in turn with every write that takes its turn, the boot migration's
+     * binding among them.
      */
-    enterKey(key: OriginBoundKey, value: string): Promise<void> {
+    enterKey(
+        key: OriginBoundKey,
+        value: string,
+        address: string
+    ): Promise<void> {
         return inTurn(async () => {
-            const { address } = KEY_ORIGINS[key];
-            const { values } = await this.readResultStrict(address);
-            await this.writeMultiple(
-                keyEntry(key, value, values[address] ?? '')
-            );
+            await this.writeMultiple(keyEntry(key, value, address));
         });
     }
 
