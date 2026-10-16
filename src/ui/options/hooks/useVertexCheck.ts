@@ -3,6 +3,7 @@ import {
     checkVertexConnection,
     type VertexCredentials,
 } from '@/background/translation/providers/geminiVertex';
+import { vertexTokenExpired } from '@/shared/providers';
 import { mintAccessToken, parseServiceAccountKey } from '@/shared/vertexAuth';
 import type { Translate } from '../../hooks/useI18n';
 import { errorMessage, type SaveSettings, type TestResult } from '../types';
@@ -14,13 +15,13 @@ function configuredStatus(
     expiresAt: number,
     now: number
 ): TestResult {
+    if (vertexTokenExpired(expiresAt, now)) {
+        return {
+            tone: 'warning',
+            message: t('vertexTokenExpiredReimport'),
+        };
+    }
     if (expiresAt > 0) {
-        if (expiresAt <= now) {
-            return {
-                tone: 'warning',
-                message: t('vertexTokenExpiredReimport'),
-            };
-        }
         if (expiresAt - now < EXPIRING_SOON_MS) {
             return {
                 tone: 'warning',

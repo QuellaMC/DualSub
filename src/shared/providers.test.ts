@@ -15,6 +15,36 @@ describe('provider credentials', () => {
         }
     });
 
+    it('counts a Vertex token past its recorded expiry as missing', () => {
+        const vertex = {
+            vertexAccessToken: 'ya29.token',
+            vertexProjectId: 'p',
+            vertexLocation: 'us-central1',
+            vertexModel: 'gemini-2.5-flash',
+        };
+        expect(
+            missingCredentials(
+                'vertex_gemini',
+                { ...vertex, vertexTokenExpiresAt: 1000 },
+                2000
+            )
+        ).toEqual(['vertexAccessToken']);
+        expect(
+            missingCredentials(
+                'vertex_gemini',
+                { ...vertex, vertexTokenExpiresAt: 3000 },
+                2000
+            )
+        ).toEqual([]);
+        expect(
+            missingCredentials(
+                'vertex_gemini',
+                { ...vertex, vertexTokenExpiresAt: 0 },
+                2000
+            )
+        ).toEqual([]);
+    });
+
     it('lists what a provider still lacks', () => {
         expect(missingCredentials('deepl', { deeplApiKey: '  ' })).toEqual([
             'deeplApiKey',

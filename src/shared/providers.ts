@@ -34,15 +34,27 @@ export const PROVIDER_CREDENTIALS = {
 
 export type CredentialKey = (typeof PROVIDER_CREDENTIALS)[ProviderId][number];
 
+/** Whether a Vertex token has run out at `now`; 0 records no expiry. */
+export function vertexTokenExpired(expiresAt: number, now: number): boolean {
+    return expiresAt > 0 && expiresAt <= now;
+}
+
 /** The credentials `provider` still lacks in `settings`. A key entered for
- *  another origin than its address's is lacking too. */
+ *  another origin than its address's is lacking too, and a Vertex token
+ *  past its recorded expiry is as good as missing. */
 export function missingCredentials(
     provider: ProviderId,
-    settings: Partial<Record<CredentialKey | KeyOriginSetting, string>>
+    settings: Partial<Record<CredentialKey | KeyOriginSetting, string>> & {
+        readonly vertexTokenExpiresAt?: number;
+    },
+    now = Date.now()
 ): CredentialKey[] {
     const needed: readonly CredentialKey[] = PROVIDER_CREDENTIALS[provider];
     return needed.filter(
-        (key) => usableCredential(key, settings).trim() === ''
+        (key) =>
+            usableCredential(key, settings).trim() === '' ||
+            (key === 'vertexAccessToken' &&
+                vertexTokenExpired(settings.vertexTokenExpiresAt ?? 0, now))
     );
 }
 
