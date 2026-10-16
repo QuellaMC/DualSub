@@ -1474,5 +1474,23 @@
     },
     "translationVertexSetupTitle": {
         "message": "Configurar Google Vertex AI"
+    },
+    "startNeedsSetupTitle": {
+        "message": "Falta configurar %s"
+    },
+    "startNeedsSetupCovered": {
+        "message": "Mientras tanto, traduce %s."
+    },
+    "startNeedsSetupStopped": {
+        "message": "Mientras tanto, los subtítulos no se traducen."
+    },
+    "sitesHideAllHelp": {
+        "message": "En todos los sitios. Más abajo, cada sitio puede mantener su propia elección."
+    },
+    "toastSitesHide": {
+        "message": "Subtítulos propios de los sitios: ocultos"
+    },
+    "toastSitesShow": {
+        "message": "Subtítulos propios de los sitios: visibles"
     }
 }

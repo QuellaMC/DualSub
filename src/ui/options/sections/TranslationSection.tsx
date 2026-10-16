@@ -1,9 +1,9 @@
 import { SETTING_BOUNDS, validateSetting } from '@/config/schema';
 import type { ProviderId } from '@/shared/providers';
-import { Icon } from '../../design/Icon';
 import { Switch } from '../../design/Switch';
+import { HealthNotice } from '../../HealthNotice';
 import { useCommittedTextField } from '../../hooks/useCommittedTextField';
-import { useTranslationHealth } from '../../hooks/useTranslationHealth';
+import { PROVIDER_NAME_KEYS } from '../../providerNames';
 import { CommittedField } from '../controls/CommittedField';
 import { DeepLProviderCard } from '../providers/DeepLProviderCard';
 import { OpenAICompatibleProviderCard } from '../providers/OpenAICompatibleProviderCard';
@@ -13,14 +13,12 @@ import type { SectionProps } from '../types';
 
 const PROVIDERS: readonly {
     id: ProviderId;
-    nameKey: string;
     helpKey: string;
     tags: readonly { textKey: string; tone: string }[];
     advanced?: true;
 }[] = [
     {
         id: 'microsoft_edge',
-        nameKey: 'providerMicrosoft',
         helpKey: 'providerMicrosoftHelp',
         tags: [
             { textKey: 'tagFree', tone: 'ok' },
@@ -30,7 +28,6 @@ const PROVIDERS: readonly {
     },
     {
         id: 'google',
-        nameKey: 'providerGoogle',
         helpKey: 'providerGoogleHelp',
         tags: [
             { textKey: 'tagFree', tone: 'ok' },
@@ -39,34 +36,21 @@ const PROVIDERS: readonly {
     },
     {
         id: 'deepl',
-        nameKey: 'providerDeepL',
         helpKey: 'providerDeepLHelp',
         tags: [{ textKey: 'tagNeedsKey', tone: 'muted' }],
     },
     {
         id: 'openai_compatible',
-        nameKey: 'providerAi',
         helpKey: 'providerAiHelp',
         tags: [{ textKey: 'tagNeedsKey', tone: 'muted' }],
     },
     {
         id: 'vertex_gemini',
-        nameKey: 'providerVertex',
         helpKey: 'providerVertexHelp',
         tags: [{ textKey: 'tagGoogleCloud', tone: 'advanced' }],
         advanced: true,
     },
 ];
-
-const PROVIDER_NAME_KEYS = Object.fromEntries(
-    PROVIDERS.map((provider) => [provider.id, provider.nameKey])
-) as Record<ProviderId, string>;
-
-const PROBLEM_KEYS = {
-    credentials: 'healthCredentials',
-    quota: 'healthQuota',
-    rejected: 'healthRejected',
-} as const;
 
 export function TranslationSection({
     t,
@@ -74,7 +58,6 @@ export function TranslationSection({
     save,
     advanced,
 }: SectionProps & { advanced: boolean }) {
-    const health = useTranslationHealth();
     const delayBounds = SETTING_BOUNDS.translationDelay;
     const delay = useCommittedTextField({
         value: String(settings.translationDelay),
@@ -98,28 +81,7 @@ export function TranslationSection({
             <p className="lead">{t('translationLead')}</p>
             <SharedTag />
 
-            {health?.provider === settings.selectedProvider && (
-                <div className="notice danger" role="status">
-                    <Icon name="alert" />
-                    <div className="stack">
-                        <strong>
-                            {t(
-                                'healthTitle',
-                                t(PROVIDER_NAME_KEYS[health.provider])
-                            )}
-                        </strong>
-                        <span>{t(PROBLEM_KEYS[health.problem])}</span>
-                        <span>
-                            {health.fallback
-                                ? t(
-                                      'healthCovered',
-                                      t(PROVIDER_NAME_KEYS[health.fallback])
-                                  )
-                                : t('healthNotCovered')}
-                        </span>
-                    </div>
-                </div>
-            )}
+            <HealthNotice t={t} provider={settings.selectedProvider} />
 
             <div className="card" id="translation-service">
                 <h2 className="label" id="translation-service-title">
@@ -145,14 +107,14 @@ export function TranslationSection({
                                     {
                                         message: t(
                                             'toastProvider',
-                                            t(provider.nameKey)
+                                            t(PROVIDER_NAME_KEYS[provider.id])
                                         ),
                                     }
                                 )
                             }
                         >
                             <span className="choice-title">
-                                {t(provider.nameKey)}
+                                {t(PROVIDER_NAME_KEYS[provider.id])}
                                 {provider.tags.map((tag) => (
                                     <span
                                         key={tag.textKey}

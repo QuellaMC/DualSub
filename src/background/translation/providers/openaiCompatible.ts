@@ -8,6 +8,7 @@ import {
     readProviderSettings,
     type TranslationProvider,
 } from '../provider';
+import { missingCredentials } from '@/shared/providers';
 import { translationInstruction } from './prompt';
 
 const PROVIDER = 'openai_compatible';
@@ -118,7 +119,7 @@ export const openaiCompatibleProvider: TranslationProvider = {
             'openaiCompatibleBaseUrl',
             'openaiCompatibleModel',
         ]);
-        if (settings.openaiCompatibleApiKey.trim() === '') {
+        if (missingCredentials(PROVIDER, settings).length > 0) {
             throw missingCredential(PROVIDER, 'OpenAI-compatible API key');
         }
         const baseUrl = settings.openaiCompatibleBaseUrl;

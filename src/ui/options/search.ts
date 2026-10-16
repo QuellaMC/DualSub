@@ -151,7 +151,7 @@ const ENTRIES: readonly SearchEntry[] = [
         labelKey: 'sitesHideTitle',
         wordsKey: 'searchWordsHide',
         section: 'sites',
-        anchor: 'hide-netflix',
+        anchor: 'hide-all',
     },
     {
         labelKey: 'searchSiteOwn',

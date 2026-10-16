@@ -576,7 +576,7 @@
         "message": "解説する内容"
     },
     "healthCovered": {
-        "message": "その間は%sが代わりに翻訳しています。"
+        "message": "その間は代わりに%sを使っています。"
     },
     "healthCredentials": {
         "message": "キーが受け付けられませんでした。"
@@ -1458,7 +1458,7 @@
         "message": "翻訳リクエストの間隔（ミリ秒）"
     },
     "translationFallbackHelp": {
-        "message": "選んだサービスが使えなくなったときは、また使えるようになるまで、Microsoft翻訳、次にGoogle翻訳が代わりに翻訳します。字幕の文章を選んだサービスだけに送りたい場合は、オフにしてください。"
+        "message": "選んだサービスが使えなくなったときは、また使えるようになるまで、Microsoft翻訳、次にGoogle翻訳を代わりに使います。字幕の文章を選んだサービスだけに送りたい場合は、オフにしてください。"
     },
     "translationFallbackTitle": {
         "message": "このサービスが使えないときも翻訳を続ける"
@@ -1474,5 +1474,23 @@
     },
     "translationVertexSetupTitle": {
         "message": "Google Vertex AIの設定"
+    },
+    "startNeedsSetupTitle": {
+        "message": "%sはまだ設定されていません"
+    },
+    "startNeedsSetupCovered": {
+        "message": "設定が済むまでは、代わりに%sを使います。"
+    },
+    "startNeedsSetupStopped": {
+        "message": "設定が済むまでは、字幕は翻訳されません。"
+    },
+    "sitesHideAllHelp": {
+        "message": "すべてのサイトが対象です。下のサイトごとに、個別に選ぶこともできます。"
+    },
+    "toastSitesHide": {
+        "message": "サイト本来の字幕：非表示"
+    },
+    "toastSitesShow": {
+        "message": "サイト本来の字幕：表示"
     }
 }

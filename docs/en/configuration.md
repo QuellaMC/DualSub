@@ -19,7 +19,7 @@ The settings page holds every setting, the popup's included. Each change saves a
 - Timing: show the subtitles earlier or later in half-second steps
 - Translation: the translation service, its setup, and whether a free service covers when it fails
 - Word explanations: click a word in the subtitles to have an AI service explain it, through your own OpenAI or Gemini key
-- Sites: DualSub on or off for each site, and hiding each site's own subtitles
+- Sites: hiding the sites' own subtitles on every site or for one, and DualSub on or off for each site
 - Help: fixes for common problems
 
 "Show advanced options" adds exact values (text size, height, timing shift, and the pause between translation requests), per-site settings, the AI service's address and model, limits for word explanations, subtitle tracks to skip on Disney+, and the Advanced section: backup and restore, the settings as JSON, the logging level, a diagnostic report, and a reset that keeps your keys.
